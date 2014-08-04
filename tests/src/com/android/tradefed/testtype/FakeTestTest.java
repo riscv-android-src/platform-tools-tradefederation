@@ -16,7 +16,6 @@
 
 package com.android.tradefed.testtype;
 
-import com.android.ddmlib.testrunner.ITestRunListener.TestFailure;
 import com.android.ddmlib.testrunner.TestIdentifier;
 import com.android.tradefed.config.OptionSetter;
 import com.android.tradefed.result.ITestInvocationListener;
@@ -164,31 +163,17 @@ public class FakeTestTest extends TestCase {
         EasyMock.verify(mListener);
     }
 
-    public void testRun_simpleError() throws Exception {
-        final String name = "com.moo.cow";
-        mListener.testRunStarted(EasyMock.eq(name), EasyMock.eq(1));
-        testErrorExpectations(mListener, name, 1);
-        mListener.testRunEnded(EasyMock.eq(0l), EasyMock.<Map<String, String>>anyObject());
-
-        EasyMock.replay(mListener);
-        mOption.setOptionMapValue("run", name, "E");
-        mTest.run(mListener);
-        EasyMock.verify(mListener);
-    }
-
     public void testRun_basicSequence() throws Exception {
         final String name = "com.moo.cow";
         int i = 1;
-        mListener.testRunStarted(EasyMock.eq(name), EasyMock.eq(5));
+        mListener.testRunStarted(EasyMock.eq(name), EasyMock.eq(3));
         testPassExpectations(mListener, name, i++);
-        testFailExpectations(mListener, name, i++);
-        testErrorExpectations(mListener, name, i++);
         testFailExpectations(mListener, name, i++);
         testPassExpectations(mListener, name, i++);
         mListener.testRunEnded(EasyMock.eq(0l), EasyMock.<Map<String, String>>anyObject());
 
         EasyMock.replay(mListener);
-        mOption.setOptionMapValue("run", name, "PFEFP");
+        mOption.setOptionMapValue("run", name, "PFP");
         mTest.run(mListener);
         EasyMock.verify(mListener);
     }
@@ -212,7 +197,7 @@ public class FakeTestTest extends TestCase {
     public void testRun_recursiveParens() throws Exception {
         final String name = "com.moo.cow";
         int i = 1;
-        mListener.testRunStarted(EasyMock.eq(name), EasyMock.eq(11));
+        mListener.testRunStarted(EasyMock.eq(name), EasyMock.eq(8));
         testPassExpectations(mListener, name, i++);
         testFailExpectations(mListener, name, i++);
 
@@ -224,15 +209,11 @@ public class FakeTestTest extends TestCase {
 
         testPassExpectations(mListener, name, i++);
         testFailExpectations(mListener, name, i++);
-
-        testErrorExpectations(mListener, name, i++);
-        testErrorExpectations(mListener, name, i++);
-        testErrorExpectations(mListener, name, i++);
 
         mListener.testRunEnded(EasyMock.eq(0l), EasyMock.<Map<String, String>>anyObject());
 
         EasyMock.replay(mListener);
-        mOption.setOptionMapValue("run", name, "((PF)2)2E3");
+        mOption.setOptionMapValue("run", name, "((PF)2)2");
         mTest.run(mListener);
         EasyMock.verify(mListener);
     }
@@ -240,16 +221,14 @@ public class FakeTestTest extends TestCase {
     public void testMultiRun() throws Exception {
         final String name1 = "com.moo.cow";
         int i = 1;
-        mListener.testRunStarted(EasyMock.eq(name1), EasyMock.eq(3));
+        mListener.testRunStarted(EasyMock.eq(name1), EasyMock.eq(2));
         testPassExpectations(mListener, name1, i++);
         testFailExpectations(mListener, name1, i++);
-        testErrorExpectations(mListener, name1, i++);
         mListener.testRunEnded(EasyMock.eq(0l), EasyMock.<Map<String, String>>anyObject());
 
         final String name2 = "com.quack.duck";
         i = 1;
-        mListener.testRunStarted(EasyMock.eq(name2), EasyMock.eq(3));
-        testErrorExpectations(mListener, name2, i++);
+        mListener.testRunStarted(EasyMock.eq(name2), EasyMock.eq(2));
         testFailExpectations(mListener, name2, i++);
         testPassExpectations(mListener, name2, i++);
         mListener.testRunEnded(EasyMock.eq(0l), EasyMock.<Map<String, String>>anyObject());
@@ -261,8 +240,8 @@ public class FakeTestTest extends TestCase {
         mListener.testRunEnded(EasyMock.eq(0l), EasyMock.<Map<String, String>>anyObject());
 
         EasyMock.replay(mListener);
-        mOption.setOptionMapValue("run", name1, "PFE");
-        mOption.setOptionMapValue("run", name2, "EFP");
+        mOption.setOptionMapValue("run", name1, "PF");
+        mOption.setOptionMapValue("run", name2, "FP");
         mOption.setOptionMapValue("run", name3, "");
         mTest.run(mListener);
         EasyMock.verify(mListener);
@@ -281,18 +260,7 @@ public class FakeTestTest extends TestCase {
         final String name = String.format("testMethod%d", idx);
         final TestIdentifier test = new TestIdentifier(klass, name);
         l.testStarted(test);
-        l.testFailed(EasyMock.eq(TestFailure.FAILURE), EasyMock.eq(test),
-                EasyMock.<String>anyObject());
-        l.testEnded(EasyMock.eq(test), EasyMock.<Map<String, String>>anyObject());
-    }
-
-    private void testErrorExpectations(ITestInvocationListener l, String klass,
-            int idx) {
-        final String name = String.format("testMethod%d", idx);
-        final TestIdentifier test = new TestIdentifier(klass, name);
-        l.testStarted(test);
-        l.testFailed(EasyMock.eq(TestFailure.ERROR), EasyMock.eq(test),
-                EasyMock.<String>anyObject());
+        l.testFailed(EasyMock.eq(test), EasyMock.<String>anyObject());
         l.testEnded(EasyMock.eq(test), EasyMock.<Map<String, String>>anyObject());
     }
 }

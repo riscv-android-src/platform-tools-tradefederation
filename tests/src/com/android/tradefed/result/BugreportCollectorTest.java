@@ -15,7 +15,6 @@
  */
 package com.android.tradefed.result;
 
-import com.android.ddmlib.testrunner.ITestRunListener.TestFailure;
 import com.android.ddmlib.testrunner.TestIdentifier;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.result.BugreportCollector.Filter;
@@ -294,7 +293,7 @@ public class BugreportCollectorTest extends TestCase {
         final TestIdentifier test = new TestIdentifier("FooTest", testName);
         mCollector.testStarted(test);
         if (shouldFail) {
-            mCollector.testFailed(TestFailure.FAILURE, test, STACK_TRACE);
+            mCollector.testFailed(test, STACK_TRACE);
         }
         mCollector.testEnded(test, testMetrics);
         mCollector.testRunEnded(0, runMetrics);
@@ -314,8 +313,7 @@ public class BugreportCollectorTest extends TestCase {
         final TestIdentifier test = new TestIdentifier("FooTest", testName);
         listener.testStarted(EasyMock.eq(test));
         if (shouldFail) {
-            listener.testFailed((TestFailure)EasyMock.anyObject(), EasyMock.eq(test),
-                    EasyMock.eq(STACK_TRACE));
+            listener.testFailed(EasyMock.eq(test), EasyMock.eq(STACK_TRACE));
         }
         listener.testEnded(EasyMock.eq(test), (Map<String, String>)EasyMock.anyObject());
         listener.testRunEnded(EasyMock.anyInt(), (Map<String, String>)EasyMock.anyObject());

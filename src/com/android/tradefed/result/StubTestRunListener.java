@@ -37,7 +37,23 @@ public class StubTestRunListener implements ITestRunListener {
      * {@inheritDoc}
      */
     @Override
-    public void testFailed(TestFailure status, TestIdentifier test, String trace) {
+    public void testFailed(TestIdentifier test, String trace) {
+        // ignore
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void testAssumptionFailure(TestIdentifier test, String trace) {
+        // ignore
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void testIgnored(TestIdentifier test) {
         // ignore
     }
 

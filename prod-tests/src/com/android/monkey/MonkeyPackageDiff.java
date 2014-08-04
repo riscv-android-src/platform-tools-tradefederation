@@ -16,7 +16,6 @@
 
 package com.android.monkey;
 
-import com.android.ddmlib.testrunner.ITestRunListener.TestFailure;
 import com.android.ddmlib.testrunner.TestIdentifier;
 import com.android.tradefed.config.Option;
 import com.android.tradefed.config.Option.Importance;
@@ -137,7 +136,7 @@ public class MonkeyPackageDiff implements IDeviceTest, IRemoteTest {
         if (!addedPackages.isEmpty()) {
             String message = String.format("Added packages: %s",
                     Joiner.on(", ").join(addedPackages));
-            listener.testFailed(TestFailure.FAILURE, testId, message);
+            listener.testFailed(testId, message);
         }
         listener.testEnded(testId, emptyMap);
 
@@ -147,7 +146,7 @@ public class MonkeyPackageDiff implements IDeviceTest, IRemoteTest {
         if (!removedPackages.isEmpty()) {
             String message = String.format("Removed packages: %s",
                     Joiner.on(", ").join(removedPackages));
-            listener.testFailed(TestFailure.FAILURE, testId, message);
+            listener.testFailed(testId, message);
         }
         listener.testEnded(testId, emptyMap);
 

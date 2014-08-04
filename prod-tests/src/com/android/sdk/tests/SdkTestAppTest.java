@@ -15,7 +15,6 @@
  */
 package com.android.sdk.tests;
 
-import com.android.ddmlib.testrunner.ITestRunListener.TestFailure;
 import com.android.ddmlib.testrunner.TestIdentifier;
 import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.build.ISdkBuildInfo;
@@ -182,10 +181,10 @@ public class SdkTestAppTest implements IRemoteTest, IBuildReceiver {
             runTestAppTest(target, testAppDir, isLibrary);
         } catch (AssertionError e) {
             CLog.w("%s failed. %s", testId, e);
-            listener.testFailed(TestFailure.FAILURE, testId, getThrowableTraceAsString(e));
+            listener.testFailed(testId, getThrowableTraceAsString(e));
         } catch (Throwable t) {
             CLog.w("%s failed. %s", testId, t);
-            listener.testFailed(TestFailure.ERROR, testId, getThrowableTraceAsString(t));
+            listener.testFailed(testId, getThrowableTraceAsString(t));
         }
         listener.testEnded(testId, Collections.EMPTY_MAP);
     }

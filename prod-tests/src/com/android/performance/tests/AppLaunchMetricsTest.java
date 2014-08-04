@@ -16,7 +16,6 @@
 package com.android.performance.tests;
 
 import com.android.ddmlib.IDevice;
-import com.android.ddmlib.testrunner.ITestRunListener.TestFailure;
 import com.android.ddmlib.testrunner.TestIdentifier;
 import com.android.tradefed.config.Option;
 import com.android.tradefed.device.DeviceNotAvailableException;
@@ -268,7 +267,7 @@ public class AppLaunchMetricsTest implements IDeviceTest, IRemoteTest {
             if (appInfo.getTime() != null) {
                 metrics.put(appInfo.getPostKey(), Integer.toString(appInfo.getTime()));
             } else {
-                listener.testFailed(TestFailure.FAILURE, testId, "No app launch time");
+                listener.testFailed(testId, "No app launch time");
             }
             Map<String, String> empty = Collections.emptyMap();
             listener.testEnded(testId, empty);

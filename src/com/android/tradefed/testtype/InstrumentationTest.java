@@ -22,11 +22,11 @@ import com.android.ddmlib.testrunner.IRemoteAndroidTestRunner;
 import com.android.ddmlib.testrunner.IRemoteAndroidTestRunner.TestSize;
 import com.android.ddmlib.testrunner.RemoteAndroidTestRunner;
 import com.android.ddmlib.testrunner.TestIdentifier;
+import com.android.ddmlib.testrunner.TestRunResult;
 import com.android.tradefed.config.ConfigurationException;
 import com.android.tradefed.config.Option;
 import com.android.tradefed.config.Option.Importance;
 import com.android.tradefed.config.OptionClass;
-import com.android.tradefed.config.OptionCopier;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.log.LogUtil.CLog;
@@ -36,7 +36,6 @@ import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.InputStreamSource;
 import com.android.tradefed.result.LogDataType;
 import com.android.tradefed.result.ResultForwarder;
-import com.android.tradefed.result.TestRunResult;
 import com.android.tradefed.util.AbiFormatter;
 import com.android.tradefed.util.RunUtil;
 import com.android.tradefed.util.StringEscapeUtils;
@@ -759,8 +758,8 @@ public class InstrumentationTest implements IDeviceTest, IResumableTest {
         }
 
         @Override
-        public void testFailed(TestFailure status, TestIdentifier test, String trace) {
-            super.testFailed(status, test, trace);
+        public void testFailed(TestIdentifier test, String trace) {
+            super.testFailed(test, trace);
 
             try {
                 InputStreamSource screenSource = mDevice.getScreenshot();
@@ -790,8 +789,18 @@ public class InstrumentationTest implements IDeviceTest, IResumableTest {
         }
 
         @Override
-        public void testFailed(TestFailure status, TestIdentifier test, String trace) {
-            super.testFailed(status, test, trace);
+        public void testFailed(TestIdentifier test, String trace) {
+            super.testFailed(test, trace);
+            captureLog(test);
+        }
+
+        @Override
+        public void testAssumptionFailure(TestIdentifier test, String trace) {
+            super.testAssumptionFailure(test, trace);
+            captureLog(test);
+        }
+
+        private void captureLog(TestIdentifier test) {
             // sleep a small amount of time to ensure test failure stack trace makes it into logcat
             // capture
             RunUtil.getDefault().sleep(10);

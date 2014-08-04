@@ -184,9 +184,9 @@ public class ResultForwarder implements ITestInvocationListener {
      * {@inheritDoc}
      */
     @Override
-    public void testFailed(TestFailure status, TestIdentifier test, String trace) {
+    public void testFailed(TestIdentifier test, String trace) {
         for (ITestInvocationListener listener : mListeners) {
-            listener.testFailed(status, test, trace);
+            listener.testFailed(test, trace);
         }
     }
 
@@ -197,6 +197,20 @@ public class ResultForwarder implements ITestInvocationListener {
     public void testEnded(TestIdentifier test, Map<String, String> testMetrics) {
         for (ITestInvocationListener listener : mListeners) {
             listener.testEnded(test, testMetrics);
+        }
+    }
+
+    @Override
+    public void testAssumptionFailure(TestIdentifier test, String trace) {
+        for (ITestInvocationListener listener : mListeners) {
+            listener.testAssumptionFailure(test, trace);
+        }
+    }
+
+    @Override
+    public void testIgnored(TestIdentifier test) {
+        for (ITestInvocationListener listener : mListeners) {
+            listener.testIgnored(test);
         }
     }
 }

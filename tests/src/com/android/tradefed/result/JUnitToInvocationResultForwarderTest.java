@@ -15,7 +15,6 @@
  */
 package com.android.tradefed.result;
 
-import com.android.ddmlib.testrunner.ITestRunListener.TestFailure;
 import com.android.ddmlib.testrunner.TestIdentifier;
 
 import junit.framework.AssertionFailedError;
@@ -46,24 +45,12 @@ public class JUnitToInvocationResultForwarderTest extends TestCase {
     }
 
     /**
-     * Test method for {@link JUnitToInvocationResultForwarder#addError(Test, Throwable)}.
-     */
-    public void testAddError() {
-       final Throwable t = new Throwable();
-       mListener.testFailed(EasyMock.eq(TestFailure.ERROR),
-               EasyMock.eq(new TestIdentifier(JUnitToInvocationResultForwarderTest.class.getName(),
-                       "testAddError")), (String)EasyMock.anyObject());
-       EasyMock.replay(mListener);
-       mForwarder.addError(this, t);
-    }
-
-    /**
      * Test method for
      * {@link JUnitToInvocationResultForwarder#addFailure(Test, AssertionFailedError)}.
      */
     public void testAddFailure() {
         final AssertionFailedError a = new AssertionFailedError();
-        mListener.testFailed(EasyMock.eq(TestFailure.FAILURE),
+        mListener.testFailed(
                 EasyMock.eq(new TestIdentifier(JUnitToInvocationResultForwarderTest.class.getName(),
                         "testAddFailure")), (String)EasyMock.anyObject());
         EasyMock.replay(mListener);

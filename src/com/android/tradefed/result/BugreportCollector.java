@@ -16,6 +16,7 @@
 package com.android.tradefed.result;
 
 import com.android.ddmlib.testrunner.TestIdentifier;
+import com.android.ddmlib.testrunner.TestRunResult;
 import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
@@ -337,7 +338,7 @@ public class BugreportCollector implements ITestInvocationListener {
                         break;
 
                     case FAILED_TESTCASE:
-                        if (curResult.getNumFailedTests() + curResult.getNumErrorTests() == 1) {
+                        if (curResult.getNumAllFailedTests() == 1) {
                             applicableFreqs.add(Freq.FIRST);
                         }
                         break;
@@ -443,9 +444,20 @@ public class BugreportCollector implements ITestInvocationListener {
      * {@inheritDoc}
      */
     @Override
-    public void testFailed(TestFailure status, TestIdentifier test, String trace) {
-        mListener.testFailed(status, test, trace);
-        mCollector.testFailed(status, test, trace);
+    public void testFailed(TestIdentifier test, String trace) {
+        mListener.testFailed(test, trace);
+        mCollector.testFailed(test, trace);
+        check(Relation.AFTER, Noun.FAILED_TESTCASE, test);
+        reset();
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void testAssumptionFailure(TestIdentifier test, String trace) {
+        mListener.testAssumptionFailure(test, trace);
+        mCollector.testAssumptionFailure(test, trace);
         check(Relation.AFTER, Noun.FAILED_TESTCASE, test);
         reset();
     }
@@ -547,6 +559,11 @@ public class BugreportCollector implements ITestInvocationListener {
     @Override
     public TestSummary getSummary() {
         return mListener.getSummary();
+    }
+
+    @Override
+    public void testIgnored(TestIdentifier test) {
+        // ignore
     }
 }
 

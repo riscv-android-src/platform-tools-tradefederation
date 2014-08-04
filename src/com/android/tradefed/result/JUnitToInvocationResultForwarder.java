@@ -16,7 +16,6 @@
 
 package com.android.tradefed.result;
 
-import com.android.ddmlib.testrunner.ITestRunListener.TestFailure;
 import com.android.ddmlib.testrunner.TestIdentifier;
 
 import junit.framework.AssertionFailedError;
@@ -56,7 +55,7 @@ public class JUnitToInvocationResultForwarder implements TestListener {
     @Override
     public void addError(Test test, Throwable t) {
         for (ITestInvocationListener listener : mInvocationListeners) {
-            listener.testFailed(TestFailure.ERROR, getTestId(test), getStackTrace(t));
+            listener.testFailed(getTestId(test), getStackTrace(t));
         }
     }
 
@@ -66,7 +65,7 @@ public class JUnitToInvocationResultForwarder implements TestListener {
     @Override
     public void addFailure(Test test, AssertionFailedError t) {
         for (ITestInvocationListener listener : mInvocationListeners) {
-            listener.testFailed(TestFailure.FAILURE, getTestId(test), getStackTrace(t));
+            listener.testFailed(getTestId(test), getStackTrace(t));
         }
     }
 

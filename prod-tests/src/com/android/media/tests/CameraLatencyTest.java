@@ -167,9 +167,8 @@ public class CameraLatencyTest implements IDeviceTest, IRemoteTest {
 
         // Grab a bugreport if warranted
         if (auxListener.hasFailedTests()) {
-            CLog.i("Grabbing bugreport after test '%s' finished with %d failures and %d errors.",
-                    test.mTestName, auxListener.getNumFailedTests(),
-                    auxListener.getNumErrorTests());
+            CLog.i("Grabbing bugreport after test '%s' finished with %d failures.",
+                    test.mTestName, auxListener.getNumAllFailedTests());
             InputStreamSource bugreport = mTestDevice.getBugreport();
             listener.testLog(String.format("bugreport-%s.txt", test.mTestName),
                     LogDataType.BUGREPORT, bugreport);

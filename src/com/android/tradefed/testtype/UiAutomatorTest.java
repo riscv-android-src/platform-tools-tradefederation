@@ -308,7 +308,16 @@ public class UiAutomatorTest implements IRemoteTest, IDeviceTest {
         }
 
         @Override
-        public void testFailed(TestFailure status, TestIdentifier test, String trace) {
+        public void testFailed(TestIdentifier test, String trace) {
+            captureFailureLog(test);
+        }
+
+        @Override
+        public void testAssumptionFailure(TestIdentifier test, String trace) {
+            captureFailureLog(test);
+        }
+
+        private void captureFailureLog(TestIdentifier test) {
             if (mLoggingOption == LoggingOption.AFTER_FAILURE) {
                 onScreenshotAndBugreport(getDevice(), mListener, String.format("%s_%s_failure",
                         test.getClassName(), test.getTestName()));

@@ -20,14 +20,12 @@ import com.android.ddmlib.testrunner.TestIdentifier;
 import com.android.tradefed.config.ConfigurationException;
 import com.android.tradefed.config.OptionCopier;
 import com.android.tradefed.device.DeviceNotAvailableException;
-import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.ResultForwarder;
 
 import java.util.Collection;
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.Map;
 
 /**
@@ -164,7 +162,7 @@ class InstrumentationSerialTest implements IRemoteTest {
         public void markTestAsFailed() {
             super.testRunStarted(mRunName, 1);
             super.testStarted(mExpectedTest);
-            super.testFailed(TestFailure.ERROR, mExpectedTest, String.format(
+            super.testFailed(mExpectedTest, String.format(
                     "Test failed to run. Test run failed due to : %s", mRunErrorMsg));
             if (mRunErrorMsg != null) {
                 super.testRunFailed(mRunErrorMsg);

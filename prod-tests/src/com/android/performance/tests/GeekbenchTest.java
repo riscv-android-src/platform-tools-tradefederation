@@ -17,7 +17,6 @@
 package com.android.performance.tests;
 
 import com.android.ddmlib.CollectingOutputReceiver;
-import com.android.ddmlib.testrunner.ITestRunListener.TestFailure;
 import com.android.ddmlib.testrunner.TestIdentifier;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
@@ -142,7 +141,7 @@ public class GeekbenchTest implements IDeviceTest, IRemoteTest {
 
         if (errMsg != null) {
             CLog.e(errMsg);
-            listener.testFailed(TestFailure.FAILURE, testId, errMsg);
+            listener.testFailed(testId, errMsg);
             listener.testEnded(testId, metrics);
             listener.testRunFailed(errMsg);
         } else {

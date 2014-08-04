@@ -18,6 +18,7 @@ package com.android.framework.tests;
 
 import com.android.ddmlib.testrunner.IRemoteAndroidTestRunner;
 import com.android.ddmlib.testrunner.RemoteAndroidTestRunner;
+import com.android.ddmlib.testrunner.TestResult;
 import com.android.loganalysis.item.BugreportItem;
 import com.android.loganalysis.item.LogcatItem;
 import com.android.loganalysis.parser.BugreportParser;
@@ -29,7 +30,6 @@ import com.android.tradefed.result.CollectingTestListener;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.InputStreamSource;
 import com.android.tradefed.result.LogDataType;
-import com.android.tradefed.result.TestResult;
 import com.android.tradefed.testtype.IDeviceTest;
 import com.android.tradefed.testtype.IRemoteTest;
 

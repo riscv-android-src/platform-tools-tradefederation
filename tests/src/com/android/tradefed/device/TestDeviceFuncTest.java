@@ -18,6 +18,7 @@ package com.android.tradefed.device;
 import com.android.ddmlib.IDevice;
 import com.android.ddmlib.Log;
 import com.android.ddmlib.testrunner.RemoteAndroidTestRunner;
+import com.android.ddmlib.testrunner.TestResult.TestStatus;
 import com.android.tradefed.TestAppConstants;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.result.CollectingTestListener;
@@ -698,6 +699,6 @@ public class TestDeviceFuncTest extends DeviceTestCase {
                 TestAppConstants.UITESTAPP_PACKAGE, getDevice().getIDevice());
         CollectingTestListener uilistener = new CollectingTestListener();
         getDevice().runInstrumentationTests(uirunner, uilistener);
-        return TestAppConstants.UI_TOTAL_TESTS == uilistener.getNumPassedTests();
+        return TestAppConstants.UI_TOTAL_TESTS == uilistener.getNumTestsInState(TestStatus.PASSED);
     }
 }

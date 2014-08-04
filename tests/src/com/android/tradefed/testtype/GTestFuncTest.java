@@ -17,7 +17,6 @@
 package com.android.tradefed.testtype;
 
 import com.android.ddmlib.Log;
-import com.android.ddmlib.testrunner.ITestRunListener.TestFailure;
 import com.android.ddmlib.testrunner.TestIdentifier;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.result.ITestInvocationListener;
@@ -80,7 +79,7 @@ public class GTestFuncTest extends DeviceTestCase {
             mMockListener.testStarted(id);
 
             if (testName.endsWith("Fail")) {
-              mMockListener.testFailed(EasyMock.eq(TestFailure.FAILURE),
+              mMockListener.testFailed(
                       EasyMock.eq(id),
                       EasyMock.isA(String.class));
             }
@@ -103,7 +102,7 @@ public class GTestFuncTest extends DeviceTestCase {
         mGTest.setModuleName(NATIVE_TESTAPP_MODULE_NAME);
         mMockListener.testRunStarted(NATIVE_TESTAPP_MODULE_NAME, 1);
         mMockListener.testStarted(EasyMock.eq(testId));
-        mMockListener.testFailed(EasyMock.eq(TestFailure.ERROR), EasyMock.eq(testId),
+        mMockListener.testFailed(EasyMock.eq(testId),
                 EasyMock.isA(String.class));
         mMockListener.testEnded(EasyMock.eq(testId), EasyMock.eq(emptyMap));
         mMockListener.testRunFailed((String)EasyMock.anyObject());

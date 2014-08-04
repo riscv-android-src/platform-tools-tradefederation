@@ -16,14 +16,14 @@
 package com.android.tradefed.invoker;
 
 import com.android.ddmlib.testrunner.TestIdentifier;
+import com.android.ddmlib.testrunner.TestResult;
+import com.android.ddmlib.testrunner.TestResult.TestStatus;
+import com.android.ddmlib.testrunner.TestRunResult;
 import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.result.CollectingTestListener;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.InputStreamSource;
 import com.android.tradefed.result.LogDataType;
-import com.android.tradefed.result.TestResult;
-import com.android.tradefed.result.TestResult.TestStatus;
-import com.android.tradefed.result.TestRunResult;
 
 import java.util.Map;
 
@@ -104,12 +104,18 @@ class ShardListener extends CollectingTestListener {
     private void forwardTestResults(Map<TestIdentifier, TestResult> testResults) {
         for (Map.Entry<TestIdentifier, TestResult> testEntry : testResults.entrySet()) {
             mMasterListener.testStarted(testEntry.getKey());
-            if (testEntry.getValue().getStatus().equals(TestStatus.ERROR)) {
-                mMasterListener.testFailed(TestFailure.ERROR, testEntry.getKey(),
-                        testEntry.getValue().getStackTrace());
-            } else if (testEntry.getValue().getStatus().equals(TestStatus.FAILURE)) {
-                mMasterListener.testFailed(TestFailure.FAILURE, testEntry.getKey(),
-                        testEntry.getValue().getStackTrace());
+            switch (testEntry.getValue().getStatus()) {
+                case FAILURE:
+                    mMasterListener.testFailed(testEntry.getKey(),
+                            testEntry.getValue().getStackTrace());
+                    break;
+                case ASSUMPTION_FAILURE:
+                    mMasterListener.testAssumptionFailure(testEntry.getKey(),
+                            testEntry.getValue().getStackTrace());
+                    break;
+                case IGNORED:
+                    mMasterListener.testIgnored(testEntry.getKey());
+                    break;
             }
             if (!testEntry.getValue().getStatus().equals(TestStatus.INCOMPLETE)) {
                 mMasterListener.testEnded(testEntry.getKey(), testEntry.getValue().getMetrics());

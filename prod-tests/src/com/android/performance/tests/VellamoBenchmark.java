@@ -14,7 +14,6 @@
 
 package com.android.performance.tests;
 
-import com.android.ddmlib.testrunner.ITestRunListener.TestFailure;
 import com.android.ddmlib.testrunner.TestIdentifier;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
@@ -140,7 +139,7 @@ public class VellamoBenchmark implements IDeviceTest, IRemoteTest {
         }
         if (errMsg != null) {
             CLog.e(errMsg);
-            listener.testFailed(TestFailure.FAILURE, testId, errMsg);
+            listener.testFailed(testId, errMsg);
         }
         long durationMs = System.currentTimeMillis() - testStartTime;
         metrics.put("total", Double.toString(sumScore));

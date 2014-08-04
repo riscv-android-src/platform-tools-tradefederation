@@ -135,12 +135,12 @@ public class MonkeyBrillopadForwarder extends ResultForwarder {
             if (!status.equals(MonkeyStatus.FINISHED)) {
                 String failure = String.format("%s.\n%s", status.getDescription(),
                         crashTrace.toString());
-                super.testFailed(TestFailure.FAILURE, monkeyTest, failure);
+                super.testFailed(monkeyTest, failure);
             }
         } catch (AssertionError e) {
-            super.testFailed(TestFailure.FAILURE, monkeyTest, Throwables.getStackTraceAsString(e));
+            super.testFailed(monkeyTest, Throwables.getStackTraceAsString(e));
         } catch (RuntimeException e) {
-            super.testFailed(TestFailure.ERROR, monkeyTest, Throwables.getStackTraceAsString(e));
+            super.testFailed(monkeyTest, Throwables.getStackTraceAsString(e));
         } finally {
             super.testEnded(monkeyTest, monkeyMetrics);
         }

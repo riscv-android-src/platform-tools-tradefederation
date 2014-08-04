@@ -15,10 +15,10 @@
  */
 package com.android.tradefed.result;
 
-import com.android.ddmlib.testrunner.ITestRunListener.TestFailure;
 import com.android.ddmlib.testrunner.TestIdentifier;
+import com.android.ddmlib.testrunner.TestResult.TestStatus;
+import com.android.ddmlib.testrunner.TestRunResult;
 import com.android.tradefed.build.BuildInfo;
-import com.android.tradefed.result.TestResult.TestStatus;
 
 import junit.framework.TestCase;
 
@@ -87,7 +87,7 @@ public class CollectingTestListenerTest extends TestCase {
         final TestIdentifier test1 = injectTestRun("run1", "testFoo1", METRIC_VALUE);
         final TestIdentifier test2 = injectTestRun("run2", "testFoo2", METRIC_VALUE2);
         assertEquals(2, mCollectingTestListener.getNumTotalTests());
-        assertEquals(2, mCollectingTestListener.getNumPassedTests());
+        assertEquals(2, mCollectingTestListener.getNumTestsInState(TestStatus.PASSED));
         assertEquals(2, mCollectingTestListener.getRunResults().size());
         Iterator<TestRunResult> runIter = mCollectingTestListener.getRunResults().iterator();
         final TestRunResult runResult1 = runIter.next();
@@ -114,10 +114,10 @@ public class CollectingTestListenerTest extends TestCase {
         final TestIdentifier test1 = injectTestRun("run", "testFoo1", METRIC_VALUE);
         final TestIdentifier test2 = injectTestRun("run", "testFoo2", METRIC_VALUE2);
         assertEquals(2, mCollectingTestListener.getNumTotalTests());
-        assertEquals(2, mCollectingTestListener.getNumPassedTests());
+        assertEquals(2, mCollectingTestListener.getNumTestsInState(TestStatus.PASSED));
         assertEquals(1, mCollectingTestListener.getRunResults().size());
         TestRunResult runResult = mCollectingTestListener.getCurrentRunResults();
-        assertEquals(2, runResult.getNumPassedTests());
+        assertEquals(2, runResult.getNumTestsInState(TestStatus.PASSED));
         assertTrue(runResult.getCompletedTests().contains(test1));
         assertTrue(runResult.getCompletedTests().contains(test2));
     }
@@ -130,12 +130,12 @@ public class CollectingTestListenerTest extends TestCase {
         injectTestRun("run", "testFoo1", METRIC_VALUE);
         injectTestRun("run", "testFoo1", METRIC_VALUE2, true);
         assertEquals(1, mCollectingTestListener.getNumTotalTests());
-        assertEquals(0, mCollectingTestListener.getNumPassedTests());
-        assertEquals(1, mCollectingTestListener.getNumFailedTests());
+        assertEquals(0, mCollectingTestListener.getNumTestsInState(TestStatus.PASSED));
+        assertEquals(1, mCollectingTestListener.getNumTestsInState(TestStatus.FAILURE));
         assertEquals(1, mCollectingTestListener.getRunResults().size());
         TestRunResult runResult = mCollectingTestListener.getCurrentRunResults();
-        assertEquals(0, runResult.getNumPassedTests());
-        assertEquals(1, runResult.getNumFailedTests());
+        assertEquals(0, runResult.getNumTestsInState(TestStatus.PASSED));
+        assertEquals(1, runResult.getNumTestsInState(TestStatus.FAILURE));
         assertEquals(1, runResult.getNumTests());
     }
 
@@ -147,7 +147,7 @@ public class CollectingTestListenerTest extends TestCase {
         mCollectingTestListener.testRunStarted("run", 1);
         mCollectingTestListener.testStarted(new TestIdentifier("FooTest", "incomplete"));
         mCollectingTestListener.testRunEnded(0, Collections.EMPTY_MAP);
-        assertEquals(1, mCollectingTestListener.getNumIncompleteTests());
+        assertEquals(1, mCollectingTestListener.getNumTestsInState(TestStatus.INCOMPLETE));
     }
 
     /**
@@ -233,7 +233,7 @@ public class CollectingTestListenerTest extends TestCase {
         final TestIdentifier test = new TestIdentifier("FooTest", testName);
         mCollectingTestListener.testStarted(test);
         if (failtest) {
-            mCollectingTestListener.testFailed(TestFailure.FAILURE, test, "trace");
+            mCollectingTestListener.testFailed(test, "trace");
         }
         mCollectingTestListener.testEnded(test, testMetrics);
         mCollectingTestListener.testRunEnded(0, runMetrics);

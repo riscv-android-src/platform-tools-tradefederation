@@ -24,6 +24,8 @@ import junit.framework.Test;
 import junit.framework.TestListener;
 import junit.framework.TestResult;
 
+import org.junit.internal.AssumptionViolatedException;
+
 import java.io.PrintStream;
 import java.io.PrintWriter;
 import java.util.Map;
@@ -58,16 +60,17 @@ import java.util.Map;
      * {@inheritDoc}
      */
     @Override
-    public void testFailed(TestFailure status, TestIdentifier testId, String trace) {
+    public void testFailed(TestIdentifier testId, String trace) {
         Test test = new TestIdentifierResult(testId);
+        // TODO: is it accurate to represent the trace as AssertionFailedError?
+        mJUnitListener.addFailure(test, new AssertionFailedError(trace));
+    }
 
-        if (TestFailure.ERROR.equals(status)) {
-            Throwable throwable = new RemoteException(trace);
-            mJUnitListener.addError(test, throwable);
-        } else {
-            // TODO: is it accurate to represent the trace as AssertionFailedError?
-            mJUnitListener.addFailure(test, new AssertionFailedError(trace));
-        }
+    @Override
+    public void testAssumptionFailure(TestIdentifier testId, String trace) {
+        Test test = new TestIdentifierResult(testId);
+        AssumptionViolatedException throwable = new AssumptionViolatedException(trace);
+        mJUnitListener.addError(test, throwable);
     }
 
     /**
@@ -256,6 +259,11 @@ import java.util.Map;
      */
     @Override
     public void testLog(String dataName, LogDataType logData, InputStreamSource dataStream) {
+        // ignore
+    }
+
+    @Override
+    public void testIgnored(TestIdentifier test) {
         // ignore
     }
 }

@@ -31,6 +31,8 @@ import com.android.ddmlib.log.LogReceiver;
 import com.google.common.util.concurrent.SettableFuture;
 
 import java.io.IOException;
+import java.util.Collections;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
@@ -459,5 +461,15 @@ public class StubDevice implements IDevice {
     @Override
     public Future<Integer> getBattery(long freshnessTime, TimeUnit timeUnit) {
         return getBattery();
+    }
+
+    @Override
+    public List<String> getAbis() {
+        return Collections.emptyList();
+    }
+
+    @Override
+    public int getDensity() {
+        return 0;
     }
 }

@@ -223,7 +223,7 @@ public class DownloadManagerHostTests extends DeviceTestCase {
          * Take dumpsys wifi when test fails.
          */
         @Override
-        public void testFailed(TestFailure status, TestIdentifier test, String trace) {
+        public void testFailed(TestIdentifier test, String trace) {
             try {
                 String output = mDevice.executeShellCommand("dumpsys wifi");
                 if (output == null) {
@@ -239,7 +239,7 @@ public class DownloadManagerHostTests extends DeviceTestCase {
                 CLog.e("Error getting dumpsys wifi");
                 CLog.e(e);
             } finally {
-                super.testFailed(status, test, trace);
+                super.testFailed(test, trace);
             }
         }
     }

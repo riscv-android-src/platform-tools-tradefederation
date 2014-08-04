@@ -19,10 +19,12 @@ package com.android.tradefed.result;
 import com.android.ddmlib.Log;
 import com.android.ddmlib.Log.LogLevel;
 import com.android.ddmlib.testrunner.TestIdentifier;
+import com.android.ddmlib.testrunner.TestResult;
+import com.android.ddmlib.testrunner.TestResult.TestStatus;
+import com.android.ddmlib.testrunner.TestRunResult;
 import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.config.OptionClass;
 import com.android.tradefed.log.LogUtil.CLog;
-import com.android.tradefed.result.TestResult.TestStatus;
 import com.android.tradefed.util.StreamUtil;
 
 import org.kxml2.io.KXmlSerializer;
@@ -98,9 +100,9 @@ public class XmlResultReporter extends CollectingTestListener implements ILogSav
     }
 
     @Override
-    public void testFailed(TestFailure status, TestIdentifier test, String trace) {
-        super.testFailed(status, test, trace);
-        CLog.d("%s %s: %s", test, status, trace);
+    public void testFailed(TestIdentifier test, String trace) {
+        super.testFailed(test, trace);
+        CLog.d("%s : %s", test, trace);
     }
 
     /**
@@ -128,8 +130,7 @@ public class XmlResultReporter extends CollectingTestListener implements ILogSav
                     inputStream);
 
             String msg = String.format("XML test result file generated at %s. Total tests %d, " +
-                    "Failed %d, Error %d", log.getPath(), getNumTotalTests(), getNumFailedTests(),
-                    getNumErrorTests());
+                    "Failed %d", log.getPath(), getNumTotalTests(), getNumAllFailedTests());
             Log.logAndDisplay(LogLevel.INFO, LOG_TAG, msg);
         } catch (IOException e) {
             Log.e(LOG_TAG, "Failed to generate report data");
@@ -164,8 +165,9 @@ public class XmlResultReporter extends CollectingTestListener implements ILogSav
         serializer.startTag(ns, TESTSUITE);
         serializer.attribute(ns, ATTR_NAME, mBuildInfo.getTestTag());
         serializer.attribute(ns, ATTR_TESTS, Integer.toString(getNumTotalTests()));
-        serializer.attribute(ns, ATTR_FAILURES, Integer.toString(getNumFailedTests()));
-        serializer.attribute(ns, ATTR_ERRORS, Integer.toString(getNumErrorTests()));
+        serializer.attribute(ns, ATTR_FAILURES,
+                Integer.toString(getNumTestsInState(TestStatus.FAILURE)));
+        serializer.attribute(ns, ATTR_ERRORS, "0");
         serializer.attribute(ns, ATTR_TIME, Long.toString(elapsedTime));
         serializer.attribute(ns, TIMESTAMP, timestamp);
         serializer.attribute(ns, HOSTNAME, "localhost");

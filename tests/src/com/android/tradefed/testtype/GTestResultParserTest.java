@@ -170,7 +170,7 @@ public class GTestResultParserTest extends TestCase {
                     (Map<String, String>)EasyMock.anyObject());
         // test failure
         mockRunListener.testStarted((TestIdentifier)EasyMock.anyObject());
-        mockRunListener.testFailed(EasyMock.eq(ITestRunListener.TestFailure.FAILURE),
+        mockRunListener.testFailed(
                 (TestIdentifier)EasyMock.anyObject(), (String)EasyMock.anyObject());
         mockRunListener.testEnded((TestIdentifier)EasyMock.anyObject(),
                 (Map<String, String>)EasyMock.anyObject());
@@ -182,13 +182,13 @@ public class GTestResultParserTest extends TestCase {
         }
         // 2 consecutive test failures
         mockRunListener.testStarted((TestIdentifier)EasyMock.anyObject());
-        mockRunListener.testFailed(EasyMock.eq(ITestRunListener.TestFailure.FAILURE),
+        mockRunListener.testFailed(
                 (TestIdentifier)EasyMock.anyObject(), (String)EasyMock.anyObject());
         mockRunListener.testEnded((TestIdentifier)EasyMock.anyObject(),
                 (Map<String, String>)EasyMock.anyObject());
 
         mockRunListener.testStarted((TestIdentifier)EasyMock.anyObject());
-        mockRunListener.testFailed(EasyMock.eq(ITestRunListener.TestFailure.FAILURE),
+        mockRunListener.testFailed(
                 (TestIdentifier)EasyMock.anyObject(), EasyMock.matches(MESSAGE_OUTPUT));
         mockRunListener.testEnded((TestIdentifier)EasyMock.anyObject(),
                 (Map<String, String>)EasyMock.anyObject());
@@ -223,7 +223,7 @@ public class GTestResultParserTest extends TestCase {
                     (Map<String, String>)EasyMock.anyObject());
         // test failure
         mockRunListener.testStarted((TestIdentifier)EasyMock.anyObject());
-        mockRunListener.testFailed(EasyMock.eq(ITestRunListener.TestFailure.ERROR),
+        mockRunListener.testFailed(
                 (TestIdentifier)EasyMock.anyObject(), (String)EasyMock.anyObject());
         mockRunListener.testEnded((TestIdentifier)EasyMock.anyObject(),
                 (Map<String, String>)EasyMock.anyObject());
@@ -235,7 +235,7 @@ public class GTestResultParserTest extends TestCase {
         }
         // another test error
         mockRunListener.testStarted((TestIdentifier)EasyMock.anyObject());
-        mockRunListener.testFailed(EasyMock.eq(ITestRunListener.TestFailure.ERROR),
+        mockRunListener.testFailed(
                 (TestIdentifier)EasyMock.anyObject(), (String)EasyMock.anyObject());
         mockRunListener.testEnded((TestIdentifier)EasyMock.anyObject(),
                 (Map<String, String>)EasyMock.anyObject());

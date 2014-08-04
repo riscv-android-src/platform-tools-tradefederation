@@ -15,7 +15,6 @@
  */
 package com.android.app.tests;
 
-import com.android.ddmlib.testrunner.ITestRunListener.TestFailure;
 import com.android.ddmlib.testrunner.TestIdentifier;
 import com.android.tradefed.build.IAppBuildInfo;
 import com.android.tradefed.build.IBuildInfo;
@@ -120,7 +119,7 @@ public class AppLaunchTest implements IDeviceTest, IRemoteTest, IBuildReceiver {
         listener.testStarted(installTest);
         String result = getDevice().installPackage(apkFile, true);
         if (result != null) {
-            listener.testFailed(TestFailure.FAILURE, installTest, result);
+            listener.testFailed(installTest, result);
         }
         listener.testEnded(installTest, Collections.<String, String> emptyMap());
     }

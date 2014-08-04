@@ -15,7 +15,6 @@
  */
 package com.android.tradefed.testtype;
 
-import com.android.ddmlib.testrunner.ITestRunListener.TestFailure;
 import com.android.ddmlib.testrunner.TestIdentifier;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.result.ITestInvocationListener;
@@ -101,7 +100,7 @@ public class DeviceTestCaseTest extends TestCase {
         final TestIdentifier test1 = new TestIdentifier(MockAbortTest.class.getName(), "test1");
         listener.testRunStarted(MockAbortTest.class.getName(), 1);
         listener.testStarted(test1);
-        listener.testFailed(EasyMock.eq(TestFailure.ERROR), EasyMock.eq(test1),
+        listener.testFailed(EasyMock.eq(test1),
                 EasyMock.contains(MockAbortTest.EXCEP_MSG));
         listener.testEnded(test1, Collections.EMPTY_MAP);
         listener.testRunFailed(EasyMock.contains(MockAbortTest.EXCEP_MSG));

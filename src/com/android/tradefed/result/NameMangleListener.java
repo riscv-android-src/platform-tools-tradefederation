@@ -19,6 +19,8 @@ package com.android.tradefed.result;
 import com.android.ddmlib.testrunner.TestIdentifier;
 import com.android.tradefed.build.IBuildInfo;
 
+import junit.framework.TestFailure;
+
 import java.util.Map;
 
 /**
@@ -91,9 +93,27 @@ public abstract class NameMangleListener implements ITestInvocationListener {
      * {@inheritDoc}
      */
     @Override
-    public void testFailed(TestFailure status, TestIdentifier test, String trace) {
+    public void testFailed(TestIdentifier test, String trace) {
         final TestIdentifier mangledTestId = mangleTestId(test);
-        mListener.testFailed(status, mangledTestId, trace);
+        mListener.testFailed(mangledTestId, trace);
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void testAssumptionFailure(TestIdentifier test, String trace) {
+        final TestIdentifier mangledTestId = mangleTestId(test);
+        mListener.testAssumptionFailure(mangledTestId, trace);
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void testIgnored(TestIdentifier test) {
+        final TestIdentifier mangledTestId = mangleTestId(test);
+        mListener.testIgnored(mangledTestId);
     }
 
     /**

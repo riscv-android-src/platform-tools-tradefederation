@@ -15,7 +15,6 @@
  */
 package com.android.tradefed.result;
 
-import com.android.ddmlib.testrunner.ITestRunListener.TestFailure;
 import com.android.ddmlib.testrunner.TestIdentifier;
 import com.android.tradefed.build.BuildInfo;
 import com.android.tradefed.build.IBuildInfo;
@@ -139,7 +138,7 @@ public class XmlResultReporterTest extends TestCase {
         mResultReporter.invocationStarted(new BuildInfo());
         mResultReporter.testRunStarted("run", 1);
         mResultReporter.testStarted(testId);
-        mResultReporter.testFailed(TestFailure.FAILURE, testId, trace);
+        mResultReporter.testFailed(testId, trace);
         mResultReporter.testEnded(testId, emptyMap);
         mResultReporter.testRunEnded(3, emptyMap);
         mResultReporter.invocationEnded(1);

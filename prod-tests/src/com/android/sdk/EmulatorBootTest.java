@@ -16,7 +16,6 @@
 
 package com.android.sdk;
 
-import com.android.ddmlib.testrunner.ITestRunListener.TestFailure;
 import com.android.ddmlib.testrunner.TestIdentifier;
 import com.android.sdk.tests.EmulatorGpsPreparer;
 import com.android.sdk.tests.EmulatorSmsPreparer;
@@ -104,15 +103,15 @@ public class EmulatorBootTest implements IDeviceTest, IRemoteTest, IBuildReceive
             mGpsPreparer.setUp(mDevice, mBuildInfo);
         }
         catch(BuildError b) {
-            listener.testFailed(TestFailure.ERROR, bootTest, StreamUtil.getStackTrace(b));
+            listener.testFailed(bootTest, StreamUtil.getStackTrace(b));
             // throw exception to prevent other tests from executing needlessly
             throw new DeviceUnresponsiveException("The emulator failed to boot", b);
         }
         catch(RuntimeException e) {
-            listener.testFailed(TestFailure.ERROR, bootTest, StreamUtil.getStackTrace(e));
+            listener.testFailed(bootTest, StreamUtil.getStackTrace(e));
             throw e;
         } catch (TargetSetupError e) {
-            listener.testFailed(TestFailure.ERROR, bootTest, StreamUtil.getStackTrace(e));
+            listener.testFailed(bootTest, StreamUtil.getStackTrace(e));
             throw new RuntimeException(e);
         }
         finally {

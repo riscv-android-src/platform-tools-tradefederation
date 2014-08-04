@@ -15,6 +15,8 @@
  */
 package com.android.tradefed.result;
 
+import com.android.ddmlib.testrunner.TestResult.TestStatus;
+import com.android.ddmlib.testrunner.TestRunResult;
 import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.config.Option;
 import com.android.tradefed.config.Option.Importance;
@@ -216,8 +218,8 @@ public class EmailResultReporter extends CollectingTestListener implements
             bodyBuilder.append(StreamUtil.getStackTrace(mInvocationThrowable));
             bodyBuilder.append("\n");
         }
-        bodyBuilder.append(String.format("Test results:  %d passed, %d failed, %d error\n\n",
-                getNumPassedTests(), getNumFailedTests(), getNumErrorTests()));
+        bodyBuilder.append(String.format("Test results:  %d passed, %d failed\n\n",
+                getNumTestsInState(TestStatus.PASSED), getNumAllFailedTests()));
         for (TestRunResult result : getRunResults()) {
             if (!result.getRunMetrics().isEmpty()) {
                 bodyBuilder.append(String.format("'%s' test run metrics: %s\n", result.getName(),

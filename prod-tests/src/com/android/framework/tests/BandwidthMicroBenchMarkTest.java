@@ -18,6 +18,7 @@ package com.android.framework.tests;
 
 import com.android.ddmlib.testrunner.IRemoteAndroidTestRunner;
 import com.android.ddmlib.testrunner.RemoteAndroidTestRunner;
+import com.android.ddmlib.testrunner.TestResult;
 import com.android.framework.tests.BandwidthStats.CompareResult;
 import com.android.framework.tests.BandwidthStats.ComparisonRecord;
 import com.android.tradefed.config.Option;
@@ -29,7 +30,6 @@ import com.android.tradefed.result.FileInputStreamSource;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.InputStreamSource;
 import com.android.tradefed.result.LogDataType;
-import com.android.tradefed.result.TestResult;
 import com.android.tradefed.testtype.IDeviceTest;
 import com.android.tradefed.testtype.IRemoteTest;
 import com.android.tradefed.util.IRunUtil.IRunnableResult;

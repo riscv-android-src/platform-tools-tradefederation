@@ -16,7 +16,6 @@
 
 package com.android.tradefed.util;
 
-import com.android.ddmlib.testrunner.ITestRunListener.TestFailure;
 import com.android.ddmlib.testrunner.TestIdentifier;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.util.xml.AbstractXmlParser;
@@ -114,7 +113,7 @@ public class JUnitXmlParser extends AbstractXmlParser {
                 mTestListener.testEnded(mCurrentTest, Collections.<String, String> emptyMap());
             }
             if (FAILURE_TAG.equalsIgnoreCase(name)) {
-                mTestListener.testFailed(TestFailure.FAILURE, mCurrentTest,
+                mTestListener.testFailed(mCurrentTest,
                         mFailureContent.toString());
             }
             mFailureContent = null;

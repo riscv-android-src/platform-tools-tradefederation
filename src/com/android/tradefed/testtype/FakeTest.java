@@ -16,7 +16,6 @@
 package com.android.tradefed.testtype;
 
 import com.android.ddmlib.testrunner.ITestRunListener;
-import com.android.ddmlib.testrunner.ITestRunListener.TestFailure;
 import com.android.ddmlib.testrunner.TestIdentifier;
 import com.android.tradefed.config.Option;
 import com.android.tradefed.config.Option.Importance;
@@ -40,7 +39,7 @@ public class FakeTest implements IDeviceTest, IRemoteTest {
     @Option(name = "run", description = "Specify a new run to include.  " +
             "The key should be the unique name of the TestRun (which may be a Java class name).  " +
             "The value should specify the sequence of test results, using the characters P[ass], " +
-            "F[ail], or E[rror].  You may use run-length encoding to specify repeats, and you " +
+            "or F[ail].  You may use run-length encoding to specify repeats, and you " +
             "may use parentheses for grouping.  So \"(PF)4\" and \"((PF)2)2\" will both expand " +
             "to \"PFPFPFPF\".", importance = Importance.IF_UNSET)
     private Map<String, String> mRuns = new LinkedHashMap<String, String>();
@@ -172,7 +171,7 @@ public class FakeTest implements IDeviceTest, IRemoteTest {
         listener.testRunStarted(runName, spec.length());
         int i = 0;
         for (char c : spec.toCharArray()) {
-            if (c != 'P' && c != 'F' && c != 'E') {
+            if (c != 'P' && c != 'F') {
                 throw new IllegalArgumentException(String.format(
                         "Received unexpected test spec character '%c' in spec \"%s\"", c, spec));
             }
@@ -187,12 +186,8 @@ public class FakeTest implements IDeviceTest, IRemoteTest {
                     // no-op
                     break;
                 case 'F':
-                    listener.testFailed(TestFailure.FAILURE, test,
+                    listener.testFailed(test,
                             String.format("Test %s had a predictable boo-boo.", testName));
-                    break;
-                case 'E':
-                    listener.testFailed(TestFailure.ERROR, test,
-                            String.format("Test %s had an unexpected boo-boo. Uh-oh...", testName));
                     break;
             }
             listener.testEnded(test, EMPTY_MAP);

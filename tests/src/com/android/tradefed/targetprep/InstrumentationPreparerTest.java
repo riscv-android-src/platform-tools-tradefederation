@@ -16,7 +16,6 @@
 
 package com.android.tradefed.targetprep;
 
-import com.android.ddmlib.testrunner.ITestRunListener.TestFailure;
 import com.android.ddmlib.testrunner.TestIdentifier;
 import com.android.tradefed.build.DeviceBuildInfo;
 import com.android.tradefed.build.IDeviceBuildInfo;
@@ -75,7 +74,7 @@ public class InstrumentationPreparerTest extends TestCase {
         mInstrumentationPreparer.setUp(mMockDevice, mMockBuildInfo);
     }
 
-    public void testRun_testError() throws Exception {
+    public void testRun_testFailed() throws Exception {
         final String packageName = "packageName";
         final TestIdentifier test = new TestIdentifier("FooTest", "testFoo");
         mMockITest = new InstrumentationTest() {
@@ -83,7 +82,7 @@ public class InstrumentationPreparerTest extends TestCase {
             public void run(ITestInvocationListener listener) {
                 listener.testRunStarted(packageName, 1);
                 listener.testStarted(test);
-                listener.testFailed(TestFailure.ERROR, test, null);
+                listener.testFailed(test, null);
                 listener.testEnded(test, Collections.EMPTY_MAP);
                 listener.testRunEnded(0, Collections.EMPTY_MAP);
             }

@@ -16,6 +16,7 @@
 
 package com.android.tradefed.testtype;
 
+import com.android.ddmlib.testrunner.TestRunResult;
 import com.android.tradefed.config.Option;
 import com.android.tradefed.config.OptionClass;
 import com.android.tradefed.device.DeviceNotAvailableException;
@@ -26,7 +27,6 @@ import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.InputStreamSource;
 import com.android.tradefed.result.LogDataType;
 import com.android.tradefed.result.ResultForwarder;
-import com.android.tradefed.result.TestRunResult;
 import com.android.tradefed.util.FileUtil;
 import com.android.tradefed.util.RunUtil;
 

@@ -17,9 +17,9 @@
 package com.android.tradefed.util;
 
 import com.android.ddmlib.testrunner.TestIdentifier;
+import com.android.ddmlib.testrunner.TestResult;
+import com.android.ddmlib.testrunner.TestRunResult;
 import com.android.tradefed.result.CollectingTestListener;
-import com.android.tradefed.result.TestResult;
-import com.android.tradefed.result.TestRunResult;
 import com.android.tradefed.util.xml.AbstractXmlParser.ParseException;
 
 import junit.framework.TestCase;
@@ -61,7 +61,7 @@ public class JUnitXmlParserTest extends TestCase {
     public void testParse() throws ParseException, IOException {
         mParser.parse(extractTestXml("JUnitXmlParserTest_testParse.xml"));
         assertEquals(3, mListener.getNumTotalTests());
-        assertEquals(1, mListener.getNumFailedTests());
+        assertEquals(1, mListener.getNumAllFailedTests());
         TestRunResult runData = mListener.getCurrentRunResults();
         assertEquals("null", runData.getName());
         assertTrue(runData.getTestResults().containsKey(new TestIdentifier("PassTest", "testPass")));

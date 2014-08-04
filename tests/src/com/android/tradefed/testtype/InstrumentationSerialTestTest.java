@@ -15,28 +15,19 @@
  */
 package com.android.tradefed.testtype;
 
-import com.android.ddmlib.testrunner.ITestRunListener.TestFailure;
 import com.android.ddmlib.testrunner.TestIdentifier;
 import com.android.tradefed.config.ConfigurationException;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.result.ITestInvocationListener;
-import com.android.tradefed.util.FileUtil;
 
 import junit.framework.TestCase;
 
 import org.easymock.EasyMock;
 
-import java.io.BufferedReader;
-import java.io.BufferedWriter;
-import java.io.File;
-import java.io.FileReader;
-import java.io.FileWriter;
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
-import java.util.List;
 
 /**
  * Unit tests for {@link InstrumentationSerialTest}.
@@ -143,7 +134,7 @@ public class InstrumentationSerialTestTest extends TestCase {
 
         // now expect test to be marked as failed
         mMockListener.testStarted(test);
-        mMockListener.testFailed(EasyMock.eq(TestFailure.ERROR), EasyMock.eq(test),
+        mMockListener.testFailed(EasyMock.eq(test),
                 EasyMock.contains(runFailureMsg));
         mMockListener.testEnded(test, Collections.EMPTY_MAP);
 

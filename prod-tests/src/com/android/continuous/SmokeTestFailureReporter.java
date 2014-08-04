@@ -17,12 +17,12 @@
 package com.android.continuous;
 
 import com.android.ddmlib.testrunner.TestIdentifier;
+import com.android.ddmlib.testrunner.TestResult;
+import com.android.ddmlib.testrunner.TestResult.TestStatus;
+import com.android.ddmlib.testrunner.TestRunResult;
 import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.config.OptionClass;
 import com.android.tradefed.result.TestFailureEmailResultReporter;
-import com.android.tradefed.result.TestResult;
-import com.android.tradefed.result.TestResult.TestStatus;
-import com.android.tradefed.result.TestRunResult;
 import com.android.tradefed.util.Email;
 import com.android.tradefed.util.IEmail;
 
@@ -98,14 +98,16 @@ public class SmokeTestFailureReporter extends TestFailureEmailResultReporter {
 
     private String describeStatus(TestStatus status) {
         switch (status) {
-            case ERROR:
-                return "had an error";
             case FAILURE:
                 return "failed";
             case PASSED:
                 return "passed";
             case INCOMPLETE:
                 return "did not complete";
+            case ASSUMPTION_FAILURE:
+                return "assumption failed";
+            case IGNORED:
+                return "ignored";
         }
         return "had an unknown result";
     }
