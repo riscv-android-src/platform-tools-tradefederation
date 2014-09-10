@@ -679,20 +679,11 @@ public class InstrumentationTest implements IDeviceTest, IResumableTest {
         if (isRerunMode()) {
             Log.d(LOG_TAG, String.format("Collecting test info for %s on device %s",
                     mPackageName, mDevice.getSerialNumber()));
-            runner.setLogOnly(true);
-            // the collecting test command can fail for large volumes of test bug 1750602. insert a
-            // small delay between each test to prevent this
-            if (mTestDelay > 0) {
-                runner.addInstrumentationArg(DELAY_MSEC_ARG, Integer.toString(mTestDelay));
-            }
-            // use a shorter timeout when collecting tests
-            runner.setMaxTimeToOutputResponse(mCollectTestsShellTimeout, TimeUnit.MILLISECONDS);
+            runner.setTestCollection(true);
             // try to collect tests multiple times, in case device is temporarily not available
             // on first attempt
             Collection<TestIdentifier>  tests = collectTestsAndRetry(runner);
-            runner.setLogOnly(false);
-            runner.setMaxTimeToOutputResponse(mTestTimeout, TimeUnit.MILLISECONDS);
-            runner.removeInstrumentationArg(DELAY_MSEC_ARG);
+            runner.setTestCollection(false);
             return tests;
         }
         return null;
