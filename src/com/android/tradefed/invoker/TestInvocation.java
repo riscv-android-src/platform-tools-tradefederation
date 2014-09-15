@@ -201,6 +201,7 @@ public class TestInvocation implements ITestInvocation {
             mStatus = "fetching build";
             config.getLogOutput().init();
             getLogRegistry().registerLogger(config.getLogOutput());
+            device.clearLastConnectedWifiNetwork();
             device.setOptions(config.getDeviceOptions());
             if (config.getDeviceOptions().isLogcatCaptureEnabled()) {
                 device.startLogcat();

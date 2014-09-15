@@ -148,8 +148,8 @@ class TestDevice implements IManagedTestDevice {
     private DeviceAllocationState mAllocationState = DeviceAllocationState.Unknown;
     private IDeviceMonitor mAllocationMonitor = null;
 
-    private String mWifiSsid = null;
-    private String mWifiPsk = null;
+    private String mLastConnectedWifiSsid = null;
+    private String mLastConnectedWifiPsk = null;
     private boolean mNetworkMonitorEnabled = false;
 
     /**
@@ -1697,12 +1697,21 @@ class TestDevice implements IManagedTestDevice {
      * {@inheritDoc}
      */
     @Override
+    public void clearLastConnectedWifiNetwork() {
+        mLastConnectedWifiSsid = null;
+        mLastConnectedWifiPsk = null;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
     public boolean connectToWifiNetwork(String wifiSsid, String wifiPsk)
             throws DeviceNotAvailableException {
 
         // Clears the last connected wifi network.
-        mWifiSsid = null;
-        mWifiPsk = null;
+        mLastConnectedWifiSsid = null;
+        mLastConnectedWifiPsk = null;
 
         IWifiHelper wifi = createWifiHelper();
         for (int i = 1; i <= mOptions.getWifiAttempts(); i++) {
@@ -1714,8 +1723,8 @@ class TestDevice implements IManagedTestDevice {
                 CLog.i("Successfully connected to wifi network %s(%s) on %s",
                         wifiSsid, wifiInfo.get("bssid"), getSerialNumber());
 
-                mWifiSsid = wifiSsid;
-                mWifiPsk = wifiPsk;
+                mLastConnectedWifiSsid = wifiSsid;
+                mLastConnectedWifiPsk = wifiPsk;
 
                 return true;
             } else {
@@ -1803,8 +1812,8 @@ class TestDevice implements IManagedTestDevice {
     public boolean disconnectFromWifi() throws DeviceNotAvailableException {
         CLog.i("Disconnecting from wifi on %s", getSerialNumber());
         // Clears the last connected wifi network.
-        mWifiSsid = null;
-        mWifiPsk = null;
+        mLastConnectedWifiSsid = null;
+        mLastConnectedWifiPsk = null;
 
         IWifiHelper wifi = createWifiHelper();
         return wifi.disconnectFromNetwork();
@@ -1944,10 +1953,10 @@ class TestDevice implements IManagedTestDevice {
         if (mOptions.isDisableKeyguard()) {
             disableKeyguard();
         }
-        if (mWifiSsid != null) {
+        if (mLastConnectedWifiSsid != null) {
             // mWifiSsid is set to null if connection fails
-            final String wifiSsid = mWifiSsid;
-            if (!connectToWifiNetworkIfNeeded(mWifiSsid, mWifiPsk)) {
+            final String wifiSsid = mLastConnectedWifiSsid;
+            if (!connectToWifiNetworkIfNeeded(mLastConnectedWifiSsid, mLastConnectedWifiPsk)) {
                 throw new NetworkNotAvailableException(
                         String.format("Failed to connect to wifi network %s on %s after reboot",
                                 wifiSsid, getSerialNumber()));
