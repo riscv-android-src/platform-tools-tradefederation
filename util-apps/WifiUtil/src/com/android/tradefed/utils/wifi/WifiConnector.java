@@ -42,6 +42,7 @@ public class WifiConnector {
 
     private static final String TAG = WifiConnector.class.getSimpleName();
     private static final long DEFAULT_TIMEOUT = 30 * 1000;
+    private static final long DEFAULT_WAIT_TIME = 5 * 1000;
     private static final long POLL_TIME = 1000;
 
     private Context mContext;
@@ -189,6 +190,15 @@ public class WifiConnector {
                     return mWifiManager.isWifiEnabled();
                 }
             }, "failed to enable wifi");
+
+        // Wait for some seconds to let wifi to be stable. This increases the chance of success for
+        // subsequent operations.
+        try {
+            Thread.sleep(DEFAULT_WAIT_TIME);
+        } catch (InterruptedException e) {
+            throw new WifiException(String.format("failed to sleep for %d ms", DEFAULT_WAIT_TIME),
+                    e);
+        }
 
         removeAllNetworks(false);
 
