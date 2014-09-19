@@ -744,8 +744,9 @@ public class CommandScheduler extends Thread implements ICommandScheduler, IComm
         File cmdFile = new File(cmdFilePath);
         if (mReloadCmdfiles && getCommandFileWatcher().isFileWatched(cmdFile)) {
             CLog.logAndDisplay(LogLevel.INFO,
-                    "cmd file %s is already running and being watched for changes", cmdFilePath);
-            return;
+                    "cmd file %s is already running and being watched for changes. Reloading",
+                    cmdFilePath);
+            removeCommandsFromFile(cmdFile);
         }
         internalAddCommandFile(cmdFile, extraArgs);
     }

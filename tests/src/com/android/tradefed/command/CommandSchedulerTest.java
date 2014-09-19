@@ -551,14 +551,13 @@ public class CommandSchedulerTest extends TestCase {
         mMockManager.setNumDevices(0);
         String[] cmdFile1Args = new String[] {"fromFile1"};
         setCreateConfigExpectations(cmdFile1Args, 1);
-
+        setCreateConfigExpectations(cmdFile1Args, 1);
         mMockConfiguration.validateOptions();
-        EasyMock.expectLastCall().times(1);
+        EasyMock.expectLastCall().times(2);
 
         final List<CommandLine> cmdFileContent1 = Arrays.asList(new CommandLine(
                 Arrays.asList("fromFile1")));
         mMockCmdFileParser = new CommandFileParser() {
-            boolean firstCall = true;
             @Override
             public List<CommandLine> parseFile(File cmdFile) {
                 return cmdFileContent1;
@@ -575,7 +574,8 @@ public class CommandSchedulerTest extends TestCase {
         // now attempt to add the same command file
         mScheduler.addCommandFile("mycmd.txt", Collections.<String>emptyList());
 
-        // ensure no effect
+        // expect reload
+        // ensure same state as before
         cmds = mScheduler.getCommandTrackers();
         assertEquals(1, cmds.size());
         Assert.assertArrayEquals(cmdFile1Args, cmds.get(0).getArgs());
