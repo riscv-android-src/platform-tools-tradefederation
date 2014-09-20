@@ -125,6 +125,10 @@ public class CommandScheduler extends Thread implements ICommandScheduler, IComm
     // FIXME: enable this to be enabled or disabled on a per-cmdfile basis
     private boolean mReloadCmdfiles = false;
 
+    @Option(name = "max-poll-time", description =
+            "ms between forced command scheduler execution time")
+    private long mPollTime = 30 * 1000; // 30 seconds
+
     private enum CommandState {
         WAITING_FOR_DEVICE("Wait_for_device"),
         EXECUTING("Executing"),
@@ -590,7 +594,7 @@ public class CommandScheduler extends Thread implements ICommandScheduler, IComm
 
             while (!isShutdown()) {
                 // wait until processing is required again
-                mCommandProcessWait.waitAndReset();
+                mCommandProcessWait.waitAndReset(mPollTime);
                 processReadyCommands(manager);
             }
             mCommandTimer.shutdown();
@@ -1403,6 +1407,15 @@ public class CommandScheduler extends Thread implements ICommandScheduler, IComm
          */
         public synchronized void waitAndReset() {
             waitForEvent();
+            reset();
+        }
+
+        /**
+         * Wait for given ms for event to be received, and reset state back to 'no event received'
+         * upon completion.
+         */
+        public synchronized void waitAndReset(long maxWaitTime) {
+            waitForEvent(maxWaitTime);
             reset();
         }
 
