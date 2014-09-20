@@ -30,6 +30,8 @@ import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.testtype.testdefs.XmlDefsTest;
 import com.android.tradefed.util.AbiFormatter;
 
+import java.util.ArrayList;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
@@ -41,7 +43,7 @@ import java.util.regex.Pattern;
  * Runs all instrumentation found on current device.
  */
 @OptionClass(alias = "installed-instrumentation")
-public class InstalledInstrumentationsTest implements IDeviceTest, IResumableTest {
+public class InstalledInstrumentationsTest implements IDeviceTest, IResumableTest, IShardableTest {
 
     /** the metric key name for the test coverage target value */
     // TODO: move this to a more generic location
@@ -116,6 +118,13 @@ public class InstalledInstrumentationsTest implements IDeviceTest, IResumableTes
             "Re-run failed tests using test file instead of executing separate adb commands for " +
             "each remaining test")
     private boolean mReRunUsingTestFile = false;
+
+    @Option(name = "shards", description =
+            "Split test run into this many parallel shards")
+    private int mShards = 0;
+
+    private int mTotalShards = 0;
+    private int mShardIndex = 0;
 
     private List<InstrumentationTest> mTests = null;
 
@@ -299,6 +308,10 @@ public class InstalledInstrumentationsTest implements IDeviceTest, IResumableTes
                         t.setPackageName(m.group(1));
                         t.setRunnerName(runner);
                         t.setCoverageTarget(m.group(3));
+                        if (mTotalShards > 0) {
+                            t.addInstrumentationArg("shardIndex", Integer.toString(mShardIndex));
+                            t.addInstrumentationArg("numShards", Integer.toString(mTotalShards));
+                        }
                         mTests.add(t);
                     }
                 }
@@ -308,5 +321,29 @@ public class InstalledInstrumentationsTest implements IDeviceTest, IResumableTes
         public List<InstrumentationTest> getParsedTests() {
             return mTests;
         }
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public Collection<IRemoteTest> split() {
+        if (mShards > 1) {
+            Collection<IRemoteTest> shards = new ArrayList<>(mShards);
+            for (int index = 0; index < mShards; index++) {
+                InstalledInstrumentationsTest shard = new InstalledInstrumentationsTest();
+                try {
+                    OptionCopier.copyOptions(this, shard);
+                } catch (ConfigurationException e) {
+                    CLog.e("failed to copy instrumentation options", e);
+                }
+                shard.mShards = 0;
+                shard.mShardIndex = index;
+                shard.mTotalShards = mShards;
+                shards.add(shard);
+            }
+            return shards;
+        }
+        return null;
     }
 }
