@@ -365,6 +365,7 @@ public class TestInvocationTest extends TestCase {
 
         EasyMock.expect(mMockBuildProvider.getBuild()).andReturn(mMockBuildInfo);
         resumeListener.invocationStarted(mMockBuildInfo);
+        mMockDevice.clearLastConnectedWifiNetwork();
         mMockDevice.setOptions((TestDeviceOptions)EasyMock.anyObject());
         mMockBuildInfo.setDeviceSerial(SERIAL);
         mMockDevice.startLogcat();
@@ -402,6 +403,7 @@ public class TestInvocationTest extends TestCase {
         mMockLogger.init();
         mMockLogSaver.invocationStarted(mMockBuildInfo);
         // now set resumed invocation expectations
+        mMockDevice.clearLastConnectedWifiNetwork();
         mMockDevice.setOptions((TestDeviceOptions)EasyMock.anyObject());
         mMockBuildInfo.setDeviceSerial(SERIAL);
         mMockDevice.startLogcat();
@@ -601,6 +603,7 @@ public class TestInvocationTest extends TestCase {
      * Set up expected calls that occur on every invoke, regardless of result
      */
     private void setupInvoke() {
+        mMockDevice.clearLastConnectedWifiNetwork();
         mMockDevice.setOptions((TestDeviceOptions)EasyMock.anyObject());
         mMockDevice.startLogcat();
         mMockDevice.stopLogcat();

@@ -704,11 +704,18 @@ public interface ITestDevice {
     public InputStreamSource getScreenshot() throws DeviceNotAvailableException;
 
     /**
+     * Clears the last connected wifi network. This should be called when starting a new invocation
+     * to avoid connecting to the wifi network used in the previous test after device reboots.
+     */
+    public void clearLastConnectedWifiNetwork();
+
+    /**
      * Connects to a wifi network.
      * <p/>
      * Turns on wifi and blocks until a successful connection is made to the specified wifi network.
      * Once a connection is made, the instance will try to restore the connection after every reboot
-     * until {@link ITestDevice#disconnectFromWifi()} is called.
+     * until {@link ITestDevice#disconnectFromWifi()} or
+     * {@link ITestDevice#clearLastConnectedWifiNetwork()} is called.
      *
      * @param wifiSsid the wifi ssid to connect to
      * @param wifiPsk PSK passphrase or null if unencrypted
