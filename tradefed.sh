@@ -67,8 +67,6 @@ elif [ ! -z "${ANDROID_HOST_OUT}" ]; then
     if [ -f "${ANDROID_HOST_OUT}/tradefed/tradefed.jar" ]; then
         # We intentionally pass the asterisk through without shell expansion
         tf_path="${ANDROID_HOST_OUT}/tradefed/*"
-        # ddmlib-prebuilt is in the framework subdir
-        ddmlib_path="${ANDROID_HOST_OUT}/framework/ddmlib-prebuilt.jar"
     fi
 fi
 
@@ -90,4 +88,4 @@ fi
 
 # Note: must leave ${RDBG_FLAG} unquoted so that it goes away when unset
 java ${RDBG_FLAG} -XX:+HeapDumpOnOutOfMemoryError -XX:-OmitStackTraceInFastThrow $TRADEFED_OPTS \
-  -cp "${ddmlib_path}:${tf_path}" com.android.tradefed.command.Console "$@"
+  -cp "${tf_path}" com.android.tradefed.command.Console "$@"

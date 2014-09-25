@@ -26,7 +26,7 @@ LOCAL_JAVACFLAGS += -g -Xlint
 LOCAL_MODULE := tf-prod-metatests
 LOCAL_MODULE_TAGS := optional
 LOCAL_STATIC_JAVA_LIBRARIES := easymock
-LOCAL_JAVA_LIBRARIES := tradefed tf-prod-tests ddmlib-prebuilt
+LOCAL_JAVA_LIBRARIES := tradefed tf-prod-tests
 
 include $(BUILD_HOST_JAVA_LIBRARY)
 
