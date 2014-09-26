@@ -1,4 +1,4 @@
 This apk can be rebuilt from
         platform/tools/tradefederation
 
-By running `m WifiUtil` on revision db5f64dd8f9ecb25b703b6564faa90e977ed56d6
+By running `m WifiUtil` on revision 2ea6ede0de42f52ddfb595586e7abd0dfb5f2f48
