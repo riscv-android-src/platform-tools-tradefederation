@@ -152,6 +152,10 @@ public class WaitDeviceRecoveryTest extends TestCase {
                 Boolean.TRUE);
         EasyMock.expect(mMockMonitor.waitForDeviceBootloader(EasyMock.anyLong())).andReturn(
                 Boolean.TRUE).times(2);
+        EasyMock.expect(mMockRunUtil.runTimedCmd(EasyMock.anyLong(), EasyMock.eq("fastboot"),
+                EasyMock.eq("-s"), EasyMock.eq("serial"), EasyMock.eq("getvar"),
+                EasyMock.eq("product"))).
+                andReturn(new CommandResult(CommandStatus.SUCCESS));
         replayMocks();
         mRecovery.recoverDeviceBootloader(mMockMonitor);
         verifyMocks();
@@ -174,6 +178,10 @@ public class WaitDeviceRecoveryTest extends TestCase {
                 Boolean.TRUE);
         EasyMock.expect(mMockMonitor.waitForDeviceBootloader(EasyMock.anyLong())).andReturn(
                 Boolean.TRUE).times(2);
+        EasyMock.expect(mMockRunUtil.runTimedCmd(EasyMock.anyLong(), EasyMock.eq("fastboot"),
+                EasyMock.eq("-s"), EasyMock.eq("serial"), EasyMock.eq("getvar"),
+                EasyMock.eq("product"))).
+                andReturn(new CommandResult(CommandStatus.SUCCESS));
         replayMocks();
         mRecovery.recoverDeviceBootloader(mMockMonitor);
         verifyMocks();

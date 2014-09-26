@@ -21,6 +21,8 @@ import com.android.ddmlib.Log;
 import com.android.ddmlib.TimeoutException;
 import com.android.tradefed.config.Option;
 import com.android.tradefed.log.LogUtil.CLog;
+import com.android.tradefed.util.CommandResult;
+import com.android.tradefed.util.CommandStatus;
 import com.android.tradefed.util.IRunUtil;
 import com.android.tradefed.util.RunUtil;
 
@@ -57,6 +59,10 @@ public class WaitDeviceRecovery implements IDeviceRecovery {
     @Option(name="shell-wait-time",
             description="maximum time in ms to wait for device shell to be responsive.")
     protected long mShellWaitTime = 30 * 1000;
+
+    @Option(name="fastboot-wait-time",
+            description="maximum time in ms to wait for a fastboot command result.")
+    protected long mFastbootWaitTime = 30 * 1000;
 
     @Option(name = "min-battery-after-recovery",
             description = "require a min battery level after successful recovery, " +
@@ -106,7 +112,7 @@ public class WaitDeviceRecovery implements IDeviceRecovery {
                     "Found device %s in fastboot but expected online. Rebooting...",
                     monitor.getSerialNumber()));
             // TODO: retry if failed
-            getRunUtil().runTimedCmd(20*1000, "fastboot", "-s", monitor.getSerialNumber(),
+            getRunUtil().runTimedCmd(mFastbootWaitTime, "fastboot", "-s", monitor.getSerialNumber(),
                     "reboot");
         }
 
@@ -262,13 +268,20 @@ public class WaitDeviceRecovery implements IDeviceRecovery {
         CLog.i("Found device %s in fastboot but potentially unresponsive.",
                 monitor.getSerialNumber());
         // TODO: retry reboot
-        getRunUtil().runTimedCmd(20*1000, "fastboot", "-s", monitor.getSerialNumber(),
+        getRunUtil().runTimedCmd(mFastbootWaitTime, "fastboot", "-s", monitor.getSerialNumber(),
                 "reboot-bootloader");
         // wait for device to reboot
         monitor.waitForDeviceNotAvailable(20*1000);
         if (!monitor.waitForDeviceBootloader(mBootloaderWaitTime)) {
             throw new DeviceNotAvailableException(String.format(
                     "Device %s not in bootloader after reboot", monitor.getSerialNumber()));
+        }
+        // running a meaningless command just to see whether the device is responsive.
+        CommandResult result = getRunUtil().runTimedCmd(mFastbootWaitTime, "fastboot", "-s",
+                monitor.getSerialNumber(), "getvar", "product");
+        if (result.getStatus().equals(CommandStatus.TIMED_OUT)) {
+            throw new DeviceNotAvailableException(String.format(
+                    "Device %s is in fastboot but unresponsive", monitor.getSerialNumber()));
         }
     }
 
