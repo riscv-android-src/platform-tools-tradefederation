@@ -40,12 +40,14 @@ import com.android.tradefed.device.FreeDeviceState;
 import com.android.tradefed.device.IDeviceManager;
 import com.android.tradefed.device.IDeviceMonitor;
 import com.android.tradefed.device.ITestDevice;
+import com.android.tradefed.device.NoDeviceException;
 import com.android.tradefed.invoker.IRescheduler;
 import com.android.tradefed.invoker.ITestInvocation;
 import com.android.tradefed.invoker.TestInvocation;
 import com.android.tradefed.log.LogRegistry;
 import com.android.tradefed.log.LogUtil.CLog;
-import com.android.tradefed.result.StubTestInvocationListener;
+import com.android.tradefed.result.ITestInvocationListener;
+import com.android.tradefed.result.ResultForwarder;
 import com.android.tradefed.util.ArrayUtil;
 import com.android.tradefed.util.QuotationAwareTokenizer;
 import com.android.tradefed.util.TableFormatter;
@@ -385,17 +387,23 @@ public class CommandScheduler extends Thread implements ICommandScheduler, IComm
      * <p/>
      * Returns device to device manager and remote handover server if applicable.
      */
-    private class FreeDeviceHandler extends StubTestInvocationListener implements
+    private class FreeDeviceHandler extends ResultForwarder implements
             IScheduledInvocationListener {
 
         private final IDeviceManager mDeviceManager;
 
-        FreeDeviceHandler(IDeviceManager deviceManager) {
+        FreeDeviceHandler(IDeviceManager deviceManager,
+                IScheduledInvocationListener... listeners) {
+            super(listeners);
             mDeviceManager = deviceManager;
         }
 
         @Override
         public void invocationComplete(ITestDevice device, FreeDeviceState deviceState) {
+            for (ITestInvocationListener listener : getListeners()) {
+                ((IScheduledInvocationListener) listener).invocationComplete(device, deviceState);
+            }
+
             mDeviceManager.freeDevice(device, deviceState);
             remoteFreeDevice(device);
         }
@@ -621,7 +629,7 @@ public class CommandScheduler extends Thread implements ICommandScheduler, IComm
         }
     }
 
-    private void processReadyCommands(IDeviceManager manager) {
+    protected void processReadyCommands(IDeviceManager manager) {
         Map<ExecutableCommand, ITestDevice> scheduledCommandMap = new HashMap<>();
         // minimize length of synchronized block by just matching commands with device first,
         // then scheduling invocations/adding looping commands back to queue
@@ -910,6 +918,34 @@ public class CommandScheduler extends Thread implements ICommandScheduler, IComm
      * {@inheritDoc}
      */
     @Override
+    public void execCommand(IScheduledInvocationListener listener, String[] args)
+            throws ConfigurationException, NoDeviceException {
+        assertStarted();
+        IDeviceManager manager = getDeviceManager();
+        CommandTracker cmdTracker = createCommandTracker(args, null);
+        IConfiguration config = getConfigFactory().createConfigurationFromArgs(
+                cmdTracker.getArgs());
+        config.validateOptions();
+
+        ExecutableCommand execCmd = createExecutableCommand(cmdTracker, config, false);
+        ITestDevice device;
+
+        synchronized(this) {
+            device = manager.allocateDevice(config.getDeviceRequirements());
+            if (device == null) {
+                throw new NoDeviceException("no device is available for command: " + args);
+            }
+            CLog.i("Executing '%s' on '%s'", cmdTracker.getArgs()[0], device.getSerialNumber());
+            mExecutingCommands.add(execCmd);
+        }
+
+        startInvocation(new FreeDeviceHandler(manager, listener), device, execCmd);
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
     public void execCommand(IScheduledInvocationListener listener, ITestDevice device, String[] args)
             throws ConfigurationException {
         assertStarted();
@@ -919,6 +955,11 @@ public class CommandScheduler extends Thread implements ICommandScheduler, IComm
         config.validateOptions();
         CLog.i("Executing '%s' on '%s'", cmdTracker.getArgs()[0], device.getSerialNumber());
         ExecutableCommand execCmd = createExecutableCommand(cmdTracker, config, false);
+
+        synchronized(this) {
+            mExecutingCommands.add(execCmd);
+        }
+
         startInvocation(listener, device, execCmd);
     }
 
@@ -963,11 +1004,11 @@ public class CommandScheduler extends Thread implements ICommandScheduler, IComm
         mInvocationThreadMap.put(invThread.getDevice(), invThread);
     }
 
-    private synchronized boolean isShutdown() {
+    protected synchronized boolean isShutdown() {
         return mCommandTimer.isShutdown() || (mShutdownOnEmpty && getAllCommandsSize() == 0);
     }
 
-    private synchronized boolean isShuttingDown() {
+    protected synchronized boolean isShuttingDown() {
         return mCommandTimer.isShutdown() || mShutdownOnEmpty;
     }
 
@@ -1366,6 +1407,9 @@ public class CommandScheduler extends Thread implements ICommandScheduler, IComm
          * @return true if event received before time elapsed, false otherwise
          */
         public synchronized boolean waitForEvent(long maxWaitTime) {
+            if (maxWaitTime == 0) {
+                return waitForEvent();
+            }
             long startTime = System.currentTimeMillis();
             long remainingTime = maxWaitTime;
             while (!mEventReceived && remainingTime > 0) {
@@ -1399,15 +1443,6 @@ public class CommandScheduler extends Thread implements ICommandScheduler, IComm
          */
         public synchronized void reset() {
             mEventReceived = false;
-        }
-
-        /**
-         * Wait indefinitely for event to be received, and reset state back to 'no event received'
-         * upon completion.
-         */
-        public synchronized void waitAndReset() {
-            waitForEvent();
-            reset();
         }
 
         /**

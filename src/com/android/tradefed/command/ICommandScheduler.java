@@ -20,6 +20,7 @@ import com.android.tradefed.config.ConfigurationException;
 import com.android.tradefed.config.IConfigurationFactory;
 import com.android.tradefed.device.FreeDeviceState;
 import com.android.tradefed.device.ITestDevice;
+import com.android.tradefed.device.NoDeviceException;
 import com.android.tradefed.invoker.ITestInvocation;
 import com.android.tradefed.result.ITestInvocationListener;
 
@@ -87,6 +88,18 @@ public interface ICommandScheduler {
      * @throws ConfigurationException if command was invalid
      */
     public boolean addCommand(String[] args, long totalExecTime) throws ConfigurationException;
+
+    /**
+     * Directly allocates a device and executes a command without adding it to the command queue.
+     *
+     * @param listener the {@link IScheduledInvocationListener} to be informed
+     * @param args the command arguments
+     *
+     * @throws ConfigurationException if command was invalid
+     * @throws NoDeviceException if there is no device to use
+     */
+    public void execCommand(IScheduledInvocationListener listener, String[] args)
+            throws ConfigurationException, NoDeviceException;
 
     /**
      * Directly execute command on already allocated device.
