@@ -28,6 +28,7 @@ import java.util.regex.Pattern;
 public class AbiFormatter {
 
     private static final String PRODUCT_CPU_ABILIST_KEY = "ro.product.cpu.abilist";
+    private static final String PRODUCT_CPU_ABI_KEY = "ro.product.cpu.abi";
     public static final String FORCE_ABI_STRING = "force-abi";
     public static final String FORCE_ABI_DESCRIPTION = "The abi to use, can be either 32 or 64.";
 
@@ -95,8 +96,11 @@ public class AbiFormatter {
         String abiList = device.getProperty(PRODUCT_CPU_ABILIST_KEY + bitness);
         if (abiList != null) {
             String []abis = abiList.split(",");
-            return abis;
+            if (abis.length > 0) {
+                return abis;
+            }
         }
-        return new String[0];
+        // fallback plan for before lmp, the bitness is ignored
+        return new String[]{device.getProperty(PRODUCT_CPU_ABI_KEY)};
     }
 }
