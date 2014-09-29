@@ -123,6 +123,12 @@ class TestDevice implements IManagedTestDevice {
     /** The network monitoring interval in ms. */
     private static final int NETWORK_MONITOR_INTERVAL = 10 * 1000;
 
+    /** Wifi reconnect check interval in ms. */
+    private static final int WIFI_RECONNECT_CHECK_INTERVAL = 1 * 1000;
+
+    /** Wifi reconnect timeout in ms. */
+    private static final int WIFI_RECONNECT_TIMEOUT = 60 * 1000;
+
     /** The time in ms to wait for a command to complete. */
     private int mCmdTimeout = 2 * 60 * 1000;
     /** The time in ms to wait for a 'long' command to complete. */
@@ -1954,18 +1960,34 @@ class TestDevice implements IManagedTestDevice {
             disableKeyguard();
         }
         if (mLastConnectedWifiSsid != null) {
-            // mWifiSsid is set to null if connection fails
-            final String wifiSsid = mLastConnectedWifiSsid;
-            if (!connectToWifiNetworkIfNeeded(mLastConnectedWifiSsid, mLastConnectedWifiPsk)) {
-                throw new NetworkNotAvailableException(
-                        String.format("Failed to connect to wifi network %s on %s after reboot",
-                                wifiSsid, getSerialNumber()));
-            }
+            reconnectToWifiNetwork();
         }
         if (mNetworkMonitorEnabled) {
             if (!enableNetworkMonitor()) {
                 CLog.w("Failed to enable network monitor on %s after reboot", getSerialNumber());
             }
+        }
+    }
+
+    void reconnectToWifiNetwork() throws DeviceNotAvailableException {
+        // First, wait for wifi to re-connect automatically.
+        long startTime = System.currentTimeMillis();
+        boolean isConnected = checkConnectivity();
+        while (!isConnected && (System.currentTimeMillis() - startTime) < WIFI_RECONNECT_TIMEOUT) {
+            getRunUtil().sleep(WIFI_RECONNECT_CHECK_INTERVAL);
+            isConnected = checkConnectivity();
+        }
+
+        if (isConnected) {
+            return;
+        }
+
+        // If wifi is still not connected, try to re-connect on our own.
+        final String wifiSsid = mLastConnectedWifiSsid;
+        if (!connectToWifiNetworkIfNeeded(mLastConnectedWifiSsid, mLastConnectedWifiPsk)) {
+            throw new NetworkNotAvailableException(
+                    String.format("Failed to connect to wifi network %s on %s after reboot",
+                            wifiSsid, getSerialNumber()));
         }
     }
 
