@@ -71,7 +71,7 @@ public class DeviceSelectionOptions implements IDeviceSelection {
     @Option(name = "min-battery", description =
         "only run this test on a device whose battery level is at least the given amount. " +
         "Scale: 0-100")
-    private Integer mMinBattery = 10;
+    private Integer mMinBattery = null;
 
     @Option(name = "max-battery", description =
         "only run this test on a device whose battery level is strictly less than the given " +
