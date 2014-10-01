@@ -560,10 +560,6 @@ public class MonkeyBase implements IDeviceTest, IRemoteTest, IRetriableTest {
      * Check the results and return if valid or throw an assertion error if not valid.
      */
     private void checkResults() {
-        if (!isRetriable()) {
-            return;
-        }
-
         Assert.assertNotNull("Monkey log is null", mMonkeyLog);
         Assert.assertNotNull("Bugreport is null", mBugreport);
         Assert.assertNotNull("Bugreport is empty", mBugreport.getTime());
