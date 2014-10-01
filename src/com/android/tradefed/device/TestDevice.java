@@ -80,6 +80,8 @@ class TestDevice implements IManagedTestDevice {
     private static final String TEST_INPUT_CMD = "dumpsys input";
     static final String LIST_PACKAGES_CMD = "pm list packages -f";
     private static final Pattern PACKAGE_REGEX = Pattern.compile("package:(.*)=(.*)");
+    private static final Pattern PING_REGEX = Pattern.compile(
+            "(?<send>\\d+) packets transmitted, (?<recv>\\d+) received, (?<loss>\\d+)% packet loss");
     /** regex to match input dispatch readiness line **/
     static final Pattern INPUT_DISPATCH_STATE_REGEX =
             Pattern.compile("DispatchEnabled:\\s?([01])");
@@ -1743,12 +1745,23 @@ class TestDevice implements IManagedTestDevice {
     }
 
     /**
-     * Check that device has network connectivity.
+     * {@inheritDoc}
      */
     @Override
     public boolean checkConnectivity() throws DeviceNotAvailableException {
-        final IWifiHelper wifi = createWifiHelper();
-        return wifi.checkConnectivity(mOptions.getConnCheckUrl());
+        final int pingLoss = getPingLoss();
+        return (0 <= pingLoss && pingLoss < 100);
+    }
+
+    int getPingLoss() throws DeviceNotAvailableException {
+        final String output = executeShellCommand(
+                "ping -c 1 -w 5 -s 1024 " + mOptions.getPingIpOrHost());
+        final Matcher stat = PING_REGEX.matcher(output);
+        if (stat.find()) {
+            return Integer.parseInt(stat.group("loss"));
+        }
+        // Return -1 if we failed to parse output.
+        return -1;
     }
 
     /**
