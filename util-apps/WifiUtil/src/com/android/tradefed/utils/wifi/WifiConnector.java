@@ -117,7 +117,6 @@ public class WifiConnector {
             keymgmt.set(WifiConfiguration.KeyMgmt.NONE);
             config.allowedKeyManagement = keymgmt;
         } else {
-            config.allowedKeyManagement.set(WifiConfiguration.KeyMgmt.WPA_PSK);
             config.preSharedKey = quote(psk);
         }
 
