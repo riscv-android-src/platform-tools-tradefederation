@@ -1972,6 +1972,15 @@ class TestDevice implements IManagedTestDevice {
         if (mOptions.isDisableKeyguard()) {
             disableKeyguard();
         }
+    }
+
+    /**
+     * Ensure wifi connection is re-established after boot. This is intended to be called after TF
+     * initiated reboots(ones triggered by {@link #reboot()}) only.
+     *
+     * @throws DeviceNotAvailableException
+     */
+    void postBootWifiSetup() throws DeviceNotAvailableException {
         if (mLastConnectedWifiSsid != null) {
             reconnectToWifiNetwork();
         }
@@ -2118,6 +2127,7 @@ class TestDevice implements IManagedTestDevice {
 
         if (mStateMonitor.waitForDeviceAvailable(mOptions.getRebootTimeout()) != null) {
             postBootSetup();
+            postBootWifiSetup();
             return;
         } else {
             recoverDevice();
