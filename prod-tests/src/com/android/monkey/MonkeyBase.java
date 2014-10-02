@@ -293,27 +293,27 @@ public class MonkeyBase implements IDeviceTest, IRemoteTest, IRetriableTest {
             commandHelper.runCommand(mTestDevice, command, getMonkeyTimeoutMs());
             duration = System.currentTimeMillis() - start;
         } finally {
-            onMonkeyFinish();
-            outputBuilder.append(commandHelper.getOutput());
-
-            // Generate the monkey log suffix, which includes the device uptime.
-            outputBuilder.append(String.format("\n# %s - device uptime = %s: Monkey command ran " +
-                    "for: %d:%02d (mm:ss)\n", new Date().toString(), getUptime(),
-                    duration / 1000 / 60, duration / 1000 % 60));
-
+            String uptimeAfter = "0.00";
             // Wait for device to recover if it's not online.  If it hasn't recovered, ignore.
             try {
                 mTestDevice.waitForDeviceOnline(2 * 60 * 1000);
-            } catch (DeviceNotAvailableException e) {
-                CLog.w("Device %s not available after 2 minutes.", mTestDevice.getSerialNumber());
+                onMonkeyFinish();
+                uptimeAfter = getUptime();
+                takeScreenshot(listener, "screenshot");
+
+                mBugreport = takeBugreport(listener, BUGREPORT_NAME);
+                // FIXME: Remove this once traces.txt is no longer needed.
+                takeTraces(listener);
+            } finally {
+                // @@@ DO NOT add anything that requires device interaction into this block     @@@
+                // @@@ logging that no longer requires device interaction MUST be in this block @@@
+                outputBuilder.append(commandHelper.getOutput());
+                // Generate the monkey log suffix, which includes the device uptime.
+                outputBuilder.append(String.format("\n# %s - device uptime = %s: Monkey command "
+                        + "ran for: %d:%02d (mm:ss)\n", new Date().toString(), uptimeAfter,
+                        duration / 1000 / 60, duration / 1000 % 60));
+                mMonkeyLog = createMonkeyLog(listener, MONKEY_LOG_NAME, outputBuilder.toString());
             }
-
-            takeScreenshot(listener, "screenshot");
-
-            mBugreport = takeBugreport(listener, BUGREPORT_NAME);
-            // FIXME: Remove this once traces.txt is no longer needed.
-            takeTraces(listener);
-            mMonkeyLog = createMonkeyLog(listener, MONKEY_LOG_NAME, outputBuilder.toString());
         }
 
         checkResults();
