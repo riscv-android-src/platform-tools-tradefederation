@@ -80,6 +80,8 @@ public class MonkeyBase implements IDeviceTest, IRemoteTest, IRetriableTest {
     private static final String LAUNCH_APP_CMD = "am start -W -n '%s' " +
             "-a android.intent.action.MAIN -c android.intent.category.LAUNCHER -f 0x10200000";
 
+    private static final String NULL_UPTIME = "0.00";
+
     /**
      * Helper to run a monkey command with an absolute timeout.
      * <p>
@@ -281,7 +283,11 @@ public class MonkeyBase implements IDeviceTest, IRemoteTest, IRetriableTest {
 
         StringBuilder outputBuilder = new StringBuilder();
         CommandHelper commandHelper = new CommandHelper();
+
+        long start = System.currentTimeMillis();
         long duration = 0;
+        Date dateAfter = null;
+        String uptimeAfter = NULL_UPTIME;
 
         // Generate the monkey log prefix, which includes the device uptime
         outputBuilder.append(String.format("# %s - device uptime = %s: Monkey command used " +
@@ -289,16 +295,15 @@ public class MonkeyBase implements IDeviceTest, IRemoteTest, IRetriableTest {
 
         try {
             onMonkeyStart();
-            long start = System.currentTimeMillis();
             commandHelper.runCommand(mTestDevice, command, getMonkeyTimeoutMs());
-            duration = System.currentTimeMillis() - start;
         } finally {
-            String uptimeAfter = "0.00";
             // Wait for device to recover if it's not online.  If it hasn't recovered, ignore.
             try {
                 mTestDevice.waitForDeviceOnline(2 * 60 * 1000);
-                onMonkeyFinish();
+                duration = System.currentTimeMillis() - start;
+                dateAfter = new Date();
                 uptimeAfter = getUptime();
+                onMonkeyFinish();
                 takeScreenshot(listener, "screenshot");
 
                 mBugreport = takeBugreport(listener, BUGREPORT_NAME);
@@ -308,9 +313,12 @@ public class MonkeyBase implements IDeviceTest, IRemoteTest, IRetriableTest {
                 // @@@ DO NOT add anything that requires device interaction into this block     @@@
                 // @@@ logging that no longer requires device interaction MUST be in this block @@@
                 outputBuilder.append(commandHelper.getOutput());
+                if (dateAfter == null) {
+                    dateAfter = new Date();
+                }
                 // Generate the monkey log suffix, which includes the device uptime.
                 outputBuilder.append(String.format("\n# %s - device uptime = %s: Monkey command "
-                        + "ran for: %d:%02d (mm:ss)\n", new Date().toString(), uptimeAfter,
+                        + "ran for: %d:%02d (mm:ss)\n", dateAfter.toString(), uptimeAfter,
                         duration / 1000 / 60, duration / 1000 % 60));
                 mMonkeyLog = createMonkeyLog(listener, MONKEY_LOG_NAME, outputBuilder.toString());
             }
@@ -472,8 +480,8 @@ public class MonkeyBase implements IDeviceTest, IRemoteTest, IRetriableTest {
     /**
      * Get a {@link String} containing the number seconds since the device was booted.
      * <p>
-     * {@code "0.00"} is returned if the device becomes unresponsive. Used in the monkey log prefix
-     * and suffix.
+     * {@code NULL_UPTIME} is returned if the device becomes unresponsive. Used in the monkey log
+     * prefix and suffix.
      * </p>
      */
     protected String getUptime() {
@@ -496,7 +504,7 @@ public class MonkeyBase implements IDeviceTest, IRemoteTest, IRetriableTest {
             CLog.e("Device %s became unresponsive while getting the uptime.",
                     mTestDevice.getSerialNumber());
         }
-        return "0.00";
+        return NULL_UPTIME;
     }
 
     /**
