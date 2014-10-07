@@ -91,6 +91,8 @@ public class FolderBuildInfo extends BuildInfo implements IFolderBuildInfo {
             // fall through
             CLog.w("hardlink of %s %s failed: " + e.toString(), orig.getAbsolutePath(),
                     dest.getAbsolutePath());
+            // Clean up after failure.
+            FileUtil.recursiveDelete(dest);
         }
         FileUtil.recursiveCopy(orig, dest);
     }
