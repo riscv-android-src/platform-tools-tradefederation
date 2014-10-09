@@ -121,7 +121,7 @@ public class WaitDeviceRecovery implements IDeviceRecovery {
         if (device == null) {
             handleDeviceNotAvailable(monitor, recoverUntilOnline);
             // function returning implies that recovery is successful, check battery level here
-            checkMinBatteryLevel(device);
+            checkMinBatteryLevel(getDeviceAfterRecovery(monitor));
             return;
         }
         // occasionally device is erroneously reported as online - double check that we can shell
@@ -129,7 +129,7 @@ public class WaitDeviceRecovery implements IDeviceRecovery {
         if (!monitor.waitForDeviceShell(mShellWaitTime)) {
             // treat this as a not available device
             handleDeviceNotAvailable(monitor, recoverUntilOnline);
-            checkMinBatteryLevel(device);
+            checkMinBatteryLevel(getDeviceAfterRecovery(monitor));
             return;
         }
 
@@ -141,7 +141,17 @@ public class WaitDeviceRecovery implements IDeviceRecovery {
         }
         // do a final check here when all previous if blocks are skipped or the last
         // handleDeviceUnresponsive was successful
-        checkMinBatteryLevel(device);
+        checkMinBatteryLevel(getDeviceAfterRecovery(monitor));
+    }
+
+    private IDevice getDeviceAfterRecovery(IDeviceStateMonitor monitor)
+            throws DeviceNotAvailableException {
+        IDevice device = monitor.waitForDeviceOnline();
+        if (device == null) {
+            throw new DeviceNotAvailableException(
+                    "Device still not online after successful recovery");
+        }
+        return device;
     }
 
     /**
