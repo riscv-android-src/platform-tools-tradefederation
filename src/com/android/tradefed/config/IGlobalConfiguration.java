@@ -21,6 +21,7 @@ import com.android.tradefed.device.DeviceManager;
 import com.android.tradefed.device.IDeviceManager;
 import com.android.tradefed.device.IDeviceMonitor;
 import com.android.tradefed.device.IDeviceSelection;
+import com.android.tradefed.device.IMultiDeviceRecovery;
 import com.android.tradefed.log.ITerribleFailureHandler;
 
 import java.util.List;
@@ -151,6 +152,13 @@ public interface IGlobalConfiguration {
      * @return the {@link ICommandScheduler}. Will never return null.
      */
     public ICommandScheduler getCommandScheduler();
+
+    /**
+     * Gets the {@link IMultiDeviceRecovery} to use from the configuration.
+     *
+     * @return the {@link IMultiDeviceRecovery}, or null if not set.
+     */
+    public IMultiDeviceRecovery getMultiDeviceRecovery();
 
     /**
      * Set the {@link IDeviceManager}, replacing any existing values. This sets the manager

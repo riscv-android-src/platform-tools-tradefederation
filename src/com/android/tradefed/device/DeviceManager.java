@@ -85,6 +85,7 @@ public class DeviceManager implements IDeviceManager {
     private FastbootMonitor mFastbootMonitor;
     private boolean mIsTerminated = false;
     private IDeviceSelection mGlobalDeviceFilter;
+
     @Option(name="max-emulators",
             description = "the maximum number of emulators that can be allocated at one time")
     private int mNumEmulatorSupported = 1;
@@ -93,6 +94,12 @@ public class DeviceManager implements IDeviceManager {
     private int mNumNullDevicesSupported = 1;
 
     private boolean mSynchronousMode = false;
+
+    @Option(name="device-recovery-interval",
+            description = "the interval in ms between attempts to recover unavailable devices.")
+    private long mDeviceRecoveryInterval = 10 * 60 * 1000;
+
+    private DeviceRecoverer mDeviceRecoverer;
 
     /**
      * Creator interface for {@link IManagedTestDevice}s
@@ -199,6 +206,10 @@ public class DeviceManager implements IDeviceManager {
         mAdbBridge.init(false /* client support */, "adb");
         addEmulators();
         addNullDevices();
+
+        IMultiDeviceRecovery multiDeviceRecovery = getGlobalConfig().getMultiDeviceRecovery();
+        mDeviceRecoverer = new DeviceRecoverer(multiDeviceRecovery);
+        mDeviceRecoverer.start();
     }
 
     /**
@@ -260,6 +271,15 @@ public class DeviceManager implements IDeviceManager {
      */
     IRunUtil getRunUtil() {
         return RunUtil.getDefault();
+    }
+
+    /**
+     * Create a {@link RunUtil} instance to use.
+     * <p/>
+     * Exposed for unit testing.
+     */
+    IRunUtil createRunUtil() {
+        return new RunUtil();
     }
 
     /**
@@ -684,6 +704,9 @@ public class DeviceManager implements IDeviceManager {
         checkInit();
         if (!mIsTerminated ) {
             mIsTerminated = true;
+            if (mDeviceRecoverer != null) {
+                mDeviceRecoverer.terminate();
+            }
             mAdbBridge.removeDeviceChangeListener(mManagedDeviceListener);
             mAdbBridge.terminate();
             if (mFastbootMonitor != null) {
@@ -984,6 +1007,35 @@ public class DeviceManager implements IDeviceManager {
             serials.add(fastbootMatcher.group(1));
         }
         return serials;
+    }
+
+    /**
+     * A class for a thread which performs periodic device recovery operations.
+     */
+    private class DeviceRecoverer extends Thread {
+
+        private boolean mQuit = false;
+        private IMultiDeviceRecovery mMultiDeviceRecovery;
+
+        public DeviceRecoverer(IMultiDeviceRecovery multiDeviceRecovery) {
+            mMultiDeviceRecovery = multiDeviceRecovery;
+        }
+
+        @Override
+        public void run() {
+            while (!mQuit) {
+                getRunUtil().sleep(mDeviceRecoveryInterval);
+                List<DeviceDescriptor> devices = listAllDevices();
+                if (mMultiDeviceRecovery != null) {
+                    mMultiDeviceRecovery.recoverDevices(devices);
+                }
+            }
+        }
+
+        public void terminate() {
+            mQuit = true;
+            interrupt();
+        }
     }
 
     @VisibleForTesting

@@ -23,6 +23,7 @@ import com.android.tradefed.device.DeviceSelectionOptions;
 import com.android.tradefed.device.IDeviceManager;
 import com.android.tradefed.device.IDeviceMonitor;
 import com.android.tradefed.device.IDeviceSelection;
+import com.android.tradefed.device.IMultiDeviceRecovery;
 import com.android.tradefed.log.ITerribleFailureHandler;
 import com.android.tradefed.util.ArrayUtil;
 import com.android.tradefed.util.MultiMap;
@@ -48,6 +49,7 @@ public class GlobalConfiguration implements IGlobalConfiguration {
     public static final String HOST_OPTIONS_TYPE_NAME = "host_options";
     public static final String DEVICE_REQUIREMENTS_TYPE_NAME = "device_requirements";
     public static final String SCHEDULER_TYPE_NAME = "command_scheduler";
+    public static final String MULTI_DEVICE_RECOVERY_TYPE_NAME = "multi_device_recovery";
 
     private static Map<String, ObjTypeInfo> sObjTypeMap = null;
     private static IGlobalConfiguration sInstance = null;
@@ -191,6 +193,8 @@ public class GlobalConfiguration implements IGlobalConfiguration {
                     new ObjTypeInfo(ITerribleFailureHandler.class, false));
             sObjTypeMap.put(SCHEDULER_TYPE_NAME,
                     new ObjTypeInfo(ICommandScheduler.class, false));
+            sObjTypeMap.put(MULTI_DEVICE_RECOVERY_TYPE_NAME,
+                    new ObjTypeInfo(IMultiDeviceRecovery.class, false));
 
         }
         return sObjTypeMap;
@@ -268,6 +272,14 @@ public class GlobalConfiguration implements IGlobalConfiguration {
     @Override
     public ICommandScheduler getCommandScheduler() {
         return (ICommandScheduler)getConfigurationObject(SCHEDULER_TYPE_NAME);
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public IMultiDeviceRecovery getMultiDeviceRecovery() {
+        return (IMultiDeviceRecovery)getConfigurationObject(MULTI_DEVICE_RECOVERY_TYPE_NAME);
     }
 
     /**
