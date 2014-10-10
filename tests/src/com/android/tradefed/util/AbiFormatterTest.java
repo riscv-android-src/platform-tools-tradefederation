@@ -48,6 +48,7 @@ public class AbiFormatterTest extends TestCase {
         ITestDevice device = EasyMock.createMock(ITestDevice.class);
 
         EasyMock.expect(device.getProperty("ro.product.cpu.abilist32")).andReturn(null);
+        EasyMock.expect(device.getProperty("ro.product.cpu.abi")).andReturn(null);
         EasyMock.replay(device);
         assertEquals(null, AbiFormatter.getDefaultAbi(device, "32"));
 
