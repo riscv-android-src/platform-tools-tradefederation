@@ -78,7 +78,7 @@ public class AbiFormatter {
     public static String getDefaultAbi(ITestDevice device, String bitness)
             throws DeviceNotAvailableException {
         String []abis = getSupportedAbis(device, bitness);
-        if (abis.length > 0 && abis[0].length() > 0) {
+        if (abis != null && abis.length > 0 && abis[0] != null && abis[0].length() > 0) {
             return abis[0];
         }
         return null;
