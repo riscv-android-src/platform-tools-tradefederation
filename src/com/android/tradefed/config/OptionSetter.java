@@ -18,6 +18,7 @@ package com.android.tradefed.config;
 
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.util.ArrayUtil;
+import com.android.tradefed.util.TimeVal;
 import com.google.common.base.Objects;
 
 import java.io.File;
@@ -82,6 +83,7 @@ public class OptionSetter {
 
         handlers.put(String.class, new StringHandler());
         handlers.put(File.class, new FileHandler());
+        handlers.put(TimeVal.class, new TimeValHandler());
     }
 
     private static Handler getHandler(Type type) throws ConfigurationException {
@@ -140,6 +142,50 @@ public class OptionSetter {
         throw new ConfigurationException(String.format("cannot handle unknown field type %s",
                 type));
     }
+
+    /**
+     * Does some magic to distinguish TimeVal long field from normal long fields, then calls
+     * {@see #getHandler(Type)} in the appropriate manner.
+     */
+    private Handler getHandlerOrTimeVal(Field field, Object optionSource)
+            throws ConfigurationException {
+        // Do some magic to distinguish TimeVal long fields from normal long fields
+        final Option option = field.getAnnotation(Option.class);
+        if (option == null) {
+            // Shouldn't happen, but better to check.
+            throw new ConfigurationException(String.format(
+                    "internal error: @Option annotation for field %s in class %s was " +
+                    "unexpectedly null",
+                    field.getName(), optionSource.getClass().getName()));
+        }
+
+        final Type type = field.getGenericType();
+        if (option.isTimeVal()) {
+            // We've got a field that marks itself as a time value.  First off, verify that it's
+            // a compatible type
+            if (type instanceof Class) {
+                final Class<?> cType = (Class<?>) type;
+                if (long.class.equals(cType) || Long.class.equals(cType)) {
+                    // Parse time value and return a Long
+                    return new TimeValLongHandler();
+
+                } else if (TimeVal.class.equals(cType)) {
+                    // Parse time value and return a TimeVal object
+                    return new TimeValHandler();
+                }
+            }
+
+            throw new ConfigurationException(String.format("Only fields of type long, " +
+                    "Long, or TimeVal may be declared as isTimeVal.  Field %s has " +
+                    "incompatible type %s.", field.getName(), field.getGenericType()));
+
+        } else {
+            // Note that fields declared as TimeVal (or Generic types with TimeVal parameters) will
+            // follow this branch, but will still work as expected.
+            return getHandler(type);
+        }
+    }
+
 
     private final Collection<Object> mOptionSources;
     private final Map<String, OptionFieldsForName> mOptionMap;
@@ -243,13 +289,13 @@ public class OptionSetter {
      * @throws ConfigurationException if Option cannot be found or valueText is wrong type
      */
     public void setOptionValue(String optionName, String valueText) throws ConfigurationException {
-        OptionFieldsForName optionFields = fieldsForArg(optionName);
+        final OptionFieldsForName optionFields = fieldsForArg(optionName);
         for (Map.Entry<Object, Field> fieldEntry : optionFields) {
 
-            Object optionSource = fieldEntry.getKey();
-            Field field = fieldEntry.getValue();
-            Handler handler = getHandler(field.getGenericType());
-            Object value = handler.translate(valueText);
+            final Object optionSource = fieldEntry.getKey();
+            final Field field = fieldEntry.getValue();
+            final Handler handler = getHandlerOrTimeVal(field, optionSource);
+            final Object value = handler.translate(valueText);
             if (value == null) {
                 final String type = field.getType().getSimpleName();
                 throw new ConfigurationException(
@@ -801,6 +847,36 @@ public class OptionSetter {
         Object translate(String valueText) {
             try {
                 return Long.parseLong(valueText);
+            } catch (NumberFormatException ex) {
+                return null;
+            }
+        }
+    }
+
+    private static class TimeValLongHandler extends Handler {
+        /**
+         * We parse the string as a time value, and return a {@code long}
+         */
+        @Override
+        Object translate(String valueText) {
+            try {
+                return TimeVal.fromString(valueText);
+
+            } catch (NumberFormatException ex) {
+                return null;
+            }
+        }
+    }
+
+    private static class TimeValHandler extends Handler {
+        /**
+         * We parse the string as a time value, and return a {@code TimeVal}
+         */
+        @Override
+        Object translate(String valueText) {
+            try {
+                return new TimeVal(valueText);
+
             } catch (NumberFormatException ex) {
                 return null;
             }
