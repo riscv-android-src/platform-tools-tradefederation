@@ -16,7 +16,6 @@
 
 package com.android.continuous;
 
-import com.android.ddmlib.testrunner.ITestRunListener.TestFailure;
 import com.android.ddmlib.testrunner.TestIdentifier;
 import com.android.tradefed.build.BuildInfo;
 import com.android.tradefed.build.IBuildInfo;
@@ -68,7 +67,7 @@ public class SmokeTestFailureReporterTest extends TestCase {
         mReporter.invocationStarted(build);
         mReporter.testRunStarted("testrun", 1);
         mReporter.testStarted(testId);
-        mReporter.testFailed(TestFailure.FAILURE, testId, trace);
+        mReporter.testFailed(testId, trace);
         mReporter.testEnded(testId, emptyMap);
         mReporter.testRunEnded(2, emptyMap);
         mReporter.invocationEnded(1);
@@ -113,7 +112,7 @@ public class SmokeTestFailureReporterTest extends TestCase {
         mReporter.testEnded(testPass1, emptyMap);
 
         mReporter.testStarted(testFail);
-        mReporter.testFailed(TestFailure.FAILURE, testFail, trace);
+        mReporter.testFailed(testFail, trace);
         mReporter.testEnded(testFail, emptyMap);
 
         mReporter.testStarted(testPass2);
