@@ -94,7 +94,7 @@ public class AbiFormatter {
     public static String[] getSupportedAbis(ITestDevice device, String bitness)
             throws DeviceNotAvailableException {
         String abiList = device.getProperty(PRODUCT_CPU_ABILIST_KEY + bitness);
-        if (abiList != null) {
+        if (abiList != null && !abiList.isEmpty()) {
             String []abis = abiList.split(",");
             if (abis.length > 0) {
                 return abis;
