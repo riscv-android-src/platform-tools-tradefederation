@@ -214,6 +214,10 @@ public class DeviceManagerTest extends TestCase {
             }
 
             @Override
+            void startDeviceRecoverer() {
+            }
+
+            @Override
             IDeviceStateMonitor createStateMonitor(IDevice device) {
                 return mMockStateMonitor;
             }

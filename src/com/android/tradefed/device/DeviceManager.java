@@ -209,7 +209,7 @@ public class DeviceManager implements IDeviceManager {
 
         IMultiDeviceRecovery multiDeviceRecovery = getGlobalConfig().getMultiDeviceRecovery();
         mDeviceRecoverer = new DeviceRecoverer(multiDeviceRecovery);
-        mDeviceRecoverer.start();
+        startDeviceRecoverer();
     }
 
     /**
@@ -253,6 +253,15 @@ public class DeviceManager implements IDeviceManager {
      */
     void startFastbootMonitor() {
         mFastbootMonitor.start();
+    }
+
+    /**
+     * Start device recovery.
+     * <p/>
+     * Exposed for unit testing.
+     */
+    void startDeviceRecoverer() {
+        mDeviceRecoverer.start();
     }
 
     /**
