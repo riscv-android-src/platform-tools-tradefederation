@@ -17,6 +17,9 @@ package com.android.tradefed.device;
 
 import com.android.tradefed.config.Option;
 
+import java.util.ArrayList;
+import java.util.List;
+
 /**
  * Container for {@link ITestDevice} {@link Option}s
  */
@@ -81,6 +84,10 @@ public class TestDeviceOptions {
     @Option(name = "wifi-attempts",
             description = "default number of attempts to connect to wifi network.")
     private int mWifiAttempts = 5;
+
+    @Option(name = "post-boot-command",
+            description = "shell command to run after reboots during invocation")
+    private List<String> mPostBootCommands = new ArrayList<String>();
 
     /**
      * Check whether adb root should be enabled on boot for this device
@@ -269,4 +276,10 @@ public class TestDeviceOptions {
         mWifiAttempts = wifiAttempts;
     }
 
+    /**
+     * @return a list of shell commands to run after reboots.
+     */
+    public List<String> getPostBootCommands() {
+        return mPostBootCommands;
+    }
 }

@@ -1972,6 +1972,9 @@ class TestDevice implements IManagedTestDevice {
         if (mOptions.isDisableKeyguard()) {
             disableKeyguard();
         }
+        for (String command : mOptions.getPostBootCommands()) {
+            executeShellCommand(command);
+        }
     }
 
     /**
