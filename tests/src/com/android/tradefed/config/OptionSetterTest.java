@@ -17,6 +17,7 @@
 package com.android.tradefed.config;
 
 import com.android.tradefed.util.FileUtil;
+import com.android.tradefed.util.TimeVal;
 
 import junit.framework.TestCase;
 
@@ -142,6 +143,15 @@ public class OptionSetterTest extends TestCase {
 
         @Option(name = "longObj")
         private Long mLongObj = null;
+
+        @Option(name = "timeValLong", isTimeVal = true)
+        private long mTimeValLong = 0;
+
+        @Option(name = "timeValLongObj", isTimeVal = true)
+        private Long mTimeValLongObj = null;
+
+        @Option(name = "timeVal")
+        private TimeVal mTimeVal = null;
 
         @Option(name = "float")
         private float mFloat = 0;
@@ -639,6 +649,41 @@ public class OptionSetterTest extends TestCase {
     public void testSetOptionValue_longInvalid() throws ConfigurationException {
         AllTypesOptionSource optionSource = new AllTypesOptionSource();
         assertSetOptionValueInvalid(optionSource, "long", "blah");
+    }
+
+    /**
+     * Test {@link OptionSetter#setOptionValue(String, String)} for a long that represents a time
+     * value.
+     */
+    public void testSetOptionValue_timeValLong() throws ConfigurationException {
+        AllTypesOptionSource optionSource = new AllTypesOptionSource();
+        assertSetOptionValue(optionSource, "timeValLong", "2H 45s");
+        assertTrue(1000 * (45 + 60 * 60 * 2) == optionSource.mTimeValLong);
+        assertSetOptionValue(optionSource, "timeValLong", "12345");
+        assertTrue(12345 == optionSource.mTimeValLong);
+    }
+
+    /**
+     * Test {@link OptionSetter#setOptionValue(String, String)} for a Long that represents a time
+     * value.
+     */
+    public void testSetOptionValue_timeValLongObj() throws ConfigurationException {
+        AllTypesOptionSource optionSource = new AllTypesOptionSource();
+        assertSetOptionValue(optionSource, "timeValLongObj", "2H 45s");
+        assertTrue(1000 * (45 + 60 * 60 * 2) == optionSource.mTimeValLongObj);
+        assertSetOptionValue(optionSource, "timeValLongObj", "12345");
+        assertTrue(12345 == optionSource.mTimeValLongObj);
+    }
+
+    /**
+     * Test {@link OptionSetter#setOptionValue(String, String)} for a TimeVal.
+     */
+    public void testSetOptionValue_timeVal() throws ConfigurationException {
+        AllTypesOptionSource optionSource = new AllTypesOptionSource();
+        assertSetOptionValue(optionSource, "timeVal", "2H 45s");
+        assertTrue(1000 * (45 + 60 * 60 * 2) == optionSource.mTimeVal.asLong());
+        assertSetOptionValue(optionSource, "timeVal", "12345");
+        assertTrue(12345 == optionSource.mTimeVal.asLong());
     }
 
     /**
