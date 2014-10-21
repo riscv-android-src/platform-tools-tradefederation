@@ -154,11 +154,11 @@ public interface IGlobalConfiguration {
     public ICommandScheduler getCommandScheduler();
 
     /**
-     * Gets the {@link IMultiDeviceRecovery} to use from the configuration.
+     * Gets the list of {@link IMultiDeviceRecovery} to use from the configuration.
      *
-     * @return the {@link IMultiDeviceRecovery}, or null if not set.
+     * @return the list of {@link IMultiDeviceRecovery}, or <code>null</code> if not set.
      */
-    public IMultiDeviceRecovery getMultiDeviceRecovery();
+    public List<IMultiDeviceRecovery> getMultiDeviceRecoveryHandlers();
 
     /**
      * Set the {@link IDeviceManager}, replacing any existing values. This sets the manager

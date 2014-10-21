@@ -278,8 +278,9 @@ public class GlobalConfiguration implements IGlobalConfiguration {
      * {@inheritDoc}
      */
     @Override
-    public IMultiDeviceRecovery getMultiDeviceRecovery() {
-        return (IMultiDeviceRecovery)getConfigurationObject(MULTI_DEVICE_RECOVERY_TYPE_NAME);
+    public List<IMultiDeviceRecovery> getMultiDeviceRecoveryHandlers() {
+        return (List<IMultiDeviceRecovery>)getConfigurationObjectList(
+                MULTI_DEVICE_RECOVERY_TYPE_NAME);
     }
 
     /**
