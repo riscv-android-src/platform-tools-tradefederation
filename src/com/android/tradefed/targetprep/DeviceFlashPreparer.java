@@ -59,6 +59,14 @@ public abstract class DeviceFlashPreparer implements ITargetCleaner {
         "specify if system should always be flashed even if already running desired build.")
     private boolean mForceSystemFlash = false;
 
+    /*
+     * A temporary workaround for special builds. Should be removed after changes from build team.
+     * Bug: 18078421
+     */
+    @Option(name = "skip-post-flash-flavor-check", description =
+            "specify if system flavor should not be checked after flash")
+    private boolean mSkipPostFlashFlavorCheck = false;
+
     @Option(name = "wipe-skip-list", description =
         "list of /data subdirectories to NOT wipe when doing UserDataFlashOption.TESTS_ZIP")
     private Collection<String> mDataWipeSkipList = new ArrayList<String>();
@@ -237,7 +245,9 @@ public abstract class DeviceFlashPreparer implements ITargetCleaner {
     private void checkBuild(ITestDevice device, IDeviceBuildInfo deviceBuild)
             throws DeviceNotAvailableException {
         checkBuildAttribute(deviceBuild.getBuildId(), device.getBuildId());
-        checkBuildAttribute(deviceBuild.getBuildFlavor(), device.getBuildFlavor());
+        if (!mSkipPostFlashFlavorCheck) {
+            checkBuildAttribute(deviceBuild.getBuildFlavor(), device.getBuildFlavor());
+        }
         // TODO: check bootloader and baseband versions too
     }
 
