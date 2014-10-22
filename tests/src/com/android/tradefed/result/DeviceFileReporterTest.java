@@ -121,6 +121,7 @@ public class DeviceFileReporterTest extends TestCase {
             }
         };
         dfr.addPatterns(patMap);
+        dfr.setInferUnknownDataTypes(false);
 
         // Set file listing pulling, and reporting expectations
         // Expect that we go through the entire process for the PNG file, and then go through
@@ -174,6 +175,7 @@ public class DeviceFileReporterTest extends TestCase {
             }
         };
         dfr.addPatterns(patMap);
+        dfr.setInferUnknownDataTypes(false);
         // this should cause us to see three pulls instead of two
         dfr.setSkipRepeatFiles(false);
 
@@ -259,6 +261,40 @@ public class DeviceFileReporterTest extends TestCase {
         dfr.run();
         verifyMocks();
     }
+
+    /**
+     * Make sure that data type inference works as expected
+     */
+    public void testInferDataTypes() throws Exception {
+        final String result = "/data/files/file.png\r\n/data/files/file.xml\r\n" +
+                "/data/files/file.zip\r\n";
+        final String[] filenames = {"/data/files/file.png", "/data/files/file.xml",
+                "/data/files/file.zip"};
+        final LogDataType[] expTypes = {LogDataType.PNG, LogDataType.XML, LogDataType.ZIP};
+        dfr.addPatterns("/data/files/*");
+
+        final String contents = "these are file contents";
+        mDfrIss = new ByteArrayInputStreamSource(contents.getBytes());
+
+        EasyMock.expect(mDevice.executeShellCommand((String)EasyMock.anyObject()))
+                .andReturn(result);
+        // This gets passed verbatim to createIssForFile above
+        for (int i = 0; i < filenames.length; ++i) {
+            final String filename = filenames[i];
+            final LogDataType expType = expTypes[i];
+            EasyMock.expect(mDevice.pullFile(EasyMock.eq(filename)))
+                    .andReturn(new FakeFile(filename, contents.length()));
+
+            // FIXME: use captures here to make sure we get the string back out
+            mListener.testLog(EasyMock.eq(filename), EasyMock.eq(expType),
+                    EasyMock.eq(mDfrIss));
+        }
+
+        replayMocks();
+        dfr.run();
+        verifyMocks();
+    }
+
 
     private void replayMocks() {
         EasyMock.replay(mDevice, mListener);
