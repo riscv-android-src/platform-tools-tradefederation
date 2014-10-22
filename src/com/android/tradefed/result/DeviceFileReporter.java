@@ -26,6 +26,7 @@ import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.LinkedList;
@@ -47,8 +48,25 @@ public class DeviceFileReporter {
     /** The files which have already been reported */
     private Set<String> mReportedFiles = new HashSet<String>();
 
+    /** Whether to attempt to infer data types for patterns with {@code UNKNOWN} data type */
+    private boolean mInferDataTypes = true;
+
     private LogDataType mDefaultFileType = LogDataType.UNKNOWN;
 
+    private static final Map<String, LogDataType> DATA_TYPE_REVERSE_MAP = new HashMap<>();
+
+    static {
+        // Make it easy to map backward from file extension to LogDataType
+        for (LogDataType type : LogDataType.values()) {
+            // Extracted extension will contain a leading dot
+            final String ext = "." + type.getFileExt();
+            if (DATA_TYPE_REVERSE_MAP.containsKey(ext)) {
+                continue;
+            }
+
+            DATA_TYPE_REVERSE_MAP.put(ext, type);
+        }
+    }
     /**
      * Initialize a new DeviceFileReporter with the provided {@link ITestDevice}
      */
@@ -119,6 +137,19 @@ public class DeviceFileReporter {
     }
 
     /**
+     * Whether to <emph>attempt to</emph> infer the data types of {@code UNKNOWN} files by checking
+     * the file extensions against a list.
+     * <p />
+     * Note that, when enabled, these inferences will only be made for patterns with file type
+     * {@code UNKNOWN} (which includes patterns added without a specific type, and without the)
+     * default type having been set manually).  If the inference fails, the data type will remain
+     * as {@code UNKNOWN}.
+     */
+    public void setInferUnknownDataTypes(boolean infer) {
+        mInferDataTypes = infer;
+    }
+
+    /**
      * Actually search the filesystem for the specified patterns and send them to
      * {@link ITestInvocationListener#testLog} if found
      */
@@ -127,6 +158,7 @@ public class DeviceFileReporter {
         for (Map.Entry<String, LogDataType> pat : mFilePatterns.entrySet()) {
             final String searchCmd = String.format("ls '%s'", pat.getKey());
             final String fileList = mDevice.executeShellCommand(searchCmd);
+
             for (String filename : fileList.split("\r\n")) {
                 if (filename.isEmpty() || filename.endsWith(": No such file or directory")) {
                     continue;
@@ -144,7 +176,8 @@ public class DeviceFileReporter {
                     file = mDevice.pullFile(filename);
                     CLog.v("Local file %s has size %d", file, file.length());
                     iss = createIssForFile(file);
-                    mListener.testLog(filename, pat.getValue(), iss);
+                    final LogDataType type = getDataType(filename, pat.getValue());
+                    mListener.testLog(filename, type, iss);
                     filenames.add(filename);
                     mReportedFiles.add(filename);
                 } catch (IOException e) {
@@ -159,6 +192,32 @@ public class DeviceFileReporter {
             }
         }
         return filenames;
+    }
+
+    /**
+     * Returns the data type to use for a given file.  Will attempt to infer the data type from the
+     * file's extension IFF inferences are enabled, and the current data type is {@code UNKNOWN}.
+     */
+    LogDataType getDataType(String filename, LogDataType defaultType) {
+        if (!mInferDataTypes) return defaultType;
+        if (!LogDataType.UNKNOWN.equals(defaultType)) return defaultType;
+
+        CLog.d("Running type inference for file %s with default type %s", filename, defaultType);
+        String ext = FileUtil.getExtension(filename);
+        CLog.v("Found raw extension \"%s\"", ext);
+
+        // Normalize the extension
+        if (ext == null) return defaultType;
+        ext = ext.toLowerCase();
+
+        if (DATA_TYPE_REVERSE_MAP.containsKey(ext)) {
+            final LogDataType newType = DATA_TYPE_REVERSE_MAP.get(ext);
+            CLog.d("Inferred data type %s", newType);
+            return newType;
+        } else {
+            CLog.v("Failed to find a reverse map for extension \"%s\"", ext);
+            return defaultType;
+        }
     }
 
     /**
