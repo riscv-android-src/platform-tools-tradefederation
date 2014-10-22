@@ -53,6 +53,7 @@ import com.android.tradefed.log.LogRegistryTest;
 import com.android.tradefed.log.TerribleFailureEmailHandlerTest;
 import com.android.tradefed.result.BugreportCollectorTest;
 import com.android.tradefed.result.CollectingTestListenerTest;
+import com.android.tradefed.result.DeviceFileReporterTest;
 import com.android.tradefed.result.EmailResultReporterTest;
 import com.android.tradefed.result.FailureEmailResultReporterTest;
 import com.android.tradefed.result.FileSystemLogSaverTest;
@@ -171,6 +172,7 @@ public class UnitTests extends DeviceTestSuite {
         // result
         addTestSuite(BugreportCollectorTest.class);
         addTestSuite(CollectingTestListenerTest.class);
+        addTestSuite(DeviceFileReporterTest.class);
         addTestSuite(EmailResultReporterTest.class);
         addTestSuite(FailureEmailResultReporterTest.class);
         addTestSuite(FileSystemLogSaverTest.class);
