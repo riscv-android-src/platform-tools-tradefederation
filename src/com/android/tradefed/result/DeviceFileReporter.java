@@ -26,10 +26,12 @@ import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.Arrays;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 /**
  * A utility class that checks the device for files and sends them to
@@ -39,6 +41,11 @@ public class DeviceFileReporter {
     private final Map<String, LogDataType> mFilePatterns = new LinkedHashMap<String, LogDataType>();
     private final ITestInvocationListener mListener;
     private final ITestDevice mDevice;
+
+    /** Whether to ignore files that have already been captured by a prior Pattern */
+    private boolean mSkipRepeatFiles = true;
+    /** The files which have already been reported */
+    private Set<String> mReportedFiles = new HashSet<String>();
 
     private LogDataType mDefaultFileType = LogDataType.UNKNOWN;
 
@@ -101,6 +108,17 @@ public class DeviceFileReporter {
     }
 
     /**
+     * Whether or not to skip files which have already been reported.  This is only relevant when
+     * multiple patterns are being used, and two or more of those patterns match the same file.
+     * <p />
+     * Note that this <emph>must only</emph> be called prior to calling {@see #run()}.  Doing
+     * otherwise will cause undefined behavior.
+     */
+    public void setSkipRepeatFiles(boolean skip) {
+        mSkipRepeatFiles = skip;
+    }
+
+    /**
      * Actually search the filesystem for the specified patterns and send them to
      * {@link ITestInvocationListener#testLog} if found
      */
@@ -113,6 +131,11 @@ public class DeviceFileReporter {
                 if (filename.isEmpty() || filename.endsWith(": No such file or directory")) {
                     continue;
                 }
+                if (mSkipRepeatFiles && mReportedFiles.contains(filename)) {
+                    CLog.v("Skipping already-reported file %s", filename);
+                    continue;
+                }
+
                 File file = null;
                 InputStreamSource iss = null;
                 try {
@@ -123,6 +146,7 @@ public class DeviceFileReporter {
                     iss = createIssForFile(file);
                     mListener.testLog(filename, pat.getValue(), iss);
                     filenames.add(filename);
+                    mReportedFiles.add(filename);
                 } catch (IOException e) {
                     CLog.w("Failed to log file %s: %s", filename, e.getMessage());
                 } finally {
@@ -147,4 +171,3 @@ public class DeviceFileReporter {
         return new SnapshotInputStreamSource(bufStr);
     }
 }
-
