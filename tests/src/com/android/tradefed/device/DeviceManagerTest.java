@@ -36,7 +36,6 @@ import org.easymock.IAnswer;
 
 import java.io.InputStream;
 import java.io.OutputStream;
-import java.util.Collection;
 import java.util.List;
 
 /**
@@ -554,27 +553,6 @@ public class DeviceManagerTest extends TestCase {
     }
 
     // TODO: add test for fastboot state changes
-
-    /**
-     * Verify the 'fastboot devices' output parsing
-     */
-    public void testParseDevicesOnFastboot() {
-        Collection<String> deviceSerials = DeviceManager.parseDevicesOnFastboot(
-                "04035EEB0B01F01C        fastboot\n" +
-                "HT99PP800024    fastboot\n" +
-                "????????????    fastboot");
-        assertEquals(2, deviceSerials.size());
-        assertTrue(deviceSerials.contains("04035EEB0B01F01C"));
-        assertTrue(deviceSerials.contains("HT99PP800024"));
-    }
-
-    /**
-     * Verify the 'fastboot devices' output parsing when empty
-     */
-    public void testParseDevicesOnFastboot_empty() {
-        Collection<String> deviceSerials = DeviceManager.parseDevicesOnFastboot("");
-        assertEquals(0, deviceSerials.size());
-    }
 
     /**
      * Test normal success case for {@link DeviceManager#connectToTcpDevice(String)}
