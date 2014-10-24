@@ -165,6 +165,14 @@ public class TelephonyStabilityTest implements IRemoteTest, IDeviceTest {
                     bugreport.cancel();
                 }
             }
+
+            InputStreamSource screenshot = mTestDevice.getScreenshot();
+            try {
+                listener.testLog(String.format("screenshot_%04d", lastBugreportIteration),
+                        LogDataType.PNG, screenshot);
+            } finally {
+                StreamUtil.cancel(screenshot);
+            }
         }
         reportMetrics(listener, metrics);
     }
