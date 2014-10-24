@@ -126,11 +126,15 @@ public class TelephonyTest implements IRemoteTest, IDeviceTest {
         if (successfulIterations < mIterations) {
             mTestDevice.waitForDeviceOnline(30 * 1000);
             InputStreamSource bugreport = mTestDevice.getBugreport();
+            InputStreamSource screenshot = mTestDevice.getScreenshot();
             try {
                 listener.testLog(String.format("bugreport_%s", successfulIterations),
                         LogDataType.BUGREPORT, bugreport);
+                listener.testLog(String.format("screenshot_%s", successfulIterations),
+                        LogDataType.PNG, screenshot);
             } finally {
-                bugreport.cancel();
+                StreamUtil.cancel(bugreport);
+                StreamUtil.cancel(screenshot);
             }
         }
 
