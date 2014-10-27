@@ -85,6 +85,11 @@ public class TestDeviceOptions {
             description = "default number of attempts to connect to wifi network.")
     private int mWifiAttempts = 5;
 
+    @Option(name = "wifi-retry-wait-time",
+            description = "the base wait time in ms between wifi connect retries. "
+            + "The actual wait time would be a multiple of this value.")
+    private int mWifiRetryWaitTime = 60 * 1000;
+
     @Option(name = "post-boot-command",
             description = "shell command to run after reboots during invocation")
     private List<String> mPostBootCommands = new ArrayList<String>();
@@ -275,6 +280,14 @@ public class TestDeviceOptions {
     public void setWifiAttempts(int wifiAttempts) {
         mWifiAttempts = wifiAttempts;
     }
+
+    /**
+     * @return the base wait time between wifi connect retries.
+     */
+    public int getWifiRetryWaitTime() {
+        return mWifiRetryWaitTime;
+    }
+
 
     /**
      * @return a list of shell commands to run after reboots.
