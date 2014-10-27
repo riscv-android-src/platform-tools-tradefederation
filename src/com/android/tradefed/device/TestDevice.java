@@ -58,6 +58,7 @@ import java.util.Date;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Random;
 import java.util.Set;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
@@ -1721,6 +1722,10 @@ class TestDevice implements IManagedTestDevice {
         mLastConnectedWifiSsid = null;
         mLastConnectedWifiPsk = null;
 
+        // Connects to wifi network. It retries up to {@link TestDeviceOptions@getWifiAttempts()}
+        // times and uses binary exponential back-offs when retrying.
+        Random rnd = new Random();
+        int backoffSlotCount = 2;
         IWifiHelper wifi = createWifiHelper();
         for (int i = 1; i <= mOptions.getWifiAttempts(); i++) {
             CLog.i("Connecting to wifi network %s on %s", wifiSsid, getSerialNumber());
@@ -1739,6 +1744,13 @@ class TestDevice implements IManagedTestDevice {
                 CLog.w("Failed to connect to wifi network %s(%s) on %s on attempt %d of %d",
                         wifiSsid, wifiInfo.get("bssid"), getSerialNumber(), i,
                         mOptions.getWifiAttempts());
+            }
+
+            if (i < mOptions.getWifiAttempts()) {
+                int waitTime = rnd.nextInt(backoffSlotCount) * mOptions.getWifiRetryWaitTime();
+                backoffSlotCount *= 2;
+                CLog.i("Waiting for %d ms before reconnecting to %s...", waitTime, wifiSsid);
+                getRunUtil().sleep(waitTime);
             }
         }
         return false;
