@@ -38,7 +38,8 @@ import java.util.concurrent.TimeUnit;
  */
 public class InstrumentationTestTest extends TestCase {
 
-    private static final int TEST_TIMEOUT = 0;
+    private static final long TEST_TIMEOUT = 0;
+    private static final long SHELL_TIMEOUT = 0;
     private static final String TEST_PACKAGE_VALUE = "com.foo";
     private static final String TEST_RUNNER_VALUE = ".FooRunner";
     private static final TestIdentifier TEST1 = new TestIdentifier("Test", "test1");
@@ -107,15 +108,18 @@ public class InstrumentationTestTest extends TestCase {
                 return mMockRemoteRunner;
             }
         };
-       mInstrumentationTest.setPackageName(TEST_PACKAGE_VALUE);
-       mInstrumentationTest.setRunnerName(TEST_RUNNER_VALUE);
-       mInstrumentationTest.setDevice(mMockTestDevice);
-       // default to no rerun, for simplicity
-       mInstrumentationTest.setRerunMode(false);
-       // default to no timeout for simplicity
-       mInstrumentationTest.setTestTimeout(TEST_TIMEOUT);
-       mMockRemoteRunner.setMaxTimeToOutputResponse(0, TimeUnit.MILLISECONDS);
-       mInstrumentationTest.setCollectsTestsShellTimeout(COLLECT_TESTS_SHELL_TIMEOUT);
+        mInstrumentationTest.setPackageName(TEST_PACKAGE_VALUE);
+        mInstrumentationTest.setRunnerName(TEST_RUNNER_VALUE);
+        mInstrumentationTest.setDevice(mMockTestDevice);
+        // default to no rerun, for simplicity
+        mInstrumentationTest.setRerunMode(false);
+        // default to no timeout for simplicity
+        mInstrumentationTest.setTestTimeout(TEST_TIMEOUT);
+        mInstrumentationTest.setShellTimeout(SHELL_TIMEOUT);
+        mMockRemoteRunner.setMaxTimeToOutputResponse(SHELL_TIMEOUT, TimeUnit.MILLISECONDS);
+        mMockRemoteRunner.addInstrumentationArg(InstrumentationTest.TEST_TIMEOUT_INST_ARGS_KEY,
+                Long.toString(SHELL_TIMEOUT));
+        mInstrumentationTest.setCollectsTestsShellTimeout(COLLECT_TESTS_SHELL_TIMEOUT);
     }
 
     /**
@@ -291,7 +295,9 @@ public class InstrumentationTestTest extends TestCase {
             }
         };
         setRerunExpectations(firstRunResponse);
-        mMockRemoteRunner.setMaxTimeToOutputResponse(0, TimeUnit.MILLISECONDS);
+        mMockRemoteRunner.setMaxTimeToOutputResponse(SHELL_TIMEOUT, TimeUnit.MILLISECONDS);
+        mMockRemoteRunner.addInstrumentationArg(InstrumentationTest.TEST_TIMEOUT_INST_ARGS_KEY,
+                Long.toString(SHELL_TIMEOUT));
         EasyMock.replay(mMockRemoteRunner, mMockTestDevice, mMockListener);
         try {
             mInstrumentationTest.run(mMockListener);
@@ -303,6 +309,36 @@ public class InstrumentationTestTest extends TestCase {
         EasyMock.verify(mMockRemoteRunner, mMockTestDevice, mMockListener);
     }
 
+    /**
+     * Test that IllegalArgumentException is thrown when attempting run with negative timeout args.
+     */
+    public void testRun_negativeTimeouts() throws Exception {
+        mInstrumentationTest.setShellTimeout(-1);
+        mInstrumentationTest.setTestTimeout(-2);
+        EasyMock.replay(mMockRemoteRunner);
+        try {
+            mInstrumentationTest.run(mMockListener);
+            fail("IllegalArgumentException not thrown");
+        } catch (IllegalArgumentException e) {
+            // expected
+        }
+    }
+
+    /**
+     * Test that IllegalArgumentException is thrown when attempting run with test-timeout longer
+     * then shell-timeout.
+     */
+    public void testRun_testTimeoutLongerThenShellTimeout() throws Exception {
+        mInstrumentationTest.setShellTimeout(5);
+        mInstrumentationTest.setTestTimeout(10);
+        EasyMock.replay(mMockRemoteRunner);
+        try {
+            mInstrumentationTest.run(mMockListener);
+            fail("IllegalArgumentException not thrown");
+        } catch (IllegalArgumentException e) {
+            // expected
+        }
+    }
 
 
     /**

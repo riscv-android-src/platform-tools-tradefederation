@@ -60,10 +60,23 @@ public class InstrumentationPreparer implements ITargetPreparer {
             description="The test method name to run.")
     private String mMethodName = null;
 
+    @Deprecated
     @Option(name = "timeout",
-            description="Aborts the test run if any test takes longer than the specified number of "
-            + "milliseconds. For no timeout, set to 0.")
-    private int mTimeout = 10 * 60 * 1000;  // default to 10 minutes
+            description="Deprecated - Use \"shell-timeout\" or \"test-timeout\" instead.")
+    private Integer mTimeout = null;
+
+    @Option(name = "shell-timeout",
+            description="The defined timeout (in milliseconds) is used as a maximum waiting time "
+                    + "when expecting the command output from the device. At any time, if the "
+                    + "shell command does not output anything for a period longer than defined "
+                    + "timeout the TF run terminates. For no timeout, set to 0.")
+    private long mShellTimeout = 10 * 60 * 1000;  // default to 10 minutes
+
+    @Option(name = "test-timeout",
+            description="Sets timeout (in milliseconds) that will be applied to each test. In the "
+                    + "event of a test timeout it will log the results and proceed with executing "
+                    + "the next test. For no timeout, set to 0.")
+    private long mTestTimeout = 10 * 60 * 1000;  // default to 10 minutes
 
     @Option(name = "instrumentation-arg",
             description = "Instrumentation arguments to provide.")
@@ -109,7 +122,13 @@ public class InstrumentationPreparer implements ITargetPreparer {
         test.setRunnerName(mRunnerName);
         test.setClassName(mClassName);
         test.setMethodName(mMethodName);
-        test.setTestTimeout(mTimeout);
+        if (mTimeout != null) {
+            CLog.w("\"timeout\" argument is deprecated and should not be used! \"shell-timeout\""
+                    + " argument value is overwritten with %d ms", mTimeout);
+            setShellTimeout(mTimeout);
+        }
+        test.setShellTimeout(mShellTimeout);
+        test.setTestTimeout(mTestTimeout);
         for (Map.Entry<String, String> entry : mInstrArgMap.entrySet()) {
             test.addInstrumentationArg(entry.getKey(), entry.getValue());
         }
@@ -164,8 +183,20 @@ public class InstrumentationPreparer implements ITargetPreparer {
         mMethodName = methodName;
     }
 
+    /**
+     * @Deprecated Use {@link #setShellTimeout(long)} or {@link #setTestTimeout(long)}
+     */
+    @Deprecated
     void setTimeout(int timeout) {
-        mTimeout = timeout;
+        setShellTimeout(timeout);
+    }
+
+    void setShellTimeout(long timeout) {
+        mShellTimeout = timeout;
+    }
+
+    void setTestTimeout(long timeout) {
+        mTestTimeout = timeout;
     }
 
     void setAttempts(int attempts) {

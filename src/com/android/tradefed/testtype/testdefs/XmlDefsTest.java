@@ -21,6 +21,7 @@ import com.android.tradefed.config.Option.Importance;
 import com.android.tradefed.config.OptionClass;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
+import com.android.tradefed.log.LogUtil;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.testtype.IDeviceTest;
 import com.android.tradefed.testtype.IRemoteTest;
@@ -60,10 +61,23 @@ public class XmlDefsTest implements IDeviceTest, IResumableTest,
 
     private ITestDevice mDevice;
 
+    @Deprecated
     @Option(name = "timeout",
-            description = "Fail any test that takes longer than the specified number of "
-            + "milliseconds.")
-    private int mTestTimeout = 10 * 60 * 1000;  // default to 10 minutes
+            description="Deprecated - Use \"shell-timeout\" or \"test-timeout\" instead.")
+    private Integer mTimeout = null;
+
+    @Option(name = "shell-timeout",
+            description="The defined timeout (in milliseconds) is used as a maximum waiting time "
+                    + "when expecting the command output from the device. At any time, if the "
+                    + "shell command does not output anything for a period longer than defined "
+                    + "timeout the TF run terminates. For no timeout, set to 0.")
+    private long mShellTimeout = 10 * 60 * 1000;  // default to 10 minutes
+
+    @Option(name = "test-timeout",
+            description="Sets timeout (in milliseconds) that will be applied to each test. In the "
+                    + "event of a test timeout it will log the results and proceed with executing "
+                    + "the next test. For no timeout, set to 0.")
+    private long mTestTimeout = 10 * 60 * 1000;  // default to 10 minutes
 
     @Option(name = "size",
             description = "Restrict tests to a specific test size. " +
@@ -215,6 +229,13 @@ public class XmlDefsTest implements IDeviceTest, IResumableTest,
                     test.setRerunMode(mIsRerunMode);
                     test.setResumeMode(mIsResumeMode);
                     test.setTestSize(getTestSize());
+                    if (mTimeout != null) {
+                        LogUtil.CLog
+                                .w("\"timeout\" argument is deprecated and should not be used! \"shell-timeout\""
+                                        + " argument value is overwritten with %d ms", mTimeout);
+                        setShellTimeout(mTimeout);
+                    }
+                    test.setShellTimeout(getShellTimeout());
                     test.setTestTimeout(getTestTimeout());
                     test.setCoverageTarget(def.getCoverageTarget());
                     mTests.add(test);
@@ -306,7 +327,15 @@ public class XmlDefsTest implements IDeviceTest, IResumableTest,
         return files;
     }
 
-    int getTestTimeout() {
+    void setShellTimeout(long timeout) {
+        mShellTimeout = timeout;
+    }
+
+    long getShellTimeout() {
+        return mShellTimeout;
+    }
+
+    long getTestTimeout() {
         return mTestTimeout;
     }
 

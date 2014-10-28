@@ -62,6 +62,8 @@ public class InstrumentationTest implements IDeviceTest, IResumableTest {
     private static final String TEST_FILE_INST_ARGS_KEY = "testFile";
 
     static final String DELAY_MSEC_ARG = "delay_msec";
+    /** instrumentation test runner argument key used for individual test timeout */
+    static final String TEST_TIMEOUT_INST_ARGS_KEY = "timeout_msec";
 
     @Option(name = "package", shortName = 'p',
             description="The manifest package name of the Android test application to run.",
@@ -85,10 +87,23 @@ public class InstrumentationTest implements IDeviceTest, IResumableTest {
             "Will be ignored if --class is set.")
     private String mTestPackageName = null;
 
+    @Deprecated
     @Option(name = "timeout",
-            description="Aborts the test run if any test takes longer than the specified number of "
-            + "milliseconds. For no timeout, set to 0.")
-    private int mTestTimeout = 10 * 60 * 1000;  // default to 10 minutes
+            description="Deprecated - Use \"shell-timeout\" or \"test-timeout\" instead.")
+    private Integer mTimeout = null;
+
+    @Option(name = "shell-timeout",
+            description="The defined timeout (in milliseconds) is used as a maximum waiting time "
+                    + "when expecting the command output from the device. At any time, if the "
+                    + "shell command does not output anything for a period longer than defined "
+                    + "timeout the TF run terminates. For no timeout, set to 0.")
+    private long mShellTimeout = 10 * 60 * 1000;  // default to 10 minutes
+
+    @Option(name = "test-timeout",
+            description="Sets timeout (in milliseconds) that will be applied to each test. In the "
+                    + "event of a test timeout it will log the results and proceed with executing "
+                    + "the next test. For no timeout, set to 0.")
+    private long mTestTimeout = 10 * 60 * 1000;  // default to 10 minutes
 
     @Option(name = "size",
             description="Restrict test to a specific test size.")
@@ -310,9 +325,16 @@ public class InstrumentationTest implements IDeviceTest, IResumableTest {
     }
 
     /**
-     * Optionally, set the maximum time for each test.
+     * Optionally, set the maximum time (in milliseconds) expecting shell output from the device.
      */
-    public void setTestTimeout(int timeout) {
+    public void setShellTimeout(long timeout) {
+        mShellTimeout = timeout;
+    }
+
+    /**
+     * Optionally, set the maximum time (in milliseconds) for each individual test run.
+     */
+    public void setTestTimeout(long timeout) {
         mTestTimeout = timeout;
     }
 
@@ -368,9 +390,16 @@ public class InstrumentationTest implements IDeviceTest, IResumableTest {
     }
 
     /**
+     * Get the shell timeout in ms.
+     */
+    long getShellTimeout() {
+        return mShellTimeout;
+    }
+
+    /**
      * Get the test timeout in ms.
      */
-    int getTestTimeout() {
+    long getTestTimeout() {
         return mTestTimeout;
     }
 
@@ -507,7 +536,7 @@ public class InstrumentationTest implements IDeviceTest, IResumableTest {
         if (mTestSize != null) {
             mRunner.setTestSize(TestSize.getTestSize(mTestSize));
         }
-        mRunner.setMaxTimeToOutputResponse(mTestTimeout, TimeUnit.MILLISECONDS);
+        addTimeoutsToRunner(mRunner);
         if (mRunName != null) {
             mRunner.setRunName(mRunName);
         }
@@ -522,6 +551,24 @@ public class InstrumentationTest implements IDeviceTest, IResumableTest {
         } else {
             doTestRun(listener);
         }
+    }
+
+    /**
+     * Helper method to add test-timeout & shell-timeout timeouts to  given runner
+     */
+    private void addTimeoutsToRunner(IRemoteAndroidTestRunner runner) {
+        if (mTimeout != null) {
+            CLog.w("\"timeout\" argument is deprecated and should not be used! \"shell-timeout\""
+                    + " argument value is overwritten with %d ms", mTimeout);
+            setShellTimeout(mTimeout);
+        }
+        if (mTestTimeout < 0 || mTestTimeout > mShellTimeout) {
+            throw new IllegalArgumentException(
+                    String.format("test-timeout %d cannot be negative or smaller then shell-timeout"
+                            + " %d", mTestTimeout, mShellTimeout));
+        }
+        runner.setMaxTimeToOutputResponse(mShellTimeout, TimeUnit.MILLISECONDS);
+        addInstrumentationArg(TEST_TIMEOUT_INST_ARGS_KEY, Long.toString(mTestTimeout));
     }
 
     /**
