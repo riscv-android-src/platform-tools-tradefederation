@@ -250,6 +250,11 @@ public class PackageManagerOTATestUtils {
      * @throws DeviceNotAvailableException
      */
     public void remountSystemRW() throws DeviceNotAvailableException {
+        String systemVerifiedState = mDevice.getProperty("partition.system.verified");
+        if (systemVerifiedState != null && systemVerifiedState.equals("1")) {
+            mDevice.executeAdbCommand("disable-verity");
+            mDevice.reboot();
+        }
         mDevice.executeAdbCommand("remount");
     }
 
