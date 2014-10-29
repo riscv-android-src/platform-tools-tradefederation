@@ -49,8 +49,6 @@ import java.util.Comparator;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 /**
  * {@inheritDoc}
@@ -167,7 +165,8 @@ public class DeviceManager implements IDeviceManager {
         }
         mManagedDeviceList = new ManagedDeviceList(deviceFactory);
 
-        if (isFastbootAvailable()) {
+        final FastbootHelper fastboot = new FastbootHelper(getRunUtil());
+        if (fastboot.isFastbootAvailable()) {
             mFastbootListeners = Collections.synchronizedSet(new HashSet<IFastbootListener>());
             mFastbootMonitor = new FastbootMonitor();
             startFastbootMonitor();
@@ -227,23 +226,6 @@ public class DeviceManager implements IDeviceManager {
         if (!mIsInitialized) {
             throw new IllegalStateException("DeviceManager has not been initialized");
         }
-    }
-
-    /**
-     * Determine if fastboot is available for use.
-     */
-    private boolean isFastbootAvailable() {
-        CommandResult fastbootResult = getRunUtil().runTimedCmdSilently(5000, "fastboot", "help");
-        if (fastbootResult.getStatus() == CommandStatus.SUCCESS) {
-            return true;
-        }
-        if (fastbootResult.getStderr() != null &&
-            fastbootResult.getStderr().indexOf("usage: fastboot") >= 0) {
-            CLog.logAndDisplay(LogLevel.WARN,
-                              "You are running an older version of fastboot, please update it.");
-            return true;
-        }
-        return false;
     }
 
     /**
@@ -370,7 +352,8 @@ public class DeviceManager implements IDeviceManager {
     }
 
     private void addFastbootDevices() {
-        Set<String> serials = getDevicesOnFastboot();
+        final FastbootHelper fastboot = new FastbootHelper(getRunUtil());
+        Set<String> serials = fastboot.getDevices();
         if (serials != null) {
             for (String serial: serials) {
                 FastbootDevice d = new FastbootDevice(serial);
@@ -972,11 +955,12 @@ public class DeviceManager implements IDeviceManager {
 
         @Override
         public void run() {
+            final FastbootHelper fastboot = new FastbootHelper(getRunUtil());
             while (!mQuit) {
                 // only poll fastboot devices if there are listeners, as polling it
                 // indiscriminately can cause fastboot commands to hang
                 if (!mFastbootListeners.isEmpty()) {
-                    Set<String> serials = getDevicesOnFastboot();
+                    Set<String> serials = fastboot.getDevices();
                     if (serials != null) {
                         mManagedDeviceList.updateFastbootStates(serials);
 
@@ -992,30 +976,6 @@ public class DeviceManager implements IDeviceManager {
                 getRunUtil().sleep(FASTBOOT_POLL_WAIT_TIME);
             }
         }
-    }
-
-    private Set<String> getDevicesOnFastboot() {
-        CommandResult fastbootResult = getRunUtil().runTimedCmd(FASTBOOT_CMD_TIMEOUT,
-                "fastboot", "devices");
-        if (fastbootResult.getStatus().equals(CommandStatus.SUCCESS)) {
-            CLog.v("fastboot devices returned\n %s",
-                    fastbootResult.getStdout());
-            return parseDevicesOnFastboot(fastbootResult.getStdout());
-        } else {
-            CLog.w("'fastboot devices' failed. Result: %s, stderr: %s", fastbootResult.getStatus(),
-                    fastbootResult.getStderr());
-        }
-        return null;
-    }
-
-    static Set<String> parseDevicesOnFastboot(String fastbootOutput) {
-        Set<String> serials = new HashSet<String>();
-        Pattern fastbootPattern = Pattern.compile("([\\w\\d]+)\\s+fastboot\\s*");
-        Matcher fastbootMatcher = fastbootPattern.matcher(fastbootOutput);
-        while (fastbootMatcher.find()) {
-            serials.add(fastbootMatcher.group(1));
-        }
-        return serials;
     }
 
     /**
