@@ -254,6 +254,11 @@ public class UiAutomatorRunner implements IRemoteAndroidTestRunner {
         throw new UnsupportedOperationException("coverage mode is not supported");
     }
 
+    @Override
+    public void setTestCollection(boolean b) {
+        throw new UnsupportedOperationException("Test Collection mode is not supported");
+    }
+
     /**
      * {@inheritDoc}
      */
