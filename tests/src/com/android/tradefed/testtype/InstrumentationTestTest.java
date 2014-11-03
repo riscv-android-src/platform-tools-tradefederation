@@ -227,12 +227,8 @@ public class InstrumentationTestTest extends TestCase {
      */
     public void testRun_rerunEmpty() throws Exception {
         mInstrumentationTest.setRerunMode(true);
-        // expect log only mode run first to collect tests
-        mMockRemoteRunner.setLogOnly(true);
-        mMockRemoteRunner.addInstrumentationArg(InstrumentationTest.DELAY_MSEC_ARG,
-                Long.toString(mInstrumentationTest.getTestDelay()));
-        mMockRemoteRunner.setMaxTimeToOutputResponse(
-                COLLECT_TESTS_SHELL_TIMEOUT, TimeUnit.MILLISECONDS);
+        // expect test collection mode run first to collect tests
+        mMockRemoteRunner.setTestCollection(true);
         // collect tests run
         CollectTestAnswer collectTestResponse = new CollectTestAnswer() {
             @Override
@@ -244,9 +240,7 @@ public class InstrumentationTestTest extends TestCase {
         };
         setCollectTestsExpectations(collectTestResponse);
         // expect normal mode to be turned back on
-        mMockRemoteRunner.setLogOnly(false);
-        mMockRemoteRunner.removeInstrumentationArg(InstrumentationTest.DELAY_MSEC_ARG);
-        mMockRemoteRunner.setMaxTimeToOutputResponse(0, TimeUnit.MILLISECONDS);
+        mMockRemoteRunner.setTestCollection(false);
 
         // note: expect run to not be reported
         EasyMock.replay(mMockRemoteRunner, mMockTestDevice, mMockListener);
@@ -313,18 +307,14 @@ public class InstrumentationTestTest extends TestCase {
     /**
      * Set EasyMock expectations for a run that fails.
      *
-     * @param firstRunResponse the behavior callback of the first run. It should perform callbacks
+     * @param firstRunAnswer the behavior callback of the first run. It should perform callbacks
      * on listeners to indicate only TEST1 was run
      */
     private void setRerunExpectations(RunTestAnswer firstRunAnswer)
             throws DeviceNotAvailableException {
         mInstrumentationTest.setRerunMode(true);
-        // expect log only mode run first to collect tests
-        mMockRemoteRunner.setLogOnly(true);
-        mMockRemoteRunner.addInstrumentationArg(InstrumentationTest.DELAY_MSEC_ARG,
-                Long.toString(mInstrumentationTest.getTestDelay()));
-        mMockRemoteRunner.setMaxTimeToOutputResponse(
-                COLLECT_TESTS_SHELL_TIMEOUT, TimeUnit.MILLISECONDS);
+        // expect test collection mode run first to collect tests
+        mMockRemoteRunner.setTestCollection(true);
         CollectTestAnswer collectTestAnswer = new CollectTestAnswer() {
             @Override
             public Boolean answer(IRemoteAndroidTestRunner runner, ITestRunListener listener) {
@@ -340,10 +330,8 @@ public class InstrumentationTestTest extends TestCase {
         };
         setCollectTestsExpectations(collectTestAnswer);
 
-        // now expect second run with log only mode off
-        mMockRemoteRunner.setLogOnly(false);
-        mMockRemoteRunner.removeInstrumentationArg(InstrumentationTest.DELAY_MSEC_ARG);
-        mMockRemoteRunner.setMaxTimeToOutputResponse(TEST_TIMEOUT, TimeUnit.MILLISECONDS);
+        // now expect second run with test collection mode off
+        mMockRemoteRunner.setTestCollection(false);
         setRunTestExpectations(firstRunAnswer);
 
         // now expect second run to run remaining test
