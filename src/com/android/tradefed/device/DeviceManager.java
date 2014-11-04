@@ -206,8 +206,8 @@ public class DeviceManager implements IDeviceManager {
         addEmulators();
         addNullDevices();
 
-        IMultiDeviceRecovery multiDeviceRecovery = getGlobalConfig().getMultiDeviceRecovery();
-        mDeviceRecoverer = new DeviceRecoverer(multiDeviceRecovery);
+        List<IMultiDeviceRecovery> recoverers = getGlobalConfig().getMultiDeviceRecoveryHandlers();
+        mDeviceRecoverer = new DeviceRecoverer(recoverers);
         startDeviceRecoverer();
     }
 
@@ -984,19 +984,22 @@ public class DeviceManager implements IDeviceManager {
     private class DeviceRecoverer extends Thread {
 
         private boolean mQuit = false;
-        private IMultiDeviceRecovery mMultiDeviceRecovery;
+        private List<IMultiDeviceRecovery> mMultiDeviceRecoverers;
 
-        public DeviceRecoverer(IMultiDeviceRecovery multiDeviceRecovery) {
-            mMultiDeviceRecovery = multiDeviceRecovery;
+        public DeviceRecoverer(List<IMultiDeviceRecovery> multiDeviceRecoverers) {
+            mMultiDeviceRecoverers = multiDeviceRecoverers;
         }
 
         @Override
         public void run() {
             while (!mQuit) {
                 getRunUtil().sleep(mDeviceRecoveryInterval);
-                List<DeviceDescriptor> devices = listAllDevices();
-                if (mMultiDeviceRecovery != null) {
-                    mMultiDeviceRecovery.recoverDevices(devices);
+                if (mMultiDeviceRecoverers != null && !mMultiDeviceRecoverers.isEmpty()) {
+                    for (IMultiDeviceRecovery m : mMultiDeviceRecoverers) {
+                        // Always fetch a list of devices prior to running the recovery.
+                        List<DeviceDescriptor> devices = listAllDevices();
+                        m.recoverDevices(devices);
+                    }
                 }
             }
         }
