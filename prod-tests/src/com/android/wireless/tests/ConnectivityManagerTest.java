@@ -49,8 +49,6 @@ public class ConnectivityManagerTest implements IRemoteTest, IDeviceTest {
         String.format("%s.functional.ConnectivityManagerMobileTest", TEST_PACKAGE_NAME);
     private static final int TEST_TIMER = 60 * 60 * 1000;  // 1 hour
 
-    private RadioHelper mRadioHelper;
-
     @Option(name="ssid", description="The ssid used for wifi connection.")
     private String mSsid = null;
 
@@ -74,22 +72,21 @@ public class ConnectivityManagerTest implements IRemoteTest, IDeviceTest {
     }
 
     @Override
-    public void run(ITestInvocationListener standardListener)
+    public void run(ITestInvocationListener listener)
             throws DeviceNotAvailableException {
         Assert.assertNotNull(mTestDevice);
         Assert.assertNotNull(mSsid);
-        mRadioHelper = new RadioHelper(mTestDevice);
+
         RunUtil.getDefault().sleep(START_TIMER);
+
         if (!mWifiOnly) {
-            // capture a bugreport if activation or data setup failed
-            if (!mRadioHelper.radioActivation() || !mRadioHelper.waitForDataSetup()) {
-                mRadioHelper.getBugreport(standardListener);
-                return;
-            }
+            final RadioHelper radioHelper = new RadioHelper(mTestDevice);
+            Assert.assertTrue("Radio activation failed", radioHelper.radioActivation());
+            Assert.assertTrue("Data setup failed", radioHelper.waitForDataSetup());
         }
+
         // Add bugreport listener for bugreport after each test case fails
-        BugreportCollector bugListener = new
-            BugreportCollector(standardListener, mTestDevice);
+        BugreportCollector bugListener = new BugreportCollector(listener, mTestDevice);
         bugListener.addPredicate(BugreportCollector.AFTER_FAILED_TESTCASES);
         bugListener.setDescriptiveName("connectivity_manager_test");
         // Device may reboot during the test, to capture a bugreport after that,
