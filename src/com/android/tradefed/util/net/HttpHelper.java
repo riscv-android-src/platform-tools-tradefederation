@@ -240,7 +240,7 @@ public class HttpHelper implements IHttpHelper {
      * Runnable for making requests with
      * {@link IRunUtil#runEscalatingTimedRetry(long, long, long, long, IRunnableResult)}.
      */
-    private abstract class RequestRunnable implements IRunnableResult {
+    public abstract class RequestRunnable implements IRunnableResult {
         private String mResponse = null;
         private Exception mException = null;
         private final String mUrl;
@@ -499,7 +499,7 @@ public class HttpHelper implements IHttpHelper {
     /**
      * Get {@link IRunUtil} to use. Exposed so unit tests can mock.
      */
-    IRunUtil getRunUtil() {
+    public IRunUtil getRunUtil() {
         return RunUtil.getDefault();
     }
 }
