@@ -67,7 +67,6 @@ public class WifiStressTest implements IRemoteTest, IDeviceTest {
     private static final int RECONNECT_TEST_TIMER = 12 * 60 * 60 * 1000; // 12 hours
 
     private String mOutputFile = "WifiStressTestOutput.txt";
-    private RadioHelper mRadioHelper;
 
     /**
      * Stores the test cases that we should consider running.
@@ -131,10 +130,7 @@ public class WifiStressTest implements IRemoteTest, IDeviceTest {
     @Option(name="wifi-only")
     private boolean mWifiOnly = false;
 
-    private void setupTests() throws DeviceNotAvailableException {
-        // get RadioHelper
-        mRadioHelper = new RadioHelper(mTestDevice);
-
+    private void setupTests() {
         if (mTestList != null) {
             return;
         }
@@ -227,11 +223,11 @@ public class WifiStressTest implements IRemoteTest, IDeviceTest {
         setupTests();
         configDevice();
         RunUtil.getDefault().sleep(START_TIMER);
+
         if (!mWifiOnly) {
-            if (!mRadioHelper.radioActivation() || !mRadioHelper.waitForDataSetup()) {
-                mRadioHelper.getBugreport(standardListener);
-                return;
-            }
+            final RadioHelper radioHelper = new RadioHelper(mTestDevice);
+            Assert.assertTrue("Radio activation failed", radioHelper.radioActivation());
+            Assert.assertTrue("Data setup failed", radioHelper.waitForDataSetup());
         }
 
         IRemoteAndroidTestRunner runner = new RemoteAndroidTestRunner(

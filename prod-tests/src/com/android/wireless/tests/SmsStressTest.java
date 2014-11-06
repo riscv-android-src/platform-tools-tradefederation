@@ -15,10 +15,10 @@
  */
 package com.android.wireless.tests;
 
-import com.android.ddmlib.IDevice;
 import com.android.ddmlib.testrunner.IRemoteAndroidTestRunner;
 import com.android.ddmlib.testrunner.RemoteAndroidTestRunner;
 import com.android.tradefed.config.Option;
+import com.android.tradefed.config.Option.Importance;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.log.LogUtil.CLog;
@@ -47,56 +47,48 @@ import java.util.regex.Pattern;
  * Run the Sms stress test. This test stresses sms message sending and receiving
  */
 public class SmsStressTest implements IRemoteTest, IDeviceTest {
-    private ITestDevice mTestDevice = null;
+    private static final String TEST_PACKAGE_NAME = "com.android.messagingtests";
+    private static final String TEST_RUNNER_NAME = "android.test.InstrumentationTestRunner";
 
-    // Define instrumentation test package and runner.
-    private static final String TEST_PACKAGE_NAME = "com.android.mms.tests";
-    private static final String TEST_RUNNER_NAME = "com.android.mms.SmsTestRunner";
-    private static final String TEST_CLASS_NAME = "com.android.mms.ui.SmsStressTest";
+    private static final String OUTPUT_PATH = "result.txt";
 
     private static final String ITEM_KEY = "single_thread";
     private static final String METRICS_NAME = "sms_stress";
-    private static final Pattern MESSAGE_PATTERN =
-            Pattern.compile("^send message (\\d+) out of (\\d+)");
+
+    private static final String OUTPUT_PASSED = "passed";
+    private static final String OUTPUT_FAILED = "failed";
+    private static final Pattern OUTPUT_PATTERN = Pattern.compile(
+            String.format("^(\\d+),(%s|%s)$", OUTPUT_PASSED, OUTPUT_FAILED));
+
     private static final String INSERT_COMMAND =
             "sqlite3 /data/data/com.android.providers.settings/databases/settings.db "
             + "\"INSERT INTO global (name, value) values (\'%s\',\'%s\');\"";
-    private String mOutputFile = "result.txt";
 
-    @Option(name="recipient",
-            description="The recipient of sms messages")
-    private String mRecipient = null;
+    private enum MessagingApp {
+        HANGOUTS ("com.android.messagingtests.stress.HangoutsStressTest"),
+        MESSAGING ("com.android.messagingtests.stress.MessagingStressTest"),
+        MESSENGER ("com.android.messagingtests.stress.MessengerStressTest");
 
-    @Option(name="messages",
-            description="The total number of messages to send")
-    private int mNumMessages = 100;
+        private final String mTestClass;
 
-    @Option(name="messagefile",
-            description="The file to load sending message")
-    private String mMessageFile = null;
+        MessagingApp(String testClass) {
+            mTestClass = testClass;
+        }
 
-    @Option(name="recipientfile",
-            description="The file to load recipients")
-    private String mRecipientFile = null;
-
-    @Option(name="receivetimer",
-            description="The timer before verifying messages receiption when sending sms"
-            + "to the test device itself (s)")
-    private int mReceiveTimer = 300;
-
-    @Option(name="sendinterval",
-            description="The time interval between two consecutive sms.")
-    private int mSendInterval = 10;
-
-    @Override
-    public void setDevice(ITestDevice testDevice) {
-        mTestDevice = testDevice;
+        public String getTestClass() {
+            return mTestClass;
+        }
     }
 
-    @Override
-    public ITestDevice getDevice() {
-        return mTestDevice;
-    }
+    private ITestDevice mTestDevice = null;
+
+    @Option(name="iterations", description="The total number of iterations to run",
+            importance=Importance.ALWAYS)
+    private int mIterations = 100;
+
+    @Option(name="app", description="The default messaging app on the device",
+            importance=Importance.IF_UNSET, mandatory=true)
+    private MessagingApp mApp = null;
 
     /**
      * Configure device with special settings
@@ -113,90 +105,72 @@ public class SmsStressTest implements IRemoteTest, IDeviceTest {
     }
 
     /**
-     * Run sms stress test and parse test results
+     * Run messaging stress test and parse test results
      */
     @Override
-    public void run(ITestInvocationListener standardListener)
+    public void run(ITestInvocationListener listener)
             throws DeviceNotAvailableException {
         Assert.assertNotNull(mTestDevice);
         setupDevice();
-        RadioHelper mRadioHelper = new RadioHelper(mTestDevice);
-        // Capture a bugreport if activation or data setup failed
-        if (!mRadioHelper.radioActivation() || !mRadioHelper.waitForDataSetup()) {
-            mRadioHelper.getBugreport(standardListener);
-            return;
-        }
+
+        final RadioHelper radioHelper = new RadioHelper(mTestDevice);
+        Assert.assertTrue("Radio activation failed", radioHelper.radioActivation());
+        Assert.assertTrue("Data setup failed", radioHelper.waitForDataSetup());
 
         IRemoteAndroidTestRunner runner = new RemoteAndroidTestRunner(
                 TEST_PACKAGE_NAME, TEST_RUNNER_NAME, mTestDevice.getIDevice());
-        runner.setClassName(TEST_CLASS_NAME);
-        if (mRecipient != null) {
-            runner.addInstrumentationArg("recipient", mRecipient);
-        }
-        if (mMessageFile != null) {
-            runner.addInstrumentationArg("messagefile", mMessageFile);
-        }
-        if (mRecipientFile != null) {
-            runner.addInstrumentationArg("messagefile", mMessageFile);
-        }
-        runner.addInstrumentationArg("messages", Integer.toString(mNumMessages));
-        runner.addInstrumentationArg(
-                "receivetimer", Integer.toString(mReceiveTimer));
-        runner.addInstrumentationArg(
-                "sendinterval", Integer.toString(mSendInterval));
+        runner.setClassName(mApp.getTestClass());
+        runner.addInstrumentationArg("iterations", Integer.toString(mIterations));
+        mTestDevice.runInstrumentationTests(runner, listener);
 
-        mTestDevice.runInstrumentationTests(runner, standardListener);
-        logOutputFile(standardListener);
-        cleanOutputFiles();
+        parseOutput(listener);
     }
 
     /**
      * Collect test results and report test results.
-     *
-     * @param listener
      */
-    private void logOutputFile(ITestInvocationListener listener)
-        throws DeviceNotAvailableException {
-        // Capture a bugreport right after the test
-        InputStreamSource bugreport = mTestDevice.getBugreport();
-        listener.testLog("bugreport", LogDataType.BUGREPORT, bugreport);
-        bugreport.cancel();
-
+    private void parseOutput(ITestInvocationListener listener)
+            throws DeviceNotAvailableException {
+        File outputFile = null;
         InputStreamSource outputSource = null;
-        Map<String, String> runMetrics = new HashMap<String, String>();
-        File resFile = null;
-        BufferedReader br = null;
-        try {
-            resFile = mTestDevice.pullFileFromExternal(mOutputFile);
-            if (resFile == null) {
-              return;
-            }
-            // Save a copy of the output file
-            CLog.d("Sending %d byte file %s into the logosphere!",
-                    resFile.length(), resFile);
-            outputSource = new SnapshotInputStreamSource(new FileInputStream(resFile));
-            listener.testLog(mOutputFile, LogDataType.TEXT, outputSource);
+        BufferedReader outputReader = null;
+        Integer iterations = null;
 
-            // Parse the results file and post results to test listener
-            br = new BufferedReader(new FileReader(resFile));
-            String line = null;
-            while ((line = br.readLine()) != null) {
-                Matcher match = MESSAGE_PATTERN.matcher(line);
-                if (match.matches()) {
-                    String value = match.group(1);
-                    CLog.d("iteration: %s", value);
-                    runMetrics.put(ITEM_KEY, value);
+        try {
+            outputFile = mTestDevice.pullFileFromExternal(OUTPUT_PATH);
+            if (outputFile != null) {
+                CLog.d("Sending %d byte file %s into the logosphere!",
+                        outputFile.length(), outputFile);
+                outputSource = new SnapshotInputStreamSource(new FileInputStream(outputFile));
+                listener.testLog("sms_stress_output", LogDataType.TEXT, outputSource);
+
+                outputReader = new BufferedReader(new FileReader(outputFile));
+                String line = null;
+                while ((line = outputReader.readLine()) != null) {
+                    Matcher m = OUTPUT_PATTERN.matcher(line);
+                    if (m.matches()) {
+                        if (OUTPUT_PASSED.equals(m.group(2))) {
+                            iterations = Integer.parseInt(m.group(1));
+                        }
+                    } else {
+                        CLog.w("Line '%s' did not match output pattern", line);
+                    }
                 }
             }
+
+            Map<String, String> metrics = new HashMap<String, String>();
+            metrics.put(ITEM_KEY, Integer.toString(iterations == null ? 0 : iterations + 1));
+            reportMetrics(METRICS_NAME, listener, metrics);
         } catch (IOException e) {
-            CLog.e("IOException while reading from data stream: %s", e);
+            CLog.e("IOException parsing output file: %s", e);
+            Assert.fail("IOException parsing output file");
         } finally {
-            FileUtil.deleteFile(resFile);
+            FileUtil.deleteFile(outputFile);
             StreamUtil.cancel(outputSource);
-            StreamUtil.close(br);
+            StreamUtil.close(outputReader);
         }
-        reportMetrics(METRICS_NAME, listener, runMetrics);
     }
+
 
     /**
      * Report run metrics by creating an empty test run to stick them in
@@ -210,11 +184,18 @@ public class SmsStressTest implements IRemoteTest, IDeviceTest {
     }
 
     /**
-     * Clean up output files from the last test run
+     * {@inheritDoc}
      */
-    private void cleanOutputFiles() throws DeviceNotAvailableException {
-        CLog.d("Remove output file: %s", mOutputFile);
-        String extStore = mTestDevice.getMountPoint(IDevice.MNT_EXTERNAL_STORAGE);
-        mTestDevice.executeShellCommand(String.format("rm %s/%s", extStore, mOutputFile));
+    @Override
+    public void setDevice(ITestDevice testDevice) {
+        mTestDevice = testDevice;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public ITestDevice getDevice() {
+        return mTestDevice;
     }
 }

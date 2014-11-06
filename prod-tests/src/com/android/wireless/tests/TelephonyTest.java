@@ -83,7 +83,6 @@ public class TelephonyTest implements IRemoteTest, IDeviceTest {
     private long mStartPauseDurationSec = 2;
 
     private ITestDevice mTestDevice = null;
-    private RadioHelper mRadioHelper;
 
     /**
      * Run the telephony outgoing call stress test
@@ -95,12 +94,9 @@ public class TelephonyTest implements IRemoteTest, IDeviceTest {
         Assert.assertNotNull(mTestDevice);
         Assert.assertNotNull(mPhoneNumber);
 
-        mRadioHelper = new RadioHelper(mTestDevice);
-        // wait for data connection
-        if (!mRadioHelper.radioActivation() || !mRadioHelper.waitForDataSetup()) {
-            mRadioHelper.getBugreport(listener);
-            return;
-        }
+        final RadioHelper radioHelper = new RadioHelper(mTestDevice);
+        Assert.assertTrue("Radio activation failed", radioHelper.radioActivation());
+        Assert.assertTrue("Data setup failed", radioHelper.waitForDataSetup());
 
         IRemoteAndroidTestRunner runner = new RemoteAndroidTestRunner(TEST_PACKAGE_NAME,
                 TEST_RUNNER_NAME, mTestDevice.getIDevice());

@@ -18,9 +18,6 @@ package com.android.wireless.tests;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.log.LogUtil.CLog;
-import com.android.tradefed.result.ITestInvocationListener;
-import com.android.tradefed.result.InputStreamSource;
-import com.android.tradefed.result.LogDataType;
 import com.android.tradefed.util.IRunUtil;
 import com.android.tradefed.util.RunUtil;
 
@@ -52,14 +49,14 @@ public class RadioHelper {
      * Get phone type 0 - None, 1 - GSM, 2 - CDMA
      */
     private String getPhoneType() throws DeviceNotAvailableException {
-        return mDevice.getPropertySync("gsm.current.phone-type");
+        return mDevice.getProperty("gsm.current.phone-type");
     }
 
     /**
      * Get sim state
      */
     private String getSimState() throws DeviceNotAvailableException {
-        return mDevice.getPropertySync("gsm.sim.state");
+        return mDevice.getProperty("gsm.sim.state");
     }
 
     /**
@@ -155,8 +152,8 @@ public class RadioHelper {
 
     /**
      * Wait for device data setup
-     * @return true if data setup succeeded
-     * @return false if data setup failed
+     *
+     * @return true if data setup succeeded, false otherwise
      */
     public boolean waitForDataSetup() throws DeviceNotAvailableException {
         long startTime = System.currentTimeMillis();
@@ -167,14 +164,5 @@ public class RadioHelper {
             }
         }
         return false;
-    }
-
-    // capture a bugreport
-    public void getBugreport(ITestInvocationListener listener)
-            throws DeviceNotAvailableException {
-        CLog.d("Capture a bugreport");
-        InputStreamSource bugreport = mDevice.getBugreport();
-        listener.testLog("bugreport", LogDataType.BUGREPORT, bugreport);
-        bugreport.cancel();
     }
 }
