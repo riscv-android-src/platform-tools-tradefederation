@@ -1209,5 +1209,23 @@ public class TestDeviceTest extends TestCase {
         replayMocks();
         assertFalse(mTestDevice.checkConnectivity());
     }
+
+    public void testGetBuildFlavor_productBuildMismatch() throws Exception {
+        final String product = "product";
+        final String build = "build";
+        final String flavor = "flavor";
+        SettableFuture<String> f = SettableFuture.create();
+        f.set(product);
+        EasyMock.expect(mMockIDevice.getSystemProperty("ro.product.name")).andReturn(f);
+        f = SettableFuture.create();
+        f.set(build);
+        EasyMock.expect(mMockIDevice.getSystemProperty("ro.build.product")).andReturn(f);
+        f = SettableFuture.create();
+        f.set(flavor);
+        EasyMock.expect(mMockIDevice.getSystemProperty("ro.build.type")).andReturn(f);
+        EasyMock.replay(mMockIDevice);
+
+        assertEquals(String.format("%s-%s", build, flavor), mTestDevice.getBuildFlavor());
+    }
 }
 
