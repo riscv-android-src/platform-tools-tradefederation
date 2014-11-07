@@ -86,6 +86,11 @@ public class SdkAvdPreparer implements ITargetPreparer, ITargetCleaner {
             "If unspecified, will launch generic version")
     private String mDevice = null;
 
+    @Option(name = "display", description = "which display to launch the emulator in. " +
+            "If unspecified, display will not be set. Display values should start with :" +
+            " for example for display 1 use ':1'.")
+    private String mDisplay = null;
+
     @Option(name = "abi", description = "abi to select for the avd")
     private String mAbi = null;
 
@@ -188,6 +193,9 @@ public class SdkAvdPreparer implements ITargetPreparer, ITargetCleaner {
             mEmulatorBinary == null ? sdkBuild.getEmulatorToolPath() : mEmulatorBinary;
         List<String> emulatorArgs = ArrayUtil.list(emulatorBinary, "-avd", avd);
 
+        if (mDisplay != null) {
+            emulatorArgs.add(0, "DISPLAY=" + mDisplay);
+        }
         // Ensure the emulator will launch on the same port as the allocated emulator device
         Integer port = EmulatorConsole.getEmulatorPort(device.getSerialNumber());
         if (port == null) {
