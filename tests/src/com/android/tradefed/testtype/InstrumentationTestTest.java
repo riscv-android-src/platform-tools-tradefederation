@@ -240,6 +240,7 @@ public class InstrumentationTestTest extends TestCase {
         };
         setCollectTestsExpectations(collectTestResponse);
         // expect normal mode to be turned back on
+        mMockRemoteRunner.setMaxTimeToOutputResponse(TEST_TIMEOUT, TimeUnit.MILLISECONDS);
         mMockRemoteRunner.setTestCollection(false);
 
         // note: expect run to not be reported
@@ -331,6 +332,7 @@ public class InstrumentationTestTest extends TestCase {
         setCollectTestsExpectations(collectTestAnswer);
 
         // now expect second run with test collection mode off
+        mMockRemoteRunner.setMaxTimeToOutputResponse(TEST_TIMEOUT, TimeUnit.MILLISECONDS);
         mMockRemoteRunner.setTestCollection(false);
         setRunTestExpectations(firstRunAnswer);
 
