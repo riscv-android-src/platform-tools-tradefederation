@@ -120,7 +120,6 @@ class TestDevice implements IManagedTestDevice {
 
     private static final String BUILD_ID_PROP = "ro.build.version.incremental";
     private static final String PRODUCT_NAME_PROP = "ro.product.name";
-    private static final String BUILD_PRODUCT_PROP = "ro.build.product";
     private static final String BUILD_TYPE_PROP = "ro.build.type";
     private static final String BUILD_ALIAS_PROP = "ro.build.id";
 
@@ -495,13 +494,13 @@ class TestDevice implements IManagedTestDevice {
      */
     @Override
     public String getBuildFlavor() throws DeviceNotAvailableException {
-        String buildProduct = getProperty(BUILD_PRODUCT_PROP);
+        String productName = getProperty(PRODUCT_NAME_PROP);
         String buildType = getProperty(BUILD_TYPE_PROP);
-        if (buildProduct == null || buildType == null) {
+        if (productName == null || buildType == null) {
             CLog.w("Could not get device %s build flavor.", getSerialNumber());
             return null;
         }
-        return String.format("%s-%s", buildProduct, buildType);
+        return String.format("%s-%s", productName, buildType);
     }
 
     /**
