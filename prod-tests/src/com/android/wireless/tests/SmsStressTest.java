@@ -86,6 +86,9 @@ public class SmsStressTest implements IRemoteTest, IDeviceTest {
             importance=Importance.ALWAYS)
     private int mIterations = 100;
 
+    @Option(name="phone-number", description="The phone number to use")
+    private String mPhoneNumber = null;
+
     @Option(name="app", description="The default messaging app on the device",
             importance=Importance.IF_UNSET, mandatory=true)
     private MessagingApp mApp = null;
@@ -121,6 +124,9 @@ public class SmsStressTest implements IRemoteTest, IDeviceTest {
                 TEST_PACKAGE_NAME, TEST_RUNNER_NAME, mTestDevice.getIDevice());
         runner.setClassName(mApp.getTestClass());
         runner.addInstrumentationArg("iterations", Integer.toString(mIterations));
+        if (mPhoneNumber != null) {
+            runner.addInstrumentationArg("phone_number", mPhoneNumber);
+        }
         mTestDevice.runInstrumentationTests(runner, listener);
 
         parseOutput(listener);
