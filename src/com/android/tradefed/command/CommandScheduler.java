@@ -70,6 +70,7 @@ import java.util.Set;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ScheduledThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
+import java.util.regex.Pattern;
 
 /**
  * A scheduler for running TradeFederation commands across all available devices.
@@ -1289,14 +1290,22 @@ public class CommandScheduler extends Thread implements ICommandScheduler, IComm
      * {@inheritDoc}
      */
     @Override
-    public void displayCommandsInfo(PrintWriter printWriter) {
+    public void displayCommandsInfo(PrintWriter printWriter, String regex) {
         assertStarted();
+        Pattern regexPattern = null;
+        if (regex != null) {
+            regexPattern = Pattern.compile(regex);
+        }
+
         List<CommandTracker> cmds = getCommandTrackers();
         Collections.sort(cmds, new CommandTrackerIdComparator());
         for (CommandTracker cmd : cmds) {
-            String cmdDesc = String.format("Command %d: [%s] %s", cmd.getId(),
-                    getTimeString(cmd.getTotalExecTime()), getArgString(cmd.getArgs()));
-            printWriter.println(cmdDesc);
+            String argString = getArgString(cmd.getArgs());
+            if (regexPattern == null || regexPattern.matcher(argString).find()) {
+                String cmdDesc = String.format("Command %d: [%s] %s", cmd.getId(),
+                        getTimeString(cmd.getTotalExecTime()), argString);
+                printWriter.println(cmdDesc);
+            }
         }
     }
 
