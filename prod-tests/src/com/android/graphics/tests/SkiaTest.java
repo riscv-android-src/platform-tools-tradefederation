@@ -69,7 +69,11 @@ public class SkiaTest implements IRemoteTest, IDeviceTest {
 
     @Option(name = "skia-json",
         description = "Full path on device for json output file.")
-    private String mOutputPath = "";
+    private File mOutputFile = null;
+
+    @Option(name = "skia-pngs",
+        description = "Directory on device for holding png results for retrieval.")
+    private File mPngDir = null;
 
     @Override
     public void setDevice(ITestDevice device) {
@@ -87,16 +91,29 @@ public class SkiaTest implements IRemoteTest, IDeviceTest {
             throw new IllegalArgumentException("Device has not been set");
         }
 
+        listener.testRunStarted(mSkiaApp, 1);
+        long start = System.currentTimeMillis();
+
         // Native Skia tests are in nativeTestDirectory/mSkiaApp/mSkiaApp.
         String fullPath = mNativeTestDevicePath + "/"
                 + mSkiaApp + "/" + mSkiaApp;
         IFileEntry app = mDevice.getFileEntry(fullPath);
+        TestIdentifier testId = new TestIdentifier(mSkiaApp, "testFileExists");
+        listener.testStarted(testId);
         if (app == null) {
             CLog.w("Could not find test %s in %s!", fullPath, mDevice.getSerialNumber());
-            return;
+            listener.testFailed(testId, "Device does not have " + fullPath);
+            listener.testEnded(testId, null);
+        } else {
+            // The test for detecting the file has ended.
+            listener.testEnded(testId, null);
+            prepareDevice();
+            runTest(app);
+            retrieveFiles(mSkiaApp, listener);
         }
 
-        runTest(app, mDevice, listener);
+        listener.testRunEnded(System.currentTimeMillis() - start,
+                Collections.<String, String>emptyMap());
     }
 
     /**
@@ -106,54 +123,128 @@ public class SkiaTest implements IRemoteTest, IDeviceTest {
      *  directories if necessary.
      *
      *  @param dir Directory to create.
-     *  @param testDevice Device to create directories on.
      */
-    private void mkdirs(File dir, ITestDevice testDevice) throws DeviceNotAvailableException {
-        if (dir == null || testDevice.doesFileExist(dir.getPath())) {
+    private void mkdirs(File dir) throws DeviceNotAvailableException {
+        if (dir == null || mDevice.doesFileExist(dir.getPath())) {
             return;
         }
-        // First, make sure that the parent folder exists.
-        mkdirs(dir.getParentFile(), testDevice);
 
         String dirName = dir.getPath();
         CLog.v("creating folder '%s'", dirName);
-        testDevice.executeShellCommand("mkdir " + dirName);
+        mDevice.executeShellCommand("mkdir -p " + dirName);
+    }
+
+    /**
+     *  Do pre-test setup on the device.
+     *
+     *  Setup involves ensuring necessary directories exist and removing old
+     *  test result files.
+     */
+    private void prepareDevice() throws DeviceNotAvailableException {
+        if (mOutputFile != null) {
+            String path = mOutputFile.getPath();
+            if (mDevice.doesFileExist(path)) {
+                // Delete the file. We don't want to think this file from an
+                // earlier run represents this one.
+                CLog.v("Removing old file " + path);
+                mDevice.executeShellCommand("rm " + path);
+            } else {
+                // Ensure its containing folder exists.
+                mkdirs(mOutputFile.getParentFile());
+            }
+        }
+
+        if (mPngDir != null) {
+            String pngPath = mPngDir.getPath();
+            if (mDevice.doesFileExist(pngPath)) {
+                // Empty the old directory
+                mDevice.executeShellCommand("rm -rf " + pngPath + "/*");
+            } else {
+                mkdirs(mPngDir);
+            }
+        }
+    }
+
+    /**
+     *  Retrieve a file from the device and upload it to the listener.
+     *
+     *  Each file for uploading is considered its own test, so we can track
+     *  whether or not uploading succeeded.
+     *
+     *  @param remoteFile File on the device.
+     *  @param testIdClass String to be passed to TestIdentifier's constructor
+     *          as className.
+     *  @param testIdMethod String passed to TestIdentifier's constructor as
+     *          testName.
+     *  @param listener Listener for reporting test failure/success and
+     *          uploading files.
+     *  @param type LogDataType of the file being uploaded.
+     */
+    private void retrieveAndUploadFile(File remoteFile, String testIdClass, String testIdMethod,
+            ITestInvocationListener listener, LogDataType type) throws DeviceNotAvailableException {
+        String remotePath = remoteFile.getPath();
+        CLog.v("adb pull %s (using pullFile)", remotePath);
+        File localFile = mDevice.pullFile(remotePath);
+
+        TestIdentifier testId = new TestIdentifier(testIdClass, testIdMethod);
+        listener.testStarted(testId);
+        if (localFile == null) {
+            listener.testFailed(testId, "Failed to pull " + remotePath);
+        } else {
+            CLog.v("pulled result file to " + localFile.getPath());
+            FileInputStreamSource source = new FileInputStreamSource(localFile);
+            // Use the original name, for clarity.
+            listener.testLog(remoteFile.getName(), type, source);
+            source.cancel();
+            if (!localFile.delete()) {
+                CLog.w("Failed to delete temporary file %s", localFile.getPath());
+            }
+        }
+        listener.testEnded(testId, null);
+    }
+
+    /**
+     *  Retrieve files from the device.
+     *
+     *  Report to the listener whether retrieving the files succeeded.
+     *
+     *  @param appName Name of the app.
+     *  @param listener Listener for reporting results of file retrieval.
+     */
+    private void retrieveFiles(String appName,
+            ITestInvocationListener listener) throws DeviceNotAvailableException {
+        // FIXME: This could be achieved with DeviceFileReporter. Blocked on b/18408206.
+        if (mOutputFile != null) {
+            retrieveAndUploadFile(mOutputFile, appName, "outputJson", listener, LogDataType.TEXT);
+        }
+
+        if (mPngDir != null) {
+            String pngDir = mPngDir.getPath();
+            IFileEntry remotePngDir = mDevice.getFileEntry(pngDir);
+            for (IFileEntry pngFile : remotePngDir.getChildren(false)) {
+                if (pngFile.getName().endsWith("png")) {
+                    retrieveAndUploadFile(new File(pngFile.getFullPath()),
+                            "PngRetrieval", pngFile.getName(), listener, LogDataType.PNG);
+                }
+            }
+        }
     }
 
     /**
      *  Run a test on a device.
      *
      *  @param app Test app to run.
-     *  @param testDevice Device on which to run the test.
-     *  @param listener Listener for reporting results.
      */
-    private void runTest(IFileEntry app, ITestDevice testDevice,
-            ITestInvocationListener listener) throws DeviceNotAvailableException {
-        File outputFile = null;
-        if (!mOutputPath.isEmpty()) {
-            outputFile = new File(mOutputPath);
-            String path = outputFile.getPath();
-            if (testDevice.doesFileExist(path)) {
-                // Delete the file. We don't want to think this file from an
-                // earlier run represents this one.
-                CLog.v("Removing old file " + path);
-                testDevice.executeShellCommand("rm " + path);
-            } else {
-                mkdirs(outputFile.getParentFile(), testDevice);
-            }
-        }
-
-        listener.testRunStarted(app.getName(), 1);
-
+    private void runTest(IFileEntry app) throws DeviceNotAvailableException {
         String fullPath = app.getFullEscapedPath();
         // force file to be executable
-        testDevice.executeShellCommand(String.format("chmod 755 %s",
-                fullPath));
+        mDevice.executeShellCommand(String.format("chmod 755 %s", fullPath));
 
-        // The device will not immediately capture logs. Delay running to
-        // ensure capturing them. The amount to delay corresponds to
-        // mLogStartDelay in TestDevice.java.
-        testDevice.startLogcat();
+        // The device will not immediately capture logs in response to
+        // startLogcat. Instead, it delays 5 * 1000ms. See TestDevice.java
+        // mLogStartDelay. To ensure we see all the logs, sleep by the same
+        // amount.
+        mDevice.startLogcat();
         RunUtil.getDefault().sleep(5 * 1000);
 
         String cmd = fullPath + " " + mFlags;
@@ -164,32 +255,7 @@ public class SkiaTest implements IRemoteTest, IDeviceTest {
         DummyReceiver receiver = new DummyReceiver();
         // Use 10 minutes as the time allowed. FIXME: This is overkill, but some
         // tests take a really long time without outputting anything.
-        testDevice.executeShellCommand(cmd, receiver, 10, TimeUnit.MINUTES, 1);
-
-        if (outputFile != null) {
-            String path = outputFile.getPath();
-            CLog.v("adb pull %s (using pullFile)", path);
-            File result = testDevice.pullFile(path);
-
-            TestIdentifier testId = new TestIdentifier(app.getName(), "outputJson");
-            listener.testStarted(testId);
-            if (result == null) {
-                listener.testFailed(testId, "Failed to create "
-                        + outputFile.getName() + ". Check logcat for details.");
-            } else {
-                listener.testEnded(testId, null);
-                CLog.v("pulled result file to " + result.getPath());
-                FileInputStreamSource source = new FileInputStreamSource(result);
-                listener.testLog(result.getName(), LogDataType.TEXT, source);
-                source.cancel();
-                if (!result.delete()) {
-                    CLog.w("Failed to delete temporary file %s", result.getPath());
-                }
-            }
-        }
-
-        // Don't report a meaningful time.
-        listener.testRunEnded(0, Collections.<String, String>emptyMap());
+        mDevice.executeShellCommand(cmd, receiver, 10, TimeUnit.MINUTES, 1);
     }
 
     // This receiver just avoids an NPE when calling executeShellCommand.
