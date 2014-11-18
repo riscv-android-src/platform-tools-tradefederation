@@ -73,6 +73,7 @@ public class Console extends Thread {
     protected static final String VERSION_PATTERN = "version";
     protected static final String REMOVE_PATTERN = "remove";
     protected static final String DEBUG_PATTERN = "debug";
+    protected static final String LIST_COMMANDS_PATTERN = "c(?:ommands)?";
 
     protected static final String LINE_SEPARATOR = System.getProperty("line.separator");
 
@@ -401,11 +402,13 @@ public class Console extends Thread {
 
         commandHelp.put(LIST_PATTERN, String.format(
                 "%s help:" + LINE_SEPARATOR +
-                "\ti[nvocations]  List all invocation threads" + LINE_SEPARATOR +
-                "\td[evices]      List all detected or known devices" + LINE_SEPARATOR +
-                "\tc[ommands]     List all commands currently waiting to be executed" +
+                "\ti[nvocations]         List all invocation threads" + LINE_SEPARATOR +
+                "\td[evices]             List all detected or known devices" + LINE_SEPARATOR +
+                "\tc[ommands]            List all commands currently waiting to be executed" +
                 LINE_SEPARATOR +
-                "\tconfigs        List all known configurations" +
+                "\tc[ommands] [pattern]  List all commands matching the pattern and currently " +
+                "waiting to be executed" + LINE_SEPARATOR +
+                "\tconfigs               List all known configurations" +
                 LINE_SEPARATOR, LIST_PATTERN));
 
         commandHelp.put(DUMP_PATTERN, String.format(
@@ -419,7 +422,7 @@ public class Console extends Thread {
 
         commandHelp.put(RUN_PATTERN, String.format(
                 "%s help:" + LINE_SEPARATOR +
-                "\tcommand <config>  [options]       Run the specified command" + LINE_SEPARATOR +
+                "\tcommand <config> [options]        Run the specified command" + LINE_SEPARATOR +
                 "\t<config> [options]                Shortcut for the above: run specified command" +
                     LINE_SEPARATOR +
                 "\tcmdfile <cmdfile.txt>             Run the specified commandfile" + LINE_SEPARATOR +
@@ -469,9 +472,18 @@ public class Console extends Thread {
         trie.put(new Runnable() {
                     @Override
                     public void run() {
-                        mScheduler.displayCommandsInfo(new PrintWriter(System.out, true));
+                        mScheduler.displayCommandsInfo(new PrintWriter(System.out, true), null);
                     }
-                }, LIST_PATTERN, "c(?:ommands)?");
+                }, LIST_PATTERN, LIST_COMMANDS_PATTERN);
+        ArgRunnable<CaptureList> listCmdRun = new ArgRunnable<CaptureList>() {
+            @Override
+            public void run(CaptureList args) {
+                // Skip 2 tokens to get past listPattern and "commands"
+                String pattern = args.get(2).get(0);
+                mScheduler.displayCommandsInfo(new PrintWriter(System.out, true), pattern);
+            }
+        };
+        trie.put(listCmdRun, LIST_PATTERN, LIST_COMMANDS_PATTERN, "(.*)");
         trie.put(new Runnable() {
             @Override
             public void run() {

@@ -211,8 +211,10 @@ public interface ICommandScheduler {
      * Output a list of current commands.
      *
      * @param printWriter the {@link PrintWriter} to output to.
+     * @param regex the regular expression to which commands should be matched in order to be
+     * printed.  If null, then all commands will be printed
      */
-    public void displayCommandsInfo(PrintWriter printWriter);
+    public void displayCommandsInfo(PrintWriter printWriter, String regex);
 
     /**
      * Output detailed debug info on state of command execution queue.
