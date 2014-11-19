@@ -42,7 +42,6 @@ public class AudioJitterTest implements IDeviceTest, IRemoteTest {
 
     private ITestDevice mDevice;
 
-    /*   /home/android-test/testdata/media/sljitter */
     private static final String DEVICE_TEMPORARY_DIR_PATH = "/data/local/tmp/";
     private static final String JITTER_BINARY_FILENAME = "sljitter";
     private static final String JITTER_BINARY_DEVICE_PATH =
