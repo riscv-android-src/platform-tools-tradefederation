@@ -27,14 +27,11 @@ import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.LogDataType;
 import com.android.tradefed.testtype.IDeviceTest;
 import com.android.tradefed.testtype.IRemoteTest;
-import com.android.tradefed.util.IRunUtil;
 import com.android.tradefed.util.RunUtil;
-import com.android.ddmlib.IShellOutputReceiver;
 import com.android.ddmlib.testrunner.TestIdentifier;
 
 import java.io.File;
 import java.util.Collections;
-import java.util.concurrent.TimeUnit;
 
 /**
  *  Test for running Skia native tests.
@@ -250,25 +247,8 @@ public class SkiaTest implements IRemoteTest, IDeviceTest {
         String cmd = fullPath + " " + mFlags;
         CLog.v("Running '%s' on %s", cmd, mDevice.getSerialNumber());
 
-        // A Receiver is required to use the version of executeShellCommand
-        // that specifies the timeout.
-        DummyReceiver receiver = new DummyReceiver();
-        // Use 10 minutes as the time allowed. FIXME: This is overkill, but some
-        // tests take a really long time without outputting anything.
-        mDevice.executeShellCommand(cmd, receiver, 10, TimeUnit.MINUTES, 1);
-    }
-
-    // This receiver just avoids an NPE when calling executeShellCommand.
-    private class DummyReceiver implements IShellOutputReceiver {
-        @Override
-        public void addOutput(byte[] data, int offset, int length) {}
-
-        @Override
-        public void flush() {}
-
-        @Override
-        public boolean isCancelled() {
-            return false;
-        }
+        mDevice.executeShellCommand("stop");
+        mDevice.executeShellCommand(cmd);
+        mDevice.executeShellCommand("start");
     }
 }
