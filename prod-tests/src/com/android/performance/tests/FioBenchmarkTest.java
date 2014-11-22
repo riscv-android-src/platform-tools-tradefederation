@@ -377,6 +377,10 @@ public class FioBenchmarkTest implements IDeviceTest, IRemoteTest {
             description="The number of worker jobs for the media server benchmark.")
     private int mMediaScannerWorkerJobCount = 4;
 
+    @Option(name="key-suffix",
+            description="The suffix to add to the reporting key in order to override the default")
+    private String mKeySuffix = null;
+
     /**
      * Sets up all the benchmarks.
      */
@@ -859,7 +863,9 @@ public class FioBenchmarkTest implements IDeviceTest, IRemoteTest {
 
         // Report metrics
         Map<String, String> metrics = new HashMap<String, String>();
-        listener.testRunStarted(test.mKey, 0);
+        String key = mKeySuffix == null ? test.mKey : test.mKey + mKeySuffix;
+
+        listener.testRunStarted(key, 0);
         for (PerfMetricInfo m : test.mPerfMetrics) {
             if (!output.mResults.containsKey(m.mJobName)) {
                 CLog.w("Job name %s was not found in the results", m.mJobName);
@@ -873,7 +879,8 @@ public class FioBenchmarkTest implements IDeviceTest, IRemoteTest {
                 CLog.w("%s was not in results for the job %s", m.mFieldName, m.mJobName);
             }
         }
-        CLog.d("About to report metrics to %s: %s", test.mKey, metrics);
+
+        CLog.d("About to report metrics to %s: %s", key, metrics);
         listener.testRunEnded(0, metrics);
     }
 
