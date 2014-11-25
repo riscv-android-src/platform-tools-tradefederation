@@ -42,7 +42,7 @@ import java.util.Map;
  */
 public class EncryptionFunctionalityTest implements IDeviceTest, IRemoteTest {
 
-    private static final int BOOT_TIMEOUT = 120 * 1000;
+    private static final int BOOT_TIMEOUT = 2 * 60 * 1000;
 
     ITestDevice mTestDevice = null;
 
@@ -93,7 +93,8 @@ public class EncryptionFunctionalityTest implements IDeviceTest, IRemoteTest {
                 mTestDevice.waitForDeviceAvailable();
                 stageEnd(false); // stage 6
                 mTestDevice.executeShellCommand("vdc cryptfs changepw default");
-                mTestDevice.reboot();
+                mTestDevice.nonBlockingReboot();
+                mTestDevice.waitForBootComplete(BOOT_TIMEOUT * 3);
                 stageEnd(false); // stage 7
             }
         } catch (DeviceNotAvailableException e) {
