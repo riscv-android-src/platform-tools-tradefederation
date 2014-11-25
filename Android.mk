@@ -76,7 +76,7 @@ include $(CLEAR_VARS)
 
 LOCAL_MODULE_TAGS := optional
 
-LOCAL_PREBUILT_EXECUTABLES := tradefed.sh
+LOCAL_PREBUILT_EXECUTABLES := tradefed.sh tradefed_win.bat
 include $(BUILD_HOST_PREBUILT)
 
 # Build all sub-directories
