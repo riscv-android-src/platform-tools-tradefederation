@@ -533,7 +533,8 @@ public class TestInvocation implements ITestInvocation {
 
     private void doTeardown(IConfiguration config, ITestDevice device, IBuildInfo info,
             Throwable exception) throws DeviceNotAvailableException {
-
+        // Clear wifi settings, to prevent wifi errors from interfering with teardown process.
+        device.clearLastConnectedWifiNetwork();
         List<ITargetPreparer> preparers = config.getTargetPreparers();
         ListIterator<ITargetPreparer> itr = preparers.listIterator(preparers.size());
         while (itr.hasPrevious()) {
