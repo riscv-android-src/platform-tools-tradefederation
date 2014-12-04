@@ -264,6 +264,18 @@ public class ConfigurationFactoryTest extends TestCase {
     }
 
     /**
+    * Test loading a config that tries to include a non-bundled config
+    */
+   public void testCreateConfigurationFromArgs_nonBundledInclude() throws Exception {
+       try {
+           mFactory.createConfigurationFromArgs(new String[] {"non-bundled-config"});
+           fail("ConfigurationException not thrown");
+       } catch (ConfigurationException e) {
+           // expected
+       }
+   }
+
+    /**
      * Test loading a config that has a circular include
      */
     public void testCreateConfigurationFromArgs_circularInclude() throws Exception {

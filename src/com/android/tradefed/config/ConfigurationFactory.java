@@ -23,6 +23,7 @@ import com.android.tradefed.util.StreamUtil;
 
 import java.io.BufferedInputStream;
 import java.io.ByteArrayOutputStream;
+import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
@@ -112,26 +113,87 @@ public class ConfigurationFactory implements IConfigurationFactory {
          */
         @Override
         public ConfigurationDef getConfigurationDef(String name) throws ConfigurationException {
-            // first attempt to load cached config def
-            ConfigurationDef def = mConfigDefMap.get(name);
+            // FIXME: Currently this does not support on the fly reload of configs.
+            // We need to clear the cache.
+            String configName = name;
+            if (!isBundledConfig(name)) {
+                configName = getAbsolutePath(null, name);
+            }
+
+            ConfigurationDef def = mConfigDefMap.get(configName);
+
             if (def == null) {
-                // not found - load from file
-                def = new ConfigurationDef(name);
-                loadConfiguration(name, def);
-                mConfigDefMap.put(name, def);
+                def = new ConfigurationDef(configName);
+                loadConfiguration(configName, def);
+                mConfigDefMap.put(configName, def);
             }
             return def;
         }
 
-        @Override
-        public void loadIncludedConfiguration(ConfigurationDef parent, String name)
-                throws ConfigurationException {
-            if (mIncludedConfigs.contains(name)) {
-                throw new ConfigurationException(String.format(
-                        "Circular configuration include: config '%s' is already included", name));
+        /**
+         * Returns true if it is a config file found inside the classpath.
+         */
+        private boolean isBundledConfig(String name) {
+            InputStream configStream = getClass().getResourceAsStream(
+                    String.format("/%s%s%s", getConfigPrefix(), name, CONFIG_SUFFIX));
+            return configStream != null;
+        }
+
+        /**
+         * Get the absolute path of a local config file.
+         * @param root parent path of config file
+         * @param name config file
+         * @return absolute path for local config file.
+         * @throws ConfigurationException
+         */
+        private String getAbsolutePath(String root, String name) throws ConfigurationException {
+            File file = new File(name);
+            if (!file.isAbsolute()) {
+                if (root == null) {
+                    // if root directory was not specified, get the current working directory.
+                    root = System.getProperty("user.dir");
+                }
+                file = new File(root, name);
             }
-            mIncludedConfigs.add(name);
-            loadConfiguration(name, parent);
+            try {
+                return file.getCanonicalPath();
+            } catch (IOException e) {
+                throw new ConfigurationException(String.format(
+                        "Failure when trying to determine local file canonical path %s", e));
+            }
+        }
+
+        @Override
+        /**
+         * Configs that are bundled inside the tradefed.jar can only include other configs also
+         * bundled inside tradefed.jar. However, local (external) configs can include both local
+         * (external) and bundled configs.
+         */
+        public void loadIncludedConfiguration(ConfigurationDef def, String parentName, String name)
+                throws ConfigurationException {
+            String config_name = name;
+            if (!isBundledConfig(name)) {
+                try {
+                    // Ensure bundled configs are not including local configs.
+                    if (isBundledConfig(parentName)) {
+                        throw new ConfigurationException(String.format("Invalid include; bundled " +
+                    "config '%s' is trying to include local config '%s'.", parentName, name));
+                    }
+                    // Local configs' include should be relative to their parent's path.
+                    String parentRoot = new File(parentName).getParentFile().getCanonicalPath();
+                    config_name = getAbsolutePath(parentRoot, name);
+                } catch  (IOException e) {
+                    throw new ConfigurationException(String.format(
+                            "Failure when trying to determine local file canonical path %s", e));
+                }
+            }
+            if (mIncludedConfigs.contains(config_name)) {
+                throw new ConfigurationException(String.format(
+                        "Circular configuration include: config '%s' is already included",
+                        config_name));
+            }
+            mIncludedConfigs.add(config_name);
+            loadConfiguration(config_name, def);
         }
 
         /**
@@ -139,7 +201,7 @@ public class ConfigurationFactory implements IConfigurationFactory {
          *
          * @param name the name of a built-in configuration to load or a file
          *            path to configuration xml to load
-         * @return the loaded {@link ConfigurationDef}
+         * @param def the loaded {@link ConfigurationDef}
          * @throws ConfigurationException if a configuration with given
          *             name/file path cannot be loaded or parsed
          */

@@ -151,11 +151,11 @@ public class ConfigurationXmlParserTest extends TestCase {
      */
     public void testParse_include() throws ConfigurationException {
         String includedName = "includeme";
-        ConfigurationDef configDef = new ConfigurationDef("name");
-        mMockLoader.loadIncludedConfiguration(EasyMock.eq(configDef), EasyMock.eq(includedName));
+        ConfigurationDef configDef = new ConfigurationDef("foo");
+        mMockLoader.loadIncludedConfiguration(EasyMock.eq(configDef), EasyMock.eq("foo"), EasyMock.eq(includedName));
         EasyMock.replay(mMockLoader);
         final String config = "<include name=\"includeme\" />";
-        xmlParser.parse(configDef, "name", getStringAsStream(config));
+        xmlParser.parse(configDef, "foo", getStringAsStream(config));
     }
 
     /**
@@ -165,7 +165,7 @@ public class ConfigurationXmlParserTest extends TestCase {
         String includedName = "non-existent";
         ConfigurationDef parent = new ConfigurationDef("name");
         ConfigurationException exception = new ConfigurationException("I don't exist");
-        mMockLoader.loadIncludedConfiguration(parent, includedName);
+        mMockLoader.loadIncludedConfiguration(parent, "name", includedName);
         EasyMock.expectLastCall().andThrow(exception);
         EasyMock.replay(mMockLoader);
         final String config = String.format("<include name=\"%s\" />", includedName);
