@@ -17,6 +17,7 @@
 :: A helper script that launches TradeFederation from the current build
 :: environment.
 
+setlocal EnableDelayedExpansion
 call:checkCommand adb
 call:checkCommand java
 
@@ -37,7 +38,7 @@ if not "%TF_DEBUG%"=="" (
     if "%TF_DEBUG_PORT%" == "" (
         set TF_DEBUG_PORT=10088
     )
-    set RDBG_FLAG=-agentlib:jdwp=transport=dt_socket,server=y,suspend=y,address=%TF_DEBUG_PORT%
+    set RDBG_FLAG=-agentlib:jdwp=transport=dt_socket,server=y,suspend=y,address=!TF_DEBUG_PORT!
 )
 
 :: first try to find TF jars in same dir as this script
@@ -76,6 +77,7 @@ if exist "%TRADEFED_OPTS_FILE%" (
 java %RDBG_FLAG% -XX:+HeapDumpOnOutOfMemoryError ^
 -XX:-OmitStackTraceInFastThrow %TRADEFED_OPTS% -cp %tf_path% com.android.tradefed.command.Console %*
 
+endlocal
 ::end of file
 goto:eof
 

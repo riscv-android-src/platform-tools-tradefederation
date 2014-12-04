@@ -89,7 +89,7 @@ ifneq (,$(filter tradefed, $(TARGET_BUILD_APPS)))
 tradefed_dist_host_jars := tradefed tradefed-tests tf-prod-tests emmalib loganalysis loganalysis-tests tf-remote-client
 tradefed_dist_host_jar_files := $(foreach m, $(tradefed_dist_host_jars), $(HOST_OUT_JAVA_LIBRARIES)/$(m).jar)
 
-tradefed_dist_host_exes := tradefed.sh
+tradefed_dist_host_exes := tradefed.sh tradefed_win.bat
 tradefed_dist_host_exe_files := $(foreach m, $(tradefed_dist_host_exes), $(BUILD_OUT_EXECUTABLES)/$(m))
 
 tradefed_dist_test_apks := TradeFedUiTestApp TradeFedTestApp DeviceSetupUtil
