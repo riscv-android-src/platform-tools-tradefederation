@@ -48,8 +48,10 @@ class ConfigurationXmlParser {
         private String mCurrentConfigObject;
         private final IConfigDefLoader mConfigDefLoader;
         private Boolean isLocalConfig = null;
+        private String mName;
 
-        ConfigHandler(ConfigurationDef def, IConfigDefLoader loader) {
+        ConfigHandler(ConfigurationDef def, String name, IConfigDefLoader loader) {
+            mName = name;
             mConfigDef = def;
             mConfigDefLoader = loader;
         }
@@ -113,7 +115,7 @@ class ConfigurationXmlParser {
                     throwException("Missing 'name' attribute for include");
                 }
                 try {
-                    mConfigDefLoader.loadIncludedConfiguration(mConfigDef, includeName);
+                    mConfigDefLoader.loadIncludedConfiguration(mConfigDef, mName, includeName);
                 } catch (ConfigurationException e) {
                     throw new SAXException(e);
                 }
@@ -171,7 +173,7 @@ class ConfigurationXmlParser {
             SAXParserFactory parserFactory = SAXParserFactory.newInstance();
             parserFactory.setNamespaceAware(true);
             SAXParser parser = parserFactory.newSAXParser();
-            ConfigHandler configHandler = new ConfigHandler(configDef, mConfigDefLoader);
+            ConfigHandler configHandler = new ConfigHandler(configDef, name, mConfigDefLoader);
             parser.parse(new InputSource(xmlInput), configHandler);
         } catch (ParserConfigurationException e) {
             throwConfigException(name, e);

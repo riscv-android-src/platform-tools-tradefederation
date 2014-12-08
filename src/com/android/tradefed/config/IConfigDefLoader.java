@@ -35,11 +35,12 @@ interface IConfigDefLoader {
     /**
      * Load a config's data into the given {@link ConfigurationDef}
      *
-     * @param parent the {@link ConfigurationDef} to load the data into
+     * @param def the {@link ConfigurationDef} to load the data into
+     * @param parentName the name of the parent config
      * @param name the name of config to include
      * @return {@link ConfigurationDef}
      * @throws ConfigurationException if an error occurred loading the config
      */
-    void loadIncludedConfiguration(ConfigurationDef parent, String name)
+    void loadIncludedConfiguration(ConfigurationDef def, String parentName, String name)
             throws ConfigurationException;
 }
