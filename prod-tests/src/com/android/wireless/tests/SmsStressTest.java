@@ -129,6 +129,14 @@ public class SmsStressTest implements IRemoteTest, IDeviceTest {
         }
         mTestDevice.runInstrumentationTests(runner, listener);
 
+        InputStreamSource screenshot = mTestDevice.getScreenshot();
+        try {
+            listener.testLog(String.format("screenshot"),
+                    LogDataType.PNG, screenshot);
+        } finally {
+            StreamUtil.cancel(screenshot);
+        }
+
         parseOutput(listener);
     }
 
