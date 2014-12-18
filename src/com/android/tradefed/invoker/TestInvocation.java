@@ -49,6 +49,9 @@ import com.android.tradefed.testtype.IRemoteTest;
 import com.android.tradefed.testtype.IResumableTest;
 import com.android.tradefed.testtype.IRetriableTest;
 import com.android.tradefed.testtype.IShardableTest;
+import com.android.tradefed.util.IRunUtil;
+import com.android.tradefed.util.RunInterruptedException;
+import com.android.tradefed.util.RunUtil;
 
 import junit.framework.Test;
 
@@ -198,6 +201,8 @@ public class TestInvocation implements ITestInvocation {
         ITestInvocationListener listener = new LogSaverResultForwarder(config.getLogSaver(),
                 allListeners);
 
+        IBuildInfo info = null;
+
         try {
             mStatus = "fetching build";
             config.getLogOutput().init();
@@ -207,7 +212,6 @@ public class TestInvocation implements ITestInvocation {
             if (config.getDeviceOptions().isLogcatCaptureEnabled()) {
                 device.startLogcat();
             }
-            IBuildInfo info = null;
             if (config.getBuildProvider() instanceof IDeviceBuildProvider) {
                 info = ((IDeviceBuildProvider)config.getBuildProvider()).getBuild(device);
             } else {
@@ -465,6 +469,9 @@ public class TestInvocation implements ITestInvocation {
                 CLog.i("Rescheduled failed invocation for resume");
             }
             throw e;
+        } catch (RunInterruptedException e) {
+            CLog.w("Invocation interrupted");
+            reportFailure(e, listener, config, info, rescheduler);
         } catch (RuntimeException e) {
             // log a warning here so its captured before reportLogs is called
             CLog.e("Unexpected exception when running invocation: %s", e.toString());
@@ -497,6 +504,7 @@ public class TestInvocation implements ITestInvocation {
         Throwable exception = null;
 
         try {
+            getRunUtil().allowInterrupt(true);
             logDeviceBatteryLevel(device, "initial -> setup");
             doSetup(config, device, info);
             logDeviceBatteryLevel(device, "setup -> test");
@@ -505,6 +513,9 @@ public class TestInvocation implements ITestInvocation {
         } catch (Throwable running) {
             exception = running;
         } finally {
+            mStatus = "tearing down";
+            // Disallow run interrupts to prevent interrupting tear down proces.
+            getRunUtil().allowInterrupt(false);
             try {
                 if (config.getCommandOptions().takeBugreportOnInvocationEnded()) {
                     takeBugreport(device, listener, INVOCATION_ENDED_BUGREPORT_NAME);
@@ -672,6 +683,15 @@ public class TestInvocation implements ITestInvocation {
      */
     ILogRegistry getLogRegistry() {
         return LogRegistry.getLogRegistry();
+    }
+
+    /**
+     * Utility method to fetch the default {@link IRunUtil} singleton
+     * <p />
+     * Exposed for unit testing.
+     */
+    IRunUtil getRunUtil() {
+        return RunUtil.getDefault();
     }
 
     /**

@@ -50,6 +50,7 @@ import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.ResultForwarder;
 import com.android.tradefed.util.ArrayUtil;
 import com.android.tradefed.util.QuotationAwareTokenizer;
+import com.android.tradefed.util.RunUtil;
 import com.android.tradefed.util.TableFormatter;
 
 import java.io.File;
@@ -437,6 +438,7 @@ public class CommandScheduler extends Thread implements ICommandScheduler, IComm
             mStartTime = System.currentTimeMillis();
             ITestInvocation instance = getInvocation();
             IConfiguration config = mCmd.getConfiguration();
+
             try {
                 mCmd.commandStarted();
                 instance.invoke(mDevice, config, new Rescheduler(mCmd.getCommandTracker()),
@@ -473,6 +475,16 @@ public class CommandScheduler extends Thread implements ICommandScheduler, IComm
 
         ITestDevice getDevice() {
             return mDevice;
+        }
+
+        /**
+         * Interrupts a running invocation. {@link CommandScheduler#shutdownHard()} will interrupt
+         * all running invocations.
+         */
+        @Override
+        public void interrupt() {
+            RunUtil.getDefault().interrupt(this);
+            super.interrupt();
         }
     }
 
@@ -1217,8 +1229,11 @@ public class CommandScheduler extends Thread implements ICommandScheduler, IComm
     @Override
     public synchronized void shutdownHard() {
         shutdown();
-        CLog.logAndDisplay(LogLevel.WARN, "Force killing adb connection");
-        getDeviceManager().terminateHard();
+
+        CLog.logAndDisplay(LogLevel.WARN, "Interrupting invocation threads...");
+        for (InvocationThread thread : mInvocationThreadMap.values()) {
+            thread.interrupt();
+        }
     }
 
     /**
@@ -1282,8 +1297,14 @@ public class CommandScheduler extends Thread implements ICommandScheduler, IComm
      * {@inheritDoc}
      */
     @Override
-    public boolean stopInvocation(ITestInvocation invocation) throws UnsupportedOperationException {
-        throw new UnsupportedOperationException();
+    public synchronized boolean stopInvocation(ITestInvocation invocation) {
+        for (InvocationThread thread : mInvocationThreadMap.values()) {
+            if (thread.getInvocation() == invocation) {
+                thread.interrupt();
+                return true;
+            }
+        }
+        return false;
     }
 
     /**

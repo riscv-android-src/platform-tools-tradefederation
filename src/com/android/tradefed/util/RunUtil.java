@@ -27,8 +27,10 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.util.Arrays;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 /**
  * A collection of helper methods for executing operations.
@@ -39,6 +41,13 @@ public class RunUtil implements IRunUtil {
     private static IRunUtil sDefaultInstance = null;
     private File mWorkingDir = null;
     private Map<String, String> mEnvVariables = new HashMap<String, String>();
+    private ThreadLocal<Boolean> mIsInterruptAllowed = new ThreadLocal<Boolean>() {
+        @Override
+        protected Boolean initialValue() {
+            return Boolean.FALSE;
+        }
+    };
+    private Set<Long> mInterruptThreads = new HashSet<>();
 
     /**
      * Create a new {@link RunUtil} object to use.
@@ -179,6 +188,7 @@ public class RunUtil implements IRunUtil {
     @Override
     public CommandStatus runTimed(long timeout, IRunUtil.IRunnableResult runnable,
             boolean logErrors) {
+        checkInterrupted();
         RunnableNotifier runThread = new RunnableNotifier(runnable, logErrors);
         runThread.start();
         try {
@@ -190,6 +200,7 @@ public class RunUtil implements IRunUtil {
                 || runThread.getStatus() == CommandStatus.EXCEPTION) {
             runThread.interrupt();
         }
+        checkInterrupted();
         return runThread.getStatus();
     }
 
@@ -273,6 +284,7 @@ public class RunUtil implements IRunUtil {
      */
     @Override
     public void sleep(long time) {
+        checkInterrupted();
         if (time <= 0) {
             return;
         }
@@ -281,6 +293,31 @@ public class RunUtil implements IRunUtil {
         } catch (InterruptedException e) {
             // ignore
             CLog.d("sleep interrupted");
+        }
+        checkInterrupted();
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void allowInterrupt(boolean allow) {
+        CLog.d("run interrupt allowed: %s", allow);
+        mIsInterruptAllowed.set(allow);
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public synchronized void interrupt(Thread thread) {
+        mInterruptThreads.add(thread.getId());
+    }
+
+    private synchronized void checkInterrupted() {
+        final long threadId = Thread.currentThread().getId();
+        if (mIsInterruptAllowed.get() && mInterruptThreads.remove(threadId)) {
+            throw new RunInterruptedException();
         }
     }
 

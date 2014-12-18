@@ -188,4 +188,20 @@ public interface IRunUtil {
      * @param time ms to sleep. values less than or equal to 0 will be ignored
      */
     public void sleep(long time);
+
+    /**
+     * Allows/disallows run interrupts on the current thread. If it is allowed, run operations of
+     * the current thread can be interrupted from other threads via {@link #interrupt} method.
+     *
+     * @param allow whether to allow run interrupts on the current thread.
+     */
+    public void allowInterrupt(boolean allow);
+
+    /**
+     * Interrupts the ongoing/forthcoming run operations on the given thread. The run operations on
+     * the given thread will throw {@link RunInterruptedException}.
+     *
+     * @param thread
+     */
+    public void interrupt(Thread thread);
 }

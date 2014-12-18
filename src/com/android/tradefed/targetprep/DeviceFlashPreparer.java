@@ -200,42 +200,48 @@ public abstract class DeviceFlashPreparer implements ITargetCleaner {
         if (!(buildInfo instanceof IDeviceBuildInfo)) {
             throw new IllegalArgumentException("Provided buildInfo is not a IDeviceBuildInfo");
         }
-        IDeviceBuildInfo deviceBuild = (IDeviceBuildInfo)buildInfo;
-        device.setRecoveryMode(RecoveryMode.ONLINE);
-        IDeviceFlasher flasher = createFlasher(device);
-        // only surround fastboot related operations with flashing permit restriction
+        // don't allow interruptions during flashing operations.
+        getRunUtil().allowInterrupt(false);
         try {
-            takeFlashingPermit();
+            IDeviceBuildInfo deviceBuild = (IDeviceBuildInfo)buildInfo;
+            device.setRecoveryMode(RecoveryMode.ONLINE);
+            IDeviceFlasher flasher = createFlasher(device);
+            // only surround fastboot related operations with flashing permit restriction
+            try {
+                takeFlashingPermit();
 
-            flasher.overrideDeviceOptions(device);
-            flasher.setUserDataFlashOption(mUserDataFlashOption);
-            flasher.setForceSystemFlash(mForceSystemFlash);
-            flasher.setDataWipeSkipList(mDataWipeSkipList);
-            preEncryptDevice(device, flasher);
-            flasher.flash(device, deviceBuild);
+                flasher.overrideDeviceOptions(device);
+                flasher.setUserDataFlashOption(mUserDataFlashOption);
+                flasher.setForceSystemFlash(mForceSystemFlash);
+                flasher.setDataWipeSkipList(mDataWipeSkipList);
+                preEncryptDevice(device, flasher);
+                flasher.flash(device, deviceBuild);
+            } finally {
+                returnFlashingPermit();
+            }
+            device.waitForDeviceOnline();
+            // device may lose date setting if wiped, update with host side date in case anything on
+            // device side malfunction with an invalid date
+            if (device.enableAdbRoot()) {
+                device.setDate(null);
+            }
+            checkBuild(device, deviceBuild);
+            postEncryptDevice(device, flasher);
+            // only want logcat captured for current build, delete any accumulated log data
+            device.clearLogcat();
+            try {
+                device.setRecoveryMode(RecoveryMode.AVAILABLE);
+                device.waitForDeviceAvailable(mDeviceBootTime);
+            } catch (DeviceUnresponsiveException e) {
+                // assume this is a build problem
+                throw new DeviceFailedToBootError(String.format(
+                        "Device %s did not become available after flashing %s",
+                        device.getSerialNumber(), deviceBuild.getDeviceBuildId()));
+            }
+            device.postBootSetup();
         } finally {
-            returnFlashingPermit();
+            getRunUtil().allowInterrupt(true);
         }
-        device.waitForDeviceOnline();
-        // device may lose date setting if wiped, update with host side date in case anything on
-        // device side malfunction with an invalid date
-        if (device.enableAdbRoot()) {
-            device.setDate(null);
-        }
-        checkBuild(device, deviceBuild);
-        postEncryptDevice(device, flasher);
-        // only want logcat captured for current build, delete any accumulated log data
-        device.clearLogcat();
-        try {
-            device.setRecoveryMode(RecoveryMode.AVAILABLE);
-            device.waitForDeviceAvailable(mDeviceBootTime);
-        } catch (DeviceUnresponsiveException e) {
-            // assume this is a build problem
-            throw new DeviceFailedToBootError(String.format(
-                    "Device %s did not become available after flashing %s",
-                    device.getSerialNumber(), deviceBuild.getDeviceBuildId()));
-        }
-        device.postBootSetup();
     }
 
     /**
