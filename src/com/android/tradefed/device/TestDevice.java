@@ -851,7 +851,13 @@ class TestDevice implements IManagedTestDevice {
         CLog.i("Checking free space for %s", getSerialNumber());
         String externalStorePath = getMountPoint(IDevice.MNT_EXTERNAL_STORAGE);
         String output = getDfOutput(externalStorePath);
-        Long available = parseFreeSpaceFromAvailable(output);
+        // Try coreutils/toybox style output first.
+        Long available = parseFreeSpaceFromModernOutput(externalStorePath, output);
+        if (available != null) {
+            return available;
+        }
+        // Then the two legacy toolbox formats.
+        available = parseFreeSpaceFromAvailable(output);
         if (available != null) {
             return available;
         }
@@ -884,7 +890,8 @@ class TestDevice implements IManagedTestDevice {
     }
 
     /**
-     * Parses a partitions available space from the legacy output of a 'df' command.
+     * Parses a partition's available space from the legacy output of a 'df' command, used
+     * pre-gingerbread.
      * <p/>
      * Assumes output format of:
      * <br>/
@@ -909,7 +916,8 @@ class TestDevice implements IManagedTestDevice {
     }
 
     /**
-     * Parses a partitions available space from the 'table-formatted' output of a 'df' command.
+     * Parses a partition's available space from the 'table-formatted' output of a toolbox 'df'
+     * command, used from gingerbread to lollipop.
      * <p/>
      * Assumes output format of:
      * <br/>
@@ -943,6 +951,35 @@ class TestDevice implements IManagedTestDevice {
             }
         }
         return freeSpace;
+    }
+
+    /**
+     * Parses a partition's available space from the modern coreutils/toybox 'df' output, used
+     * after lollipop.
+     * <p/>
+     * Assumes output format of:
+     * <br/>
+     * <code>
+     * Filesystem      1K-blocks	Used  Available Use% Mounted on
+     * <br/>
+     * /dev/fuse        11585536    1316348   10269188  12% /mnt/shell/emulated
+     * </code>
+     * @param dfOutput the output of df command to parse
+     * @return the available space in kilobytes or <code>null</code> if output could not be parsed
+     */
+    Long parseFreeSpaceFromModernOutput(String externalStorePath, String dfOutput) {
+        final Pattern pattern = Pattern.compile(String.format(
+                //Fs 1K-blks Used    Available Use%      Mounted on
+                "\\s+\\d+\\s+\\d+\\s+(\\d+)\\s+\\d+%%\\s+%s", externalStorePath));
+        Matcher matcher = pattern.matcher(dfOutput);
+        if (matcher.find()) {
+            try {
+                return Long.parseLong(matcher.group(1));
+            } catch (NumberFormatException e) {
+                // fall through
+            }
+        }
+        return null;
     }
 
     /**
