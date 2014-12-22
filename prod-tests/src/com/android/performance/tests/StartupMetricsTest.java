@@ -47,7 +47,7 @@ public class StartupMetricsTest implements IDeviceTest, IRemoteTest {
     public static final String BUGREPORT_LOG_NAME = "bugreport_startup.txt";
 
     @Option(name="boot-time-ms", description="Timeout in ms to wait for device to boot.")
-    private long mBootTimeMs = 5 * 60 * 1000;
+    private long mBootTimeMs = 20 * 60 * 1000;
 
     @Option(name="boot-poll-time-ms", description="Delay in ms between polls for device to boot.")
     private long mBootPoolTimeMs = 500;
@@ -78,6 +78,10 @@ public class StartupMetricsTest implements IDeviceTest, IRemoteTest {
      */
     void executeRebootTest(ITestInvocationListener listener) throws DeviceNotAvailableException {
         Map<String, String> runMetrics = new HashMap<String, String>();
+        String upTimeString = mTestDevice.executeShellCommand("cat /proc/uptime");
+        upTimeString  = upTimeString.split(" ")[0];
+        assert(Double.parseDouble(upTimeString) > 0);
+        runMetrics.put("init-boot", upTimeString);
         mTestDevice.setRecoveryMode(RecoveryMode.NONE);
         CLog.d("Reboot test start.");
         mTestDevice.nonBlockingReboot();
