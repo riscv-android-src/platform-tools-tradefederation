@@ -77,6 +77,7 @@ public class TestInvocation implements ITestInvocation {
     static final String BUILD_ERROR_BUGREPORT_NAME = "build_error_bugreport";
     static final String DEVICE_UNRESPONSIVE_BUGREPORT_NAME = "device_unresponsive_bugreport";
     static final String INVOCATION_ENDED_BUGREPORT_NAME = "invocation_ended_bugreport";
+    static final String TARGET_SETUP_ERROR_BUGREPORT_NAME = "target_setup_error_bugreport";
     static final String BATT_TAG = "[battery level]";
 
     private String mStatus = "(not invoked)";
@@ -446,6 +447,7 @@ public class TestInvocation implements ITestInvocation {
         } catch (TargetSetupError e) {
             CLog.e("Caught exception while running invocation");
             CLog.e(e);
+            takeBugreport(device, listener, TARGET_SETUP_ERROR_BUGREPORT_NAME);
             reportFailure(e, listener, config, info, rescheduler);
         } catch (DeviceNotAvailableException e) {
             // log a warning here so its captured before reportLogs is called
