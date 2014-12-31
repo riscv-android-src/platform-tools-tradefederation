@@ -434,33 +434,38 @@ public class TestInvocation implements ITestInvocation {
             IRescheduler rescheduler, ITestInvocationListener listener) throws Throwable {
 
         boolean resumed = false;
+        String bugreportName = null;
         long startTime = System.currentTimeMillis();
         long elapsedTime = -1;
+        Throwable exception = null;
+        Exception tearDownException = null;
 
         info.setDeviceSerial(device.getSerialNumber());
         startInvocation(config, device, info, listener);
         try {
             logDeviceBatteryLevel(device, "initial");
-
             prepareAndRun(config, device, info, listener);
         } catch (BuildError e) {
+            exception = e;
             CLog.w("Build %s failed on device %s. Reason: %s", info.getBuildId(),
                     device.getSerialNumber(), e.toString());
-            takeBugreport(device, listener, BUILD_ERROR_BUGREPORT_NAME);
+            bugreportName = BUILD_ERROR_BUGREPORT_NAME;
             reportFailure(e, listener, config, info, rescheduler);
         } catch (TargetSetupError e) {
+            exception = e;
             CLog.e("Caught exception while running invocation");
             CLog.e(e);
-            takeBugreport(device, listener, TARGET_SETUP_ERROR_BUGREPORT_NAME);
+            bugreportName = TARGET_SETUP_ERROR_BUGREPORT_NAME;
             reportFailure(e, listener, config, info, rescheduler);
         } catch (DeviceNotAvailableException e) {
+            exception = e;
             // log a warning here so its captured before reportLogs is called
             CLog.w("Invocation did not complete due to device %s becoming not available. " +
                     "Reason: %s", device.getSerialNumber(), e.getMessage());
             if ((e instanceof DeviceUnresponsiveException)
                     && TestDeviceState.ONLINE.equals(device.getDeviceState())) {
                 // under certain cases it might still be possible to grab a bugreport
-                takeBugreport(device, listener, DEVICE_UNRESPONSIVE_BUGREPORT_NAME);
+                bugreportName = DEVICE_UNRESPONSIVE_BUGREPORT_NAME;
             }
             resumed = resume(config, info, rescheduler, System.currentTimeMillis() - startTime);
             if (!resumed) {
@@ -473,15 +478,40 @@ public class TestInvocation implements ITestInvocation {
             CLog.w("Invocation interrupted");
             reportFailure(e, listener, config, info, rescheduler);
         } catch (RuntimeException e) {
+            exception = e;
             // log a warning here so its captured before reportLogs is called
             CLog.e("Unexpected exception when running invocation: %s", e.toString());
             CLog.e(e);
             reportFailure(e, listener, config, info, rescheduler);
             throw e;
         } catch (AssertionError e) {
+            exception = e;
             CLog.w("Caught AssertionError while running invocation: ", e.toString());
             reportFailure(e, listener, config, info, rescheduler);
         } finally {
+            getRunUtil().allowInterrupt(false);
+            if (config.getCommandOptions().takeBugreportOnInvocationEnded()) {
+                if (bugreportName != null) {
+                    CLog.i("Bugreport to be taken for failure instead of invocation ended.");
+                } else {
+                    bugreportName = INVOCATION_ENDED_BUGREPORT_NAME;
+                }
+            }
+            if (bugreportName != null) {
+                takeBugreport(device, listener, bugreportName);
+            }
+            mStatus = "tearing down";
+            try {
+                doTeardown(config, device, info, exception);
+            } catch (DeviceNotAvailableException|RuntimeException e) {
+                tearDownException = e;
+                if (exception == null) {
+                    // only log & report when the exception is new during tear down
+                    CLog.e("Exception when tearing down invocation: %s", tearDownException.toString());
+                    CLog.e(tearDownException);
+                    reportFailure(tearDownException, listener, config, info, rescheduler);
+                }
+            }
             mStatus = "done running tests";
             try {
                 reportLogs(device, listener, config.getLogOutput());
@@ -493,6 +523,12 @@ public class TestInvocation implements ITestInvocation {
                 config.getBuildProvider().cleanUp(info);
             }
         }
+        if (tearDownException != null) {
+            // this means a DNAE or RTE has happened during teardown, need to throw
+            // if there was a preceding RTE or DNAE stored in 'exception', it would have already
+            // been thrown before exiting the previous try...catch...finally block
+            throw tearDownException;
+        }
     }
 
     /**
@@ -500,42 +536,12 @@ public class TestInvocation implements ITestInvocation {
      */
     private void prepareAndRun(IConfiguration config, ITestDevice device, IBuildInfo info,
             ITestInvocationListener listener) throws Throwable {
-        // use the JUnit3 logic for handling exceptions when running tests
-        Throwable exception = null;
-
-        try {
-            getRunUtil().allowInterrupt(true);
-            logDeviceBatteryLevel(device, "initial -> setup");
-            doSetup(config, device, info);
-            logDeviceBatteryLevel(device, "setup -> test");
-            runTests(device, config, listener);
-            logDeviceBatteryLevel(device, "after test");
-        } catch (Throwable running) {
-            exception = running;
-        } finally {
-            mStatus = "tearing down";
-            // Disallow run interrupts to prevent interrupting tear down process.
-            getRunUtil().allowInterrupt(false);
-            try {
-                if (!(exception instanceof RunInterruptedException) &&
-                        config.getCommandOptions().takeBugreportOnInvocationEnded()) {
-                    takeBugreport(device, listener, INVOCATION_ENDED_BUGREPORT_NAME);
-                }
-            } catch (Throwable bugreport) {
-                exception = bugreport;
-            } finally {
-                try {
-                    doTeardown(config, device, info, exception);
-                } catch (Throwable tearingDown) {
-                    if (exception == null) {
-                        exception = tearingDown;
-                    }
-                }
-            }
-        }
-        if (exception != null) {
-            throw exception;
-        }
+        getRunUtil().allowInterrupt(true);
+        logDeviceBatteryLevel(device, "initial -> setup");
+        doSetup(config, device, info);
+        logDeviceBatteryLevel(device, "setup -> test");
+        runTests(device, config, listener);
+        logDeviceBatteryLevel(device, "after test");
     }
 
     private void doSetup(IConfiguration config, ITestDevice device, IBuildInfo info)

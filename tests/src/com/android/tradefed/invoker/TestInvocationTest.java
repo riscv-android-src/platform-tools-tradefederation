@@ -341,9 +341,8 @@ public class TestInvocationTest extends TestCase {
         mMockPreparer.setUp(mMockDevice, mMockBuildInfo);
         EasyMock.expectLastCall().andThrow(exception);
         setupMockFailureListeners(exception);
-
         EasyMock.expect(mMockDevice.getBugreport())
-                .andReturn(new ByteArrayInputStreamSource(new byte[0]));
+            .andReturn(new ByteArrayInputStreamSource(new byte[0]));
         setupInvokeWithBuild();
         replayMocks(test);
         mTestInvocation.invoke(mMockDevice, mStubConfiguration, new StubRescheduler());
@@ -503,13 +502,14 @@ public class TestInvocationTest extends TestCase {
         EasyMock.expectLastCall().andThrow(exception);
         ITargetCleaner mockCleaner = EasyMock.createMock(ITargetCleaner.class);
         mockCleaner.setUp(mMockDevice, mMockBuildInfo);
-        // tearDown should NOT be called
-        // mockCleaner.tearDown(mMockDevice, mMockBuildInfo, null);
+        EasyMock.expectLastCall();
+        mockCleaner.tearDown(mMockDevice, mMockBuildInfo, exception);
+        EasyMock.expectLastCall();
+        EasyMock.replay(mockCleaner);
         mStubConfiguration.getTargetPreparers().add(mockCleaner);
         setupMockFailureListeners(exception);
         mMockBuildProvider.buildNotTested(mMockBuildInfo);
         setupNormalInvoke(test);
-        EasyMock.replay(mockCleaner);
         try {
             mTestInvocation.invoke(mMockDevice, mStubConfiguration, new StubRescheduler());
             fail("DeviceNotAvailableException not thrown");
@@ -649,6 +649,12 @@ public class TestInvocationTest extends TestCase {
         mMockTestListener.invocationStarted(mMockBuildInfo);
         mMockSummaryListener.invocationStarted(mMockBuildInfo);
 
+        // invocationFailed
+        if (!status.equals(InvocationStatus.SUCCESS)) {
+            mMockTestListener.invocationFailed(EasyMock.eq(throwable));
+            mMockSummaryListener.invocationFailed(EasyMock.eq(throwable));
+        }
+
         if (throwable instanceof BuildError) {
             EasyMock.expect(mMockLogSaver.saveLogData(
                     EasyMock.eq(TestInvocation.BUILD_ERROR_BUGREPORT_NAME),
@@ -658,12 +664,6 @@ public class TestInvocationTest extends TestCase {
                     EasyMock.eq(LogDataType.BUGREPORT), (InputStreamSource)EasyMock.anyObject());
             mMockSummaryListener.testLog(EasyMock.eq(TestInvocation.BUILD_ERROR_BUGREPORT_NAME),
                     EasyMock.eq(LogDataType.BUGREPORT), (InputStreamSource)EasyMock.anyObject());
-        }
-
-        // invocationFailed
-        if (!status.equals(InvocationStatus.SUCCESS)) {
-            mMockTestListener.invocationFailed(EasyMock.eq(throwable));
-            mMockSummaryListener.invocationFailed(EasyMock.eq(throwable));
         }
 
         // saveAndZipLogData (mMockLogFileSaver)
