@@ -398,6 +398,7 @@ public class TestInvocationTest extends TestCase {
         EasyMock.expect(mockRescheduler.scheduleConfig(EasyMock.capture(capturedConfig)))
                 .andReturn(Boolean.TRUE);
         mMockBuildProvider.cleanUp(mMockBuildInfo);
+        mMockDevice.clearLastConnectedWifiNetwork();
         mMockDevice.stopLogcat();
 
         mMockLogger.init();
@@ -430,6 +431,7 @@ public class TestInvocationTest extends TestCase {
         EasyMock.expect(resumeListener.getSummary()).andReturn(null);
         mMockBuildInfo.cleanUp();
         mMockLogger.closeLog();
+        mMockDevice.clearLastConnectedWifiNetwork();
         mMockDevice.stopLogcat();
 
         EasyMock.replay(mockRescheduler, resumeListener, resumableTest, mMockPreparer,
@@ -606,6 +608,7 @@ public class TestInvocationTest extends TestCase {
         mMockDevice.clearLastConnectedWifiNetwork();
         mMockDevice.setOptions((TestDeviceOptions)EasyMock.anyObject());
         mMockDevice.startLogcat();
+        mMockDevice.clearLastConnectedWifiNetwork();
         mMockDevice.stopLogcat();
     }
 
