@@ -17,6 +17,7 @@
 package com.android.tradefed.command;
 
 import com.android.ddmlib.DdmPreferences;
+import com.android.ddmlib.IDevice;
 import com.android.ddmlib.Log;
 import com.android.ddmlib.Log.LogLevel;
 import com.android.tradefed.command.CommandFileParser.CommandLine;
@@ -69,6 +70,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ScheduledThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import java.util.regex.Pattern;
@@ -478,13 +480,47 @@ public class CommandScheduler extends Thread implements ICommandScheduler, IComm
         }
 
         /**
-         * Interrupts a running invocation. {@link CommandScheduler#shutdownHard()} will interrupt
+         * Stops a running invocation. {@link CommandScheduler#shutdownHard()} will stop
          * all running invocations.
          */
-        @Override
-        public void interrupt() {
-            RunUtil.getDefault().interrupt(this);
+        public void stopInvocation(String message) {
+            if (mDevice != null && mDevice.getIDevice().isOnline()) {
+                // Kill all running processes on device.
+                try {
+                    mDevice.executeShellCommand("am kill-all");
+                } catch (DeviceNotAvailableException e) {
+                    CLog.w("failed to kill process on device %s: %s", mDevice.getSerialNumber(), e);
+                }
+            }
+            RunUtil.getDefault().interrupt(this, message);
             super.interrupt();
+        }
+
+        /**
+         * Checks whether the device battery level is above the required value to keep running the
+         * invocation.
+         */
+        public void checkDeviceBatteryLevel() {
+            final Integer cutoffBattery = mCmd.getConfiguration().getDeviceOptions()
+                    .getCutoffBattery();
+            if (mDevice != null && cutoffBattery != null) {
+                final IDevice device = mDevice.getIDevice();
+                int batteryLevel = -1;
+                try {
+                    batteryLevel = device.getBattery(0, TimeUnit.MILLISECONDS).get();
+                } catch (InterruptedException | ExecutionException e) {
+                    // fall through
+                }
+                CLog.d("device %s: battey level=%d%%", device.getSerialNumber(), batteryLevel);
+                // This logic is based on the assumption that batterLevel will be 0 or -1 if TF
+                // fails to fetch a valid battery level or the device is not using a battery.
+                if (0 < batteryLevel && batteryLevel < cutoffBattery) {
+                    CLog.i("Stopping %s: battery too low (%d%% < %d%%)",
+                            getName(), batteryLevel, cutoffBattery);
+                    stopInvocation(String.format(
+                            "battery too low (%d%% < %d%%)", batteryLevel, cutoffBattery));
+                }
+            }
         }
     }
 
@@ -616,6 +652,7 @@ public class CommandScheduler extends Thread implements ICommandScheduler, IComm
             while (!isShutdown()) {
                 // wait until processing is required again
                 mCommandProcessWait.waitAndReset(mPollTime);
+                checkInvocations();
                 processReadyCommands(manager);
             }
             mCommandTimer.shutdown();
@@ -639,6 +676,15 @@ public class CommandScheduler extends Thread implements ICommandScheduler, IComm
             // Make sure that we don't quit with messages still in the buffers
             System.err.flush();
             System.out.flush();
+        }
+    }
+
+    private void checkInvocations() {
+        CLog.d("Checking invocations...");
+        final List<InvocationThread> copy = new ArrayList<InvocationThread>(
+                mInvocationThreadMap.values());
+        for (InvocationThread thread : copy) {
+            thread.checkDeviceBatteryLevel();
         }
     }
 
@@ -1230,9 +1276,9 @@ public class CommandScheduler extends Thread implements ICommandScheduler, IComm
     public synchronized void shutdownHard() {
         shutdown();
 
-        CLog.logAndDisplay(LogLevel.WARN, "Interrupting invocation threads...");
+        CLog.logAndDisplay(LogLevel.WARN, "Stopping invocation threads...");
         for (InvocationThread thread : mInvocationThreadMap.values()) {
-            thread.interrupt();
+            thread.stopInvocation("TF is shutting down");
         }
     }
 
