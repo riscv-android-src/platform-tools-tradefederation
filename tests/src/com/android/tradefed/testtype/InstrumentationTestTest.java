@@ -325,23 +325,6 @@ public class InstrumentationTestTest extends TestCase {
     }
 
     /**
-     * Test that IllegalArgumentException is thrown when attempting run with test-timeout longer
-     * then shell-timeout.
-     */
-    public void testRun_testTimeoutLongerThenShellTimeout() throws Exception {
-        mInstrumentationTest.setShellTimeout(5);
-        mInstrumentationTest.setTestTimeout(10);
-        EasyMock.replay(mMockRemoteRunner);
-        try {
-            mInstrumentationTest.run(mMockListener);
-            fail("IllegalArgumentException not thrown");
-        } catch (IllegalArgumentException e) {
-            // expected
-        }
-    }
-
-
-    /**
      * Set EasyMock expectations for a run that fails.
      *
      * @param firstRunAnswer the behavior callback of the first run. It should perform callbacks
