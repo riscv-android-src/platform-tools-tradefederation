@@ -47,6 +47,11 @@ public class InstallApkSetup implements ITargetPreparer {
             importance = Importance.IF_UNSET)
     private String mForceAbi = null;
 
+    @Option(name = "install-arg",
+            description = "Additional arguments to be passed to install command, "
+                    + "including leading dash, e.g. \"-d\"")
+    private Collection<String> mInstallArgs = new ArrayList<>();
+
     /**
      * {@inheritDoc}
      */
@@ -60,14 +65,13 @@ public class InstallApkSetup implements ITargetPreparer {
             }
             Log.i(LOG_TAG, String.format("Installing %s on %s", apk.getName(),
                     device.getSerialNumber()));
-            String[] options = {};
             if (mForceAbi != null) {
                 String abi = AbiFormatter.getDefaultAbi(device, mForceAbi);
                 if (abi != null) {
-                    options = new String[]{String.format("--abi %s ", abi)};
+                    mInstallArgs.add(String.format("--abi %s", abi));
                 }
             }
-            String result = device.installPackage(apk, true, options);
+            String result = device.installPackage(apk, true, mInstallArgs.toArray(new String[]{}));
             if (result != null) {
                 Log.e(LOG_TAG, String.format("Failed to install %s on device %s. Reason: %s",
                         apk.getAbsolutePath(), device.getSerialNumber(), result));

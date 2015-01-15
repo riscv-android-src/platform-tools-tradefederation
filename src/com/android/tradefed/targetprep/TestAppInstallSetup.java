@@ -49,6 +49,11 @@ public class TestAppInstallSetup implements ITargetPreparer {
             importance = Importance.IF_UNSET)
     private String mForceAbi = null;
 
+    @Option(name = "install-arg",
+            description = "Additional arguments to be passed to install command, "
+                    + "including leading dash, e.g. \"-d\"")
+    private Collection<String> mInstallArgs = new ArrayList<>();
+
     /**
      * Adds a file to the list of apks to install
      *
@@ -92,14 +97,14 @@ public class TestAppInstallSetup implements ITargetPreparer {
                     String.format("Could not find test app %s directory in extracted tests.zip",
                             testAppFile));
             }
-            String[] options = {};
             if (mForceAbi != null) {
                 String abi = AbiFormatter.getDefaultAbi(device, mForceAbi);
                 if (abi != null) {
-                    options = new String[]{String.format("--abi %s ", abi)};
+                    mInstallArgs.add(String.format("--abi %s", abi));
                 }
             }
-            String result = device.installPackage(testAppFile, true, options);
+            String result = device.installPackage(testAppFile, true,
+                    mInstallArgs.toArray(new String[]{}));
             if (result != null) {
                 throw new TargetSetupError(
                         String.format("Failed to install %s on %s. Reason: '%s'", testAppName,
