@@ -27,10 +27,8 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.util.Arrays;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 
 /**
  * A collection of helper methods for executing operations.
@@ -47,7 +45,7 @@ public class RunUtil implements IRunUtil {
             return Boolean.FALSE;
         }
     };
-    private Set<Long> mInterruptThreads = new HashSet<>();
+    private Map<Long, String> mInterruptThreads = new HashMap<>();
 
     /**
      * Create a new {@link RunUtil} object to use.
@@ -310,14 +308,20 @@ public class RunUtil implements IRunUtil {
      * {@inheritDoc}
      */
     @Override
-    public synchronized void interrupt(Thread thread) {
-        mInterruptThreads.add(thread.getId());
+    public synchronized void interrupt(Thread thread, String message) {
+        if (message == null) {
+            throw new IllegalArgumentException("message cannot be null.");
+        }
+        mInterruptThreads.put(thread.getId(), message);
     }
 
     private synchronized void checkInterrupted() {
         final long threadId = Thread.currentThread().getId();
-        if (mIsInterruptAllowed.get() && mInterruptThreads.remove(threadId)) {
-            throw new RunInterruptedException();
+        if (mIsInterruptAllowed.get()) {
+            final String message = mInterruptThreads.remove(threadId);
+            if (message != null) {
+                throw new RunInterruptedException(message);
+            }
         }
     }
 

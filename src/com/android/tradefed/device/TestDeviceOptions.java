@@ -94,6 +94,10 @@ public class TestDeviceOptions {
             description = "shell command to run after reboots during invocation")
     private List<String> mPostBootCommands = new ArrayList<String>();
 
+    @Option(name = "cutoff-battery", description =
+            "the minimum battery level required to continue the invocation. Scale: 0-100")
+    private Integer mCutoffBattery = null;
+
     /**
      * Check whether adb root should be enabled on boot for this device
      */
@@ -288,11 +292,17 @@ public class TestDeviceOptions {
         return mWifiRetryWaitTime;
     }
 
-
     /**
      * @return a list of shell commands to run after reboots.
      */
     public List<String> getPostBootCommands() {
         return mPostBootCommands;
+    }
+
+    /**
+     * @return the minimum battery level to continue the invocation.
+     */
+    public Integer getCutoffBattery() {
+        return mCutoffBattery;
     }
 }

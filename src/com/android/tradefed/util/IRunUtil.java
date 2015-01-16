@@ -202,6 +202,7 @@ public interface IRunUtil {
      * the given thread will throw {@link RunInterruptedException}.
      *
      * @param thread
+     * @param message the message for {@link RunInterruptedException}.
      */
-    public void interrupt(Thread thread);
+    public void interrupt(Thread thread, String message);
 }

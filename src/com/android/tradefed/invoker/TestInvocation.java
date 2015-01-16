@@ -514,10 +514,11 @@ public class TestInvocation implements ITestInvocation {
             exception = running;
         } finally {
             mStatus = "tearing down";
-            // Disallow run interrupts to prevent interrupting tear down proces.
+            // Disallow run interrupts to prevent interrupting tear down process.
             getRunUtil().allowInterrupt(false);
             try {
-                if (config.getCommandOptions().takeBugreportOnInvocationEnded()) {
+                if (!(exception instanceof RunInterruptedException) &&
+                        config.getCommandOptions().takeBugreportOnInvocationEnded()) {
                     takeBugreport(device, listener, INVOCATION_ENDED_BUGREPORT_NAME);
                 }
             } catch (Throwable bugreport) {

@@ -158,4 +158,56 @@ public class RunUtilTest extends TestCase {
         assertEquals(maxTime, mSleepTime);
         EasyMock.verify(mockRunnable);
     }
+
+    /**
+     * Test a success case for {@link RunUtil#interrupt}.
+     */
+    public void testInterrupt() {
+        final String message = "it is alright now";
+        mRunUtil.allowInterrupt(true);
+        mRunUtil.interrupt(Thread.currentThread(), message);
+        try{
+            mRunUtil.sleep(1);
+            fail("RunInterruptedException was expected, but not thrown.");
+        } catch (final RunInterruptedException e) {
+            assertEquals(message, e.getMessage());
+        }
+    }
+
+    /**
+     * Test whether a {@link RunUtil#interrupt} call is respected when called while interrupts are
+     * not allowed.
+     */
+    public void testInterrupt_delayed() {
+        final String message = "it is alright now";
+        mRunUtil.allowInterrupt(false);
+        mRunUtil.interrupt(Thread.currentThread(), message);
+        mRunUtil.sleep(1);
+        mRunUtil.allowInterrupt(true);
+        try{
+            mRunUtil.sleep(1);
+            fail("RunInterruptedException was expected, but not thrown.");
+        } catch (final RunInterruptedException e) {
+            assertEquals(message, e.getMessage());
+        }
+    }
+
+    /**
+     * Test whether a {@link RunUtil#interrupt} call is respected when called multiple times.
+     */
+    public void testInterrupt_multiple() {
+        final String message1 = "it is alright now";
+        final String message2 = "without a fight";
+        final String message3 = "rock this town";
+        mRunUtil.allowInterrupt(true);
+        mRunUtil.interrupt(Thread.currentThread(), message1);
+        mRunUtil.interrupt(Thread.currentThread(), message2);
+        mRunUtil.interrupt(Thread.currentThread(), message3);
+        try{
+            mRunUtil.sleep(1);
+            fail("RunInterruptedException was expected, but not thrown.");
+        } catch (final RunInterruptedException e) {
+            assertEquals(message3, e.getMessage());
+        }
+    }
 }
