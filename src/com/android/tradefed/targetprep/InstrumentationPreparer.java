@@ -76,7 +76,7 @@ public class InstrumentationPreparer implements ITargetPreparer {
             description="Sets timeout (in milliseconds) that will be applied to each test. In the "
                     + "event of a test timeout it will log the results and proceed with executing "
                     + "the next test. For no timeout, set to 0.")
-    private long mTestTimeout = 10 * 60 * 1000;  // default to 10 minutes
+    private int mTestTimeout = 10 * 60 * 1000;  // default to 10 minutes
 
     @Option(name = "instrumentation-arg",
             description = "Instrumentation arguments to provide.")
@@ -184,7 +184,7 @@ public class InstrumentationPreparer implements ITargetPreparer {
     }
 
     /**
-     * @Deprecated Use {@link #setShellTimeout(long)} or {@link #setTestTimeout(long)}
+     * @Deprecated Use {@link #setShellTimeout(long)} or {@link #setTestTimeout(int)}
      */
     @Deprecated
     void setTimeout(int timeout) {
@@ -195,7 +195,7 @@ public class InstrumentationPreparer implements ITargetPreparer {
         mShellTimeout = timeout;
     }
 
-    void setTestTimeout(long timeout) {
+    void setTestTimeout(int timeout) {
         mTestTimeout = timeout;
     }
 

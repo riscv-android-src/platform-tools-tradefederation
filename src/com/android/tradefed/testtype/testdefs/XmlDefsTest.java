@@ -77,7 +77,7 @@ public class XmlDefsTest implements IDeviceTest, IResumableTest,
             description="Sets timeout (in milliseconds) that will be applied to each test. In the "
                     + "event of a test timeout it will log the results and proceed with executing "
                     + "the next test. For no timeout, set to 0.")
-    private long mTestTimeout = 10 * 60 * 1000;  // default to 10 minutes
+    private int mTestTimeout = 10 * 60 * 1000;  // default to 10 minutes
 
     @Option(name = "size",
             description = "Restrict tests to a specific test size. " +
@@ -335,7 +335,7 @@ public class XmlDefsTest implements IDeviceTest, IResumableTest,
         return mShellTimeout;
     }
 
-    long getTestTimeout() {
+    int getTestTimeout() {
         return mTestTimeout;
     }
 

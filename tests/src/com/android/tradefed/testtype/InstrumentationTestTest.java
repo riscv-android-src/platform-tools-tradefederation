@@ -38,7 +38,7 @@ import java.util.concurrent.TimeUnit;
  */
 public class InstrumentationTestTest extends TestCase {
 
-    private static final long TEST_TIMEOUT = 0;
+    private static final int TEST_TIMEOUT = 0;
     private static final long SHELL_TIMEOUT = 0;
     private static final String TEST_PACKAGE_VALUE = "com.foo";
     private static final String TEST_RUNNER_VALUE = ".FooRunner";

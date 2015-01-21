@@ -103,7 +103,7 @@ public class InstrumentationTest implements IDeviceTest, IResumableTest {
             description="Sets timeout (in milliseconds) that will be applied to each test. In the "
                     + "event of a test timeout it will log the results and proceed with executing "
                     + "the next test. For no timeout, set to 0.")
-    private long mTestTimeout = 5 * 60 * 1000;  // default to 5 minutes
+    private int mTestTimeout = 5 * 60 * 1000;  // default to 5 minutes
 
     @Option(name = "size",
             description="Restrict test to a specific test size.")
@@ -334,7 +334,7 @@ public class InstrumentationTest implements IDeviceTest, IResumableTest {
     /**
      * Optionally, set the maximum time (in milliseconds) for each individual test run.
      */
-    public void setTestTimeout(long timeout) {
+    public void setTestTimeout(int timeout) {
         mTestTimeout = timeout;
     }
 
@@ -399,7 +399,7 @@ public class InstrumentationTest implements IDeviceTest, IResumableTest {
     /**
      * Get the test timeout in ms.
      */
-    long getTestTimeout() {
+    int getTestTimeout() {
         return mTestTimeout;
     }
 
