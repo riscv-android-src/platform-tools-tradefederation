@@ -477,17 +477,17 @@ public class TestInvocation implements ITestInvocation {
         } catch (RunInterruptedException e) {
             CLog.w("Invocation interrupted");
             reportFailure(e, listener, config, info, rescheduler);
-        } catch (RuntimeException e) {
-            exception = e;
-            // log a warning here so its captured before reportLogs is called
-            CLog.e("Unexpected exception when running invocation: %s", e.toString());
-            CLog.e(e);
-            reportFailure(e, listener, config, info, rescheduler);
-            throw e;
         } catch (AssertionError e) {
             exception = e;
             CLog.w("Caught AssertionError while running invocation: ", e.toString());
             reportFailure(e, listener, config, info, rescheduler);
+        } catch (Throwable t) {
+            exception = t;
+            // log a warning here so its captured before reportLogs is called
+            CLog.e("Unexpected exception when running invocation: %s", t.toString());
+            CLog.e(t);
+            reportFailure(t, listener, config, info, rescheduler);
+            throw t;
         } finally {
             getRunUtil().allowInterrupt(false);
             if (config.getCommandOptions().takeBugreportOnInvocationEnded()) {
