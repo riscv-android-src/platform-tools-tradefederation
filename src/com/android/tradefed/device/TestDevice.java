@@ -2260,6 +2260,7 @@ class TestDevice implements IManagedTestDevice {
         // 1. device API level >= 18
         // 2. has adb root
         // 3. framework is running
+        enableAdbRoot();
         if (getApiLevel() >= 18 && isAdbRoot()) {
             try {
                 // check framework running
