@@ -735,7 +735,8 @@ public class InstrumentationTest implements IDeviceTest, IResumableTest {
             // try to collect tests multiple times, in case device is temporarily not available
             // on first attempt
             Collection<TestIdentifier>  tests = collectTestsAndRetry(runner);
-            runner.setMaxTimeToOutputResponse(mTestTimeout, TimeUnit.MILLISECONDS);
+            // done with "logOnly" mode, restore proper test timeout before real test execution
+            addTimeoutsToRunner(runner);
             runner.setTestCollection(false);
             return tests;
         }
