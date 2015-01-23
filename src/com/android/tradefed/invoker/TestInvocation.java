@@ -204,6 +204,10 @@ public class TestInvocation implements ITestInvocation {
         IBuildInfo info = null;
 
         try {
+            String cmdLineArgs = config.getCommandLine();
+            if (cmdLineArgs != null) {
+                CLog.i("Invocation was started with cmd: %s", cmdLineArgs);
+            }
             mStatus = "fetching build";
             config.getLogOutput().init();
             getLogRegistry().registerLogger(config.getLogOutput());

@@ -34,9 +34,11 @@ import com.android.tradefed.targetprep.ITargetPreparer;
 import com.android.tradefed.targetprep.StubTargetPreparer;
 import com.android.tradefed.testtype.IRemoteTest;
 import com.android.tradefed.testtype.StubTest;
+import com.android.tradefed.util.QuotationAwareTokenizer;
 
 import java.io.PrintStream;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
@@ -66,6 +68,9 @@ public class Configuration implements IConfiguration {
     private Map<String, List<Object>> mConfigMap;
     private final String mName;
     private final String mDescription;
+    // original command line used to create this given configuration.
+    private String[] mCommandLine;
+
 
     /**
      * Container struct for built-in config object type
@@ -143,6 +148,28 @@ public class Configuration implements IConfiguration {
      */
     public String getDescription() {
         return mDescription;
+    }
+
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void setCommandLine(String[] arrayArgs) {
+        mCommandLine = arrayArgs;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public String getCommandLine() {
+        //FIXME: obfuscated passwords from command line.
+        if (mCommandLine != null && mCommandLine.length != 0) {
+            return QuotationAwareTokenizer.combineTokens(mCommandLine);
+        }
+        // If no args were available return null.
+        return null;
     }
 
     /**

@@ -256,6 +256,7 @@ public class ConfigurationFactory implements IConfigurationFactory {
             throws ConfigurationException {
         List<String> listArgs = new ArrayList<String>(arrayArgs.length);
         IConfiguration config = internalCreateConfigurationFromArgs(arrayArgs, listArgs);
+        config.setCommandLine(arrayArgs);
         config.setOptionsFromCommandLineArgs(listArgs);
 
         return config;

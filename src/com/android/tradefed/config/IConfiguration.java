@@ -294,4 +294,20 @@ public interface IConfiguration {
      * @throws ConfigurationException if config is not valid
      */
     public void validateOptions() throws ConfigurationException;
+
+    /**
+     * Sets the command line used to create this {@link IConfiguration}.
+     * This stores the whole command line, including the configuration name,
+     * unlike setOptionsFromCommandLineArgs.
+     *
+     * @param arrayArgs the command line
+     */
+    public void setCommandLine(String[] arrayArgs);
+
+    /**
+     * Gets the the command line used to create this {@link IConfiguration}.
+     *
+     * @return the command line used to create this {@link IConfiguration}.
+     */
+    public String getCommandLine();
 }
