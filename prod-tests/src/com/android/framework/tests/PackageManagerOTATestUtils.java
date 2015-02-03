@@ -163,8 +163,12 @@ public class PackageManagerOTATestUtils {
             CLog.d("Failed to find node for xpath %s", xPathString);
             return false;
         }
-        CLog.d("Value of node %s: %s", xPathString, n.getNodeValue());
-        return n.getNodeValue().equalsIgnoreCase(value);
+        boolean result = n.getNodeValue().equalsIgnoreCase(value);
+        if (!result) {
+            CLog.v("Value of node %s: \"%s\", expected: \"%s\"",
+                    xPathString, n.getNodeValue(), value);
+        }
+        return result;
     }
 
     /**
