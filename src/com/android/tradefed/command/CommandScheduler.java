@@ -681,8 +681,10 @@ public class CommandScheduler extends Thread implements ICommandScheduler, IComm
 
     private void checkInvocations() {
         CLog.d("Checking invocations...");
-        final List<InvocationThread> copy = new ArrayList<InvocationThread>(
-                mInvocationThreadMap.values());
+        final List<InvocationThread> copy;
+        synchronized(this) {
+            copy = new ArrayList<InvocationThread>(mInvocationThreadMap.values());
+        }
         for (InvocationThread thread : copy) {
             thread.checkDeviceBatteryLevel();
         }
