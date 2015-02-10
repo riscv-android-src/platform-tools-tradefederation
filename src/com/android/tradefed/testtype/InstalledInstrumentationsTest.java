@@ -322,7 +322,7 @@ public class InstalledInstrumentationsTest implements IDeviceTest, IResumableTes
                             // used to actually run the tests.
                             OptionCopier.copyOptions(InstalledInstrumentationsTest.this, t);
                         } catch (ConfigurationException e) {
-                            CLog.e("failed to copy instrumentation options", e);
+                            CLog.e("failed to copy instrumentation options: %s", e.getMessage());
                         }
                         t.setPackageName(m.group(1));
                         t.setRunnerName(runner);
@@ -354,7 +354,7 @@ public class InstalledInstrumentationsTest implements IDeviceTest, IResumableTes
                 try {
                     OptionCopier.copyOptions(this, shard);
                 } catch (ConfigurationException e) {
-                    CLog.e("failed to copy instrumentation options", e);
+                    CLog.e("failed to copy instrumentation options: %s", e.getMessage());
                 }
                 shard.mShards = 0;
                 shard.mShardIndex = index;

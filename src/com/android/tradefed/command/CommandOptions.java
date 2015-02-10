@@ -179,7 +179,7 @@ public class CommandOptions implements ICommandOptions {
         try {
             OptionCopier.copyOptions(this, clone);
         } catch (ConfigurationException e) {
-            CLog.e("failed to clone command options", e);
+            CLog.e("failed to clone command options: %s", e.getMessage());
         }
         return clone;
     }

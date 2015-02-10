@@ -97,7 +97,7 @@ class InstrumentationSerialTest implements IRemoteTest {
                 runTest(runner, listener, testToRun);
             }
         } catch (ConfigurationException e) {
-            CLog.e("Failed to create new InstrumentationTest", e);
+            CLog.e("Failed to create new InstrumentationTest: %s", e.getMessage());
         }
     }
 

@@ -123,7 +123,7 @@ class InstrumentationFileTest implements IRemoteTest {
                 reRunTestsSerially(mInstrumentationTest, listener);
             }
         } catch (IOException e) {
-            CLog.e("Failed to run tests from file, re-running tests serially", e);
+            CLog.e("Failed to run tests from file, re-running tests serially: %s", e.getMessage());
             reRunTestsSerially(mInstrumentationTest, listener);
         }
     }

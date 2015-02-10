@@ -676,7 +676,7 @@ public class InstrumentationTest implements IDeviceTest, IResumableTest {
                 calculateRemainingTests(mRemainingTests, testTracker);
             }
         } catch (ConfigurationException e) {
-            CLog.e("Failed to create InstrumentationFileTest", e);
+            CLog.e("Failed to create InstrumentationFileTest: %s", e.getMessage());
         }
     }
 
@@ -700,7 +700,7 @@ public class InstrumentationTest implements IDeviceTest, IResumableTest {
                 calculateRemainingTests(mRemainingTests, testTracker);
             }
         } catch (ConfigurationException e) {
-            CLog.e("Failed to create InstrumentationSerialTest", e);
+            CLog.e("Failed to create InstrumentationSerialTest: %s", e.getMessage());
         }
     }
 
