@@ -1282,6 +1282,7 @@ public class CommandScheduler extends Thread implements ICommandScheduler, IComm
         for (InvocationThread thread : mInvocationThreadMap.values()) {
             thread.stopInvocation("TF is shutting down");
         }
+        getDeviceManager().terminateHard();
     }
 
     /**
