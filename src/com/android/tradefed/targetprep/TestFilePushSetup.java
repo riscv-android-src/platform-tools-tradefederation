@@ -60,6 +60,23 @@ public class TestFilePushSetup implements ITargetPreparer {
     }
 
     /**
+     * Resolve the host side path based on testing artifact information inside build info.
+     *
+     * @param buildInfo build artifact information
+     * @param fileName filename of artifacts to push
+     * @return a {@link File} representing the physical file/path on host
+     */
+    protected File getLocalPathForFilename(IBuildInfo buildInfo, String fileName)
+            throws TargetSetupError {
+        File testsDir = ((IDeviceBuildInfo)buildInfo).getTestsDir();
+        if (testsDir == null || !testsDir.exists()) {
+            throw new TargetSetupError(
+                    "Provided buildInfo does not contain a valid tests directory");
+        }
+        return FileUtil.getFileForPath(testsDir, "DATA", fileName);
+    }
+
+    /**
      * {@inheritDoc}
      */
     @Override
@@ -73,14 +90,9 @@ public class TestFilePushSetup implements ITargetPreparer {
             CLog.d("No test files to push, skipping");
             return;
         }
-        File testsDir = ((IDeviceBuildInfo)buildInfo).getTestsDir();
-        if (testsDir == null || !testsDir.exists()) {
-            throw new TargetSetupError(
-                    "Provided buildInfo does not contain a valid tests directory");
-        }
         int filePushed = 0;
         for (String fileName : mTestPaths) {
-            File localFile = FileUtil.getFileForPath(testsDir, "DATA", fileName);
+            File localFile = getLocalPathForFilename(buildInfo, fileName);
             if (!localFile.exists()) {
                 if (mThrowIfNoFile) {
                     throw new TargetSetupError(String.format(

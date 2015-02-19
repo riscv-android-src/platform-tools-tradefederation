@@ -23,6 +23,8 @@ import com.android.tradefed.config.Option.Importance;
 import com.android.tradefed.config.OptionClass;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
+import com.android.tradefed.testtype.IAbi;
+import com.android.tradefed.testtype.IAbiReceiver;
 import com.android.tradefed.util.AbiFormatter;
 import com.android.tradefed.util.FileUtil;
 
@@ -35,7 +37,7 @@ import java.util.Collection;
  * {@link IDeviceBuildInfo#getTestsDir()} folder onto device.
  */
 @OptionClass(alias = "tests-zip-app")
-public class TestAppInstallSetup implements ITargetPreparer {
+public class TestAppInstallSetup implements ITargetPreparer, IAbiReceiver {
 
     private static final String LOG_TAG = "TestAppInstallSetup";
 
@@ -54,6 +56,8 @@ public class TestAppInstallSetup implements ITargetPreparer {
                     + "including leading dash, e.g. \"-d\"")
     private Collection<String> mInstallArgs = new ArrayList<>();
 
+    private IAbi mAbi = null;
+
     /**
      * Adds a file to the list of apks to install
      *
@@ -61,6 +65,31 @@ public class TestAppInstallSetup implements ITargetPreparer {
      */
     public void addTestFileName(String fileName) {
         mTestFileNames.add(fileName);
+    }
+
+    /**
+     * Resolve the actual apk path based on testing artifact information inside build info.
+     *
+     * @param buildInfo build artifact information
+     * @param apkFileName filename of the apk to install
+     * @return a {@link File} representing the physical apk file on host
+     */
+    protected File getLocalPathForFilename(IBuildInfo buildInfo, String apkFileName)
+            throws TargetSetupError {
+        File testsDir = ((IDeviceBuildInfo)buildInfo).getTestsDir();
+        if (testsDir == null || !testsDir.exists()) {
+            throw new TargetSetupError(
+                    "Provided buildInfo does not contain a valid tests directory");
+        }
+        File testAppFile = FileUtil.getFileForPath(testsDir, "DATA", "app", apkFileName);
+        if (!testAppFile.exists()) {
+            // in addition to /data/app/TestApp.apk
+            // also check path like /data/app/TestApp/TestApp.apk
+            String[] fields = apkFileName.split("\\.");
+            testAppFile = FileUtil.getFileForPath(
+                    testsDir, "DATA", "app", fields[0], apkFileName);
+        }
+        return testAppFile;
     }
 
     /**
@@ -77,31 +106,25 @@ public class TestAppInstallSetup implements ITargetPreparer {
             Log.i(LOG_TAG, "No test apps to install, skipping");
             return;
         }
-        File testsDir = ((IDeviceBuildInfo)buildInfo).getTestsDir();
-        if (testsDir == null || !testsDir.exists()) {
-            throw new TargetSetupError(
-                    "Provided buildInfo does not contain a valid tests directory");
-        }
-
         for (String testAppName : mTestFileNames) {
-            File testAppFile = FileUtil.getFileForPath(testsDir, "DATA", "app", testAppName);
-            if (!testAppFile.exists()) {
-                // in addition to /data/app/TestApp.apk
-                // also check path like /data/app/TestApp/TestApp.apk
-                String[] fields = testAppName.split("\\.");
-                testAppFile = FileUtil.getFileForPath(
-                        testsDir, "DATA", "app", fields[0], testAppName);
-            }
+            File testAppFile = getLocalPathForFilename(buildInfo, testAppName);
             if (!testAppFile.exists()) {
                 throw new TargetSetupError(
                     String.format("Could not find test app %s directory in extracted tests.zip",
                             testAppFile));
             }
-            if (mForceAbi != null) {
-                String abi = AbiFormatter.getDefaultAbi(device, mForceAbi);
-                if (abi != null) {
-                    mInstallArgs.add(String.format("--abi %s", abi));
-                }
+            // resolve abi flags
+            if (mAbi != null && mForceAbi != null) {
+                throw new IllegalStateException("cannot specify both abi flags");
+            }
+            String abiName = null;
+            if (mAbi != null) {
+                abiName = mAbi.getName();
+            } else if (mForceAbi != null) {
+                abiName = AbiFormatter.getDefaultAbi(device, mForceAbi);
+            }
+            if (abiName != null) {
+                mInstallArgs.add(String.format("--abi %s", abiName));
             }
             String result = device.installPackage(testAppFile, true,
                     mInstallArgs.toArray(new String[]{}));
@@ -111,5 +134,10 @@ public class TestAppInstallSetup implements ITargetPreparer {
                                 device.getSerialNumber(), result));
             }
         }
+    }
+
+    @Override
+    public void setAbi(IAbi abi) {
+        mAbi = abi;
     }
 }
