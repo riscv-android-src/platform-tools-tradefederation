@@ -55,7 +55,14 @@ public class TerribleFailureEmailHandler implements ITerribleFailureHandler {
             description = "The prefix to be added to the beginning of the email subject.")
     private String mSubjectPrefix = DEFAULT_SUBJECT_PREFIX;
 
+    @Option(name = "min-email-interval",
+            description = "The minimum interval between emails in ms. " +
+                    "If a new WTF happens within this interval from the previous one, " +
+                    "it will be ignored.")
+    private long mMinEmailInterval = 30000;
+
     private IEmail mMailer;
+    private long mLastEmailSentTime = 0;
 
     /**
      * Create a {@link TerribleFailureEmailHandler}
@@ -95,6 +102,15 @@ public class TerribleFailureEmailHandler implements ITerribleFailureHandler {
     }
 
     /**
+     * Sets the minimum email interval.
+     *
+     * @param interval
+     */
+    public void setMinEmailInterval(long interval) {
+        mMinEmailInterval = interval;
+    }
+
+    /**
      * Gets the local host name of the machine.
      *
      * @return the name of the host machine, or "unknown host" if unknown
@@ -106,6 +122,13 @@ public class TerribleFailureEmailHandler implements ITerribleFailureHandler {
             CLog.e(e);
             return "unknown host";
         }
+    }
+
+    /**
+     * Gets the current time in milliseconds.
+     */
+    protected long getCurrentTimeMillis() {
+        return System.currentTimeMillis();
     }
 
     /**
@@ -184,6 +207,14 @@ public class TerribleFailureEmailHandler implements ITerribleFailureHandler {
             return false;
         }
 
+        final long now = getCurrentTimeMillis();
+        if (0 < mMinEmailInterval && now - mLastEmailSentTime < mMinEmailInterval) {
+            // TODO: consider queuing up skipped failures and send it later.
+            CLog.w("Skipped to send %s email: email interval %dms < %dms", DEFAULT_SUBJECT_PREFIX,
+                    now - mLastEmailSentTime, mMinEmailInterval);
+            return false;
+        }
+
         Message msg = generateEmailMessage(description, cause);
 
         try {
@@ -197,6 +228,8 @@ public class TerribleFailureEmailHandler implements ITerribleFailureHandler {
             CLog.e(e);
             return false;
         }
+
+        mLastEmailSentTime = now;
         return true;
     }
 

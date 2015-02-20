@@ -33,6 +33,7 @@ public class TerribleFailureEmailHandlerTest extends TestCase {
     private IEmail mMockEmail;
     private TerribleFailureEmailHandler mWtfEmailHandler;
     private final static String MOCK_HOST_NAME = "myhostname.mydomain.com";
+    private long mCurrentTimeMillis;
 
     @Override
     protected void setUp() throws Exception {
@@ -43,7 +44,13 @@ public class TerribleFailureEmailHandlerTest extends TestCase {
             protected String getLocalHostName() {
                 return MOCK_HOST_NAME;
             }
+
+            @Override
+            protected long getCurrentTimeMillis() {
+                return mCurrentTimeMillis;
+            }
         };
+        mCurrentTimeMillis = System.currentTimeMillis();
     }
 
     /**
@@ -100,6 +107,44 @@ public class TerribleFailureEmailHandlerTest extends TestCase {
     public void testOnTerribleFailure_emptyDestinations() {
         boolean retValue = mWtfEmailHandler.onTerribleFailure("something terrible happened", null);
         assertFalse(retValue);
+    }
+
+    /**
+     * Test that no email is attempted to be sent if it is too adjacent to the previous failure.
+     */
+    public void testOnTerribleFailure_adjacentFailures() throws IllegalArgumentException,
+            IOException {
+        mMockEmail.send(EasyMock.<Message>anyObject());
+        mWtfEmailHandler.setMinEmailInterval(60000);
+
+        EasyMock.replay(mMockEmail);
+        mWtfEmailHandler.addDestination("user@domain.com");
+        boolean retValue = mWtfEmailHandler.onTerribleFailure("something terrible happened", null);
+        assertTrue(retValue);
+        mCurrentTimeMillis += 30000;
+        retValue = mWtfEmailHandler.onTerribleFailure("something terrible happened again", null);
+        assertFalse(retValue);
+        EasyMock.verify(mMockEmail);
+    }
+
+    /**
+     * Test that the second email is attempted to be sent if it is not adjacent to the previous
+     * failure.
+     */
+    public void testOnTerribleFailure_notAdjacentFailures() throws IllegalArgumentException,
+            IOException {
+        mMockEmail.send(EasyMock.<Message>anyObject());
+        mMockEmail.send(EasyMock.<Message>anyObject());
+        mWtfEmailHandler.setMinEmailInterval(60000);
+
+        EasyMock.replay(mMockEmail);
+        mWtfEmailHandler.addDestination("user@domain.com");
+        boolean retValue = mWtfEmailHandler.onTerribleFailure("something terrible happened", null);
+        assertTrue(retValue);
+        mCurrentTimeMillis += 90000;
+        retValue = mWtfEmailHandler.onTerribleFailure("something terrible happened again", null);
+        assertTrue(retValue);
+        EasyMock.verify(mMockEmail);
     }
 
     /**
