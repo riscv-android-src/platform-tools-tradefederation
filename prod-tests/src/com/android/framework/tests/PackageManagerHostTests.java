@@ -938,7 +938,7 @@ public class PackageManagerHostTests extends DeviceTestCase {
                 return;
             }
             mPMHostUtils.installFile(getTestAppFilePath(SHARED_UID_APK_64), true);
-            assertEquals(ARMEABI_V7A, mPMHostUtils.getAbi(SHARED_UID_PKG_64));
+            assertEquals(ARM64_V8A, mPMHostUtils.getAbi(SHARED_UID_PKG_64));
         } finally {
             mPMHostUtils.uninstallApp(SHARED_UID_PKG_64);
         }
