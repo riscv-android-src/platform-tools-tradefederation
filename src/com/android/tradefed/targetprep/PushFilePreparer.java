@@ -25,8 +25,8 @@ import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
 
 import java.io.File;
+import java.util.ArrayList;
 import java.util.Collection;
-import java.util.LinkedList;
 
 /**
  * A {@link ITargetPreparer} that attempts to push any number of files from any host path to any
@@ -35,19 +35,19 @@ import java.util.LinkedList;
  * Should be performed *after* a new build is flashed, and *after* DeviceSetup is run (if enabled)
  */
 @OptionClass(alias = "push-file")
-public class PushFilePreparer implements ITargetPreparer {
+public class PushFilePreparer implements ITargetCleaner {
     private static final String LOG_TAG = "PushFilePreparer";
 
     @Option(name="push", description=
             "A push-spec, formatted as '/path/to/srcfile.txt->/path/to/destfile.txt' or " +
             "'/path/to/srcfile.txt->/path/to/destdir/'. May be repeated.")
-    private Collection<String> mPushSpecs = new LinkedList<String>();
+    private Collection<String> mPushSpecs = new ArrayList<>();
 
     @Option(name="post-push", description=
             "A command to run on the device (with `adb shell (yourcommand)`) after all pushes " +
             "have been attempted.  Will not be run if a push fails with abort-on-push-failure " +
             "enabled.  May be repeated.")
-    private Collection<String> mPostPushCommands = new LinkedList<String>();
+    private Collection<String> mPostPushCommands = new ArrayList<>();
 
     @Option(name="abort-on-push-failure", description=
             "If false, continue if pushes fail.  If true, abort the Invocation on any failure.")
@@ -56,6 +56,13 @@ public class PushFilePreparer implements ITargetPreparer {
     @Option(name="trigger-media-scan", description=
             "After pushing files, trigger a media scan of external storage on device.")
     private boolean mTriggerMediaScan = false;
+
+    @Option(name="cleanup", description = "Whether files pushed onto device should be cleaned up "
+            + "after test. Note that the preparer does not verify that files/directories have "
+            + "been deleted.")
+    private boolean mCleanup = false;
+
+    private Collection<String> mFilesPushed = new ArrayList<>();
 
     /**
      * Set abort on failure.  Exposed for testing.
@@ -92,6 +99,16 @@ public class PushFilePreparer implements ITargetPreparer {
     }
 
     /**
+     * Resolve relative file path via {@link IBuildInfo}
+     * @param buildInfo the build artifact information
+     * @param fileName relative file path to be resolved
+     * @return
+     */
+    public File resolveRelativeFilePath(IBuildInfo buildInfo, String fileName) {
+        return buildInfo.getFile(fileName);
+    }
+
+    /**
      * {@inheritDoc}
      */
     @Override
@@ -107,24 +124,28 @@ public class PushFilePreparer implements ITargetPreparer {
                     pair[1]));
 
             File src = new File(pair[0]);
-            if (!src.exists()) {
-                src = buildInfo.getFile(pair[0]);
-                if (src == null || !src.exists()) {
-                    fail(String.format("Local source file '%s' does not exist", pair[0]));
-                    continue;
-                }
+            if (!src.isAbsolute()) {
+                src = resolveRelativeFilePath(buildInfo, pair[0]);
+            }
+            if (src == null || !src.exists()) {
+                fail(String.format("Local source file '%s' does not exist", pair[0]));
+                continue;
             }
             if (src.isDirectory()) {
                 if (!device.pushDir(src, pair[1])) {
                     fail(String.format("Failed to push local '%s' to remote '%s'", pair[0],
                             pair[1]));
                     continue;
+                } else {
+                    mFilesPushed.add(pair[1]);
                 }
             } else {
                 if (!device.pushFile(src, pair[1])) {
                     fail(String.format("Failed to push local '%s' to remote '%s'", pair[0],
                             pair[1]));
                     continue;
+                } else {
+                    mFilesPushed.add(pair[1]);
                 }
             }
         }
@@ -138,6 +159,19 @@ public class PushFilePreparer implements ITargetPreparer {
             device.executeShellCommand(String.format(
                     "am broadcast -a android.intent.action.MEDIA_MOUNTED -d file://%s",
                     device.getMountPoint(IDevice.MNT_EXTERNAL_STORAGE)));
+        }
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void tearDown(ITestDevice device, IBuildInfo buildInfo, Throwable e)
+            throws DeviceNotAvailableException {
+        if (!(e instanceof DeviceNotAvailableException)) {
+            for (String devicePath : mFilesPushed) {
+                device.executeShellCommand("rm -r " + devicePath);
+            }
         }
     }
 }
