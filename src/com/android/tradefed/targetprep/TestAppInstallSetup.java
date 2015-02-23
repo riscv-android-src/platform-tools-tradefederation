@@ -25,19 +25,21 @@ import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.testtype.IAbi;
 import com.android.tradefed.testtype.IAbiReceiver;
+import com.android.tradefed.util.AaptParser;
 import com.android.tradefed.util.AbiFormatter;
 import com.android.tradefed.util.FileUtil;
 
 import java.io.File;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.List;
 
 /**
  * A {@link ITargetPreparer} that installs one or more apps from a
  * {@link IDeviceBuildInfo#getTestsDir()} folder onto device.
  */
 @OptionClass(alias = "tests-zip-app")
-public class TestAppInstallSetup implements ITargetPreparer, IAbiReceiver {
+public class TestAppInstallSetup implements ITargetCleaner, IAbiReceiver {
 
     private static final String LOG_TAG = "TestAppInstallSetup";
 
@@ -56,7 +58,13 @@ public class TestAppInstallSetup implements ITargetPreparer, IAbiReceiver {
                     + "including leading dash, e.g. \"-d\"")
     private Collection<String> mInstallArgs = new ArrayList<>();
 
+    @Option(name="cleanup-apks", description = "Whether apks installed should be uninstalled after "
+            + "test. Note that the preparer does not verify if the apks are successfully removed.")
+    private boolean mCleanup = false;
+
     private IAbi mAbi = null;
+
+    private List<String> mPackagesInstalled = new ArrayList<>();
 
     /**
      * Adds a file to the list of apks to install
@@ -133,11 +141,35 @@ public class TestAppInstallSetup implements ITargetPreparer, IAbiReceiver {
                         String.format("Failed to install %s on %s. Reason: '%s'", testAppName,
                                 device.getSerialNumber(), result));
             }
+            if (mCleanup) {
+                AaptParser parser = AaptParser.parse(testAppFile);
+                if (parser == null) {
+                    throw new TargetSetupError("apk installed but AaptParser failed");
+                }
+                mPackagesInstalled.add(parser.getPackageName());
+            }
         }
     }
 
     @Override
     public void setAbi(IAbi abi) {
         mAbi = abi;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void tearDown(ITestDevice device, IBuildInfo buildInfo, Throwable e)
+            throws DeviceNotAvailableException {
+        if (mCleanup && !(e instanceof DeviceNotAvailableException)) {
+            for (String packageName : mPackagesInstalled) {
+                String msg = device.uninstallPackage(packageName);
+                if (msg != null) {
+                    Log.w(LOG_TAG, String.format("error uninstalling package '%s': %s",
+                            packageName, msg));
+                }
+            }
+        }
     }
 }
