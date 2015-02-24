@@ -84,6 +84,10 @@ public class TestAppInstallSetup implements ITargetCleaner, IAbiReceiver {
      */
     protected File getLocalPathForFilename(IBuildInfo buildInfo, String apkFileName)
             throws TargetSetupError {
+        if (!(buildInfo instanceof IDeviceBuildInfo)) {
+            throw new IllegalArgumentException(String.format("Provided buildInfo is not a %s",
+                    IDeviceBuildInfo.class.getCanonicalName()));
+        }
         File testsDir = ((IDeviceBuildInfo)buildInfo).getTestsDir();
         if (testsDir == null || !testsDir.exists()) {
             throw new TargetSetupError(
@@ -106,10 +110,6 @@ public class TestAppInstallSetup implements ITargetCleaner, IAbiReceiver {
     @Override
     public void setUp(ITestDevice device, IBuildInfo buildInfo) throws TargetSetupError,
             DeviceNotAvailableException {
-        if (!(buildInfo instanceof IDeviceBuildInfo)) {
-            throw new IllegalArgumentException(String.format("Provided buildInfo is not a %s",
-                    IDeviceBuildInfo.class.getCanonicalName()));
-        }
         if (mTestFileNames.size() == 0) {
             Log.i(LOG_TAG, "No test apps to install, skipping");
             return;
