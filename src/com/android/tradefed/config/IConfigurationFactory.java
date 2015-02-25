@@ -25,17 +25,32 @@ import java.util.List;
 public interface IConfigurationFactory {
 
     /**
+     * A convenience method which calls {@link createConfigurationFromArgs(String[], List<String>)}
+     * with a {@code null} second argument.  Thus, it will throw {@link ConfigurationException} if
+     * any unconsumed arguments remain.
+     *
+     * @see createConfigurationFromArgs(String[] List<String>)
+     */
+    public IConfiguration createConfigurationFromArgs(String[] args) throws ConfigurationException;
+
+    /**
      * Create the {@link IConfiguration} from command line arguments.
      * <p/>
      * Expected format is "CONFIG [options]", where CONFIG is the built-in configuration name or
      * a file path to a configuration xml file.
      *
      * @param args the command line arguments
+     * @param unconsumedArgs a List which will be populated with the arguments that were not
+     *                       consumed by the Objects associated with the specified config. If this
+     *                       is {@code null}, then the implementation will throw
+     *                       {@link ConfigurationException} if any unprocessed args remain.
+     *
      * @return the loaded {@link IConfiguration}. The delegate object {@link Option} fields have
      *         been populated with values in args.
      * @throws {@link ConfigurationException} if configuration could not be loaded
      */
-    public IConfiguration createConfigurationFromArgs(String[] args) throws ConfigurationException;
+    public IConfiguration createConfigurationFromArgs(String[] args, List<String> unconsumedArgs)
+            throws ConfigurationException;
 
     /**
      * Create a {@link IGlobalConfiguration} from command line arguments.

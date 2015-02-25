@@ -16,6 +16,7 @@
 package com.android.tradefed.config;
 
 import com.android.ddmlib.Log.LogLevel;
+import com.android.tradefed.config.ConfigurationFactory.ConfigId;
 import com.android.tradefed.log.ILeveledLogOutput;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.util.FileUtil;
@@ -28,7 +29,9 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.PrintStream;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 /**
  * Unit tests for {@link ConfigurationFactory}
@@ -80,6 +83,104 @@ public class ConfigurationFactoryTest extends TestCase {
      */
     public void testGetConfiguration_extension() throws ConfigurationException {
         assertConfigValid(TEST_CONFIG);
+    }
+
+    private Map<String, String> buildMap(String... args) {
+        if ((args.length % 2) != 0) {
+            throw new IllegalArgumentException(String.format(
+                "Expected an even number of args; got %d", args.length));
+        }
+
+        final Map<String, String> map = new HashMap<String, String>(args.length / 2);
+        for (int i = 0; i < args.length; i += 2) {
+            map.put(args[i], args[i + 1]);
+        }
+
+        return map;
+    }
+
+    /**
+     * Make sure that ConfigId behaves in the right way to serve as a hash key
+     */
+    public void testConfigId_equals() {
+        final ConfigId config1a = new ConfigId("one");
+        final ConfigId config1b = new ConfigId("one");
+        final ConfigId config2 = new ConfigId("two");
+        final ConfigId config3a = new ConfigId("one", buildMap("target", "foo"));
+        final ConfigId config3b = new ConfigId("one", buildMap("target", "foo"));
+        final ConfigId config4 = new ConfigId("two", buildMap("target", "bar"));
+
+        assertEquals(config1a, config1b);
+        assertEquals(config3a, config3b);
+
+        // Check for false equivalences, and don't depend on #equals being commutative
+        assertFalse(config1a.equals(config2));
+        assertFalse(config1a.equals(config3a));
+        assertFalse(config1a.equals(config4));
+
+        assertFalse(config2.equals(config1a));
+        assertFalse(config2.equals(config3a));
+        assertFalse(config2.equals(config4));
+
+        assertFalse(config3a.equals(config1a));
+        assertFalse(config3a.equals(config2));
+        assertFalse(config3a.equals(config4));
+
+        assertFalse(config4.equals(config1a));
+        assertFalse(config4.equals(config2));
+        assertFalse(config4.equals(config3a));
+    }
+
+    /**
+     * Make sure that ConfigId behaves in the right way to serve as a hash key
+     */
+    public void testConfigId_hashKey() {
+        final Map<ConfigId, String> map = new HashMap<>();
+        final ConfigId config1a = new ConfigId("one");
+        final ConfigId config1b = new ConfigId("one");
+        final ConfigId config2 = new ConfigId("two");
+        final ConfigId config3a = new ConfigId("one", buildMap("target", "foo"));
+        final ConfigId config3b = new ConfigId("one", buildMap("target", "foo"));
+        final ConfigId config4 = new ConfigId("two", buildMap("target", "bar"));
+
+        // Make sure that keys config1a and config1b behave identically
+        map.put(config1a, "1a");
+        assertEquals("1a", map.get(config1a));
+        assertEquals("1a", map.get(config1b));
+
+        map.put(config1b, "1b");
+        assertEquals("1b", map.get(config1a));
+        assertEquals("1b", map.get(config1b));
+
+        assertFalse(map.containsKey(config2));
+        assertFalse(map.containsKey(config3a));
+        assertFalse(map.containsKey(config4));
+
+        // Make sure that keys config3a and config3b behave identically
+        map.put(config3a, "3a");
+        assertEquals("3a", map.get(config3a));
+        assertEquals("3a", map.get(config3b));
+
+        map.put(config3b, "3b");
+        assertEquals("3b", map.get(config3a));
+        assertEquals("3b", map.get(config3b));
+
+        assertEquals(2, map.size());
+        assertFalse(map.containsKey(config2));
+        assertFalse(map.containsKey(config4));
+
+        // It's unlikely for these to fail if the above tests all passed, but just fill everything
+        // out for completeness
+        map.put(config2, "2");
+        map.put(config4, "4");
+
+        assertEquals(4, map.size());
+        assertEquals("1b", map.get(config1a));
+        assertEquals("1b", map.get(config1b));
+        assertEquals("2", map.get(config2));
+        assertEquals("3b", map.get(config3a));
+        assertEquals("3b", map.get(config3b));
+        assertEquals("4", map.get(config4));
     }
 
     /**
@@ -238,7 +339,6 @@ public class ConfigurationFactoryTest extends TestCase {
 
     /**
      * Test loading a config that includes another config.
-     * Also ensure options are set correctly.
      */
     public void testCreateConfigurationFromArgs_includeConfig() throws Exception {
         IConfiguration config = mFactory.createConfigurationFromArgs(
@@ -249,6 +349,181 @@ public class ConfigurationFactoryTest extends TestCase {
         StubOptionTest fromIncludeConfig = (StubOptionTest) config.getTests().get(1);
         assertEquals("valueFromTestConfig", fromTestConfig.mOption);
         assertEquals("valueFromIncludeConfig", fromIncludeConfig.mOption);
+    }
+
+    /**
+     * Test loading a config that uses the "default" attribute of a template-include tag to include
+     * another config.
+     */
+    public void testCreateConfigurationFromArgs_defaultTemplateInclude_default() throws Exception {
+        // The default behavior is to include test-config directly.  Nesting is such that innermost
+        // elements come first.
+        IConfiguration config = mFactory.createConfigurationFromArgs(
+                new String[]{"template-include-config-with-default"});
+        assertEquals(2, config.getTests().size());
+        assertTrue(config.getTests().get(0) instanceof StubOptionTest);
+        assertTrue(config.getTests().get(1) instanceof StubOptionTest);
+        StubOptionTest innerConfig = (StubOptionTest) config.getTests().get(0);
+        StubOptionTest outerConfig = (StubOptionTest) config.getTests().get(1);
+        assertEquals("valueFromTestConfig", innerConfig.mOption);
+        assertEquals("valueFromTemplateIncludeWithDefaultConfig", outerConfig.mOption);
+    }
+
+    /**
+     * Test using {@code <include>} to load a config that uses the "default" attribute of a
+     * template-include tag to include a third config.
+     */
+    public void testCreateConfigurationFromArgs_includeTemplateIncludeWithDefault() throws Exception {
+        // The default behavior is to include test-config directly.  Nesting is such that innermost
+        // elements come first.
+        IConfiguration config = mFactory.createConfigurationFromArgs(
+                new String[]{"include-template-config-with-default"});
+        assertEquals(3, config.getTests().size());
+        assertTrue(config.getTests().get(0) instanceof StubOptionTest);
+        assertTrue(config.getTests().get(1) instanceof StubOptionTest);
+        assertTrue(config.getTests().get(2) instanceof StubOptionTest);
+        StubOptionTest innerConfig = (StubOptionTest) config.getTests().get(0);
+        StubOptionTest middleConfig = (StubOptionTest) config.getTests().get(1);
+        StubOptionTest outerConfig = (StubOptionTest) config.getTests().get(2);
+        assertEquals("valueFromTestConfig", innerConfig.mOption);
+        assertEquals("valueFromTemplateIncludeWithDefaultConfig", middleConfig.mOption);
+        assertEquals("valueFromIncludeTemplateConfigWithDefault", outerConfig.mOption);
+    }
+
+    /**
+     * Test loading a config that uses the "default" attribute of a template-include tag to include
+     * another config.  In this case, we override the default attribute on the commandline.
+     */
+    public void testCreateConfigurationFromArgs_defaultTemplateInclude_alternate() throws Exception {
+        IConfiguration config = mFactory.createConfigurationFromArgs(
+                new String[]{"template-include-config-with-default", "--template:map", "target",
+                "include-config"});
+        assertEquals(3, config.getTests().size());
+        assertTrue(config.getTests().get(0) instanceof StubOptionTest);
+        assertTrue(config.getTests().get(1) instanceof StubOptionTest);
+        assertTrue(config.getTests().get(2) instanceof StubOptionTest);
+
+        StubOptionTest innerConfig = (StubOptionTest) config.getTests().get(0);
+        StubOptionTest middleConfig = (StubOptionTest) config.getTests().get(1);
+        StubOptionTest outerConfig = (StubOptionTest) config.getTests().get(2);
+
+        assertEquals("valueFromTestConfig", innerConfig.mOption);
+        assertEquals("valueFromIncludeConfig", middleConfig.mOption);
+        assertEquals("valueFromTemplateIncludeWithDefaultConfig", outerConfig.mOption);
+    }
+
+    /**
+     * Test loading a config that uses template-include to include another config.
+     */
+    public void testCreateConfigurationFromArgs_templateInclude() throws Exception {
+        IConfiguration config = mFactory.createConfigurationFromArgs(
+                new String[]{"template-include-config", "--template:map", "target",
+                "test-config"});
+        assertTrue(config.getTests().get(0) instanceof StubOptionTest);
+        assertTrue(config.getTests().get(1) instanceof StubOptionTest);
+        StubOptionTest fromTestConfig = (StubOptionTest) config.getTests().get(0);
+        StubOptionTest fromTemplateIncludeConfig = (StubOptionTest) config.getTests().get(1);
+        assertEquals("valueFromTestConfig", fromTestConfig.mOption);
+        assertEquals("valueFromTemplateIncludeConfig", fromTemplateIncludeConfig.mOption);
+    }
+
+    /**
+     * Make sure that we throw a useful error when template-include usage is underspecified.
+     */
+    public void testCreateConfigurationFromArgs_templateInclude_unspecified() throws Exception {
+        final String configName = "template-include-config";
+        try {
+            mFactory.createConfigurationFromArgs(new String[]{configName});
+            fail ("ConfigurationException not thrown");
+        } catch (ConfigurationException e) {
+            // Make sure that we get the expected error message
+            final String msg = e.getMessage();
+            assertNotNull(msg);
+
+            assertTrue(String.format("Error message does not mention the name of the broken " +
+                    "config.  msg was: %s", msg), msg.contains(configName));
+
+            // Error message should help people to resolve the problem
+            assertTrue(String.format("Error message should help user to resolve the " +
+                    "template-include.  msg was: %s", msg),
+                    msg.contains(String.format("--template:map %s", "target")));
+            assertTrue(String.format("Error message should mention the ability to specify a " +
+                    "default resolution.  msg was: %s", msg),
+                    msg.contains(String.format("'default'", configName)));
+        }
+    }
+
+    /**
+     * Make sure that we throw a useful error when template-include mentions a target configuration
+     * that doesn't exist.
+     */
+    public void testCreateConfigurationFromArgs_templateInclude_missing() throws Exception {
+        final String configName = "template-include-config";
+        final String includeName = "no-exist";
+
+        try {
+            mFactory.createConfigurationFromArgs(
+                    new String[]{configName, "--template:map", "target", includeName});
+            fail ("ConfigurationException not thrown");
+        } catch (ConfigurationException e) {
+            // Make sure that we get the expected error message
+            final String msg = e.getMessage();
+            assertNotNull(msg);
+
+            assertTrue(String.format("Error message does not mention the name of the broken " +
+                    "config.  msg was: %s", msg), msg.contains(configName));
+            assertTrue(String.format("Error message does not mention the name of the missing " +
+                    "include target.  msg was: %s", msg), msg.contains(includeName));
+        }
+    }
+
+    /**
+     * A limitation of the current implementation is that template args are only passed to the
+     * outermost configuration.  This unit test codifies the expectation that an inner
+     * {@code <template-include>} tag that doesn't have a default resolution set will fail.
+     */
+    public void testCreateConfigurationFromArgs_templateInclude_dependent() throws Exception {
+        final String configName = "depend-template-include-config";
+        final String depTargetName = "template-include-config";
+        final String targetName = "test-config";
+        final String expError = String.format(
+                "Failed to parse config xml '%s'. Reason: " +
+                ConfigurationXmlParser.ConfigHandler.INNER_TEMPLATE_INCLUDE_ERROR,
+                configName, configName, depTargetName);
+
+        try {
+            mFactory.createConfigurationFromArgs(new String[]{configName,
+                    "--template:map", "dep-target", depTargetName,
+                    "--template:map", "target", targetName});
+            fail ("ConfigurationException not thrown");
+        } catch (ConfigurationException e) {
+            // Make sure that we get the expected error message
+            assertEquals(expError, e.getMessage());
+        }
+    }
+
+    /**
+     * A limitation of the current implementation is that template args are only passed to the
+     * outermost configuration.  This unit test codifies the expectation that an inner
+     * {@code <template-include>} tag that doesn't have a default resolution set will fail.
+     */
+    public void testCreateConfigurationFromArgs_include_dependent() throws Exception {
+        final String configName = "include-template-config";
+        final String targetName = "test-config";
+        final String failedTargetName = "template-include-config";
+        final String expError = String.format(
+                "Failed to parse config xml '%s'. Reason: " +
+                ConfigurationXmlParser.ConfigHandler.INNER_TEMPLATE_INCLUDE_ERROR,
+                configName, configName, failedTargetName);
+
+        try {
+            mFactory.createConfigurationFromArgs(new String[]{configName,
+                    "--template:map", "target", targetName});
+            fail ("ConfigurationException not thrown");
+        } catch (ConfigurationException e) {
+            // Make sure that we get the expected error message
+            assertEquals(expError, e.getMessage());
+        }
     }
 
     /**

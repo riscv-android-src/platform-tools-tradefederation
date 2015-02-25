@@ -23,6 +23,8 @@ import org.xml.sax.helpers.DefaultHandler;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.util.Collections;
+import java.util.Map;
 
 import javax.xml.parsers.ParserConfigurationException;
 import javax.xml.parsers.SAXParser;
@@ -37,23 +39,57 @@ class ConfigurationXmlParser {
     /**
      * SAX callback object. Handles parsing data from the xml tags.
      */
-    private static class ConfigHandler extends DefaultHandler {
+    static class ConfigHandler extends DefaultHandler {
 
         private static final String OBJECT_TAG = "object";
         private static final String OPTION_TAG = "option";
         private static final String INCLUDE_TAG = "include";
+        private static final String TEMPLATE_INCLUDE_TAG = "template-include";
         private static final String CONFIG_TAG = "configuration";
 
-        private ConfigurationDef mConfigDef;
-        private String mCurrentConfigObject;
-        private final IConfigDefLoader mConfigDefLoader;
-        private Boolean isLocalConfig = null;
-        private String mName;
+        /**
+         * A simple class to encapsulate a failure to resolve a &lt;template-include&gt;.  This
+         * allows the error to be easily detected programmatically.
+         */
+        private class TemplateResolutionError extends ConfigurationException {
+            TemplateResolutionError(String templateName) {
+                super(String.format(
+                        "Failed to parse config xml '%s'. Reason: " +
+                        "Couldn't resolve template-include named " +
+                        "'%s': No 'default' attribute and no matching manual resolution. " +
+                        "Try using argument --template:map %s (config path)",
+                        mConfigDef.getName(), templateName, templateName));
+            }
+        }
 
-        ConfigHandler(ConfigurationDef def, String name, IConfigDefLoader loader) {
+        /** Note that this simply hasn't been implemented; it is not intentionally forbidden. */
+        static final String INNER_TEMPLATE_INCLUDE_ERROR =
+                "Configurations which contain a <template-include> tag, not having a 'default' " +
+                "attribute, may not be the target of any <include> or <template-include> tag. " +
+                "However, configuration '%s' attempted to include configuration '%s', which " +
+                "contains a <template-include> tag without a 'default' attribute.";
+
+        // Settings
+        private final IConfigDefLoader mConfigDefLoader;
+        private final ConfigurationDef mConfigDef;
+        private final Map<String, String> mTemplateMap;
+        private final String mName;
+
+        // State-holding members
+        private String mCurrentConfigObject;
+        private Boolean isLocalConfig = null;
+
+        ConfigHandler(ConfigurationDef def, String name, IConfigDefLoader loader,
+                Map<String, String> templateMap) {
             mName = name;
             mConfigDef = def;
             mConfigDefLoader = loader;
+
+            if (templateMap == null) {
+                mTemplateMap = Collections.<String, String>emptyMap();
+            } else {
+                mTemplateMap = templateMap;
+            }
         }
 
         @Override
@@ -117,6 +153,42 @@ class ConfigurationXmlParser {
                 try {
                     mConfigDefLoader.loadIncludedConfiguration(mConfigDef, mName, includeName);
                 } catch (ConfigurationException e) {
+                    if (e instanceof TemplateResolutionError) {
+                        // The actual cause of this error is that recursive <template-include>
+                        // invocations aren't currently supported.  So replace that exception
+                        // with something more useful.
+                        throwException(String.format(INNER_TEMPLATE_INCLUDE_ERROR,
+                                mConfigDef.getName(), includeName));
+                    }
+
+                    throw new SAXException(e);
+                }
+
+            } else if (TEMPLATE_INCLUDE_TAG.equals(localName)) {
+                final String templateName = attributes.getValue("name");
+                if (templateName == null) {
+                    throwException("Missing 'name' attribute for template-include");
+                }
+
+                String includeName = mTemplateMap.get(templateName);
+                if (includeName == null) {
+                    includeName = attributes.getValue("default");
+                }
+                if (includeName == null) {
+                    throw new SAXException(new TemplateResolutionError(templateName));
+                }
+
+                try {
+                    mConfigDefLoader.loadIncludedConfiguration(mConfigDef, mName, includeName);
+                } catch (ConfigurationException e) {
+                    if (e instanceof TemplateResolutionError) {
+                        // The actual cause of this error is that recursive <template-include>
+                        // invocations aren't currently supported.  So replace that exception
+                        // with something more useful.
+                        throwException(String.format(INNER_TEMPLATE_INCLUDE_ERROR,
+                                mConfigDef.getName(), includeName));
+                    }
+
                     throw new SAXException(e);
                 }
 
@@ -167,13 +239,14 @@ class ConfigurationXmlParser {
      * @param xmlInput the configuration xml to parse
      * @throws ConfigurationException if input could not be parsed or had invalid format
      */
-    void parse(ConfigurationDef configDef, String name, InputStream xmlInput)
-            throws ConfigurationException {
+    void parse(ConfigurationDef configDef, String name, InputStream xmlInput,
+            Map<String, String> templateMap) throws ConfigurationException {
         try {
             SAXParserFactory parserFactory = SAXParserFactory.newInstance();
             parserFactory.setNamespaceAware(true);
             SAXParser parser = parserFactory.newSAXParser();
-            ConfigHandler configHandler = new ConfigHandler(configDef, name, mConfigDefLoader);
+            ConfigHandler configHandler = new ConfigHandler(configDef, name, mConfigDefLoader,
+                    templateMap);
             parser.parse(new InputSource(xmlInput), configHandler);
         } catch (ParserConfigurationException e) {
             throwConfigException(name, e);

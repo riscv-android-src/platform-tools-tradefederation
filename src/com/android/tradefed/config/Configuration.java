@@ -526,13 +526,10 @@ public class Configuration implements IConfiguration {
      * {@inheritDoc}
      */
     @Override
-    public void setOptionsFromCommandLineArgs(List<String> listArgs) throws ConfigurationException {
+    public List<String> setOptionsFromCommandLineArgs(List<String> listArgs)
+            throws ConfigurationException {
         ArgsOptionParser parser = new ArgsOptionParser(getAllConfigurationObjects());
-        List<String> unprocessedArgs = parser.parse(listArgs);
-        if (unprocessedArgs.size() > 0) {
-            throw new ConfigurationException(String.format(
-                    "Invalid arguments provided. Unprocessed arguments: %s", unprocessedArgs));
-        }
+        return parser.parse(listArgs);
     }
 
     /**

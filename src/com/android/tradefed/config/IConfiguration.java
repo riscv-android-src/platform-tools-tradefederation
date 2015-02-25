@@ -273,8 +273,10 @@ public interface IConfiguration {
      * @see {@link ArgsOptionParser} for expected format
      *
      * @param listArgs the command line arguments
+     * @return the unconsumed arguments
      */
-    public void setOptionsFromCommandLineArgs(List<String> listArgs) throws ConfigurationException;
+    public List<String> setOptionsFromCommandLineArgs(List<String> listArgs)
+            throws ConfigurationException;
 
     /**
      * Outputs a command line usage help text for this configuration to given printStream.

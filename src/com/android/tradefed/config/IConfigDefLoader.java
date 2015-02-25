@@ -16,6 +16,8 @@
 
 package com.android.tradefed.config;
 
+import java.util.Map;
+
 /**
  * Interface for retrieving a ConfigurationDef.
  */
@@ -25,10 +27,12 @@ interface IConfigDefLoader {
      * Retrieve the {@link ConfigurationDef} for the given name
      *
      * @param name
+     * @param templateMap map of template-include names to configuration filenames
      * @return {@link ConfigurationDef}
      * @throws ConfigurationException if an error occurred loading the config
      */
-    ConfigurationDef getConfigurationDef(String name) throws ConfigurationException;
+    ConfigurationDef getConfigurationDef(String name, Map<String, String> templateMap)
+            throws ConfigurationException;
 
     boolean isGlobalConfig();
 

@@ -49,7 +49,7 @@ public class ConfigurationXmlParserTest extends TestCase {
             "</configuration>";
         final String configName = "config";
         ConfigurationDef configDef = new ConfigurationDef(configName);
-        xmlParser.parse(configDef, configName, getStringAsStream(normalConfig));
+        xmlParser.parse(configDef, configName, getStringAsStream(normalConfig), null);
         assertEquals(configName, configDef.getName());
         assertEquals("desc", configDef.getDescription());
         assertEquals("junit.framework.TestCase", configDef.getObjectClassMap().get("test").get(0));
@@ -69,7 +69,7 @@ public class ConfigurationXmlParserTest extends TestCase {
             "</configuration>";
         final String configName = "config";
         ConfigurationDef configDef = new ConfigurationDef(configName);
-        xmlParser.parse(configDef, configName, getStringAsStream(normalConfig));
+        xmlParser.parse(configDef, configName, getStringAsStream(normalConfig), null);
         assertEquals(configName, configDef.getName());
         assertEquals("desc", configDef.getDescription());
         assertEquals("junit.framework.TestCase", configDef.getObjectClassMap().get("test").get(0));
@@ -93,7 +93,7 @@ public class ConfigurationXmlParserTest extends TestCase {
             "</configuration>";
         final String configName = "config";
         ConfigurationDef configDef = new ConfigurationDef(configName);
-        xmlParser.parse(configDef, configName, getStringAsStream(normalConfig));
+        xmlParser.parse(configDef, configName, getStringAsStream(normalConfig), null);
 
         assertEquals(configName, configDef.getName());
         assertEquals("desc", configDef.getDescription());
@@ -114,7 +114,7 @@ public class ConfigurationXmlParserTest extends TestCase {
         final String config =
             "<object name=\"foo\" />";
         try {
-            xmlParser.parse(new ConfigurationDef("foo"), "foo", getStringAsStream(config));
+            xmlParser.parse(new ConfigurationDef("foo"), "foo", getStringAsStream(config), null);
             fail("ConfigurationException not thrown");
         } catch (ConfigurationException e) {
             // expected
@@ -128,7 +128,7 @@ public class ConfigurationXmlParserTest extends TestCase {
         final String config =
             "<option name=\"foo\" />";
         try {
-            xmlParser.parse(new ConfigurationDef("name"), "name", getStringAsStream(config));
+            xmlParser.parse(new ConfigurationDef("name"), "name", getStringAsStream(config), null);
             fail("ConfigurationException not thrown");
         } catch (ConfigurationException e) {
             // expected
@@ -142,7 +142,7 @@ public class ConfigurationXmlParserTest extends TestCase {
         final String config =
             "<object type=\"foo\" class=\"junit.framework.TestCase\" />";
         ConfigurationDef configDef = new ConfigurationDef("name");
-        xmlParser.parse(configDef, "name", getStringAsStream(config));
+        xmlParser.parse(configDef, "name", getStringAsStream(config), null);
         assertEquals("junit.framework.TestCase", configDef.getObjectClassMap().get("foo").get(0));
     }
 
@@ -155,7 +155,7 @@ public class ConfigurationXmlParserTest extends TestCase {
         mMockLoader.loadIncludedConfiguration(EasyMock.eq(configDef), EasyMock.eq("foo"), EasyMock.eq(includedName));
         EasyMock.replay(mMockLoader);
         final String config = "<include name=\"includeme\" />";
-        xmlParser.parse(configDef, "foo", getStringAsStream(config));
+        xmlParser.parse(configDef, "foo", getStringAsStream(config), null);
     }
 
     /**
@@ -170,7 +170,7 @@ public class ConfigurationXmlParserTest extends TestCase {
         EasyMock.replay(mMockLoader);
         final String config = String.format("<include name=\"%s\" />", includedName);
         try {
-            xmlParser.parse(parent, "name", getStringAsStream(config));
+            xmlParser.parse(parent, "name", getStringAsStream(config), null);
             fail("ConfigurationException not thrown");
         } catch (ConfigurationException e) {
             // expected
@@ -183,7 +183,7 @@ public class ConfigurationXmlParserTest extends TestCase {
     public void testParse_badTag() throws ConfigurationException {
         final String config = "<blah name=\"foo\" />";
         try {
-            xmlParser.parse(new ConfigurationDef("name"), "name", getStringAsStream(config));
+            xmlParser.parse(new ConfigurationDef("name"), "name", getStringAsStream(config), null);
             fail("ConfigurationException not thrown");
         } catch (ConfigurationException e) {
             // expected
@@ -196,7 +196,7 @@ public class ConfigurationXmlParserTest extends TestCase {
     public void testParse_xml() throws ConfigurationException {
         final String config = "blah";
         try {
-            xmlParser.parse(new ConfigurationDef("name"), "name", getStringAsStream(config));
+            xmlParser.parse(new ConfigurationDef("name"), "name", getStringAsStream(config), null);
             fail("ConfigurationException not thrown");
         } catch (ConfigurationException e) {
             // expected

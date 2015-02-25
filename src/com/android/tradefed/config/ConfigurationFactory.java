@@ -32,6 +32,7 @@ import java.io.PrintStream;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Hashtable;
 import java.util.List;
@@ -49,8 +50,69 @@ public class ConfigurationFactory implements IConfigurationFactory {
     private static IConfigurationFactory sInstance = null;
     private static final String CONFIG_SUFFIX = ".xml";
     private static final String CONFIG_PREFIX = "config/";
+    private static final String CONFIG_SPLIT = "|";
 
-    private Map<String, ConfigurationDef> mConfigDefMap;
+    private Map<ConfigId, ConfigurationDef> mConfigDefMap;
+
+    /**
+     * A simple struct-like class that stores a configuration's name alongside the arguments for
+     * any {@code <template-include>} tags it may contain.  Because the actual bits stored by the
+     * configuration may vary with template arguments, they must be considered as essential a part
+     * of the configuration's identity as the filename.
+     */
+    static class ConfigId {
+        public String name = null;
+        public Map<String, String> templateMap = new HashMap<>();
+
+        /**
+         * No-op constructor
+         */
+        public ConfigId() {}
+
+        /**
+         * Convenience constructor.  Equivalent to calling two-arg constructor with {@code null}
+         * {@code templateMap}.
+         */
+        public ConfigId(String name) {
+            this(name, null);
+        }
+
+        /**
+         * Two-arg convenience constructor.  {@code templateMap} may be null.
+         */
+        public ConfigId(String name, Map<String, String> templateMap) {
+            this.name = name;
+            if (templateMap != null) {
+                this.templateMap.putAll(templateMap);
+            }
+        }
+
+        /**
+         * {@inheritDoc}
+         */
+        @Override
+        public int hashCode() {
+            return 2 * ((name == null) ? 0 : name.hashCode()) + 3 * templateMap.hashCode();
+        }
+
+        private boolean matches(Object a, Object b) {
+            if (a == null && b == null) return true;
+            if (a == null || b == null) return false;
+            return a.equals(b);
+        }
+
+        /**
+         * {@inheritDoc}
+         */
+        @Override
+        public boolean equals(Object other) {
+            if (other == null) return false;
+            if (!(other instanceof ConfigId)) return false;
+
+            final ConfigId otherConf = (ConfigId) other;
+            return matches(name, otherConf.name) && matches(templateMap, otherConf.templateMap);
+        }
+    }
 
     /**
      * A {@link IClassPathFilter} for configuration XML files.
@@ -63,8 +125,9 @@ public class ConfigurationFactory implements IConfigurationFactory {
         @Override
         public boolean accept(String pathName) {
             // only accept entries that match the pattern, and that we don't already know about
+            final ConfigId pathId = new ConfigId(pathName);
             return pathName.startsWith(CONFIG_PREFIX) && pathName.endsWith(CONFIG_SUFFIX) &&
-                    !mConfigDefMap.containsKey(pathName);
+                    !mConfigDefMap.containsKey(pathId);
         }
 
         /**
@@ -112,7 +175,8 @@ public class ConfigurationFactory implements IConfigurationFactory {
          * {@inheritDoc}
          */
         @Override
-        public ConfigurationDef getConfigurationDef(String name) throws ConfigurationException {
+        public ConfigurationDef getConfigurationDef(String name, Map<String, String> templateMap)
+                throws ConfigurationException {
             // FIXME: Currently this does not support on the fly reload of configs.
             // We need to clear the cache.
             String configName = name;
@@ -120,12 +184,14 @@ public class ConfigurationFactory implements IConfigurationFactory {
                 configName = getAbsolutePath(null, name);
             }
 
-            ConfigurationDef def = mConfigDefMap.get(configName);
+            final ConfigId configId = new ConfigId(name, templateMap);
+            ConfigurationDef def = mConfigDefMap.get(configId);
 
             if (def == null) {
                 def = new ConfigurationDef(configName);
-                loadConfiguration(configName, def);
-                mConfigDefMap.put(configName, def);
+                loadConfiguration(configName, def, templateMap);
+
+                mConfigDefMap.put(configId, def);
             }
             return def;
         }
@@ -193,7 +259,7 @@ public class ConfigurationFactory implements IConfigurationFactory {
                         config_name));
             }
             mIncludedConfigs.add(config_name);
-            loadConfiguration(config_name, def);
+            loadConfiguration(config_name, def, null);
         }
 
         /**
@@ -202,14 +268,17 @@ public class ConfigurationFactory implements IConfigurationFactory {
          * @param name the name of a built-in configuration to load or a file
          *            path to configuration xml to load
          * @param def the loaded {@link ConfigurationDef}
+         * @param templateMap map from template-include names to their respective concrete
+         *                    configuration files
          * @throws ConfigurationException if a configuration with given
          *             name/file path cannot be loaded or parsed
          */
-        void loadConfiguration(String name, ConfigurationDef def) throws ConfigurationException {
+        void loadConfiguration(String name, ConfigurationDef def, Map<String, String> templateMap)
+                throws ConfigurationException {
             Log.i(LOG_TAG, String.format("Loading configuration '%s'", name));
             BufferedInputStream bufStream = getConfigStream(name);
             ConfigurationXmlParser parser = new ConfigurationXmlParser(this);
-            parser.parse(def, name, bufStream);
+            parser.parse(def, name, bufStream, templateMap);
         }
 
         /**
@@ -222,7 +291,7 @@ public class ConfigurationFactory implements IConfigurationFactory {
     }
 
     ConfigurationFactory() {
-        mConfigDefMap = new Hashtable<String, ConfigurationDef>();
+        mConfigDefMap = new Hashtable<ConfigId, ConfigurationDef>();
     }
 
     /**
@@ -243,9 +312,9 @@ public class ConfigurationFactory implements IConfigurationFactory {
      * @return {@link ConfigurationDef}
      * @throws ConfigurationException if an error occurred loading the config
      */
-    private ConfigurationDef getConfigurationDef(String name, boolean isGlobal)
-            throws ConfigurationException {
-        return new ConfigLoader(isGlobal).getConfigurationDef(name);
+    private ConfigurationDef getConfigurationDef(String name, boolean isGlobal,
+            Map<String, String> templateMap) throws ConfigurationException {
+        return new ConfigLoader(isGlobal).getConfigurationDef(name, templateMap);
     }
 
     /**
@@ -254,10 +323,29 @@ public class ConfigurationFactory implements IConfigurationFactory {
     @Override
     public IConfiguration createConfigurationFromArgs(String[] arrayArgs)
             throws ConfigurationException {
+        return createConfigurationFromArgs(arrayArgs, null);
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public IConfiguration createConfigurationFromArgs(String[] arrayArgs,
+            List<String> unconsumedArgs) throws ConfigurationException {
         List<String> listArgs = new ArrayList<String>(arrayArgs.length);
         IConfiguration config = internalCreateConfigurationFromArgs(arrayArgs, listArgs);
         config.setCommandLine(arrayArgs);
-        config.setOptionsFromCommandLineArgs(listArgs);
+        final List<String> tmpUnconsumedArgs = config.setOptionsFromCommandLineArgs(listArgs);
+
+        if (unconsumedArgs == null && tmpUnconsumedArgs.size() > 0) {
+            // (unconsumedArgs == null) is taken as a signal that the caller expects all args to
+            // be processed.
+            throw new ConfigurationException(String.format(
+                    "Invalid arguments provided. Unprocessed arguments: %s", tmpUnconsumedArgs));
+        } else if (unconsumedArgs != null) {
+            // Return the unprocessed args
+            unconsumedArgs.addAll(tmpUnconsumedArgs);
+        }
 
         return config;
     }
@@ -268,9 +356,9 @@ public class ConfigurationFactory implements IConfigurationFactory {
      * Note will not populate configuration with values from options
      *
      * @param arrayArgs the full list of command line arguments, including the config name
-     * @param optionArgsRef an empty list, that will be populated with the remaining option
-     *                      arguments
-     * @return
+     * @param optionArgsRef an empty list, that will be populated with the option arguments left
+     *                      to be interpreted
+     * @return An {@link IConfiguration} object representing the configuration that was loaded
      * @throws ConfigurationException
      */
     private IConfiguration internalCreateConfigurationFromArgs(String[] arrayArgs,
@@ -278,10 +366,17 @@ public class ConfigurationFactory implements IConfigurationFactory {
         if (arrayArgs.length == 0) {
             throw new ConfigurationException("Configuration to run was not specified");
         }
-        optionArgsRef.addAll(Arrays.asList(arrayArgs));
+        final List<String> listArgs = new ArrayList(Arrays.asList(arrayArgs));
         // first arg is config name
-        final String configName = optionArgsRef.remove(0);
-        ConfigurationDef configDef = getConfigurationDef(configName, false);
+        final String configName = listArgs.remove(0);
+
+        // Steal ConfigurationXmlParser arguments from the command line
+        final ConfigurationXmlParserSettings parserSettings = new ConfigurationXmlParserSettings();
+        final ArgsOptionParser templateArgParser = new ArgsOptionParser(parserSettings);
+        optionArgsRef.addAll(templateArgParser.parseBestEffort(listArgs));
+
+        ConfigurationDef configDef = getConfigurationDef(configName, false,
+                parserSettings.templateMap);
         return configDef.createConfiguration();
     }
 
@@ -319,7 +414,7 @@ public class ConfigurationFactory implements IConfigurationFactory {
         optionArgsRef.addAll(Arrays.asList(arrayArgs));
         // first arg is config name
         final String configName = optionArgsRef.remove(0);
-        ConfigurationDef configDef = getConfigurationDef(configName, false);
+        ConfigurationDef configDef = getConfigurationDef(configName, false, null);
         return configDef.createGlobalConfiguration();
     }
 
@@ -365,9 +460,10 @@ public class ConfigurationFactory implements IConfigurationFactory {
         ClassPathScanner cpScanner = new ClassPathScanner();
         Set<String> configNames = cpScanner.getClassPathEntries(new ConfigClasspathFilter());
         for (String configName : configNames) {
+            final ConfigId configId = new ConfigId(configName);
             try {
-                ConfigurationDef configDef = getConfigurationDef(configName, false);
-                mConfigDefMap.put(configName, configDef);
+                ConfigurationDef configDef = getConfigurationDef(configName, false, null);
+                mConfigDefMap.put(configId, configDef);
             } catch (ConfigurationException e) {
                 ps.printf("Failed to load %s: %s", configName, e.getMessage());
                 ps.println();
