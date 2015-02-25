@@ -175,7 +175,71 @@ public class ArgsOptionParser extends OptionSetter {
      * @throws ConfigurationException if error occurred parsing the arguments.
      */
     public List<String> parse(List<String> args) throws ConfigurationException {
-        return parseOptions(args.listIterator());
+        final List<String> leftovers = new ArrayList<String>();
+        final ListIterator<String> argsIter = args.listIterator();
+
+        // Scan 'args'.
+        while (argsIter.hasNext() && parseArg(argsIter.next(), argsIter, leftovers)) {
+            // This loop has no body.  All of the work happens by side-effect in parseArg(...)
+        }
+
+        // Package up the leftovers.
+        while (argsIter.hasNext()) {
+            leftovers.add(argsIter.next());
+        }
+        return leftovers;
+    }
+
+    /**
+     * A best-effort version of {@link #parse(String... args)}.  If a ConfigurationException is
+     * thrown, that exception is captured internally, and the remaining arguments (including the
+     * argument which caused the exception to be thrown) are returned.  This method does not throw.
+     *
+     * @return a {@link List} of the left over arguments
+     */
+    public List<String> parseBestEffort(String... args) {
+        return parseBestEffort(Arrays.asList(args));
+    }
+
+    /**
+     * Alternate {@link #parseBestEffort(String... args)} method that takes a {@link List} of
+     * arguments
+     *
+     * @return a {@link List} of the left over arguments
+     */
+    public List<String> parseBestEffort(List<String> args) {
+        final List<String> leftovers = new ArrayList<String>(args.size());
+        final ListIterator<String> argsIter = args.listIterator();
+        int lastProcessedIdx = -1;
+
+        /* (not javadoc)
+         * Scan 'args'.  Note that each call to parseArg(...) will advance argsIter a number
+         * of places that depends on the arity of the particular Option being processed.  For a
+         * boolean Option, it will not advance.  For a standard unary Option, it will advance
+         * 1 place.  For a Map Option, it will advance two places (1 for key, 1 for value).
+         *
+         * For this reason, we grab the index from the iterator itself, rather than trying to
+         * increment it ourselves.
+         */
+        while (argsIter.hasNext()) {
+            lastProcessedIdx = argsIter.nextIndex();
+            final String arg = argsIter.next();
+            try {
+                // All of the work happens within parseArg(...) by side-effect
+                if (!parseArg(arg, argsIter, leftovers)) break;
+            } catch (ConfigurationException e) {
+                // Something failed.  Add all of the not-fully-processed and not-yet-processed args
+                // to leftovers and return
+                leftovers.addAll(args.subList(lastProcessedIdx, args.size()));
+                return leftovers;
+            }
+        }
+
+        // Package up the leftovers.
+        while (argsIter.hasNext()) {
+            leftovers.add(argsIter.next());
+        }
+        return leftovers;
     }
 
     /**
@@ -191,33 +255,32 @@ public class ArgsOptionParser extends OptionSetter {
         }
     }
 
-    private List<String> parseOptions(ListIterator<String> args) throws ConfigurationException {
-        final List<String> leftovers = new ArrayList<String>();
+    /**
+     * Attempts to parse the specified argument.
+     *
+     * @return {@code true} if iteration should continue, or {@code false} if iteration should stop
+     */
+    private boolean parseArg(String arg, ListIterator<String> args, List<String> leftovers)
+            throws ConfigurationException {
+        if (arg.equals(OPTION_NAME_PREFIX)) {
+            // "--" marks the end of options and the beginning of positional arguments.
+            return false;
 
-        // Scan 'args'.
-        while (args.hasNext()) {
-            final String arg = args.next();
-            if (arg.equals(OPTION_NAME_PREFIX)) {
-                // "--" marks the end of options and the beginning of positional arguments.
-                break;
-            } else if (arg.startsWith(OPTION_NAME_PREFIX)) {
-                // A long option.
-                parseLongOption(arg, args);
-            } else if (arg.startsWith(SHORT_NAME_PREFIX)) {
-                // A short option.
-                parseGroupedShortOptions(arg, args);
-            } else {
-                // The first non-option marks the end of options.
-                leftovers.add(arg);
-                break;
-            }
-        }
+        } else if (arg.startsWith(OPTION_NAME_PREFIX)) {
+            // A long option.
+            parseLongOption(arg, args);
+            return true;
 
-        // Package up the leftovers.
-        while (args.hasNext()) {
-            leftovers.add(args.next());
+        } else if (arg.startsWith(SHORT_NAME_PREFIX)) {
+            // A short option.
+            parseGroupedShortOptions(arg, args);
+            return true;
+
+        } else {
+            // The first non-option marks the end of options.
+            leftovers.add(arg);
+            return false;
         }
-        return leftovers;
     }
 
     private void parseLongOption(String arg, ListIterator<String> args)
