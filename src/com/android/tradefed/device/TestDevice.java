@@ -2969,4 +2969,89 @@ class TestDevice implements IManagedTestDevice {
     public boolean waitForBootComplete(long timeOut) throws DeviceNotAvailableException {
         return mStateMonitor.waitForBootComplete(timeOut);
     }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public ArrayList<Integer> listUsers() throws DeviceNotAvailableException {
+        String command = "pm list users";
+        String commandOutput = executeShellCommand(command);
+        // Extract the id of all existing users.
+        String[] lines = commandOutput.split("\\r?\\n");
+        if (lines.length < 1) {
+            CLog.e("%s should contain at least one line", commandOutput);
+            return null;
+        }
+        if (!lines[0].equals("Users:")) {
+            CLog.e("%s in not a valid output for 'pm list users'", commandOutput);
+            return null;
+        }
+        ArrayList<Integer> users = new ArrayList<Integer>();
+        for (int i = 1; i < lines.length; i++) {
+            // Individual user is printed out like this:
+            // \tUserInfo{$id$:$name$:$Integer.toHexString(flags)$} [running]
+            String[] tokens = lines[i].split("\\{|\\}|:");
+            if (tokens.length != 4 && tokens.length != 5) {
+                CLog.e("%s doesn't contain 4 or 5 tokens", lines[i]);
+                return null;
+            }
+            users.add(Integer.parseInt(tokens[1]));
+        }
+        return users;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public int getMaxNumberOfUsersSupported() throws DeviceNotAvailableException {
+        String command = "pm get-max-users";
+        String commandOutput = executeShellCommand(command);
+        try {
+            return Integer.parseInt(commandOutput.substring(commandOutput.lastIndexOf(" ")).trim());
+        } catch (NumberFormatException e) {
+            CLog.e("Failed to parse result: %s", commandOutput);
+        }
+        return 0;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public boolean isMultiUserSupported() throws DeviceNotAvailableException {
+        return getMaxNumberOfUsersSupported() > 1;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public int createUser(String name) throws DeviceNotAvailableException, IllegalStateException {
+        final String output = executeShellCommand(String.format("pm create-user %s", name));
+        if (output.startsWith("Success")) {
+            try {
+                return Integer.parseInt(output.substring(output.lastIndexOf(" ")).trim());
+            } catch (NumberFormatException e) {
+                CLog.e("Failed to parse result: %s", output);
+            }
+        } else {
+            CLog.e("Failed to create user: %s", output);
+        }
+        throw new IllegalStateException();
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public boolean removeUser(int userId) throws DeviceNotAvailableException {
+        final String output = executeShellCommand(String.format("pm remove-user %s", userId));
+        if (output.startsWith("Error")) {
+            CLog.e("Failed to remove user: %s", output);
+            return false;
+        }
+        return true;
+    }
 }
