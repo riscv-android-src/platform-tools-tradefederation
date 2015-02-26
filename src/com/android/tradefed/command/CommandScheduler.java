@@ -414,17 +414,17 @@ public class CommandScheduler extends Thread implements ICommandScheduler, IComm
     }
 
     private class InvocationThread extends Thread {
-        private final IScheduledInvocationListener mListener;
+        private final IScheduledInvocationListener[] mListeners;
         private final ITestDevice mDevice;
         private final ExecutableCommand mCmd;
         private final ITestInvocation mInvocation;
         private long mStartTime = -1;
 
-        public InvocationThread(String name, IScheduledInvocationListener listener,
-                ITestDevice device, ExecutableCommand command) {
+        public InvocationThread(String name, ITestDevice device, ExecutableCommand command,
+                IScheduledInvocationListener... listeners) {
             // create a thread group so LoggerRegistry can identify this as an invocationThread
             super(new ThreadGroup(name), name);
-            mListener = listener;
+            mListeners = listeners;
             mDevice = device;
             mCmd = command;
             mInvocation = createRunInstance();
@@ -444,7 +444,7 @@ public class CommandScheduler extends Thread implements ICommandScheduler, IComm
             try {
                 mCmd.commandStarted();
                 instance.invoke(mDevice, config, new Rescheduler(mCmd.getCommandTracker()),
-                        mListener);
+                        mListeners);
             } catch (DeviceUnresponsiveException e) {
                 CLog.w("Device %s is unresponsive. Reason: %s", mDevice.getSerialNumber(),
                         e.getMessage());
@@ -467,7 +467,9 @@ public class CommandScheduler extends Thread implements ICommandScheduler, IComm
                 // when freed
                 removeInvocationThread(this);
                 mCmd.commandFinished(elapsedTime);
-                mListener.invocationComplete(mDevice, deviceState);
+                for (final IScheduledInvocationListener listener : mListeners) {
+                    listener.invocationComplete(mDevice, deviceState);
+                }
             }
         }
 
@@ -715,8 +717,8 @@ public class CommandScheduler extends Thread implements ICommandScheduler, IComm
         for (Map.Entry<ExecutableCommand, ITestDevice> cmdDeviceEntry : scheduledCommandMap
                 .entrySet()) {
             ExecutableCommand cmd = cmdDeviceEntry.getKey();
-            startInvocation(new FreeDeviceHandler(getDeviceManager()), cmdDeviceEntry.getValue(),
-                    cmd);
+            startInvocation(cmdDeviceEntry.getValue(), cmd,
+                    new FreeDeviceHandler(getDeviceManager()));
             if (cmd.isLoopMode()) {
                 addNewExecCommandToQueue(cmd.getCommandTracker());
             }
@@ -1000,7 +1002,7 @@ public class CommandScheduler extends Thread implements ICommandScheduler, IComm
             mExecutingCommands.add(execCmd);
         }
 
-        startInvocation(new FreeDeviceHandler(manager, listener), device, execCmd);
+        startInvocation(device, execCmd, listener, new FreeDeviceHandler(manager));
     }
 
     /**
@@ -1021,19 +1023,19 @@ public class CommandScheduler extends Thread implements ICommandScheduler, IComm
             mExecutingCommands.add(execCmd);
         }
 
-        startInvocation(listener, device, execCmd);
+        startInvocation(device, execCmd, listener);
     }
 
     /**
      * Spawns off thread to run invocation for given device.
      *
-     * @param callback the {@link IInvocationCompleteHandler} to invoke when complete
      * @param device the {@link ITestDevice}
      * @param cmd the {@link ExecutableCommand} to execute
+     * @param listeners the {@link IScheduledInvocationLister}s to invoke when complete
      * @return the thread that will run the invocation
      */
-    private void startInvocation(IScheduledInvocationListener listener, ITestDevice device,
-            ExecutableCommand cmd) {
+    private void startInvocation(ITestDevice device, ExecutableCommand cmd,
+            IScheduledInvocationListener... listeners) {
         if (hasInvocationThread(device)) {
             throw new IllegalStateException(
                     String.format("Attempting invocation on device %s when one is already running",
@@ -1041,8 +1043,8 @@ public class CommandScheduler extends Thread implements ICommandScheduler, IComm
         }
         CLog.d("starting invocation for command id %d", cmd.getCommandTracker().getId());
         final String invocationName = String.format("Invocation-%s", device.getSerialNumber());
-        InvocationThread invocationThread = new InvocationThread(invocationName, listener, device,
-                cmd);
+        InvocationThread invocationThread = new InvocationThread(invocationName, device, cmd,
+                listeners);
         invocationThread.start();
         addInvocationThread(invocationThread);
     }
