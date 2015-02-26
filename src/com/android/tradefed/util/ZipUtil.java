@@ -163,7 +163,7 @@ public class ZipUtil {
      * @param relativePathSegs the relative path of file, including separators
      * @throws IOException if failed to add file to zip
      */
-    private static void addToZip(ZipOutputStream out, File file, List<String> relativePathSegs)
+    public static void addToZip(ZipOutputStream out, File file, List<String> relativePathSegs)
             throws IOException {
         relativePathSegs.add(file.getName());
         if (file.isDirectory()) {
