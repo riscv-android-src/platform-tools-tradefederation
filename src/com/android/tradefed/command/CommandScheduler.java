@@ -681,7 +681,7 @@ public class CommandScheduler extends Thread implements ICommandScheduler, IComm
         }
     }
 
-    private void checkInvocations() {
+    void checkInvocations() {
         CLog.d("Checking invocations...");
         final List<InvocationThread> copy;
         synchronized(this) {

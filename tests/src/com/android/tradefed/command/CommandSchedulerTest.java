@@ -104,6 +104,11 @@ public class CommandSchedulerTest extends TestCase {
             }
 
             @Override
+            void checkInvocations() {
+                // ignore
+            }
+
+            @Override
             CommandFileParser createCommandFileParser() {
                 return mMockCmdFileParser;
             }
