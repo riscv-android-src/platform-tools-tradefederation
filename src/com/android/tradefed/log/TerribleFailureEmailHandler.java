@@ -59,7 +59,7 @@ public class TerribleFailureEmailHandler implements ITerribleFailureHandler {
             description = "The minimum interval between emails in ms. " +
                     "If a new WTF happens within this interval from the previous one, " +
                     "it will be ignored.")
-    private long mMinEmailInterval = 30000;
+    private long mMinEmailInterval = 5 * 60 * 1000;
 
     private IEmail mMailer;
     private long mLastEmailSentTime = 0;
