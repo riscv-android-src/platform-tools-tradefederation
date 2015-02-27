@@ -46,6 +46,7 @@ class DeviceStateMonitor implements IDeviceStateMonitor {
 
     /** the time in ms to wait between 'poll for responsiveness' attempts */
     private static final long CHECK_POLL_TIME = 3 * 1000;
+    private static final long MAX_CHECK_POLL_TIME = 30 * 1000;
     /** the maximum operation time in ms for a 'poll for responsiveness' command */
     private static final int MAX_OP_TIME = 10 * 1000;
 
@@ -160,6 +161,7 @@ class DeviceStateMonitor implements IDeviceStateMonitor {
         CLog.i("Waiting %d ms for device %s shell to be responsive", waitTime,
                 getSerialNumber());
         long startTime = System.currentTimeMillis();
+        int counter = 1;
         while (System.currentTimeMillis() - startTime < waitTime) {
             final CollectingOutputReceiver receiver = new CollectingOutputReceiver();
             final String cmd = "ls /system/bin/adb";
@@ -178,7 +180,8 @@ class DeviceStateMonitor implements IDeviceStateMonitor {
             } catch (ShellCommandUnresponsiveException e) {
                 CLog.i("%s failed: %s", cmd, e.getMessage());
             }
-            getRunUtil().sleep(CHECK_POLL_TIME);
+            getRunUtil().sleep(Math.min(CHECK_POLL_TIME * counter, MAX_CHECK_POLL_TIME));
+            counter++;
         }
         CLog.w("Device %s shell is unresponsive", getSerialNumber());
         return false;
@@ -234,6 +237,7 @@ class DeviceStateMonitor implements IDeviceStateMonitor {
     @Override
     public boolean waitForBootComplete(final long waitTime) {
         CLog.i("Waiting %d ms for device %s boot complete", waitTime, getSerialNumber());
+        int counter = 1;
         long startTime = System.currentTimeMillis();
         final String cmd = "getprop " + BOOTCOMPLETE_PROP;
         while ((System.currentTimeMillis() - startTime) < waitTime) {
@@ -247,7 +251,8 @@ class DeviceStateMonitor implements IDeviceStateMonitor {
             } catch (ExecutionException e) {
                 CLog.i("%s on device %s failed: %s", cmd, getSerialNumber(), e.getMessage());
             }
-            getRunUtil().sleep(CHECK_POLL_TIME);
+            getRunUtil().sleep(Math.min(CHECK_POLL_TIME * counter, MAX_CHECK_POLL_TIME));
+            counter++;
         }
         CLog.w("Device %s did not boot after %d ms", getSerialNumber(), waitTime);
         return false;
@@ -264,6 +269,7 @@ class DeviceStateMonitor implements IDeviceStateMonitor {
         CLog.i("Waiting %d ms for device %s package manager",
                 waitTime, getSerialNumber());
         long startTime = System.currentTimeMillis();
+        int counter = 1;
         while (System.currentTimeMillis() - startTime < waitTime) {
             final CollectingOutputReceiver receiver = new CollectingOutputReceiver();
             final String cmd = "pm path android";
@@ -287,7 +293,8 @@ class DeviceStateMonitor implements IDeviceStateMonitor {
                 Log.i(LOG_TAG, String.format("%s on device %s failed: %s", cmd, getSerialNumber(),
                         e.getMessage()));
             }
-            getRunUtil().sleep(CHECK_POLL_TIME);
+            getRunUtil().sleep(Math.min(CHECK_POLL_TIME * counter, MAX_CHECK_POLL_TIME));
+            counter++;
         }
         Log.w(LOG_TAG, String.format("Device %s package manager is unresponsive",
                 getSerialNumber()));
@@ -305,6 +312,7 @@ class DeviceStateMonitor implements IDeviceStateMonitor {
         Log.i(LOG_TAG, String.format("Waiting %d ms for device %s external store", waitTime,
                 getSerialNumber()));
         long startTime = System.currentTimeMillis();
+        int counter = 1;
         while (System.currentTimeMillis() - startTime < waitTime) {
             final CollectingOutputReceiver receiver = new CollectingOutputReceiver();
             final CollectingOutputReceiver bitBucket = new CollectingOutputReceiver();
@@ -354,7 +362,8 @@ class DeviceStateMonitor implements IDeviceStateMonitor {
                 Log.w(LOG_TAG, String.format("Failed to get external store mount point for %s",
                         getSerialNumber()));
             }
-            getRunUtil().sleep(CHECK_POLL_TIME);
+            getRunUtil().sleep(Math.min(CHECK_POLL_TIME * counter, MAX_CHECK_POLL_TIME));
+            counter++;
         }
         Log.w(LOG_TAG, String.format("Device %s external storage is not mounted after %d ms",
                 getSerialNumber(), waitTime));
