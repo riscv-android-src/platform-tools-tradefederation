@@ -100,9 +100,10 @@ class InstrumentationFileTest implements IRemoteTest {
      */
     private void writeTestsToFileAndRun(Collection<TestIdentifier> tests,
             final ITestInvocationListener listener) throws DeviceNotAvailableException {
+        File testFile = null;
         try {
             // create and populate test file
-            File testFile = FileUtil.createTempFile(
+            testFile = FileUtil.createTempFile(
                     "tf_testFile_" + InstrumentationFileTest.class.getCanonicalName(), ".txt");
             try (BufferedWriter bw = new BufferedWriter(new FileWriter(testFile))) {
                 for (TestIdentifier testToRun : tests) {
@@ -125,6 +126,9 @@ class InstrumentationFileTest implements IRemoteTest {
         } catch (IOException e) {
             CLog.e("Failed to run tests from file, re-running tests serially: %s", e.getMessage());
             reRunTestsSerially(mInstrumentationTest, listener);
+        } finally {
+            // clean up test file, if it was created
+            FileUtil.deleteFile(testFile);
         }
     }
 
