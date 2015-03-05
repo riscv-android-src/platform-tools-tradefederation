@@ -25,6 +25,7 @@ import com.android.tradefed.result.InputStreamSource;
 import com.android.tradefed.util.CommandResult;
 
 import java.io.File;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Date;
 import java.util.List;
@@ -861,5 +862,45 @@ public class StubTestDevice implements IManagedTestDevice {
      */
     @Override
     public void setDate(Date date) throws DeviceNotAvailableException {
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public boolean isMultiUserSupported() throws DeviceNotAvailableException {
+        return false;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public int createUser(String name) throws DeviceNotAvailableException {
+        return 0;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public boolean removeUser(int userId) throws DeviceNotAvailableException {
+        return false;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public ArrayList<Integer> listUsers() throws DeviceNotAvailableException {
+        return null;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public int getMaxNumberOfUsersSupported() throws DeviceNotAvailableException {
+        return 0;
     }
 }

@@ -27,6 +27,7 @@ import com.android.tradefed.util.TimeUtil;
 
 import java.io.File;
 import java.io.InputStream;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Date;
@@ -1114,4 +1115,46 @@ public interface ITestDevice {
      * @throws DeviceNotAvailableException
      */
     public boolean waitForBootComplete(long timeOut) throws DeviceNotAvailableException;
+
+    /**
+     * Determines if multi user is supported.
+     *
+     * @return true if multi user is supported, false otherwise
+     * @throws DeviceNotAvailableException
+     */
+    public boolean isMultiUserSupported() throws DeviceNotAvailableException;
+
+    /**
+     * Create a user with a given name.
+     *
+     * @param name of the user to create on the device
+     * @return the integer for the user id created
+     * @throws DeviceNotAvailableException
+     */
+    public int createUser(String name) throws DeviceNotAvailableException, IllegalStateException;
+
+    /**
+     * Remove a given user from the device.
+     *
+     * @param userId of the user to remove
+     * @return true if we were succesful in removing the user, false otherwise.
+     * @throws DeviceNotAvailableException
+     */
+    public boolean removeUser(int userId) throws DeviceNotAvailableException;
+
+    /**
+     * Gets the list of users on the device. Defaults to null.
+     *
+     * @return the list of user ids or null if there was an error.
+     * @throws DeviceNotAvailableException
+     */
+    ArrayList<Integer> listUsers() throws DeviceNotAvailableException;
+
+    /**
+     * Get the maximum number of supported users. Defaults to 0.
+     *
+     * @return an integer indicating the number of supported users
+     * @throws DeviceNotAvailableException
+     */
+    public int getMaxNumberOfUsersSupported() throws DeviceNotAvailableException;
 }

@@ -1221,5 +1221,143 @@ public class TestDeviceTest extends TestCase {
         replayMocks();
         assertFalse(mTestDevice.checkConnectivity());
     }
+
+    /**
+     * Test that a single user is handled by {@link TestDevice#listUsers()}.
+     */
+    public void testListUsers_oneUser() throws Exception {
+        final String listUsersCommand = "pm list users";
+        injectShellResponse(listUsersCommand, ArrayUtil.join("\r\n",
+                "Users:",
+                "UserInfo{0:Foo:13} running"));
+        replayMocks();
+        ArrayList<Integer> actual = mTestDevice.listUsers();
+        assertNotNull(actual);
+        assertEquals(1, actual.size());
+        assertEquals(0, actual.get(0).intValue());
+    }
+
+    /**
+     * Test that invalid output is handled by {@link TestDevice#listUsers()}.
+     */
+    public void testListUsers_invalidOutput() throws Exception {
+        final String listUsersCommand = "pm list users";
+        injectShellResponse(listUsersCommand, "not really what we are looking for");
+        replayMocks();
+        ArrayList<Integer> actual = mTestDevice.listUsers();
+        assertNull(actual);
+    }
+
+    /**
+     * Test that multiple user is handled by {@link TestDevice#listUsers()}.
+     */
+    public void testListUsers_multiUsers() throws Exception {
+        final String listUsersCommand = "pm list users";
+        injectShellResponse(listUsersCommand, ArrayUtil.join("\r\n",
+                "Users:",
+                "UserInfo{0:Foo:13} running",
+                "UserInfo{3:FooBar:14}"));
+        replayMocks();
+        ArrayList<Integer> actual = mTestDevice.listUsers();
+        assertNotNull(actual);
+        assertEquals(2, actual.size());
+        assertEquals(0, actual.get(0).intValue());
+        assertEquals(3, actual.get(1).intValue());
+    }
+
+    /**
+     * Test that multi user output is handled by {@link TestDevice#getMaxNumberOfUsersSupported()}.
+     */
+    public void testMaxNumberOfUsersSupported() throws Exception {
+        final String getMaxUsersCommand = "pm get-max-users";
+        injectShellResponse(getMaxUsersCommand, "Maximum supported users: 4");
+        replayMocks();
+        assertEquals(4, mTestDevice.getMaxNumberOfUsersSupported());
+    }
+
+    /**
+     * Test that invalid output is handled by {@link TestDevice#getMaxNumberOfUsersSupported()}.
+     */
+    public void testMaxNumberOfUsersSupported_invalid() throws Exception {
+        final String getMaxUsersCommand = "pm get-max-users";
+        injectShellResponse(getMaxUsersCommand, "not the output we expect");
+        replayMocks();
+        assertEquals(0, mTestDevice.getMaxNumberOfUsersSupported());
+    }
+
+    /**
+     * Test that single user output is handled by {@link TestDevice#getMaxNumberOfUsersSupported()}.
+     */
+    public void testIsMultiUserSupported_singleUser() throws Exception {
+        final String getMaxUsersCommand = "pm get-max-users";
+        injectShellResponse(getMaxUsersCommand, "Maximum supported users: 1");
+        replayMocks();
+        assertFalse(mTestDevice.isMultiUserSupported());
+    }
+
+    /**
+     * Test that {@link TestDevice#isMultiUserSupported()} works.
+     */
+    public void testIsMultiUserSupported() throws Exception {
+        final String getMaxUsersCommand = "pm get-max-users";
+        injectShellResponse(getMaxUsersCommand, "Maximum supported users: 4");
+        replayMocks();
+        assertTrue(mTestDevice.isMultiUserSupported());
+    }
+
+    /**
+     * Test that invalid output is handled by {@link TestDevice#isMultiUserSupported()}.
+     */
+    public void testIsMultiUserSupported_invalidOutput() throws Exception {
+        final String getMaxUsersCommand = "pm get-max-users";
+        injectShellResponse(getMaxUsersCommand, "not the output we expect");
+        replayMocks();
+        assertFalse(mTestDevice.isMultiUserSupported());
+    }
+
+    /**
+     * Test that successful user creation is handled by {@link TestDevice#createUser()}.
+     */
+    public void testCreateUser() throws Exception {
+        final String createUserCommand = "pm create-user foo";
+        injectShellResponse(createUserCommand, "Success: created user id 10");
+        replayMocks();
+        assertEquals(10, mTestDevice.createUser("foo"));
+    }
+
+    /**
+     * Test that a failure to create a user is handled by {@link TestDevice#createUser()}.
+     */
+    public void testCreateUser_failed() throws Exception {
+        final String createUserCommand = "pm create-user foo";
+        injectShellResponse(createUserCommand, "Error");
+        replayMocks();
+        try {
+            mTestDevice.createUser("foo");
+            fail("IllegalStateException not thrown");
+        } catch (IllegalStateException e) {
+            // Expected
+        }
+    }
+
+    /**
+     * Test that successful user removal is handled by {@link TestDevice#removeUser()}.
+     */
+    public void testRemoveUser() throws Exception {
+        final String removeUserCommand = "pm remove-user 10";
+        injectShellResponse(removeUserCommand, "Success: removed user\n");
+        replayMocks();
+        assertTrue(mTestDevice.removeUser(10));
+    }
+
+    /**
+     * Test that a failure to remove a user is handled by {@link TestDevice#removeUser()}.
+     */
+    public void testRemoveUser_failed() throws Exception {
+        final String removeUserCommand = "pm remove-user 10";
+        injectShellResponse(removeUserCommand, "Error: couldn't remove user id 10");
+        replayMocks();
+        assertFalse(mTestDevice.removeUser(10));
+    }
 }
 
