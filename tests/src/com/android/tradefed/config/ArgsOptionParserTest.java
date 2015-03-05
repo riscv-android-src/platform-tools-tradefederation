@@ -195,6 +195,8 @@ public class ArgsOptionParserTest extends TestCase {
         private String mNullImmutableOption = null;
     }
 
+
+    // SECTION: option update rule validation
     /**
      * Verify that {@link OptionUpdateRule}s work properly when the update compares to greater-than
      * the default value.
@@ -314,32 +316,34 @@ public class ArgsOptionParserTest extends TestCase {
         }
     }
 
+
+    // SECTION: tests for #parse(...)
     /**
     * Test passing an empty argument list for an object that has one option specified.
     * <p/>
     * Expected that the option field should retain its default value.
     */
-   public void testParse_noArg() throws ConfigurationException {
-       OneOptionSource object = new OneOptionSource();
-       ArgsOptionParser parser = new ArgsOptionParser(object);
-       parser.parse(new String[] {});
-       assertEquals(OneOptionSource.DEFAULT_VALUE, object.mMyOption);
-   }
+    public void testParse_noArg() throws ConfigurationException {
+        OneOptionSource object = new OneOptionSource();
+        ArgsOptionParser parser = new ArgsOptionParser(object);
+        parser.parse(new String[] {});
+        assertEquals(OneOptionSource.DEFAULT_VALUE, object.mMyOption);
+    }
 
-   /**
-    * Test passing an single argument for an object that has one option specified.
-    */
-   public void testParse_oneArg() throws ConfigurationException {
-       OneOptionSource object = new OneOptionSource();
-       ArgsOptionParser parser = new ArgsOptionParser(object);
-       final String expectedValue = "set";
-       parser.parse(new String[] {"--my_option", expectedValue});
-       assertEquals(expectedValue, object.mMyOption);
-   }
+    /**
+     * Test passing an single argument for an object that has one option specified.
+     */
+    public void testParse_oneArg() throws ConfigurationException {
+        OneOptionSource object = new OneOptionSource();
+        ArgsOptionParser parser = new ArgsOptionParser(object);
+        final String expectedValue = "set";
+        parser.parse(new String[] {"--my_option", expectedValue});
+        assertEquals(expectedValue, object.mMyOption);
+    }
 
-   /**
-    * Test passing an single argument for an object that has one option specified.
-    */
+    /**
+     * Test passing an single argument for an object that has one option specified.
+     */
     public void testParse_oneMapArg() throws ConfigurationException {
         MapOptionSource object = new MapOptionSource();
         ArgsOptionParser parser = new ArgsOptionParser(object);
@@ -546,6 +550,245 @@ public class ArgsOptionParserTest extends TestCase {
         }
     }
 
+
+    // SECTION: tests for #parseBestEffort(...)
+    /**
+     * Test passing an single argument for an object that has one option specified.
+     */
+    public void testParseBestEffort_oneArg() throws ConfigurationException {
+        OneOptionSource object = new OneOptionSource();
+        ArgsOptionParser parser = new ArgsOptionParser(object);
+        final String option = "--my_option";
+        final String value = "set";
+        final List<String> leftovers = parser.parseBestEffort(
+                new String[] {option, value});
+        assertEquals(value, object.mMyOption);
+        assertEquals(0, leftovers.size());
+    }
+
+    /**
+     * Make sure that overwriting arguments works as expected.
+     */
+    public void testParseBestEffort_oneArg_overwrite() throws ConfigurationException {
+        OneOptionSource object = new OneOptionSource();
+        ArgsOptionParser parser = new ArgsOptionParser(object);
+        final String option = "--my_option";
+        final String value1 = "set";
+        final String value2 = "game";
+        final List<String> leftovers = parser.parseBestEffort(
+                new String[] {option, value1, option, value2});
+        assertEquals(value2, object.mMyOption);
+        assertEquals(0, leftovers.size());
+    }
+
+    /**
+     * Test passing a usable argument followed by an unusable one.
+     */
+    public void testParseBestEffort_oneArg_oneLeftover() throws ConfigurationException {
+        OneOptionSource object = new OneOptionSource();
+        ArgsOptionParser parser = new ArgsOptionParser(object);
+        final String expectedValue = "set";
+        final String leftoverOption = "--no_exist";
+        final List<String> leftovers = parser.parseBestEffort(
+                new String[] {"--my_option", expectedValue, leftoverOption});
+        assertEquals(expectedValue, object.mMyOption);
+        assertEquals(1, leftovers.size());
+        assertEquals(leftoverOption, leftovers.get(0));
+    }
+
+    /**
+     * Test passing an unusable argument followed by a usable one.  Basically verifies that the
+     * parse attempt stops wholesale, and doesn't merely skip the unusable arg.
+     */
+    public void testParseBestEffort_oneLeftover_oneArg() throws ConfigurationException {
+        OneOptionSource object = new OneOptionSource();
+        ArgsOptionParser parser = new ArgsOptionParser(object);
+        final String goodOption = "--my_option";
+        final String value = "set";
+        final String badOption = "--no_exist";
+        final List<String> leftovers = parser.parseBestEffort(
+                new String[] {badOption, goodOption, value});
+        assertEquals(OneOptionSource.DEFAULT_VALUE, object.mMyOption);
+        assertEquals(3, leftovers.size());
+        assertEquals(badOption, leftovers.get(0));
+        assertEquals(goodOption, leftovers.get(1));
+        assertEquals(value, leftovers.get(2));
+    }
+
+    /**
+     * Make sure that parsing stops when a bare option prefix, "--", is encountered.  That prefix
+     * should _not_ be returned as one of the leftover args.
+     */
+    public void testParseBestEffort_manualStop() throws ConfigurationException {
+        OneOptionSource object = new OneOptionSource();
+        ArgsOptionParser parser = new ArgsOptionParser(object);
+        final String goodOption = "--my_option";
+        final String value = "set";
+        final String badOption = "--no_exist";
+        final List<String> leftovers = parser.parseBestEffort(
+                new String[] {"--", badOption, goodOption, value});
+        assertEquals(OneOptionSource.DEFAULT_VALUE, object.mMyOption);
+        assertEquals(3, leftovers.size());
+        assertEquals(badOption, leftovers.get(0));
+        assertEquals(goodOption, leftovers.get(1));
+        assertEquals(value, leftovers.get(2));
+    }
+
+    /**
+     * Make sure that parsing stops when a bare word is encountered.  Unlike a bare option prefix,
+     * the bare word _should_ be returned as one of the leftover args.
+     */
+    public void testParseBestEffort_bareWord() throws ConfigurationException {
+        OneOptionSource object = new OneOptionSource();
+        ArgsOptionParser parser = new ArgsOptionParser(object);
+        final String goodOption = "--my_option";
+        final String value = "set";
+        final String badOption = "--no_exist";
+        final String bareWord = "configName";
+        final List<String> leftovers = parser.parseBestEffort(
+                new String[] {bareWord, badOption, goodOption, value});
+        assertEquals(OneOptionSource.DEFAULT_VALUE, object.mMyOption);
+        assertEquals(4, leftovers.size());
+        assertEquals(bareWord, leftovers.get(0));
+        assertEquals(badOption, leftovers.get(1));
+        assertEquals(goodOption, leftovers.get(2));
+        assertEquals(value, leftovers.get(3));
+    }
+
+    /**
+     * Make sure that parsing stops when a bare option prefix, "--", is encountered.  That prefix
+     * should _not_ be returned as one of the leftover args.
+     */
+    public void testParseBestEffort_oneArg_manualStop() throws ConfigurationException {
+        OneOptionSource object = new OneOptionSource();
+        ArgsOptionParser parser = new ArgsOptionParser(object);
+        final String option = "--my_option";
+        final String value1 = "set";
+        final String value2 = "game";
+        final List<String> leftovers = parser.parseBestEffort(
+                new String[] {option, value1, "--", option, value2});
+        assertEquals(value1, object.mMyOption);
+        assertEquals(2, leftovers.size());
+        assertEquals(option, leftovers.get(0));
+        assertEquals(value2, leftovers.get(1));
+    }
+
+    /**
+     * Make sure that parsing stops when a bare word is encountered.  Unlike a bare option prefix,
+     * the bare word _should_ be returned as one of the leftover args.
+     */
+    public void testParseBestEffort_oneArg_bareWord() throws ConfigurationException {
+        OneOptionSource object = new OneOptionSource();
+        ArgsOptionParser parser = new ArgsOptionParser(object);
+        final String option = "--my_option";
+        final String value1 = "set";
+        final String value2 = "game";
+        final String bareWord = "configName";
+        final List<String> leftovers = parser.parseBestEffort(
+                new String[] {option, value1, bareWord, option, value2});
+        assertEquals(value1, object.mMyOption);
+        assertEquals(3, leftovers.size());
+        assertEquals(bareWord, leftovers.get(0));
+        assertEquals(option, leftovers.get(1));
+        assertEquals(value2, leftovers.get(2));
+    }
+
+    /**
+     * Test passing an single argument for an object that has one option specified.
+     */
+    public void testParseBestEffort_oneArg_twoLeftovers() throws ConfigurationException {
+        OneOptionSource object = new OneOptionSource();
+        ArgsOptionParser parser = new ArgsOptionParser(object);
+        final String expectedValue = "set";
+        final String leftover1 = "--no_exist";
+        final String leftover2 = "--me_neither";
+        final List<String> leftovers = parser.parseBestEffort(
+                new String[] {"--my_option", expectedValue, leftover1, leftover2});
+        assertEquals(expectedValue, object.mMyOption);
+        assertEquals(2, leftovers.size());
+        assertEquals(leftover1, leftovers.get(0));
+        assertEquals(leftover2, leftovers.get(1));
+    }
+
+    /**
+     * Make sure that map option parsing works as expected.
+     */
+    public void testParseBestEffort_mapOption() throws ConfigurationException {
+        MapOptionSource object = new MapOptionSource();
+        ArgsOptionParser parser = new ArgsOptionParser(object);
+        final String option = "--my_option";
+        final String key = "123";  // Integer is the key type
+        final String value = "true";  // Boolean is the value type
+        final Integer expKey = 123;
+        final Boolean expValue = Boolean.TRUE;
+
+        final List<String> leftovers = parser.parseBestEffort(
+                new String[] {option, key, value});
+
+        assertEquals(0, leftovers.size());
+        assertNotNull(object.mMyOption);
+        assertEquals(1, object.mMyOption.size());
+        assertTrue(object.mMyOption.containsKey(expKey));
+        assertEquals(expValue, object.mMyOption.get(expKey));
+    }
+
+    /**
+     * Make sure that we backtrack the appropriate amount when a Map option parse fails in the
+     * middle
+     */
+    public void testParseBestEffort_mapOption_missingValue() throws ConfigurationException {
+        MapOptionSource object = new MapOptionSource();
+        ArgsOptionParser parser = new ArgsOptionParser(object);
+        final String option = "--my_option";
+        final String key = "123";  // Integer is the key type
+        final List<String> leftovers = parser.parseBestEffort(
+                new String[] {option, key});
+        assertTrue(object.mMyOption.isEmpty());
+        assertEquals(2, leftovers.size());
+        assertEquals(option, leftovers.get(0));
+        assertEquals(key, leftovers.get(1));
+    }
+
+    /**
+     * Make sure that we backtrack the appropriate amount when a Map option parse fails in the
+     * middle
+     */
+    public void testParseBestEffort_mapOption_badValue() throws ConfigurationException {
+        MapOptionSource object = new MapOptionSource();
+        ArgsOptionParser parser = new ArgsOptionParser(object);
+        final String option = "--my_option";
+        final String key = "123";  // Integer is the key type
+        final String value = "notBoolean";  // Boolean is the value type
+        final List<String> leftovers = parser.parseBestEffort(
+                new String[] {option, key, value});
+        assertTrue(object.mMyOption.isEmpty());
+        assertEquals(3, leftovers.size());
+        assertEquals(option, leftovers.get(0));
+        assertEquals(key, leftovers.get(1));
+        assertEquals(value, leftovers.get(2));
+    }
+
+    /**
+     * Make sure that we backtrack the appropriate amount when a Map option parse fails in the
+     * middle
+     */
+    public void testParseBestEffort_mapOption_badKey() throws ConfigurationException {
+        MapOptionSource object = new MapOptionSource();
+        ArgsOptionParser parser = new ArgsOptionParser(object);
+        final String option = "--my_option";
+        final String key = "NotANumber";  // Integer is the key type
+        final String value = "true";  // Boolean is the value type
+        final List<String> leftovers = parser.parseBestEffort(
+                new String[] {option, key, value});
+        assertTrue(object.mMyOption.isEmpty());
+        assertEquals(3, leftovers.size());
+        assertEquals(option, leftovers.get(0));
+        assertEquals(key, leftovers.get(1));
+        assertEquals(value, leftovers.get(2));
+    }
+
+
+    // SECTION: help-related tests
     /**
      * Test that help text is displayed for all fields
      */
@@ -578,6 +821,8 @@ public class ArgsOptionParserTest extends TestCase {
         assertFalse(help.contains(ImportantOptionSource.UNIMPORTANT_OPTION_NAME));
     }
 
+
+    // SECTION: mandatory option tests
     public void testMandatoryOption_noDefault() throws Exception {
         MandatoryOptionSourceNoDefault object = new MandatoryOptionSourceNoDefault();
         ArgsOptionParser parser = new ArgsOptionParser(object);
