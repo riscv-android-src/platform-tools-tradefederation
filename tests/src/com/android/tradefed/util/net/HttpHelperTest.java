@@ -126,6 +126,18 @@ public class HttpHelperTest extends TestCase {
     }
 
     /**
+     * Normal case test for {@link HttpHelper#doGet(String, OutputStream)}
+     */
+    public void testDoGetStream() throws IOException, DataSizeException {
+        ByteArrayOutputStream out = new ByteArrayOutputStream();
+
+        mHelper.doGet(TEST_URL_STRING, out);
+        StreamUtil.flushAndCloseStream(out);
+
+        assertEquals(TEST_DATA, out.toString());
+    }
+
+    /**
      * Normal case test for {@link HttpHelper#doGetWithRetry(String)}.
      */
     public void testDoGetWithRetry() throws IOException, DataSizeException {

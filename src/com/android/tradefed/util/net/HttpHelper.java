@@ -124,6 +124,21 @@ public class HttpHelper implements IHttpHelper {
      * {@inheritDoc}
      */
     @Override
+    public void doGet(String url, OutputStream outputStream) throws IOException {
+        CLog.d("Performing GET download request for %s", url);
+        InputStream remote = null;
+        try {
+            remote = getRemoteUrlStream(new URL(url));
+            StreamUtil.copyStreams(remote, outputStream);
+        } finally {
+            StreamUtil.close(remote);
+        }
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
     public void doGetIgnore(String url) throws IOException {
         CLog.d("Performing GET request for %s. Ignoring result.", url);
         InputStream remote = null;
