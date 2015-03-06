@@ -27,8 +27,10 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.util.Arrays;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 /**
  * A collection of helper methods for executing operations.
@@ -39,6 +41,7 @@ public class RunUtil implements IRunUtil {
     private static IRunUtil sDefaultInstance = null;
     private File mWorkingDir = null;
     private Map<String, String> mEnvVariables = new HashMap<String, String>();
+    private Set<String> mUnsetEnvVariables = new HashSet<String>();
     private ThreadLocal<Boolean> mIsInterruptAllowed = new ThreadLocal<Boolean>() {
         @Override
         protected Boolean initialValue() {
@@ -92,6 +95,22 @@ public class RunUtil implements IRunUtil {
 
     /**
      * {@inheritDoc}
+     * Environment variables may inherit from the parent process, so we need to delete
+     * the environment variable from {@link ProcessBuilder#environment()}
+     *
+     * @param key the variable name
+     * @see {@link ProcessBuilder#environment()}
+     */
+    @Override
+    public synchronized void unsetEnvVariable(String key) {
+        if (this.equals(sDefaultInstance)) {
+            throw new UnsupportedOperationException("Cannot unsetEnvVariable on default RunUtil");
+        }
+        mUnsetEnvVariables.add(key);
+    }
+
+    /**
+     * {@inheritDoc}
      */
     @Override
     public CommandResult runTimedCmd(final long timeout, final String... command) {
@@ -104,14 +123,7 @@ public class RunUtil implements IRunUtil {
     }
 
     private synchronized ProcessBuilder createProcessBuilder(String... command) {
-        ProcessBuilder processBuilder = new ProcessBuilder();
-        if (mWorkingDir != null) {
-            processBuilder.directory(mWorkingDir);
-        }
-        if (!mEnvVariables.isEmpty()) {
-            processBuilder.environment().putAll(mEnvVariables);
-        }
-        return processBuilder.command(command);
+        return createProcessBuilder(Arrays.asList(command));
     }
 
     private synchronized ProcessBuilder createProcessBuilder(List<String> commandList) {
@@ -121,6 +133,10 @@ public class RunUtil implements IRunUtil {
         }
         if (!mEnvVariables.isEmpty()) {
             processBuilder.environment().putAll(mEnvVariables);
+        }
+        if (!mUnsetEnvVariables.isEmpty()) {
+            // in this implementation, the unsetEnv's priority is higher than set.
+            processBuilder.environment().keySet().removeAll(mUnsetEnvVariables);
         }
         return processBuilder.command(commandList);
     }

@@ -65,6 +65,15 @@ public interface IRunUtil {
     public void setEnvVariable(String key, String value);
 
     /**
+     * Unsets an environment variable, so the system commands run without this environment variable.
+     *
+     * @param key the variable name
+     *
+     * @see {@link ProcessBuilder#environment()}
+     */
+    public void unsetEnvVariable(String key);
+
+    /**
      * Helper method to execute a system command, and aborting if it takes longer than a specified
      * time.
      *

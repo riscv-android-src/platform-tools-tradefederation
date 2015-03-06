@@ -118,6 +118,19 @@ public class RunUtilTest extends TestCase {
     }
 
     /**
+     * Verify that calling {@link RunUtil#unsetEnvVariable(String)} is not allowed on default
+     * instance.
+     */
+    public void testUnsetEnvVariable_default() {
+        try {
+            RunUtil.getDefault().unsetEnvVariable("foo");
+            fail("could unset env var on RunUtil.getDefault()");
+        } catch (Exception e) {
+            // expected
+        }
+    }
+
+    /**
      * Test that {@link RunUtil#runEscalatingTimedRetry()} fails when operation continually fails,
      * and that the maxTime variable is respected.
      */
