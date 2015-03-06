@@ -642,6 +642,19 @@ class TestDevice implements IManagedTestDevice {
     /**
      * {@inheritDoc}
      */
+    @Override
+    public String installPackageForUser(File packageFile, boolean reinstall, int userId,
+            String... extraArgs) throws DeviceNotAvailableException {
+        String[] newExtraArgs = new String[extraArgs.length + 2];
+        System.arraycopy(extraArgs, 0, newExtraArgs, 0, extraArgs.length);
+        newExtraArgs[newExtraArgs.length - 2] = "--user";
+        newExtraArgs[newExtraArgs.length - 1] = Integer.toString(userId);
+        return installPackage(packageFile, reinstall, newExtraArgs);
+    }
+
+    /**
+     * {@inheritDoc}
+     */
     public String installPackage(final File packageFile, final File certFile,
             final boolean reinstall, final String... extraArgs) throws DeviceNotAvailableException {
         // use array to store response, so it can be returned to caller

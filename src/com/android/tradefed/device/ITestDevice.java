@@ -454,6 +454,21 @@ public interface ITestDevice {
             throws DeviceNotAvailableException;
 
     /**
+     * Install an Android package on device for a given user.
+     *
+     * @param packageFile the apk file to install
+     * @param reinstall <code>true</code> if a reinstall should be performed
+     * @param userId the integer user id to install for.
+     * @param extraArgs optional extra arguments to pass. See 'adb shell pm install --help' for
+     *            available options.
+     * @return a {@link String} with an error code, or <code>null</code> if success.
+     * @throws DeviceNotAvailableException if connection with device is lost and cannot be
+     *             recovered.
+     */
+    public String installPackageForUser(File packageFile, boolean reinstall, int userId,
+            String... extraArgs) throws DeviceNotAvailableException;
+
+    /**
      * Uninstall an Android package from device.
      *
      * @param packageName the Android package to uninstall

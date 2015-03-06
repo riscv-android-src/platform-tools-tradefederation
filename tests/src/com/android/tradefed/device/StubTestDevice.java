@@ -497,6 +497,16 @@ public class StubTestDevice implements IManagedTestDevice {
         // ignore
         return null;
     }
+    
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public String installPackageForUser(File packageFile, boolean reinstall, int userId,
+            String... extraArgs) throws DeviceNotAvailableException {
+        // ignore
+        return null;
+    }
 
     /**
      * {@inheritDoc}
