@@ -22,6 +22,7 @@ import com.android.ddmlib.ShellCommandUnresponsiveException;
 import com.android.ddmlib.TimeoutException;
 import com.android.ddmlib.testrunner.IRemoteAndroidTestRunner;
 import com.android.ddmlib.testrunner.ITestRunListener;
+import com.android.ddmlib.testrunner.RemoteAndroidTestRunner;
 import com.android.tradefed.device.ITestDevice.MountPointInfo;
 import com.android.tradefed.device.ITestDevice.RecoveryMode;
 import com.android.tradefed.log.LogUtil.CLog;
@@ -1358,6 +1359,25 @@ public class TestDeviceTest extends TestCase {
         injectShellResponse(removeUserCommand, "Error: couldn't remove user id 10");
         replayMocks();
         assertFalse(mTestDevice.removeUser(10));
+    }
+
+    /**
+     * Test that trying to run a test with a user with
+     * {@link TestDevice#runInstrumentationTestsAsUser(IRemoteAndroidTestRunner, int, Collection)}
+     * fails if the {@link IRemoteAndroidTestRunner} is not an instance of
+     * {@link RemoteAndroidTestRunner}.
+     */
+    public void testrunInstrumentationTestsAsUser_failed() throws Exception {
+        IRemoteAndroidTestRunner mockRunner = EasyMock.createMock(IRemoteAndroidTestRunner.class);
+        EasyMock.expect(mockRunner.getPackageName()).andStubReturn("com.example");
+        Collection<ITestRunListener> listeners = new ArrayList<ITestRunListener>();
+        EasyMock.replay(mockRunner);
+        try {
+            mTestDevice.runInstrumentationTestsAsUser(mockRunner, 12, listeners);
+            fail("IllegalStateException not thrown.");
+        } catch (IllegalStateException e) {
+            //expected
+        }
     }
 }
 

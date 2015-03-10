@@ -74,7 +74,21 @@ public class StubTestDevice implements IManagedTestDevice {
     }
 
     @Override
+    public boolean runInstrumentationTestsAsUser(IRemoteAndroidTestRunner runner, int userId,
+            Collection<ITestRunListener> listeners) throws DeviceNotAvailableException {
+        // ignore
+        return true;
+    }
+
+    @Override
     public boolean runInstrumentationTests(IRemoteAndroidTestRunner runner,
+            ITestRunListener... listeners) throws DeviceNotAvailableException {
+        // ignore
+        return true;
+    }
+
+    @Override
+    public boolean runInstrumentationTestsAsUser(IRemoteAndroidTestRunner runner, int userId,
             ITestRunListener... listeners) throws DeviceNotAvailableException {
         // ignore
         return true;

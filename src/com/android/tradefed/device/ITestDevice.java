@@ -410,7 +410,7 @@ public interface ITestDevice {
      * <p/>
      * If connection with device is lost before test run completes, and recovery succeeds, all
      * listeners will be informed of testRunFailed and "false" will be returned. The test command
-     * will not be rerun.. It is left to callers to retry if necessary.
+     * will not be rerun. It is left to callers to retry if necessary.
      * <p/>
      * If connection with device is lost before test run completes, and recovery fails, all
      * listeners will be informed of testRunFailed and DeviceNotAvailableException will be thrown.
@@ -427,8 +427,8 @@ public interface ITestDevice {
 
     /**
      * Convenience method for performing
-     * {@link #runInstrumentationTests(IRemoteAndroidTestRunner, Collection)} with one or listeners
-     * passed as parameters.
+     * {@link #runInstrumentationTests(IRemoteAndroidTestRunner, Collection)} with one or more
+     * listeners passed as parameters.
      *
      * @param runner the {@link IRemoteAndroidTestRunner} which runs the tests
      * @param listeners the test result listener(s)
@@ -438,6 +438,22 @@ public interface ITestDevice {
      *             recovered. ie test command failed to complete and recovery failed.
      */
     public boolean runInstrumentationTests(IRemoteAndroidTestRunner runner,
+            ITestRunListener... listeners) throws DeviceNotAvailableException;
+
+    /**
+     * Same as {@link ITestDevice#runInstrumentationTests(IRemoteAndroidTestRunner, Collection)}
+     * but runs the test for the given user.
+     */
+
+    public boolean runInstrumentationTestsAsUser(IRemoteAndroidTestRunner runner, int userId,
+            Collection<ITestRunListener> listeners) throws DeviceNotAvailableException;
+
+    /**
+     * Same as
+     * {@link ITestDevice#runInstrumentationTests(IRemoteAndroidTestRunner, ITestRunListener...)}
+     * but runs the test for a given user.
+     */
+    public boolean runInstrumentationTestsAsUser(IRemoteAndroidTestRunner runner, int userId,
             ITestRunListener... listeners) throws DeviceNotAvailableException;
 
     /**

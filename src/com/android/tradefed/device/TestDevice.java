@@ -31,6 +31,7 @@ import com.android.ddmlib.SyncService;
 import com.android.ddmlib.TimeoutException;
 import com.android.ddmlib.testrunner.IRemoteAndroidTestRunner;
 import com.android.ddmlib.testrunner.ITestRunListener;
+import com.android.ddmlib.testrunner.RemoteAndroidTestRunner;
 import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.result.ByteArrayInputStreamSource;
@@ -593,6 +594,56 @@ class TestDevice implements IManagedTestDevice {
         return result;
     }
 
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public boolean runInstrumentationTestsAsUser(final IRemoteAndroidTestRunner runner,
+            int userId, final Collection<ITestRunListener> listeners)
+                    throws DeviceNotAvailableException {
+        String oldRunTimeOptions = appendUserRunTimeOptionToRunner(runner, userId);
+        boolean result = runInstrumentationTests(runner, listeners);
+        resetUserRunTimeOptionToRunner(runner, oldRunTimeOptions);
+        return result;
+    }
+
+    /**
+     * Helper method to add user run time option to {@link RemoteAndroidTestRunner}
+     *
+     * @param runner {@link IRemoteAndroidTestRunner}
+     * @param userId the integer of the user id to run as.
+     * @return original run time options.
+     */
+    private String appendUserRunTimeOptionToRunner(final IRemoteAndroidTestRunner runner, int userId) {
+        if (runner instanceof RemoteAndroidTestRunner) {
+            String original = ((RemoteAndroidTestRunner) runner).getRunOptions();
+            String userRunTimeOption = String.format("--user %s", Integer.toString(userId));
+            ((RemoteAndroidTestRunner) runner).setRunOptions(userRunTimeOption);
+            return original;
+        } else {
+            throw new IllegalStateException(String.format("%s runner does not support multi-user",
+                    runner.getClass().getName()));
+        }
+    }
+
+    /**
+     * Helper method to reset the run time options to {@link RemoteAndroidTestRunner}
+     *
+     * @param runner {@link IRemoteAndroidTestRunner}
+     * @param oldRunTimeOptions
+     */
+    private void resetUserRunTimeOptionToRunner(final IRemoteAndroidTestRunner runner,
+            String oldRunTimeOptions) {
+        if (runner instanceof RemoteAndroidTestRunner) {
+            if (oldRunTimeOptions != null) {
+                ((RemoteAndroidTestRunner) runner).setRunOptions(oldRunTimeOptions);
+            }
+        } else {
+            throw new IllegalStateException(String.format("%s runner does not support multi-user",
+                    runner.getClass().getName()));
+        }
+    }
+
     private static class RunFailureListener extends StubTestRunListener {
         private boolean mIsRunFailure = false;
 
@@ -615,6 +666,18 @@ class TestDevice implements IManagedTestDevice {
         List<ITestRunListener> listenerList = new ArrayList<ITestRunListener>();
         listenerList.addAll(Arrays.asList(listeners));
         return runInstrumentationTests(runner, listenerList);
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public boolean runInstrumentationTestsAsUser(IRemoteAndroidTestRunner runner, int userId,
+            ITestRunListener... listeners) throws DeviceNotAvailableException {
+        String oldRunTimeOptions = appendUserRunTimeOptionToRunner(runner, userId);
+        boolean result = runInstrumentationTests(runner, listeners);
+        resetUserRunTimeOptionToRunner(runner, oldRunTimeOptions);
+        return result;
     }
 
     /**
