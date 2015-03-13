@@ -61,10 +61,12 @@ public class VideoMultimeterTest implements IDeviceTest, IRemoteTest {
 
     private static final String TEST_VIDEO_1_DEVICE_PATH = VIDEO_DIR + "video.mp4";
     private static final String TEST_VIDEO_1_PREFIX = "bbb_";
+    private static final float TEST_VIDEO_1_FPS = 24;
     private static final long TEST_VIDEO_1_DURATION = 11 * 60; // in second
 
     private static final String TEST_VIDEO_2_DEVICE_PATH = VIDEO_DIR + "video2.mp4";
     private static final String TEST_VIDEO_2_PREFIX = "60fps_";
+    private static final float TEST_VIDEO_2_FPS = 60;
     private static final long TEST_VIDEO_2_DURATION = 5 * 60; // in second
 
     private static final String CMD_GET_FRAMERATE_STATE = "GETF";
@@ -183,7 +185,7 @@ public class VideoMultimeterTest implements IDeviceTest, IRemoteTest {
     }
 
     private Map<String, String> getResult(Map<String, String> metrics,
-            String keyprefix, boolean lipsync) {
+            String keyprefix, float fps, boolean lipsync) {
         CommandResult cr;
 
         // get number of results
@@ -198,7 +200,7 @@ public class VideoMultimeterTest implements IDeviceTest, IRemoteTest {
         CLog.i("Data: " + allData);
 
         // parse results
-        return parseResult(metrics, frameNum, allData, keyprefix, lipsync);
+        return parseResult(metrics, frameNum, allData, keyprefix, fps, lipsync);
     }
 
     /**
@@ -218,10 +220,10 @@ public class VideoMultimeterTest implements IDeviceTest, IRemoteTest {
 
         if (setupTestEnv()) {
             doMeasurement(TEST_VIDEO_1_DEVICE_PATH, TEST_VIDEO_1_DURATION);
-            metrics = getResult(metrics, TEST_VIDEO_1_PREFIX, true);
+            metrics = getResult(metrics, TEST_VIDEO_1_PREFIX, TEST_VIDEO_1_FPS, true);
 
             doMeasurement(TEST_VIDEO_2_DEVICE_PATH, TEST_VIDEO_2_DURATION);
-            metrics = getResult(metrics, TEST_VIDEO_2_PREFIX, true);
+            metrics = getResult(metrics, TEST_VIDEO_2_PREFIX, TEST_VIDEO_2_FPS, true);
         }
 
         long durationMs = System.currentTimeMillis() - testStartTime;
@@ -236,13 +238,17 @@ public class VideoMultimeterTest implements IDeviceTest, IRemoteTest {
      * @return a {@link HashMap} that contains metrics keys and results
      */
     private Map<String, String> parseResult(Map<String, String> metrics,
-            String numFrames, String result, String keyprefix, boolean lipsync) {
-        CLog.i("== Video Multimeter Result '%s' ==", keyprefix);
+            String numFrames, String result, String keyprefix, float fps,
+            boolean lipsync) {
+        final int MISSING_FRAME_CEILING = 5; //5+ frames missing count the same
+        final double[] MISSING_FRAME_WEIGHT = {0.0, 1.0, 2.5, 5.0, 6.25, 8.0};
 
+        CLog.i("== Video Multimeter Result '%s' ==", keyprefix);
         Pattern p = Pattern.compile("OK\\s+(\\d+)$");
         Matcher m = p.matcher(numFrames.trim());
+        String numFrame = "0";
         if (m.matches()) {
-            String numFrame = m.group(1);
+            numFrame = m.group(1);
             metrics.put(keyprefix + "frame_captured", numFrame);
             CLog.i("Captured frames: " + numFrame);
             if (Integer.parseInt(numFrame) == 0) {
@@ -255,49 +261,89 @@ public class VideoMultimeterTest implements IDeviceTest, IRemoteTest {
             return metrics;
         }
 
-        // Get total captured frames from the last line of result
+        // Get total captured frames and calculate smoothness and freezing score
         // format: "OK (time); (frame duration); (marker color); (total dropped frames)"
+        p = Pattern.compile("OK\\s+\\d+;\\s*(-?\\d+);\\s*[a-z]+;\\s*(\\d+)");
         String[] lines = result.split(System.getProperty("line.separator"));
-        for (int i = lines.length - 1; i >= 0; i--) {
-            p = Pattern.compile("OK\\s+\\d+;\\s*\\d+;\\s*[a-z]+;\\s*(\\d+)");
+        String totalDropFrame = "-1";
+        String lastDropFrame = "0";
+        long consecutiveDropFrame = 0;
+        double freezingPenalty = 0.0;
+        long frameDuration = 0;
+        long offByOne = 0;
+        long offByMultiple = 0;
+        double expectedFrameDurationInUs = 1000000.0 / fps;
+        for (int i = 0; i < lines.length; i++) {
             m = p.matcher(lines[i].trim());
             if (m.matches()) {
-                String dropFrame = m.group(1);
-                metrics.put(keyprefix + "frame_drop", dropFrame);
-                CLog.i("Dropped frames: " + dropFrame);
-                break;
+                totalDropFrame = m.group(2);
+                if (lastDropFrame.equals(totalDropFrame)) {
+                    if (consecutiveDropFrame > 0) {
+                      freezingPenalty += MISSING_FRAME_WEIGHT[(int) (Math.min(consecutiveDropFrame,
+                              MISSING_FRAME_CEILING))] * consecutiveDropFrame;
+                      consecutiveDropFrame = 0;
+                    }
+                } else {
+                    consecutiveDropFrame++;
+                }
+                lastDropFrame = totalDropFrame;
+
+                frameDuration = Long.parseLong(m.group(1));
+                if (frameDuration < expectedFrameDurationInUs * 0.5) {
+                    offByOne++;
+                } else if (frameDuration > expectedFrameDurationInUs * 1.5) {
+                    if (frameDuration < expectedFrameDurationInUs * 2.5) {
+                        offByOne++;
+                    } else {
+                        offByMultiple++;
+                    }
+                }
             }
         }
-        if (!metrics.containsKey(keyprefix + "frame_drop")) {
+        if (totalDropFrame.equals("-1")) {
             // no matching result found
             CLog.w("No result found for " + keyprefix);
             return metrics;
+        } else {
+            metrics.put(keyprefix + "frame_drop", totalDropFrame);
+            CLog.i("Dropped frames: " + totalDropFrame);
         }
+        double totalFrames = Double.parseDouble(numFrame);
+        double smoothnessScore = 100.0 - (offByOne / totalFrames) * 100.0 -
+                (offByMultiple / totalFrames) * 300.0;
+        metrics.put(keyprefix + "smoothness", String.valueOf(smoothnessScore));
+        CLog.i("Off by one frame: " + offByOne);
+        CLog.i("Off by multiple frames: " + offByMultiple);
+        CLog.i("Smoothness score: " + smoothnessScore);
+
+        double freezingScore = 100.0 - 100.0 * freezingPenalty / totalFrames;
+        metrics.put(keyprefix + "freezing", String.valueOf(freezingScore));
+        CLog.i("Freezing score: " + freezingScore);
 
         // parse lipsync results (the audio and video synchronization offset)
         // format: "OK (time); (frame duration); (marker color); (total dropped frames); (lipsync)"
+        p = Pattern.compile("OK\\s+\\d+;\\s*\\d+;\\s*[a-z]+;\\s*\\d+;\\s*(-?\\d+)");
         if (lipsync) {
             ArrayList<Integer> lipsyncVals = new ArrayList<Integer>();
             StringBuilder lipsyncValsStr = new StringBuilder("[");
             long lipsyncSum = 0;
             for (int i = 0; i < lines.length; i++) {
-                p = Pattern.compile("OK\\s+\\d+;\\s*\\d+;\\s*[a-z]+;\\s*\\d+;\\s*(-?\\d+)");
                 m = p.matcher(lines[i].trim());
                 if (m.matches()) {
                     int lipSyncVal = Integer.parseInt(m.group(1));
                     lipsyncVals.add(lipSyncVal);
                     lipsyncValsStr.append(lipSyncVal);
-                    lipsyncValsStr.append(" ,");
+                    lipsyncValsStr.append(", ");
                     lipsyncSum += lipSyncVal;
                 }
             }
             if (lipsyncVals.size() > 0) {
                 lipsyncValsStr.append("]");
+                CLog.i("Lipsync values: " + lipsyncValsStr);
                 Collections.sort(lipsyncVals);
                 int lipsyncCount = lipsyncVals.size();
                 int minLipsync = lipsyncVals.get(0);
                 int maxLipsync = lipsyncVals.get(lipsyncCount - 1);
-                CLog.i("Lipsync values: " + lipsyncVals.toString());
                 metrics.put(keyprefix + "lipsync_count", String.valueOf(lipsyncCount));
                 CLog.i("Lipsync Count: " + lipsyncCount);
                 metrics.put(keyprefix + "lipsync_min", String.valueOf(lipsyncVals.get(0)));
