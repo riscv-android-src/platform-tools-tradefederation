@@ -165,6 +165,16 @@ public class StubDevice implements IDevice {
         throw new IOException("stub");
     }
 
+    /* (not javadoc)
+     * The parent method has no javadoc, so it's invalid for us to attempt to inherit
+     */
+    @Override
+    public RawImage getScreenshot(long timeout, TimeUnit unit)
+        throws TimeoutException, AdbCommandRejectedException, IOException {
+
+        throw new IOException("stub");
+    }
+
     /**
      * {@inheritDoc}
      */
@@ -204,6 +214,15 @@ public class StubDevice implements IDevice {
     @Override
     public String installPackage(String packageFilePath, boolean reinstall, String... extraArgs)
             throws InstallException {
+        throw new InstallException(new IOException("stub"));
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void installPackages(List<String> apkFilePaths, int timeOutInMs, boolean reinstall,
+            String... extraArgs) throws InstallException {
         throw new InstallException(new IOException("stub"));
     }
 
@@ -425,6 +444,7 @@ public class StubDevice implements IDevice {
     public void startScreenRecorder(String remoteFilePath, ScreenRecorderOptions options,
             IShellOutputReceiver receiver) throws TimeoutException, AdbCommandRejectedException,
             IOException, ShellCommandUnresponsiveException {
+        // no-op
     }
 
     /* (non-Javadoc)
@@ -463,13 +483,35 @@ public class StubDevice implements IDevice {
         return getBattery();
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public List<String> getAbis() {
         return Collections.emptyList();
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public int getDensity() {
         return 0;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public String getLanguage() {
+        return null;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public String getRegion() {
+        return null;
     }
 }
