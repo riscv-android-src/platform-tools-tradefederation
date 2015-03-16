@@ -1379,5 +1379,25 @@ public class TestDeviceTest extends TestCase {
             //expected
         }
     }
+
+     /**
+     * Test that successful user start is handled by {@link TestDevice#startUser()}.
+     */
+    public void testStartUser() throws Exception {
+        final String startUserCommand = "am start-user 10";
+        injectShellResponse(startUserCommand, "Success: user started\n");
+        replayMocks();
+        assertTrue(mTestDevice.startUser(10));
+    }
+
+    /**
+     * Test that a failure to start user is handled by {@link TestDevice#startUser()}.
+     */
+    public void testStartUser_failed() throws Exception {
+        final String startUserCommand = "am start-user 10";
+        injectShellResponse(startUserCommand, "Error: could not start user\n");
+        replayMocks();
+        assertFalse(mTestDevice.startUser(10));
+    }
 }
 

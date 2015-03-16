@@ -3130,4 +3130,26 @@ class TestDevice implements IManagedTestDevice {
         }
         return true;
     }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public boolean startUser(int userId) throws DeviceNotAvailableException {
+        final String output = executeShellCommand(String.format("am start-user %s", userId));
+        if (output.startsWith("Error")) {
+            CLog.e("Failed to start user: %s", output);
+            return false;
+        }
+        return true;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void stopUser(int userId) throws DeviceNotAvailableException {
+        // No error or status code is returned.
+        executeShellCommand(String.format("am stop-user %s", userId));
+    }
 }

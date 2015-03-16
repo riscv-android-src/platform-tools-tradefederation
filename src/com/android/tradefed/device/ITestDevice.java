@@ -1188,4 +1188,20 @@ public interface ITestDevice {
      * @throws DeviceNotAvailableException
      */
     public int getMaxNumberOfUsersSupported() throws DeviceNotAvailableException;
+
+    /**
+     * Starts a given user in the background if it is currently stopped. If the user is already
+     * running in the background, this method is a NOOP.
+     * @param userId of the user to start in the background
+     * @return true if the user was succesfully started in the background.
+     * @throws DeviceNotAvailableException
+     */
+    public boolean startUser(int userId) throws DeviceNotAvailableException;
+
+    /**
+     * Stops a given user. If the user is already stopped, this method is a NOOP.
+     * @param userId of the user to stop.
+     * @throws DeviceNotAvailableException
+     */
+    public void stopUser(int userId) throws DeviceNotAvailableException;
 }
