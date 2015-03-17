@@ -204,10 +204,6 @@ public class TestInvocation implements ITestInvocation {
         IBuildInfo info = null;
 
         try {
-            String cmdLineArgs = config.getCommandLine();
-            if (cmdLineArgs != null) {
-                CLog.i("Invocation was started with cmd: %s", cmdLineArgs);
-            }
             mStatus = "fetching build";
             config.getLogOutput().init();
             getLogRegistry().registerLogger(config.getLogOutput());
@@ -215,6 +211,10 @@ public class TestInvocation implements ITestInvocation {
             device.setOptions(config.getDeviceOptions());
             if (config.getDeviceOptions().isLogcatCaptureEnabled()) {
                 device.startLogcat();
+            }
+            String cmdLineArgs = config.getCommandLine();
+            if (cmdLineArgs != null) {
+                CLog.i("Invocation was started with cmd: %s", cmdLineArgs);
             }
             if (config.getBuildProvider() instanceof IDeviceBuildProvider) {
                 info = ((IDeviceBuildProvider)config.getBuildProvider()).getBuild(device);
