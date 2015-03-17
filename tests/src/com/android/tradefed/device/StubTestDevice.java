@@ -21,6 +21,7 @@ import com.android.ddmlib.IShellOutputReceiver;
 import com.android.ddmlib.testrunner.IRemoteAndroidTestRunner;
 import com.android.ddmlib.testrunner.ITestRunListener;
 import com.android.tradefed.build.IBuildInfo;
+import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.result.InputStreamSource;
 import com.android.tradefed.util.CommandResult;
 
@@ -926,5 +927,20 @@ public class StubTestDevice implements IManagedTestDevice {
     @Override
     public int getMaxNumberOfUsersSupported() throws DeviceNotAvailableException {
         return 0;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public boolean startUser(int userId) throws DeviceNotAvailableException {
+        return false;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void stopUser(int userId) throws DeviceNotAvailableException {
     }
 }
