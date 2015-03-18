@@ -2336,6 +2336,10 @@ class TestDevice implements IManagedTestDevice {
         // 1. device API level >= 18
         // 2. has adb root
         // 3. framework is running
+        if (!isEnableAdbRoot()) {
+            CLog.i("framework reboot is not supported; when enable root is disabled");
+            return false;
+        }
         enableAdbRoot();
         if (getApiLevel() >= 18 && isAdbRoot()) {
             try {
