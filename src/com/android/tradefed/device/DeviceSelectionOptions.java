@@ -82,7 +82,7 @@ public class DeviceSelectionOptions implements IDeviceSelection {
             "--max-battery is specified, skip devices that have an unknown battery level.  Note " +
             "that this may leave restart-looping devices in limbo indefinitely without manual " +
             "intervention.")
-    private boolean mRequireBatteryCheck = false;
+    private boolean mRequireBatteryCheck = true;
 
     @Option(name = "min-sdk-level", description = "Only run this test on devices that support " +
             "this Android SDK/API level")
