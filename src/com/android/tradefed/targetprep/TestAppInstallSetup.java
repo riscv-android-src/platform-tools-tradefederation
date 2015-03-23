@@ -32,20 +32,26 @@ import com.android.tradefed.util.FileUtil;
 import java.io.File;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.List;
 
 /**
  * A {@link ITargetPreparer} that installs one or more apps from a
  * {@link IDeviceBuildInfo#getTestsDir()} folder onto device.
+ * <p>
+ * This preparer will look in alternate directories if the tests zip does not exist or does not
+ * contain the required apk. The search will go in order from the last alternative dir specified to
+ * the first.
+ * </p>
  */
 @OptionClass(alias = "tests-zip-app")
 public class TestAppInstallSetup implements ITargetCleaner, IAbiReceiver {
 
-    private static final String LOG_TAG = "TestAppInstallSetup";
+    private static final String LOG_TAG = TestAppInstallSetup.class.getSimpleName();
 
-    @Option(name = "test-file-name", description =
-        "the name of a test zip file to install on device. Can be repeated.",
-        importance = Importance.IF_UNSET)
+    @Option(name = "test-file-name",
+            description = "the name of a test zip file to install on device. Can be repeated.",
+            importance = Importance.IF_UNSET)
     private Collection<String> mTestFileNames = new ArrayList<String>();
 
     @Option(name = AbiFormatter.FORCE_ABI_STRING,
@@ -58,9 +64,15 @@ public class TestAppInstallSetup implements ITargetCleaner, IAbiReceiver {
                     + "including leading dash, e.g. \"-d\"")
     private Collection<String> mInstallArgs = new ArrayList<>();
 
-    @Option(name="cleanup-apks", description = "Whether apks installed should be uninstalled after "
-            + "test. Note that the preparer does not verify if the apks are successfully removed.")
+    @Option(name = "cleanup-apks",
+            description = "Whether apks installed should be uninstalled after test. Note that the "
+                    + "preparer does not verify if the apks are successfully removed.")
     private boolean mCleanup = false;
+
+    @Option(name = "alt-dir",
+            description = "Alternate directory to look for the apk if the apk is not in the tests "
+                    + "zip file. Can be repeated. Look for apks in last alt-dir first.")
+    private List<File> mAltDirs = new ArrayList<>();
 
     private IAbi mAbi = null;
 
@@ -80,7 +92,8 @@ public class TestAppInstallSetup implements ITargetCleaner, IAbiReceiver {
      *
      * @param buildInfo build artifact information
      * @param apkFileName filename of the apk to install
-     * @return a {@link File} representing the physical apk file on host
+     * @return a {@link File} representing the physical apk file on host or {@code null} if the
+     *     file does not exist.
      */
     protected File getLocalPathForFilename(IBuildInfo buildInfo, String apkFileName)
             throws TargetSetupError {
@@ -88,20 +101,28 @@ public class TestAppInstallSetup implements ITargetCleaner, IAbiReceiver {
             throw new IllegalArgumentException(String.format("Provided buildInfo is not a %s",
                     IDeviceBuildInfo.class.getCanonicalName()));
         }
+        List<File> dirs = new ArrayList<>(mAltDirs);
         File testsDir = ((IDeviceBuildInfo)buildInfo).getTestsDir();
-        if (testsDir == null || !testsDir.exists()) {
+        if (testsDir != null && testsDir.exists()) {
+            dirs.add(FileUtil.getFileForPath(testsDir, "DATA", "app"));
+            String apkBase = apkFileName.split("\\.")[0];
+            dirs.add(FileUtil.getFileForPath(testsDir, "DATA", "app", apkBase));
+        }
+        if (dirs.isEmpty()) {
             throw new TargetSetupError(
-                    "Provided buildInfo does not contain a valid tests directory");
+                    "Provided buildInfo does not contain a valid tests directory and no " +
+                    "alternative directories were provided");
         }
-        File testAppFile = FileUtil.getFileForPath(testsDir, "DATA", "app", apkFileName);
-        if (!testAppFile.exists()) {
-            // in addition to /data/app/TestApp.apk
-            // also check path like /data/app/TestApp/TestApp.apk
-            String[] fields = apkFileName.split("\\.");
-            testAppFile = FileUtil.getFileForPath(
-                    testsDir, "DATA", "app", fields[0], apkFileName);
+
+        // Try DATA/app/apk_name/, DATA/app/, and then alt dirs in reverse order
+        Collections.reverse(dirs);
+        for (File dir : dirs) {
+            File testAppFile = new File(dir, apkFileName);
+            if (testAppFile.exists()) {
+                return testAppFile;
+            }
         }
-        return testAppFile;
+        return null;
     }
 
     /**
@@ -116,7 +137,7 @@ public class TestAppInstallSetup implements ITargetCleaner, IAbiReceiver {
         }
         for (String testAppName : mTestFileNames) {
             File testAppFile = getLocalPathForFilename(buildInfo, testAppName);
-            if (!testAppFile.exists()) {
+            if (testAppFile == null) {
                 throw new TargetSetupError(
                     String.format("Could not find test app %s directory in extracted tests.zip",
                             testAppFile));
@@ -171,5 +192,12 @@ public class TestAppInstallSetup implements ITargetCleaner, IAbiReceiver {
                 }
             }
         }
+    }
+
+    /**
+     * Set an alternate directory.
+     */
+    public void setAltDir(File altDir) {
+        mAltDirs.add(altDir);
     }
 }

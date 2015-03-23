@@ -31,6 +31,13 @@ import java.util.Collection;
 
 /**
  * A {@link ITargetPreparer} that installs one or more apks located on the filesystem.
+ * <p>
+ * This class should only be used for installing apks from the filesystem when all versions of the
+ * test rely on the apk being on the filesystem.  For tests which use {@link TestAppInstallSetup}
+ * to install apks from the tests zip file, use {@code --alt-dir} to specify an alternate directory
+ * on the filesystem containing the apk for other test configurations (for example, local runs
+ * where the tests zip file is not present).
+ * </p>
  */
 @OptionClass(alias = "install-apk")
 public class InstallApkSetup implements ITargetPreparer {
