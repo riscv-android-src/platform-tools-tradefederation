@@ -95,37 +95,41 @@ public class WifiStressTest implements IRemoteTest, IDeviceTest {
             description="The number of iterations to run soft ap stress test")
     private String mApIteration = "100";
 
-    @Option(name="scan-iteration",
-            description="The number of iterations to run WiFi scanning test")
-    private String mScanIteration = "100";
+    @Option(name="idle-time",
+        description="The device idle time after screen off")
+    private String mIdleTime = "30"; // 30 seconds
 
     @Option(name="reconnect-iteration",
             description="The number of iterations to run WiFi reconnection stress test")
     private String mReconnectionIteration = "100";
 
-    @Option(name="reconnect-ssid",
-            description="The ssid for WiFi recoonection stress test")
-    private String mReconnectionSsid = "securenetdhcp";
-
     @Option(name="reconnect-password",
             description="The password for the above ssid in WiFi reconnection stress test")
     private String mReconnectionPassword = "androidwifi";
 
-    @Option(name="idle-time",
-            description="The device idle time after screen off")
-    private String mIdleTime = "30"; // 30 seconds
+    @Option(name="reconnect-ssid",
+        description="The ssid for WiFi recoonection stress test")
+    private String mReconnectionSsid = "securenetdhcp";
+
+    @Option(name="reconnection-test",
+        description="Option to run the wifi reconnection stress test")
+    private boolean mReconnectionTestFlag = true;
+
+    @Option(name="scan-iteration",
+        description="The number of iterations to run WiFi scanning test")
+    private String mScanIteration = "100";
 
     @Option(name="scan-test",
             description="Option to run the scan stress test")
     private boolean mScanTestFlag = true;
 
+    @Option(name="skip-set-device-screen-timeout",
+            description="Option to skip screen timeout configuration")
+    private boolean mSkipSetDeviceScreenTimeout = false;
+
     @Option(name="tether-test",
             description="Option to run the tethering stress test")
     private boolean mTetherTestFlag = true;
-
-    @Option(name="reconnection-test",
-            description="Option to run the wifi reconnection stress test")
-    private boolean mReconnectionTestFlag = true;
 
     @Option(name="wifi-only")
     private boolean mWifiOnly = false;
@@ -181,7 +185,7 @@ public class WifiStressTest implements IRemoteTest, IDeviceTest {
      * Configure screen timeout property
      * @throws DeviceNotAvailableException
      */
-    private void configDevice() throws DeviceNotAvailableException {
+    private void setDeviceScreenTimeout() throws DeviceNotAvailableException {
         // Set device screen_off_timeout as svc power can be set to false in the Wi-Fi test
         String command = ("sqlite3 /data/data/com.android.providers.settings/databases/settings.db "
                 + "\"UPDATE system SET value=\'600000\' WHERE name=\'screen_off_timeout\';\"");
@@ -221,7 +225,9 @@ public class WifiStressTest implements IRemoteTest, IDeviceTest {
             throws DeviceNotAvailableException {
         Assert.assertNotNull(mTestDevice);
         setupTests();
-        configDevice();
+        if (!mSkipSetDeviceScreenTimeout) {
+            setDeviceScreenTimeout();
+        }
         RunUtil.getDefault().sleep(START_TIMER);
 
         if (!mWifiOnly) {
