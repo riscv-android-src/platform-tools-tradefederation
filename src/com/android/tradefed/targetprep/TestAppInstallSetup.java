@@ -71,7 +71,9 @@ public class TestAppInstallSetup implements ITargetCleaner, IAbiReceiver {
 
     @Option(name = "alt-dir",
             description = "Alternate directory to look for the apk if the apk is not in the tests "
-                    + "zip file. Can be repeated. Look for apks in last alt-dir first.")
+                    + "zip file. For each alternate dir, will look in //, //data/app, //DATA/app, "
+                    + "and //DATA/app/apk_name/. Can be repeated. Look for apks in last alt-dir "
+                    + "first.")
     private List<File> mAltDirs = new ArrayList<>();
 
     private IAbi mAbi = null;
@@ -101,11 +103,22 @@ public class TestAppInstallSetup implements ITargetCleaner, IAbiReceiver {
             throw new IllegalArgumentException(String.format("Provided buildInfo is not a %s",
                     IDeviceBuildInfo.class.getCanonicalName()));
         }
-        List<File> dirs = new ArrayList<>(mAltDirs);
+        String apkBase = apkFileName.split("\\.")[0];
+
+        List<File> dirs = new ArrayList<>();
+        for (File dir : mAltDirs) {
+            dirs.add(dir);
+            // Files in tests zip file will be in DATA/app/ or DATA/app/apk_name
+            dirs.add(FileUtil.getFileForPath(dir, "DATA", "app"));
+            dirs.add(FileUtil.getFileForPath(dir, "DATA", "app", apkBase));
+            // Files in out dir will bein in uses data/app/apk_name
+            dirs.add(FileUtil.getFileForPath(dir, "data", "app", apkBase));
+        }
+
+        // Add test dirs last so they will be first when list is reversed
         File testsDir = ((IDeviceBuildInfo)buildInfo).getTestsDir();
         if (testsDir != null && testsDir.exists()) {
             dirs.add(FileUtil.getFileForPath(testsDir, "DATA", "app"));
-            String apkBase = apkFileName.split("\\.")[0];
             dirs.add(FileUtil.getFileForPath(testsDir, "DATA", "app", apkBase));
         }
         if (dirs.isEmpty()) {
@@ -114,7 +127,6 @@ public class TestAppInstallSetup implements ITargetCleaner, IAbiReceiver {
                     "alternative directories were provided");
         }
 
-        // Try DATA/app/apk_name/, DATA/app/, and then alt dirs in reverse order
         Collections.reverse(dirs);
         for (File dir : dirs) {
             File testAppFile = new File(dir, apkFileName);
