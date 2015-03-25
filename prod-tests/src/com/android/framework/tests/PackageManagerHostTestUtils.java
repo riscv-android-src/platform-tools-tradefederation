@@ -473,24 +473,7 @@ public class PackageManagerHostTestUtils extends Assert {
      */
     public void determinePrivateAppPath(File apkFile, String pkgName)
             throws DeviceNotAvailableException {
-        String result = installFileForwardLocked(apkFile, true);
-        assertEquals(null, result);
-        waitForPackageManager();
-
-        // grep for package to make sure it is installed
-        assertTrue(doesPackageExist(pkgName));
-
-        // Determine path of secret path.
-        result = mDevice.executeShellCommand("pm path " + pkgName);
-        if (result.indexOf(PRE_JB_APP_PRIVATE_PATH) != -1) {
-            setAppPrivatePath(PRE_JB_APP_PRIVATE_PATH);
-        } else if (result.indexOf(JB_APP_PRIVATE_PATH) != -1) {
-            setAppPrivatePath(JB_APP_PRIVATE_PATH);
-        } else {
-            Assert.fail("Failed to locate private app path on device.");
-        }
-        CLog.d("Device private app path is: %s", getAppPrivatePath());
-        uninstallApp(pkgName);
+        setAppPrivatePath(JB_APP_PRIVATE_PATH);
     }
 
     /**
