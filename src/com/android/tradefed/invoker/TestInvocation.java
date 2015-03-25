@@ -77,6 +77,7 @@ public class TestInvocation implements ITestInvocation {
 
     static final String TRADEFED_LOG_NAME = "host_log";
     static final String DEVICE_LOG_NAME = "device_logcat";
+    static final String EMULATOR_LOG_NAME = "emulator_log";
     static final String BUILD_ERROR_BUGREPORT_NAME = "build_error_bugreport";
     static final String DEVICE_UNRESPONSIVE_BUGREPORT_NAME = "device_unresponsive_bugreport";
     static final String INVOCATION_ENDED_BUGREPORT_NAME = "invocation_ended_bugreport";
@@ -650,13 +651,20 @@ public class TestInvocation implements ITestInvocation {
             ILeveledLogOutput logger) {
         InputStreamSource logcatSource = null;
         InputStreamSource globalLogSource = logger.getLog();
+        InputStreamSource emulatorOutput = null;
         if (device != null) {
             logcatSource = device.getLogcat();
             device.stopLogcat();
+            if (device.getIDevice().isEmulator()) {
+                emulatorOutput = device.getEmulatorOutput();
+            }
         }
 
         if (logcatSource != null) {
             listener.testLog(DEVICE_LOG_NAME, LogDataType.LOGCAT, logcatSource);
+        }
+        if (emulatorOutput != null) {
+            listener.testLog(EMULATOR_LOG_NAME, LogDataType.TEXT, emulatorOutput);
         }
         listener.testLog(TRADEFED_LOG_NAME, LogDataType.TEXT, globalLogSource);
 
@@ -664,6 +672,9 @@ public class TestInvocation implements ITestInvocation {
         // Clean up after our ISSen
         if (logcatSource != null) {
             logcatSource.cancel();
+        }
+        if (emulatorOutput != null) {
+            emulatorOutput.cancel();
         }
         globalLogSource.cancel();
 

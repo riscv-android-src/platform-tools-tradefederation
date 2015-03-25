@@ -36,6 +36,7 @@ import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.result.ByteArrayInputStreamSource;
 import com.android.tradefed.result.InputStreamSource;
+import com.android.tradefed.result.SnapshotInputStreamSource;
 import com.android.tradefed.result.StubTestRunListener;
 import com.android.tradefed.util.ArrayUtil;
 import com.android.tradefed.util.CommandResult;
@@ -43,6 +44,7 @@ import com.android.tradefed.util.CommandStatus;
 import com.android.tradefed.util.FileUtil;
 import com.android.tradefed.util.IRunUtil;
 import com.android.tradefed.util.RunUtil;
+import com.android.tradefed.util.SizeLimitedOutputStream;
 import com.android.tradefed.util.StreamUtil;
 
 import java.awt.image.BufferedImage;
@@ -151,6 +153,7 @@ class TestDevice implements IManagedTestDevice {
 
     private TestDeviceOptions mOptions = new TestDeviceOptions();
     private Process mEmulatorProcess;
+    private SizeLimitedOutputStream mEmulatorOutput;
 
     private RecoveryMode mRecoveryMode = RecoveryMode.AVAILABLE;
 
@@ -2941,6 +2944,45 @@ class TestDevice implements IManagedTestDevice {
     public void setEmulatorProcess(Process p) {
         mEmulatorProcess = p;
 
+    }
+
+    /**
+     * For emulator set {@link SizeLimitedOutputStream} to log output
+     * @param output to log the output
+     */
+    public void setEmulatorOutputStream(SizeLimitedOutputStream output) {
+        mEmulatorOutput = output;
+    }
+
+    /**
+     * Close and delete the emulator output stream.
+     */
+    public void stopEmulatorOutputStream() {
+        if (mEmulatorOutput != null) {
+            mEmulatorOutput.delete();
+            mEmulatorOutput = null;
+        }
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public InputStreamSource getEmulatorOutput() {
+        if (getIDevice().isEmulator()) {
+            if (mEmulatorOutput == null) {
+                CLog.w("Emulator output for %s was not captured in background",
+                        getSerialNumber());
+            } else {
+                try {
+                    return new SnapshotInputStreamSource(mEmulatorOutput.getData());
+                } catch (IOException e) {
+                    CLog.e("Failed to get %s data.", getSerialNumber());
+                    CLog.e(e);
+                }
+            }
+        }
+        return new ByteArrayInputStreamSource(new byte[0]);
     }
 
     /**

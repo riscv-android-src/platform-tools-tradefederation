@@ -21,7 +21,7 @@ import com.android.ddmlib.IShellOutputReceiver;
 import com.android.ddmlib.testrunner.IRemoteAndroidTestRunner;
 import com.android.ddmlib.testrunner.ITestRunListener;
 import com.android.tradefed.build.IBuildInfo;
-import com.android.tradefed.device.DeviceNotAvailableException;
+import com.android.tradefed.result.ByteArrayInputStreamSource;
 import com.android.tradefed.result.InputStreamSource;
 import com.android.tradefed.util.CommandResult;
 
@@ -325,8 +325,8 @@ public class StubTestDevice implements IManagedTestDevice {
      */
     @Override
     public boolean waitForBootComplete(long timeOut) throws DeviceNotAvailableException {
-      // ignore
-      return false;
+        // ignore
+        return false;
     }
 
     /**
@@ -425,7 +425,7 @@ public class StubTestDevice implements IManagedTestDevice {
 
     @Override
     public void clearLastConnectedWifiNetwork() {
-        //ignore
+        // ignore
     }
 
     @Override
@@ -468,6 +468,7 @@ public class StubTestDevice implements IManagedTestDevice {
         // ignore
         return false;
     }
+
     /**
      * {@inheritDoc}
      */
@@ -513,7 +514,7 @@ public class StubTestDevice implements IManagedTestDevice {
         // ignore
         return null;
     }
-    
+
     /**
      * {@inheritDoc}
      */
@@ -943,6 +944,14 @@ public class StubTestDevice implements IManagedTestDevice {
      */
     @Override
     public void stopUser(int userId) throws DeviceNotAvailableException {
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public InputStreamSource getEmulatorOutput() {
+        return new ByteArrayInputStreamSource(new byte[0]);
     }
 
     /**
