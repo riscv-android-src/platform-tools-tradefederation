@@ -15,12 +15,11 @@
  */
 package com.android.tradefed;
 
-import com.android.ddmlib.Log;
-import com.android.ddmlib.Log.LogLevel;
 import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.build.IFolderBuildInfo;
 import com.android.tradefed.config.Option;
 import com.android.tradefed.device.DeviceNotAvailableException;
+import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.testtype.IBuildReceiver;
 import com.android.tradefed.testtype.IRemoteTest;
@@ -93,16 +92,12 @@ public class TfTestLauncher implements IRemoteTest, IBuildReceiver {
         CommandResult result = getRunUtil().runTimedCmd(mMaxTfRunTimeMin * 60 * 1000,
                 args.toArray(new String[0]));
         if (result.getStatus().equals(CommandStatus.SUCCESS)) {
-            Log.logAndDisplay(LogLevel.INFO, "TfTestLauncher",
-                    String.format("Successfully ran TF tests for build %s. stdout: %s\n, stderr: %s",
-                    mBuildInfo.getBuildId(), result.getStdout(), result.getStderr()));
-
+            CLog.d("Successfully ran TF tests for build %s", mBuildInfo.getBuildId());
         } else {
-            Log.logAndDisplay(LogLevel.INFO, "TfTestLauncher",
-                    String.format("Failed to run TF tests for build %s. stdout: %s\n, stderr: %s",
-                    mBuildInfo.getBuildId(), result.getStdout(),
-                    result.getStderr()));
+            CLog.w("Failed ran TF tests for build %s, status %s",
+                    mBuildInfo.getBuildId(), result.getStatus());
         }
+        CLog.v("TF tests output:\nstdout: %s\nstderror\n", result.getStdout(), result.getStderr());
     }
 
     IRunUtil getRunUtil() {
