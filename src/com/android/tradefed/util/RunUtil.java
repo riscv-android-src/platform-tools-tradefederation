@@ -403,16 +403,14 @@ public class RunUtil implements IRunUtil {
             // Wait for process to complete.
             int rc = mProcess.waitFor();
             synchronized (this) {
-                if (mProcess != null) {
-                    // wait for stdout and stderr to be read
-                    stdoutThread.join();
-                    stderrThread.join();
-                    // Write out the streams to the result.
-                    mCommandResult.setStdout(stdOut.toString("UTF-8"));
-                    mCommandResult.setStderr(stdErr.toString("UTF-8"));
-                    stdOut.close();
-                    stdErr.close();
-                }
+                // wait for stdout and stderr to be read
+                stdoutThread.join();
+                stderrThread.join();
+                // Write out the streams to the result.
+                mCommandResult.setStdout(stdOut.toString("UTF-8"));
+                mCommandResult.setStderr(stdErr.toString("UTF-8"));
+                stdOut.close();
+                stdErr.close();
             }
 
             if (rc == 0) {
