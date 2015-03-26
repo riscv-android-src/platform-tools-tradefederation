@@ -30,11 +30,17 @@ import com.android.tradefed.util.FileUtil;
 import java.io.File;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
+import java.util.List;
 
 /**
  * A {@link ITargetPreparer} that pushes one or more files/dirs from a
  * {@link IDeviceBuildInfo#getTestsDir()} folder onto device.
- *
+ * <p>
+ * This preparer will look in alternate directories if the tests zip does not exist or does not
+ * contain the required apk. The search will go in order from the last alternative dir specified to
+ * the first.
+ * </p>
  */
 @OptionClass(alias = "tests-zip-file")
 public class TestFilePushSetup implements ITargetPreparer {
@@ -47,6 +53,12 @@ public class TestFilePushSetup implements ITargetPreparer {
     @Option(name = "throw-if-not-found", description =
             "Throw exception if the specified file is not found.")
     private boolean mThrowIfNoFile = true;
+
+    @Option(name = "alt-dir",
+            description = "Alternate directory to look for the apk if the apk is not in the tests "
+                    + "zip file. For each alternate dir, will look in // and //DATA. Can be "
+                    + "repeated. Look for apks in last alt-dir first.")
+    private List<File> mAltDirs = new ArrayList<>();
 
     /**
      * Adds a file to the list of items to push
@@ -68,12 +80,36 @@ public class TestFilePushSetup implements ITargetPreparer {
      */
     protected File getLocalPathForFilename(IBuildInfo buildInfo, String fileName)
             throws TargetSetupError {
-        File testsDir = ((IDeviceBuildInfo)buildInfo).getTestsDir();
-        if (testsDir == null || !testsDir.exists()) {
-            throw new TargetSetupError(
-                    "Provided buildInfo does not contain a valid tests directory");
+        if (!(buildInfo instanceof IDeviceBuildInfo)) {
+            throw new IllegalArgumentException(String.format("Provided buildInfo is not a %s",
+                    IDeviceBuildInfo.class.getCanonicalName()));
         }
-        return FileUtil.getFileForPath(testsDir, "DATA", fileName);
+
+        List<File> dirs = new ArrayList<>();
+        for (File dir : mAltDirs) {
+            dirs.add(dir);
+            dirs.add(FileUtil.getFileForPath(dir, "DATA"));
+        }
+
+        // Add test dirs last so they will be first when list is reversed
+        File testsDir = ((IDeviceBuildInfo)buildInfo).getTestsDir();
+        if (testsDir != null && testsDir.exists()) {
+            dirs.add(FileUtil.getFileForPath(testsDir, "DATA"));
+        }
+        if (dirs.isEmpty()) {
+            throw new TargetSetupError(
+                    "Provided buildInfo does not contain a valid tests directory and no " +
+                    "alternative directories were provided");
+        }
+
+        Collections.reverse(dirs);
+        for (File dir : dirs) {
+            File testAppFile = new File(dir, fileName);
+            if (testAppFile.exists()) {
+                return testAppFile;
+            }
+        }
+        return null;
     }
 
     /**
@@ -93,7 +129,7 @@ public class TestFilePushSetup implements ITargetPreparer {
         int filePushed = 0;
         for (String fileName : mTestPaths) {
             File localFile = getLocalPathForFilename(buildInfo, fileName);
-            if (!localFile.exists()) {
+            if (localFile == null) {
                 if (mThrowIfNoFile) {
                     throw new TargetSetupError(String.format(
                             "Could not find test file %s directory in extracted tests.zip",
@@ -102,15 +138,15 @@ public class TestFilePushSetup implements ITargetPreparer {
                     continue;
                 }
             }
-            fileName = getDevicePathFromUserData(fileName);
-            CLog.d("Pushing file: %s -> %s", localFile.getAbsoluteFile(), fileName);
+            String remoteFileName = getDevicePathFromUserData(fileName);
+            CLog.d("Pushing file: %s -> %s", localFile.getAbsoluteFile(), remoteFileName);
             if (localFile.isDirectory()) {
-                device.pushDir(localFile, fileName);
+                device.pushDir(localFile, remoteFileName);
             } else if (localFile.isFile()) {
-                device.pushFile(localFile, fileName);
+                device.pushFile(localFile, remoteFileName);
             }
             // there's no recursive option for 'chown', best we can do here
-            device.executeShellCommand(String.format("chown system.system %s", fileName));
+            device.executeShellCommand(String.format("chown system.system %s", remoteFileName));
             filePushed++;
         }
         if (filePushed == 0) {
