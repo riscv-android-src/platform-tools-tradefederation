@@ -106,6 +106,7 @@ import com.android.tradefed.util.QuotationAwareTokenizerTest;
 import com.android.tradefed.util.RegexTrieTest;
 import com.android.tradefed.util.RunUtilTest;
 import com.android.tradefed.util.SizeLimitedOutputStreamTest;
+import com.android.tradefed.util.net.HttpHelperTest;
 import com.android.tradefed.util.net.HttpMultipartPostTest;
 import com.android.tradefed.util.xml.AndroidManifestWriterTest;
 
@@ -225,6 +226,7 @@ public class UnitTests extends DeviceTestSuite {
         addTestSuite(ConditionPriorityBlockingQueueTest.class);
         addTestSuite(EmailTest.class);
         addTestSuite(FileUtilTest.class);
+        addTestSuite(HttpHelperTest.class);
         addTestSuite(HttpMultipartPostTest.class);
         addTestSuite(JUnitXmlParserTest.class);
         addTestSuite(MultiMapTest.class);

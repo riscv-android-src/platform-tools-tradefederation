@@ -20,6 +20,7 @@ import com.android.tradefed.util.IRunUtil;
 import com.android.tradefed.util.MultiMap;
 
 import java.io.IOException;
+import java.io.OutputStream;
 import java.net.HttpURLConnection;
 import java.net.URL;
 
@@ -81,6 +82,17 @@ public interface IHttpHelper {
      * @throws DataSizeException if retrieved data is > {@link #MAX_DATA_SIZE}
      */
     public String doGet(String url) throws IOException, DataSizeException;
+
+    /**
+     * Performs a GET HTTP request method for a given URL and streams result to a
+     * {@link OutputStream}.
+     *
+     * @see #doGet(String)
+     * @param url the URL
+     * @param outputStream stream of the response data
+     * @throws IOException if failed to retrieve data
+     */
+    public void doGet(String url, OutputStream outputStream) throws IOException;
 
     /**
      * Performs {{@link #doGet(String)} retrying upon failure.
