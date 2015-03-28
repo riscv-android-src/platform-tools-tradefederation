@@ -134,7 +134,7 @@ class TestDevice implements IManagedTestDevice {
     private static final int WIFI_RECONNECT_TIMEOUT = 60 * 1000;
 
     /** The time in ms to wait for a command to complete. */
-    private int mCmdTimeout = 6 * 60 * 1000;
+    private int mCmdTimeout = 2 * 60 * 1000;
     /** The time in ms to wait for a 'long' command to complete. */
     private long mLongCmdTimeout = 12 * 60 * 1000;
 
