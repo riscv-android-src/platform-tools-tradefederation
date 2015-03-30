@@ -20,6 +20,7 @@ import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.config.Option;
 import com.android.tradefed.config.OptionClass;
 import com.android.tradefed.device.DeviceNotAvailableException;
+import com.android.tradefed.device.DeviceUnresponsiveException;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.device.TestDeviceState;
 import com.android.tradefed.log.LogUtil.CLog;
@@ -77,7 +78,16 @@ public class DeviceCleaner implements ITargetCleaner {
     @Override
     public void tearDown(ITestDevice device, IBuildInfo buildInfo, Throwable e)
             throws DeviceNotAvailableException {
-        clean(device);
+        if (e instanceof DeviceFailedToBootError) {
+            CLog.w("boot failure: attempting to stop runtime instead of cleanup");
+            try {
+                device.executeShellCommand("stop");
+            } catch (DeviceUnresponsiveException due) {
+                CLog.w("boot failure: ignored DeviceUnresponsiveException during forced cleanup");
+            }
+        } else {
+            clean(device);
+        }
     }
 
     /**

@@ -80,6 +80,11 @@ public class WifiPreparer implements ITargetPreparer, ITargetCleaner {
             return;
         }
 
+        if (e instanceof DeviceFailedToBootError) {
+            CLog.d("boot failure: skipping wifi teardown");
+            return;
+        }
+
         if (mMonitorNetwork) {
             device.disableNetworkMonitor();
         }

@@ -322,6 +322,10 @@ public class DeviceSetup implements ITargetPreparer, ITargetCleaner {
             throws DeviceNotAvailableException {
         Log.i(LOG_TAG, String.format("Performing teardown on %s", device.getSerialNumber()));
 
+        if (e instanceof DeviceFailedToBootError) {
+            CLog.d("boot failure: skipping wifi teardown");
+            return;
+        }
         if (mWifiNetwork != null && mDisconnectWifiAfterTest) {
             disconnectFromWifi(device);
         }
