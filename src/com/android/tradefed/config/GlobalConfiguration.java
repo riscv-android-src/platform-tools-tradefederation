@@ -194,7 +194,7 @@ public class GlobalConfiguration implements IGlobalConfiguration {
             sObjTypeMap.put(SCHEDULER_TYPE_NAME,
                     new ObjTypeInfo(ICommandScheduler.class, false));
             sObjTypeMap.put(MULTI_DEVICE_RECOVERY_TYPE_NAME,
-                    new ObjTypeInfo(IMultiDeviceRecovery.class, false));
+                    new ObjTypeInfo(IMultiDeviceRecovery.class, true));
 
         }
         return sObjTypeMap;

@@ -987,6 +987,7 @@ public class DeviceManager implements IDeviceManager {
         private List<IMultiDeviceRecovery> mMultiDeviceRecoverers;
 
         public DeviceRecoverer(List<IMultiDeviceRecovery> multiDeviceRecoverers) {
+            super("DeviceRecoverer");
             mMultiDeviceRecoverers = multiDeviceRecoverers;
         }
 
