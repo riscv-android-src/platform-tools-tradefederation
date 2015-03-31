@@ -26,7 +26,6 @@ import com.android.tradefed.build.SdkBuildInfoTest;
 import com.android.tradefed.command.CommandFileParserTest;
 import com.android.tradefed.command.CommandSchedulerTest;
 import com.android.tradefed.command.ConsoleTest;
-import com.android.tradefed.command.remote.RemoteManagerTest;
 import com.android.tradefed.command.remote.RemoteOperationTest;
 import com.android.tradefed.config.ArgsOptionParserTest;
 import com.android.tradefed.config.ConfigurationDefTest;
@@ -137,7 +136,6 @@ public class UnitTests extends DeviceTestSuite {
         addTestSuite(ConsoleTest.class);
 
         // command.remote
-        addTestSuite(RemoteManagerTest.class);
         addTestSuite(RemoteOperationTest.class);
 
         // config

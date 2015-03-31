@@ -37,7 +37,7 @@ import java.util.Map;
 /**
  * Unit tests for {@link RemoteManager}.
  */
-public class RemoteManagerTest extends TestCase {
+public class RemoteManagerFuncTest extends TestCase {
 
     private IDeviceManager mMockDeviceManager;
     private RemoteManager mRemoteMgr;
