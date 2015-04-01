@@ -27,7 +27,9 @@ import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.targetprep.ITargetPreparer;
 import com.android.tradefed.testtype.IRemoteTest;
 
+import java.io.IOException;
 import java.io.PrintStream;
+import java.io.PrintWriter;
 import java.util.List;
 
 /**
@@ -312,4 +314,13 @@ public interface IConfiguration {
      * @return the command line used to create this {@link IConfiguration}.
      */
     public String getCommandLine();
+
+    /**
+     * Gets the expanded XML file for the config with all options shown for this
+     * {@link IConfiguration} as a {@link String}.
+     *
+     * @param output the writer to print the xml to.
+     * @throws IOException
+     */
+    public void dumpXml(PrintWriter output) throws IOException;
 }

@@ -212,9 +212,19 @@ public interface ICommandScheduler {
      *
      * @param printWriter the {@link PrintWriter} to output to.
      * @param regex the regular expression to which commands should be matched in order to be
-     * printed.  If null, then all commands will be printed
+     * printed.  If null, then all commands will be printed.
      */
     public void displayCommandsInfo(PrintWriter printWriter, String regex);
+
+    /**
+     * Dump the expanded xml file for the command with all
+     * {@link com.android.tradefed.config.Option} values specified for all current commands.
+     *
+     * @param printWriter the {@link PrintWriter} to output the status to.
+     * @param regex the regular expression to which commands should be matched in order for the
+     * xml file to be dumped.  If null, then all commands will be dumped.
+     */
+    public void dumpCommandsXml(PrintWriter printWriter, String regex);
 
     /**
      * Output detailed debug info on state of command execution queue.

@@ -103,5 +103,4 @@ public interface IConfigurationFactory {
      * @param out the {@link PrintStream} to dump output to
      */
     public void dumpConfig(String configName, PrintStream out);
-
 }

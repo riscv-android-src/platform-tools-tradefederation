@@ -50,6 +50,7 @@ import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.ResultForwarder;
 import com.android.tradefed.util.ArrayUtil;
+import com.android.tradefed.util.FileUtil;
 import com.android.tradefed.util.QuotationAwareTokenizer;
 import com.android.tradefed.util.RunUtil;
 import com.android.tradefed.util.TableFormatter;
@@ -1377,6 +1378,59 @@ public class CommandScheduler extends Thread implements ICommandScheduler, IComm
                 String cmdDesc = String.format("Command %d: [%s] %s", cmd.getId(),
                         getTimeString(cmd.getTotalExecTime()), argString);
                 printWriter.println(cmdDesc);
+            }
+        }
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void dumpCommandsXml(PrintWriter printWriter, String regex) {
+        assertStarted();
+        Pattern regexPattern = null;
+        if (regex != null) {
+            regexPattern = Pattern.compile(regex);
+        }
+
+        List<ExecutableCommandState> cmdCopy = getAllCommands();
+        for (ExecutableCommandState cmd : cmdCopy) {
+            String[] args = cmd.cmd.getCommandTracker().getArgs();
+            String argString = getArgString(args);
+            if (regexPattern == null || regexPattern.matcher(argString).find()) {
+                // Use the config name prefixed by config__ for the file path
+                String xmlPrefix = "config__" + args[0].replace("/", "__") + "__";
+
+                // If the command line contains --template:map test config, use that config for the
+                // file path.  This is because in the template system, many tests will have same
+                // base config and the distinguishing feature is the test included.
+                boolean templateIncludeFound = false;
+                boolean testFound = false;
+                for (String arg : args) {
+                    if ("--template:map".equals(arg)) {
+                        templateIncludeFound = true;
+                    } else if (templateIncludeFound && "test".equals(arg)) {
+                        testFound = true;
+                    } else {
+                        if (templateIncludeFound && testFound) {
+                            xmlPrefix = "config__" + arg.replace("/", "__") + "__";
+                        }
+                        templateIncludeFound = false;
+                        testFound = false;
+                    }
+                }
+
+                try {
+                    File xmlFile = FileUtil.createTempFile(xmlPrefix, ".xml");
+                    PrintWriter writer = new PrintWriter(xmlFile);
+                    cmd.cmd.getConfiguration().dumpXml(writer);
+                    printWriter.println(String.format("Saved command dump to %s",
+                            xmlFile.getAbsolutePath()));
+                } catch (IOException e) {
+                    // Log exception and continue
+                    CLog.e("Could not dump config xml");
+                    CLog.e(e);
+                }
             }
         }
     }
