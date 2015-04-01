@@ -68,7 +68,7 @@ public class ConfigurationFactoryTest extends TestCase {
     /**
      * Sanity test to ensure all configs on classpath can be fully loaded and parsed
      */
-    public void disabled_testLoadAndPrintAllConfigs() throws ConfigurationException {
+    public void testLoadAndPrintAllConfigs() throws ConfigurationException {
         try {
             new ConfigurationFactory().loadAndPrintAllConfigs();
         } catch (ConfigurationException e) {
