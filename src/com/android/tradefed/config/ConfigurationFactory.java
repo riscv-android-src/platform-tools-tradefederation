@@ -551,22 +551,22 @@ public class ConfigurationFactory implements IConfigurationFactory {
      * @throws ConfigurationException if one or more configs failed to load
      */
     void loadAndPrintAllConfigs() throws ConfigurationException {
-       loadAllConfigs(false);
-       boolean failed = false;
-       ByteArrayOutputStream baos = new ByteArrayOutputStream();
-       PrintStream ps = new PrintStream(baos);
-       for (ConfigurationDef def : mConfigDefMap.values()) {
-           try {
-               def.createConfiguration().printCommandUsage(false,
-                       new PrintStream(StreamUtil.nullOutputStream()));
-           } catch (ConfigurationException e) {
-               ps.printf("Failed to print %s: %s", def.getName(), e.getMessage());
-               ps.println();
-               failed = true;
-           }
-       }
-       if (failed) {
-           throw new ConfigurationException(baos.toString());
-       }
+        loadAllConfigs(false);
+        boolean failed = false;
+        ByteArrayOutputStream baos = new ByteArrayOutputStream();
+        PrintStream ps = new PrintStream(baos);
+        for (ConfigurationDef def : mConfigDefMap.values()) {
+            try {
+                def.createConfiguration().printCommandUsage(false,
+                        new PrintStream(StreamUtil.nullOutputStream()));
+            } catch (ConfigurationException e) {
+                ps.printf("Failed to print %s: %s", def.getName(), e.getMessage());
+                ps.println();
+                failed = true;
+            }
+        }
+        if (failed) {
+            throw new ConfigurationException(baos.toString());
+        }
     }
 }

@@ -66,6 +66,8 @@ public class Configuration implements IConfiguration {
 
     /** Mapping of config object type name to config objects. */
     private Map<String, List<Object>> mConfigMap;
+    /** Cached {@link OptionSetter} that must be kept in-sync with {@code mConfigMap} */
+    private OptionSetter mCachedOptionSetter = null;
     private final String mName;
     private final String mDescription;
     // original command line used to create this given configuration.
@@ -298,13 +300,28 @@ public class Configuration implements IConfiguration {
     }
 
     /**
+     * Returns a cached OptionSetter which is appropriate for setting options on all objects which
+     * will be returned by {@link getAllConfigurationObjects()}.  Note that, for cache coherency,
+     * the cache variable {@code mCachedOptionSetter} <emph>must</emph> be set to {@code null}
+     * anytime that {@code mConfigMap} is modified.
+     * <p />
+     * To improve thread-safety, all modifications of {@code mConfigMap} should be done atomically
+     * with an invalidation of {@code mCachedOptionSetter}, from the perspective of this method.
+     */
+    private synchronized OptionSetter getOptionSetter() throws ConfigurationException {
+        if (mCachedOptionSetter == null) {
+            mCachedOptionSetter = new OptionSetter(getAllConfigurationObjects());
+        }
+        return mCachedOptionSetter;
+    }
+
+    /**
      * {@inheritDoc}
      */
     @Override
     public void injectOptionValue(String optionName, String optionValue)
             throws ConfigurationException {
-        OptionSetter optionSetter = new OptionSetter(getAllConfigurationObjects());
-        optionSetter.setOptionValue(optionName, optionValue);
+        getOptionSetter().setOptionValue(optionName, optionValue);
     }
 
     /**
@@ -313,8 +330,7 @@ public class Configuration implements IConfiguration {
     @Override
     public void injectOptionValue(String optionName, String optionKey, String optionValue)
             throws ConfigurationException {
-        OptionSetter optionSetter = new OptionSetter(getAllConfigurationObjects());
-        optionSetter.setOptionMapValue(optionName, optionKey, optionValue);
+        getOptionSetter().setOptionMapValue(optionName, optionKey, optionValue);
     }
 
     /**
@@ -429,11 +445,12 @@ public class Configuration implements IConfiguration {
      * {@inheritDoc}
      */
     @Override
-    public void setConfigurationObject(String typeName, Object configObject)
+    public synchronized void setConfigurationObject(String typeName, Object configObject)
             throws ConfigurationException {
         if (configObject == null) {
             throw new IllegalArgumentException("configObject cannot be null");
         }
+        mCachedOptionSetter = null;  // Keep this in sync with mConfigMap
         mConfigMap.remove(typeName);
         addObject(typeName, configObject);
     }
@@ -442,11 +459,12 @@ public class Configuration implements IConfiguration {
      * {@inheritDoc}
      */
     @Override
-    public void setConfigurationObjectList(String typeName, List<?> configList)
+    public synchronized void setConfigurationObjectList(String typeName, List<?> configList)
             throws ConfigurationException {
         if (configList == null) {
             throw new IllegalArgumentException("configList cannot be null");
         }
+        mCachedOptionSetter = null;  // Keep this in sync with mConfigMap
         mConfigMap.remove(typeName);
         for (Object configObject : configList) {
             addObject(typeName, configObject);
@@ -460,7 +478,9 @@ public class Configuration implements IConfiguration {
      * @param configObject the configuration object
      * @throws ConfigurationException if object was not the correct type
      */
-    private void addObject(String typeName, Object configObject) throws ConfigurationException {
+    private synchronized void addObject(String typeName, Object configObject) throws ConfigurationException {
+        mCachedOptionSetter = null;  // Keep this in sync with mConfigMap
+
         List<Object> objList = mConfigMap.get(typeName);
         if (objList == null) {
             objList = new ArrayList<Object>(1);
