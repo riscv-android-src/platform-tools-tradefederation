@@ -49,7 +49,7 @@ public class BulkEmailer {
     private int mInitialBurst = 0;
 
     @Option(name = "sender", description = "the sender email.", importance = Importance.NEVER)
-    private String mSender = "android.sync.battery.test@gmail.com";
+    private String mSender = "android-power-lab-external@google.com";
 
     private static final String SUBJECT = "No emails to send";
     private static final String MESSAGE = "This is a test message!";
