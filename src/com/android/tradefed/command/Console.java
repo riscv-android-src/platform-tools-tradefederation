@@ -408,26 +408,31 @@ public class Console extends Thread {
                 LINE_SEPARATOR +
                 "\tc[ommands] [pattern]  List all commands matching the pattern and currently " +
                 "waiting to be executed" + LINE_SEPARATOR +
-                "\tconfigs               List all known configurations" +
-                LINE_SEPARATOR, LIST_PATTERN));
+                "\tconfigs               List all known configurations" + LINE_SEPARATOR,
+                LIST_PATTERN));
 
         commandHelp.put(DUMP_PATTERN, String.format(
                 "%s help:" + LINE_SEPARATOR +
-                "\ts[tack]            Dump the stack traces of all threads" + LINE_SEPARATOR +
-                "\tl[ogs]             Dump the logs of all invocations to files" + LINE_SEPARATOR +
-                "\tc[onfig] <config>  Dump the content of the specified config" + LINE_SEPARATOR +
-                "\tcommandQueue       Dump the contents of the commmand execution queue" +
-                LINE_SEPARATOR,
+                "\ts[tack]             Dump the stack traces of all threads" + LINE_SEPARATOR +
+                "\tl[ogs]              Dump the logs of all invocations to files" + LINE_SEPARATOR +
+                "\tc[onfig] <config>   Dump the content of the specified config" + LINE_SEPARATOR +
+                "\tcommandQueue        Dump the contents of the commmand execution queue" +
+                LINE_SEPARATOR +
+                "\tcommands            Dump all the config XML for the commands waiting to be " +
+                "executed" + LINE_SEPARATOR +
+                "\tcommands [pattern]  Dump all the config XML for the commands matching the " +
+                "pattern and waiting to be executed" + LINE_SEPARATOR,
                 DUMP_PATTERN));
 
         commandHelp.put(RUN_PATTERN, String.format(
                 "%s help:" + LINE_SEPARATOR +
                 "\tcommand <config> [options]        Run the specified command" + LINE_SEPARATOR +
-                "\t<config> [options]                Shortcut for the above: run specified command" +
-                    LINE_SEPARATOR +
-                "\tcmdfile <cmdfile.txt>             Run the specified commandfile" + LINE_SEPARATOR +
+                "\t<config> [options]                Shortcut for the above: run specified " +
+                "command" + LINE_SEPARATOR +
+                "\tcmdfile <cmdfile.txt>             Run the specified commandfile" +
+                LINE_SEPARATOR +
                 "\tcommandAndExit <config> [options] Run the specified command, and run " +
-                "'exit -c' immediately afterward" + LINE_SEPARATOR,
+                "'exit -c' immediately afterward" + LINE_SEPARATOR +
                 "\tcmdfileAndExit <cmdfile.txt>      Run the specified commandfile, and run " +
                 "'exit -c' immediately afterward" + LINE_SEPARATOR,
                 RUN_PATTERN));
@@ -440,8 +445,8 @@ public class Console extends Thread {
 
         commandHelp.put(REMOVE_PATTERN, String.format(
                 "%s help:" + LINE_SEPARATOR +
-                "\tremove allCommands  Remove all commands currently waiting to be executed"
-                        + LINE_SEPARATOR,
+                "\tremove allCommands  Remove all commands currently waiting to be executed" +
+                LINE_SEPARATOR,
                 REMOVE_PATTERN));
 
         commandHelp.put(DEBUG_PATTERN, String.format(
@@ -521,6 +526,22 @@ public class Console extends Thread {
                 mScheduler.displayCommandQueue(new PrintWriter(System.out, true));
             }
         }, DUMP_PATTERN, "commandQueue");
+
+        trie.put(new Runnable() {
+            @Override
+            public void run() {
+                mScheduler.dumpCommandsXml(new PrintWriter(System.out, true), null);
+            }
+        }, DUMP_PATTERN, LIST_COMMANDS_PATTERN);
+        ArgRunnable<CaptureList> dumpCmdRun = new ArgRunnable<CaptureList>() {
+            @Override
+            public void run(CaptureList args) {
+                // Skip 2 tokens to get past listPattern and "commands"
+                String pattern = args.get(2).get(0);
+                mScheduler.dumpCommandsXml(new PrintWriter(System.out, true), pattern);
+            }
+        };
+        trie.put(dumpCmdRun, DUMP_PATTERN, LIST_COMMANDS_PATTERN, "(.*)");
 
         // Run commands
         ArgRunnable<CaptureList> runRunCommand = new ArgRunnable<CaptureList>() {

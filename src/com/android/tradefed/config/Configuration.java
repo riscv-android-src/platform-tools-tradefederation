@@ -36,14 +36,19 @@ import com.android.tradefed.testtype.IRemoteTest;
 import com.android.tradefed.testtype.StubTest;
 import com.android.tradefed.util.QuotationAwareTokenizer;
 
+import org.kxml2.io.KXmlSerializer;
+
+import java.io.IOException;
 import java.io.PrintStream;
+import java.io.PrintWriter;
+import java.lang.reflect.Field;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
 
 /**
  * A concrete {@link IConfiguration} implementation that stores the loaded config objects in a map
@@ -61,6 +66,14 @@ public class Configuration implements IConfiguration {
     public static final String CMD_OPTIONS_TYPE_NAME = "cmd_options";
     public static final String DEVICE_REQUIREMENTS_TYPE_NAME = "device_requirements";
     public static final String DEVICE_OPTIONS_TYPE_NAME = "device_options";
+
+    // additional element names used for emitting the configuration XML.
+    private static final String CONFIGURATION_NAME = "configuration";
+    private static final String OPTION_NAME = "option";
+    private static final String CLASS_NAME = "class";
+    private static final String NAME_NAME = "name";
+    private static final String KEY_NAME = "key";
+    private static final String VALUE_NAME = "value";
 
     private static Map<String, ObjTypeInfo> sObjTypeMap = null;
 
@@ -610,5 +623,89 @@ public class Configuration implements IConfiguration {
     @Override
     public void validateOptions() throws ConfigurationException {
         new ArgsOptionParser(getAllConfigurationObjects()).validateMandatoryOptions();
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void dumpXml(PrintWriter output) throws IOException {
+        KXmlSerializer serializer = new KXmlSerializer();
+        serializer.setOutput(output);
+        serializer.setFeature("http://xmlpull.org/v1/doc/features.html#indent-output", true);
+        serializer.startDocument("UTF-8", null);
+        serializer.startTag(null, CONFIGURATION_NAME);
+
+        dumpClassToXml(serializer, BUILD_PROVIDER_TYPE_NAME, getBuildProvider());
+        for (ITargetPreparer preparer : getTargetPreparers()) {
+            dumpClassToXml(serializer, TARGET_PREPARER_TYPE_NAME, preparer);
+        }
+        for (IRemoteTest test : getTests()) {
+            dumpClassToXml(serializer, TEST_TYPE_NAME, test);
+        }
+        dumpClassToXml(serializer, DEVICE_RECOVERY_TYPE_NAME, getDeviceRecovery());
+        dumpClassToXml(serializer, LOGGER_TYPE_NAME, getLogOutput());
+        dumpClassToXml(serializer, LOG_SAVER_TYPE_NAME, getLogSaver());
+        for (ITestInvocationListener listener : getTestInvocationListeners()) {
+            dumpClassToXml(serializer, RESULT_REPORTER_TYPE_NAME, listener);
+        }
+        dumpClassToXml(serializer, CMD_OPTIONS_TYPE_NAME, getCommandOptions());
+        dumpClassToXml(serializer, DEVICE_REQUIREMENTS_TYPE_NAME, getDeviceRequirements());
+        dumpClassToXml(serializer, DEVICE_OPTIONS_TYPE_NAME, getDeviceOptions());
+
+        serializer.endTag(null, CONFIGURATION_NAME);
+        serializer.endDocument();
+    }
+
+    /**
+     * Add a class to the command XML dump.
+     */
+    private void dumpClassToXml(KXmlSerializer serializer, String classTypeName, Object obj)
+            throws IOException {
+        serializer.startTag(null, classTypeName);
+        serializer.attribute(null, CLASS_NAME, obj.getClass().getName());
+        dumpOptionsToXml(serializer, obj);
+        serializer.endTag(null, classTypeName);
+    }
+
+    /**
+     * Add all the options of class to the command XML dump.
+     */
+    @SuppressWarnings("rawtypes")
+    private void dumpOptionsToXml(KXmlSerializer serializer, Object obj) throws IOException {
+        for (Field field : OptionSetter.getOptionFieldsForClass(obj.getClass())) {
+            Option option = field.getAnnotation(Option.class);
+            Object fieldVal = OptionSetter.getFieldValue(field, obj);
+            if (fieldVal == null) {
+                continue;
+            } else if (fieldVal instanceof Collection) {
+                for (Object entry : (Collection) fieldVal) {
+                    dumpOptionToXml(serializer, option.name(), null, entry.toString());
+                }
+            } else if (fieldVal instanceof Map) {
+                Map map = (Map) fieldVal;
+                for (Object entryObj : map.entrySet()) {
+                    Map.Entry entry = (Entry) entryObj;
+                    dumpOptionToXml(serializer, option.name(), entry.getKey().toString(),
+                            entry.getValue().toString());
+                }
+            } else {
+                dumpOptionToXml(serializer, option.name(), null, fieldVal.toString());
+            }
+        }
+    }
+
+    /**
+     * Add a single option to the command XML dump.
+     */
+    private void dumpOptionToXml(KXmlSerializer serializer, String name, String key, String value)
+            throws IOException {
+        serializer.startTag(null, OPTION_NAME);
+        serializer.attribute(null, NAME_NAME, name);
+        if (key != null) {
+            serializer.attribute(null, KEY_NAME, key);
+        }
+        serializer.attribute(null, VALUE_NAME, value);
+        serializer.endTag(null, OPTION_NAME);
     }
 }
