@@ -28,6 +28,7 @@ import com.android.tradefed.util.AaptParser;
 import java.io.File;
 import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 
 /**
@@ -59,6 +60,10 @@ public class AppSetup implements ITargetPreparer, ITargetCleaner {
     @Option(name = "install-flag", description =
             "optional flag(s) to provide when installing apks.")
     private ArrayList<String> mInstallFlags = new ArrayList<>();
+
+    @Option(name = "post-install-cmd", description =
+            "optional post-install adb shell commands; can be repeated.")
+    private List<String> mPostInstallCmds = new ArrayList<>();
 
     /** contains package names of installed apps. Used for uninstall */
     private Set<String> mInstalledPkgs = new HashSet<String>();
@@ -102,6 +107,14 @@ public class AppSetup implements ITargetPreparer, ITargetCleaner {
             }
         }
 
+       if (mPostInstallCmds != null && !mPostInstallCmds.isEmpty()){
+           for (String cmd : mPostInstallCmds) {
+               // If the command had any output, the executeShellCommand method will log it at the
+               // VERBOSE level; so no need to do any logging from here.
+               CLog.d("About to run setup command on device %s: %s", device.getSerialNumber(), cmd);
+               device.executeShellCommand(cmd);
+           }
+       }
     }
 
     private void addPackageNameToUninstall(File apkFile) throws TargetSetupError {
