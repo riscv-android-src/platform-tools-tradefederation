@@ -943,4 +943,23 @@ public class StubTestDevice implements IManagedTestDevice {
     @Override
     public void stopUser(int userId) throws DeviceNotAvailableException {
     }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public String installPackage(File packageFile, boolean reinstall, boolean grantPermissions,
+            String... extraArgs) throws DeviceNotAvailableException {
+        return null;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public String installPackageForUser(File packageFile, boolean reinstall,
+            boolean grantPermissions, int userId, String... extraArgs)
+            throws DeviceNotAvailableException {
+        return null;
+    }
 }

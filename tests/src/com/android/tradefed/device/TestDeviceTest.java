@@ -883,6 +883,297 @@ public class TestDeviceTest extends TestCase {
     }
 
     /**
+     * Test that isRuntimePermissionSupported returns correct result for device reporting LRX22F
+     * build attributes
+     * @throws Exception
+     */
+    public void testRuntimePermissionSupportedLmpRelease() throws Exception {
+        SettableFuture<String> codeName = SettableFuture.create();
+        codeName.set("REL");
+        EasyMock.expect(mMockIDevice.getSystemProperty(
+                TestDevice.BUILD_CODENAME_PROP)).andReturn(codeName);
+        SettableFuture<String> buildNumber = SettableFuture.create();
+        buildNumber.set("1642709"); //LRX22F
+        EasyMock.expect(mMockIDevice.getSystemProperty(
+                TestDevice.BUILD_ID_PROP)).andReturn(buildNumber);
+        replayMocks();
+        assertFalse(mTestDevice.isRuntimePermissionSupported());
+    }
+
+    /**
+     * Test that isRuntimePermissionSupported returns correct result for device reporting LMP MR1
+     * dev build attributes
+     * @throws Exception
+     */
+    public void testRuntimePermissionSupportedLmpMr1Dev() throws Exception {
+        SettableFuture<String> codeName = SettableFuture.create();
+        codeName.set("REL");
+        EasyMock.expect(mMockIDevice.getSystemProperty(
+                TestDevice.BUILD_CODENAME_PROP)).andReturn(codeName);
+        SettableFuture<String> buildNumber = SettableFuture.create();
+        buildNumber.set("1844090"); // a random lmp-mr1-dev build
+        EasyMock.expect(mMockIDevice.getSystemProperty(
+                TestDevice.BUILD_ID_PROP)).andReturn(buildNumber);
+        replayMocks();
+        assertFalse(mTestDevice.isRuntimePermissionSupported());
+    }
+
+    /**
+     * Test that isRuntimePermissionSupported returns correct result for device reporting random
+     * dev build attributes
+     * @throws Exception
+     */
+    public void testRuntimePermissionSupportedRandom1() throws Exception {
+        SettableFuture<String> codeName = SettableFuture.create();
+        codeName.set("YADDA");
+        EasyMock.expect(mMockIDevice.getSystemProperty(
+                TestDevice.BUILD_CODENAME_PROP)).andReturn(codeName);
+        SettableFuture<String> buildNumber = SettableFuture.create();
+        buildNumber.set("XYZ"); // a random non-numerical build "number"
+        EasyMock.expect(mMockIDevice.getSystemProperty(
+                TestDevice.BUILD_ID_PROP)).andReturn(buildNumber);
+        replayMocks();
+        assertFalse(mTestDevice.isRuntimePermissionSupported());
+    }
+
+    /**
+     * Test that isRuntimePermissionSupported returns correct result for device reporting random
+     * dev build attributes
+     * @throws Exception
+     */
+    public void testRuntimePermissionSupportedRandom2() throws Exception {
+        SettableFuture<String> codeName = SettableFuture.create();
+        codeName.set("MNC");
+        EasyMock.expect(mMockIDevice.getSystemProperty(
+                TestDevice.BUILD_CODENAME_PROP)).andReturn(codeName);
+        SettableFuture<String> buildNumber = SettableFuture.create();
+        buildNumber.set("A1B2C3"); // a random non-numerical build "number"
+        EasyMock.expect(mMockIDevice.getSystemProperty(
+                TestDevice.BUILD_ID_PROP)).andReturn(buildNumber);
+        replayMocks();
+        assertFalse(mTestDevice.isRuntimePermissionSupported());
+    }
+
+    /**
+     * Test that isRuntimePermissionSupported returns correct result for device reporting early MNC
+     * dev build attributes
+     * @throws Exception
+     */
+    public void testRuntimePermissionSupportedEarlyMnc() throws Exception {
+        SettableFuture<String> codeName = SettableFuture.create();
+        codeName.set("MNC");
+        EasyMock.expect(mMockIDevice.getSystemProperty(
+                TestDevice.BUILD_CODENAME_PROP)).andReturn(codeName);
+        SettableFuture<String> buildNumber = SettableFuture.create();
+        buildNumber.set("1816412");
+        EasyMock.expect(mMockIDevice.getSystemProperty(
+                TestDevice.BUILD_ID_PROP)).andReturn(buildNumber);
+        replayMocks();
+        assertFalse(mTestDevice.isRuntimePermissionSupported());
+    }
+
+    /**
+     * Test that isRuntimePermissionSupported returns correct result for device reporting early MNC
+     * dev build attributes
+     * @throws Exception
+     */
+    public void testRuntimePermissionSupportedMncPostSwitch() throws Exception {
+        SettableFuture<String> codeName = SettableFuture.create();
+        codeName.set("MNC");
+        EasyMock.expect(mMockIDevice.getSystemProperty(
+                TestDevice.BUILD_CODENAME_PROP)).andReturn(codeName);
+        SettableFuture<String> buildNumber = SettableFuture.create();
+        buildNumber.set("1844452");
+        EasyMock.expect(mMockIDevice.getSystemProperty(
+                TestDevice.BUILD_ID_PROP)).andReturn(buildNumber);
+        replayMocks();
+        assertTrue(mTestDevice.isRuntimePermissionSupported());
+    }
+
+    /**
+     * Convenience method for setting up mMockIDevice to not support runtime permission
+     */
+    private void setMockIDeviceRuntimePermissionNotSupported() {
+        SettableFuture<String> codeName = SettableFuture.create();
+        codeName.set("MNC");
+        EasyMock.expect(mMockIDevice.getSystemProperty(
+                TestDevice.BUILD_CODENAME_PROP)).andReturn(codeName);
+        SettableFuture<String> buildNumber = SettableFuture.create();
+        buildNumber.set("1816412");
+        EasyMock.expect(mMockIDevice.getSystemProperty(
+                TestDevice.BUILD_ID_PROP)).andReturn(buildNumber);
+    }
+
+    /**
+     * Convenience method for setting up mMockIDevice to support runtime permission
+     */
+    private void setMockIDeviceRuntimePermissionSupported() {
+        SettableFuture<String> codeName = SettableFuture.create();
+        codeName.set("MNC");
+        EasyMock.expect(mMockIDevice.getSystemProperty(
+                TestDevice.BUILD_CODENAME_PROP)).andReturn(codeName);
+        SettableFuture<String> buildNumber = SettableFuture.create();
+        buildNumber.set("1844452");
+        EasyMock.expect(mMockIDevice.getSystemProperty(
+                TestDevice.BUILD_ID_PROP)).andReturn(buildNumber);
+    }
+
+    /**
+     * Test default installPackage on device not supporting runtime permission has expected
+     * list of args
+     * @throws Exception
+     */
+    public void testInstallPackage_default_runtimePermissionNotSupported() throws Exception {
+        final String apkFile = "foo.apk";
+        setMockIDeviceRuntimePermissionNotSupported();
+        EasyMock.expect(mMockIDevice.installPackage(
+                EasyMock.contains(apkFile), EasyMock.eq(true))).andReturn(null);
+        replayMocks();
+        assertNull(mTestDevice.installPackage(new File(apkFile), true));
+    }
+
+    /**
+     * Test default installPackage on device supporting runtime permission has expected list of args
+     * @throws Exception
+     */
+    public void testInstallPackage_default_runtimePermissionSupported() throws Exception {
+        final String apkFile = "foo.apk";
+        setMockIDeviceRuntimePermissionSupported();
+        EasyMock.expect(mMockIDevice.installPackage(
+                EasyMock.contains(apkFile), EasyMock.eq(true), EasyMock.eq("-g"))).andReturn(null);
+        replayMocks();
+        assertNull(mTestDevice.installPackage(new File(apkFile), true));
+    }
+
+    /**
+     * Test default installPackageForUser on device not supporting runtime permission has expected
+     * list of args
+     * @throws Exception
+     */
+    public void testinstallPackageForUser_default_runtimePermissionNotSupported() throws Exception {
+        final String apkFile = "foo.apk";
+        int uid = 123;
+        setMockIDeviceRuntimePermissionNotSupported();
+        EasyMock.expect(mMockIDevice.installPackage(
+                EasyMock.contains(apkFile), EasyMock.eq(true),
+                EasyMock.eq("--user"), EasyMock.eq(Integer.toString(uid)))).andReturn(null);
+        replayMocks();
+        assertNull(mTestDevice.installPackageForUser(new File(apkFile), true, uid));
+    }
+
+    /**
+     * Test default installPackageForUser on device supporting runtime permission has expected
+     * list of args
+     * @throws Exception
+     */
+    public void testinstallPackageForUser_default_runtimePermissionSupported() throws Exception {
+        final String apkFile = "foo.apk";
+        int uid = 123;
+        setMockIDeviceRuntimePermissionSupported();
+        EasyMock.expect(mMockIDevice.installPackage(
+                EasyMock.contains(apkFile), EasyMock.eq(true), EasyMock.eq("-g"),
+                EasyMock.eq("--user"), EasyMock.eq(Integer.toString(uid)))).andReturn(null);
+        replayMocks();
+        assertNull(mTestDevice.installPackageForUser(new File(apkFile), true, uid));
+    }
+
+    /**
+     * Test runtime permission variant of installPackage throws exception on unsupported device
+     * platform
+     * @throws Exception
+     */
+    public void testInstallPackage_throw() throws Exception {
+        final String apkFile = "foo.apk";
+        setMockIDeviceRuntimePermissionNotSupported();
+        replayMocks();
+        try {
+            mTestDevice.installPackage(new File(apkFile), true, true);
+        } catch (UnsupportedOperationException uoe) {
+            // ignore, exception thrown here is expected
+            return;
+        }
+        fail("installPackage did not throw IllegalArgumentException");
+    }
+
+    /**
+     * Test runtime permission variant of installPackage has expected list of args on a supported
+     * device when granting
+     * @throws Exception
+     */
+    public void testInstallPackage_grant_runtimePermissionSupported() throws Exception {
+        final String apkFile = "foo.apk";
+        setMockIDeviceRuntimePermissionSupported();
+        EasyMock.expect(mMockIDevice.installPackage(
+                EasyMock.contains(apkFile), EasyMock.eq(true), EasyMock.eq("-g"))).andReturn(null);
+        replayMocks();
+        assertNull(mTestDevice.installPackage(new File(apkFile), true, true));
+    }
+
+    /**
+     * Test runtime permission variant of installPackage has expected list of args on a supported
+     * device when not granting
+     * @throws Exception
+     */
+    public void testInstallPackage_noGrant_runtimePermissionSupported() throws Exception {
+        final String apkFile = "foo.apk";
+        setMockIDeviceRuntimePermissionSupported();
+        EasyMock.expect(mMockIDevice.installPackage(
+                EasyMock.contains(apkFile), EasyMock.eq(true))).andReturn(null);
+        replayMocks();
+        assertNull(mTestDevice.installPackage(new File(apkFile), true, false));
+    }
+
+    /**
+     * Test grant permission variant of installPackageForUser throws exception on unsupported
+     * device platform
+     * @throws Exception
+     */
+    public void testInstallPackageForUser_throw() throws Exception {
+        final String apkFile = "foo.apk";
+        setMockIDeviceRuntimePermissionNotSupported();
+        replayMocks();
+        try {
+            mTestDevice.installPackageForUser(new File(apkFile), true, true, 123);
+        } catch (UnsupportedOperationException uoe) {
+            // ignore, exception thrown here is expected
+            return;
+        }
+        fail("installPackage did not throw IllegalArgumentException");
+    }
+
+    /**
+     * Test grant permission variant of installPackageForUser has expected list of args on a
+     * supported device when granting
+     * @throws Exception
+     */
+    public void testInstallPackageForUser_grant_runtimePermissionSupported() throws Exception {
+        final String apkFile = "foo.apk";
+        int uid = 123;
+        setMockIDeviceRuntimePermissionSupported();
+        EasyMock.expect(mMockIDevice.installPackage(
+                EasyMock.contains(apkFile), EasyMock.eq(true), EasyMock.eq("-g"),
+                EasyMock.eq("--user"), EasyMock.eq(Integer.toString(uid)))).andReturn(null);
+        replayMocks();
+        assertNull(mTestDevice.installPackageForUser(new File(apkFile), true, true, uid));
+    }
+
+    /**
+     * Test grant permission variant of installPackageForUser has expected list of args on a
+     * supported device when not granting
+     * @throws Exception
+     */
+    public void testInstallPackageForUser_noGrant_runtimePermissionSupported() throws Exception {
+        final String apkFile = "foo.apk";
+        int uid = 123;
+        setMockIDeviceRuntimePermissionSupported();
+        EasyMock.expect(mMockIDevice.installPackage(
+                EasyMock.contains(apkFile), EasyMock.eq(true),
+                EasyMock.eq("--user"), EasyMock.eq(Integer.toString(uid)))).andReturn(null);
+        replayMocks();
+        assertNull(mTestDevice.installPackageForUser(new File(apkFile), true, false, uid));
+    }
+
+    /**
      * Helper method to build a response to a executeShellCommand call
      *
      * @param expectedCommand the shell command to expect or null to skip verification of command
@@ -900,7 +1191,6 @@ public class TestDeviceTest extends TestCase {
      * @param response the response to simulate
      * @param asStub whether to set a single expectation or a stub expectation
      */
-    @SuppressWarnings("unchecked")
     private void injectShellResponse(final String expectedCommand, final String response,
             boolean asStub) throws Exception {
         IAnswer<Object> shellAnswer = new IAnswer<Object>() {

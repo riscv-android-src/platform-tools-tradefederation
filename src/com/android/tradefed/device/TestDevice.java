@@ -119,10 +119,12 @@ class TestDevice implements IManagedTestDevice {
     /** the command used to dismiss a error dialog. Currently sends a DPAD_CENTER key event */
     static final String DISMISS_DIALOG_CMD = "input keyevent 23";
 
-    private static final String BUILD_ID_PROP = "ro.build.version.incremental";
+    static final String BUILD_ID_PROP = "ro.build.version.incremental";
     private static final String PRODUCT_NAME_PROP = "ro.product.name";
     private static final String BUILD_TYPE_PROP = "ro.build.type";
     private static final String BUILD_ALIAS_PROP = "ro.build.id";
+
+    static final String BUILD_CODENAME_PROP = "ro.build.version.codename";
 
     /** The network monitoring interval in ms. */
     private static final int NETWORK_MONITOR_INTERVAL = 10 * 1000;
@@ -681,18 +683,58 @@ class TestDevice implements IManagedTestDevice {
     }
 
     /**
-     * {@inheritDoc}
+     * Check whether platform on device supports runtime permission granting
+     * @return
+     * @throws DeviceNotAvailableException
      */
-    @Override
-    public String installPackage(final File packageFile, final boolean reinstall,
-            final String... extraArgs) throws DeviceNotAvailableException {
+    boolean isRuntimePermissionSupported() throws DeviceNotAvailableException {
+        //TODO: change to API Level check once M is official
+        String codeName = getProperty(BUILD_CODENAME_PROP).trim();
+        if (!"MNC".equals(codeName)) {
+            // not MNC, probably REL or LMP or older
+            return false;
+        }
+        try {
+            long buildNumber = Long.parseLong(getBuildId());
+            // for platform commit 429270c3ed1da02914efb476be977dc3829d4c30
+            return buildNumber >= 1837705;
+        } catch (NumberFormatException nfe) {
+            // build id field is not a number, assume runtime permission not supported
+            return false;
+        }
+    }
+
+    /**
+     * helper method to throw exception if runtime permission isn't supported
+     * @throws DeviceNotAvailableException
+     */
+    private void ensureRuntimePermissionSupported() throws DeviceNotAvailableException {
+        boolean runtimePermissionSupported = isRuntimePermissionSupported();
+        if (!runtimePermissionSupported) {
+            throw new UnsupportedOperationException(
+                    "platform on device does not support runtime permission granting!");
+        }
+    }
+
+    /**
+     * Core implementation of package installation, with retries around
+     * {@link IDevice#installPackage(String, boolean, String...)}
+     * @param packageFile
+     * @param reinstall
+     * @param extraArgs
+     * @return
+     * @throws DeviceNotAvailableException
+     */
+    private String internalInstallPackage(
+            final File packageFile, final boolean reinstall, final List<String> extraArgs)
+                    throws DeviceNotAvailableException {
         // use array to store response, so it can be returned to caller
         final String[] response = new String[1];
         DeviceAction installAction = new DeviceAction() {
             @Override
             public boolean run() throws InstallException {
                 String result = getIDevice().installPackage(packageFile.getAbsolutePath(),
-                        reinstall, extraArgs);
+                        reinstall, extraArgs.toArray(new String[]{}));
                 response[0] = result;
                 return result == null;
             }
@@ -706,13 +748,63 @@ class TestDevice implements IManagedTestDevice {
      * {@inheritDoc}
      */
     @Override
+    public String installPackage(final File packageFile, final boolean reinstall,
+            final String... extraArgs) throws DeviceNotAvailableException {
+        boolean runtimePermissionSupported = isRuntimePermissionSupported();
+        List<String> args = new ArrayList<>(Arrays.asList(extraArgs));
+        // grant all permissions by default if feature is supported
+        if (runtimePermissionSupported) {
+            args.add("-g");
+        }
+        return internalInstallPackage(packageFile, reinstall, args);
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public String installPackage(File packageFile, boolean reinstall, boolean grantPermissions,
+            String... extraArgs) throws DeviceNotAvailableException {
+        ensureRuntimePermissionSupported();
+        List<String> args = new ArrayList<>(Arrays.asList(extraArgs));
+        if (grantPermissions) {
+            args.add("-g");
+        }
+        return internalInstallPackage(packageFile, reinstall, args);
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
     public String installPackageForUser(File packageFile, boolean reinstall, int userId,
             String... extraArgs) throws DeviceNotAvailableException {
-        String[] newExtraArgs = new String[extraArgs.length + 2];
-        System.arraycopy(extraArgs, 0, newExtraArgs, 0, extraArgs.length);
-        newExtraArgs[newExtraArgs.length - 2] = "--user";
-        newExtraArgs[newExtraArgs.length - 1] = Integer.toString(userId);
-        return installPackage(packageFile, reinstall, newExtraArgs);
+        boolean runtimePermissionSupported = isRuntimePermissionSupported();
+        List<String> args = new ArrayList<>(Arrays.asList(extraArgs));
+        // grant all permissions by default if feature is supported
+        if (runtimePermissionSupported) {
+            args.add("-g");
+        }
+        args.add("--user");
+        args.add(Integer.toString(userId));
+        return internalInstallPackage(packageFile, reinstall, args);
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public String installPackageForUser(File packageFile, boolean reinstall,
+            boolean grantPermissions, int userId, String... extraArgs)
+                    throws DeviceNotAvailableException {
+        ensureRuntimePermissionSupported();
+        List<String> args = new ArrayList<>(Arrays.asList(extraArgs));
+        if (grantPermissions) {
+            args.add("-g");
+        }
+        args.add("--user");
+        args.add(Integer.toString(userId));
+        return internalInstallPackage(packageFile, reinstall, args);
     }
 
     /**

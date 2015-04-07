@@ -471,6 +471,24 @@ public interface ITestDevice {
             throws DeviceNotAvailableException;
 
     /**
+     * Install an Android package on device.
+     * <p>Note: Only use cases that requires explicit control of granting runtime permission at
+     * install time should call this function.
+     * @param packageFile the apk file to install
+     * @param reinstall <code>true</code> if a reinstall should be performed
+     * @param grantPermissions if all runtime permissions should be granted at install time
+     * @param extraArgs optional extra arguments to pass. See 'adb shell pm install --help' for
+     *            available options.
+     * @return a {@link String} with an error code, or <code>null</code> if success.
+     * @throws DeviceNotAvailableException if connection with device is lost and cannot be
+     *             recovered.
+     * @throws UnsupportedOperationException if runtime permission is not supported by the platform
+     *         on device.
+     */
+    public String installPackage(File packageFile, boolean reinstall, boolean grantPermissions,
+            String... extraArgs) throws DeviceNotAvailableException;
+
+    /**
      * Install an Android package on device for a given user.
      *
      * @param packageFile the apk file to install
@@ -484,6 +502,26 @@ public interface ITestDevice {
      */
     public String installPackageForUser(File packageFile, boolean reinstall, int userId,
             String... extraArgs) throws DeviceNotAvailableException;
+
+    /**
+     * Install an Android package on device for a given user.
+     * <p>Note: Only use cases that requires explicit control of granting runtime permission at
+     * install time should call this function.
+     * @param packageFile the apk file to install
+     * @param reinstall <code>true</code> if a reinstall should be performed
+     * @param grantPermissions if all runtime permissions should be granted at install time
+     * @param userId the integer user id to install for.
+     * @param extraArgs optional extra arguments to pass. See 'adb shell pm install --help' for
+     *            available options.
+     * @return a {@link String} with an error code, or <code>null</code> if success.
+     * @throws DeviceNotAvailableException if connection with device is lost and cannot be
+     *             recovered.
+     * @throws UnsupportedOperationException if runtime permission is not supported by the platform
+     *         on device.
+     */
+    public String installPackageForUser(File packageFile, boolean reinstall,
+            boolean grantPermissions, int userId, String... extraArgs)
+                    throws DeviceNotAvailableException;
 
     /**
      * Uninstall an Android package from device.
