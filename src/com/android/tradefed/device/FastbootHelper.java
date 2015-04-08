@@ -64,6 +64,8 @@ public class FastbootHelper {
                     "You are running an older version of fastboot, please update it.");
             return true;
         }
+        CLog.d("fastboot not available. stdout: %s, stderr: %s",
+                fastbootResult.getStdout(), fastbootResult.getStderr());
         return false;
     }
 
