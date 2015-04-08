@@ -21,6 +21,7 @@ import com.android.ddmlib.testrunner.RemoteAndroidTestRunner;
 import com.android.tradefed.config.Option;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
+import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.result.BugreportCollector;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.testtype.IDeviceTest;
@@ -39,7 +40,6 @@ import java.util.concurrent.TimeUnit;
 public class ConnectivityManagerTest implements IRemoteTest, IDeviceTest {
     private ITestDevice mTestDevice = null;
 
-    private static long START_TIMER = 5 * 60 * 1000; //5 minutes
     // Define instrumentation test package and runner.
     private static final String TEST_PACKAGE_NAME =
         "com.android.connectivitymanagertest";
@@ -61,6 +61,9 @@ public class ConnectivityManagerTest implements IRemoteTest, IDeviceTest {
     @Option(name="wifi-only")
     private boolean mWifiOnly = false;
 
+    @Option(name="start-sleep", description="The amount of time to sleep before starting in secs.")
+    private int mStartSleepSecs = 5 * 60;
+
     @Override
     public void setDevice(ITestDevice testDevice) {
         mTestDevice = testDevice;
@@ -77,7 +80,8 @@ public class ConnectivityManagerTest implements IRemoteTest, IDeviceTest {
         Assert.assertNotNull(mTestDevice);
         Assert.assertNotNull(mSsid);
 
-        RunUtil.getDefault().sleep(START_TIMER);
+        CLog.d("Sleeping for %d secs", mStartSleepSecs);
+        RunUtil.getDefault().sleep(mStartSleepSecs * 1000);
 
         if (!mWifiOnly) {
             final RadioHelper radioHelper = new RadioHelper(mTestDevice);
