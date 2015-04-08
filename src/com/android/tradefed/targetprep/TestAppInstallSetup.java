@@ -99,10 +99,6 @@ public class TestAppInstallSetup implements ITargetCleaner, IAbiReceiver {
      */
     protected File getLocalPathForFilename(IBuildInfo buildInfo, String apkFileName)
             throws TargetSetupError {
-        if (!(buildInfo instanceof IDeviceBuildInfo)) {
-            throw new IllegalArgumentException(String.format("Provided buildInfo is not a %s",
-                    IDeviceBuildInfo.class.getCanonicalName()));
-        }
         String apkBase = apkFileName.split("\\.")[0];
 
         List<File> dirs = new ArrayList<>();
@@ -116,10 +112,12 @@ public class TestAppInstallSetup implements ITargetCleaner, IAbiReceiver {
         }
 
         // Add test dirs last so they will be first when list is reversed
-        File testsDir = ((IDeviceBuildInfo)buildInfo).getTestsDir();
-        if (testsDir != null && testsDir.exists()) {
-            dirs.add(FileUtil.getFileForPath(testsDir, "DATA", "app"));
-            dirs.add(FileUtil.getFileForPath(testsDir, "DATA", "app", apkBase));
+        if (buildInfo instanceof IDeviceBuildInfo) {
+            File testsDir = ((IDeviceBuildInfo)buildInfo).getTestsDir();
+            if (testsDir != null && testsDir.exists()) {
+                dirs.add(FileUtil.getFileForPath(testsDir, "DATA", "app"));
+                dirs.add(FileUtil.getFileForPath(testsDir, "DATA", "app", apkBase));
+            }
         }
         if (dirs.isEmpty()) {
             throw new TargetSetupError(
