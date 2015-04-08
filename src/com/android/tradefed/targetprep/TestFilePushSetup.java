@@ -80,11 +80,6 @@ public class TestFilePushSetup implements ITargetPreparer {
      */
     protected File getLocalPathForFilename(IBuildInfo buildInfo, String fileName)
             throws TargetSetupError {
-        if (!(buildInfo instanceof IDeviceBuildInfo)) {
-            throw new IllegalArgumentException(String.format("Provided buildInfo is not a %s",
-                    IDeviceBuildInfo.class.getCanonicalName()));
-        }
-
         List<File> dirs = new ArrayList<>();
         for (File dir : mAltDirs) {
             dirs.add(dir);
@@ -92,9 +87,11 @@ public class TestFilePushSetup implements ITargetPreparer {
         }
 
         // Add test dirs last so they will be first when list is reversed
-        File testsDir = ((IDeviceBuildInfo)buildInfo).getTestsDir();
-        if (testsDir != null && testsDir.exists()) {
-            dirs.add(FileUtil.getFileForPath(testsDir, "DATA"));
+        if (buildInfo instanceof IDeviceBuildInfo) {
+            File testsDir = ((IDeviceBuildInfo)buildInfo).getTestsDir();
+            if (testsDir != null && testsDir.exists()) {
+                dirs.add(FileUtil.getFileForPath(testsDir, "DATA"));
+            }
         }
         if (dirs.isEmpty()) {
             throw new TargetSetupError(
