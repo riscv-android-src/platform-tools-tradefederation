@@ -250,7 +250,10 @@ public abstract class DeviceFlashPreparer implements ITargetCleaner {
      */
     private void checkBuild(ITestDevice device, IDeviceBuildInfo deviceBuild)
             throws DeviceNotAvailableException {
-        checkBuildAttribute(deviceBuild.getBuildId(), device.getBuildId());
+        // Need to use deviceBuild.getDeviceBuildId instead of getBuildId because the build info
+        // could be an AppBuildInfo and return app build id. Need to be more explicit that we
+        // check for the device build here.
+        checkBuildAttribute(deviceBuild.getDeviceBuildId(), device.getBuildId());
         if (!mSkipPostFlashFlavorCheck) {
             checkBuildAttribute(deviceBuild.getBuildFlavor(), device.getBuildFlavor());
         }
