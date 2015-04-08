@@ -52,7 +52,7 @@ import java.util.concurrent.TimeUnit;
 public class SELinuxDenialsTests implements IRemoteTest, IDeviceTest {
 
     private ITestDevice mDevice;
-    private static final String ADB_SHELL_KERNEL_LOGS_CMD = "su -c dmesg";
+    private static final String ADB_SHELL_KERNEL_LOGS_CMD = "dmesg";
     private static final String DMESG_OUTPUT_FILE_NAME = "dmesg_output";
 
     @Option(name="selinux-domains-file",
