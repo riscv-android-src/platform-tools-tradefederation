@@ -132,4 +132,25 @@ public class RunUtilFuncTest extends TestCase {
             StreamUtil.close(s);
         }
     }
+
+    /**
+     * Test case for {@link RunUtil#unsetEnvVariable(String key)}
+     */
+    public void testUnsetEnvVariable() {
+        long timeout = 200;
+        RunUtil runUtil = new RunUtil();
+        runUtil.setEnvVariable("bar", "foo");
+        // FIXME: this test case is not ideal, as it will only work on platforms that support
+        // printenv
+        CommandResult result = runUtil.runTimedCmd(timeout, "printenv", "bar");
+        assertTrue(result.getStatus() == CommandStatus.SUCCESS);
+        assertTrue("foo".equals(result.getStdout().trim()));
+
+        // remove env variable
+        runUtil.unsetEnvVariable("bar");
+        // printenv with non-exist variable will fail
+        result = runUtil.runTimedCmd(timeout, "printenv", "bar");
+        assertTrue(result.getStatus() == CommandStatus.FAILED);
+        assertTrue("".equals(result.getStdout().trim()));
+    }
 }

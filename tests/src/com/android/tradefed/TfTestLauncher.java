@@ -55,6 +55,7 @@ public class TfTestLauncher implements IRemoteTest, IBuildReceiver {
     @Option(name = "config-name", description = "the config that runs the TF tests")
     private String mConfigName;
 
+    private static final String TF_GLOBAL_CONFIG = "TF_GLOBAL_CONFIG";
     /**
      * {@inheritDoc}
      */
@@ -89,7 +90,10 @@ public class TfTestLauncher implements IRemoteTest, IBuildReceiver {
             args.add(mBuildInfo.getBuildFlavor());
         }
 
-        CommandResult result = getRunUtil().runTimedCmd(mMaxTfRunTimeMin * 60 * 1000,
+        IRunUtil runUtil = new RunUtil();
+        // clear the TF_GLOBAL_CONFIG env, so another tradefed will not reuse the global config file
+        runUtil.unsetEnvVariable(TF_GLOBAL_CONFIG);
+        CommandResult result = runUtil.runTimedCmd(mMaxTfRunTimeMin * 60 * 1000,
                 args.toArray(new String[0]));
         if (result.getStatus().equals(CommandStatus.SUCCESS)) {
             CLog.d("Successfully ran TF tests for build %s", mBuildInfo.getBuildId());
