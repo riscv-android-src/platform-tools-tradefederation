@@ -26,6 +26,7 @@ import com.android.tradefed.build.SdkBuildInfoTest;
 import com.android.tradefed.command.CommandFileParserTest;
 import com.android.tradefed.command.CommandSchedulerTest;
 import com.android.tradefed.command.ConsoleTest;
+import com.android.tradefed.command.VerifyTest;
 import com.android.tradefed.command.remote.RemoteOperationTest;
 import com.android.tradefed.config.ArgsOptionParserTest;
 import com.android.tradefed.config.ConfigurationDefTest;
@@ -135,6 +136,7 @@ public class UnitTests extends DeviceTestSuite {
         addTestSuite(CommandFileParserTest.class);
         addTestSuite(CommandSchedulerTest.class);
         addTestSuite(ConsoleTest.class);
+        addTestSuite(VerifyTest.class);
 
         // command.remote
         addTestSuite(RemoteOperationTest.class);
