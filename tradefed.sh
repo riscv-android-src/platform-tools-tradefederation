@@ -36,17 +36,10 @@ checkPath java
 
 # check java version
 java_version_string=$(java -version 2>&1)
-JAVA_VERSION=$(echo "$java_version_string" | grep '[ "]1\.[67][\. "$$]')
+JAVA_VERSION=$(echo "$java_version_string" | grep '[ "]1\.7[\. "$$]')
 if [ "${JAVA_VERSION}" == "" ]; then
     echo "Wrong java version. 1.7 is required."
     exit
-else
-    # We have 1.6 or 1.7.  Now print a warning if the version was 1.6
-    java_version_16=$(echo "$java_version_string" | grep '[ "]1\.6[\. "$$]')
-    if [ "${java_version_16}" != "" ]; then
-        echo "DEPRECATION WARNING: Please update your java to version 1.7."
-        echo
-    fi
 fi
 
 # check debug flag and set up remote debugging
