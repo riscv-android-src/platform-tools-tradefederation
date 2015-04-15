@@ -793,4 +793,16 @@ public class FileUtil {
     public static void gzipFile(File file, File gzipFile) throws IOException {
         ZipUtil.gzipFile(file, gzipFile);
     }
+
+    /**
+     * Helper method to calculate md5 for a file.
+     *
+     * @param file
+     * @return md5 of the file
+     * @throws IOException
+     */
+    public static String calculateMd5(File file) throws IOException {
+        FileInputStream inputSource = new FileInputStream(file);
+        return StreamUtil.calculateMd5(inputSource);
+    }
 }

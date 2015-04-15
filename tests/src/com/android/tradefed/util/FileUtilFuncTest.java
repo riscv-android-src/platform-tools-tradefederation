@@ -293,6 +293,22 @@ public class FileUtilFuncTest extends TestCase {
         }
     }
 
+    /**
+     * Verify {@link FileUtil#calculateMd5(File)} works.
+     * @throws IOException
+     */
+    public void testCalculateMd5() throws IOException {
+        final String source = "testtesttesttesttest";
+        final String md5 = "f317f682fafe0309c6a423af0b4efa59";
+        File tmpFile = FileUtil.createTempFile("testCalculateMd5", ".txt");
+        try {
+            FileUtil.writeToFile(source, tmpFile);
+            String actualMd5 = FileUtil.calculateMd5(tmpFile);
+            assertEquals(md5, actualMd5);
+        } finally {
+            FileUtil.deleteFile(tmpFile);
+        }
+    }
 
     // Assertions
     private String assertUnixPerms(File file, String expPerms) {
