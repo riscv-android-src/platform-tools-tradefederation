@@ -61,20 +61,20 @@ public class CommandFileParserTest extends TestCase {
         assertParsedData(expectedArgs);
     }
 
-    @SuppressWarnings("unchecked")
-    private void assertParsedData(List<String>... expectedCommands) throws IOException,
+    @SafeVarargs
+    private final void assertParsedData(List<String>... expectedCommands) throws IOException,
             ConfigurationException {
         assertParsedData(mCommandFile, mMockFile, expectedCommands);
     }
 
-    @SuppressWarnings("unchecked")
-    private void assertParsedData(CommandFileParser parser, List<String>... expectedCommands)
+    @SafeVarargs
+    private final void assertParsedData(CommandFileParser parser, List<String>... expectedCommands)
             throws IOException, ConfigurationException {
         assertParsedData(parser, mMockFile, expectedCommands);
     }
 
-    @SuppressWarnings("unchecked")
-    private void assertParsedData(CommandFileParser parser, File file,
+    @SafeVarargs
+    private final void assertParsedData(CommandFileParser parser, File file,
             List<String>... expectedCommands) throws IOException, ConfigurationException {
         List<CommandLine> data = parser.parseFile(file);
         assertEquals(expectedCommands.length, data.size());

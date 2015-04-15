@@ -238,6 +238,7 @@ public class GlobalConfiguration implements IGlobalConfiguration {
      * {@inheritDoc}
      */
     @Override
+    @SuppressWarnings("unchecked")
     public List<IDeviceMonitor> getDeviceMonitors() {
         return (List<IDeviceMonitor>) getConfigurationObjectList(DEVICE_MONITOR_TYPE_NAME);
     }
@@ -278,6 +279,7 @@ public class GlobalConfiguration implements IGlobalConfiguration {
      * {@inheritDoc}
      */
     @Override
+    @SuppressWarnings("unchecked")
     public List<IMultiDeviceRecovery> getMultiDeviceRecoveryHandlers() {
         return (List<IMultiDeviceRecovery>)getConfigurationObjectList(
                 MULTI_DEVICE_RECOVERY_TYPE_NAME);

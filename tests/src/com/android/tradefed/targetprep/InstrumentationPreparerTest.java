@@ -60,8 +60,8 @@ public class InstrumentationPreparerTest extends TestCase {
             public void run(ITestInvocationListener listener) {
                 listener.testRunStarted(packageName, 1);
                 listener.testStarted(test);
-                listener.testEnded(test, Collections.EMPTY_MAP);
-                listener.testRunEnded(0, Collections.EMPTY_MAP);
+                listener.testEnded(test, Collections.<String, String>emptyMap());
+                listener.testRunEnded(0, Collections.<String, String>emptyMap());
             }
         };
         mInstrumentationPreparer = new InstrumentationPreparer() {
@@ -83,8 +83,8 @@ public class InstrumentationPreparerTest extends TestCase {
                 listener.testRunStarted(packageName, 1);
                 listener.testStarted(test);
                 listener.testFailed(test, null);
-                listener.testEnded(test, Collections.EMPTY_MAP);
-                listener.testRunEnded(0, Collections.EMPTY_MAP);
+                listener.testEnded(test, Collections.<String, String>emptyMap());
+                listener.testRunEnded(0, Collections.<String, String>emptyMap());
             }
         };
         mInstrumentationPreparer = new InstrumentationPreparer() {

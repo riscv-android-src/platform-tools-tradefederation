@@ -37,6 +37,7 @@ public class DeviceFileReporterTest extends TestCase {
     // Used to control what ISS is returned
     InputStreamSource mDfrIss = null;
 
+    @SuppressWarnings("serial")
     private static class FakeFile extends File {
         private final String mName;
         private final long mSize;

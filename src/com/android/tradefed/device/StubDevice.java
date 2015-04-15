@@ -136,6 +136,7 @@ public class StubDevice implements IDevice {
      * {@inheritDoc}
      */
     @Override
+    @Deprecated
     public Map<String, String> getProperties() {
         return null;
     }
@@ -152,6 +153,7 @@ public class StubDevice implements IDevice {
      * {@inheritDoc}
      */
     @Override
+    @Deprecated
     public int getPropertyCount() {
         return 0;
     }
@@ -350,6 +352,7 @@ public class StubDevice implements IDevice {
      * {@inheritDoc}
      */
     @Override
+    @Deprecated
     public String getPropertySync(String name) throws TimeoutException,
             AdbCommandRejectedException, ShellCommandUnresponsiveException, IOException {
         return null;
@@ -367,6 +370,7 @@ public class StubDevice implements IDevice {
      * {@inheritDoc}
      */
     @Override
+    @Deprecated
     public String getPropertyCacheOrSync(String name) throws TimeoutException,
             AdbCommandRejectedException, ShellCommandUnresponsiveException, IOException {
         return null;
@@ -376,6 +380,7 @@ public class StubDevice implements IDevice {
      * {@inheritDoc}
      */
     @Override
+    @Deprecated
     public Integer getBatteryLevel() throws TimeoutException, AdbCommandRejectedException,
             IOException, ShellCommandUnresponsiveException {
         return null;
@@ -385,6 +390,7 @@ public class StubDevice implements IDevice {
      * {@inheritDoc}
      */
     @Override
+    @Deprecated
     public Integer getBatteryLevel(long freshnessMs) throws TimeoutException,
             AdbCommandRejectedException, IOException, ShellCommandUnresponsiveException {
         return null;

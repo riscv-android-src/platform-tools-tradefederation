@@ -366,7 +366,7 @@ public class ConfigurationFactory implements IConfigurationFactory {
         if (arrayArgs.length == 0) {
             throw new ConfigurationException("Configuration to run was not specified");
         }
-        final List<String> listArgs = new ArrayList(Arrays.asList(arrayArgs));
+        final List<String> listArgs = new ArrayList<>(Arrays.asList(arrayArgs));
         // first arg is config name
         final String configName = listArgs.remove(0);
 

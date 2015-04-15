@@ -771,6 +771,7 @@ public class StubTestDevice implements IManagedTestDevice {
      * {@inheritDoc}
      */
     @Override
+    @Deprecated
     public String getPropertySync(String name) throws DeviceNotAvailableException {
         // ignore
         return null;
