@@ -701,9 +701,9 @@ public class DeviceManager implements IDeviceManager {
             }
             mAdbBridge.removeDeviceChangeListener(mManagedDeviceListener);
             mAdbBridge.terminate();
-            if (mFastbootMonitor != null) {
-                mFastbootMonitor.terminate();
-            }
+            // We are not terminating mFastbootMonitor here since it is a daemon thread.
+            // Early terminating it can cause other threads to be blocked if they check
+            // fastboot state of a device.
         }
     }
 
@@ -940,12 +940,16 @@ public class DeviceManager implements IDeviceManager {
         }
     }
 
+    /**
+     * A class to monitor and update fastboot state of devices.
+     */
     private class FastbootMonitor extends Thread {
 
         private boolean mQuit = false;
 
         FastbootMonitor() {
             super("FastbootMonitor");
+            setDaemon(true);
         }
 
         public void terminate() {
