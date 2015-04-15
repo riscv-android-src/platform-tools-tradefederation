@@ -23,11 +23,13 @@ import com.android.tradefed.config.Option.Importance;
 import com.android.tradefed.config.OptionClass;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
+import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.util.AbiFormatter;
 
 import java.io.File;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.List;
 
 /**
  * A {@link ITargetPreparer} that installs one or more apks located on the filesystem.
@@ -59,6 +61,10 @@ public class InstallApkSetup implements ITargetPreparer {
                     + "including leading dash, e.g. \"-d\"")
     private Collection<String> mInstallArgs = new ArrayList<>();
 
+    @Option(name = "post-install-cmd", description =
+            "optional post-install adb shell commands; can be repeated.")
+    private List<String> mPostInstallCmds = new ArrayList<>();
+
     /**
      * {@inheritDoc}
      */
@@ -82,6 +88,15 @@ public class InstallApkSetup implements ITargetPreparer {
             if (result != null) {
                 Log.e(LOG_TAG, String.format("Failed to install %s on device %s. Reason: %s",
                         apk.getAbsolutePath(), device.getSerialNumber(), result));
+            }
+        }
+
+        if (mPostInstallCmds != null && !mPostInstallCmds.isEmpty()){
+            for (String cmd : mPostInstallCmds) {
+                // If the command had any output, the executeShellCommand method will log it at the
+                // VERBOSE level; so no need to do any logging from here.
+                CLog.d("About to run setup command on device %s: %s", device.getSerialNumber(), cmd);
+                device.executeShellCommand(cmd);
             }
         }
     }
