@@ -938,16 +938,34 @@ public class TestDeviceTest extends TestCase {
 
     /**
      * Test that isRuntimePermissionSupported returns correct result for device reporting random
-     * dev build attributes
+     * mnc dev build attributes
      * @throws Exception
      */
-    public void testRuntimePermissionSupportedRandom2() throws Exception {
+    public void testRuntimePermissionSupportedMncLocal() throws Exception {
         SettableFuture<String> codeName = SettableFuture.create();
         codeName.set("MNC");
         EasyMock.expect(mMockIDevice.getSystemProperty(
                 TestDevice.BUILD_CODENAME_PROP)).andReturn(codeName);
         SettableFuture<String> buildNumber = SettableFuture.create();
-        buildNumber.set("A1B2C3"); // a random non-numerical build "number"
+        buildNumber.set("eng.foo.20150414.190304"); // a typical local eng build "number"
+        EasyMock.expect(mMockIDevice.getSystemProperty(
+                TestDevice.BUILD_ID_PROP)).andReturn(buildNumber);
+        replayMocks();
+        assertTrue(mTestDevice.isRuntimePermissionSupported());
+    }
+
+    /**
+     * Test that isRuntimePermissionSupported returns correct result for device reporting random
+     * dev build attributes
+     * @throws Exception
+     */
+    public void testRuntimePermissionSupportedNonMncLocal() throws Exception {
+        SettableFuture<String> codeName = SettableFuture.create();
+        codeName.set("LMP");
+        EasyMock.expect(mMockIDevice.getSystemProperty(
+                TestDevice.BUILD_CODENAME_PROP)).andReturn(codeName);
+        SettableFuture<String> buildNumber = SettableFuture.create();
+        buildNumber.set("eng.bar.20150414.190304"); // a typical local eng build "number"
         EasyMock.expect(mMockIDevice.getSystemProperty(
                 TestDevice.BUILD_ID_PROP)).andReturn(buildNumber);
         replayMocks();

@@ -699,8 +699,9 @@ class TestDevice implements IManagedTestDevice {
             // for platform commit 429270c3ed1da02914efb476be977dc3829d4c30
             return buildNumber >= 1837705;
         } catch (NumberFormatException nfe) {
-            // build id field is not a number, assume runtime permission not supported
-            return false;
+            // build id field is not a number, probably an eng build since we've already checked
+            // for MNC code name, assuming supported
+            return true;
         }
     }
 
