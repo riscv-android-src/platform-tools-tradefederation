@@ -62,6 +62,10 @@ public class PushFilePreparer implements ITargetCleaner {
             + "been deleted.")
     private boolean mCleanup = false;
 
+    @Option(name="remount-system", description="Remounts system partition to be writable "
+            + "so that files could be pushed there too")
+    private boolean mRemount = false;
+
     private Collection<String> mFilesPushed = new ArrayList<>();
 
     /**
@@ -114,6 +118,9 @@ public class PushFilePreparer implements ITargetCleaner {
     @Override
     public void setUp(ITestDevice device, IBuildInfo buildInfo) throws TargetSetupError, BuildError,
             DeviceNotAvailableException {
+        if (mRemount) {
+            device.remountSystemWritable();
+        }
         for (String pushspec : mPushSpecs) {
             String[] pair = pushspec.split("->");
             if (pair.length != 2) {
@@ -168,7 +175,10 @@ public class PushFilePreparer implements ITargetCleaner {
     @Override
     public void tearDown(ITestDevice device, IBuildInfo buildInfo, Throwable e)
             throws DeviceNotAvailableException {
-        if (!(e instanceof DeviceNotAvailableException)) {
+        if (!(e instanceof DeviceNotAvailableException) && mCleanup) {
+            if (mRemount) {
+                device.remountSystemWritable();
+            }
             for (String devicePath : mFilesPushed) {
                 device.executeShellCommand("rm -r " + devicePath);
             }

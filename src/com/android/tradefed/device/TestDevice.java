@@ -3249,4 +3249,18 @@ class TestDevice implements IManagedTestDevice {
         // No error or status code is returned.
         executeShellCommand(String.format("am stop-user %s", userId));
     }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void remountSystemWritable() throws DeviceNotAvailableException {
+        String systemVerifiedState = getProperty("partition.system.verified");
+        if ("1".equals(systemVerifiedState)) {
+            executeAdbCommand("disable-verity");
+            reboot();
+        }
+        executeAdbCommand("remount");
+        waitForDeviceAvailable();
+    }
 }

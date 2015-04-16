@@ -1242,4 +1242,10 @@ public interface ITestDevice {
      * @throws DeviceNotAvailableException
      */
     public void stopUser(int userId) throws DeviceNotAvailableException;
+
+    /**
+     * Make the system partition on the device writable. May reboot the device.
+     * @throws DeviceNotAvailableException
+     */
+    public void remountSystemWritable() throws DeviceNotAvailableException;
 }

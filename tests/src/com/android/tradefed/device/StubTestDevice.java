@@ -963,4 +963,12 @@ public class StubTestDevice implements IManagedTestDevice {
             throws DeviceNotAvailableException {
         return null;
     }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void remountSystemWritable() {
+        // no-op
+    }
 }
