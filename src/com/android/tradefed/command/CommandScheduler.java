@@ -904,7 +904,7 @@ public class CommandScheduler extends Thread implements ICommandScheduler, IComm
             String commandFilePath) {
         mCurrentCommandId++;
         CLog.d("Creating command tracker id %d for command args: '%s'", mCurrentCommandId,
-                ArrayUtil.join(" ", args));
+                ArrayUtil.join(" ", (Object[])args));
         return new CommandTracker(mCurrentCommandId, args, commandFilePath);
     }
 

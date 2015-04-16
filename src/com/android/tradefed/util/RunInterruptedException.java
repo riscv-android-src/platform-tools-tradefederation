@@ -19,6 +19,7 @@ package com.android.tradefed.util;
 /**
  * Thrown when a run operation is interrupted by an external request.
  */
+@SuppressWarnings("serial")
 public class RunInterruptedException extends RuntimeException {
     /**
      * Creates a {@link RunInterruptedException}.

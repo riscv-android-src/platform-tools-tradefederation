@@ -51,6 +51,7 @@ class ConfigurationXmlParser {
          * A simple class to encapsulate a failure to resolve a &lt;template-include&gt;.  This
          * allows the error to be easily detected programmatically.
          */
+        @SuppressWarnings("serial")
         private class TemplateResolutionError extends ConfigurationException {
             TemplateResolutionError(String templateName) {
                 super(String.format(
