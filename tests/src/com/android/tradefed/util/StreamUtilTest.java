@@ -21,6 +21,7 @@ import com.android.tradefed.result.InputStreamSource;
 import junit.framework.TestCase;
 
 import java.io.ByteArrayInputStream;
+import java.io.IOException;
 import java.io.InputStream;
 
 /**
@@ -81,6 +82,18 @@ public class StreamUtilTest extends TestCase {
         final String output = StreamUtil.getStringFromStream(
                 new ByteArrayInputStream(contents.getBytes()));
         assertEquals(contents, output);
+    }
+
+    /**
+     * Verify that {@link StreamUtil#calculateMd5(InputStream)} works as expected.
+     * @throws IOException
+     */
+    public void testCalculateMd5() throws IOException {
+        final String source = "testtesttesttesttest";
+        final String md5 = "f317f682fafe0309c6a423af0b4efa59";
+        ByteArrayInputStream inputSource = new ByteArrayInputStream(source.getBytes());
+        String actualMd5 = StreamUtil.calculateMd5(inputSource);
+        assertEquals(md5, actualMd5);
     }
 }
 

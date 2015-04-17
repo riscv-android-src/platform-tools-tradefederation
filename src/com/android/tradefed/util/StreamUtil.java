@@ -28,8 +28,13 @@ import java.io.OutputStream;
 import java.io.PrintStream;
 import java.io.Reader;
 import java.io.Writer;
+import java.security.DigestInputStream;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.util.zip.GZIPOutputStream;
 import java.util.zip.ZipOutputStream;
+
+import javax.xml.bind.DatatypeConverter;
 
 /**
  * Utility class for managing input streams.
@@ -265,6 +270,31 @@ public class StreamUtil {
             /** Discards the specified byte array. */
             @Override public void write(byte[] b, int off, int len) {
             }
-          };
+        };
+    }
+
+    /**
+     * Helper method to calculate md5 for a inputStream. The inputStream will be consumed and
+     * closed.
+     *
+     * @param inputSource used to create inputStream
+     * @return md5 of the stream
+     * @throws IOException
+     */
+    static String calculateMd5(InputStream inputSource) throws IOException {
+        MessageDigest md = null;
+        try {
+            md = MessageDigest.getInstance("md5");
+        } catch (NoSuchAlgorithmException e) {
+            // This should not happen
+            throw new RuntimeException(e);
+        }
+        InputStream input = new BufferedInputStream(new DigestInputStream(inputSource, md));
+        while (input.read() >= 0) {
+            // Read through the stream to update digest.
+        }
+        input.close();
+        String md5 = DatatypeConverter.printHexBinary(md.digest()).toLowerCase();
+        return md5;
     }
 }
