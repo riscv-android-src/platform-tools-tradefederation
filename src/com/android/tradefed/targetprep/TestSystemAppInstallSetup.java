@@ -73,9 +73,8 @@ public class TestSystemAppInstallSetup implements ITargetPreparer {
             throw new TargetSetupError(
                     "Provided buildInfo does not contain a valid tests directory");
         }
-        device.enableAdbRoot();
+        device.remountSystemWritable();
         device.setRecoveryMode(RecoveryMode.ONLINE);
-        device.executeAdbCommand("remount");
         device.executeShellCommand("stop");
 
         for (String testAppName : mTestFileNames) {

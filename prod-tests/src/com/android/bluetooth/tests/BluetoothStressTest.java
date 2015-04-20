@@ -597,7 +597,7 @@ public class BluetoothStressTest implements IDeviceTest, IRemoteTest {
                     newConf.append(line).append("\n");
                 }
             }
-            mTestDevice.executeAdbCommand("remount");
+            mTestDevice.remountSystemWritable();
             return mTestDevice.pushString(newConf.toString(), BTSNOOP_CONF_FILE);
         } catch (IOException e) {
             return false;

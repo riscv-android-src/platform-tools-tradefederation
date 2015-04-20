@@ -36,23 +36,13 @@ public class RemoveSystemAppPreparer implements ITargetPreparer {
     private List<String> mFiles= new ArrayList<String>();
 
     /**
-     * @param device The device to remount
-     * @throws DeviceNotAvailableException
-     */
-    private void remount(ITestDevice device) throws DeviceNotAvailableException {
-        device.enableAdbRoot();
-        device.executeAdbCommand("remount");
-        device.waitForDeviceAvailable();
-    }
-
-    /**
      * {@inheritDoc}
      */
     @Override
     public void setUp(ITestDevice device, IBuildInfo buildInfo) throws TargetSetupError,
             DeviceNotAvailableException {
 
-        remount(device);
+        device.remountSystemWritable();
         for (String file : mFiles) {
             CLog.d("Removing system app %s from /system/app", file);
             device.executeShellCommand(String.format("rm /system/app/%s", file));

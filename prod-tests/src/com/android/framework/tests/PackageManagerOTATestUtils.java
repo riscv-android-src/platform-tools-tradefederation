@@ -80,8 +80,7 @@ public class PackageManagerOTATestUtils {
      */
     public void removeSystemApp(String systemApp, boolean reboot)
             throws DeviceNotAvailableException {
-        remountSystemRW();
-        mDevice.waitForDeviceAvailable();
+        mDevice.remountSystemWritable();
         String cmd = String.format("rm %s", systemApp);
         mDevice.executeShellCommand(cmd);
         if (reboot) {
@@ -249,20 +248,6 @@ public class PackageManagerOTATestUtils {
     }
 
     /**
-     * Helper method to remount system partition.
-     *
-     * @throws DeviceNotAvailableException
-     */
-    public void remountSystemRW() throws DeviceNotAvailableException {
-        String systemVerifiedState = mDevice.getProperty("partition.system.verified");
-        if (systemVerifiedState != null && systemVerifiedState.equals("1")) {
-            mDevice.executeAdbCommand("disable-verity");
-            mDevice.reboot();
-        }
-        mDevice.executeAdbCommand("remount");
-    }
-
-    /**
      * Helper method to stop system shell.
      *
      * @throws DeviceNotAvailableException
@@ -303,7 +288,7 @@ public class PackageManagerOTATestUtils {
      */
     public void pushSystemApp(final File localFile, final String deviceFilePath)
             throws DeviceNotAvailableException {
-        remountSystemRW();
+        mDevice.remountSystemWritable();
         stopSystem();
         mDevice.pushFile(localFile, deviceFilePath);
         startSystem();
