@@ -17,6 +17,7 @@
 package com.android.tradefed.config;
 
 import com.android.tradefed.util.FileUtil;
+import com.android.tradefed.util.MultiMap;
 import com.android.tradefed.util.TimeVal;
 
 import junit.framework.TestCase;
@@ -110,6 +111,9 @@ public class OptionSetterTest extends TestCase {
 
         @Option(name = "string_string_map")
         private Map<String, String> mStringMap = new HashMap<String, String>();
+
+        @Option(name = "string_string_multimap")
+        private MultiMap<String, String> mStringMultiMap = new MultiMap<String, String>();
 
         @Option(name = "string")
         private String mString = null;
@@ -518,6 +522,29 @@ public class OptionSetterTest extends TestCase {
         assertEquals(1, optionSource.mStringMap.size());
         assertNotNull(optionSource.mStringMap.get(expectedKey));
         assertEquals(expectedValue, optionSource.mStringMap.get(expectedKey));
+    }
+
+    /**
+     * Test {@link OptionSetter#setOptionValue(String, String)} for a MultiMap.
+     */
+    public void testSetOptionValue_multimap() throws ConfigurationException, IOException {
+        AllTypesOptionSource optionSource = new AllTypesOptionSource();
+        final String expectedKey = "stringkey";
+        final String expectedValue1 = "stringvalue1";
+        final String expectedValue2 = "stringvalue2";
+
+        // Actually set the key/value pair
+        OptionSetter parser = new OptionSetter(optionSource);
+        parser.setOptionMapValue("string_string_multimap", expectedKey, expectedValue1);
+        parser.setOptionMapValue("string_string_multimap", expectedKey, expectedValue2);
+
+        assertEquals(1, optionSource.mStringMultiMap.size());
+        assertNotNull(optionSource.mStringMultiMap.get(expectedKey));
+
+        Collection<String> values = optionSource.mStringMultiMap.get(expectedKey);
+        assertEquals(2, values.size());
+        assertTrue(values.contains(expectedValue1));
+        assertTrue(values.contains(expectedValue2));
     }
 
     /**

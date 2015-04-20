@@ -18,6 +18,7 @@ package com.android.tradefed.config;
 
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.util.ArrayUtil;
+import com.android.tradefed.util.MultiMap;
 import com.android.tradefed.util.TimeVal;
 import com.google.common.base.Objects;
 
@@ -98,7 +99,8 @@ public class OptionSetter {
                             "cannot handle nested parameterized type " + type);
                 }
                 return getHandler(actualType);
-            } else if (Map.class.isAssignableFrom(rawClass)) {
+            } else if (Map.class.isAssignableFrom(rawClass) ||
+                    MultiMap.class.isAssignableFrom(rawClass)) {
                 // handle Map
                 Type keyType = parameterizedType.getActualTypeArguments()[0];
                 Type valueType = parameterizedType.getActualTypeArguments()[1];
@@ -113,8 +115,8 @@ public class OptionSetter {
                 return new MapHandler(getHandler(keyType), getHandler(valueType));
             } else {
                 throw new ConfigurationException(String.format(
-                        "can't handle parameterized type %s; only Collection and Map are supported",
-                        type));
+                        "can't handle parameterized type %s; only Collection, Map, and MultiMap "
+                        + "are supported", type));
             }
         }
         if (type instanceof Class) {
@@ -136,6 +138,13 @@ public class OptionSetter {
                 throw new ConfigurationException(String.format(
                         "Cannot handle non-parameterized map %s.  Use a generic Map to specify "
                         + "desired element types.", type));
+            } else if (MultiMap.class.isAssignableFrom(cType)) {
+                // could handle by just having a default of treating
+                // contents as String but consciously decided this
+                // should be an error
+                throw new ConfigurationException(String.format(
+                        "Cannot handle non-parameterized multimap %s.  Use a generic MultiMap to "
+                        + "specify desired element types.", type));
             }
             return handlers.get(cType);
         }
@@ -349,6 +358,22 @@ public class OptionSetter {
                             "for option '%s') in class '%s'",
                             field.getName(), optionName, optionSource.getClass().getName()));
                 }
+            } else if (MultiMap.class.isAssignableFrom(field.getType())) {
+                MultiMap multimap = (MultiMap)field.get(optionSource);
+                if (multimap == null) {
+                    throw new ConfigurationException(String.format(
+                            "internal error: no storage allocated for field '%s' (used for " +
+                            "option '%s') in class '%s'",
+                            field.getName(), optionName, optionSource.getClass().getName()));
+                }
+                if (value instanceof MultiMap) {
+                    multimap.putAll((MultiMap)value);
+                } else {
+                    throw new ConfigurationException(String.format(
+                            "internal error: value provided for field '%s' is not a multimap " +
+                            "(used for option '%s') in class '%s'",
+                            field.getName(), optionName, optionSource.getClass().getName()));
+                }
             } else {
                 final Option option = field.getAnnotation(Option.class);
                 if (option == null) {
@@ -424,18 +449,28 @@ public class OptionSetter {
             }
             try {
                 field.setAccessible(true);
-                if (!Map.class.isAssignableFrom(field.getType())) {
+                if (Map.class.isAssignableFrom(field.getType())) {
+                    Map map = (Map)field.get(optionSource);
+                    if (map == null) {
+                        throw new ConfigurationException(String.format(
+                                "internal error: no storage allocated for field '%s' (used for " +
+                                "option '%s') in class '%s'",
+                                field.getName(), optionName, optionSource.getClass().getName()));
+                    }
+                    map.put(pair.mKey, pair.mValue);
+                } else if (MultiMap.class.isAssignableFrom(field.getType())) {
+                    MultiMap multimap = (MultiMap)field.get(optionSource);
+                    if (multimap == null) {
+                        throw new ConfigurationException(String.format(
+                                "internal error: no storage allocated for field '%s' (used for " +
+                                "option '%s') in class '%s'",
+                                field.getName(), optionName, optionSource.getClass().getName()));
+                    }
+                    multimap.put(pair.mKey, pair.mValue);
+                } else {
                     throw new ConfigurationException(String.format(
                             "internal error: not a map field!"));
                 }
-                Map map = (Map)field.get(optionSource);
-                if (map == null) {
-                    throw new ConfigurationException(String.format(
-                            "internal error: no storage allocated for field '%s' (used for " +
-                            "option '%s') in class '%s'",
-                            field.getName(), optionName, optionSource.getClass().getName()));
-                }
-                map.put(pair.mKey, pair.mValue);
             } catch (IllegalAccessException e) {
                 throw new ConfigurationException(String.format(
                         "internal error when setting option '%s'", optionName), e);
@@ -599,6 +634,11 @@ public class OptionSetter {
                     if (m.isEmpty()) {
                         unsetOptions.add(realOptName);
                     }
+                } else if (value instanceof MultiMap) {
+                    MultiMap m = (MultiMap) value;
+                    if (m.isEmpty()) {
+                        unsetOptions.add(realOptName);
+                    }
                 }
             }
         }
@@ -658,6 +698,11 @@ public class OptionSetter {
         } else if (fieldValue instanceof Map) {
             Map map = (Map)fieldValue;
             if (map.isEmpty()) {
+                return null;
+            }
+        } else if (fieldValue instanceof MultiMap) {
+            MultiMap multimap = (MultiMap)fieldValue;
+            if (multimap.isEmpty()) {
                 return null;
             }
         }
