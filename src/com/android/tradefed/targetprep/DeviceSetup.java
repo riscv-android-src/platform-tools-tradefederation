@@ -36,7 +36,9 @@ import java.util.regex.Pattern;
  * Requires a device where 'adb root' is possible, typically a userdebug build type.
  * <p/>
  * Should be performed *after* a new build is flashed.
+ * @deprecated Use {@link DeviceSetup2}
  */
+@Deprecated
 @OptionClass(alias = "device-setup")
 public class DeviceSetup implements ITargetPreparer, ITargetCleaner {
 
