@@ -1285,7 +1285,7 @@ class TestDevice implements IManagedTestDevice {
         deviceFilePath = String.format("%s/%s", interpolatePathVariables(deviceFilePath),
                 localFileDir.getName());
         if (!doesFileExist(deviceFilePath)) {
-            executeShellCommand(String.format("mkdir %s", deviceFilePath));
+            executeShellCommand(String.format("mkdir -p %s", deviceFilePath));
         }
         IFileEntry remoteFileEntry = getFileEntry(deviceFilePath);
         if (remoteFileEntry == null) {
