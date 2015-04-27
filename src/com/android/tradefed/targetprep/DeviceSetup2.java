@@ -181,17 +181,17 @@ public class DeviceSetup2 implements ITargetPreparer, ITargetCleaner{
     // OFF: settings put system accelerometer_rotation 0
 
     // Power
-    @Option(name = "low-power-mode",
-            description = "Turn low power mode manually on or off. If OFF but battery is less " +
-            "low-power-trigger, the device will still go into low power mode")
-    protected BinaryState mLowPower = BinaryState.DEFAULT;
+    @Option(name = "battery-saver-mode",
+            description = "Turn battery saver mode manually on or off. If OFF but battery is " +
+            "less battery-saver-trigger, the device will still go into battery saver mode")
+    protected BinaryState mBatterySaver = BinaryState.DEFAULT;
     // ON:  settings put global low_power 1
     // OFF: settings put global low_power 0
 
-    @Option(name = "low-power-trigger",
-            description = "Set the low power trigger level. Should be [1-99] to enable, or 0 to " +
-            "disable automatic low power mode")
-    protected Integer mLowPowerTrigger = null;
+    @Option(name = "battery-saver-trigger",
+            description = "Set the battery saver trigger level. Should be [1-99] to enable, or " +
+            "0 to disable automatic battery saver mode")
+    protected Integer mBatterySaverTrigger = null;
     // settings put global low_power_trigger_level $N
 
     // Time
@@ -285,9 +285,11 @@ public class DeviceSetup2 implements ITargetPreparer, ITargetCleaner{
             description = "Change a global setting. May be repeated.")
     protected MultiMap<String, String> mGlobalSettings = new MultiMap<>();
 
+    protected List<String> mRunCommandBeforeSettings = new ArrayList<>();
+
     @Option(name = "run-command",
             description = "Run an adb shell command. May be repeated")
-    protected List<String> mRunCommands = new ArrayList<>();
+    protected List<String> mRunCommandAfterSettings = new ArrayList<>();
 
     @Option(name = "disconnect-wifi-after-test",
             description = "Disconnect from wifi network after test completes.")
@@ -329,9 +331,10 @@ public class DeviceSetup2 implements ITargetPreparer, ITargetCleaner{
 
         processOptions(device);
         changeSystemProps(device);
+        runCommands(device, mRunCommandBeforeSettings);
         changeSettings(device);
-        runCommands(device);
         syncTestData(device);
+        runCommands(device, mRunCommandAfterSettings);
         checkExternalStoreSpace(device);
 
         device.clearErrorDialogs();
@@ -380,21 +383,23 @@ public class DeviceSetup2 implements ITargetPreparer, ITargetCleaner{
     protected void processOptions(ITestDevice device) throws DeviceNotAvailableException,
             TargetSetupError {
         setSettingForBinaryState(mAirplaneMode, mGlobalSettings, "airplane_mode_on", "1", "0");
-        setCommandForBinaryState(mAirplaneMode,
+        setCommandForBinaryState(mAirplaneMode, mRunCommandAfterSettings,
                 "am broadcast -a android.intent.action.AIRPLANE_MODE --ez state true",
                 "am broadcast -a android.intent.action.AIRPLANE_MODE --ez state false");
 
         setSettingForBinaryState(mWifi, mGlobalSettings, "wifi_on", "1", "0");
-        setCommandForBinaryState(mWifi, "svc wifi enable", "svc wifi disable");
+        setCommandForBinaryState(mWifi, mRunCommandAfterSettings,
+                "svc wifi enable", "svc wifi disable");
 
         setSettingForBinaryState(mWifiWatchdog, mGlobalSettings, "wifi_watchdog", "1", "0");
 
         setSettingForBinaryState(mWifiScanAlwaysEnabled, mGlobalSettings,
                 "wifi_scan_always_enabled", "1", "0");
 
-        setCommandForBinaryState(mEthernet, "ifconfig eth0 up", "ifconfig eth0 down");
+        setCommandForBinaryState(mEthernet, mRunCommandAfterSettings,
+                "ifconfig eth0 up", "ifconfig eth0 down");
 
-        setCommandForBinaryState(mBluetooth,
+        setCommandForBinaryState(mBluetooth, mRunCommandAfterSettings,
                 "service call bluetooth_manager 6", "service call bluetooth_manager 8");
 
         if (mScreenBrightness != null && BinaryState.ON.equals(mScreenAdaptiveBrightness)) {
@@ -415,7 +420,7 @@ public class DeviceSetup2 implements ITargetPreparer, ITargetCleaner{
                     "screen-always-on is set to ON");
         }
 
-        setCommandForBinaryState(mScreenAlwaysOn,
+        setCommandForBinaryState(mScreenAlwaysOn, mRunCommandAfterSettings,
                 "svc power stayon true", "svc power stayon false");
 
         if (mScreenTimeoutSecs != null) {
@@ -432,7 +437,7 @@ public class DeviceSetup2 implements ITargetPreparer, ITargetCleaner{
                 "notification_light_pulse", "1", "0");
 
         if (mTriggerMediaMounted) {
-            mRunCommands.add("am broadcast -a android.intent.action.MEDIA_MOUNTED -d " +
+            mRunCommandAfterSettings.add("am broadcast -a android.intent.action.MEDIA_MOUNTED -d " +
                     "file://${EXTERNAL_STORAGE}");
         }
 
@@ -444,10 +449,12 @@ public class DeviceSetup2 implements ITargetPreparer, ITargetCleaner{
 
         setSettingForBinaryState(mAutoRotate, mSystemSettings, "accelerometer_rotation", "1", "0");
 
-        setSettingForBinaryState(mLowPower, mGlobalSettings, "low_power", "1", "0");
+        setCommandForBinaryState(mBatterySaver, mRunCommandBeforeSettings,
+                "dumpsys battery set usb 0", null);
+        setSettingForBinaryState(mBatterySaver, mGlobalSettings, "low_power", "1", "0");
 
-        if (mLowPowerTrigger != null) {
-            mGlobalSettings.put("low_power_trigger_level", Integer.toString(mLowPowerTrigger));
+        if (mBatterySaverTrigger != null) {
+            mGlobalSettings.put("low_power_trigger_level", Integer.toString(mBatterySaverTrigger));
         }
 
         setSettingForBinaryState(mAutoUpdateTime, mSystemSettings, "auto_time", "1", "0");
@@ -574,11 +581,12 @@ public class DeviceSetup2 implements ITargetPreparer, ITargetCleaner{
      * Execute additional commands on the device.
      *
      * @param device The {@link ITestDevice}
+     * @param commands The list of commands to run
      * @throws DeviceNotAvailableException if the device is not available
      * @throws TargetSetupError if there was a failure setting the settings
      */
-    private void runCommands(ITestDevice device) throws DeviceNotAvailableException,
-            TargetSetupError {
+    private void runCommands(ITestDevice device, List<String> commands)
+            throws DeviceNotAvailableException, TargetSetupError {
         if (mForceSkipRunCommands) {
             return;
         }
@@ -591,7 +599,7 @@ public class DeviceSetup2 implements ITargetPreparer, ITargetCleaner{
             }
         }
 
-        for (String command : mRunCommands) {
+        for (String command : commands) {
             device.executeShellCommand(command);
         }
     }
@@ -678,20 +686,21 @@ public class DeviceSetup2 implements ITargetPreparer, ITargetCleaner{
      * Helper method to add an ON/OFF run command to be executed on the device.
      *
      * @param state The {@link BinaryState}
+     * @param commands The list of commands to add the on or off command to.
      * @param onCommand The command to run if ON. Ignored if the command is {@code null}
      * @param offCommand The command to run if OFF. Ignored if the command is {@code null}
      */
-    protected void setCommandForBinaryState(BinaryState state, String onCommand,
-            String offCommand) {
+    protected void setCommandForBinaryState(BinaryState state, List<String> commands,
+            String onCommand, String offCommand) {
         switch (state) {
             case ON:
                 if (onCommand != null) {
-                    mRunCommands.add(onCommand);
+                    commands.add(onCommand);
                 }
                 break;
             case OFF:
                 if (offCommand != null) {
-                    mRunCommands.add(offCommand);
+                    commands.add(offCommand);
                 }
                 break;
             case DEFAULT:
