@@ -37,6 +37,7 @@ import junit.framework.TestCase;
 
 import org.easymock.EasyMock;
 import org.easymock.IAnswer;
+import org.easymock.IExpectationSetters;
 
 import java.io.File;
 import java.io.IOException;
@@ -45,6 +46,7 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 import java.util.Set;
+import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 
 /**
@@ -52,6 +54,7 @@ import java.util.concurrent.TimeUnit;
  */
 public class TestDeviceTest extends TestCase {
 
+    private static final String MOCK_DEVICE_SERIAL = "serial";
     private IDevice mMockIDevice;
     private IShellOutputReceiver mMockReceiver;
     private TestDevice mTestDevice;
@@ -93,7 +96,7 @@ public class TestDeviceTest extends TestCase {
     protected void setUp() throws Exception {
         super.setUp();
         mMockIDevice = EasyMock.createMock(IDevice.class);
-        EasyMock.expect(mMockIDevice.getSerialNumber()).andReturn("serial").anyTimes();
+        EasyMock.expect(mMockIDevice.getSerialNumber()).andReturn(MOCK_DEVICE_SERIAL).anyTimes();
         mMockReceiver = EasyMock.createMock(IShellOutputReceiver.class);
         mMockRecovery = EasyMock.createMock(IDeviceRecovery.class);
         mMockStateMonitor = EasyMock.createMock(IDeviceStateMonitor.class);
@@ -158,14 +161,24 @@ public class TestDeviceTest extends TestCase {
         CommandResult adbResult = new CommandResult();
         adbResult.setStatus(CommandStatus.SUCCESS);
         adbResult.setStdout("restarting adbd as root");
-        EasyMock.expect(
-                mMockRunUtil.runTimedCmd(EasyMock.anyLong(), EasyMock.eq("adb"),
-                        EasyMock.eq("-s"), EasyMock.eq("serial"), EasyMock.eq("root"))).andReturn(
-                adbResult);
+        setExecuteAdbCommandExpectations(adbResult, "root");
         EasyMock.expect(mMockStateMonitor.waitForDeviceNotAvailable(EasyMock.anyLong())).andReturn(
                 Boolean.TRUE);
         EasyMock.expect(mMockStateMonitor.waitForDeviceOnline()).andReturn(
                 mMockIDevice);
+    }
+
+    /**
+     * COnfigure EasMock expectations for a successful adb command call
+     * @param command the adb command to execute
+     * @param result the {@link CommandResult} expected from the adb command execution
+     * @throws Exception
+     */
+    private void setExecuteAdbCommandExpectations(CommandResult result, String command)
+            throws Exception {
+        EasyMock.expect(mMockRunUtil.runTimedCmd(EasyMock.anyLong(),
+                EasyMock.eq("adb"), EasyMock.eq("-s"), EasyMock.eq(MOCK_DEVICE_SERIAL),
+                EasyMock.eq(command))).andReturn(result);
     }
 
     /**
@@ -177,16 +190,10 @@ public class TestDeviceTest extends TestCase {
         injectShellResponse("id", "uid=0(root) gid=0(root)");
         CommandResult adbBadResult = new CommandResult(CommandStatus.SUCCESS);
         adbBadResult.setStdout("");
-        EasyMock.expect(
-                mMockRunUtil.runTimedCmd(EasyMock.anyLong(), EasyMock.eq("adb"),
-                        EasyMock.eq("-s"), EasyMock.eq("serial"), EasyMock.eq("root"))).andReturn(
-                adbBadResult);
+        setExecuteAdbCommandExpectations(adbBadResult, "root");
         CommandResult adbResult = new CommandResult(CommandStatus.SUCCESS);
         adbResult.setStdout("restarting adbd as root");
-        EasyMock.expect(
-                mMockRunUtil.runTimedCmd(EasyMock.anyLong(), EasyMock.eq("adb"),
-                        EasyMock.eq("-s"), EasyMock.eq("serial"), EasyMock.eq("root"))).andReturn(
-                adbResult);
+        setExecuteAdbCommandExpectations(adbResult, "root");
         EasyMock.expect(mMockStateMonitor.waitForDeviceNotAvailable(EasyMock.anyLong())).andReturn(
                 Boolean.TRUE).times(2);
         EasyMock.expect(mMockStateMonitor.waitForDeviceOnline()).andReturn(
@@ -290,9 +297,7 @@ public class TestDeviceTest extends TestCase {
     public void testGetProductType_adb() throws Exception {
         EasyMock.expect(mMockIDevice.getProperty("ro.hardware")).andReturn(null);
         final String expectedOutput = "nexusone";
-        SettableFuture<String> f = SettableFuture.create();
-        f.set(expectedOutput);
-        EasyMock.expect(mMockIDevice.getSystemProperty("ro.hardware")).andReturn(f);
+        injectSystemProperty("ro.hardware", expectedOutput);
         EasyMock.replay(mMockIDevice);
         assertEquals(expectedOutput, mTestDevice.getProductType());
     }
@@ -303,11 +308,7 @@ public class TestDeviceTest extends TestCase {
      */
     public void testGetProductType_adbFail() throws Exception {
         EasyMock.expect(mMockIDevice.getProperty(EasyMock.<String>anyObject())).andStubReturn(null);
-        SettableFuture<String> f = SettableFuture.create();
-        f.set(null);
-        EasyMock.expect(mMockIDevice.getSystemProperty("ro.hardware"))
-                .andReturn(f)
-                .times(3);
+        injectSystemProperty("ro.hardware", null).times(3);
         EasyMock.replay(mMockIDevice);
         try {
             mTestDevice.getProductType();
@@ -718,7 +719,7 @@ public class TestDeviceTest extends TestCase {
             }
         };
         EasyMock.expect(mMockRunUtil.runTimedCmd(EasyMock.anyLong(), EasyMock.eq("fastboot"),
-                EasyMock.eq("-s"),EasyMock.eq("serial"), EasyMock.eq("foo"))).andAnswer(
+                EasyMock.eq("-s"),EasyMock.eq(MOCK_DEVICE_SERIAL), EasyMock.eq("foo"))).andAnswer(
                         blockResult);
 
         // expect
@@ -764,15 +765,16 @@ public class TestDeviceTest extends TestCase {
     public void testExecuteFastbootCommand_recovery() throws UnsupportedOperationException,
            DeviceNotAvailableException {
         CommandResult result = new CommandResult(CommandStatus.EXCEPTION);
-        EasyMock.expect(mMockRunUtil.runTimedCmd(EasyMock.anyLong(), EasyMock.eq("fastboot"),
-                EasyMock.eq("-s"),EasyMock.eq("serial"), EasyMock.eq("foo"))).andReturn(result);
+        EasyMock.expect(mMockRunUtil.runTimedCmd(
+                EasyMock.anyLong(), EasyMock.eq("fastboot"), EasyMock.eq("-s"),
+                EasyMock.eq(MOCK_DEVICE_SERIAL), EasyMock.eq("foo"))).andReturn(result);
         mMockRecovery.recoverDeviceBootloader((IDeviceStateMonitor)EasyMock.anyObject());
         CommandResult successResult = new CommandResult(CommandStatus.SUCCESS);
         successResult.setStderr("");
         successResult.setStdout("");
         // now expect a successful retry
         EasyMock.expect(mMockRunUtil.runTimedCmd(EasyMock.anyLong(), EasyMock.eq("fastboot"),
-                EasyMock.eq("-s"),EasyMock.eq("serial"), EasyMock.eq("foo"))).andReturn(
+                EasyMock.eq("-s"),EasyMock.eq(MOCK_DEVICE_SERIAL), EasyMock.eq("foo"))).andReturn(
                         successResult);
         replayMocks();
         mTestDevice.executeFastbootCommand("foo");
@@ -827,9 +829,7 @@ public class TestDeviceTest extends TestCase {
      * Simple test for {@link TestDevice#switchToAdbUsb()}
      */
     public void testSwitchToAdbUsb() throws Exception  {
-        EasyMock.expect(mMockRunUtil.runTimedCmd(EasyMock.anyLong(), EasyMock.eq("adb"),
-                EasyMock.eq("-s"), EasyMock.eq("serial"), EasyMock.eq("usb"))).andReturn(
-                        new CommandResult(CommandStatus.SUCCESS));
+        setExecuteAdbCommandExpectations(new CommandResult(CommandStatus.SUCCESS), "usb");
         replayMocks();
         mTestDevice.switchToAdbUsb();
         verifyMocks();
@@ -888,14 +888,8 @@ public class TestDeviceTest extends TestCase {
      * @throws Exception
      */
     public void testRuntimePermissionSupportedLmpRelease() throws Exception {
-        SettableFuture<String> codeName = SettableFuture.create();
-        codeName.set("REL");
-        EasyMock.expect(mMockIDevice.getSystemProperty(
-                TestDevice.BUILD_CODENAME_PROP)).andReturn(codeName);
-        SettableFuture<String> buildNumber = SettableFuture.create();
-        buildNumber.set("1642709"); //LRX22F
-        EasyMock.expect(mMockIDevice.getSystemProperty(
-                TestDevice.BUILD_ID_PROP)).andReturn(buildNumber);
+        injectSystemProperty(TestDevice.BUILD_CODENAME_PROP, "REL");
+        injectSystemProperty(TestDevice.BUILD_ID_PROP, "1642709");
         replayMocks();
         assertFalse(mTestDevice.isRuntimePermissionSupported());
     }
@@ -906,14 +900,8 @@ public class TestDeviceTest extends TestCase {
      * @throws Exception
      */
     public void testRuntimePermissionSupportedLmpMr1Dev() throws Exception {
-        SettableFuture<String> codeName = SettableFuture.create();
-        codeName.set("REL");
-        EasyMock.expect(mMockIDevice.getSystemProperty(
-                TestDevice.BUILD_CODENAME_PROP)).andReturn(codeName);
-        SettableFuture<String> buildNumber = SettableFuture.create();
-        buildNumber.set("1844090"); // a random lmp-mr1-dev build
-        EasyMock.expect(mMockIDevice.getSystemProperty(
-                TestDevice.BUILD_ID_PROP)).andReturn(buildNumber);
+        injectSystemProperty(TestDevice.BUILD_CODENAME_PROP, "REL");
+        injectSystemProperty(TestDevice.BUILD_ID_PROP, "1844090");
         replayMocks();
         assertFalse(mTestDevice.isRuntimePermissionSupported());
     }
@@ -924,14 +912,8 @@ public class TestDeviceTest extends TestCase {
      * @throws Exception
      */
     public void testRuntimePermissionSupportedRandom1() throws Exception {
-        SettableFuture<String> codeName = SettableFuture.create();
-        codeName.set("YADDA");
-        EasyMock.expect(mMockIDevice.getSystemProperty(
-                TestDevice.BUILD_CODENAME_PROP)).andReturn(codeName);
-        SettableFuture<String> buildNumber = SettableFuture.create();
-        buildNumber.set("XYZ"); // a random non-numerical build "number"
-        EasyMock.expect(mMockIDevice.getSystemProperty(
-                TestDevice.BUILD_ID_PROP)).andReturn(buildNumber);
+        injectSystemProperty(TestDevice.BUILD_CODENAME_PROP, "YADDA");
+        injectSystemProperty(TestDevice.BUILD_ID_PROP, "XYZ");
         replayMocks();
         assertFalse(mTestDevice.isRuntimePermissionSupported());
     }
@@ -942,14 +924,8 @@ public class TestDeviceTest extends TestCase {
      * @throws Exception
      */
     public void testRuntimePermissionSupportedMncLocal() throws Exception {
-        SettableFuture<String> codeName = SettableFuture.create();
-        codeName.set("MNC");
-        EasyMock.expect(mMockIDevice.getSystemProperty(
-                TestDevice.BUILD_CODENAME_PROP)).andReturn(codeName);
-        SettableFuture<String> buildNumber = SettableFuture.create();
-        buildNumber.set("eng.foo.20150414.190304"); // a typical local eng build "number"
-        EasyMock.expect(mMockIDevice.getSystemProperty(
-                TestDevice.BUILD_ID_PROP)).andReturn(buildNumber);
+        injectSystemProperty(TestDevice.BUILD_CODENAME_PROP, "MNC");
+        injectSystemProperty(TestDevice.BUILD_ID_PROP, "eng.foo.20150414.190304");
         replayMocks();
         assertTrue(mTestDevice.isRuntimePermissionSupported());
     }
@@ -960,14 +936,8 @@ public class TestDeviceTest extends TestCase {
      * @throws Exception
      */
     public void testRuntimePermissionSupportedNonMncLocal() throws Exception {
-        SettableFuture<String> codeName = SettableFuture.create();
-        codeName.set("LMP");
-        EasyMock.expect(mMockIDevice.getSystemProperty(
-                TestDevice.BUILD_CODENAME_PROP)).andReturn(codeName);
-        SettableFuture<String> buildNumber = SettableFuture.create();
-        buildNumber.set("eng.bar.20150414.190304"); // a typical local eng build "number"
-        EasyMock.expect(mMockIDevice.getSystemProperty(
-                TestDevice.BUILD_ID_PROP)).andReturn(buildNumber);
+        injectSystemProperty(TestDevice.BUILD_CODENAME_PROP, "LMP");
+        injectSystemProperty(TestDevice.BUILD_ID_PROP, "eng.foo.20150414.190304");
         replayMocks();
         assertFalse(mTestDevice.isRuntimePermissionSupported());
     }
@@ -978,14 +948,7 @@ public class TestDeviceTest extends TestCase {
      * @throws Exception
      */
     public void testRuntimePermissionSupportedEarlyMnc() throws Exception {
-        SettableFuture<String> codeName = SettableFuture.create();
-        codeName.set("MNC");
-        EasyMock.expect(mMockIDevice.getSystemProperty(
-                TestDevice.BUILD_CODENAME_PROP)).andReturn(codeName);
-        SettableFuture<String> buildNumber = SettableFuture.create();
-        buildNumber.set("1816412");
-        EasyMock.expect(mMockIDevice.getSystemProperty(
-                TestDevice.BUILD_ID_PROP)).andReturn(buildNumber);
+        setMockIDeviceRuntimePermissionNotSupported();
         replayMocks();
         assertFalse(mTestDevice.isRuntimePermissionSupported());
     }
@@ -996,14 +959,7 @@ public class TestDeviceTest extends TestCase {
      * @throws Exception
      */
     public void testRuntimePermissionSupportedMncPostSwitch() throws Exception {
-        SettableFuture<String> codeName = SettableFuture.create();
-        codeName.set("MNC");
-        EasyMock.expect(mMockIDevice.getSystemProperty(
-                TestDevice.BUILD_CODENAME_PROP)).andReturn(codeName);
-        SettableFuture<String> buildNumber = SettableFuture.create();
-        buildNumber.set("1844452");
-        EasyMock.expect(mMockIDevice.getSystemProperty(
-                TestDevice.BUILD_ID_PROP)).andReturn(buildNumber);
+        setMockIDeviceRuntimePermissionSupported();
         replayMocks();
         assertTrue(mTestDevice.isRuntimePermissionSupported());
     }
@@ -1012,28 +968,16 @@ public class TestDeviceTest extends TestCase {
      * Convenience method for setting up mMockIDevice to not support runtime permission
      */
     private void setMockIDeviceRuntimePermissionNotSupported() {
-        SettableFuture<String> codeName = SettableFuture.create();
-        codeName.set("MNC");
-        EasyMock.expect(mMockIDevice.getSystemProperty(
-                TestDevice.BUILD_CODENAME_PROP)).andReturn(codeName);
-        SettableFuture<String> buildNumber = SettableFuture.create();
-        buildNumber.set("1816412");
-        EasyMock.expect(mMockIDevice.getSystemProperty(
-                TestDevice.BUILD_ID_PROP)).andReturn(buildNumber);
+        injectSystemProperty(TestDevice.BUILD_CODENAME_PROP, "MNC");
+        injectSystemProperty(TestDevice.BUILD_ID_PROP, "1816412");
     }
 
     /**
      * Convenience method for setting up mMockIDevice to support runtime permission
      */
     private void setMockIDeviceRuntimePermissionSupported() {
-        SettableFuture<String> codeName = SettableFuture.create();
-        codeName.set("MNC");
-        EasyMock.expect(mMockIDevice.getSystemProperty(
-                TestDevice.BUILD_CODENAME_PROP)).andReturn(codeName);
-        SettableFuture<String> buildNumber = SettableFuture.create();
-        buildNumber.set("1844452");
-        EasyMock.expect(mMockIDevice.getSystemProperty(
-                TestDevice.BUILD_ID_PROP)).andReturn(buildNumber);
+        injectSystemProperty(TestDevice.BUILD_CODENAME_PROP, "MNC");
+        injectSystemProperty(TestDevice.BUILD_ID_PROP, "1844452");
     }
 
     /**
@@ -1239,15 +1183,37 @@ public class TestDeviceTest extends TestCase {
     }
 
     /**
-     * Test normal success case for {@link TestDevice#reboot()}
+     * Helper method to inject a response to {@link TestDevice#getProperty(String)} calls
+     * @param property property name
+     * @param value property value
+     * @return preset {@link IExpectationSetters} returned by {@link EasyMock} where further
+     * expectations can be added
      */
-    public void testReboot() throws Exception {
+    private IExpectationSetters<Future<String>> injectSystemProperty(
+            final String property, final String value) {
+        SettableFuture<String> valueResponse = SettableFuture.create();
+        valueResponse.set(value);
+        return EasyMock.expect(mMockIDevice.getSystemProperty(property)).andReturn(valueResponse);
+    }
+
+    /**
+     * Helper method to build response to a reboot call
+     * @throws Exception
+     */
+    private void setRebootExpectations() throws Exception {
         EasyMock.expect(mMockStateMonitor.waitForDeviceOnline()).andReturn(
                 mMockIDevice);
         setEnableAdbRootExpectations();
         setEncryptedUnsupportedExpectations();
         EasyMock.expect(mMockStateMonitor.waitForDeviceAvailable(EasyMock.anyLong())).andReturn(
                 mMockIDevice);
+    }
+
+    /**
+     * Test normal success case for {@link TestDevice#reboot()}
+     */
+    public void testReboot() throws Exception {
+        setRebootExpectations();
         replayMocks();
         mTestDevice.reboot();
         verifyMocks();
@@ -1464,7 +1430,7 @@ public class TestDeviceTest extends TestCase {
      * Simple test for {@link TestDevice#handleAllocationEvent(DeviceEvent)}
      */
     public void testHandleAllocationEvent() {
-        EasyMock.expect(mMockIDevice.getSerialNumber()).andStubReturn("serial");
+        EasyMock.expect(mMockIDevice.getSerialNumber()).andStubReturn(MOCK_DEVICE_SERIAL);
         EasyMock.replay(mMockIDevice);
 
         assertEquals(DeviceAllocationState.Unknown, mTestDevice.getAllocationState());
@@ -1706,6 +1672,67 @@ public class TestDeviceTest extends TestCase {
         injectShellResponse(startUserCommand, "Error: could not start user\n");
         replayMocks();
         assertFalse(mTestDevice.startUser(10));
+    }
+
+    /**
+     * Test that remount works as expected on a device not supporting dm verity
+     * @throws Exception
+     */
+    public void testRemount_verityUnsupported() throws Exception {
+        injectSystemProperty("partition.system.verified", "");
+        setExecuteAdbCommandExpectations(new CommandResult(CommandStatus.SUCCESS), "remount");
+        EasyMock.expect(mMockStateMonitor.waitForDeviceAvailable()).andReturn(mMockIDevice);
+        replayMocks();
+        mTestDevice.remountSystemWritable();
+        verifyMocks();
+    }
+
+    /**
+     * Test that remount works as expected on a device supporting dm verity v1
+     * @throws Exception
+     */
+    public void testRemount_veritySupportedV1() throws Exception {
+        injectSystemProperty("partition.system.verified", "1");
+        setExecuteAdbCommandExpectations(
+                new CommandResult(CommandStatus.SUCCESS), "disable-verity");
+        setRebootExpectations();
+        setExecuteAdbCommandExpectations(new CommandResult(CommandStatus.SUCCESS), "remount");
+        EasyMock.expect(mMockStateMonitor.waitForDeviceAvailable()).andReturn(mMockIDevice);
+        replayMocks();
+        mTestDevice.remountSystemWritable();
+        verifyMocks();
+    }
+
+    /**
+     * Test that remount works as expected on a device supporting dm verity v2
+     * @throws Exception
+     */
+    public void testRemount_veritySupportedV2() throws Exception {
+        injectSystemProperty("partition.system.verified", "2");
+        setExecuteAdbCommandExpectations(
+                new CommandResult(CommandStatus.SUCCESS), "disable-verity");
+        setRebootExpectations();
+        setExecuteAdbCommandExpectations(new CommandResult(CommandStatus.SUCCESS), "remount");
+        EasyMock.expect(mMockStateMonitor.waitForDeviceAvailable()).andReturn(mMockIDevice);
+        replayMocks();
+        mTestDevice.remountSystemWritable();
+        verifyMocks();
+    }
+
+    /**
+     * Test that remount works as expected on a device supporting dm verity but with unknown version
+     * @throws Exception
+     */
+    public void testRemount_veritySupportedNonNumerical() throws Exception {
+        injectSystemProperty("partition.system.verified", "foo");
+        setExecuteAdbCommandExpectations(
+                new CommandResult(CommandStatus.SUCCESS), "disable-verity");
+        setRebootExpectations();
+        setExecuteAdbCommandExpectations(new CommandResult(CommandStatus.SUCCESS), "remount");
+        EasyMock.expect(mMockStateMonitor.waitForDeviceAvailable()).andReturn(mMockIDevice);
+        replayMocks();
+        mTestDevice.remountSystemWritable();
+        verifyMocks();
     }
 }
 
