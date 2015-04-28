@@ -815,6 +815,7 @@ public class FioBenchmarkTest implements IDeviceTest, IRemoteTest {
         mTestDevice.executeShellCommand(String.format("rm -r %s", mTmpDir));
         mTestDevice.executeShellCommand(String.format("rm -r %s", mFioDir));
         mTestDevice.executeShellCommand("start");
+        mTestDevice.waitForDeviceAvailable();
     }
 
     /**
