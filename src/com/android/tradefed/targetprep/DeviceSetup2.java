@@ -164,13 +164,13 @@ public class DeviceSetup2 implements ITargetPreparer, ITargetCleaner{
     @Option(name = "location-gps",
             description = "Turn the GPS location on or off")
     protected BinaryState mLocationGps = BinaryState.DEFAULT;
-    // ON:  settings put secure location_providers_allowed gps
+    // ON:  settings put secure location_providers_allowed +gps
     // OFF: settings put secure location_providers_allowed -gps
 
     @Option(name = "location-network",
             description = "Turn the network location on or off")
     protected BinaryState mLocationNetwork = BinaryState.DEFAULT;
-    // ON:  settings put secure location_providers_allowed network
+    // ON:  settings put secure location_providers_allowed +network
     // OFF: settings put secure location_providers_allowed -network
 
     // Sensor
@@ -442,10 +442,10 @@ public class DeviceSetup2 implements ITargetPreparer, ITargetCleaner{
         }
 
         setSettingForBinaryState(mLocationGps, mSecureSettings,
-                "location_providers_allowed", "gps", "-gps");
+                "location_providers_allowed", "+gps", "-gps");
 
         setSettingForBinaryState(mLocationNetwork, mSecureSettings,
-                "location_providers_allowed", "network", "-network");
+                "location_providers_allowed", "+network", "-network");
 
         setSettingForBinaryState(mAutoRotate, mSystemSettings, "accelerometer_rotation", "1", "0");
 
