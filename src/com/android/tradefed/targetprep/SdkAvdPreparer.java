@@ -115,6 +115,9 @@ public class SdkAvdPreparer implements ITargetPreparer, ITargetCleaner {
             description = "Additional argument to launch the emulator with. Can be repeated.")
     private Collection<String> mEmulatorArgs = new ArrayList<String>();
 
+    @Option(name = "verbose", description = "Use verbose for emulator output")
+    private boolean mVerbose = false;
+
     private final IRunUtil mRunUtil;
     private IDeviceManager mDeviceManager;
 
@@ -215,6 +218,11 @@ public class SdkAvdPreparer implements ITargetPreparer, ITargetCleaner {
             emulatorArgs.add("-gpu");
             emulatorArgs.add("on");
         }
+
+        if (mVerbose) {
+            emulatorArgs.add("-verbose");
+        }
+
         for (Map.Entry<String, String> propEntry : mProps.entrySet()) {
             emulatorArgs.add("-prop");
             emulatorArgs.add(String.format("%s=%s", propEntry.getKey(), propEntry.getValue()));

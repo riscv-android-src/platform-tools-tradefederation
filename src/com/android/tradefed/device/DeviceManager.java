@@ -34,6 +34,7 @@ import com.android.tradefed.util.CommandResult;
 import com.android.tradefed.util.CommandStatus;
 import com.android.tradefed.util.IRunUtil;
 import com.android.tradefed.util.RunUtil;
+import com.android.tradefed.util.SizeLimitedOutputStream;
 import com.android.tradefed.util.StreamUtil;
 import com.android.tradefed.util.TableFormatter;
 import com.google.common.annotations.VisibleForTesting;
@@ -59,13 +60,21 @@ public class DeviceManager implements IDeviceManager {
 
     /** max wait time in ms for fastboot devices command to complete */
     private static final long FASTBOOT_CMD_TIMEOUT = 1 * 60 * 1000;
-    /**  time to wait in ms between fastboot devices requests */
+    /** time to wait in ms between fastboot devices requests */
     private static final long FASTBOOT_POLL_WAIT_TIME = 5 * 1000;
-    /** time to wait for device adb shell responsive connection before declaring it unavailable
-     * for testing */
+    /**
+     * time to wait for device adb shell responsive connection before declaring it unavailable for
+     * testing
+     */
     private static final int CHECK_WAIT_DEVICE_AVAIL_MS = 30 * 1000;
 
-    /** a {@link DeviceSelectionOptions} that matches any device.  Visible for testing. */
+    /* the max size of the emulator output in bytes */
+    private static final long MAX_EMULATOR_OUTPUT = 20 * 1024 * 1024;
+
+    /* the emulator output log name */
+    private static final String EMULATOR_OUTPUT = "emulator_log";
+
+    /** a {@link DeviceSelectionOptions} that matches any device. Visible for testing. */
     static final IDeviceSelection ANY_DEVICE_OPTIONS = new DeviceSelectionOptions();
     private static final String NULL_DEVICE_SERIAL_PREFIX = "null-device";
     private static final String EMULATOR_SERIAL_PREFIX = "emulator";
@@ -84,16 +93,16 @@ public class DeviceManager implements IDeviceManager {
     private boolean mIsTerminated = false;
     private IDeviceSelection mGlobalDeviceFilter;
 
-    @Option(name="max-emulators",
+    @Option(name = "max-emulators",
             description = "the maximum number of emulators that can be allocated at one time")
     private int mNumEmulatorSupported = 1;
-    @Option(name="max-null-devices",
+    @Option(name = "max-null-devices",
             description = "the maximum number of no device runs that can be allocated at one time.")
     private int mNumNullDevicesSupported = 1;
 
     private boolean mSynchronousMode = false;
 
-    @Option(name="device-recovery-interval",
+    @Option(name = "device-recovery-interval",
             description = "the interval in ms between attempts to recover unavailable devices.")
     private long mDeviceRecoveryInterval = 10 * 60 * 1000;
 
@@ -114,7 +123,7 @@ public class DeviceManager implements IDeviceManager {
 
     @Override
     public void init() {
-        init(null,null);
+        init(null, null);
     }
 
     /**
@@ -184,7 +193,7 @@ public class DeviceManager implements IDeviceManager {
 
         // don't start adding devices until fastboot support has been established
         // TODO: Temporarily increase default timeout as workaround for syncFiles timeouts
-        DdmPreferences.setTimeOut(30*1000);
+        DdmPreferences.setTimeOut(30 * 1000);
         mAdbBridge = createAdbBridge();
         mManagedDeviceListener = new ManagedDeviceListener();
         // It's important to add the listener before initializing the ADB bridge to avoid a race
@@ -275,6 +284,7 @@ public class DeviceManager implements IDeviceManager {
 
     /**
      * Asynchronously checks if device is available, and adds to queue
+     *
      * @param device
      */
     private void checkAndAddAvailableDevice(final IManagedTestDevice testDevice) {
@@ -291,7 +301,7 @@ public class DeviceManager implements IDeviceManager {
             public void run() {
                 CLog.d("checking new device %s responsiveness", testDevice.getSerialNumber());
                 if (testDevice.getMonitor().waitForDeviceShell(CHECK_WAIT_DEVICE_AVAIL_MS)) {
-                    DeviceEventResponse r =  mManagedDeviceList.handleDeviceEvent(testDevice,
+                    DeviceEventResponse r = mManagedDeviceList.handleDeviceEvent(testDevice,
                             DeviceEvent.AVAILABLE_CHECK_PASSED);
                     if (r.stateChanged && r.allocationState == DeviceAllocationState.Available) {
                         CLog.logAndDisplay(LogLevel.INFO, "Detected new device %s",
@@ -310,7 +320,7 @@ public class DeviceManager implements IDeviceManager {
                 }
             }
         };
-        if (mSynchronousMode ) {
+        if (mSynchronousMode) {
             checkRunnable.run();
         } else {
             Thread checkThread = new Thread(checkRunnable, threadName);
@@ -355,7 +365,7 @@ public class DeviceManager implements IDeviceManager {
         final FastbootHelper fastboot = new FastbootHelper(getRunUtil());
         Set<String> serials = fastboot.getDevices();
         if (serials != null) {
-            for (String serial: serials) {
+            for (String serial : serials) {
                 FastbootDevice d = new FastbootDevice(serial);
                 if (mGlobalDeviceFilter != null && mGlobalDeviceFilter.matches(d)) {
                     addAvailableDevice(d);
@@ -496,12 +506,15 @@ public class DeviceManager implements IDeviceManager {
 
         try {
             CLog.i("launching emulator with %s", fullArgs.toString());
-            Process p = runUtil.runCmdInBackground(fullArgs);
+            SizeLimitedOutputStream emulatorOutput = new SizeLimitedOutputStream(
+                    MAX_EMULATOR_OUTPUT, EMULATOR_OUTPUT, ".txt");
+            Process p = runUtil.runCmdInBackground(fullArgs, emulatorOutput);
             // sleep a small amount to wait for process to start successfully
             getRunUtil().sleep(500);
             assertEmulatorProcessAlive(p);
-            IManagedTestDevice managedDevice = (IManagedTestDevice)device;
-            managedDevice.setEmulatorProcess(p);
+            TestDevice testDevice = (TestDevice) device;
+            testDevice.setEmulatorProcess(p);
+            testDevice.setEmulatorOutputStream(emulatorOutput);
         } catch (IOException e) {
             // TODO: is this the most appropriate exception to throw?
             throw new DeviceNotAvailableException("Failed to start emulator process", e);
@@ -548,13 +561,13 @@ public class DeviceManager implements IDeviceManager {
         if (console != null) {
             console.kill();
             // check and wait for device to become not avail
-            device.waitForDeviceNotAvailable(5*1000);
+            device.waitForDeviceNotAvailable(5 * 1000);
             // lets ensure process is killed too - fall through
         } else {
             CLog.w("Could not get emulator console for %s", device.getSerialNumber());
         }
         // lets try killing the process
-        Process emulatorProcess = ((IManagedTestDevice)device).getEmulatorProcess();
+        Process emulatorProcess = ((IManagedTestDevice) device).getEmulatorProcess();
         if (emulatorProcess != null) {
             emulatorProcess.destroy();
             if (isProcessRunning(emulatorProcess)) {
@@ -562,8 +575,10 @@ public class DeviceManager implements IDeviceManager {
                         device.getSerialNumber());
                 forceKillProcess(emulatorProcess, device.getSerialNumber());
             }
+            // stop emulator output log
+            ((TestDevice) device).stopEmulatorOutputStream();
         }
-        if (!device.waitForDeviceNotAvailable(20*1000)) {
+        if (!device.waitForDeviceNotAvailable(20 * 1000)) {
             throw new DeviceNotAvailableException(String.format("Failed to kill emulator %s",
                     device.getSerialNumber()));
         }
@@ -584,7 +599,7 @@ public class DeviceManager implements IDeviceManager {
                 f.setAccessible(true);
                 Integer pid = (Integer)f.get(emulatorProcess);
                 if (pid != null) {
-                    RunUtil.getDefault().runTimedCmd(5*1000, "kill", "-9", pid.toString());
+                    RunUtil.getDefault().runTimedCmd(5 * 1000, "kill", "-9", pid.toString());
                 }
             } catch (NoSuchFieldException e) {
                 CLog.d("got NoSuchFieldException when attempting to read process pid");
@@ -625,7 +640,7 @@ public class DeviceManager implements IDeviceManager {
         CLog.i("Reconnecting device %s to adb over tcpip", usbDevice.getSerialNumber());
         ITestDevice tcpDevice = null;
         if (usbDevice instanceof IManagedTestDevice) {
-            IManagedTestDevice managedUsbDevice = (IManagedTestDevice)usbDevice;
+            IManagedTestDevice managedUsbDevice = (IManagedTestDevice) usbDevice;
             String ipAndPort = managedUsbDevice.switchToAdbTcp();
             if (ipAndPort != null) {
                 CLog.d("Device %s was switched to adb tcp on %s", usbDevice.getSerialNumber(),
@@ -667,7 +682,7 @@ public class DeviceManager implements IDeviceManager {
             }
             CLog.w("Failed to connect to device on %s, attempt %d of 3. Response: %s.",
                     ipAndPort, i, adbConnectResult);
-            getRunUtil().sleep(5*1000);
+            getRunUtil().sleep(5 * 1000);
         }
         return false;
     }
@@ -694,7 +709,7 @@ public class DeviceManager implements IDeviceManager {
     @Override
     public synchronized void terminate() {
         checkInit();
-        if (!mIsTerminated ) {
+        if (!mIsTerminated) {
             mIsTerminated = true;
             if (mDeviceRecoverer != null) {
                 mDeviceRecoverer.terminate();
@@ -834,7 +849,7 @@ public class DeviceManager implements IDeviceManager {
                     desc.getProductVariant(),
                     desc.getBuildId(),
                     desc.getBatteryLevel())
-            );
+                    );
         }
     }
 
@@ -846,7 +861,6 @@ public class DeviceManager implements IDeviceManager {
     private String getDisplay(Object o) {
         return o == null ? "unknown" : o.toString();
     }
-
 
     /**
      * A class to listen for and act on device presence updates from ddmlib

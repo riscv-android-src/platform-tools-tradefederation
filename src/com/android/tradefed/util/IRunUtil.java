@@ -18,6 +18,7 @@ package com.android.tradefed.util;
 
 import java.io.File;
 import java.io.IOException;
+import java.io.OutputStream;
 import java.util.List;
 
 /**
@@ -137,6 +138,17 @@ public interface IRunUtil {
      * @throws IOException if command failed to run
      */
     public Process runCmdInBackground(List<String> command) throws IOException;
+
+    /**
+     * Running command with a {@link OutputStream} log the output of the command.
+     * Stdout and stderr are merged together.
+     * @param command the command to run
+     * @param output the OutputStream to save the output
+     * @return the {@link Process} running the command
+     * @throws IOException
+     */
+    public Process runCmdInBackground(List<String> command, OutputStream output)
+            throws IOException;
 
     /**
      * Block and executes an operation, aborting if it takes longer than a specified time.

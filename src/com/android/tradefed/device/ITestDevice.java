@@ -1244,6 +1244,12 @@ public interface ITestDevice {
     public void stopUser(int userId) throws DeviceNotAvailableException;
 
     /**
+     * Get the stream of emulator stdout and stderr
+     * @return emulator output
+     */
+    public InputStreamSource getEmulatorOutput();
+
+    /**
      * Make the system partition on the device writable. May reboot the device.
      * @throws DeviceNotAvailableException
      */

@@ -200,6 +200,20 @@ public class RunUtil implements IRunUtil {
      * {@inheritDoc}
      */
     @Override
+    public Process runCmdInBackground(List<String> command, OutputStream output)
+            throws IOException {
+        CLog.v("Running %s", command);
+        Process process = createProcessBuilder(command).start();
+        inheritIO(process.getInputStream(), output);
+        inheritIO(process.getErrorStream(), output);
+        return process;
+    }
+
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
     public CommandStatus runTimed(long timeout, IRunUtil.IRunnableResult runnable,
             boolean logErrors) {
         checkInterrupted();
@@ -446,7 +460,7 @@ public class RunUtil implements IRunUtil {
                 }
             }
         }
-    };
+    }
 
     /**
      * Helper method to redirect input stream.
