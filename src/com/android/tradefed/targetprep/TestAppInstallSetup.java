@@ -150,7 +150,7 @@ public class TestAppInstallSetup implements ITargetCleaner, IAbiReceiver {
             if (testAppFile == null) {
                 throw new TargetSetupError(
                     String.format("Could not find test app %s directory in extracted tests.zip",
-                            testAppFile));
+                            testAppName));
             }
             // resolve abi flags
             if (mAbi != null && mForceAbi != null) {
