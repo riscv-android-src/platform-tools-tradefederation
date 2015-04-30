@@ -655,7 +655,7 @@ public class TestInvocation implements ITestInvocation {
         if (device != null) {
             logcatSource = device.getLogcat();
             device.stopLogcat();
-            if (device.getIDevice().isEmulator()) {
+            if (device.getIDevice() != null && device.getIDevice().isEmulator()) {
                 emulatorOutput = device.getEmulatorOutput();
             }
         }

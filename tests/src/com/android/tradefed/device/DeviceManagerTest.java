@@ -308,6 +308,7 @@ public class DeviceManagerTest extends TestCase {
                 .andReturn(new DeviceEventResponse(DeviceAllocationState.Available, true));
         EasyMock.expect(mMockTestDevice.handleAllocationEvent(DeviceEvent.ALLOCATE_REQUEST))
                 .andReturn(new DeviceEventResponse(DeviceAllocationState.Allocated, true));
+        mMockTestDevice.stopEmulatorOutput();
         replayMocks();
         DeviceManager manager = createDeviceManagerNoInit();
         manager.setMaxEmulators(1);

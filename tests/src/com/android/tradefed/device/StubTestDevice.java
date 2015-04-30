@@ -958,6 +958,14 @@ public class StubTestDevice implements IManagedTestDevice {
      * {@inheritDoc}
      */
     @Override
+    public void stopEmulatorOutput() {
+        // ignore
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
     public String installPackage(File packageFile, boolean reinstall, boolean grantPermissions,
             String... extraArgs) throws DeviceNotAvailableException {
         return null;

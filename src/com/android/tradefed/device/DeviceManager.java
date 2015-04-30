@@ -576,7 +576,7 @@ public class DeviceManager implements IDeviceManager {
                 forceKillProcess(emulatorProcess, device.getSerialNumber());
             }
             // stop emulator output log
-            ((TestDevice) device).stopEmulatorOutputStream();
+            device.stopEmulatorOutput();
         }
         if (!device.waitForDeviceNotAvailable(20 * 1000)) {
             throw new DeviceNotAvailableException(String.format("Failed to kill emulator %s",

@@ -1250,6 +1250,11 @@ public interface ITestDevice {
     public InputStreamSource getEmulatorOutput();
 
     /**
+     * Close and delete the emulator output.
+     */
+    public void stopEmulatorOutput();
+
+    /**
      * Make the system partition on the device writable. May reboot the device.
      * @throws DeviceNotAvailableException
      */
