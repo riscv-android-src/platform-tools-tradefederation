@@ -357,7 +357,9 @@ public class DeviceSetup2 implements ITargetPreparer, ITargetCleaner {
             return;
         }
 
-        if (mDisconnectWifiAfterTest && device.isWifiEnabled()) {
+        // Only try to disconnect if wifi ssid is set since isWifiEnabled() is a heavy operation
+        // which should be avoided when possible
+        if (mDisconnectWifiAfterTest && mWifiSsid != null && device.isWifiEnabled()) {
             boolean result = device.disconnectFromWifi();
             if (result) {
                 CLog.i("Successfully disconnected from wifi network on %s",
