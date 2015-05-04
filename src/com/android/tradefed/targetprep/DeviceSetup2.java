@@ -44,7 +44,7 @@ import java.util.Map;
  * </p>
  */
 @OptionClass(alias = "device-setup-2")
-public class DeviceSetup2 implements ITargetPreparer, ITargetCleaner{
+public class DeviceSetup2 implements ITargetPreparer, ITargetCleaner {
 
     /**
      * Enum used to record ON/OFF state with a DEFAULT no-op state.
@@ -382,11 +382,6 @@ public class DeviceSetup2 implements ITargetPreparer, ITargetCleaner{
     @SuppressWarnings("unused")
     protected void processOptions(ITestDevice device) throws DeviceNotAvailableException,
             TargetSetupError {
-        setSettingForBinaryState(mAirplaneMode, mGlobalSettings, "airplane_mode_on", "1", "0");
-        setCommandForBinaryState(mAirplaneMode, mRunCommandAfterSettings,
-                "am broadcast -a android.intent.action.AIRPLANE_MODE --ez state true",
-                "am broadcast -a android.intent.action.AIRPLANE_MODE --ez state false");
-
         setSettingForBinaryState(mWifi, mGlobalSettings, "wifi_on", "1", "0");
         setCommandForBinaryState(mWifi, mRunCommandAfterSettings,
                 "svc wifi enable", "svc wifi disable");
@@ -553,7 +548,30 @@ public class DeviceSetup2 implements ITargetPreparer, ITargetCleaner{
 
         if (device.getApiLevel() < 22) {
             throw new TargetSetupError(String.format("Changing setting not supported on %s, " +
-                "must be API 22+", device.getSerialNumber()));
+                    "must be API 22+", device.getSerialNumber()));
+        }
+
+        // Special case airplane mode since it needs to be set before other connectivity settings
+        // For example, it is possible to enable airplane mode and then turn wifi on
+        String command = "am broadcast -a android.intent.action.AIRPLANE_MODE --ez state %s";
+        switch (mAirplaneMode) {
+            case ON:
+                CLog.d("Changing global setting airplane_mode_on to 1");
+                device.executeShellCommand("settings put global airplane_mode_on 1");
+                if (!mForceSkipRunCommands) {
+                    device.executeShellCommand(String.format(command, "true"));
+                }
+                break;
+            case OFF:
+                CLog.d("Changing global setting airplane_mode_on to 0");
+                device.executeShellCommand("settings put global airplane_mode_on 0");
+                if (!mForceSkipRunCommands) {
+                    device.executeShellCommand(String.format(command, "false"));
+                }
+                break;
+            case DEFAULT:
+                // No-op
+                break;
         }
 
         for (String key : mSystemSettings.keySet()) {
@@ -591,16 +609,16 @@ public class DeviceSetup2 implements ITargetPreparer, ITargetCleaner{
             return;
         }
 
+        for (String command : commands) {
+            device.executeShellCommand(command);
+        }
+
         if (mWifiSsid != null) {
             if (!device.connectToWifiNetwork(mWifiSsid, mWifiPsk)) {
                 throw new TargetSetupError(String.format(
                         "Failed to connect to wifi network %s on %s", mWifiSsid,
                         device.getSerialNumber()));
             }
-        }
-
-        for (String command : commands) {
-            device.executeShellCommand(command);
         }
     }
 
