@@ -148,7 +148,6 @@ class TestDevice implements IManagedTestDevice {
     private TestDeviceState mState = TestDeviceState.ONLINE;
     private final ReentrantLock mFastbootLock = new ReentrantLock();
     private LogcatReceiver mLogcatReceiver;
-    private IFileEntry mRootFile = null;
     private boolean mFastbootEnabled = true;
 
     private TestDeviceOptions mOptions = new TestDeviceOptions();
@@ -1201,11 +1200,9 @@ class TestDevice implements IManagedTestDevice {
     public IFileEntry getFileEntry(String path) throws DeviceNotAvailableException {
         path = interpolatePathVariables(path);
         String[] pathComponents = path.split(FileListingService.FILE_SEPARATOR);
-        if (mRootFile == null) {
-            FileListingService service = getFileListingService();
-            mRootFile = new FileEntryWrapper(this, service.getRoot());
-        }
-        return FileEntryWrapper.getDescendant(mRootFile, Arrays.asList(pathComponents));
+        FileListingService service = getFileListingService();
+        IFileEntry rootFile = new FileEntryWrapper(this, service.getRoot());
+        return FileEntryWrapper.getDescendant(rootFile, Arrays.asList(pathComponents));
     }
 
     /**
