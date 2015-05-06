@@ -83,8 +83,8 @@ include $(BUILD_HOST_PREBUILT)
 include $(call all-makefiles-under,$(LOCAL_PATH))
 
 ########################################################
-# Zip up the built files and dist it as google-tradefed.zip
-ifneq (,$(filter tradefed, $(TARGET_BUILD_APPS)))
+# Zip up the built files and dist it as tradefed.zip
+ifneq (,$(filter tradefed tradefed-all, $(TARGET_BUILD_APPS)))
 
 tradefed_dist_host_jars := tradefed tradefed-tests tf-prod-tests emmalib loganalysis loganalysis-tests tf-remote-client
 tradefed_dist_host_jar_files := $(foreach m, $(tradefed_dist_host_jars), $(HOST_OUT_JAVA_LIBRARIES)/$(m).jar)
