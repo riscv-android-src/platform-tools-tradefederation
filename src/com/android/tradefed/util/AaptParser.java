@@ -58,7 +58,7 @@ public class AaptParser {
      * @return the {@link AaptParser} or <code>null</code> if failed to extract the information
      */
     public static AaptParser parse(File apkFile) {
-        CommandResult result = RunUtil.getDefault().runTimedCmd(5000, "aapt", "dump", "badging",
+        CommandResult result = RunUtil.getDefault().runTimedCmd(15000, "aapt", "dump", "badging",
                 apkFile.getAbsolutePath());
 
         String stderr = result.getStderr();
