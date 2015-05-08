@@ -14,16 +14,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# A helper script that launches Trade Federation
+# A helper script that launches Trade Federation's "Verify" entrypoint, to perform
+# standalone command file verification
 
 shdir=`dirname $0`/
 source "${shdir}/script_help.sh"
 # At this point, we're guaranteed to have the right Java version, and the following
 # env variables will be set, if appropriate:
 # JAVA_VERSION, RDBG_FLAG, TF_PATH, TRADEFED_OPTS
-checkPath adb
 
 
 # Note: must leave $RDBG_FLAG and $TRADEFED_OPTS unquoted so that they go away when unset
 java $RDBG_FLAG -XX:+HeapDumpOnOutOfMemoryError -XX:-OmitStackTraceInFastThrow $TRADEFED_OPTS \
-  -cp "${TF_PATH}" com.android.tradefed.command.Console "$@"
+  -cp "${TF_PATH}" com.android.tradefed.command.Verify "$@"
