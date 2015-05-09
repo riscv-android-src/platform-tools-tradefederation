@@ -54,6 +54,9 @@ public class BootstrapBuildProvider implements IDeviceBuildProvider {
     @Option(name="build-target", description="build target name to supply.")
     private String mBuildTargetName = "bootstrapped";
 
+    @Option(name="branch", description="build branch name to supply.")
+    private String mBranch = null;
+
     @Option(name="shell-available-timeout",
             description="Time to wait in seconds for device shell to become available. " +
             "Default to 300 seconds.")
@@ -84,11 +87,14 @@ public class BootstrapBuildProvider implements IDeviceBuildProvider {
                     String.format("Shell did not become available in %d seconds",
                             mShellAvailableTimeout));
         }
-        info.setBuildBranch(String.format("%s-%s-%s-%s",
-                device.getProperty("ro.product.brand"),
-                device.getProperty("ro.product.name"),
-                device.getProductVariant(),
-                device.getProperty("ro.build.version.release")));
+        if (mBranch == null) {
+            mBranch = String.format("%s-%s-%s-%s",
+                    device.getProperty("ro.product.brand"),
+                    device.getProperty("ro.product.name"),
+                    device.getProductVariant(),
+                    device.getProperty("ro.build.version.release"));
+        }
+        info.setBuildBranch(mBranch);
         info.setBuildFlavor(device.getBuildFlavor());
         info.addBuildAttribute("build_alias", device.getBuildAlias());
         return info;
