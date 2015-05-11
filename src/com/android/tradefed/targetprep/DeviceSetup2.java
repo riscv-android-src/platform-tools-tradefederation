@@ -335,6 +335,7 @@ public class DeviceSetup2 implements ITargetPreparer, ITargetCleaner {
         changeSettings(device);
         syncTestData(device);
         runCommands(device, mRunCommandAfterSettings);
+        connectWifi(device);
         checkExternalStoreSpace(device);
 
         device.clearErrorDialogs();
@@ -613,6 +614,20 @@ public class DeviceSetup2 implements ITargetPreparer, ITargetCleaner {
 
         for (String command : commands) {
             device.executeShellCommand(command);
+        }
+    }
+
+    /**
+     * Connects device to Wifi if SSID is specified.
+     *
+     * @param device The {@link ITestDevice}
+     * @throws DeviceNotAvailableException if the device is not available
+     * @throws TargetSetupError if there was a failure setting the settings
+     */
+    private void connectWifi(ITestDevice device) throws DeviceNotAvailableException,
+            TargetSetupError {
+        if (mForceSkipRunCommands) {
+            return;
         }
 
         if (mWifiSsid != null) {
