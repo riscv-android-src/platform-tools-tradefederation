@@ -125,6 +125,7 @@ class TestDevice implements IManagedTestDevice {
     private static final String PRODUCT_NAME_PROP = "ro.product.name";
     private static final String BUILD_TYPE_PROP = "ro.build.type";
     private static final String BUILD_ALIAS_PROP = "ro.build.id";
+    private static final String BUILD_FLAVOR = "ro.build.flavor";
 
     static final String BUILD_CODENAME_PROP = "ro.build.version.codename";
 
@@ -499,6 +500,10 @@ class TestDevice implements IManagedTestDevice {
      */
     @Override
     public String getBuildFlavor() throws DeviceNotAvailableException {
+        String buildFlavor = getProperty(BUILD_FLAVOR);
+        if (buildFlavor != null && !buildFlavor.isEmpty()) {
+            return buildFlavor;
+        }
         String productName = getProperty(PRODUCT_NAME_PROP);
         String buildType = getProperty(BUILD_TYPE_PROP);
         if (productName == null || buildType == null) {

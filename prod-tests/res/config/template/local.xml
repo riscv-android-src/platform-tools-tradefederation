@@ -16,7 +16,7 @@
 <!-- Common base configuration for local runs. -->
 <configuration description="Common base configuration for local runs">
     <option name="bugreport-on-invocation-ended" value="true" />
-    <build_provider class="com.android.tradefed.build.StubBuildProvider" />
+    <build_provider class="com.android.tradefed.build.BootstrapBuildProvider" />
     <target_preparer class="com.android.tradefed.targetprep.DeviceSetup2">
         <option name="screen-always-on" value="on" />
         <option name="screen-adaptive-brightness" value="off" />
@@ -33,4 +33,5 @@
     <result_reporter class="com.android.tradefed.result.ConsoleResultReporter" />
     <result_reporter class="com.android.tradefed.result.InvocationFailureEmailResultReporter" />
     <result_reporter class="com.android.tradefed.result.DeviceUnavailEmailResultReporter" />
+    <template-include name="reporters" default="google/template/reporters/empty" />
 </configuration>
