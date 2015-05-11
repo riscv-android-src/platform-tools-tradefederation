@@ -2952,9 +2952,10 @@ class TestDevice implements IManagedTestDevice {
     }
 
     /**
-     * Close and delete the emulator output stream.
+     * {@inheritDoc}
      */
-    public void stopEmulatorOutputStream() {
+    @Override
+    public void stopEmulatorOutput() {
         if (mEmulatorOutput != null) {
             mEmulatorOutput.delete();
             mEmulatorOutput = null;
