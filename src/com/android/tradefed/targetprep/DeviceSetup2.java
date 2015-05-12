@@ -418,7 +418,7 @@ public class DeviceSetup2 implements ITargetPreparer, ITargetCleaner {
                     "screen-always-on is set to ON");
         }
 
-        setCommandForBinaryState(mScreenAlwaysOn, mRunCommandAfterSettings,
+        setCommandForBinaryState(mScreenAlwaysOn, mRunCommandBeforeSettings,
                 "svc power stayon true", "svc power stayon false");
 
         if (mScreenTimeoutSecs != null) {
