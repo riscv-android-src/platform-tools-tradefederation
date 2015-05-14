@@ -60,6 +60,10 @@ public class TestFilePushSetup implements ITargetPreparer {
                     + "repeated. Look for apks in last alt-dir first.")
     private List<File> mAltDirs = new ArrayList<>();
 
+    @Option(name = "alt-dir-behavior", description = "The order of alternate directory to be used "
+            + "when searching for files to push")
+    private AltDirBehavior mAltDirBehavior = AltDirBehavior.FALLBACK;
+
     /**
      * Adds a file to the list of items to push
      *
@@ -85,13 +89,24 @@ public class TestFilePushSetup implements ITargetPreparer {
             dirs.add(dir);
             dirs.add(FileUtil.getFileForPath(dir, "DATA"));
         }
+        // reverse the order so ones provided via command line last can be searched first
+        Collections.reverse(dirs);
 
-        // Add test dirs last so they will be first when list is reversed
+        List<File> expandedTestDirs = new ArrayList<>();
         if (buildInfo instanceof IDeviceBuildInfo) {
             File testsDir = ((IDeviceBuildInfo)buildInfo).getTestsDir();
             if (testsDir != null && testsDir.exists()) {
-                dirs.add(FileUtil.getFileForPath(testsDir, "DATA"));
+                expandedTestDirs.add(FileUtil.getFileForPath(testsDir, "DATA"));
             }
+        }
+        if (mAltDirBehavior == AltDirBehavior.FALLBACK) {
+            // alt dirs are appended after build artifact dirs
+            expandedTestDirs.addAll(dirs);
+            dirs = expandedTestDirs;
+        } else if (mAltDirBehavior == AltDirBehavior.OVERRIDE) {
+            dirs.addAll(expandedTestDirs);
+        } else {
+            throw new TargetSetupError("Missing handler for alt-dir-behavior: " + mAltDirBehavior);
         }
         if (dirs.isEmpty()) {
             throw new TargetSetupError(
@@ -99,7 +114,6 @@ public class TestFilePushSetup implements ITargetPreparer {
                     "alternative directories were provided");
         }
 
-        Collections.reverse(dirs);
         for (File dir : dirs) {
             File testAppFile = new File(dir, fileName);
             if (testAppFile.exists()) {
@@ -149,6 +163,21 @@ public class TestFilePushSetup implements ITargetPreparer {
         if (filePushed == 0) {
             throw new TargetSetupError("No file is pushed from tests.zip");
         }
+    }
+
+    /**
+     * Set an alternate directory.
+     */
+    public void setAltDir(File altDir) {
+        mAltDirs.add(altDir);
+    }
+
+    /**
+     * Set the alternative directory search beahvior
+     * @param behavior
+     */
+    public void setAltDirBehavior(AltDirBehavior behavior) {
+        mAltDirBehavior = behavior;
     }
 
     static String getDevicePathFromUserData(String path) {

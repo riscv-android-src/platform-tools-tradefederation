@@ -76,6 +76,10 @@ public class TestAppInstallSetup implements ITargetCleaner, IAbiReceiver {
                     + "first.")
     private List<File> mAltDirs = new ArrayList<>();
 
+    @Option(name = "alt-dir-behavior", description = "The order of alternate directory to be used "
+            + "when searching for apks to install")
+    private AltDirBehavior mAltDirBehavior = AltDirBehavior.FALLBACK;
+
     private IAbi mAbi = null;
 
     private List<String> mPackagesInstalled = new ArrayList<>();
@@ -110,14 +114,25 @@ public class TestAppInstallSetup implements ITargetCleaner, IAbiReceiver {
             // Files in out dir will bein in uses data/app/apk_name
             dirs.add(FileUtil.getFileForPath(dir, "data", "app", apkBase));
         }
+        // reverse the order so ones provided via command line last can be searched first
+        Collections.reverse(dirs);
 
-        // Add test dirs last so they will be first when list is reversed
+        List<File> expandedTestDirs = new ArrayList<>();
         if (buildInfo instanceof IDeviceBuildInfo) {
             File testsDir = ((IDeviceBuildInfo)buildInfo).getTestsDir();
             if (testsDir != null && testsDir.exists()) {
-                dirs.add(FileUtil.getFileForPath(testsDir, "DATA", "app"));
-                dirs.add(FileUtil.getFileForPath(testsDir, "DATA", "app", apkBase));
+                expandedTestDirs.add(FileUtil.getFileForPath(testsDir, "DATA", "app"));
+                expandedTestDirs.add(FileUtil.getFileForPath(testsDir, "DATA", "app", apkBase));
             }
+        }
+        if (mAltDirBehavior == AltDirBehavior.FALLBACK) {
+            // alt dirs are appended after build artifact dirs
+            expandedTestDirs.addAll(dirs);
+            dirs = expandedTestDirs;
+        } else if (mAltDirBehavior == AltDirBehavior.OVERRIDE) {
+            dirs.addAll(expandedTestDirs);
+        } else {
+            throw new TargetSetupError("Missing handler for alt-dir-behavior: " + mAltDirBehavior);
         }
         if (dirs.isEmpty()) {
             throw new TargetSetupError(

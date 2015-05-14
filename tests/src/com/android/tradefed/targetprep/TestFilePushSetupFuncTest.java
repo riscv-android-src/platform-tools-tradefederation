@@ -22,6 +22,7 @@ import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.device.StubTestDevice;
 import com.android.tradefed.util.FakeTestsZipFolder;
 import com.android.tradefed.util.FakeTestsZipFolder.ItemType;
+import com.google.common.io.Files;
 
 import junit.framework.TestCase;
 
@@ -39,6 +40,9 @@ public class TestFilePushSetupFuncTest extends TestCase {
     private Map<String, ItemType> mFiles;
     private List<String> mDeviceLocationList;
     private FakeTestsZipFolder mFakeTestsZipFolder;
+    private File mAltDirFile1, mAltDirFile2;
+    private static final String ALT_FILENAME1 = "foobar";
+    private static final String ALT_FILENAME2 = "barfoo";
 
     @Override
     protected void setUp() throws Exception {
@@ -47,12 +51,18 @@ public class TestFilePushSetupFuncTest extends TestCase {
         mFiles.put("app/AndroidCommonTests.apk", ItemType.FILE);
         mFiles.put("app/GalleryTests.apk", ItemType.FILE);
         mFiles.put("testinfo", ItemType.DIRECTORY);
+        mFiles.put(ALT_FILENAME1, ItemType.FILE);
         mFakeTestsZipFolder = new FakeTestsZipFolder(mFiles);
         assertTrue(mFakeTestsZipFolder.createItems());
         mDeviceLocationList = new ArrayList<String>();
         for (String file : mFiles.keySet()) {
             mDeviceLocationList.add(TestFilePushSetup.getDevicePathFromUserData(file));
         }
+        File tmpBase = Files.createTempDir();
+        mAltDirFile1 = new File(tmpBase, ALT_FILENAME1);
+        assertTrue("failed to create temp file", mAltDirFile1.createNewFile());
+        mAltDirFile2 = new File(tmpBase, ALT_FILENAME2);
+        assertTrue("failed to create temp file", mAltDirFile2.createNewFile());
     }
 
     public void testSetup() throws TargetSetupError, BuildError, DeviceNotAvailableException {
@@ -86,9 +96,55 @@ public class TestFilePushSetupFuncTest extends TestCase {
         assertTrue(mDeviceLocationList.isEmpty());
     }
 
+    /**
+     * Test that the artifact path resolution logic correctly uses alt dir as override
+     * @throws Exception
+     */
+    public void testAltDirOverride() throws Exception {
+        TestFilePushSetup setup = new TestFilePushSetup();
+        setup.setAltDirBehavior(AltDirBehavior.OVERRIDE);
+        DeviceBuildInfo info = new DeviceBuildInfo();
+        info.setTestsDir(mFakeTestsZipFolder.getBasePath(), "0");
+        setup.setAltDir(mAltDirFile1.getParentFile());
+        File apk = setup.getLocalPathForFilename(info, ALT_FILENAME1);
+        assertEquals(mAltDirFile1.getAbsolutePath(), apk.getAbsolutePath());
+    }
+
+    /**
+     * Test that the artifact path resolution logic correctly favors the one in test dir
+     * @throws Exception
+     */
+    public void testAltDirNoFallback() throws Exception {
+        TestFilePushSetup setup = new TestFilePushSetup();
+        DeviceBuildInfo info = new DeviceBuildInfo();
+        info.setTestsDir(mFakeTestsZipFolder.getBasePath(), "0");
+        setup.setAltDir(mAltDirFile1.getParentFile());
+        File apk = setup.getLocalPathForFilename(info, ALT_FILENAME1);
+        File apkInTestDir = new File(
+                new File(mFakeTestsZipFolder.getBasePath(), "DATA"), ALT_FILENAME1);
+        assertEquals(apkInTestDir.getAbsolutePath(), apk.getAbsolutePath());
+    }
+
+    /**
+     * Test that the artifact path resolution logic correctly falls back to alt dir
+     * @throws Exception
+     */
+    public void testAltDirFallback() throws Exception {
+        TestFilePushSetup setup = new TestFilePushSetup();
+        DeviceBuildInfo info = new DeviceBuildInfo();
+        info.setTestsDir(mFakeTestsZipFolder.getBasePath(), "0");
+        setup.setAltDir(mAltDirFile2.getParentFile());
+        File apk = setup.getLocalPathForFilename(info, ALT_FILENAME2);
+        assertEquals(mAltDirFile2.getAbsolutePath(), apk.getAbsolutePath());
+    }
+
     @Override
     protected void tearDown() throws Exception {
         mFakeTestsZipFolder.cleanUp();
+        File tmpDir = mAltDirFile1.getParentFile();
+        mAltDirFile1.delete();
+        mAltDirFile2.delete();
+        tmpDir.delete();
         super.tearDown();
     }
 }
