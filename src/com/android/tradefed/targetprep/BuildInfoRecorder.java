@@ -50,7 +50,13 @@ public class BuildInfoRecorder implements ITargetPreparer {
             BuildError, DeviceNotAvailableException {
         if (mBuildInfoFile != null) {
             try {
-                FileUtil.writeToFile(String.format("%s=%s\n", "build_id", buildInfo.getBuildId()),
+                String alias = buildInfo.getBuildAttributes().get("build_alias");
+                if (alias == null) {
+                    alias = buildInfo.getBuildId();
+                }
+                FileUtil.writeToFile(String.format("%s=%s\n%s=%s\n",
+                        "build_id", buildInfo.getBuildId(),
+                        "build_alias", alias),
                         mBuildInfoFile);
             } catch (IOException ioe) {
                 CLog.e("Exception while writing build info into %s",
