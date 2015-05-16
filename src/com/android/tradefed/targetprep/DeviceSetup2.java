@@ -120,7 +120,7 @@ public class DeviceSetup2 implements ITargetPreparer, ITargetCleaner {
     @Option(name = "screen-always-on",
             description = "Turn 'screen always on' on or off. If ON, then screen-timeout-secs " +
             "must be unset. Will only work when the device is plugged in")
-    protected BinaryState mScreenAlwaysOn = BinaryState.DEFAULT;
+    protected BinaryState mScreenAlwaysOn = BinaryState.ON;
     // ON:  svc power stayon true
     // OFF: svc power stayon false
 
@@ -410,12 +410,6 @@ public class DeviceSetup2 implements ITargetPreparer, ITargetCleaner {
 
         if (mScreenBrightness != null) {
             mSystemSettings.put("screen_brightness", Integer.toString(mScreenBrightness));
-        }
-
-        // Screen timeout cannot be set if screen always on is set to ON
-        if (mScreenTimeoutSecs != null && BinaryState.ON.equals(mScreenAlwaysOn)) {
-            throw new TargetSetupError("Option screen-timeout-secs cannot be set when " +
-                    "screen-always-on is set to ON");
         }
 
         setCommandForBinaryState(mScreenAlwaysOn, mRunCommandBeforeSettings,
