@@ -34,6 +34,7 @@ import com.android.tradefed.targetprep.ITargetPreparer;
 import com.android.tradefed.targetprep.StubTargetPreparer;
 import com.android.tradefed.testtype.IRemoteTest;
 import com.android.tradefed.testtype.StubTest;
+import com.android.tradefed.util.MultiMap;
 import com.android.tradefed.util.QuotationAwareTokenizer;
 
 import org.kxml2.io.KXmlSerializer;
@@ -671,7 +672,7 @@ public class Configuration implements IConfiguration {
     /**
      * Add all the options of class to the command XML dump.
      */
-    @SuppressWarnings("rawtypes")
+    @SuppressWarnings({"rawtypes", "unchecked"})
     private void dumpOptionsToXml(KXmlSerializer serializer, Object obj) throws IOException {
         for (Field field : OptionSetter.getOptionFieldsForClass(obj.getClass())) {
             Option option = field.getAnnotation(Option.class);
@@ -688,6 +689,14 @@ public class Configuration implements IConfiguration {
                     Map.Entry entry = (Entry) entryObj;
                     dumpOptionToXml(serializer, option.name(), entry.getKey().toString(),
                             entry.getValue().toString());
+                }
+            } else if (fieldVal instanceof MultiMap) {
+                MultiMap multimap = (MultiMap) fieldVal;
+                for (Object keyObj : multimap.keySet()) {
+                    for (Object valueObj : multimap.get(keyObj)) {
+                        dumpOptionToXml(serializer, option.name(), keyObj.toString(),
+                                valueObj.toString());
+                    }
                 }
             } else {
                 dumpOptionToXml(serializer, option.name(), null, fieldVal.toString());
