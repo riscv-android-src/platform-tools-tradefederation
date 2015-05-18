@@ -15,7 +15,6 @@
  */
 package com.android.tradefed.targetprep;
 
-import com.android.ddmlib.Log;
 import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.build.IDeviceBuildInfo;
 import com.android.tradefed.config.Option;
@@ -23,6 +22,7 @@ import com.android.tradefed.config.Option.Importance;
 import com.android.tradefed.config.OptionClass;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
+import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.testtype.IAbi;
 import com.android.tradefed.testtype.IAbiReceiver;
 import com.android.tradefed.util.AaptParser;
@@ -46,8 +46,6 @@ import java.util.List;
  */
 @OptionClass(alias = "tests-zip-app")
 public class TestAppInstallSetup implements ITargetCleaner, IAbiReceiver {
-
-    private static final String LOG_TAG = TestAppInstallSetup.class.getSimpleName();
 
     @Option(name = "test-file-name",
             description = "the name of a test zip file to install on device. Can be repeated.",
@@ -140,7 +138,6 @@ public class TestAppInstallSetup implements ITargetCleaner, IAbiReceiver {
                     "alternative directories were provided");
         }
 
-        Collections.reverse(dirs);
         for (File dir : dirs) {
             File testAppFile = new File(dir, apkFileName);
             if (testAppFile.exists()) {
@@ -157,7 +154,7 @@ public class TestAppInstallSetup implements ITargetCleaner, IAbiReceiver {
     public void setUp(ITestDevice device, IBuildInfo buildInfo) throws TargetSetupError,
             DeviceNotAvailableException {
         if (mTestFileNames.size() == 0) {
-            Log.i(LOG_TAG, "No test apps to install, skipping");
+            CLog.i("No test apps to install, skipping");
             return;
         }
         for (String testAppName : mTestFileNames) {
@@ -180,6 +177,7 @@ public class TestAppInstallSetup implements ITargetCleaner, IAbiReceiver {
             if (abiName != null) {
                 mInstallArgs.add(String.format("--abi %s", abiName));
             }
+            CLog.d("Installing apk from %s ...", testAppFile.getAbsolutePath());
             String result = device.installPackage(testAppFile, true,
                     mInstallArgs.toArray(new String[]{}));
             if (result != null) {
@@ -212,7 +210,7 @@ public class TestAppInstallSetup implements ITargetCleaner, IAbiReceiver {
             for (String packageName : mPackagesInstalled) {
                 String msg = device.uninstallPackage(packageName);
                 if (msg != null) {
-                    Log.w(LOG_TAG, String.format("error uninstalling package '%s': %s",
+                    CLog.w(String.format("error uninstalling package '%s': %s",
                             packageName, msg));
                 }
             }
