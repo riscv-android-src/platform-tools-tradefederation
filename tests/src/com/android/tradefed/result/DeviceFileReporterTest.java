@@ -16,6 +16,7 @@
 package com.android.tradefed.result;
 
 import com.android.tradefed.device.ITestDevice;
+import com.android.tradefed.util.ArrayUtil;
 
 import junit.framework.TestCase;
 
@@ -88,6 +89,60 @@ public class DeviceFileReporterTest extends TestCase {
         mListener.testLog(EasyMock.eq(filename), EasyMock.eq(LogDataType.UNKNOWN),
                 EasyMock.eq(mDfrIss));
 
+        replayMocks();
+        dfr.run();
+        verifyMocks();
+    }
+
+    public void testLineEnding_LF() throws Exception {
+        final String[] filenames = {"/data/tombstones/tombstone_00",
+                "/data/tombstones/tombstone_01",
+                "/data/tombstones/tombstone_02",
+                "/data/tombstones/tombstone_03",
+                "/data/tombstones/tombstone_04"};
+        String result = ArrayUtil.join("\n", (Object[])filenames);
+        final String tombstone = "What do you want on your tombstone?";
+        dfr.addPatterns("/data/tombstones/*");
+
+        EasyMock.expect(mDevice.executeShellCommand((String)EasyMock.anyObject()))
+                .andReturn(result);
+        mDfrIss = new ByteArrayInputStreamSource(tombstone.getBytes());
+        // This gets passed verbatim to createIssForFile above
+        for (String filename : filenames) {
+            EasyMock.expect(mDevice.pullFile(EasyMock.eq(filename))).andReturn(
+                    new FakeFile(filename, tombstone.length()));
+
+            // FIXME: use captures here to make sure we get the string back out
+            mListener.testLog(EasyMock.eq(filename), EasyMock.eq(LogDataType.UNKNOWN),
+                    EasyMock.eq(mDfrIss));
+        }
+        replayMocks();
+        dfr.run();
+        verifyMocks();
+    }
+
+    public void testLineEnding_CRLF() throws Exception {
+        final String[] filenames = {"/data/tombstones/tombstone_00",
+                "/data/tombstones/tombstone_01",
+                "/data/tombstones/tombstone_02",
+                "/data/tombstones/tombstone_03",
+                "/data/tombstones/tombstone_04"};
+        String result = ArrayUtil.join("\r\n", (Object[])filenames);
+        final String tombstone = "What do you want on your tombstone?";
+        dfr.addPatterns("/data/tombstones/*");
+
+        EasyMock.expect(mDevice.executeShellCommand((String)EasyMock.anyObject()))
+                .andReturn(result);
+        mDfrIss = new ByteArrayInputStreamSource(tombstone.getBytes());
+        // This gets passed verbatim to createIssForFile above
+        for (String filename : filenames) {
+            EasyMock.expect(mDevice.pullFile(EasyMock.eq(filename))).andReturn(
+                    new FakeFile(filename, tombstone.length()));
+
+            // FIXME: use captures here to make sure we get the string back out
+            mListener.testLog(EasyMock.eq(filename), EasyMock.eq(LogDataType.UNKNOWN),
+                    EasyMock.eq(mDfrIss));
+        }
         replayMocks();
         dfr.run();
         verifyMocks();

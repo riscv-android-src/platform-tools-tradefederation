@@ -1172,7 +1172,7 @@ class TestDevice implements IManagedTestDevice {
     @Override
     public List<MountPointInfo> getMountPointInfo() throws DeviceNotAvailableException {
         final String mountInfo = executeShellCommand("cat /proc/mounts");
-        final String[] mountInfoLines = mountInfo.split("\r\n");
+        final String[] mountInfoLines = mountInfo.split("\r?\n");
         List<MountPointInfo> list = new ArrayList<MountPointInfo>(mountInfoLines.length);
 
         for (String line : mountInfoLines) {
@@ -2622,7 +2622,7 @@ class TestDevice implements IManagedTestDevice {
         String output = executeShellCommand("vdc volume list");
         String[] splitOutput;
         if (output != null) {
-            splitOutput = output.split("\r\n");
+            splitOutput = output.split("\r?\n");
             for (String line : splitOutput) {
                 if (line.startsWith("110 ") && line.contains("sdcard /mnt/sdcard") &&
                         !line.endsWith("0")) {
@@ -2656,7 +2656,7 @@ class TestDevice implements IManagedTestDevice {
                 setRecoveryMode(cachedRecoveryMode);
                 return false;
             }
-            splitOutput = output.split("\r\n");
+            splitOutput = output.split("\r?\n");
             if (!splitOutput[splitOutput.length - 1].startsWith("200 ")) {
                 CLog.e("Command vdc volume format sdcard failed for device %s:\n%s",
                         getSerialNumber(), output);

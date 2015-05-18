@@ -131,7 +131,7 @@ public class UiPerformanceTest implements IDeviceTest, IRemoteTest {
 
             String rawFileList =
                     mTestDevice.executeShellCommand(String.format("ls \"%s\"", rawFileDir));
-            String[] rawFileString = rawFileList.split("\r\n");
+            String[] rawFileString = rawFileList.split("\r?\n");
             File resFile = null;
             InputStreamSource outputSource = null;
             for (int i = 0; i < rawFileString.length; i++) {

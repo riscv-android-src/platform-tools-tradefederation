@@ -159,7 +159,7 @@ public class DeviceFileReporter {
             final String searchCmd = String.format("ls '%s'", pat.getKey());
             final String fileList = mDevice.executeShellCommand(searchCmd);
 
-            for (String filename : fileList.split("\r\n")) {
+            for (String filename : fileList.split("\r?\n")) {
                 if (filename.isEmpty() || filename.endsWith(": No such file or directory")) {
                     continue;
                 }

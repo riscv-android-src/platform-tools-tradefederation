@@ -77,7 +77,7 @@ public class SingleSensorTests extends InstrumentationTest {
         String rawFileList = getDevice().executeShellCommand(
                 String.format("ls ${EXTERNAL_STORAGE}/%s*", mOutputPrefix));
         if (rawFileList != null && !rawFileList.contains("No such file or directory")) {
-            String[] filePaths = rawFileList.split("\r\n");
+            String[] filePaths = rawFileList.split("\r?\n");
             for (String filePath : filePaths) {
                 pullFile(listener, filePath);
             }

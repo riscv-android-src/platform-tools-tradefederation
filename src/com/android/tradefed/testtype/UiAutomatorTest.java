@@ -210,7 +210,7 @@ public class UiAutomatorTest implements IRemoteTest, IDeviceTest {
         if (mJarPaths.isEmpty()) {
             String rawFileString =
                     getDevice().executeShellCommand(String.format("ls %s", SHELL_EXE_BASE));
-            String[] rawFiles = rawFileString.split("\r\n");
+            String[] rawFiles = rawFileString.split("\r?\n");
             for (String rawFile : rawFiles) {
                 if (rawFile.endsWith(".jar")) {
                     mJarPaths.add(rawFile);
