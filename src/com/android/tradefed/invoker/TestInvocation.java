@@ -484,7 +484,8 @@ public class TestInvocation implements ITestInvocation {
             reportFailure(e, listener, config, info, rescheduler);
         } catch (AssertionError e) {
             exception = e;
-            CLog.w("Caught AssertionError while running invocation: ", e.toString());
+            CLog.e("Caught AssertionError while running invocation: %s", e.toString());
+            CLog.e(e);
             reportFailure(e, listener, config, info, rescheduler);
         } catch (Throwable t) {
             exception = t;
