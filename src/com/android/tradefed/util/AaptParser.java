@@ -29,6 +29,7 @@ import java.util.regex.Pattern;
 public class AaptParser {
     private static final Pattern PKG_PATTERN = Pattern.compile(
             "package:\\s+name='(.*?)'\\s+versionCode='(\\d+)'\\s+versionName='(.*)'");
+    private static final int AAPT_TIMEOUT_MS = 60000;
 
     private String mPackageName;
     private String mVersionCode;
@@ -58,8 +59,8 @@ public class AaptParser {
      * @return the {@link AaptParser} or <code>null</code> if failed to extract the information
      */
     public static AaptParser parse(File apkFile) {
-        CommandResult result = RunUtil.getDefault().runTimedCmd(15000, "aapt", "dump", "badging",
-                apkFile.getAbsolutePath());
+        CommandResult result = RunUtil.getDefault().runTimedCmd(AAPT_TIMEOUT_MS,
+                "aapt", "dump", "badging", apkFile.getAbsolutePath());
 
         String stderr = result.getStderr();
         if (stderr != null && stderr.length() > 0) {
