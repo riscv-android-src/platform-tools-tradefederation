@@ -45,6 +45,7 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.ListIterator;
 import java.util.Map;
+import java.util.TreeMap;
 import java.util.regex.Pattern;
 
 /**
@@ -421,7 +422,9 @@ public class Console extends Thread {
                 "\tcommands            Dump all the config XML for the commands waiting to be " +
                 "executed" + LINE_SEPARATOR +
                 "\tcommands [pattern]  Dump all the config XML for the commands matching the " +
-                "pattern and waiting to be executed" + LINE_SEPARATOR,
+                "pattern and waiting to be executed" + LINE_SEPARATOR +
+                "\te[nv]               Dump the environment variables available to test harness " +
+                "process" + LINE_SEPARATOR,
                 DUMP_PATTERN));
 
         commandHelp.put(RUN_PATTERN, String.format(
@@ -542,6 +545,13 @@ public class Console extends Thread {
             }
         };
         trie.put(dumpCmdRun, DUMP_PATTERN, LIST_COMMANDS_PATTERN, "(.*)");
+
+        trie.put(new Runnable() {
+            @Override
+            public void run() {
+                dumpEnv();
+            }
+        }, DUMP_PATTERN, "e(?:nv)?");
 
         // Run commands
         ArgRunnable<CaptureList> runRunCommand = new ArgRunnable<CaptureList>() {
@@ -903,6 +913,17 @@ public class Console extends Thread {
 
     private void dumpLogs() {
         LogRegistry.getLogRegistry().dumpLogs();
+    }
+
+    /**
+     * Dumps the environment variables to console, sorted by variable names
+     */
+    private void dumpEnv() {
+        // use TreeMap to sort variables by name
+        Map<String, String> env = new TreeMap<>(System.getenv());
+        for (Map.Entry<String, String> entry : env.entrySet()) {
+            printLine(String.format("\t%s=%s", entry.getKey(), entry.getValue()));
+        }
     }
 
     /**
