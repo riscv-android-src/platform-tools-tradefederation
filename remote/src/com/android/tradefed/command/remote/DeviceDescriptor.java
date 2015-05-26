@@ -76,4 +76,12 @@ public class DeviceDescriptor {
     public String getBatteryLevel() {
         return mBatteryLevel;
     }
+
+    /**
+     * Provides a description with serials, product and build id
+     */
+    @Override
+    public String toString() {
+        return String.format("[%s %s:%s %s]", mSerial, mProduct, mProductVariant, mBuildId);
+    }
 }
