@@ -22,13 +22,31 @@ import junit.framework.TestCase;
  */
 public class AaptParserTest extends TestCase {
 
-    public void testParsePackageName() {
+    public void testParsePackageNameVersionLabel() {
         AaptParser p = new AaptParser();
         p.parse("package: name='com.android.foo' versionCode='13' versionName='2.3'\n" +
             "sdkVersion:'5'\n" +
+            "application-label:'Foo'\n" +
+            "application-label-fr:'Faa'\n"+
             "uses-permission:'android.permission.INTERNET'");
         assertEquals("com.android.foo", p.getPackageName());
         assertEquals("13", p.getVersionCode());
         assertEquals("2.3", p.getVersionName());
+        assertEquals("Foo", p.getLabel());
+    }
+
+    public void testParseVersionMultipleFieldsNoLabel() {
+        AaptParser p = new AaptParser();
+        p.parse("package: name='com.android.foo' versionCode='217173' versionName='1.7173' " +
+                "platformBuildVersionName=''\n" +
+                "install-location:'preferExternal'\n" +
+                "sdkVersion:'10'\n" +
+                "targetSdkVersion:'21'\n" +
+                "uses-permission: name='android.permission.INTERNET'\n" +
+                "uses-permission: name='android.permission.ACCESS_NETWORK_STATE'\n");
+        assertEquals("com.android.foo", p.getPackageName());
+        assertEquals("217173", p.getVersionCode());
+        assertEquals("1.7173", p.getVersionName());
+        assertEquals("com.android.foo", p.getLabel());
     }
 }

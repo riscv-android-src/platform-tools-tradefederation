@@ -28,12 +28,17 @@ import java.util.regex.Pattern;
  */
 public class AaptParser {
     private static final Pattern PKG_PATTERN = Pattern.compile(
-            "package:\\s+name='(.*?)'\\s+versionCode='(\\d+)'\\s+versionName='(.*)'");
+            "^package:\\s+name='(.*?)'\\s+versionCode='(\\d+)'\\s+versionName='(.*?)'.*$",
+            Pattern.MULTILINE);
+    private static final Pattern LABEL_PATTERN = Pattern.compile(
+            "^application-label:'(.+?)'.*$",
+            Pattern.MULTILINE);
     private static final int AAPT_TIMEOUT_MS = 60000;
 
     private String mPackageName;
     private String mVersionCode;
     private String mVersionName;
+    private String mLabel;
 
     // @VisibleForTesting
     AaptParser() {
@@ -43,8 +48,13 @@ public class AaptParser {
         Matcher m = PKG_PATTERN.matcher(aaptOut);
         if (m.find()) {
             mPackageName = m.group(1);
+            mLabel = mPackageName;
             mVersionCode = m.group(2);
             mVersionName = m.group(3);
+            m = LABEL_PATTERN.matcher(aaptOut);
+            if (m.find()) {
+                mLabel = m.group(1);
+            }
             return true;
         }
         CLog.e("Failed to parse package and version info from 'aapt dump badging'. stdout: '%s'",
@@ -87,5 +97,9 @@ public class AaptParser {
 
     public String getVersionName() {
         return mVersionName;
+    }
+
+    public String getLabel() {
+        return mLabel;
     }
 }
