@@ -66,7 +66,7 @@ public class PushFilePreparer implements ITargetCleaner {
             + "so that files could be pushed there too")
     private boolean mRemount = false;
 
-    private Collection<String> mFilesPushed = new ArrayList<>();
+    private Collection<String> mFilesPushed = null;
 
     /**
      * Set abort on failure.  Exposed for testing.
@@ -118,6 +118,7 @@ public class PushFilePreparer implements ITargetCleaner {
     @Override
     public void setUp(ITestDevice device, IBuildInfo buildInfo) throws TargetSetupError, BuildError,
             DeviceNotAvailableException {
+        mFilesPushed = new ArrayList<>();
         if (mRemount) {
             device.remountSystemWritable();
         }
@@ -175,7 +176,7 @@ public class PushFilePreparer implements ITargetCleaner {
     @Override
     public void tearDown(ITestDevice device, IBuildInfo buildInfo, Throwable e)
             throws DeviceNotAvailableException {
-        if (!(e instanceof DeviceNotAvailableException) && mCleanup) {
+        if (!(e instanceof DeviceNotAvailableException) && mCleanup && mFilesPushed != null) {
             if (mRemount) {
                 device.remountSystemWritable();
             }

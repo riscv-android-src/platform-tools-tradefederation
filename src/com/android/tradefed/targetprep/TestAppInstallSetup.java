@@ -80,7 +80,7 @@ public class TestAppInstallSetup implements ITargetCleaner, IAbiReceiver {
 
     private IAbi mAbi = null;
 
-    private List<String> mPackagesInstalled = new ArrayList<>();
+    private List<String> mPackagesInstalled = null;
 
     /**
      * Adds a file to the list of apks to install
@@ -157,6 +157,9 @@ public class TestAppInstallSetup implements ITargetCleaner, IAbiReceiver {
             CLog.i("No test apps to install, skipping");
             return;
         }
+        if (mCleanup) {
+            mPackagesInstalled = new ArrayList<>();
+        }
         for (String testAppName : mTestFileNames) {
             File testAppFile = getLocalPathForFilename(buildInfo, testAppName);
             if (testAppFile == null) {
@@ -206,7 +209,7 @@ public class TestAppInstallSetup implements ITargetCleaner, IAbiReceiver {
     @Override
     public void tearDown(ITestDevice device, IBuildInfo buildInfo, Throwable e)
             throws DeviceNotAvailableException {
-        if (mCleanup && !(e instanceof DeviceNotAvailableException)) {
+        if (mCleanup && mPackagesInstalled != null && !(e instanceof DeviceNotAvailableException)) {
             for (String packageName : mPackagesInstalled) {
                 String msg = device.uninstallPackage(packageName);
                 if (msg != null) {
