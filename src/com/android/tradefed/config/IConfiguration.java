@@ -27,6 +27,9 @@ import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.targetprep.ITargetPreparer;
 import com.android.tradefed.testtype.IRemoteTest;
 
+import org.json.JSONArray;
+import org.json.JSONException;
+
 import java.io.IOException;
 import java.io.PrintStream;
 import java.io.PrintWriter;
@@ -289,6 +292,13 @@ public interface IConfiguration {
      */
     public void printCommandUsage(boolean importantOnly, PrintStream out)
             throws ConfigurationException;
+
+    /**
+     * Returns a JSON representation of this configuration.
+     *
+     * @throws JSONException
+     */
+    public JSONArray getJsonCommandUsage() throws JSONException;
 
     /**
      * Validate option values.
