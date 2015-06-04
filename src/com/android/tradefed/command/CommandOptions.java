@@ -49,8 +49,7 @@ public class CommandOptions implements ICommandOptions {
     private boolean mNoisyDryRunMode = false;
 
     @Option(name = "min-loop-time", description =
-            "the minimum invocation time in ms when in loop mode.",
-            updateRule = OptionUpdateRule.LEAST)
+            "the minimum invocation time in ms when in loop mode.")
     private Long mMinLoopTime = 10L * 60L * 1000L;
 
     @Option(name = "max-random-loop-time", description =
