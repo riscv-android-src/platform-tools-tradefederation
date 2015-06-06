@@ -58,6 +58,8 @@ LOCAL_DROIDDOC_OPTIONS:= \
         -hdf android.whichdoc online \
         -hdf sac true \
         -hdf devices true \
+        -showAnnotations com.android.tradefed.config.OptionClass \
+        -showAnnotations com.android.tradefed.config.Option \
 
 include $(BUILD_DROIDDOC)
 
