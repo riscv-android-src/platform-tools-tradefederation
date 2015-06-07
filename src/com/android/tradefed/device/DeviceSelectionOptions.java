@@ -436,8 +436,8 @@ public class DeviceSelectionOptions implements IDeviceSelection {
         try {
             // use default 5 minutes freshness
             Future<Integer> batteryFuture = device.getBattery();
-            // don't block on battery level, get cached value
-            return batteryFuture.get(1, TimeUnit.MILLISECONDS);
+            // get cached value or wait up to 500ms for battery level query
+            return batteryFuture.get(500, TimeUnit.MILLISECONDS);
         } catch (InterruptedException | ExecutionException |
                 java.util.concurrent.TimeoutException e) {
             CLog.w("Failed to query battery level for %s: %s", device.getSerialNumber(),
