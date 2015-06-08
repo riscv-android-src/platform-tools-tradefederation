@@ -22,6 +22,8 @@ import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.log.LogUtil.CLog;
 
+import java.io.File;
+
 /**
  * A {@link IDeviceBuildProvider} that bootstraps build info from the test device
  *
@@ -62,6 +64,9 @@ public class BootstrapBuildProvider implements IDeviceBuildProvider {
             "Default to 300 seconds.")
     private long mShellAvailableTimeout = 5 * 60;
 
+    @Option(name="tests-dir", description="Path to top directory of expanded tests zip")
+    private File mTestsDir = null;
+
     @Override
     public IBuildInfo getBuild() throws BuildRetrievalError {
         throw new UnsupportedOperationException("Call getBuild(ITestDevice)");
@@ -81,7 +86,8 @@ public class BootstrapBuildProvider implements IDeviceBuildProvider {
     @Override
     public IBuildInfo getBuild(ITestDevice device) throws BuildRetrievalError,
             DeviceNotAvailableException {
-        IBuildInfo info = new BuildInfo(device.getBuildId(), mTestTag, mBuildTargetName);
+        String buildId = device.getBuildId();
+        IBuildInfo info = new DeviceBuildInfo(buildId, mTestTag, mBuildTargetName);
         if (!device.waitForDeviceShell(mShellAvailableTimeout * 1000)) {
             throw new DeviceNotAvailableException(
                     String.format("Shell did not become available in %d seconds",
@@ -97,6 +103,9 @@ public class BootstrapBuildProvider implements IDeviceBuildProvider {
         info.setBuildBranch(mBranch);
         info.setBuildFlavor(device.getBuildFlavor());
         info.addBuildAttribute("build_alias", device.getBuildAlias());
+        if (mTestsDir != null && mTestsDir.isDirectory()) {
+            info.setFile("testsdir", mTestsDir, buildId);
+        }
         return info;
     }
 }
