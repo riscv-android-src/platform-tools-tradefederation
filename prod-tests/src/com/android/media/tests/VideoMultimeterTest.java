@@ -23,12 +23,15 @@ import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.result.ITestInvocationListener;
+import com.android.tradefed.result.LogDataType;
+import com.android.tradefed.result.SnapshotInputStreamSource;
 import com.android.tradefed.testtype.IDeviceTest;
 import com.android.tradefed.testtype.IRemoteTest;
 import com.android.tradefed.util.CommandResult;
 import com.android.tradefed.util.IRunUtil;
 import com.android.tradefed.util.RunUtil;
 
+import java.io.ByteArrayInputStream;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Date;
@@ -42,47 +45,53 @@ import java.util.regex.Pattern;
  */
 public class VideoMultimeterTest implements IDeviceTest, IRemoteTest {
 
-    private static final String RUN_KEY = "video_multimeter";
+    static final String RUN_KEY = "video_multimeter";
 
     @Option(name = "multimeter-util-path", description = "path for multimeter control util",
             importance = Importance.ALWAYS)
-    private String mUtilPath = "/tmp/util.sh";
+    String mMeterUtilPath = "/tmp/util.sh";
 
-    private static final String START_VIDEO_PLAYER = "am start"
+    static final String START_VIDEO_PLAYER = "am start"
             + " -a android.intent.action.VIEW -t video/mp4 -d \"file://%s\""
             + " -n \"com.google.android.apps.plus/.phone.VideoViewActivity\"";
-    private static final String KILL_VIDEO_PLAYER = "am force-stop com.google.android.apps.plus";
-    private static final String ROTATE_LANDSCAPE = "content insert --uri content://settings/system"
+    static final String KILL_VIDEO_PLAYER = "am force-stop com.google.android.apps.plus";
+    static final String ROTATE_LANDSCAPE = "content insert --uri content://settings/system"
             + " --bind name:s:user_rotation --bind value:i:1";
 
-    private static final String VIDEO_DIR = "/sdcard/DCIM/Camera/";
+    static final String VIDEO_DIR = "/sdcard/DCIM/Camera/";
 
-    private static final String CALI_VIDEO_DEVICE_PATH = VIDEO_DIR + "video_cali.mp4";
+    static final String CALI_VIDEO_DEVICE_PATH = VIDEO_DIR + "video_cali.mp4";
 
-    private static final String TEST_VIDEO_1_DEVICE_PATH = VIDEO_DIR + "video.mp4";
-    private static final String TEST_VIDEO_1_PREFIX = "bbb_";
-    private static final float TEST_VIDEO_1_FPS = 24;
-    private static final long TEST_VIDEO_1_DURATION = 11 * 60; // in second
+    // FIXIT: move video path and info to options for flexibility
+    static final String TEST_VIDEO_1_DEVICE_PATH = VIDEO_DIR + "video.mp4";
+    static final String TEST_VIDEO_1_PREFIX = "24fps_";
+    static final float TEST_VIDEO_1_FPS = 24;
+    static final long TEST_VIDEO_1_DURATION = 11 * 60; // in second
 
-    private static final String TEST_VIDEO_2_DEVICE_PATH = VIDEO_DIR + "video2.mp4";
-    private static final String TEST_VIDEO_2_PREFIX = "60fps_";
-    private static final float TEST_VIDEO_2_FPS = 60;
-    private static final long TEST_VIDEO_2_DURATION = 5 * 60; // in second
+    static final String TEST_VIDEO_2_DEVICE_PATH = VIDEO_DIR + "video2.mp4";
+    static final String TEST_VIDEO_2_PREFIX = "60fps_";
+    static final float TEST_VIDEO_2_FPS = 60;
+    static final long TEST_VIDEO_2_DURATION = 5 * 60; // in second
 
-    private static final String CMD_GET_FRAMERATE_STATE = "GETF";
-    private static final String CMD_START_CALIBRATION = "STAC";
-    private static final String CMD_STOP_CALIBRATION = "STOC";
-    private static final String CMD_START_MEASUREMENT = "STAM";
-    private static final String CMD_STOP_MEASUREMENT = "STOM";
-    private static final String CMD_GET_NUM_FRAMES = "GETN";
-    private static final String CMD_GET_ALL_DATA = "GETD";
+    // Max number of trailing frames to trim
+    static final int TRAILING_FRAMES_MAX = 3;
+    // Min threshold for duration of trailing frames
+    static final long FRAME_DURATION_THRESHOLD_US = 500 * 1000; // 0.5s
 
-    private static final long DEVICE_SYNC_TIME_MS = 30 * 1000;
-    private static final long CALIBRATION_TIMEOUT_MS = 30 * 1000;
-    private static final long COMMAND_TIMEOUT_MS = 5 * 1000;
-    private static final long GETDATA_TIMEOUT_MS = 10 * 60 * 1000;
+    static final String CMD_GET_FRAMERATE_STATE = "GETF";
+    static final String CMD_START_CALIBRATION = "STAC";
+    static final String CMD_STOP_CALIBRATION = "STOC";
+    static final String CMD_START_MEASUREMENT = "STAM";
+    static final String CMD_STOP_MEASUREMENT = "STOM";
+    static final String CMD_GET_NUM_FRAMES = "GETN";
+    static final String CMD_GET_ALL_DATA = "GETD";
 
-    private ITestDevice mDevice;
+    static final long DEVICE_SYNC_TIME_MS = 30 * 1000;
+    static final long CALIBRATION_TIMEOUT_MS = 30 * 1000;
+    static final long COMMAND_TIMEOUT_MS = 5 * 1000;
+    static final long GETDATA_TIMEOUT_MS = 10 * 60 * 1000;
+
+    ITestDevice mDevice;
 
     /**
      * {@inheritDoc}
@@ -107,19 +116,19 @@ public class VideoMultimeterTest implements IDeviceTest, IRemoteTest {
         }
     }
 
-    private boolean setupTestEnv() throws DeviceNotAvailableException {
+    protected boolean setupTestEnv() throws DeviceNotAvailableException {
         getRunUtil().sleep(DEVICE_SYNC_TIME_MS);
         CommandResult cr = getRunUtil().runTimedCmd(
-                COMMAND_TIMEOUT_MS, mUtilPath, CMD_STOP_MEASUREMENT);
+                COMMAND_TIMEOUT_MS, mMeterUtilPath, CMD_STOP_MEASUREMENT);
 
         getDevice().setDate(new Date());
         CLog.i("syncing device time to host time");
         getRunUtil().sleep(3 * 1000);
 
         // start and stop to clear old data
-        cr = getRunUtil().runTimedCmd(COMMAND_TIMEOUT_MS, mUtilPath, CMD_START_MEASUREMENT);
+        cr = getRunUtil().runTimedCmd(COMMAND_TIMEOUT_MS, mMeterUtilPath, CMD_START_MEASUREMENT);
         getRunUtil().sleep(3 * 1000);
-        cr = getRunUtil().runTimedCmd(COMMAND_TIMEOUT_MS, mUtilPath, CMD_STOP_MEASUREMENT);
+        cr = getRunUtil().runTimedCmd(COMMAND_TIMEOUT_MS, mMeterUtilPath, CMD_STOP_MEASUREMENT);
         getRunUtil().sleep(3 * 1000);
         CLog.i("Stopping measurement: " + cr.getStdout());
         getDevice().unlockDevice();
@@ -130,7 +139,7 @@ public class VideoMultimeterTest implements IDeviceTest, IRemoteTest {
         getRunUtil().sleep(3 * 1000);
         rotateScreen();
         getRunUtil().sleep(1 * 1000);
-        cr = getRunUtil().runTimedCmd(COMMAND_TIMEOUT_MS, mUtilPath, CMD_START_CALIBRATION);
+        cr = getRunUtil().runTimedCmd(COMMAND_TIMEOUT_MS, mMeterUtilPath, CMD_START_CALIBRATION);
         CLog.i("Starting calibration: " + cr.getStdout());
 
         // check whether multimeter is calibrated
@@ -139,14 +148,15 @@ public class VideoMultimeterTest implements IDeviceTest, IRemoteTest {
         while (!isCalibrated
                 && System.currentTimeMillis() - calibrationStartTime <= CALIBRATION_TIMEOUT_MS) {
             getRunUtil().sleep(1 * 1000);
-            cr = getRunUtil().runTimedCmd(2 * 1000, mUtilPath, CMD_GET_FRAMERATE_STATE);
+            cr = getRunUtil().runTimedCmd(2 * 1000, mMeterUtilPath, CMD_GET_FRAMERATE_STATE);
             if (cr.getStdout().contains("calib0")) {
                 isCalibrated = true;
             }
         }
         getDevice().executeShellCommand(KILL_VIDEO_PLAYER);
         if (!isCalibrated) {
-            cr = getRunUtil().runTimedCmd(COMMAND_TIMEOUT_MS, mUtilPath, CMD_STOP_CALIBRATION);
+            cr = getRunUtil().runTimedCmd(
+                    COMMAND_TIMEOUT_MS, mMeterUtilPath, CMD_STOP_CALIBRATION);
             CLog.e("Calibration timed out.");
             return false;
         } else {
@@ -167,16 +177,17 @@ public class VideoMultimeterTest implements IDeviceTest, IRemoteTest {
 
         rotateScreen();
         getRunUtil().sleep(1 * 1000);
-        cr = getRunUtil().runTimedCmd(COMMAND_TIMEOUT_MS, mUtilPath, CMD_START_MEASUREMENT);
+        cr = getRunUtil().runTimedCmd(COMMAND_TIMEOUT_MS, mMeterUtilPath, CMD_START_MEASUREMENT);
         CLog.i("Starting measurement: " + cr.getStdout());
 
         // end measurement
         getRunUtil().sleep(durationSecond * 1000);
 
-        cr = getRunUtil().runTimedCmd(COMMAND_TIMEOUT_MS, mUtilPath, CMD_STOP_MEASUREMENT);
+        cr = getRunUtil().runTimedCmd(COMMAND_TIMEOUT_MS, mMeterUtilPath, CMD_STOP_MEASUREMENT);
         CLog.i("Stopping measurement: " + cr.getStdout());
         if (cr == null || !cr.getStdout().contains("OK")) {
-            cr = getRunUtil().runTimedCmd(COMMAND_TIMEOUT_MS, mUtilPath, CMD_STOP_MEASUREMENT);
+            cr = getRunUtil().runTimedCmd(
+                    COMMAND_TIMEOUT_MS, mMeterUtilPath, CMD_STOP_MEASUREMENT);
             CLog.i("Retry - Stopping measurement: " + cr.getStdout());
         }
 
@@ -184,23 +195,33 @@ public class VideoMultimeterTest implements IDeviceTest, IRemoteTest {
         getDevice().clearErrorDialogs();
     }
 
-    private Map<String, String> getResult(Map<String, String> metrics,
-            String keyprefix, float fps, boolean lipsync) {
+    private Map<String, String> getResult(ITestInvocationListener listener,
+            Map<String, String> metrics, String keyprefix, float fps, boolean lipsync) {
         CommandResult cr;
 
         // get number of results
         getRunUtil().sleep(5 * 1000);
-        cr = getRunUtil().runTimedCmd(COMMAND_TIMEOUT_MS, mUtilPath, CMD_GET_NUM_FRAMES);
+        cr = getRunUtil().runTimedCmd(COMMAND_TIMEOUT_MS, mMeterUtilPath, CMD_GET_NUM_FRAMES);
         String frameNum = cr.getStdout();
         CLog.i("Number of results: " + frameNum);
 
-        // get all results
-        cr = getRunUtil().runTimedCmd(GETDATA_TIMEOUT_MS, mUtilPath, CMD_GET_ALL_DATA);
+        // get all results and write to output file
+        cr = getRunUtil().runTimedCmd(GETDATA_TIMEOUT_MS, mMeterUtilPath, CMD_GET_ALL_DATA);
         String allData = cr.getStdout();
-        CLog.i("Data: " + allData);
+        listener.testLog(keyprefix, LogDataType.TEXT, new SnapshotInputStreamSource(
+                new ByteArrayInputStream(allData.getBytes())));
 
         // parse results
         return parseResult(metrics, frameNum, allData, keyprefix, fps, lipsync);
+    }
+
+    protected void runMultimeterTest(ITestInvocationListener listener,
+            Map<String,String> metrics) throws DeviceNotAvailableException {
+        doMeasurement(TEST_VIDEO_1_DEVICE_PATH, TEST_VIDEO_1_DURATION);
+        metrics = getResult(listener, metrics, TEST_VIDEO_1_PREFIX, TEST_VIDEO_1_FPS, true);
+
+        doMeasurement(TEST_VIDEO_2_DEVICE_PATH, TEST_VIDEO_2_DURATION);
+        metrics = getResult(listener, metrics, TEST_VIDEO_2_PREFIX, TEST_VIDEO_2_FPS, true);
     }
 
     /**
@@ -219,11 +240,7 @@ public class VideoMultimeterTest implements IDeviceTest, IRemoteTest {
         Map<String, String> metrics = new HashMap<String, String>();
 
         if (setupTestEnv()) {
-            doMeasurement(TEST_VIDEO_1_DEVICE_PATH, TEST_VIDEO_1_DURATION);
-            metrics = getResult(metrics, TEST_VIDEO_1_PREFIX, TEST_VIDEO_1_FPS, true);
-
-            doMeasurement(TEST_VIDEO_2_DEVICE_PATH, TEST_VIDEO_2_DURATION);
-            metrics = getResult(metrics, TEST_VIDEO_2_PREFIX, TEST_VIDEO_2_FPS, true);
+            runMultimeterTest(listener, metrics);
         }
 
         long durationMs = System.currentTimeMillis() - testStartTime;
@@ -246,12 +263,14 @@ public class VideoMultimeterTest implements IDeviceTest, IRemoteTest {
         CLog.i("== Video Multimeter Result '%s' ==", keyprefix);
         Pattern p = Pattern.compile("OK\\s+(\\d+)$");
         Matcher m = p.matcher(numFrames.trim());
-        String numFrame = "0";
+        String frameCapturedStr = "0";
+        long frameCaptured = 0;
         if (m.matches()) {
-            numFrame = m.group(1);
-            metrics.put(keyprefix + "frame_captured", numFrame);
-            CLog.i("Captured frames: " + numFrame);
-            if (Integer.parseInt(numFrame) == 0) {
+            frameCapturedStr = m.group(1);
+            metrics.put(keyprefix + "frame_captured", frameCapturedStr);
+            CLog.i("Captured frames: " + frameCapturedStr);
+            frameCaptured = Long.parseLong(frameCapturedStr);
+            if (frameCaptured == 0) {
                 // no frame captured
                 CLog.w("No frame captured for " + keyprefix);
                 return metrics;
@@ -267,16 +286,25 @@ public class VideoMultimeterTest implements IDeviceTest, IRemoteTest {
         String[] lines = result.split(System.getProperty("line.separator"));
         String totalDropFrame = "-1";
         String lastDropFrame = "0";
+        long frameCount = 0;
         long consecutiveDropFrame = 0;
         double freezingPenalty = 0.0;
         long frameDuration = 0;
-        long offByOne = 0;
-        long offByMultiple = 0;
+        double offByOne = 0;
+        double offByMultiple = 0;
         double expectedFrameDurationInUs = 1000000.0 / fps;
         for (int i = 0; i < lines.length; i++) {
             m = p.matcher(lines[i].trim());
             if (m.matches()) {
+                frameCount++;
+                frameDuration = Long.parseLong(m.group(1));
                 totalDropFrame = m.group(2);
+                // trim the last few data points if needed
+                if (frameCount >= frameCaptured - TRAILING_FRAMES_MAX - 1 &&
+                        frameDuration > FRAME_DURATION_THRESHOLD_US) {
+                    metrics.put(keyprefix + "frame_captured", String.valueOf(frameCount));
+                    break;
+                }
                 if (lastDropFrame.equals(totalDropFrame)) {
                     if (consecutiveDropFrame > 0) {
                       freezingPenalty += MISSING_FRAME_WEIGHT[(int) (Math.min(consecutiveDropFrame,
@@ -288,7 +316,6 @@ public class VideoMultimeterTest implements IDeviceTest, IRemoteTest {
                 }
                 lastDropFrame = totalDropFrame;
 
-                frameDuration = Long.parseLong(m.group(1));
                 if (frameDuration < expectedFrameDurationInUs * 0.5) {
                     offByOne++;
                 } else if (frameDuration > expectedFrameDurationInUs * 1.5) {
@@ -308,15 +335,14 @@ public class VideoMultimeterTest implements IDeviceTest, IRemoteTest {
             metrics.put(keyprefix + "frame_drop", totalDropFrame);
             CLog.i("Dropped frames: " + totalDropFrame);
         }
-        double totalFrames = Double.parseDouble(numFrame);
-        double smoothnessScore = 100.0 - (offByOne / totalFrames) * 100.0 -
-                (offByMultiple / totalFrames) * 300.0;
+        double smoothnessScore = 100.0 - (offByOne / frameCaptured) * 100.0 -
+                (offByMultiple / frameCaptured) * 300.0;
         metrics.put(keyprefix + "smoothness", String.valueOf(smoothnessScore));
         CLog.i("Off by one frame: " + offByOne);
         CLog.i("Off by multiple frames: " + offByMultiple);
         CLog.i("Smoothness score: " + smoothnessScore);
 
-        double freezingScore = 100.0 - 100.0 * freezingPenalty / totalFrames;
+        double freezingScore = 100.0 - 100.0 * freezingPenalty / frameCaptured;
         metrics.put(keyprefix + "freezing", String.valueOf(freezingScore));
         CLog.i("Freezing score: " + freezingScore);
 
@@ -361,7 +387,7 @@ public class VideoMultimeterTest implements IDeviceTest, IRemoteTest {
         return metrics;
     }
 
-    private IRunUtil getRunUtil() {
+    protected IRunUtil getRunUtil() {
         return RunUtil.getDefault();
     }
 }
