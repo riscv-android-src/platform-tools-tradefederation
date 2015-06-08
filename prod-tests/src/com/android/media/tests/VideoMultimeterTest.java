@@ -80,6 +80,7 @@ public class VideoMultimeterTest implements IDeviceTest, IRemoteTest {
 
     static final String CMD_GET_FRAMERATE_STATE = "GETF";
     static final String CMD_START_CALIBRATION = "STAC";
+    static final String CMD_SET_CALIBRATION_VALS = "SETCAL";
     static final String CMD_STOP_CALIBRATION = "STOC";
     static final String CMD_START_MEASUREMENT = "STAM";
     static final String CMD_STOP_MEASUREMENT = "STOM";
@@ -117,6 +118,49 @@ public class VideoMultimeterTest implements IDeviceTest, IRemoteTest {
     }
 
     protected boolean setupTestEnv() throws DeviceNotAvailableException {
+        return setupTestEnv(null);
+    }
+
+    /**
+     * Perform calibration process for video multimeter
+     *
+     * @return boolean whether calibration succeeds
+     * @throws DeviceNotAvailableException
+     */
+    protected boolean doCalibration() throws DeviceNotAvailableException {
+        // play calibration video
+        getDevice().executeShellCommand(String.format(
+                START_VIDEO_PLAYER, CALI_VIDEO_DEVICE_PATH));
+        getRunUtil().sleep(3 * 1000);
+        rotateScreen();
+        getRunUtil().sleep(1 * 1000);
+        CommandResult cr = getRunUtil().runTimedCmd(
+                COMMAND_TIMEOUT_MS, mMeterUtilPath, CMD_START_CALIBRATION);
+        CLog.i("Starting calibration: " + cr.getStdout());
+        // check whether multimeter is calibrated
+        boolean isCalibrated = false;
+        long calibrationStartTime = System.currentTimeMillis();
+        while (!isCalibrated &&
+                System.currentTimeMillis() - calibrationStartTime <= CALIBRATION_TIMEOUT_MS) {
+            getRunUtil().sleep(1 * 1000);
+            cr = getRunUtil().runTimedCmd(2 * 1000, mMeterUtilPath, CMD_GET_FRAMERATE_STATE);
+            if (cr.getStdout().contains("calib0")) {
+                isCalibrated = true;
+            }
+        }
+        if (!isCalibrated) {
+            // stop calibration if time out
+            cr = getRunUtil().runTimedCmd(
+                        COMMAND_TIMEOUT_MS, mMeterUtilPath, CMD_STOP_CALIBRATION);
+            CLog.e("Calibration timed out.");
+        } else {
+            CLog.i("Calibration succeeds.");
+        }
+        getDevice().executeShellCommand(KILL_VIDEO_PLAYER);
+        return isCalibrated;
+    }
+
+    protected boolean setupTestEnv(String caliValues) throws DeviceNotAvailableException {
         getRunUtil().sleep(DEVICE_SYNC_TIME_MS);
         CommandResult cr = getRunUtil().runTimedCmd(
                 COMMAND_TIMEOUT_MS, mMeterUtilPath, CMD_STOP_MEASUREMENT);
@@ -125,6 +169,7 @@ public class VideoMultimeterTest implements IDeviceTest, IRemoteTest {
         CLog.i("syncing device time to host time");
         getRunUtil().sleep(3 * 1000);
 
+        // TODO: need a better way to clear old data
         // start and stop to clear old data
         cr = getRunUtil().runTimedCmd(COMMAND_TIMEOUT_MS, mMeterUtilPath, CMD_START_MEASUREMENT);
         getRunUtil().sleep(3 * 1000);
@@ -134,34 +179,19 @@ public class VideoMultimeterTest implements IDeviceTest, IRemoteTest {
         getDevice().unlockDevice();
         getRunUtil().sleep(3 * 1000);
 
-        // play calibration video
-        getDevice().executeShellCommand(String.format(START_VIDEO_PLAYER, CALI_VIDEO_DEVICE_PATH));
-        getRunUtil().sleep(3 * 1000);
-        rotateScreen();
-        getRunUtil().sleep(1 * 1000);
-        cr = getRunUtil().runTimedCmd(COMMAND_TIMEOUT_MS, mMeterUtilPath, CMD_START_CALIBRATION);
-        CLog.i("Starting calibration: " + cr.getStdout());
-
-        // check whether multimeter is calibrated
-        boolean isCalibrated = false;
-        long calibrationStartTime = System.currentTimeMillis();
-        while (!isCalibrated
-                && System.currentTimeMillis() - calibrationStartTime <= CALIBRATION_TIMEOUT_MS) {
-            getRunUtil().sleep(1 * 1000);
-            cr = getRunUtil().runTimedCmd(2 * 1000, mMeterUtilPath, CMD_GET_FRAMERATE_STATE);
-            if (cr.getStdout().contains("calib0")) {
-                isCalibrated = true;
-            }
-        }
-        getDevice().executeShellCommand(KILL_VIDEO_PLAYER);
-        if (!isCalibrated) {
-            cr = getRunUtil().runTimedCmd(
-                    COMMAND_TIMEOUT_MS, mMeterUtilPath, CMD_STOP_CALIBRATION);
-            CLog.e("Calibration timed out.");
-            return false;
+        if (caliValues == null) {
+            return doCalibration();
         } else {
-            CLog.i("Calibrated.");
-            return true;
+            CLog.i("Setting calibration values: " + caliValues);
+            cr = getRunUtil().runTimedCmd(COMMAND_TIMEOUT_MS, mMeterUtilPath,
+                    CMD_SET_CALIBRATION_VALS + " " +  caliValues);
+            if (cr.getStdout().contains("OK")) {
+                CLog.i("Calibration values are set to: " + caliValues);
+                return true;
+            } else {
+                CLog.e("Failed to set calibration values: " + cr.getStdout());
+                return false;
+            }
         }
     }
 
@@ -296,8 +326,11 @@ public class VideoMultimeterTest implements IDeviceTest, IRemoteTest {
         for (int i = 0; i < lines.length; i++) {
             m = p.matcher(lines[i].trim());
             if (m.matches()) {
-                frameCount++;
                 frameDuration = Long.parseLong(m.group(1));
+                // frameDuration = -1 indicates dropped frame
+                if (frameDuration > 0) {
+                    frameCount++;
+                }
                 totalDropFrame = m.group(2);
                 // trim the last few data points if needed
                 if (frameCount >= frameCaptured - TRAILING_FRAMES_MAX - 1 &&
