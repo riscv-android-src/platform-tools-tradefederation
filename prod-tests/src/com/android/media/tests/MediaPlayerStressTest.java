@@ -85,6 +85,8 @@ public class MediaPlayerStressTest implements IDeviceTest, IRemoteTest {
         mPatternMap.put("PlaybackCrash", "^Total Error: (\\d+)");
         mPatternMap.put("TrackLagging", "^Total Track Lagging: (\\d+)");
         mPatternMap.put("BadInterleave", "^Total Bad Interleaving: (\\d+)");
+        mPatternMap.put("FailedToCompleteWithNoError",
+                "^Total Failed To Complete With No Error: (\\d+)");
     }
 
     @Override
