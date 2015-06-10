@@ -15,11 +15,10 @@
  */
 package com.android.tradefed.util;
 
+import com.android.tradefed.log.LogUtil.CLog;
+
 import java.io.File;
 import java.io.IOException;
-
-import com.android.tradefed.log.LogUtil.CLog;
-import com.android.tradefed.util.FileUtil;
 
 public class VersionParser {
     private static final String DEFAULT_VERSION_FILE_NAME = "tf_version.txt";
@@ -27,7 +26,7 @@ public class VersionParser {
     public static String fetchVersion(File file) {
         if (file.exists()) {
             try {
-                return FileUtil.readStringFromFile(file);
+                return FileUtil.readStringFromFile(file).trim();
             } catch (IOException e) {
                CLog.e(e.toString());
                return null;
