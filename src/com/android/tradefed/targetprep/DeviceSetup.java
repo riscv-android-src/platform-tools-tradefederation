@@ -17,303 +17,363 @@
 package com.android.tradefed.targetprep;
 
 import com.android.ddmlib.IDevice;
-import com.android.ddmlib.Log;
 import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.config.Option;
 import com.android.tradefed.config.OptionClass;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.log.LogUtil.CLog;
+import com.android.tradefed.util.MultiMap;
 
 import java.io.File;
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.regex.Pattern;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 /**
  * A {@link ITargetPreparer} that configures a device for testing based on provided {@link Option}s.
- * <p/>
+ * <p>
  * Requires a device where 'adb root' is possible, typically a userdebug build type.
- * <p/>
- * Should be performed *after* a new build is flashed.
- * @deprecated Use {@link DeviceSetup2}
+ * </p><p>
+ * Should be performed <strong>after</strong> a new build is flashed.
+ * </p>
  */
-@Deprecated
 @OptionClass(alias = "device-setup")
 public class DeviceSetup implements ITargetPreparer, ITargetCleaner {
 
-    private static final String LOG_TAG = "DeviceSetup";
-    private static final Pattern RELEASE_BUILD_NAME_PATTERN =
-            Pattern.compile("[A-Z]{3}\\d{2}[A-Z]?");
-    private static final String PERSIST_PREFIX = "persist.";
+    /**
+     * Enum used to record ON/OFF state with a IGNORE no-op state.
+     */
+    public enum BinaryState {
+        IGNORE,
+        ON,
+        OFF;
+    }
 
-    @Option(name="wifi-network", description="the name of wifi network to connect to.")
-    private String mWifiNetwork = null;
+    // Networking
+    @Option(name = "airplane-mode",
+            description = "Turn airplane mode on or off")
+    protected BinaryState mAirplaneMode = BinaryState.IGNORE;
+    // ON:  settings put global airplane_mode_on 1
+    //      am broadcast -a android.intent.action.AIRPLANE_MODE --ez state true
+    // OFF: settings put global airplane_mode_on 0
+    //      am broadcast -a android.intent.action.AIRPLANE_MODE --ez state false
 
-    @Option(name="wifi-psk", description="WPA-PSK passphrase of wifi network to connect to.")
-    private String mWifiPsk = null;
+    @Option(name = "wifi",
+            description = "Turn wifi on or off")
+    protected BinaryState mWifi = BinaryState.IGNORE;
+    // ON:  settings put global wifi_on 1
+    //      svc wifi enable
+    // OFF: settings put global wifi_off 0
+    //      svc wifi disable
 
-    @Option(name = "disconnect-wifi-after-test", description =
-            "disconnect from wifi network after test completes.")
+    @Option(name = "wifi-network",
+            description = "The SSID of the network to connect to. Will only attempt to " +
+            "connect to a network if set")
+    protected String mWifiSsid = null;
+
+    @Option(name = "wifi-psk",
+            description = "The passphrase used to connect to a secured network")
+    protected String mWifiPsk = null;
+
+    @Option(name = "wifi-watchdog",
+            description = "Turn wifi watchdog on or off")
+    protected BinaryState mWifiWatchdog = BinaryState.IGNORE;
+    // ON:  settings put global wifi_watchdog 1
+    // OFF: settings put global wifi_watchdog 0
+
+    @Option(name = "wifi-scan-always-enabled",
+            description = "Turn wifi scan always enabled on or off")
+    protected BinaryState mWifiScanAlwaysEnabled = BinaryState.IGNORE;
+    // ON:  settings put global wifi_scan_always_enabled 1
+    // OFF: settings put global wifi_scan_always_enabled 0
+
+    @Option(name = "ethernet",
+            description = "Turn ethernet on or off")
+    protected BinaryState mEthernet = BinaryState.IGNORE;
+    // ON:  ifconfig eth0 up
+    // OFF: ifconfig eth0 down
+
+    @Option(name = "bluetooth",
+            description = "Turn bluetooth on or off")
+    protected BinaryState mBluetooth = BinaryState.IGNORE;
+    // ON:  service call bluetooth_manager 6
+    // OFF: service call bluetooth_manager 8
+
+    // Screen
+    @Option(name = "screen-adaptive-brightness",
+            description = "Turn screen adaptive brightness on or off")
+    protected BinaryState mScreenAdaptiveBrightness = BinaryState.IGNORE;
+    // ON:  settings put system screen_brightness_mode 1
+    // OFF: settings put system screen_brightness_mode 0
+
+    @Option(name = "screen-brightness",
+            description = "Set the screen brightness. This is uncalibrated from product to product")
+    protected Integer mScreenBrightness = null;
+    // settings put system screen_brightness $N
+
+    @Option(name = "screen-always-on",
+            description = "Turn 'screen always on' on or off. If ON, then screen-timeout-secs " +
+            "must be unset. Will only work when the device is plugged in")
+    protected BinaryState mScreenAlwaysOn = BinaryState.ON;
+    // ON:  svc power stayon true
+    // OFF: svc power stayon false
+
+    @Option(name = "screen-timeout-secs",
+            description = "Set the screen timeout in seconds. If set, then screen-always-on must " +
+            "be OFF or DEFAULT")
+    protected Long mScreenTimeoutSecs = null;
+    // settings put system screen_off_timeout $(N * 1000)
+
+    @Option(name = "screen-ambient-mode",
+            description = "Turn screen ambient mode on or off")
+    protected BinaryState mScreenAmbientMode = BinaryState.IGNORE;
+    // ON:  settings put secure doze_enabled 1
+    // OFF: settings put secure doze_enabled 0
+
+    @Option(name = "wake-gesture",
+            description = "Turn wake gesture on or off")
+    protected BinaryState mWakeGesture = BinaryState.IGNORE;
+    // ON:  settings put secure wake_gesture_enabled 1
+    // OFF: settings put secure wake_gesture_enabled 0
+
+    @Option(name = "screen-saver",
+            description = "Turn screen saver on or off")
+    protected BinaryState mScreenSaver = BinaryState.IGNORE;
+    // ON:  settings put secure screensaver_enabled 1
+    // OFF: settings put secure screensaver_enabled 0
+
+    @Option(name = "notification-led",
+            description = "Turn the notification led on or off")
+    protected BinaryState mNotificationLed = BinaryState.IGNORE;
+    // ON:  settings put system notification_light_pulse 1
+    // OFF: settings put system notification_light_pulse 0
+
+    // Media
+    @Option(name = "trigger-media-mounted",
+            description = "Trigger a MEDIA_MOUNTED broadcast")
+    protected boolean mTriggerMediaMounted = false;
+    // am broadcast -a android.intent.action.MEDIA_MOUNTED -d file://${EXTERNAL_STORAGE}
+
+    // Location
+    @Option(name = "location-gps",
+            description = "Turn the GPS location on or off")
+    protected BinaryState mLocationGps = BinaryState.IGNORE;
+    // ON:  settings put secure location_providers_allowed +gps
+    // OFF: settings put secure location_providers_allowed -gps
+
+    @Option(name = "location-network",
+            description = "Turn the network location on or off")
+    protected BinaryState mLocationNetwork = BinaryState.IGNORE;
+    // ON:  settings put secure location_providers_allowed +network
+    // OFF: settings put secure location_providers_allowed -network
+
+    // Sensor
+    @Option(name = "auto-rotate",
+            description = "Turn auto rotate on or off")
+    protected BinaryState mAutoRotate = BinaryState.IGNORE;
+    // ON:  settings put system accelerometer_rotation 1
+    // OFF: settings put system accelerometer_rotation 0
+
+    // Power
+    @Option(name = "battery-saver-mode",
+            description = "Turn battery saver mode manually on or off. If OFF but battery is " +
+            "less battery-saver-trigger, the device will still go into battery saver mode")
+    protected BinaryState mBatterySaver = BinaryState.IGNORE;
+    // ON:  dumpsys battery set usb 0
+    //      settings put global low_power 1
+    // OFF: settings put global low_power 0
+
+    @Option(name = "battery-saver-trigger",
+            description = "Set the battery saver trigger level. Should be [1-99] to enable, or " +
+            "0 to disable automatic battery saver mode")
+    protected Integer mBatterySaverTrigger = null;
+    // settings put global low_power_trigger_level $N
+
+    // Time
+    @Option(name = "auto-update-time",
+            description = "Turn auto update time on or off")
+    protected BinaryState mAutoUpdateTime = BinaryState.IGNORE;
+    // ON:  settings put system auto_time 1
+    // OFF: settings put system auto_time 0
+
+    @Option(name = "auto-update-timezone",
+            description = "Turn auto update timezone on or off")
+    protected BinaryState mAutoUpdateTimezone = BinaryState.IGNORE;
+    // ON:  settings put system auto_timezone 1
+    // OFF: settings put system auto_timezone 0
+
+    // Calling
+    @Option(name = "disable-dialing",
+            description = "Disable dialing")
+    protected boolean mDisableDialing = true;
+    // setprop ro.telephony.disable-call true"
+
+    @Option(name = "default-sim-data",
+            description = "Set the default sim card slot for data. Leave unset for single SIM " +
+            "devices")
+    protected Integer mDefaultSimData = null;
+    // settings put global multi_sim_data_call $N
+
+    @Option(name = "default-sim-voice",
+            description = "Set the default sim card slot for voice calls. Leave unset for single " +
+            "SIM devices")
+    protected Integer mDefaultSimVoice = null;
+    // settings put global multi_sim_voice_call $N
+
+    @Option(name = "default-sim-sms",
+            description = "Set the default sim card slot for SMS. Leave unset for single SIM " +
+            "devices")
+    protected Integer mDefaultSimSms = null;
+    // settings put global multi_sim_sms $N
+
+    // Audio
+    private static final boolean DEFAULT_DISABLE_AUDIO = true;
+    @Option(name = "disable-audio",
+            description = "Disable the audio")
+    protected boolean mDisableAudio = DEFAULT_DISABLE_AUDIO;
+    // setprop ro.audio.silent 1"
+
+    // Test harness
+    @Option(name = "disable",
+            description = "Disable the device setup")
+    protected boolean mDisable = false;
+
+    @Option(name = "force-skip-system-props",
+            description = "Force setup to not modify any device system properties. All other " +
+            "system property options will be ignored")
+    protected boolean mForceSkipSystemProps = false;
+
+    @Option(name = "force-skip-settings",
+            description = "Force setup to not modify any device settings. All other setting " +
+            "options will be ignored.")
+    protected boolean mForceSkipSettings = false;
+
+    @Option(name = "force-skip-run-commands",
+            description = "Force setup to not run any additional commands. All other commands " +
+            "will be ignored.")
+    protected boolean mForceSkipRunCommands = false;
+
+    @Option(name = "set-test-harness",
+            description = "Set the read-only test harness flag on boot")
+    protected boolean mSetTestHarness = true;
+    // setprop ro.monkey 1
+    // setprop ro.test_harness 1
+
+    @Option(name = "disable-dalvik-verifier",
+            description = "Disable the dalvik verifier on device. Allows package-private " +
+            "framework tests to run.")
+    protected boolean mDisableDalvikVerifier = false;
+    // setprop dalvik.vm.dexopt-flags v=n
+
+    @Option(name = "set-property",
+            description = "Set the specified property on boot. Option may be repeated but only " +
+            "the last value for a given key will be set.")
+    protected Map<String, String> mSetProps = new HashMap<>();
+
+    @Option(name = "set-system-setting",
+            description = "Change a system (non-secure) setting. Option may be repeated and all " +
+            "key/value pairs will be set in order.")
+    // Use a Multimap since it is possible for a setting to have multiple values for the same key
+    protected MultiMap<String, String> mSystemSettings = new MultiMap<>();
+
+    @Option(name = "set-secure-setting",
+            description = "Change a secure setting. Option may be repeated and all key/value " +
+            "pairs will be set in order.")
+    // Use a Multimap since it is possible for a setting to have multiple values for the same key
+    protected MultiMap<String, String> mSecureSettings = new MultiMap<>();
+
+    @Option(name = "set-global-setting",
+            description = "Change a global setting. Option may be repeated and all key/value " +
+            "pairs will be set in order.")
+    // Use a Multimap since it is possible for a setting to have multiple values for the same key
+    protected MultiMap<String, String> mGlobalSettings = new MultiMap<>();
+
+    protected List<String> mRunCommandBeforeSettings = new ArrayList<>();
+
+    @Option(name = "run-command",
+            description = "Run an adb shell command. Option may be repeated")
+    protected List<String> mRunCommandAfterSettings = new ArrayList<>();
+
+    @Option(name = "disconnect-wifi-after-test",
+            description = "Disconnect from wifi network after test completes.")
     private boolean mDisconnectWifiAfterTest = true;
 
-    @Option(name="min-external-store-space", description="the minimum amount of free space in KB" +
-            " that must be present on device's external storage.")
-    // require 500K by default. Values <=0 mean external storage is not required
-    private long mMinExternalStoreSpace = 500;
+    private static final long DEFAULT_MIN_EXTERNAL_STORAGE_KB = 500;
+    @Option(name = "min-external-storage-kb",
+            description="The minimum amount of free space in KB that must be present on device's " +
+            "external storage.")
+    protected long mMinExternalStorageKb = DEFAULT_MIN_EXTERNAL_STORAGE_KB;
 
     @Option(name = "local-data-path",
-            description = "optional local file path of test data to sync to device's external " +
+            description = "Optional local file path of test data to sync to device's external " +
             "storage. Use --remote-data-path to set remote location.")
-    private File mLocalDataFile = null;
+    protected File mLocalDataFile = null;
 
     @Option(name = "remote-data-path",
-            description = "optional file path on device's external storage to sync test data. " +
+            description = "Optional file path on device's external storage to sync test data. " +
             "Must be used with --local-data-path.")
-    private String mRemoteDataPath = null;
+    protected String mRemoteDataPath = null;
 
-    @Option(name = "force-skip-system-props", description =
-            "force setup to not modify any device system properties. " +
-            "All other system property options will be ignored.")
-    private boolean mForceNoSystemProps = false;
+    // Deprecated options follow
+    @Option(name = "min-external-store-space",
+            description = "deprecated, use option min-external-storage-kb. The minimum amount of " +
+            "free space in KB that must be present on device's external storage.")
+    @Deprecated
+    private long mDeprecatedMinExternalStoreSpace = DEFAULT_MIN_EXTERNAL_STORAGE_KB;
 
-    @Option(name="disable-dialing", description="set disable dialing property on boot.")
-    private boolean mDisableDialing = true;
+    @Option(name = "audio-silent",
+            description = "deprecated, use option disable-audio. set ro.audio.silent on boot.")
+    @Deprecated
+    private boolean mDeprecatedSetAudioSilent = DEFAULT_DISABLE_AUDIO;
 
-    @Option(name="set-test-harness", description="set the read-only test harness flag on boot. " +
-            "Requires adb root.")
-    private boolean mSetTestHarness = true;
+    @Option(name = "setprop",
+            description = "deprecated, use option set-property. set the specified property on " +
+            "boot. Format: --setprop key=value. May be repeated.")
+    @Deprecated
+    private Collection<String> mDeprecatedSetProps = new ArrayList<String>();
 
-    @Option(name="audio-silent", description="set ro.audio.silent on boot.")
-    private boolean mSetAudioSilent = true;
-
-    @Option(name="disable-dalvik-verifier", description="disable the dalvik verifier on device. "
-        + "Allows package-private framework tests to run.")
-    private boolean mDisableDalvikVerifier = false;
-
-    @Option(name="setprop", description="set the specified property on boot.  " +
-            "Format: --setprop key=value.  May be repeated.")
-    private Collection<String> mSetProps = new ArrayList<String>();
-
-    /**
-     * Sets the local data path to use
-     * <p/>
-     * Exposed for unit testing
-     */
-    void setLocalDataPath(File localPath) {
-        mLocalDataFile = localPath;
-    }
-
-    /**
-     * Sets the remote data path to use
-     * <p/>
-     * Exposed for unit testing
-     */
-    void setRemoteDataPath(String remotePath) {
-        mRemoteDataPath = remotePath;
-    }
-
-    /**
-     * Sets the wifi network ssid to setup.
-     * <p/>
-     * Exposed for unit testing
-     */
-    void setWifiNetwork(String network) {
-        mWifiNetwork = network;
-    }
-
-    /**
-     * Sets the minimum external store space
-     * <p/>
-     * Exposed for unit testing
-     */
-    void setMinExternalStoreSpace(int minKBytes) {
-        mMinExternalStoreSpace = minKBytes;
-    }
-
-    /**
-     * Adds a property to the list of properties to set
-     * <p/>
-     * Exposed for unit testing
-     */
-    void addSetProperty(String prop) {
-        mSetProps.add(prop);
-    }
+    private static final String PERSIST_PREFIX = "persist.";
 
     /**
      * {@inheritDoc}
      */
     @Override
-    public void setUp(ITestDevice device, IBuildInfo buildInfo) throws TargetSetupError,
-            DeviceNotAvailableException, BuildError {
-        Log.i(LOG_TAG, String.format("Performing setup on %s", device.getSerialNumber()));
+    public void setUp(ITestDevice device, IBuildInfo buildInfo) throws DeviceNotAvailableException,
+            TargetSetupError {
+        if (mDisable) {
+            return;
+        }
+
+        CLog.i("Performing setup on %s", device.getSerialNumber());
 
         if (!device.enableAdbRoot()) {
-            throw new TargetSetupError(String.format("failed to enable adb root on %s",
+            throw new TargetSetupError(String.format("Failed to enable adb root on %s",
                     device.getSerialNumber()));
         }
 
-        configureSystemProperties(device);
-
+        // Convert deprecated options into current options
+        processDeprecatedOptions();
+        // Convert options into settings and run commands
+        processOptions(device);
+        // Change system props (will reboot device)
+        changeSystemProps(device);
+        // Run commands designated to be run before changing settings
+        runCommands(device, mRunCommandBeforeSettings);
+        // Change settings
         changeSettings(device);
-
-        keepScreenOn(device);
-
-        connectToWifi(device);
-
+        // Connect wifi after settings since this may take a while
+        connectWifi(device);
+        // Sync data after settings since this may take a while
         syncTestData(device);
-
+        // Run commands designated to be run after changing settings
+        runCommands(device, mRunCommandAfterSettings);
+        // Throw an error if there is not enough storage space
         checkExternalStoreSpace(device);
 
         device.clearErrorDialogs();
-    }
-
-    /**
-     * Configures device system properties.
-     * <p/>
-     * Device will be rebooted if any property is changed.
-     *
-     * @param device
-     * @throws TargetSetupError
-     * @throws DeviceNotAvailableException
-     */
-    private void configureSystemProperties(ITestDevice device) throws TargetSetupError,
-            DeviceNotAvailableException {
-        if (mForceNoSystemProps) {
-            return;
-        }
-        // build the local.prop file contents with properties to change
-        StringBuilder propertyBuilder = new StringBuilder();
-        if (mDisableDialing) {
-            propertyBuilder.append("ro.telephony.disable-call=true\n");
-        }
-        if (mSetTestHarness) {
-            // set both ro.monkey and ro.test_harness, for compatibility with older platforms
-            propertyBuilder.append("ro.monkey=1\n");
-            propertyBuilder.append("ro.test_harness=1\n");
-        }
-        if (mSetAudioSilent) {
-            propertyBuilder.append("ro.audio.silent=1\n");
-        }
-        if (mDisableDalvikVerifier) {
-            propertyBuilder.append("dalvik.vm.dexopt-flags = v=n\n");
-        }
-        for (String prop : mSetProps) {
-            if (prop.startsWith(PERSIST_PREFIX)) {
-                prop = prop.replace('=', ' ');
-                device.executeShellCommand("setprop " + prop);
-            } else {
-                propertyBuilder.append(prop);
-                propertyBuilder.append("\n");
-            }
-        }
-        if (propertyBuilder.length() > 0) {
-            // create a local.prop file, and push it to /data/local.prop
-            boolean result = device.pushString(propertyBuilder.toString(), "/data/local.prop");
-            if (!result) {
-                throw new TargetSetupError(String.format("Failed to push file to %s",
-                        device.getSerialNumber()));
-            }
-            // Set reasonable permissions for /data/local.prop
-            device.executeShellCommand("chmod 644 /data/local.prop");
-            Log.i(LOG_TAG, String.format(
-                    "Setup requires system property change. Reboot of %s required",
-                    device.getSerialNumber()));
-            device.reboot();
-        }
-    }
-
-    /**
-     * Change additional settings for the device. This is intended to be overridden by subclass for
-     * additional change of settings.
-     *
-     * @param device
-     * @throws DeviceNotAvailableException
-     * @throws TargetSetupError
-     */
-    protected void changeSettings(ITestDevice device) throws DeviceNotAvailableException,
-            TargetSetupError {
-        // ignore
-    }
-
-    /**
-     * @param device
-     * @throws DeviceNotAvailableException
-     */
-    private void keepScreenOn(ITestDevice device) throws DeviceNotAvailableException {
-        device.executeShellCommand("svc power stayon true");
-    }
-
-    /**
-     * Check that device external store has the required space
-     *
-     * @param device
-     * @throws DeviceNotAvailableException if device does not have required space
-     */
-    private void checkExternalStoreSpace(ITestDevice device) throws DeviceNotAvailableException {
-        if (mMinExternalStoreSpace > 0) {
-            long freeSpace = device.getExternalStoreFreeSpace();
-            if (freeSpace < mMinExternalStoreSpace) {
-                throw new DeviceNotAvailableException(String.format(
-                        "External store free space %dK is less than required %dK for device %s",
-                        freeSpace , mMinExternalStoreSpace, device.getSerialNumber()));
-            }
-        }
-    }
-
-    /**
-     * Connect to wifi network if specified
-     *
-     * @param device
-     * @throws DeviceNotAvailableException
-     * @throws TargetSetupError if failed to connect to wifi
-     */
-    private void connectToWifi(ITestDevice device) throws DeviceNotAvailableException,
-            TargetSetupError {
-        if (mWifiNetwork != null) {
-            if (!device.connectToWifiNetwork(mWifiNetwork, mWifiPsk)) {
-                throw new TargetSetupError(String.format(
-                        "Failed to connect to wifi network %s on %s", mWifiNetwork,
-                        device.getSerialNumber()));
-            }
-        }
-    }
-
-    /**
-     * Syncs a set of test data files, specified via local-data-path, to devices external storage.
-     *
-     * @param device the {@link ITestDevice} to sync data to
-     * @throws TargetSetupError if data fails to sync
-     */
-    void syncTestData(ITestDevice device) throws TargetSetupError, DeviceNotAvailableException {
-        if (mLocalDataFile != null) {
-            if (!mLocalDataFile.exists() || !mLocalDataFile.isDirectory()) {
-                throw new TargetSetupError(String.format("local-data-path %s is not a directory",
-                        mLocalDataFile.getAbsolutePath()));
-
-            }
-            String fullRemotePath = device.getIDevice().getMountPoint(IDevice.MNT_EXTERNAL_STORAGE);
-            if (fullRemotePath == null) {
-                throw new TargetSetupError(String.format(
-                        "failed to get external storage path on device %s",
-                        device.getSerialNumber()));
-            }
-            if (mRemoteDataPath != null) {
-                fullRemotePath = String.format("%s/%s", fullRemotePath, mRemoteDataPath);
-            }
-            boolean result = device.syncFiles(mLocalDataFile, fullRemotePath);
-            if (!result) {
-                // TODO: get exact error code and respond accordingly
-                throw new TargetSetupError(String.format(
-                        "failed to sync test data from local-data-path %s to %s on device %s",
-                        mLocalDataFile.getAbsolutePath(), fullRemotePath,
-                        device.getSerialNumber()));
-            }
-        }
-    }
-
-    protected boolean isReleaseBuildName(String name) {
-        return RELEASE_BUILD_NAME_PATTERN.matcher(name).matches();
     }
 
     /**
@@ -322,24 +382,695 @@ public class DeviceSetup implements ITargetPreparer, ITargetCleaner {
     @Override
     public void tearDown(ITestDevice device, IBuildInfo buildInfo, Throwable e)
             throws DeviceNotAvailableException {
-        Log.i(LOG_TAG, String.format("Performing teardown on %s", device.getSerialNumber()));
-
-        if (e instanceof DeviceFailedToBootError) {
-            CLog.d("boot failure: skipping wifi teardown");
+        if (mDisable) {
             return;
         }
-        if (mWifiNetwork != null && mDisconnectWifiAfterTest) {
-            disconnectFromWifi(device);
+
+        CLog.i("Performing teardown on %s", device.getSerialNumber());
+
+        if (e instanceof DeviceFailedToBootError) {
+            CLog.d("boot failure: skipping teardown");
+            return;
+        }
+
+        // Only try to disconnect if wifi ssid is set since isWifiEnabled() is a heavy operation
+        // which should be avoided when possible
+        if (mDisconnectWifiAfterTest && mWifiSsid != null && device.isWifiEnabled()) {
+            boolean result = device.disconnectFromWifi();
+            if (result) {
+                CLog.i("Successfully disconnected from wifi network on %s",
+                        device.getSerialNumber());
+            } else {
+                CLog.w("Failed to disconnect from wifi network on %s", device.getSerialNumber());
+            }
         }
     }
 
-    private void disconnectFromWifi(ITestDevice device) throws DeviceNotAvailableException {
-        if (device.isWifiEnabled()) {
-            if (!device.disconnectFromWifi()) {
-                CLog.w("Failed to disconnect from wifi network on %s", device.getSerialNumber());
-                return;
+    /**
+     * Processes the deprecated options converting them into the currently used options.
+     * <p>
+     * This method should be run before any other processing methods. Will throw a
+     * {@link TargetSetupError} if the deprecated option overrides a specified non-deprecated
+     * option.
+     * </p>
+     * @throws TargetSetupError if there is a conflict
+     */
+    public void processDeprecatedOptions() throws TargetSetupError {
+        if (mDeprecatedMinExternalStoreSpace != DEFAULT_MIN_EXTERNAL_STORAGE_KB) {
+            if (mMinExternalStorageKb != DEFAULT_MIN_EXTERNAL_STORAGE_KB) {
+                throw new TargetSetupError("Deprecated option min-external-store-space conflicts " +
+                        "with option min-external-storage-kb");
             }
-            CLog.i("Successfully disconnected from wifi network on %s", device.getSerialNumber());
+            mMinExternalStorageKb = mDeprecatedMinExternalStoreSpace;
         }
+
+        if (mDeprecatedSetAudioSilent != DEFAULT_DISABLE_AUDIO) {
+            if (mDisableAudio != DEFAULT_DISABLE_AUDIO) {
+                throw new TargetSetupError("Deprecated option audio-silent conflicts with " +
+                        "option disable-audio");
+            }
+            mDisableAudio = mDeprecatedSetAudioSilent;
+        }
+
+        if (!mDeprecatedSetProps.isEmpty()) {
+            if (!mSetProps.isEmpty()) {
+                throw new TargetSetupError("Deprecated option setprop conflicts with option " +
+                        "set-property ");
+            }
+            for (String prop : mDeprecatedSetProps) {
+                String[] parts = prop.split("=", 2);
+                String key = parts[0].trim();
+                String value = parts.length == 2 ? parts[1].trim() : "";
+                mSetProps.put(key, value);
+            }
+        }
+    }
+
+    /**
+     * Process all the {@link Option}s and turn them into system props, settings, or run commands.
+     * Does not run any commands on the device at this time.
+     * <p>
+     * Exposed so that children classes may override this.
+     * </p>
+     *
+     * @param device The {@link ITestDevice}
+     * @throws DeviceNotAvailableException if the device is not available
+     * @throws TargetSetupError if the {@link Option}s conflict
+     */
+    public void processOptions(ITestDevice device) throws DeviceNotAvailableException,
+            TargetSetupError {
+        setSettingForBinaryState(mWifi, mGlobalSettings, "wifi_on", "1", "0");
+        setCommandForBinaryState(mWifi, mRunCommandAfterSettings,
+                "svc wifi enable", "svc wifi disable");
+
+        setSettingForBinaryState(mWifiWatchdog, mGlobalSettings, "wifi_watchdog", "1", "0");
+
+        setSettingForBinaryState(mWifiScanAlwaysEnabled, mGlobalSettings,
+                "wifi_scan_always_enabled", "1", "0");
+
+        setCommandForBinaryState(mEthernet, mRunCommandAfterSettings,
+                "ifconfig eth0 up", "ifconfig eth0 down");
+
+        setCommandForBinaryState(mBluetooth, mRunCommandAfterSettings,
+                "service call bluetooth_manager 6", "service call bluetooth_manager 8");
+
+        if (mScreenBrightness != null && BinaryState.ON.equals(mScreenAdaptiveBrightness)) {
+            throw new TargetSetupError("Option screen-brightness cannot be set when " +
+                    "screen-adaptive-brightness is set to ON");
+        }
+
+        setSettingForBinaryState(mScreenAdaptiveBrightness, mSystemSettings,
+                "screen_brightness_mode", "1", "0");
+
+        if (mScreenBrightness != null) {
+            mSystemSettings.put("screen_brightness", Integer.toString(mScreenBrightness));
+        }
+
+        setCommandForBinaryState(mScreenAlwaysOn, mRunCommandBeforeSettings,
+                "svc power stayon true", "svc power stayon false");
+
+        if (mScreenTimeoutSecs != null) {
+            mSystemSettings.put("screen_off_timeout", Long.toString(mScreenTimeoutSecs * 1000));
+        }
+
+        setSettingForBinaryState(mScreenAmbientMode, mSecureSettings, "doze_enabled", "1", "0");
+
+        setSettingForBinaryState(mWakeGesture, mSecureSettings, "wake_gesture_enabled", "1", "0");
+
+        setSettingForBinaryState(mScreenSaver, mSecureSettings, "screensaver_enabled", "1", "0");
+
+        setSettingForBinaryState(mNotificationLed, mSystemSettings,
+                "notification_light_pulse", "1", "0");
+
+        if (mTriggerMediaMounted) {
+            mRunCommandAfterSettings.add("am broadcast -a android.intent.action.MEDIA_MOUNTED -d " +
+                    "file://${EXTERNAL_STORAGE}");
+        }
+
+        setSettingForBinaryState(mLocationGps, mSecureSettings,
+                "location_providers_allowed", "+gps", "-gps");
+
+        setSettingForBinaryState(mLocationNetwork, mSecureSettings,
+                "location_providers_allowed", "+network", "-network");
+
+        setSettingForBinaryState(mAutoRotate, mSystemSettings, "accelerometer_rotation", "1", "0");
+
+        setCommandForBinaryState(mBatterySaver, mRunCommandBeforeSettings,
+                "dumpsys battery set usb 0", null);
+        setSettingForBinaryState(mBatterySaver, mGlobalSettings, "low_power", "1", "0");
+
+        if (mBatterySaverTrigger != null) {
+            mGlobalSettings.put("low_power_trigger_level", Integer.toString(mBatterySaverTrigger));
+        }
+
+        setSettingForBinaryState(mAutoUpdateTime, mSystemSettings, "auto_time", "1", "0");
+
+        setSettingForBinaryState(mAutoUpdateTimezone, mSystemSettings, "auto_timezone", "1", "0");
+
+        if (mDisableDialing) {
+            mSetProps.put("ro.telephony.disable-call", "true");
+        }
+
+        if (mDefaultSimData != null) {
+            mGlobalSettings.put("multi_sim_data_call", Integer.toString(mDefaultSimData));
+        }
+
+        if (mDefaultSimVoice != null) {
+            mGlobalSettings.put("multi_sim_voice_call", Integer.toString(mDefaultSimVoice));
+        }
+
+        if (mDefaultSimSms != null) {
+            mGlobalSettings.put("multi_sim_sms", Integer.toString(mDefaultSimSms));
+        }
+
+        if (mDisableAudio) {
+            mSetProps.put("ro.audio.silent", "1");
+        }
+
+        if (mSetTestHarness) {
+            // set both ro.monkey and ro.test_harness, for compatibility with older platforms
+            mSetProps.put("ro.monkey", "1");
+            mSetProps.put("ro.test_harness", "1");
+        }
+
+        if (mDisableDalvikVerifier) {
+            mSetProps.put("dalvik.vm.dexopt-flags", "v=n");
+        }
+    }
+
+    /**
+     * Change the system properties on the device.
+     *
+     * @param device The {@link ITestDevice}
+     * @throws DeviceNotAvailableException if the device is not available
+     * @throws TargetSetupError if there was a failure setting the system properties
+     */
+    private void changeSystemProps(ITestDevice device) throws DeviceNotAvailableException,
+            TargetSetupError {
+        if (mForceSkipSystemProps) {
+            CLog.d("Skipping system props due to force-skip-system-props");
+            return;
+        }
+
+        StringBuilder sb = new StringBuilder();
+        for (Map.Entry<String, String> prop : mSetProps.entrySet()) {
+            if (prop.getKey().startsWith(PERSIST_PREFIX)) {
+                String command = String.format("setprop \"%s\" \"%s\"",
+                        prop.getKey(), prop.getValue());
+                device.executeShellCommand(command);
+            } else {
+                sb.append(String.format("%s=%s\n", prop.getKey(), prop.getValue()));
+            }
+        }
+
+        if (sb.length() == 0) {
+            return;
+        }
+
+        boolean result = device.pushString(sb.toString(), "/data/local.prop");
+        if (!result) {
+            throw new TargetSetupError(String.format("Failed to push /data/local.prop to %s",
+                    device.getSerialNumber()));
+        }
+        // Set reasonable permissions for /data/local.prop
+        device.executeShellCommand("chmod 644 /data/local.prop");
+        CLog.i("Rebooting %s due to system property change", device.getSerialNumber());
+        device.reboot();
+    }
+
+    /**
+     * Change the settings on the device.
+     * <p>
+     * Exposed so children classes may override.
+     * </p>
+     *
+     * @param device The {@link ITestDevice}
+     * @throws DeviceNotAvailableException if the device is not available
+     * @throws TargetSetupError if there was a failure setting the settings
+     */
+    public void changeSettings(ITestDevice device) throws DeviceNotAvailableException,
+            TargetSetupError {
+        if (mForceSkipSettings) {
+            CLog.d("Skipping settings due to force-skip-setttings");
+            return;
+        }
+
+        if (mSystemSettings.isEmpty() && mSecureSettings.isEmpty() && mGlobalSettings.isEmpty() &&
+                BinaryState.IGNORE.equals(mAirplaneMode)) {
+            CLog.d("No settings to change");
+            return;
+        }
+
+        if (device.getApiLevel() < 22) {
+            throw new TargetSetupError(String.format("Changing setting not supported on %s, " +
+                    "must be API 22+", device.getSerialNumber()));
+        }
+
+        // Special case airplane mode since it needs to be set before other connectivity settings
+        // For example, it is possible to enable airplane mode and then turn wifi on
+        String command = "am broadcast -a android.intent.action.AIRPLANE_MODE --ez state %s";
+        switch (mAirplaneMode) {
+            case ON:
+                CLog.d("Changing global setting airplane_mode_on to 1");
+                device.executeShellCommand("settings put global \"airplane_mode_on\" \"1\"");
+                if (!mForceSkipRunCommands) {
+                    device.executeShellCommand(String.format(command, "true"));
+                }
+                break;
+            case OFF:
+                CLog.d("Changing global setting airplane_mode_on to 0");
+                device.executeShellCommand("settings put global \"airplane_mode_on\" \"0\"");
+                if (!mForceSkipRunCommands) {
+                    device.executeShellCommand(String.format(command, "false"));
+                }
+                break;
+            case IGNORE:
+                // No-op
+                break;
+        }
+
+        String settingCommand = "settings put %s \"%s\" \"%s\"";
+        for (String key : mSystemSettings.keySet()) {
+            for (String value : mSystemSettings.get(key)) {
+                CLog.d("Changing system setting %s to %s", key, value);
+                device.executeShellCommand(String.format(settingCommand, "system", key, value));
+            }
+        }
+        for (String key : mSecureSettings.keySet()) {
+            for (String value : mSecureSettings.get(key)) {
+                CLog.d("Changing secure setting %s to %s", key, value);
+                device.executeShellCommand(String.format(settingCommand, "secure", key, value));
+            }
+        }
+
+        for (String key : mGlobalSettings.keySet()) {
+            for (String value : mGlobalSettings.get(key)) {
+                CLog.d("Changing global setting %s to %s", key, value);
+                device.executeShellCommand(String.format(settingCommand, "global", key, value));
+            }
+        }
+    }
+
+    /**
+     * Execute additional commands on the device.
+     *
+     * @param device The {@link ITestDevice}
+     * @param commands The list of commands to run
+     * @throws DeviceNotAvailableException if the device is not available
+     * @throws TargetSetupError if there was a failure setting the settings
+     */
+    private void runCommands(ITestDevice device, List<String> commands)
+            throws DeviceNotAvailableException, TargetSetupError {
+        if (mForceSkipRunCommands) {
+            CLog.d("Skipping run commands due to force-skip-run-commands");
+            return;
+        }
+
+        for (String command : commands) {
+            device.executeShellCommand(command);
+        }
+    }
+
+    /**
+     * Connects device to Wifi if SSID is specified.
+     *
+     * @param device The {@link ITestDevice}
+     * @throws DeviceNotAvailableException if the device is not available
+     * @throws TargetSetupError if there was a failure setting the settings
+     */
+    private void connectWifi(ITestDevice device) throws DeviceNotAvailableException,
+            TargetSetupError {
+        if (mForceSkipRunCommands) {
+            CLog.d("Skipping connect wifi due to force-skip-run-commands");
+            return;
+        }
+
+        if (mWifiSsid != null) {
+            if (!device.connectToWifiNetwork(mWifiSsid, mWifiPsk)) {
+                throw new TargetSetupError(String.format(
+                        "Failed to connect to wifi network %s on %s", mWifiSsid,
+                        device.getSerialNumber()));
+            }
+        }
+    }
+
+    /**
+     * Syncs a set of test data files, specified via local-data-path, to devices external storage.
+     *
+     * @param device The {@link ITestDevice}
+     * @throws DeviceNotAvailableException if the device is not available
+     * @throws TargetSetupError if data fails to sync
+     */
+    private void syncTestData(ITestDevice device) throws DeviceNotAvailableException,
+            TargetSetupError {
+        if (mLocalDataFile == null) {
+            return;
+        }
+
+        if (!mLocalDataFile.exists() || !mLocalDataFile.isDirectory()) {
+            throw new TargetSetupError(String.format(
+                    "local-data-path %s is not a directory", mLocalDataFile.getAbsolutePath()));
+        }
+        String fullRemotePath = device.getIDevice().getMountPoint(IDevice.MNT_EXTERNAL_STORAGE);
+        if (fullRemotePath == null) {
+            throw new TargetSetupError(String.format(
+                    "failed to get external storage path on device %s", device.getSerialNumber()));
+        }
+        if (mRemoteDataPath != null) {
+            fullRemotePath = String.format("%s/%s", fullRemotePath, mRemoteDataPath);
+        }
+        boolean result = device.syncFiles(mLocalDataFile, fullRemotePath);
+        if (!result) {
+            // TODO: get exact error code and respond accordingly
+            throw new TargetSetupError(String.format(
+                    "failed to sync test data from local-data-path %s to %s on device %s",
+                    mLocalDataFile.getAbsolutePath(), fullRemotePath, device.getSerialNumber()));
+        }
+    }
+
+    /**
+     * Check that device external store has the required space
+     *
+     * @param device The {@link ITestDevice}
+     * @throws DeviceNotAvailableException if the device is not available or if the device does not
+     * have the required space
+     */
+    private void checkExternalStoreSpace(ITestDevice device) throws DeviceNotAvailableException {
+        if (mMinExternalStorageKb <= 0) {
+            return;
+        }
+
+        long freeSpace = device.getExternalStoreFreeSpace();
+        if (freeSpace < mMinExternalStorageKb) {
+            throw new DeviceNotAvailableException(String.format(
+                    "External store free space %dK is less than required %dK for device %s",
+                    freeSpace , mMinExternalStorageKb, device.getSerialNumber()));
+        }
+    }
+
+    /**
+     * Helper method to add an ON/OFF setting to a setting map.
+     *
+     * @param state The {@link BinaryState}
+     * @param settingsMap The {@link MultiMap} used to store the settings.
+     * @param setting The setting key
+     * @param onValue The value if ON
+     * @param offValue The value if OFF
+     */
+    public static void setSettingForBinaryState(BinaryState state,
+            MultiMap<String, String> settingsMap, String setting, String onValue, String offValue) {
+        switch (state) {
+            case ON:
+                settingsMap.put(setting, onValue);
+                break;
+            case OFF:
+                settingsMap.put(setting, offValue);
+                break;
+            case IGNORE:
+                // Do nothing
+                break;
+        }
+    }
+
+    /**
+     * Helper method to add an ON/OFF run command to be executed on the device.
+     *
+     * @param state The {@link BinaryState}
+     * @param commands The list of commands to add the on or off command to.
+     * @param onCommand The command to run if ON. Ignored if the command is {@code null}
+     * @param offCommand The command to run if OFF. Ignored if the command is {@code null}
+     */
+    public static void setCommandForBinaryState(BinaryState state, List<String> commands,
+            String onCommand, String offCommand) {
+        switch (state) {
+            case ON:
+                if (onCommand != null) {
+                    commands.add(onCommand);
+                }
+                break;
+            case OFF:
+                if (offCommand != null) {
+                    commands.add(offCommand);
+                }
+                break;
+            case IGNORE:
+                // Do nothing
+                break;
+        }
+    }
+
+    /**
+     * Exposed for unit testing
+     */
+    protected void setAirplaneMode(BinaryState airplaneMode) {
+        mAirplaneMode = airplaneMode;
+    }
+
+    /**
+     * Exposed for unit testing
+     */
+    protected void setWifi(BinaryState wifi) {
+        mWifi = wifi;
+    }
+
+    /**
+     * Exposed for unit testing
+     */
+    protected void setWifiNetwork(String wifiNetwork) {
+        mWifiSsid = wifiNetwork;
+    }
+
+    /**
+     * Exposed for unit testing
+     */
+    protected void setWifiWatchdog(BinaryState wifiWatchdog) {
+        mWifiWatchdog = wifiWatchdog;
+    }
+
+    /**
+     * Exposed for unit testing
+     */
+    protected void setWifiScanAlwaysEnabled(BinaryState wifiScanAlwaysEnabled) {
+        mWifiScanAlwaysEnabled = wifiScanAlwaysEnabled;
+    }
+
+    /**
+     * Exposed for unit testing
+     */
+    protected void setEthernet(BinaryState ethernet) {
+        mEthernet = ethernet;
+    }
+
+    /**
+     * Exposed for unit testing
+     */
+    protected void setBluetooth(BinaryState bluetooth) {
+        mBluetooth = bluetooth;
+    }
+
+    /**
+     * Exposed for unit testing
+     */
+    protected void setScreenAdaptiveBrightness(BinaryState screenAdaptiveBrightness) {
+        mScreenAdaptiveBrightness = screenAdaptiveBrightness;
+    }
+
+    /**
+     * Exposed for unit testing
+     */
+    protected void setScreenBrightness(Integer screenBrightness) {
+        mScreenBrightness = screenBrightness;
+    }
+
+    /**
+     * Exposed for unit testing
+     */
+    protected void setScreenAlwaysOn(BinaryState screenAlwaysOn) {
+        mScreenAlwaysOn = screenAlwaysOn;
+    }
+
+    /**
+     * Exposed for unit testing
+     */
+    protected void setScreenTimeoutSecs(Long screenTimeoutSecs) {
+        mScreenTimeoutSecs = screenTimeoutSecs;
+    }
+
+    /**
+     * Exposed for unit testing
+     */
+    protected void setScreenAmbientMode(BinaryState screenAmbientMode) {
+        mScreenAmbientMode = screenAmbientMode;
+    }
+
+    /**
+     * Exposed for unit testing
+     */
+    protected void setWakeGesture(BinaryState wakeGesture) {
+        mWakeGesture = wakeGesture;
+    }
+
+    /**
+     * Exposed for unit testing
+     */
+    protected void setScreenSaver(BinaryState screenSaver) {
+        mScreenSaver = screenSaver;
+    }
+
+    /**
+     * Exposed for unit testing
+     */
+    protected void setNotificationLed(BinaryState notificationLed) {
+        mNotificationLed = notificationLed;
+    }
+
+    /**
+     * Exposed for unit testing
+     */
+    protected void setTriggerMediaMounted(boolean triggerMediaMounted) {
+        mTriggerMediaMounted = triggerMediaMounted;
+    }
+
+    /**
+     * Exposed for unit testing
+     */
+    protected void setLocationGps(BinaryState locationGps) {
+        mLocationGps = locationGps;
+    }
+
+    /**
+     * Exposed for unit testing
+     */
+    protected void setLocationNetwork(BinaryState locationNetwork) {
+        mLocationNetwork = locationNetwork;
+    }
+
+    /**
+     * Exposed for unit testing
+     */
+    protected void setAutoRotate(BinaryState autoRotate) {
+        mAutoRotate = autoRotate;
+    }
+
+    /**
+     * Exposed for unit testing
+     */
+    protected void setBatterySaver(BinaryState batterySaver) {
+        mBatterySaver = batterySaver;
+    }
+
+    /**
+     * Exposed for unit testing
+     */
+    protected void setBatterySaverTrigger(Integer batterySaverTrigger) {
+        mBatterySaverTrigger = batterySaverTrigger;
+    }
+
+    /**
+     * Exposed for unit testing
+     */
+    protected void setAutoUpdateTime(BinaryState autoUpdateTime) {
+        mAutoUpdateTime = autoUpdateTime;
+    }
+
+    /**
+     * Exposed for unit testing
+     */
+    protected void setAutoUpdateTimezone(BinaryState autoUpdateTimezone) {
+        mAutoUpdateTimezone = autoUpdateTimezone;
+    }
+
+    /**
+     * Exposed for unit testing
+     */
+    protected void setDisableDialing(boolean disableDialing) {
+        mDisableDialing = disableDialing;
+    }
+
+    /**
+     * Exposed for unit testing
+     */
+    protected void setDefaultSimData(Integer defaultSimData) {
+        mDefaultSimData = defaultSimData;
+    }
+
+    /**
+     * Exposed for unit testing
+     */
+    protected void setDefaultSimVoice(Integer defaultSimVoice) {
+        mDefaultSimVoice = defaultSimVoice;
+    }
+
+    /**
+     * Exposed for unit testing
+     */
+    protected void setDefaultSimSms(Integer defaultSimSms) {
+        mDefaultSimSms = defaultSimSms;
+    }
+
+    /**
+     * Exposed for unit testing
+     */
+    protected void setDisableAudio(boolean disable) {
+        mDisableAudio = disable;
+    }
+
+    /**
+     * Exposed for unit testing
+     */
+    protected void setTestHarness(boolean setTestHarness) {
+        mSetTestHarness = setTestHarness;
+    }
+
+    /**
+     * Exposed for unit testing
+     */
+    protected void setDisableDalvikVerifier(boolean disableDalvikVerifier) {
+        mDisableDalvikVerifier = disableDalvikVerifier;
+    }
+
+    /**
+     * Exposed for unit testing
+     */
+    protected void setLocalDataPath(File path) {
+        mLocalDataFile = path;
+    }
+
+    /**
+     * Exposed for unit testing
+     */
+    protected void setMinExternalStorageKb(long storageKb) {
+        mMinExternalStorageKb = storageKb;
+    }
+
+    /**
+     * Exposed for unit testing
+     */
+    protected void setProperty(String key, String value) {
+        mSetProps.put(key, value);
+    }
+
+    /**
+     * Exposed for unit testing
+     */
+    @Deprecated
+    protected void setDeprecatedMinExternalStoreSpace(long storeSpace) {
+        mDeprecatedMinExternalStoreSpace = storeSpace;
+    }
+
+    /**
+     * Exposed for unit testing
+     */
+    @Deprecated
+    protected void setDeprecatedAudioSilent(boolean silent) {
+        mDeprecatedSetAudioSilent = silent;
+    }
+
+    /**
+     * Exposed for unit testing
+     */
+    @Deprecated
+    protected void setDeprecatedSetProp(String prop) {
+        mDeprecatedSetProps.add(prop);
     }
 }

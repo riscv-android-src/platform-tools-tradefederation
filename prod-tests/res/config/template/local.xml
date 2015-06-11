@@ -17,7 +17,7 @@
 <configuration description="Common base configuration for local runs">
     <option name="bugreport-on-invocation-ended" value="true" />
     <build_provider class="com.android.tradefed.build.BootstrapBuildProvider" />
-    <target_preparer class="com.android.tradefed.targetprep.DeviceSetup2">
+    <target_preparer class="com.android.tradefed.targetprep.DeviceSetup">
         <option name="screen-always-on" value="on" />
         <option name="screen-adaptive-brightness" value="off" />
         <option name="screen-brightness" value="30" />
