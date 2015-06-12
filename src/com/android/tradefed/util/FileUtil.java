@@ -420,7 +420,7 @@ public class FileUtil {
             StreamUtil.copyStreams(origStream, destStream);
         } finally {
             StreamUtil.close(origStream);
-            StreamUtil.close(destStream);
+            StreamUtil.flushAndCloseStream(destStream);
         }
     }
 
