@@ -206,6 +206,10 @@ public class MonkeyBase implements IDeviceTest, IRemoteTest, IRetriableTest {
     @Option(name = "screenshot", description = "Take a device screenshot on monkey completion")
     private boolean mScreenshot = false;
 
+    @Option(name = "ignore-security-exceptions",
+            description = "Ignore SecurityExceptions while injecting events")
+    private boolean mIgnoreSecurityExceptions = true;
+
     private ITestDevice mTestDevice = null;
     private MonkeyLogItem mMonkeyLog = null;
     private BugreportItem mBugreport = null;
@@ -431,7 +435,9 @@ public class MonkeyBase implements IDeviceTest, IRemoteTest, IRetriableTest {
             cmdList.add(cat);
         }
 
-        cmdList.add("--ignore-security-exceptions");
+        if (mIgnoreSecurityExceptions) {
+            cmdList.add("--ignore-security-exceptions");
+        }
 
         if (mThrottle >= 1) {
             cmdList.add("--throttle");
