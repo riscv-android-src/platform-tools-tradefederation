@@ -32,6 +32,9 @@ import com.android.tradefed.testtype.IRemoteTest;
 import junit.framework.TestCase;
 
 import org.easymock.EasyMock;
+import org.json.JSONArray;
+import org.json.JSONException;
+import org.json.JSONObject;
 
 import java.io.ByteArrayOutputStream;
 import java.io.PrintStream;
@@ -351,5 +354,75 @@ public class ConfigurationTest extends TestCase {
         assertTrue("Usage text does not contain --serial option name",
                 usageString.contains("serial"));
 
+    }
+
+    /**
+     * Basic test for {@link Configuration#getJsonCommandUsage()}.
+     */
+    public void testGetJsonCommandUsage() throws ConfigurationException, JSONException {
+        TestConfigObject testConfigObject = new TestConfigObject();
+        mConfig.setConfigurationObject(CONFIG_OBJECT_TYPE_NAME, testConfigObject);
+
+        // General validation of usage elements
+        JSONArray usage = mConfig.getJsonCommandUsage();
+        JSONObject jsonConfigObject = null;
+        for (int i = 0; i < usage.length(); i++) {
+            JSONObject optionClass = usage.getJSONObject(i);
+
+            // Each element should contain 'name', 'class', and 'fields' values
+            assertTrue("Usage element does not contain a 'name' value", optionClass.has("name"));
+            assertTrue("Usage element does not contain a 'class' value", optionClass.has("class"));
+            assertTrue("Usage element does not contain a 'fields' value",
+                    optionClass.has("fields"));
+
+            // General validation of each field
+            JSONArray fields = optionClass.getJSONArray("fields");
+            for (int j = 0; j < fields.length(); j++) {
+                JSONObject field = fields.getJSONObject(j);
+
+                // Each field should at least have 'name', 'description', 'mandatory', and
+                // 'javaClass' values
+                assertTrue("Option field does not have a 'name' value", field.has("name"));
+                assertTrue("Option field does not have a 'description' value",
+                        field.has("description"));
+                assertTrue("Option field does not have a 'mandatory' value",
+                        field.has("mandatory"));
+                assertTrue("Option field does not have a 'javaClass' value",
+                        field.has("javaClass"));
+            }
+
+            // The only elements should either be built-in types, or the configuration object we
+            // added.
+            String name = optionClass.getString("name");
+            if (name.equals(CONFIG_OBJECT_TYPE_NAME)) {
+                // The object we added should only appear once
+                assertNull("Duplicate JSON usage element", jsonConfigObject);
+                jsonConfigObject = optionClass;
+            } else {
+                assertTrue(String.format("Unexpected JSON usage element: %s", name),
+                    Configuration.isBuiltInObjType(name));
+            }
+        }
+
+        // Verify that the configuration element we added has the expected values
+        assertNotNull("Missing JSON usage element", jsonConfigObject);
+        JSONArray fields = jsonConfigObject.getJSONArray("fields");
+        JSONObject jsonOptionField = null;
+        JSONObject jsonAltOptionField = null;
+        for (int i = 0; i < fields.length(); i++) {
+            JSONObject field = fields.getJSONObject(i);
+
+            if (OPTION_NAME.equals(field.getString("name"))) {
+                assertNull("Duplicate option field", jsonOptionField);
+                jsonOptionField = field;
+            } else if (ALT_OPTION_NAME.equals(field.getString("name"))) {
+                assertNull("Duplication option field", jsonAltOptionField);
+                jsonAltOptionField = field;
+            }
+        }
+        assertNotNull(jsonOptionField);
+        assertEquals(OPTION_DESCRIPTION, jsonOptionField.getString("description"));
+        assertNotNull(jsonAltOptionField);
+        assertEquals(OPTION_DESCRIPTION, jsonAltOptionField.getString("description"));
     }
 }

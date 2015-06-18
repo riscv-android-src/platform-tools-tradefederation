@@ -37,6 +37,9 @@ import com.android.tradefed.testtype.StubTest;
 import com.android.tradefed.util.MultiMap;
 import com.android.tradefed.util.QuotationAwareTokenizer;
 
+import org.json.JSONArray;
+import org.json.JSONException;
+import org.json.JSONObject;
 import org.kxml2.io.KXmlSerializer;
 
 import java.io.IOException;
@@ -601,6 +604,66 @@ public class Configuration implements IConfiguration {
                 }
             }
         }
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public JSONArray getJsonCommandUsage() throws JSONException {
+        JSONArray ret = new JSONArray();
+        for (Map.Entry<String, List<Object>> configObjectsEntry : mConfigMap.entrySet()) {
+            for (Object optionObject : configObjectsEntry.getValue()) {
+
+                // Build a JSON representation of the current class
+                JSONObject jsonClass = new JSONObject();
+                jsonClass.put("name", configObjectsEntry.getKey());
+                if (optionObject.getClass().isAnnotationPresent(OptionClass.class)) {
+                    OptionClass optionClass =
+                            optionObject.getClass().getAnnotation(OptionClass.class);
+                    jsonClass.put("alias", optionClass.alias());
+                }
+                jsonClass.put("class", optionObject.getClass().getName());
+
+                // For each of the @Option annotated fields
+                Collection<Field> optionFields =
+                        OptionSetter.getOptionFieldsForClass(optionObject.getClass());
+                JSONArray jsonFields = new JSONArray();
+                for (Field field : optionFields) {
+                    Option option = field.getAnnotation(Option.class);
+
+                    // Build a JSON representation of the current field
+                    JSONObject jsonField = new JSONObject();
+
+                    jsonField.put("name", option.name());
+                    if (option.shortName() != Option.NO_SHORT_NAME) {
+                        jsonField.put("shortName", option.shortName());
+                    }
+                    jsonField.put("description", option.description());
+                    jsonField.put("importance", option.importance());
+                    jsonField.put("mandatory", option.mandatory());
+                    jsonField.put("isTimeVal", option.isTimeVal());
+                    jsonField.put("javaClass", field.getType().getName());
+                    try {
+                        field.setAccessible(true);
+                        Object value = field.get(optionObject);
+                        jsonField.put("defaultValue", value == null ? "null" : value.toString());
+                    } catch (IllegalAccessException e) {
+                        // Shouldn't happen
+                        throw new RuntimeException(e);
+                    }
+
+                    // Add the JSON field representation to the JSON class representation
+                    jsonFields.put(jsonField);
+                }
+                jsonClass.put("fields", jsonFields);
+
+                // Add the JSON class representation to the list
+                ret.put(jsonClass);
+            }
+        }
+
+        return ret;
     }
 
     /**

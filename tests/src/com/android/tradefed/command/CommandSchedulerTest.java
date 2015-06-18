@@ -39,6 +39,8 @@ import junit.framework.TestCase;
 
 import org.easymock.EasyMock;
 import org.easymock.IAnswer;
+import org.json.JSONArray;
+import org.json.JSONException;
 import org.junit.Assert;
 
 import java.io.File;
@@ -170,6 +172,20 @@ public class CommandSchedulerTest extends TestCase {
         // expect
         mMockConfigFactory.printHelpForConfig(EasyMock.aryEq(args), EasyMock.eq(true),
                 EasyMock.eq(System.out));
+        replayMocks();
+        mScheduler.addCommand(args);
+        verifyMocks();
+    }
+
+    /**
+     * Test {@link CommandScheduler#addCommand(String[])} when json help mode is specified
+     */
+    public void testAddConfig_configJsonHelp() throws ConfigurationException, JSONException {
+        String[] args = new String[] {};
+        mCommandOptions.setJsonHelpMode(true);
+        setCreateConfigExpectations(args, 1);
+        // expect
+        EasyMock.expect(mMockConfiguration.getJsonCommandUsage()).andReturn(new JSONArray());
         replayMocks();
         mScheduler.addCommand(args);
         verifyMocks();

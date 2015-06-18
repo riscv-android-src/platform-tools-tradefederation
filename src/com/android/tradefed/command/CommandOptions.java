@@ -36,6 +36,9 @@ public class CommandOptions implements ICommandOptions {
             importance = Importance.ALWAYS)
     private boolean mFullHelpMode = false;
 
+    @Option(name = "json-help", description = "display the full help in json format.")
+    private boolean mJsonHelpMode = false;
+
     @Option(name = "dry-run",
             description = "build but don't actually run the command.  Intended as a quick check " +
                     "to ensure that a command is runnable.",
@@ -94,6 +97,22 @@ public class CommandOptions implements ICommandOptions {
     @Override
     public boolean isFullHelpMode() {
         return mFullHelpMode;
+    }
+
+    /**
+     * Set the json help mode for the config.
+     * <p/>
+     * Exposed for testing.
+     */
+    void setJsonHelpMode(boolean jsonHelpMode) {
+        mJsonHelpMode = jsonHelpMode;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    public boolean isJsonHelpMode() {
+        return mJsonHelpMode;
     }
 
     /**

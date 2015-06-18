@@ -32,6 +32,11 @@ public interface ICommandOptions {
     public boolean isFullHelpMode();
 
     /**
+     * Returns <code>true</code> if full json help mode has been requested
+     */
+    public boolean isJsonHelpMode();
+
+    /**
      * Return <code>true</code> if we should <emph>skip</emph> adding this command to the queue.
      */
     public boolean isDryRunMode();
