@@ -101,7 +101,7 @@ class TestDevice implements IManagedTestDevice {
     /** Encrypting with inplace can take up to 2 hours. */
     private static final int ENCRYPTION_INPLACE_TIMEOUT_MIN = 2 * 60;
     /** Encrypting with wipe can take up to 5 minutes. */
-    private static final int ENCRYPTION_WIPE_TIMEOUT_MIN = 5;
+    private static final long ENCRYPTION_WIPE_TIMEOUT_MIN = 20;
     /** Timeout to wait for input dispatch to become ready **/
     private static final long INPUT_DISPATCH_READY_TIMEOUT = 5 * 1000;
     /** Beginning of the string returned by vdc for "vdc cryptfs enablecrypto". */
@@ -2560,7 +2560,7 @@ class TestDevice implements IManagedTestDevice {
         enableAdbRoot();
 
         String encryptMethod;
-        int timeout;
+        long timeout;
         if (inplace) {
             encryptMethod = "inplace";
             timeout = ENCRYPTION_INPLACE_TIMEOUT_MIN;
@@ -2612,8 +2612,8 @@ class TestDevice implements IManagedTestDevice {
         if (!mOptions.getUseFastbootErase()) {
             rebootIntoBootloader();
             fastbootWipePartition("userdata");
-            reboot();
-
+            rebootUntilOnline();
+            waitForDeviceAvailable(ENCRYPTION_WIPE_TIMEOUT_MIN * 60 * 1000);
             return true;
         }
 
