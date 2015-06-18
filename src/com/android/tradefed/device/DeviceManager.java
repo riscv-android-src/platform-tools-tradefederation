@@ -446,6 +446,8 @@ public class DeviceManager implements IDeviceManager {
         if (ideviceToReturn.isEmulator() && managedDevice.getEmulatorProcess() != null) {
             try {
                 killEmulator(device);
+                // stop emulator output log
+                device.stopEmulatorOutput();
                 // emulator killed - return a stub device
                 // TODO: this is a bit of a hack. Consider having DeviceManager inject a StubDevice
                 // when deviceDisconnected event is received
@@ -575,8 +577,6 @@ public class DeviceManager implements IDeviceManager {
                         device.getSerialNumber());
                 forceKillProcess(emulatorProcess, device.getSerialNumber());
             }
-            // stop emulator output log
-            device.stopEmulatorOutput();
         }
         if (!device.waitForDeviceNotAvailable(20 * 1000)) {
             throw new DeviceNotAvailableException(String.format("Failed to kill emulator %s",
