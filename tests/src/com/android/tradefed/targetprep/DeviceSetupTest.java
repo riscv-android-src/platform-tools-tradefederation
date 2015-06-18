@@ -549,6 +549,18 @@ public class DeviceSetupTest extends TestCase {
         EasyMock.verify(mMockDevice);
     }
 
+    public void testSetup_disable_doze() throws DeviceNotAvailableException, TargetSetupError {
+        doSetupExpectations();
+        doCheckExternalStoreSpaceExpectations();
+        doCommandsExpectations(false, "dumpsys deviceidle disable");
+        EasyMock.replay(mMockDevice);
+
+        mDeviceSetup.setDisableDoze(true);
+        mDeviceSetup.setUp(mMockDevice, mMockBuildInfo);
+
+        EasyMock.verify(mMockDevice);
+    }
+
     public void testSetup_update_time_on() throws DeviceNotAvailableException, TargetSetupError {
         doSetupExpectations();
         doCheckExternalStoreSpaceExpectations();

@@ -192,6 +192,12 @@ public class DeviceSetup implements ITargetPreparer, ITargetCleaner {
     protected Integer mBatterySaverTrigger = null;
     // settings put global low_power_trigger_level $N
 
+    @Option(name = "disable-doze",
+            description = "Disable device from going into doze mode. This option is only " +
+            "applicable for M+")
+    protected boolean mDisableDoze = false;
+    // dumpsys deviceidle disable
+
     // Time
     @Option(name = "auto-update-time",
             description = "Turn auto update time on or off")
@@ -521,6 +527,10 @@ public class DeviceSetup implements ITargetPreparer, ITargetCleaner {
 
         if (mBatterySaverTrigger != null) {
             mGlobalSettings.put("low_power_trigger_level", Integer.toString(mBatterySaverTrigger));
+        }
+
+        if (mDisableDoze) {
+            mRunCommandAfterSettings.add("dumpsys deviceidle disable");
         }
 
         setSettingForBinaryState(mAutoUpdateTime, mSystemSettings, "auto_time", "1", "0");
@@ -964,6 +974,13 @@ public class DeviceSetup implements ITargetPreparer, ITargetCleaner {
      */
     protected void setBatterySaverTrigger(Integer batterySaverTrigger) {
         mBatterySaverTrigger = batterySaverTrigger;
+    }
+
+    /**
+     * Exposed for unit testing
+     */
+    protected void setDisableDoze(boolean disableDoze) {
+        mDisableDoze = disableDoze;
     }
 
     /**
