@@ -181,15 +181,47 @@ public class FileUtilFuncTest extends TestCase {
         assertFalse(tmpParentDir.exists());
     }
 
+    /**
+     * Test {@link FileUtil#recursiveCopy(File, File)} to recursively copy a directory to an
+     * existing, empty directory.
+     */
     public void testRecursiveCopy() throws IOException {
+        // create source tree
         File tmpParentDir = createTempDir("foo");
         File childDir = createTempDir("foochild", tmpParentDir);
         File subFile = createTempFile("foo", ".txt", childDir);
         FileUtil.writeToFile("foo", subFile);
+        // create empty destination directory
         File destDir = createTempDir("dest");
+        // invoke target method
         FileUtil.recursiveCopy(tmpParentDir, destDir);
+        // check tree was copied
         File subFileCopy = new File(destDir, String.format("%s%s%s", childDir.getName(),
                     File.separator, subFile.getName()));
+        assertTrue(subFileCopy.exists());
+        assertTrue(FileUtil.compareFileContents(subFile, subFileCopy));
+    }
+
+    /**
+     * Test {@link FileUtil#recursiveCopy(File, File)} to recursively copy a directory to a
+     * directory that does not exist.
+     */
+    public void testRecursiveCopyToNonexistentTarget() throws IOException {
+        // create source tree
+        File tmpParentDir = createTempDir("foo");
+        File childDir = createTempDir("foochild", tmpParentDir);
+        File subFile = createTempFile("foo", ".txt", childDir);
+        FileUtil.writeToFile("foo", subFile);
+        // generate an unique name for destination dir and make sure it doesn't exist
+        File destDir = createTempDir("dest");
+        assertTrue(destDir.delete());
+        assertFalse(destDir.exists());
+        // invoke target method
+        FileUtil.recursiveCopy(tmpParentDir, destDir);
+        // check that destination was created and tree was copied
+        File subFileCopy = new File(destDir, String.format("%s%s%s", childDir.getName(),
+                    File.separator, subFile.getName()));
+        assertTrue(destDir.exists());
         assertTrue(subFileCopy.exists());
         assertTrue(FileUtil.compareFileContents(subFile, subFileCopy));
     }
