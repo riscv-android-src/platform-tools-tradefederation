@@ -315,20 +315,21 @@ public class FileUtil {
     /**
      * Recursively hardlink folder contents.
      * <p/>
-     * Only supports copying of files and directories - symlinks are not copied.
+     * Only supports copying of files and directories - symlinks are not copied. If the destination
+     * directory does not exist, it will be created.
      *
      * @param sourceDir the folder that contains the files to copy
      * @param destDir the destination folder
      * @throws IOException
      */
     public static void recursiveHardlink(File sourceDir, File destDir) throws IOException {
+        if (!destDir.isDirectory() && !destDir.mkdir()) {
+            throw new IOException(String.format("Could not create directory %s",
+                    destDir.getAbsolutePath()));
+        }
         for (File childFile : sourceDir.listFiles()) {
             File destChild = new File(destDir, childFile.getName());
             if (childFile.isDirectory()) {
-                if (!destChild.mkdir()) {
-                    throw new IOException(String.format("Could not create directory %s",
-                            destChild.getAbsolutePath()));
-                }
                 recursiveHardlink(childFile, destChild);
             } else if (childFile.isFile()) {
                 hardlinkFile(childFile, destChild);
@@ -350,7 +351,8 @@ public class FileUtil {
     /**
      * Recursively copy folder contents.
      * <p/>
-     * Only supports copying of files and directories - symlinks are not copied.
+     * Only supports copying of files and directories - symlinks are not copied. If the destination
+     * directory does not exist, it will be created.
      *
      * @param sourceDir the folder that contains the files to copy
      * @param destDir the destination folder
@@ -363,13 +365,13 @@ public class FileUtil {
                     "Failed to recursively copy. Could not determine contents for directory '%s'",
                     sourceDir.getAbsolutePath()));
         }
+        if (!destDir.isDirectory() && !destDir.mkdir()) {
+            throw new IOException(String.format("Could not create directory %s",
+                destDir.getAbsolutePath()));
+        }
         for (File childFile : childFiles) {
             File destChild = new File(destDir, childFile.getName());
             if (childFile.isDirectory()) {
-                if (!destChild.mkdir()) {
-                    throw new IOException(String.format("Could not create directory %s",
-                            destChild.getAbsolutePath()));
-                }
                 recursiveCopy(childFile, destChild);
             } else if (childFile.isFile()) {
                 copyFile(childFile, destChild);
