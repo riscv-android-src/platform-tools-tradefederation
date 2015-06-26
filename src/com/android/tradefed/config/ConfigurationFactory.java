@@ -414,7 +414,7 @@ public class ConfigurationFactory implements IConfigurationFactory {
         optionArgsRef.addAll(Arrays.asList(arrayArgs));
         // first arg is config name
         final String configName = optionArgsRef.remove(0);
-        ConfigurationDef configDef = getConfigurationDef(configName, false, null);
+        ConfigurationDef configDef = getConfigurationDef(configName, true, null);
         return configDef.createGlobalConfiguration();
     }
 
