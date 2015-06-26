@@ -690,11 +690,10 @@ class TestDevice implements IManagedTestDevice {
     }
 
     /**
-     * Check whether platform on device supports runtime permission granting
-     * @return
-     * @throws DeviceNotAvailableException
+     * {@inheritDoc}
      */
-    boolean isRuntimePermissionSupported() throws DeviceNotAvailableException {
+    @Override
+    public boolean isRuntimePermissionSupported() throws DeviceNotAvailableException {
         //TODO: change to API Level check once M is official
         String codeName = getProperty(BUILD_CODENAME_PROP).trim();
         if (!"MNC".equals(codeName)) {

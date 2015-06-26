@@ -1259,4 +1259,11 @@ public interface ITestDevice {
      * @throws DeviceNotAvailableException
      */
     public void remountSystemWritable() throws DeviceNotAvailableException;
+
+    /**
+     * Check whether platform on device supports runtime permission granting
+     * @return
+     * @throws DeviceNotAvailableException
+     */
+    public boolean isRuntimePermissionSupported() throws DeviceNotAvailableException;
 }

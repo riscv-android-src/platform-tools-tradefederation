@@ -988,4 +988,12 @@ public class StubTestDevice implements IManagedTestDevice {
     public void remountSystemWritable() {
         // no-op
     }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public boolean isRuntimePermissionSupported() throws DeviceNotAvailableException {
+        return false;
+    }
 }
