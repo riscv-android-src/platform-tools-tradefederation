@@ -47,7 +47,9 @@ import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.device.LogcatReceiver;
 import com.android.tradefed.log.LogUtil.CLog;
+import com.android.tradefed.result.ByteArrayInputStreamSource;
 import com.android.tradefed.result.CollectingTestListener;
+import com.android.tradefed.result.FileInputStreamSource;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.InputStreamSource;
 import com.android.tradefed.result.LogDataType;
@@ -113,6 +115,9 @@ public class HermeticLaunchTest implements IRemoteTest, IDeviceTest {
     @Option(name = "launch-count", description = "number of time to launch the each activity")
     private int mlaunchCount = 10;
 
+    @Option(name = "save-atrace", description = "Upload the atrace file in permanent storage")
+    private boolean msaveAtrace = false;
+
     private ITestDevice mDevice = null;
     private IRemoteAndroidTestRunner mRunner;
     private LogcatReceiver mLogcat;
@@ -156,7 +161,7 @@ public class HermeticLaunchTest implements IRemoteTest, IDeviceTest {
         mLogcat.stop();
 
         // Analyze the atrace data to get bindApplication,activityStart etc..
-        analyzeAtraceData();
+        analyzeAtraceData(listener);
 
         // Report the metrics to dashboard
         reportMetrics(listener);
@@ -251,6 +256,7 @@ public class HermeticLaunchTest implements IRemoteTest, IDeviceTest {
                 if ((match = matches(LAUNCH_ENTRY, line)) != null) {
                     for (Pattern pattern : activityPatternMap.keySet()) {
                         if ((match = matches(pattern, line)) != null) {
+                            CLog.v("Launch Info : %s", line);
                             int displayTimeInMs = extractLaunchTime(match.group("launchtime"));
                             String activityName = activityPatternMap.get(pattern);
                             if (amLaunchTimes.containsKey(activityName)) {
@@ -317,7 +323,7 @@ public class HermeticLaunchTest implements IRemoteTest, IDeviceTest {
     /**
      * To analyze the trace data collected in the device during each activity launch.
      */
-    public void analyzeAtraceData() throws DeviceNotAvailableException {
+    public void analyzeAtraceData(ITestInvocationListener listener) throws DeviceNotAvailableException {
         for (String activityName : mActivityTraceFileMap.keySet()) {
             try {
                 // Get the list of associated filenames for given activity
@@ -338,6 +344,12 @@ public class HermeticLaunchTest implements IRemoteTest, IDeviceTest {
                     Map<String, List<SectionPeriod>> singleLaunchTraceInfo = parseAtraceInfoFile(
                             currentAtraceFile,
                             splitName[splitName.length - 1]);
+                    // Upload the file if needed
+                    if (msaveAtrace) {
+                        FileInputStreamSource stream = new FileInputStreamSource(currentAtraceFile);
+                        listener.testLog(currentAtraceFile.getName(), LogDataType.TEXT, stream);
+                        stream.cancel();
+                    }
                     // Remove the atrace files
                     FileUtil.deleteFile(currentAtraceFile);
                     mutipleLaunchTraceInfo.add(singleLaunchTraceInfo);
@@ -439,13 +451,18 @@ public class HermeticLaunchTest implements IRemoteTest, IDeviceTest {
                     TraceRecord matchingBegin = processStack.removeLast();
                     if (mSectionSet.contains(matchingBegin.name)) {
                         if (sectionInfo.containsKey(matchingBegin.name)) {
-                            sectionInfo.get(matchingBegin.name).add(
-                                    new SectionPeriod(matchingBegin.timestamp,
-                                            timestamp));
+                            SectionPeriod newSecPeriod = new SectionPeriod(matchingBegin.timestamp,
+                                    timestamp);
+                            CLog.v(String.format("Section :%s took :%f msecs ", matchingBegin.name,
+                                    newSecPeriod.duration));
+                            sectionInfo.get(matchingBegin.name).add(newSecPeriod);
                         } else {
                             List<SectionPeriod> infoList = new LinkedList<>();
-                            infoList.add(new SectionPeriod(
-                                    matchingBegin.timestamp, timestamp));
+                            SectionPeriod newSecPeriod = new SectionPeriod(matchingBegin.timestamp,
+                                    timestamp);
+                            CLog.v(String.format("Section :%s took :%f msecs ", matchingBegin.name,
+                                    newSecPeriod.duration));
+                            infoList.add(newSecPeriod);
                             sectionInfo.put(matchingBegin.name, infoList);
                         }
                     }

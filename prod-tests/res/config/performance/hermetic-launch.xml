@@ -28,6 +28,8 @@
             value="PerformanceAppTest.apk" />
     </target_preparer>
 
+    <target_preparer class="com.android.tradefed.targetprep.CpuThrottlingWaiter" />
+
     <test class="com.android.performance.tests.HermeticLaunchTest" >
         <option
             name="package"
@@ -38,6 +40,9 @@
         <option
             name="launch-count"
             value="15" />
+        <option
+            name="save-atrace"
+            value="true" />
     </test>
 
 </configuration>
