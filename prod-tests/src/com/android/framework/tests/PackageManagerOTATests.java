@@ -46,8 +46,6 @@ public class PackageManagerOTATests extends DeviceTestCase {
             "com.android.frameworks.coretests.version_test\"]";
     private static final String VERSION_XPATH = "/packages/package[@name=\"" +
             "com.android.frameworks.coretests.version_test\"]/@version";
-    private static final String FLAG_XPATH = "/packages/package[@name=\"" +
-            "com.android.frameworks.coretests.version_test\"]/@flags";
     private static final String CODE_PATH_XPATH = "/packages/package[@name=\"" +
             "com.android.frameworks.coretests.version_test\"]/@codePath";
     private static final String VERSION_1_APK = "FrameworkCoreTests_version_1.apk";
@@ -75,18 +73,16 @@ public class PackageManagerOTATests extends DeviceTestCase {
         }
 
         // Clean up any potential old files from previous tests.
-        getDevice().uninstallPackage(PACKAGE_NAME);
+        // delete from /system if exists
         getDevice().enableAdbRoot();
         mUtils.removeSystemApp(mSystemAppPath, false);
         mUtils.removeSystemApp(mDiffSystemAppPath, false);
         mUtils.restartSystem();
+        // delete from /data if there is one
+        getDevice().uninstallPackage(PACKAGE_NAME);
 
-        mPackageXml = mUtils.pullPackagesXML();
-        assertNotNull("Failed to pull packages xml file from device", mPackageXml);
-        assertFalse("Package should not be installed before test",
-                mUtils.expectExists(mPackageXml, PACKAGE_XPATH));
-        assertFalse("Updated-package should not be present before test",
-                mUtils.expectExists(mPackageXml, UPDATE_PACKAGE_XPATH));
+        String res = getDevice().executeShellCommand("pm path " + PACKAGE_NAME).trim();
+        assertTrue("Package should not be installed before test", res.isEmpty());
     }
 
     @Override
@@ -119,19 +115,6 @@ public class PackageManagerOTATests extends DeviceTestCase {
     }
 
     /**
-     * Helper method used to determine if the flag has been set or not.
-     *
-     * @param xmlFile
-     * @param flagXPathString
-     * @param expectedValue
-     * @return
-     */
-    private boolean expectFlag(File xmlFile, String flagXPathString, int expectedValue) {
-        int flagValue = mUtils.getIntForXPath(xmlFile, flagXPathString);
-        return ((flagValue&expectedValue) == expectedValue);
-    }
-
-    /**
      * Test case when system app added is newer than update.
      * <p/>
      * Assumes adb is running as root in device under test.
@@ -148,7 +131,8 @@ public class PackageManagerOTATests extends DeviceTestCase {
                 mUtils.expectEquals(mPackageXml, VERSION_XPATH, "1"));
         assertFalse("Updated-package should not be present",
                 mUtils.expectExists(mPackageXml, UPDATE_PACKAGE_XPATH));
-        assertTrue("Package should not have FLAG_SYSTEM", expectFlag(mPackageXml, FLAG_XPATH, 0));
+        assertFalse("Package should not have FLAG_SYSTEM",
+                mUtils.packageHasFlag(PACKAGE_NAME, " SYSTEM "));
         assertTrue("VIBRATE permission should be granted",
                 mUtils.packageHasPermission(PACKAGE_NAME, VIBRATE_PERMISSION));
         assertFalse("ACCESS_CACHE_FILESYSTEM permission should NOT be granted",
@@ -162,7 +146,8 @@ public class PackageManagerOTATests extends DeviceTestCase {
                 mUtils.expectEquals(mPackageXml, VERSION_XPATH, "2"));
         assertFalse("Updated-package should not be present",
                 mUtils.expectExists(mPackageXml, UPDATE_PACKAGE_XPATH));
-        assertTrue("Package should have FLAG_SYSTEM", expectFlag(mPackageXml, FLAG_XPATH, 1));
+        assertTrue("Package should have FLAG_SYSTEM",
+                mUtils.packageHasFlag(PACKAGE_NAME, " SYSTEM "));
         assertTrue("VIBRATE permission should be granted",
                 mUtils.packageHasPermission(PACKAGE_NAME, VIBRATE_PERMISSION));
         assertTrue("ACCESS_CACHE_FILESYSTEM permission should be granted",
@@ -186,7 +171,8 @@ public class PackageManagerOTATests extends DeviceTestCase {
                 mUtils.expectEquals(mPackageXml, VERSION_XPATH, "2"));
         assertFalse("Updated-package should not be present",
                 mUtils.expectExists(mPackageXml, UPDATE_PACKAGE_XPATH));
-        assertFalse("package should not have FLAG_SYSTEM", expectFlag(mPackageXml, FLAG_XPATH, 1));
+        assertFalse("Package should not have FLAG_SYSTEM",
+                mUtils.packageHasFlag(PACKAGE_NAME, " SYSTEM "));
         assertTrue("VIBRATE permission should be granted",
                 mUtils.packageHasPermission(PACKAGE_NAME, VIBRATE_PERMISSION));
         assertFalse("ACCESS_CACHE_FILESYSTEM permission should NOT be granted",
@@ -200,7 +186,8 @@ public class PackageManagerOTATests extends DeviceTestCase {
                 mUtils.expectEquals(mPackageXml, VERSION_XPATH, "2"));
         assertTrue("Updated-package should be present",
                 mUtils.expectExists(mPackageXml, UPDATE_PACKAGE_XPATH));
-        assertTrue("Package should have FLAG_SYSTEM", expectFlag(mPackageXml, FLAG_XPATH, 1));
+        assertTrue("Package should have FLAG_SYSTEM",
+                mUtils.packageHasFlag(PACKAGE_NAME, " SYSTEM "));
         assertTrue("VIBRATE permission should be granted",
                 mUtils.packageHasPermission(PACKAGE_NAME, VIBRATE_PERMISSION));
         assertTrue("ACCESS_CACHE_FILESYSTEM permission should be granted",
@@ -219,7 +206,8 @@ public class PackageManagerOTATests extends DeviceTestCase {
         mPackageXml = mUtils.pullPackagesXML();
         assertTrue("Initial package should be installed",
                 mUtils.expectExists(mPackageXml, PACKAGE_XPATH));
-        assertTrue("Package should have FLAG_SYSTEM", expectFlag(mPackageXml, FLAG_XPATH, 1));
+        assertTrue("Package should have FLAG_SYSTEM",
+                mUtils.packageHasFlag(PACKAGE_NAME, " SYSTEM "));
         assertFalse("Updated-package should not be present",
                 mUtils.expectExists(mPackageXml, UPDATE_PACKAGE_XPATH));
         mUtils.removeSystemApp(mSystemAppPath, true);
@@ -246,7 +234,8 @@ public class PackageManagerOTATests extends DeviceTestCase {
                 mUtils.expectEquals(mPackageXml, VERSION_XPATH, "2"));
         assertFalse("Updated-package should not be present",
                 mUtils.expectExists(mPackageXml, UPDATE_PACKAGE_XPATH));
-        assertTrue("Package should have FLAG_SYSTEM", expectFlag(mPackageXml, FLAG_XPATH, 1));
+        assertTrue("Package should have FLAG_SYSTEM",
+                mUtils.packageHasFlag(PACKAGE_NAME, " SYSTEM "));
         assertTrue("VIBRATE permission should be granted",
                 mUtils.packageHasPermission(PACKAGE_NAME, VIBRATE_PERMISSION));
         assertTrue("ACCESS_CACHE_FILESYSTEM permission should be granted",
@@ -260,7 +249,8 @@ public class PackageManagerOTATests extends DeviceTestCase {
                 mUtils.expectEquals(mPackageXml, VERSION_XPATH, "3"));
         assertTrue("Updated-package should be present",
                 mUtils.expectExists(mPackageXml, UPDATE_PACKAGE_XPATH));
-        assertTrue("Package should have FLAG_SYSTEM", expectFlag(mPackageXml, FLAG_XPATH, 1));
+        assertTrue("Package should have FLAG_SYSTEM",
+                mUtils.packageHasFlag(PACKAGE_NAME, " SYSTEM "));
         assertTrue("VIBRATE permission should be granted",
                 mUtils.packageHasPermission(PACKAGE_NAME, VIBRATE_PERMISSION));
         assertTrue("ACCESS_CACHE_FILESYSTEM permission should be granted",
@@ -274,7 +264,8 @@ public class PackageManagerOTATests extends DeviceTestCase {
                 mUtils.expectEquals(mPackageXml, VERSION_XPATH, "3"));
         assertTrue("Updated-package should be present",
                 mUtils.expectExists(mPackageXml, UPDATE_PACKAGE_XPATH));
-        assertTrue("Package should have FLAG_SYSTEM", expectFlag(mPackageXml, FLAG_XPATH, 1));
+        assertTrue("Package should have FLAG_SYSTEM",
+                mUtils.packageHasFlag(PACKAGE_NAME, " SYSTEM "));
         assertTrue("VIBRATE permission should be granted",
                 mUtils.packageHasPermission(PACKAGE_NAME, VIBRATE_PERMISSION));
         assertTrue("ACCESS_CACHE_FILESYSTEM permission should be granted",
@@ -288,7 +279,8 @@ public class PackageManagerOTATests extends DeviceTestCase {
                 mUtils.expectEquals(mPackageXml, VERSION_XPATH, "3"));
         assertTrue("Updated-package should be present",
                 mUtils.expectExists(mPackageXml, UPDATE_PACKAGE_XPATH));
-        assertTrue("Package should have FLAG_SYSTEM", expectFlag(mPackageXml, FLAG_XPATH, 1));
+        assertTrue("Package should have FLAG_SYSTEM",
+                mUtils.packageHasFlag(PACKAGE_NAME, " SYSTEM "));
         assertTrue("VIBRATE permission should be granted",
                 mUtils.packageHasPermission(PACKAGE_NAME, VIBRATE_PERMISSION));
         assertTrue("ACCESS_CACHE_FILESYSTEM permission should be granted",
@@ -311,7 +303,8 @@ public class PackageManagerOTATests extends DeviceTestCase {
                 mUtils.expectEquals(mPackageXml, VERSION_XPATH, "2"));
         assertFalse("Updated-package should not be present",
                 mUtils.expectExists(mPackageXml, UPDATE_PACKAGE_XPATH));
-        assertTrue("Package should have FLAG_SYSTEM", expectFlag(mPackageXml, FLAG_XPATH, 1));
+        assertTrue("Package should have FLAG_SYSTEM",
+                mUtils.packageHasFlag(PACKAGE_NAME, " SYSTEM "));
         assertTrue("VIBRATE permission should be granted",
                 mUtils.packageHasPermission(PACKAGE_NAME, VIBRATE_PERMISSION));
         assertTrue("ACCESS_CACHE_FILESYSTEM permission should be granted",
@@ -327,7 +320,8 @@ public class PackageManagerOTATests extends DeviceTestCase {
                 mUtils.expectEquals(mPackageXml, VERSION_XPATH, "1"));
         assertTrue("Updated-package should be present",
                 mUtils.expectExists(mPackageXml, UPDATE_PACKAGE_XPATH));
-        assertTrue("Package should have FLAG_SYSTEM", expectFlag(mPackageXml, FLAG_XPATH, 1));
+        assertTrue("Package should have FLAG_SYSTEM",
+                mUtils.packageHasFlag(PACKAGE_NAME, " SYSTEM "));
         assertTrue("VIBRATE permission should be granted",
                 mUtils.packageHasPermission(PACKAGE_NAME, VIBRATE_PERMISSION));
         assertTrue("ACCESS_CACHE_FILESYSTEM permission should be granted",
@@ -341,7 +335,8 @@ public class PackageManagerOTATests extends DeviceTestCase {
                 mUtils.expectEquals(mPackageXml, VERSION_XPATH, "2"));
         assertFalse("Updated-package should NOT be present",
                 mUtils.expectExists(mPackageXml, UPDATE_PACKAGE_XPATH));
-        assertTrue("Package should have FLAG_SYSTEM", expectFlag(mPackageXml, FLAG_XPATH, 1));
+        assertTrue("Package should have FLAG_SYSTEM",
+                mUtils.packageHasFlag(PACKAGE_NAME, " SYSTEM "));
         assertTrue("VIBRATE permission should be granted",
                 mUtils.packageHasPermission(PACKAGE_NAME, VIBRATE_PERMISSION));
         assertTrue("ACCESS_CACHE_FILESYSTEM permission should be granted",
@@ -355,7 +350,8 @@ public class PackageManagerOTATests extends DeviceTestCase {
                 mUtils.expectEquals(mPackageXml, VERSION_XPATH, "2"));
         assertFalse("Updated-package should NOT be present",
                 mUtils.expectExists(mPackageXml, UPDATE_PACKAGE_XPATH));
-        assertTrue("Package should have FLAG_SYSTEM", expectFlag(mPackageXml, FLAG_XPATH, 1));
+        assertTrue("Package should have FLAG_SYSTEM",
+                mUtils.packageHasFlag(PACKAGE_NAME, " SYSTEM "));
         assertTrue("VIBRATE permission should be granted",
                 mUtils.packageHasPermission(PACKAGE_NAME, VIBRATE_PERMISSION));
         assertTrue("ACCESS_CACHE_FILESYSTEM permission should be granted",
@@ -380,7 +376,8 @@ public class PackageManagerOTATests extends DeviceTestCase {
                 mUtils.expectEquals(mPackageXml, VERSION_XPATH, "2"));
         assertFalse("Updated-package should not be present",
                 mUtils.expectExists(mPackageXml, UPDATE_PACKAGE_XPATH));
-        assertTrue("Package should have FLAG_SYSTEM", expectFlag(mPackageXml, FLAG_XPATH, 1));
+        assertTrue("Package should have FLAG_SYSTEM",
+                mUtils.packageHasFlag(PACKAGE_NAME, " SYSTEM "));
         assertTrue("VIBRATE permission should be granted",
                 mUtils.packageHasPermission(PACKAGE_NAME, VIBRATE_PERMISSION));
         assertTrue("ACCESS_CACHE_FILESYSTEM permission should be granted",
@@ -394,7 +391,8 @@ public class PackageManagerOTATests extends DeviceTestCase {
                 mUtils.expectEquals(mPackageXml, VERSION_XPATH, "2"));
         assertTrue("Updated-package should be present",
                 mUtils.expectExists(mPackageXml, UPDATE_PACKAGE_XPATH));
-        assertTrue("Package should have FLAG_SYSTEM", expectFlag(mPackageXml, FLAG_XPATH, 1));
+        assertTrue("Package should have FLAG_SYSTEM",
+                mUtils.packageHasFlag(PACKAGE_NAME, " SYSTEM "));
         assertTrue("VIBRATE permission should be granted",
                 mUtils.packageHasPermission(PACKAGE_NAME, VIBRATE_PERMISSION));
         assertTrue("ACCESS_CACHE_FILESYSTEM permission should be granted",
@@ -408,7 +406,8 @@ public class PackageManagerOTATests extends DeviceTestCase {
                 mUtils.expectEquals(mPackageXml, VERSION_XPATH, "2"));
         assertTrue("Updated-package should be present",
                 mUtils.expectExists(mPackageXml, UPDATE_PACKAGE_XPATH));
-        assertTrue("Package should have FLAG_SYSTEM", expectFlag(mPackageXml, FLAG_XPATH, 1));
+        assertTrue("Package should have FLAG_SYSTEM",
+                mUtils.packageHasFlag(PACKAGE_NAME, " SYSTEM "));
         assertTrue("VIBRATE permission should be granted",
                 mUtils.packageHasPermission(PACKAGE_NAME, VIBRATE_PERMISSION));
         assertTrue("ACCESS_CACHE_FILESYSTEM permission should be granted",
@@ -431,7 +430,8 @@ public class PackageManagerOTATests extends DeviceTestCase {
                 mUtils.expectExists(mPackageXml, PACKAGE_XPATH));
         assertTrue("Updated-package should be present",
                 mUtils.expectExists(mPackageXml, UPDATE_PACKAGE_XPATH));
-        assertTrue("Package should have FLAG_SYSTEM", expectFlag(mPackageXml, FLAG_XPATH, 1));
+        assertTrue("Package should have FLAG_SYSTEM",
+                mUtils.packageHasFlag(PACKAGE_NAME, " SYSTEM "));
         assertTrue("VIBRATE permission should be granted",
                 mUtils.packageHasPermission(PACKAGE_NAME, VIBRATE_PERMISSION));
         assertTrue("ACCESS_CACHE_FILESYSTEM permission should be granted",
@@ -443,7 +443,8 @@ public class PackageManagerOTATests extends DeviceTestCase {
                 mUtils.expectExists(mPackageXml, PACKAGE_XPATH));
         assertFalse("Updated-package entry should not be present",
                 mUtils.expectExists(mPackageXml, UPDATE_PACKAGE_XPATH));
-        assertFalse("Package should not have FLAG_SYSTEM", expectFlag(mPackageXml, FLAG_XPATH, 1));
+        assertFalse("Package should not have FLAG_SYSTEM",
+                mUtils.packageHasFlag(PACKAGE_NAME, " SYSTEM "));
         assertTrue("VIBRATE permission should be granted",
                 mUtils.packageHasPermission(PACKAGE_NAME, VIBRATE_PERMISSION));
         assertFalse("ACCESS_CACHE_FILESYSTEM permission should NOT be granted",
@@ -470,7 +471,8 @@ public class PackageManagerOTATests extends DeviceTestCase {
                 mUtils.expectEquals(mPackageXml, VERSION_XPATH, "1"));
         assertFalse("Updated-package should not be present",
                 mUtils.expectExists(mPackageXml, UPDATE_PACKAGE_XPATH));
-        assertTrue("Package should have FLAG_SYSTEM", expectFlag(mPackageXml, FLAG_XPATH, 1));
+        assertTrue("Package should have FLAG_SYSTEM",
+                mUtils.packageHasFlag(PACKAGE_NAME, " SYSTEM "));
         assertTrue("VIBRATE permission should be granted",
                 mUtils.packageHasPermission(PACKAGE_NAME, VIBRATE_PERMISSION));
         assertFalse("ACCESS_CACHE_FILESYSTEM permission should NOT be granted",
@@ -484,7 +486,8 @@ public class PackageManagerOTATests extends DeviceTestCase {
                 mUtils.expectEquals(mPackageXml, VERSION_XPATH, "3"));
         assertTrue("Updated-package should be present",
                 mUtils.expectExists(mPackageXml, UPDATE_PACKAGE_XPATH));
-        assertTrue("Package should have FLAG_SYSTEM", expectFlag(mPackageXml, FLAG_XPATH, 1));
+        assertTrue("Package should have FLAG_SYSTEM",
+                mUtils.packageHasFlag(PACKAGE_NAME, " SYSTEM "));
         assertTrue("VIBRATE permission should be granted",
                 mUtils.packageHasPermission(PACKAGE_NAME, VIBRATE_PERMISSION));
         assertFalse("ACCESS_CACHE_FILESYSTEM permission should NOT be granted",
@@ -499,7 +502,8 @@ public class PackageManagerOTATests extends DeviceTestCase {
                 mUtils.expectEquals(mPackageXml, VERSION_XPATH, "3"));
         assertTrue("Updated-package should be present",
                 mUtils.expectExists(mPackageXml, UPDATE_PACKAGE_XPATH));
-        assertTrue("Package should have FLAG_SYSTEM", expectFlag(mPackageXml, FLAG_XPATH, 1));
+        assertTrue("Package should have FLAG_SYSTEM",
+                mUtils.packageHasFlag(PACKAGE_NAME, " SYSTEM "));
         assertTrue("VIBRATE permission should be granted",
                 mUtils.packageHasPermission(PACKAGE_NAME, VIBRATE_PERMISSION));
         assertTrue("ACCESS_CACHE_FILESYSTEM permission should be granted",
@@ -513,7 +517,8 @@ public class PackageManagerOTATests extends DeviceTestCase {
                 mUtils.expectEquals(mPackageXml, VERSION_XPATH, "3"));
         assertTrue("Updated-package should be present",
                 mUtils.expectExists(mPackageXml, UPDATE_PACKAGE_XPATH));
-        assertTrue("Package should have FLAG_SYSTEM", expectFlag(mPackageXml, FLAG_XPATH, 1));
+        assertTrue("Package should have FLAG_SYSTEM",
+                mUtils.packageHasFlag(PACKAGE_NAME, " SYSTEM "));
         assertTrue("VIBRATE permission should be granted",
                 mUtils.packageHasPermission(PACKAGE_NAME, VIBRATE_PERMISSION));
         assertTrue("ACCESS_CACHE_FILESYSTEM permission should be granted",

@@ -26,6 +26,8 @@ import org.w3c.dom.Document;
 import org.w3c.dom.Node;
 
 import java.io.File;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
@@ -118,17 +120,6 @@ public class PackageManagerOTATestUtils {
     }
 
     /**
-     * Get int value for a xpath in a given xml file.
-     * @param xmlFile  {@link File} xml file to process.
-     * @param xPathString  {@link String} Xpath to look for
-     * @return
-     */
-    public int getIntForXPath(File xmlFile, String xPathString) {
-        String tmp = getStringForXPath(xmlFile, xPathString);
-        return Integer.parseInt(tmp);
-    }
-
-    /**
      * Expect that the value of a given xpath starts with a given string.
      *
      * @param xmlFile {@link File} the xml file in question
@@ -170,30 +161,6 @@ public class PackageManagerOTATestUtils {
         return result;
     }
 
-    /**
-     * Get String value for a given xpath.
-     *
-     * @param xmlFile {@link File} the xml file in question
-     * @param xPathString {@link String} the xpath to look for
-     *
-     * @return {@link String} value for a given xpath
-     */
-    public String getStringForXPath(File xmlFile, String xPathString) {
-        DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
-        try {
-            DocumentBuilder documentBuilder = factory.newDocumentBuilder();
-            Document doc = documentBuilder.parse(xmlFile);
-            XPathFactory xpFactory = XPathFactory.newInstance();
-            XPath xpath = xpFactory.newXPath();
-            XPathExpression expr = xpath.compile(xPathString);
-            String node = (String) expr.evaluate(doc, XPathConstants.STRING);
-            return node;
-        } catch (Exception e) {
-            CLog.e(e);
-        }
-        return null;
-    }
-
     public Node getNodeForXPath(File xmlFile, String xPathString) {
         DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
         try {
@@ -223,8 +190,41 @@ public class PackageManagerOTATestUtils {
             throws DeviceNotAvailableException {
         String cmd = "dumpsys package " + packageName;
         String res = mDevice.executeShellCommand(cmd);
-        if (res != null && res.contains("grantedPermissions:")) {
-            return res.contains(permission);
+        if (res != null) {
+            if (res.contains("grantedPermissions:")) {
+                return res.contains(permission);
+            } else {
+                Pattern perm = Pattern.compile(String.format("^.*%s.*granted=true.*$", permission),
+                        Pattern.MULTILINE);
+                Matcher m = perm.matcher(res);
+                return m.find();
+            }
+        }
+        CLog.d("Failed to execute shell command: %s", cmd);
+        return false;
+    }
+
+    /**
+     * Check if a given package has the said permission.
+     * @param packageName {@link String} the package in question
+     * @param permission {@link String} the permission to look for
+     *
+     * @return true if the permission exists, false otherwise
+     *
+     * @throws DeviceNotAvailableException
+     */
+    public boolean packageHasFlag(String packageName, String flag)
+            throws DeviceNotAvailableException {
+        String cmd = "dumpsys package " + packageName;
+        String res = mDevice.executeShellCommand(cmd);
+        if (res != null) {
+            Pattern flags = Pattern.compile("^.*flags=\\[(.*?)\\]$", Pattern.MULTILINE);
+            Matcher m = flags.matcher(res);
+            if (m.find()) {
+                return m.group(1).contains(flag);
+            } else {
+                CLog.d("Failed to find package flags record in dumpsys package output");
+            }
         }
         CLog.d("Failed to execute shell command: %s", cmd);
         return false;
