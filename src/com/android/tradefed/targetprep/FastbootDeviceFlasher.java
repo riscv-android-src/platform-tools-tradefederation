@@ -22,14 +22,18 @@ import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.util.CommandResult;
 import com.android.tradefed.util.CommandStatus;
+import com.android.tradefed.util.FileUtil;
 import com.android.tradefed.util.RunUtil;
+import com.android.tradefed.util.ZipUtil;
 
 import java.io.File;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Random;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.zip.ZipFile;
 
 /**
  * A class that relies on fastboot to flash an image on physical Android hardware.
@@ -387,7 +391,9 @@ public class FastbootDeviceFlasher implements IDeviceFlasher  {
                         deviceBuild.getUserDataImageFile().getAbsolutePath());
                 flashPartition(device, deviceBuild.getUserDataImageFile(), "userdata");
                 break;
-
+            case FLASH_IMG_ZIP:
+                flashUserDataFromDeviceImageFile(device, deviceBuild);
+                break;
             case FORCE_WIPE:  // intentional fallthrough
             case WIPE:
                 CLog.i("Wiping userdata %s", device.getSerialNumber());
@@ -417,6 +423,30 @@ public class FastbootDeviceFlasher implements IDeviceFlasher  {
 
             default:
                 CLog.d("Skipping userdata flash for %s", device.getSerialNumber());
+        }
+    }
+
+    /**
+     * Extracts the userdata.img from device image file and flashes it onto device
+     * @param device the {@link ITestDevice} to flash
+     * @param deviceBuild the {@link IDeviceBuildInfo} that contains the files to flash
+     * @throws DeviceNotAvailableException if device is not available
+     * @throws TargetSetupError if failed to extract or flash user data
+     */
+    protected void flashUserDataFromDeviceImageFile(ITestDevice device,
+            IDeviceBuildInfo deviceBuild) throws DeviceNotAvailableException, TargetSetupError {
+        File userdataImg = null;
+        try {
+            try {
+                userdataImg = ZipUtil.extractFileFromZip(
+                        new ZipFile(deviceBuild.getDeviceImageFile()), "userdata.img");
+            } catch (IOException ioe) {
+                throw new TargetSetupError("failed to extract userdata.img from image file", ioe);
+            }
+            CLog.i("Flashing %s with userdata %s", device.getSerialNumber(), userdataImg);
+            flashPartition(device, userdataImg, "userdata");
+        } finally {
+            FileUtil.deleteFile(userdataImg);
         }
     }
 

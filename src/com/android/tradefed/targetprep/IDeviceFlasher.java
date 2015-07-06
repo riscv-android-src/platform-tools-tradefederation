@@ -33,6 +33,8 @@ public interface IDeviceFlasher {
     public enum UserDataFlashOption {
         /** flash the given userdata image on device */
         FLASH,
+        /** flash the userdata image included in device image zip */
+        FLASH_IMG_ZIP,
         /** wipe the device's userdata partition using fastboot erase, if supported by device */
         WIPE,
         /** wipe the device's userdata partition using fastboot erase, even if it's unadvised */
