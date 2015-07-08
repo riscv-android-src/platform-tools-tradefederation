@@ -16,6 +16,7 @@
 
 package com.android.tradefed.config;
 
+import java.io.File;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
@@ -27,12 +28,20 @@ import java.util.Map;
  */
 public class ConfigurationDef {
 
-    /** a map of object type names to config object class name(s). */
-    private final Map<String, List<String>> mObjectClassMap;
+    /**
+     * a map of object type names to config object class name(s). Use LinkedHashMap to keep objects
+     * in the same order they were added.
+     */
+    private final Map<String, List<String>> mObjectClassMap = new LinkedHashMap<>();
+
     /** a list of option name/value pairs. */
-    private final List<OptionDef> mOptionList;
+    private final List<OptionDef> mOptionList = new ArrayList<>();
+
     /** a cache of the frequency of every classname */
-    private final Map<String, Integer> mClassFrequency;
+    private final Map<String, Integer> mClassFrequency = new HashMap<>();
+
+    /** The set of files (and modification times) that were used to load this config */
+    private final Map<File, Long> mSourceFiles = new HashMap<>();
 
     static class OptionDef {
         final String name;
@@ -58,10 +67,6 @@ public class ConfigurationDef {
 
     public ConfigurationDef(String name) {
         mName = name;
-        // use LinkedHashMap to keep objects in same order they were added.
-        mObjectClassMap = new LinkedHashMap<String, List<String>>();
-        mOptionList = new ArrayList<OptionDef>();
-        mClassFrequency = new HashMap<String, Integer>();
     }
 
     /**
@@ -116,6 +121,26 @@ public class ConfigurationDef {
         } else {
             mOptionList.add(new OptionDef(optionName, optionKey, optionValue));
         }
+    }
+
+    /**
+     * Registers a source file that was used while loading this {@link ConfigurationDef}.
+     */
+    void registerSource(File source) {
+        mSourceFiles.put(source, source.lastModified());
+    }
+
+    /**
+     * Determine whether any of the source files have changed since this {@link ConfigurationDef}
+     * was loaded.
+     */
+    boolean isStale() {
+        for (Map.Entry<File, Long> entry : mSourceFiles.entrySet()) {
+            if (entry.getKey().lastModified() > entry.getValue()) {
+                return true;
+            }
+        }
+        return false;
     }
 
     /**
