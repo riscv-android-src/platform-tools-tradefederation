@@ -541,14 +541,61 @@ public class ConfigurationFactoryTest extends TestCase {
     /**
     * Test loading a config that tries to include a non-bundled config
     */
-   public void testCreateConfigurationFromArgs_nonBundledInclude() throws Exception {
+    public void testCreateConfigurationFromArgs_nonBundledInclude() throws Exception {
        try {
            mFactory.createConfigurationFromArgs(new String[] {"non-bundled-config"});
            fail("ConfigurationException not thrown");
        } catch (ConfigurationException e) {
            // expected
        }
-   }
+    }
+
+    /**
+     * Test reloading a config after it has been updated.
+     */
+    public void testCreateConfigurationFromArgs_localConfigReload()
+            throws ConfigurationException, IOException {
+
+        File localConfigFile = FileUtil.createTempFile("local-config", ".xml");
+        try {
+            // Copy the config to the local filesystem
+            InputStream source = getClass().getResourceAsStream("/testconfigs/local-config.xml");
+            FileUtil.writeToFile(source, localConfigFile);
+
+            // Depending on the system, file modification times might not have greater than 1 second
+            // resolution. Backdate the original contents so that when we write to the file later,
+            // it shows up as a new change.
+            localConfigFile.setLastModified(System.currentTimeMillis() - 5000);
+
+            // Load the configuration from the local file
+            IConfiguration config = mFactory.createConfigurationFromArgs(
+                    new String[] { localConfigFile.getAbsolutePath() });
+            if (!(config.getTests().get(0) instanceof StubOptionTest)) {
+                fail(String.format("Expected a StubOptionTest, but got %s",
+                        config.getTests().get(0).getClass().getName()));
+                return;
+            }
+            StubOptionTest test = (StubOptionTest)config.getTests().get(0);
+            assertEquals("valueFromOriginalConfig", test.mOption);
+
+            // Change the contents of the local file
+            source = getClass().getResourceAsStream("/testconfigs/local-config-update.xml");
+            FileUtil.writeToFile(source, localConfigFile);
+
+            // Get the configuration again and verify that it picked up the update
+            config = mFactory.createConfigurationFromArgs(
+                    new String[] { localConfigFile.getAbsolutePath() });
+            if (!(config.getTests().get(0) instanceof StubOptionTest)) {
+                fail(String.format("Expected a StubOptionTest, but got %s",
+                        config.getTests().get(0).getClass().getName()));
+                return;
+            }
+            test = (StubOptionTest)config.getTests().get(0);
+            assertEquals("valueFromUpdatedConfig", test.mOption);
+        } finally {
+            localConfigFile.delete();
+        }
+    }
 
     /**
      * Test loading a config that has a circular include

@@ -16,6 +16,7 @@
 package com.android.tradefed.config;
 
 import com.android.ddmlib.Log;
+import com.android.ddmlib.Log.LogLevel;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.util.ClassPathScanner;
 import com.android.tradefed.util.ClassPathScanner.IClassPathFilter;
@@ -177,8 +178,7 @@ public class ConfigurationFactory implements IConfigurationFactory {
         @Override
         public ConfigurationDef getConfigurationDef(String name, Map<String, String> templateMap)
                 throws ConfigurationException {
-            // FIXME: Currently this does not support on the fly reload of configs.
-            // We need to clear the cache.
+
             String configName = name;
             if (!isBundledConfig(name)) {
                 configName = getAbsolutePath(null, name);
@@ -187,12 +187,13 @@ public class ConfigurationFactory implements IConfigurationFactory {
             final ConfigId configId = new ConfigId(name, templateMap);
             ConfigurationDef def = mConfigDefMap.get(configId);
 
-            if (def == null) {
+            if (def == null || def.isStale()) {
                 def = new ConfigurationDef(configName);
                 loadConfiguration(configName, def, templateMap);
 
                 mConfigDefMap.put(configId, def);
             }
+
             return def;
         }
 
@@ -237,6 +238,7 @@ public class ConfigurationFactory implements IConfigurationFactory {
          */
         public void loadIncludedConfiguration(ConfigurationDef def, String parentName, String name)
                 throws ConfigurationException {
+
             String config_name = name;
             if (!isBundledConfig(name)) {
                 try {
@@ -279,6 +281,11 @@ public class ConfigurationFactory implements IConfigurationFactory {
             BufferedInputStream bufStream = getConfigStream(name);
             ConfigurationXmlParser parser = new ConfigurationXmlParser(this);
             parser.parse(def, name, bufStream, templateMap);
+
+            // Track local config source files
+            if (!isBundledConfig(name)) {
+                def.registerSource(new File(name));
+            }
         }
 
         /**
