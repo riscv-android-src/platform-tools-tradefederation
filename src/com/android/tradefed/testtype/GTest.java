@@ -306,6 +306,7 @@ public class GTest implements IDeviceTest, IRemoteTest {
      */
     IShellOutputReceiver createResultParser(String runName, ITestRunListener listener) {
         GTestResultParser resultParser = new GTestResultParser(runName, listener);
+        resultParser.setPrependFileName(mPrependFileName);
         // TODO: find a better solution for sending coverage info
         if (mSendCoverage) {
             resultParser.setCoverageTarget(COVERAGE_TARGET);
