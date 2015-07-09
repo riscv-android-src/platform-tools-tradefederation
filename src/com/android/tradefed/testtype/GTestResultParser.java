@@ -108,6 +108,18 @@ public class GTestResultParser extends MultiLineReceiver {
 
     private String mCoverageTarget = null;
 
+    /** Whether or not to prepend filename to classname. */
+    private boolean mPrependFileName = false;
+
+
+    public void setPrependFileName(boolean prepend) {
+        mPrependFileName = prepend;
+    }
+
+    public boolean getPrependFileName() {
+        return mPrependFileName;
+    }
+
     /**
      * Test result data
      */
@@ -466,6 +478,18 @@ public class GTestResultParser extends MultiLineReceiver {
         mTestRunInProgress = false;
     }
 
+    private String getTestClass(TestResult testResult) {
+
+        if (mPrependFileName) {
+            StringBuilder sb = new StringBuilder();
+            sb.append(mTestRunName);
+            sb.append(".");
+            sb.append(testResult.mTestClass);
+            return sb.toString();
+        }
+        return testResult.mTestClass;
+    }
+
     /**
      * Processes and informs listener when we encounter a tag indicating that a test has started.
      *
@@ -477,7 +501,7 @@ public class GTestResultParser extends MultiLineReceiver {
         testResult.mTestClass = parsedResults.mTestClassName;
         testResult.mTestName = parsedResults.mTestName;
 
-        TestIdentifier testId = new TestIdentifier(testResult.mTestClass, testResult.mTestName);
+        TestIdentifier testId = new TestIdentifier(getTestClass(testResult), testResult.mTestName);
 
         for (ITestRunListener listener : mTestListeners) {
             listener.testStarted(testId);
@@ -496,7 +520,7 @@ public class GTestResultParser extends MultiLineReceiver {
     private void doTestEnded(String identifier, boolean testPassed) {
         ParsedTestInfo parsedResults = parseTestIdentifier(identifier);
         TestResult testResult = getCurrentTestResult();
-        TestIdentifier testId = new TestIdentifier(testResult.mTestClass, testResult.mTestName);
+        TestIdentifier testId = new TestIdentifier(getTestClass(testResult), testResult.mTestName);
 
         // Error - trying to end a test when one isn't in progress
         if (!testInProgress()) {
@@ -612,7 +636,7 @@ public class GTestResultParser extends MultiLineReceiver {
         if ((mCurrentTestResult != null) && (mCurrentTestResult.isComplete())) {
             // current test results are cleared out after every complete test run,
             // if it's not null, assume the last test caused this and report as a test failure
-            TestIdentifier testId = new TestIdentifier(mCurrentTestResult.mTestClass,
+            TestIdentifier testId = new TestIdentifier(getTestClass(mCurrentTestResult),
                     mCurrentTestResult.mTestName);
 
             // If there was any stack trace during the test run, append it to the "test failed"

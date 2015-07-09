@@ -65,6 +65,10 @@ public class GTest implements IDeviceTest, IRemoteTest {
             description = "Send coverage target info to test listeners.")
     private boolean mSendCoverage = true;
 
+    @Option(name ="prepend-filename",
+            description = "Prepend filename as part of the classname for the tests.")
+    private boolean mPrependFileName = false;
+
     /** coverage target value. Just report all gtests as 'native' for now */
     private static final String COVERAGE_TARGET = "Native";
 
