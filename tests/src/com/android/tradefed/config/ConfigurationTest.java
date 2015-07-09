@@ -380,8 +380,8 @@ public class ConfigurationTest extends TestCase {
             for (int j = 0; j < fields.length(); j++) {
                 JSONObject field = fields.getJSONObject(j);
 
-                // Each field should at least have 'name', 'description', 'mandatory', and
-                // 'javaClass' values
+                // Each field should at least have 'name', 'description', 'mandatory',
+                // 'javaClass', and 'updateRule' values
                 assertTrue("Option field does not have a 'name' value", field.has("name"));
                 assertTrue("Option field does not have a 'description' value",
                         field.has("description"));
@@ -389,6 +389,8 @@ public class ConfigurationTest extends TestCase {
                         field.has("mandatory"));
                 assertTrue("Option field does not have a 'javaClass' value",
                         field.has("javaClass"));
+                assertTrue("Option field does not have an 'updateRule' value",
+                        field.has("updateRule"));
             }
 
             // The only elements should either be built-in types, or the configuration object we

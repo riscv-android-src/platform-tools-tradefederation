@@ -643,6 +643,7 @@ public class Configuration implements IConfiguration {
                     jsonField.put("importance", option.importance());
                     jsonField.put("mandatory", option.mandatory());
                     jsonField.put("isTimeVal", option.isTimeVal());
+                    jsonField.put("updateRule", option.updateRule().name());
                     jsonField.put("javaClass", field.getType().getName());
                     try {
                         field.setAccessible(true);
