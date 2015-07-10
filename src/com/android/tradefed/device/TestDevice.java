@@ -694,10 +694,18 @@ class TestDevice implements IManagedTestDevice {
      */
     @Override
     public boolean isRuntimePermissionSupported() throws DeviceNotAvailableException {
-        //TODO: change to API Level check once M is official
+        //TODO: only keep API Level check once M is official
+        if (getApiLevel() > 22) {
+            return true;
+        }
         String codeName = getProperty(BUILD_CODENAME_PROP).trim();
-        if (!"MNC".equals(codeName)) {
-            // not MNC, probably REL or LMP or older
+        if (!"REL".equals(codeName)) {
+            // this is a development platform, check code name, if less than M, then not supported
+            if (codeName.charAt(0) < 'M') {
+                return false;
+            }
+        } else {
+            // released platform, none supports runtime permission yet
             return false;
         }
         try {
@@ -706,7 +714,7 @@ class TestDevice implements IManagedTestDevice {
             return buildNumber >= 1837705;
         } catch (NumberFormatException nfe) {
             // build id field is not a number, probably an eng build since we've already checked
-            // for MNC code name, assuming supported
+            // code name, assuming supported
             return true;
         }
     }
