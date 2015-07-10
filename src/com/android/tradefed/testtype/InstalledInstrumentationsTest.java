@@ -128,9 +128,13 @@ public class InstalledInstrumentationsTest implements IDeviceTest, IResumableTes
     private Map<String, String> mInstrArgMap = new HashMap<String, String>();
 
     @Option(name = "rerun-from-file", description =
-            "Re-run failed tests using test file instead of executing separate adb commands for " +
-            "each remaining test")
+            "Use test file instead of separate adb commands for each test " +
+            "when re-running instrumentations for tests that failed to run in previous attempts. ")
     private boolean mReRunUsingTestFile = false;
+
+    @Option(name = "reboot-before-rerun", description =
+            "Reboot a device before re-running instrumentations.")
+    private boolean mRebootBeforeReRun = false;
 
     @Option(name = "shards", description =
             "Split test run into this many parallel shards")

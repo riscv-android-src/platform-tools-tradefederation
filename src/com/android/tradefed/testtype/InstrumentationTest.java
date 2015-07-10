@@ -155,9 +155,13 @@ public class InstrumentationTest implements IDeviceTest, IResumableTest {
     private int mMaxLogcatBytes = 500 * 1024; // 500K
 
     @Option(name = "rerun-from-file", description =
-            "Re-run failed tests using test file instead of executing separate adb commands for " +
-            "each remaining test")
+            "Use test file instead of separate adb commands for each test " +
+            "when re-running instrumentations for tests that failed to run in previous attempts. ")
     private boolean mReRunUsingTestFile = false;
+
+    @Option(name = "reboot-before-rerun", description =
+            "Reboot a device before re-running instrumentations.")
+    private boolean mRebootBeforeReRun = false;
 
     @Option(name = AbiFormatter.FORCE_ABI_STRING,
             description = AbiFormatter.FORCE_ABI_DESCRIPTION,
@@ -487,6 +491,10 @@ public class InstrumentationTest implements IDeviceTest, IResumableTest {
         mReRunUsingTestFile = reRunUsingTestFile;
     }
 
+    public void setRebootBeforeReRun(boolean rebootBeforeReRun) {
+        mRebootBeforeReRun = rebootBeforeReRun;
+    }
+
     /**
      * @return the {@link IRemoteAndroidTestRunner} to use.
      * @throws DeviceNotAvailableException
@@ -652,6 +660,9 @@ public class InstrumentationTest implements IDeviceTest, IResumableTest {
     private void rerunTests(final ITestInvocationListener listener)
             throws DeviceNotAvailableException {
         if (mRemainingTests.size() > 0) {
+            if (mRebootBeforeReRun) {
+                mDevice.reboot();
+            }
             if (mReRunUsingTestFile) {
                 reRunTestsFromFile(listener);
             } else {

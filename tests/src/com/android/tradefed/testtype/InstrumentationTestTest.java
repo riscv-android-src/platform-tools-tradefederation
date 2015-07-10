@@ -270,7 +270,32 @@ public class InstrumentationTestTest extends TestCase {
                 return true;
             }
         };
-        setRerunExpectations(firstRunAnswer);
+        setRerunExpectations(firstRunAnswer, false);
+
+        EasyMock.replay(mMockRemoteRunner, mMockTestDevice, mMockListener);
+        mInstrumentationTest.run(mMockListener);
+        EasyMock.verify(mMockRemoteRunner, mMockTestDevice, mMockListener);
+    }
+
+    /**
+     * Test the reboot before re-run option.
+     */
+    public void testRun_rebootBeforeReRun() throws Exception {
+        mInstrumentationTest.setRebootBeforeReRun(true);
+        RunTestAnswer firstRunAnswer = new RunTestAnswer() {
+            @Override
+            public Boolean answer(IRemoteAndroidTestRunner runner,
+                    ITestRunListener listener) {
+                // perform call back on listener to show run failed - only one test
+                listener.testRunStarted(TEST_PACKAGE_VALUE, 2);
+                listener.testStarted(TEST1);
+                listener.testEnded(TEST1, EMPTY_STRING_MAP);
+                listener.testRunFailed(RUN_ERROR_MSG);
+                listener.testRunEnded(1, EMPTY_STRING_MAP);
+                return true;
+            }
+        };
+        setRerunExpectations(firstRunAnswer, true);
 
         EasyMock.replay(mMockRemoteRunner, mMockTestDevice, mMockListener);
         mInstrumentationTest.run(mMockListener);
@@ -294,7 +319,7 @@ public class InstrumentationTestTest extends TestCase {
                 throw new DeviceNotAvailableException();
             }
         };
-        setRerunExpectations(firstRunResponse);
+        setRerunExpectations(firstRunResponse, false);
         mMockRemoteRunner.setMaxTimeToOutputResponse(SHELL_TIMEOUT, TimeUnit.MILLISECONDS);
         mMockRemoteRunner.addInstrumentationArg(InstrumentationTest.TEST_TIMEOUT_INST_ARGS_KEY,
                 Long.toString(SHELL_TIMEOUT));
@@ -330,8 +355,8 @@ public class InstrumentationTestTest extends TestCase {
      * @param firstRunAnswer the behavior callback of the first run. It should perform callbacks
      * on listeners to indicate only TEST1 was run
      */
-    private void setRerunExpectations(RunTestAnswer firstRunAnswer)
-            throws DeviceNotAvailableException {
+    private void setRerunExpectations(RunTestAnswer firstRunAnswer, boolean rebootBeforeReRun)
+        throws DeviceNotAvailableException {
         mInstrumentationTest.setRerunMode(true);
         // expect test collection mode run first to collect tests
         mMockRemoteRunner.setTestCollection(true);
@@ -354,6 +379,10 @@ public class InstrumentationTestTest extends TestCase {
         mMockRemoteRunner.setMaxTimeToOutputResponse(TEST_TIMEOUT, TimeUnit.MILLISECONDS);
         mMockRemoteRunner.setTestCollection(false);
         setRunTestExpectations(firstRunAnswer);
+
+        if (rebootBeforeReRun) {
+          mMockTestDevice.reboot();
+        }
 
         // now expect second run to run remaining test
         RunTestAnswer secondRunAnswer = new RunTestAnswer() {
