@@ -30,75 +30,62 @@ public enum OptionUpdateRule {
     /** once an option is set, subsequent attempts to update it should be ignored. */
     FIRST {
         @Override
-        Object update(String optionName, Object current, Object update)
+        boolean shouldUpdate(String optionName, Object current, Object update)
                 throws ConfigurationException {
-            if (current == null) return update;
-            CLog.d("Ignoring update for option %s", optionName);
-            return current;
+            return current == null;
         }
     },
 
     /** if an option is set multiple times, ignore all but the last value. */
     LAST {
         @Override
-        Object update(String optionName, Object current, Object update)
+        boolean shouldUpdate(String optionName, Object current, Object update)
                 throws ConfigurationException {
-            return update;
+            return true;
         }
     },
 
     /** for {@link Comparable} options, keep the one that compares as the greatest. */
     GREATEST {
         @Override
-        Object update(String optionName, Object current, Object update)
+        boolean shouldUpdate(String optionName, Object current, Object update)
                 throws ConfigurationException {
-            if (current == null) return update;
-            if (compare(optionName, current, update) < 0) {
-                // current < update; so use the update
-                return update;
-            } else {
-                // current >= update; so keep current
-                return current;
-            }
+            return current == null || compare(optionName, current, update) < 0;
         }
     },
 
     /** for {@link Comparable} options, keep the one that compares as the least. */
     LEAST {
         @Override
-        Object update(String optionName, Object current, Object update)
+        boolean shouldUpdate(String optionName, Object current, Object update)
                 throws ConfigurationException {
-            if (current == null) return update;
-            if (compare(optionName, current, update) > 0) {
-                // current > update; so use the update
-                return update;
-            } else {
-                // current <= update; so keep current
-                return current;
-            }
+            return current == null || compare(optionName, current, update) > 0;
         }
     },
 
     /** throw a {@link ConfigurationException} if this option is set more than once. */
     IMMUTABLE {
         @Override
-        Object update(String optionName, Object current, Object update)
+        boolean shouldUpdate(String optionName, Object current, Object update)
                 throws ConfigurationException {
-            if (current == null) return update;
-            throw new ConfigurationException(String.format(
-                    "Attempted to update immutable value (%s) for option \"%s\"", optionName,
-                    optionName));
+
+            if (current != null) {
+                throw new ConfigurationException(String.format(
+                        "Attempted to update immutable value (%s) for option \"%s\"", optionName,
+                        optionName));
+            }
+            return true;
         }
     };
 
-    abstract Object update(String optionName, Object current, Object update)
+    abstract boolean shouldUpdate(String optionName, Object current, Object update)
             throws ConfigurationException;
 
     /**
-      * Takes the current value and the update value, and returns the value to be set.  Assumes
-      * that <code>update</code> is never null.
+      * Takes the current value and the update value, and returns whether the value should be
+      * updated.  Assumes that <code>update</code> is never null.
       */
-    public Object update(String optionName, Object optionSource, Field field, Object update)
+    public boolean shouldUpdate(String optionName, Object optionSource, Field field, Object update)
             throws ConfigurationException {
         Object current;
         try {
@@ -107,7 +94,7 @@ public enum OptionUpdateRule {
             throw new ConfigurationException(String.format(
                     "internal error when setting option '%s'", optionName), e);
         }
-        return update(optionName, current, update);
+        return shouldUpdate(optionName, current, update);
     }
 
     /**

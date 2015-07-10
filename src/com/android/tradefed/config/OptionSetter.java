@@ -385,7 +385,9 @@ public class OptionSetter {
                             field.getName(), optionSource.getClass().getName()));
                 }
                 OptionUpdateRule rule = option.updateRule();
-                field.set(optionSource, rule.update(optionName, optionSource, field, value));
+                if (rule.shouldUpdate(optionName, optionSource, field, value)) {
+                    field.set(optionSource, value);
+                }
             }
         } catch (IllegalAccessException e) {
             throw new ConfigurationException(String.format(
