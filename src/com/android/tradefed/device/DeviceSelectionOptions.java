@@ -88,6 +88,9 @@ public class DeviceSelectionOptions implements IDeviceSelection {
             "this Android SDK/API level")
     private Integer mMinSdk = null;
 
+    @Option(name = "max-sdk-level", description = "Only run this test on devices that are running " +
+        "this or lower Android SDK/API level")
+    private Integer mMaxSdk = null;
 
     // If we have tried to fetch the environment variable ANDROID_SERIAL before.
     private boolean mFetchedEnvVariable = false;
@@ -351,8 +354,17 @@ public class DeviceSelectionOptions implements IDeviceSelection {
         if (nullDeviceRequested() != (device instanceof NullDevice)) {
             return false;
         }
-        if (mMinSdk != null && getDeviceSdkLevel(device) < mMinSdk) {
-            return false;
+        if ((mMinSdk != null) || (mMaxSdk != null)) {
+          int deviceSdkLevel = getDeviceSdkLevel(device);
+          if (deviceSdkLevel < 0) {
+              return false;
+          }
+          if (mMinSdk != null && deviceSdkLevel < mMinSdk) {
+              return false;
+          }
+          if (mMaxSdk != null && mMaxSdk < deviceSdkLevel) {
+              return false;
+          }
         }
         if ((mMinBattery != null) || (mMaxBattery != null)) {
             Integer deviceBattery = getBatteryLevel(device);
