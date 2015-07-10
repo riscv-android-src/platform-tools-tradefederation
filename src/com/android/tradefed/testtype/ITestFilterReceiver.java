@@ -15,6 +15,8 @@
  */
 package com.android.tradefed.testtype;
 
+import java.util.List;
+
 /**
  * A runner that can filter which tests to run.
  *
@@ -34,8 +36,18 @@ public interface ITestFilterReceiver {
     void addIncludeFilter(String filter);
 
     /**
+     * Adds the {@link List} of filters of which tests to include.
+     */
+    void addAllIncludeFilters(List<String> filters);
+
+    /**
      * Adds a filter of which tests to exclude.
      */
     void addExcludeFilter(String filter);
+
+    /**
+     * Adds the {@link List} of filters of which tests to exclude.
+     */
+    void addAllExcludeFilters(List<String> filters);
 
 }
