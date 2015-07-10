@@ -888,6 +888,7 @@ public class TestDeviceTest extends TestCase {
      * @throws Exception
      */
     public void testRuntimePermissionSupportedLmpRelease() throws Exception {
+        injectSystemProperty("ro.build.version.sdk", "21");
         injectSystemProperty(TestDevice.BUILD_CODENAME_PROP, "REL");
         injectSystemProperty(TestDevice.BUILD_ID_PROP, "1642709");
         replayMocks();
@@ -900,6 +901,7 @@ public class TestDeviceTest extends TestCase {
      * @throws Exception
      */
     public void testRuntimePermissionSupportedLmpMr1Dev() throws Exception {
+        injectSystemProperty("ro.build.version.sdk", "22");
         injectSystemProperty(TestDevice.BUILD_CODENAME_PROP, "REL");
         injectSystemProperty(TestDevice.BUILD_ID_PROP, "1844090");
         replayMocks();
@@ -912,10 +914,11 @@ public class TestDeviceTest extends TestCase {
      * @throws Exception
      */
     public void testRuntimePermissionSupportedRandom1() throws Exception {
+        injectSystemProperty("ro.build.version.sdk", "22");
         injectSystemProperty(TestDevice.BUILD_CODENAME_PROP, "YADDA");
         injectSystemProperty(TestDevice.BUILD_ID_PROP, "XYZ");
         replayMocks();
-        assertFalse(mTestDevice.isRuntimePermissionSupported());
+        assertTrue(mTestDevice.isRuntimePermissionSupported());
     }
 
     /**
@@ -924,8 +927,22 @@ public class TestDeviceTest extends TestCase {
      * @throws Exception
      */
     public void testRuntimePermissionSupportedMncLocal() throws Exception {
+        injectSystemProperty("ro.build.version.sdk", "22");
         injectSystemProperty(TestDevice.BUILD_CODENAME_PROP, "MNC");
         injectSystemProperty(TestDevice.BUILD_ID_PROP, "eng.foo.20150414.190304");
+        replayMocks();
+        assertTrue(mTestDevice.isRuntimePermissionSupported());
+    }
+
+    /**
+     * Test that isRuntimePermissionSupported returns correct result for device reporting (bogus) N
+     * based device attributes
+     * @throws Exception
+     */
+    public void testRuntimePermissionSupportedNycLocal() throws Exception {
+        injectSystemProperty("ro.build.version.sdk", "22");
+        injectSystemProperty(TestDevice.BUILD_CODENAME_PROP, "NMC");
+        injectSystemProperty(TestDevice.BUILD_ID_PROP, "1937204");
         replayMocks();
         assertTrue(mTestDevice.isRuntimePermissionSupported());
     }
@@ -936,6 +953,7 @@ public class TestDeviceTest extends TestCase {
      * @throws Exception
      */
     public void testRuntimePermissionSupportedNonMncLocal() throws Exception {
+        injectSystemProperty("ro.build.version.sdk", "21");
         injectSystemProperty(TestDevice.BUILD_CODENAME_PROP, "LMP");
         injectSystemProperty(TestDevice.BUILD_ID_PROP, "eng.foo.20150414.190304");
         replayMocks();
@@ -968,6 +986,7 @@ public class TestDeviceTest extends TestCase {
      * Convenience method for setting up mMockIDevice to not support runtime permission
      */
     private void setMockIDeviceRuntimePermissionNotSupported() {
+        injectSystemProperty("ro.build.version.sdk", "22");
         injectSystemProperty(TestDevice.BUILD_CODENAME_PROP, "MNC");
         injectSystemProperty(TestDevice.BUILD_ID_PROP, "1816412");
     }
@@ -976,6 +995,7 @@ public class TestDeviceTest extends TestCase {
      * Convenience method for setting up mMockIDevice to support runtime permission
      */
     private void setMockIDeviceRuntimePermissionSupported() {
+        injectSystemProperty("ro.build.version.sdk", "22");
         injectSystemProperty(TestDevice.BUILD_CODENAME_PROP, "MNC");
         injectSystemProperty(TestDevice.BUILD_ID_PROP, "1844452");
     }
