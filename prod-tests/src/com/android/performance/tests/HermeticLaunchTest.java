@@ -137,6 +137,9 @@ public class HermeticLaunchTest implements IRemoteTest, IDeviceTest {
         mSectionSet.add(LAYOUT);
         mSectionSet.add(DRAW);
 
+        //Remove if there is already existing atrace_logs folder
+        mDevice.executeShellCommand("rm -rf ${EXTERNAL_STORAGE}/atrace_logs");
+
         mRunner = createRemoteAndroidTestRunner(mPackageName, mRunnerName,
                 mDevice.getIDevice());
         CollectingTestListener collectingListener = new CollectingTestListener();
