@@ -77,11 +77,23 @@ public class StartupMetricsTest implements IDeviceTest, IRemoteTest {
      * @param listener the {@link ITestInvocationListener} of test results
      */
     void executeRebootTest(ITestInvocationListener listener) throws DeviceNotAvailableException {
+
+        /*Not using /proc/uptime to get the initial boot time
+        because it includes delays running 'permission utils',
+        and the CPU throttling waiter*/
         Map<String, String> runMetrics = new HashMap<String, String>();
-        String upTimeString = mTestDevice.executeShellCommand("cat /proc/uptime");
-        upTimeString  = upTimeString.split(" ")[0];
-        assert(Double.parseDouble(upTimeString) > 0);
-        runMetrics.put("init-boot", upTimeString);
+        //Initial reboot
+        mTestDevice.rebootIntoBootloader();
+        mTestDevice.setUseFastbootErase(false);
+        mTestDevice.fastbootWipePartition("userdata");
+        mTestDevice.executeFastbootCommand("reboot");
+        mTestDevice.waitForDeviceOnline(10 * 60 * 1000);
+        long initOnlineTime = System.currentTimeMillis();
+        Assert.assertTrue(waitForBootComplete(mTestDevice, mBootTimeMs, mBootPoolTimeMs));
+        long initAvailableTime = System.currentTimeMillis();
+        double initUnavailDuration = initAvailableTime - initOnlineTime;
+        runMetrics.put("init-boot", Double.toString(initUnavailDuration / 1000.0));
+
         mTestDevice.setRecoveryMode(RecoveryMode.NONE);
         CLog.d("Reboot test start.");
         mTestDevice.nonBlockingReboot();
