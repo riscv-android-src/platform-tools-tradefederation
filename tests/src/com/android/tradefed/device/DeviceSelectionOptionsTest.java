@@ -375,6 +375,48 @@ public class DeviceSelectionOptionsTest extends TestCase {
         assertFalse(options.matches(mMockDevice));
     }
 
+    /**
+     * Test that max sdk checking works for negative case
+     */
+    public void testMatches_maxSdkFail() throws Exception {
+        DeviceSelectionOptions options = new DeviceSelectionOptions();
+        ArgsOptionParser p = new ArgsOptionParser(options);
+        p.parse("--max-sdk-level", "15");
+        EasyMock.expect(
+                mMockDevice.getProperty(DeviceSelectionOptions.DEVICE_SDK_PROPERTY))
+                .andStubReturn("25");
+        EasyMock.replay(mMockDevice, mMockEmulatorDevice);
+        assertFalse(options.matches(mMockDevice));
+    }
+
+    /**
+     * Test that max sdk checking works for positive case
+     */
+    public void testMatches_maxSdkPass() throws Exception {
+        DeviceSelectionOptions options = new DeviceSelectionOptions();
+        ArgsOptionParser p = new ArgsOptionParser(options);
+        p.parse("--max-sdk-level", "15");
+        EasyMock.expect(
+                mMockDevice.getProperty(DeviceSelectionOptions.DEVICE_SDK_PROPERTY))
+                .andStubReturn("10");
+        EasyMock.replay(mMockDevice, mMockEmulatorDevice);
+        assertTrue(options.matches(mMockDevice));
+    }
+
+    /**
+     * Test that device is not matched if device api cannot be determined
+     */
+    public void testMatches_maxSdkNull() throws Exception {
+        DeviceSelectionOptions options = new DeviceSelectionOptions();
+        ArgsOptionParser p = new ArgsOptionParser(options);
+        p.parse("--max-sdk-level", "15");
+        EasyMock.expect(
+                mMockDevice.getProperty(DeviceSelectionOptions.DEVICE_SDK_PROPERTY))
+                .andStubReturn("blargh");
+        EasyMock.replay(mMockDevice, mMockEmulatorDevice);
+        assertFalse(options.matches(mMockDevice));
+    }
+
     private void mockBatteryCheck(Integer battery) {
         SettableFuture<Integer> batteryFuture = SettableFuture.create();
         batteryFuture.set(battery);
