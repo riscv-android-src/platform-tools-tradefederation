@@ -3308,17 +3308,9 @@ class TestDevice implements IManagedTestDevice {
     @Override
     public void remountSystemWritable() throws DeviceNotAvailableException {
         String verity = getProperty("partition.system.verified");
-        long verityVersion = 0;
+        // have the property set (regardless state) implies verity is enabled, so we send adb
+        // command to disable verity
         if (verity != null && !verity.isEmpty()) {
-            try {
-                verityVersion = Long.parseLong(verity);
-            } catch (NumberFormatException nfe) {
-                // ignore but assign an arbitrary number since it's non-empty
-                CLog.d("unrecognized property value partition.system.verified=%s", verity);
-                verityVersion = 1;
-            }
-        }
-        if (verityVersion > 0) {
             executeAdbCommand("disable-verity");
             reboot();
         }
