@@ -28,6 +28,7 @@ import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.TextResultReporter;
 import com.android.tradefed.targetprep.ITargetPreparer;
 import com.android.tradefed.testtype.IRemoteTest;
+import com.android.tradefed.util.MultiMap;
 
 import junit.framework.TestCase;
 
@@ -39,6 +40,7 @@ import org.json.JSONObject;
 import java.io.ByteArrayOutputStream;
 import java.io.PrintStream;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -362,6 +364,8 @@ public class ConfigurationTest extends TestCase {
     public void testGetJsonCommandUsage() throws ConfigurationException, JSONException {
         TestConfigObject testConfigObject = new TestConfigObject();
         mConfig.setConfigurationObject(CONFIG_OBJECT_TYPE_NAME, testConfigObject);
+        mConfig.injectOptionValue(ALT_OPTION_NAME, "foo", Boolean.toString(true));
+        mConfig.injectOptionValue(ALT_OPTION_NAME, "bar", Boolean.toString(false));
 
         // General validation of usage elements
         JSONArray usage = mConfig.getJsonCommandUsage();
@@ -426,5 +430,52 @@ public class ConfigurationTest extends TestCase {
         assertEquals(OPTION_DESCRIPTION, jsonOptionField.getString("description"));
         assertNotNull(jsonAltOptionField);
         assertEquals(OPTION_DESCRIPTION, jsonAltOptionField.getString("description"));
+
+        // Verify that generics have the fully resolved javaClass name
+        assertEquals("java.util.Map<java.lang.String, java.lang.Boolean>",
+                jsonAltOptionField.getString("javaClass"));
+    }
+
+    private JSONObject findConfigObjectByName(JSONArray usage, String name) throws JSONException {
+        for (int i = 0; i < usage.length(); i++) {
+            JSONObject configObject = usage.getJSONObject(i);
+            if (name != null && name.equals(configObject.getString("name"))) {
+                return configObject;
+            }
+        }
+        return null;
+    }
+
+    /**
+     * Test that {@link Configuration#getJsonCommandUsage()} expands {@link MultiMap} values.
+     */
+    public void testGetJsonCommandUsageMapValueExpansion() throws ConfigurationException,
+            JSONException {
+
+        // Inject a simple config object with a map
+        final MultiMap<String, Integer> mapOption = new MultiMap<>();
+        mapOption.put("foo", 1);
+        mapOption.put("foo", 2);
+        mapOption.put("foo", 3);
+        mapOption.put("bar", 4);
+        mapOption.put("bar", 5);
+        Object testConfig = new Object() {
+            @Option(name = "map-option")
+            MultiMap<String, Integer> mMapOption = mapOption;
+        };
+        mConfig.setConfigurationObject(CONFIG_OBJECT_TYPE_NAME, testConfig);
+
+        // Get the JSON usage and find our config object
+        JSONArray usage = mConfig.getJsonCommandUsage();
+        JSONObject jsonTestConfig = findConfigObjectByName(usage, CONFIG_OBJECT_TYPE_NAME);
+
+        // Get the map option
+        JSONArray fields = jsonTestConfig.getJSONArray("fields");
+        JSONObject jsonMapOption = fields.getJSONObject(0);
+
+        // Validate the map option value
+        JSONObject jsonMapValue = jsonMapOption.getJSONObject("defaultValue");
+        assertEquals(mapOption.get("foo"), jsonMapValue.get("foo"));
+        assertEquals(mapOption.get("bar"), jsonMapValue.get("bar"));
     }
 }

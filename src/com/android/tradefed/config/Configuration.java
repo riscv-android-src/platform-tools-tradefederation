@@ -36,6 +36,7 @@ import com.android.tradefed.testtype.IRemoteTest;
 import com.android.tradefed.testtype.StubTest;
 import com.android.tradefed.util.MultiMap;
 import com.android.tradefed.util.QuotationAwareTokenizer;
+import com.google.common.base.Joiner;
 
 import org.json.JSONArray;
 import org.json.JSONException;
@@ -46,6 +47,8 @@ import java.io.IOException;
 import java.io.PrintStream;
 import java.io.PrintWriter;
 import java.lang.reflect.Field;
+import java.lang.reflect.ParameterizedType;
+import java.lang.reflect.Type;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
@@ -607,6 +610,73 @@ public class Configuration implements IConfiguration {
     }
 
     /**
+     * Get the JSON representation of a single {@link Option} field.
+     */
+    private JSONObject getOptionFieldJson(Object optionObject, Field field) throws JSONException {
+        // Build a JSON representation of the current field
+        JSONObject jsonField = new JSONObject();
+
+        // Store values from the @Option annotation
+        Option option = field.getAnnotation(Option.class);
+        jsonField.put("name", option.name());
+        if (option.shortName() != Option.NO_SHORT_NAME) {
+            jsonField.put("shortName", option.shortName());
+        }
+        jsonField.put("description", option.description());
+        jsonField.put("importance", option.importance());
+        jsonField.put("mandatory", option.mandatory());
+        jsonField.put("isTimeVal", option.isTimeVal());
+        jsonField.put("updateRule", option.updateRule().name());
+
+        // Store the field's class
+        Type fieldType = field.getGenericType();
+        if (fieldType instanceof ParameterizedType) {
+            // Resolve paramaterized type arguments
+            Type[] paramTypes = ((ParameterizedType)fieldType).getActualTypeArguments();
+            String[] paramStrings = new String[paramTypes.length];
+            for (int i = 0; i < paramTypes.length; i++) {
+                paramStrings[i] = ((Class)paramTypes[i]).getName();
+            }
+
+            jsonField.put("javaClass", String.format("%s<%s>",
+                    field.getType().getName(), Joiner.on(", ").join(paramStrings)));
+        } else {
+            jsonField.put("javaClass", field.getType().getName());
+        }
+
+        // Store the field's value
+        try {
+            field.setAccessible(true);
+            Object value = field.get(optionObject);
+
+            // Convert nulls to JSONObject.NULL
+            if (value == null) {
+                jsonField.put("defaultValue", JSONObject.NULL);
+            // Convert MuliMap values to a JSON representation
+            } else if (value instanceof MultiMap) {
+                MultiMap multimap = (MultiMap)value;
+                JSONObject jsonValue = new JSONObject();
+                for (Object keyObj : multimap.keySet()) {
+                    jsonValue.put(keyObj.toString(), multimap.get(keyObj));
+                }
+                jsonField.put("defaultValue", jsonValue);
+            // Convert Map values to JSON
+            } else if (value instanceof Map) {
+                jsonField.put("defaultValue", new JSONObject((Map)value));
+            // For everything else, just use the default representation
+            } else {
+                jsonField.put("defaultValue", value);
+            }
+        } catch (IllegalAccessException e) {
+            // Shouldn't happen
+            throw new RuntimeException(e);
+        }
+
+        return jsonField;
+    }
+
+
+    /**
      * {@inheritDoc}
      */
     @Override
@@ -630,32 +700,8 @@ public class Configuration implements IConfiguration {
                         OptionSetter.getOptionFieldsForClass(optionObject.getClass());
                 JSONArray jsonFields = new JSONArray();
                 for (Field field : optionFields) {
-                    Option option = field.getAnnotation(Option.class);
-
-                    // Build a JSON representation of the current field
-                    JSONObject jsonField = new JSONObject();
-
-                    jsonField.put("name", option.name());
-                    if (option.shortName() != Option.NO_SHORT_NAME) {
-                        jsonField.put("shortName", option.shortName());
-                    }
-                    jsonField.put("description", option.description());
-                    jsonField.put("importance", option.importance());
-                    jsonField.put("mandatory", option.mandatory());
-                    jsonField.put("isTimeVal", option.isTimeVal());
-                    jsonField.put("updateRule", option.updateRule().name());
-                    jsonField.put("javaClass", field.getType().getName());
-                    try {
-                        field.setAccessible(true);
-                        Object value = field.get(optionObject);
-                        jsonField.put("defaultValue", value == null ? "null" : value.toString());
-                    } catch (IllegalAccessException e) {
-                        // Shouldn't happen
-                        throw new RuntimeException(e);
-                    }
-
                     // Add the JSON field representation to the JSON class representation
-                    jsonFields.put(jsonField);
+                    jsonFields.put(getOptionFieldJson(optionObject, field));
                 }
                 jsonClass.put("fields", jsonFields);
 
