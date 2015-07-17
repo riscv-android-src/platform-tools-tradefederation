@@ -512,7 +512,7 @@ public class CommandScheduler extends Thread implements ICommandScheduler, IComm
                 final IDevice device = mDevice.getIDevice();
                 int batteryLevel = -1;
                 try {
-                    batteryLevel = device.getBattery(0, TimeUnit.MILLISECONDS).get();
+                    batteryLevel = device.getBattery(500, TimeUnit.MILLISECONDS).get();
                 } catch (InterruptedException | ExecutionException e) {
                     // fall through
                 }

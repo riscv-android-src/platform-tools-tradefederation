@@ -750,7 +750,7 @@ public class TestInvocation implements ITestInvocation {
         }
         try {
             CLog.v("%s - %s - %d%%", BATT_TAG, event,
-                    device.getBattery(0, TimeUnit.MILLISECONDS).get());
+                    device.getBattery(500, TimeUnit.MILLISECONDS).get());
             return;
         } catch (InterruptedException | ExecutionException e) {
             // fall through

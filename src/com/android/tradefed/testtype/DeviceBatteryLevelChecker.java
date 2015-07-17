@@ -78,7 +78,7 @@ public class DeviceBatteryLevelChecker implements IDeviceTest, IRemoteTest {
         try {
             IDevice idevice = device.getIDevice();
             // Force a synchronous check, which will also tell us if the device is still alive
-            return idevice.getBattery(0, TimeUnit.MILLISECONDS).get();
+            return idevice.getBattery(500, TimeUnit.MILLISECONDS).get();
         } catch (InterruptedException | ExecutionException e) {
             return null;
         }
@@ -119,6 +119,9 @@ public class DeviceBatteryLevelChecker implements IDeviceTest, IRemoteTest {
             mTestDevice.reboot();
         }
 
+        // turn screen off
+        turnScreenOff(mTestDevice);
+
         if (mStopRuntime) {
             stopRuntime(mTestDevice);
         }
@@ -154,6 +157,15 @@ public class DeviceBatteryLevelChecker implements IDeviceTest, IRemoteTest {
         }
         CLog.w("Device %s is now charged to battery level %d; releasing.",
                 mTestDevice.getSerialNumber(), batteryLevel);
+    }
+
+    private void turnScreenOff(ITestDevice device) throws DeviceNotAvailableException {
+        // disable always on
+        device.executeShellCommand("svc power stayon false");
+        // set screen timeout to 1s
+        device.executeShellCommand("settings put system screen_off_timeout 1000");
+        // pause for 5s to ensure that screen would be off
+        getRunUtil().sleep(5000);
     }
 
     /**
