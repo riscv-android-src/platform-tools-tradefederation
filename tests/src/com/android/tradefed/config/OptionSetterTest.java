@@ -284,7 +284,7 @@ public class OptionSetterTest extends TestCase {
 
         // Actually set the key/value pair
         OptionSetter parser = new OptionSetter(object1, object2);
-        parser.setOptionMapValue("enumMap", key, value);
+        parser.setOptionValue("enumMap", key, value);
 
         // verify object1
         assertEquals(1, object1.mEnumMap.size());
@@ -517,7 +517,7 @@ public class OptionSetterTest extends TestCase {
 
         // Actually set the key/value pair
         OptionSetter parser = new OptionSetter(optionSource);
-        parser.setOptionMapValue("string_string_map", expectedKey, expectedValue);
+        parser.setOptionValue("string_string_map", expectedKey, expectedValue);
 
         assertEquals(1, optionSource.mStringMap.size());
         assertNotNull(optionSource.mStringMap.get(expectedKey));
@@ -535,8 +535,8 @@ public class OptionSetterTest extends TestCase {
 
         // Actually set the key/value pair
         OptionSetter parser = new OptionSetter(optionSource);
-        parser.setOptionMapValue("string_string_multimap", expectedKey, expectedValue1);
-        parser.setOptionMapValue("string_string_multimap", expectedKey, expectedValue2);
+        parser.setOptionValue("string_string_multimap", expectedKey, expectedValue1);
+        parser.setOptionValue("string_string_multimap", expectedKey, expectedValue2);
 
         assertEquals(1, optionSource.mStringMultiMap.size());
         assertNotNull(optionSource.mStringMultiMap.get(expectedKey));
@@ -823,7 +823,7 @@ public class OptionSetterTest extends TestCase {
 
         // Actually set the key/value pair
         OptionSetter parser = new OptionSetter(optionSource);
-        parser.setOptionMapValue("enumMap", key, value);
+        parser.setOptionValue("enumMap", key, value);
 
         assertEquals(1, optionSource.mEnumMap.size());
         assertNotNull(optionSource.mEnumMap.get(expectedKey));

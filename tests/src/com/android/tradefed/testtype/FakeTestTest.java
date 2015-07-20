@@ -134,7 +134,7 @@ public class FakeTestTest extends TestCase {
         mListener.testRunEnded(EasyMock.eq(0l), EasyMock.<Map<String, String>>anyObject());
 
         EasyMock.replay(mListener);
-        mOption.setOptionMapValue("run", name, "");
+        mOption.setOptionValue("run", name, "");
         mTest.run(mListener);
         EasyMock.verify(mListener);
     }
@@ -146,7 +146,7 @@ public class FakeTestTest extends TestCase {
         mListener.testRunEnded(EasyMock.eq(0l), EasyMock.<Map<String, String>>anyObject());
 
         EasyMock.replay(mListener);
-        mOption.setOptionMapValue("run", name, "P");
+        mOption.setOptionValue("run", name, "P");
         mTest.run(mListener);
         EasyMock.verify(mListener);
     }
@@ -158,7 +158,7 @@ public class FakeTestTest extends TestCase {
         mListener.testRunEnded(EasyMock.eq(0l), EasyMock.<Map<String, String>>anyObject());
 
         EasyMock.replay(mListener);
-        mOption.setOptionMapValue("run", name, "F");
+        mOption.setOptionValue("run", name, "F");
         mTest.run(mListener);
         EasyMock.verify(mListener);
     }
@@ -173,7 +173,7 @@ public class FakeTestTest extends TestCase {
         mListener.testRunEnded(EasyMock.eq(0l), EasyMock.<Map<String, String>>anyObject());
 
         EasyMock.replay(mListener);
-        mOption.setOptionMapValue("run", name, "PFP");
+        mOption.setOptionValue("run", name, "PFP");
         mTest.run(mListener);
         EasyMock.verify(mListener);
     }
@@ -189,7 +189,7 @@ public class FakeTestTest extends TestCase {
         mListener.testRunEnded(EasyMock.eq(0l), EasyMock.<Map<String, String>>anyObject());
 
         EasyMock.replay(mListener);
-        mOption.setOptionMapValue("run", name, "(PF)2");
+        mOption.setOptionValue("run", name, "(PF)2");
         mTest.run(mListener);
         EasyMock.verify(mListener);
     }
@@ -213,7 +213,7 @@ public class FakeTestTest extends TestCase {
         mListener.testRunEnded(EasyMock.eq(0l), EasyMock.<Map<String, String>>anyObject());
 
         EasyMock.replay(mListener);
-        mOption.setOptionMapValue("run", name, "((PF)2)2");
+        mOption.setOptionValue("run", name, "((PF)2)2");
         mTest.run(mListener);
         EasyMock.verify(mListener);
     }
@@ -240,9 +240,9 @@ public class FakeTestTest extends TestCase {
         mListener.testRunEnded(EasyMock.eq(0l), EasyMock.<Map<String, String>>anyObject());
 
         EasyMock.replay(mListener);
-        mOption.setOptionMapValue("run", name1, "PF");
-        mOption.setOptionMapValue("run", name2, "FP");
-        mOption.setOptionMapValue("run", name3, "");
+        mOption.setOptionValue("run", name1, "PF");
+        mOption.setOptionValue("run", name2, "FP");
+        mOption.setOptionValue("run", name3, "");
         mTest.run(mListener);
         EasyMock.verify(mListener);
     }

@@ -333,10 +333,7 @@ public class GlobalConfiguration implements IGlobalConfiguration {
     @Override
     public void injectOptionValue(String optionName, String optionValue)
             throws ConfigurationException {
-        OptionSetter optionSetter = new OptionSetter(getAllConfigurationObjects());
-        optionSetter.setOptionValue(optionName, optionValue);
-
-        mOptionMap.put(optionName, optionValue);
+        injectOptionValue(optionName, null, optionValue);
     }
 
     /**
@@ -346,9 +343,13 @@ public class GlobalConfiguration implements IGlobalConfiguration {
     public void injectOptionValue(String optionName, String optionKey, String optionValue)
             throws ConfigurationException {
         OptionSetter optionSetter = new OptionSetter(getAllConfigurationObjects());
-        optionSetter.setOptionMapValue(optionName, optionKey, optionValue);
+        optionSetter.setOptionValue(optionName, optionKey, optionValue);
 
-        mOptionMap.put(optionName, optionKey + "=" + optionValue);
+        if (optionKey != null) {
+            mOptionMap.put(optionName, optionKey + "=" + optionValue);
+        } else {
+            mOptionMap.put(optionName, optionValue);
+        }
     }
 
     /**

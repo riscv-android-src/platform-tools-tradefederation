@@ -292,50 +292,96 @@ public class OptionSetter {
     }
 
     /**
-     * Sets the value for an option.
+     * Sets the value for a non-map option.
+     *
      * @param optionName the name of Option to set
      * @param valueText the value
      * @throws ConfigurationException if Option cannot be found or valueText is wrong type
      */
     public void setOptionValue(String optionName, String valueText) throws ConfigurationException {
-        final OptionFieldsForName optionFields = fieldsForArg(optionName);
-        for (Map.Entry<Object, Field> fieldEntry : optionFields) {
-
-            final Object optionSource = fieldEntry.getKey();
-            final Field field = fieldEntry.getValue();
-            final Handler handler = getHandlerOrTimeVal(field, optionSource);
-            final Object value = handler.translate(valueText);
-            if (value == null) {
-                final String type = field.getType().getSimpleName();
-                throw new ConfigurationException(
-                        String.format("Couldn't convert '%s' to a %s for option '%s'", valueText,
-                                type, optionName));
-            }
-            setFieldValue(optionName, optionSource, field, value);
-        }
+        setOptionValue(optionName, null, valueText);
     }
 
     /**
-     * Sets the given {@link Option} fields value.
+     * Sets the value for an option.
+     *
+     * @param optionName the name of Option to set
+     * @param keyText the key for Map options, or null.
+     * @param valueText the value
+     * @throws ConfigurationException if Option cannot be found or valueText is wrong type
+     */
+    public void setOptionValue(String optionName, String keyText, String valueText)
+            throws ConfigurationException {
+
+        // For each of the applicable object fields
+        final OptionFieldsForName optionFields = fieldsForArg(optionName);
+        for (Map.Entry<Object, Field> fieldEntry : optionFields) {
+
+            // Retrieve an appropriate handler for this field's type
+            final Object optionSource = fieldEntry.getKey();
+            final Field field = fieldEntry.getValue();
+            final Handler handler = getHandlerOrTimeVal(field, optionSource);
+
+            // Translate the string value to the actual type of the field
+            Object value = handler.translate(valueText);
+            if (value == null) {
+                String type = field.getType().getSimpleName();
+                if (handler.isMap()) {
+                    ParameterizedType pType = (ParameterizedType) field.getGenericType();
+                    Type valueType = pType.getActualTypeArguments()[1];
+                    type = ((Class<?>)valueType).getSimpleName().toLowerCase();
+                }
+                throw new ConfigurationException(String.format(
+                        "Couldn't convert value '%s' to a %s for option '%s'", valueText, type,
+                        optionName));
+            }
+
+            // For maps, also translate the key value
+            Object key = null;
+            if (handler.isMap()) {
+                key = ((MapHandler)handler).translateKey(keyText);
+                if (key == null) {
+                    ParameterizedType pType = (ParameterizedType) field.getGenericType();
+                    Type keyType = pType.getActualTypeArguments()[0];
+                    String type = ((Class<?>)keyType).getSimpleName().toLowerCase();
+                    throw new ConfigurationException(String.format(
+                            "Couldn't convert key '%s' to a %s for option '%s'", keyText, type,
+                            optionName));
+                }
+            }
+
+            // Actually set the field value
+            setFieldValue(optionName, optionSource, field, key, value);
+        }
+    }
+
+
+    /**
+     * Sets the given {@link Option} field's value.
      *
      * @param optionName the {@link Option#name()}
      * @param optionSource the {@link Object} to set
      * @param field the {@link Field}
+     * @param key the key to an entry in a {@link Map} or {@link MultiMap} field or null.
      * @param value the value to set
      * @throws ConfigurationException
      */
     @SuppressWarnings("unchecked")
-    static void setFieldValue(String optionName, Object optionSource, Field field, Object value)
-            throws ConfigurationException {
+    static void setFieldValue(String optionName, Object optionSource, Field field, Object key,
+            Object value) throws ConfigurationException {
+
         try {
             field.setAccessible(true);
+
             if (Collection.class.isAssignableFrom(field.getType())) {
+                if (key != null) {
+                    throw new ConfigurationException(String.format(
+                            "key not applicable for Collection field '%s'", field.getName()));
+                }
                 Collection collection = (Collection)field.get(optionSource);
                 if (collection == null) {
                     throw new ConfigurationException(String.format(
-                            "internal error: no storage allocated for field '%s' (used for " +
-                            "option '%s') in class '%s'",
-                            field.getName(), optionName, optionSource.getClass().getName()));
+                            "Unable to add value to field '%s'. Field is null.", field.getName()));
                 }
                 if (value instanceof Collection) {
                     collection.addAll((Collection)value);
@@ -346,35 +392,50 @@ public class OptionSetter {
                 Map map = (Map)field.get(optionSource);
                 if (map == null) {
                     throw new ConfigurationException(String.format(
-                            "internal error: no storage allocated for field '%s' (used for " +
-                            "option '%s') in class '%s'",
-                            field.getName(), optionName, optionSource.getClass().getName()));
+                            "Unable to add value to field '%s'. Field is null.", field.getName()));
                 }
                 if (value instanceof Map) {
+                    if (key != null) {
+                        throw new ConfigurationException(String.format(
+                                "Key not applicable when setting Map field '%s' from map value",
+                                field.getName()));
+                    }
                     map.putAll((Map)value);
                 } else {
-                    throw new ConfigurationException(String.format(
-                            "internal error: value provided for field '%s' is not a map (used " +
-                            "for option '%s') in class '%s'",
-                            field.getName(), optionName, optionSource.getClass().getName()));
+                    if (key == null) {
+                        throw new ConfigurationException(String.format(
+                                "Unable to add value to map field '%s'. Key is null.",
+                                field.getName()));
+                    }
+                    map.put(key, value);
                 }
             } else if (MultiMap.class.isAssignableFrom(field.getType())) {
-                MultiMap multimap = (MultiMap)field.get(optionSource);
-                if (multimap == null) {
+                // TODO: see if we can combine this with Map logic above
+                MultiMap map = (MultiMap)field.get(optionSource);
+                if (map == null) {
                     throw new ConfigurationException(String.format(
-                            "internal error: no storage allocated for field '%s' (used for " +
-                            "option '%s') in class '%s'",
-                            field.getName(), optionName, optionSource.getClass().getName()));
+                            "Unable to add value to field '%s'. Field is null.", field.getName()));
                 }
                 if (value instanceof MultiMap) {
-                    multimap.putAll((MultiMap)value);
+                    if (key != null) {
+                        throw new ConfigurationException(String.format(
+                                "Key not applicable when setting Map field '%s' from map value",
+                                field.getName()));
+                    }
+                    map.putAll((MultiMap)value);
                 } else {
-                    throw new ConfigurationException(String.format(
-                            "internal error: value provided for field '%s' is not a multimap " +
-                            "(used for option '%s') in class '%s'",
-                            field.getName(), optionName, optionSource.getClass().getName()));
+                    if (key == null) {
+                        throw new ConfigurationException(String.format(
+                                "Unable to add value to map field '%s'. Key is null.",
+                                field.getName()));
+                    }
+                    map.put(key, value);
                 }
             } else {
+                if (key != null) {
+                    throw new ConfigurationException(String.format(
+                            "Key not applicable when setting non-map field '%s'", field.getName()));
+                }
                 final Option option = field.getAnnotation(Option.class);
                 if (option == null) {
                     // By virtue of us having gotten here, this should never happen.  But better
@@ -389,95 +450,28 @@ public class OptionSetter {
                     field.set(optionSource, value);
                 }
             }
-        } catch (IllegalAccessException e) {
+        } catch (IllegalAccessException | IllegalArgumentException e) {
             throw new ConfigurationException(String.format(
                     "internal error when setting option '%s'", optionName), e);
-        } catch (IllegalArgumentException e) {
-            throw new ConfigurationException(String.format(
-                    "internal error when setting option '%s'", optionName), e);
+
         }
     }
 
+
     /**
-     * Sets the key and value for a Map option.
-     * @param optionName the name of Option to set
-     * @param keyText the key, if applicable.  Will be ignored for non-Map fields
-     * @param valueText the value
-     * @throws ConfigurationException if Option cannot be found or valueText is wrong type
+     * Sets the given {@link Option} fields value.
+     *
+     * @param optionName the {@link Option#name()}
+     * @param optionSource the {@link Object} to set
+     * @param field the {@link Field}
+     * @param value the value to set
+     * @throws ConfigurationException
      */
     @SuppressWarnings("unchecked")
-    public void setOptionMapValue(String optionName, String keyText, String valueText)
+    static void setFieldValue(String optionName, Object optionSource, Field field, Object value)
             throws ConfigurationException {
-        // FIXME: try to unify code paths with setOptionValue
-        OptionFieldsForName optionFields = fieldsForArg(optionName);
-        for (Map.Entry<Object, Field> fieldEntry : optionFields) {
 
-            Object optionSource = fieldEntry.getKey();
-            Field field = fieldEntry.getValue();
-            Handler handler = getHandler(field.getGenericType());
-            if (handler == null || !(handler instanceof MapHandler)) {
-                throw new ConfigurationException("Not a map!");
-            }
-
-            MapEntry pair = null;
-            try {
-                pair = ((MapHandler) handler).translate(keyText, valueText);
-                if (pair == null) {
-                    throw new IllegalArgumentException();
-                }
-            } catch (IllegalArgumentException e) {
-                ParameterizedType pType = (ParameterizedType) field.getGenericType();
-                Type keyType = pType.getActualTypeArguments()[0];
-                Type valueType = pType.getActualTypeArguments()[1];
-
-                String keyTypeName = ((Class<?>)keyType).getSimpleName().toLowerCase();
-                String valueTypeName = ((Class<?>)valueType).getSimpleName().toLowerCase();
-
-                String message = "";
-                if (e.getMessage().contains("key")) {
-                    message = String.format(
-                            "Couldn't convert '%s' to a %s for the key of mapoption '%s'",
-                            keyText, keyTypeName, optionName);
-                } else if (e.getMessage().contains("value")) {
-                    message = String.format(
-                            "Couldn't convert '%s' to a %s for the value of mapoption '%s'",
-                            valueText, valueTypeName, optionName);
-                } else {
-                    message = String.format("Failed to convert key '%s' to type %s and/or " +
-                            "value '%s' to type %s for mapoption '%s'",
-                            keyText, keyTypeName, valueText, valueTypeName, optionName);
-                }
-                throw new ConfigurationException(message);
-            }
-            try {
-                field.setAccessible(true);
-                if (Map.class.isAssignableFrom(field.getType())) {
-                    Map map = (Map)field.get(optionSource);
-                    if (map == null) {
-                        throw new ConfigurationException(String.format(
-                                "internal error: no storage allocated for field '%s' (used for " +
-                                "option '%s') in class '%s'",
-                                field.getName(), optionName, optionSource.getClass().getName()));
-                    }
-                    map.put(pair.mKey, pair.mValue);
-                } else if (MultiMap.class.isAssignableFrom(field.getType())) {
-                    MultiMap multimap = (MultiMap)field.get(optionSource);
-                    if (multimap == null) {
-                        throw new ConfigurationException(String.format(
-                                "internal error: no storage allocated for field '%s' (used for " +
-                                "option '%s') in class '%s'",
-                                field.getName(), optionName, optionSource.getClass().getName()));
-                    }
-                    multimap.put(pair.mKey, pair.mValue);
-                } else {
-                    throw new ConfigurationException(String.format(
-                            "internal error: not a map field!"));
-                }
-            } catch (IllegalAccessException e) {
-                throw new ConfigurationException(String.format(
-                        "internal error when setting option '%s'", optionName), e);
-            }
-        }
+        setFieldValue(optionName, optionSource, field, null, value);
     }
 
     /**
@@ -1045,19 +1039,11 @@ public class OptionSetter {
          */
         @Override
         Object translate(String valueText) {
-            return null;
+            return mValueHandler.translate(valueText);
         }
 
-        MapEntry translate(String keyText, String valueText) {
-            Object key = mKeyHandler.translate(keyText);
-            Object value = mValueHandler.translate(valueText);
-            if (key == null) {
-                throw new IllegalArgumentException("Failed to parse key");
-            } else if (value == null) {
-                throw new IllegalArgumentException("Failed to parse value");
-            }
-
-            return new MapEntry(key, value);
+        Object translateKey(String keyText) {
+            return mKeyHandler.translate(keyText);
         }
     }
 

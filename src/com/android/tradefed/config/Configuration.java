@@ -350,7 +350,7 @@ public class Configuration implements IConfiguration {
     @Override
     public void injectOptionValue(String optionName, String optionKey, String optionValue)
             throws ConfigurationException {
-        getOptionSetter().setOptionMapValue(optionName, optionKey, optionValue);
+        getOptionSetter().setOptionValue(optionName, optionKey, optionValue);
     }
 
     /**

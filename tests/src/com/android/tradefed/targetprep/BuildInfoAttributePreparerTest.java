@@ -42,7 +42,7 @@ public class BuildInfoAttributePreparerTest extends TestCase {
         final IBuildInfo build = new BuildInfo();
 
         OptionSetter opt = new OptionSetter(mPrep);
-        opt.setOptionMapValue("build-attribute", "key", "value");
+        opt.setOptionValue("build-attribute", "key", "value");
         mPrep.setUp(null, build);
 
         Map<String, String> map = build.getBuildAttributes();
