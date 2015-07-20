@@ -366,6 +366,8 @@ public class DeviceSetup implements ITargetPreparer, ITargetCleaner {
         processOptions(device);
         // Change system props (will reboot device)
         changeSystemProps(device);
+        // Handle screen always on setting
+        handleScreenAlwaysOnSetting(device);
         // Run commands designated to be run before changing settings
         runCommands(device, mRunCommandBeforeSettings);
         // Change settings
@@ -492,9 +494,6 @@ public class DeviceSetup implements ITargetPreparer, ITargetCleaner {
             mSystemSettings.put("screen_brightness", Integer.toString(mScreenBrightness));
         }
 
-        setCommandForBinaryState(mScreenAlwaysOn, mRunCommandBeforeSettings,
-                "svc power stayon true", "svc power stayon false");
-
         if (mScreenTimeoutSecs != null) {
             mSystemSettings.put("screen_off_timeout", Long.toString(mScreenTimeoutSecs * 1000));
         }
@@ -606,6 +605,35 @@ public class DeviceSetup implements ITargetPreparer, ITargetCleaner {
         device.executeShellCommand("chmod 644 /data/local.prop");
         CLog.i("Rebooting %s due to system property change", device.getSerialNumber());
         device.reboot();
+    }
+
+    /**
+     * Handles screen always on settings.
+     * <p>
+     * This is done in a dedicated function because special handling is required in case of setting
+     * screen to always on.
+     * @throws DeviceNotAvailableException
+     */
+    private void handleScreenAlwaysOnSetting(ITestDevice device)
+            throws DeviceNotAvailableException {
+        String cmd = "svc power stayon %s";
+        switch (mScreenAlwaysOn) {
+            case ON:
+                CLog.d("Setting screen always on to true");
+                device.executeShellCommand(String.format(cmd, "true"));
+                // send MENU press in case keygaurd needs to be dismissed again
+                device.executeShellCommand("input keyevent 82");
+                // send HOME press in case keyguard was already dismissed, so we bring device back
+                // to home screen
+                device.executeShellCommand("input keyevent 3");
+                break;
+            case OFF:
+                CLog.d("Setting screen always on to false");
+                device.executeShellCommand(String.format(cmd, "false"));
+                break;
+            case IGNORE:
+                break;
+        }
     }
 
     /**

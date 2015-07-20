@@ -882,6 +882,8 @@ public class DeviceSetupTest extends TestCase {
         mMockDevice.reboot();
         if (screenOn) {
             EasyMock.expect(mMockDevice.executeShellCommand("svc power stayon true")).andReturn("");
+            EasyMock.expect(mMockDevice.executeShellCommand("input keyevent 82")).andReturn("");
+            EasyMock.expect(mMockDevice.executeShellCommand("input keyevent 3")).andReturn("");
         }
     }
 
