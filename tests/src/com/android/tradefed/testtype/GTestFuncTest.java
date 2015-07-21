@@ -119,7 +119,7 @@ public class GTestFuncTest extends DeviceTestCase {
                 NATIVE_TESTAPP_GTEST_CRASH_METHOD);
         doNativeTestAppRunSingleTestFailure(testId);
         // Set GTest to only run the crash test
-        mGTest.setTestNamePositiveFilter(NATIVE_TESTAPP_GTEST_CRASH_METHOD);
+        mGTest.addIncludeFilter(NATIVE_TESTAPP_GTEST_CRASH_METHOD);
 
         mGTest.run(mMockListener);
         EasyMock.verify(mMockListener);
@@ -137,7 +137,7 @@ public class GTestFuncTest extends DeviceTestCase {
         doNativeTestAppRunSingleTestFailure(testId);
 
         // Set GTest to only run the crash test
-        mGTest.setTestNamePositiveFilter(NATIVE_TESTAPP_GTEST_TIMEOUT_METHOD);
+        mGTest.addIncludeFilter(NATIVE_TESTAPP_GTEST_TIMEOUT_METHOD);
 
         // fork off a thread to do the reboot
         Thread rebootThread = new Thread() {
@@ -175,7 +175,7 @@ public class GTestFuncTest extends DeviceTestCase {
         doNativeTestAppRunSingleTestFailure(testId);
 
         // Set GTest to only run the timeout test
-        mGTest.setTestNamePositiveFilter(NATIVE_TESTAPP_GTEST_TIMEOUT_METHOD);
+        mGTest.addIncludeFilter(NATIVE_TESTAPP_GTEST_TIMEOUT_METHOD);
 
         mGTest.run(mMockListener);
         getDevice().waitForDeviceAvailable();

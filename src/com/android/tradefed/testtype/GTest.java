@@ -26,14 +26,17 @@ import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.IFileEntry;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.result.ITestInvocationListener;
+import com.android.tradefed.util.ArrayUtil;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.concurrent.TimeUnit;
 
 /**
  * A Test that runs a native test package on given device.
  */
 @OptionClass(alias = "gtest")
-public class GTest implements IDeviceTest, IRemoteTest {
+public class GTest implements IDeviceTest, IRemoteTest, ITestFilterReceiver {
 
     private static final String LOG_TAG = "GTest";
     static final String DEFAULT_NATIVETEST_PATH = "/data/nativetest";
@@ -55,6 +58,13 @@ public class GTest implements IDeviceTest, IRemoteTest {
     @Option(name = "negative-testname-filter",
             description="The GTest-based negative filter of the test name to run.")
     private String mTestNameNegativeFilter = null;
+
+    @Option(name = "include-filter",
+            description="The GTest-based positive filter of the test names to run.")
+    private List<String> mIncludeFilters = new ArrayList<>();
+    @Option(name = "exclude-filter",
+            description="The GTest-based negative filter of the test names to run.")
+    private List<String> mExcludeFilters = new ArrayList<>();
 
     @Option(name = "native-test-timeout", description =
         "The max time in ms for a gtest to run. " +
@@ -137,39 +147,35 @@ public class GTest implements IDeviceTest, IRemoteTest {
     }
 
     /**
-     * Set the Android native test name to run (positive filter).
-     *
-     * @param testName A positive filter of the name of the native test to run
+     * {@inheritDoc}
      */
-    public void setTestNamePositiveFilter(String testName) {
-        mTestNamePositiveFilter = testName;
+    @Override
+    public void addIncludeFilter(String filter) {
+        mIncludeFilters.add(filter);
     }
 
     /**
-     * Get the Android native test name to run (positive filter).
-     *
-     * @return the positive filter of the name of the native test to run
+     * {@inheritDoc}
      */
-    public String getTestNamePositiveFilter() {
-        return mTestNamePositiveFilter;
+    @Override
+    public void addAllIncludeFilters(List<String> filters) {
+        mIncludeFilters.addAll(filters);
     }
 
     /**
-     * Set the Android native test name to run (negative filter).
-     *
-     * @param testName A negative filter of the name of the native test to run
+     * {@inheritDoc}
      */
-    public void setTestNameNegativeFilter(String testName) {
-        mTestNameNegativeFilter = testName;
+    @Override
+    public void addExcludeFilter(String filter) {
+        mExcludeFilters.add(filter);
     }
 
     /**
-     * Get the Android native test name to run (negative filter).
-     *
-     * @return the negative filter of the name of the native test to run
+     * {@inheritDoc}
      */
-    public String getTestNameNegativeFilter() {
-        return mTestNameNegativeFilter;
+    @Override
+    public void addAllExcludeFilters(List<String> filters) {
+        mExcludeFilters.addAll(filters);
     }
 
     /**
@@ -182,17 +188,25 @@ public class GTest implements IDeviceTest, IRemoteTest {
      * specified
      */
     private String getGTestFilters() {
-        String filter = "";
-        if ((mTestNamePositiveFilter != null) || (mTestNameNegativeFilter != null)) {
-            filter = GTEST_FLAG_FILTER + "=";
-            if (mTestNamePositiveFilter != null) {
-              filter = String.format("%s*.%s", filter, mTestNamePositiveFilter);
+        StringBuilder filter = new StringBuilder();
+        if (mTestNamePositiveFilter != null) {
+            mIncludeFilters.add(mTestNamePositiveFilter);
+        }
+        if (mTestNameNegativeFilter != null) {
+            mExcludeFilters.add(mTestNameNegativeFilter);
+        }
+        if (!mIncludeFilters.isEmpty() || !mExcludeFilters.isEmpty()) {
+            filter.append(GTEST_FLAG_FILTER);
+            filter.append("=");
+            if (!mIncludeFilters.isEmpty()) {
+              filter.append(ArrayUtil.join(":", mIncludeFilters));
             }
-            if (mTestNameNegativeFilter != null) {
-              filter = String.format("%s-*.%s", filter, mTestNameNegativeFilter);
+            if (!mExcludeFilters.isEmpty()) {
+              filter.append("-");
+              filter.append(ArrayUtil.join(":", mExcludeFilters));
           }
         }
-        return filter;
+        return filter.toString();
     }
 
     /**

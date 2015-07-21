@@ -34,6 +34,7 @@ import java.util.concurrent.TimeUnit;
  * Unit tests for {@link GTestTest}.
  */
 public class GTestTest extends TestCase {
+    private static final String GTEST_FLAG_FILTER = "--gtest_filter";
     private ITestInvocationListener mMockInvocationListener = null;
     private IShellOutputReceiver mMockReceiver = null;
     private ITestDevice mMockITestDevice = null;
@@ -166,35 +167,43 @@ public class GTestTest extends TestCase {
     }
 
     /**
-     * Test the positive filtering of test methods.
+     * Test the include filtering of test methods.
      */
-    public void testPositiveFilter() throws DeviceNotAvailableException {
-        String posFilter = "abbccc";
-        mGTest.setTestNamePositiveFilter(posFilter);
+    public void testIncludeFilter() throws DeviceNotAvailableException {
+        String includeFilter1 = "abc";
+        String includeFilter2 = "def";
+        mGTest.addIncludeFilter(includeFilter1);
+        mGTest.addIncludeFilter(includeFilter2);
 
-        doTestFilter(posFilter);
+        doTestFilter(String.format("%s=%s:%s", GTEST_FLAG_FILTER, includeFilter1, includeFilter2));
     }
 
     /**
-     * Test the negative filtering of test methods.
+     * Test the exclude filtering of test methods.
      */
-    public void testNegativeFilter() throws DeviceNotAvailableException {
-        String negFilter = "*don?tRunMe*";
-        mGTest.setTestNameNegativeFilter(negFilter);
+    public void testExcludeFilter() throws DeviceNotAvailableException {
+        String excludeFilter1 = "*don?tRunMe*";
+        String excludeFilter2 = "*orMe?*";
+        mGTest.addExcludeFilter(excludeFilter1);
+        mGTest.addExcludeFilter(excludeFilter2);
 
-        doTestFilter("-*." + negFilter);
+        doTestFilter(String.format("%s=-%s:%s", GTEST_FLAG_FILTER, excludeFilter1, excludeFilter2));
     }
 
     /**
-     * Test simultaneous positive and negative filtering of test methods.
+     * Test simultaneous include and exclude filtering of test methods.
      */
-    public void testPositiveAndNegativeFilter() throws DeviceNotAvailableException {
-         String posFilter = "pleaseRunMe";
-        String negFilter = "dontRunMe";
-        mGTest.setTestNamePositiveFilter(posFilter);
-        mGTest.setTestNameNegativeFilter(negFilter);
+    public void testIncludeAndExcludeFilters() throws DeviceNotAvailableException {
+        String includeFilter1 = "pleaseRunMe";
+        String includeFilter2 = "andMe";
+        String excludeFilter1 = "dontRunMe";
+        String excludeFilter2 = "orMe";
+        mGTest.addIncludeFilter(includeFilter1);
+        mGTest.addExcludeFilter(excludeFilter1);
+        mGTest.addIncludeFilter(includeFilter2);
+        mGTest.addExcludeFilter(excludeFilter2);
 
-        String filter = String.format("%s-*.%s", posFilter, negFilter);
-        doTestFilter(filter);
+        doTestFilter(String.format("%s=%s:%s-%s:%s", GTEST_FLAG_FILTER,
+              includeFilter1, includeFilter2, excludeFilter1, excludeFilter2));
     }
 }
