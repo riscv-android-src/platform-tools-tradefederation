@@ -308,11 +308,7 @@ public class ArgsOptionParser extends OptionSetter {
                 value = grabNextValue(args, name);
             }
         }
-        if (isMapOption(name)) {
-            setOptionMapValue(name, key, value);
-        } else {
-            setOptionValue(name, value);
-        }
+        setOptionValue(name, key, value);
     }
 
     // Given boolean options a and b, and non-boolean option f, we want to allow:

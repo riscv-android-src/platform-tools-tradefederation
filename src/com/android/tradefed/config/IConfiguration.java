@@ -152,8 +152,8 @@ public interface IConfiguration {
      * <p/>
      * Useful to provide values for options that are generated dynamically.
      *
-     * @param optionName the map option name
-     * @param optionKey the map option key
+     * @param optionName the option name
+     * @param optionKey the optional key for map options, or null
      * @param optionValue the map option value
      * @throws ConfigurationException if failed to set the option's value
      */

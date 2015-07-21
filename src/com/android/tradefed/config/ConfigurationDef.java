@@ -180,11 +180,7 @@ public class ConfigurationDef {
             config.setConfigurationObjectList(objClassEntry.getKey(), objectList);
         }
         for (OptionDef optionEntry : mOptionList) {
-            if (optionEntry.key == null) {
-                config.injectOptionValue(optionEntry.name, optionEntry.value);
-            } else {
-                config.injectOptionValue(optionEntry.name, optionEntry.key, optionEntry.value);
-            }
+            config.injectOptionValue(optionEntry.name, optionEntry.key, optionEntry.value);
         }
 
         return config;
@@ -209,11 +205,7 @@ public class ConfigurationDef {
             config.setConfigurationObjectList(objClassEntry.getKey(), objectList);
         }
         for (OptionDef optionEntry : mOptionList) {
-            if (optionEntry.key == null) {
-                config.injectOptionValue(optionEntry.name, optionEntry.value);
-            } else {
-                config.injectOptionValue(optionEntry.name, optionEntry.key, optionEntry.value);
-            }
+            config.injectOptionValue(optionEntry.name, optionEntry.key, optionEntry.value);
         }
 
         return config;
