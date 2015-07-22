@@ -140,7 +140,7 @@ class ConfigurationXmlParser {
                     optionName = String.format("%s%c%s", mCurrentConfigObject,
                             OptionSetter.NAMESPACE_SEPARATOR, optionName);
                 }
-                mConfigDef.addOptionDef(optionName, optionKey, optionValue);
+                mConfigDef.addOptionDef(optionName, optionKey, optionValue, mName);
             } else if (CONFIG_TAG.equals(localName)) {
                 String description = attributes.getValue("description");
                 if (description != null) {

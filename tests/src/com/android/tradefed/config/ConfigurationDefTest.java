@@ -68,8 +68,8 @@ public class ConfigurationDefTest extends TestCase {
      * Test {@link ConfigurationDef#createConfiguration()} for a map option.
      */
     public void testCreateConfiguration_optionMap() throws ConfigurationException {
-        mConfigDef.addOptionDef(MAP_OPTION_NAME, OPTION_KEY, OPTION_VALUE);
-        mConfigDef.addOptionDef(MAP_OPTION_NAME, OPTION_KEY2, OPTION_VALUE2);
+        mConfigDef.addOptionDef(MAP_OPTION_NAME, OPTION_KEY, OPTION_VALUE, CONFIG_NAME);
+        mConfigDef.addOptionDef(MAP_OPTION_NAME, OPTION_KEY2, OPTION_VALUE2, CONFIG_NAME);
         IConfiguration config = mConfigDef.createConfiguration();
         OptionTest test = (OptionTest)config.getBuildProvider();
         assertNotNull(test.mMapOption);
@@ -82,8 +82,8 @@ public class ConfigurationDefTest extends TestCase {
      * Test {@link ConfigurationDef#createConfiguration()} for a collection option.
      */
     public void testCreateConfiguration_optionCollection() throws ConfigurationException {
-        mConfigDef.addOptionDef(COLLECTION_OPTION_NAME, null, OPTION_VALUE);
-        mConfigDef.addOptionDef(COLLECTION_OPTION_NAME, null, OPTION_VALUE2);
+        mConfigDef.addOptionDef(COLLECTION_OPTION_NAME, null, OPTION_VALUE, CONFIG_NAME);
+        mConfigDef.addOptionDef(COLLECTION_OPTION_NAME, null, OPTION_VALUE2, CONFIG_NAME);
         IConfiguration config = mConfigDef.createConfiguration();
         OptionTest test = (OptionTest)config.getBuildProvider();
         assertTrue(test.mCollectionOption.contains(OPTION_VALUE));
@@ -94,7 +94,7 @@ public class ConfigurationDefTest extends TestCase {
      * Test {@link ConfigurationDef#createConfiguration()} for a String field.
      */
     public void testCreateConfiguration() throws ConfigurationException {
-        mConfigDef.addOptionDef(OPTION_NAME, null, OPTION_VALUE);
+        mConfigDef.addOptionDef(OPTION_NAME, null, OPTION_VALUE, CONFIG_NAME);
         IConfiguration config = mConfigDef.createConfiguration();
         OptionTest test = (OptionTest)config.getBuildProvider();
         assertEquals(OPTION_VALUE, test.mOption);

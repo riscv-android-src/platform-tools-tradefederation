@@ -33,6 +33,7 @@ import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
+import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 
@@ -86,6 +87,39 @@ public class OptionSetter {
         handlers.put(File.class, new FileHandler());
         handlers.put(TimeVal.class, new TimeValHandler());
     }
+
+
+    static class FieldDef {
+        Object object;
+        Field field;
+        Object key;
+
+        FieldDef(Object object, Field field, Object key) {
+            this.object = object;
+            this.field = field;
+            this.key = key;
+        }
+
+        public boolean equals(Object obj) {
+            if (obj == this) {
+                return true;
+            }
+
+            if (obj instanceof FieldDef) {
+                FieldDef other = (FieldDef)obj;
+                return Objects.equal(this.object, other.object) &&
+                        Objects.equal(this.field, other.field) &&
+                        Objects.equal(this.key, other.key);
+            }
+
+            return false;
+        }
+
+        public int hashCode() {
+            return Objects.hashCode(object, field, key);
+        }
+    }
+
 
     private static Handler getHandler(Type type) throws ConfigurationException {
         if (type instanceof ParameterizedType) {
@@ -296,10 +330,12 @@ public class OptionSetter {
      *
      * @param optionName the name of Option to set
      * @param valueText the value
+     * @return A list of {@link FieldDef}s corresponding to each object field that was modified.
      * @throws ConfigurationException if Option cannot be found or valueText is wrong type
      */
-    public void setOptionValue(String optionName, String valueText) throws ConfigurationException {
-        setOptionValue(optionName, null, valueText);
+    public List<FieldDef> setOptionValue(String optionName, String valueText)
+            throws ConfigurationException {
+        return setOptionValue(optionName, null, valueText);
     }
 
     /**
@@ -308,10 +344,13 @@ public class OptionSetter {
      * @param optionName the name of Option to set
      * @param keyText the key for Map options, or null.
      * @param valueText the value
+     * @return A list of {@link FieldDef}s corresponding to each object field that was modified.
      * @throws ConfigurationException if Option cannot be found or valueText is wrong type
      */
-    public void setOptionValue(String optionName, String keyText, String valueText)
+    public List<FieldDef> setOptionValue(String optionName, String keyText, String valueText)
             throws ConfigurationException {
+
+        List<FieldDef> ret = new ArrayList<>();
 
         // For each of the applicable object fields
         final OptionFieldsForName optionFields = fieldsForArg(optionName);
@@ -351,8 +390,12 @@ public class OptionSetter {
             }
 
             // Actually set the field value
-            setFieldValue(optionName, optionSource, field, key, value);
+            if (setFieldValue(optionName, optionSource, field, key, value)) {
+                ret.add(new FieldDef(optionSource, field, key));
+            }
         }
+
+        return ret;
     }
 
 
@@ -364,11 +407,15 @@ public class OptionSetter {
      * @param field the {@link Field}
      * @param key the key to an entry in a {@link Map} or {@link MultiMap} field or null.
      * @param value the value to set
+     * @return Whether the field was set.
      * @throws ConfigurationException
+     * @see OptionUpdateRule
      */
     @SuppressWarnings("unchecked")
-    static void setFieldValue(String optionName, Object optionSource, Field field, Object key,
+    static boolean setFieldValue(String optionName, Object optionSource, Field field, Object key,
             Object value) throws ConfigurationException {
+
+        boolean fieldWasSet = true;
 
         try {
             field.setAccessible(true);
@@ -448,6 +495,8 @@ public class OptionSetter {
                 OptionUpdateRule rule = option.updateRule();
                 if (rule.shouldUpdate(optionName, optionSource, field, value)) {
                     field.set(optionSource, value);
+                } else {
+                    fieldWasSet = false;
                 }
             }
         } catch (IllegalAccessException | IllegalArgumentException e) {
@@ -455,6 +504,8 @@ public class OptionSetter {
                     "internal error when setting option '%s'", optionName), e);
 
         }
+
+        return fieldWasSet;
     }
 
 
