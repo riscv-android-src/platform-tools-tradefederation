@@ -29,6 +29,8 @@ import com.android.tradefed.result.BugreportCollector;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.testtype.testdefs.XmlDefsTest;
 import com.android.tradefed.util.AbiFormatter;
+import com.android.tradefed.util.ListInstrumentationParser;
+import com.android.tradefed.util.ListInstrumentationParser.InstrumentationTarget;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -204,14 +206,37 @@ public class InstalledInstrumentationsTest implements IDeviceTest, IResumableTes
      */
     private void buildTests() throws DeviceNotAvailableException {
         if (mTests == null) {
-            ListInstrumentationParser parser = new ListInstrumentationParser(mRunner);
+            ListInstrumentationParser parser = new ListInstrumentationParser();
             getDevice().executeShellCommand("pm list instrumentation", parser);
-            if (parser.getParsedTests().isEmpty()) {
+
+            if (parser.getInstrumentationTargets().isEmpty()) {
                 throw new IllegalArgumentException(String.format(
                         "No instrumentations were found on device %s",
                         getDevice().getSerialNumber()));
             }
-            mTests = parser.getParsedTests();
+
+            mTests = new LinkedList<InstrumentationTest>();
+            for (InstrumentationTarget target : parser.getInstrumentationTargets()) {
+                if (mRunner == null || mRunner.equals(target.runnerName)) {
+                    InstrumentationTest t = createInstrumentationTest();
+                    try {
+                        // Copies all current argument values to the new runner that will be
+                        // used to actually run the tests.
+                        OptionCopier.copyOptions(InstalledInstrumentationsTest.this, t);
+                    } catch (ConfigurationException e) {
+                        // Bail out rather than run tests with unexpected options
+                        throw new RuntimeException("failed to copy instrumentation options", e);
+                    }
+                    t.setPackageName(target.packageName);
+                    t.setRunnerName(target.runnerName);
+                    t.setCoverageTarget(target.targetName);
+                    if (mTotalShards > 0) {
+                        t.addInstrumentationArg("shardIndex", Integer.toString(mShardIndex));
+                        t.addInstrumentationArg("numShards", Integer.toString(mTotalShards));
+                    }
+                    mTests.add(t);
+                }
+            }
         }
     }
 
@@ -284,66 +309,6 @@ public class InstalledInstrumentationsTest implements IDeviceTest, IResumableTes
             return false;
         }
         return mIsResumeMode;
-    }
-
-    /**
-     * A {@link IShellOutputReceiver} that parses the output of a 'pm list instrumentation' query
-     */
-    private class ListInstrumentationParser extends MultiLineReceiver {
-
-        private List<InstrumentationTest> mTests = new LinkedList<InstrumentationTest>();
-        private String mRunnerFilter;
-
-        /**
-         * @param mRunner
-         */
-        public ListInstrumentationParser(String runner) {
-            mRunnerFilter = runner;
-        }
-
-        /**
-         * {@inheritDoc}
-         */
-        @Override
-        public boolean isCancelled() {
-            return false;
-        }
-
-        /**
-         * {@inheritDoc}
-         */
-        @Override
-        public void processNewLines(String[] lines) {
-            for (String line : lines) {
-
-                Matcher m = LIST_INSTR_PATTERN.matcher(line);
-                if (m.find()) {
-                    String runner = m.group(2);
-                    if (mRunnerFilter == null || mRunnerFilter.equals(runner)) {
-                        InstrumentationTest t = createInstrumentationTest();
-                        try {
-                            // Copies all current argument values to the new runner that will be
-                            // used to actually run the tests.
-                            OptionCopier.copyOptions(InstalledInstrumentationsTest.this, t);
-                        } catch (ConfigurationException e) {
-                            CLog.e("failed to copy instrumentation options: %s", e.getMessage());
-                        }
-                        t.setPackageName(m.group(1));
-                        t.setRunnerName(runner);
-                        t.setCoverageTarget(m.group(3));
-                        if (mTotalShards > 0) {
-                            t.addInstrumentationArg("shardIndex", Integer.toString(mShardIndex));
-                            t.addInstrumentationArg("numShards", Integer.toString(mTotalShards));
-                        }
-                        mTests.add(t);
-                    }
-                }
-            }
-        }
-
-        public List<InstrumentationTest> getParsedTests() {
-            return mTests;
-        }
     }
 
     /**

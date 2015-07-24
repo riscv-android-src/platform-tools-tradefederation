@@ -100,6 +100,7 @@ import com.android.tradefed.util.ConditionPriorityBlockingQueueTest;
 import com.android.tradefed.util.EmailTest;
 import com.android.tradefed.util.FileUtilTest;
 import com.android.tradefed.util.JUnitXmlParserTest;
+import com.android.tradefed.util.ListInstrumentationParserTest;
 import com.android.tradefed.util.MultiMapTest;
 import com.android.tradefed.util.NullUtilTest;
 import com.android.tradefed.util.PairTest;
@@ -231,6 +232,7 @@ public class UnitTests extends DeviceTestSuite {
         addTestSuite(HttpHelperTest.class);
         addTestSuite(HttpMultipartPostTest.class);
         addTestSuite(JUnitXmlParserTest.class);
+        addTestSuite(ListInstrumentationParserTest.class);
         addTestSuite(MultiMapTest.class);
         addTestSuite(NullUtilTest.class);
         addTestSuite(PairTest.class);
