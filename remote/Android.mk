@@ -25,7 +25,7 @@ LOCAL_MODULE := tf-remote-client
 
 LOCAL_MODULE_TAGS := optional
 # only depend on ddmlib for the Log class
-LOCAL_STATIC_JAVA_LIBRARIES := json-prebuilt jsr305lib guava-15.0-prebuilt ddmlib-prebuilt
+LOCAL_STATIC_JAVA_LIBRARIES := json-prebuilt jsr305lib guava-15.0-prebuilt ddmlib-prebuilt devtools-annotations-prebuilt
 
 include $(BUILD_HOST_JAVA_LIBRARY)
 
