@@ -18,6 +18,8 @@ package com.android.tradefed.command;
 
 import com.android.tradefed.command.CommandFileParser.CommandLine;
 import com.android.tradefed.config.ConfigurationException;
+import com.google.common.collect.ImmutableMap;
+import com.google.common.collect.ImmutableSet;
 
 import junit.framework.TestCase;
 
@@ -27,16 +29,34 @@ import java.io.IOException;
 import java.io.StringReader;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
 /**
  * Unit tests for {@link CommandFileParser}
  */
 public class CommandFileParserTest extends TestCase {
+    /**
+     * Uses a <File, String> map to provide {@link CommandFileParser} with mock data
+     * for the mapped Files.
+     */
+    private static class MockCommandFileParser extends CommandFileParser {
+        private final Map<File, String> mDataMap;
+
+        MockCommandFileParser(Map<File, String> dataMap) {
+            this.mDataMap = dataMap;
+        }
+
+        @Override
+        BufferedReader createCommandFileReader(File file) {
+            return new BufferedReader(new StringReader(mDataMap.get(file)));
+        }
+    };
 
     /** the {@link CommandFileParser} under test, with all dependencies mocked out */
     private CommandFileParser mCommandFile;
     private String mMockFileData = "";
-    private static final File MOCK_FILE_PATH = new File("path/to/");
+    private static final File MOCK_FILE_PATH = new File("/path/to/");
     private File mMockFile = new File(MOCK_FILE_PATH, "original.txt");
 
     @Override
@@ -80,7 +100,11 @@ public class CommandFileParserTest extends TestCase {
         assertEquals(expectedCommands.length, data.size());
 
         for (int i = 0; i < expectedCommands.length; i++) {
-            assertEquals(data.get(i), expectedCommands[i]);
+            assertEquals(expectedCommands[i].size(), data.get(i).size());
+
+            for(int j = 0; j < expectedCommands[i].size(); j++) {
+                assertEquals(expectedCommands[i].get(j), data.get(i).get(j));
+            }
         }
     }
 
@@ -274,6 +298,71 @@ public class CommandFileParserTest extends TestCase {
         } catch (ConfigurationException e) {
             // expected
         }
+    }
+
+    /**
+     * Verifies that the line location data in CommandLine (file, line number) is accurate.
+     */
+    public void testCommandLineLocation() throws IOException, ConfigurationException {
+        mMockFileData = "# This is a comment\n" +
+                "# This is another comment\n" +
+                "this --is-a-cmd\n" +
+                "one --final-cmd\n" +
+                "# More comments\n" +
+                "two --final-command";
+
+        Set<CommandLine> expectedSet = ImmutableSet.<CommandLine>builder()
+                .add(new CommandLine(Arrays.asList("this", "--is-a-cmd"), mMockFile, 3))
+                .add(new CommandLine(Arrays.asList("one", "--final-cmd"), mMockFile, 4))
+                .add(new CommandLine(Arrays.asList("two", "--final-command"), mMockFile, 6))
+                .build();
+
+
+        Set<CommandLine> parsedSet = ImmutableSet.<CommandLine>builder()
+                .addAll(mCommandFile.parseFile(mMockFile))
+                .build();
+
+        assertEquals(expectedSet, parsedSet);
+    }
+
+    /**
+     * Verifies that the line location data in CommandLine (file, line number) is accurate for
+     * commands defined in included files.
+     */
+    public void testCommandLineLocation_withInclude() throws IOException, ConfigurationException {
+        final File mockFile = new File(MOCK_FILE_PATH, "file.txt");
+        final String mockFileData = "# This is a comment\n" +
+                "# This is another comment\n" +
+                "INCLUDE include.txt\n" +
+                "this --is-a-cmd\n" +
+                "one --final-cmd";
+
+        final File mockIncludedFile = new File(MOCK_FILE_PATH, "include.txt");
+        final String mockIncludedFileData = "# This is a comment\n" +
+                "# This is another comment\n" +
+                "inc --is-a-cmd\n" +
+                "# More comments\n" +
+                "inc --final-cmd";
+
+        Set<CommandLine> expectedSet = ImmutableSet.<CommandLine>builder()
+                .add(new CommandLine(Arrays.asList("this", "--is-a-cmd"), mockFile, 4))
+                .add(new CommandLine(Arrays.asList("one", "--final-cmd"), mockFile, 5))
+                .add(new CommandLine(Arrays.asList("inc", "--is-a-cmd"), mockIncludedFile, 3))
+                .add(new CommandLine(Arrays.asList("inc", "--final-cmd"), mockIncludedFile, 5))
+                .build();
+
+
+        CommandFileParser commandFileParser = new MockCommandFileParser(
+                ImmutableMap.<File, String>builder()
+                .put(mockFile, mockFileData)
+                .put(mockIncludedFile, mockIncludedFileData)
+                .build());
+
+        Set<CommandLine> parsedSet = ImmutableSet.<CommandLine>builder()
+                .addAll(commandFileParser.parseFile(mockFile))
+                .build();
+
+        assertEquals(expectedSet, parsedSet);
     }
 
     /**

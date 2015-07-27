@@ -30,6 +30,7 @@ import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -62,12 +63,19 @@ public class CommandFileParser {
 
     @SuppressWarnings("serial")
     public static class CommandLine extends LinkedList<String> {
-        CommandLine() {
+        private final File mFile;
+        private final int mLineNumber;
+
+        CommandLine(File file, int lineNumber) {
             super();
+            mFile = file;
+            mLineNumber = lineNumber;
         }
 
-        CommandLine(Collection<? extends String> c) {
+        CommandLine(Collection<? extends String> c, File file, int lineNumber) {
             super(c);
+            mFile = file;
+            mLineNumber = lineNumber;
         }
 
         public String[] asArray() {
@@ -78,6 +86,31 @@ public class CommandFileParser {
                 i++;
             }
             return arrayContents;
+        }
+
+        public File getFile() {
+            return mFile;
+        }
+
+        public int getLineNumber() {
+            return mLineNumber;
+        }
+
+        @Override
+        public boolean equals(Object o) {
+            if(o instanceof CommandLine) {
+                CommandLine otherLine = (CommandLine) o;
+                return super.equals(o) &&
+                        Objects.equals(otherLine.getFile(), mFile) &&
+                        otherLine.getLineNumber() == mLineNumber;
+            }
+            return false;
+        }
+
+        @Override
+        public int hashCode() {
+            int listHash = super.hashCode();
+            return Objects.hash(listHash, mFile, mLineNumber);
         }
     }
 
@@ -228,14 +261,17 @@ public class CommandFileParser {
 
         BufferedReader fileReader = createCommandFileReader(file);
         String inputLine = null;
+        int lineNumber = 0;
         try {
             while ((inputLine = fileReader.readLine()) != null) {
+                lineNumber++;
                 inputLine = inputLine.trim();
                 if (shouldParseLine(inputLine)) {
                     CommandLine lArgs = null;
                     try {
                         String[] args = QuotationAwareTokenizer.tokenizeLine(inputLine);
-                        lArgs = new CommandLine(Arrays.asList(args));
+                        lArgs = new CommandLine(Arrays.asList(args), file,
+                                lineNumber);
                     } catch (IllegalArgumentException e) {
                         throw new ConfigurationException(e.getMessage());
                     }
@@ -243,7 +279,8 @@ public class CommandFileParser {
                     if (isLineMacro(lArgs)) {
                         // Expected format: MACRO <name> = <token> [<token>...]
                         String name = lArgs.get(1);
-                        CommandLine expansion = new CommandLine(lArgs.subList(3, lArgs.size()));
+                        CommandLine expansion = new CommandLine(lArgs.subList(3, lArgs.size()),
+                                file, lineNumber);
                         CommandLine prev = mMacros.put(name, expansion);
                         if (prev != null) {
                             CLog.w("Overwrote short macro '%s' while parsing file %s", name, file);
@@ -255,6 +292,7 @@ public class CommandFileParser {
                         List<CommandLine> expansion = new LinkedList<CommandLine>();
 
                         inputLine = fileReader.readLine();
+                        lineNumber++;
                         while (!"END MACRO".equals(inputLine)) {
                             if (inputLine == null) {
                                 // Syntax error
@@ -265,12 +303,14 @@ public class CommandFileParser {
                             if (shouldParseLine(inputLine)) {
                                 // Store the tokenized line
                                 CommandLine line = new CommandLine(Arrays.asList(
-                                        QuotationAwareTokenizer.tokenizeLine(inputLine)));
+                                        QuotationAwareTokenizer.tokenizeLine(inputLine)),
+                                        file, lineNumber);
                                 expansion.add(line);
                             }
 
                             // Advance
                             inputLine = fileReader.readLine();
+                            lineNumber++;
                         }
                         CLog.d("Parsed %d-line definition for long macro %s", expansion.size(),
                                 name);
@@ -415,11 +455,12 @@ public class CommandFileParser {
                     }
                 }
 
-                CommandLine prefix = new CommandLine(line.subList(0, idx));
-                CommandLine suffix = new CommandLine(line.subList(idx, line.size()));
+                LinkedList<String> prefix = new LinkedList<>(line.subList(0, idx));
+                LinkedList<String> suffix = new LinkedList<>(line.subList(idx, line.size()));
                 suffix.remove(0);
                 for (CommandLine macroLine : longMacro) {
-                    CommandLine expanded = new CommandLine();
+                    CommandLine expanded = new CommandLine(line.getFile(),
+                            line.getLineNumber());
                     expanded.addAll(prefix);
                     expanded.addAll(macroLine);
                     expanded.addAll(suffix);

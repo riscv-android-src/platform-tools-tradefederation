@@ -492,7 +492,8 @@ public class CommandSchedulerTest extends TestCase {
         List<String> extraArgs = Arrays.asList("--bar");
         setCreateConfigExpectations(new String[] {"foo", "--bar"}, 1);
         mMockConfiguration.validateOptions();
-        final List<CommandLine> cmdFileContent = Arrays.asList(new CommandLine(Arrays.asList("foo")));
+        final List<CommandLine> cmdFileContent = Arrays.asList(new CommandLine(
+                Arrays.asList("foo"), null, 0));
         mMockCmdFileParser = new CommandFileParser() {
             @Override
             public List<CommandLine> parseFile(File cmdFile) {
@@ -529,9 +530,9 @@ public class CommandSchedulerTest extends TestCase {
         EasyMock.expectLastCall().times(3);
 
         final List<CommandLine> cmdFileContent1 = Arrays.asList(new CommandLine(
-                Arrays.asList("fromFile1")));
+                Arrays.asList("fromFile1"), null, 0));
         final List<CommandLine> cmdFileContent2 = Arrays.asList(new CommandLine(
-                Arrays.asList("fromFile2")));
+                Arrays.asList("fromFile2"), null, 0));
         mMockCmdFileParser = new CommandFileParser() {
             boolean firstCall = true;
             @Override
@@ -577,7 +578,7 @@ public class CommandSchedulerTest extends TestCase {
         EasyMock.expectLastCall().times(2);
 
         final List<CommandLine> cmdFileContent1 = Arrays.asList(new CommandLine(
-                Arrays.asList("fromFile1")));
+                Arrays.asList("fromFile1"), null, 0));
         mMockCmdFileParser = new CommandFileParser() {
             @Override
             public List<CommandLine> parseFile(File cmdFile) {
