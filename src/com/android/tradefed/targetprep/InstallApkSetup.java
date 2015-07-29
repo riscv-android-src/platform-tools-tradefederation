@@ -21,6 +21,7 @@ import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.config.Option;
 import com.android.tradefed.config.Option.Importance;
 import com.android.tradefed.config.OptionClass;
+import com.android.tradefed.device.CollectingOutputReceiver;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.log.LogUtil.CLog;
@@ -30,6 +31,7 @@ import java.io.File;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 
 /**
  * A {@link ITargetPreparer} that installs one or more apks located on the filesystem.
@@ -65,6 +67,11 @@ public class InstallApkSetup implements ITargetPreparer {
             "optional post-install adb shell commands; can be repeated.")
     private List<String> mPostInstallCmds = new ArrayList<>();
 
+    @Option(name = "post-install-cmd-timeout", description =
+            "max time allowed in ms for a post-install adb shell command." +
+            "DeviceUnresponsiveException will be thrown if it is timed out.")
+    private long mPostInstallCmdTimeout = 2 * 60 * 1000;  // default to 2 minutes
+
     /**
      * {@inheritDoc}
      */
@@ -96,7 +103,8 @@ public class InstallApkSetup implements ITargetPreparer {
                 // If the command had any output, the executeShellCommand method will log it at the
                 // VERBOSE level; so no need to do any logging from here.
                 CLog.d("About to run setup command on device %s: %s", device.getSerialNumber(), cmd);
-                device.executeShellCommand(cmd);
+                device.executeShellCommand(cmd, new CollectingOutputReceiver(),
+                        mPostInstallCmdTimeout, TimeUnit.MILLISECONDS, 1);
             }
         }
     }
