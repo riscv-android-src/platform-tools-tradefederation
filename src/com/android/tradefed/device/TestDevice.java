@@ -96,6 +96,8 @@ class TestDevice implements IManagedTestDevice {
      */
     private static final int BUGREPORT_TIMEOUT = 2 * 60 * 1000;
 
+    private static final long MAX_HOST_DEVICE_TIME_OFFSET = 5 * 1000;
+
     /** The password for encrypting and decrypting the device. */
     private static final String ENCRYPTION_PASSWORD = "android";
     /** Encrypting with inplace can take up to 2 hours. */
@@ -3175,6 +3177,21 @@ class TestDevice implements IManagedTestDevice {
         return new DeviceEventResponse(newState, stateChanged);
     }
 
+    private long getDeviceTimeOffset(Date date) throws DeviceNotAvailableException {
+        String deviceTime = executeShellCommand("date +%s");
+        if (date == null) {
+            date = new Date();
+        }
+        long hostTime = date.getTime();
+        long offset = 0;
+
+        if (deviceTime != null) {
+            offset = hostTime - (Long.valueOf(deviceTime.trim()) * 1000);
+        }
+        CLog.d("Time offset = " + offset);
+        return offset;
+    }
+
     /**
      * {@inheritDoc}
      */
@@ -3183,8 +3200,24 @@ class TestDevice implements IManagedTestDevice {
         if (date == null) {
             date = new Date();
         }
-        long epochInSeconds = date.getTime() / 1000; //ms to s
-        executeShellCommand("date " + epochInSeconds);
+        long timeOffset = getDeviceTimeOffset(date);
+        // no need to set date
+        if (Math.abs(timeOffset) <= MAX_HOST_DEVICE_TIME_OFFSET) {
+            return;
+        }
+        String dateString = null;
+        if (getApiLevel() < 23) {
+            // set date in epoch format
+            dateString = Long.toString(date.getTime() / 1000); //ms to s
+        } else {
+            // set date with POSIX like params
+            SimpleDateFormat sdf = new java.text.SimpleDateFormat(
+                    "MMddHHmmyyyy.ss");
+            sdf.setTimeZone(java.util.TimeZone.getTimeZone("UTC"));
+            dateString = sdf.format(date);
+        }
+        // best effort, no verification
+        executeShellCommand("date -u " + dateString);
     }
 
     /**
