@@ -28,9 +28,10 @@ import com.android.tradefed.result.StubTestInvocationListener;
 import com.android.tradefed.testtype.IDeviceTest;
 import com.android.tradefed.testtype.IRemoteTest;
 import com.android.tradefed.testtype.InstrumentationTest;
+
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
-import java.util.LinkedList;
 import java.util.Map;
 
 /**
@@ -41,16 +42,25 @@ import java.util.Map;
  */
 @OptionClass(alias = "camera2-stress")
 public class Camera2StressTest implements IDeviceTest, IRemoteTest {
-    private static final String TEST_CLASS_NAME = "com.android.camera.tests.CameraStress";
-    private static final String TEST_PACKAGE_NAME = "com.google.android.camera.tests";
-    private static final
-            String TEST_RUNNER_NAME = "android.support.test.uiautomator.UiAutomatorInstrumentationTestRunner";
-    private static final String RU_KEY = "camera_app_stress";
-    private final int MAX_TEST_TIMEOUT_MS = 6 * 60 * 60 * 1000; // 6 hours
-    private ITestDevice mDevice = null;
+
+    @Option(name = "testPackage", description = "Test package to run.")
+    private String mTestPackage = "com.google.android.camera";
+
+    @Option(name = "testClass", description = "Test class to run.")
+    private String mTestClass = "com.android.camera.stress.GoogleCameraStressTest";
 
     @Option(name = "testMethod", description = "Test method to run. May be repeated.")
-    private Collection<String> mTestMethods = new LinkedList<String>();
+    private Collection<String> mTestMethods = new ArrayList<String>();
+
+    @Option(name = "testRunner", description = "Test runner for test instrumentation.")
+    private String mTestRunner = "android.test.InstrumentationTestRunner";
+
+    @Option(name = "test-timeout-ms", description = "Max time allowed in ms for a test run.")
+    private int mTestTimeoutMs = 6 * 60 * 60 * 1000; // 6 hours
+
+    private String mRuKey = "camera_app_stress";
+    private ITestDevice mDevice = null;
+
 
     /**
      * {@inheritDoc}
@@ -86,11 +96,11 @@ public class Camera2StressTest implements IDeviceTest, IRemoteTest {
     private void runTest(ITestInvocationListener listener) throws DeviceNotAvailableException {
         InstrumentationTest instr = new InstrumentationTest();
         instr.setDevice(getDevice());
-        instr.setPackageName(TEST_PACKAGE_NAME);
-        instr.setRunnerName(TEST_RUNNER_NAME);
-        instr.setClassName(TEST_CLASS_NAME);
-        instr.setTestTimeout(MAX_TEST_TIMEOUT_MS);
-        instr.setShellTimeout(MAX_TEST_TIMEOUT_MS);
+        instr.setPackageName(mTestPackage);
+        instr.setRunnerName(mTestRunner);
+        instr.setClassName(mTestClass);
+        instr.setTestTimeout(mTestTimeoutMs);
+        instr.setShellTimeout(mTestTimeoutMs);
         if (mTestMethods.size() > 0) {
             CLog.d("TEST METHOD > 0");
             for (String testName : mTestMethods) {
@@ -123,7 +133,7 @@ public class Camera2StressTest implements IDeviceTest, IRemoteTest {
      * @param metrics The {@link Map} that contains metrics for the given test
      */
     private void postMetrics(ITestInvocationListener listener, Map<String, String> metrics) {
-        listener.testRunStarted(RU_KEY, 0);
+        listener.testRunStarted(mRuKey, 0);
         listener.testRunEnded(0, metrics);
         CLog.v("test metric", metrics.toString());
     }
