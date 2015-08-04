@@ -574,11 +574,12 @@ public class InstrumentationTest implements IDeviceTest, IResumableTest {
             throw new IllegalArgumentException(
                     String.format("test-timeout %d cannot be negative", mTestTimeout));
         }
-        if (mShellTimeout < mTestTimeout) {
-            CLog.w(String.format("shell-timeout %d cannot be smaller then test-timeout %d; "
-                    + "NOTE: extending shell-timeout to match test-timeout %d, please "
-                    + "consider fixing this!", mShellTimeout, mTestTimeout, mTestTimeout));
-            mShellTimeout = mTestTimeout;
+        if (mShellTimeout <= mTestTimeout) {
+            // set shell timeout to 110% of test timeout
+            mShellTimeout = mTestTimeout + mTestTimeout / 10;
+            CLog.w(String.format("shell-timeout should be larger than test-timeout %d; "
+                    + "NOTE: extending shell-timeout to %d, please consider fixing this!",
+                    mTestTimeout, mShellTimeout));
         }
         runner.setMaxTimeToOutputResponse(mShellTimeout, TimeUnit.MILLISECONDS);
         addInstrumentationArg(TEST_TIMEOUT_INST_ARGS_KEY, Long.toString(mTestTimeout));
