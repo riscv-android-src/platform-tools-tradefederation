@@ -38,6 +38,11 @@ public interface IBuildInfo {
     public String getBuildId();
 
     /**
+     * Sets the unique identifier of build under test. Should never be null.
+     */
+    public void setBuildId(String buildId);
+
+    /**
      * Return a unique name for the tests being run.
      */
     public String getTestTag();

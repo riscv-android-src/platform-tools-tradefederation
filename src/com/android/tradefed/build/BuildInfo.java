@@ -31,7 +31,7 @@ import java.util.Map;
  * Generic implementation of a {@link IBuildInfo}.
  */
 public class BuildInfo implements IBuildInfo {
-    private String mBuildId = "0";
+    private String mBuildId = UNKNOWN_BUILD_ID;
     private String mTestTag = "stub";
     private String mBuildTargetName = "stub";
     private final UniqueMultiMap<String, String> mBuildAttributes =
@@ -83,6 +83,14 @@ public class BuildInfo implements IBuildInfo {
     @Override
     public String getBuildId() {
         return mBuildId;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void setBuildId(String buildId) {
+        mBuildId = buildId;
     }
 
     /**

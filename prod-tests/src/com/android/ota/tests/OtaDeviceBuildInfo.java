@@ -65,6 +65,14 @@ public class OtaDeviceBuildInfo implements IDeviceBuildInfo {
      * {@inheritDoc}
      */
     @Override
+    public void setBuildId(String buildId) {
+        mBaselineBuild.setBuildId(buildId);
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
     public String getTestTag() {
         return mBaselineBuild.getTestTag();
     }
