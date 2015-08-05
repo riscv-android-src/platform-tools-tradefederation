@@ -45,6 +45,11 @@ public class VideoMultimeterRunner extends VideoMultimeterTest
             importance = Importance.ALWAYS)
     Map<String, String> mDeviceMap = new HashMap<String, String>();
 
+    @Option(name = "calibration-map", description =
+            "Device serials map to calibration values. May be repeated",
+            importance = Importance.ALWAYS)
+    Map<String, String> mCalibrationMap = new HashMap<String, String>();
+
     static final long ROBOT_TIMEOUT_MS = 60 * 1000;
 
     static final Semaphore runToken = new Semaphore(1);
@@ -71,7 +76,9 @@ public class VideoMultimeterRunner extends VideoMultimeterTest
 
             String deviceSerial = getDevice().getSerialNumber();
 
-            if (moveArm(deviceSerial) && setupTestEnv()) {
+            String calibrationValue = (mCalibrationMap.containsKey(deviceSerial) ?
+                    mCalibrationMap.get(deviceSerial) : null);
+            if (moveArm(deviceSerial) && setupTestEnv(calibrationValue)) {
                 runMultimeterTest(listener, metrics);
             } else {
                 listener.testFailed(testId, "Failed to set up environment");
