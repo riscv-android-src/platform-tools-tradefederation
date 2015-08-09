@@ -41,6 +41,9 @@ import javax.xml.bind.DatatypeConverter;
  */
 public class StreamUtil {
 
+    // 16K buffer size
+    private static final int BUF_SIZE = 16 * 1024;
+
     private StreamUtil() {
     }
 
@@ -127,10 +130,10 @@ public class StreamUtil {
      */
     public static void copyStreams(InputStream inStream, OutputStream outStream)
             throws IOException {
-
-        int data = -1;
-        while ((data = inStream.read()) != -1) {
-            outStream.write(data);
+        byte[] buf = new byte[BUF_SIZE];
+        int size = -1;
+        while ((size = inStream.read(buf)) != -1) {
+            outStream.write(buf, 0, size);
         }
     }
 
@@ -144,9 +147,10 @@ public class StreamUtil {
      * @throws IOException
      */
     public static void copyStreamToWriter(InputStream inStream, Writer writer) throws IOException {
-        int data = -1;
-        while ((data = inStream.read()) != -1) {
-            writer.write(data);
+        byte[] buf = new byte[BUF_SIZE];
+        int size = -1;
+        while ((size = inStream.read(buf)) != -1) {
+            writer.write(new String(buf, 0, size));
         }
     }
 
@@ -290,7 +294,8 @@ public class StreamUtil {
             throw new RuntimeException(e);
         }
         InputStream input = new BufferedInputStream(new DigestInputStream(inputSource, md));
-        while (input.read() >= 0) {
+        byte[] buf = new byte[BUF_SIZE];
+        while (input.read(buf) != -1) {
             // Read through the stream to update digest.
         }
         input.close();

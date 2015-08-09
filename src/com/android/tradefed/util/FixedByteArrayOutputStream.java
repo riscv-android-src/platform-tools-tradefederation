@@ -75,6 +75,37 @@ public class FixedByteArrayOutputStream extends OutputStream {
         }
     }
 
+    @Override
+    public void write(byte[] b, int off, int len) throws IOException {
+        if (b == null) {
+            throw new NullPointerException();
+        }
+        if (len >= mBuffer.length) {
+            // incoming is larger than buffer just take the tail end of the incoming
+            System.arraycopy(b, off + len - mBuffer.length, mBuffer, 0, mBuffer.length);
+            mHasWrapped = true;
+            mWritePos = 0;
+        } else {
+            // incoming is smaller, fill it into free space of buffer, wrap if needed
+            int freeSpace = mBuffer.length - mWritePos;
+            if (freeSpace >= len) {
+                // current write position to end of buffer is large enough for "len"
+                System.arraycopy(b, off, mBuffer, mWritePos, len);
+            } else {
+                // fill up free space of the buffer first
+                System.arraycopy(b, off, mBuffer, mWritePos, freeSpace);
+                // wrap around the circular buffer
+                System.arraycopy(b, off + freeSpace, mBuffer, 0, len - freeSpace);
+            }
+            // update write position
+            mWritePos += len;
+            if (mWritePos > mBuffer.length) {
+                mHasWrapped = true;
+                mWritePos = mWritePos % mBuffer.length;
+            }
+        }
+    }
+
     /**
      * @return the number of bytes currently stored.
      */

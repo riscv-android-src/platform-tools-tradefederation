@@ -19,6 +19,7 @@ package com.android.tradefed.util;
 
 import junit.framework.TestCase;
 
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 
 /**
@@ -27,6 +28,13 @@ import java.io.IOException;
 public class FixedByteArrayOutputStreamTest extends TestCase {
 
     private static final byte BUF_SIZE = 30;
+    private static final String TEXT = "Lorem ipsum dolor sit amet, consectetur adipiscing elit, "
+            + "sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. "
+            + "Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut "
+            + "aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in "
+            + "voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint "
+            + "occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit "
+            + "anim id est laborum."; // 446 bytes
     private FixedByteArrayOutputStream mOutStream;
 
     @Override
@@ -36,67 +44,97 @@ public class FixedByteArrayOutputStreamTest extends TestCase {
     }
 
     /**
+     * Util method to write a string into the {@link FixedByteArrayOutputStream} under test and
+     * return content as String
+     * @param text
+     * @return
+     */
+    private String writeTextIntoStreamAndReturn(String text) throws IOException {
+        mOutStream.write(text.getBytes());
+        ByteArrayOutputStream baos = new ByteArrayOutputStream();
+        StreamUtil.copyStreams(mOutStream.getData(), baos);
+        baos.close();
+        return baos.toString();
+    }
+    /**
      * Test the stream works when data written is less than buffer size.
      */
     public void testLessThanBuffer() throws IOException {
-        final byte[] data = getData(BUF_SIZE - 2);
-        mOutStream.write(data);
-        byte[] readData = readData(mOutStream);
-        assertEquals(BUF_SIZE - 2, readData.length);
-        assertEquals(0, readData[0]);
-        assertEquals(BUF_SIZE - 2 - 1, readData[readData.length - 1]);
+        String text = TEXT.substring(0, BUF_SIZE - 5);
+        assertEquals(text, writeTextIntoStreamAndReturn(text));
     }
 
     /**
      * Test the stream works when data written is exactly equal to buffer size.
      */
     public void testEqualsBuffer() throws IOException {
-        final byte[] data = getData(BUF_SIZE);
-        mOutStream.write(data);
-        byte[] readData = readData(mOutStream);
-        assertEquals(BUF_SIZE, readData.length);
-        assertEquals(0, readData[0]);
-        assertEquals(BUF_SIZE - 1, readData[readData.length - 1]);
+        String text = TEXT.substring(0, BUF_SIZE);
+        assertEquals(text, writeTextIntoStreamAndReturn(text));
     }
 
     /**
      * Test the stream works when data written is 1 greater than buffer size.
      */
     public void testBufferPlusOne() throws IOException {
-        final byte[] data = getData(BUF_SIZE+1);
-        mOutStream.write(data);
-        byte[] readData = readData(mOutStream);
-        assertEquals(BUF_SIZE, readData.length);
-        assertEquals(1, readData[0]);
-        assertEquals(BUF_SIZE, readData[readData.length - 1]);
+        String text = TEXT.substring(0, BUF_SIZE + 1);
+        String expected = text.substring(1);
+        assertEquals(expected, writeTextIntoStreamAndReturn(text));
     }
 
     /**
      * Test the stream works when data written is much greater than buffer size.
      */
     public void testBufferPlusPlus() throws IOException {
-        final byte[] data = getData(BUF_SIZE * 2 + 10);
-        mOutStream.write(data);
-        byte[] readData = readData(mOutStream);
-        assertEquals(BUF_SIZE, readData.length);
-        assertEquals(BUF_SIZE * 2 + 10 - 1, readData[readData.length - 1]);
+        String expected = TEXT.substring(TEXT.length() - BUF_SIZE);
+        assertEquals(expected, writeTextIntoStreamAndReturn(TEXT));
     }
 
     /**
-     * Reads a byte array from the FixedByteArrayOutputStream.
+     * Testing the buffer wrap around scenario
+     * @throws IOException
      */
-    private byte[] readData(FixedByteArrayOutputStream outStream) throws IOException {
-        return StreamUtil.getByteArrayListFromStream(outStream.getData()).getContents();
+    public void testWriteWithWrap() throws IOException {
+        String prefix = "foobar";
+        // larger than 24b because need to overflow the buffer, less than 30b because need to avoid
+        // the shortcut in code when incoming is larger than buffer
+        String followup = "stringlenbetween24band30b";
+        String full = prefix + followup;
+        String expected = full.substring(full.length() - BUF_SIZE);
+        mOutStream.write(prefix.getBytes());
+        assertEquals(expected, writeTextIntoStreamAndReturn(followup));
     }
 
-    private byte[] getData(int size) {
-        assertTrue("size must be a byte value", size > 0 && size < 128);
-        byte[] data = new byte[size];
+    /**
+     * Test writing using byte array with an offset
+     * @throws IOException
+     */
+    public void testLessThanBufferWithOffset() throws IOException {
+        String text = TEXT.substring(0, BUF_SIZE);
+        int offset = 5;
+        String expected = text.substring(offset);
+        mOutStream.write(text.getBytes(), offset, text.length() - offset);
+        ByteArrayOutputStream baos = new ByteArrayOutputStream();
+        StreamUtil.copyStreams(mOutStream.getData(), baos);
+        baos.close();
+        assertEquals(expected, baos.toString());
+    }
 
-        // fill data with values
-        for (byte i = 0; i < data.length; i++) {
-            data[i] = i;
-        }
-        return data;
+    /**
+     * Test writing using byte array with an offset
+     * @throws IOException
+     */
+    public void testWriteWithOffsetAndWrap() throws IOException {
+        String prefix = "foobar";
+        // similar to testWriteWithWrap, but add a tail to account for offset
+        String followup = "stringlenbetween24band30b____";
+        int offset = 4;
+        String full = prefix + followup.substring(offset);
+        String expected = full.substring(full.length() - BUF_SIZE);
+        mOutStream.write(prefix.getBytes());
+        mOutStream.write(followup.getBytes(), offset, followup.length() - offset);
+        ByteArrayOutputStream baos = new ByteArrayOutputStream();
+        StreamUtil.copyStreams(mOutStream.getData(), baos);
+        baos.close();
+        assertEquals(expected, baos.toString());
     }
 }

@@ -18,7 +18,6 @@ package com.android.tradefed.util;
 
 import com.android.tradefed.log.LogUtil.CLog;
 
-import java.io.BufferedInputStream;
 import java.io.BufferedOutputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
@@ -471,22 +470,11 @@ public class RunUtil implements IRunUtil {
         Thread t = new Thread(new Runnable() {
             @Override
             public void run() {
-                // Buffer the input stream.
-                BufferedInputStream s = new BufferedInputStream(src);
-                 int i;
-                 try {
-                     while((i = s.read()) != -1) {
-                         dest.write(i);
-                     }
-                 } catch (IOException e) {
-                     CLog.e("Failed to read input stream.");
-                 } finally {
-                     try {
-                         s.close();
-                     } catch (IOException ex) {
-                         CLog.e("Failed to close input stream.");
-                     }
-                 }
+                try {
+                    StreamUtil.copyStreams(src, dest);
+                } catch (IOException e) {
+                    CLog.e("Failed to read input stream.");
+                }
             }
         });
         t.start();

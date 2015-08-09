@@ -21,8 +21,11 @@ import com.android.tradefed.result.InputStreamSource;
 import junit.framework.TestCase;
 
 import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.OutputStreamWriter;
+import java.io.Writer;
 
 /**
  * Unit tests for the {@link StreamUtil} utility class
@@ -95,5 +98,45 @@ public class StreamUtilTest extends TestCase {
         String actualMd5 = StreamUtil.calculateMd5(inputSource);
         assertEquals(md5, actualMd5);
     }
-}
 
+    public void testCopyStreams() throws Exception {
+        String text = getLargeText();
+        ByteArrayInputStream bais = new ByteArrayInputStream(text.getBytes());
+        ByteArrayOutputStream baos = new ByteArrayOutputStream();
+        StreamUtil.copyStreams(bais, baos);
+        bais.close();
+        baos.close();
+        assertEquals(text, baos.toString());
+    }
+
+    public void testCopyStreamToWriter() throws Exception {
+        String text = getLargeText();
+        ByteArrayInputStream bais = new ByteArrayInputStream(text.getBytes());
+        ByteArrayOutputStream baos = new ByteArrayOutputStream();
+        Writer writer = new OutputStreamWriter(baos);
+        StreamUtil.copyStreamToWriter(bais, writer);
+        bais.close();
+        writer.close();
+        baos.close();
+        assertEquals(text, baos.toString());
+    }
+
+    /**
+     * Returns a large chunk of text that's at least 16K in size
+     * @return
+     */
+    private String getLargeText() {
+        String text = "Lorem ipsum dolor sit amet, consectetur adipiscing elit, "
+                + "sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. "
+                + "Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut "
+                + "aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in "
+                + "voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint "
+                + "occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit "
+                + "anim id est laborum."; // 446 bytes
+        StringBuilder sb = new StringBuilder();
+        for (int i = 0; i < 40; i ++) {
+            sb.append(text);
+        }
+        return sb.toString();
+    }
+}

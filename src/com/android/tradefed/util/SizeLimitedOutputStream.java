@@ -199,4 +199,28 @@ public class SizeLimitedOutputStream extends OutputStream {
             generateNextFile();
         }
     }
+
+    @Override
+    public synchronized void write(byte[] b, int off, int len) throws IOException {
+        if (mCurrentOutputStream == null) {
+            generateNextFile();
+        }
+        // keep writing to output stream as long as we have something to write
+        while (len > 0) {
+            // get current output stream size
+            long currentSize = mCurrentOutputStream.getCount();
+            // get how many more we can write into current
+            long freeSpace = mMaxFileSize - currentSize;
+            // decide how much we should write: either fill up free space, or write entire content
+            long sizeToWrite = freeSpace > len ? len : freeSpace;
+            mCurrentOutputStream.write(b, off, (int)sizeToWrite);
+            // accounting of space left, where to write next
+            freeSpace -= sizeToWrite;
+            off += sizeToWrite;
+            len -= sizeToWrite;
+            if (freeSpace <= 0) {
+                generateNextFile();
+            }
+        }
+    }
 }
