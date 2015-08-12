@@ -373,16 +373,16 @@ public class ConfigurationTest extends TestCase {
         for (int i = 0; i < usage.length(); i++) {
             JSONObject optionClass = usage.getJSONObject(i);
 
-            // Each element should contain 'name', 'class', and 'fields' values
+            // Each element should contain 'name', 'class', and 'options' values
             assertTrue("Usage element does not contain a 'name' value", optionClass.has("name"));
             assertTrue("Usage element does not contain a 'class' value", optionClass.has("class"));
-            assertTrue("Usage element does not contain a 'fields' value",
-                    optionClass.has("fields"));
+            assertTrue("Usage element does not contain a 'options' value",
+                    optionClass.has("options"));
 
             // General validation of each field
-            JSONArray fields = optionClass.getJSONArray("fields");
-            for (int j = 0; j < fields.length(); j++) {
-                JSONObject field = fields.getJSONObject(j);
+            JSONArray options = optionClass.getJSONArray("options");
+            for (int j = 0; j < options.length(); j++) {
+                JSONObject field = options.getJSONObject(j);
 
                 // Each field should at least have 'name', 'description', 'mandatory',
                 // 'javaClass', and 'updateRule' values
@@ -412,11 +412,11 @@ public class ConfigurationTest extends TestCase {
 
         // Verify that the configuration element we added has the expected values
         assertNotNull("Missing JSON usage element", jsonConfigObject);
-        JSONArray fields = jsonConfigObject.getJSONArray("fields");
+        JSONArray options = jsonConfigObject.getJSONArray("options");
         JSONObject jsonOptionField = null;
         JSONObject jsonAltOptionField = null;
-        for (int i = 0; i < fields.length(); i++) {
-            JSONObject field = fields.getJSONObject(i);
+        for (int i = 0; i < options.length(); i++) {
+            JSONObject field = options.getJSONObject(i);
 
             if (OPTION_NAME.equals(field.getString("name"))) {
                 assertNull("Duplicate option field", jsonOptionField);
@@ -470,11 +470,11 @@ public class ConfigurationTest extends TestCase {
         JSONObject jsonTestConfig = findConfigObjectByName(usage, CONFIG_OBJECT_TYPE_NAME);
 
         // Get the map option
-        JSONArray fields = jsonTestConfig.getJSONArray("fields");
-        JSONObject jsonMapOption = fields.getJSONObject(0);
+        JSONArray options = jsonTestConfig.getJSONArray("options");
+        JSONObject jsonMapOption = options.getJSONObject(0);
 
         // Validate the map option value
-        JSONObject jsonMapValue = jsonMapOption.getJSONObject("defaultValue");
+        JSONObject jsonMapValue = jsonMapOption.getJSONObject("value");
         assertEquals(mapOption.get("foo"), jsonMapValue.get("foo"));
         assertEquals(mapOption.get("bar"), jsonMapValue.get("bar"));
     }

@@ -161,6 +161,20 @@ public interface IConfiguration {
             throws ConfigurationException;
 
     /**
+     * Inject a option value into the set of configuration objects.
+     * <p/>
+     * Useful to provide values for options that are generated dynamically.
+     *
+     * @param optionName the option name
+     * @param optionKey the optional key for map options, or null
+     * @param optionValue the map option value
+     * @param optionSource the source config that provided this option value
+     * @throws ConfigurationException if failed to set the option's value
+     */
+    public void injectOptionValueWithSource(String optionName, String optionKey, String optionValue,
+            String source) throws ConfigurationException;
+
+    /**
      * Create a copy of this object.
      *
      * @return a {link IConfiguration} copy
@@ -295,6 +309,43 @@ public interface IConfiguration {
 
     /**
      * Returns a JSON representation of this configuration.
+     * <p/>
+     * The return value is a JSONArray containing JSONObjects to represent each configuration
+     * object. Each configuration object entry has the following structure:
+     * <pre>
+     * {@code
+     *   &#123;
+     *     "alias": "device-unavail-email",
+     *     "name": "result_reporter",
+     *     "class": "com.android.tradefed.result.DeviceUnavailEmailResultReporter",
+     *     "options": [ ... ]
+     *   &#125;
+     * }
+     * </pre>
+     * The "options" entry is a JSONArray containing JSONObjects to represent each @Option annotated
+     * field. Each option entry has the following structure:
+     * <pre>
+     * {@code
+     *   &#123;
+     *     "updateRule": "LAST",
+     *     "isTimeVal": false,
+     *     "source": "google\/template\/reporters\/asit",
+     *     "importance": "IF_UNSET",
+     *     "description": "The envelope-sender address to use for the messages.",
+     *     "mandatory": false,
+     *     "name": "sender",
+     *     "javaClass": "java.lang.String",
+     *     "value": "tffail@google.com"
+     *   &#125;
+     * }
+     * </pre>
+     * Most of the values come from the @Option annotation. 'javaClass' is the name of the
+     * underlying java class for this option. 'value' is a JSON representation of the field's
+     * current value. 'source' is the set of config names which set the field's value. For regular
+     * objects or Collections, 'source' is a JSONArray containing each contributing config's name.
+     * For map fields, sources for each key are tracked individually and stored in a JSONObject.
+     * Each key / value pair in the JSONObject corresponds to a key in the map and an array of its
+     * source configurations.
      *
      * @throws JSONException
      */
