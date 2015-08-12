@@ -31,6 +31,7 @@ import com.android.tradefed.testtype.InstrumentationTest;
 
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -83,17 +84,6 @@ public class Camera2StressTest implements IDeviceTest, IRemoteTest {
      */
     @Override
     public void run(ITestInvocationListener listener) throws DeviceNotAvailableException {
-        CollectingListener collectingListener = new CollectingListener();
-        runTest(collectingListener);
-        postMetrics(listener, collectingListener.mStdout);
-    }
-
-    /***
-     * Start the instrumentation test.
-     * @param listener
-     * @throws DeviceNotAvailableException
-     */
-    private void runTest(ITestInvocationListener listener) throws DeviceNotAvailableException {
         InstrumentationTest instr = new InstrumentationTest();
         instr.setDevice(getDevice());
         instr.setPackageName(mTestPackage);
@@ -101,40 +91,61 @@ public class Camera2StressTest implements IDeviceTest, IRemoteTest {
         instr.setClassName(mTestClass);
         instr.setTestTimeout(mTestTimeoutMs);
         instr.setShellTimeout(mTestTimeoutMs);
+
+        listener.testRunStarted(mRuKey, 0);
+        CollectingListener collectingListener = new CollectingListener(listener);
+
+        // Run tests.
         if (mTestMethods.size() > 0) {
-            CLog.d("TEST METHOD > 0");
+            CLog.d(String.format("The number of test methods is: %d", mTestMethods.size()));
             for (String testName : mTestMethods) {
                 instr.setMethodName(testName);
-                instr.run(listener);
+                instr.run(collectingListener);
             }
         } else {
             instr.run(listener);
         }
+
+        // Report metrics at the end of test run.
+        listener.testRunEnded(0, collectingListener.getFinalMetrics());
     }
 
     /**
-     * A listener to collect the output from test run.
+     * A listener to collect the output from test run and fatal errors
      */
     private class CollectingListener extends StubTestInvocationListener {
-        public Map<String, String> mStdout = new HashMap<String, String>();
+        private ITestInvocationListener mListener;
+        private Map<String, String> mFinalMetrics = new HashMap<String, String>();
+
+        public CollectingListener(ITestInvocationListener listener) {
+            mListener = listener;
+        }
+
+        @Override
+        public void testStarted(TestIdentifier test) {
+            super.testStarted(test);
+            mListener.testStarted(test);
+        }
+
+        @Override
+        public void testFailed(TestIdentifier test, String trace) {
+            super.testFailed(test, trace);
+            CLog.d("Test (%s) Failed to complete: %s", test.getTestName(), trace);
+            mListener.testFailed(test, trace);
+        }
 
         @Override
         public void testEnded(TestIdentifier test, Map<String, String> testMetrics) {
+            super.testEnded(test, testMetrics);
             for (Map.Entry<String, String> metric : testMetrics.entrySet()) {
-                mStdout.put(test.getTestName(), metric.getValue());
+                mFinalMetrics.put(test.getTestName(), metric.getValue());
             }
+            // Test metrics accumulated will be posted at the end of test run.
+            mListener.testEnded(test, Collections.<String, String>emptyMap());
         }
-    }
 
-    /**
-     * Report run metrics
-     *
-     * @param listener The {@link ITestInvocationListener} of test results
-     * @param metrics The {@link Map} that contains metrics for the given test
-     */
-    private void postMetrics(ITestInvocationListener listener, Map<String, String> metrics) {
-        listener.testRunStarted(mRuKey, 0);
-        listener.testRunEnded(0, metrics);
-        CLog.v("test metric", metrics.toString());
+        public Map<String, String> getFinalMetrics() {
+            return mFinalMetrics;
+        }
     }
 }
