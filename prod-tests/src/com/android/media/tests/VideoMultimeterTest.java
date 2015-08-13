@@ -53,8 +53,8 @@ public class VideoMultimeterTest implements IDeviceTest, IRemoteTest {
 
     static final String START_VIDEO_PLAYER = "am start"
             + " -a android.intent.action.VIEW -t video/mp4 -d \"file://%s\""
-            + " -n \"com.google.android.apps.plus/.phone.VideoViewActivity\"";
-    static final String KILL_VIDEO_PLAYER = "am force-stop com.google.android.apps.plus";
+            + " -n \"com.google.android.apps.photos/.viewintents.ViewIntentHandlerActivity\"";
+    static final String KILL_VIDEO_PLAYER = "am force-stop com.google.android.apps.photos";
     static final String ROTATE_LANDSCAPE = "content insert --uri content://settings/system"
             + " --bind name:s:user_rotation --bind value:i:1";
 
