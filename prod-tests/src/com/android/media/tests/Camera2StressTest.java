@@ -103,7 +103,7 @@ public class Camera2StressTest implements IDeviceTest, IRemoteTest {
                 instr.run(collectingListener);
             }
         } else {
-            instr.run(listener);
+            instr.run(collectingListener);
         }
 
         // Report metrics at the end of test run.
