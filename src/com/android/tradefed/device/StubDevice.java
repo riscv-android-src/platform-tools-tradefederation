@@ -520,4 +520,13 @@ public class StubDevice implements IDevice {
     public String getRegion() {
         return null;
     }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public int getApiLevel() {
+        // TODO Auto-generated method stub
+        return -1;
+    }
 }
