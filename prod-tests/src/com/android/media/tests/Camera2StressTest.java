@@ -48,7 +48,7 @@ public class Camera2StressTest implements IDeviceTest, IRemoteTest {
     private String mTestPackage = "com.google.android.camera";
 
     @Option(name = "testClass", description = "Test class to run.")
-    private String mTestClass = "com.android.camera.stress.GoogleCameraStressTest";
+    private String mTestClass = "com.android.camera.stress.CameraStressTest";
 
     @Option(name = "testMethod", description = "Test method to run. May be repeated.")
     private Collection<String> mTestMethods = new ArrayList<String>();

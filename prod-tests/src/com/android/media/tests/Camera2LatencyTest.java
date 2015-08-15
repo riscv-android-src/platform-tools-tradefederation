@@ -37,22 +37,22 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /**
- * Camera app startup test
+ * Camera app latency test
  *
- * Runs CameraActivityTest to measure Camera startup time and reports the metrics.
+ * Runs Camera app latency test to measure Camera capture session time and reports the metrics.
  */
-@OptionClass(alias = "camera-startup")
-public class CameraStartupTest implements IDeviceTest, IRemoteTest {
+@OptionClass(alias = "camera-latency")
+public class Camera2LatencyTest implements IDeviceTest, IRemoteTest {
 
     private static final Pattern STATS_REGEX = Pattern.compile(
-        "^(?<coldStartup>[0-9.]+)\\|(?<warmStartup>[0-9.]+)\\|(?<values>[0-9 .-]+)");
-    private static final String PREFIX_COLD_STARTUP = "Cold";
+        "^(?<latency>[0-9.]+)\\|(?<values>[0-9 .-]+)");
 
     private static final String TEST_PACKAGE_NAME = "com.google.android.camera";
-    private static final String TEST_CLASS_NAME = "com.android.camera.latency.CameraStartupTest";
+    private static final String TEST_CLASS_NAME =
+            "com.android.camera.latency.CameraCaptureSessionTest";
     private static final String TEST_RUNNER_NAME = "android.test.InstrumentationTestRunner";
     private static final int MAX_TEST_TIMEOUT_MS = 60 * 60 * 1000; // 1 hours
-    private static final String RU_KEY = "CameraAppStartup";
+    private static final String RU_KEY = "CameraAppLatency";
 
     @Option(name = "testMethod", shortName = 'm',
             description = "Test method to run. May be repeated.")
@@ -135,31 +135,25 @@ public class CameraStartupTest implements IDeviceTest, IRemoteTest {
         public void testEnded(TestIdentifier test, Map<String, String> testMetrics) {
             super.testEnded(test, testMetrics);
             // Test metrics accumulated will be posted at the end of test run.
-            mFinalMetrics.putAll(parseResults(testMetrics));
+            mFinalMetrics.putAll(parseResults(test.getTestName(), testMetrics));
             mListener.testEnded(test, Collections.<String, String>emptyMap());
         }
 
-        public Map<String, String> parseResults(Map<String, String> testMetrics) {
+        public Map<String, String> parseResults(String testName, Map<String, String> testMetrics) {
             // Parse activity time stats from the instrumentation result.
-            // Format : <metric_key>=<cold_startup>|<average_of_warm_startups>|<all_startups>
+            // Format : <metric_key>=<average_of_latency>|<raw_data>
             // Example:
-            // VideoStartupTimeMs=1098|1184.6|1098 1222 ... 788
-            // VideoOnCreateTimeMs=138|103.3|138 114 ... 114
-            // VideoOnResumeTimeMs=39|40.4|39 36 ... 41
-            // VideoFirstPreviewFrameTimeMs=0|0.0|0 0 ... 0
-            // CameraStartupTimeMs=2388|1045.4|2388 1109 ... 746
-            // CameraOnCreateTimeMs=574|122.7|574 124 ... 109
-            // CameraOnResumeTimeMs=610|504.6|610 543 ... 278
-            // CameraFirstPreviewFrameTimeMs=0|0.0|0 0 ... 0
+            // FirstCaptureResultTimeMs=38|13 48 ... 35
+            // SecondCaptureResultTimeMs=29.2|65 24 ... 0
+            // CreateTimeMs=373.6|382 364 ... 323
             //
             // Then report only the first two startup time of cold startup and average warm startup.
             Map<String, String> parsed = new HashMap<String, String>();
             for (Map.Entry<String, String> metric : testMetrics.entrySet()) {
                 Matcher matcher = STATS_REGEX.matcher(metric.getValue());
                 if (matcher.matches()) {
-                    String keyName = metric.getKey();
-                    parsed.put(PREFIX_COLD_STARTUP + keyName, matcher.group("coldStartup"));
-                    parsed.put(keyName, matcher.group("warmStartup"));
+                    String keyName = String.format("%s_%s", testName, metric.getKey());
+                    parsed.put(keyName, matcher.group("latency"));
                 } else {
                     CLog.w(String.format("Stats not in correct format: %s", metric.getValue()));
                 }
