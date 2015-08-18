@@ -26,6 +26,7 @@ import com.android.tradefed.util.RunUtil;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -36,9 +37,12 @@ import java.util.Map;
 public class VellamoBenchmark implements IDeviceTest, IRemoteTest {
 
     private static final String LOGTAG = "VAUTOMATIC";
-    private static final String RUN_KEY = "vellamobenchmark";
+    private static final String RUN_KEY = "vellamobenchmark-3202";
     private static final long TIMEOUT_MS = 30 * 60 * 1000;
     private static final long POLLING_INTERVAL_MS = 10 * 1000;
+    private static final int INDEX_NAME = 0;
+    private static final int INDEX_CODE = 4;
+    private static final int INDEX_SCORE = 5;
 
     private ITestDevice mDevice;
 
@@ -77,23 +81,25 @@ public class VellamoBenchmark implements IDeviceTest, IRemoteTest {
         boolean isResultGenerated = false;
         boolean hasScore = false;
         double sumScore = 0;
+        int errorCode = 0;
         device.clearErrorDialogs();
         isTimedOut = false;
 
         long benchmarkStartTime = System.currentTimeMillis();
         // start the vellamo benchmark app and run all the tests
-        // the documentation and binary for the Vellamo 2.0.x for Automation APK
+        // the documentation and binary for the Vellamo 3.2.2 for Automation APK
         // can be found here:
-        // https://b.corp.google.com/issue?id=5035578
-        CLog.i("Starting Benchmark");
+        // https://b.corp.google.com/issue?id=23107318
+        CLog.i("Starting Vellamo Benchmark");
         device.executeShellCommand("am start -a com.quicinc.vellamo.AUTOMATIC"
-                + " -n com.quicinc.vellamo/.VellamoActivity");
+                + " -e w com.quicinc.skunkworks.wvb" // use System WebView
+                + " -n com.quicinc.vellamo/.main.MainActivity");
         isRunningBenchmark = true;
         String line;
         while (isRunningBenchmark && !isResultGenerated && !isTimedOut) {
             RunUtil.getDefault().sleep(POLLING_INTERVAL_MS);
             isTimedOut = (System.currentTimeMillis() - benchmarkStartTime >= TIMEOUT_MS);
-            isRunningBenchmark = device.executeShellCommand("ps").contains(
+            isRunningBenchmark = device.executeShellCommand("ps com.quicinc.vellamo").contains(
                     "com.quicinc.vellamo");
 
             // get the logcat and parse
@@ -119,9 +125,15 @@ public class VellamoBenchmark implements IDeviceTest, IRemoteTest {
                     if (line.contains(" b: ")) {
                         hasScore = true;
                         String[] results = line.split(" b: ")[1].split(",");
-                        sumScore += Double.parseDouble(results[3]);
-                        metrics.put(results[0], results[3]);
-                        CLog.i("%s :: %s", results[0], results[3]);
+                        errorCode = Integer.parseInt(results[INDEX_CODE]);
+                        if (errorCode != 0) {
+                            CLog.w("Non-zero error code: %d from becnhmark '%s'",
+                                    errorCode, results[INDEX_NAME]);
+                        } else {
+                            sumScore += Double.parseDouble(results[INDEX_SCORE]);
+                        }
+                        metrics.put(results[INDEX_NAME], results[INDEX_SCORE]);
+                        CLog.i("%s :: %s", results[INDEX_NAME], results[INDEX_SCORE]);
                     }
                 }
             } catch (IOException e) {
@@ -130,9 +142,9 @@ public class VellamoBenchmark implements IDeviceTest, IRemoteTest {
         }
 
         if (isTimedOut) {
-            errMsg = "vellamo timed out.";
+            errMsg = "Vellamo Benchmark timed out.";
         } else {
-            CLog.i("== VellamoBenchmark result ends ==");
+            CLog.i("Done running Vellamo Benchmark");
         }
         if (!hasScore) {
             errMsg = "Test ended but no scores can be found.";
@@ -144,7 +156,7 @@ public class VellamoBenchmark implements IDeviceTest, IRemoteTest {
         long durationMs = System.currentTimeMillis() - testStartTime;
         metrics.put("total", Double.toString(sumScore));
         CLog.i("total :: %f", sumScore);
-        listener.testEnded(testId, metrics);
+        listener.testEnded(testId, Collections.<String, String>emptyMap());
         listener.testRunEnded(durationMs, metrics);
     }
 }
