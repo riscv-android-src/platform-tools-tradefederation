@@ -151,6 +151,12 @@ public class DeviceSetup implements ITargetPreparer, ITargetCleaner {
     // ON:  settings put system notification_light_pulse 1
     // OFF: settings put system notification_light_pulse 0
 
+    @Option(name = "install-non-market-apps",
+            description = "Allow or prevent non-market app to initiate an apk install request")
+    protected BinaryState mInstallNonMarketApps = BinaryState.IGNORE;
+    // ON:  settings put secure install_non_market_apps 1
+    // OFF: settings put secure install_non_market_apps 0
+
     // Media
     @Option(name = "trigger-media-mounted",
             description = "Trigger a MEDIA_MOUNTED broadcast")
@@ -506,6 +512,9 @@ public class DeviceSetup implements ITargetPreparer, ITargetCleaner {
 
         setSettingForBinaryState(mNotificationLed, mSystemSettings,
                 "notification_light_pulse", "1", "0");
+
+        setSettingForBinaryState(mInstallNonMarketApps, mSecureSettings,
+                "install_non_market_apps", "1", "0");
 
         if (mTriggerMediaMounted) {
             mRunCommandAfterSettings.add("am broadcast -a android.intent.action.MEDIA_MOUNTED -d " +
@@ -960,6 +969,13 @@ public class DeviceSetup implements ITargetPreparer, ITargetCleaner {
      */
     protected void setNotificationLed(BinaryState notificationLed) {
         mNotificationLed = notificationLed;
+    }
+
+    /**
+     * Exposed for unit testing
+     */
+    protected void setInstallNonMarketApps(BinaryState installNonMarketApps) {
+        mInstallNonMarketApps = installNonMarketApps;
     }
 
     /**
