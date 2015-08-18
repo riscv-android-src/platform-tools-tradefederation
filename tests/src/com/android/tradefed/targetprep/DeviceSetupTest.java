@@ -420,6 +420,32 @@ public class DeviceSetupTest extends TestCase {
         EasyMock.verify(mMockDevice);
     }
 
+    public void testInstallNonMarketApps_on() throws DeviceNotAvailableException,
+            TargetSetupError {
+        doSetupExpectations();
+        doCheckExternalStoreSpaceExpectations();
+        doCommandsExpectations(true, "settings put secure \"install_non_market_apps\" \"1\"");
+        EasyMock.replay(mMockDevice);
+
+        mDeviceSetup.setInstallNonMarketApps(BinaryState.ON);
+        mDeviceSetup.setUp(mMockDevice, mMockBuildInfo);
+
+        EasyMock.verify(mMockDevice);
+    }
+
+    public void testInstallNonMarketApps_off() throws DeviceNotAvailableException,
+            TargetSetupError {
+        doSetupExpectations();
+        doCheckExternalStoreSpaceExpectations();
+        doCommandsExpectations(true, "settings put secure \"install_non_market_apps\" \"0\"");
+        EasyMock.replay(mMockDevice);
+
+        mDeviceSetup.setInstallNonMarketApps(BinaryState.OFF);
+        mDeviceSetup.setUp(mMockDevice, mMockBuildInfo);
+
+        EasyMock.verify(mMockDevice);
+    }
+
     public void testSetup_trigger_media_mounted() throws DeviceNotAvailableException,
             TargetSetupError {
         doSetupExpectations();
