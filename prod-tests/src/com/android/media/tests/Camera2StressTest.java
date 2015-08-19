@@ -59,7 +59,9 @@ public class Camera2StressTest implements IDeviceTest, IRemoteTest {
     @Option(name = "test-timeout-ms", description = "Max time allowed in ms for a test run.")
     private int mTestTimeoutMs = 6 * 60 * 60 * 1000; // 6 hours
 
-    private String mRuKey = "camera_app_stress";
+    @Option(name = "ru-key", description = "Result key to use when posting to the dashboard.")
+    private String mRuKey = "CameraAppStress";
+
     private ITestDevice mDevice = null;
 
 
