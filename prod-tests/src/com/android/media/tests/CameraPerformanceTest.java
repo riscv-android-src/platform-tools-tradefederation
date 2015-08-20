@@ -52,7 +52,7 @@ public class CameraPerformanceTest implements IDeviceTest, IRemoteTest {
             "android.support.test.runner.AndroidJUnitRunner";
 
     @Option(name = "ru-key", description = "Result key to use when posting to the dashboard.")
-    private String RU_KEY = "CameraFrameworkPerformance";
+    private String mRuKey = "CameraFrameworkPerformance";
 
     private final int MAX_TEST_TIMEOUT = 10 * 60 * 1000; // 10 mins
 
@@ -333,8 +333,8 @@ public class CameraPerformanceTest implements IDeviceTest, IRemoteTest {
      * @param metrics The {@link Map} that contains metrics for the given test
      */
     private void postMetrics(ITestInvocationListener listener, Map<String, String> metrics) {
-        listener.testRunStarted(RU_KEY, 1);
-        TestIdentifier testId = new TestIdentifier(RU_KEY, LOG_TAG);
+        listener.testRunStarted(mRuKey, 1);
+        TestIdentifier testId = new TestIdentifier(mRuKey, LOG_TAG);
         listener.testStarted(testId);
         listener.testEnded(testId, Collections.<String, String> emptyMap());
         listener.testRunEnded(0, metrics);
