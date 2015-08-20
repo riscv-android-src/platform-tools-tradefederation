@@ -46,7 +46,7 @@ import java.util.Map;
 /**
  * A {@link ITargetPreparer} that will create an avd and launch an emulator
  */
-public class SdkAvdPreparer implements ITargetPreparer, ITargetCleaner {
+public class SdkAvdPreparer implements ITargetPreparer, IHostCleaner {
 
 
     @Option(name = "sdk-target", description = "the name of SDK target to launch. " +
@@ -502,8 +502,7 @@ public class SdkAvdPreparer implements ITargetPreparer, ITargetCleaner {
     }
 
     @Override
-    public void tearDown(ITestDevice device, IBuildInfo buildInfo, Throwable e)
-            throws DeviceNotAvailableException {
+    public void cleanUp(IBuildInfo buildInfo, Throwable e) {
         if (mSdkHome != null) {
             CLog.i("Removing tmp sdk home dir %s", mSdkHome.getAbsolutePath());
             FileUtil.recursiveDelete(mSdkHome);

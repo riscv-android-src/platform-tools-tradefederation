@@ -40,6 +40,7 @@ import com.android.tradefed.result.LogDataType;
 import com.android.tradefed.result.LogFile;
 import com.android.tradefed.result.ResultForwarder;
 import com.android.tradefed.targetprep.BuildError;
+import com.android.tradefed.targetprep.IHostCleaner;
 import com.android.tradefed.targetprep.ITargetCleaner;
 import com.android.tradefed.targetprep.ITargetPreparer;
 import com.android.tradefed.targetprep.TargetSetupError;
@@ -511,15 +512,17 @@ public class TestInvocation implements ITestInvocation {
                 doTeardown(config, device, info, exception);
             } catch (DeviceNotAvailableException|RuntimeException e) {
                 tearDownException = e;
+                CLog.e("Exception when tearing down invocation: %s", tearDownException.toString());
+                CLog.e(tearDownException);
                 if (exception == null) {
-                    // only log & report when the exception is new during tear down
-                    CLog.e("Exception when tearing down invocation: %s", tearDownException.toString());
-                    CLog.e(tearDownException);
+                    // only report when the exception is new during tear down
                     reportFailure(tearDownException, listener, config, info, rescheduler);
                 }
             }
             mStatus = "done running tests";
             try {
+                // Clean up host.
+                doCleanUp(config, info, exception);
                 reportLogs(device, listener, config.getLogOutput());
                 elapsedTime = System.currentTimeMillis() - startTime;
                 if (!resumed) {
@@ -569,6 +572,20 @@ public class TestInvocation implements ITestInvocation {
                 ITargetCleaner cleaner = (ITargetCleaner) preparer;
                 if (cleaner != null) {
                     cleaner.tearDown(device, info, exception);
+                }
+            }
+        }
+    }
+
+    private void doCleanUp(IConfiguration config, IBuildInfo info, Throwable exception) {
+        List<ITargetPreparer> preparers = config.getTargetPreparers();
+        ListIterator<ITargetPreparer> itr = preparers.listIterator(preparers.size());
+        while (itr.hasPrevious()) {
+            ITargetPreparer preparer = itr.previous();
+            if (preparer instanceof IHostCleaner) {
+                IHostCleaner cleaner = (IHostCleaner) preparer;
+                if (cleaner != null) {
+                    cleaner.cleanUp(info, exception);
                 }
             }
         }
