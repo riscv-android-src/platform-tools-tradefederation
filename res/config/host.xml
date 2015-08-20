@@ -15,8 +15,10 @@
 -->
 <configuration description="Runs a single host based test on an existing device">
 
+    <option name="log-level" value="verbose" />
+    <option name="compress-files" value="false" />
     <test class="com.android.tradefed.testtype.HostTest" />
     <logger class="com.android.tradefed.log.FileLogger" />
-    <result_reporter class="com.android.tradefed.result.XmlResultReporter" />
+    <result_reporter class="com.android.tradefed.result.ConsoleResultReporter" />
 
 </configuration>

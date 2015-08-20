@@ -15,9 +15,11 @@
  */
 package com.android.tradefed.testtype;
 
+import com.android.tradefed.config.ConfigurationException;
 import com.android.tradefed.config.Option;
 import com.android.tradefed.config.Option.Importance;
 import com.android.tradefed.config.OptionClass;
+import com.android.tradefed.config.OptionSetter;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.result.ITestInvocationListener;
@@ -25,6 +27,9 @@ import com.android.tradefed.result.ITestInvocationListener;
 import junit.framework.Test;
 import junit.framework.TestCase;
 import junit.framework.TestSuite;
+
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * A test runner for JUnit host based tests
@@ -39,6 +44,12 @@ public class HostTest implements IDeviceTest, IRemoteTest {
     @Option(name="method", description="The JUnit TestCase method to run.",
             importance = Importance.IF_UNSET)
     private String mMethodName;
+
+    @Option(name="set-option", description = "Options to be passed down to the class "
+            + "under test, key and value should be separated by colon \":\"; for example, if class "
+            + "under test supports \"--iteration 1\" from a command line, it should be passed in as"
+            + " \"--set-option iteration:1\"; escaping of \":\" is currently not supported")
+    private List<String> mKeyValueOptions = new ArrayList<>();
 
     private ITestDevice mDevice = null;
 
@@ -84,6 +95,25 @@ public class HostTest implements IDeviceTest, IRemoteTest {
         }
         Class<?> classObj = loadTestClass(mClassName);
         Object testObj = loadObject(classObj);
+        // set options
+        if (!mKeyValueOptions.isEmpty()) {
+            try {
+                OptionSetter setter = new OptionSetter(testObj);
+                for (String item : mKeyValueOptions) {
+                    String[] fields = item.split(":");
+                    if (fields.length == 2) {
+                        setter.setOptionValue(fields[0], fields[1]);
+                    } else if (fields.length == 3) {
+                        setter.setOptionValue(fields[0], fields[1], fields[2]);
+                    } else {
+                        throw new RuntimeException(
+                                String.format("invalid option spec \"%s\"", item));
+                    }
+                }
+            } catch (ConfigurationException ce) {
+                throw new RuntimeException("error passing options down to test class", ce);
+            }
+        }
         if (testObj instanceof IDeviceTest) {
             if (mDevice == null) {
                 throw new IllegalArgumentException("Missing device");
