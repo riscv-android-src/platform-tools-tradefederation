@@ -364,6 +364,9 @@ public class RunUtil implements IRunUtil {
         private boolean mLogErrors = true;
 
         RunnableNotifier(IRunUtil.IRunnableResult runnable, boolean logErrors) {
+            // Set this thread to be a daemon so that it does not prevent
+            // TF from shutting down.
+            setDaemon(true);
             mRunnable = runnable;
             mLogErrors = logErrors;
         }
