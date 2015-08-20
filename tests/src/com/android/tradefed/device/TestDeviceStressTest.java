@@ -137,6 +137,35 @@ public class TestDeviceStressTest extends DeviceTestCase {
     }
 
     /**
+     * Test to sync a host side folder to device
+     */
+    public void testSyncDataWithManyFiles() throws IOException, DeviceNotAvailableException {
+        File tmpDir = null;
+        String deviceFilePath = null;
+        String externalStorePath = mTestDevice.getMountPoint(IDevice.MNT_EXTERNAL_STORAGE);
+        assertNotNull(externalStorePath);
+        deviceFilePath = String.format("%s/%s", externalStorePath, "testDir");
+
+        // start the stress test
+        try {
+            // Create the test folder and make sure the test folder doesn't exist in
+            // device before the test start.
+            tmpDir = createTempTestFiles();
+            assertTrue(String.format(
+                    "failed to sync test data from local-data-path %s to %s on device %s",
+                    tmpDir.getAbsolutePath(), deviceFilePath, mTestDevice.getSerialNumber()),
+                    mTestDevice.syncFiles(tmpDir, deviceFilePath));
+        } finally {
+            if (tmpDir != null) {
+                FileUtil.recursiveDelete(tmpDir);
+            }
+            mTestDevice.executeShellCommand(String.format("rm -r %s", deviceFilePath));
+            assertFalse(String.format("%s exists", deviceFilePath),
+                    mTestDevice.doesFileExist(deviceFilePath));
+        }
+    }
+
+    /**
      * Run the test app UI tests and return true if they all pass.
      */
     private boolean runUITests() throws DeviceNotAvailableException {

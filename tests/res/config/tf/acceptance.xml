@@ -16,6 +16,7 @@
 <configuration
     description="Run the tradefed stress tests on a userdebug build with single iteration">
 
+    <option name="bugreport-on-invocation-ended" value="false" />
     <test class="com.android.tradefed.device.TestDeviceStressTest">
         <option name="iterations" value="1" />
     </test>
