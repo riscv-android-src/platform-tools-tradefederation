@@ -50,7 +50,9 @@ public class CameraPerformanceTest implements IDeviceTest, IRemoteTest {
     private static final String TEST_PACKAGE_NAME = "com.android.cts.hardware";
     private static final String TEST_RUNNER_NAME =
             "android.support.test.runner.AndroidJUnitRunner";
-    private static final String RU_KEY = "camera_framework_performance";
+
+    @Option(name = "ru-key", description = "Result key to use when posting to the dashboard.")
+    private String RU_KEY = "CameraFrameworkPerformance";
 
     private final int MAX_TEST_TIMEOUT = 10 * 60 * 1000; // 10 mins
 
