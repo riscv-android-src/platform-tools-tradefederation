@@ -99,8 +99,8 @@ public class VellamoBenchmark implements IDeviceTest, IRemoteTest {
         while (isRunningBenchmark && !isResultGenerated && !isTimedOut) {
             RunUtil.getDefault().sleep(POLLING_INTERVAL_MS);
             isTimedOut = (System.currentTimeMillis() - benchmarkStartTime >= TIMEOUT_MS);
-            isRunningBenchmark = device.executeShellCommand("ps com.quicinc.vellamo").contains(
-                    "com.quicinc.vellamo");
+            isRunningBenchmark = device.executeShellCommand("ps | grep com.quicinc.vellamo")
+                    .contains("com.quicinc.vellamo");
 
             // get the logcat and parse
             BufferedReader logcat =
