@@ -124,7 +124,16 @@ public class ConsoleResultReporter extends CollectingTestListener implements ILo
      */
     String getTestSummary(TestIdentifier testId, TestResult testResult) {
         StringBuilder sb = new StringBuilder();
-        sb.append(String.format("  %s: %s\n", testId.toString(), testResult.getStatus()));
+        sb.append(String.format("  %s: %s (%dms)\n", testId.toString(), testResult.getStatus(),
+                testResult.getEndTime() - testResult.getStartTime()));
+        String stack = testResult.getStackTrace();
+        if (stack != null && !stack.isEmpty()) {
+            sb.append("  stack=\n");
+            String lines[] = stack.split("\\r?\\n");
+            for (String line : lines) {
+                sb.append(String.format("    %s\n", line));
+            }
+        }
         Map<String, String> metrics = testResult.getMetrics();
         if (metrics != null && !metrics.isEmpty()) {
             List<String> metricKeys = new ArrayList<String>(metrics.keySet());
