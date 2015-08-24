@@ -44,14 +44,19 @@ import java.util.concurrent.TimeUnit;
  */
 public class AudioLoopbackTest implements IDeviceTest, IRemoteTest {
 
-    private static final String RUN_KEY = "AudioLoopback";
     private static final long TIMEOUT_MS = 5 * 60 * 1000; // 5 min
     private static final long DEVICE_SYNC_MS = 5 * 60 * 1000; // 5 min
     private static final long POLLING_INTERVAL_MS = 5 * 1000;
     private static final int MAX_ATTEMPTS = 3;
+    private static final String TESTTYPE_LATENCY = "222";
+    private static final String TESTTYPE_BUFFER = "223";
+
     private static final Map<String, String> METRICS_KEY_MAP = createMetricsKeyMap();
 
     private ITestDevice mDevice;
+
+    @Option(name = "run-key", description = "Run key for the test")
+    private String mRunKey = "AudioLoopback";
 
     @Option(name = "sampling-freq", description = "Sampling Frequency for Loopback app")
     private String mSamplingFreq = "48000";
@@ -62,22 +67,41 @@ public class AudioLoopbackTest implements IDeviceTest, IRemoteTest {
     @Option(name = "audio-thread", description = "Audio Thread for Loopback app")
     private String mAudioThread = "1";
 
-    @Option(name = "audio-level", description = "Audio Level for Loopback app")
+    @Option(name = "audio-level", description = "Audio Level for Loopback app. " +
+        "A device specific param which makes waveform in loopback test hit 60% to 80% range")
     private String mAudioLevel = "12";
+
+    @Option(name = "test-type", description = "Test type to be executed")
+    private String mTestType = TESTTYPE_LATENCY;
+
+    @Option(name = "buffer-test-duration", description = "Buffer test duration in seconds")
+    private String mBufferTestDuration = "10";
 
     @Option(name = "key-prefix", description = "Key Prefix for reporting")
     private String mKeyPrefix = "48000_Mic3_";
 
     private final String DEVICE_TEMP_DIR_PATH = "/sdcard/";
     private final String OUTPUT_FILENAME = "output_" + System.currentTimeMillis();
-    private final String OUTPUT_TXT_PATH = DEVICE_TEMP_DIR_PATH + OUTPUT_FILENAME + ".txt";
+    private final String OUTPUT_RESULT_TXT_PATH = DEVICE_TEMP_DIR_PATH + OUTPUT_FILENAME + ".txt";
     private final String OUTPUT_PNG_PATH = DEVICE_TEMP_DIR_PATH + OUTPUT_FILENAME + ".png";
     private final String OUTPUT_WAV_PATH = DEVICE_TEMP_DIR_PATH + OUTPUT_FILENAME + ".wav";
+    private final String OUTPUT_PLAYER_BUFFER_PATH =
+            DEVICE_TEMP_DIR_PATH + OUTPUT_FILENAME + "_playerBufferPeriod.txt";
+    private final String OUTPUT_RECORDER_BUFFER_PATH =
+            DEVICE_TEMP_DIR_PATH + OUTPUT_FILENAME + "_recorderBufferPeriod.txt";
+    private final String AM_CMD = "am start -n org.drrickorang.loopback/.LoopbackActivity" +
+            " --ei SF %s --es FileName %s --ei MicSource %s --ei AudioThread %s" +
+            " --ei AudioLevel %s --ei TestType %s --ei BufferTestDuration %s";
 
     private static Map<String, String> createMetricsKeyMap() {
         Map<String, String> result = new HashMap<String, String>();
         result.put("LatencyMs", "latency_ms");
         result.put("LatencyConfidence", "latency_confidence");
+        result.put("Recorder Benchmark", "recorder_benchmark");
+        result.put("Recorder Number of Outliers", "recorder_outliers");
+        result.put("Player Benchmark", "player_benchmark");
+        result.put("Player Number of Outliers", "player_outliers");
+        result.put("Estimated Number of Glitches", "number_of_glitches");
         return Collections.unmodifiableMap(result);
     }
 
@@ -102,38 +126,37 @@ public class AudioLoopbackTest implements IDeviceTest, IRemoteTest {
      */
     @Override
     public void run(ITestInvocationListener listener) throws DeviceNotAvailableException {
-        TestIdentifier testId = new TestIdentifier(getClass().getCanonicalName(), RUN_KEY);
+        TestIdentifier testId = new TestIdentifier(getClass().getCanonicalName(), mRunKey);
         ITestDevice device = getDevice();
         // Wait device to settle
         RunUtil.getDefault().sleep(DEVICE_SYNC_MS);
 
-        listener.testRunStarted(RUN_KEY, 0);
+        listener.testRunStarted(mRunKey, 0);
         listener.testStarted(testId);
 
         long testStartTime = System.currentTimeMillis();
         Map<String, String> metrics = new HashMap<String, String>();
-        String errMsg = null;
 
         // start measurement and wait for result file
         CollectingOutputReceiver receiver = new CollectingOutputReceiver();
         device.unlockDevice();
         String loopbackCmd = String.format(
-                "am start -n org.drrickorang.loopback/.LoopbackActivity" +
-                " --ei SF %s --es FileName %s --ei MicSource %s --ei AudioThread %s" +
-                " --ei AudioLevel %s", mSamplingFreq, OUTPUT_FILENAME, mMicSource,
-                mAudioThread, mAudioLevel);
+                AM_CMD, mSamplingFreq, OUTPUT_FILENAME, mMicSource, mAudioThread,
+                mAudioLevel, mTestType, mBufferTestDuration);
         CLog.i("Running cmd: " + loopbackCmd);
         device.executeShellCommand(loopbackCmd, receiver,
                 TIMEOUT_MS, TimeUnit.MILLISECONDS, MAX_ATTEMPTS);
+        long timeout = Long.parseLong(mBufferTestDuration) * 1000 + TIMEOUT_MS;
         long loopbackStartTime = System.currentTimeMillis();
         boolean isTimedOut = false;
         boolean isResultGenerated = false;
+        File loopbackReport = null;
         while (!isResultGenerated && !isTimedOut) {
             RunUtil.getDefault().sleep(POLLING_INTERVAL_MS);
-            isTimedOut = (System.currentTimeMillis() - loopbackStartTime >= TIMEOUT_MS);
-            boolean isResultFileFound = device.doesFileExist(OUTPUT_TXT_PATH);
+            isTimedOut = (System.currentTimeMillis() - loopbackStartTime >= timeout);
+            boolean isResultFileFound = device.doesFileExist(OUTPUT_RESULT_TXT_PATH);
             if (isResultFileFound) {
-                File loopbackReport = device.pullFile(OUTPUT_TXT_PATH);
+                loopbackReport = device.pullFile(OUTPUT_RESULT_TXT_PATH);
                 if (loopbackReport.length() > 0) {
                     isResultGenerated = true;
                 }
@@ -141,47 +164,66 @@ public class AudioLoopbackTest implements IDeviceTest, IRemoteTest {
         }
 
         if (isTimedOut) {
-            errMsg = "Loopback result not found, time out.";
-        } else {
-            // TODO: fail the test or rerun if the confidence level is too low
-            // parse result
-            CLog.i("== Loopback result ==");
-            File loopbackReport = device.pullFile(OUTPUT_TXT_PATH);
-            try {
-                Map<String, String> loopbackResult = parseResult(loopbackReport);
-                if (loopbackResult == null || loopbackResult.size() == 0) {
-                    errMsg = "Failed to parse Loopback result.";
-                } else {
-                    metrics = loopbackResult;
-                    listener.testLog(mKeyPrefix + "result", LogDataType.TEXT,
-                            new SnapshotInputStreamSource(new FileInputStream(loopbackReport)));
-                    File loopbackGraphFile = device.pullFile(OUTPUT_PNG_PATH);
-                    listener.testLog(mKeyPrefix + "graph", LogDataType.PNG,
-                            new SnapshotInputStreamSource(new FileInputStream(loopbackGraphFile)));
-                    File loopbackWaveFile = device.pullFile(OUTPUT_WAV_PATH);
-                    listener.testLog(mKeyPrefix + "wave", LogDataType.UNKNOWN,
-                            new SnapshotInputStreamSource(new FileInputStream(loopbackWaveFile)));
-                }
-            } catch (IOException ioe) {
-                CLog.e(ioe.getMessage());
-                errMsg = "I/O error while parsing Loopback result.";
+            reportFailure(listener, testId, "Loopback result not found, timed out.");
+            return;
+        }
+        // TODO: fail the test or rerun if the confidence level is too low
+        // parse result
+        CLog.i("== Loopback result ==");
+        try {
+            Map<String, String> loopbackResult = parseResult(loopbackReport);
+            if (loopbackResult == null || loopbackResult.size() == 0) {
+                reportFailure(listener, testId, "Failed to parse Loopback result.");
+                return;
             }
+            metrics = loopbackResult;
+            listener.testLog(mKeyPrefix + "result", LogDataType.TEXT,
+                    new SnapshotInputStreamSource(new FileInputStream(loopbackReport)));
+            File loopbackGraphFile = device.pullFile(OUTPUT_PNG_PATH);
+            listener.testLog(mKeyPrefix + "graph", LogDataType.PNG,
+                    new SnapshotInputStreamSource(new FileInputStream(loopbackGraphFile)));
+            File loopbackWaveFile = device.pullFile(OUTPUT_WAV_PATH);
+            listener.testLog(mKeyPrefix + "wave", LogDataType.UNKNOWN,
+                    new SnapshotInputStreamSource(new FileInputStream(loopbackWaveFile)));
+            if (mTestType.equals(TESTTYPE_BUFFER)) {
+                File loopbackPlayerBuffer = device.pullFile(OUTPUT_PLAYER_BUFFER_PATH);
+                listener.testLog(mKeyPrefix + "player_buffer", LogDataType.TEXT,
+                        new SnapshotInputStreamSource(
+                                new FileInputStream(loopbackPlayerBuffer)));
+                File loopbackRecorderBuffer = device.pullFile(OUTPUT_RECORDER_BUFFER_PATH);
+                listener.testLog(mKeyPrefix + "recorder_buffer", LogDataType.TEXT,
+                        new SnapshotInputStreamSource(new FileInputStream(
+                                loopbackRecorderBuffer)));
+            }
+        } catch (IOException ioe) {
+            CLog.e(ioe.getMessage());
+            reportFailure(listener, testId, "I/O error while parsing Loopback result.");
+            return;
         }
 
-        if (errMsg != null) {
-            CLog.e(errMsg);
-            listener.testFailed(testId, errMsg);
-            listener.testEnded(testId, metrics);
-            listener.testRunFailed(errMsg);
-        } else {
-            long durationMs = System.currentTimeMillis() - testStartTime;
-            listener.testEnded(testId, metrics);
-            listener.testRunEnded(durationMs, metrics);
-        }
+        long durationMs = System.currentTimeMillis() - testStartTime;
+        listener.testEnded(testId, metrics);
+        listener.testRunEnded(durationMs, metrics);
+    }
+
+    /**
+     * Report failure with error message specified and fail the test.
+     *
+     * @param listener
+     * @param testId
+     * @param errMsg
+     */
+    private void reportFailure(ITestInvocationListener listener, TestIdentifier testId,
+            String errMsg) {
+        CLog.e(errMsg);
+        listener.testFailed(testId, errMsg);
+        listener.testEnded(testId, new HashMap<String, String>());
+        listener.testRunFailed(errMsg);
     }
 
     /**
      * Parse result.
+     * Format: key = value
      *
      * @param result Loopback app result file
      * @return a {@link HashMap} that contains metrics keys and results
