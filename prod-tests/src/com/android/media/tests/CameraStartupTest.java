@@ -17,20 +17,11 @@
 package com.android.media.tests;
 
 import com.android.ddmlib.testrunner.TestIdentifier;
-import com.android.tradefed.config.Option;
 import com.android.tradefed.config.OptionClass;
 import com.android.tradefed.device.DeviceNotAvailableException;
-import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.result.ITestInvocationListener;
-import com.android.tradefed.result.StubTestInvocationListener;
-import com.android.tradefed.testtype.IDeviceTest;
-import com.android.tradefed.testtype.IRemoteTest;
-import com.android.tradefed.testtype.InstrumentationTest;
 
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.regex.Matcher;
@@ -42,38 +33,18 @@ import java.util.regex.Pattern;
  * Runs CameraActivityTest to measure Camera startup time and reports the metrics.
  */
 @OptionClass(alias = "camera-startup")
-public class CameraStartupTest implements IDeviceTest, IRemoteTest {
+public class CameraStartupTest extends CameraTestBase {
 
     private static final Pattern STATS_REGEX = Pattern.compile(
         "^(?<coldStartup>[0-9.]+)\\|(?<warmStartup>[0-9.]+)\\|(?<values>[0-9 .-]+)");
     private static final String PREFIX_COLD_STARTUP = "Cold";
 
-    private static final String TEST_PACKAGE_NAME = "com.google.android.camera";
-    private static final String TEST_CLASS_NAME = "com.android.camera.latency.CameraStartupTest";
-    private static final String TEST_RUNNER_NAME = "android.test.InstrumentationTestRunner";
-    private static final int MAX_TEST_TIMEOUT_MS = 60 * 60 * 1000; // 1 hours
-    private static final String RU_KEY = "CameraAppStartup";
-
-    @Option(name = "testMethod", shortName = 'm',
-            description = "Test method to run. May be repeated.")
-    private Collection<String> mTestMethods = new ArrayList<String>();
-
-    private ITestDevice mDevice = null;
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public void setDevice(ITestDevice device) {
-        mDevice = device;
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public ITestDevice getDevice() {
-        return mDevice;
+    public CameraStartupTest() {
+        setTestPackage("com.google.android.camera");
+        setTestClass("com.android.camera.latency.CameraStartupTest");
+        setTestRunner("android.test.InstrumentationTestRunner");
+        setRuKey("CameraAppStartup");
+        setTestTimeoutMs(60 * 60 * 1000);   // 1 hour
     }
 
     /**
@@ -81,62 +52,18 @@ public class CameraStartupTest implements IDeviceTest, IRemoteTest {
      */
     @Override
     public void run(ITestInvocationListener listener) throws DeviceNotAvailableException {
-        InstrumentationTest instr = new InstrumentationTest();
-        instr.setDevice(getDevice());
-        instr.setPackageName(TEST_PACKAGE_NAME);
-        instr.setRunnerName(TEST_RUNNER_NAME);
-        instr.setClassName(TEST_CLASS_NAME);
-        instr.setTestTimeout(MAX_TEST_TIMEOUT_MS);
-        instr.setShellTimeout(MAX_TEST_TIMEOUT_MS);
-
-        listener.testRunStarted(RU_KEY, 0);
-        CollectingListener collectingListener = new CollectingListener(listener);
-
-        // Run tests.
-        if (mTestMethods.size() > 0) {
-            CLog.d(String.format("The number of test methods is: %d", mTestMethods.size()));
-            for (String testName : mTestMethods) {
-                instr.setMethodName(testName);
-                instr.run(collectingListener);
-            }
-        } else {
-            instr.run(collectingListener);
-        }
-
-        // Report metrics at the end of test run.
-        listener.testRunEnded(0, collectingListener.getFinalMetrics());
+        runInstrumentationTest(listener, new CollectingListener());
     }
 
     /**
      * A listener to collect the output from test run and fatal errors
      */
-    private class CollectingListener extends StubTestInvocationListener {
-        private ITestInvocationListener mListener;
-        private Map<String, String> mFinalMetrics = new HashMap<String, String>();
-
-        public CollectingListener(ITestInvocationListener listener) {
-            mListener = listener;
-        }
-
-        @Override
-        public void testStarted(TestIdentifier test) {
-            super.testStarted(test);
-            mListener.testStarted(test);
-        }
-
-        @Override
-        public void testFailed(TestIdentifier test, String trace) {
-            super.testFailed(test, trace);
-            CLog.d("Test (%s) Failed to complete: %s", test.getTestName(), trace);
-            mListener.testFailed(test, trace);
-        }
+    private class CollectingListener extends CollectingListenerBase {
 
         @Override
         public void testEnded(TestIdentifier test, Map<String, String> testMetrics) {
-            super.testEnded(test, testMetrics);
             // Test metrics accumulated will be posted at the end of test run.
-            mFinalMetrics.putAll(parseResults(testMetrics));
-            mListener.testEnded(test, Collections.<String, String>emptyMap());
+            getMetrics().putAll(parseResults(testMetrics));
         }
 
         public Map<String, String> parseResults(Map<String, String> testMetrics) {
@@ -165,10 +92,6 @@ public class CameraStartupTest implements IDeviceTest, IRemoteTest {
                 }
             }
             return parsed;
-        }
-
-        public Map<String, String> getFinalMetrics() {
-            return mFinalMetrics;
         }
     }
 }
