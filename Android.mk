@@ -29,7 +29,7 @@ LOCAL_MODULE_TAGS := optional
 LOCAL_STATIC_JAVA_LIBRARIES := junit kxml2-2.3.0 jline-1.0 tf-remote-client
 # emmalib is only a runtime dependency if generating code coverage reporters,
 # not a compile time dependency
-LOCAL_JAVA_LIBRARIES := ddmlib-prebuilt emmalib tools-common-prebuilt
+LOCAL_JAVA_LIBRARIES := ddmlib-prebuilt emmalib tools-common-prebuilt devtools-annotations-prebuilt
 
 include $(BUILD_HOST_JAVA_LIBRARY)
 
@@ -86,7 +86,7 @@ include $(call all-makefiles-under,$(LOCAL_PATH))
 # Zip up the built files and dist it as google-tradefed.zip
 ifneq (,$(filter tradefed, $(TARGET_BUILD_APPS)))
 
-tradefed_dist_host_jars := tradefed tradefed-tests ddmlib-prebuilt tf-prod-tests emmalib loganalysis loganalysis-tests tf-remote-client
+tradefed_dist_host_jars := tradefed tradefed-tests ddmlib-prebuilt tf-prod-tests emmalib loganalysis loganalysis-tests tf-remote-client devtools-annotations-prebuilt
 tradefed_dist_host_jar_files := $(foreach m, $(tradefed_dist_host_jars), $(HOST_OUT_JAVA_LIBRARIES)/$(m).jar)
 
 tradefed_dist_host_exes := tradefed.sh
