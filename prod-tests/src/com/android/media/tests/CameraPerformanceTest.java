@@ -110,53 +110,65 @@ public class CameraPerformanceTest extends CameraTestBase {
      */
     private class Camera2KpiData {
         public class KpiItem {
-            private String mTestId;     // "android.hardware.camera2.cts.PerformanceTest#testSingleCapture"
-            private String mCameraId;   // "0" or "1"
-            private String mKpiName;    // "Camera capture latency"
-            private String mType;       // "lower_better"
-            private String mUnit;       // "ms"
-            private String mKpiValue;   // "736.0 688.0 679.0 667.0 686.0"
-            private String mKey;        // primary key = cameraId + kpiName
-            private KpiItem(String testId, String cameraId, String kpiName, String type,
-                    String unit, String kpiValue) {
-                mTestId = testId;
-                mCameraId = cameraId;
-                mKpiName = kpiName;
-                mType = type;
-                mUnit = unit;
-                mKpiValue = kpiValue;
-                // Note that the key shouldn't contain ":" for side by side report.
-                mKey = String.format("Camera %s %s", cameraId, kpiName);
-            }
-            public String getTestId() { return mTestId; }
-            public String getCameraId() { return mCameraId; }
-            public String getKpiName() { return mKpiName; }
-            public String getType() { return mType; }
-            public String getUnit() { return mUnit; }
-            public String getKpiValue() { return mKpiValue; }
-            public String getKey() { return mKey; }
+            String testMethod; // "testSingleCapture"
+            String code;       // "android.hardware.camera2.cts.PerformanceTest#testSingleCapture"
+            String cameraId;   // "0" or "1"
+            String kpiName;    // "Camera capture latency"
+            String type;       // "lower_better"
+            String unit;       // "ms"
+            String kpiValue;   // "736.0 688.0 679.0 667.0 686.0"
+            String key;        // primary key = cameraId + kpiName (+ testName if needed)
+        }
+        KpiItem summary;
+        Map<String, KpiItem> kpiItems = new HashMap<String, KpiItem>();
+
+        public KpiItem createItem(String testMethod, String code, String cameraId, String kpiName,
+                String type, String unit, String kpiValue) {
+            KpiItem kpiItem = new KpiItem();
+            kpiItem.testMethod = testMethod;
+            kpiItem.code = code;
+            kpiItem.cameraId = cameraId;
+            kpiItem.kpiName = kpiName;
+            kpiItem.type = type;
+            kpiItem.unit = unit;
+            kpiItem.kpiValue = kpiValue;
+            kpiItem.key = getRuSchemaKeyName(testMethod, cameraId, kpiName);
+            return kpiItem;
         }
 
-        private KpiItem mSummary;
-        private Map<String, KpiItem> mKpis = new HashMap<String, KpiItem>();
-
-        public KpiItem createItem(String testId, String cameraId, String kpiName, String type,
-                String unit, String kpiValue) {
-            return new KpiItem(testId, cameraId, kpiName, type, unit, kpiValue);
-        }
-        public KpiItem getSummary() { return mSummary; }
-        public void setSummary(KpiItem summary) { mSummary = summary; }
-        public List<KpiItem> getKpisByKpiName(String kpiName) {
-            List<KpiItem> kpiItems = new ArrayList<KpiItem>();
-            for (KpiItem log : mKpis.values()) {
-                if (log.getKpiName().equals(kpiName)) {
-                    kpiItems.add(log);
+        private String getRuSchemaKeyName(String testMethod, String cameraId, String kpiName) {
+            // Note 1: The key shouldn't contain ":" for side by side report.
+            // Note 2: Two tests testReprocessingLatency & testReprocessingThroughput have the
+            // same metric names to report results. To make the report key name distinct,
+            // the test name is added as prefix for these tests for them.
+            String key = String.format("Camera %s %s", cameraId, kpiName);
+            final String[] TEST_NAMES_AS_PREFIX = {"testReprocessingLatency",
+                    "testReprocessingThroughput"};
+            for (String testName : TEST_NAMES_AS_PREFIX) {
+                if (testMethod.endsWith(testName)) {
+                    key = String.format("%s_%s", testName, key);
+                    break;
                 }
             }
-            return kpiItems;
+            return key;
         }
+
+        public List<KpiItem> getKpiItemsByKpiName(String kpiName) {
+            List<KpiItem> matchedKpis = new ArrayList<KpiItem>();
+            for (KpiItem log : kpiItems.values()) {
+                if (log.kpiName.equals(kpiName)) {
+                    matchedKpis.add(log);
+                }
+            }
+            return matchedKpis;
+        }
+
+        public void setSummary(KpiItem kpiItem) {
+            summary = kpiItem;
+        }
+
         public void addKpi(KpiItem kpiItem) {
-            mKpis.put(kpiItem.getKey(), kpiItem);
+            kpiItems.put(kpiItem.key, kpiItem);
         }
     }
 
@@ -166,7 +178,7 @@ public class CameraPerformanceTest extends CameraTestBase {
      *
      * Format:
      *   (summary message)| |(type)|(unit)|(value) ++++
-     *   (test id)|(message)|(type)|(unit)|(value)... +++
+     *   (code)|(message)|(type)|(unit)|(value)... +++
      *   ...
      *
      * Example:
@@ -185,7 +197,7 @@ public class CameraPerformanceTest extends CameraTestBase {
         private final Pattern SUMMARY_REGEX = Pattern.compile(
                 "^(?<message>[^|]+)\\| \\|(?<type>[^|]+)\\|(?<unit>[^|]+)\\|(?<value>[0-9 .]+)");
         private final Pattern KPI_REGEX = Pattern.compile(
-                "^(?<testId>[^|]+)\\|(?<message>[^|]+)\\|(?<type>[^|]+)\\|(?<unit>[^|]+)\\|(?<values>[0-9 .]+)");
+                "^(?<code>[^|]+)\\|(?<message>[^|]+)\\|(?<type>[^|]+)\\|(?<unit>[^|]+)\\|(?<values>[0-9 .]+)");
         // eg. "Camera 0: Camera capture latency"
         private final Pattern KPI_KEY_REGEX = Pattern.compile(
                 "^Camera\\s+(?<cameraId>\\d+):\\s+(?<kpiName>.*)");
@@ -193,10 +205,14 @@ public class CameraPerformanceTest extends CameraTestBase {
         // KPIs to be reported. The key is test methods and the value is KPIs in the method.
         private final ImmutableMultimap<String, String> REPORTING_KPIS =
                 new ImmutableMultimap.Builder<String, String>()
-                        .put("testCameraLaunch", "Camera launch time")
-                        .put("testCameraLaunch", "Camera start preview time")
-                        .put("testSingleCapture", "Camera capture result latency")
-                        .build();
+                    .put("testCameraLaunch", "Camera launch time")
+                    .put("testCameraLaunch", "Camera start preview time")
+                    .put("testSingleCapture", "Camera capture result latency")
+                    .put("testReprocessingLatency", "YUV reprocessing shot to shot latency")
+                    .put("testReprocessingLatency", "opaque reprocessing shot to shot latency")
+                    .put("testReprocessingThroughput", "YUV reprocessing capture latency")
+                    .put("testReprocessingThroughput", "opaque reprocessing capture latency")
+                    .build();
 
         /**
          * Parse Camera Performance KPIs result first, then leave the only KPIs that matter.
@@ -206,22 +222,24 @@ public class CameraPerformanceTest extends CameraTestBase {
          * @return a {@link HashMap} that contains kpiName and kpiValue
          */
         public Map<String, String> parse(String input, String testMethod) {
-            return filter(parseToData(input), testMethod);
+            Camera2KpiData parsed = parseToData(input, testMethod);
+            return filter(parsed, testMethod);
         }
 
         private Map<String, String> filter(Camera2KpiData data, String testMethod) {
             Map<String, String> filtered = new HashMap<String, String>();
             for (String kpiToReport : REPORTING_KPIS.get(testMethod)) {
                 // Report the only selected KPIs. Each KPI has two items for back and front cameras.
-                List<Camera2KpiData.KpiItem> items = data.getKpisByKpiName(kpiToReport);
+                List<Camera2KpiData.KpiItem> items = data.getKpiItemsByKpiName(kpiToReport);
                 for (Camera2KpiData.KpiItem item : items) {
-                    filtered.put(item.getKey(), item.getKpiValue());
+                    // item.getKey() should be unique to post results to dashboard.
+                    filtered.put(item.key, item.kpiValue);
                 }
             }
             return filtered;
         }
 
-        private Camera2KpiData parseToData(String input) {
+        private Camera2KpiData parseToData(String input, String testMethod) {
             Camera2KpiData data = new Camera2KpiData();
 
             // Split summary and KPIs from stdout passes as parameter.
@@ -234,7 +252,7 @@ public class CameraPerformanceTest extends CameraTestBase {
             // Parse summary.
             // Example: "Camera launch average time for Camera 1| |lower_better|ms|586.6++++"
             if (summaryMatcher.matches()) {
-                data.setSummary(data.createItem(null,
+                data.setSummary(data.createItem(testMethod, null,
                         "-1",
                         summaryMatcher.group("message"),
                         summaryMatcher.group("type"),
@@ -265,7 +283,8 @@ public class CameraPerformanceTest extends CameraTestBase {
                         sum += Double.parseDouble(value);
                     }
                     String kpiValue = String.format("%.1f", sum / values.length);
-                    data.addKpi(data.createItem(kpiMatcher.group("testId"),
+                    data.addKpi(data.createItem(testMethod,
+                            kpiMatcher.group("code"),
                             cameraId,
                             kpiName,
                             kpiMatcher.group("type"),
