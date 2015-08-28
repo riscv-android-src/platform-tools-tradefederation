@@ -35,6 +35,7 @@ public class Camera2StressTest extends CameraTestBase {
         setTestRunner("android.test.InstrumentationTestRunner");
         setRuKey("CameraAppStress");
         setTestTimeoutMs(6 * 60 * 60 * 1000);   // 6 hours
+        setLogcatOnFailure(true);
     }
 
     /**

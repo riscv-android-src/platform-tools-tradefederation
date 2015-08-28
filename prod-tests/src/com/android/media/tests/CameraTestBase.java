@@ -21,8 +21,8 @@ import com.android.tradefed.config.Option;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.log.LogUtil.CLog;
+import com.android.tradefed.result.CollectingTestListener;
 import com.android.tradefed.result.ITestInvocationListener;
-import com.android.tradefed.result.ResultForwarder;
 import com.android.tradefed.result.StubTestInvocationListener;
 import com.android.tradefed.testtype.IDeviceTest;
 import com.android.tradefed.testtype.IRemoteTest;
@@ -63,8 +63,16 @@ public class CameraTestBase implements IDeviceTest, IRemoteTest {
     @Option(name = "ru-key", description = "Result key to use when posting to the dashboard.")
     private String mRuKey = null;
 
+    @Option(name = "logcat-on-failure", description =
+            "take a logcat snapshot on every test failure.")
+    private boolean mLogcatOnFailure = false;
+
     private ITestDevice mDevice = null;
-    private CollectingListenerBase mCollectingListener = null;
+
+    // A base listener to collect the results from each test run. Fatal error or failures will be
+    // forwarded to other listeners.
+    private AbstractCollectingListener mCollectingListener = null;
+
     private long mStartTimeMs = 0;
 
     /**
@@ -84,7 +92,7 @@ public class CameraTestBase implements IDeviceTest, IRemoteTest {
     protected void runInstrumentationTest(ITestInvocationListener listener)
             throws DeviceNotAvailableException {
         if (mCollectingListener == null) {
-            mCollectingListener = new CollectingListenerBase();
+            mCollectingListener = new DefaultCollectingListener(listener);
 
         }
         runInstrumentationTest(listener, mCollectingListener);
@@ -95,13 +103,15 @@ public class CameraTestBase implements IDeviceTest, IRemoteTest {
      * test runs.
      *
      * @param listener the ITestInvocationListener of test results
-     * @param collectingListener the listener to collect the metrics from test runs
+     * @param collectingListener the {@link CollectingTestListener} to collect the metrics from
+     *                           test runs
      * @throws DeviceNotAvailableException
      */
     protected void runInstrumentationTest(ITestInvocationListener listener,
-            CollectingListenerBase collectingListener)
+            AbstractCollectingListener collectingListener)
             throws DeviceNotAvailableException {
         Assert.assertNotNull(collectingListener);
+        mCollectingListener = collectingListener;
 
         InstrumentationTest instr = new InstrumentationTest();
         instr.setDevice(getDevice());
@@ -110,6 +120,7 @@ public class CameraTestBase implements IDeviceTest, IRemoteTest {
         instr.setClassName(getTestClass());
         instr.setTestTimeout(getTestTimeoutMs());
         instr.setShellTimeout(getTestTimeoutMs());
+        instr.setLogcatOnFailure(mLogcatOnFailure);
 
         mStartTimeMs = System.currentTimeMillis();
         listener.testRunStarted(getRuKey(), 1);
@@ -119,20 +130,19 @@ public class CameraTestBase implements IDeviceTest, IRemoteTest {
             CLog.d(String.format("The number of test methods is: %d", mTestMethods.size()));
             for (String testName : mTestMethods) {
                 instr.setMethodName(testName);
-                instr.run(new ResultForwarder(listener, collectingListener));
+                instr.run(mCollectingListener);
             }
         } else {
-            instr.run(new ResultForwarder(listener, collectingListener));
+            instr.run(mCollectingListener);
         }
 
         // Delegate a post process after test run ends to subclasses.
-        handleTestRunEnded(listener, collectingListener.getMetrics());
+        handleTestRunEnded(listener, mCollectingListener.getAggregatedMetrics());
     }
 
     /**
      * Report the start of an camera test run ended. Intended only when subclasses handle
-     * the aggregated results at the end of test run. Either
-     * {@link ITestInvocationListener#testRunEnded} or {@link ITestInvocationListener#testRunFailed}
+     * the aggregated results at the end of test run. {@link ITestInvocationListener#testRunEnded}
      * should be called to report end of test run in the method.
      *
      * @param listener - the ITestInvocationListener of test results
@@ -140,6 +150,7 @@ public class CameraTestBase implements IDeviceTest, IRemoteTest {
      */
     protected void handleTestRunEnded(ITestInvocationListener listener,
             Map<String, String> collectedMetrics) {
+
         // Report metrics at the end of test run.
         listener.testRunEnded(getTestDurationMs(), collectedMetrics);
     }
@@ -148,29 +159,99 @@ public class CameraTestBase implements IDeviceTest, IRemoteTest {
      * A base listener to collect the results from each test run. Fatal error or failures will be
      * forwarded to other listeners.
      */
-    protected class CollectingListenerBase extends StubTestInvocationListener {
+    protected abstract class AbstractCollectingListener extends StubTestInvocationListener {
 
+        private ITestInvocationListener mListener = null;
         private Map<String, String> mMetrics = new HashMap<String, String>();
+        private Map<String, String> mFatalErrors = new HashMap<String, String>();
+        private int mTestCount = 0;
 
-        public Map<String, String> getMetrics() {
-            return mMetrics;
-        }
+        private static final String INCOMPLETE_TEST_ERR_MSG_PREFIX =
+                "Test failed to run to completion. Reason: 'Instrumentation run failed";
 
-        public void setMetrics(Map<String, String> metrics) {
-            mMetrics = metrics;
+        public AbstractCollectingListener(ITestInvocationListener listener) {
+            mListener = listener;
         }
 
         /**
-         * Report the end of an individual camera test. Intended only when subclasses set the
-         * aggregated metrics on purpose.
+         * Report the end of an individual camera test and delegate handling the collected metrics
+         * to subclasses.
          *
          * @param test identifies the test
          * @param testMetrics a {@link Map} of the metrics emitted
          */
         @Override
         public void testEnded(TestIdentifier test, Map<String, String> testMetrics) {
+            handleCollectedMetrics(test, testMetrics);
+            mListener.testEnded(test, testMetrics);
+        }
+
+        /**
+         * Override only when subclasses parse the raw metrics passed from Camera instrumentation
+         * tests, then update the getAggregatedMetrics with parsed data to post to dashboard.
+         *
+         * @param test identifies the test
+         * @param testMetrics a {@link Map} of the metrics emitted
+         */
+        abstract public void handleCollectedMetrics(TestIdentifier test,
+                Map<String, String> testMetrics);
+
+        @Override
+        public void testStarted(TestIdentifier test) {
+            ++mTestCount;
+            mListener.testStarted(test);
+        }
+
+        @Override
+        public void testFailed(TestIdentifier test, String trace) {
+            // If the test failed to run to complete, this is an exceptional case.
+            // Let this test run fail so that it can rerun.
+            if (trace.startsWith(INCOMPLETE_TEST_ERR_MSG_PREFIX)) {
+                mFatalErrors.put(test.getTestName(), trace);
+                CLog.d("Test (%s) failed due to fatal error : %s", test.getTestName(), trace);
+            }
+            mListener.testFailed(test, trace);
+        }
+
+        @Override
+        public void invocationFailed(Throwable cause) {
+            mListener.invocationFailed(cause);
+        }
+
+        public Map<String, String> getAggregatedMetrics() {
+            return mMetrics;
+        }
+
+        /**
+         * Determine that the test run failed with fatal errors.
+         *
+         * @return True if all tests failed with errors.
+         */
+        public boolean isTestRunFatalError() {
+            return (mTestCount > 0 && mFatalErrors.size() == mTestCount);
+        }
+
+        public String getErrorMessage() {
+            StringBuilder sb = new StringBuilder();
+            for (Map.Entry<String, String> error : mFatalErrors.entrySet()) {
+                sb.append(error.getKey());
+                sb.append(" : ");
+                sb.append(error.getValue());
+                sb.append("\n");
+            }
+            return sb.toString();
+        }
+    }
+
+    protected class DefaultCollectingListener extends AbstractCollectingListener {
+
+        public DefaultCollectingListener(ITestInvocationListener listener) {
+            super(listener);
+        }
+
+        public void handleCollectedMetrics(TestIdentifier test, Map<String, String> testMetrics) {
             for (Map.Entry<String, String> metric : testMetrics.entrySet()) {
-                getMetrics().put(test.getTestName(), metric.getValue());
+                getAggregatedMetrics().put(test.getTestName(), metric.getValue());
             }
         }
     }
@@ -238,5 +319,13 @@ public class CameraTestBase implements IDeviceTest, IRemoteTest {
 
     public void setRuKey(String ruKey) {
         mRuKey = ruKey;
+    }
+
+    public AbstractCollectingListener getCollectingListener() {
+        return mCollectingListener;
+    }
+
+    public void setLogcatOnFailure(boolean logcatOnFailure) {
+        mLogcatOnFailure = logcatOnFailure;
     }
 }

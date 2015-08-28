@@ -52,18 +52,22 @@ public class CameraShotLatencyTest extends CameraTestBase {
      */
     @Override
     public void run(ITestInvocationListener listener) throws DeviceNotAvailableException {
-        runInstrumentationTest(listener, new CollectingListener());
+        runInstrumentationTest(listener, new CollectingListener(listener));
     }
 
     /**
      * A listener to collect the output from test run and fatal errors
      */
-    private class CollectingListener extends CollectingListenerBase {
+    private class CollectingListener extends AbstractCollectingListener {
+
+        public CollectingListener(ITestInvocationListener listener) {
+            super(listener);
+        }
 
         @Override
-        public void testEnded(TestIdentifier test, Map<String, String> testMetrics) {
+        public void handleCollectedMetrics(TestIdentifier test, Map<String, String> testMetrics) {
             // Test metrics accumulated will be posted at the end of test run.
-            getMetrics().putAll(parseResults(test.getTestName(), testMetrics));
+            getAggregatedMetrics().putAll(parseResults(test.getTestName(), testMetrics));
         }
 
         public Map<String, String> parseResults(String testName, Map<String, String> testMetrics) {

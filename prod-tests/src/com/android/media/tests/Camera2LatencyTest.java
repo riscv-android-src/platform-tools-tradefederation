@@ -48,24 +48,28 @@ public class Camera2LatencyTest extends CameraTestBase {
      */
     @Override
     public void run(ITestInvocationListener listener) throws DeviceNotAvailableException {
-        runInstrumentationTest(listener, new CollectingListener());
+        runInstrumentationTest(listener, new CollectingListener(listener));
     }
 
     /**
      * A listener to collect the results from each test run, then forward them to other listeners.
      */
-    private class CollectingListener extends CollectingListenerBase {
+    private class CollectingListener extends AbstractCollectingListener {
 
-        private final Pattern STATS_REGEX = Pattern.compile(
-                "^(?<latency>[0-9.]+)\\|(?<values>[0-9 .-]+)");
+        public CollectingListener(ITestInvocationListener listener) {
+            super(listener);
+        }
 
         @Override
-        public void testEnded(TestIdentifier test, Map<String, String> testMetrics) {
+        public void handleCollectedMetrics(TestIdentifier test, Map<String, String> testMetrics) {
             // Test metrics accumulated will be posted at the end of test run.
-            getMetrics().putAll(parseResults(test.getTestName(), testMetrics));
+            getAggregatedMetrics().putAll(parseResults(test.getTestName(), testMetrics));
         }
 
         private Map<String, String> parseResults(String testName, Map<String, String> testMetrics) {
+            final Pattern STATS_REGEX = Pattern.compile(
+                    "^(?<latency>[0-9.]+)\\|(?<values>[0-9 .-]+)");
+
             // Parse activity time stats from the instrumentation result.
             // Format : <metric_key>=<average_of_latency>|<raw_data>
             // Example:
