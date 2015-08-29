@@ -79,6 +79,14 @@ public class GTest implements IDeviceTest, IRemoteTest, ITestFilterReceiver {
             description = "Prepend filename as part of the classname for the tests.")
     private boolean mPrependFileName = false;
 
+    @Option(name = "before-test-cmd",
+            description = "adb shell command(s) to run before GTest.")
+    private List<String> mBeforeTestCmd = new ArrayList<>();
+
+    @Option(name = "after-test-cmd",
+            description = "adb shell command(s) to run after GTest.")
+    private List<String> mAfterTestCmd = new ArrayList<>();
+
     /** coverage target value. Just report all gtests as 'native' for now */
     private static final String COVERAGE_TARGET = "Native";
 
@@ -281,6 +289,9 @@ public class GTest implements IDeviceTest, IRemoteTest, ITestFilterReceiver {
             final String fullPath, final String flags) throws DeviceNotAvailableException {
         // TODO: add individual test timeout support, and rerun support
         try {
+            for (String cmd : mBeforeTestCmd) {
+                testDevice.executeShellCommand(cmd);
+            }
             String cmd = getGTestCmdLine(fullPath, flags);
             testDevice.executeShellCommand(cmd, resultParser,
                     mMaxTestTimeMs /* maxTimeToShellOutputResponse */,
@@ -294,6 +305,10 @@ public class GTest implements IDeviceTest, IRemoteTest, ITestFilterReceiver {
         } catch (RuntimeException e) {
             resultParser.flush();
             throw e;
+        } finally {
+            for (String cmd : mAfterTestCmd) {
+                testDevice.executeShellCommand(cmd);
+            }
         }
     }
 
