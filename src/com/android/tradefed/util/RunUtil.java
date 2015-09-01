@@ -37,6 +37,7 @@ import java.util.Set;
 public class RunUtil implements IRunUtil {
 
     private static final int POLL_TIME_INCREASE_FACTOR = 4;
+    private static final long THREAD_JOIN_POLL_INTERVAL = 30 * 1000;
     private static IRunUtil sDefaultInstance = null;
     private File mWorkingDir = null;
     private Map<String, String> mEnvVariables = new HashMap<String, String>();
@@ -217,9 +218,19 @@ public class RunUtil implements IRunUtil {
             boolean logErrors) {
         checkInterrupted();
         RunnableNotifier runThread = new RunnableNotifier(runnable, logErrors);
+        CLog.d("Running command with timeout: %dms", timeout);
         runThread.start();
+        long startTime = System.currentTimeMillis();
+        long pollIterval = 0;
+        if (timeout < THREAD_JOIN_POLL_INTERVAL) {
+            pollIterval = timeout;
+        } else {
+            pollIterval = THREAD_JOIN_POLL_INTERVAL;
+        }
         try {
-            runThread.join(timeout);
+            do {
+                runThread.join(pollIterval);
+            } while ((System.currentTimeMillis() - startTime) < timeout && runThread.isAlive());
         } catch (InterruptedException e) {
             CLog.i("runnable interrupted");
         }
