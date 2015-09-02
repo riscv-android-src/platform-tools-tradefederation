@@ -22,6 +22,7 @@ import junit.framework.TestCase;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.regex.Pattern;
 
 /**
  * Unit tests for {@link ConsoleResultReporter}
@@ -74,13 +75,13 @@ public class ConsoleResultReporterTest extends TestCase {
         reporter.testEnded(testId, metrics);
         reporter.testRunEnded(0, EMPTY_MAP);
         reporter.invocationEnded(0);
-        assertEquals(
+        String expected =
                 "Test results:\n" +
                 "Test Run: 1 Test, 1 Passed, 0 Failed, 0 Ignored\n" +
-                "  class#method: PASSED\n" +
+                "  class#method: PASSED \\(\\d+ms\\)\n" +
                 "    key1: value1\n" +
-                "    key2: value2\n",
-                reporter.getInvocationSummary());
+                "    key2: value2\n";
+        assertTrue(Pattern.matches(expected, reporter.getInvocationSummary()));
     }
 
     /**
@@ -176,6 +177,8 @@ public class ConsoleResultReporterTest extends TestCase {
         reporter.testLogSaved(null, null, null, new LogFile("/path/to/log1", "http://log1"));
         reporter.testLogSaved(null, null, null, new LogFile("/path/to/log2", null));
         reporter.invocationEnded(0);
+        String summary = reporter.getInvocationSummary();
+        System.out.println(summary);
         assertEquals(
                 "Test results:\n" +
                 "Test Run 1: 4 Tests, 1 Passed, 2 Failed, 1 Ignored\n" +
@@ -207,6 +210,6 @@ public class ConsoleResultReporterTest extends TestCase {
                 "Log Files:\n" +
                 "  http://log1\n" +
                 "  /path/to/log2\n",
-                reporter.getInvocationSummary());
+                summary);
     }
 }
