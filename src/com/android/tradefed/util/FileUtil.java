@@ -440,18 +440,22 @@ public class FileUtil {
     }
 
     /**
-     * Recursively delete given file and all its contents
+     * Recursively delete given file or directory and all its contents.
+     *
+     * @param rootDir the directory or file to be deleted; can be null
      */
     public static void recursiveDelete(File rootDir) {
-        if (rootDir.isDirectory()) {
-            File[] childFiles = rootDir.listFiles();
-            if (childFiles != null) {
-                for (File child : childFiles) {
-                    recursiveDelete(child);
+        if (rootDir != null) {
+            if (rootDir.isDirectory()) {
+                File[] childFiles = rootDir.listFiles();
+                if (childFiles != null) {
+                    for (File child : childFiles) {
+                        recursiveDelete(child);
+                    }
                 }
             }
+            rootDir.delete();
         }
-        rootDir.delete();
     }
 
     /**
