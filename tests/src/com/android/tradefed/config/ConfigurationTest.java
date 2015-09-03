@@ -20,6 +20,7 @@ import com.android.tradefed.build.BuildInfo;
 import com.android.tradefed.build.BuildRetrievalError;
 import com.android.tradefed.build.IBuildProvider;
 import com.android.tradefed.command.ICommandOptions;
+import com.android.tradefed.config.ConfigurationDef.OptionDef;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.IDeviceRecovery;
 import com.android.tradefed.device.IDeviceSelection;
@@ -323,6 +324,26 @@ public class ConfigurationTest extends TestCase {
         assertEquals(0, testConfigObject.getMap().size());
         mConfig.injectOptionValue(ALT_OPTION_NAME, key, Boolean.toString(true));
 
+        Map<String, Boolean> map = testConfigObject.getMap();
+        assertEquals(1, map.size());
+        assertNotNull(map.get(key));
+        assertTrue(map.get(key).booleanValue());
+    }
+
+    /**
+     * Test {@link Configuration#injectOptionValues(List<OptionDef>))}
+     */
+    public void testInjectOptionValues() throws ConfigurationException {
+        final String key = "hello";
+        List<OptionDef> options = new ArrayList<>();
+        options.add(new OptionDef(OPTION_NAME, Boolean.toString(true), null));
+        options.add(new OptionDef(ALT_OPTION_NAME, key, Boolean.toString(true), null));
+
+        TestConfigObject testConfigObject = new TestConfigObject();
+        mConfig.setConfigurationObject(CONFIG_OBJECT_TYPE_NAME, testConfigObject);
+        mConfig.injectOptionValues(options);
+
+        assertTrue(testConfigObject.getBool());
         Map<String, Boolean> map = testConfigObject.getMap();
         assertEquals(1, map.size());
         assertNotNull(map.get(key));
