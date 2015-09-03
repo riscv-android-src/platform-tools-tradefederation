@@ -22,7 +22,6 @@ import junit.framework.TestCase;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.regex.Pattern;
 
 /**
  * Unit tests for {@link ConsoleResultReporter}
@@ -75,13 +74,13 @@ public class ConsoleResultReporterTest extends TestCase {
         reporter.testEnded(testId, metrics);
         reporter.testRunEnded(0, EMPTY_MAP);
         reporter.invocationEnded(0);
-        String expected =
+        assertEquals(
                 "Test results:\n" +
                 "Test Run: 1 Test, 1 Passed, 0 Failed, 0 Ignored\n" +
-                "  class#method: PASSED \\(\\d+ms\\)\n" +
+                "  class#method: PASSED (0ms)\n" +
                 "    key1: value1\n" +
-                "    key2: value2\n";
-        assertTrue(Pattern.matches(expected, reporter.getInvocationSummary()));
+                "    key2: value2\n",
+                reporter.getInvocationSummary());
     }
 
     /**
@@ -177,29 +176,35 @@ public class ConsoleResultReporterTest extends TestCase {
         reporter.testLogSaved(null, null, null, new LogFile("/path/to/log1", "http://log1"));
         reporter.testLogSaved(null, null, null, new LogFile("/path/to/log2", null));
         reporter.invocationEnded(0);
-        String summary = reporter.getInvocationSummary();
-        System.out.println(summary);
         assertEquals(
                 "Test results:\n" +
-                "Test Run 1: 4 Tests, 1 Passed, 2 Failed, 1 Ignored\n" +
-                "  class1#method1: FAILURE\n" +
+                "Test Run 1: 4 Tests, 1 Passed, 1 Failed, 1 Ignored\n" +
+                "  class1#method1: FAILURE (0ms)\n" +
+                "  stack=\n" +
+                "    trace\n" +
                 "    run1_test1_key1: run1_test1_value1\n" +
                 "    run1_test1_key2: run1_test1_value2\n" +
-                "  class1#method2: PASSED\n" +
+                "  class1#method2: PASSED (0ms)\n" +
                 "    run1_test2_key1: run1_test2_value1\n" +
                 "    run1_test2_key2: run1_test2_value2\n" +
-                "  class1#method3: ASSUMPTION_FAILURE\n" +
+                "  class1#method3: ASSUMPTION_FAILURE (0ms)\n" +
+                "  stack=\n" +
+                "    trace\n" +
                 "    run1_test3_key1: run1_test3_value1\n" +
                 "    run1_test3_key2: run1_test3_value2\n" +
-                "  class1#method4: IGNORED\n" +
+                "  class1#method4: IGNORED (0ms)\n" +
                 "  run1_key1: run1_value2\n" +
                 "  run1_key2: run1_value1\n" +
                 "\n" +
-                "Test Run 2: 4 Tests, 1 Passed, 2 Failed, 1 Ignored\n" +
-                "  class2#method1: FAILURE\n" +
-                "  class2#method2: PASSED\n" +
-                "  class2#method3: ASSUMPTION_FAILURE\n" +
-                "  class2#method4: IGNORED\n" +
+                "Test Run 2: 4 Tests, 1 Passed, 1 Failed, 1 Ignored\n" +
+                "  class2#method1: FAILURE (0ms)\n" +
+                "  stack=\n" +
+                "    trace\n" +
+                "  class2#method2: PASSED (0ms)\n" +
+                "  class2#method3: ASSUMPTION_FAILURE (0ms)\n" +
+                "  stack=\n" +
+                "    trace\n" +
+                "  class2#method4: IGNORED (0ms)\n" +
                 "\n" +
                 "Test Run 3:\n" +
                 "  run3_key1: run3_value1\n" +
@@ -210,6 +215,6 @@ public class ConsoleResultReporterTest extends TestCase {
                 "Log Files:\n" +
                 "  http://log1\n" +
                 "  /path/to/log2\n",
-                summary);
+                reporter.getInvocationSummary());
     }
 }
