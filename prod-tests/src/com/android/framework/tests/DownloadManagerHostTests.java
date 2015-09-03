@@ -142,19 +142,19 @@ public class DownloadManagerHostTests extends DeviceTestCase {
         assertTrue("Failed to initiate download properly!", testPassed);
         Thread.sleep(5000);
 
-        // Do 3 random reboots - after 13, 9, and 19 seconds
+        // Do 3 random reboots - after 9, 5, and 6 seconds
         Log.i(LOG_TAG, "First reboot...");
         mDevice.reboot();
         assertTrue("Failed to connect to wifi after reboot!", connectToWifi());
-        Thread.sleep(13000);
+        Thread.sleep(9000);
         Log.i(LOG_TAG, "Second reboot...");
         mDevice.reboot();
         assertTrue("Failed to connect to wifi after reboot!", connectToWifi());
-        Thread.sleep(9000);
+        Thread.sleep(5000);
         Log.i(LOG_TAG, "Third reboot...");
         mDevice.reboot();
         assertTrue("Failed to connect to wifi after reboot!", connectToWifi());
-        Thread.sleep(19000);
+        Thread.sleep(6000);
         testPassed = mPMUtils.runDeviceTestsDidAllTestsPass(FILE_DOWNLOAD_PKG,
                 FILE_DOWNLOAD_CLASS, "verifyFileDownloadSucceeded", DOWNLOAD_TEST_RUNNER_NAME,
                 mExtraParams);

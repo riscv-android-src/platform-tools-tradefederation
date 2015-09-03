@@ -101,7 +101,7 @@ public class BandwidthMicroBenchMarkTest implements IDeviceTest, IRemoteTest {
     @Option(name="server-difference-threshold",
             description="The maximum difference between the stats reported by the " +
             "server and the device in percent")
-    private int mServerDifferenceThreshold = 5;
+    private int mServerDifferenceThreshold = 6;
 
     @Option(name = "compact-ru-key",
             description = "Name of the reporting unit for pass/fail results")
@@ -369,10 +369,6 @@ public class BandwidthMicroBenchMarkTest implements IDeviceTest, IRemoteTest {
             CLog.e("Failed to parse for \"%s\" in log.", line);
             return false;
         }
-        long devRb = Long.parseLong(statsStrArray[0].trim());
-        long devTb = Long.parseLong(statsStrArray[1].trim());
-        long devRp = Long.parseLong(statsStrArray[2].trim());
-        long devTp = Long.parseLong(statsStrArray[3].trim());
         long xtRb = Long.parseLong(statsStrArray[4].trim());
         long xtTb = Long.parseLong(statsStrArray[5].trim());
         long xtRp = Long.parseLong(statsStrArray[6].trim());
@@ -382,23 +378,10 @@ public class BandwidthMicroBenchMarkTest implements IDeviceTest, IRemoteTest {
         long uidRp = Long.parseLong(statsStrArray[10].trim());
         long uidTp = Long.parseLong(statsStrArray[11].trim());
 
-        BandwidthStats devStats = new BandwidthStats(devRb, devRp, devTb, devTp);
         BandwidthStats xtStats = new BandwidthStats(xtRb, xtRp, xtTb, xtTp);
         BandwidthStats uidStats = new BandwidthStats(uidRb, uidRp, uidTb, uidTp);
         boolean result = true;
-        CompareResult compareResult = devStats.compareAll(xtStats, mDifferenceThreshold);
-        result &= compareResult.getResult();
-        if (!compareResult.getResult()) {
-            CLog.i("Failure comparing netstats_mobile_sample dev and xt");
-            printFailures(compareResult);
-        }
-        compareResult = devStats.compareAll(uidStats, mDifferenceThreshold);
-        result &= compareResult.getResult();
-        if (!compareResult.getResult()) {
-            CLog.i("Failure comparing netstats_mobile_sample dev and uid");
-            printFailures(compareResult);
-        }
-        compareResult = xtStats.compareAll(uidStats, mDifferenceThreshold);
+        CompareResult compareResult = xtStats.compareAll(uidStats, mDifferenceThreshold);
         result &= compareResult.getResult();
         if (!compareResult.getResult()) {
             CLog.i("Failure comparing netstats_mobile_sample xt and uid");
@@ -436,19 +419,6 @@ public class BandwidthMicroBenchMarkTest implements IDeviceTest, IRemoteTest {
             frameworkUidBytes = Long.parseLong(instrumentationData.get("PROF_rx"));
         } else {
             frameworkUidBytes = Long.parseLong(instrumentationData.get("PROF_tx"));
-        }
-
-        // Calculate the difference between the reported stats in /proc/net/dev and the break down
-        // by uid.
-        BandwidthStats netDevStats = utils.getDevStats();
-        BandwidthStats sumUidStats = utils.getSumOfUidStats();
-        CompareResult result = netDevStats.compareAll(sumUidStats, mDifferenceThreshold);
-        if (result.getResult()) {
-            passCount += 1;
-        } else {
-            CLog.i("/proc/net/dev and uid stats do not match");
-            printFailures(result);
-            failCount += 1;
         }
 
         // Compare data reported by the server and the instrumentation
