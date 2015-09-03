@@ -145,6 +145,8 @@ class TestDevice implements IManagedTestDevice {
     /** The time in ms to wait for a 'long' command to complete. */
     private long mLongCmdTimeout = 12 * 60 * 1000;
 
+    private static final int FLAG_PRIMARY = 1; // From the UserInfo class
+
     private IDevice mIDevice;
     private IDeviceRecovery mRecovery = new WaitDeviceRecovery();
     private final IDeviceStateMonitor mStateMonitor;
@@ -3233,6 +3235,25 @@ class TestDevice implements IManagedTestDevice {
      */
     @Override
     public ArrayList<Integer> listUsers() throws DeviceNotAvailableException {
+        ArrayList<String[]> users = tokenizeListUsers();
+        if (users == null) {
+            return null;
+        }
+        ArrayList<Integer> userIds = new ArrayList<Integer>(users.size());
+        for (String[] user : users) {
+            userIds.add(Integer.parseInt(user[1]));
+        }
+        return userIds;
+    }
+
+    /**
+     * Tokenizes the output of 'pm list users'.
+     * The returned tokens for each user have the form: {"\tUserInfo", Integer.toString(id), name,
+     * Integer.toHexString(flag), "[running]"}; (the last one being optional)
+     * @return a list of arrays of strings, each element of the list representing the tokens
+     * for a user, or {@code null} if there was an error while tokenizing the adb command output.
+     */
+    private ArrayList<String[]> tokenizeListUsers() throws DeviceNotAvailableException {
         String command = "pm list users";
         String commandOutput = executeShellCommand(command);
         // Extract the id of all existing users.
@@ -3245,7 +3266,7 @@ class TestDevice implements IManagedTestDevice {
             CLog.e("%s in not a valid output for 'pm list users'", commandOutput);
             return null;
         }
-        ArrayList<Integer> users = new ArrayList<Integer>();
+        ArrayList<String[]> users = new ArrayList<String[]>(lines.length - 1);
         for (int i = 1; i < lines.length; i++) {
             // Individual user is printed out like this:
             // \tUserInfo{$id$:$name$:$Integer.toHexString(flags)$} [running]
@@ -3254,7 +3275,7 @@ class TestDevice implements IManagedTestDevice {
                 CLog.e("%s doesn't contain 4 or 5 tokens", lines[i]);
                 return null;
             }
-            users.add(Integer.parseInt(tokens[1]));
+            users.add(tokens);
         }
         return users;
     }
@@ -3349,5 +3370,23 @@ class TestDevice implements IManagedTestDevice {
         }
         executeAdbCommand("remount");
         waitForDeviceAvailable();
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public Integer getPrimaryUserId() throws DeviceNotAvailableException {
+        ArrayList<String[]> users = tokenizeListUsers();
+        if (users == null) {
+            return null;
+        }
+        for (String[] user : users) {
+            int flag = Integer.parseInt(user[3], 16);
+            if ((flag & FLAG_PRIMARY) != 0) {
+                return Integer.parseInt(user[1]);
+            }
+        }
+        return null;
     }
 }

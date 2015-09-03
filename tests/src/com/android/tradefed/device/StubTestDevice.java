@@ -996,4 +996,12 @@ public class StubTestDevice implements IManagedTestDevice {
     public boolean isRuntimePermissionSupported() throws DeviceNotAvailableException {
         return false;
     }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public Integer getPrimaryUserId() throws DeviceNotAvailableException {
+        return null;
+    }
 }

@@ -1266,4 +1266,11 @@ public interface ITestDevice {
      * @throws DeviceNotAvailableException
      */
     public boolean isRuntimePermissionSupported() throws DeviceNotAvailableException;
+
+    /**
+     * Returns the primary user id.
+     * @return the userId of the primary user if there is one, and null if there is no primary user.
+     * @throws DeviceNotAvailableException
+     */
+    public Integer getPrimaryUserId() throws DeviceNotAvailableException;
 }
