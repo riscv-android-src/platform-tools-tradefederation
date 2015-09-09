@@ -27,12 +27,12 @@ import com.android.tradefed.testtype.IAbi;
 import com.android.tradefed.testtype.IAbiReceiver;
 import com.android.tradefed.util.AaptParser;
 import com.android.tradefed.util.AbiFormatter;
-import com.android.tradefed.util.FileUtil;
+import com.android.tradefed.util.BuildTestsZipUtils;
 
 import java.io.File;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.Collections;
 import java.util.List;
 
 /**
@@ -92,62 +92,6 @@ public class TestAppInstallSetup implements ITargetCleaner, IAbiReceiver {
     }
 
     /**
-     * Resolve the actual apk path based on testing artifact information inside build info.
-     *
-     * @param buildInfo build artifact information
-     * @param apkFileName filename of the apk to install
-     * @return a {@link File} representing the physical apk file on host or {@code null} if the
-     *     file does not exist.
-     */
-    protected File getLocalPathForFilename(IBuildInfo buildInfo, String apkFileName)
-            throws TargetSetupError {
-        String apkBase = apkFileName.split("\\.")[0];
-
-        List<File> dirs = new ArrayList<>();
-        for (File dir : mAltDirs) {
-            dirs.add(dir);
-            // Files in tests zip file will be in DATA/app/ or DATA/app/apk_name
-            dirs.add(FileUtil.getFileForPath(dir, "DATA", "app"));
-            dirs.add(FileUtil.getFileForPath(dir, "DATA", "app", apkBase));
-            // Files in out dir will bein in uses data/app/apk_name
-            dirs.add(FileUtil.getFileForPath(dir, "data", "app", apkBase));
-        }
-        // reverse the order so ones provided via command line last can be searched first
-        Collections.reverse(dirs);
-
-        List<File> expandedTestDirs = new ArrayList<>();
-        if (buildInfo instanceof IDeviceBuildInfo) {
-            File testsDir = ((IDeviceBuildInfo)buildInfo).getTestsDir();
-            if (testsDir != null && testsDir.exists()) {
-                expandedTestDirs.add(FileUtil.getFileForPath(testsDir, "DATA", "app"));
-                expandedTestDirs.add(FileUtil.getFileForPath(testsDir, "DATA", "app", apkBase));
-            }
-        }
-        if (mAltDirBehavior == AltDirBehavior.FALLBACK) {
-            // alt dirs are appended after build artifact dirs
-            expandedTestDirs.addAll(dirs);
-            dirs = expandedTestDirs;
-        } else if (mAltDirBehavior == AltDirBehavior.OVERRIDE) {
-            dirs.addAll(expandedTestDirs);
-        } else {
-            throw new TargetSetupError("Missing handler for alt-dir-behavior: " + mAltDirBehavior);
-        }
-        if (dirs.isEmpty()) {
-            throw new TargetSetupError(
-                    "Provided buildInfo does not contain a valid tests directory and no " +
-                    "alternative directories were provided");
-        }
-
-        for (File dir : dirs) {
-            File testAppFile = new File(dir, apkFileName);
-            if (testAppFile.exists()) {
-                return testAppFile;
-            }
-        }
-        return null;
-    }
-
-    /**
      * {@inheritDoc}
      */
     @Override
@@ -161,7 +105,16 @@ public class TestAppInstallSetup implements ITargetCleaner, IAbiReceiver {
             mPackagesInstalled = new ArrayList<>();
         }
         for (String testAppName : mTestFileNames) {
-            File testAppFile = getLocalPathForFilename(buildInfo, testAppName);
+            File testAppFile = null;
+            try {
+                testAppFile = BuildTestsZipUtils.getApkFile(buildInfo, testAppName,
+                        mAltDirs, mAltDirBehavior,
+                        false /* use resource as fallback */, null /* device signing key*/);
+            } catch (IOException ioe) {
+                CLog.e("IOException while looking up apk");
+                CLog.e(ioe);
+                // will throw exception below since testAppFile will be null
+            }
             if (testAppFile == null) {
                 throw new TargetSetupError(
                     String.format("Could not find test app %s directory in extracted tests.zip",

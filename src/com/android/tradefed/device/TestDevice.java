@@ -89,6 +89,9 @@ class TestDevice implements IManagedTestDevice {
     /** regex to match input dispatch readiness line **/
     static final Pattern INPUT_DISPATCH_STATE_REGEX =
             Pattern.compile("DispatchEnabled:\\s?([01])");
+    /** regex to match build signing key type */
+    private static final Pattern KEYS_PATTERN = Pattern.compile("^.*-keys$");
+
     /**
      * Allow pauses of up to 2 minutes while receiving bugreport.  Note that dumpsys may pause up to
      * a minute while waiting for unresponsive components, but should bail after that minute, if it
@@ -128,8 +131,9 @@ class TestDevice implements IManagedTestDevice {
     private static final String BUILD_TYPE_PROP = "ro.build.type";
     private static final String BUILD_ALIAS_PROP = "ro.build.id";
     private static final String BUILD_FLAVOR = "ro.build.flavor";
-
     static final String BUILD_CODENAME_PROP = "ro.build.version.codename";
+    static final String BUILD_TAGS = "ro.build.tags";
+
 
     /** The network monitoring interval in ms. */
     private static final int NETWORK_MONITOR_INTERVAL = 10 * 1000;
@@ -3385,6 +3389,24 @@ class TestDevice implements IManagedTestDevice {
             int flag = Integer.parseInt(user[3], 16);
             if ((flag & FLAG_PRIMARY) != 0) {
                 return Integer.parseInt(user[1]);
+            }
+        }
+        return null;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public String getBuildSigningKeys() throws DeviceNotAvailableException {
+        String buildTags = getProperty(BUILD_TAGS);
+        if (buildTags != null) {
+            String[] tags = buildTags.split(",");
+            for (String tag : tags) {
+                Matcher m = KEYS_PATTERN.matcher(tag);
+                if (m.matches()) {
+                    return tag;
+                }
             }
         }
         return null;

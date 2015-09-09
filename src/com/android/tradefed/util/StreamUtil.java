@@ -285,7 +285,7 @@ public class StreamUtil {
      * @return md5 of the stream
      * @throws IOException
      */
-    static String calculateMd5(InputStream inputSource) throws IOException {
+    public static String calculateMd5(InputStream inputSource) throws IOException {
         MessageDigest md = null;
         try {
             md = MessageDigest.getInstance("md5");

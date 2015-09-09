@@ -1754,5 +1754,35 @@ public class TestDeviceTest extends TestCase {
         mTestDevice.remountSystemWritable();
         verifyMocks();
     }
-}
 
+    /**
+     * Test that {@link TestDevice#getBuildSigningKeys()} works for the typical "test-keys" case
+     * @throws Exception
+     */
+    public void testGetBuildSigningKeys_test_keys() throws Exception {
+        injectSystemProperty(TestDevice.BUILD_TAGS, "test-keys");
+        replayMocks();
+        assertEquals("test-keys", mTestDevice.getBuildSigningKeys());
+    }
+
+    /**
+     * Test that {@link TestDevice#getBuildSigningKeys()} works for the case where build tags is a
+     * comma separated list
+     * @throws Exception
+     */
+    public void testGetBuildSigningKeys_test_keys_commas() throws Exception {
+        injectSystemProperty(TestDevice.BUILD_TAGS, "test-keys,foo,bar,yadda");
+        replayMocks();
+        assertEquals("test-keys", mTestDevice.getBuildSigningKeys());
+    }
+
+    /**
+     * Test that {@link TestDevice#getBuildSigningKeys()} returns null for non-matching case
+     * @throws Exception
+     */
+    public void testGetBuildSigningKeys_not_matched() throws Exception {
+        injectSystemProperty(TestDevice.BUILD_TAGS, "huh,foo,bar,yadda");
+        replayMocks();
+        assertNull(mTestDevice.getBuildSigningKeys());
+    }
+}
