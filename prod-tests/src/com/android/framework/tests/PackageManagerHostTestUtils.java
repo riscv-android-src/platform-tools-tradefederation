@@ -40,13 +40,11 @@ public class PackageManagerHostTestUtils extends Assert {
     private boolean mEmulatedExternalStorage = false;
 
     // TODO: get this value from Android Environment instead of hard coding
-    public static final String PRE_JB_APP_PRIVATE_PATH = "/data/app-private/";
     public static final String JB_APP_PRIVATE_PATH = "/mnt/asec/";
-    public static final String JB_ASEC_PRIVATE_PATH = "/data/app-asec/";
     public static final String DEVICE_APP_PATH = "/data/app/";
-    public static final String SDCARD_APP_PATH = "/mnt/secure/asec/";
+    public static final String SDCARD_APP_PATH = "/mnt/asec/";
 
-    private static String mAppPrivatePath = PRE_JB_APP_PRIVATE_PATH;
+    private static String mAppPrivatePath = JB_APP_PRIVATE_PATH;
 
     private static final int MAX_WAIT_FOR_DEVICE_TIME = 120 * 1000;
 
@@ -436,7 +434,7 @@ public class PackageManagerHostTestUtils extends Assert {
             return InstallLocPreference.EXTERNAL;
         }
     }
-
+    
     /**
      * Determines whether the device is using emulated external storage.
      * <p/>
@@ -447,12 +445,12 @@ public class PackageManagerHostTestUtils extends Assert {
      */
     private void determineExternalStorageEmulation()
             throws DeviceNotAvailableException {
-        String result = mDevice.executeShellCommand("dumpsys mount");
-        if (result.indexOf("mEmulated=true") != -1) {
+        String result = mDevice.executeShellCommand("sm get-primary-storage-uuid");
+        if (result.trim().equalsIgnoreCase("null")) {
             CLog.i("Device is using emulated external storage.");
             mEmulatedExternalStorage = true;
         }
-        else if (result.indexOf("mEmulated=false") != -1) {
+        else if (result.equals("primary_physical")) {
             CLog.i("Device is using actual external storage.");
             mEmulatedExternalStorage = false;
         }
