@@ -16,6 +16,7 @@
 
 package com.android.media.tests;
 
+import com.android.ddmlib.CollectingOutputReceiver;
 import com.android.ddmlib.testrunner.TestIdentifier;
 import com.android.tradefed.config.Option;
 import com.android.tradefed.device.DeviceNotAvailableException;
@@ -23,17 +24,32 @@ import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.result.CollectingTestListener;
 import com.android.tradefed.result.ITestInvocationListener;
+import com.android.tradefed.result.InputStreamSource;
+import com.android.tradefed.result.LogDataType;
+import com.android.tradefed.result.SnapshotInputStreamSource;
 import com.android.tradefed.result.StubTestInvocationListener;
 import com.android.tradefed.testtype.IDeviceTest;
 import com.android.tradefed.testtype.IRemoteTest;
 import com.android.tradefed.testtype.InstrumentationTest;
+import com.android.tradefed.util.FileUtil;
 
 import junit.framework.Assert;
 
+import java.io.BufferedReader;
+import java.io.BufferedWriter;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
+import java.io.FileWriter;
+import java.io.IOException;
+import java.io.StringReader;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Timer;
+import java.util.TimerTask;
+import java.util.concurrent.TimeUnit;
 
 /**
  * Camera test base class
@@ -44,6 +60,11 @@ import java.util.Map;
 public class CameraTestBase implements IDeviceTest, IRemoteTest {
 
     private static final String LOG_TAG = CameraTestBase.class.getSimpleName();
+    private static final long MEMINFO_TIMEOUT_MS = 60 * 1000;  // 1 min
+    private static final int MEMINFO_MAX_ATTEMPTS = 3;
+    private static final String PROCESS_CAMERA_DAEMON = "mm-qcamera-daemon";
+    private static final String PROCESS_CAMERA_APP = "com.google.android.GoogleCamera";
+
 
     @Option(name = "test-package", description = "Test package to run.")
     private String mTestPackage = "com.google.android.camera";
@@ -71,6 +92,14 @@ public class CameraTestBase implements IDeviceTest, IRemoteTest {
             description = "Additional instrumentation arguments to provide.")
     private Map<String, String> mInstrArgMap = new HashMap<String, String>();
 
+    @Option(name = "dump-meminfo", description =
+            "take a dumpsys meminfo at a given interval time.")
+    private boolean mDumpMeminfo = false;
+
+    @Option(name="dump-meminfo-interval-ms",
+            description="Interval of calling dumpsys meminfo in milliseconds.")
+    private int mMeminfoIntervalMs = 60 * 1000;
+
     private ITestDevice mDevice = null;
 
     // A base listener to collect the results from each test run. Fatal error or failures will be
@@ -78,6 +107,8 @@ public class CameraTestBase implements IDeviceTest, IRemoteTest {
     private AbstractCollectingListener mCollectingListener = null;
 
     private long mStartTimeMs = 0;
+
+    private MeminfoTimer mMeminfoTimer = null;
 
     /**
      * {@inheritDoc}
@@ -97,7 +128,6 @@ public class CameraTestBase implements IDeviceTest, IRemoteTest {
             throws DeviceNotAvailableException {
         if (mCollectingListener == null) {
             mCollectingListener = new DefaultCollectingListener(listener);
-
         }
         runInstrumentationTest(listener, mCollectingListener);
     }
@@ -127,6 +157,11 @@ public class CameraTestBase implements IDeviceTest, IRemoteTest {
         instr.setLogcatOnFailure(mLogcatOnFailure);
         for (Map.Entry<String, String> entry : mInstrArgMap.entrySet()) {
             instr.addInstrumentationArg(entry.getKey(), entry.getValue());
+        }
+
+        // Check if dumpheap needs to be taken for native processes before test runs.
+        if (isDumpMeminfo()) {
+            mMeminfoTimer = new MeminfoTimer(0, mMeminfoIntervalMs);
         }
 
         mStartTimeMs = System.currentTimeMillis();
@@ -181,19 +216,6 @@ public class CameraTestBase implements IDeviceTest, IRemoteTest {
         }
 
         /**
-         * Report the end of an individual camera test and delegate handling the collected metrics
-         * to subclasses.
-         *
-         * @param test identifies the test
-         * @param testMetrics a {@link Map} of the metrics emitted
-         */
-        @Override
-        public void testEnded(TestIdentifier test, Map<String, String> testMetrics) {
-            handleCollectedMetrics(test, testMetrics);
-            mListener.testEnded(test, testMetrics);
-        }
-
-        /**
          * Override only when subclasses parse the raw metrics passed from Camera instrumentation
          * tests, then update the getAggregatedMetrics with parsed data to post to dashboard.
          *
@@ -203,10 +225,54 @@ public class CameraTestBase implements IDeviceTest, IRemoteTest {
         abstract public void handleCollectedMetrics(TestIdentifier test,
                 Map<String, String> testMetrics);
 
+        /**
+         * Report the end of an individual camera test and delegate handling the collected metrics
+         * to subclasses.
+         *
+         * @param test identifies the test
+         * @param testMetrics a {@link Map} of the metrics emitted
+         */
+        @Override
+        public void testEnded(TestIdentifier test, Map<String, String> testMetrics) {
+            handleCollectedMetrics(test, testMetrics);
+            stopDumpingMeminfo(test);
+            mListener.testEnded(test, testMetrics);
+        }
+
         @Override
         public void testStarted(TestIdentifier test) {
             ++mTestCount;
+            startDumpingMeminfo(test);
             mListener.testStarted(test);
+        }
+
+        protected void startDumpingMeminfo(TestIdentifier test) {
+            if (isDumpMeminfo()) {
+                mMeminfoTimer.start(test);
+            }
+        }
+
+        protected void stopDumpingMeminfo(TestIdentifier test) {
+            if (isDumpMeminfo()) {
+                mMeminfoTimer.stop();
+
+                // Grab a snapshot of meminfo file and post it to dashboard.
+                InputStreamSource outputSource = null;
+                File outputFile = null;
+                try {
+                    outputFile = mMeminfoTimer.getOutputFile();
+                    outputSource = new SnapshotInputStreamSource(new FileInputStream(outputFile));
+                    String logName = String.format("meminfo_%s", test.getTestName());
+                    mListener.testLog(logName, LogDataType.TEXT, outputSource);
+                    outputFile.delete();
+                } catch (FileNotFoundException e) {
+                    CLog.w("Failed to read meminfo log %s: %s", outputFile, e);
+                } finally {
+                    if (outputSource != null) {
+                        outputSource.cancel();
+                    }
+                }
+            }
         }
 
         @Override
@@ -263,6 +329,148 @@ public class CameraTestBase implements IDeviceTest, IRemoteTest {
         public void handleCollectedMetrics(TestIdentifier test, Map<String, String> testMetrics) {
             for (Map.Entry<String, String> metric : testMetrics.entrySet()) {
                 getAggregatedMetrics().put(test.getTestName(), metric.getValue());
+            }
+        }
+    }
+
+    private class MeminfoTimer {
+
+        private final String LOG_HEADER =
+                "uptime,pssCameraDaemon,pssCameraApp,ramTotal,ramFree,ramUsed";
+        private final String DUMPSYS_MEMINFO_COMMAND = "dumpsys meminfo -c | grep -w -e ^ram " +
+                "-e ^time -e " + PROCESS_CAMERA_DAEMON + " -e " + PROCESS_CAMERA_APP;
+        private final int STATE_STOPPED = 0;
+        private final int STATE_SCHEDULED = 1;
+        private final int STATE_RUNNING = 2;
+
+        private int mState = STATE_STOPPED;
+        private Timer mTimer = new Timer(true); // run as a daemon thread
+        private long mDelayMs = 0;
+        private long mPeriodMs = 60 * 1000;  // 60 sec
+        private File mOutputFile = null;
+
+        public MeminfoTimer(long delayMs, long periodMs) {
+            mDelayMs = delayMs;
+            mPeriodMs = periodMs;
+        }
+
+        synchronized void start(TestIdentifier test) {
+            if (isRunning()) {
+                stop();
+            }
+            // Create an output file.
+            if (createOutputFile(test) == null) {
+                CLog.w("Stop collecting meminfo since meminfo log file not found.");
+                mState = STATE_STOPPED;
+                return; // No-op
+            }
+            mTimer.scheduleAtFixedRate(new TimerTask() {
+                @Override
+                public void run() {
+                    mState = STATE_RUNNING;
+                    dumpMeminfo(DUMPSYS_MEMINFO_COMMAND, mOutputFile);
+                }
+            }, mDelayMs, mPeriodMs);
+            mState = STATE_SCHEDULED;
+        }
+
+        synchronized void stop() {
+            mState = STATE_STOPPED;
+            mTimer.cancel();
+        }
+
+        synchronized boolean isRunning() {
+            return (mState == STATE_RUNNING);
+        }
+
+        public File getOutputFile() {
+            return mOutputFile;
+        }
+
+        private File createOutputFile(TestIdentifier test) {
+            try {
+                mOutputFile = FileUtil.createTempFile(
+                        String.format("meminfo_%s", test.getTestName()), "csv");
+                BufferedWriter writer = new BufferedWriter(new FileWriter(mOutputFile, false));
+                writer.write(LOG_HEADER);
+                writer.newLine();
+                writer.flush();
+                writer.close();
+            } catch (IOException e) {
+                CLog.w("Failed to create meminfo log file %s: %s", mOutputFile.getAbsolutePath(), e);
+                return null;
+            }
+            return mOutputFile;
+        }
+    }
+
+    void dumpMeminfo(String command, File outputFile) {
+        try {
+            CollectingOutputReceiver receiver = new CollectingOutputReceiver();
+            // Dump meminfo in a compact form.
+            getDevice().executeShellCommand(command, receiver,
+                    MEMINFO_TIMEOUT_MS, TimeUnit.MILLISECONDS, MEMINFO_MAX_ATTEMPTS);
+            printMeminfo(outputFile, receiver.getOutput());
+        } catch (DeviceNotAvailableException e) {
+            CLog.w("Failed to dump meminfo: %s", e);
+        }
+    }
+
+    void printMeminfo(File outputFile, String meminfo) {
+        // Parse meminfo and print each iteration in a line in a .csv format. The meminfo output
+        // are separated into three different formats:
+        //
+        // Format: time,<uptime>,<realtime>
+        // eg. "time,59459911,63354673"
+        //
+        // Format: proc,<oom_label>,<process_name>,<pid>,<pss>,<hasActivities>
+        // eg. "proc,native,mm-qcamera-daemon,522,12881,e"
+        //     "proc,fore,com.google.android.GoogleCamera,26560,70880,a"
+        //
+        // Format: ram,<total>,<free>,<used>
+        // eg. "ram,1857364,810189,541516"
+        BufferedWriter writer = null;
+        BufferedReader reader = null;
+        try {
+            final String DELIMITER = ",";
+            writer = new BufferedWriter(new FileWriter(outputFile, true));
+            reader = new BufferedReader(new StringReader(meminfo));
+            String line;
+            String uptime = null;
+            String pssCameraNative = null;
+            String pssCameraApp = null;
+            String ramTotal = null;
+            String ramFree = null;
+            String ramUsed = null;
+            while ((line = reader.readLine()) != null) {
+                if (line.startsWith("time")) {
+                    uptime = line.split(DELIMITER)[1];
+                } else if (line.startsWith("ram")) {
+                    String[] ram = line.split(DELIMITER);
+                    ramTotal = ram[1];
+                    ramFree = ram[2];
+                    ramUsed = ram[3];
+                } else if (line.contains(PROCESS_CAMERA_DAEMON)) {
+                    pssCameraNative = line.split(DELIMITER)[4];
+                } else if (line.contains(PROCESS_CAMERA_APP)) {
+                    pssCameraApp = line.split(DELIMITER)[4];
+                }
+            }
+            String printMsg = String.format(
+                    "%s,%s,%s,%s,%s,%s", uptime, pssCameraNative, pssCameraApp,
+                    ramTotal, ramFree, ramUsed);
+            writer.write(printMsg);
+            writer.newLine();
+            writer.flush();
+        } catch (IOException e) {
+            CLog.w("Failed to print meminfo to %s: %s", outputFile.getAbsolutePath(), e);
+        } finally {
+            if (writer != null) {
+                try {
+                    writer.close();
+                } catch (IOException e) {
+                    CLog.w("Failed to close %s: %s", outputFile.getAbsolutePath(), e);
+                }
             }
         }
     }
@@ -330,6 +538,10 @@ public class CameraTestBase implements IDeviceTest, IRemoteTest {
 
     public void setRuKey(String ruKey) {
         mRuKey = ruKey;
+    }
+
+    public boolean isDumpMeminfo() {
+        return mDumpMeminfo;
     }
 
     public AbstractCollectingListener getCollectingListener() {
