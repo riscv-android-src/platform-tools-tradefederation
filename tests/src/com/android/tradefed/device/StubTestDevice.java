@@ -1004,4 +1004,13 @@ public class StubTestDevice implements IManagedTestDevice {
     public Integer getPrimaryUserId() throws DeviceNotAvailableException {
         return null;
     }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public String getBuildSigningKeys() throws DeviceNotAvailableException {
+        // TODO Auto-generated method stub
+        return null;
+    }
 }
