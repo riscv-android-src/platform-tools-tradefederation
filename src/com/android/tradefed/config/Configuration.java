@@ -19,6 +19,7 @@ import com.android.tradefed.build.IBuildProvider;
 import com.android.tradefed.build.StubBuildProvider;
 import com.android.tradefed.command.CommandOptions;
 import com.android.tradefed.command.ICommandOptions;
+import com.android.tradefed.config.ConfigurationDef.OptionDef;
 import com.android.tradefed.config.OptionSetter.FieldDef;
 import com.android.tradefed.device.DeviceSelectionOptions;
 import com.android.tradefed.device.IDeviceRecovery;
@@ -87,8 +88,6 @@ public class Configuration implements IConfiguration {
 
     /** Mapping of config object type name to config objects. */
     private Map<String, List<Object>> mConfigMap;
-    /** Cached {@link OptionSetter} that must be kept in-sync with {@code mConfigMap} */
-    private OptionSetter mCachedOptionSetter = null;
     private final String mName;
     private final String mDescription;
     // original command line used to create this given configuration.
@@ -324,19 +323,34 @@ public class Configuration implements IConfiguration {
     }
 
     /**
-     * Returns a cached OptionSetter which is appropriate for setting options on all objects which
-     * will be returned by {@link getAllConfigurationObjects()}.  Note that, for cache coherency,
-     * the cache variable {@code mCachedOptionSetter} <emph>must</emph> be set to {@code null}
-     * anytime that {@code mConfigMap} is modified.
-     * <p />
-     * To improve thread-safety, all modifications of {@code mConfigMap} should be done atomically
-     * with an invalidation of {@code mCachedOptionSetter}, from the perspective of this method.
+     * Creates an OptionSetter which is appropriate for setting options on all objects which
+     * will be returned by {@link getAllConfigurationObjects()}.
      */
-    private synchronized OptionSetter getOptionSetter() throws ConfigurationException {
-        if (mCachedOptionSetter == null) {
-            mCachedOptionSetter = new OptionSetter(getAllConfigurationObjects());
+    private OptionSetter createOptionSetter() throws ConfigurationException {
+        return new OptionSetter(getAllConfigurationObjects());
+    }
+
+    private void internalInjectOptionValue(OptionSetter optionSetter, String optionName,
+            String optionKey, String optionValue, String source) throws ConfigurationException {
+        if (optionSetter == null) {
+            throw new IllegalArgumentException("optionSetter cannot be null");
         }
-        return mCachedOptionSetter;
+
+        // Set all fields that match this option name / key
+        List<FieldDef> affectedFields = optionSetter.setOptionValue(
+                optionName, optionKey, optionValue);
+
+        if (source != null) {
+            // Update the source for each affected field
+            for (FieldDef field : affectedFields) {
+                // Unless the field is a Collection or MultiMap entry, it can only have one source
+                if (!Collection.class.isAssignableFrom(field.field.getType()) &&
+                        !MultiMap.class.isAssignableFrom(field.field.getType())) {
+                    mFieldSources.remove(field);
+                }
+                mFieldSources.put(field, source);
+            }
+        }
     }
 
     /**
@@ -345,7 +359,7 @@ public class Configuration implements IConfiguration {
     @Override
     public void injectOptionValue(String optionName, String optionValue)
             throws ConfigurationException {
-        injectOptionValue(optionName, null, optionValue);
+        internalInjectOptionValue(createOptionSetter(), optionName, null, optionValue, null);
     }
 
     /**
@@ -354,7 +368,7 @@ public class Configuration implements IConfiguration {
     @Override
     public void injectOptionValue(String optionName, String optionKey, String optionValue)
             throws ConfigurationException {
-        getOptionSetter().setOptionValue(optionName, optionKey, optionValue);
+        internalInjectOptionValue(createOptionSetter(), optionName, optionKey, optionValue, null);
     }
 
     /**
@@ -363,21 +377,21 @@ public class Configuration implements IConfiguration {
     @Override
     public void injectOptionValueWithSource(String optionName, String optionKey, String optionValue,
             String source) throws ConfigurationException {
+        internalInjectOptionValue(createOptionSetter(), optionName, optionKey, optionValue, source);
+    }
 
-        // Set all fields that match this option name / key
-        List<FieldDef> affectedFields = getOptionSetter().setOptionValue(
-                optionName, optionKey, optionValue);
-
-        // Update the source for each affected field
-        for (FieldDef field : affectedFields) {
-            // Unless the field is a Collection or MultiMap entry, it can only have one source
-            if (!Collection.class.isAssignableFrom(field.field.getType()) &&
-                    !MultiMap.class.isAssignableFrom(field.field.getType())) {
-                mFieldSources.remove(field);
-            }
-            mFieldSources.put(field, source);
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void injectOptionValues(List<OptionDef> optionDefs) throws ConfigurationException {
+        OptionSetter optionSetter = createOptionSetter();
+        for (OptionDef optionDef : optionDefs) {
+            internalInjectOptionValue(optionSetter, optionDef.name, optionDef.key, optionDef.value,
+                    optionDef.source);
         }
     }
+
 
     /**
      * Creates a shallow copy of this object.
@@ -496,7 +510,6 @@ public class Configuration implements IConfiguration {
         if (configObject == null) {
             throw new IllegalArgumentException("configObject cannot be null");
         }
-        mCachedOptionSetter = null;  // Keep this in sync with mConfigMap
         mConfigMap.remove(typeName);
         addObject(typeName, configObject);
     }
@@ -510,7 +523,6 @@ public class Configuration implements IConfiguration {
         if (configList == null) {
             throw new IllegalArgumentException("configList cannot be null");
         }
-        mCachedOptionSetter = null;  // Keep this in sync with mConfigMap
         mConfigMap.remove(typeName);
         for (Object configObject : configList) {
             addObject(typeName, configObject);
@@ -525,8 +537,6 @@ public class Configuration implements IConfiguration {
      * @throws ConfigurationException if object was not the correct type
      */
     private synchronized void addObject(String typeName, Object configObject) throws ConfigurationException {
-        mCachedOptionSetter = null;  // Keep this in sync with mConfigMap
-
         List<Object> objList = mConfigMap.get(typeName);
         if (objList == null) {
             objList = new ArrayList<Object>(1);

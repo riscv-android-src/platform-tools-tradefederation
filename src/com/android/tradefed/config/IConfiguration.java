@@ -18,6 +18,7 @@ package com.android.tradefed.config;
 
 import com.android.tradefed.build.IBuildProvider;
 import com.android.tradefed.command.ICommandOptions;
+import com.android.tradefed.config.ConfigurationDef.OptionDef;
 import com.android.tradefed.device.IDeviceRecovery;
 import com.android.tradefed.device.IDeviceSelection;
 import com.android.tradefed.device.TestDeviceOptions;
@@ -173,6 +174,16 @@ public interface IConfiguration {
      */
     public void injectOptionValueWithSource(String optionName, String optionKey, String optionValue,
             String source) throws ConfigurationException;
+
+    /**
+     * Inject multiple option values into the set of configuration objects.
+     * <p/>
+     * Useful to inject many option values at once after creating a new object.
+     *
+     * @param optionDefs a list of option defs to inject
+     * @throws ConfigurationException if failed to set option values
+     */
+    public void injectOptionValues(List<OptionDef> optionDefs) throws ConfigurationException;
 
     /**
      * Create a copy of this object.

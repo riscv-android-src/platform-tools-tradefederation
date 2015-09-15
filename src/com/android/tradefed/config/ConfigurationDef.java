@@ -43,7 +43,7 @@ public class ConfigurationDef {
     /** The set of files (and modification times) that were used to load this config */
     private final Map<File, Long> mSourceFiles = new HashMap<>();
 
-    static class OptionDef {
+    public static class OptionDef {
         final String name;
         final String key;
         final String value;
@@ -178,10 +178,7 @@ public class ConfigurationDef {
             }
             config.setConfigurationObjectList(objClassEntry.getKey(), objectList);
         }
-        for (OptionDef optionEntry : mOptionList) {
-            config.injectOptionValueWithSource(optionEntry.name, optionEntry.key, optionEntry.value,
-                    optionEntry.source);
-        }
+        config.injectOptionValues(mOptionList);
 
         return config;
     }
