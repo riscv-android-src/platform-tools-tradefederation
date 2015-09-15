@@ -132,7 +132,7 @@ class ConfigurationXmlParser {
 
                 String optionValue = attributes.getValue("value");
                 if (optionValue == null) {
-                    throwException("Missing 'value' attribute for option");
+                    throwException("Missing 'value' attribute for option '" + optionName + "'");
                 }
                 if (mCurrentConfigObject != null) {
                     // option is declared within a config object - namespace it with object class
@@ -263,7 +263,7 @@ class ConfigurationXmlParser {
         if (e.getCause() instanceof ConfigurationException) {
             throw (ConfigurationException)e.getCause();
         }
-        throw new ConfigurationException(String.format("Failed to parse config xml '%s'",
-                configName), e);
+        throw new ConfigurationException(String.format("Failed to parse config xml '%s' due to '%s'",
+                configName, e), e);
     }
 }
