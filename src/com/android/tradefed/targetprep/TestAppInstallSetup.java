@@ -92,6 +92,25 @@ public class TestAppInstallSetup implements ITargetCleaner, IAbiReceiver {
     }
 
     /**
+     * Resolve the actual apk path based on testing artifact information inside build info.
+     *
+     * @param buildInfo build artifact information
+     * @param apkFileName filename of the apk to install
+     * @return a {@link File} representing the physical apk file on host or {@code null} if the
+     *     file does not exist.
+     */
+    protected File getLocalPathForFilename(IBuildInfo buildInfo, String apkFileName)
+            throws TargetSetupError {
+        try {
+            return BuildTestsZipUtils.getApkFile(buildInfo, apkFileName, mAltDirs, mAltDirBehavior,
+                    false /* use resource as fallback */,
+                    null /* device signing key */);
+        } catch (IOException ioe) {
+            throw new TargetSetupError("failed to resolve apk path", ioe);
+        }
+    }
+
+    /**
      * {@inheritDoc}
      */
     @Override
@@ -105,21 +124,7 @@ public class TestAppInstallSetup implements ITargetCleaner, IAbiReceiver {
             mPackagesInstalled = new ArrayList<>();
         }
         for (String testAppName : mTestFileNames) {
-            File testAppFile = null;
-            try {
-                testAppFile = BuildTestsZipUtils.getApkFile(buildInfo, testAppName,
-                        mAltDirs, mAltDirBehavior,
-                        false /* use resource as fallback */, null /* device signing key*/);
-            } catch (IOException ioe) {
-                CLog.e("IOException while looking up apk");
-                CLog.e(ioe);
-                // will throw exception below since testAppFile will be null
-            }
-            if (testAppFile == null) {
-                throw new TargetSetupError(
-                    String.format("Could not find test app %s directory in extracted tests.zip",
-                            testAppName));
-            }
+            File testAppFile = getLocalPathForFilename(buildInfo, testAppName);
             // resolve abi flags
             if (mAbi != null && mForceAbi != null) {
                 throw new IllegalStateException("cannot specify both abi flags");
