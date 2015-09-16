@@ -23,6 +23,7 @@ import com.android.tradefed.config.OptionClass;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.log.LogUtil.CLog;
+import com.android.tradefed.util.BinaryState;
 import com.android.tradefed.util.MultiMap;
 
 import java.io.File;
@@ -42,15 +43,6 @@ import java.util.Map;
  */
 @OptionClass(alias = "device-setup")
 public class DeviceSetup implements ITargetPreparer, ITargetCleaner {
-
-    /**
-     * Enum used to record ON/OFF state with a IGNORE no-op state.
-     */
-    public enum BinaryState {
-        IGNORE,
-        ON,
-        OFF;
-    }
 
     // Networking
     @Option(name = "airplane-mode",

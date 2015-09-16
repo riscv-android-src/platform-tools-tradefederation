@@ -22,7 +22,7 @@ import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.build.IDeviceBuildInfo;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
-import com.android.tradefed.targetprep.DeviceSetup.BinaryState;
+import com.android.tradefed.util.BinaryState;
 import com.android.tradefed.util.FileUtil;
 
 import junit.framework.TestCase;
