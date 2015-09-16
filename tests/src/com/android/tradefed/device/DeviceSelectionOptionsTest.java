@@ -231,6 +231,17 @@ public class DeviceSelectionOptionsTest extends TestCase {
         assertTrue(options.matches(stubDevice));
     }
 
+
+    /**
+     * Test for matching with tcp device requested flag
+     */
+    public void testMatches_tcpDevice() {
+        DeviceSelectionOptions options = new DeviceSelectionOptions();
+        options.setTcpDeviceRequested(true);
+        IDevice stubDevice = new TcpDevice("tcp device");
+        assertTrue(options.matches(stubDevice));
+    }
+
     /**
      * Test that a real device is not matched if the 'null device requested' flag is set
      */

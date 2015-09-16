@@ -42,7 +42,7 @@ import java.util.concurrent.TimeUnit;
  */
 public class StubDevice implements IDevice {
 
-    private final String mSerial;
+    private String mSerial;
     private final boolean mIsEmulator;
 
     public StubDevice(String serial) {
@@ -52,6 +52,11 @@ public class StubDevice implements IDevice {
     StubDevice(String serial, boolean isEmulator) {
         mSerial = serial;
         mIsEmulator = isEmulator;
+    }
+
+
+    public void setSerial(String serial) {
+        mSerial = serial;
     }
 
     /**

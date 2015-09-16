@@ -68,6 +68,10 @@ public class DeviceSelectionOptions implements IDeviceSelection {
         "do not allocate a device for this test.")
     private boolean mNullDeviceRequested = false;
 
+    @Option(name = "tcp-device", description =
+            "start a placeholder for a tcp device that will be connected later.")
+    private boolean mTcpDeviceRequested = false;
+
     @Option(name = "min-battery", description =
         "only run this test on a device whose battery level is at least the given amount. " +
         "Scale: 0-100")
@@ -208,6 +212,10 @@ public class DeviceSelectionOptions implements IDeviceSelection {
         return mNullDeviceRequested;
     }
 
+    public boolean tcpDeviceRequested() {
+        return mTcpDeviceRequested;
+    }
+
     /**
      * Sets the emulator requested flag
      */
@@ -234,6 +242,13 @@ public class DeviceSelectionOptions implements IDeviceSelection {
      */
     public void setNullDeviceRequested(boolean nullDeviceRequested) {
         mNullDeviceRequested = nullDeviceRequested;
+    }
+
+    /**
+     * Sets the tcp device requested flag
+     */
+    public void setTcpDeviceRequested(boolean tcpDeviceRequested) {
+        mTcpDeviceRequested = tcpDeviceRequested;
     }
 
     /**
@@ -352,6 +367,9 @@ public class DeviceSelectionOptions implements IDeviceSelection {
             return false;
         }
         if (nullDeviceRequested() != (device instanceof NullDevice)) {
+            return false;
+        }
+        if (tcpDeviceRequested() != (device instanceof TcpDevice)) {
             return false;
         }
         if ((mMinSdk != null) || (mMaxSdk != null)) {

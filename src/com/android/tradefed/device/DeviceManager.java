@@ -51,10 +51,6 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
-/**
- * {@inheritDoc}
- */
-
 @OptionClass(alias = "dmgr", global_namespace = false)
 public class DeviceManager implements IDeviceManager {
 
@@ -78,6 +74,7 @@ public class DeviceManager implements IDeviceManager {
     static final IDeviceSelection ANY_DEVICE_OPTIONS = new DeviceSelectionOptions();
     private static final String NULL_DEVICE_SERIAL_PREFIX = "null-device";
     private static final String EMULATOR_SERIAL_PREFIX = "emulator";
+    private static final String TCP_DEVICE_SERIAL_PREFIX = "tcp-device";
 
     private DeviceMonitorMultiplexer mDvcMon = new DeviceMonitorMultiplexer();
 
@@ -99,6 +96,9 @@ public class DeviceManager implements IDeviceManager {
     @Option(name = "max-null-devices",
             description = "the maximum number of no device runs that can be allocated at one time.")
     private int mNumNullDevicesSupported = 1;
+    @Option(name = "max-tcp-devices",
+            description = "the maximum number of tcp devices that can be allocated at one time")
+    private int mNumTcpDevicesSupported = 1;
 
     private boolean mSynchronousMode = false;
 
@@ -214,6 +214,7 @@ public class DeviceManager implements IDeviceManager {
         mAdbBridge.init(false /* client support */, "adb");
         addEmulators();
         addNullDevices();
+        addTcpDevices();
 
         List<IMultiDeviceRecovery> recoverers = getGlobalConfig().getMultiDeviceRecoveryHandlers();
         mDeviceRecoverer = new DeviceRecoverer(recoverers);
@@ -349,6 +350,15 @@ public class DeviceManager implements IDeviceManager {
             addAvailableDevice(new StubDevice(String.format("%s-%d", EMULATOR_SERIAL_PREFIX, port),
                     true));
             port += 2;
+        }
+    }
+
+    /**
+     * Add placeholder objects for the max number of tcp devices that can be connected
+     */
+    private void addTcpDevices() {
+        for (int i = 0; i < mNumTcpDevicesSupported; i++) {
+            addAvailableDevice(new TcpDevice(String.format("%s-%d", TCP_DEVICE_SERIAL_PREFIX, i)));
         }
     }
 
