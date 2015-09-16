@@ -225,10 +225,14 @@ public class CameraTestBase implements IDeviceTest, IRemoteTest {
         /**
          * Determine that the test run failed with fatal errors.
          *
-         * @return True if all tests failed with errors.
+         * @return True if test run has a failure due to fatal error.
          */
-        public boolean isTestRunFatalError() {
-            return (mTestCount > 0 && mFatalErrors.size() == mTestCount);
+        public boolean hasTestRunFatalError() {
+            return (mTestCount > 0 && mFatalErrors.size() > 0);
+        }
+
+        public Map<String, String> getFatalErrors() {
+            return mFatalErrors;
         }
 
         public String getErrorMessage() {
