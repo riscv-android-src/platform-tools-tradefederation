@@ -80,8 +80,8 @@ public class HermeticLaunchTest implements IRemoteTest, IDeviceTest {
     private static final Pattern TRACE_ENTRY1 = Pattern.compile(
             "^\\s*\\<\\.+\\>-(?<tid>\\d+)\\s+\\[\\d+\\]\\s+\\S{4}\\s+" +
             "(?<secs>\\d+)\\.(?<usecs>\\d+):\\s+(?<function>.*)\\s*$");
-    private static final Pattern TRACE_ENTRY2 = Pattern.compile("^\\s*[a-zA-Z].*-(?<tid>\\d+)"
-            + "\\s*\\(\\s*\\d+\\)\\s*\\[\\d+\\]\\s+\\S{4}\\s+" +
+    private static final Pattern TRACE_ENTRY2 = Pattern.compile("^\\s*\\<\\.+\\>-(?<tid>\\d+)"
+            + "\\s*\\(\\s*\\d*-*\\)\\s*\\[\\d+\\]\\s+\\S{4}\\s+" +
             "(?<secs>\\d+)\\.(?<usecs>\\d+):\\s+(?<function>.*)\\s*$");
     private static final Pattern ATRACE_BEGIN = Pattern
             .compile("tracing_mark_write: B\\|(?<pid>\\d+)\\|(?<name>.+)");
