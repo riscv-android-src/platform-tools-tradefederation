@@ -1054,6 +1054,11 @@ public class DeviceManager implements IDeviceManager {
         mNumNullDevicesSupported = nullDevices;
     }
 
+    @VisibleForTesting
+    void setMaxTcpDevices(int tcpDevices) {
+        mNumTcpDevicesSupported = tcpDevices;
+    }
+
     @Override
     public boolean isNullDevice(String serial) {
         return serial.startsWith(NULL_DEVICE_SERIAL_PREFIX);

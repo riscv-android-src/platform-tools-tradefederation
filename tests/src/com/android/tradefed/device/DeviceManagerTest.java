@@ -234,6 +234,7 @@ public class DeviceManagerTest extends TestCase {
         mgr.setSynchronousMode(true);
         mgr.setMaxEmulators(0);
         mgr.setMaxNullDevices(0);
+        mgr.setMaxTcpDevices(0);
         return mgr;
     }
 
