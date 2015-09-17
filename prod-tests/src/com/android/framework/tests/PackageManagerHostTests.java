@@ -147,16 +147,6 @@ public class PackageManagerHostTests extends DeviceTestCase {
         // setup the PackageManager host tests utilities class, and get various
         // paths we'll need...
         mPMHostUtils = new PackageManagerHostTestUtils(getDevice());
-        mPMHostUtils.determinePrivateAppPath(
-                getTestAppFilePath(INTERNAL_LOC_APK), INTERNAL_LOC_PKG);
-
-        // Ensure the default is set to let the system decide where to install
-        // apps
-        // (It's ok for individual tests to override and change this during
-        // their test, but should
-        // reset it back when they're done)
-        mPMHostUtils.setDevicePreferredInstallLocation(
-                PackageManagerHostTestUtils.InstallLocPreference.AUTO);
     }
 
     /**
@@ -178,9 +168,7 @@ public class PackageManagerHostTests extends DeviceTestCase {
      *
      * @throws DeviceNotAvailableException
      */
-    public void testPushAppPrivate() throws IOException, InterruptedException, InstallException,
-            TimeoutException, AdbCommandRejectedException, ShellCommandUnresponsiveException,
-            SyncException, DeviceNotAvailableException {
+    public void testPushAppPrivate() throws DeviceNotAvailableException {
         Log.i(LOG_TAG, "testing pushing an apk to /data/app-private");
         final String apkAppPrivatePath = PackageManagerHostTestUtils.getAppPrivatePath()
                 + SIMPLE_APK;
@@ -228,105 +216,52 @@ public class PackageManagerHostTests extends DeviceTestCase {
     }
 
     /**
-     * Installs the Auto app using the preferred device install location
-     * specified, and verifies it was installed on the device.
+     * Installs the Auto app and verifies it was installed  at expected loc.
      * <p/>
      * Assumes adb is running as root in device under test.
      *
-     * @param preference the device's preferred location of where to install
-     *            apps
      * @param expectedLocation the expected location of where the apk was
      *            installed
      * @throws DeviceNotAvailableException
      */
-    public void installAppAutoLoc(PackageManagerHostTestUtils.InstallLocPreference preference,
-            PackageManagerHostTestUtils.InstallLocation expectedLocation)
-            throws IOException, InterruptedException, TimeoutException,
-            AdbCommandRejectedException,
-            ShellCommandUnresponsiveException, InstallException, DeviceNotAvailableException {
-
-        PackageManagerHostTestUtils.InstallLocPreference savedPref =
-                PackageManagerHostTestUtils.InstallLocPreference.AUTO;
-
+    public void installAppAutoLoc(PackageManagerHostTestUtils.InstallLocation expectedLocation)
+            throws DeviceNotAvailableException {
         try {
-            savedPref = mPMHostUtils.getDevicePreferredInstallLocation();
-            mPMHostUtils.setDevicePreferredInstallLocation(preference);
-
+            // Auto app should go to storage with more free space when device has adopted storage
             doStandardInstall(AUTO_LOC_APK, AUTO_LOC_PKG, expectedLocation);
         }
         // cleanup test app
         finally {
-            mPMHostUtils.setDevicePreferredInstallLocation(savedPref);
             mPMHostUtils.uninstallApp(AUTO_LOC_PKG);
         }
     }
 
     /**
      * Regression test to verify that an app with its manifest set to
-     * installLocation=auto will install the app to the device when device's
-     * preference is auto.
+     * installLocation=auto will install the app to the device
      * <p/>
      * Assumes adb is running as root in device under test.
      */
-    public void testInstallAppAutoLocPrefIsAuto() throws Exception {
-        Log.i(LOG_TAG, "Test installLocation=auto, prefer=auto gets installed on device");
-        installAppAutoLoc(PackageManagerHostTestUtils.InstallLocPreference.AUTO,
-                PackageManagerHostTestUtils.InstallLocation.DEVICE);
+    public void testInstallAppLocPrefIsAuto() throws Exception {
+        Log.i(LOG_TAG, "Test app manifest installLocation=auto gets installed on device");
+        installAppAutoLoc(PackageManagerHostTestUtils.InstallLocation.DEVICE);
     }
 
     /**
-     * Regression test to verify that an app with its manifest set to
-     * installLocation=auto will install the app to the device when device's
-     * preference is internal.
-     * <p/>
-     * Assumes adb is running as root in device under test.
-     */
-    public void testInstallAppAutoLocPrefIsInternal() throws Exception {
-        Log.i(LOG_TAG, "Test installLocation=auto, prefer=internal gets installed on device");
-        installAppAutoLoc(PackageManagerHostTestUtils.InstallLocPreference.INTERNAL,
-                PackageManagerHostTestUtils.InstallLocation.DEVICE);
-    }
-
-    /**
-     * Regression test to verify that an app with its manifest set to
-     * installLocation=auto will install the app to the SD card when device's
-     * preference is external.
-     * <p/>
-     * Assumes adb is running as root in device under test.
-     */
-    public void testInstallAppAutoLocPrefIsExternal() throws Exception {
-        Log.i(LOG_TAG, "Test installLocation=auto, prefer=external gets installed on device");
-        installAppAutoLoc(PackageManagerHostTestUtils.InstallLocPreference.EXTERNAL,
-                PackageManagerHostTestUtils.InstallLocation.DEVICE);
-    }
-
-    /**
-     * Installs the Internal app using the preferred device install location
-     * specified, and verifies it was installed to the location expected.
+     * Installs the Internal app and verifies it was installed at expected loc.
      * <p/>
      * Assumes adb is running as root in device under test.
      *
-     * @param preference the device's preferred location of where to install
-     *            apps
      * @param expectedLocation the expected location of where the apk was
      *            installed
      */
-    public void installAppInternalLoc(PackageManagerHostTestUtils.InstallLocPreference preference,
-            PackageManagerHostTestUtils.InstallLocation expectedLocation)
+    public void installAppInternalLoc(PackageManagerHostTestUtils.InstallLocation expectedLocation)
             throws Exception {
-
-        PackageManagerHostTestUtils.InstallLocPreference savedPref =
-                PackageManagerHostTestUtils.InstallLocPreference.AUTO;
-
         try {
-            savedPref = mPMHostUtils.getDevicePreferredInstallLocation();
-            mPMHostUtils.setDevicePreferredInstallLocation(preference);
-
             doStandardInstall(INTERNAL_LOC_APK, INTERNAL_LOC_PKG, expectedLocation);
         }
         // cleanup test app
         finally {
-            mPMHostUtils.setDevicePreferredInstallLocation(savedPref);
             mPMHostUtils.uninstallApp(INTERNAL_LOC_PKG);
         }
     }
@@ -338,132 +273,57 @@ public class PackageManagerHostTests extends DeviceTestCase {
      * <p/>
      * Assumes adb is running as root in device under test.
      */
-    public void testInstallAppInternalLocPrefIsAuto() throws Exception {
-        Log.i(LOG_TAG, "Test installLocation=internal, prefer=auto gets installed on device");
-        installAppInternalLoc(PackageManagerHostTestUtils.InstallLocPreference.AUTO,
-                PackageManagerHostTestUtils.InstallLocation.DEVICE);
+    public void testInstallAppLocPrefIsInternal() throws Exception {
+      Log.i(LOG_TAG, "Test app manifest installLocation=internal gets installed on device");
+        installAppInternalLoc(PackageManagerHostTestUtils.InstallLocation.DEVICE);
     }
 
     /**
      * Regression test to verify that an app with its manifest set to
-     * installLocation=internalOnly will install the app to the device when
-     * device's preference is internal.
-     * <p/>
-     * Assumes adb is running as root in device under test.
-     */
-    public void testInstallAppInternalLocPrefIsInternal() throws Exception {
-        Log.i(LOG_TAG, "Test installLocation=internal, prefer=internal is installed on device");
-        installAppInternalLoc(PackageManagerHostTestUtils.InstallLocPreference.INTERNAL,
-                PackageManagerHostTestUtils.InstallLocation.DEVICE);
-    }
-
-    /**
-     * Regression test to verify that an app with its manifest set to
-     * installLocation=internalOnly will install the app to the device when
-     * device's preference is external.
-     * <p/>
-     * Assumes adb is running as root in device under test.
-     */
-    public void testInstallAppInternalLocPrefIsExternal() throws Exception {
-        Log.i(LOG_TAG, "Test installLocation=internal, prefer=external is installed on device");
-        installAppInternalLoc(PackageManagerHostTestUtils.InstallLocPreference.EXTERNAL,
-                PackageManagerHostTestUtils.InstallLocation.DEVICE);
-    }
-
-    /**
-     * Regression test to verify that an app with its manifest set to
-     * installLocation=preferExternal will install the app to the SD card.
+     * installLocation=preferExternal will install the app to expected loc.
      * <p/>
      * Assumes adb is running as root in device under test.
      *
-     * @param preference the device's preferred location of where to install
-     *            apps
      * @param expectedLocation the expected location of where the apk was
      *            installed
      */
-    public void installAppExternalLoc(PackageManagerHostTestUtils.InstallLocPreference preference,
+    public void installAppExternalLoc(
             PackageManagerHostTestUtils.InstallLocation expectedLocation)
             throws Exception {
-
-        PackageManagerHostTestUtils.InstallLocPreference savedPref =
-                PackageManagerHostTestUtils.InstallLocPreference.AUTO;
-
         try {
-            savedPref = mPMHostUtils.getDevicePreferredInstallLocation();
-            mPMHostUtils.setDevicePreferredInstallLocation(preference);
-
             doStandardInstall(EXTERNAL_LOC_APK, EXTERNAL_LOC_PKG, expectedLocation);
-
         }
         // cleanup test app
         finally {
-            mPMHostUtils.setDevicePreferredInstallLocation(savedPref);
             mPMHostUtils.uninstallApp(EXTERNAL_LOC_PKG);
         }
     }
 
     /**
      * Regression test to verify that an app with its manifest set to
-     * installLocation=preferExternal will install the app to the device when
-     * device's preference is auto.
+     * installLocation=preferExternal will install the app to the appropriate external storage.
      * <p/>
      * Assumes adb is running as root in device under test.
      */
-    public void testInstallAppExternalLocPrefIsAuto() throws Exception {
-        Log.i(LOG_TAG, "Test installLocation=external, pref=auto gets installed on SD Card");
-        installAppExternalLoc(PackageManagerHostTestUtils.InstallLocPreference.AUTO,
-                PackageManagerHostTestUtils.InstallLocation.SDCARD);
-    }
-
-    /**
-     * Regression test to verify that an app with its manifest set to
-     * installLocation=preferExternal will install the app to the device when
-     * device's preference is internal.
-     * <p/>
-     * Assumes adb is running as root in device under test.
-     */
-    public void testInstallAppExternalLocPrefIsInternal() throws Exception {
-        Log.i(LOG_TAG, "Test installLocation=external, pref=internal gets installed on SD Card");
-        installAppExternalLoc(PackageManagerHostTestUtils.InstallLocPreference.INTERNAL,
-                PackageManagerHostTestUtils.InstallLocation.SDCARD);
-    }
-
-    /**
-     * Regression test to verify that an app with its manifest set to
-     * installLocation=preferExternal will install the app to the device when
-     * device's preference is external.
-     * <p/>
-     * Assumes adb is running as root in device under test.
-     */
-    public void testInstallAppExternalLocPrefIsExternal() throws Exception {
-        Log.i(LOG_TAG, "Test installLocation=external, pref=external gets installed on SD Card");
-        installAppExternalLoc(PackageManagerHostTestUtils.InstallLocPreference.EXTERNAL,
-                PackageManagerHostTestUtils.InstallLocation.SDCARD);
+    public void testInstallAppLocPrefIsExternal() throws Exception {
+        Log.i(LOG_TAG, "Test installLocation=external gets installed on SD Card");
+        installAppExternalLoc(PackageManagerHostTestUtils.InstallLocation.SDCARD);
     }
 
     /**
      * Regression test to verify that an app without installLocation in its
-     * manifest will install the app to the device by default when the system
-     * default pref is to let the system decide.
+     * manifest will install the app to the device by default
      * <p/>
      * Assumes adb is running as root in device under test.
      */
     public void testInstallAppNoLocPrefIsAuto() throws Exception {
         Log.i(LOG_TAG, "Test an app with no installLocation gets installed on device");
-
-        PackageManagerHostTestUtils.InstallLocPreference savedPref =
-                PackageManagerHostTestUtils.InstallLocPreference.AUTO;
-
         try {
-            savedPref = mPMHostUtils.getDevicePreferredInstallLocation();
-            mPMHostUtils.setDevicePreferredInstallLocation(
-                    PackageManagerHostTestUtils.InstallLocPreference.AUTO);
             mPMHostUtils.installAppAndVerifyExistsOnDevice(
                     getTestAppFilePath(NO_LOC_APK), NO_LOC_PKG, false);
         }
         // cleanup test app
         finally {
-            mPMHostUtils.setDevicePreferredInstallLocation(savedPref);
             mPMHostUtils.uninstallApp(NO_LOC_PKG);
         }
     }
