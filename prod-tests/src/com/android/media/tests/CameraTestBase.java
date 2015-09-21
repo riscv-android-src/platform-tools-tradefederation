@@ -67,6 +67,10 @@ public class CameraTestBase implements IDeviceTest, IRemoteTest {
             "take a logcat snapshot on every test failure.")
     private boolean mLogcatOnFailure = false;
 
+    @Option(name = "instrumentation-arg",
+            description = "Additional instrumentation arguments to provide.")
+    private Map<String, String> mInstrArgMap = new HashMap<String, String>();
+
     private ITestDevice mDevice = null;
 
     // A base listener to collect the results from each test run. Fatal error or failures will be
@@ -121,6 +125,9 @@ public class CameraTestBase implements IDeviceTest, IRemoteTest {
         instr.setTestTimeout(getTestTimeoutMs());
         instr.setShellTimeout(getTestTimeoutMs());
         instr.setLogcatOnFailure(mLogcatOnFailure);
+        for (Map.Entry<String, String> entry : mInstrArgMap.entrySet()) {
+            instr.addInstrumentationArg(entry.getKey(), entry.getValue());
+        }
 
         mStartTimeMs = System.currentTimeMillis();
         listener.testRunStarted(getRuKey(), 1);
