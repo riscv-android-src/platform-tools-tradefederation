@@ -44,6 +44,11 @@ public class TestDeviceOptions {
         "Only used if --enable-logcat is set")
     private long mMaxLogcatDataSize = 20 * 1024 * 1024;
 
+    @Option(name = "logcat-options", description =
+            "Options to be passed down to logcat command, if unspecified, \"-v threadtime\" will " +
+            "be used. Only used if --enable-logcat is set")
+    private String mLogcatOptions = null;
+
     @Option(name = "fastboot-timeout", description =
             "time in ms to wait for a device to boot into fastboot.")
     private int mFastbootTimeout = 1 * 60 * 1000;
@@ -304,5 +309,19 @@ public class TestDeviceOptions {
      */
     public Integer getCutoffBattery() {
         return mCutoffBattery;
+    }
+
+    /**
+     * @return the configured logcat options
+     */
+    public String getLogcatOptions() {
+        return mLogcatOptions;
+    }
+
+    /**
+     * Set the options to be passed down to logcat
+     */
+    public void setmLogcatOptions(String logcatOptions) {
+        mLogcatOptions = logcatOptions;
     }
 }

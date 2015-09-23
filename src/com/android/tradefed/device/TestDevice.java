@@ -1846,7 +1846,14 @@ class TestDevice implements IManagedTestDevice {
      * Exposed for unit testing.
      */
     LogcatReceiver createLogcatReceiver() {
-        return new LogcatReceiver(this, mOptions.getMaxLogcatDataSize(), mLogStartDelay);
+        String logcatOptions = mOptions.getLogcatOptions();
+        if (logcatOptions == null) {
+            return new LogcatReceiver(this, mOptions.getMaxLogcatDataSize(), mLogStartDelay);
+        } else {
+            return new LogcatReceiver(this,
+                    String.format("%s %s", LogcatReceiver.LOGCAT_CMD, logcatOptions),
+                    mOptions.getMaxLogcatDataSize(), mLogStartDelay);
+        }
     }
 
     /**
