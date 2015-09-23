@@ -22,6 +22,7 @@ import com.android.tradefed.config.Option;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.log.LogUtil.CLog;
+import com.android.tradefed.result.ByteArrayInputStreamSource;
 import com.android.tradefed.result.CollectingTestListener;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.InputStreamSource;
@@ -60,12 +61,13 @@ import java.util.concurrent.TimeUnit;
 public class CameraTestBase implements IDeviceTest, IRemoteTest {
 
     private static final String LOG_TAG = CameraTestBase.class.getSimpleName();
-    private static final long MEMINFO_TIMEOUT_MS = 60 * 1000;  // 1 min
-    private static final int MEMINFO_MAX_ATTEMPTS = 3;
+    private static final long SHELL_TIMEOUT_MS = 60 * 1000;  // 1 min
+    private static final int SHELL_MAX_ATTEMPTS = 3;
     private static final String PROCESS_CAMERA_DAEMON = "mm-qcamera-daemon";
     private static final String PROCESS_CAMERA_APP = "com.google.android.GoogleCamera";
+    private static final String DUMP_ION_HEAPS_COMMAND = "cat /d/ion/heaps/system";
 
-
+    
     @Option(name = "test-package", description = "Test package to run.")
     private String mTestPackage = "com.google.android.camera";
 
@@ -99,6 +101,11 @@ public class CameraTestBase implements IDeviceTest, IRemoteTest {
     @Option(name="dump-meminfo-interval-ms",
             description="Interval of calling dumpsys meminfo in milliseconds.")
     private int mMeminfoIntervalMs = 60 * 1000;
+
+    @Option(name = "dump-ion-heap", description =
+            "dump ION allocations at the end of test.")
+    private boolean mDumpIonHeap = false;
+
 
     private ITestDevice mDevice = null;
 
@@ -160,7 +167,7 @@ public class CameraTestBase implements IDeviceTest, IRemoteTest {
         }
 
         // Check if dumpheap needs to be taken for native processes before test runs.
-        if (isDumpMeminfo()) {
+        if (shouldDumpMeminfo()) {
             mMeminfoTimer = new MeminfoTimer(0, mMeminfoIntervalMs);
         }
 
@@ -236,6 +243,7 @@ public class CameraTestBase implements IDeviceTest, IRemoteTest {
         public void testEnded(TestIdentifier test, Map<String, String> testMetrics) {
             handleCollectedMetrics(test, testMetrics);
             stopDumpingMeminfo(test);
+            dumpIonHeaps(test);
             mListener.testEnded(test, testMetrics);
         }
 
@@ -246,14 +254,30 @@ public class CameraTestBase implements IDeviceTest, IRemoteTest {
             mListener.testStarted(test);
         }
 
+        @Override
+        public void testFailed(TestIdentifier test, String trace) {
+            // If the test failed to run to complete, this is an exceptional case.
+            // Let this test run fail so that it can rerun.
+            if (trace.startsWith(INCOMPLETE_TEST_ERR_MSG_PREFIX)) {
+                mFatalErrors.put(test.getTestName(), trace);
+                CLog.d("Test (%s) failed due to fatal error : %s", test.getTestName(), trace);
+            }
+            mListener.testFailed(test, trace);
+        }
+
+        @Override
+        public void invocationFailed(Throwable cause) {
+            mListener.invocationFailed(cause);
+        }
+
         protected void startDumpingMeminfo(TestIdentifier test) {
-            if (isDumpMeminfo()) {
+            if (shouldDumpMeminfo()) {
                 mMeminfoTimer.start(test);
             }
         }
 
         protected void stopDumpingMeminfo(TestIdentifier test) {
-            if (isDumpMeminfo()) {
+            if (shouldDumpMeminfo()) {
                 mMeminfoTimer.stop();
 
                 // Grab a snapshot of meminfo file and post it to dashboard.
@@ -275,20 +299,20 @@ public class CameraTestBase implements IDeviceTest, IRemoteTest {
             }
         }
 
-        @Override
-        public void testFailed(TestIdentifier test, String trace) {
-            // If the test failed to run to complete, this is an exceptional case.
-            // Let this test run fail so that it can rerun.
-            if (trace.startsWith(INCOMPLETE_TEST_ERR_MSG_PREFIX)) {
-                mFatalErrors.put(test.getTestName(), trace);
-                CLog.d("Test (%s) failed due to fatal error : %s", test.getTestName(), trace);
+        protected void dumpIonHeaps(TestIdentifier test) {
+            if (!shouldDumpIonHeap()) {
+                return; // No-op if option is not set.
             }
-            mListener.testFailed(test, trace);
-        }
-
-        @Override
-        public void invocationFailed(Throwable cause) {
-            mListener.invocationFailed(cause);
+            try {
+                String result = getDevice().executeShellCommand(DUMP_ION_HEAPS_COMMAND);
+                if (!"".equals(result)) {
+                    String fileName = String.format("ionheaps_%s_onEnd", test.getTestName());
+                    mListener.testLog(fileName, LogDataType.TEXT,
+                            new ByteArrayInputStreamSource(result.getBytes()));
+                }
+            } catch (DeviceNotAvailableException e) {
+                CLog.w("Failed to dump ION heaps: %s", e);
+            }
         }
 
         public Map<String, String> getAggregatedMetrics() {
@@ -409,7 +433,7 @@ public class CameraTestBase implements IDeviceTest, IRemoteTest {
             CollectingOutputReceiver receiver = new CollectingOutputReceiver();
             // Dump meminfo in a compact form.
             getDevice().executeShellCommand(command, receiver,
-                    MEMINFO_TIMEOUT_MS, TimeUnit.MILLISECONDS, MEMINFO_MAX_ATTEMPTS);
+                    SHELL_TIMEOUT_MS, TimeUnit.MILLISECONDS, SHELL_MAX_ATTEMPTS);
             printMeminfo(outputFile, receiver.getOutput());
         } catch (DeviceNotAvailableException e) {
             CLog.w("Failed to dump meminfo: %s", e);
@@ -540,8 +564,12 @@ public class CameraTestBase implements IDeviceTest, IRemoteTest {
         mRuKey = ruKey;
     }
 
-    public boolean isDumpMeminfo() {
+    public boolean shouldDumpMeminfo() {
         return mDumpMeminfo;
+    }
+
+    public boolean shouldDumpIonHeap() {
+        return mDumpIonHeap;
     }
 
     public AbstractCollectingListener getCollectingListener() {
