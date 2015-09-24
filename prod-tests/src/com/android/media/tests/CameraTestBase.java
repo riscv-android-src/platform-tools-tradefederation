@@ -67,7 +67,7 @@ public class CameraTestBase implements IDeviceTest, IRemoteTest {
     private static final String PROCESS_CAMERA_APP = "com.google.android.GoogleCamera";
     private static final String DUMP_ION_HEAPS_COMMAND = "cat /d/ion/heaps/system";
 
-    
+
     @Option(name = "test-package", description = "Test package to run.")
     private String mTestPackage = "com.google.android.camera";
 
@@ -100,12 +100,19 @@ public class CameraTestBase implements IDeviceTest, IRemoteTest {
 
     @Option(name="dump-meminfo-interval-ms",
             description="Interval of calling dumpsys meminfo in milliseconds.")
-    private int mMeminfoIntervalMs = 60 * 1000;
+    private int mMeminfoIntervalMs = 5 * 60 * 1000;     // 5 minutes
 
     @Option(name = "dump-ion-heap", description =
             "dump ION allocations at the end of test.")
     private boolean mDumpIonHeap = false;
 
+    @Option(name = "dump-thread-count", description =
+            "Count the number of threads in Camera process at a given interval time.")
+    private boolean mDumpThreadCount = false;
+
+    @Option(name="dump-thread-count-interval-ms",
+            description="Interval of calling ps to count the number of threads in milliseconds.")
+    private int mThreadCountIntervalMs = 5 * 60 * 1000; // 5 minutes
 
     private ITestDevice mDevice = null;
 
@@ -116,6 +123,7 @@ public class CameraTestBase implements IDeviceTest, IRemoteTest {
     private long mStartTimeMs = 0;
 
     private MeminfoTimer mMeminfoTimer = null;
+    private ThreadTrackerTimer mThreadTrackerTimer = null;
 
     /**
      * {@inheritDoc}
@@ -169,6 +177,10 @@ public class CameraTestBase implements IDeviceTest, IRemoteTest {
         // Check if dumpheap needs to be taken for native processes before test runs.
         if (shouldDumpMeminfo()) {
             mMeminfoTimer = new MeminfoTimer(0, mMeminfoIntervalMs);
+        }
+        if (shouldDumpThreadCount()) {
+            long delayMs = mThreadCountIntervalMs / 2;  // Not to run all dump at the same interval.
+            mThreadTrackerTimer = new ThreadTrackerTimer(delayMs, mThreadCountIntervalMs);
         }
 
         mStartTimeMs = System.currentTimeMillis();
@@ -242,7 +254,7 @@ public class CameraTestBase implements IDeviceTest, IRemoteTest {
         @Override
         public void testEnded(TestIdentifier test, Map<String, String> testMetrics) {
             handleCollectedMetrics(test, testMetrics);
-            stopDumpingMeminfo(test);
+            stopDumping(test);
             dumpIonHeaps(test);
             mListener.testEnded(test, testMetrics);
         }
@@ -250,7 +262,7 @@ public class CameraTestBase implements IDeviceTest, IRemoteTest {
         @Override
         public void testStarted(TestIdentifier test) {
             ++mTestCount;
-            startDumpingMeminfo(test);
+            startDumping(test);
             mListener.testStarted(test);
         }
 
@@ -270,19 +282,21 @@ public class CameraTestBase implements IDeviceTest, IRemoteTest {
             mListener.invocationFailed(cause);
         }
 
-        protected void startDumpingMeminfo(TestIdentifier test) {
+        protected void startDumping(TestIdentifier test) {
             if (shouldDumpMeminfo()) {
                 mMeminfoTimer.start(test);
             }
+            if (shouldDumpThreadCount()) {
+                mThreadTrackerTimer.start(test);
+            }
         }
 
-        protected void stopDumpingMeminfo(TestIdentifier test) {
+        protected void stopDumping(TestIdentifier test) {
+            InputStreamSource outputSource = null;
+            File outputFile = null;
             if (shouldDumpMeminfo()) {
                 mMeminfoTimer.stop();
-
                 // Grab a snapshot of meminfo file and post it to dashboard.
-                InputStreamSource outputSource = null;
-                File outputFile = null;
                 try {
                     outputFile = mMeminfoTimer.getOutputFile();
                     outputSource = new SnapshotInputStreamSource(new FileInputStream(outputFile));
@@ -291,6 +305,22 @@ public class CameraTestBase implements IDeviceTest, IRemoteTest {
                     outputFile.delete();
                 } catch (FileNotFoundException e) {
                     CLog.w("Failed to read meminfo log %s: %s", outputFile, e);
+                } finally {
+                    if (outputSource != null) {
+                        outputSource.cancel();
+                    }
+                }
+            }
+            if (shouldDumpThreadCount()) {
+                mThreadTrackerTimer.stop();
+                try {
+                    outputFile = mThreadTrackerTimer.getOutputFile();
+                    outputSource = new SnapshotInputStreamSource(new FileInputStream(outputFile));
+                    String logName = String.format("ps_%s", test.getTestName());
+                    mListener.testLog(logName, LogDataType.TEXT, outputSource);
+                    outputFile.delete();
+                } catch (FileNotFoundException e) {
+                    CLog.w("Failed to read thread count log %s: %s", outputFile, e);
                 } finally {
                     if (outputSource != null) {
                         outputSource.cancel();
@@ -499,6 +529,129 @@ public class CameraTestBase implements IDeviceTest, IRemoteTest {
         }
     }
 
+    private class ThreadTrackerTimer {
+
+        // list all threads in a given process, remove the first header line, squeeze whitespaces,
+        // select thread name (in 14th column), then sort and group by its name.
+        // Examples:
+        //    3 SoundPoolThread
+        //    3 SoundPool
+        //    2 Camera Job Disp
+        //    1 pool-7-thread-1
+        //    1 pool-6-thread-1
+        // FIXME: Resolve the error "sh: syntax error: '|' unexpected" using the command below
+        // $ /system/bin/ps -t -p %s | tr -s ' ' | cut -d' ' -f13- | sort | uniq -c | sort -nr"
+        private final String PS_COMMAND_FORMAT = "/system/bin/ps -t -p %s";
+        private final String PGREP_COMMAND_FORMAT = "pgrep %s";
+        private final int STATE_STOPPED = 0;
+        private final int STATE_SCHEDULED = 1;
+        private final int STATE_RUNNING = 2;
+
+        private int mState = STATE_STOPPED;
+        private Timer mTimer = new Timer(true); // run as a daemon thread
+        private long mDelayMs = 0;
+        private long mPeriodMs = 60 * 1000;  // 60 sec
+        private File mOutputFile = null;
+
+        public ThreadTrackerTimer(long delayMs, long periodMs) {
+            mDelayMs = delayMs;
+            mPeriodMs = periodMs;
+        }
+
+        synchronized void start(TestIdentifier test) {
+            if (isRunning()) {
+                stop();
+            }
+            // Create an output file.
+            if (createOutputFile(test) == null) {
+                CLog.w("Stop collecting thread counts since log file not found.");
+                mState = STATE_STOPPED;
+                return; // No-op
+            }
+            mTimer.scheduleAtFixedRate(new TimerTask() {
+                @Override
+                public void run() {
+                    mState = STATE_RUNNING;
+                    dumpThreadCount(PS_COMMAND_FORMAT, getPid(PROCESS_CAMERA_APP), mOutputFile);
+                }
+            }, mDelayMs, mPeriodMs);
+            mState = STATE_SCHEDULED;
+        }
+
+        synchronized void stop() {
+            mState = STATE_STOPPED;
+            mTimer.cancel();
+        }
+
+        synchronized boolean isRunning() {
+            return (mState == STATE_RUNNING);
+        }
+
+        public File getOutputFile() {
+            return mOutputFile;
+        }
+
+        File createOutputFile(TestIdentifier test) {
+            try {
+                mOutputFile = FileUtil.createTempFile(
+                        String.format("ps_%s", test.getTestName()), "txt");
+                new BufferedWriter(new FileWriter(mOutputFile, false)).close();
+            } catch (IOException e) {
+                CLog.w("Failed to create processes and threads file %s: %s",
+                        mOutputFile.getAbsolutePath(), e);
+                return null;
+            }
+            return mOutputFile;
+        }
+
+        String getPid(String processName) {
+            String result = null;
+            try {
+                result = getDevice().executeShellCommand(String.format(PGREP_COMMAND_FORMAT,
+                        processName));
+            } catch (DeviceNotAvailableException e) {
+                CLog.w("Failed to get pid %s: %s", processName, e);
+            }
+            return result;
+        }
+
+        String getUptime() {
+            String uptime = null;
+            try {
+                // uptime will typically have a format like "5278.73 1866.80".  Use the first one
+                // (which is wall-time)
+                uptime = getDevice().executeShellCommand("cat /proc/uptime").split(" ")[0];
+                Float.parseFloat(uptime);
+            } catch (NumberFormatException e) {
+                CLog.w("Failed to get valid uptime %s: %s", uptime, e);
+            } catch (DeviceNotAvailableException e) {
+                CLog.w("Failed to get valid uptime: %s", e);
+            }
+            return uptime;
+        }
+
+        void dumpThreadCount(String commandFormat, String pid, File outputFile) {
+            try {
+                if ("".equals(pid)) {
+                    return;
+                }
+                String result = getDevice().executeShellCommand(String.format(commandFormat, pid));
+                String header = String.format("UPTIME: %s", getUptime());
+                BufferedWriter writer = new BufferedWriter(new FileWriter(outputFile, true));
+                writer.write(header);
+                writer.newLine();
+                writer.write(result);
+                writer.newLine();
+                writer.flush();
+                writer.close();
+            } catch (DeviceNotAvailableException e) {
+                CLog.w("Failed to dump thread count: %s", e);
+            } catch (IOException e) {
+                CLog.w("Failed to dump thread count: %s", e);
+            }
+        }
+    }
+
     /**
      * {@inheritDoc}
      */
@@ -570,6 +723,10 @@ public class CameraTestBase implements IDeviceTest, IRemoteTest {
 
     public boolean shouldDumpIonHeap() {
         return mDumpIonHeap;
+    }
+
+    public boolean shouldDumpThreadCount() {
+        return mDumpThreadCount;
     }
 
     public AbstractCollectingListener getCollectingListener() {
