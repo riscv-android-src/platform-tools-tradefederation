@@ -29,8 +29,6 @@ import java.io.FileReader;
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 /**
  * Camera2 stress test
@@ -43,9 +41,6 @@ public class Camera2StressTest extends CameraTestBase {
 
     private static final String RESULT_FILE = "/sdcard/camera-out/stress.txt";
     private static final String METRIC_KEY = "iteration";
-    private static final Pattern RESULT_REGEX = Pattern.compile(
-            "^numShots=(\\d+)\\|iteration=(\\d+)");
-
 
     public Camera2StressTest() {
         setTestPackage("com.google.android.camera");
@@ -86,28 +81,37 @@ public class Camera2StressTest extends CameraTestBase {
         }
 
         private Map<String, String> parseLog() {
-            Map<String, String> parsedMetrics = null;
+            Map<String, String> postMetrics = null;
             try {
                 File outputFile = FileUtil.createTempFile("stress", ".txt");
                 getDevice().pullFile(RESULT_FILE, outputFile);
                 BufferedReader reader = new BufferedReader(new FileReader(outputFile));
                 String line;
+                Map<String, String> resultMap = new HashMap<String, String>();
+
+                // Parse results from log file that contain the key-value pairs.
+                // eg. "numAttempts=10|iteration=9"
                 while ((line = reader.readLine()) != null) {
-                    Matcher matcher = RESULT_REGEX.matcher(line);
-                    if (matcher.matches()) {
-                        CLog.v("numShots: %s", matcher.group(1));
-                        CLog.v("iteration: %s", matcher.group(2));
-                        parsedMetrics = new HashMap<String, String>();
-                        parsedMetrics.put(METRIC_KEY, matcher.group(2));
-                        break;
+                    String[] pairs = line.split("\\|");
+                    for (String pair : pairs) {
+                        String[] keyValue = pair.split("=");
+                        // Each should be a pair of key and value.
+                        String key = keyValue[0].trim();
+                        String value = keyValue[1].trim();
+                        resultMap.put(key, value);
+                        CLog.v("%s: %s", key, value);
                     }
                 }
+
+                // Post results.
+                postMetrics = new HashMap<String, String>();
+                postMetrics.put(METRIC_KEY, resultMap.get(METRIC_KEY));
             } catch (IOException e) {
                 CLog.w("Couldn't parse the output log file: ", e);
             } catch (DeviceNotAvailableException e) {
                 CLog.w("Could not pull file: %s, error: %s", RESULT_FILE, e);
             }
-            return parsedMetrics;
+            return postMetrics;
         }
     }
 }

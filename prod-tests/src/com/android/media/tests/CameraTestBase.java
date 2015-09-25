@@ -329,6 +329,8 @@ public class CameraTestBase implements IDeviceTest, IRemoteTest {
             }
         }
 
+        // TODO: Leverage AUPT to collect system logs (meminfo, ION allocations and
+        // processes/threads)
         protected void dumpIonHeaps(TestIdentifier test) {
             if (!shouldDumpIonHeap()) {
                 return; // No-op if option is not set.
@@ -387,6 +389,7 @@ public class CameraTestBase implements IDeviceTest, IRemoteTest {
         }
     }
 
+    // TODO: Leverage AUPT to collect system logs (meminfo, ION allocations and processes/threads)
     private class MeminfoTimer {
 
         private final String LOG_HEADER =
@@ -529,6 +532,7 @@ public class CameraTestBase implements IDeviceTest, IRemoteTest {
         }
     }
 
+    // TODO: Leverage AUPT to collect system logs (meminfo, ION allocations and processes/threads)
     private class ThreadTrackerTimer {
 
         // list all threads in a given process, remove the first header line, squeeze whitespaces,
