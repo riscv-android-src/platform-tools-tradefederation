@@ -19,12 +19,16 @@ package com.android.media.tests;
 import com.android.ddmlib.testrunner.TestIdentifier;
 import com.android.tradefed.config.OptionClass;
 import com.android.tradefed.device.DeviceNotAvailableException;
+import com.android.tradefed.device.IFileEntry;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.result.ITestInvocationListener;
+import com.android.tradefed.result.LogDataType;
+import com.android.tradefed.result.SnapshotInputStreamSource;
 import com.android.tradefed.util.FileUtil;
 
 import java.io.BufferedReader;
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.FileReader;
 import java.io.IOException;
 import java.util.HashMap;
@@ -40,6 +44,7 @@ import java.util.Map;
 public class Camera2StressTest extends CameraTestBase {
 
     private static final String RESULT_FILE = "/sdcard/camera-out/stress.txt";
+    private static final String FAILURE_SCREENSHOT_DIR = "/sdcard/camera-screenshot/";
     private static final String METRIC_KEY = "iteration";
 
     public Camera2StressTest() {
@@ -77,7 +82,38 @@ public class Camera2StressTest extends CameraTestBase {
             // For stress test, parse the metrics from a log file and overwrite the instrumentation
             // results passed.
             testMetrics = parseLog();
+            postScreenshotOnFailure(test);
             super.testEnded(test, testMetrics);
+        }
+
+        private void postScreenshotOnFailure(TestIdentifier test) {
+            try {
+                IFileEntry screenshotDir = getDevice().getFileEntry(FAILURE_SCREENSHOT_DIR);
+                if (screenshotDir != null && screenshotDir.isDirectory()) {
+                    File tmpDir = FileUtil.createTempDir("screenshot");
+                    for (IFileEntry remoteFile : screenshotDir.getChildren(false)) {
+                        if (remoteFile.isDirectory()) {
+                            continue;
+                        }
+                        if (!remoteFile.getName().contains(test.getTestName())) {
+                            CLog.v("Skipping the screenshot (%s) that doesn't match the current "
+                                    + "test (%s)", remoteFile.getName(), test.getTestName());
+                            continue;
+                        }
+                        File screenshot = new File(tmpDir, remoteFile.getName());
+                        if (!getDevice().pullFile(remoteFile.getFullPath(), screenshot)) {
+                            CLog.w("Could not pull screenshot: %s", remoteFile.getFullPath());
+                            continue;
+                        }
+                        testLog("screenshot_" + screenshot.getName(), LogDataType.PNG,
+                                new SnapshotInputStreamSource(new FileInputStream(screenshot)));
+                    }
+                }
+            } catch (DeviceNotAvailableException e) {
+                CLog.e(e);
+            } catch (IOException e) {
+                CLog.e(e);
+            }
         }
 
         private Map<String, String> parseLog() {
