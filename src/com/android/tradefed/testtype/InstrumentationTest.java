@@ -529,35 +529,38 @@ public class InstrumentationTest implements IDeviceTest, IResumableTest {
 
         mRunner = createRemoteAndroidTestRunner(mPackageName, mRunnerName,
                 mDevice.getIDevice());
-        if (mTestClassName != null) {
-            if (mTestMethodName != null) {
-                mRunner.setMethodName(mTestClassName, mTestMethodName);
-            } else {
-                mRunner.setClassName(mTestClassName);
-            }
-        } else if (mTestPackageName != null) {
-            mRunner.setTestPackageName(mTestPackageName);
-        }
-        if (mTestFilePathOnDevice != null) {
-            addInstrumentationArg(TEST_FILE_INST_ARGS_KEY, mTestFilePathOnDevice);
-        }
-        if (mTestSize != null) {
-            mRunner.setTestSize(TestSize.getTestSize(mTestSize));
-        }
-        addTimeoutsToRunner(mRunner);
-        if (mRunName != null) {
-            mRunner.setRunName(mRunName);
-        }
-        for (Map.Entry<String, String> argEntry : mInstrArgMap.entrySet()) {
-            mRunner.addInstrumentationArg(argEntry.getKey(), argEntry.getValue());
-        }
-
+        setRunnerArgs(mRunner);
         if (mInstallFile != null) {
             Assert.assertNull(mDevice.installPackage(mInstallFile, true));
             doTestRun(listener);
             mDevice.uninstallPackage(mPackageName);
         } else {
             doTestRun(listener);
+        }
+    }
+
+    protected void setRunnerArgs(IRemoteAndroidTestRunner runner) {
+        if (mTestClassName != null) {
+            if (mTestMethodName != null) {
+                runner.setMethodName(mTestClassName, mTestMethodName);
+            } else {
+                runner.setClassName(mTestClassName);
+            }
+        } else if (mTestPackageName != null) {
+            runner.setTestPackageName(mTestPackageName);
+        }
+        if (mTestFilePathOnDevice != null) {
+            addInstrumentationArg(TEST_FILE_INST_ARGS_KEY, mTestFilePathOnDevice);
+        }
+        if (mTestSize != null) {
+            runner.setTestSize(TestSize.getTestSize(mTestSize));
+        }
+        addTimeoutsToRunner(runner);
+        if (mRunName != null) {
+            runner.setRunName(mRunName);
+        }
+        for (Map.Entry<String, String> argEntry : mInstrArgMap.entrySet()) {
+            runner.addInstrumentationArg(argEntry.getKey(), argEntry.getValue());
         }
     }
 

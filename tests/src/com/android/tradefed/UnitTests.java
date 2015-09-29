@@ -78,6 +78,7 @@ import com.android.tradefed.targetprep.KernelFlashPreparerTest;
 import com.android.tradefed.targetprep.SdkAvdPreparerTest;
 import com.android.tradefed.targetprep.StopServicesSetupTest;
 import com.android.tradefed.targetprep.SystemUpdaterDeviceFlasherTest;
+import com.android.tradefed.testtype.AndroidJUnitTestTest;
 import com.android.tradefed.testtype.DeviceTestCaseTest;
 import com.android.tradefed.testtype.DeviceTestSuite;
 import com.android.tradefed.testtype.FakeTestTest;
@@ -205,6 +206,7 @@ public class UnitTests extends DeviceTestSuite {
         addTestSuite(InstrumentationPreparerTest.class);
 
         // testtype
+        addTestSuite(AndroidJUnitTestTest.class);
         addTestSuite(DeviceTestCaseTest.class);
         addTestSuite(FakeTestTest.class);
         addTestSuite(GTestResultParserTest.class);
