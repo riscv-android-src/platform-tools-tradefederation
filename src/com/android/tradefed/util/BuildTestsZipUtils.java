@@ -54,11 +54,12 @@ public class BuildTestsZipUtils {
         if (altDirs != null) {
             for (File dir : altDirs) {
                 dirs.add(dir);
-                // Files in tests zip file will be in DATA/app/ or
-                // DATA/app/apk_name
+                // Files in tests zip file will be in DATA/app/,
+                // DATA/app/apk_name or DATA/priv-app/apk_name
                 dirs.add(FileUtil.getFileForPath(dir, "DATA", "app"));
                 dirs.add(FileUtil.getFileForPath(dir, "DATA", "app", apkBase));
-                // Files in out dir will be in in uses data/app/apk_name
+                dirs.add(FileUtil.getFileForPath(dir, "DATA", "priv-app", apkBase));
+                // Files in out dir will be in data/app/apk_name
                 dirs.add(FileUtil.getFileForPath(dir, "data", "app", apkBase));
             }
         }
@@ -71,6 +72,8 @@ public class BuildTestsZipUtils {
             if (testsDir != null && testsDir.exists()) {
                 expandedTestDirs.add(FileUtil.getFileForPath(testsDir, "DATA", "app"));
                 expandedTestDirs.add(FileUtil.getFileForPath(testsDir, "DATA", "app", apkBase));
+                expandedTestDirs.add(FileUtil.getFileForPath(
+                    testsDir, "DATA", "priv-app", apkBase));
             }
         }
         if (altDirBehavior == null) {
