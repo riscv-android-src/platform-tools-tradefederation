@@ -45,7 +45,7 @@ public class GTest implements IDeviceTest, IRemoteTest, ITestFilterReceiver {
     private boolean mRunDisabledTests = false;
 
     @Option(name = "native-test-device-path",
-      description="The path on the device where native tests are located.")
+            description="The path on the device where native tests are located.")
     private String mNativeTestDevicePath = DEFAULT_NATIVETEST_PATH;
 
     @Option(name = "module-name",
@@ -67,8 +67,8 @@ public class GTest implements IDeviceTest, IRemoteTest, ITestFilterReceiver {
     private List<String> mExcludeFilters = new ArrayList<>();
 
     @Option(name = "native-test-timeout", description =
-        "The max time in ms for a gtest to run. " +
-        "Test run will be aborted if any test takes longer.")
+            "The max time in ms for a gtest to run. " +
+            "Test run will be aborted if any test takes longer.")
     private int mMaxTestTimeMs = 1 * 60 * 1000;
 
     @Option(name = "send-coverage",
@@ -86,6 +86,11 @@ public class GTest implements IDeviceTest, IRemoteTest, ITestFilterReceiver {
     @Option(name = "after-test-cmd",
             description = "adb shell command(s) to run after GTest.")
     private List<String> mAfterTestCmd = new ArrayList<>();
+
+    @Option(name = "native-test-flag", description =
+            "Additional flag values to pass to the native test's shell command. " +
+            "Flags should be complete, including any necessary dashes: \"--flag=value\"")
+    private List<String> mGTestFlags = new ArrayList<>();
 
     /** coverage target value. Just report all gtests as 'native' for now */
     private static final String COVERAGE_TARGET = "Native";
@@ -227,6 +232,10 @@ public class GTest implements IDeviceTest, IRemoteTest, ITestFilterReceiver {
 
         if (mRunDisabledTests) {
             flags = String.format("%s %s", flags, GTEST_FLAG_RUN_DISABLED_TESTS);
+        }
+
+        for (String gTestFlag : mGTestFlags) {
+            flags = String.format("%s %s", flags, gTestFlag);
         }
         return flags;
     }
