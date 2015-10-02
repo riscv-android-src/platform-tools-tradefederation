@@ -16,6 +16,7 @@
 package com.android.tradefed.testtype;
 
 import com.android.ddmlib.testrunner.TestIdentifier;
+import com.android.tradefed.config.OptionSetter;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.result.ITestInvocationListener;
 
@@ -52,9 +53,31 @@ public class HostTestTest extends TestCase {
         }
     }
 
+    public static class AnotherTestCase extends TestCase {
+        public AnotherTestCase() {
+        }
+
+        public AnotherTestCase(String name) {
+            super(name);
+        }
+
+        public void testPass3() {
+        }
+
+        public void testPass4() {
+        }
+    }
+
     public static class SuccessTestSuite extends TestSuite {
         public SuccessTestSuite() {
             super(SuccessTestCase.class);
+        }
+    }
+
+    public static class SuccessHierarchySuite extends TestSuite {
+        public SuccessHierarchySuite() {
+            super();
+            addTestSuite(SuccessTestCase.class);
         }
     }
 
@@ -70,12 +93,16 @@ public class HostTestTest extends TestCase {
 
     /** Non-public class; should fail to load. */
     private static class PrivateTest extends TestCase {
+        public void testPrivate() {
+        }
     }
 
     /** class without default constructor; should fail to load */
     public static class NoConstructorTest extends TestCase {
         public NoConstructorTest(String name) {
             super(name);
+        }
+        public void testNoConstructor() {
         }
     }
 
@@ -113,6 +140,24 @@ public class HostTestTest extends TestCase {
      */
     public void testRun_testSuite() throws Exception {
         mHostTest.setClassName(SuccessTestSuite.class.getName());
+        TestIdentifier test1 = new TestIdentifier(SuccessTestCase.class.getName(), "testPass");
+        TestIdentifier test2 = new TestIdentifier(SuccessTestCase.class.getName(), "testPass2");
+        mListener.testRunStarted((String)EasyMock.anyObject(), EasyMock.eq(2));
+        mListener.testStarted(EasyMock.eq(test1));
+        mListener.testEnded(EasyMock.eq(test1), (Map<String, String>)EasyMock.anyObject());
+        mListener.testStarted(EasyMock.eq(test2));
+        mListener.testEnded(EasyMock.eq(test2), (Map<String, String>)EasyMock.anyObject());
+        mListener.testRunEnded(EasyMock.anyLong(), (Map<String, String>)EasyMock.anyObject());
+        EasyMock.replay(mListener);
+        mHostTest.run(mListener);
+    }
+
+    /**
+     * Test success case for {@link HostTest#run(TestResult)}, where test to run is a
+     * hierarchy of {@link TestSuite}s.
+     */
+    public void testRun_testHierarchySuite() throws Exception {
+        mHostTest.setClassName(SuccessHierarchySuite.class.getName());
         TestIdentifier test1 = new TestIdentifier(SuccessTestCase.class.getName(), "testPass");
         TestIdentifier test2 = new TestIdentifier(SuccessTestCase.class.getName(), "testPass2");
         mListener.testRunStarted((String)EasyMock.anyObject(), EasyMock.eq(2));
@@ -206,6 +251,46 @@ public class HostTestTest extends TestCase {
     }
 
     /**
+     * Test for {@link HostTest#run(TestResult)}, for multiple test classes.
+     */
+    public void testRun_multipleClass() throws Exception {
+        OptionSetter setter = new OptionSetter(mHostTest);
+        setter.setOptionValue("class", SuccessTestCase.class.getName());
+        setter.setOptionValue("class", AnotherTestCase.class.getName());
+        TestIdentifier test1 = new TestIdentifier(SuccessTestCase.class.getName(), "testPass");
+        TestIdentifier test2 = new TestIdentifier(SuccessTestCase.class.getName(), "testPass2");
+        TestIdentifier test3 = new TestIdentifier(AnotherTestCase.class.getName(), "testPass3");
+        TestIdentifier test4 = new TestIdentifier(AnotherTestCase.class.getName(), "testPass4");
+        mListener.testRunStarted((String)EasyMock.anyObject(), EasyMock.eq(4));
+        mListener.testStarted(EasyMock.eq(test1));
+        mListener.testEnded(EasyMock.eq(test1), (Map<String, String>)EasyMock.anyObject());
+        mListener.testStarted(EasyMock.eq(test2));
+        mListener.testEnded(EasyMock.eq(test2), (Map<String, String>)EasyMock.anyObject());
+        mListener.testStarted(EasyMock.eq(test3));
+        mListener.testEnded(EasyMock.eq(test3), (Map<String, String>)EasyMock.anyObject());
+        mListener.testStarted(EasyMock.eq(test4));
+        mListener.testEnded(EasyMock.eq(test4), (Map<String, String>)EasyMock.anyObject());
+        mListener.testRunEnded(EasyMock.anyLong(), (Map<String, String>)EasyMock.anyObject());
+        EasyMock.replay(mListener);
+    }
+
+    /**
+     * Test for {@link HostTest#run(TestResult)}, for multiple test classes with a method name.
+     */
+    public void testRun_multipleClassAndMethodName() throws Exception {
+        try {
+            OptionSetter setter = new OptionSetter(mHostTest);
+            setter.setOptionValue("class", SuccessTestCase.class.getName());
+            setter.setOptionValue("class", AnotherTestCase.class.getName());
+            mHostTest.setMethodName("testPass3");
+            mHostTest.run(mListener);
+            fail("IllegalArgumentException not thrown");
+        } catch (IllegalArgumentException e) {
+            // expected
+        }
+    }
+
+    /**
      * Test for {@link HostTest#run(TestResult)}, for a {@link DeviceTest}.
      */
     public void testRun_deviceTest() throws Exception {
@@ -235,5 +320,13 @@ public class HostTestTest extends TestCase {
         } catch (IllegalArgumentException e) {
             // expected
         }
+    }
+
+    /**
+     * Test for {@link HostTest#countTestCases(TestResult)}
+     */
+    public void testCountTestCases() throws Exception {
+        mHostTest.setClassName(SuccessTestCase.class.getName());
+        assertEquals("Incorrect test case count", 2, mHostTest.countTestCases());
     }
 }
