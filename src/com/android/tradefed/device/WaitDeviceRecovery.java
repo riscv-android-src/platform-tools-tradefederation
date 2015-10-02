@@ -48,6 +48,9 @@ public class WaitDeviceRecovery implements IDeviceRecovery {
     public static final int BOOTLOADER_POLL_ATTEMPTS = 3;
 
     // TODO: add a separate configurable timeout per operation
+    @Option(name="online-wait-time",
+            description="maximum time in ms to wait for device to come online.")
+    protected long mOnlineWaitTime = 60 * 1000;
     @Option(name="device-wait-time",
             description="maximum time in ms to wait for a single device recovery command.")
     protected long mWaitTime = 4 * 60 * 1000;
@@ -117,7 +120,7 @@ public class WaitDeviceRecovery implements IDeviceRecovery {
         }
 
         // wait for device online
-        IDevice device = monitor.waitForDeviceOnline();
+        IDevice device = monitor.waitForDeviceOnline(mOnlineWaitTime);
         if (device == null) {
             handleDeviceNotAvailable(monitor, recoverUntilOnline);
             // function returning implies that recovery is successful, check battery level here
@@ -146,7 +149,7 @@ public class WaitDeviceRecovery implements IDeviceRecovery {
 
     private IDevice getDeviceAfterRecovery(IDeviceStateMonitor monitor)
             throws DeviceNotAvailableException {
-        IDevice device = monitor.waitForDeviceOnline();
+        IDevice device = monitor.waitForDeviceOnline(mOnlineWaitTime);
         if (device == null) {
             throw new DeviceNotAvailableException(
                     "Device still not online after successful recovery");
@@ -192,7 +195,7 @@ public class WaitDeviceRecovery implements IDeviceRecovery {
         if (!mDisableUnresponsiveReboot) {
             rebootDevice(device);
         }
-        IDevice newdevice = monitor.waitForDeviceOnline();
+        IDevice newdevice = monitor.waitForDeviceOnline(mOnlineWaitTime);
         if (newdevice == null) {
             handleDeviceNotAvailable(monitor, false);
             return;

@@ -61,11 +61,11 @@ public class WaitDeviceRecoveryTest extends TestCase {
         mMockRunUtil.sleep(EasyMock.anyLong());
         mMockMonitor.waitForDeviceBootloaderStateUpdate();
         EasyMock.expect(mMockMonitor.getDeviceState()).andReturn(TestDeviceState.NOT_AVAILABLE);
-        EasyMock.expect(mMockMonitor.waitForDeviceOnline()).andReturn(mMockDevice);
+        EasyMock.expect(mMockMonitor.waitForDeviceOnline(EasyMock.anyLong())).andReturn(mMockDevice);
         EasyMock.expect(mMockMonitor.waitForDeviceShell(EasyMock.anyLong())).andReturn(true);
         EasyMock.expect(mMockMonitor.waitForDeviceAvailable(EasyMock.anyLong())).andReturn(
                 mMockDevice);
-        EasyMock.expect(mMockMonitor.waitForDeviceOnline()).andReturn(mMockDevice);
+        EasyMock.expect(mMockMonitor.waitForDeviceOnline(EasyMock.anyLong())).andReturn(mMockDevice);
         replayMocks();
         mRecovery.recoverDevice(mMockMonitor, false);
         verifyMocks();
@@ -80,7 +80,7 @@ public class WaitDeviceRecoveryTest extends TestCase {
         mMockRunUtil.sleep(EasyMock.anyLong());
         mMockMonitor.waitForDeviceBootloaderStateUpdate();
         EasyMock.expect(mMockMonitor.getDeviceState()).andReturn(TestDeviceState.NOT_AVAILABLE);
-        EasyMock.expect(mMockMonitor.waitForDeviceOnline()).andReturn(null);
+        EasyMock.expect(mMockMonitor.waitForDeviceOnline(EasyMock.anyLong())).andReturn(null);
         replayMocks();
         try {
             mRecovery.recoverDevice(mMockMonitor, false);
@@ -100,7 +100,8 @@ public class WaitDeviceRecoveryTest extends TestCase {
         mMockRunUtil.sleep(EasyMock.anyLong());
         mMockMonitor.waitForDeviceBootloaderStateUpdate();
         EasyMock.expect(mMockMonitor.getDeviceState()).andReturn(TestDeviceState.ONLINE);
-        EasyMock.expect(mMockMonitor.waitForDeviceOnline()).andReturn(mMockDevice).anyTimes();
+        EasyMock.expect(mMockMonitor.waitForDeviceOnline(EasyMock.anyLong()))
+                .andReturn(mMockDevice).anyTimes();
         EasyMock.expect(mMockMonitor.waitForDeviceShell(EasyMock.anyLong())).andReturn(true);
         EasyMock.expect(mMockMonitor.waitForDeviceAvailable(EasyMock.anyLong()))
                 .andReturn(null).anyTimes();
@@ -130,11 +131,13 @@ public class WaitDeviceRecoveryTest extends TestCase {
         EasyMock.expect(mMockRunUtil.runTimedCmd(EasyMock.anyLong(), EasyMock.eq("fastboot"),
                 EasyMock.eq("-s"), EasyMock.eq("serial"), EasyMock.eq("reboot"))).
                 andReturn(result);
-        EasyMock.expect(mMockMonitor.waitForDeviceOnline()).andReturn(mMockDevice);
+        EasyMock.expect(mMockMonitor.waitForDeviceOnline(EasyMock.anyLong()))
+                .andReturn(mMockDevice);
         EasyMock.expect(mMockMonitor.waitForDeviceShell(EasyMock.anyLong())).andReturn(true);
         EasyMock.expect(mMockMonitor.waitForDeviceAvailable(EasyMock.anyLong())).andReturn(
                 mMockDevice);
-        EasyMock.expect(mMockMonitor.waitForDeviceOnline()).andReturn(mMockDevice);
+        EasyMock.expect(mMockMonitor.waitForDeviceOnline(EasyMock.anyLong()))
+                .andReturn(mMockDevice);
         replayMocks();
         mRecovery.recoverDevice(mMockMonitor, false);
         verifyMocks();
