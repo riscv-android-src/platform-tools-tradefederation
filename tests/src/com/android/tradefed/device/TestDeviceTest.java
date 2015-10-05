@@ -151,6 +151,16 @@ public class TestDeviceTest extends TestCase {
         EasyMock.replay(mMockIDevice, mMockRunUtil, mMockStateMonitor);
         assertTrue(mTestDevice.enableAdbRoot());
     }
+    
+    /**
+     * Test {@link TestDevice#enableAdbRoot()} when "enable-root" is "false"
+     */
+    public void testEnableAdbRoot_noEnableRoot() throws Exception {
+        boolean enableRoot = mTestDevice.getOptions().isEnableAdbRoot();
+        mTestDevice.getOptions().setEnableAdbRoot(false);
+        assertFalse(mTestDevice.enableAdbRoot());
+        mTestDevice.getOptions().setEnableAdbRoot(enableRoot);
+    }
 
     /**
      * Configure EasyMock expectations for a successful adb root call

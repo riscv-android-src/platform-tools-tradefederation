@@ -1728,7 +1728,7 @@ class TestDevice implements IManagedTestDevice {
             // TODO: look for a better way to handle this, such as doing postBootUp steps in
             // recovery itself
             mRecoveryMode = RecoveryMode.NONE;
-            postOnlineSetup();
+            enableAdbRoot();
             mRecoveryMode = RecoveryMode.ONLINE;
         }
         CLog.i("Recovery successful for %s", getSerialNumber());
@@ -2213,7 +2213,7 @@ class TestDevice implements IManagedTestDevice {
      */
     @Override
     public void postBootSetup() throws DeviceNotAvailableException  {
-        postOnlineSetup();
+        enableAdbRoot();
         if (mOptions.isDisableKeyguard()) {
             disableKeyguard();
         }
@@ -2391,9 +2391,7 @@ class TestDevice implements IManagedTestDevice {
         RecoveryMode cachedRecoveryMode = getRecoveryMode();
         setRecoveryMode(RecoveryMode.ONLINE);
         if (mStateMonitor.waitForDeviceOnline() != null) {
-            if (isEnableAdbRoot()) {
-                enableAdbRoot();
-            }
+            enableAdbRoot();
         } else {
             recoverDevice();
         }
@@ -2535,6 +2533,11 @@ class TestDevice implements IManagedTestDevice {
         if (isAdbRoot()) {
             CLog.i("adb is already running as root on %s", getSerialNumber());
             return true;
+        }
+        // Don't enable root if user requested no root
+        if (!isEnableAdbRoot()) {
+            CLog.i("\"enable-root\" set to false; ignoring 'adb root' request");
+            return false;
         }
         CLog.i("adb root on device %s", getSerialNumber());
         int attempts = MAX_RETRY_ATTEMPTS + 1;

@@ -927,7 +927,8 @@ public interface ITestDevice {
     public void nonBlockingReboot() throws DeviceNotAvailableException;
 
     /**
-     * Turns on adb root.
+     * Turns on adb root. If the "enable-root" setting is "false", will log a message and
+     * return without enabling root.
      * <p/>
      * Enabling adb root may cause device to disconnect from adb. This method will block until
      * device is available.
