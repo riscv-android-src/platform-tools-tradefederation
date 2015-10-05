@@ -112,10 +112,6 @@ $(tradefed_dist_zip) : $(tradefed_dist_files)
 	$(hide) cp -f $^ $(dir $@)
 	$(hide) cd $(dir $@) && zip -q $(notdir $@) $(notdir $^)
 
-.PHONY: tradefed_dist
-tradefed_dist : $(tradefed_dist_zip)
-
-$(call dist-for-goals, tradefed_dist, $(tradefed_dist_zip))
-dist: tradefed_dist
+$(call dist-for-goals, apps_only, $(tradefed_dist_zip))
 
 endif  # tradefed in $(TARGET_BUILD_APPS)
