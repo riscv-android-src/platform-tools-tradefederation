@@ -282,7 +282,7 @@ public class HostTest implements IDeviceTest, ITestFilterReceiver, IRemoteTest {
         return classes;
     }
 
-    private Object loadObject(Class<?> classObj) throws IllegalArgumentException {
+    protected Object loadObject(Class<?> classObj) throws IllegalArgumentException {
         final String className = classObj.getName();
         try {
             Object testObj = classObj.newInstance();
