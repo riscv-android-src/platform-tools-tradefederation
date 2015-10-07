@@ -209,6 +209,11 @@ public class DeviceSetup implements ITargetPreparer, ITargetCleaner {
     // ON:  settings put system auto_timezone 1
     // OFF: settings put system auto_timezone 0
 
+    @Option(name = "set-timezone",
+            description = "Set timezone property by TZ name " +
+            "(http://en.wikipedia.org/wiki/List_of_tz_database_time_zones)")
+    protected String mTimezone = null;
+
     // Calling
     @Option(name = "disable-dialing",
             description = "Disable dialing")
@@ -536,6 +541,10 @@ public class DeviceSetup implements ITargetPreparer, ITargetCleaner {
         setSettingForBinaryState(mAutoUpdateTime, mSystemSettings, "auto_time", "1", "0");
 
         setSettingForBinaryState(mAutoUpdateTimezone, mSystemSettings, "auto_timezone", "1", "0");
+
+        if (mTimezone != null) {
+            mSetProps.put("persist.sys.timezone", mTimezone);
+        }
 
         if (mDisableDialing) {
             mSetProps.put("ro.telephony.disable-call", "true");
