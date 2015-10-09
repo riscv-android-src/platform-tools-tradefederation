@@ -30,6 +30,7 @@ import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.result.ByteArrayInputStreamSource;
 import com.android.tradefed.result.DeviceFileReporter;
+import com.android.tradefed.result.FileInputStreamSource;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.InputStreamSource;
 import com.android.tradefed.result.LogDataType;
@@ -37,6 +38,7 @@ import com.android.tradefed.testtype.IDeviceTest;
 import com.android.tradefed.testtype.IRemoteTest;
 import com.android.tradefed.testtype.IRetriableTest;
 import com.android.tradefed.util.ArrayUtil;
+import com.android.tradefed.util.CircularAtraceUtil;
 import com.android.tradefed.util.IRunUtil;
 import com.android.tradefed.util.RunUtil;
 
@@ -210,6 +212,10 @@ public class MonkeyBase implements IDeviceTest, IRemoteTest, IRetriableTest {
             description = "Ignore SecurityExceptions while injecting events")
     private boolean mIgnoreSecurityExceptions = true;
 
+    @Option(name = "collect-atrace",
+            description = "Enable a continuous circular buffer to collect atrace information")
+    private boolean mAtraceEnabled = false;
+
     private ITestDevice mTestDevice = null;
     private MonkeyLogItem mMonkeyLog = null;
     private BugreportItem mBugreport = null;
@@ -297,6 +303,11 @@ public class MonkeyBase implements IDeviceTest, IRemoteTest, IRetriableTest {
         outputBuilder.append(String.format("# %s - device uptime = %s: Monkey command used " +
                 "for this test:\nadb shell %s\n\n", new Date().toString(), getUptime(), command));
 
+        // Start atrace before running the monkey command, but after reboot
+        if (mAtraceEnabled) {
+            CircularAtraceUtil.startTrace(getDevice(), null, 20);
+        }
+
         try {
             onMonkeyStart();
             commandHelper.runCommand(mTestDevice, command, getMonkeyTimeoutMs());
@@ -309,6 +320,11 @@ public class MonkeyBase implements IDeviceTest, IRemoteTest, IRetriableTest {
                 uptimeAfter = getUptime();
                 onMonkeyFinish();
                 takeScreenshot(listener, "screenshot");
+
+                if (mAtraceEnabled) {
+                    FileInputStreamSource stream = CircularAtraceUtil.endTrace(getDevice());
+                    listener.testLog("circular-atrace", LogDataType.TEXT, stream);
+                }
 
                 mBugreport = takeBugreport(listener, BUGREPORT_NAME);
                 // FIXME: Remove this once traces.txt is no longer needed.

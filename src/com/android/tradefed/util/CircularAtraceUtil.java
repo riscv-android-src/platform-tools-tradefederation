@@ -23,7 +23,7 @@ import com.android.tradefed.util.ArrayUtil;
 
 import java.io.File;
 import java.util.ArrayList;
-import java.util.HashSet;
+import java.util.HashMap;
 import java.util.List;
 
 /**
@@ -40,13 +40,13 @@ import java.util.List;
 public class CircularAtraceUtil {
     private static final String LOG_TAG = "CircularAtraceUtil";
 
-    private static final String ATRACE_START_CMD = "atrace --async_start -z -b %d -c %s";
-    private static final String ATRACE_STOP_CMD = "atrace --async_stop -z > %s";
+    private static final String ATRACE_START_CMD = "atrace --async_start -b %d -c %s -z";
+    private static final String ATRACE_STOP_CMD = "atrace --async_stop -z -b %d > %s";
     private static final String DEFAULT_TAGS_STRING = "am gfx sched view";
     private static final String DEVICE_FILE = "${EXTERNAL_STORAGE}/atrace.txt";
     private static final int KB_IN_MB = 1000;
 
-    private static HashSet<ITestDevice> isTracing = new HashSet<ITestDevice>();
+    private static HashMap<ITestDevice, Integer> deviceBufferMap = new HashMap<ITestDevice, Integer>();
 
     /**
      * Starts atrace asynchronously with the tags specified.
@@ -59,10 +59,8 @@ public class CircularAtraceUtil {
         // Errors and warnings
         if (device == null) {
             throw new IllegalStateException("Cannot start circular atrace without a device");
-        } else if (isTracing.contains(device)) {
+        } else if (deviceBufferMap.containsKey(device)) {
             throw new IllegalStateException("Must end current atrace before starting another");
-        } else {
-            CLog.d("Starting circular atrace utility");
         }
 
         // Supply tags if empty or null
@@ -73,9 +71,10 @@ public class CircularAtraceUtil {
 
         // Execute shell command to start atrace
         String command = String.format(ATRACE_START_CMD, bufferSizeMB * KB_IN_MB, tagsString);
+        CLog.d("Starting circular atrace utility with command: %s", command);
         device.executeShellCommand(command);
-        // Set tracing flag to ensure use-flow
-        isTracing.add(device);
+        // Put buffer size in map for end and to ensure correct use-flow
+        deviceBufferMap.put(device, bufferSizeMB);
     }
 
     /**
@@ -85,17 +84,16 @@ public class CircularAtraceUtil {
     public static FileInputStreamSource endTrace(ITestDevice device) throws DeviceNotAvailableException,
             IllegalStateException {
         // Errors and warnings
-        if (!isTracing.contains(device)) {
+        if (!deviceBufferMap.containsKey(device)) {
             throw new IllegalStateException("Must start circular atrace before ending");
-        } else {
-            CLog.d("Ending circular atrace utility");
         }
 
+        // Get buffer size in MB and ensure correct use-flow by removing
+        int bufferSizeKB = deviceBufferMap.remove(device) * KB_IN_MB;
         // Execute shell command to stop atrace with results
-        String command = String.format(ATRACE_STOP_CMD, DEVICE_FILE);
+        String command = String.format(ATRACE_STOP_CMD, bufferSizeKB, DEVICE_FILE);
+        CLog.d("Ending atrace utility with command: %s", command);
         String result = device.executeShellCommand(command);
-        // Set tracing flag to ensure use-flow
-        isTracing.remove(device);
 
         File temp = device.pullFile(DEVICE_FILE);
         if (temp != null) {
