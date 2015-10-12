@@ -116,7 +116,7 @@ public class TestAppInstallSetup implements ITargetCleaner, IAbiReceiver {
     @Override
     public void setUp(ITestDevice device, IBuildInfo buildInfo) throws TargetSetupError,
             DeviceNotAvailableException {
-        if (mTestFileNames.size() == 0) {
+        if (mTestFileNames == null || mTestFileNames.size() == 0) {
             CLog.i("No test apps to install, skipping");
             return;
         }
@@ -124,7 +124,18 @@ public class TestAppInstallSetup implements ITargetCleaner, IAbiReceiver {
             mPackagesInstalled = new ArrayList<>();
         }
         for (String testAppName : mTestFileNames) {
+            if (testAppName == null || testAppName.trim().isEmpty()) {
+                continue;
+            }
             File testAppFile = getLocalPathForFilename(buildInfo, testAppName);
+            if (testAppFile == null) {
+                CLog.d("Test app %s was not found", testAppName);
+                continue;
+            }
+            if (!testAppFile.canRead()) {
+                CLog.d("Could not read file %s", testAppName);
+                continue;
+            }
             // resolve abi flags
             if (mAbi != null && mForceAbi != null) {
                 throw new IllegalStateException("cannot specify both abi flags");
