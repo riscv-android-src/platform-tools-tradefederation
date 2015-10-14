@@ -37,6 +37,7 @@ public enum LogDataType {
     TOP("txt", false, true),
     DUMPSYS("txt", false, true),
     COMPACT_MEMINFO("txt", false, true),  // dumpsys meminfo -c
+    GFX_INFO("txt", false, true),  // dumpsys gfxinfo
     /* Unknown file type */
     UNKNOWN("dat", false, false);
 
