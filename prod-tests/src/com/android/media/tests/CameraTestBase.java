@@ -282,6 +282,11 @@ public class CameraTestBase implements IDeviceTest, IRemoteTest {
             mListener.invocationFailed(cause);
         }
 
+        @Override
+        public void testLog(String dataName, LogDataType dataType, InputStreamSource dataStream) {
+            mListener.testLog(dataName, dataType, dataStream);
+        }
+
         protected void startDumping(TestIdentifier test) {
             if (shouldDumpMeminfo()) {
                 mMeminfoTimer.start(test);
