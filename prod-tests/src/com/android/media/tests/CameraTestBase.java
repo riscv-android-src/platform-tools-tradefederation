@@ -199,6 +199,7 @@ public class CameraTestBase implements IDeviceTest, IRemoteTest {
 
         // Delegate a post process after test run ends to subclasses.
         handleTestRunEnded(listener, mCollectingListener.getAggregatedMetrics());
+        dumpIonHeaps(listener, getTestClass());
     }
 
     /**
@@ -255,8 +256,6 @@ public class CameraTestBase implements IDeviceTest, IRemoteTest {
         public void testEnded(TestIdentifier test, Map<String, String> testMetrics) {
             handleCollectedMetrics(test, testMetrics);
             stopDumping(test);
-            dumpIonHeaps(test);
-            mListener.testEnded(test, testMetrics);
         }
 
         @Override
@@ -331,24 +330,6 @@ public class CameraTestBase implements IDeviceTest, IRemoteTest {
                         outputSource.cancel();
                     }
                 }
-            }
-        }
-
-        // TODO: Leverage AUPT to collect system logs (meminfo, ION allocations and
-        // processes/threads)
-        protected void dumpIonHeaps(TestIdentifier test) {
-            if (!shouldDumpIonHeap()) {
-                return; // No-op if option is not set.
-            }
-            try {
-                String result = getDevice().executeShellCommand(DUMP_ION_HEAPS_COMMAND);
-                if (!"".equals(result)) {
-                    String fileName = String.format("ionheaps_%s_onEnd", test.getTestName());
-                    mListener.testLog(fileName, LogDataType.TEXT,
-                            new ByteArrayInputStreamSource(result.getBytes()));
-                }
-            } catch (DeviceNotAvailableException e) {
-                CLog.w("Failed to dump ION heaps: %s", e);
             }
         }
 
@@ -658,6 +639,24 @@ public class CameraTestBase implements IDeviceTest, IRemoteTest {
             } catch (IOException e) {
                 CLog.w("Failed to dump thread count: %s", e);
             }
+        }
+    }
+
+    // TODO: Leverage AUPT to collect system logs (meminfo, ION allocations and
+    // processes/threads)
+    protected void dumpIonHeaps(ITestInvocationListener listener, String testClass) {
+        if (!shouldDumpIonHeap()) {
+            return; // No-op if option is not set.
+        }
+        try {
+            String result = getDevice().executeShellCommand(DUMP_ION_HEAPS_COMMAND);
+            if (!"".equals(result)) {
+                String fileName = String.format("ionheaps_%s_onEnd", testClass);
+                listener.testLog(fileName, LogDataType.TEXT,
+                        new ByteArrayInputStreamSource(result.getBytes()));
+            }
+        } catch (DeviceNotAvailableException e) {
+            CLog.w("Failed to dump ION heaps: %s", e);
         }
     }
 
