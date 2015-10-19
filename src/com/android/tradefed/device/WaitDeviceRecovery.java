@@ -260,7 +260,7 @@ public class WaitDeviceRecovery implements IDeviceRecovery {
         Log.i(LOG_TAG, String.format("Found device %s online but expected fastboot.",
             monitor.getSerialNumber()));
         // call waitForDeviceOnline to get handle to IDevice
-        IDevice device = monitor.waitForDeviceOnline();
+        IDevice device = monitor.waitForDeviceOnline(mOnlineWaitTime);
         if (device == null) {
             handleDeviceBootloaderNotAvailable(monitor);
             return;
