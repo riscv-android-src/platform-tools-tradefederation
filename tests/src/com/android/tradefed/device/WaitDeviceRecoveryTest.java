@@ -201,7 +201,8 @@ public class WaitDeviceRecoveryTest extends TestCase {
         EasyMock.expect(mMockMonitor.waitForDeviceBootloader(EasyMock.anyLong())).andReturn(
                 Boolean.FALSE);
         EasyMock.expect(mMockMonitor.getDeviceState()).andReturn(TestDeviceState.ONLINE);
-        EasyMock.expect(mMockMonitor.waitForDeviceOnline()).andReturn(mMockDevice);
+        EasyMock.expect(mMockMonitor.waitForDeviceOnline(EasyMock.anyLong()))
+                .andReturn(mMockDevice);
         mMockDevice.reboot("bootloader");
         EasyMock.expect(mMockMonitor.waitForDeviceBootloader(EasyMock.anyLong())).andReturn(
                 Boolean.TRUE);
@@ -222,7 +223,8 @@ public class WaitDeviceRecoveryTest extends TestCase {
         EasyMock.expect(mMockMonitor.waitForDeviceBootloader(EasyMock.anyLong())).andReturn(
                 Boolean.FALSE);
         EasyMock.expect(mMockMonitor.getDeviceState()).andReturn(TestDeviceState.ONLINE);
-        EasyMock.expect(mMockMonitor.waitForDeviceOnline()).andReturn(mMockDevice);
+        EasyMock.expect(mMockMonitor.waitForDeviceOnline(EasyMock.anyLong()))
+                .andReturn(mMockDevice);
         mMockDevice.reboot("bootloader");
         EasyMock.expect(mMockMonitor.waitForDeviceBootloader(EasyMock.anyLong())).andReturn(
                 Boolean.TRUE);
