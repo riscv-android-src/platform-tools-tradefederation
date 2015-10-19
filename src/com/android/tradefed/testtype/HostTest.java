@@ -15,6 +15,7 @@
  */
 package com.android.tradefed.testtype;
 
+import com.android.ddmlib.Log.LogLevel;
 import com.android.tradefed.config.ConfigurationException;
 import com.android.tradefed.config.Option;
 import com.android.tradefed.config.Option.Importance;
@@ -165,10 +166,15 @@ public class HostTest implements IDeviceTest, ITestFilterReceiver, IRemoteTest {
         for (Class<?> classObj : classes) {
             if (IRemoteTest.class.isAssignableFrom(classObj)) {
                 IRemoteTest test = (IRemoteTest) loadObject(classObj);
+                List<String> includes = new ArrayList<>(mIncludes);
+                if (mMethodName != null) {
+                    includes.add(String.format("%s#%s", classObj.getName(), mMethodName));
+                }
+                List<String> excludes = new ArrayList<>(mExcludes);
                 if (test instanceof ITestFilterReceiver) {
-                    ((ITestFilterReceiver) test).addAllIncludeFilters(new ArrayList<>(mIncludes));
-                    ((ITestFilterReceiver) test).addAllExcludeFilters(new ArrayList<>(mExcludes));
-                } else if (!mIncludes.isEmpty() || !mExcludes.isEmpty()) {
+                    ((ITestFilterReceiver) test).addAllIncludeFilters(includes);
+                    ((ITestFilterReceiver) test).addAllExcludeFilters(excludes);
+                } else if (!includes.isEmpty() || !excludes.isEmpty()) {
                     throw new IllegalArgumentException(String.format(
                             "%s does not implement ITestFilterReceiver", classObj.getName()));
                 }
@@ -220,7 +226,7 @@ public class HostTest implements IDeviceTest, ITestFilterReceiver, IRemoteTest {
             } else {
                 try {
                     methods = new Method[] {
-                          classObj.getMethod(mMethodName, (Class[]) null)
+                            classObj.getMethod(mMethodName, (Class[]) null)
                     };
                 } catch (NoSuchMethodException e) {
                     throw new IllegalArgumentException(
@@ -228,20 +234,19 @@ public class HostTest implements IDeviceTest, ITestFilterReceiver, IRemoteTest {
                 }
             }
             for (Method method : methods) {
+                String methodName = String.format("%s#%s", className, method.getName());
                 if (!Modifier.isPublic(method.getModifiers())
                         || !method.getReturnType().equals(Void.TYPE)
                         || method.getParameterTypes().length > 0
-                        || !method.getName().startsWith("test")) {
+                        || !method.getName().startsWith("test")
+                        || !shouldRun(packageName, className, methodName)) {
                     continue;
                 }
-                String methodName = String.format("%s#%s", className, method.getName());
-                if (shouldRun(packageName, className, methodName)) {
-                    Test testObj = (Test) loadObject(classObj);
-                    if (testObj instanceof TestCase) {
-                        ((TestCase)testObj).setName(method.getName());
-                    }
-                    suite.addTest(testObj);
+                Test testObj = (Test) loadObject(classObj);
+                if (testObj instanceof TestCase) {
+                    ((TestCase)testObj).setName(method.getName());
                 }
+                suite.addTest(testObj);
             }
         }
         return suite;
