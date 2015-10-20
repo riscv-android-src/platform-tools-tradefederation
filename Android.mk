@@ -47,23 +47,21 @@ $(LOCAL_INSTALLED_MODULE) : $(DEST_JAR)
 
 # Enable the build process to generate javadoc
 # We need to reference symbols in the jar built above.
+LOCAL_JAVA_LIBRARIES += tradefed
+LOCAL_IS_HOST_MODULE:=true
+LOCAL_MODULE_CLASS := JAVA_LIBRARIES
+LOCAL_ADDITIONAL_DEPENDENCIES := tradefed
+LOCAL_DROIDDOC_CUSTOM_TEMPLATE_DIR:=build/tools/droiddoc/templates-sac
+LOCAL_DROIDDOC_OPTIONS:= \
+        -package \
+        -toroot / \
+        -hdf android.whichdoc online \
+        -hdf sac true \
+        -hdf devices true \
+        -showAnnotation com.android.tradefed.config.OptionClass \
+        -showAnnotation com.android.tradefed.config.Option \
 
-### temporarily disable docs builds until they build across all product types
-### LOCAL_JAVA_LIBRARIES += tradefed
-### LOCAL_IS_HOST_MODULE:=true
-### LOCAL_MODULE_CLASS := JAVA_LIBRARIES
-### LOCAL_ADDITIONAL_DEPENDENCIES := tradefed
-### LOCAL_DROIDDOC_CUSTOM_TEMPLATE_DIR:=build/tools/droiddoc/templates-sac
-### LOCAL_DROIDDOC_OPTIONS:= \
-###         -package \
-###         -toroot / \
-###         -hdf android.whichdoc online \
-###         -hdf sac true \
-###         -hdf devices true \
-###         -showAnnotation com.android.tradefed.config.OptionClass \
-###         -showAnnotation com.android.tradefed.config.Option \
-###
-### include $(BUILD_DROIDDOC)
+include $(BUILD_DROIDDOC)
 
 #######################################################
 include $(CLEAR_VARS)
