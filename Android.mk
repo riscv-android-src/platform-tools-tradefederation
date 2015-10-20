@@ -58,6 +58,7 @@ LOCAL_DROIDDOC_OPTIONS:= \
         -hdf android.whichdoc online \
         -hdf sac true \
         -hdf devices true \
+        -showAnnotationOverridesVisibility \
         -showAnnotation com.android.tradefed.config.OptionClass \
         -showAnnotation com.android.tradefed.config.Option \
 
