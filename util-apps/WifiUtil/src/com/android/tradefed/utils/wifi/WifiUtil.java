@@ -127,6 +127,22 @@ public class WifiUtil extends Instrumentation {
         return intVal;
     }
 
+    /**
+     * Returns the integer value of an argument for the specified name, or defaultValue if the
+     * argument is not found, empty, or cannot be parsed.
+     *
+     * @param arg the name of an argument
+     * @param defaultValue a value to return if the argument is not found
+     * @return the value of an argument
+     */
+    private int getInteger(String arg, int defaultValue) {
+        try {
+            return expectInteger(arg);
+        } catch (MissingArgException e) {
+            return defaultValue;
+        }
+    }
+
     @Override
     public void onStart() {
         super.onStart();
@@ -225,8 +241,8 @@ public class WifiUtil extends Instrumentation {
                 final String ssid = expectString("ssid");
                 final String psk = getString("psk", null);
                 final String pingUrl = getString("urlToCheck", DEFAULT_URL_TO_CHECK);
-
-                connector.connectToNetwork(ssid, psk, pingUrl);
+                final long connectTimeout = getInteger("connectTimeout", -1);
+                connector.connectToNetwork(ssid, psk, pingUrl, connectTimeout);
 
                 result.putBoolean("result", true);
 

@@ -73,15 +73,18 @@ public class WifiConnector {
     }
 
     /**
-     * Waits until an expected condition is satisfied for DEFAULT_TIMEOUT.
+     * Waits until an expected condition is satisfied for {@code timeout}.
      *
      * @param checker a <code>Callable</code> to check the expected condition
+     * @param timeoutMsg error message in case of timeout
+     * @param timeout the duration to wait (millis) for the expected condition
      * @throws WifiException if DEFAULT_TIMEOUT expires
      */
-    private void waitForCallable(final Callable<Boolean> checker, final String timeoutMsg)
+    private void waitForCallable(final Callable<Boolean> checker, final String timeoutMsg,
+            final long timeout)
             throws WifiException {
 
-        long endTime = System.currentTimeMillis() + DEFAULT_TIMEOUT;
+        long endTime = System.currentTimeMillis() + timeout;
 
         try {
             while (System.currentTimeMillis() < endTime) {
@@ -94,6 +97,11 @@ public class WifiConnector {
             throw new WifiException("failed to wait for callable", e);
         }
         throw new WifiException(timeoutMsg);
+    }
+
+    private void waitForCallable(final Callable<Boolean> checker, final String timeoutMsg)
+            throws WifiException {
+        waitForCallable(checker, timeoutMsg, DEFAULT_TIMEOUT);
     }
 
     /**
@@ -174,9 +182,12 @@ public class WifiConnector {
      * @param ssid SSID of a Wi-Fi network
      * @param psk PSK of a Wi-Fi network
      * @param urlToCheck URL to use when checking connectivity
+     * @param connectTimeout duration in seconds to wait for an internet connection or
+              {@code DEFAULT_TIMEOUT} millis if -1 is passed.
      * @throws WifiException if the operation fails
      */
-    public void connectToNetwork(final String ssid, final String psk, final String urlToCheck)
+    public void connectToNetwork(final String ssid, final String psk, final String urlToCheck,
+            final long connectTimeout)
             throws WifiException {
         if (!mWifiManager.setWifiEnabled(true)) {
             throw new WifiException("failed to enable wifi");
@@ -227,13 +238,28 @@ public class WifiConnector {
                 }
             }, String.format("dhcp timeout when connecting to wifi network %s", ssid));
 
+        long timeout = connectTimeout == -1 ? DEFAULT_TIMEOUT : (connectTimeout * 1000);
         waitForCallable(new Callable<Boolean>() {
                 @Override
                 public Boolean call() throws Exception {
                     return checkConnectivity(urlToCheck);
                 }
             }, String.format("request to %s failed after connecting to wifi network %s",
-                    urlToCheck, ssid));
+                    urlToCheck, ssid), timeout);
+    }
+
+    /**
+     * Connects a device to a given Wi-Fi network and check connectivity using
+     * {@code DEFAULT_TIMEOUT}.
+     *
+     * @param ssid SSID of a Wi-Fi network
+     * @param psk PSK of a Wi-Fi network
+     * @param urlToCheck URL to use when checking connectivity
+     * @throws WifiException if the operation fails
+     */
+    public void connectToNetwork(final String ssid, final String psk, final String urlToCheck)
+            throws WifiException {
+        connectToNetwork(ssid, psk, urlToCheck, -1);
     }
 
     /**
