@@ -91,6 +91,9 @@ class TestDevice implements IManagedTestDevice {
             Pattern.compile("DispatchEnabled:\\s?([01])");
     /** regex to match build signing key type */
     private static final Pattern KEYS_PATTERN = Pattern.compile("^.*-keys$");
+    private static final Pattern DF_PATTERN = Pattern.compile(
+            //Fs 1K-blks Used    Available Use%      Mounted on
+            "^[/a-z]+\\s+\\d+\\s+\\d+\\s+(\\d+)\\s+\\d+%\\s+[/a-z]+$", Pattern.MULTILINE);
 
     /**
      * Allow pauses of up to 2 minutes while receiving bugreport.  Note that dumpsys may pause up to
@@ -1043,7 +1046,7 @@ class TestDevice implements IManagedTestDevice {
         String externalStorePath = getMountPoint(IDevice.MNT_EXTERNAL_STORAGE);
         String output = getDfOutput(externalStorePath);
         // Try coreutils/toybox style output first.
-        Long available = parseFreeSpaceFromModernOutput(externalStorePath, output);
+        Long available = parseFreeSpaceFromModernOutput(output);
         if (available != null) {
             return available;
         }
@@ -1158,11 +1161,8 @@ class TestDevice implements IManagedTestDevice {
      * @param dfOutput the output of df command to parse
      * @return the available space in kilobytes or <code>null</code> if output could not be parsed
      */
-    Long parseFreeSpaceFromModernOutput(String externalStorePath, String dfOutput) {
-        final Pattern pattern = Pattern.compile(String.format(
-                //Fs 1K-blks Used    Available Use%      Mounted on
-                "\\s+\\d+\\s+\\d+\\s+(\\d+)\\s+\\d+%%\\s+%s", externalStorePath));
-        Matcher matcher = pattern.matcher(dfOutput);
+    Long parseFreeSpaceFromModernOutput(String dfOutput) {
+        Matcher matcher = DF_PATTERN.matcher(dfOutput);
         if (matcher.find()) {
             try {
                 return Long.parseLong(matcher.group(1));
@@ -2258,13 +2258,6 @@ class TestDevice implements IManagedTestDevice {
             throw new NetworkNotAvailableException(
                     String.format("Failed to connect to wifi network %s on %s after reboot",
                             wifiSsid, getSerialNumber()));
-        }
-    }
-
-    // TODO: consider exposing this method
-    private void postOnlineSetup() throws DeviceNotAvailableException  {
-        if (isEnableAdbRoot()) {
-            enableAdbRoot();
         }
     }
 

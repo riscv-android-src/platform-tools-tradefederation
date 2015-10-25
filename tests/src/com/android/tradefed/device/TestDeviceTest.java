@@ -568,6 +568,20 @@ public class TestDeviceTest extends TestCase {
     /**
      * Unit test for {@link TestDevice#getExternalStoreFreeSpace()}.
      * <p/>
+     * Verify that the coreutils-like output of 'adb shell df' command is parsed correctly. This
+     * variant tests the fact that the returned mount point in last column of command output may
+     * not match the original path provided as parameter to df.
+     */
+    public void testGetExternalStoreFreeSpace_toybox2() throws Exception {
+        final String dfOutput =
+            "Filesystem     1K-blocks   Used Available Use% Mounted on\n" +
+            "/dev/fuse       27240188 988872  26251316   4% /storage/emulated";
+        assertGetExternalStoreFreeSpace(dfOutput, 26251316);
+    }
+
+    /**
+     * Unit test for {@link TestDevice#getExternalStoreFreeSpace()}.
+     * <p/>
      * Verify behavior when 'df' command returns unexpected content
      */
     public void testGetExternalStoreFreeSpace_badOutput() throws Exception {
