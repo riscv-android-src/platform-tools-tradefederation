@@ -45,7 +45,8 @@ public class Camera2StressTest extends CameraTestBase {
 
     private static final String RESULT_FILE = "/sdcard/camera-out/stress.txt";
     private static final String FAILURE_SCREENSHOT_DIR = "/sdcard/camera-screenshot/";
-    private static final String METRIC_KEY = "iteration";
+    private static final String KEY_NUM_ATTEMPTS = "numAttempts";
+    private static final String KEY_ITERATION = "iteration";
 
     public Camera2StressTest() {
         setTestPackage("com.google.android.camera");
@@ -139,9 +140,15 @@ public class Camera2StressTest extends CameraTestBase {
                     }
                 }
 
-                // Post results.
+                // Fail if a stress test doesn't start.
+                if (0 == Integer.parseInt(resultMap.get(KEY_NUM_ATTEMPTS))) {
+                    throw new RuntimeException("Failed to start stress tests. " +
+                            "Configured test set up incorrectly?");
+                }
+
+                // Post the number of iterations only.
                 postMetrics = new HashMap<String, String>();
-                postMetrics.put(METRIC_KEY, resultMap.get(METRIC_KEY));
+                postMetrics.put(KEY_ITERATION, resultMap.get(KEY_ITERATION));
             } catch (IOException e) {
                 CLog.w("Couldn't parse the output log file: ", e);
             } catch (DeviceNotAvailableException e) {

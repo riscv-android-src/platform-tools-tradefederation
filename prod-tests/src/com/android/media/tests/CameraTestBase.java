@@ -64,6 +64,7 @@ public class CameraTestBase implements IDeviceTest, IRemoteTest {
     private static final long SHELL_TIMEOUT_MS = 60 * 1000;  // 1 min
     private static final int SHELL_MAX_ATTEMPTS = 3;
     private static final String PROCESS_CAMERA_DAEMON = "mm-qcamera-daemon";
+    private static final String PROCESS_MEDIASERVER = "mediaserver";
     private static final String PROCESS_CAMERA_APP = "com.google.android.GoogleCamera";
     private static final String DUMP_ION_HEAPS_COMMAND = "cat /d/ion/heaps/system";
 
@@ -381,7 +382,9 @@ public class CameraTestBase implements IDeviceTest, IRemoteTest {
         private final String LOG_HEADER =
                 "uptime,pssCameraDaemon,pssCameraApp,ramTotal,ramFree,ramUsed";
         private final String DUMPSYS_MEMINFO_COMMAND = "dumpsys meminfo -c | grep -w -e ^ram " +
-                "-e ^time -e " + PROCESS_CAMERA_DAEMON + " -e " + PROCESS_CAMERA_APP;
+                "-e ^time";
+        private final String[] DUMPSYS_MEMINFO_PROC = {
+                PROCESS_CAMERA_DAEMON, PROCESS_CAMERA_APP, PROCESS_MEDIASERVER };
         private final int STATE_STOPPED = 0;
         private final int STATE_SCHEDULED = 1;
         private final int STATE_RUNNING = 2;
@@ -391,10 +394,15 @@ public class CameraTestBase implements IDeviceTest, IRemoteTest {
         private long mDelayMs = 0;
         private long mPeriodMs = 60 * 1000;  // 60 sec
         private File mOutputFile = null;
+        private String mCommand;
 
         public MeminfoTimer(long delayMs, long periodMs) {
             mDelayMs = delayMs;
             mPeriodMs = periodMs;
+            mCommand = DUMPSYS_MEMINFO_COMMAND;
+            for (String process : DUMPSYS_MEMINFO_PROC) {
+                mCommand += " -e " + process;
+            }
         }
 
         synchronized void start(TestIdentifier test) {
@@ -411,7 +419,7 @@ public class CameraTestBase implements IDeviceTest, IRemoteTest {
                 @Override
                 public void run() {
                     mState = STATE_RUNNING;
-                    dumpMeminfo(DUMPSYS_MEMINFO_COMMAND, mOutputFile);
+                    dumpMeminfo(mCommand, mOutputFile);
                 }
             }, mDelayMs, mPeriodMs);
             mState = STATE_SCHEDULED;

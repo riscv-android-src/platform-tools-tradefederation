@@ -169,7 +169,8 @@ public class CameraSettingsTest implements IDeviceTest, IRemoteTest {
         // Output file looks like:
         // Test name:
         // Total number of loops: 123
-        // No of loop: 123
+        // No of loop: 0, 1, 2, 3, ..., 122 (0 based)
+        // Note that the actual count should be +1 as the # of loop is 0 based.
         listIterator = lines.listIterator();
 
         while (listIterator.hasNext()) {
@@ -191,7 +192,7 @@ public class CameraSettingsTest implements IDeviceTest, IRemoteTest {
 
             Matcher actualMatcher = ACTUAL_LOOP_COUNT_PATTERN.matcher(line);
             if (actualMatcher.matches()) {
-                actualCount = new Integer(actualMatcher.group(3));
+                actualCount = 1 + new Integer(actualMatcher.group(3));
                 CLog.d(String.format("Found actual count for key \"%s\": %s", key, actualCount));
             }
 
