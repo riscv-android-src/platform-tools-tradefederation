@@ -75,6 +75,10 @@ public abstract class DeviceFlashPreparer implements ITargetCleaner {
         "The maximum number of concurrent flashers (may be useful to avoid memory constraints)")
     private Integer mConcurrentFlashLimit = null;
 
+    @Option(name = "skip-post-flashing-setup",
+            description = "whether or not to skip post-flashing setup steps")
+    private boolean mSkipPostFlashingSetup = false;
+
     private static Semaphore sConcurrentFlashLock = null;
 
     /**
@@ -218,6 +222,9 @@ public abstract class DeviceFlashPreparer implements ITargetCleaner {
                 flasher.flash(device, deviceBuild);
             } finally {
                 returnFlashingPermit();
+            }
+            if (mSkipPostFlashingSetup) {
+                return;
             }
             device.waitForDeviceOnline();
             // device may lose date setting if wiped, update with host side date in case anything on
