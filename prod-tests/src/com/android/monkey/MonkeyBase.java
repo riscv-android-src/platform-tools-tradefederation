@@ -305,7 +305,7 @@ public class MonkeyBase implements IDeviceTest, IRemoteTest, IRetriableTest {
 
         // Start atrace before running the monkey command, but after reboot
         if (mAtraceEnabled) {
-            CircularAtraceUtil.startTrace(getDevice(), null, 20);
+            CircularAtraceUtil.startTrace(getDevice(), null, 10);
         }
 
         try {
