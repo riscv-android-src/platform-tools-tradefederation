@@ -526,8 +526,13 @@ public class DeviceSetup implements ITargetPreparer, ITargetCleaner {
 
         setSettingForBinaryState(mAutoRotate, mSystemSettings, "accelerometer_rotation", "1", "0");
 
-        setCommandForBinaryState(mBatterySaver, mRunCommandBeforeSettings,
+        if (device.getApiLevel() < 22) {
+            setCommandForBinaryState(mBatterySaver, mRunCommandBeforeSettings,
                 "dumpsys battery set usb 0", null);
+        } else {
+            setCommandForBinaryState(mBatterySaver, mRunCommandBeforeSettings,
+                "dumpsys battery unplug", null);
+        }
         setSettingForBinaryState(mBatterySaver, mGlobalSettings, "low_power", "1", "0");
 
         if (mBatterySaverTrigger != null) {
