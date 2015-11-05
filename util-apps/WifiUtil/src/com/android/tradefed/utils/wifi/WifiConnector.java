@@ -41,7 +41,7 @@ import java.util.concurrent.Callable;
 public class WifiConnector {
 
     private static final String TAG = WifiConnector.class.getSimpleName();
-    private static final long DEFAULT_TIMEOUT = 30 * 1000;
+    private static final long DEFAULT_TIMEOUT = 120 * 1000;
     private static final long DEFAULT_WAIT_TIME = 5 * 1000;
     private static final long POLL_TIME = 1000;
 
@@ -76,32 +76,40 @@ public class WifiConnector {
      * Waits until an expected condition is satisfied for {@code timeout}.
      *
      * @param checker a <code>Callable</code> to check the expected condition
-     * @param timeoutMsg error message in case of timeout
+     * @param description a description of what this callable is doing
      * @param timeout the duration to wait (millis) for the expected condition
      * @throws WifiException if DEFAULT_TIMEOUT expires
+     * @return time in millis spent waiting
      */
-    private void waitForCallable(final Callable<Boolean> checker, final String timeoutMsg,
+    private long waitForCallable(final Callable<Boolean> checker, final String description,
             final long timeout)
             throws WifiException {
-
-        long endTime = System.currentTimeMillis() + timeout;
-
+        if (timeout <= 0) {
+            throw new WifiException(
+                String.format("Failed %s due to invalid timeout (%d ms)", description, timeout));
+        }
+        long startTime = System.currentTimeMillis();
+        long endTime = startTime + timeout;
         try {
             while (System.currentTimeMillis() < endTime) {
                 if (checker.call()) {
-                    return;
+                    long elapsed = System.currentTimeMillis() - startTime;
+                    Log.i(TAG, String.format(
+                        "Time elapsed waiting for %s: %d ms", description, elapsed));
+                    return elapsed;
                 }
                 Thread.sleep(POLL_TIME);
             }
         } catch (final Exception e) {
             throw new WifiException("failed to wait for callable", e);
         }
-        throw new WifiException(timeoutMsg);
+        throw new WifiException(
+            String.format("Failed %s due to exceeding timeout (%d ms)", description, timeout));
     }
 
-    private void waitForCallable(final Callable<Boolean> checker, final String timeoutMsg)
+    private void waitForCallable(final Callable<Boolean> checker, final String description)
             throws WifiException {
-        waitForCallable(checker, timeoutMsg, DEFAULT_TIMEOUT);
+        waitForCallable(checker, description, DEFAULT_TIMEOUT);
     }
 
     /**
@@ -182,12 +190,12 @@ public class WifiConnector {
      * @param ssid SSID of a Wi-Fi network
      * @param psk PSK of a Wi-Fi network
      * @param urlToCheck URL to use when checking connectivity
-     * @param connectTimeout duration in seconds to wait for an internet connection or
+     * @param connectTimeout duration in seconds to wait for connecting to the network or
               {@code DEFAULT_TIMEOUT} millis if -1 is passed.
      * @throws WifiException if the operation fails
      */
     public void connectToNetwork(final String ssid, final String psk, final String urlToCheck,
-            final long connectTimeout)
+            long connectTimeout)
             throws WifiException {
         if (!mWifiManager.setWifiEnabled(true)) {
             throw new WifiException("failed to enable wifi");
@@ -195,12 +203,14 @@ public class WifiConnector {
 
         updateLastNetwork(ssid, psk);
 
-        waitForCallable(new Callable<Boolean>() {
+        connectTimeout = connectTimeout == -1 ? DEFAULT_TIMEOUT : (connectTimeout * 1000);
+        long timeSpent;
+        timeSpent = waitForCallable(new Callable<Boolean>() {
                 @Override
                 public Boolean call() throws Exception {
                     return mWifiManager.isWifiEnabled();
                 }
-            }, "failed to enable wifi");
+            }, "enabling wifi", connectTimeout);
 
         // Wait for some seconds to let wifi to be stable. This increases the chance of success for
         // subsequent operations.
@@ -220,32 +230,32 @@ public class WifiConnector {
         if (!mWifiManager.saveConfiguration()) {
             throw new WifiException(String.format("failed to save configuration", ssid));
         }
-
-        waitForCallable(new Callable<Boolean>() {
+        connectTimeout = calculateTimeLeft(connectTimeout, timeSpent);
+        timeSpent = waitForCallable(new Callable<Boolean>() {
                 @Override
                 public Boolean call() throws Exception {
                     final SupplicantState state = mWifiManager.getConnectionInfo()
                             .getSupplicantState();
                     return SupplicantState.COMPLETED == state;
                 }
-            }, String.format("failed to associate to network %s", ssid));
+            }, String.format("associating to network (ssid: %s)", ssid), connectTimeout);
 
-        waitForCallable(new Callable<Boolean>() {
+        connectTimeout = calculateTimeLeft(connectTimeout, timeSpent);
+        timeSpent = waitForCallable(new Callable<Boolean>() {
                 @Override
                 public Boolean call() throws Exception {
                     final WifiInfo info = mWifiManager.getConnectionInfo();
                     return 0 != info.getIpAddress();
                 }
-            }, String.format("dhcp timeout when connecting to wifi network %s", ssid));
+            }, String.format("dhcp assignment (ssid: %s)", ssid), connectTimeout);
 
-        long timeout = connectTimeout == -1 ? DEFAULT_TIMEOUT : (connectTimeout * 1000);
+        connectTimeout = calculateTimeLeft(connectTimeout, timeSpent);
         waitForCallable(new Callable<Boolean>() {
                 @Override
                 public Boolean call() throws Exception {
                     return checkConnectivity(urlToCheck);
                 }
-            }, String.format("request to %s failed after connecting to wifi network %s",
-                    urlToCheck, ssid), timeout);
+            }, String.format("request to %s (ssid: %s)", urlToCheck, ssid), connectTimeout);
     }
 
     /**
@@ -278,7 +288,7 @@ public class WifiConnector {
                     public Boolean call() throws Exception {
                         return !mWifiManager.isWifiEnabled();
                     }
-                }, "failed to disable wifi");
+                }, "disabling wifi");
         }
     }
 
@@ -336,4 +346,11 @@ public class WifiConnector {
         editor.commit();
     }
 
+    private long calculateTimeLeft(long connectTimeout, long timeSpent) {
+        if (timeSpent > connectTimeout) {
+            return 0;
+        } else {
+            return connectTimeout - timeSpent;
+        }
+    }
 }
