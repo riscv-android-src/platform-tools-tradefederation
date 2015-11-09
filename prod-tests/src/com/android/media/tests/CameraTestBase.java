@@ -370,6 +370,9 @@ public class CameraTestBase implements IDeviceTest, IRemoteTest {
         }
 
         public void handleCollectedMetrics(TestIdentifier test, Map<String, String> testMetrics) {
+            if (testMetrics == null) {
+                return; // No-op if there is nothing to post.
+            }
             for (Map.Entry<String, String> metric : testMetrics.entrySet()) {
                 getAggregatedMetrics().put(test.getTestName(), metric.getValue());
             }

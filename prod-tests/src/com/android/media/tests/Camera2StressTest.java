@@ -117,11 +117,16 @@ public class Camera2StressTest extends CameraTestBase {
             }
         }
 
+        // Return null if failed to parse the result file or the test didn't even start.
         private Map<String, String> parseLog() {
             Map<String, String> postMetrics = null;
             try {
                 File outputFile = FileUtil.createTempFile("stress", ".txt");
                 getDevice().pullFile(RESULT_FILE, outputFile);
+                if (outputFile == null) {
+                    throw new DeviceNotAvailableException(String.format("Failed to pull the result"
+                            + "file: %s", RESULT_FILE));
+                }
                 BufferedReader reader = new BufferedReader(new FileReader(outputFile));
                 String line;
                 Map<String, String> resultMap = new HashMap<String, String>();
@@ -142,10 +147,9 @@ public class Camera2StressTest extends CameraTestBase {
 
                 // Fail if a stress test doesn't start.
                 if (0 == Integer.parseInt(resultMap.get(KEY_NUM_ATTEMPTS))) {
-                    throw new RuntimeException("Failed to start stress tests. " +
-                            "Configured test set up incorrectly?");
+                    CLog.w("Failed to start stress tests. test setup configured incorrectly?");
+                    return null;
                 }
-
                 // Post the number of iterations only.
                 postMetrics = new HashMap<String, String>();
                 postMetrics.put(KEY_ITERATION, resultMap.get(KEY_ITERATION));
@@ -153,6 +157,8 @@ public class Camera2StressTest extends CameraTestBase {
                 CLog.w("Couldn't parse the output log file: ", e);
             } catch (DeviceNotAvailableException e) {
                 CLog.w("Could not pull file: %s, error: %s", RESULT_FILE, e);
+            } catch (NumberFormatException e) {
+                CLog.w("Could not find the key in file: %s, error: %s", KEY_NUM_ATTEMPTS, e);
             }
             return postMetrics;
         }
