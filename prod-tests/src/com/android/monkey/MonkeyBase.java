@@ -20,8 +20,10 @@ import com.android.ddmlib.CollectingOutputReceiver;
 import com.android.ddmlib.IShellOutputReceiver;
 import com.android.ddmlib.testrunner.TestIdentifier;
 import com.android.loganalysis.item.BugreportItem;
+import com.android.loganalysis.item.MiscKernelLogItem;
 import com.android.loganalysis.item.MonkeyLogItem;
 import com.android.loganalysis.parser.BugreportParser;
+import com.android.loganalysis.parser.KernelLogParser;
 import com.android.loganalysis.parser.MonkeyLogParser;
 import com.android.tradefed.config.Option;
 import com.android.tradefed.config.Option.Importance;
@@ -341,6 +343,28 @@ public class MonkeyBase implements IDeviceTest, IRemoteTest, IRetriableTest {
                         + "ran for: %d:%02d (mm:ss)\n", dateAfter.toString(), uptimeAfter,
                         duration / 1000 / 60, duration / 1000 % 60));
                 mMonkeyLog = createMonkeyLog(listener, MONKEY_LOG_NAME, outputBuilder.toString());
+            }
+        }
+
+        // Extra logs for what was found
+        if (mBugreport != null && mBugreport.getLastKmsg() != null) {
+            List<MiscKernelLogItem> kernelErrors = mBugreport.getLastKmsg().getMiscEvents(
+                    KernelLogParser.KERNEL_ERROR);
+            List<MiscKernelLogItem> kernelResets = mBugreport.getLastKmsg().getMiscEvents(
+                    KernelLogParser.KERNEL_ERROR);
+            CLog.d("Found %d kernel errors and %d kernel resets in last kmsg",
+                    kernelErrors.size(), kernelResets.size());
+            for (int i = 0; i < kernelErrors.size(); i++) {
+                String stack = kernelErrors.get(i).getStack();
+                if (stack != null) {
+                    CLog.d("Kernel Error #%d: %s", i + 1, stack.split("\n")[0].trim());
+                }
+            }
+            for (int i = 0; i < kernelResets.size(); i++) {
+                String stack = kernelResets.get(i).getStack();
+                if (stack != null) {
+                    CLog.d("Kernel Reset #%d: %s", i + 1, stack.split("\n")[0].trim());
+                }
             }
         }
 
