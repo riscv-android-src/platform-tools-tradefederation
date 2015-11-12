@@ -43,6 +43,8 @@ public class DeviceSetupTest extends TestCase {
     private IDeviceBuildInfo mMockBuildInfo;
     private File mTmpDir;
 
+    private static final int DEFAULT_API_LEVEL = 23;
+
     /**
      * {@inheritDoc}
      */
@@ -540,6 +542,20 @@ public class DeviceSetupTest extends TestCase {
         doSetupExpectations();
         doCheckExternalStoreSpaceExpectations();
         doCommandsExpectations(true,
+                "dumpsys battery unplug",
+                "settings put global \"low_power\" \"1\"");
+        EasyMock.replay(mMockDevice);
+
+        mDeviceSetup.setBatterySaver(BinaryState.ON);
+        mDeviceSetup.setUp(mMockDevice, mMockBuildInfo);
+
+        EasyMock.verify(mMockDevice);
+    }
+
+    public void testSetup_legacy_battery_saver_on() throws DeviceNotAvailableException, TargetSetupError {
+        doSetupExpectations(21); // API level Lollipop
+        doCheckExternalStoreSpaceExpectations();
+        doCommandsExpectations(true,
                 "dumpsys battery set usb 0",
                 "settings put global \"low_power\" \"1\"");
         EasyMock.replay(mMockDevice);
@@ -890,7 +906,14 @@ public class DeviceSetupTest extends TestCase {
      * Set EasyMock expectations for a normal setup call
      */
     private void doSetupExpectations() throws DeviceNotAvailableException {
-        doSetupExpectations(true, new Capture<String>());
+        doSetupExpectations(true, DEFAULT_API_LEVEL, new Capture<String>());
+    }
+
+    /**
+     * Set EasyMock expectations for a normal setup call
+     */
+    private void doSetupExpectations(int apiLevel) throws DeviceNotAvailableException {
+        doSetupExpectations(true, apiLevel, new Capture<String>());
     }
 
     /**
@@ -898,8 +921,17 @@ public class DeviceSetupTest extends TestCase {
      */
     private void doSetupExpectations(boolean screenOn, Capture<String> setPropCapture)
             throws DeviceNotAvailableException {
+        doSetupExpectations(screenOn, DEFAULT_API_LEVEL, setPropCapture);
+    }
+
+    /**
+     * Set EasyMock expectations for a normal setup call
+     */
+    private void doSetupExpectations(boolean screenOn, int apiLevel,
+            Capture<String> setPropCapture) throws DeviceNotAvailableException {
         EasyMock.expect(mMockDevice.enableAdbRoot()).andReturn(Boolean.TRUE);
         EasyMock.expect(mMockDevice.clearErrorDialogs()).andReturn(Boolean.TRUE);
+        EasyMock.expect(mMockDevice.getApiLevel()).andReturn(apiLevel);
         // expect push of local.prop file to change system properties
         EasyMock.expect(mMockDevice.pushString(EasyMock.capture(setPropCapture),
                 EasyMock.contains("local.prop"))).andReturn(Boolean.TRUE);
