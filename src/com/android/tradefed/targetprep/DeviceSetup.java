@@ -1050,6 +1050,13 @@ public class DeviceSetup implements ITargetPreparer, ITargetCleaner {
     /**
      * Exposed for unit testing
      */
+    protected void setTimezone(String timezone) {
+        mTimezone = timezone;
+    }
+
+    /**
+     * Exposed for unit testing
+     */
     protected void setDisableDialing(boolean disableDialing) {
         mDisableDialing = disableDialing;
     }
