@@ -19,6 +19,7 @@ package com.android.monkey;
 import com.android.ddmlib.CollectingOutputReceiver;
 import com.android.ddmlib.IShellOutputReceiver;
 import com.android.ddmlib.testrunner.TestIdentifier;
+import com.android.loganalysis.item.AnrItem;
 import com.android.loganalysis.item.BugreportItem;
 import com.android.loganalysis.item.MiscKernelLogItem;
 import com.android.loganalysis.item.MonkeyLogItem;
@@ -43,6 +44,7 @@ import com.android.tradefed.util.ArrayUtil;
 import com.android.tradefed.util.CircularAtraceUtil;
 import com.android.tradefed.util.IRunUtil;
 import com.android.tradefed.util.RunUtil;
+import com.android.tradefed.util.StreamUtil;
 
 import junit.framework.Assert;
 
@@ -300,6 +302,7 @@ public class MonkeyBase implements IDeviceTest, IRemoteTest, IRetriableTest {
         long duration = 0;
         Date dateAfter = null;
         String uptimeAfter = NULL_UPTIME;
+        FileInputStreamSource atraceStream = null;
 
         // Generate the monkey log prefix, which includes the device uptime
         outputBuilder.append(String.format("# %s - device uptime = %s: Monkey command used " +
@@ -324,8 +327,7 @@ public class MonkeyBase implements IDeviceTest, IRemoteTest, IRetriableTest {
                 takeScreenshot(listener, "screenshot");
 
                 if (mAtraceEnabled) {
-                    FileInputStreamSource stream = CircularAtraceUtil.endTrace(getDevice());
-                    listener.testLog("circular-atrace", LogDataType.TEXT, stream);
+                    atraceStream = CircularAtraceUtil.endTrace(getDevice());
                 }
 
                 mBugreport = takeBugreport(listener, BUGREPORT_NAME);
@@ -338,11 +340,18 @@ public class MonkeyBase implements IDeviceTest, IRemoteTest, IRetriableTest {
                 if (dateAfter == null) {
                     dateAfter = new Date();
                 }
+
                 // Generate the monkey log suffix, which includes the device uptime.
                 outputBuilder.append(String.format("\n# %s - device uptime = %s: Monkey command "
                         + "ran for: %d:%02d (mm:ss)\n", dateAfter.toString(), uptimeAfter,
                         duration / 1000 / 60, duration / 1000 % 60));
                 mMonkeyLog = createMonkeyLog(listener, MONKEY_LOG_NAME, outputBuilder.toString());
+
+                if (mAtraceEnabled && mMonkeyLog.getCrash() instanceof AnrItem) {
+                    // This was identified as an ANR; post atrace data
+                    listener.testLog("circular-atrace", LogDataType.TEXT, atraceStream);
+                }
+                StreamUtil.cancel(atraceStream);
             }
         }
 
