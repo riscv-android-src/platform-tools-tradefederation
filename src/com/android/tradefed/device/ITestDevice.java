@@ -126,6 +126,13 @@ public interface ITestDevice {
     public RecoveryMode getRecoveryMode();
 
     /**
+     * Get the device class.
+     *
+     * @return the {@link String} device class.
+     */
+    public String getDeviceClass();
+
+    /**
      * Returns a reference to the associated ddmlib {@link IDevice}.
      * <p/>
      * A new {@link IDevice} may be allocated by DDMS each time the device disconnects and

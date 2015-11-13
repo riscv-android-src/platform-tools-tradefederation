@@ -3414,4 +3414,17 @@ class TestDevice implements IManagedTestDevice {
         }
         return null;
     }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public String getDeviceClass() {
+        IDevice device = getIDevice();
+        if (device == null) {
+            CLog.w("No IDevice instance, cannot determine device class.");
+            return "";
+        }
+        return device.getClass().getSimpleName();
+    }
 }

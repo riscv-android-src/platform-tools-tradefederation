@@ -794,7 +794,8 @@ public class DeviceManager implements IDeviceManager {
                     getDisplay(selector.getDeviceProductVariant(idevice)),
                     getDisplay(idevice.getProperty("ro.build.version.sdk")),
                     getDisplay(idevice.getProperty("ro.build.id")),
-                    getDisplay(selector.getBatteryLevel(idevice))));
+                    getDisplay(selector.getBatteryLevel(idevice)),
+                    d.getDeviceClass()));
         }
         return serialStates;
     }
