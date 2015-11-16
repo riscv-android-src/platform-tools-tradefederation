@@ -28,10 +28,18 @@ public class DeviceDescriptor {
     private final String mSdkVersion;
     private final String mBuildId;
     private final String mBatteryLevel;
+    private final String mDeviceClass;
 
     public DeviceDescriptor(String serial, boolean isStubDevice, DeviceAllocationState state,
             String product, String productVariant, String sdkVersion, String buildId,
             String batteryLevel) {
+        this(serial, isStubDevice, state, product, productVariant, sdkVersion, buildId,
+                batteryLevel, "");
+    }
+
+    public DeviceDescriptor(String serial, boolean isStubDevice, DeviceAllocationState state,
+            String product, String productVariant, String sdkVersion, String buildId,
+            String batteryLevel, String deviceClass) {
         mSerial = serial;
         mIsStubDevice = isStubDevice;
         mState = state;
@@ -40,6 +48,7 @@ public class DeviceDescriptor {
         mSdkVersion = sdkVersion;
         mBuildId = buildId;
         mBatteryLevel = batteryLevel;
+        mDeviceClass = deviceClass;
     }
 
     public String getSerial() {
@@ -60,6 +69,10 @@ public class DeviceDescriptor {
 
     public String getProductVariant() {
         return mProductVariant;
+    }
+
+    public String getDeviceClass() {
+        return mDeviceClass;
     }
 
     /*

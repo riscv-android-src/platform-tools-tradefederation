@@ -1013,4 +1013,12 @@ public class StubTestDevice implements IManagedTestDevice {
         // TODO Auto-generated method stub
         return null;
     }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public String getDeviceClass() {
+        return null;
+    }
 }
