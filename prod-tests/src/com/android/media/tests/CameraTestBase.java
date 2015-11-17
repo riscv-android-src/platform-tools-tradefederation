@@ -212,7 +212,7 @@ public class CameraTestBase implements IDeviceTest, IRemoteTest {
      * @param collectedMetrics - the metrics aggregated during the individual test.
      */
     protected void handleTestRunEnded(ITestInvocationListener listener,
-            Map<String, String> collectedMetrics) {
+            Map<String, String> collectedMetrics) throws DeviceNotAvailableException {
 
         // Report metrics at the end of test run.
         listener.testRunEnded(getTestDurationMs(), collectedMetrics);

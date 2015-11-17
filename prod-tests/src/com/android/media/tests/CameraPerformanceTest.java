@@ -23,6 +23,12 @@ import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.result.ITestInvocationListener;
 
+import org.xmlpull.v1.XmlPullParser;
+import org.xmlpull.v1.XmlPullParserException;
+import org.xmlpull.v1.XmlPullParserFactory;
+
+import java.io.ByteArrayInputStream;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -63,7 +69,7 @@ public class CameraPerformanceTest extends CameraTestBase {
      */
     @Override
     protected void handleTestRunEnded(ITestInvocationListener listener,
-            Map<String, String> collectedMetrics) {
+            Map<String, String> collectedMetrics) throws DeviceNotAvailableException {
         // Report metrics at the end of test run.
         Map<String, String> result = parseResult(collectedMetrics);
         listener.testRunEnded(getTestDurationMs(), result);
@@ -75,29 +81,38 @@ public class CameraPerformanceTest extends CameraTestBase {
      *
      * @return a {@link HashMap} that contains pairs of kpiName and kpiValue
      */
-    private Map<String, String> parseResult(Map<String, String> metrics) {
+    private Map<String, String> parseResult(Map<String, String> metrics)
+            throws DeviceNotAvailableException {
         Map<String, String> resultsAll = new HashMap<String, String>();
-        Camera2KpiParser parser = new Camera2KpiParser();
+
+        CtsResultParserBase parser;
         for (Map.Entry<String, String> metric : metrics.entrySet()) {
             String testMethod = metric.getKey();
-            String stdout = metric.getValue();
+            String testResult = metric.getValue();
             CLog.d("test name %s", testMethod);
-            CLog.d("stdout %s", stdout);
+            CLog.d("test result %s", testResult);
+            // Probe which result parser should be used.
+            if (shouldUseCtsXmlResultParser(testResult)) {
+                parser = new CtsXmlResultParser();
+            } else {
+                parser = new CtsDelimitedResultParser();
+            }
 
             // Get pairs of { KPI name, KPI value } from stdout that each test outputs.
             // Assuming that a device has both the front and back cameras, parser will return
             // 2 KPIs in HashMap. For an example of testCameraLaunch,
             //   {
-            //     ("Camera 0 Camera launch time", "379.20"),
-            //     ("Camera 1 Camera launch time", "272.80"),
+            //     ("Camera 0 Camera launch time", "379.2"),
+            //     ("Camera 1 Camera launch time", "272.8"),
             //   }
-            Map<String, String> testKpis = parser.parse(stdout, testMethod);
+            Map<String, String> testKpis = parser.parse(testResult, testMethod);
             for (String k : testKpis.keySet()) {
                 if (resultsAll.containsKey(k)) {
                     throw new RuntimeException(String.format("KPI name (%s) conflicts with " +
                             "the existing names. ", k));
                 }
             }
+            parser.clear();
 
             // Put each result together to post the final result
             resultsAll.putAll(testKpis);
@@ -105,103 +120,78 @@ public class CameraPerformanceTest extends CameraTestBase {
         return resultsAll;
     }
 
+    public boolean shouldUseCtsXmlResultParser(String result) throws DeviceNotAvailableException {
+        final String XML_DECLARATION = "<?xml";
+        return (result.startsWith(XML_DECLARATION) ||
+                result.startsWith(XML_DECLARATION.toUpperCase()));
+    }
+
     /**
-     * Data class of Camera Performance KPIs separated into summary and KPI items
+     * Data class of CTS test results for Camera framework performance test
      */
-    private class Camera2KpiData {
-        public class KpiItem {
-            String testMethod; // "testSingleCapture"
-            String code;       // "android.hardware.camera2.cts.PerformanceTest#testSingleCapture"
-            String cameraId;   // "0" or "1"
-            String kpiName;    // "Camera capture latency"
-            String type;       // "lower_better"
-            String unit;       // "ms"
-            String kpiValue;   // "736.0 688.0 679.0 667.0 686.0"
-            String key;        // primary key = cameraId + kpiName (+ testName if needed)
-        }
-        KpiItem summary;
-        Map<String, KpiItem> kpiItems = new HashMap<String, KpiItem>();
+    public static class CtsMetric {
+        String source;      // "android.hardware.camera2.cts.PerformanceTest#testSingleCapture:327"
+                            // or "testSingleCapture" (just test method name)
+        String message;     // "Camera 0: Camera capture latency"
+        String type;        // "lower_better"
+        String unit;        // "ms"
+        String value;       // "691.0" (is an average of 736.0 688.0 679.0 667.0 686.0)
+        String schemaKey;   // RU schema key = message (+ testMethodName if needed), derived
+        String testMethod;  // "testSingleCapture", derived from source
 
-        public KpiItem createItem(String testMethod, String code, String cameraId, String kpiName,
-                String type, String unit, String kpiValue) {
-            KpiItem kpiItem = new KpiItem();
-            kpiItem.testMethod = testMethod;
-            kpiItem.code = code;
-            kpiItem.cameraId = cameraId;
-            kpiItem.kpiName = kpiName;
-            kpiItem.type = type;
-            kpiItem.unit = unit;
-            kpiItem.kpiValue = kpiValue;
-            kpiItem.key = getRuSchemaKeyName(testMethod, cameraId, kpiName);
-            return kpiItem;
+        // eg. "android.hardware.camera2.cts.PerformanceTest#testSingleCapture:327"
+        public static final Pattern SOURCE_REGEX = Pattern.compile(
+                "^(?<package>[a-zA-Z\\d\\._$]+)#(?<method>[a-zA-Z\\d_$]+)(:\\d+)?");
+        // eg. "Camera 0: Camera capture latency"
+        public static final Pattern MESSAGE_REGEX = Pattern.compile(
+                "^Camera\\s+(?<cameraId>\\d+):\\s+(?<kpiName>.*)");
+
+        CtsMetric(String source, String message, String type, String unit, String value) {
+            this.source = source;
+            this.message = message;
+            this.type = type;
+            this.unit = unit;
+            this.value = value;
+            this.schemaKey = getRuSchemaKeyName(message);
+            this.testMethod = getTestMethodName(source);
         }
 
-        private String getRuSchemaKeyName(String testMethod, String cameraId, String kpiName) {
+        public boolean matches(String testMethod, String kpiName) {
+            return (this.testMethod.equals(testMethod) && this.message.endsWith(kpiName));
+        }
+
+        public String getRuSchemaKeyName(String message) {
             // Note 1: The key shouldn't contain ":" for side by side report.
+            String schemaKey = message.replace(":", "");
             // Note 2: Two tests testReprocessingLatency & testReprocessingThroughput have the
             // same metric names to report results. To make the report key name distinct,
             // the test name is added as prefix for these tests for them.
-            String key = String.format("Camera %s %s", cameraId, kpiName);
             final String[] TEST_NAMES_AS_PREFIX = {"testReprocessingLatency",
                     "testReprocessingThroughput"};
             for (String testName : TEST_NAMES_AS_PREFIX) {
-                if (testMethod.endsWith(testName)) {
-                    key = String.format("%s_%s", testName, key);
+                if (source.endsWith(testName)) {
+                    schemaKey = String.format("%s_%s", testName, schemaKey);
                     break;
                 }
             }
-            return key;
+            return schemaKey;
         }
 
-        public List<KpiItem> getKpiItemsByKpiName(String kpiName) {
-            List<KpiItem> matchedKpis = new ArrayList<KpiItem>();
-            for (KpiItem log : kpiItems.values()) {
-                if (log.kpiName.equals(kpiName)) {
-                    matchedKpis.add(log);
-                }
+        public String getTestMethodName(String source) {
+            Matcher m = SOURCE_REGEX.matcher(source);
+            if (!m.matches()) {
+                return source;
             }
-            return matchedKpis;
-        }
-
-        public void setSummary(KpiItem kpiItem) {
-            summary = kpiItem;
-        }
-
-        public void addKpi(KpiItem kpiItem) {
-            kpiItems.put(kpiItem.key, kpiItem);
+            return m.group("method");
         }
     }
 
     /**
-     * Parses the stdout generated by the underlying instrumentation test
-     * and returns it to test runner for later reporting.
-     *
-     * Format:
-     *   (summary message)| |(type)|(unit)|(value) ++++
-     *   (code)|(message)|(type)|(unit)|(value)... +++
-     *   ...
-     *
-     * Example:
-     *   Camera launch average time for Camera 1| |lower_better|ms|586.6++++
-     *   android.hardware.camera2.cts.PerformanceTest#testCameraLaunch:171|Camera 0: Camera open time|lower_better|ms|74.0 100.0 70.0 67.0 82.0 +++
-     *   android.hardware.camera2.cts.PerformanceTest#testCameraLaunch:171|Camera 0: Camera configure stream time|lower_better|ms|9.0 5.0 5.0 8.0 5.0
-     *   ...
-     *
-     * See also com.android.cts.util.ReportLog for the format detail.
-     *
+     * Base class of CTS test result parser. This is inherited to two derived parsers,
+     * {@link CtsDelimitedResultParser} for legacy delimiter separated format and
+     * {@link CtsXmlResultParser} for XML typed format introduced since NYC.
      */
-    private class Camera2KpiParser {
-        private static final String LOG_SEPARATOR = "\\+\\+\\+";
-        private static final String SUMMARY_SEPARATOR = "\\+\\+\\+\\+";
-        private static final String LOG_ELEM_SEPARATOR = "|";
-        private final Pattern SUMMARY_REGEX = Pattern.compile(
-                "^(?<message>[^|]+)\\| \\|(?<type>[^|]+)\\|(?<unit>[^|]+)\\|(?<value>[0-9 .]+)");
-        private final Pattern KPI_REGEX = Pattern.compile(
-                "^(?<code>[^|]+)\\|(?<message>[^|]+)\\|(?<type>[^|]+)\\|(?<unit>[^|]+)\\|(?<values>[0-9 .]+)");
-        // eg. "Camera 0: Camera capture latency"
-        private final Pattern KPI_KEY_REGEX = Pattern.compile(
-                "^Camera\\s+(?<cameraId>\\d+):\\s+(?<kpiName>.*)");
-
+    public abstract class CtsResultParserBase {
         // KPIs to be reported. The key is test methods and the value is KPIs in the method.
         private final ImmutableMultimap<String, String> REPORTING_KPIS =
                 new ImmutableMultimap.Builder<String, String>()
@@ -214,87 +204,230 @@ public class CameraPerformanceTest extends CameraTestBase {
                     .put("testReprocessingThroughput", "opaque reprocessing capture latency")
                     .build();
 
+        protected CtsMetric mSummary;
+        protected List<CtsMetric> mDetails = new ArrayList<>();
+
         /**
          * Parse Camera Performance KPIs result first, then leave the only KPIs that matter.
          *
-         * @param input String to be parsed
+         * @param result String to be parsed
          * @param testMethod test method name used to leave the only metric that matters
          * @return a {@link HashMap} that contains kpiName and kpiValue
          */
-        public Map<String, String> parse(String input, String testMethod) {
-            Camera2KpiData parsed = parseToData(input, testMethod);
-            return filter(parsed, testMethod);
-        }
+        public abstract Map<String, String> parse(String result, String testMethod);
 
-        private Map<String, String> filter(Camera2KpiData data, String testMethod) {
+        protected Map<String, String> filter(List<CtsMetric> metrics, String testMethod) {
             Map<String, String> filtered = new HashMap<String, String>();
-            for (String kpiToReport : REPORTING_KPIS.get(testMethod)) {
-                // Report the only selected KPIs. Each KPI has two items for back and front cameras.
-                List<Camera2KpiData.KpiItem> items = data.getKpiItemsByKpiName(kpiToReport);
-                for (Camera2KpiData.KpiItem item : items) {
-                    // item.getKey() should be unique to post results to dashboard.
-                    filtered.put(item.key, item.kpiValue);
+            for (CtsMetric metric : metrics) {
+                for (String kpiName : REPORTING_KPIS.get(testMethod)) {
+                    // Post the data only when it matches with the given methods and KPI names.
+                    if (metric.matches(testMethod, kpiName)) {
+                        filtered.put(metric.schemaKey, metric.value);
+                    }
                 }
             }
             return filtered;
         }
 
-        private Camera2KpiData parseToData(String input, String testMethod) {
-            Camera2KpiData data = new Camera2KpiData();
+        protected void setSummary(CtsMetric summary) {
+            mSummary = summary;
+        }
 
+        protected void addDetail(CtsMetric detail) {
+            mDetails.add(detail);
+        }
+
+        protected List<CtsMetric> getDetails() {
+            return mDetails;
+        }
+
+        void clear() {
+            mSummary = null;
+            mDetails.clear();
+        }
+
+        public <E extends Number> Double getAverage(List<E> list) {
+            double sum = 0;
+            int size = list.size();
+            for (E num : list) {
+                sum += num.doubleValue();
+            }
+            if (size == 0) {
+                return Double.NaN;
+            }
+            return (sum / size);
+        }
+    }
+
+    /**
+     * Parses the stdout generated by the underlying instrumentation test
+     * and returns it to test runner for later reporting.
+     *
+     * Format:
+     *   (summary message)| |(type)|(unit)|(value) ++++
+     *   (source)|(message)|(type)|(unit)|(value)... +++
+     *   ...
+     *
+     * Example:
+     *   Camera launch average time for Camera 1| |lower_better|ms|586.6++++
+     *   android.hardware.camera2.cts.PerformanceTest#testCameraLaunch:171|
+     *       Camera 0: Camera open time|lower_better|ms|74.0 100.0 70.0 67.0 82.0 +++
+     *   android.hardware.camera2.cts.PerformanceTest#testCameraLaunch:171|
+     *       Camera 0: Camera configure stream time|lower_better|ms|9.0 5.0 5.0 8.0 5.0
+     *   ...
+     *
+     * See also com.android.cts.util.ReportLog for the format detail.
+     *
+     */
+    public class CtsDelimitedResultParser extends CtsResultParserBase {
+        private static final String LOG_SEPARATOR = "\\+\\+\\+";
+        private static final String SUMMARY_SEPARATOR = "\\+\\+\\+\\+";
+        private final Pattern SUMMARY_REGEX = Pattern.compile(
+                "^(?<message>[^|]+)\\| \\|(?<type>[^|]+)\\|(?<unit>[^|]+)\\|(?<value>[0-9 .]+)");
+        private final Pattern DETAIL_REGEX = Pattern.compile(
+                "^(?<source>[^|]+)\\|(?<message>[^|]+)\\|(?<type>[^|]+)\\|(?<unit>[^|]+)\\|"
+                + "(?<values>[0-9 .]+)");
+
+        @Override
+        public Map<String, String> parse(String result, String testMethod) {
+            parseToCtsMetrics(result, testMethod);
+            return filter(getDetails(), testMethod);
+        }
+
+        void parseToCtsMetrics(String result, String testMethod) {
             // Split summary and KPIs from stdout passes as parameter.
-            String[] output = input.split(SUMMARY_SEPARATOR);
+            String[] output = result.split(SUMMARY_SEPARATOR);
             if (output.length != 2) {
-                throw new RuntimeException("Value not in correct format");
+                throw new RuntimeException("Value not in the correct format");
             }
             Matcher summaryMatcher = SUMMARY_REGEX.matcher(output[0].trim());
 
             // Parse summary.
             // Example: "Camera launch average time for Camera 1| |lower_better|ms|586.6++++"
             if (summaryMatcher.matches()) {
-                data.setSummary(data.createItem(testMethod, null,
-                        "-1",
+                setSummary(new CtsMetric(testMethod,
                         summaryMatcher.group("message"),
                         summaryMatcher.group("type"),
                         summaryMatcher.group("unit"),
                         summaryMatcher.group("value")));
             } else {
-                // Currently malformed summary won't block a test as it's not used for report.
-                CLog.w("Summary not in correct format");
+                // Fall through since the summary is not posted as results.
+                CLog.w("Summary not in the correct format");
             }
 
             // Parse KPIs.
             // Example: "android.hardware.camera2.cts.PerformanceTest#testCameraLaunch:171|Camera 0: Camera open time|lower_better|ms|74.0 100.0 70.0 67.0 82.0 +++"
-            String[] kpis = output[1].split(LOG_SEPARATOR);
-            for (String kpi : kpis) {
-                Matcher kpiMatcher = KPI_REGEX.matcher(kpi.trim());
-                if (kpiMatcher.matches()) {
-                    String message = kpiMatcher.group("message");
-                    Matcher m = KPI_KEY_REGEX.matcher(message.trim());
-                    if (!m.matches()) {
-                        throw new RuntimeException("Value not in correct format");
-                    }
-                    String cameraId = m.group("cameraId");
-                    String kpiName = m.group("kpiName");
+            String[] details = output[1].split(LOG_SEPARATOR);
+            for (String detail : details) {
+                Matcher detailMatcher = DETAIL_REGEX.matcher(detail.trim());
+                if (detailMatcher.matches()) {
                     // get average of kpi values
-                    String[] values = kpiMatcher.group("values").split("\\s+");
-                    double sum = 0;
-                    for (String value : values) {
-                        sum += Double.parseDouble(value);
+                    List<Double> values = new ArrayList<>();
+                    for (String value : detailMatcher.group("values").split("\\s+")) {
+                        values.add(Double.parseDouble(value));
                     }
-                    String kpiValue = String.format("%.1f", sum / values.length);
-                    data.addKpi(data.createItem(testMethod,
-                            kpiMatcher.group("code"),
-                            cameraId,
-                            kpiName,
-                            kpiMatcher.group("type"),
-                            kpiMatcher.group("unit"),
+                    String kpiValue = String.format("%.1f", getAverage(values));
+                    addDetail(new CtsMetric(
+                            detailMatcher.group("source"),
+                            detailMatcher.group("message"),
+                            detailMatcher.group("type"),
+                            detailMatcher.group("unit"),
                             kpiValue));
                 } else {
-                    throw new RuntimeException("KPI not in correct format");
+                    throw new RuntimeException("KPI not in the correct format");
                 }
             }
-            return data;
+        }
+    }
+
+    /**
+     * Parses the CTS test results in a XML format introduced since NYC.
+     *
+     * Format:
+     *   <Summary>
+     *       <Metric source="android.hardware.camera2.cts.PerformanceTest#testSingleCapture:327"
+     *               message="Camera capture result average latency for all cameras "
+     *               score_type="lower_better"
+     *               score_unit="ms"
+     *           <Value>353.9</Value>
+     *       </Metric>
+     *   </Summary>
+     *   <Detail>
+     *       <Metric source="android.hardware.camera2.cts.PerformanceTest#testSingleCapture:303"
+     *               message="Camera 0: Camera capture latency"
+     *               score_type="lower_better"
+     *               score_unit="ms">
+     *           <Value>335.0</Value>
+     *           <Value>302.0</Value>
+     *           <Value>316.0</Value>
+     *       </Metric>
+     *   </Detail>
+     *  }
+     * See also com.android.compatibility.common.util.ReportLog for the format detail.
+     */
+    public class CtsXmlResultParser extends CtsResultParserBase {
+        private static final String ENCODING = "UTF-8";
+        // XML constants
+        private static final String DETAIL_TAG = "Detail";
+        private static final String METRIC_TAG = "Metric";
+        private static final String MESSAGE_ATTR = "message";
+        private static final String SCORETYPE_ATTR = "score_type";
+        private static final String SCOREUNIT_ATTR = "score_unit";
+        private static final String SOURCE_ATTR = "source";
+        private static final String SUMMARY_TAG = "Summary";
+        private static final String VALUE_TAG = "Value";
+
+        @Override
+        public Map<String, String> parse(String result, String testMethod) {
+            try {
+                XmlPullParserFactory factory = XmlPullParserFactory.newInstance();
+                XmlPullParser parser = factory.newPullParser();
+                parser.setInput(new ByteArrayInputStream(result.getBytes(ENCODING)), ENCODING);
+                parser.nextTag();
+                parse(parser);
+                return filter(getDetails(), testMethod);
+            } catch (XmlPullParserException | IOException e) {
+                throw new RuntimeException("Failed to parse results in XML.", e);
+            }
+        }
+
+        /**
+         * Parses a {@link CtsMetric} from the given XML parser.
+         * @param parser
+         * @throws IOException
+         * @throws XmlPullParserException
+         */
+        public void parse(XmlPullParser parser) throws XmlPullParserException, IOException {
+            parser.require(XmlPullParser.START_TAG, null, SUMMARY_TAG);
+            parser.nextTag();
+            setSummary(parseToCtsMetrics(parser));
+            parser.nextTag();
+            parser.require(XmlPullParser.END_TAG, null, SUMMARY_TAG);
+            parser.nextTag();
+            if (parser.getName().equals(DETAIL_TAG)) {
+                while (parser.nextTag() == XmlPullParser.START_TAG) {
+                    addDetail(parseToCtsMetrics(parser));
+                }
+                parser.require(XmlPullParser.END_TAG, null, DETAIL_TAG);
+            }
+        }
+
+        CtsMetric parseToCtsMetrics(XmlPullParser parser)
+                throws IOException, XmlPullParserException {
+            parser.require(XmlPullParser.START_TAG, null, METRIC_TAG);
+            String source = parser.getAttributeValue(null, SOURCE_ATTR);
+            String message = parser.getAttributeValue(null, MESSAGE_ATTR);
+            String type = parser.getAttributeValue(null, SCORETYPE_ATTR);
+            String unit = parser.getAttributeValue(null, SCOREUNIT_ATTR);
+            List<Double> values = new ArrayList<>();
+            while (parser.nextTag() == XmlPullParser.START_TAG) {
+                parser.require(XmlPullParser.START_TAG, null, VALUE_TAG);
+                values.add(Double.parseDouble(parser.nextText()));
+                parser.require(XmlPullParser.END_TAG, null, VALUE_TAG);
+            }
+            String kpiValue = String.format("%.1f", getAverage(values));
+            parser.require(XmlPullParser.END_TAG, null, METRIC_TAG);
+            return new CtsMetric(source, message, type, unit, kpiValue);
         }
     }
 }
