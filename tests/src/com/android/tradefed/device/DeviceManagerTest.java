@@ -543,7 +543,7 @@ public class DeviceManagerTest extends TestCase {
         setCheckAvailableDeviceExpectations();
         EasyMock.expect(mMockTestDevice.handleAllocationEvent(DeviceEvent.ALLOCATE_REQUEST))
                 .andReturn(new DeviceEventResponse(DeviceAllocationState.Allocated, true));
-        mMockTestDevice.setDeviceState(TestDeviceState.OFFLINE);
+        mMockTestDevice.setDeviceState(TestDeviceState.NOT_AVAILABLE);
         replayMocks();
         DeviceManager manager = createDeviceManager(null, mMockIDevice);
         assertEquals(mMockTestDevice, manager.allocateDevice());

@@ -26,7 +26,6 @@ import com.android.ddmlib.IDevice.DeviceState;
 public enum TestDeviceState {
     FASTBOOT,
     ONLINE,
-    OFFLINE,
     RECOVERY,
     NOT_AVAILABLE;
 
@@ -38,8 +37,6 @@ public enum TestDeviceState {
         switch (this) {
             case ONLINE:
                 return DeviceState.ONLINE;
-            case OFFLINE:
-                return DeviceState.OFFLINE;
             case RECOVERY:
                 return DeviceState.RECOVERY;
             default:
@@ -59,10 +56,15 @@ public enum TestDeviceState {
             case ONLINE:
                 return TestDeviceState.ONLINE;
             case OFFLINE:
-                return TestDeviceState.OFFLINE;
+                return TestDeviceState.NOT_AVAILABLE;
             case RECOVERY:
                 return TestDeviceState.RECOVERY;
+            case UNAUTHORIZED:
+                return TestDeviceState.NOT_AVAILABLE;
+            case BOOTLOADER:
+                return TestDeviceState.FASTBOOT;
+            default:
+                return TestDeviceState.NOT_AVAILABLE;
         }
-        return TestDeviceState.NOT_AVAILABLE;
     }
 }
