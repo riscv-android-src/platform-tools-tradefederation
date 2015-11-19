@@ -96,7 +96,7 @@ public class InstrumentationFileTestTest extends TestCase {
         mockITest.setDevice(mMockTestDevice);
         mockITest.setPackageName(TEST_PACKAGE_VALUE);
 
-        mInstrumentationFileTest = new InstrumentationFileTest(mockITest, testsList) {
+        mInstrumentationFileTest = new InstrumentationFileTest(mockITest, testsList, true, -1) {
             @Override
             InstrumentationTest createInstrumentationTest() {
                 return mockITest;
@@ -180,7 +180,7 @@ public class InstrumentationFileTestTest extends TestCase {
         mockITest.setDevice(mMockTestDevice);
         mockITest.setPackageName(TEST_PACKAGE_VALUE);
 
-        mInstrumentationFileTest = new InstrumentationFileTest(mockITest, testsList) {
+        mInstrumentationFileTest = new InstrumentationFileTest(mockITest, testsList, true, -1) {
             @Override
             InstrumentationTest createInstrumentationTest() {
                 return mockITest;
@@ -284,7 +284,7 @@ public class InstrumentationFileTestTest extends TestCase {
         mockITest.setDevice(mMockTestDevice);
         mockITest.setPackageName(TEST_PACKAGE_VALUE);
 
-        mInstrumentationFileTest = new InstrumentationFileTest(mockITest, testsList) {
+        mInstrumentationFileTest = new InstrumentationFileTest(mockITest, testsList, true, -1) {
             @Override
             InstrumentationTest createInstrumentationTest() {
                 return mockITest;
@@ -327,6 +327,195 @@ public class InstrumentationFileTestTest extends TestCase {
         assertEquals(mMockTestDevice, mockITest.getDevice());
         // test file is expected to be null since we defaulted to serial test execution
         assertEquals(null, mockITest.getTestFilePathOnDevice());
+    }
+
+    /**
+     * Test no serial re-run tests fail to complete.
+     */
+    @SuppressWarnings("unchecked")
+    public void testRun_noSerialReRun()
+            throws DeviceNotAvailableException, IOException, ConfigurationException {
+        final Collection<TestIdentifier> testsList = new ArrayList<>(1);
+        final TestIdentifier test1 = new TestIdentifier("ClassFoo1", "methodBar1");
+        final TestIdentifier test2 = new TestIdentifier("ClassFoo2", "methodBar2");
+        testsList.add(test1);
+        testsList.add(test2);
+
+        // verify the test1 and test2 started but never completed
+        RunTestAnswer firstRunAnswer = new RunTestAnswer() {
+            @Override
+            public Boolean answer(IRemoteAndroidTestRunner runner, ITestRunListener listener) {
+                // first and second tests started but never completed
+                listener.testRunStarted(TEST_PACKAGE_VALUE, 2);
+                listener.testStarted(test1);
+                listener.testStarted(test2);
+                // verify that the content of the testFile contains all expected tests
+                verifyTestFile(testsList);
+                return true;
+            }
+        };
+        setRunTestExpectations(firstRunAnswer);
+
+        // mock out InstrumentationTest that will be used to create InstrumentationFileTest
+        final InstrumentationTest mockITest = new InstrumentationTest();
+        mockITest.setDevice(mMockTestDevice);
+        mockITest.setPackageName(TEST_PACKAGE_VALUE);
+
+        mInstrumentationFileTest = new InstrumentationFileTest(mockITest, testsList, false, -1) {
+            @Override
+            InstrumentationTest createInstrumentationTest() {
+                return mockITest;
+            }
+            @Override
+            boolean pushFileToTestDevice(File file, String destinationPath)
+                    throws DeviceNotAvailableException {
+                // simulate successful push and store created file
+                mTestFile = file;
+                return true;
+            }
+            @Override
+            void deleteTestFileFromDevice(String pathToFile) throws DeviceNotAvailableException {
+                //ignore
+            }
+        };
+
+        // First run:
+        mMockListener.testRunStarted(TEST_PACKAGE_VALUE, 2);
+        // expect test1 and test 2 to start but never finish
+        mMockListener.testStarted(test1);
+        mMockListener.testStarted(test2);
+
+        EasyMock.replay(mMockListener, mMockTestDevice);
+        mInstrumentationFileTest.run(mMockListener);
+        assertEquals(mMockTestDevice, mockITest.getDevice());
+    }
+
+    /**
+     * Test attempting times exceed max attempts.
+     */
+    @SuppressWarnings("unchecked")
+    public void testRun_exceedMaxAttempts()
+            throws DeviceNotAvailableException, IOException, ConfigurationException {
+        final ArrayList<TestIdentifier> testsList = new ArrayList<>(1);
+        final TestIdentifier test1 = new TestIdentifier("ClassFoo1", "methodBar1");
+        final TestIdentifier test2 = new TestIdentifier("ClassFoo2", "methodBar2");
+        final TestIdentifier test3 = new TestIdentifier("ClassFoo3", "methodBar3");
+        final TestIdentifier test4 = new TestIdentifier("ClassFoo4", "methodBar4");
+        final TestIdentifier test5 = new TestIdentifier("ClassFoo5", "methodBar5");
+        final TestIdentifier test6 = new TestIdentifier("ClassFoo6", "methodBar6");
+
+        testsList.add(test1);
+        testsList.add(test2);
+        testsList.add(test3);
+        testsList.add(test4);
+        testsList.add(test5);
+        testsList.add(test6);
+
+        final ArrayList<TestIdentifier> expectedTestsList = new ArrayList<>(testsList);
+
+        // test1 fininshed, test2 started but not finished.
+        RunTestAnswer firstRunAnswer = new RunTestAnswer() {
+            @Override
+            public Boolean answer(IRemoteAndroidTestRunner runner, ITestRunListener listener) {
+                listener.testRunStarted(TEST_PACKAGE_VALUE, 6);
+                // first test started and ended successfully
+                listener.testStarted(test1);
+                listener.testEnded(test1, Collections.EMPTY_MAP);
+                listener.testRunEnded(1, Collections.EMPTY_MAP);
+                // second test started but never finished
+                listener.testStarted(test2);
+                // verify that the content of the testFile contains all expected tests
+                verifyTestFile(expectedTestsList);
+                return true;
+            }
+        };
+        setRunTestExpectations(firstRunAnswer);
+
+        // test2 finished, test3 started but not finished.
+        RunTestAnswer secondRunAnswer = new RunTestAnswer() {
+            @Override
+            public Boolean answer(IRemoteAndroidTestRunner runner, ITestRunListener listener) {
+                // test2 started and ended successfully
+                listener.testRunStarted(TEST_PACKAGE_VALUE, 5);
+                listener.testStarted(test2);
+                listener.testEnded(test2, Collections.EMPTY_MAP);
+                listener.testRunEnded(1, Collections.EMPTY_MAP);
+                // test3 started but never finished
+                listener.testStarted(test3);
+                // verify that the content of the testFile contains all expected tests
+                verifyTestFile(expectedTestsList.subList(1, expectedTestsList.size()));
+                return true;
+            }
+        };
+        setRunTestExpectations(secondRunAnswer);
+
+        // test3 finished, test4 started but not finished.
+        RunTestAnswer thirdRunAnswer = new RunTestAnswer() {
+            @Override
+            public Boolean answer(IRemoteAndroidTestRunner runner, ITestRunListener listener) {
+                // test3 started and ended successfully
+                listener.testRunStarted(TEST_PACKAGE_VALUE, 4);
+                listener.testStarted(test3);
+                listener.testEnded(test3, Collections.EMPTY_MAP);
+                listener.testRunEnded(1, Collections.EMPTY_MAP);
+                // test4 started but never finished
+                listener.testStarted(test4);
+                // verify that the content of the testFile contains all expected tests
+                verifyTestFile(expectedTestsList.subList(2, expectedTestsList.size()));
+                return true;
+            }
+        };
+        setRunTestExpectations(thirdRunAnswer);
+
+        // mock out InstrumentationTest that will be used to create InstrumentationFileTest
+        final InstrumentationTest mockITest = new InstrumentationTest();
+        mockITest.setDevice(mMockTestDevice);
+        mockITest.setPackageName(TEST_PACKAGE_VALUE);
+
+        mInstrumentationFileTest = new InstrumentationFileTest(mockITest, testsList, false, 3) {
+            @Override
+            InstrumentationTest createInstrumentationTest() {
+                return mockITest;
+            }
+            @Override
+            boolean pushFileToTestDevice(File file, String destinationPath)
+                    throws DeviceNotAvailableException {
+                // simulate successful push and store created file
+                mTestFile = file;
+                return true;
+            }
+            @Override
+            void deleteTestFileFromDevice(String pathToFile) throws DeviceNotAvailableException {
+                //ignore
+            }
+        };
+
+        // First run:
+        mMockListener.testRunStarted(TEST_PACKAGE_VALUE, 6);
+        mMockListener.testStarted(test1);
+        mMockListener.testEnded(test1, Collections.EMPTY_MAP);
+        mMockListener.testRunEnded(1, Collections.EMPTY_MAP);
+        mMockListener.testStarted(test2);
+
+        // Second run:
+        mMockListener.testRunStarted(TEST_PACKAGE_VALUE, 5);
+        mMockListener.testStarted(test2);
+        mMockListener.testEnded(test2, Collections.EMPTY_MAP);
+        mMockListener.testRunEnded(1, Collections.EMPTY_MAP);
+        mMockListener.testStarted(test3);
+
+        // Third run:
+        mMockListener.testRunStarted(TEST_PACKAGE_VALUE, 4);
+        mMockListener.testStarted(test3);
+        mMockListener.testEnded(test3, Collections.EMPTY_MAP);
+        mMockListener.testRunEnded(1, Collections.EMPTY_MAP);
+        mMockListener.testStarted(test4);
+
+        // MAX_ATTEMPTS is 3, so there will be no forth run.
+
+        EasyMock.replay(mMockListener, mMockTestDevice);
+        mInstrumentationFileTest.run(mMockListener);
+        assertEquals(mMockTestDevice, mockITest.getDevice());
     }
 
     /**

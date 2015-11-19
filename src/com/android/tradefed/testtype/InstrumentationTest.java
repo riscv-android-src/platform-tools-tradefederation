@@ -159,6 +159,14 @@ public class InstrumentationTest implements IDeviceTest, IResumableTest {
             "when re-running instrumentations for tests that failed to run in previous attempts. ")
     private boolean mReRunUsingTestFile = false;
 
+    @Option(name = "rerun-from-file-attempts", description =
+            "Max attempts to rerun tests from file. -1 means rerun from file infinitely.")
+    private int mReRunUsingTestFileAttempts = -1;
+
+    @Option(name = "rerun-serially", description =
+            "Rerun tests serially after rerun from file failed.")
+    private boolean mReRunSerially = true;
+
     @Option(name = "reboot-before-rerun", description =
             "Reboot a device before re-running instrumentations.")
     private boolean mRebootBeforeReRun = false;
@@ -491,6 +499,10 @@ public class InstrumentationTest implements IDeviceTest, IResumableTest {
         mReRunUsingTestFile = reRunUsingTestFile;
     }
 
+    public void setReRunSerially(boolean reRunSerially) {
+        mReRunSerially = reRunSerially;
+    }
+
     public void setRebootBeforeReRun(boolean rebootBeforeReRun) {
         mRebootBeforeReRun = rebootBeforeReRun;
     }
@@ -683,7 +695,7 @@ public class InstrumentationTest implements IDeviceTest, IResumableTest {
         CLog.i("Running individual tests using a test file");
         try {
             InstrumentationFileTest testReRunner = new InstrumentationFileTest(this,
-                    mRemainingTests);
+                    mRemainingTests, mReRunSerially, mReRunUsingTestFileAttempts);
             CollectingTestListener testTracker = new CollectingTestListener();
             try {
                 testReRunner.run(new ResultForwarder(listener, testTracker));
