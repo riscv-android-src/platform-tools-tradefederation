@@ -58,6 +58,7 @@ fi
 
 # first try to find TF jars in same dir as this script
 CUR_DIR=$(dirname "$0")
+TF_JAR_DIR=$(dirname "$0")
 if [ -f "${CUR_DIR}/tradefed.jar" ]; then
     TF_PATH="${CUR_DIR}/*"
 elif [ ! -z "${ANDROID_HOST_OUT}" ]; then
@@ -66,6 +67,7 @@ elif [ ! -z "${ANDROID_HOST_OUT}" ]; then
     if [ -f "${ANDROID_HOST_OUT}/tradefed/tradefed.jar" ]; then
         # We intentionally pass the asterisk through without shell expansion
         TF_PATH="${ANDROID_HOST_OUT}/tradefed/*"
+        TF_JAR_DIR="${ANDROID_HOST_OUT}/tradefed/"
     fi
 fi
 
