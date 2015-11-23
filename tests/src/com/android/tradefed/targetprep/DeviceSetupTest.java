@@ -653,6 +653,19 @@ public class DeviceSetupTest extends TestCase {
         EasyMock.verify(mMockDevice);
     }
 
+    public void testSetup_set_timezone_LA() throws DeviceNotAvailableException,
+            TargetSetupError {
+        doSetupExpectations();
+        doCheckExternalStoreSpaceExpectations();
+        doCommandsExpectations(false, "setprop \"persist.sys.timezone\" \"America/Los_Angeles\"");
+        EasyMock.replay(mMockDevice);
+
+        mDeviceSetup.setTimezone("America/Los_Angeles");
+        mDeviceSetup.setUp(mMockDevice, mMockBuildInfo);
+
+        EasyMock.verify(mMockDevice);
+    }
+
     public void testSetup_no_disable_dialing() throws DeviceNotAvailableException,
             TargetSetupError {
         Capture<String> setPropCapture = new Capture<>();
