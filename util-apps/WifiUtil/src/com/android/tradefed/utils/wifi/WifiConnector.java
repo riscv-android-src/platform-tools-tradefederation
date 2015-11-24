@@ -122,7 +122,12 @@ public class WifiConnector {
      * @throws WifiException if the operation fails
      */
     public int addNetwork(final String ssid, final String psk) throws WifiException {
-
+        // Skip adding network if it's already added in the device
+        // TODO: Fix the permission issue for the APK to add/update already added network
+        int networkId = getNetworkId(ssid);
+        if (networkId >= 0) {
+            return networkId;
+        }
         final WifiConfiguration config = new WifiConfiguration();
         // A string SSID _must_ be enclosed in double-quotation marks
         config.SSID = quote(ssid);
@@ -135,13 +140,22 @@ public class WifiConnector {
         } else {
             config.preSharedKey = quote(psk);
         }
-
-        final int networkId = mWifiManager.addNetwork(config);
+        networkId = mWifiManager.addNetwork(config);
         if (-1 == networkId) {
             throw new WifiException("failed to add network");
         }
 
         return networkId;
+    }
+
+    private int getNetworkId(String ssid) {
+        List<WifiConfiguration> netlist = mWifiManager.getConfiguredNetworks();
+        for (WifiConfiguration config : netlist) {
+            if (quote(ssid).equals(config.SSID)) {
+                return config.networkId;
+            }
+        }
+        return -1;
     }
 
     /**
