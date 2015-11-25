@@ -190,6 +190,12 @@ public class DeviceSetup implements ITargetPreparer, ITargetCleaner {
     protected Integer mBatterySaverTrigger = null;
     // settings put global low_power_trigger_level $N
 
+    @Option(name = "enable-full-battery-stats-history",
+            description = "Enable full history for batterystats. This option is only " +
+            "applicable for L+")
+    protected boolean mEnableFullBatteryStatsHistory = false;
+    // dumpsys batterystats --enable full-history
+
     @Option(name = "disable-doze",
             description = "Disable device from going into doze mode. This option is only " +
             "applicable for M+")
@@ -537,6 +543,10 @@ public class DeviceSetup implements ITargetPreparer, ITargetCleaner {
 
         if (mBatterySaverTrigger != null) {
             mGlobalSettings.put("low_power_trigger_level", Integer.toString(mBatterySaverTrigger));
+        }
+
+        if (mEnableFullBatteryStatsHistory) {
+            mRunCommandAfterSettings.add("dumpsys batterystats --enable full-history");
         }
 
         if (mDisableDoze) {
@@ -1024,6 +1034,13 @@ public class DeviceSetup implements ITargetPreparer, ITargetCleaner {
      */
     protected void setBatterySaverTrigger(Integer batterySaverTrigger) {
         mBatterySaverTrigger = batterySaverTrigger;
+    }
+
+    /**
+     * Exposed for unit testing
+     */
+    protected void setEnableFullBatteryStatsHistory(boolean enableFullBatteryStatsHistory) {
+        mEnableFullBatteryStatsHistory = enableFullBatteryStatsHistory;
     }
 
     /**

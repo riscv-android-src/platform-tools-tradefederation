@@ -591,6 +591,19 @@ public class DeviceSetupTest extends TestCase {
         EasyMock.verify(mMockDevice);
     }
 
+    public void testSetup_enable_full_battery_stats_history() throws DeviceNotAvailableException,
+            TargetSetupError {
+        doSetupExpectations();
+        doCheckExternalStoreSpaceExpectations();
+        doCommandsExpectations(false, "dumpsys batterystats --enable full-history");
+        EasyMock.replay(mMockDevice);
+
+        mDeviceSetup.setEnableFullBatteryStatsHistory(true);
+        mDeviceSetup.setUp(mMockDevice, mMockBuildInfo);
+
+        EasyMock.verify(mMockDevice);
+    }
+
     public void testSetup_disable_doze() throws DeviceNotAvailableException, TargetSetupError {
         doSetupExpectations();
         doCheckExternalStoreSpaceExpectations();
