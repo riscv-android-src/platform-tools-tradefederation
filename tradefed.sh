@@ -26,4 +26,4 @@ checkPath adb
 
 # Note: must leave $RDBG_FLAG and $TRADEFED_OPTS unquoted so that they go away when unset
 java $RDBG_FLAG -XX:+HeapDumpOnOutOfMemoryError -XX:-OmitStackTraceInFastThrow $TRADEFED_OPTS \
-  -cp "${TF_PATH}" com.android.tradefed.command.Console "$@"
+  -cp "${TF_PATH}" -DTF_JAR_DIR=${TF_JAR_DIR} com.android.tradefed.command.Console "$@"
