@@ -122,6 +122,25 @@ public class RunUtil implements IRunUtil {
         return result;
     }
 
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public CommandResult runTimedCmdRetry(long timeout, long retryInterval, int attempts,
+            String... command) {
+        CommandResult result = null;
+        int counter = 0;
+        while (counter < attempts) {
+            result = runTimedCmd(timeout, command);
+            if (CommandStatus.SUCCESS.equals(result.getStatus())) {
+                return result;
+            }
+            sleep(retryInterval);
+            counter++;
+        }
+        return result;
+    }
+
     private synchronized ProcessBuilder createProcessBuilder(String... command) {
         return createProcessBuilder(Arrays.asList(command));
     }
@@ -174,6 +193,25 @@ public class RunUtil implements IRunUtil {
                 createProcessBuilder(command));
         CommandStatus status = runTimed(timeout, osRunnable, false);
         result.setStatus(status);
+        return result;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public CommandResult runTimedCmdSilentlyRetry(long timeout, long retryInterval, int attempts,
+            String... command) {
+        CommandResult result = null;
+        int counter = 0;
+        while (counter < attempts) {
+            result = runTimedCmdSilently(timeout, command);
+            if (CommandStatus.SUCCESS.equals(result.getStatus())) {
+                return result;
+            }
+            sleep(retryInterval);
+            counter++;
+        }
         return result;
     }
 

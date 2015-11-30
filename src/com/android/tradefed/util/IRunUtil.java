@@ -86,6 +86,19 @@ public interface IRunUtil {
 
     /**
      * Helper method to execute a system command, and aborting if it takes longer than a specified
+     * time.
+     *
+     * @param timeout maximum time to wait in ms for each attempt
+     * @param command the specified system command and optionally arguments to exec
+     * @param retryInterval time to wait between command retries
+     * @param attempts the maximum number of attempts to try
+     * @return a {@link CommandResult} containing result from command run
+     */
+    public CommandResult runTimedCmdRetry(final long timeout, long retryInterval,
+            int attempts, final String... command);
+
+    /**
+     * Helper method to execute a system command, and aborting if it takes longer than a specified
      * time. Similar to {@link #runTimedCmd(long, String...)}, but does not log any errors on
      * exception.
      *
@@ -94,6 +107,20 @@ public interface IRunUtil {
      * @return a {@link CommandResult} containing result from command run
      */
     public CommandResult runTimedCmdSilently(final long timeout, final String... command);
+
+    /**
+     * Helper method to execute a system command, and aborting if it takes longer than a specified
+     * time. Similar to {@link #runTimedCmdRetry(long, String...)}, but does not log any errors on
+     * exception.
+     *
+     * @param timeout maximum time to wait in ms
+     * @param command the specified system command and optionally arguments to exec
+     * @param retryInterval time to wait between command retries
+     * @param attempts the maximum number of attempts to try
+     * @return a {@link CommandResult} containing result from command run
+     */
+    public CommandResult runTimedCmdSilentlyRetry(final long timeout, long retryInterval,
+            int attempts, final String... command);
 
     /**
      * Helper method to execute a system command that requires stdin input, and aborting if it
