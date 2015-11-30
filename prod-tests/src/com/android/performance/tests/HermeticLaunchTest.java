@@ -16,27 +16,6 @@
 
 package com.android.performance.tests;
 
-import java.io.BufferedReader;
-import java.io.File;
-import java.io.FileNotFoundException;
-import java.io.FileReader;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.InputStreamReader;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
-
-import junit.framework.Assert;
-
 import com.android.ddmlib.IDevice;
 import com.android.ddmlib.testrunner.IRemoteAndroidTestRunner;
 import com.android.ddmlib.testrunner.RemoteAndroidTestRunner;
@@ -47,7 +26,6 @@ import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.device.LogcatReceiver;
 import com.android.tradefed.log.LogUtil.CLog;
-import com.android.tradefed.result.ByteArrayInputStreamSource;
 import com.android.tradefed.result.CollectingTestListener;
 import com.android.tradefed.result.FileInputStreamSource;
 import com.android.tradefed.result.ITestInvocationListener;
@@ -56,6 +34,26 @@ import com.android.tradefed.result.LogDataType;
 import com.android.tradefed.testtype.IDeviceTest;
 import com.android.tradefed.testtype.IRemoteTest;
 import com.android.tradefed.util.FileUtil;
+
+import junit.framework.Assert;
+
+import java.io.BufferedReader;
+import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.FileReader;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 /**
  * To test the app launch performance for the list of activities present in the given target package
@@ -132,43 +130,44 @@ public class HermeticLaunchTest implements IRemoteTest, IDeviceTest {
 
         mLogcat = new LogcatReceiver(getDevice(), LOGCAT_CMD, LOGCAT_SIZE, 0);
         mLogcat.start();
-        mSectionSet.add(BINDAPPLICATION);
-        mSectionSet.add(ACTIVITYSTART);
-        mSectionSet.add(LAYOUT);
-        mSectionSet.add(DRAW);
+        try {
+            mSectionSet.add(BINDAPPLICATION);
+            mSectionSet.add(ACTIVITYSTART);
+            mSectionSet.add(LAYOUT);
+            mSectionSet.add(DRAW);
 
-        //Remove if there is already existing atrace_logs folder
-        mDevice.executeShellCommand("rm -rf ${EXTERNAL_STORAGE}/atrace_logs");
+            //Remove if there is already existing atrace_logs folder
+            mDevice.executeShellCommand("rm -rf ${EXTERNAL_STORAGE}/atrace_logs");
 
-        mRunner = createRemoteAndroidTestRunner(mPackageName, mRunnerName,
-                mDevice.getIDevice());
-        CollectingTestListener collectingListener = new CollectingTestListener();
-        mDevice.runInstrumentationTests(mRunner, collectingListener);
+            mRunner = createRemoteAndroidTestRunner(mPackageName, mRunnerName,
+                        mDevice.getIDevice());
+            CollectingTestListener collectingListener = new CollectingTestListener();
+            mDevice.runInstrumentationTests(mRunner, collectingListener);
 
-        Collection<TestResult> testResultsCollection = collectingListener
-                .getCurrentRunResults().getTestResults().values();
-        List<TestResult> testResults = new ArrayList<>(
-                testResultsCollection);
-        /*
-         * Expected Metrics : Map of <activity name>=<comma separated list of atrace file names in
-         * external storage of the device>
-         */
-        mActivityTraceFileMap = testResults.get(0).getMetrics();
-        Assert.assertTrue("Unable to get the path to the trace files stored in the device",
-                (mActivityTraceFileMap != null && !mActivityTraceFileMap.isEmpty()));
+            Collection<TestResult> testResultsCollection = collectingListener
+                        .getCurrentRunResults().getTestResults().values();
+            List<TestResult> testResults = new ArrayList<>(
+                        testResultsCollection);
+            /*
+             * Expected Metrics : Map of <activity name>=<comma separated list of atrace file names in
+             * external storage of the device>
+             */
+            mActivityTraceFileMap = testResults.get(0).getMetrics();
+            Assert.assertTrue("Unable to get the path to the trace files stored in the device",
+                    (mActivityTraceFileMap != null && !mActivityTraceFileMap.isEmpty()));
 
-        // Analyze the logcat data to get total launch time
-        analyzeLogCatData(mActivityTraceFileMap.keySet());
-
-        //Stop the logcat
-        mLogcat.stop();
+            // Analyze the logcat data to get total launch time
+            analyzeLogCatData(mActivityTraceFileMap.keySet());
+        } finally {
+            // Stop the logcat
+            mLogcat.stop();
+        }
 
         // Analyze the atrace data to get bindApplication,activityStart etc..
         analyzeAtraceData(listener);
 
         // Report the metrics to dashboard
         reportMetrics(listener);
-
     }
 
     /**
