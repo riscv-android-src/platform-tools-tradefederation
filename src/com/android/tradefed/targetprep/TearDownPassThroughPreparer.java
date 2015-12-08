@@ -61,11 +61,14 @@ public class TearDownPassThroughPreparer implements IConfigurationReceiver, ITar
     public void tearDown(ITestDevice device, IBuildInfo buildInfo, Throwable e)
             throws DeviceNotAvailableException {
         for (String preparer : mPreparers) {
-            ITargetCleaner cleaner =
-                    (ITargetCleaner) mConfiguration.getConfigurationObject(preparer);
-
-            if (cleaner != null) {
+            Object configObject = mConfiguration.getConfigurationObject(preparer);
+            if (configObject instanceof ITargetCleaner) {
+                ITargetCleaner cleaner = (ITargetCleaner)configObject;
                 cleaner.tearDown(device, buildInfo, e);
+            }
+            if (configObject instanceof IHostCleaner) {
+                IHostCleaner cleaner = (IHostCleaner)configObject;
+                cleaner.cleanUp(buildInfo, e);
             }
         }
     }
