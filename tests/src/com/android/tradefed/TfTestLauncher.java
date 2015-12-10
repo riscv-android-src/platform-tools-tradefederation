@@ -101,7 +101,8 @@ public class TfTestLauncher implements IRemoteTest, IBuildReceiver {
             CLog.w("Failed ran TF tests for build %s, status %s",
                     mBuildInfo.getBuildId(), result.getStatus());
         }
-        CLog.v("TF tests output:\nstdout: %s\nstderror\n", result.getStdout(), result.getStderr());
+        CLog.v("TF tests output:\nstdout:\n%s\nstderror:\n%s",
+            result.getStdout(), result.getStderr());
     }
 
     IRunUtil getRunUtil() {
