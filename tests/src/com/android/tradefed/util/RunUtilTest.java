@@ -85,11 +85,11 @@ public class RunUtilTest extends TestCase {
      * Test that {@link RunUtil#runTimedCmd(long, String)} fails when garbage times out.
      */
     public void testRunTimedCmd_timeout() {
-        // "yes" will never complete
-        CommandResult result = mRunUtil.runTimedCmd(100, "yes");
+        String[] command = {"sleep", "10000"};
+        CommandResult result = mRunUtil.runTimedCmd(10, command);
         assertEquals(CommandStatus.TIMED_OUT, result.getStatus());
-        assertNull(result.getStdout());
-        assertNull(result.getStderr());
+        assertEquals(result.getStdout(),"");
+        assertEquals(result.getStderr(),"");
     }
 
     /**
