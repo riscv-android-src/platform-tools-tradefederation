@@ -28,6 +28,8 @@ LOCAL_MODULE := tf-prod-tests
 LOCAL_MODULE_TAGS := optional
 LOCAL_JAVA_LIBRARIES := tradefed loganalysis
 
+LOCAL_JAR_MANIFEST := MANIFEST.mf
+
 include $(BUILD_HOST_JAVA_LIBRARY)
 
 # makefile rules to copy jars to HOST_OUT/tradefed

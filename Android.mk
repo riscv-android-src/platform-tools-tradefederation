@@ -31,6 +31,8 @@ LOCAL_STATIC_JAVA_LIBRARIES := junit kxml2-2.3.0 jline-1.0 tf-remote-client
 # not a compile time dependency
 LOCAL_JAVA_LIBRARIES := emmalib tools-common-prebuilt
 
+LOCAL_JAR_MANIFEST := MANIFEST.mf
+
 include $(BUILD_HOST_JAVA_LIBRARY)
 
 # makefile rules to copy jars to HOST_OUT/tradefed
