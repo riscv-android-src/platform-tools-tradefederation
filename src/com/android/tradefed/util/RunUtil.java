@@ -30,6 +30,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.CountDownLatch;
 
 /**
  * A collection of helper methods for executing operations.
@@ -456,12 +457,14 @@ public class RunUtil implements IRunUtil {
         private final CommandResult mCommandResult;
         private final String mInput;
         private Process mProcess = null;
+        private CountDownLatch mCountDown = null;
 
         RunnableResult(final CommandResult result, final String input,
                 final ProcessBuilder processBuilder) {
             mProcessBuilder = processBuilder;
             mInput = input;
             mCommandResult = result;
+            mCountDown = new CountDownLatch(1);
         }
 
         @Override
@@ -482,16 +485,21 @@ public class RunUtil implements IRunUtil {
             Thread stdoutThread = inheritIO(mProcess.getInputStream(), stdOut);
             Thread stderrThread = inheritIO(mProcess.getErrorStream(), stdErr);
             // Wait for process to complete.
-            int rc = mProcess.waitFor();
-            synchronized (this) {
-                // wait for stdout and stderr to be read
-                stdoutThread.join();
-                stderrThread.join();
-                // Write out the streams to the result.
-                mCommandResult.setStdout(stdOut.toString("UTF-8"));
-                mCommandResult.setStderr(stdErr.toString("UTF-8"));
-                stdOut.close();
-                stdErr.close();
+            int rc = 1;
+            try {
+                rc = mProcess.waitFor();
+                synchronized (this) {
+                    // wait for stdout and stderr to be read
+                    stdoutThread.join();
+                    stderrThread.join();
+                    // Write out the streams to the result.
+                    mCommandResult.setStdout(stdOut.toString("UTF-8"));
+                    mCommandResult.setStderr(stdErr.toString("UTF-8"));
+                    stdOut.close();
+                    stdErr.close();
+                }
+            } finally {
+                mCountDown.countDown();
             }
 
             if (rc == 0) {
@@ -508,6 +516,13 @@ public class RunUtil implements IRunUtil {
                 synchronized (this) {
                     mProcess.destroy();
                     mProcess = null;
+                }
+                try {
+                    // Only allow to continue if the Stdout has been read
+                    // RunnableNotifier#Interrupt is the next call and will terminate the thread
+                    mCountDown.await();
+                } catch (InterruptedException e) {
+                    CLog.e(e);
                 }
             }
         }
