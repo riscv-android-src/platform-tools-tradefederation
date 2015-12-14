@@ -29,6 +29,7 @@ import com.android.tradefed.config.GlobalConfiguration;
  */
 public class CommandRunner {
     private ICommandScheduler mScheduler;
+    private static int mErrorCode = 0;
 
     CommandRunner() {
 
@@ -45,18 +46,23 @@ public class CommandRunner {
             mScheduler = GlobalConfiguration.getInstance().getCommandScheduler();
             mScheduler.start();
             mScheduler.addCommand(args);
+        } catch (ConfigurationException e) {
+            e.printStackTrace();
+            mErrorCode = 1;
+        } finally {
             mScheduler.shutdownOnEmpty();
+        }
+        try {
             mScheduler.join();
         } catch (InterruptedException e) {
             e.printStackTrace();
-        } catch (ConfigurationException e) {
-            // TODO Auto-generated catch block
-            e.printStackTrace();
+            mErrorCode = 1;
         }
     }
 
     public static void main(final String[] mainArgs) {
         CommandRunner console = new CommandRunner();
         console.run(mainArgs);
+        System.exit(mErrorCode);
     }
 }
