@@ -36,7 +36,7 @@ import java.util.concurrent.TimeUnit;
  * A Test that runs a native test package on given device.
  */
 @OptionClass(alias = "gtest")
-public class GTest implements IDeviceTest, IRemoteTest, ITestFilterReceiver {
+public class GTest implements IDeviceTest, IRemoteTest, ITestFilterReceiver, IRuntimeHintProvider {
 
     private static final String LOG_TAG = "GTest";
     static final String DEFAULT_NATIVETEST_PATH = "/data/nativetest";
@@ -91,6 +91,11 @@ public class GTest implements IDeviceTest, IRemoteTest, ITestFilterReceiver {
             "Additional flag values to pass to the native test's shell command. " +
             "Flags should be complete, including any necessary dashes: \"--flag=value\"")
     private List<String> mGTestFlags = new ArrayList<>();
+
+    @Option(name = "runtime-hint",
+            isTimeVal=true,
+            description="The hint about the test's runtime.")
+    private long mRuntimeHint = 60000;// 1 minute
 
     /** coverage target value. Just report all gtests as 'native' for now */
     private static final String COVERAGE_TARGET = "Native";
@@ -157,6 +162,14 @@ public class GTest implements IDeviceTest, IRemoteTest, ITestFilterReceiver {
      */
     void setMaxTestTimeMs(int timeout) {
         mMaxTestTimeMs = timeout;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public long getRuntimeHint() {
+        return mRuntimeHint;
     }
 
     /**
