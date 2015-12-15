@@ -15,11 +15,13 @@
  */
 package com.android.tradefed.invoker;
 
+import com.android.ddmlib.Log.LogLevel;
 import com.android.ddmlib.testrunner.TestIdentifier;
 import com.android.ddmlib.testrunner.TestResult;
 import com.android.ddmlib.testrunner.TestResult.TestStatus;
 import com.android.ddmlib.testrunner.TestRunResult;
 import com.android.tradefed.build.IBuildInfo;
+import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.result.CollectingTestListener;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.InputStreamSource;
@@ -80,6 +82,26 @@ class ShardListener extends CollectingTestListener {
         synchronized (mMasterListener) {
             mMasterListener.testLog(dataName, dataType, dataStream);
         }
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void testRunEnded(long elapsedTime, Map<String, String> runMetrics) {
+        super.testRunEnded(elapsedTime, runMetrics);
+        CLog.logAndDisplay(LogLevel.INFO, "Sharded test completed: %s",
+                getCurrentRunResults().getName());
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void testRunFailed(String failureMessage) {
+        super.testRunFailed(failureMessage);
+        CLog.logAndDisplay(LogLevel.ERROR, "FAILED: %s failed with message: %s",
+                getCurrentRunResults().getName(), failureMessage);
     }
 
     /**
