@@ -24,6 +24,7 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
 import java.util.ListIterator;
+import java.util.regex.Pattern;
 
 /**
  * Populates {@link Option} fields from parsed command line arguments.
@@ -302,8 +303,22 @@ public class ArgsOptionParser extends OptionSetter {
                 int idx = name.indexOf(NAMESPACE_SEPARATOR);
                 value = name.startsWith(BOOL_FALSE_PREFIX, idx + 1) ? "false" : "true";
             } else if (isMapOption(name)) {
-                key = grabNextValue(args, name, "for its key");
-                value = grabNextValue(args, name, "for its value");
+                // Support --option key=value and --option key value format
+                String tmp = grabNextValue(args, name, "for its key");
+                // only match = to escape use \=
+                Pattern p = Pattern.compile("(?<!\\\\)=");
+                String[] parts = p.split(tmp);
+                if (parts.length == 2) {
+                    key = parts[0];
+                    value = parts[1];
+                } else if (parts.length > 2) {
+                    throw new ConfigurationException(String.format(
+                            "option '%s' has an invalid format for value %s:w",
+                            name, tmp));
+                } else {
+                    key = tmp;
+                    value = grabNextValue(args, name, "for its value");
+                }
             } else {
                 value = grabNextValue(args, name);
             }

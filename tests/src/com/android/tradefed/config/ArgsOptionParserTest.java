@@ -57,6 +57,18 @@ public class ArgsOptionParserTest extends TestCase {
     }
 
     /**
+     * An option source with one {@link Option} specified.
+     */
+    private static class MapStringOptionSource {
+
+        private static final String OPTION_NAME = "my_option";
+        private static final String OPTION_DESC = "option description";
+
+        @Option(name=OPTION_NAME, shortName='o', description=OPTION_DESC)
+        private Map<String, String> mMyOption = new HashMap<String, String>();
+    }
+
+    /**
      * An option source with boolean {@link Option} specified.
      */
     private static class BooleanOptionSource {
@@ -719,8 +731,57 @@ public class ArgsOptionParserTest extends TestCase {
         final String option = "--my_option";
         final String key = "123";  // Integer is the key type
         final String value = "true";  // Boolean is the value type
+        final String key2 = "345";  // Integer is the key type
+        final String value2 = "false";  // Boolean is the value type
         final Integer expKey = 123;
         final Boolean expValue = Boolean.TRUE;
+        final Integer expKey2 = 345;
+        final Boolean expValue2 = Boolean.FALSE;
+
+        final List<String> leftovers = parser.parseBestEffort(
+                new String[] {option, key, value, option, key2, value2});
+
+        assertEquals(0, leftovers.size());
+        assertNotNull(object.mMyOption);
+        assertEquals(2, object.mMyOption.size());
+        assertTrue(object.mMyOption.containsKey(expKey));
+        assertEquals(expValue, object.mMyOption.get(expKey));
+        assertTrue(object.mMyOption.containsKey(expKey2));
+        assertEquals(expValue2, object.mMyOption.get(expKey2));
+    }
+
+    /**
+     * Make sure that the single value map option parsing works as expected.
+     */
+    public void testParseBestEffort_mapOption_singleValue() throws ConfigurationException {
+        MapOptionSource object = new MapOptionSource();
+        ArgsOptionParser parser = new ArgsOptionParser(object);
+        final String option = "--my_option";
+        final String value = "123=true";  // Integer is the key type
+        final Integer expKey = 123;
+        final Boolean expValue = Boolean.TRUE;
+
+        final List<String> leftovers = parser.parseBestEffort(
+                new String[] {option, value});
+
+        assertEquals(0, leftovers.size());
+        assertNotNull(object.mMyOption);
+        assertEquals(1, object.mMyOption.size());
+        assertTrue(object.mMyOption.containsKey(expKey));
+        assertEquals(expValue, object.mMyOption.get(expKey));
+    }
+
+    /**
+     * Make sure that the single map option parsing works as expected with escaped value.
+     */
+    public void testParseBestEffort_mapOption_singleValue_escaping() throws ConfigurationException {
+        MapStringOptionSource object = new MapStringOptionSource();
+        ArgsOptionParser parser = new ArgsOptionParser(object);
+        final String option = "--my_option";
+        final String key = "hello\\=bar";
+        final String value = "123\\=true";
+        final String expKey = "hello\\=bar";
+        final String expValue = "123\\=true";
 
         final List<String> leftovers = parser.parseBestEffort(
                 new String[] {option, key, value});
@@ -730,6 +791,33 @@ public class ArgsOptionParserTest extends TestCase {
         assertEquals(1, object.mMyOption.size());
         assertTrue(object.mMyOption.containsKey(expKey));
         assertEquals(expValue, object.mMyOption.get(expKey));
+    }
+
+    /**
+     * Make sure that the both map option parsing work together as expected.
+     */
+    public void testParseBestEffort_mapOption_bothFormat() throws ConfigurationException {
+        MapOptionSource object = new MapOptionSource();
+        ArgsOptionParser parser = new ArgsOptionParser(object);
+        final String option = "--my_option";
+        final String value = "123=true";  // Integer is the key type
+        final String key2 = "234";
+        final String value2 = "false";
+        final Integer expKey = 123;
+        final Boolean expValue = Boolean.TRUE;
+        final Integer expKey2 = 234;
+        final Boolean expValue2 = Boolean.FALSE;
+
+        final List<String> leftovers = parser.parseBestEffort(
+                new String[] {option, value, option, key2, value2});
+
+        assertEquals(0, leftovers.size());
+        assertNotNull(object.mMyOption);
+        assertEquals(2, object.mMyOption.size());
+        assertTrue(object.mMyOption.containsKey(expKey));
+        assertEquals(expValue, object.mMyOption.get(expKey));
+        assertTrue(object.mMyOption.containsKey(expKey2));
+        assertEquals(expValue2, object.mMyOption.get(expKey2));
     }
 
     /**
@@ -785,6 +873,23 @@ public class ArgsOptionParserTest extends TestCase {
         assertEquals(option, leftovers.get(0));
         assertEquals(key, leftovers.get(1));
         assertEquals(value, leftovers.get(2));
+    }
+
+    /**
+     * Make sure that the single key value for map works.
+     */
+    public void testParseBestEffort_mapOption_singleValue_badValue() throws ConfigurationException {
+        MapOptionSource object = new MapOptionSource();
+        ArgsOptionParser parser = new ArgsOptionParser(object);
+        final String option = "--my_option";
+        final String value = "too=many=equals";
+        final List<String> leftovers = parser.parseBestEffort(
+                new String[] {option, value});
+
+        assertTrue(object.mMyOption.isEmpty());
+        assertEquals(2, leftovers.size());
+        assertEquals(option, leftovers.get(0));
+        assertEquals(value, leftovers.get(1));
     }
 
 
