@@ -305,19 +305,20 @@ public class ArgsOptionParser extends OptionSetter {
             } else if (isMapOption(name)) {
                 // Support --option key=value and --option key value format
                 String tmp = grabNextValue(args, name, "for its key");
-                // only match = to escape use \=
+                // only match = to escape use "\="
                 Pattern p = Pattern.compile("(?<!\\\\)=");
                 String[] parts = p.split(tmp);
+                // Note that we replace escaped = (\=) to =.
                 if (parts.length == 2) {
-                    key = parts[0];
-                    value = parts[1];
+                    key = parts[0].replaceAll("\\\\=", "=");
+                    value = parts[1].replaceAll("\\\\=", "=");
                 } else if (parts.length > 2) {
                     throw new ConfigurationException(String.format(
                             "option '%s' has an invalid format for value %s:w",
                             name, tmp));
                 } else {
-                    key = tmp;
-                    value = grabNextValue(args, name, "for its value");
+                    key = tmp.replaceAll("\\\\=", "=");
+                    value = grabNextValue(args, name, "for its value").replaceAll("\\\\=", "=");
                 }
             } else {
                 value = grabNextValue(args, name);

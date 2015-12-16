@@ -774,17 +774,39 @@ public class ArgsOptionParserTest extends TestCase {
     /**
      * Make sure that the single map option parsing works as expected with escaped value.
      */
-    public void testParseBestEffort_mapOption_singleValue_escaping() throws ConfigurationException {
+    public void testParseBestEffort_mapOption_escaping() throws ConfigurationException {
         MapStringOptionSource object = new MapStringOptionSource();
         ArgsOptionParser parser = new ArgsOptionParser(object);
         final String option = "--my_option";
         final String key = "hello\\=bar";
         final String value = "123\\=true";
-        final String expKey = "hello\\=bar";
-        final String expValue = "123\\=true";
+        final String expKey = "hello=bar";
+        final String expValue = "123=true";
 
         final List<String> leftovers = parser.parseBestEffort(
                 new String[] {option, key, value});
+
+        assertEquals(0, leftovers.size());
+        assertNotNull(object.mMyOption);
+        assertEquals(1, object.mMyOption.size());
+        assertTrue(object.mMyOption.containsKey(expKey));
+        assertEquals(expValue, object.mMyOption.get(expKey));
+    }
+
+    /**
+     * Make sure that the single map option parsing works as expected with escaped value.
+     */
+    public void testParseBestEffort_mapOption_singleValue_escaping() throws ConfigurationException {
+        MapStringOptionSource object = new MapStringOptionSource();
+        ArgsOptionParser parser = new ArgsOptionParser(object);
+        final String option = "--my_option";
+        final String value = "hello\\=bar=123\\=true\\=more";
+        // Note that the actual value we store, is escaped.
+        final String expKey = "hello=bar";
+        final String expValue = "123=true=more";
+
+        final List<String> leftovers = parser.parseBestEffort(
+                new String[] {option, value});
 
         assertEquals(0, leftovers.size());
         assertNotNull(object.mMyOption);
