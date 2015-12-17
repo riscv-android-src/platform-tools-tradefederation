@@ -15,35 +15,21 @@
  */
 package com.android.tradefed.util;
 
-import com.android.tradefed.log.LogUtil.CLog;
-
-import java.io.File;
-import java.io.IOException;
-
 public class VersionParser {
-    private static final String DEFAULT_VERSION_FILE_NAME = "tf_version.txt";
-
-    public static String fetchVersion(File file) {
-        if (file.exists()) {
-            try {
-                return FileUtil.readStringFromFile(file).trim();
-            } catch (IOException e) {
-               CLog.e(e.toString());
-               return null;
-            }
-        }
-      CLog.w("File %s does not exist, unable to get version", file.getAbsolutePath());
-      return null;
-    }
 
     public static String fetchVersion() {
-        File file = new File(DEFAULT_VERSION_FILE_NAME);
-        if (!file.exists()) {
-            // Try looking in the path where the jar is.
-            File path = new File(VersionParser.class.getProtectionDomain().getCodeSource().
-                    getLocation().getPath());
-            file = new File(path.getParentFile(), DEFAULT_VERSION_FILE_NAME);
+        return getPackageVersion();
+    }
+
+    /**
+     * Version fetcher on the implementation version of the jar files from this class to ensure
+     * a match in the classloader.
+     */
+    private static String getPackageVersion() {
+        Package p = VersionParser.class.getPackage();
+        if (p != null) {
+            return p.getImplementationVersion();
         }
-        return fetchVersion(file);
+        return null;
     }
 }
