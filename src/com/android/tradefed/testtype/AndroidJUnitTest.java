@@ -27,7 +27,8 @@ import java.util.List;
  * A Test that runs an instrumentation test package on given device using the
  * android.support.test.runner.AndroidJUnitRunner.
  */
-public class AndroidJUnitTest extends InstrumentationTest implements ITestFilterReceiver {
+public class AndroidJUnitTest extends InstrumentationTest implements IRuntimeHintProvider,
+        ITestFilterReceiver {
 
     private static final String AJUR = "android.support.test.runner.AndroidJUnitRunner";
 
@@ -39,6 +40,11 @@ public class AndroidJUnitTest extends InstrumentationTest implements ITestFilter
     private static final String INCLUDE_PACKAGE_INST_ARGS_KEY = "package";
     /** instrumentation test runner argument key used for excluding a package */
     private static final String EXCLUDE_PACKAGE_INST_ARGS_KEY = "notPackage";
+
+    @Option(name = "runtime-hint",
+            isTimeVal=true,
+            description="The hint about the test's runtime.")
+    private long mRuntimeHint = 60000;// 1 minute
 
     @Option(name = "include-filter",
             description="The include filters of the test name to run.")
@@ -52,6 +58,14 @@ public class AndroidJUnitTest extends InstrumentationTest implements ITestFilter
         super();
         // Set the runner to AJUR, this can still be overwritten by the optionsetter/optioncopier
         setRunnerName(AJUR);
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public long getRuntimeHint() {
+        return mRuntimeHint;
     }
 
     /**
