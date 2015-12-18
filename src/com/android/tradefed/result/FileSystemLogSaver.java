@@ -101,6 +101,12 @@ public class FileSystemLogSaver implements ILogSaver {
         final String saneDataName = sanitizeFilename(dataName);
         File log = FileUtil.createTempFile(saneDataName + "_", "." + LogDataType.ZIP.getFileExt(),
                 mLogReportDir);
+
+        boolean setPerms = FileUtil.chmodGroupRWX(log);
+        if (!setPerms) {
+            CLog.w(String.format("Failed to set dir %s to be group accessible.", log));
+        }
+
         try {
             bufferedDataStream = new BufferedInputStream(dataStream);
             outputStream = new ZipOutputStream(new BufferedOutputStream(new FileOutputStream(log),
@@ -124,6 +130,12 @@ public class FileSystemLogSaver implements ILogSaver {
         final String saneDataName = sanitizeFilename(dataName);
         // add underscore to end of data name to make generated name more readable
         File log = FileUtil.createTempFile(saneDataName + "_", "." + ext, mLogReportDir);
+
+        boolean setPerms = FileUtil.chmodGroupRWX(log);
+        if (!setPerms) {
+            CLog.w(String.format("Failed to set dir %s to be group accessible.", log));
+        }
+
         FileUtil.writeToFile(dataStream, log);
         CLog.i("Saved log file %s", log.getAbsolutePath());
         return new LogFile(log.getAbsolutePath(), getUrl(log));
@@ -165,6 +177,12 @@ public class FileSystemLogSaver implements ILogSaver {
             // try to create one in a tmp location instead
             logReportDir = createTempDir();
         }
+
+        boolean setPerms = FileUtil.chmodGroupRWX(logReportDir);
+        if (!setPerms) {
+            CLog.w(String.format("Failed to set dir %s to be group accessible.", logReportDir));
+        }
+
         if (logRetentionDays != null && logRetentionDays > 0) {
             new RetentionFileSaver().writeRetentionFile(logReportDir, logRetentionDays);
         }
