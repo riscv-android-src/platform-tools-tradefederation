@@ -48,6 +48,7 @@ import com.android.tradefed.util.SizeLimitedOutputStream;
 import com.android.tradefed.util.StreamUtil;
 
 import java.awt.image.BufferedImage;
+import java.awt.Image;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FilenameFilter;
@@ -1878,11 +1879,23 @@ class TestDevice implements IManagedTestDevice {
      */
     @Override
     public InputStreamSource getScreenshot() throws DeviceNotAvailableException {
+        return getScreenshot("PNG");
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public InputStreamSource getScreenshot(String format) throws DeviceNotAvailableException {
+        if (!format.equalsIgnoreCase("PNG") && !format.equalsIgnoreCase("JPEG")){
+            CLog.e("Screenshot: Format %s is not supported, defaulting to PNG.", format);
+            format = "PNG";
+        }
         ScreenshotAction action = new ScreenshotAction();
         if (performDeviceAction("screenshot", action, MAX_RETRY_ATTEMPTS)) {
-            byte[] pngData = compressRawImageAsPng(action.mRawScreenshot);
-            if (pngData != null) {
-                return new ByteArrayInputStreamSource(pngData);
+            byte[] imageData = compressRawImage(action.mRawScreenshot, format.toUpperCase());
+            if (imageData != null) {
+                return new ByteArrayInputStreamSource(imageData);
             }
         }
         return null;
@@ -1903,9 +1916,18 @@ class TestDevice implements IManagedTestDevice {
         }
     }
 
-    private byte[] compressRawImageAsPng(RawImage rawImage) {
-        BufferedImage image = new BufferedImage(rawImage.width, rawImage.height,
-                BufferedImage.TYPE_INT_ARGB);
+    private byte[] compressRawImage(RawImage rawImage, String format) {
+        BufferedImage image = null;
+
+        if ("JPEG".equalsIgnoreCase(format)) {
+            //JPEG does not support ARGB without a special encoder
+            image = new BufferedImage(rawImage.width, rawImage.height,
+                    BufferedImage.TYPE_3BYTE_BGR);
+        }
+        else {
+            image = new BufferedImage(rawImage.width, rawImage.height,
+                    BufferedImage.TYPE_INT_ARGB);
+        }
 
         // borrowed conversion logic from platform/sdk/screenshot/.../Screenshot.java
         int index = 0;
@@ -1917,13 +1939,26 @@ class TestDevice implements IManagedTestDevice {
                 image.setRGB(x, y, value);
             }
         }
+
+        // Rescale to reduce size if needed
+        // Screenshot default format is 1080 x 1920, 8-bit/color RGBA
+        // By cutting in half we can easily keep good quality and smaller size
+        int shortEdge = Math.min(image.getHeight(), image.getWidth());
+        if (shortEdge > 720) {
+            Image resized = image.getScaledInstance(image.getWidth() / 2, image.getHeight() / 2,
+                    Image.SCALE_SMOOTH);
+            image = new BufferedImage(image.getWidth() / 2, image.getHeight() / 2,
+                    Image.SCALE_REPLICATE);
+            image.getGraphics().drawImage(resized, 0, 0, null);
+        }
+
         // store compressed image in memory, and let callers write to persistent storage
         // use initial buffer size of 128K
-        byte[] pngData = null;
+        byte[] imageData = null;
         ByteArrayOutputStream imageOut = new ByteArrayOutputStream(128*1024);
         try {
-            if (ImageIO.write(image, "png", imageOut)) {
-                pngData = imageOut.toByteArray();
+            if (ImageIO.write(image, format, imageOut)) {
+                imageData = imageOut.toByteArray();
             } else {
                 CLog.e("Failed to compress screenshot to png");
             }
@@ -1932,7 +1967,7 @@ class TestDevice implements IManagedTestDevice {
             CLog.e(e);
         }
         StreamUtil.close(imageOut);
-        return pngData;
+        return imageData;
     }
 
     /**
