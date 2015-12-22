@@ -84,8 +84,9 @@ public class BackgroundDeviceAction extends Thread {
                         mSerialNumber);
                 getRunUtil().sleep(mLogStartDelay);
             }
-            CLog.d("Starting %s for %s.", mDescriptor, mSerialNumber);
             try {
+                mTestDevice.waitForDeviceOnline();
+                CLog.d("Starting %s for %s.", mDescriptor, mSerialNumber);
                 mTestDevice.getIDevice().executeShellCommand(mCommand, mReceiver,
                         0, TimeUnit.MILLISECONDS);
             } catch (TimeoutException e) {
@@ -96,6 +97,8 @@ public class BackgroundDeviceAction extends Thread {
                 recoverDevice(e.getClass().getName());
             } catch (IOException e) {
                 recoverDevice(e.getClass().getName());
+            } catch (DeviceNotAvailableException dnae) {
+                CLog.i("Device %s not yet online, continue to wait.", mSerialNumber);
             }
         }
     }
