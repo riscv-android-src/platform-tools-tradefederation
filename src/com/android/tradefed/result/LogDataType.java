@@ -25,6 +25,7 @@ public enum LogDataType {
     HTML("html", true, true),
     PNG("png", true, false),
     ZIP("zip", true, false),
+    JPEG("jpeg", true, false),
     GZIP("gz", true, false),
     COVERAGE("ec", false, false),  /* Emma coverage file */
     /* Specific text file types */

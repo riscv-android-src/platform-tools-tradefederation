@@ -781,6 +781,16 @@ public interface ITestDevice {
     public InputStreamSource getScreenshot() throws DeviceNotAvailableException;
 
     /**
+     * Grabs a screenshot from the device.
+     * Recommended to use getScreenshot(format) instead with JPEG encoding for smaller size
+     * @param format supported PNG, JPEG
+     * @return a {@link InputStreamSource} of the screenshot in format, or <code>null</code> if
+     *         the screenshot was not successful.
+     * @throws DeviceNotAvailableException
+     */
+    public InputStreamSource getScreenshot(String format) throws DeviceNotAvailableException;
+
+    /**
      * Clears the last connected wifi network. This should be called when starting a new invocation
      * to avoid connecting to the wifi network used in the previous test after device reboots.
      */

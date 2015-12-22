@@ -401,9 +401,9 @@ public class MonkeyBase implements IDeviceTest, IRemoteTest, IRetriableTest {
     protected void takeScreenshot(ITestInvocationListener listener, String screenshotName)
             throws DeviceNotAvailableException {
         if (mScreenshot) {
-            InputStreamSource screenshot = mTestDevice.getScreenshot();
+            InputStreamSource screenshot = mTestDevice.getScreenshot("JPEG");
             try {
-                listener.testLog(screenshotName, LogDataType.PNG, screenshot);
+                listener.testLog(screenshotName, LogDataType.JPEG, screenshot);
             } finally {
                 screenshot.cancel();
             }
