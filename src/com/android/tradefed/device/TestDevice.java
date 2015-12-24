@@ -151,7 +151,7 @@ class TestDevice implements IManagedTestDevice {
     /** The time in ms to wait for a command to complete. */
     private int mCmdTimeout = 2 * 60 * 1000;
     /** The time in ms to wait for a 'long' command to complete. */
-    private long mLongCmdTimeout = 12 * 60 * 1000;
+    private long mLongCmdTimeout = 25 * 60 * 1000;
 
     private static final int FLAG_PRIMARY = 1; // From the UserInfo class
 
@@ -1505,6 +1505,11 @@ class TestDevice implements IManagedTestDevice {
             }
             if (!isRecoveryNeeded(result)) {
                 return result;
+            }
+            CLog.w("Recovery needed after executing fastboot command");
+            if (result != null) {
+                CLog.v("fastboot command output:\nstdout: %s\nstderr:%s",
+                        result.getStdout(), result.getStderr());
             }
             recoverDeviceFromBootloader();
         }

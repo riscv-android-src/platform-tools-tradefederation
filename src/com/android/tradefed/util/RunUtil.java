@@ -31,6 +31,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
 
 /**
  * A collection of helper methods for executing operations.
@@ -39,6 +40,7 @@ public class RunUtil implements IRunUtil {
 
     private static final int POLL_TIME_INCREASE_FACTOR = 4;
     private static final long THREAD_JOIN_POLL_INTERVAL = 30 * 1000;
+    private static final long PROCESS_DESTROY_TIMEOUT_SEC = 2;
     private static IRunUtil sDefaultInstance = null;
     private File mWorkingDir = null;
     private Map<String, String> mEnvVariables = new HashMap<String, String>();
@@ -271,7 +273,7 @@ public class RunUtil implements IRunUtil {
                 runThread.join(pollIterval);
             } while ((System.currentTimeMillis() - startTime) < timeout && runThread.isAlive());
         } catch (InterruptedException e) {
-            CLog.i("runnable interrupted");
+            CLog.i("runTimed: interrupted while joining the runnable");
         }
         if (runThread.getStatus() == CommandStatus.TIMED_OUT
                 || runThread.getStatus() == CommandStatus.EXCEPTION) {
@@ -444,7 +446,6 @@ public class RunUtil implements IRunUtil {
         @Override
         public void interrupt() {
             mRunnable.cancel();
-            super.interrupt();
         }
 
         synchronized CommandStatus getStatus() {
@@ -458,6 +459,7 @@ public class RunUtil implements IRunUtil {
         private final String mInput;
         private Process mProcess = null;
         private CountDownLatch mCountDown = null;
+        private Thread mExecutionThread;
 
         RunnableResult(final CommandResult result, final String input,
                 final ProcessBuilder processBuilder) {
@@ -469,6 +471,7 @@ public class RunUtil implements IRunUtil {
 
         @Override
         public boolean run() throws Exception {
+            mExecutionThread = Thread.currentThread();
             CLog.d("Running %s", mProcessBuilder.command());
             mProcess = mProcessBuilder.start();
             if (mInput != null) {
@@ -487,16 +490,18 @@ public class RunUtil implements IRunUtil {
             // Wait for process to complete.
             int rc = 1;
             try {
-                rc = mProcess.waitFor();
-                synchronized (this) {
+                try {
+                    rc = mProcess.waitFor();
                     // wait for stdout and stderr to be read
                     stdoutThread.join();
                     stderrThread.join();
+                    // close the buffer that holds stdout/err content
+                    stdOut.close();
+                    stdErr.close();
+                } finally {
                     // Write out the streams to the result.
                     mCommandResult.setStdout(stdOut.toString("UTF-8"));
                     mCommandResult.setStderr(stdErr.toString("UTF-8"));
-                    stdOut.close();
-                    stdErr.close();
                 }
             } finally {
                 mCountDown.countDown();
@@ -513,16 +518,19 @@ public class RunUtil implements IRunUtil {
         @Override
         public void cancel() {
             if (mProcess != null) {
-                synchronized (this) {
-                    mProcess.destroy();
-                    mProcess = null;
-                }
+                CLog.i("Cancelling the process execution");
+                mProcess.destroy();
+                mProcess = null;
                 try {
                     // Only allow to continue if the Stdout has been read
                     // RunnableNotifier#Interrupt is the next call and will terminate the thread
-                    mCountDown.await();
+                    if (!mCountDown.await(PROCESS_DESTROY_TIMEOUT_SEC, TimeUnit.SECONDS)) {
+                        CLog.i("Process still not terminated, interrupting the execution thread");
+                        mExecutionThread.interrupt();
+                        mCountDown.await();
+                    }
                 } catch (InterruptedException e) {
-                    CLog.e(e);
+                    CLog.i("interrupted while waiting for process output to be saved");
                 }
             }
         }
