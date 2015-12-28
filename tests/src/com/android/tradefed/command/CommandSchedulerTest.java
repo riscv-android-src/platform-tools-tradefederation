@@ -29,6 +29,7 @@ import com.android.tradefed.device.FreeDeviceState;
 import com.android.tradefed.device.IDeviceManager;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.device.MockDeviceManager;
+import com.android.tradefed.device.TestDeviceState;
 import com.android.tradefed.invoker.IRescheduler;
 import com.android.tradefed.invoker.ITestInvocation;
 import com.android.tradefed.log.ITerribleFailureHandler;
@@ -137,6 +138,17 @@ public class CommandSchedulerTest extends TestCase {
     }
 
     /**
+     * Verify all mock objects but only assert that an expected number of devices are available
+     */
+    private void verifyMocks(int expectedNumAvailable, Object... additionalMocks) {
+        EasyMock.verify(mMockConfigFactory, mMockConfiguration, mMockInvocation);
+        for (Object mock : additionalMocks) {
+            EasyMock.verify(mock);
+        }
+        mMockManager.assertNumDevicesAvailable(expectedNumAvailable);
+    }
+
+    /**
      * Verify all mock objects
      */
     private void verifyMocks(Object... additionalMocks) {
@@ -144,14 +156,14 @@ public class CommandSchedulerTest extends TestCase {
         for (Object mock : additionalMocks) {
             EasyMock.verify(mock);
         }
-        mMockManager.assertDevicesFreed();
+        mMockManager.assertDevicesAvailable();
     }
 
     /**
      * Test {@link CommandScheduler#run()} when no configs have been added
      */
     public void testRun_empty() throws InterruptedException {
-        mMockManager.setNumDevices(1);
+        mMockManager.setUpDevices(1);
         replayMocks();
         mScheduler.start();
         while (!mScheduler.isAlive()) {
@@ -199,7 +211,7 @@ public class CommandSchedulerTest extends TestCase {
      */
     public void testRun_oneConfig() throws Throwable {
         String[] args = new String[] {};
-        mMockManager.setNumDevices(2);
+        mMockManager.setUpDevices(2);
         setCreateConfigExpectations(args, 1);
         setExpectedInvokeCalls(1);
         mMockConfiguration.validateOptions();
@@ -212,12 +224,46 @@ public class CommandSchedulerTest extends TestCase {
     }
 
     /**
+     * Test {@link CommandScheduler#run()} when two devices are allocated for tests but only one
+     * available after test
+     */
+    public void testRun_oneConfigLoopNotAvailable() throws Throwable {
+        String[] args = new String[] {};
+        // track if exception occurs on scheduler thread
+        UncaughtExceptionHandler defaultHandler = Thread.getDefaultUncaughtExceptionHandler();
+        try {
+            ExceptionTracker tracker = new ExceptionTracker();
+            Thread.setDefaultUncaughtExceptionHandler(tracker);
+            mMockManager.setUpDevices(
+                    new TestDeviceState[]{TestDeviceState.ONLINE, TestDeviceState.NOT_AVAILABLE});
+            // config should only be created three times
+            setCreateConfigExpectations(args, 3);
+            mCommandOptions.setLoopMode(true);
+            mCommandOptions.setMinLoopTime(50);
+            Object notifier = waitForExpectedInvokeCalls(2);
+            mMockConfiguration.validateOptions();
+            replayMocks();
+            mScheduler.start();
+            mScheduler.addCommand(args);
+            synchronized (notifier) {
+                notifier.wait(1 * 1000);
+            }
+            mScheduler.shutdown();
+            mScheduler.join();
+            verifyMocks(1, new Object[]{});
+            assertNull("exception occurred on background thread!", tracker.mThrowable);
+        } finally {
+            Thread.setDefaultUncaughtExceptionHandler(defaultHandler);
+        }
+    }
+
+    /**
      * Test {@link CommandScheduler#removeAllCommands()} for idle case, where command is waiting for
      * device.
      */
     public void testRemoveAllCommands() throws Throwable {
         String[] args = new String[] {};
-        mMockManager.setNumDevices(0);
+        mMockManager.setUpDevices(0);
         setCreateConfigExpectations(args, 1);
         mMockConfiguration.validateOptions();
         replayMocks();
@@ -235,7 +281,7 @@ public class CommandSchedulerTest extends TestCase {
     public void testRun_dryRun() throws Throwable {
         String[] dryRunArgs = new String[] {"--dry-run"};
         mCommandOptions.setDryRunMode(true);
-        mMockManager.setNumDevices(2);
+        mMockManager.setUpDevices(2);
         setCreateConfigExpectations(dryRunArgs, 1);
 
         // add a second command, to verify the first dry-run command did not get added
@@ -269,6 +315,7 @@ public class CommandSchedulerTest extends TestCase {
 
         ITestDevice mockDevice = EasyMock.createMock(ITestDevice.class);
         EasyMock.expect(mockDevice.getSerialNumber()).andStubReturn("serial");
+        EasyMock.expect(mockDevice.getDeviceState()).andReturn(TestDeviceState.ONLINE);
         IScheduledInvocationListener mockListener = EasyMock
                 .createMock(IScheduledInvocationListener.class);
         mockListener.invocationComplete(mockDevice, FreeDeviceState.AVAILABLE);
@@ -331,7 +378,7 @@ public class CommandSchedulerTest extends TestCase {
         try {
             ExceptionTracker tracker = new ExceptionTracker();
             Thread.setDefaultUncaughtExceptionHandler(tracker);
-            mMockManager.setNumDevices(1);
+            mMockManager.setUpDevices(1);
             // config should only be created three times
             setCreateConfigExpectations(args, 3);
             mCommandOptions.setLoopMode(true);
@@ -384,7 +431,7 @@ public class CommandSchedulerTest extends TestCase {
             EasyMock.expect(mockWtf.onTerribleFailure((String)EasyMock.anyObject(),
                     (Throwable)EasyMock.anyObject())).andReturn(Boolean.TRUE);
             String[] args = new String[] {};
-            mMockManager.setNumDevices(2);
+            mMockManager.setUpDevices(2);
             setCreateConfigExpectations(args, 1);
             mMockConfiguration.validateOptions();
             replayMocks(mockGc, mockWtf);
@@ -406,7 +453,7 @@ public class CommandSchedulerTest extends TestCase {
      */
     public void testRun_configSerial() throws Throwable {
         String[] args = new String[] {};
-        mMockManager.setNumDevices(2);
+        mMockManager.setUpDevices(2);
         setCreateConfigExpectations(args, 2);
         // allocate and free a device to get its serial
         ITestDevice dev = mMockManager.allocateDevice();
@@ -433,7 +480,7 @@ public class CommandSchedulerTest extends TestCase {
      */
     public void testRun_configExcludeSerial() throws Throwable {
         String[] args = new String[] {};
-        mMockManager.setNumDevices(2);
+        mMockManager.setUpDevices(2);
         setCreateConfigExpectations(args, 2);
         // allocate and free a device to get its serial
         ITestDevice dev = mMockManager.allocateDevice();
@@ -456,10 +503,9 @@ public class CommandSchedulerTest extends TestCase {
     /**
      * Test {@link CommandScheduler#run()} when one config has been rescheduled
      */
-    @SuppressWarnings("unchecked")
     public void testRun_rescheduled() throws Throwable {
         String[] args = new String[] {};
-        mMockManager.setNumDevices(2);
+        mMockManager.setUpDevices(2);
         setCreateConfigExpectations(args, 1);
         mMockConfiguration.validateOptions();
         final IConfiguration rescheduledConfig = EasyMock.createMock(IConfiguration.class);
@@ -500,7 +546,7 @@ public class CommandSchedulerTest extends TestCase {
      */
     public void testAddCommandFile() throws ConfigurationException {
         // set number of devices to 0 so we can verify command presence
-        mMockManager.setNumDevices(0);
+        mMockManager.setUpDevices(0);
         List<String> extraArgs = Arrays.asList("--bar");
         setCreateConfigExpectations(new String[] {"foo", "--bar"}, 1);
         mMockConfiguration.validateOptions();
@@ -529,7 +575,7 @@ public class CommandSchedulerTest extends TestCase {
      */
     public void testAddCommandFile_reload() throws ConfigurationException {
         // set number of devices to 0 so we can verify command presence
-        mMockManager.setNumDevices(0);
+        mMockManager.setUpDevices(0);
         String[] addCommandArgs = new String[]{"fromcommand"};
         List<String> extraArgs = Arrays.asList("--bar");
 
@@ -584,7 +630,7 @@ public class CommandSchedulerTest extends TestCase {
      */
     public void testAddCommandFile_twice() throws ConfigurationException {
         // set number of devices to 0 so we can verify command presence
-        mMockManager.setNumDevices(0);
+        mMockManager.setUpDevices(0);
         String[] cmdFile1Args = new String[] {"fromFile1"};
         setCreateConfigExpectations(cmdFile1Args, 1);
         setCreateConfigExpectations(cmdFile1Args, 1);
@@ -622,7 +668,7 @@ public class CommandSchedulerTest extends TestCase {
      * Test {@link CommandScheduler#shutdown()} when no devices are available.
      */
     public void testShutdown() throws Exception {
-        mMockManager.setNumDevices(0);
+        mMockManager.setUpDevices(0);
         mScheduler.start();
         while (!mScheduler.isAlive()) {
             Thread.sleep(10);

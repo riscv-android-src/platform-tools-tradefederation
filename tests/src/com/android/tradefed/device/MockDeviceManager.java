@@ -25,6 +25,7 @@ import org.easymock.EasyMock;
 import org.junit.Assert;
 
 import java.io.PrintWriter;
+import java.util.Arrays;
 import java.util.List;
 
 /**
@@ -41,10 +42,11 @@ public class MockDeviceManager implements IDeviceManager {
     private DeviceMonitorMultiplexer mDvcMon = new DeviceMonitorMultiplexer();
 
     public MockDeviceManager(int numDevices) {
-        setNumDevices(numDevices);
+        setUpDevices(numDevices);
     }
 
-    public void setNumDevices(int numDevices) {
+    public void setUpDevices(TestDeviceState[] deviceStates) {
+        int numDevices = deviceStates.length;
         mAvailableDeviceQueue.clear();
         mTotalDevices = numDevices;
         for (int i = 0; i < numDevices; i++) {
@@ -54,10 +56,16 @@ public class MockDeviceManager implements IDeviceManager {
             EasyMock.expect(mockIDevice.getSerialNumber()).andReturn("serial" + i).anyTimes();
             EasyMock.expect(mockDevice.getIDevice()).andReturn(mockIDevice).anyTimes();
             EasyMock.expect(mockDevice.getDeviceState()).andReturn(
-                    TestDeviceState.ONLINE).anyTimes();
+                    deviceStates[i]).anyTimes();
             EasyMock.replay(mockDevice, mockIDevice);
             mAvailableDeviceQueue.add(mockDevice);
         }
+    }
+
+    public void setUpDevices(int numDevices) {
+        TestDeviceState[] deviceStates = new TestDeviceState[numDevices];
+        Arrays.fill(deviceStates, TestDeviceState.ONLINE);
+        setUpDevices(deviceStates);
     }
 
     private static class TestDeviceMatcher implements IMatcher<ITestDevice> {
@@ -175,8 +183,16 @@ public class MockDeviceManager implements IDeviceManager {
      * Verifies that all devices were returned to queue.
      * @throws AssertionError
      */
-    public void assertDevicesFreed() throws AssertionError {
-        Assert.assertEquals("allocated device was not returned to queue", mTotalDevices,
+    public void assertDevicesAvailable() throws AssertionError {
+        assertNumDevicesAvailable(mTotalDevices);
+    }
+
+    /**
+     * Verifies that expected number of devices were returned to queue.
+     * @throws AssertionError
+     */
+    public void assertNumDevicesAvailable(int expectedAvailable) throws AssertionError {
+        Assert.assertEquals("unexpected number of available devices", expectedAvailable,
                 mAvailableDeviceQueue.size());
     }
 
