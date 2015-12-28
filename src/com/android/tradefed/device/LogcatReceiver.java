@@ -21,7 +21,7 @@ import com.android.tradefed.result.InputStreamSource;
  * Class that collects logcat in background. Continues to capture logcat even if device goes
  * offline then online.
  */
-public class LogcatReceiver {
+public class LogcatReceiver implements ILogcatReceiver {
     private BackgroundDeviceAction mDeviceAction;
     private LargeOutputReceiver mReceiver;
 
@@ -57,24 +57,29 @@ public class LogcatReceiver {
         this(device, LOGCAT_CMD, maxFileSize, logStartDelay);
     }
 
+    @Override
     public void start() {
         mDeviceAction.start();
     }
 
+    @Override
     public void stop() {
         mDeviceAction.cancel();
         mReceiver.cancel();
         mReceiver.delete();
     }
 
+    @Override
     public InputStreamSource getLogcatData() {
         return mReceiver.getData();
     }
 
+    @Override
     public InputStreamSource getLogcatData(int maxBytes) {
         return mReceiver.getData(maxBytes);
     }
 
+    @Override
     public void clear() {
         mReceiver.clear();
     }
