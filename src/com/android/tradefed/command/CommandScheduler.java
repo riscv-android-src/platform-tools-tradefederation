@@ -1302,6 +1302,7 @@ public class CommandScheduler extends Thread implements ICommandScheduler, IComm
      * <p />
      * Exposed so unit tests can mock.
      */
+    @SuppressWarnings("deprecation")
     void initLogging() {
         DdmPreferences.setLogLevel(LogLevel.VERBOSE.getStringValue());
         Log.setLogOutput(LogRegistry.getLogRegistry());

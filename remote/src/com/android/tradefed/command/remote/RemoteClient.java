@@ -169,6 +169,7 @@ public class RemoteClient implements IRemoteClient {
     /**
      * {@inheritDoc}
      */
+    @Deprecated
     @Override
     public void sendClose() throws RemoteException {
         sendOperation(new CloseOp());

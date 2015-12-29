@@ -16,8 +16,6 @@
 
 package com.android.tradefed.config;
 
-import com.android.tradefed.log.LogUtil.CLog;
-
 import java.lang.reflect.Field;
 import java.util.Collection;  // imported for javadoc
 import java.util.Map;  // imported for javadoc

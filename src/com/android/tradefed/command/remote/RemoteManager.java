@@ -227,7 +227,7 @@ public class RemoteManager extends Thread {
         String line = null;
         while ((line = in.readLine()) != null && !mCancel) {
             JSONObject result = new JSONObject();
-            RemoteOperation rc;
+            RemoteOperation<?> rc;
             Thread postOp = null;
             try {
                 rc = RemoteOperation.createRemoteOpFromString(line);
