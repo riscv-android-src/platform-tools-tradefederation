@@ -21,6 +21,8 @@ import com.android.ddmlib.IShellOutputReceiver;
 import org.easymock.EasyMock;
 import org.easymock.IAnswer;
 
+import java.util.concurrent.TimeUnit;
+
 class MockTestDeviceHelper {
 
     /**
@@ -54,6 +56,52 @@ class MockTestDeviceHelper {
             mockDevice.executeShellCommand(EasyMock.<String>anyObject(),
                     EasyMock.<IShellOutputReceiver>anyObject());
 
+        }
+        if (asStub) {
+            EasyMock.expectLastCall().andStubAnswer(shellAnswer);
+        } else {
+            EasyMock.expectLastCall().andAnswer(shellAnswer);
+        }
+    }
+
+    /**
+     * Helper method to build a response to a
+     * {@link ITestDevice#executeShellCommand(String, IShellOutputReceiver, long, TimeUnit, int)}
+     * call.
+     *
+     * @param mockDevice the EasyMock created {@link ITestDevice}
+     * @param expectedCommand the shell command to expect or null to skip verification of command
+     * @param expectedTimeout the shell timeout to expect
+     * @param expectedTimeUnit the shell timeout unit to expect
+     * @param expectedRetryAttempts the retry attempts to expect
+     * @param response the response to simulate
+     * @param asStub whether to set a single expectation or a stub expectation. A 'stub' expectation
+     *            will return the same result for multiple calls to the method
+     */
+    @SuppressWarnings("unchecked")
+    static void injectShellResponse(ITestDevice mockDevice, final String expectedCommand,
+            final long expectedTimeout, final TimeUnit expectedTimeUnit,
+            final int expectedRetryAttempts, final String response, boolean asStub)
+                    throws Exception {
+        IAnswer<Object> shellAnswer = new IAnswer<Object>() {
+            @Override
+            public Object answer() throws Throwable {
+                IShellOutputReceiver receiver = (IShellOutputReceiver)EasyMock
+                        .getCurrentArguments()[1];
+                byte[] inputData = response.getBytes();
+                receiver.addOutput(inputData, 0, inputData.length);
+                receiver.flush();
+                return null;
+            }
+        };
+        if (expectedCommand != null) {
+            mockDevice.executeShellCommand(EasyMock.eq(expectedCommand),
+                    EasyMock.<IShellOutputReceiver> anyObject(), EasyMock.eq(expectedTimeout),
+                    EasyMock.eq(expectedTimeUnit), EasyMock.eq(expectedRetryAttempts));
+        } else {
+            mockDevice.executeShellCommand(EasyMock.<String> anyObject(),
+                    EasyMock.<IShellOutputReceiver> anyObject(), EasyMock.eq(expectedTimeout),
+                    EasyMock.eq(expectedTimeUnit), EasyMock.eq(expectedRetryAttempts));
         }
         if (asStub) {
             EasyMock.expectLastCall().andStubAnswer(shellAnswer);

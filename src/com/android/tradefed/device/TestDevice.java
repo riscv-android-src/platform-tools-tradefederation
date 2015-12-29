@@ -2034,19 +2034,8 @@ class TestDevice implements IManagedTestDevice {
      */
     @Override
     public boolean checkConnectivity() throws DeviceNotAvailableException {
-        final int pingLoss = getPingLoss();
-        return (0 <= pingLoss && pingLoss < 100);
-    }
-
-    int getPingLoss() throws DeviceNotAvailableException {
-        final String output = executeShellCommand(
-                "ping -c 1 -w 5 -s 1024 " + mOptions.getPingIpOrHost());
-        final Matcher stat = PING_REGEX.matcher(output);
-        if (stat.find()) {
-            return Integer.parseInt(stat.group("loss"));
-        }
-        // Return -1 if we failed to parse output.
-        return -1;
+        IWifiHelper wifi = createWifiHelper();
+        return wifi.checkConnectivity(mOptions.getConnCheckUrl());
     }
 
     /**
