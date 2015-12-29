@@ -41,6 +41,7 @@ import java.util.concurrent.TimeUnit;
  * </ul>
  */
 public class BackgroundDeviceAction extends Thread {
+    private static final long ONLINE_POLL_INTERVAL_MS = 10 * 1000;
     private IShellOutputReceiver mReceiver;
     private ITestDevice mTestDevice;
     private String mCommand;
@@ -78,15 +79,22 @@ public class BackgroundDeviceAction extends Thread {
      */
     @Override
     public void run() {
+        String separator = String.format(
+                "========== beginning of new [%s] output ==========\n", mDescriptor);
         while (!isCancelled()) {
             if (mLogStartDelay > 0) {
                 CLog.d("Sleep for %d before starting %s for %s.", mLogStartDelay, mDescriptor,
                         mSerialNumber);
                 getRunUtil().sleep(mLogStartDelay);
             }
+            blockUntilOnlineNoThrow();
+            // check again if the operation has been cancelled after the wait for online
+            if (isCancelled()) {
+                break;
+            }
+            CLog.d("Starting %s for %s.", mDescriptor, mSerialNumber);
+            mReceiver.addOutput(separator.getBytes(), 0, separator.length());
             try {
-                mTestDevice.waitForDeviceOnline();
-                CLog.d("Starting %s for %s.", mDescriptor, mSerialNumber);
                 mTestDevice.getIDevice().executeShellCommand(mCommand, mReceiver,
                         0, TimeUnit.MILLISECONDS);
             } catch (TimeoutException e) {
@@ -97,8 +105,6 @@ public class BackgroundDeviceAction extends Thread {
                 recoverDevice(e.getClass().getName());
             } catch (IOException e) {
                 recoverDevice(e.getClass().getName());
-            } catch (DeviceNotAvailableException dnae) {
-                CLog.i("Device %s not yet online, continue to wait.", mSerialNumber);
             }
         }
     }
@@ -106,13 +112,6 @@ public class BackgroundDeviceAction extends Thread {
     private void recoverDevice(String exceptionType) {
         CLog.d("%s while running %s on %s. May see duplicated content in log.", exceptionType,
                 mDescriptor, mSerialNumber);
-
-        // FIXME: Determine when we should append a message to the receiver.
-        if (mReceiver instanceof LargeOutputReceiver) {
-            byte[] stringData = String.format(
-                    "%s interrupted. May see duplicated content in log.\n", mDescriptor).getBytes();
-            mReceiver.addOutput(stringData, 0, stringData.length);
-        }
 
         // Make sure we haven't been cancelled before we sleep for a long time
         if (isCancelled()) {
@@ -152,5 +151,17 @@ public class BackgroundDeviceAction extends Thread {
      */
     IRunUtil getRunUtil() {
         return RunUtil.getDefault();
+    }
+
+    private void blockUntilOnlineNoThrow() {
+        CLog.d("Waiting for device %s online before starting.", mSerialNumber);
+        while (!isCancelled()) {
+            if (!TestDeviceState.ONLINE.equals(mTestDevice.getDeviceState())) {
+                getRunUtil().sleep(ONLINE_POLL_INTERVAL_MS);
+            } else {
+                CLog.d("Device %s now online.", mSerialNumber);
+                break;
+            }
+        }
     }
 }
