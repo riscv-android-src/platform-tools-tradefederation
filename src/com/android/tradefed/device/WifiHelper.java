@@ -352,9 +352,9 @@ public class WifiHelper implements IWifiHelper {
         if (result != null) {
             try {
                 final JSONObject json = new JSONObject(result);
-                final Iterator<String> keys = json.keys();
+                final Iterator<?> keys = json.keys();
                 while (keys.hasNext()) {
-                    final String key = keys.next();
+                    final String key = (String)keys.next();
                     info.put(key, json.getString(key));
                 }
             } catch(final JSONException e) {

@@ -648,6 +648,7 @@ public class Configuration implements IConfiguration {
     /**
      * Get the JSON representation of a single {@link Option} field.
      */
+    @SuppressWarnings({"unchecked", "rawtypes"})
     private JSONObject getOptionJson(Object optionObject, Field field) throws JSONException {
         // Build a JSON representation of the option
         JSONObject jsonOption = new JSONObject();
@@ -671,7 +672,7 @@ public class Configuration implements IConfiguration {
             Type[] paramTypes = ((ParameterizedType)fieldType).getActualTypeArguments();
             String[] paramStrings = new String[paramTypes.length];
             for (int i = 0; i < paramTypes.length; i++) {
-                paramStrings[i] = ((Class)paramTypes[i]).getName();
+                paramStrings[i] = ((Class<?>)paramTypes[i]).getName();
             }
 
             jsonOption.put("javaClass", String.format("%s<%s>",

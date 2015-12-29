@@ -45,7 +45,7 @@ abstract class RemoteOperation<T> {
      * @param data the data to parse
      * @throws RemoteException
      */
-    final static RemoteOperation createRemoteOpFromString(String data) throws RemoteException {
+    final static RemoteOperation<?> createRemoteOpFromString(String data) throws RemoteException {
         try {
             JSONObject jsonData = new JSONObject(data);
             int protocolVersion = jsonData.getInt(VERSION);
@@ -56,7 +56,7 @@ abstract class RemoteOperation<T> {
                         protocolVersion, CURRENT_PROTOCOL_VERSION));
             }
             OperationType op = OperationType.valueOf(jsonData.getString(TYPE));
-            RemoteOperation rc = null;
+            RemoteOperation<?> rc = null;
             switch (op) {
                 case ALLOCATE_DEVICE:
                     rc = AllocateDeviceOp.createFromJson(jsonData);

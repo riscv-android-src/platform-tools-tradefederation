@@ -168,6 +168,7 @@ public class CommandOptions implements ICommandOptions {
     /**
      * {@inheritDoc}
      */
+    @Deprecated
     @Override
     public long getMinLoopTime() {
         return mMinLoopTime;

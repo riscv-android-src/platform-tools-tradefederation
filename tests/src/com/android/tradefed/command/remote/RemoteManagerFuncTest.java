@@ -127,6 +127,7 @@ public class RemoteManagerFuncTest extends TestCase {
      * An integration test for client-manager interaction, that will allocate, then close the
      * connection. Verifies that closing frees all devices.
      */
+    @SuppressWarnings("deprecation")
     public void testAllocateClose() throws Exception {
         ITestDevice device = EasyMock.createMock(ITestDevice.class);
         EasyMock.expect(device.getSerialNumber()).andStubReturn("serial");

@@ -518,7 +518,6 @@ public class OptionSetter {
      * @param value the value to set
      * @throws ConfigurationException
      */
-    @SuppressWarnings("unchecked")
     static void setFieldValue(String optionName, Object optionSource, Field field, Object value)
             throws ConfigurationException {
 
@@ -1008,19 +1007,6 @@ public class OptionSetter {
         @Override
         Object translate(String valueText) {
             return new File(valueText);
-        }
-    }
-
-    private static class MapEntry {
-        public Object mKey = null;
-        public Object mValue = null;
-
-        /**
-         * Convenience constructor
-         */
-        MapEntry(Object key, Object value) {
-            mKey = key;
-            mValue = value;
         }
     }
 

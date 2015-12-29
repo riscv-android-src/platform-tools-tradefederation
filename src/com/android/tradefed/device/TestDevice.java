@@ -385,6 +385,7 @@ class TestDevice implements IManagedTestDevice {
     /**
      * {@inheritDoc}
      */
+    @Deprecated
     @Override
     public String getPropertySync(final String name) throws DeviceNotAvailableException {
         return getProperty(name);

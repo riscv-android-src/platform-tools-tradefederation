@@ -62,6 +62,7 @@ public class ArrayUtil {
      * @param inputAry an array, or a varargs list
      * @return a {@link List} instance with the identical contents
      */
+    @SafeVarargs
     public static <T> List<T> list(T... inputAry) {
         List<T> retList = new ArrayList<T>(inputAry.length);
         for (T item : inputAry) {
