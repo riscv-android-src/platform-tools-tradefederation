@@ -115,7 +115,7 @@ public class CommandSchedulerTest extends TestCase {
                 return mMockCmdFileParser;
             }
         };
-        mScheduler.start();
+        // not starting the CommandScheduler yet because test methods need to setup mocks first
     }
 
     @Override
@@ -153,6 +153,7 @@ public class CommandSchedulerTest extends TestCase {
     public void testRun_empty() throws InterruptedException {
         mMockManager.setNumDevices(1);
         replayMocks();
+        mScheduler.start();
         while (!mScheduler.isAlive()) {
             Thread.sleep(10);
         }
@@ -173,6 +174,7 @@ public class CommandSchedulerTest extends TestCase {
         mMockConfigFactory.printHelpForConfig(EasyMock.aryEq(args), EasyMock.eq(true),
                 EasyMock.eq(System.out));
         replayMocks();
+        mScheduler.start();
         mScheduler.addCommand(args);
         verifyMocks();
     }
@@ -187,6 +189,7 @@ public class CommandSchedulerTest extends TestCase {
         // expect
         EasyMock.expect(mMockConfiguration.getJsonCommandUsage()).andReturn(new JSONArray());
         replayMocks();
+        mScheduler.start();
         mScheduler.addCommand(args);
         verifyMocks();
     }
@@ -201,6 +204,7 @@ public class CommandSchedulerTest extends TestCase {
         setExpectedInvokeCalls(1);
         mMockConfiguration.validateOptions();
         replayMocks();
+        mScheduler.start();
         mScheduler.addCommand(args);
         mScheduler.shutdownOnEmpty();
         mScheduler.join();
@@ -217,6 +221,7 @@ public class CommandSchedulerTest extends TestCase {
         setCreateConfigExpectations(args, 1);
         mMockConfiguration.validateOptions();
         replayMocks();
+        mScheduler.start();
         mScheduler.addCommand(args);
         assertEquals(1, mScheduler.getAllCommandsSize());
         mScheduler.removeAllCommands();
@@ -241,6 +246,7 @@ public class CommandSchedulerTest extends TestCase {
         EasyMock.expectLastCall().times(2);
 
         replayMocks();
+        mScheduler.start();
         assertFalse(mScheduler.addCommand(dryRunArgs));
         // the same config object is being used, so clear its state
         mCommandOptions.setDryRunMode(false);
@@ -267,6 +273,7 @@ public class CommandSchedulerTest extends TestCase {
                 .createMock(IScheduledInvocationListener.class);
         mockListener.invocationComplete(mockDevice, FreeDeviceState.AVAILABLE);
         replayMocks(mockDevice, mockListener);
+        mScheduler.start();
         mScheduler.execCommand(mockListener, mockDevice, args);
         mScheduler.shutdownOnEmpty();
         mScheduler.join(2*1000);
@@ -332,6 +339,7 @@ public class CommandSchedulerTest extends TestCase {
             Object notifier = waitForExpectedInvokeCalls(2);
             mMockConfiguration.validateOptions();
             replayMocks();
+            mScheduler.start();
             mScheduler.addCommand(args);
             synchronized (notifier) {
                 notifier.wait(1 * 1000);
@@ -380,6 +388,7 @@ public class CommandSchedulerTest extends TestCase {
             setCreateConfigExpectations(args, 1);
             mMockConfiguration.validateOptions();
             replayMocks(mockGc, mockWtf);
+            mScheduler.start();
             mScheduler.addCommand(args);
             // no need to call shutdown explicitly - scheduler should shutdown by itself
             mScheduler.join(2*1000);
@@ -406,6 +415,7 @@ public class CommandSchedulerTest extends TestCase {
         mMockConfiguration.validateOptions();
         mMockConfiguration.validateOptions();
         replayMocks();
+        mScheduler.start();
         mScheduler.addCommand(args);
         mScheduler.addCommand(args);
         mMockManager.freeDevice(dev, FreeDeviceState.AVAILABLE);
@@ -433,6 +443,7 @@ public class CommandSchedulerTest extends TestCase {
         mMockConfiguration.validateOptions();
         mMockConfiguration.validateOptions();
         replayMocks();
+        mScheduler.start();
         mScheduler.addCommand(args);
         mScheduler.addCommand(args);
         mMockManager.freeDevice(dev, FreeDeviceState.AVAILABLE);
@@ -475,6 +486,7 @@ public class CommandSchedulerTest extends TestCase {
         setExpectedInvokeCalls(1);
 
         replayMocks(rescheduledConfig);
+        mScheduler.start();
         mScheduler.addCommand(args);
         mScheduler.shutdownOnEmpty();
         mScheduler.join();
@@ -502,6 +514,7 @@ public class CommandSchedulerTest extends TestCase {
         };
         replayMocks();
 
+        mScheduler.start();
         mScheduler.addCommandFile("mycmd.txt", extraArgs);
         List<CommandTracker> cmds = mScheduler.getCommandTrackers();
         assertEquals(1, cmds.size());
@@ -545,6 +558,7 @@ public class CommandSchedulerTest extends TestCase {
             }
         };
         replayMocks();
+        mScheduler.start();
         mScheduler.setCommandFileReload(true);
         mScheduler.addCommand(addCommandArgs);
         mScheduler.addCommandFile("mycmd.txt", extraArgs);
@@ -586,6 +600,7 @@ public class CommandSchedulerTest extends TestCase {
             }
         };
         replayMocks();
+        mScheduler.start();
         mScheduler.setCommandFileReload(true);
         mScheduler.addCommandFile("mycmd.txt", Collections.<String>emptyList());
 
@@ -608,6 +623,7 @@ public class CommandSchedulerTest extends TestCase {
      */
     public void testShutdown() throws Exception {
         mMockManager.setNumDevices(0);
+        mScheduler.start();
         while (!mScheduler.isAlive()) {
             Thread.sleep(10);
         }

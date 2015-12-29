@@ -49,11 +49,12 @@ public class MockDeviceManager implements IDeviceManager {
         mTotalDevices = numDevices;
         for (int i = 0; i < numDevices; i++) {
             ITestDevice mockDevice = EasyMock.createNiceMock(ITestDevice.class);
-            EasyMock.expect(mockDevice.getSerialNumber()).andStubReturn("serial" + i);
+            EasyMock.expect(mockDevice.getSerialNumber()).andReturn("serial" + i).anyTimes();
             IDevice mockIDevice = EasyMock.createNiceMock(IDevice.class);
-            EasyMock.expect(mockIDevice.getSerialNumber()).andStubReturn("serial" + i);
-            EasyMock.expect(mockDevice.getIDevice()).andStubReturn(
-                    mockIDevice);
+            EasyMock.expect(mockIDevice.getSerialNumber()).andReturn("serial" + i).anyTimes();
+            EasyMock.expect(mockDevice.getIDevice()).andReturn(mockIDevice).anyTimes();
+            EasyMock.expect(mockDevice.getDeviceState()).andReturn(
+                    TestDeviceState.ONLINE).anyTimes();
             EasyMock.replay(mockDevice, mockIDevice);
             mAvailableDeviceQueue.add(mockDevice);
         }
