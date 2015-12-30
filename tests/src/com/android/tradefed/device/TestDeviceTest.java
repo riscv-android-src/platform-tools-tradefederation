@@ -151,7 +151,7 @@ public class TestDeviceTest extends TestCase {
         EasyMock.replay(mMockIDevice, mMockRunUtil, mMockStateMonitor);
         assertTrue(mTestDevice.enableAdbRoot());
     }
-    
+
     /**
      * Test {@link TestDevice#enableAdbRoot()} when "enable-root" is "false"
      */
@@ -1501,42 +1501,14 @@ public class TestDeviceTest extends TestCase {
         assertEquals(DeviceAllocationState.Unknown, mTestDevice.getAllocationState());
     }
 
-    public void testGetPingLoss() throws Exception {
-        final String pingCommand = "ping -c 1 -w 5 -s 1024 www.google.com";
-        injectShellResponse(pingCommand, ArrayUtil.join("\r\n",
-                "PING www.google.com (0.0.0.0) 1024(1052) bytes of data.",
-                "1032 bytes from www.google.com (0.0.0.0):" +
-                        "icmp_seq=1 ttl=52 time=74.1 ms",
-                "",
-                "--- www.google.com ping statistics ---",
-                "2 packets transmitted, 1 received, 50% packet loss, time 0ms"
-                ));
-        replayMocks();
-        assertEquals(50, mTestDevice.getPingLoss());
-    }
-
     public void testCheckConnectivity() throws Exception {
-        final String pingCommand = "ping -c 1 -w 5 -s 1024 www.google.com";
-        injectShellResponse(pingCommand, ArrayUtil.join("\r\n",
-                "PING www.google.com (0.0.0.0) 1024(1052) bytes of data.",
-                "1032 bytes from www.google.com (0.0.0.0):" +
-                        "icmp_seq=1 ttl=52 time=74.1 ms",
-                "",
-                "--- www.google.com ping statistics ---",
-                "1 packets transmitted, 1 received, 0% packet loss, time 0ms"
-                ));
+        EasyMock.expect(mMockWifi.checkConnectivity("http://www.google.com")).andReturn(true);
         replayMocks();
         assertTrue(mTestDevice.checkConnectivity());
     }
 
     public void testCheckConnectivity_NoConnectivity() throws Exception {
-        final String pingCommand = "ping -c 1 -w 5 -s 1024 www.google.com";
-        injectShellResponse(pingCommand, ArrayUtil.join("\r\n",
-                "PING www.google.com (0.0.0.0) 1024(1052) bytes of data.",
-                "",
-                "--- www.google.com ping statistics ---",
-                "1 packets transmitted, 0 received, 100% packet loss, time 0ms"
-                ));
+        EasyMock.expect(mMockWifi.checkConnectivity("http://www.google.com")).andReturn(false);
         replayMocks();
         assertFalse(mTestDevice.checkConnectivity());
     }

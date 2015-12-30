@@ -32,6 +32,7 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -53,6 +54,8 @@ public class WifiHelper implements IWifiHelper {
     static final int PACKAGE_VERSION_CODE = 21;
 
     private static final String WIFIUTIL_APK_NAME = "WifiUtil.apk";
+    /** the default WifiUtil command timeout in minutes */
+    private static final long WIFIUTIL_CMD_TIMEOUT_MINUTES = 5;
 
     /** the default time in ms to wait for a wifi state */
     private static final long DEFAULT_WIFI_STATE_TIMEOUT = 30*1000;
@@ -430,7 +433,7 @@ public class WifiHelper implements IWifiHelper {
         final String cmd = buildWifiUtilCmd(method, args);
 
         WifiUtilOutput parser = new WifiUtilOutput();
-        mDevice.executeShellCommand(cmd, parser);
+        mDevice.executeShellCommand(cmd, parser, WIFIUTIL_CMD_TIMEOUT_MINUTES, TimeUnit.MINUTES, 0);
         if (parser.getError() != null) {
             CLog.e(parser.getError());
         }

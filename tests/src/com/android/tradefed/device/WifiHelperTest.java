@@ -23,6 +23,7 @@ import org.easymock.EasyMock;
 
 import java.io.File;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 
 /**
  * Unit tests for {@link WifiHelper}.
@@ -83,8 +84,9 @@ public class WifiHelperTest extends TestCase {
      * succeeds on second.
      */
     public void testWaitForIp_failThenPass() throws Exception {
-        MockTestDeviceHelper.injectShellResponse(mMockDevice, null, "", false);
-        MockTestDeviceHelper.injectShellResponse(mMockDevice, null,
+        MockTestDeviceHelper.injectShellResponse(mMockDevice, null, 5, TimeUnit.MINUTES, 0, "",
+                false);
+        MockTestDeviceHelper.injectShellResponse(mMockDevice, null, 5, TimeUnit.MINUTES, 0,
                 "INSTRUMENTATION_RESULT: result=1.2.3.4", false);
         EasyMock.replay(mMockDevice);
         WifiHelper wifiHelper = new WifiHelper(mMockDevice) {
@@ -103,8 +105,8 @@ public class WifiHelperTest extends TestCase {
         final String urlToCheck = "urlToCheck";
         String expectedCommand = WifiHelper.buildWifiUtilCmd("startMonitor",
                 "interval", Long.toString(interval), "urlToCheck", urlToCheck);
-        MockTestDeviceHelper.injectShellResponse(mMockDevice, expectedCommand,
-                "INSTRUMENTATION_RESULT: result=true", false);
+        MockTestDeviceHelper.injectShellResponse(mMockDevice, expectedCommand, 5, TimeUnit.MINUTES,
+                0, "INSTRUMENTATION_RESULT: result=true", false);
         EasyMock.replay(mMockDevice);
         WifiHelper wifiHelper = new WifiHelper(mMockDevice);
         assertTrue(wifiHelper.startMonitor(interval, urlToCheck));
@@ -113,7 +115,7 @@ public class WifiHelperTest extends TestCase {
     }
 
     public void testStopMonitor() throws Exception {
-        MockTestDeviceHelper.injectShellResponse(mMockDevice, null,
+        MockTestDeviceHelper.injectShellResponse(mMockDevice, null, 5, TimeUnit.MINUTES, 0,
                 "INSTRUMENTATION_RESULT: result=1,2,3,4,", false);
         EasyMock.replay(mMockDevice);
         WifiHelper wifiHelper = new WifiHelper(mMockDevice);
@@ -124,7 +126,7 @@ public class WifiHelperTest extends TestCase {
     }
 
     public void testStopMonitor_nullResult() throws Exception {
-        MockTestDeviceHelper.injectShellResponse(mMockDevice, null,
+        MockTestDeviceHelper.injectShellResponse(mMockDevice, null, 5, TimeUnit.MINUTES, 0,
                 "INSTRUMENTATION_RESULT: result=null", false);
         EasyMock.replay(mMockDevice);
         WifiHelper wifiHelper = new WifiHelper(mMockDevice);
