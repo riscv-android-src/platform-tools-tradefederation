@@ -26,6 +26,7 @@ import com.android.tradefed.device.IDeviceSelection;
 import com.android.tradefed.device.IMultiDeviceRecovery;
 import com.android.tradefed.log.ITerribleFailureHandler;
 import com.android.tradefed.util.ArrayUtil;
+import com.android.tradefed.util.IHostMonitor;
 import com.android.tradefed.util.MultiMap;
 
 import java.io.File;
@@ -44,6 +45,7 @@ import java.util.Map;
 public class GlobalConfiguration implements IGlobalConfiguration {
     // type names for built in configuration objects
     public static final String DEVICE_MONITOR_TYPE_NAME = "device_monitor";
+    public static final String HOST_MONITOR_TYPE_NAME = "host_monitor";
     public static final String DEVICE_MANAGER_TYPE_NAME = "device_manager";
     public static final String WTF_HANDLER_TYPE_NAME = "wtf_handler";
     public static final String HOST_OPTIONS_TYPE_NAME = "host_options";
@@ -90,6 +92,13 @@ public class GlobalConfiguration implements IGlobalConfiguration {
             throw new IllegalStateException("GlobalConfiguration has not yet been initialized!");
         }
         return sInstance.getDeviceManager();
+    }
+
+    public static List<IHostMonitor> getHostMonitorInstances() {
+        if (sInstance == null) {
+            throw new IllegalStateException("GlobalConfiguration has not yet been initialized!");
+        }
+        return sInstance.getHostMonitors();
     }
 
     /**
@@ -186,6 +195,7 @@ public class GlobalConfiguration implements IGlobalConfiguration {
         if (sObjTypeMap == null) {
             sObjTypeMap = new HashMap<String, ObjTypeInfo>();
             sObjTypeMap.put(DEVICE_MONITOR_TYPE_NAME, new ObjTypeInfo(IDeviceMonitor.class, true));
+            sObjTypeMap.put(HOST_MONITOR_TYPE_NAME, new ObjTypeInfo(IHostMonitor.class, true));
             sObjTypeMap.put(DEVICE_MANAGER_TYPE_NAME, new ObjTypeInfo(IDeviceManager.class, false));
             sObjTypeMap.put(DEVICE_REQUIREMENTS_TYPE_NAME, new ObjTypeInfo(IDeviceSelection.class,
                     false));
@@ -241,6 +251,15 @@ public class GlobalConfiguration implements IGlobalConfiguration {
     @SuppressWarnings("unchecked")
     public List<IDeviceMonitor> getDeviceMonitors() {
         return (List<IDeviceMonitor>) getConfigurationObjectList(DEVICE_MONITOR_TYPE_NAME);
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    @SuppressWarnings("unchecked")
+    public List<IHostMonitor> getHostMonitors() {
+        return (List<IHostMonitor>) getConfigurationObjectList(HOST_MONITOR_TYPE_NAME);
     }
 
     /**
@@ -366,6 +385,14 @@ public class GlobalConfiguration implements IGlobalConfiguration {
     @Override
     public void setDeviceMonitor(IDeviceMonitor monitor) {
         setConfigurationObjectNoThrow(DEVICE_MONITOR_TYPE_NAME, monitor);
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void addHostMonitors(List<IHostMonitor> monitors) {
+        setConfigurationObjectNoThrow(HOST_MONITOR_TYPE_NAME, monitors);
     }
 
     /**
