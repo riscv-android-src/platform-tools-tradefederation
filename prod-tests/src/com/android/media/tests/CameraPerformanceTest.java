@@ -43,7 +43,7 @@ public class CameraPerformanceTest extends CameraTestBase {
     public CameraPerformanceTest() {
         // Set up the default test info. But this is subject to be overwritten by options passed
         // from commands.
-        setTestPackage("com.android.cts.hardware");
+        setTestPackage("android.hardware.cts");
         setTestClass("android.hardware.camera2.cts.PerformanceTest");
         setTestRunner("android.support.test.runner.AndroidJUnitRunner");
         setRuKey("camera_framework_performance");
