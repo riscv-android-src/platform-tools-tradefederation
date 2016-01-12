@@ -367,6 +367,10 @@ public class Console extends Thread {
             mScheduler.addCommandFile(cmdfileName, extraArgs);
         } catch (ConfigurationException e) {
             printLine(String.format("Failed to run %s: %s", cmdfileName, e));
+            if (mScheduler.shouldShutdownOnCmdfileError()) {
+                printLine("shutdownOnCmdFileError is enabled, stopping TF");
+                mScheduler.shutdown();
+            }
         }
     }
 

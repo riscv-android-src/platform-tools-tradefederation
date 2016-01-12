@@ -237,4 +237,9 @@ public interface ICommandScheduler {
      * Get the appropriate {@link CommandFileWatcher} for this scheduler
      */
     public CommandFileWatcher getCommandFileWatcher();
+
+    /**
+     * Return true if we need to shutdown the scheduler on a command errors
+     */
+    public boolean shouldShutdownOnCmdfileError();
 }
