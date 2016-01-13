@@ -87,6 +87,10 @@ public class GTest implements IDeviceTest, IRemoteTest, ITestFilterReceiver, IRu
             description = "adb shell command(s) to run after GTest.")
     private List<String> mAfterTestCmd = new ArrayList<>();
 
+    @Option(name = "ld-library-path",
+            description = "LD_LIBRARY_PATH value to include in the GTest execution command.")
+    private String mLdLibraryPath = null;
+
     @Option(name = "native-test-flag", description =
             "Additional flag values to pass to the native test's shell command. " +
             "Flags should be complete, including any necessary dashes: \"--flag=value\"")
@@ -342,7 +346,12 @@ public class GTest implements IDeviceTest, IRemoteTest, ITestFilterReceiver, IRu
      * @return the shell command line to run for the gtest
      */
     protected String getGTestCmdLine(String fullPath, String flags) {
-        return String.format("%s %s", fullPath, flags);
+        StringBuilder gTestCmdLine = new StringBuilder();
+        if (mLdLibraryPath != null) {
+            gTestCmdLine.append(String.format("LD_LIBRARY_PATH=%s ", mLdLibraryPath));
+        }
+        gTestCmdLine.append(String.format("%s %s", fullPath, flags));
+        return gTestCmdLine.toString();
     }
 
     /**
