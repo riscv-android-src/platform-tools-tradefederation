@@ -139,6 +139,10 @@ public class CommandScheduler extends Thread implements ICommandScheduler, IComm
             "ms between forced command scheduler execution time")
     private long mPollTime = 30 * 1000; // 30 seconds
 
+    @Option(name = "shutdown-on-cmdfile-error", description =
+            "terminate TF session if a configuration exception on command file occurs")
+    private boolean mShutdownOnCmdfileError = false;
+
     private enum CommandState {
         WAITING_FOR_DEVICE("Wait_for_device"),
         EXECUTING("Executing"),
@@ -514,6 +518,10 @@ public class CommandScheduler extends Thread implements ICommandScheduler, IComm
          * invocation.
          */
         public void checkDeviceBatteryLevel() {
+            if (mCmd.getConfiguration().getDeviceOptions() == null) {
+                CLog.d("No deviceOptions in the configuration, cannot do Battery level check");
+                return;
+            }
             final Integer cutoffBattery = mCmd.getConfiguration().getDeviceOptions()
                     .getCutoffBattery();
             if (mDevice != null && cutoffBattery != null) {
@@ -1720,5 +1728,10 @@ public class CommandScheduler extends Thread implements ICommandScheduler, IComm
             cmds.add(new ExecutableCommandState(cmd, CommandState.SLEEPING));
         }
         return cmds;
+    }
+
+    @Override
+    public boolean shouldShutdownOnCmdfileError() {
+        return mShutdownOnCmdfileError;
     }
 }
