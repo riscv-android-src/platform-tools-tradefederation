@@ -82,7 +82,7 @@ public class Camera2StressTest extends CameraTestBase {
             }
             // For stress test, parse the metrics from a log file and overwrite the instrumentation
             // results passed.
-            testMetrics = parseLog();
+            testMetrics = parseLog(test.getTestName());
             postScreenshotOnFailure(test);
             super.testEnded(test, testMetrics);
         }
@@ -118,8 +118,8 @@ public class Camera2StressTest extends CameraTestBase {
         }
 
         // Return null if failed to parse the result file or the test didn't even start.
-        private Map<String, String> parseLog() {
-            Map<String, String> postMetrics = null;
+        private Map<String, String> parseLog(String testName) {
+            Map<String, String> postMetrics = new HashMap<String, String>();
             try {
                 File outputFile = FileUtil.createTempFile("stress", ".txt");
                 getDevice().pullFile(RESULT_FILE, outputFile);
@@ -150,9 +150,8 @@ public class Camera2StressTest extends CameraTestBase {
                     CLog.w("Failed to start stress tests. test setup configured incorrectly?");
                     return null;
                 }
-                // Post the number of iterations only.
-                postMetrics = new HashMap<String, String>();
-                postMetrics.put(KEY_ITERATION, resultMap.get(KEY_ITERATION));
+                // Post the number of iterations only with the test name as key.
+                postMetrics.put(testName, resultMap.get(KEY_ITERATION));
             } catch (IOException e) {
                 CLog.w("Couldn't parse the output log file: ", e);
             } catch (DeviceNotAvailableException e) {

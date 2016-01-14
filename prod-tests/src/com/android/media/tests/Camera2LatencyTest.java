@@ -54,14 +54,14 @@ public class Camera2LatencyTest extends CameraTestBase {
     /**
      * A listener to collect the results from each test run, then forward them to other listeners.
      */
-    private class CollectingListener extends AbstractCollectingListener {
+    private class CollectingListener extends DefaultCollectingListener {
 
         public CollectingListener(ITestInvocationListener listener) {
             super(listener);
         }
 
         @Override
-        public void handleCollectedMetrics(TestIdentifier test, Map<String, String> testMetrics) {
+        public void handleMetricsOnTestEnded(TestIdentifier test, Map<String, String> testMetrics) {
             // Test metrics accumulated will be posted at the end of test run.
             getAggregatedMetrics().putAll(parseResults(test.getTestName(), testMetrics));
         }

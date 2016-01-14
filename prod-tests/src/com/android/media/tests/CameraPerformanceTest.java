@@ -18,6 +18,7 @@ package com.android.media.tests;
 
 import com.google.common.collect.ImmutableMultimap;
 
+import com.android.ddmlib.testrunner.TestIdentifier;
 import com.android.tradefed.config.OptionClass;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.log.LogUtil.CLog;
@@ -49,7 +50,7 @@ public class CameraPerformanceTest extends CameraTestBase {
     public CameraPerformanceTest() {
         // Set up the default test info. But this is subject to be overwritten by options passed
         // from commands.
-        setTestPackage("android.hardware.cts");
+        setTestPackage("android.camera.cts");
         setTestClass("android.hardware.camera2.cts.PerformanceTest");
         setTestRunner("android.support.test.runner.AndroidJUnitRunner");
         setRuKey("camera_framework_performance");
@@ -61,18 +62,34 @@ public class CameraPerformanceTest extends CameraTestBase {
      */
     @Override
     public void run(ITestInvocationListener listener) throws DeviceNotAvailableException {
-        runInstrumentationTest(listener);
+        runInstrumentationTest(listener, new CollectingListener(listener));
     }
 
     /**
-     * {@inheritDoc}
+     * A listener to collect the output from test run and fatal errors
      */
-    @Override
-    protected void handleTestRunEnded(ITestInvocationListener listener,
-            Map<String, String> collectedMetrics) throws DeviceNotAvailableException {
-        // Report metrics at the end of test run.
-        Map<String, String> result = parseResult(collectedMetrics);
-        listener.testRunEnded(getTestDurationMs(), result);
+    private class CollectingListener extends DefaultCollectingListener {
+
+        public CollectingListener(ITestInvocationListener listener) {
+            super(listener);
+        }
+
+        @Override
+        public void handleMetricsOnTestEnded(TestIdentifier test, Map<String, String> testMetrics) {
+            // Pass the test name for a key in the aggregated metrics, because
+            // it is used to generate the key of the final metrics to post at the end of test run.
+            for (Map.Entry<String, String> metric : testMetrics.entrySet()) {
+                getAggregatedMetrics().put(test.getTestName(), metric.getValue());
+            }
+        }
+
+        @Override
+        public void handleTestRunEnded(ITestInvocationListener listener, long elapsedTime,
+                Map<String, String> runMetrics) {
+            // Report metrics at the end of test run.
+            Map<String, String> result = parseResult(getAggregatedMetrics());
+            listener.testRunEnded(getTestDurationMs(), result);
+        }
     }
 
     /**
@@ -81,8 +98,7 @@ public class CameraPerformanceTest extends CameraTestBase {
      *
      * @return a {@link HashMap} that contains pairs of kpiName and kpiValue
      */
-    private Map<String, String> parseResult(Map<String, String> metrics)
-            throws DeviceNotAvailableException {
+    private Map<String, String> parseResult(Map<String, String> metrics) {
         Map<String, String> resultsAll = new HashMap<String, String>();
 
         CtsResultParserBase parser;
@@ -120,7 +136,7 @@ public class CameraPerformanceTest extends CameraTestBase {
         return resultsAll;
     }
 
-    public boolean shouldUseCtsXmlResultParser(String result) throws DeviceNotAvailableException {
+    public boolean shouldUseCtsXmlResultParser(String result) {
         final String XML_DECLARATION = "<?xml";
         return (result.startsWith(XML_DECLARATION) ||
                 result.startsWith(XML_DECLARATION.toUpperCase()));

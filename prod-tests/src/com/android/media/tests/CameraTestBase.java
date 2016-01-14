@@ -28,7 +28,6 @@ import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.InputStreamSource;
 import com.android.tradefed.result.LogDataType;
 import com.android.tradefed.result.SnapshotInputStreamSource;
-import com.android.tradefed.result.StubTestInvocationListener;
 import com.android.tradefed.testtype.IDeviceTest;
 import com.android.tradefed.testtype.IRemoteTest;
 import com.android.tradefed.testtype.InstrumentationTest;
@@ -67,7 +66,7 @@ public class CameraTestBase implements IDeviceTest, IRemoteTest {
     private static final String PROCESS_MEDIASERVER = "mediaserver";
     private static final String PROCESS_CAMERA_APP = "com.google.android.GoogleCamera";
     private static final String DUMP_ION_HEAPS_COMMAND = "cat /d/ion/heaps/system";
-
+    private static final String ARGUMENT_TEST_ITERATIONS = "iterations";
 
     @Option(name = "test-package", description = "Test package to run.")
     private String mTestPackage = "com.google.android.camera";
@@ -81,8 +80,15 @@ public class CameraTestBase implements IDeviceTest, IRemoteTest {
     @Option(name = "test-runner", description = "Test runner for test instrumentation.")
     private String mTestRunner = "android.test.InstrumentationTestRunner";
 
-    @Option(name = "test-timeout-ms", description = "Max time allowed in ms for a test run.")
+    @Option(name = "test-timeout", description = "Max time allowed in ms for a test run.")
     private int mTestTimeoutMs = 60 * 60 * 1000; // 1 hour
+
+    @Option(name = "shell-timeout",
+            description="The defined timeout (in milliseconds) is used as a maximum waiting time "
+                    + "when expecting the command output from the device. At any time, if the "
+                    + "shell command does not output anything for a period longer than defined "
+                    + "timeout the TF run terminates. For no timeout, set to 0.")
+    private long mShellTimeoutMs = 60 * 60 * 1000;  // default to 1 hour
 
     @Option(name = "ru-key", description = "Result key to use when posting to the dashboard.")
     private String mRuKey = null;
@@ -115,10 +121,15 @@ public class CameraTestBase implements IDeviceTest, IRemoteTest {
             description="Interval of calling ps to count the number of threads in milliseconds.")
     private int mThreadCountIntervalMs = 5 * 60 * 1000; // 5 minutes
 
+    @Option(name="iterations", description="The number of iterations to run. Default to 1. "
+            + "This takes effect only when Camera2InstrumentationTestRunner is used to execute "
+            + "framework stress tests.")
+    private int mIterations = 1;
+
     private ITestDevice mDevice = null;
 
-    // A base listener to collect the results from each test run. Fatal error or failures will be
-    // forwarded to other listeners.
+    // A base listener to collect the results from each test run. Test results will be forwarded
+    // to other listeners.
     private AbstractCollectingListener mCollectingListener = null;
 
     private long mStartTimeMs = 0;
@@ -169,9 +180,19 @@ public class CameraTestBase implements IDeviceTest, IRemoteTest {
         instr.setRunnerName(getTestRunner());
         instr.setClassName(getTestClass());
         instr.setTestTimeout(getTestTimeoutMs());
-        instr.setShellTimeout(getTestTimeoutMs());
+        instr.setShellTimeout(getShellTimeoutMs());
         instr.setLogcatOnFailure(mLogcatOnFailure);
-        for (Map.Entry<String, String> entry : mInstrArgMap.entrySet()) {
+        instr.setRunName(getRuKey());
+        instr.setRerunMode(false);
+
+        // Set test iteration.
+        if (getIterationCount() > 1) {
+            CLog.v("Setting test iterations: %d", getIterationCount());
+            Map<String, String> instrArgMap = getInstrumentationArgMap();
+            instrArgMap.put(ARGUMENT_TEST_ITERATIONS, String.valueOf(getIterationCount()));
+        }
+
+        for (Map.Entry<String, String> entry : getInstrumentationArgMap().entrySet()) {
             instr.addInstrumentationArg(entry.getKey(), entry.getValue());
         }
 
@@ -184,10 +205,8 @@ public class CameraTestBase implements IDeviceTest, IRemoteTest {
             mThreadTrackerTimer = new ThreadTrackerTimer(delayMs, mThreadCountIntervalMs);
         }
 
-        mStartTimeMs = System.currentTimeMillis();
-        listener.testRunStarted(getRuKey(), 1);
-
         // Run tests.
+        mStartTimeMs = System.currentTimeMillis();
         if (mTestMethods.size() > 0) {
             CLog.d(String.format("The number of test methods is: %d", mTestMethods.size()));
             for (String testName : mTestMethods) {
@@ -198,36 +217,18 @@ public class CameraTestBase implements IDeviceTest, IRemoteTest {
             instr.run(mCollectingListener);
         }
 
-        // Delegate a post process after test run ends to subclasses.
-        handleTestRunEnded(listener, mCollectingListener.getAggregatedMetrics());
-        dumpIonHeaps(listener, getTestClass());
+        dumpIonHeaps(mCollectingListener, getTestClass());
     }
 
     /**
-     * Report the start of an camera test run ended. Intended only when subclasses handle
-     * the aggregated results at the end of test run. {@link ITestInvocationListener#testRunEnded}
-     * should be called to report end of test run in the method.
-     *
-     * @param listener - the ITestInvocationListener of test results
-     * @param collectedMetrics - the metrics aggregated during the individual test.
+     * A base listener to collect all test results and metrics from Camera instrumentation test run.
+     * Abstract methods can be overridden to handle test metrics or inform of test run ended.
      */
-    protected void handleTestRunEnded(ITestInvocationListener listener,
-            Map<String, String> collectedMetrics) throws DeviceNotAvailableException {
-
-        // Report metrics at the end of test run.
-        listener.testRunEnded(getTestDurationMs(), collectedMetrics);
-    }
-
-    /**
-     * A base listener to collect the results from each test run. Fatal error or failures will be
-     * forwarded to other listeners.
-     */
-    protected abstract class AbstractCollectingListener extends StubTestInvocationListener {
+    protected abstract class AbstractCollectingListener extends CollectingTestListener {
 
         private ITestInvocationListener mListener = null;
         private Map<String, String> mMetrics = new HashMap<String, String>();
         private Map<String, String> mFatalErrors = new HashMap<String, String>();
-        private int mTestCount = 0;
 
         private static final String INCOMPLETE_TEST_ERR_MSG_PREFIX =
                 "Test failed to run to completion. Reason: 'Instrumentation run failed";
@@ -237,37 +238,60 @@ public class CameraTestBase implements IDeviceTest, IRemoteTest {
         }
 
         /**
-         * Override only when subclasses parse the raw metrics passed from Camera instrumentation
-         * tests, then update the getAggregatedMetrics with parsed data to post to dashboard.
+         * Override only when subclasses need to get the test metrics from an individual
+         * instrumentation test. To aggregate the metrics from each test, update the
+         * getAggregatedMetrics and post them at the end of test run.
          *
          * @param test identifies the test
          * @param testMetrics a {@link Map} of the metrics emitted
          */
-        abstract public void handleCollectedMetrics(TestIdentifier test,
+        abstract public void handleMetricsOnTestEnded(TestIdentifier test,
                 Map<String, String> testMetrics);
+
+        /**
+         * Override only when it needs to inform subclasses of instrumentation test run ended,
+         * so that subclasses have a chance to peek the aggregated results at the end of test run
+         * and to decide what metrics to be posted.
+         * Either {@link ITestInvocationListener#testRunEnded} or
+         * {@link ITestInvocationListener#testRunFailed} should be called in this function to
+         * report the test run status.
+         *
+         * @param listener - the ITestInvocationListener of test results
+         * @param elapsedTime - device reported elapsed time, in milliseconds
+         * @param runMetrics - key-value pairs reported at the end of an instrumentation test run.
+         *                   Use getAggregatedMetrics to retrieve the metrics aggregated
+         *                   from an individual test, instead.
+         */
+        abstract public void handleTestRunEnded(ITestInvocationListener listener,
+                long elapsedTime, Map<String, String> runMetrics);
 
         /**
          * Report the end of an individual camera test and delegate handling the collected metrics
          * to subclasses.
+         * Do not override testEnded to manipulate the test metrics after each test. Instead,
+         * use handleMetricsOnTestEnded.
          *
          * @param test identifies the test
          * @param testMetrics a {@link Map} of the metrics emitted
          */
         @Override
         public void testEnded(TestIdentifier test, Map<String, String> testMetrics) {
-            handleCollectedMetrics(test, testMetrics);
+            super.testEnded(test, testMetrics);
+            handleMetricsOnTestEnded(test, testMetrics);
             stopDumping(test);
+            mListener.testEnded(test, testMetrics);
         }
 
         @Override
         public void testStarted(TestIdentifier test) {
-            ++mTestCount;
+            super.testStarted(test);
             startDumping(test);
             mListener.testStarted(test);
         }
 
         @Override
         public void testFailed(TestIdentifier test, String trace) {
+            super.testFailed(test, trace);
             // If the test failed to run to complete, this is an exceptional case.
             // Let this test run fail so that it can rerun.
             if (trace.startsWith(INCOMPLETE_TEST_ERR_MSG_PREFIX)) {
@@ -278,12 +302,28 @@ public class CameraTestBase implements IDeviceTest, IRemoteTest {
         }
 
         @Override
-        public void invocationFailed(Throwable cause) {
-            mListener.invocationFailed(cause);
+        public void testRunEnded(long elapsedTime, Map<String, String> runMetrics) {
+            super.testRunEnded(elapsedTime, runMetrics);
+            handleTestRunEnded(mListener, elapsedTime, runMetrics);
+            // never be called since handleTestRunEnded will handle it if needed.
+            //mListener.testRunEnded(elapsedTime, runMetrics);
+        }
+
+        @Override
+        public void testRunStarted(String runName, int testCount) {
+            super.testRunStarted(runName, testCount);
+            mListener.testRunStarted(runName, testCount);
+        }
+
+        @Override
+        public void testRunStopped(long elapsedTime) {
+            super.testRunStopped(elapsedTime);
+            mListener.testRunStopped(elapsedTime);
         }
 
         @Override
         public void testLog(String dataName, LogDataType dataType, InputStreamSource dataStream) {
+            super.testLog(dataName, dataType, dataStream);
             mListener.testLog(dataName, dataType, dataStream);
         }
 
@@ -338,13 +378,17 @@ public class CameraTestBase implements IDeviceTest, IRemoteTest {
             return mMetrics;
         }
 
+        public ITestInvocationListener getListeners() {
+            return mListener;
+        }
+
         /**
          * Determine that the test run failed with fatal errors.
          *
          * @return True if test run has a failure due to fatal error.
          */
         public boolean hasTestRunFatalError() {
-            return (mTestCount > 0 && mFatalErrors.size() > 0);
+            return (getNumTotalTests() > 0 && mFatalErrors.size() > 0);
         }
 
         public Map<String, String> getFatalErrors() {
@@ -369,13 +413,17 @@ public class CameraTestBase implements IDeviceTest, IRemoteTest {
             super(listener);
         }
 
-        public void handleCollectedMetrics(TestIdentifier test, Map<String, String> testMetrics) {
+        public void handleMetricsOnTestEnded(TestIdentifier test, Map<String, String> testMetrics) {
             if (testMetrics == null) {
                 return; // No-op if there is nothing to post.
             }
-            for (Map.Entry<String, String> metric : testMetrics.entrySet()) {
-                getAggregatedMetrics().put(test.getTestName(), metric.getValue());
-            }
+            getAggregatedMetrics().putAll(testMetrics);
+        }
+
+        public void handleTestRunEnded(ITestInvocationListener listener, long elapsedTime,
+                Map<String, String> runMetrics) {
+            // Post aggregated metrics at the end of test run.
+            listener.testRunEnded(getTestDurationMs(), getAggregatedMetrics());
         }
     }
 
@@ -728,6 +776,14 @@ public class CameraTestBase implements IDeviceTest, IRemoteTest {
         mTestTimeoutMs = testTimeoutMs;
     }
 
+    public long getShellTimeoutMs() {
+        return mShellTimeoutMs;
+    }
+
+    public void setShellTimeoutMs(long shellTimeoutMs) {
+        mShellTimeoutMs = shellTimeoutMs;
+    }
+
     public String getRuKey() {
         return mRuKey;
     }
@@ -755,4 +811,10 @@ public class CameraTestBase implements IDeviceTest, IRemoteTest {
     public void setLogcatOnFailure(boolean logcatOnFailure) {
         mLogcatOnFailure = logcatOnFailure;
     }
+
+    public int getIterationCount() {
+        return mIterations;
+    }
+
+    public Map<String, String> getInstrumentationArgMap() { return mInstrArgMap; }
 }

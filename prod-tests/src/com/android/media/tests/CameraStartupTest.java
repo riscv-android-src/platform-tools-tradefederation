@@ -58,14 +58,14 @@ public class CameraStartupTest extends CameraTestBase {
     /**
      * A listener to collect the output from test run and fatal errors
      */
-    private class CollectingListener extends AbstractCollectingListener {
+    private class CollectingListener extends DefaultCollectingListener {
 
         public CollectingListener(ITestInvocationListener listener) {
             super(listener);
         }
 
         @Override
-        public void handleCollectedMetrics(TestIdentifier test, Map<String, String> testMetrics) {
+        public void handleMetricsOnTestEnded(TestIdentifier test, Map<String, String> testMetrics) {
             // Test metrics accumulated will be posted at the end of test run.
             getAggregatedMetrics().putAll(parseResults(testMetrics));
         }
