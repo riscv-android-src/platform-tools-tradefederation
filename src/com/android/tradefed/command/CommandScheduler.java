@@ -42,7 +42,6 @@ import com.android.tradefed.device.IDeviceManager;
 import com.android.tradefed.device.IDeviceMonitor;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.device.NoDeviceException;
-import com.android.tradefed.device.TestDeviceState;
 import com.android.tradefed.invoker.IRescheduler;
 import com.android.tradefed.invoker.ITestInvocation;
 import com.android.tradefed.invoker.TestInvocation;
@@ -444,7 +443,7 @@ public class CommandScheduler extends Thread implements ICommandScheduler, IComm
 
         @Override
         public void run() {
-            FreeDeviceState deviceState = null;
+            FreeDeviceState deviceState = FreeDeviceState.AVAILABLE;
             mStartTime = System.currentTimeMillis();
             ITestInvocation instance = getInvocation();
             IConfiguration config = mCmd.getConfiguration();
@@ -468,23 +467,16 @@ public class CommandScheduler extends Thread implements ICommandScheduler, IComm
             } catch (Throwable e) {
                 CLog.e(e);
             } finally {
-                // update device state if not initialized
-                if (deviceState == null) {
-                    TestDeviceState tds = mDevice.getDeviceState();
-                    if (TestDeviceState.ONLINE.equals(tds)) {
-                        deviceState = FreeDeviceState.AVAILABLE;
-                    } else {
-                        deviceState = FreeDeviceState.UNAVAILABLE;
-                    }
-                }
+                long elapsedTime = System.currentTimeMillis() - mStartTime;
+                CLog.i("Updating command %d with elapsed time %d ms",
+                       mCmd.getCommandTracker().getId(), elapsedTime);
+                // remove invocation thread first so another invocation can be started on device
+                // when freed
+                removeInvocationThread(this);
+                mCmd.commandFinished(elapsedTime);
                 for (final IScheduledInvocationListener listener : mListeners) {
                     listener.invocationComplete(mDevice, deviceState);
                 }
-                removeInvocationThread(this);
-                long elapsedTime = System.currentTimeMillis() - mStartTime;
-                CLog.i("Updating command %d with elapsed time %d ms",
-                        mCmd.getCommandTracker().getId(), elapsedTime);
-                mCmd.commandFinished(elapsedTime);
             }
         }
 
