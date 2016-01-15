@@ -268,15 +268,23 @@ public class RunUtil implements IRunUtil {
         } else {
             pollIterval = THREAD_JOIN_POLL_INTERVAL;
         }
-        try {
-            do {
+        do {
+            try {
                 runThread.join(pollIterval);
-            } while ((System.currentTimeMillis() - startTime) < timeout && runThread.isAlive());
-        } catch (InterruptedException e) {
-            CLog.i("runTimed: interrupted while joining the runnable");
-        }
+            } catch (InterruptedException e) {
+                if (mIsInterruptAllowed.get()) {
+                    CLog.i("runTimed: interrupted while joining the runnable");
+                    break;
+                }
+                else {
+                    CLog.i("runTimed: received an interrupt but uninterruptible mode, ignoring");
+                }
+            }
+        } while ((System.currentTimeMillis() - startTime) < timeout && runThread.isAlive());
+
         if (runThread.getStatus() == CommandStatus.TIMED_OUT
                 || runThread.getStatus() == CommandStatus.EXCEPTION) {
+            CLog.i("runTimed: Calling interrupt, status is %s", runThread.getStatus());
             runThread.interrupt();
         }
         checkInterrupted();
