@@ -42,6 +42,7 @@ import com.android.tradefed.device.IDeviceManager;
 import com.android.tradefed.device.IDeviceMonitor;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.device.NoDeviceException;
+import com.android.tradefed.device.TestDeviceState;
 import com.android.tradefed.invoker.IRescheduler;
 import com.android.tradefed.invoker.ITestInvocation;
 import com.android.tradefed.invoker.TestInvocation;
@@ -473,10 +474,14 @@ public class CommandScheduler extends Thread implements ICommandScheduler, IComm
                 // remove invocation thread first so another invocation can be started on device
                 // when freed
                 removeInvocationThread(this);
-                mCmd.commandFinished(elapsedTime);
+                if (!TestDeviceState.ONLINE.equals(mDevice.getDeviceState())) {
+                    //If the device is offline at the end of the test
+                    deviceState = FreeDeviceState.UNAVAILABLE;
+                }
                 for (final IScheduledInvocationListener listener : mListeners) {
                     listener.invocationComplete(mDevice, deviceState);
                 }
+                mCmd.commandFinished(elapsedTime);
             }
         }
 

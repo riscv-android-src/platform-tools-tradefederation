@@ -29,6 +29,7 @@ import com.android.tradefed.device.FreeDeviceState;
 import com.android.tradefed.device.IDeviceManager;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.device.MockDeviceManager;
+import com.android.tradefed.device.TestDeviceState;
 import com.android.tradefed.invoker.IRescheduler;
 import com.android.tradefed.invoker.ITestInvocation;
 import com.android.tradefed.log.ITerribleFailureHandler;
@@ -269,6 +270,7 @@ public class CommandSchedulerTest extends TestCase {
 
         ITestDevice mockDevice = EasyMock.createMock(ITestDevice.class);
         EasyMock.expect(mockDevice.getSerialNumber()).andStubReturn("serial");
+        EasyMock.expect(mockDevice.getDeviceState()).andStubReturn(TestDeviceState.ONLINE);
         IScheduledInvocationListener mockListener = EasyMock
                 .createMock(IScheduledInvocationListener.class);
         mockListener.invocationComplete(mockDevice, FreeDeviceState.AVAILABLE);
