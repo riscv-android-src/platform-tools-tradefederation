@@ -21,7 +21,6 @@ import com.android.ddmlib.IDevice;
 import com.android.ddmlib.IDevice.DeviceState;
 import com.android.tradefed.command.remote.DeviceDescriptor;
 import com.android.tradefed.config.IGlobalConfiguration;
-import com.android.tradefed.device.DeviceManager.IManagedTestDeviceFactory;
 import com.android.tradefed.device.IManagedTestDevice.DeviceEventResponse;
 import com.android.tradefed.util.ArrayUtil;
 import com.android.tradefed.util.CommandResult;

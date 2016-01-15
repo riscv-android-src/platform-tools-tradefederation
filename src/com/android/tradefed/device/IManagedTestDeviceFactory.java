@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2010 The Android Open Source Project
+ * Copyright (C) 2016 The Android Open Source Project
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -13,23 +13,21 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 package com.android.tradefed.device;
 
 import com.android.ddmlib.IDevice;
 
 /**
- * Implementation of a {@link ITestDevice} for a full stack android device
+ * Creator interface for {@link IManagedTestDevice}s
  */
-public class TestDevice extends AndroidNativeDevice {
+public interface IManagedTestDeviceFactory {
 
     /**
-     * @param device
-     * @param stateMonitor
-     * @param allocationMonitor
+     * Create a {@link IManagedTestDevice} based on the {@link IDevice} passed to it.
+     *
+     * @param stubDevice that will define the type of device created
+     * @return a IManagedTestDevice created base on the IDevice
      */
-    public TestDevice(IDevice device, IDeviceStateMonitor stateMonitor,
-            IDeviceMonitor allocationMonitor) {
-        super(device, stateMonitor, allocationMonitor);
-    }
-
+    IManagedTestDevice createDevice(IDevice stubDevice);
 }
