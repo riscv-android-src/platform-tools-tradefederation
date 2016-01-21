@@ -17,6 +17,7 @@ package com.android.tradefed.result;
 
 import com.android.ddmlib.testrunner.TestIdentifier;
 import com.android.tradefed.build.IBuildInfo;
+import com.android.tradefed.log.LogUtil.CLog;
 
 import java.util.Arrays;
 import java.util.Collections;
@@ -89,7 +90,13 @@ public class ResultForwarder implements ITestInvocationListener {
     @Override
     public void invocationStarted(IBuildInfo buildInfo) {
         for (ITestInvocationListener listener : mListeners) {
-            listener.invocationStarted(buildInfo);
+            try {
+                listener.invocationStarted(buildInfo);
+            } catch (RuntimeException e) {
+                CLog.e("RuntimeException while invoking %s#invocationStarted",
+                        listener.getClass().getName());
+                CLog.e(e);
+            }
         }
     }
 
@@ -99,7 +106,13 @@ public class ResultForwarder implements ITestInvocationListener {
     @Override
     public void invocationFailed(Throwable cause) {
         for (ITestInvocationListener listener : mListeners) {
-            listener.invocationFailed(cause);
+            try {
+                listener.invocationFailed(cause);
+            } catch (RuntimeException e) {
+                CLog.e("RuntimeException while invoking %s#invocationFailed",
+                        listener.getClass().getName());
+                CLog.e(e);
+            }
         }
     }
 
@@ -126,7 +139,13 @@ public class ResultForwarder implements ITestInvocationListener {
     @Override
     public void testLog(String dataName, LogDataType dataType, InputStreamSource dataStream) {
         for (ITestInvocationListener listener : mListeners) {
-            listener.testLog(dataName, dataType, dataStream);
+            try {
+                listener.testLog(dataName, dataType, dataStream);
+            } catch (RuntimeException e) {
+                CLog.e("RuntimeException while invoking %s#testLog",
+                        listener.getClass().getName());
+                CLog.e(e);
+            }
         }
     }
 
@@ -136,7 +155,13 @@ public class ResultForwarder implements ITestInvocationListener {
     @Override
     public void testRunStarted(String runName, int testCount) {
         for (ITestInvocationListener listener : mListeners) {
-            listener.testRunStarted(runName, testCount);
+            try {
+                listener.testRunStarted(runName, testCount);
+            } catch (RuntimeException e) {
+                CLog.e("RuntimeException while invoking %s#testRunStarted",
+                        listener.getClass().getName());
+                CLog.e(e);
+            }
         }
     }
 
@@ -146,7 +171,13 @@ public class ResultForwarder implements ITestInvocationListener {
     @Override
     public void testRunFailed(String errorMessage) {
         for (ITestInvocationListener listener : mListeners) {
-            listener.testRunFailed(errorMessage);
+            try {
+                listener.testRunFailed(errorMessage);
+            } catch (RuntimeException e) {
+                CLog.e("RuntimeException while invoking %s#testRunFailed",
+                        listener.getClass().getName());
+                CLog.e(e);
+            }
         }
     }
 
@@ -156,7 +187,13 @@ public class ResultForwarder implements ITestInvocationListener {
     @Override
     public void testRunStopped(long elapsedTime) {
         for (ITestInvocationListener listener : mListeners) {
-            listener.testRunStopped(elapsedTime);
+            try {
+                listener.testRunStopped(elapsedTime);
+            } catch (RuntimeException e) {
+                CLog.e("RuntimeException while invoking %s#testRunStopped",
+                        listener.getClass().getName());
+                CLog.e(e);
+            }
         }
     }
 
@@ -166,7 +203,13 @@ public class ResultForwarder implements ITestInvocationListener {
     @Override
     public void testRunEnded(long elapsedTime, Map<String, String> runMetrics) {
         for (ITestInvocationListener listener : mListeners) {
-            listener.testRunEnded(elapsedTime, runMetrics);
+            try {
+                listener.testRunEnded(elapsedTime, runMetrics);
+            } catch (RuntimeException e) {
+                CLog.e("RuntimeException while invoking %s#testRunEnded",
+                        listener.getClass().getName());
+                CLog.e(e);
+            }
         }
     }
 
@@ -176,7 +219,13 @@ public class ResultForwarder implements ITestInvocationListener {
     @Override
     public void testStarted(TestIdentifier test) {
         for (ITestInvocationListener listener : mListeners) {
-            listener.testStarted(test);
+            try {
+                listener.testStarted(test);
+            } catch (RuntimeException e) {
+                CLog.e("RuntimeException while invoking %s#testStarted",
+                        listener.getClass().getName());
+                CLog.e(e);
+            }
         }
     }
 
@@ -186,7 +235,13 @@ public class ResultForwarder implements ITestInvocationListener {
     @Override
     public void testFailed(TestIdentifier test, String trace) {
         for (ITestInvocationListener listener : mListeners) {
-            listener.testFailed(test, trace);
+            try {
+                listener.testFailed(test, trace);
+            } catch (RuntimeException e) {
+                CLog.e("RuntimeException while invoking %s#testFailed",
+                        listener.getClass().getName());
+                CLog.e(e);
+            }
         }
     }
 
@@ -196,21 +251,39 @@ public class ResultForwarder implements ITestInvocationListener {
     @Override
     public void testEnded(TestIdentifier test, Map<String, String> testMetrics) {
         for (ITestInvocationListener listener : mListeners) {
-            listener.testEnded(test, testMetrics);
+            try {
+                listener.testEnded(test, testMetrics);
+            } catch (RuntimeException e) {
+                CLog.e("RuntimeException while invoking %s#testEnded",
+                        listener.getClass().getName());
+                CLog.e(e);
+            }
         }
     }
 
     @Override
     public void testAssumptionFailure(TestIdentifier test, String trace) {
         for (ITestInvocationListener listener : mListeners) {
-            listener.testAssumptionFailure(test, trace);
+            try {
+                listener.testAssumptionFailure(test, trace);
+            } catch (RuntimeException e) {
+                CLog.e("RuntimeException while invoking %s#testAssumptionFailure",
+                        listener.getClass().getName());
+                CLog.e(e);
+            }
         }
     }
 
     @Override
     public void testIgnored(TestIdentifier test) {
         for (ITestInvocationListener listener : mListeners) {
-            listener.testIgnored(test);
+            try {
+                listener.testIgnored(test);
+            } catch (RuntimeException e) {
+                CLog.e("RuntimeException while invoking %s#testIgnored",
+                        listener.getClass().getName());
+                CLog.e(e);
+            }
         }
     }
 }
