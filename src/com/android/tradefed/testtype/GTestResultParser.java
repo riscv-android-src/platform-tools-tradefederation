@@ -275,15 +275,18 @@ public class GTestResultParser extends MultiLineReceiver {
                 message = line.substring(Prefixes.START_TEST_MARKER.length()).trim();
                 processTestStartedTag(message);
             }
-            else if (line.startsWith(Prefixes.OK_TEST_MARKER)) {
+            else if (line.contains(Prefixes.OK_TEST_MARKER)) {
                 // Individual test completed successfully
-                message = line.substring(Prefixes.OK_TEST_MARKER.length()).trim();
+                // Logs from test could offset the OK marker
+                message = line.substring(line.indexOf(Prefixes.OK_TEST_MARKER) +
+                        Prefixes.OK_TEST_MARKER.length()).trim();
                 processOKTag(message);
                 clearCurrentTestResult();
             }
-            else if (line.startsWith(Prefixes.FAILED_TEST_MARKER)) {
+            else if (line.contains(Prefixes.FAILED_TEST_MARKER)) {
                 // Individual test completed with failure
-                message = line.substring(Prefixes.FAILED_TEST_MARKER.length()).trim();
+                message = line.substring(line.indexOf(Prefixes.FAILED_TEST_MARKER) +
+                        Prefixes.FAILED_TEST_MARKER.length()).trim();
                 processFailedTag(message);
                 clearCurrentTestResult();
             }

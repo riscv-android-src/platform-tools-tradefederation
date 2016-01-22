@@ -44,6 +44,7 @@ public class GTestResultParserTest extends TestCase {
     private static final String GTEST_OUTPUT_FILE_4 = "gtest_output4.txt";
     private static final String GTEST_OUTPUT_FILE_5 = "gtest_output5.txt";
     private static final String GTEST_OUTPUT_FILE_6 = "gtest_output6.txt";
+    private static final String GTEST_OUTPUT_FILE_7 = "gtest_output7.txt";
     private static final String LOG_TAG = "GTestResultParserTest";
 
     /**
@@ -253,5 +254,26 @@ public class GTestResultParserTest extends TestCase {
         GTestResultParser resultParser = new GTestResultParser(TEST_MODULE_NAME, mockRunListener);
         resultParser.processNewLines(contents);
         EasyMock.verify(mockRunListener);
+    }
+
+    /**
+     * Tests the parser for a run with 11 tests.
+     */
+    @SuppressWarnings("unchecked")
+    public void testParseNonAlignedTag() throws Exception {
+        String[] contents =  readInFile(GTEST_OUTPUT_FILE_7);
+        ITestRunListener mockRunListener = EasyMock.createMock(ITestRunListener.class);
+        mockRunListener.testRunStarted(TEST_MODULE_NAME, 11);
+        // 11 passing test cases in this run
+        for (int i=0; i<11; ++i) {
+            mockRunListener.testStarted((TestIdentifier)EasyMock.anyObject());
+            mockRunListener.testEnded((TestIdentifier)EasyMock.anyObject(),
+                    (Map<String, String>)EasyMock.anyObject());
+        }
+        mockRunListener.testRunEnded(EasyMock.anyLong(),
+                (Map<String, String>) EasyMock.anyObject());
+        EasyMock.replay(mockRunListener);
+        GTestResultParser resultParser = new GTestResultParser(TEST_MODULE_NAME, mockRunListener);
+        resultParser.processNewLines(contents);
     }
 }
