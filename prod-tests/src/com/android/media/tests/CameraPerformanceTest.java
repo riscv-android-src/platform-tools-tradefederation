@@ -130,6 +130,7 @@ public class CameraPerformanceTest extends CameraTestBase {
      * Data class of CTS test results for Camera framework performance test
      */
     public static class CtsMetric {
+        String testMethod;  // "testSingleCapture"
         String source;      // "android.hardware.camera2.cts.PerformanceTest#testSingleCapture:327"
                             // or "testSingleCapture" (just test method name)
         String message;     // "Camera 0: Camera capture latency"
@@ -137,7 +138,6 @@ public class CameraPerformanceTest extends CameraTestBase {
         String unit;        // "ms"
         String value;       // "691.0" (is an average of 736.0 688.0 679.0 667.0 686.0)
         String schemaKey;   // RU schema key = message (+ testMethodName if needed), derived
-        String testMethod;  // "testSingleCapture", derived from source
 
         // eg. "android.hardware.camera2.cts.PerformanceTest#testSingleCapture:327"
         public static final Pattern SOURCE_REGEX = Pattern.compile(
@@ -146,14 +146,15 @@ public class CameraPerformanceTest extends CameraTestBase {
         public static final Pattern MESSAGE_REGEX = Pattern.compile(
                 "^Camera\\s+(?<cameraId>\\d+):\\s+(?<kpiName>.*)");
 
-        CtsMetric(String source, String message, String type, String unit, String value) {
+        CtsMetric(String testMethod, String source, String message, String type, String unit,
+                String value) {
+            this.testMethod = testMethod;
             this.source = source;
             this.message = message;
             this.type = type;
             this.unit = unit;
             this.value = value;
             this.schemaKey = getRuSchemaKeyName(message);
-            this.testMethod = getTestMethodName(source);
         }
 
         public boolean matches(String testMethod, String kpiName) {
@@ -169,7 +170,7 @@ public class CameraPerformanceTest extends CameraTestBase {
             final String[] TEST_NAMES_AS_PREFIX = {"testReprocessingLatency",
                     "testReprocessingThroughput"};
             for (String testName : TEST_NAMES_AS_PREFIX) {
-                if (source.endsWith(testName)) {
+                if (testMethod.endsWith(testName)) {
                     schemaKey = String.format("%s_%s", testName, schemaKey);
                     break;
                 }
@@ -177,7 +178,7 @@ public class CameraPerformanceTest extends CameraTestBase {
             return schemaKey;
         }
 
-        public String getTestMethodName(String source) {
+        public String getTestMethodNameInSource(String source) {
             Matcher m = SOURCE_REGEX.matcher(source);
             if (!m.matches()) {
                 return source;
@@ -306,6 +307,7 @@ public class CameraPerformanceTest extends CameraTestBase {
             // Example: "Camera launch average time for Camera 1| |lower_better|ms|586.6++++"
             if (summaryMatcher.matches()) {
                 setSummary(new CtsMetric(testMethod,
+                        null,
                         summaryMatcher.group("message"),
                         summaryMatcher.group("type"),
                         summaryMatcher.group("unit"),
@@ -328,6 +330,7 @@ public class CameraPerformanceTest extends CameraTestBase {
                     }
                     String kpiValue = String.format("%.1f", getAverage(values));
                     addDetail(new CtsMetric(
+                            testMethod,
                             detailMatcher.group("source"),
                             detailMatcher.group("message"),
                             detailMatcher.group("type"),
@@ -376,10 +379,12 @@ public class CameraPerformanceTest extends CameraTestBase {
         private static final String SOURCE_ATTR = "source";
         private static final String SUMMARY_TAG = "Summary";
         private static final String VALUE_TAG = "Value";
+        private String mTestMethod;
 
         @Override
         public Map<String, String> parse(String result, String testMethod) {
             try {
+                mTestMethod = testMethod;
                 XmlPullParserFactory factory = XmlPullParserFactory.newInstance();
                 XmlPullParser parser = factory.newPullParser();
                 parser.setInput(new ByteArrayInputStream(result.getBytes(ENCODING)), ENCODING);
@@ -397,7 +402,7 @@ public class CameraPerformanceTest extends CameraTestBase {
          * @throws IOException
          * @throws XmlPullParserException
          */
-        public void parse(XmlPullParser parser) throws XmlPullParserException, IOException {
+        private void parse(XmlPullParser parser) throws XmlPullParserException, IOException {
             parser.require(XmlPullParser.START_TAG, null, SUMMARY_TAG);
             parser.nextTag();
             setSummary(parseToCtsMetrics(parser));
@@ -427,7 +432,7 @@ public class CameraPerformanceTest extends CameraTestBase {
             }
             String kpiValue = String.format("%.1f", getAverage(values));
             parser.require(XmlPullParser.END_TAG, null, METRIC_TAG);
-            return new CtsMetric(source, message, type, unit, kpiValue);
+            return new CtsMetric(mTestMethod, source, message, type, unit, kpiValue);
         }
     }
 }
