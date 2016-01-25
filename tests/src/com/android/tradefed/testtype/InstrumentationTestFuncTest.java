@@ -172,7 +172,7 @@ public class InstrumentationTestFuncTest extends DeviceTestCase {
             public void run() {
                 // wait for test run to begin
                 try {
-                    Thread.sleep(500);
+                    Thread.sleep(2000);
                     Runtime.getRuntime().exec(
                             String.format("adb -s %s reboot", getDevice().getIDevice()
                                     .getSerialNumber()));

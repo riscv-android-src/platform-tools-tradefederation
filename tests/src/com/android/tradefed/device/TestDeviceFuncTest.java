@@ -545,7 +545,7 @@ public class TestDeviceFuncTest extends DeviceTestCase {
     public void testClearErrorDialogs_crash() throws DeviceNotAvailableException {
         Log.i(LOG_TAG, "testClearErrorDialogs_crash");
         // now cause a crash dialog to appear
-        getDevice().executeShellCommand("am start -w -n " + TestAppConstants.CRASH_ACTIVITY);
+        getDevice().executeShellCommand("am start -W -n " + TestAppConstants.CRASH_ACTIVITY);
         getDevice().clearErrorDialogs();
         assertTrue(runUITests());
     }
