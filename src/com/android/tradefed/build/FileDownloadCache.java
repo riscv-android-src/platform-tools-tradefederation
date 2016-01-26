@@ -191,40 +191,45 @@ public class FileDownloadCache {
         boolean download = false;
         // remove and then add previous cache entry to maintain LRU order
         mCacheMapLock.lock();
-        File cachedFile = mCacheMap.remove(remotePath);
-        if (cachedFile == null) {
-            // create a local File that maps to remotePath
-            // convert remotePath to a local path if necessary
-            String localRelativePath = convertPath(remotePath);
-            cachedFile = new File(mCacheRoot, localRelativePath);
-            cachedFile.getParentFile().mkdirs();
-            download = true;
-        }
-        // lock on the file, so no other thread attempts to delete it or access it before its
-        // downloaded
         File copyFile = null;
         try {
-            synchronized (cachedFile) {
-                mCacheMap.put(remotePath, cachedFile);
-                mCacheMapLock.unlock();
-                if (download) {
-                    downloadFile(downloader, remotePath, cachedFile);
-                } else {
-                    Log.d(LOG_TAG, String.format("Retrieved remote file %s from cached file %s",
-                            remotePath, cachedFile.getAbsolutePath()));
-                }
-                copyFile = copyFile(remotePath, cachedFile);
-
+            File cachedFile = mCacheMap.remove(remotePath);
+            if (cachedFile == null) {
+                // create a local File that maps to remotePath
+                // convert remotePath to a local path if necessary
+                String localRelativePath = convertPath(remotePath);
+                cachedFile = new File(mCacheRoot, localRelativePath);
+                cachedFile.getParentFile().mkdirs();
+                download = true;
             }
-        } catch (BuildRetrievalError e) {
-            // remove entry from cache outside of cachedFile lock, to prevent deadlock
-            mCacheMapLock.lock();
-            mCacheMap.remove(remotePath);
-            mCacheMapLock.unlock();
-            throw e;
-        }
-        if (download) {
-           incrementAndAdjustCache(cachedFile.length());
+            // lock on the file, so no other thread attempts to delete it or access it before its
+            // downloaded
+            try {
+                synchronized (cachedFile) {
+                    mCacheMap.put(remotePath, cachedFile);
+                    mCacheMapLock.unlock();
+                    if (download) {
+                        downloadFile(downloader, remotePath, cachedFile);
+                    } else {
+                        Log.d(LOG_TAG, String.format("Retrieved remote file %s from cached file %s",
+                                remotePath, cachedFile.getAbsolutePath()));
+                    }
+                    copyFile = copyFile(remotePath, cachedFile);
+                }
+            } catch (BuildRetrievalError e) {
+                // remove entry from cache outside of cachedFile lock, to prevent deadlock
+                mCacheMapLock.lock();
+                mCacheMap.remove(remotePath);
+                mCacheMapLock.unlock();
+                throw e;
+            }
+            if (download) {
+               incrementAndAdjustCache(cachedFile.length());
+            }
+        } finally {
+            if (mCacheMapLock.isLocked()) {
+                mCacheMapLock.unlock();
+            }
         }
         return copyFile;
     }
