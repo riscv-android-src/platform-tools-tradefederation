@@ -227,7 +227,7 @@ public class FileDownloadCache {
                incrementAndAdjustCache(cachedFile.length());
             }
         } finally {
-            if (mCacheMapLock.isLocked()) {
+            if (mCacheMapLock.isHeldByCurrentThread() && mCacheMapLock.isLocked()) {
                 mCacheMapLock.unlock();
             }
         }
