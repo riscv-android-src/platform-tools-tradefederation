@@ -109,6 +109,13 @@ public class DeviceManager implements IDeviceManager {
     private DeviceRecoverer mDeviceRecoverer;
 
     /**
+     * Creator interface for {@link IManagedTestDevice}s
+     */
+    interface IManagedTestDeviceFactory {
+        IManagedTestDevice createDevice(IDevice stubDevice);
+    }
+
+    /**
      * The DeviceManager should be retrieved from the {@link GlobalConfiguration}
      */
     public DeviceManager() {
@@ -126,8 +133,20 @@ public class DeviceManager implements IDeviceManager {
     @Override
     public void init(IDeviceSelection globalDeviceFilter,
             List<IDeviceMonitor> globalDeviceMonitors) {
-        init(globalDeviceFilter, globalDeviceMonitors,
-                new ManagedTestDeviceFactory(mFastbootEnabled, DeviceManager.this, mDvcMon));
+        init(globalDeviceFilter, globalDeviceMonitors, new IManagedTestDeviceFactory() {
+            @Override
+            public IManagedTestDevice createDevice(IDevice idevice) {
+                TestDevice testDevice = new TestDevice(idevice, new DeviceStateMonitor(
+                        DeviceManager.this, idevice, mFastbootEnabled), mDvcMon);
+                testDevice.setFastbootEnabled(mFastbootEnabled);
+                if (idevice instanceof FastbootDevice) {
+                    testDevice.setDeviceState(TestDeviceState.FASTBOOT);
+                } else if (idevice instanceof StubDevice) {
+                    testDevice.setDeviceState(TestDeviceState.NOT_AVAILABLE);
+                }
+                return testDevice;
+            }
+        });
     }
 
     /**
@@ -914,8 +933,6 @@ public class DeviceManager implements IDeviceManager {
          */
         @Override
         public void deviceDisconnected(IDevice disconnectedDevice) {
-            CLog.d("Detected device disconnect %s, id %d", disconnectedDevice.getSerialNumber(),
-                    disconnectedDevice.hashCode());
             IManagedTestDevice d = mManagedDeviceList.find(disconnectedDevice.getSerialNumber());
             if (d != null) {
                 mManagedDeviceList.handleDeviceEvent(d, DeviceEvent.DISCONNECTED);
