@@ -16,6 +16,7 @@
 package com.android.tradefed.device;
 
 import com.android.ddmlib.IDevice;
+import com.android.tradefed.device.DeviceManager.IManagedTestDeviceFactory;
 
 import junit.framework.TestCase;
 
