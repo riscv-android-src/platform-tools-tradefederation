@@ -142,7 +142,7 @@ public class DeviceManager implements IDeviceManager {
                 if (idevice instanceof FastbootDevice) {
                     testDevice.setDeviceState(TestDeviceState.FASTBOOT);
                 } else if (idevice instanceof StubDevice) {
-                    testDevice.setDeviceState(TestDeviceState.NOT_AVAILABLE);
+                    testDevice.setDeviceState(TestDeviceState.ONLINE);
                 }
                 return testDevice;
             }
