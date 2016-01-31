@@ -47,8 +47,8 @@ import com.android.tradefed.util.RunUtil;
 import com.android.tradefed.util.SizeLimitedOutputStream;
 import com.android.tradefed.util.StreamUtil;
 
-import java.awt.image.BufferedImage;
 import java.awt.Image;
+import java.awt.image.BufferedImage;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FilenameFilter;
@@ -3217,16 +3217,21 @@ class TestDevice implements IManagedTestDevice {
     }
 
     private long getDeviceTimeOffset(Date date) throws DeviceNotAvailableException {
-        String deviceTime = executeShellCommand("date +%s");
+        String deviceTimeString = executeShellCommand("date +%s");
+        Long deviceTime = null;
+        long offset = 0;
+
+        try {
+            deviceTime = Long.valueOf(deviceTimeString.trim());
+        } catch (NumberFormatException nfe) {
+            CLog.i("Invalid device time: \"%s\", ignored.");
+            return 0;
+        }
         if (date == null) {
             date = new Date();
         }
-        long hostTime = date.getTime();
-        long offset = 0;
 
-        if (deviceTime != null) {
-            offset = hostTime - (Long.valueOf(deviceTime.trim()) * 1000);
-        }
+        offset = date.getTime() - deviceTime * 1000;
         CLog.d("Time offset = " + offset);
         return offset;
     }
