@@ -109,13 +109,6 @@ public class DeviceManager implements IDeviceManager {
     private DeviceRecoverer mDeviceRecoverer;
 
     /**
-     * Creator interface for {@link IManagedTestDevice}s
-     */
-    interface IManagedTestDeviceFactory {
-        IManagedTestDevice createDevice(IDevice stubDevice);
-    }
-
-    /**
      * The DeviceManager should be retrieved from the {@link GlobalConfiguration}
      */
     public DeviceManager() {
@@ -133,20 +126,8 @@ public class DeviceManager implements IDeviceManager {
     @Override
     public void init(IDeviceSelection globalDeviceFilter,
             List<IDeviceMonitor> globalDeviceMonitors) {
-        init(globalDeviceFilter, globalDeviceMonitors, new IManagedTestDeviceFactory() {
-            @Override
-            public IManagedTestDevice createDevice(IDevice idevice) {
-                TestDevice testDevice = new TestDevice(idevice, new DeviceStateMonitor(
-                        DeviceManager.this, idevice, mFastbootEnabled), mDvcMon);
-                testDevice.setFastbootEnabled(mFastbootEnabled);
-                if (idevice instanceof FastbootDevice) {
-                    testDevice.setDeviceState(TestDeviceState.FASTBOOT);
-                } else if (idevice instanceof StubDevice) {
-                    testDevice.setDeviceState(TestDeviceState.ONLINE);
-                }
-                return testDevice;
-            }
-        });
+        init(globalDeviceFilter, globalDeviceMonitors,
+                new ManagedTestDeviceFactory(mFastbootEnabled, DeviceManager.this, mDvcMon));
     }
 
     /**
@@ -181,6 +162,7 @@ public class DeviceManager implements IDeviceManager {
             startFastbootMonitor();
             // don't set fastboot enabled bit until mFastbootListeners has been initialized
             mFastbootEnabled = true;
+            deviceFactory.setFastbootEnabled(mFastbootEnabled);
             // TODO: consider only adding fastboot devices if explicit option is set, because
             // device property selection options won't work properly with a device in fastboot
             addFastbootDevices();
@@ -189,6 +171,7 @@ public class DeviceManager implements IDeviceManager {
             mFastbootListeners = null;
             mFastbootMonitor = null;
             mFastbootEnabled = false;
+            deviceFactory.setFastbootEnabled(mFastbootEnabled);
         }
 
         // don't start adding devices until fastboot support has been established

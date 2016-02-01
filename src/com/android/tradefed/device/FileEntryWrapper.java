@@ -28,7 +28,7 @@ import java.util.Map;
  */
 class FileEntryWrapper implements IFileEntry {
 
-    private final TestDevice mTestDevice;
+    private final AndroidNativeDevice mTestDevice;
     private final FileListingService.FileEntry mFileEntry;
     private Map<String, IFileEntry> mChildMap = null;
 
@@ -38,7 +38,7 @@ class FileEntryWrapper implements IFileEntry {
      * @param testDevice the {@link TestDevice} to use
      * @param entry the corresponding {@link FileEntry} to wrap
      */
-    FileEntryWrapper(TestDevice testDevice, FileEntry entry) {
+    FileEntryWrapper(AndroidNativeDevice testDevice, FileEntry entry) {
         mTestDevice = testDevice;
         mFileEntry = entry;
     }
