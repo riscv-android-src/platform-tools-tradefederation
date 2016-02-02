@@ -87,8 +87,14 @@ public class AudioLoopbackTest implements IDeviceTest, IRemoteTest {
     private final String OUTPUT_WAV_PATH = DEVICE_TEMP_DIR_PATH + OUTPUT_FILENAME + ".wav";
     private final String OUTPUT_PLAYER_BUFFER_PATH =
             DEVICE_TEMP_DIR_PATH + OUTPUT_FILENAME + "_playerBufferPeriod.txt";
+    private final String OUTPUT_PLAYER_BUFFER_PNG_PATH =
+            DEVICE_TEMP_DIR_PATH + OUTPUT_FILENAME + "_playerBufferPeriod.png";
     private final String OUTPUT_RECORDER_BUFFER_PATH =
             DEVICE_TEMP_DIR_PATH + OUTPUT_FILENAME + "_recorderBufferPeriod.txt";
+    private final String OUTPUT_RECORDER_BUFFER_PNG_PATH =
+            DEVICE_TEMP_DIR_PATH + OUTPUT_FILENAME + "_recorderBufferPeriod.png";
+    private final String OUTPUT_GLITCH_PATH =
+            DEVICE_TEMP_DIR_PATH + OUTPUT_FILENAME + "_glitchMillis.txt";
     private final String AM_CMD = "am start -n org.drrickorang.loopback/.LoopbackActivity" +
             " --ei SF %s --es FileName %s --ei MicSource %s --ei AudioThread %s" +
             " --ei AudioLevel %s --ei TestType %s --ei BufferTestDuration %s";
@@ -101,7 +107,10 @@ public class AudioLoopbackTest implements IDeviceTest, IRemoteTest {
         result.put("Recorder Number of Outliers", "recorder_outliers");
         result.put("Player Benchmark", "player_benchmark");
         result.put("Player Number of Outliers", "player_outliers");
-        result.put("Estimated Number of Glitches", "number_of_glitches");
+        result.put("Total Number of Glitches", "number_of_glitches");
+        result.put("kth% Late Recorder Buffer Callbacks", "late_recorder_callbacks");
+        result.put("kth% Late Player Buffer Callbacks", "late_player_callbacks");
+        result.put("Glitches Per Hour", "glitches_per_hour");
         return Collections.unmodifiableMap(result);
     }
 
@@ -190,10 +199,23 @@ public class AudioLoopbackTest implements IDeviceTest, IRemoteTest {
                 listener.testLog(mKeyPrefix + "player_buffer", LogDataType.TEXT,
                         new SnapshotInputStreamSource(
                                 new FileInputStream(loopbackPlayerBuffer)));
+                File loopbackPlayerBufferPng = device.pullFile(OUTPUT_PLAYER_BUFFER_PNG_PATH);
+                listener.testLog(mKeyPrefix + "player_buffer_histogram", LogDataType.PNG,
+                    new SnapshotInputStreamSource(new FileInputStream(loopbackPlayerBufferPng)));
+
                 File loopbackRecorderBuffer = device.pullFile(OUTPUT_RECORDER_BUFFER_PATH);
                 listener.testLog(mKeyPrefix + "recorder_buffer", LogDataType.TEXT,
                         new SnapshotInputStreamSource(new FileInputStream(
                                 loopbackRecorderBuffer)));
+                File loopbackRecorderBufferPng = device.pullFile(OUTPUT_RECORDER_BUFFER_PNG_PATH);
+                listener.testLog(mKeyPrefix + "recorder_buffer_histogram", LogDataType.PNG,
+                    new SnapshotInputStreamSource(new FileInputStream(
+                                loopbackRecorderBufferPng)));
+
+                File loopbackGlitch = device.pullFile(OUTPUT_GLITCH_PATH);
+                listener.testLog(mKeyPrefix + "glitches_millis", LogDataType.TEXT,
+                        new SnapshotInputStreamSource(new FileInputStream(
+                                loopbackGlitch)));
             }
         } catch (IOException ioe) {
             CLog.e(ioe.getMessage());
