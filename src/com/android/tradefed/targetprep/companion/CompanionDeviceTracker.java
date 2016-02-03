@@ -22,6 +22,7 @@ import com.android.tradefed.device.DeviceSelectionOptions;
 import com.android.tradefed.device.FreeDeviceState;
 import com.android.tradefed.device.IDeviceManager;
 import com.android.tradefed.device.ITestDevice;
+import com.android.tradefed.device.TestDeviceState;
 import com.android.tradefed.log.LogUtil.CLog;
 
 import java.util.HashMap;
@@ -84,7 +85,12 @@ public class CompanionDeviceTracker {
             return;
         }
         ITestDevice companion = mDeviceMapping.remove(device);
-        getDeviceManager().freeDevice(companion, FreeDeviceState.AVAILABLE);
+        FreeDeviceState deviceState = FreeDeviceState.AVAILABLE;
+        if (!TestDeviceState.ONLINE.equals(companion.getDeviceState())) {
+            //If the device is offline at the end of the test
+            deviceState = FreeDeviceState.UNAVAILABLE;
+        }
+        getDeviceManager().freeDevice(companion, deviceState);
         CLog.i("freed companion device %s for primary device %s",
                 companion.getSerialNumber(), device.getSerialNumber());
     }
