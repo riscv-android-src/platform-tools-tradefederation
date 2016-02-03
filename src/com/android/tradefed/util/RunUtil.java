@@ -30,6 +30,8 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.Timer;
+import java.util.TimerTask;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 
@@ -52,6 +54,8 @@ public class RunUtil implements IRunUtil {
         }
     };
     private Map<Long, String> mInterruptThreads = new HashMap<>();
+    private ThreadLocal<Timer> mWatchdogInterrupt = null;
+    private boolean mInterruptibleGlobal = false;
 
     /**
      * Create a new {@link RunUtil} object to use.
@@ -410,6 +414,34 @@ public class RunUtil implements IRunUtil {
     public void allowInterrupt(boolean allow) {
         CLog.d("run interrupt allowed: %s", allow);
         mIsInterruptAllowed.set(allow);
+        checkInterrupted();
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public boolean isInterruptAllowed() {
+        return mIsInterruptAllowed.get();
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void setInterruptibleInFuture(Thread thread, final long timeMs) {
+        if (mWatchdogInterrupt == null) {
+            mWatchdogInterrupt = new ThreadLocal<Timer>() {
+                @Override
+                protected Timer initialValue() {
+                    return new Timer(true);
+                }
+            };
+            CLog.w("Setting future interruption in %s ms", timeMs);
+            mWatchdogInterrupt.get().schedule(new InterruptTask(thread), timeMs);
+        } else {
+            CLog.w("Future interruptible state already set.");
+        }
     }
 
     /**
@@ -425,9 +457,16 @@ public class RunUtil implements IRunUtil {
 
     private synchronized void checkInterrupted() {
         final long threadId = Thread.currentThread().getId();
-        if (mIsInterruptAllowed.get()) {
+        if (mInterruptibleGlobal) {
+            // If the global flag is on, meaning everything must terminate.
+            if (!isInterruptAllowed()) {
+                allowInterrupt(true);
+            }
+        }
+        if (isInterruptAllowed()) {
             final String message = mInterruptThreads.remove(threadId);
             if (message != null) {
+                Thread.currentThread().interrupt();
                 throw new RunInterruptedException(message);
             }
         }
@@ -620,5 +659,26 @@ public class RunUtil implements IRunUtil {
         });
         t.start();
         return t;
+    }
+
+    /**
+     * Timer that will execute a interrupt on the Thread registered.
+     */
+    private class InterruptTask extends TimerTask {
+
+        private Thread mToInterrupt = null;
+
+        public InterruptTask(Thread t) {
+            mToInterrupt = t;
+        }
+
+        @Override
+        public void run() {
+            if (mToInterrupt != null) {
+                CLog.e("Interrupting with TimerTask");
+                mInterruptibleGlobal = true;
+                mToInterrupt.interrupt();
+            }
+        }
     }
 }

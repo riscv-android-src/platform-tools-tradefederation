@@ -146,6 +146,12 @@ public class CommandScheduler extends Thread implements ICommandScheduler, IComm
             "terminate TF session if a configuration exception on command file occurs")
     private boolean mShutdownOnCmdfileError = false;
 
+    @Option(name = "shutdown-delay", description =
+            "maximum time to wait before allowing final interruption of scheduler to terminate"
+            + " TF session. If value is zero, interruption will only be triggered"
+            + " when Invocation become interruptible. (Default behavior).", isTimeVal = true)
+    private long mShutdownTimeout = 0;
+
     private enum CommandState {
         WAITING_FOR_DEVICE("Wait_for_device"),
         EXECUTING("Executing"),
@@ -506,6 +512,7 @@ public class CommandScheduler extends Thread implements ICommandScheduler, IComm
          * all running invocations.
          */
         public void stopInvocation(String message) {
+
             if (mDevice != null && mDevice.getIDevice().isOnline()) {
                 // Kill all running processes on device.
                 try {
@@ -514,8 +521,13 @@ public class CommandScheduler extends Thread implements ICommandScheduler, IComm
                     CLog.w("failed to kill process on device %s: %s", mDevice.getSerialNumber(), e);
                 }
             }
+            // If invocation is not currently in an interruptible state we provide a timer
+            // after which it will become interruptible.
+            // If timeout is 0, we do not enforce future interruption.
+            if (getShutdownTimeout() != 0) {
+                RunUtil.getDefault().setInterruptibleInFuture(this, getShutdownTimeout());
+            }
             RunUtil.getDefault().interrupt(this, message);
-            super.interrupt();
         }
 
         /**
@@ -537,14 +549,23 @@ public class CommandScheduler extends Thread implements ICommandScheduler, IComm
                 } catch (InterruptedException | ExecutionException e) {
                     // fall through
                 }
-                CLog.d("device %s: battey level=%d%%", device.getSerialNumber(), batteryLevel);
+                CLog.d("device %s: battery level=%d%%", device.getSerialNumber(), batteryLevel);
                 // This logic is based on the assumption that batterLevel will be 0 or -1 if TF
                 // fails to fetch a valid battery level or the device is not using a battery.
+                // So batteryLevel=0 will not trigger a stop.
                 if (0 < batteryLevel && batteryLevel < cutoffBattery) {
-                    CLog.i("Stopping %s: battery too low (%d%% < %d%%)",
-                            getName(), batteryLevel, cutoffBattery);
-                    stopInvocation(String.format(
-                            "battery too low (%d%% < %d%%)", batteryLevel, cutoffBattery));
+                    if (RunUtil.getDefault().isInterruptAllowed()) {
+                        CLog.i("Stopping %s: battery too low (%d%% < %d%%)",
+                                getName(), batteryLevel, cutoffBattery);
+                        stopInvocation(String.format(
+                                "battery too low (%d%% < %d%%)", batteryLevel, cutoffBattery));
+                    } else {
+                        // In this case, the battery is check periodically by CommandScheduler so
+                        // there will be more opportunity to terminate the invocation when it's
+                        // interruptible.
+                        CLog.w("device: %s has a low battery but is in uninterruptible state.",
+                                device.getSerialNumber());
+                    }
                 }
             }
         }
@@ -1747,5 +1768,9 @@ public class CommandScheduler extends Thread implements ICommandScheduler, IComm
     @Override
     public boolean shouldShutdownOnCmdfileError() {
         return mShutdownOnCmdfileError;
+    }
+
+    public long getShutdownTimeout() {
+        return mShutdownTimeout;
     }
 }

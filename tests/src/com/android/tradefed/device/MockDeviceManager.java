@@ -120,6 +120,16 @@ public class MockDeviceManager implements IDeviceManager {
         }
     }
 
+    public void addDevice(ITestDevice mockDevice) {
+        mTotalDevices += 1;
+        mAvailableDeviceQueue.add(mockDevice);
+    }
+
+    public void clearAllDevices() {
+        mTotalDevices = 0;
+        mAvailableDeviceQueue.clear();
+    }
+
     private static class TestDeviceMatcher implements IMatcher<ITestDevice> {
         private IDeviceSelection mDeviceOptions;
 
