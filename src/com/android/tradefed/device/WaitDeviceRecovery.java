@@ -196,16 +196,18 @@ public class WaitDeviceRecovery implements IDeviceRecovery {
             Log.i(LOG_TAG, String.format(
                     "Device %s unresponsive. Rebooting...", monitor.getSerialNumber()));
             rebootDevice(device);
+            IDevice newdevice = monitor.waitForDeviceOnline(mOnlineWaitTime);
+            if (newdevice == null) {
+                handleDeviceNotAvailable(monitor, false);
+                return;
+            }
+            if (monitor.waitForDeviceAvailable(mWaitTime) != null) {
+                return;
+            }
         }
-        IDevice newdevice = monitor.waitForDeviceOnline(mOnlineWaitTime);
-        if (newdevice == null) {
-            handleDeviceNotAvailable(monitor, false);
-            return;
-        }
-        if (monitor.waitForDeviceAvailable(mWaitTime) == null) {
-            throw new DeviceUnresponsiveException(String.format(
-                    "Device %s is online but unresponsive", monitor.getSerialNumber()));
-        }
+        // If no reboot was done, waitForDeviceAvailable has already been checked.
+        throw new DeviceUnresponsiveException(String.format(
+                "Device %s is online but unresponsive", monitor.getSerialNumber()));
     }
 
     /**
