@@ -16,7 +16,6 @@
 package com.android.tradefed.device;
 
 import com.android.ddmlib.IDevice;
-import com.android.tradefed.device.DeviceManager.IManagedTestDeviceFactory;
 
 import junit.framework.TestCase;
 
@@ -37,6 +36,11 @@ public class ManagedDeviceListTest extends TestCase {
                 // use real TestDevice to get allocation state machine
                 return new TestDevice(stubDevice, EasyMock.createNiceMock(
                         IDeviceStateMonitor.class), null);
+            }
+
+            @Override
+            public void setFastbootEnabled(boolean enable) {
+                // ignore
             }
         });
     }
