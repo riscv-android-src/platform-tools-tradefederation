@@ -25,6 +25,7 @@ import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.IDeviceRecovery;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.device.TestDeviceOptions;
+import com.android.tradefed.device.ITestDevice.RecoveryMode;
 import com.android.tradefed.log.ILeveledLogOutput;
 import com.android.tradefed.log.ILogRegistry;
 import com.android.tradefed.result.ByteArrayInputStreamSource;
@@ -314,6 +315,8 @@ public class TestInvocationTest extends TestCase {
         IRemoteTest test = EasyMock.createMock(IRemoteTest.class);
         test.run((ITestInvocationListener)EasyMock.anyObject());
         EasyMock.expectLastCall().andThrow(exception);
+        mMockDevice.setRecoveryMode(RecoveryMode.NONE);
+        EasyMock.expectLastCall();
         setupMockFailureListeners(exception);
         mMockBuildProvider.buildNotTested(mMockBuildInfo);
         setupNormalInvoke(test);
@@ -373,7 +376,8 @@ public class TestInvocationTest extends TestCase {
         resumableTest.run((ITestInvocationListener)EasyMock.anyObject());
         EasyMock.expectLastCall().andThrow(new DeviceNotAvailableException());
         EasyMock.expect(resumableTest.isResumable()).andReturn(Boolean.TRUE);
-
+        mMockDevice.setRecoveryMode(RecoveryMode.NONE);
+        EasyMock.expectLastCall();
         EasyMock.expect(mMockDevice.getLogcat())
                 .andReturn(new ByteArrayInputStreamSource(new byte[0]));
         EasyMock.expect(mMockLogger.getLog())
@@ -504,6 +508,8 @@ public class TestInvocationTest extends TestCase {
         mockCleaner.setUp(mMockDevice, mMockBuildInfo);
         EasyMock.expectLastCall();
         mockCleaner.tearDown(mMockDevice, mMockBuildInfo, exception);
+        EasyMock.expectLastCall();
+        mMockDevice.setRecoveryMode(RecoveryMode.NONE);
         EasyMock.expectLastCall();
         EasyMock.replay(mockCleaner);
         mStubConfiguration.getTargetPreparers().add(mockCleaner);

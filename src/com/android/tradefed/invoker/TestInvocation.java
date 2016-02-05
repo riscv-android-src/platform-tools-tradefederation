@@ -26,6 +26,7 @@ import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.DeviceUnresponsiveException;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.device.TestDeviceState;
+import com.android.tradefed.device.ITestDevice.RecoveryMode;
 import com.android.tradefed.log.ILeveledLogOutput;
 import com.android.tradefed.log.ILogRegistry;
 import com.android.tradefed.log.LogRegistry;
@@ -479,6 +480,9 @@ public class TestInvocation implements ITestInvocation {
             } else {
                 CLog.i("Rescheduled failed invocation for resume");
             }
+            // Upon reaching here after an exception, it is safe to assume that recovery
+            // has already been attempted so we disable it to avoid re-entry during clean up.
+            device.setRecoveryMode(RecoveryMode.NONE);
             throw e;
         } catch (RunInterruptedException e) {
             CLog.w("Invocation interrupted");
