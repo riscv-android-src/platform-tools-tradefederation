@@ -1712,7 +1712,16 @@ public class AndroidNativeDevice implements IManagedTestDevice {
             return;
         }
         CLog.i("Attempting recovery on %s", getSerialNumber());
-        mRecovery.recoverDevice(mStateMonitor, mRecoveryMode.equals(RecoveryMode.ONLINE));
+        try {
+            mRecovery.recoverDevice(mStateMonitor, mRecoveryMode.equals(RecoveryMode.ONLINE));
+        } catch (DeviceUnresponsiveException due) {
+            RecoveryMode previousRecoveryMode = mRecoveryMode;
+            mRecoveryMode = RecoveryMode.NONE;
+            boolean enabled = enableAdbRoot();
+            CLog.d("Device Unresponsive during recovery, is root still enabled: %s", enabled);
+            mRecoveryMode = previousRecoveryMode;
+            throw due;
+        }
         if (mRecoveryMode.equals(RecoveryMode.AVAILABLE)) {
             // turn off recovery mode to prevent reentrant recovery
             // TODO: look for a better way to handle this, such as doing postBootUp steps in

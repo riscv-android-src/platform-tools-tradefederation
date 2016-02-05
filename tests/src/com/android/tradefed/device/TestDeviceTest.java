@@ -366,6 +366,48 @@ public class TestDeviceTest extends TestCase {
     }
 
     /**
+     * Test that the unresponsive device exception is propagated from the recovery to TestDevice.
+     * @throws Exception
+     */
+    @SuppressWarnings("deprecation")
+    public void testRecoverDevice_ThrowException() throws Exception {
+        TestDevice testDevice = new TestDevice(mMockIDevice, mMockStateMonitor, mMockDvcMonitor);
+        testDevice.setRecovery(new IDeviceRecovery() {
+
+            @Override
+            public void recoverDeviceRecovery(IDeviceStateMonitor monitor)
+                    throws DeviceNotAvailableException {
+                throw new DeviceNotAvailableException();
+            }
+
+            @Override
+            public void recoverDeviceBootloader(IDeviceStateMonitor monitor)
+                    throws DeviceNotAvailableException {
+                throw new DeviceNotAvailableException();
+            }
+
+            @Override
+            public void recoverDevice(IDeviceStateMonitor monitor, boolean recoverUntilOnline)
+                    throws DeviceNotAvailableException {
+                throw new DeviceUnresponsiveException();
+            }
+        });
+        testDevice.setRecoveryMode(RecoveryMode.AVAILABLE);
+        testDevice.executeShellCommand((String) EasyMock.anyObject(),
+                (CollectingOutputReceiver)EasyMock.anyObject(), EasyMock.anyInt(),
+                EasyMock.anyInt());
+        EasyMock.expectLastCall();
+        EasyMock.replay(mMockIDevice);
+        try {
+            testDevice.recoverDevice();
+        } catch (DeviceNotAvailableException dnae) {
+            assertTrue(dnae instanceof DeviceUnresponsiveException);
+            return;
+        }
+        fail();
+    }
+
+    /**
      * Simple normal case test for
      * {@link TestDevice#executeShellCommand(String, IShellOutputReceiver)}.
      * <p/>
