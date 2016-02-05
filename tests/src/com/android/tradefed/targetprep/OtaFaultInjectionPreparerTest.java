@@ -51,7 +51,7 @@ public class OtaFaultInjectionPreparerTest extends TestCase {
         super.tearDown();
         mZipFile.close();
         mOtaPackage.delete();
-        mStubZipBaseDir.delete();
+        FileUtil.recursiveDelete(mStubZipBaseDir);
     }
 
     public void testAddSingleFault_read() throws Exception {
