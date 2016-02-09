@@ -22,17 +22,24 @@ import com.android.ddmlib.testrunner.RemoteAndroidTestRunner;
 import com.android.ddmlib.testrunner.TestIdentifier;
 import com.android.tradefed.config.Option;
 import com.android.tradefed.device.DeviceNotAvailableException;
+import com.android.tradefed.device.IFileEntry;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.log.LogUtil.CLog;
+import com.android.tradefed.result.FileInputStreamSource;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.InputStreamSource;
 import com.android.tradefed.result.LogDataType;
 import com.android.tradefed.result.StubTestInvocationListener;
+import com.android.tradefed.util.FileUtil;
 import com.android.tradefed.util.IRunUtil;
 import com.android.tradefed.util.RunUtil;
+import com.android.tradefed.util.StreamUtil;
+import com.android.tradefed.util.ZipUtil;
 
 import junit.framework.Assert;
 
+import java.io.File;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.LinkedHashMap;
@@ -55,6 +62,8 @@ public class UiAutomatorTest implements IRemoteTest, IDeviceTest {
     }
 
     private static final String SHELL_EXE_BASE = "/data/local/tmp/";
+    private static final String TRACE_ITERATIONS = "traceIterations";
+    private static final String TRACE_DEST_DIRECTORY = "destDirectory";
 
     private ITestDevice mDevice = null;
     private IRemoteAndroidTestRunner mRunner = null;
@@ -117,8 +126,6 @@ public class UiAutomatorTest implements IRemoteTest, IDeviceTest {
     private String mRunnerName =
         "android.support.test.uiautomator.UiAutomatorInstrumentationTestRunner";
 
-    @Option(name="final-screenshot", description="Take a screenshot at the end of a test")
-    private boolean mFinalScreenshot = false;
 
     /**
      * {@inheritDoc}
@@ -187,9 +194,15 @@ public class UiAutomatorTest implements IRemoteTest, IDeviceTest {
             getDevice().runInstrumentationTests(getTestRunner(), listener);
         }
 
-        if (mFinalScreenshot) {
-            saveScreenshot(listener, "final_screenshot");
+        if (getTestRunArgMap().containsKey(TRACE_ITERATIONS) &&
+                getTestRunArgMap().containsKey(TRACE_DEST_DIRECTORY)) {
+            try {
+                logTraceFiles(listener, getTestRunArgMap().get(TRACE_DEST_DIRECTORY));
+            } catch (IOException e) {
+                CLog.e(e);
+            }
         }
+
     }
 
     protected IRemoteAndroidTestRunner createTestRunner() {
@@ -292,6 +305,49 @@ public class UiAutomatorTest implements IRemoteTest, IDeviceTest {
         }
     }
 
+
+    /**
+     * Pull the atrace files if they exist under traceSrcDirectory and log it
+     * @param listener test result listener
+     * @param traceSrcDirectory source directory in the device where the trace files
+     *                          are copied to the local tmp directory
+     * @throws DeviceNotAvailableException
+     * @throws IOException
+     */
+    private void logTraceFiles(ITestInvocationListener listener, String traceSrcDirectory)
+            throws DeviceNotAvailableException, IOException {
+        File tmpDestDir = null;
+        try {
+            tmpDestDir = FileUtil.createTempDir("atrace");
+            IFileEntry traceSrcDir = mDevice.getFileEntry(traceSrcDirectory);
+            // Trace files are retrieved from traceSrcDirectory/testDirectory in device
+            if (traceSrcDir != null) {
+                for (IFileEntry testDirectory : traceSrcDir.getChildren(false)) {
+                    File testTmpDirectory = new File(tmpDestDir, testDirectory.getName());
+                    if (!testTmpDirectory.mkdir()) {
+                        throw new IOException("Not able to create the atrace test directory");
+                    }
+                    for (IFileEntry traceFile : testDirectory.getChildren(false)) {
+                        File pulledFile = new File(testTmpDirectory, traceFile.getName());
+                        if (!mDevice.pullFile(traceFile.getFullPath(), pulledFile)) {
+                            throw new IOException(
+                                    "Not able to pull the trace file from test device");
+                        }
+                    }
+                }
+                File atraceZip = ZipUtil.createZip(tmpDestDir);
+                FileInputStreamSource streamSource = new FileInputStreamSource(atraceZip);
+                listener.testLog(tmpDestDir.getName(), LogDataType.ZIP, streamSource);
+                StreamUtil.cancel(streamSource);
+                atraceZip.delete();
+            }
+        } finally {
+            if (tmpDestDir != null) {
+                FileUtil.recursiveDelete(tmpDestDir);
+            }
+        }
+    }
+
     /**
      * Wraps an existing listener, capture some data in case of test failure
      */
@@ -349,9 +405,6 @@ public class UiAutomatorTest implements IRemoteTest, IDeviceTest {
                 onScreenshotAndBugreport(getDevice(), mListener, "test_run_final");
             }
         }
-    }
-
-    private void saveScreenshot(ITestInvocationListener listener, String name) {
     }
 
     protected IRunUtil getRunUtil() {
