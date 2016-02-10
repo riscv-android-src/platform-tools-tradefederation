@@ -31,6 +31,7 @@ import com.android.tradefed.util.RunUtil;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.concurrent.Semaphore;
+import java.util.concurrent.TimeUnit;
 
 /**
  * A {@link ITargetPreparer} that flashes an image on physical Android hardware.
@@ -212,7 +213,10 @@ public abstract class DeviceFlashPreparer implements ITargetCleaner {
             IDeviceFlasher flasher = createFlasher(device);
             // only surround fastboot related operations with flashing permit restriction
             try {
+                long start = System.currentTimeMillis();
                 takeFlashingPermit();
+                CLog.v("Flashing permit obtained after %ds",
+                        TimeUnit.MILLISECONDS.toSeconds((System.currentTimeMillis() - start)));
 
                 flasher.overrideDeviceOptions(device);
                 flasher.setUserDataFlashOption(mUserDataFlashOption);
