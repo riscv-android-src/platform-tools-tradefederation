@@ -23,6 +23,7 @@ import com.android.tradefed.device.IDeviceMonitor;
 import com.android.tradefed.device.IDeviceSelection;
 import com.android.tradefed.device.IMultiDeviceRecovery;
 import com.android.tradefed.log.ITerribleFailureHandler;
+import com.android.tradefed.util.IHostMonitor;
 
 import java.util.List;
 
@@ -40,12 +41,28 @@ public interface IGlobalConfiguration {
     public List<IDeviceMonitor> getDeviceMonitors();
 
     /**
+     * Gets the list of {@link IHostMonitor} from the global config.
+     *
+     * @return the list of {@link IHostMonitor} from the global config, or <code>null</code> if none
+     *         was specified.
+     */
+    public List<IHostMonitor> getHostMonitors();
+
+    /**
      * Set the {@link IDeviceMonitor}.
      *
      * @param deviceMonitor The monitor
      * @throws ConfigurationException if an {@link IDeviceMonitor} has already been set.
      */
     public void setDeviceMonitor(IDeviceMonitor deviceMonitor) throws ConfigurationException;
+
+    /**
+     * Set the {@link IHostMonitor} list.
+     *
+     * @param hostMonitor The monitor
+     * @throws ConfigurationException if an {@link IHostMonitor} has already been set.
+     */
+    public void addHostMonitors(List<IHostMonitor> hostMonitors) throws ConfigurationException;
 
     /**
      * Set the {@link ITerribleFailureHandler}.

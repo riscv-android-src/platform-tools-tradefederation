@@ -32,6 +32,7 @@ import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.util.ArrayUtil;
 import com.android.tradefed.util.CommandResult;
 import com.android.tradefed.util.CommandStatus;
+import com.android.tradefed.util.IHostMonitor;
 import com.android.tradefed.util.IRunUtil;
 import com.android.tradefed.util.RunUtil;
 import com.android.tradefed.util.SizeLimitedOutputStream;
@@ -108,6 +109,8 @@ public class DeviceManager implements IDeviceManager {
 
     private DeviceRecoverer mDeviceRecoverer;
 
+    private List<IHostMonitor> mGlobalHostMonitors = null;
+
     /**
      * The DeviceManager should be retrieved from the {@link GlobalConfiguration}
      */
@@ -146,6 +149,13 @@ public class DeviceManager implements IDeviceManager {
 
         if (globalDeviceMonitors == null) {
             globalDeviceMonitors = getGlobalConfig().getDeviceMonitors();
+        }
+
+        mGlobalHostMonitors = getGlobalConfig().getHostMonitors();
+        if (mGlobalHostMonitors != null ) {
+            for (IHostMonitor hm : mGlobalHostMonitors) {
+                hm.start();
+            }
         }
 
         mIsInitialized = true;
@@ -712,6 +722,11 @@ public class DeviceManager implements IDeviceManager {
             // We are not terminating mFastbootMonitor here since it is a daemon thread.
             // Early terminating it can cause other threads to be blocked if they check
             // fastboot state of a device.
+            if (mGlobalHostMonitors != null ) {
+                for (IHostMonitor hm : mGlobalHostMonitors) {
+                    hm.terminate();
+                }
+            }
         }
     }
 

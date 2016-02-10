@@ -52,6 +52,7 @@ import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.ResultForwarder;
 import com.android.tradefed.util.ArrayUtil;
 import com.android.tradefed.util.FileUtil;
+import com.android.tradefed.util.IHostMonitor;
 import com.android.tradefed.util.QuotationAwareTokenizer;
 import com.android.tradefed.util.RunUtil;
 import com.android.tradefed.util.TableFormatter;
@@ -640,6 +641,15 @@ public class CommandScheduler extends Thread implements ICommandScheduler, IComm
     IDeviceManager getDeviceManager() {
         return GlobalConfiguration.getDeviceManagerInstance();
     }
+
+     /**
+      * Factory method for getting a reference to the {@link IHostMonitor}
+      *
+      * @return the {@link IHostMonitor} to use
+      */
+     List<IHostMonitor> getHostMonitor() {
+         return GlobalConfiguration.getHostMonitorInstances();
+     }
 
     /**
      * Factory method for getting a reference to the {@link IConfigurationFactory}
