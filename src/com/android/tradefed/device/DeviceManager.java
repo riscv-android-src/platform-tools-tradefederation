@@ -502,10 +502,10 @@ public class DeviceManager implements IDeviceManager {
             throw new IllegalStateException(String.format("Device %s is not an emulator",
                     device.getSerialNumber()));
         }
-        if (!device.getDeviceState().equals(TestDeviceState.NOT_AVAILABLE)) {
+        if (!device.getDeviceState().equals(TestDeviceState.ONLINE)) {
             throw new IllegalStateException(String.format(
                     "Emulator device %s is in state %s. Expected: %s", device.getSerialNumber(),
-                    device.getDeviceState(), TestDeviceState.NOT_AVAILABLE));
+                    device.getDeviceState(), TestDeviceState.ONLINE));
         }
         List<String> fullArgs = new ArrayList<String>(emulatorArgs);
 
