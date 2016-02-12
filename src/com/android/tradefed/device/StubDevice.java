@@ -49,7 +49,7 @@ public class StubDevice implements IDevice {
         this(serial, false);
     }
 
-    StubDevice(String serial, boolean isEmulator) {
+    public StubDevice(String serial, boolean isEmulator) {
         mSerial = serial;
         mIsEmulator = isEmulator;
     }

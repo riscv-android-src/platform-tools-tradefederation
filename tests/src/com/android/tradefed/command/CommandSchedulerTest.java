@@ -15,6 +15,7 @@
  */
 package com.android.tradefed.command;
 
+import com.android.ddmlib.IDevice;
 import com.android.tradefed.command.CommandFileParser.CommandLine;
 import com.android.tradefed.command.CommandScheduler.CommandTracker;
 import com.android.tradefed.command.CommandScheduler.CommandTrackerIdComparator;
@@ -29,6 +30,8 @@ import com.android.tradefed.device.FreeDeviceState;
 import com.android.tradefed.device.IDeviceManager;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.device.MockDeviceManager;
+import com.android.tradefed.device.StubDevice;
+import com.android.tradefed.device.TcpDevice;
 import com.android.tradefed.device.TestDeviceState;
 import com.android.tradefed.invoker.IRescheduler;
 import com.android.tradefed.invoker.ITestInvocation;
@@ -258,7 +261,8 @@ public class CommandSchedulerTest extends TestCase {
     }
 
     /**
-     * Test simple case for {@link CommandScheduler#execCommand()}
+     * Test simple case for
+     * {@link CommandScheduler#execCommand(IScheduledInvocationListener, ITestDevice, String[])}
      */
     public void testExecCommand() throws Throwable {
         String[] args = new String[] {
@@ -267,10 +271,11 @@ public class CommandSchedulerTest extends TestCase {
         setCreateConfigExpectations(args, 1);
         setExpectedInvokeCalls(1);
         mMockConfiguration.validateOptions();
-
+        IDevice mockIDevice = EasyMock.createMock(IDevice.class);
         ITestDevice mockDevice = EasyMock.createMock(ITestDevice.class);
         EasyMock.expect(mockDevice.getSerialNumber()).andStubReturn("serial");
         EasyMock.expect(mockDevice.getDeviceState()).andStubReturn(TestDeviceState.ONLINE);
+        EasyMock.expect(mockDevice.getIDevice()).andStubReturn(mockIDevice);
         IScheduledInvocationListener mockListener = EasyMock
                 .createMock(IScheduledInvocationListener.class);
         mockListener.invocationComplete(mockDevice, FreeDeviceState.AVAILABLE);
@@ -284,7 +289,8 @@ public class CommandSchedulerTest extends TestCase {
 
     /**
      * Sets the number of expected
-     * {@link ITestInvocation#invoke(ITestDevice, IConfiguration, IRescheduler)} calls
+     * {@link ITestInvocation#invoke(ITestDevice, IConfiguration, IRescheduler,
+     *      ITestInvocationListener[])} calls
      *
      * @param times
      */
@@ -297,7 +303,8 @@ public class CommandSchedulerTest extends TestCase {
 
     /**
      * Sets up a object that will notify when the expected number of
-     * {@link ITestInvocation#invoke(ITestDevice, IConfiguration, IRescheduler)} calls occurs
+     * {@link ITestInvocation#invoke(ITestDevice, IConfiguration, IRescheduler,
+     *      ITestInvocationListener[])} calls occurs
      *
      * @param times
      */
@@ -648,5 +655,121 @@ public class CommandSchedulerTest extends TestCase {
         EasyMock.expect(mMockConfiguration.getCommandOptions()).andStubReturn(mCommandOptions);
         EasyMock.expect(mMockConfiguration.getDeviceRequirements()).andStubReturn(
                 mDeviceOptions);
+    }
+
+    /**
+     * Test that Available device at the end of a test are available to be reselected.
+     */
+    public void testDeviceReleased() throws Throwable {
+        String[] args = new String[] {};
+        mMockManager.setNumDevices(1);
+        assertTrue(mMockManager.getQueueOfAvailableDeviceSize() == 1);
+        setCreateConfigExpectations(args, 1);
+        setExpectedInvokeCalls(1);
+        mMockConfiguration.validateOptions();
+        replayMocks();
+        mScheduler.start();
+        mScheduler.addCommand(args);
+        mScheduler.shutdownOnEmpty();
+        mScheduler.join();
+        verifyMocks();
+        assertTrue(mMockManager.getQueueOfAvailableDeviceSize() == 1);
+    }
+
+    /**
+     * Test that NOT_AVAILABLE devices at the end of a test are not returned to the selectable
+     * devices.
+     */
+    public void testDeviceReleased_unavailable() throws Throwable {
+        String[] args = new String[] {};
+        mMockManager.setNumDevicesCustom(1, TestDeviceState.NOT_AVAILABLE, IDevice.class);
+        assert(mMockManager.getQueueOfAvailableDeviceSize() == 1);
+        setCreateConfigExpectations(args, 1);
+        setExpectedInvokeCalls(1);
+        mMockConfiguration.validateOptions();
+        replayMocks();
+        mScheduler.start();
+        mScheduler.addCommand(args);
+        mScheduler.shutdownOnEmpty();
+        mScheduler.join();
+        EasyMock.verify(mMockConfigFactory, mMockConfiguration, mMockInvocation);
+        assertTrue(mMockManager.getQueueOfAvailableDeviceSize() == 0);
+    }
+
+    /**
+     * Test that only the device NOT_AVAILABLE, selected for invocation is not returned at the end.
+     */
+    public void testDeviceReleased_unavailableMulti() throws Throwable {
+        String[] args = new String[] {};
+        mMockManager.setNumDevicesCustom(2, TestDeviceState.NOT_AVAILABLE, IDevice.class);
+        assertTrue(mMockManager.getQueueOfAvailableDeviceSize() == 2);
+        setCreateConfigExpectations(args, 1);
+        setExpectedInvokeCalls(1);
+        mMockConfiguration.validateOptions();
+        replayMocks();
+        mScheduler.start();
+        mScheduler.addCommand(args);
+        mScheduler.shutdownOnEmpty();
+        mScheduler.join();
+        EasyMock.verify(mMockConfigFactory, mMockConfiguration, mMockInvocation);
+        assertTrue(mMockManager.getQueueOfAvailableDeviceSize() == 1);
+    }
+
+    /**
+     * Test that the TCP device NOT available are NOT released.
+     */
+    public void testTcpDevice_NotReleased() throws Throwable {
+        String[] args = new String[] {};
+        mMockManager.setNumDevicesStub(1, TestDeviceState.NOT_AVAILABLE, new TcpDevice("serial"));
+        assertTrue(mMockManager.getQueueOfAvailableDeviceSize() == 1);
+        setCreateConfigExpectations(args, 1);
+        setExpectedInvokeCalls(1);
+        mMockConfiguration.validateOptions();
+        replayMocks();
+        mScheduler.start();
+        mScheduler.addCommand(args);
+        mScheduler.shutdownOnEmpty();
+        mScheduler.join();
+        assertTrue(mMockManager.getQueueOfAvailableDeviceSize() == 1);
+        EasyMock.verify(mMockConfigFactory, mMockConfiguration, mMockInvocation);
+    }
+
+    /**
+     * Test that the TCP device NOT available selected for a run is NOT released.
+     */
+    public void testTcpDevice_NotReleasedMulti() throws Throwable {
+        String[] args = new String[] {};
+        mMockManager.setNumDevicesStub(2, TestDeviceState.NOT_AVAILABLE, new TcpDevice("serial"));
+        assertTrue(mMockManager.getQueueOfAvailableDeviceSize() == 2);
+        setCreateConfigExpectations(args, 1);
+        setExpectedInvokeCalls(1);
+        mMockConfiguration.validateOptions();
+        replayMocks();
+        mScheduler.start();
+        mScheduler.addCommand(args);
+        mScheduler.shutdownOnEmpty();
+        mScheduler.join();
+        assertTrue(mMockManager.getQueueOfAvailableDeviceSize() == 2);
+        EasyMock.verify(mMockConfigFactory, mMockConfiguration, mMockInvocation);
+    }
+
+    /**
+     * Test that the Stub device NOT available are NOT released.
+     */
+    public void testStubDevice_NotReleased() throws Throwable {
+        String[] args = new String[] {};
+        IDevice stub = new StubDevice("emulator-5554", true);
+        mMockManager.setNumDevicesStub(1, TestDeviceState.NOT_AVAILABLE, stub);
+        assertTrue(mMockManager.getQueueOfAvailableDeviceSize() == 1);
+        setCreateConfigExpectations(args, 1);
+        setExpectedInvokeCalls(1);
+        mMockConfiguration.validateOptions();
+        replayMocks();
+        mScheduler.start();
+        mScheduler.addCommand(args);
+        mScheduler.shutdownOnEmpty();
+        mScheduler.join();
+        assertTrue(mMockManager.getQueueOfAvailableDeviceSize() == 1);
+        EasyMock.verify(mMockConfigFactory, mMockConfiguration, mMockInvocation);
     }
 }

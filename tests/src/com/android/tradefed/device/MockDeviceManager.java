@@ -39,6 +39,8 @@ public class MockDeviceManager implements IDeviceManager {
 
     private int mTotalDevices;
     private DeviceMonitorMultiplexer mDvcMon = new DeviceMonitorMultiplexer();
+    private boolean mTcpDeviceRequested = false;
+    private boolean mStubDeviceRequested = false;
 
     public MockDeviceManager(int numDevices) {
         setNumDevices(numDevices);
@@ -60,6 +62,45 @@ public class MockDeviceManager implements IDeviceManager {
         }
     }
 
+    public void setNumDevicesCustom(int numDevices, TestDeviceState state,
+            Class<IDevice> idevicetype) {
+        mAvailableDeviceQueue.clear();
+        mTotalDevices = numDevices;
+        for (int i = 0; i < numDevices; i++) {
+            ITestDevice mockDevice = EasyMock.createNiceMock(ITestDevice.class);
+            EasyMock.expect(mockDevice.getSerialNumber()).andReturn("serial" + i).anyTimes();
+            IDevice mockIDevice = EasyMock.createNiceMock(idevicetype);
+            EasyMock.expect(mockIDevice.getSerialNumber()).andReturn("serial" + i).anyTimes();
+            EasyMock.expect(mockDevice.getIDevice()).andReturn(mockIDevice).anyTimes();
+            EasyMock.expect(mockDevice.getDeviceState()).andReturn(
+                    state).anyTimes();
+            EasyMock.replay(mockDevice, mockIDevice);
+            mAvailableDeviceQueue.add(mockDevice);
+        }
+    }
+
+    public void setNumDevicesStub(int numDevices, TestDeviceState state,
+            IDevice idevice) {
+        if (idevice instanceof TcpDevice) {
+            mTcpDeviceRequested = true;
+        } else if (idevice instanceof StubDevice) {
+            mStubDeviceRequested = true;
+        }
+        mAvailableDeviceQueue.clear();
+        mTotalDevices = numDevices;
+        for (int i = 0; i < numDevices; i++) {
+            ITestDevice mockDevice = EasyMock.createNiceMock(ITestDevice.class);
+            EasyMock.expect(mockDevice.getSerialNumber()).andReturn("serial" + i).anyTimes();
+            IDevice mockIDevice = idevice;
+            //EasyMock.expect(mockIDevice.getSerialNumber()).andReturn("serial" + i).anyTimes();
+            EasyMock.expect(mockDevice.getIDevice()).andReturn(mockIDevice).anyTimes();
+            EasyMock.expect(mockDevice.getDeviceState()).andReturn(
+                    state).anyTimes();
+            EasyMock.replay(mockDevice);
+            mAvailableDeviceQueue.add(mockDevice);
+        }
+    }
+
     private static class TestDeviceMatcher implements IMatcher<ITestDevice> {
         private IDeviceSelection mDeviceOptions;
 
@@ -77,6 +118,10 @@ public class MockDeviceManager implements IDeviceManager {
         public boolean matches(ITestDevice element) {
             return mDeviceOptions.matches(element.getIDevice());
         }
+    }
+
+    public int getQueueOfAvailableDeviceSize() {
+        return mAvailableDeviceQueue.size();
     }
 
     /**
@@ -141,6 +186,12 @@ public class MockDeviceManager implements IDeviceManager {
      */
     @Override
     public ITestDevice allocateDevice(IDeviceSelection options) {
+        if (mTcpDeviceRequested) {
+            ((DeviceSelectionOptions)options).setTcpDeviceRequested(true);
+        }
+        if (mStubDeviceRequested) {
+            ((DeviceSelectionOptions)options).setStubEmulatorRequested(true);
+        }
         ITestDevice d = mAvailableDeviceQueue.poll(new TestDeviceMatcher(options));
         if (d!= null) {
             mDvcMon.notifyDeviceStateChange(d.getSerialNumber(), DeviceAllocationState.Available,
