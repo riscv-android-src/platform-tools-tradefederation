@@ -25,8 +25,8 @@ import com.android.tradefed.config.IConfiguration;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.DeviceUnresponsiveException;
 import com.android.tradefed.device.ITestDevice;
-import com.android.tradefed.device.TestDeviceState;
 import com.android.tradefed.device.ITestDevice.RecoveryMode;
+import com.android.tradefed.device.TestDeviceState;
 import com.android.tradefed.log.ILeveledLogOutput;
 import com.android.tradefed.log.ILogRegistry;
 import com.android.tradefed.log.LogRegistry;
@@ -41,6 +41,7 @@ import com.android.tradefed.result.LogDataType;
 import com.android.tradefed.result.LogFile;
 import com.android.tradefed.result.ResultForwarder;
 import com.android.tradefed.targetprep.BuildError;
+import com.android.tradefed.targetprep.DeviceFailedToBootError;
 import com.android.tradefed.targetprep.IHostCleaner;
 import com.android.tradefed.targetprep.ITargetCleaner;
 import com.android.tradefed.targetprep.ITargetPreparer;
@@ -457,6 +458,9 @@ public class TestInvocation implements ITestInvocation {
             CLog.w("Build %s failed on device %s. Reason: %s", info.getBuildId(),
                     device.getSerialNumber(), e.toString());
             bugreportName = BUILD_ERROR_BUGREPORT_NAME;
+            if (e instanceof DeviceFailedToBootError) {
+                device.setRecoveryMode(RecoveryMode.NONE);
+            }
             reportFailure(e, listener, config, info, rescheduler);
         } catch (TargetSetupError e) {
             exception = e;
