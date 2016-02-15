@@ -45,6 +45,7 @@ public class GTestResultParserTest extends TestCase {
     private static final String GTEST_OUTPUT_FILE_5 = "gtest_output5.txt";
     private static final String GTEST_OUTPUT_FILE_6 = "gtest_output6.txt";
     private static final String GTEST_OUTPUT_FILE_7 = "gtest_output7.txt";
+    private static final String GTEST_OUTPUT_FILE_8 = "gtest_output8.txt";
     private static final String LOG_TAG = "GTestResultParserTest";
 
     /**
@@ -272,6 +273,21 @@ public class GTestResultParserTest extends TestCase {
         }
         mockRunListener.testRunEnded(EasyMock.anyLong(),
                 (Map<String, String>) EasyMock.anyObject());
+        EasyMock.replay(mockRunListener);
+        GTestResultParser resultParser = new GTestResultParser(TEST_MODULE_NAME, mockRunListener);
+        resultParser.processNewLines(contents);
+    }
+
+    /**
+     * Tests the parser for a simple test run output with 18 tests with Non GTest format
+     * Should not crash.
+     */
+    @SuppressWarnings("unchecked")
+    public void testParseSimpleFile_AltFormat() throws Exception {
+        System.out.println("--------------MY TESTS-----------");
+        String[] contents =  readInFile(GTEST_OUTPUT_FILE_8);
+        ITestRunListener mockRunListener = EasyMock.createMock(ITestRunListener.class);
+        mockRunListener.testRunStarted(TEST_MODULE_NAME, 18);
         EasyMock.replay(mockRunListener);
         GTestResultParser resultParser = new GTestResultParser(TEST_MODULE_NAME, mockRunListener);
         resultParser.processNewLines(contents);
