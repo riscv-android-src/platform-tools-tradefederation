@@ -17,7 +17,6 @@ package com.android.tradefed.device;
 
 import com.android.ddmlib.IDevice;
 import com.android.tradefed.device.DeviceManager.FastbootDevice;
-import com.android.tradefed.log.LogUtil.CLog;
 
 /**
  * Factory to create the different kind of devices that can be monitored by Tf
@@ -49,7 +48,7 @@ public class ManagedTestDeviceFactory implements IManagedTestDeviceFactory {
         if (idevice instanceof FastbootDevice) {
             testDevice.setDeviceState(TestDeviceState.FASTBOOT);
         } else if (idevice instanceof StubDevice) {
-            testDevice.setDeviceState(TestDeviceState.ONLINE);
+            testDevice.setDeviceState(TestDeviceState.NOT_AVAILABLE);
         }
         return testDevice;
     }

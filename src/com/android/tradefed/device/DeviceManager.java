@@ -16,6 +16,8 @@
 
 package com.android.tradefed.device;
 
+import com.google.common.annotations.VisibleForTesting;
+
 import com.android.ddmlib.AndroidDebugBridge.IDeviceChangeListener;
 import com.android.ddmlib.DdmPreferences;
 import com.android.ddmlib.EmulatorConsole;
@@ -38,7 +40,6 @@ import com.android.tradefed.util.RunUtil;
 import com.android.tradefed.util.SizeLimitedOutputStream;
 import com.android.tradefed.util.StreamUtil;
 import com.android.tradefed.util.TableFormatter;
-import com.google.common.annotations.VisibleForTesting;
 
 import java.io.IOException;
 import java.io.PrintWriter;
@@ -461,7 +462,10 @@ public class DeviceManager implements IDeviceManager {
                 deviceState = FreeDeviceState.UNAVAILABLE;
             }
         }
-
+        if (ideviceToReturn instanceof TcpDevice) {
+            // Make sure the device goes back to the original state.
+            managedDevice.setDeviceState(TestDeviceState.NOT_AVAILABLE);
+        }
         DeviceEventResponse r = mManagedDeviceList.handleDeviceEvent(managedDevice,
                 getEventFromFree(managedDevice, deviceState));
         if (r != null && !r.stateChanged) {
@@ -502,10 +506,10 @@ public class DeviceManager implements IDeviceManager {
             throw new IllegalStateException(String.format("Device %s is not an emulator",
                     device.getSerialNumber()));
         }
-        if (!device.getDeviceState().equals(TestDeviceState.ONLINE)) {
+        if (!device.getDeviceState().equals(TestDeviceState.NOT_AVAILABLE)) {
             throw new IllegalStateException(String.format(
                     "Emulator device %s is in state %s. Expected: %s", device.getSerialNumber(),
-                    device.getDeviceState(), TestDeviceState.ONLINE));
+                    device.getDeviceState(), TestDeviceState.NOT_AVAILABLE));
         }
         List<String> fullArgs = new ArrayList<String>(emulatorArgs);
 
