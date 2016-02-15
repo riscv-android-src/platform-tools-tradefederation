@@ -29,6 +29,7 @@ import com.android.tradefed.device.DeviceSelectionOptions;
 import com.android.tradefed.device.FreeDeviceState;
 import com.android.tradefed.device.IDeviceManager;
 import com.android.tradefed.device.ITestDevice;
+import com.android.tradefed.device.ITestDevice.RecoveryMode;
 import com.android.tradefed.device.MockDeviceManager;
 import com.android.tradefed.device.StubDevice;
 import com.android.tradefed.device.TcpDevice;
@@ -275,6 +276,7 @@ public class CommandSchedulerTest extends TestCase {
         ITestDevice mockDevice = EasyMock.createMock(ITestDevice.class);
         EasyMock.expect(mockDevice.getSerialNumber()).andStubReturn("serial");
         EasyMock.expect(mockDevice.getDeviceState()).andStubReturn(TestDeviceState.ONLINE);
+        mockDevice.setRecoveryMode(EasyMock.eq(RecoveryMode.AVAILABLE));
         EasyMock.expect(mockDevice.getIDevice()).andStubReturn(mockIDevice);
         IScheduledInvocationListener mockListener = EasyMock
                 .createMock(IScheduledInvocationListener.class);
@@ -771,5 +773,26 @@ public class CommandSchedulerTest extends TestCase {
         mScheduler.join();
         assertTrue(mMockManager.getQueueOfAvailableDeviceSize() == 1);
         EasyMock.verify(mMockConfigFactory, mMockConfiguration, mMockInvocation);
+    }
+
+    /**
+     * Test that a device recovery state is reset when returned to the available queue.
+     */
+    public void testDeviceRecoveryState() throws Throwable {
+        String[] args = new String[] {};
+        mMockManager.setNumDevicesCustomRealNoRecovery(1, IDevice.class);
+        assert(mMockManager.getQueueOfAvailableDeviceSize() == 1);
+        setCreateConfigExpectations(args, 1);
+        setExpectedInvokeCalls(1);
+        mMockConfiguration.validateOptions();
+        replayMocks();
+        mScheduler.start();
+        mScheduler.addCommand(args);
+        mScheduler.shutdownOnEmpty();
+        mScheduler.join();
+        EasyMock.verify(mMockConfigFactory, mMockConfiguration, mMockInvocation);
+        assertTrue(mMockManager.getQueueOfAvailableDeviceSize() == 1);
+        ITestDevice t = mMockManager.allocateDevice();
+        assertTrue(t.getRecoveryMode().equals(RecoveryMode.AVAILABLE));
     }
 }

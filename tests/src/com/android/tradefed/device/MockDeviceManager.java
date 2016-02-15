@@ -17,6 +17,7 @@ package com.android.tradefed.device;
 
 import com.android.ddmlib.IDevice;
 import com.android.tradefed.command.remote.DeviceDescriptor;
+import com.android.tradefed.device.ITestDevice.RecoveryMode;
 import com.android.tradefed.util.ConditionPriorityBlockingQueue;
 import com.android.tradefed.util.ConditionPriorityBlockingQueue.IMatcher;
 import com.android.tradefed.util.IRunUtil;
@@ -58,6 +59,24 @@ public class MockDeviceManager implements IDeviceManager {
             EasyMock.expect(mockDevice.getDeviceState()).andReturn(
                     TestDeviceState.ONLINE).anyTimes();
             EasyMock.replay(mockDevice, mockIDevice);
+            mAvailableDeviceQueue.add(mockDevice);
+        }
+    }
+
+    /**
+     * Create a real {@link ITestDevice} with recovery mode NONE
+     */
+    public void setNumDevicesCustomRealNoRecovery(int numDevices, Class<IDevice> idevicetype) {
+        mAvailableDeviceQueue.clear();
+        mTotalDevices = numDevices;
+        for (int i = 0; i < numDevices; i++) {
+            IDevice mockIDevice = EasyMock.createNiceMock(idevicetype);
+            EasyMock.expect(mockIDevice.getSerialNumber()).andReturn("serial" + i).anyTimes();
+            IDeviceStateMonitor stateMonitor = EasyMock.createNiceMock(IDeviceStateMonitor.class);
+            IDeviceMonitor allocationMonitor = EasyMock.createNiceMock(IDeviceMonitor.class);
+            EasyMock.replay(mockIDevice);
+            ITestDevice mockDevice = new TestDevice(mockIDevice, stateMonitor, allocationMonitor);
+            mockDevice.setRecoveryMode(RecoveryMode.NONE);
             mAvailableDeviceQueue.add(mockDevice);
         }
     }

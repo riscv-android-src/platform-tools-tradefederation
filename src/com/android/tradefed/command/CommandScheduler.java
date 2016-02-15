@@ -41,9 +41,9 @@ import com.android.tradefed.device.FreeDeviceState;
 import com.android.tradefed.device.IDeviceManager;
 import com.android.tradefed.device.IDeviceMonitor;
 import com.android.tradefed.device.ITestDevice;
+import com.android.tradefed.device.ITestDevice.RecoveryMode;
 import com.android.tradefed.device.NoDeviceException;
 import com.android.tradefed.device.StubDevice;
-import com.android.tradefed.device.TcpDevice;
 import com.android.tradefed.device.TestDeviceState;
 import com.android.tradefed.invoker.IRescheduler;
 import com.android.tradefed.invoker.ITestInvocation;
@@ -484,6 +484,8 @@ public class CommandScheduler extends Thread implements ICommandScheduler, IComm
                     // If the device is offline at the end of the test
                     deviceState = FreeDeviceState.UNAVAILABLE;
                 }
+                // Reset the recovery mode at the end of the invocation.
+                mDevice.setRecoveryMode(RecoveryMode.AVAILABLE);
                 for (final IScheduledInvocationListener listener : mListeners) {
                     listener.invocationComplete(mDevice, deviceState);
                 }
