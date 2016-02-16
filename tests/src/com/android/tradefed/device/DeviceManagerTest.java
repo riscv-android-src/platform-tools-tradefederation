@@ -16,6 +16,8 @@
 
 package com.android.tradefed.device;
 
+import static org.easymock.EasyMock.expectLastCall;
+
 import com.android.ddmlib.AndroidDebugBridge.IDeviceChangeListener;
 import com.android.ddmlib.IDevice;
 import com.android.ddmlib.IDevice.DeviceState;
@@ -32,6 +34,7 @@ import junit.framework.TestCase;
 import org.easymock.Capture;
 import org.easymock.EasyMock;
 import org.easymock.IAnswer;
+import org.junit.internal.runners.TestMethod;
 
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -413,7 +416,7 @@ public class DeviceManagerTest extends TestCase {
     }
 
     /**
-     * Test method for {@link DeviceManager#freeDevice(ITestDevice)}.
+     * Test method for {@link DeviceManager#freeDevice(ITestDevice, FreeDeviceState)}.
      */
     public void testFreeDevice() throws DeviceNotAvailableException {
         setCheckAvailableDeviceExpectations();
@@ -802,5 +805,45 @@ public class DeviceManagerTest extends TestCase {
                         true));
         EasyMock.expect(mMockTestDevice.handleAllocationEvent(DeviceEvent.AVAILABLE_CHECK_PASSED))
                 .andReturn(new DeviceEventResponse(DeviceAllocationState.Available, true));
+    }
+
+    /**
+     * Test freeing a tcp device, it must return to an unavailable status
+     */
+    public void testFreeDevice_tcpDevice() {
+        DeviceSelectionOptions options = new DeviceSelectionOptions();
+        options.setTcpDeviceRequested(true);
+        EasyMock.expect(mMockStateMonitor.waitForDeviceNotAvailable(EasyMock.anyLong())).andReturn(
+                Boolean.TRUE);
+        EasyMock.expect(mMockTestDevice.handleAllocationEvent(DeviceEvent.FORCE_AVAILABLE))
+                .andReturn(new DeviceEventResponse(DeviceAllocationState.Available, true));
+        EasyMock.expect(mMockIDevice.isEmulator()).andStubReturn(Boolean.FALSE);
+        EasyMock.expect(mMockTestDevice.handleAllocationEvent(DeviceEvent.ALLOCATE_REQUEST))
+                .andReturn(new DeviceEventResponse(DeviceAllocationState.Allocated, true));
+        mMockTestDevice.stopLogcat();
+        EasyMock.expect(mMockTestDevice.waitForDeviceNotAvailable(EasyMock.anyLong())).andReturn(
+                Boolean.TRUE);
+        EasyMock.expect(mMockTestDevice.handleAllocationEvent(DeviceEvent.FREE_AVAILABLE))
+                .andReturn(new DeviceEventResponse(DeviceAllocationState.Available, true));
+        EasyMock.expect(mMockTestDevice.handleAllocationEvent(DeviceEvent.ALLOCATE_REQUEST))
+                .andReturn(new DeviceEventResponse(DeviceAllocationState.Allocated, true));
+        EasyMock.expect(mMockTestDevice.getDeviceState())
+                .andReturn(TestDeviceState.NOT_AVAILABLE).times(2);
+        EasyMock.expect(mMockTestDevice.handleAllocationEvent(DeviceEvent.FREE_UNKNOWN))
+                .andReturn(new DeviceEventResponse(DeviceAllocationState.Available, true));
+        mMockTestDevice.setDeviceState(TestDeviceState.NOT_AVAILABLE);
+        replayMocks();
+        DeviceManager manager = createDeviceManagerNoInit();
+        manager.setMaxTcpDevices(1);
+        manager.init(null, null, mMockDeviceFactory);
+        IManagedTestDevice tcpDevice = (IManagedTestDevice) manager.allocateDevice(options);
+        assertNotNull(tcpDevice);
+        // a freed 'unavailable' emulator should be returned to the available
+        // queue.
+        manager.freeDevice(tcpDevice, FreeDeviceState.UNAVAILABLE);
+        // ensure device can be allocated again
+        ITestDevice tcp = manager.allocateDevice(options);
+        assertNotNull(tcp);
+        assertTrue(tcp.getDeviceState() == TestDeviceState.NOT_AVAILABLE);
     }
 }
