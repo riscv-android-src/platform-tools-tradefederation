@@ -48,6 +48,10 @@ public class GTest implements IDeviceTest, IRemoteTest, ITestFilterReceiver, IRu
             description="The path on the device where native tests are located.")
     private String mNativeTestDevicePath = DEFAULT_NATIVETEST_PATH;
 
+    @Option(name = "file-exclusion-filter-regex",
+            description = "Regex to exclude certain files from executing. Can be repeated")
+    private List<String> mFileExclusionFilterRegex = new ArrayList<>();
+
     @Option(name = "module-name",
             description="The name of the native test module to run.")
     private String mTestModule = null;
@@ -166,6 +170,17 @@ public class GTest implements IDeviceTest, IRemoteTest, ITestFilterReceiver, IRu
      */
     void setMaxTestTimeMs(int timeout) {
         mMaxTestTimeMs = timeout;
+    }
+
+    /**
+     * Adds an exclusion file filter regex.
+     * <p/>
+     * Exposed for unit testing
+     *
+     * @param regex to exclude file.
+     */
+    void addFileExclusionFilterRegex(String regex) {
+        mFileExclusionFilterRegex.add(regex);
     }
 
     /**
@@ -293,6 +308,9 @@ public class GTest implements IDeviceTest, IRemoteTest, ITestFilterReceiver, IRu
             // assume every file is a valid gtest binary.
             IShellOutputReceiver resultParser = createResultParser(rootEntry.getName(), listener);
             String fullPath = rootEntry.getFullEscapedPath();
+            if (shouldSkipFile(fullPath)) {
+                return;
+            }
             String flags = getAllGTestFlags();
             Log.i(LOG_TAG, String.format("Running gtest %s %s on %s", fullPath, flags,
                     mDevice.getSerialNumber()));
@@ -300,6 +318,28 @@ public class GTest implements IDeviceTest, IRemoteTest, ITestFilterReceiver, IRu
             testDevice.executeShellCommand(String.format("chmod 755 %s", fullPath));
             runTest(testDevice, resultParser, fullPath, flags);
         }
+    }
+
+    /**
+     * Helper method to determine if we should skip the execution of a given file.
+     * @param fullPath the full path of the file in question
+     * @return true if we should skip the said file.
+     */
+    protected boolean shouldSkipFile(String fullPath) {
+        if (fullPath == null || fullPath.isEmpty()) {
+            return true;
+        }
+        if (mFileExclusionFilterRegex == null || mFileExclusionFilterRegex.isEmpty()) {
+            return false;
+        }
+        for (String regex : mFileExclusionFilterRegex) {
+            if (fullPath.matches(regex)) {
+                Log.i(LOG_TAG, String.format("File %s matches exclusion file regex %s, skipping",
+                        fullPath, regex));
+                return true;
+            }
+        }
+        return false;
     }
 
     /**

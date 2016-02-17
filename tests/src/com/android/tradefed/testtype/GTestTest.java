@@ -206,4 +206,43 @@ public class GTestTest extends TestCase {
         doTestFilter(String.format("%s=%s:%s-%s:%s", GTEST_FLAG_FILTER,
               includeFilter1, includeFilter2, excludeFilter1, excludeFilter2));
     }
+
+    /**
+     * Empty file exclusion regex filter should not skip any files
+     */
+    public void testFileExclusionRegexFilter_emptyfilters() {
+        assertFalse(mGTest.shouldSkipFile("test_file"));
+    }
+
+    /**
+     * File exclusion regex filter should skip invalid filepath.
+     */
+    public void testFileExclusionRegexFilter_invalidInputString() {
+        assertTrue(mGTest.shouldSkipFile(null));
+        assertTrue(mGTest.shouldSkipFile(""));
+    }
+
+    /**
+     * File exclusion regex filter should skip matched filepaths.
+     */
+    public void testFileExclusionRegexFilter_skipMatched() {
+        // Skip files ending in .txt
+        mGTest.addFileExclusionFilterRegex(".*\\.txt");
+        assertFalse(mGTest.shouldSkipFile("/some/path/file/binary"));
+        assertFalse(mGTest.shouldSkipFile("/some/path/file/random.dat"));
+        assertTrue(mGTest.shouldSkipFile("/some/path/file/test.txt"));
+    }
+
+    /**
+     * File exclusion regex filter for multi filters.
+     */
+    public void testFileExclusionRegexFilter_skipMultiMatched() {
+        // Skip files ending in .txt
+        mGTest.addFileExclusionFilterRegex(".*\\.txt");
+        // Also skip files ending in .dat
+        mGTest.addFileExclusionFilterRegex(".*\\.dat");
+        assertFalse(mGTest.shouldSkipFile("/some/path/file/binary"));
+        assertTrue(mGTest.shouldSkipFile("/some/path/file/random.dat"));
+        assertTrue(mGTest.shouldSkipFile("/some/path/file/test.txt"));
+    }
 }
