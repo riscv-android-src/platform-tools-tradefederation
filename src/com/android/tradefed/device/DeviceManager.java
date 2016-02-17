@@ -78,7 +78,7 @@ public class DeviceManager implements IDeviceManager {
     private static final String EMULATOR_SERIAL_PREFIX = "emulator";
     private static final String TCP_DEVICE_SERIAL_PREFIX = "tcp-device";
 
-    private DeviceMonitorMultiplexer mDvcMon = new DeviceMonitorMultiplexer();
+    protected DeviceMonitorMultiplexer mDvcMon = new DeviceMonitorMultiplexer();
 
     private boolean mIsInitialized = false;
 
@@ -86,7 +86,7 @@ public class DeviceManager implements IDeviceManager {
 
     private IAndroidDebugBridge mAdbBridge;
     private ManagedDeviceListener mManagedDeviceListener;
-    private boolean mFastbootEnabled;
+    protected boolean mFastbootEnabled;
     private Set<IFastbootListener> mFastbootListeners;
     private FastbootMonitor mFastbootMonitor;
     private boolean mIsTerminated = false;
@@ -138,7 +138,7 @@ public class DeviceManager implements IDeviceManager {
      * Initialize the device manager. This must be called once and only once before any other
      * methods are called.
      */
-    synchronized void init(IDeviceSelection globalDeviceFilter,
+    protected synchronized void init(IDeviceSelection globalDeviceFilter,
             List<IDeviceMonitor> globalDeviceMonitors, IManagedTestDeviceFactory deviceFactory) {
         if (mIsInitialized) {
             throw new IllegalStateException("already initialized");
@@ -280,7 +280,7 @@ public class DeviceManager implements IDeviceManager {
     /**
      * Asynchronously checks if device is available, and adds to queue
      *
-     * @param device
+     * @param testDevice
      */
     private void checkAndAddAvailableDevice(final IManagedTestDevice testDevice) {
         if (mGlobalDeviceFilter != null && !mGlobalDeviceFilter.matches(testDevice.getIDevice())) {
@@ -698,7 +698,7 @@ public class DeviceManager implements IDeviceManager {
      * Execute a adb command not targeted to a particular device eg. 'adb connect'
      *
      * @param cmdArgs
-     * @return
+     * @return std output if the command succeedm null otherwise.
      */
     public String executeGlobalAdbCommand(String... cmdArgs) {
         String[] fullCmd = ArrayUtil.buildArray(new String[] {"adb"}, cmdArgs);

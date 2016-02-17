@@ -23,9 +23,9 @@ import com.android.tradefed.device.DeviceManager.FastbootDevice;
  */
 public class ManagedTestDeviceFactory implements IManagedTestDeviceFactory {
 
-    private boolean mFastbootEnabled;
-    private IDeviceManager mDeviceManager;
-    private IDeviceMonitor mAllocationMonitor;
+    protected boolean mFastbootEnabled;
+    protected IDeviceManager mDeviceManager;
+    protected IDeviceMonitor mAllocationMonitor;
 
     public ManagedTestDeviceFactory(boolean fastbootEnabled, IDeviceManager deviceManager,
             IDeviceMonitor allocationMonitor) {
