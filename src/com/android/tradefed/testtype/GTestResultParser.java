@@ -20,6 +20,7 @@ import com.android.ddmlib.Log;
 import com.android.ddmlib.MultiLineReceiver;
 import com.android.ddmlib.testrunner.ITestRunListener;
 import com.android.ddmlib.testrunner.TestIdentifier;
+import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.testtype.testdefs.XmlDefsTest;
 
 import java.util.ArrayList;
@@ -280,6 +281,12 @@ public class GTestResultParser extends MultiLineReceiver {
                 // Logs from test could offset the OK marker
                 message = line.substring(line.indexOf(Prefixes.OK_TEST_MARKER) +
                         Prefixes.OK_TEST_MARKER.length()).trim();
+                if (!testInProgress()) {
+                    // If we are missing the RUN tag, skip it wrong format
+                    CLog.e("Found %s without %s before, Ensure you are using GTest format",
+                            line, Prefixes.START_TEST_MARKER);
+                    return;
+                }
                 processOKTag(message);
                 clearCurrentTestResult();
             }
@@ -287,6 +294,12 @@ public class GTestResultParser extends MultiLineReceiver {
                 // Individual test completed with failure
                 message = line.substring(line.indexOf(Prefixes.FAILED_TEST_MARKER) +
                         Prefixes.FAILED_TEST_MARKER.length()).trim();
+                if (!testInProgress()) {
+                    // If we are missing the RUN tag, skip it wrong format
+                    CLog.e("Found %s without %s before, Ensure you are using GTest format",
+                            line, Prefixes.START_TEST_MARKER);
+                    return;
+                }
                 processFailedTag(message);
                 clearCurrentTestResult();
             }
@@ -503,8 +516,14 @@ public class GTestResultParser extends MultiLineReceiver {
         TestResult testResult = getCurrentTestResult();
         testResult.mTestClass = parsedResults.mTestClassName;
         testResult.mTestName = parsedResults.mTestName;
-
-        TestIdentifier testId = new TestIdentifier(getTestClass(testResult), testResult.mTestName);
+        TestIdentifier testId = null;
+        if (getTestClass(testResult) !=null && testResult.mTestName !=null) {
+            testId = new TestIdentifier(getTestClass(testResult), testResult.mTestName);
+        } else {
+            CLog.e("Error during parsing, className: %s and testName: %s, should both be not null",
+                    getTestClass(testResult), testResult.mTestName);
+            return;
+        }
 
         for (ITestRunListener listener : mTestListeners) {
             listener.testStarted(testId);
@@ -523,7 +542,14 @@ public class GTestResultParser extends MultiLineReceiver {
     private void doTestEnded(String identifier, boolean testPassed) {
         ParsedTestInfo parsedResults = parseTestIdentifier(identifier);
         TestResult testResult = getCurrentTestResult();
-        TestIdentifier testId = new TestIdentifier(getTestClass(testResult), testResult.mTestName);
+        TestIdentifier testId = null;
+        if (getTestClass(testResult) !=null && testResult.mTestName !=null) {
+            testId = new TestIdentifier(getTestClass(testResult), testResult.mTestName);
+        } else {
+            CLog.e("Error during parsing, className: %s and testName: %s, should both be not null",
+                    getTestClass(testResult), testResult.mTestName);
+            return;
+        }
 
         // Error - trying to end a test when one isn't in progress
         if (!testInProgress()) {
