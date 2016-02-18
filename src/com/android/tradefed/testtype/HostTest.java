@@ -15,7 +15,6 @@
  */
 package com.android.tradefed.testtype;
 
-import com.android.ddmlib.Log.LogLevel;
 import com.android.tradefed.config.ConfigurationException;
 import com.android.tradefed.config.Option;
 import com.android.tradefed.config.Option.Importance;
@@ -25,23 +24,19 @@ import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.result.ITestInvocationListener;
-import com.android.tradefed.result.JUnitToInvocationResultForwarder;
-import com.android.tradefed.testtype.DeviceTestResult.RuntimeDeviceNotAvailableException;
 
 import junit.framework.Test;
 import junit.framework.TestCase;
-import junit.framework.TestResult;
 import junit.framework.TestSuite;
 
 import java.lang.annotation.Annotation;
+import java.lang.reflect.AnnotatedElement;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.Enumeration;
 import java.util.HashSet;
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
 
 /**
@@ -66,6 +61,14 @@ public class HostTest implements IDeviceTest, ITestFilterReceiver, IRemoteTest {
             + "under test supports \"--iteration 1\" from a command line, it should be passed in as"
             + " \"--set-option iteration:1\"; escaping of \":\" is currently not supported")
     private List<String> mKeyValueOptions = new ArrayList<>();
+
+    @Option(name="include-annotation",
+            description="The set of annotations a test must have to be run.")
+    private Set<String> mIncludeAnnotation = new HashSet<String>();
+
+    @Option(name="exclude-annotation",
+            description="The name of class for the notAnnotation filter to be used.")
+    private Set<String> mExcludeAnnotation = new HashSet<String>();
 
     private ITestDevice mDevice;
     private Set<String> mIncludes = new HashSet<>();
@@ -120,7 +123,7 @@ public class HostTest implements IDeviceTest, ITestFilterReceiver, IRemoteTest {
     }
 
     /**
-     * {@inheritDoc}
+     * Return the number of test cases across all classes part of the tests
      */
     public int countTestCases() {
         int count = 0;
@@ -151,6 +154,14 @@ public class HostTest implements IDeviceTest, ITestFilterReceiver, IRemoteTest {
         mMethodName = methodName;
     }
 
+    void addIncludeAnnotation(String annotation) {
+        mIncludeAnnotation.add(annotation);
+    }
+
+    void addExcludeAnnotation(String notAnnotation) {
+        mExcludeAnnotation.add(notAnnotation);
+    }
+
     /**
      * {@inheritDoc}
      */
@@ -178,7 +189,9 @@ public class HostTest implements IDeviceTest, ITestFilterReceiver, IRemoteTest {
                     throw new IllegalArgumentException(String.format(
                             "%s does not implement ITestFilterReceiver", classObj.getName()));
                 }
-                test.run(listener);
+                if (shouldTestRun(test.getClass())) {
+                    test.run(listener);
+                }
             } else if (Test.class.isAssignableFrom(classObj)) {
                 JUnitRunUtil.runTest(listener, collectTests(collectClasses(classObj)),
                         classObj.getName());
@@ -234,12 +247,11 @@ public class HostTest implements IDeviceTest, ITestFilterReceiver, IRemoteTest {
                 }
             }
             for (Method method : methods) {
-                String methodName = String.format("%s#%s", className, method.getName());
                 if (!Modifier.isPublic(method.getModifiers())
                         || !method.getReturnType().equals(Void.TYPE)
                         || method.getParameterTypes().length > 0
                         || !method.getName().startsWith("test")
-                        || !shouldRun(packageName, className, methodName)) {
+                        || !shouldRun(packageName, className, method)) {
                     continue;
                 }
                 Test testObj = (Test) loadObject(classObj);
@@ -252,7 +264,42 @@ public class HostTest implements IDeviceTest, ITestFilterReceiver, IRemoteTest {
         return suite;
     }
 
-    private boolean shouldRun(String packageName, String className, String methodName) {
+    /**
+     * Check if an elements that has annotation pass the filter.
+     * @param annotatedElement
+     * @return false if the test should not run.
+     */
+    protected boolean shouldTestRun(AnnotatedElement annotatedElement) {
+        if (!mExcludeAnnotation.isEmpty()) {
+            for(Annotation a : annotatedElement.getAnnotations()) {
+                for (String excludeAnnotation : mExcludeAnnotation) {
+                    if (a.annotationType().getName().equals(excludeAnnotation)) {
+                        // If any of the method annotation match an ExcludeAnnotation, don't run it
+                        CLog.i("Skipping %s, ExcludeAnnotation exclude it", annotatedElement);
+                        return false;
+                    }
+                }
+            }
+        }
+        if (!mIncludeAnnotation.isEmpty()) {
+            Set<String> neededAnnotation = new HashSet<String>();
+            neededAnnotation.addAll(mIncludeAnnotation);
+            for(Annotation a : annotatedElement.getAnnotations()) {
+                if (neededAnnotation.contains(a.annotationType().getName())) {
+                    neededAnnotation.remove(a.annotationType().getName());
+                }
+            }
+            if (neededAnnotation.size() != 0) {
+                // The test needs to have all the include annotation to pass.
+                CLog.i("Skipping %s, IncludeAnnotation filtered it", annotatedElement);
+                return false;
+            }
+        }
+        return true;
+    }
+
+    private boolean shouldRun(String packageName, String className, Method method) {
+        String methodName = String.format("%s#%s", className, method.getName());
         if (mExcludes.contains(packageName)) {
             // Skip package because it was excluded
             CLog.i("Skip package because it was excluded");
@@ -266,6 +313,9 @@ public class HostTest implements IDeviceTest, ITestFilterReceiver, IRemoteTest {
         if (mExcludes.contains(methodName)) {
             // Skip method because it was excluded
             CLog.i("Skip method because it was excluded");
+            return false;
+        }
+        if (!shouldTestRun(method)) {
             return false;
         }
         return mIncludes.isEmpty()

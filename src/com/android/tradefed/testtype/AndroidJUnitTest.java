@@ -40,6 +40,10 @@ public class AndroidJUnitTest extends InstrumentationTest implements IRuntimeHin
     private static final String INCLUDE_PACKAGE_INST_ARGS_KEY = "package";
     /** instrumentation test runner argument key used for excluding a package */
     private static final String EXCLUDE_PACKAGE_INST_ARGS_KEY = "notPackage";
+    /** instrumentation test runner argument key used for adding annotation filter */
+    private static final String ANNOTATION_INST_ARGS_KEY = "annotation";
+    /** instrumentation test runner argument key used for adding notAnnotation filter */
+    private static final String NOT_ANNOTATION_INST_ARGS_KEY = "notAnnotation";
 
     @Option(name = "runtime-hint",
             isTimeVal=true,
@@ -53,6 +57,14 @@ public class AndroidJUnitTest extends InstrumentationTest implements IRuntimeHin
     @Option(name = "exclude-filter",
             description="The exclude filters of the test name to run.")
     private List<String> mExcludeFilters = new ArrayList<>();
+
+    @Option(name = "include-annotation",
+            description="The annotation class name of the test name to run, can be repeated")
+    private List<String> mIncludeAnnotation = new ArrayList<>();
+
+    @Option(name = "exclude-annotation",
+            description="The notAnnotation class name of the test name to run, can be repeated")
+    private List<String> mExcludeAnnotation = new ArrayList<>();
 
     public AndroidJUnitTest() {
         super();
@@ -101,6 +113,22 @@ public class AndroidJUnitTest extends InstrumentationTest implements IRuntimeHin
     }
 
     /**
+     * Add annotation that is needed for a test to run
+     * @param annotation to be added to the include filter.
+     */
+    public void addIncludeAnnotation(String annotation) {
+        mIncludeAnnotation.add(annotation);
+    }
+
+    /**
+     * Add annotation that if a test have will not run
+     * @param excludeAnnotation to be added to the exclude filter.
+     */
+    public void addExcludeAnnotation(String excludeAnnotation) {
+        mExcludeAnnotation.add(excludeAnnotation);
+    }
+
+    /**
      * {@inheritDoc}
      */
     @Override
@@ -140,6 +168,14 @@ public class AndroidJUnitTest extends InstrumentationTest implements IRuntimeHin
         if (!notPackageArg.isEmpty()) {
             runner.addInstrumentationArg(EXCLUDE_PACKAGE_INST_ARGS_KEY,
                     ArrayUtil.join(",", notPackageArg));
+        }
+        if (!mIncludeAnnotation.isEmpty()) {
+            runner.addInstrumentationArg(ANNOTATION_INST_ARGS_KEY,
+                    ArrayUtil.join(",", mIncludeAnnotation));
+        }
+        if (!mExcludeAnnotation.isEmpty()) {
+            runner.addInstrumentationArg(NOT_ANNOTATION_INST_ARGS_KEY,
+                    ArrayUtil.join(",", mExcludeAnnotation));
         }
     }
 

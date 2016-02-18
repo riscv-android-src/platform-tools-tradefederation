@@ -22,11 +22,13 @@ import com.android.tradefed.result.ITestInvocationListener;
 
 import junit.framework.Test;
 import junit.framework.TestCase;
-import junit.framework.TestResult;
 import junit.framework.TestSuite;
 
 import org.easymock.EasyMock;
 
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
+import java.lang.reflect.AnnotatedElement;
 import java.util.Map;
 
 /**
@@ -38,6 +40,7 @@ public class HostTestTest extends TestCase {
     private HostTest mHostTest;
     private ITestInvocationListener mListener;
 
+    @MyAnnotation
     public static class SuccessTestCase extends TestCase {
         public SuccessTestCase() {
         }
@@ -46,13 +49,19 @@ public class HostTestTest extends TestCase {
             super(name);
         }
 
+        @MyAnnotation
         public void testPass() {
         }
 
+        @MyAnnotation
+        @MyAnnotation2
         public void testPass2() {
         }
+
     }
 
+    @MyAnnotation
+    @MyAnnotation2
     public static class AnotherTestCase extends TestCase {
         public AnotherTestCase() {
         }
@@ -61,11 +70,28 @@ public class HostTestTest extends TestCase {
             super(name);
         }
 
+        @MyAnnotation
+        @MyAnnotation2
         public void testPass3() {
         }
 
+        @MyAnnotation
         public void testPass4() {
         }
+    }
+
+    /**
+     * Simple Annotation class for testing
+     */
+    @Retention(RetentionPolicy.RUNTIME)
+    public @interface MyAnnotation {
+    }
+
+    /**
+     * Simple Annotation class for testing
+     */
+    @Retention(RetentionPolicy.RUNTIME)
+    public @interface MyAnnotation2 {
     }
 
     public static class SuccessTestSuite extends TestSuite {
@@ -93,6 +119,7 @@ public class HostTestTest extends TestCase {
 
     /** Non-public class; should fail to load. */
     private static class PrivateTest extends TestCase {
+        @SuppressWarnings("unused")
         public void testPrivate() {
         }
     }
@@ -117,7 +144,7 @@ public class HostTestTest extends TestCase {
     }
 
     /**
-     * Test success case for {@link HostTest#run(TestResult)}, where test to run is a
+     * Test success case for {@link HostTest#run(ITestInvocationListener)}, where test to run is a
      * {@link TestCase}.
      */
     public void testRun_testcase() throws Exception {
@@ -135,7 +162,7 @@ public class HostTestTest extends TestCase {
     }
 
     /**
-     * Test success case for {@link HostTest#run(TestResult)}, where test to run is a
+     * Test success case for {@link HostTest#run(ITestInvocationListener)}, where test to run is a
      * {@link TestSuite}.
      */
     public void testRun_testSuite() throws Exception {
@@ -153,7 +180,7 @@ public class HostTestTest extends TestCase {
     }
 
     /**
-     * Test success case for {@link HostTest#run(TestResult)}, where test to run is a
+     * Test success case for {@link HostTest#run(ITestInvocationListener)}, where test to run is a
      * hierarchy of {@link TestSuite}s.
      */
     public void testRun_testHierarchySuite() throws Exception {
@@ -171,7 +198,7 @@ public class HostTestTest extends TestCase {
     }
 
     /**
-     * Test success case for {@link HostTest#run(TestResult)}, where test to run is a
+     * Test success case for {@link HostTest#run(ITestInvocationListener)}, where test to run is a
      * {@link TestCase} and methodName is set.
      */
     public void testRun_testMethod() throws Exception {
@@ -187,7 +214,7 @@ public class HostTestTest extends TestCase {
     }
 
     /**
-     * Test for {@link HostTest#run(TestResult)}, where className is not set.
+     * Test for {@link HostTest#run(ITestInvocationListener)}, where className is not set.
      */
     public void testRun_missingClass() throws Exception {
         try {
@@ -199,7 +226,7 @@ public class HostTestTest extends TestCase {
     }
 
     /**
-     * Test for {@link HostTest#run(TestResult)}, for an invalid class.
+     * Test for {@link HostTest#run(ITestInvocationListener)}, for an invalid class.
      */
     public void testRun_invalidClass() throws Exception {
         try {
@@ -212,7 +239,8 @@ public class HostTestTest extends TestCase {
     }
 
     /**
-     * Test for {@link HostTest#run(TestResult)}, for a valid class that is not a {@link Test}.
+     * Test for {@link HostTest#run(ITestInvocationListener)},
+     * for a valid class that is not a {@link Test}.
      */
     public void testRun_notTestClass() throws Exception {
         try {
@@ -225,7 +253,8 @@ public class HostTestTest extends TestCase {
     }
 
     /**
-     * Test for {@link HostTest#run(TestResult)}, for a private class.
+     * Test for {@link HostTest#run(ITestInvocationListener)},
+     * for a private class.
      */
     public void testRun_privateClass() throws Exception {
         try {
@@ -238,7 +267,8 @@ public class HostTestTest extends TestCase {
     }
 
     /**
-     * Test for {@link HostTest#run(TestResult)}, for a test class with no default constructor.
+     * Test for {@link HostTest#run(ITestInvocationListener)},
+     * for a test class with no default constructor.
      */
     public void testRun_noConstructorClass() throws Exception {
         try {
@@ -251,7 +281,7 @@ public class HostTestTest extends TestCase {
     }
 
     /**
-     * Test for {@link HostTest#run(TestResult)}, for multiple test classes.
+     * Test for {@link HostTest#run(ITestInvocationListener)}, for multiple test classes.
      */
     public void testRun_multipleClass() throws Exception {
         OptionSetter setter = new OptionSetter(mHostTest);
@@ -275,7 +305,8 @@ public class HostTestTest extends TestCase {
     }
 
     /**
-     * Test for {@link HostTest#run(TestResult)}, for multiple test classes with a method name.
+     * Test for {@link HostTest#run(ITestInvocationListener)},
+     * for multiple test classes with a method name.
      */
     public void testRun_multipleClassAndMethodName() throws Exception {
         try {
@@ -291,7 +322,7 @@ public class HostTestTest extends TestCase {
     }
 
     /**
-     * Test for {@link HostTest#run(TestResult)}, for a {@link DeviceTest}.
+     * Test for {@link HostTest#run(ITestInvocationListener)}, for a {@link IDeviceTest}.
      */
     public void testRun_deviceTest() throws Exception {
         final ITestDevice device = EasyMock.createMock(ITestDevice.class);
@@ -309,8 +340,8 @@ public class HostTestTest extends TestCase {
     }
 
     /**
-     * Test for {@link HostTest#run(TestResult)}, for a {@link DeviceTest} where no device has been
-     * provided.
+     * Test for {@link HostTest#run(ITestInvocationListener)},
+     * for a {@link IDeviceTest} where no device has been provided.
      */
     public void testRun_missingDevice() throws Exception {
         mHostTest.setClassName(SuccessDeviceTest.class.getName());
@@ -323,10 +354,132 @@ public class HostTestTest extends TestCase {
     }
 
     /**
-     * Test for {@link HostTest#countTestCases(TestResult)}
+     * Test for {@link HostTest#countTestCases()}
      */
     public void testCountTestCases() throws Exception {
         mHostTest.setClassName(SuccessTestCase.class.getName());
         assertEquals("Incorrect test case count", 2, mHostTest.countTestCases());
+    }
+
+    /**
+     * Test success case for {@link HostTest#run(ITestInvocationListener)}, where test to run is a
+     * {@link TestCase} with annotation filtering.
+     */
+    public void testRun_testcaseAnnotationFiltering() throws Exception {
+        mHostTest.setClassName(SuccessTestCase.class.getName());
+        mHostTest.addIncludeAnnotation("com.android.tradefed.testtype.HostTestTest$MyAnnotation");
+        TestIdentifier test1 = new TestIdentifier(SuccessTestCase.class.getName(), "testPass");
+        TestIdentifier test2 = new TestIdentifier(SuccessTestCase.class.getName(), "testPass2");
+        mListener.testRunStarted((String)EasyMock.anyObject(), EasyMock.eq(2));
+        mListener.testStarted(EasyMock.eq(test1));
+        mListener.testEnded(EasyMock.eq(test1), (Map<String, String>)EasyMock.anyObject());
+        mListener.testStarted(EasyMock.eq(test2));
+        mListener.testEnded(EasyMock.eq(test2), (Map<String, String>)EasyMock.anyObject());
+        mListener.testRunEnded(EasyMock.anyLong(), (Map<String, String>)EasyMock.anyObject());
+        EasyMock.replay(mListener);
+        mHostTest.run(mListener);
+    }
+
+    /**
+     * Test success case for {@link HostTest#run(ITestInvocationListener)}, where test to run is a
+     * {@link TestCase} with notAnnotationFiltering
+     */
+    public void testRun_testcaseNotAnnotationFiltering() throws Exception {
+        mHostTest.setClassName(SuccessTestCase.class.getName());
+        mHostTest.addExcludeAnnotation("com.android.tradefed.testtype.HostTestTest$MyAnnotation2");
+        TestIdentifier test1 = new TestIdentifier(SuccessTestCase.class.getName(), "testPass");
+        // Only test1 will run, test2 should be filtered out.
+        mListener.testRunStarted((String)EasyMock.anyObject(), EasyMock.eq(1));
+        mListener.testStarted(EasyMock.eq(test1));
+        mListener.testEnded(EasyMock.eq(test1), (Map<String, String>)EasyMock.anyObject());
+        mListener.testRunEnded(EasyMock.anyLong(), (Map<String, String>)EasyMock.anyObject());
+        EasyMock.replay(mListener);
+        mHostTest.run(mListener);
+    }
+
+    /**
+     * Test success case for {@link HostTest#run(ITestInvocationListener)}, where test to run is a
+     * {@link TestCase} with both annotation filtering.
+     */
+    public void testRun_testcaseBothAnnotationFiltering() throws Exception {
+        mHostTest.setClassName(AnotherTestCase.class.getName());
+        mHostTest.addIncludeAnnotation("com.android.tradefed.testtype.HostTestTest$MyAnnotation");
+        mHostTest.addExcludeAnnotation("com.android.tradefed.testtype.HostTestTest$MyAnnotation2");
+        TestIdentifier test4 = new TestIdentifier(AnotherTestCase.class.getName(), "testPass4");
+        // Only a test with MyAnnotation and Without MyAnnotation2 will run. Here testPass4
+        mListener.testRunStarted((String)EasyMock.anyObject(), EasyMock.eq(1));
+        mListener.testStarted(EasyMock.eq(test4));
+        mListener.testEnded(EasyMock.eq(test4), (Map<String, String>)EasyMock.anyObject());
+        mListener.testRunEnded(EasyMock.anyLong(), (Map<String, String>)EasyMock.anyObject());
+        EasyMock.replay(mListener);
+        mHostTest.run(mListener);
+    }
+
+    /**
+     * Test success case for {@link HostTest#run(ITestInvocationListener)}, where test to run is a
+     * {@link TestCase} with multiple include annotation, test must contains them all.
+     */
+    public void testRun_testcaseMultiInclude() throws Exception {
+        mHostTest.setClassName(AnotherTestCase.class.getName());
+        mHostTest.addIncludeAnnotation("com.android.tradefed.testtype.HostTestTest$MyAnnotation");
+        mHostTest.addIncludeAnnotation("com.android.tradefed.testtype.HostTestTest$MyAnnotation2");
+        TestIdentifier test3 = new TestIdentifier(AnotherTestCase.class.getName(), "testPass3");
+        // Only a test with MyAnnotation and with MyAnnotation2 will run. Here testPass3
+        mListener.testRunStarted((String)EasyMock.anyObject(), EasyMock.eq(1));
+        mListener.testStarted(EasyMock.eq(test3));
+        mListener.testEnded(EasyMock.eq(test3), (Map<String, String>)EasyMock.anyObject());
+        mListener.testRunEnded(EasyMock.anyLong(), (Map<String, String>)EasyMock.anyObject());
+        EasyMock.replay(mListener);
+        mHostTest.run(mListener);
+    }
+
+    /**
+     * Test success case for {@link HostTest#shouldTestRun(AnnotatedElement)}, where a class is
+     * properly annotated to run.
+     */
+    public void testRun_shouldTestRun_Success() throws Exception {
+        mHostTest.addIncludeAnnotation("com.android.tradefed.testtype.HostTestTest$MyAnnotation");
+        assertTrue(mHostTest.shouldTestRun(SuccessTestCase.class));
+    }
+
+    /**
+     * Test success case for {@link HostTest#shouldTestRun(AnnotatedElement)}, where a class is
+     * properly annotated to run with multiple annotation expected.
+     */
+    public void testRun_shouldTestRunMulti_Success() throws Exception {
+        mHostTest.addIncludeAnnotation("com.android.tradefed.testtype.HostTestTest$MyAnnotation");
+        mHostTest.addIncludeAnnotation("com.android.tradefed.testtype.HostTestTest$MyAnnotation2");
+        assertTrue(mHostTest.shouldTestRun(AnotherTestCase.class));
+    }
+
+    /**
+     * Test case for {@link HostTest#shouldTestRun(AnnotatedElement)}, where a class is
+     * properly annotated to be filtered.
+     */
+    public void testRun_shouldNotRun() throws Exception {
+        mHostTest.addExcludeAnnotation("com.android.tradefed.testtype.HostTestTest$MyAnnotation");
+        assertFalse(mHostTest.shouldTestRun(SuccessTestCase.class));
+    }
+
+    /**
+     * Test case for {@link HostTest#shouldTestRun(AnnotatedElement)}, where a class is
+     * properly annotated to be filtered because one of its two annotations is part of the exclude.
+     */
+    public void testRun_shouldNotRunMulti() throws Exception {
+        mHostTest.addExcludeAnnotation("com.android.tradefed.testtype.HostTestTest$MyAnnotation");
+        assertFalse(mHostTest.shouldTestRun(AnotherTestCase.class));
+        mHostTest = new HostTest();
+        // If only the other annotation is excluded.
+        mHostTest.addExcludeAnnotation("com.android.tradefed.testtype.HostTestTest$MyAnnotation2");
+        assertFalse(mHostTest.shouldTestRun(AnotherTestCase.class));
+    }
+
+    /**
+     * Test success case for {@link HostTest#shouldTestRun(AnnotatedElement)}, where a class is
+     * annotated with a different annotation from the exclude filter.
+     */
+    public void testRun_shouldRun_exclude() throws Exception {
+        mHostTest.addExcludeAnnotation("com.android.tradefed.testtype.HostTestTest$MyAnnotation2");
+        assertTrue(mHostTest.shouldTestRun(SuccessTestCase.class));
     }
 }
