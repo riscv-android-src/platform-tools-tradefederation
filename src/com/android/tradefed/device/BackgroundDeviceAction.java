@@ -97,36 +97,22 @@ public class BackgroundDeviceAction extends Thread {
             try {
                 mTestDevice.getIDevice().executeShellCommand(mCommand, mReceiver,
                         0, TimeUnit.MILLISECONDS);
-            } catch (TimeoutException e) {
-                recoverDevice(e.getClass().getName());
-            } catch (AdbCommandRejectedException e) {
-                recoverDevice(e.getClass().getName());
-            } catch (ShellCommandUnresponsiveException e) {
-                recoverDevice(e.getClass().getName());
-            } catch (IOException e) {
-                recoverDevice(e.getClass().getName());
+            } catch (AdbCommandRejectedException | IOException |
+                    ShellCommandUnresponsiveException | TimeoutException e) {
+                waitForDeviceRecovery(e.getClass().getName());
             }
         }
     }
 
-    private void recoverDevice(String exceptionType) {
+    /**
+     * If device goes offline for any reason, the recovery will be triggered from the main
+     * so we just have to block until it recovers or invocation fails for device unavailable.
+     * @param exceptionType
+     */
+    private void waitForDeviceRecovery(String exceptionType) {
         CLog.d("%s while running %s on %s. May see duplicated content in log.", exceptionType,
                 mDescriptor, mSerialNumber);
-
-        // Make sure we haven't been cancelled before we sleep for a long time
-        if (isCancelled()) {
-            return;
-        }
-
-        // sleep a small amount for device to settle
-        getRunUtil().sleep(5 * 1000);
-
-        // wait a long time for device to be online
-        try {
-            mTestDevice.waitForDeviceOnline(10 * 60 * 1000);
-        } catch (DeviceNotAvailableException e) {
-            CLog.w("Device %s not online", mSerialNumber);
-        }
+        blockUntilOnlineNoThrow();
     }
 
     /**
