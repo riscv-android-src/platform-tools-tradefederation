@@ -200,9 +200,13 @@ public class GTestResultParser extends MultiLineReceiver {
         private static final String INFORMATIONAL_MARKER = "[----------]";
         private static final String START_TEST_RUN_MARKER = "[==========] Running";
         private static final String TEST_RUN_MARKER = "[==========]";
-        private static final String START_TEST_MARKER = "[ RUN      ]";
-        private static final String OK_TEST_MARKER = "[       OK ]";
+        private static final String START_TEST_MARKER = "[ RUN      ]"; // GTest format
+        private static final String OK_TEST_MARKER = "[       OK ]"; // GTest format
         private static final String FAILED_TEST_MARKER = "[  FAILED  ]";
+        // Alternative non GTest format can be generated from Google Test AOSP and respond to
+        // different needs (parallelism of tests) that the GTest format can't describe well.
+        private static final String ALT_OK_MARKER = "[    OK    ]"; // Non GTest format
+        private static final String TIMEOUT_MARKER = "[ TIMEOUT  ]"; // Non GTest format
     }
 
     /**
@@ -290,16 +294,30 @@ public class GTestResultParser extends MultiLineReceiver {
                 processOKTag(message);
                 clearCurrentTestResult();
             }
+            else if (line.contains(Prefixes.ALT_OK_MARKER)) {
+                message = line.substring(line.indexOf(Prefixes.ALT_OK_MARKER) +
+                        Prefixes.ALT_OK_MARKER.length()).trim();
+                // This alternative format does not have a RUN tag, so we fake it.
+                fakeRunMarker(message);
+                processOKTag(message);
+                clearCurrentTestResult();
+            }
             else if (line.contains(Prefixes.FAILED_TEST_MARKER)) {
                 // Individual test completed with failure
                 message = line.substring(line.indexOf(Prefixes.FAILED_TEST_MARKER) +
                         Prefixes.FAILED_TEST_MARKER.length()).trim();
                 if (!testInProgress()) {
-                    // If we are missing the RUN tag, skip it wrong format
-                    CLog.e("Found %s without %s before, Ensure you are using GTest format",
-                            line, Prefixes.START_TEST_MARKER);
-                    return;
+                    // If we are missing the RUN tag (ALT format)
+                    fakeRunMarker(message);
                 }
+                processFailedTag(message);
+                clearCurrentTestResult();
+            }
+            else if (line.contains(Prefixes.TIMEOUT_MARKER)) {
+                // Individual test timeout is considered a failure
+                message = line.substring(line.indexOf(Prefixes.TIMEOUT_MARKER) +
+                        Prefixes.TIMEOUT_MARKER.length()).trim();
+                fakeRunMarker(message);
                 processFailedTag(message);
                 clearCurrentTestResult();
             }
@@ -331,6 +349,17 @@ public class GTestResultParser extends MultiLineReceiver {
     @Override
     public boolean isCancelled() {
         return mIsCancelled;
+    }
+
+    /**
+     * Create a fake run marker for alternative format that doesn't have it.
+     * @param message
+     */
+    private void fakeRunMarker(String message) {
+        // Remove everything after the test name.
+        String fakeRunMaker = message.split(" +")[0];
+        // Do as if we had found a [RUN] tag.
+        processTestStartedTag(fakeRunMaker);
     }
 
     /**

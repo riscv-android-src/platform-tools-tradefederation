@@ -284,10 +284,39 @@ public class GTestResultParserTest extends TestCase {
      */
     @SuppressWarnings("unchecked")
     public void testParseSimpleFile_AltFormat() throws Exception {
-        System.out.println("--------------MY TESTS-----------");
         String[] contents =  readInFile(GTEST_OUTPUT_FILE_8);
         ITestRunListener mockRunListener = EasyMock.createMock(ITestRunListener.class);
         mockRunListener.testRunStarted(TEST_MODULE_NAME, 18);
+        // 14 passing tests
+        for (int i=0; i<14; ++i) {
+            mockRunListener.testStarted((TestIdentifier)EasyMock.anyObject());
+            mockRunListener.testEnded((TestIdentifier)EasyMock.anyObject(),
+                    (Map<String, String>)EasyMock.anyObject());
+        }
+        // 3 consecutive test failures
+        mockRunListener.testStarted((TestIdentifier)EasyMock.anyObject());
+        mockRunListener.testFailed(
+                (TestIdentifier)EasyMock.anyObject(), (String)EasyMock.anyObject());
+        mockRunListener.testEnded((TestIdentifier)EasyMock.anyObject(),
+                (Map<String, String>)EasyMock.anyObject());
+        mockRunListener.testStarted((TestIdentifier)EasyMock.anyObject());
+        mockRunListener.testFailed(
+                (TestIdentifier)EasyMock.anyObject(), (String)EasyMock.anyObject());
+        mockRunListener.testEnded((TestIdentifier)EasyMock.anyObject(),
+                (Map<String, String>)EasyMock.anyObject());
+
+        mockRunListener.testStarted((TestIdentifier)EasyMock.anyObject());
+        mockRunListener.testFailed(
+                (TestIdentifier)EasyMock.anyObject(), (String)EasyMock.anyObject());
+        mockRunListener.testEnded((TestIdentifier)EasyMock.anyObject(),
+                (Map<String, String>)EasyMock.anyObject());
+        // 1 passing test
+        mockRunListener.testStarted((TestIdentifier)EasyMock.anyObject());
+        mockRunListener.testEnded((TestIdentifier)EasyMock.anyObject(),
+                (Map<String, String>)EasyMock.anyObject());
+
+        mockRunListener.testRunEnded(EasyMock.anyLong(),
+                (Map<String, String>) EasyMock.anyObject());
         EasyMock.replay(mockRunListener);
         GTestResultParser resultParser = new GTestResultParser(TEST_MODULE_NAME, mockRunListener);
         resultParser.processNewLines(contents);
