@@ -227,8 +227,10 @@ public class FileUtil {
      */
     public static File createTempDir(String prefix, File parentDir) throws IOException {
         // create a temp file with unique name, then make it a directory
-        CLog.d("Creating temp directory at %s with prefix \"%s\"",
-            parentDir.getAbsolutePath(), prefix);
+        if (parentDir != null) {
+            CLog.d("Creating temp directory at %s with prefix \"%s\"",
+              parentDir.getAbsolutePath(), prefix);
+        }
         File tmpDir = File.createTempFile(prefix, "", parentDir);
         return deleteFileAndCreateDirWithSameName(tmpDir);
     }
@@ -285,8 +287,10 @@ public class FileUtil {
      */
     public static File createTempFile(String prefix, String suffix, File parentDir)
             throws IOException {
-        CLog.d("Creating temp file at %s with prefix \"%s\" suffix \"\"",
-            parentDir.getAbsolutePath(), prefix, suffix);
+        if (parentDir != null) {
+            CLog.d("Creating temp file at %s with prefix \"%s\" suffix \"\"",
+                parentDir.getAbsolutePath(), prefix, suffix);
+        }
         File returnFile = File.createTempFile(prefix, suffix, parentDir);
         verifyDiskSpace(returnFile);
         return returnFile;
