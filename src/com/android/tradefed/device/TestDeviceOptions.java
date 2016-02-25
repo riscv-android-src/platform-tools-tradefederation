@@ -99,6 +99,10 @@ public class TestDeviceOptions {
             description = "shell command to run after reboots during invocation")
     private List<String> mPostBootCommands = new ArrayList<String>();
 
+    @Option(name = "disable-reboot",
+            description = "disables device reboots globally, making them no-ops")
+    private boolean mDisableReboot = false;
+
     @Option(name = "cutoff-battery", description =
             "the minimum battery level required to continue the invocation. Scale: 0-100")
     private Integer mCutoffBattery = null;
@@ -321,7 +325,15 @@ public class TestDeviceOptions {
     /**
      * Set the options to be passed down to logcat
      */
-    public void setmLogcatOptions(String logcatOptions) {
+    public void setLogcatOptions(String logcatOptions) {
         mLogcatOptions = logcatOptions;
+    }
+
+    /**
+     * @return if device reboot should be disabled
+     * @return
+     */
+    public boolean shouldDisableReboot() {
+        return mDisableReboot;
     }
 }

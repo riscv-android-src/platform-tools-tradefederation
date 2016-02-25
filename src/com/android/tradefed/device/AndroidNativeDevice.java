@@ -2449,6 +2449,10 @@ public class AndroidNativeDevice implements IManagedTestDevice {
             CLog.i("device %s in fastboot. Rebooting to userspace.", getSerialNumber());
             executeFastbootCommand("reboot");
         } else {
+            if (mOptions.shouldDisableReboot()) {
+                CLog.i("Device reboot disabled by options, skipped.");
+                return;
+            }
             CLog.i("Rebooting device %s", getSerialNumber());
             doAdbReboot(null);
             waitForDeviceNotAvailable("reboot", DEFAULT_UNAVAILABLE_TIMEOUT);
