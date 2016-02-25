@@ -152,7 +152,8 @@ class ConfigurationXmlParser {
                     throwException("Missing 'name' attribute for include");
                 }
                 try {
-                    mConfigDefLoader.loadIncludedConfiguration(mConfigDef, mName, includeName);
+                    mConfigDefLoader.loadIncludedConfiguration(mConfigDef, mName, includeName,
+                            mTemplateMap);
                 } catch (ConfigurationException e) {
                     if (e instanceof TemplateResolutionError) {
                         // The actual cause of this error is that recursive <template-include>
@@ -181,7 +182,8 @@ class ConfigurationXmlParser {
                 // Removing the used template from the map to avoid re-using it.
                 mTemplateMap.remove(templateName);
                 try {
-                    mConfigDefLoader.loadIncludedConfiguration(mConfigDef, mName, includeName);
+                    mConfigDefLoader.loadIncludedConfiguration(mConfigDef, mName, includeName,
+                            mTemplateMap);
                 } catch (ConfigurationException e) {
                     if (e instanceof TemplateResolutionError) {
                         // The actual cause of this error is that recursive <template-include>

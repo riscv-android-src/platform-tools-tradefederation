@@ -69,7 +69,7 @@ public class ConfigurationFactoryTest extends TestCase {
     /**
      * Sanity test to ensure all configs on classpath can be fully loaded and parsed
      */
-    public void testLoadAndPrintAllConfigs() throws ConfigurationException {
+    public void testLoadAndPrintAllConfigs() {
         try {
             new ConfigurationFactory().loadAndPrintAllConfigs();
         } catch (ConfigurationException e) {
@@ -249,8 +249,8 @@ public class ConfigurationFactoryTest extends TestCase {
     }
 
     /**
-     * Test calling {@link ConfigurationFactory#getConfiguration(String)} with a name that does not
-     * exist.
+     * Test calling {@link ConfigurationFactory#createConfigurationFromArgs(String[])}
+     * with a name that does not exist.
      */
     public void testCreateConfigurationFromArgs_missing()  {
         try {
@@ -262,8 +262,8 @@ public class ConfigurationFactoryTest extends TestCase {
     }
 
     /**
-     * Test calling {@link ConfigurationFactory#getConfiguration(String)} with config that has
-     * unset mandatory options.
+     * Test calling {@link ConfigurationFactory#createConfigurationFromArgs(String[])}
+     * with config that has unset mandatory options.
      * <p/>
      * Expect this to succeed, since mandatory option validation no longer happens at configuration
      * instantiation time.
@@ -300,7 +300,7 @@ public class ConfigurationFactoryTest extends TestCase {
      * Test {@link ConfigurationFactory#createConfigurationFromArgs(String[])} when extra positional
      * arguments are supplied
      */
-    public void testCreateConfigurationFromArgs_unprocessedArgs() throws ConfigurationException {
+    public void testCreateConfigurationFromArgs_unprocessedArgs() {
         try {
             mFactory.createConfigurationFromArgs(new String[] {TEST_CONFIG, "--log-level",
                     LogLevel.VERBOSE.getStringValue(), "blah"});
@@ -311,7 +311,7 @@ public class ConfigurationFactoryTest extends TestCase {
     }
 
     /**
-     * Test {@link ConfigurationFactory#printHelp( PrintStream))}
+     * Test {@link ConfigurationFactory#printHelp(PrintStream)}
      */
     public void testPrintHelp() {
         ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
@@ -323,7 +323,7 @@ public class ConfigurationFactoryTest extends TestCase {
     }
 
     /**
-     * Test {@link ConfigurationFactory#printHelpForConfig(String[], boolean, PrintStream))} when
+     * Test {@link ConfigurationFactory#printHelpForConfig(String[], boolean, PrintStream)} when
      * config referenced by args exists
      */
     public void testPrintHelpForConfig_configExists() {
@@ -503,18 +503,39 @@ public class ConfigurationFactoryTest extends TestCase {
     }
 
     /**
-     * A limitation of the current implementation is that template args are only passed to the
-     * outermost configuration.  This unit test codifies the expectation that an inner
-     * {@code <template-include>} tag that doesn't have a default resolution set will fail.
+     * This unit test codifies the expectation that an inner {@code <template-include>} tag
+     * is properly found and replaced by a config containing another template that is resolved.
+     * MAIN CONFIG -> Template 1 -> Template 2 = Works!
      */
     public void testCreateConfigurationFromArgs_templateInclude_dependent() throws Exception {
         final String configName = "depend-template-include-config";
         final String depTargetName = "template-include-config";
         final String targetName = "test-config";
+
+        try {
+            IConfiguration config = mFactory.createConfigurationFromArgs(new String[]{configName,
+                    "--template:map", "dep-target", depTargetName,
+                    "--template:map", "target", targetName});
+            assertTrue(config.getTests().get(0) instanceof StubOptionTest);
+            assertTrue(config.getTests().get(1) instanceof StubOptionTest);
+        } catch (ConfigurationException e) {
+            fail(e.getMessage());
+        }
+    }
+
+    /**
+     * This unit test codifies the expectation that an inner {@code <template-include>} tag
+     * replaced by a missing config raise a failure.
+     * MAIN CONFIG -> Template 1 -> Template 2(missing) = error
+     */
+    public void testCreateConfigurationFromArgs_templateInclude_dependent_missing()
+            throws Exception {
+        final String configName = "depend-template-include-config";
+        final String depTargetName = "template-include-config";
+        final String targetName = "test-config-missing";
         final String expError = String.format(
-                "Failed to parse config xml '%s'. Reason: " +
-                ConfigurationXmlParser.ConfigHandler.INNER_TEMPLATE_INCLUDE_ERROR,
-                configName, configName, depTargetName);
+                "Bundled config '%s' is including a config '%s' that's neither local nor bundled.",
+                depTargetName, targetName);
 
         try {
             mFactory.createConfigurationFromArgs(new String[]{configName,
@@ -528,25 +549,62 @@ public class ConfigurationFactoryTest extends TestCase {
     }
 
     /**
-     * A limitation of the current implementation is that template args are only passed to the
-     * outermost configuration.  This unit test codifies the expectation that an inner
-     * {@code <template-include>} tag that doesn't have a default resolution set will fail.
+     * This unit test codifies the expectation that an inner {@code <template-include>} tag
+     * that doesn't have a default attribute will fail because cannot be resolved.
+     * MAIN CONFIG -> Template 1 -> Template 2(no Default, no args override) = error
+     */
+    public void testCreateConfigurationFromArgs_templateInclude_dependent_nodefault()
+            throws Exception {
+        final String configName = "depend-template-include-config";
+        final String depTargetName = "template-include-config";
+        final String expError = String.format(
+                "Failed to parse config xml '%s'. Reason: " +
+                ConfigurationXmlParser.ConfigHandler.INNER_TEMPLATE_INCLUDE_ERROR,
+                configName, configName, depTargetName);
+        try {
+            mFactory.createConfigurationFromArgs(new String[]{configName,
+                    "--template:map", "dep-target", depTargetName});
+            fail ("ConfigurationException not thrown");
+        } catch (ConfigurationException e) {
+            assertEquals(expError, e.getMessage());
+        }
+    }
+
+    /**
+     * This unit test codifies the expectation that an inner {@code <template-include>} tag
+     * that is inside an include tag will be correctly replaced by arguments.
+     * Main Config -> Include 1 -> Template 1 -> test-config.xml
      */
     public void testCreateConfigurationFromArgs_include_dependent() throws Exception {
         final String configName = "include-template-config";
         final String targetName = "test-config";
-        final String failedTargetName = "template-include-config";
+        try {
+            IConfiguration config = mFactory.createConfigurationFromArgs(new String[]{configName,
+                    "--template:map", "target", targetName});
+            assertTrue(config.getTests().get(0) instanceof StubOptionTest);
+            assertTrue(config.getTests().get(1) instanceof StubOptionTest);
+        } catch (ConfigurationException e) {
+            fail(e.getMessage());
+        }
+    }
+
+    /**
+     * This unit test codifies the expectation that an inner {@code <template-include>} tag
+     * that is inside an include tag will be correctly rejected if no arguments can match it and
+     * no default value is present.
+     * Main Config -> Include 1 -> Template 1 (No default, no args override) = error
+     */
+    public void testCreateConfigurationFromArgs_include_dependent_nodefault() throws Exception {
+        final String configName = "include-template-config";
+        final String includeTargetName = "template-include-config";
         final String expError = String.format(
                 "Failed to parse config xml '%s'. Reason: " +
                 ConfigurationXmlParser.ConfigHandler.INNER_TEMPLATE_INCLUDE_ERROR,
-                configName, configName, failedTargetName);
-
+                configName, configName, includeTargetName);
         try {
-            mFactory.createConfigurationFromArgs(new String[]{configName,
-                    "--template:map", "target", targetName});
+            mFactory.createConfigurationFromArgs(new String[]{configName});
             fail ("ConfigurationException not thrown");
         } catch (ConfigurationException e) {
-            // Make sure that we get the expected error message
             assertEquals(expError, e.getMessage());
         }
     }
@@ -564,7 +622,88 @@ public class ConfigurationFactoryTest extends TestCase {
     }
 
     /**
-    * Test loading a config that tries to include a non-bundled config
+     * Test loading a config that tries to replace a template with itself will fail because each
+     * template:map can only be applied once.
+     */
+    public void testCreateConfigurationFromArgs_recursiveTemplate() throws Exception {
+        final String configName = "depend-template-include-config";
+        final String depTargetName = "depend-template-include-config";
+        final String expError = String.format(
+                "Failed to parse config xml '%s'. Reason: " +
+                ConfigurationXmlParser.ConfigHandler.INNER_TEMPLATE_INCLUDE_ERROR,
+                configName, configName, depTargetName);
+        try {
+            mFactory.createConfigurationFromArgs(new String[]{configName,
+                    "--template:map", "dep-target", depTargetName});
+            fail ("ConfigurationException not thrown");
+        } catch (ConfigurationException e) {
+            assertEquals(expError, e.getMessage());
+        }
+    }
+
+    /**
+     * Re-apply a template on a lower config level. Should result in a fail to parse because each
+     * template:map can only be applied once. So missing the default will throw exception.
+     */
+    public void testCreateConfigurationFromArgs_template_multilevel() throws Exception {
+        final String configName = "depend-template-include-config";
+        final String depTargetName = "template-include-config";
+        final String depTargetName2 = "depend-template-include-config";
+        final String expError = String.format(
+                "Failed to parse config xml '%s'. Reason: " +
+                ConfigurationXmlParser.ConfigHandler.INNER_TEMPLATE_INCLUDE_ERROR,
+                configName, configName, depTargetName2);
+        try {
+            mFactory.createConfigurationFromArgs(new String[]{configName,
+                    "--template:map", "dep-target", depTargetName,
+                    "--template:map", "target", depTargetName2});
+            fail ("ConfigurationException not thrown");
+        } catch (ConfigurationException e) {
+            assertEquals(expError, e.getMessage());
+        }
+    }
+
+    /**
+     * Re-apply a template twice. Should result in an error
+     */
+    public void testCreateConfigurationFromArgs_templateCollision() throws Exception {
+        final String configName = "template-collision-include-config";
+        final String depTargetName = "template-include-config-with-default";
+        final String expError = String.format(
+                "Circular configuration include: config '%s' is already included", depTargetName);
+        try {
+            mFactory.createConfigurationFromArgs(new String[]{configName,
+                    "--template:map", "target-col", depTargetName,
+                    "--template:map", "target-col2", depTargetName});
+            fail ("ConfigurationException not thrown");
+        } catch (ConfigurationException e) {
+            assertEquals(expError, e.getMessage());
+        }
+    }
+
+    /**
+     * One template directly replaced by test-config, the other one replaced by another template
+     * with default value to test-config. Results in Circular error.
+     */
+    public void testCreateConfigurationFromArgs_templateCollision_finalEvaluation()
+            throws Exception {
+        final String configName = "template-collision-include-config";
+        final String depTargetName = "template-include-config-with-default";
+        final String depTargetName2 = "test-config";
+        final String expError = String.format(
+                "Circular configuration include: config '%s' is already included", depTargetName2);
+        try {
+            mFactory.createConfigurationFromArgs(new String[]{configName,
+                    "--template:map", "target-col", depTargetName,
+                    "--template:map", "target-col2", depTargetName2});
+            fail ("ConfigurationException not thrown");
+        } catch (ConfigurationException e) {
+            assertEquals(expError, e.getMessage());
+        }
+    }
+
+    /**
+    * Test loading a config that tries to include a non-bundled config.
     */
     public void testCreateConfigurationFromArgs_nonBundledInclude() throws Exception {
        try {

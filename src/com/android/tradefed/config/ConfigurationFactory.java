@@ -239,8 +239,8 @@ public class ConfigurationFactory implements IConfigurationFactory {
          * bundled inside tradefed.jar. However, local (external) configs can include both local
          * (external) and bundled configs.
          */
-        public void loadIncludedConfiguration(ConfigurationDef def, String parentName, String name)
-                throws ConfigurationException {
+        public void loadIncludedConfiguration(ConfigurationDef def, String parentName, String name,
+                Map<String, String> templateMap) throws ConfigurationException {
 
             String config_name = name;
             if (!isBundledConfig(name)) {
@@ -271,7 +271,7 @@ public class ConfigurationFactory implements IConfigurationFactory {
                         config_name));
             }
             mIncludedConfigs.add(config_name);
-            loadConfiguration(config_name, def, null);
+            loadConfiguration(config_name, def, templateMap);
         }
 
         /**
@@ -432,7 +432,7 @@ public class ConfigurationFactory implements IConfigurationFactory {
      * @param arrayArgs the full list of command line arguments, including the config name
      * @param optionArgsRef an empty list, that will be populated with the remaining option
      *                      arguments
-     * @return a {@link GlobalConfiguration}
+     * @return a {@link IGlobalConfiguration} created from the args
      * @throws ConfigurationException
      */
     private IGlobalConfiguration internalCreateGlobalConfigurationFromArgs(String[] arrayArgs,

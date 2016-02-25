@@ -21,6 +21,8 @@ import org.easymock.EasyMock;
 
 import java.io.ByteArrayInputStream;
 import java.io.InputStream;
+import java.util.Collections;
+import java.util.Map;
 
 /**
  * Unit tests for {@link ConfigurationXmlParser}.
@@ -38,7 +40,8 @@ public class ConfigurationXmlParserTest extends TestCase {
     }
 
     /**
-     * Normal case test for {@link ConfigurationXmlParser#parse(String, InputStream)}.
+     * Normal case test for
+     * {@link ConfigurationXmlParser#parse(ConfigurationDef, String, InputStream, Map)}.
      */
     public void testParse() throws ConfigurationException {
         final String normalConfig =
@@ -149,10 +152,12 @@ public class ConfigurationXmlParserTest extends TestCase {
     /**
      * Test parsing a include tag.
      */
+    @SuppressWarnings("unchecked")
     public void testParse_include() throws ConfigurationException {
         String includedName = "includeme";
         ConfigurationDef configDef = new ConfigurationDef("foo");
-        mMockLoader.loadIncludedConfiguration(EasyMock.eq(configDef), EasyMock.eq("foo"), EasyMock.eq(includedName));
+        mMockLoader.loadIncludedConfiguration(EasyMock.eq(configDef), EasyMock.eq("foo"),
+                EasyMock.eq(includedName), (Map<String, String>) EasyMock.anyObject());
         EasyMock.replay(mMockLoader);
         final String config = "<include name=\"includeme\" />";
         xmlParser.parse(configDef, "foo", getStringAsStream(config), null);
@@ -165,7 +170,8 @@ public class ConfigurationXmlParserTest extends TestCase {
         String includedName = "non-existent";
         ConfigurationDef parent = new ConfigurationDef("name");
         ConfigurationException exception = new ConfigurationException("I don't exist");
-        mMockLoader.loadIncludedConfiguration(parent, "name", includedName);
+        mMockLoader.loadIncludedConfiguration(parent, "name", includedName,
+                Collections.<String, String>emptyMap());
         EasyMock.expectLastCall().andThrow(exception);
         EasyMock.replay(mMockLoader);
         final String config = String.format("<include name=\"%s\" />", includedName);
@@ -180,7 +186,7 @@ public class ConfigurationXmlParserTest extends TestCase {
     /**
      * Test parsing a tag whose name is not recognized.
      */
-    public void testParse_badTag() throws ConfigurationException {
+    public void testParse_badTag() {
         final String config = "<blah name=\"foo\" />";
         try {
             xmlParser.parse(new ConfigurationDef("name"), "name", getStringAsStream(config), null);
@@ -193,7 +199,7 @@ public class ConfigurationXmlParserTest extends TestCase {
     /**
      * Test parsing invalid xml.
      */
-    public void testParse_xml() throws ConfigurationException {
+    public void testParse_xml() {
         final String config = "blah";
         try {
             xmlParser.parse(new ConfigurationDef("name"), "name", getStringAsStream(config), null);
