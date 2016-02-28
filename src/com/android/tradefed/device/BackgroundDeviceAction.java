@@ -78,7 +78,7 @@ public class BackgroundDeviceAction extends Thread {
     @Override
     public void run() {
         String separator = String.format(
-                "========== beginning of new [%s] output ==========\n", mDescriptor);
+                "\n========== beginning of new [%s] output ==========\n", mDescriptor);
         while (!isCancelled()) {
             if (mLogStartDelay > 0) {
                 CLog.d("Sleep for %d before starting %s for %s.", mLogStartDelay, mDescriptor,
