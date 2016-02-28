@@ -45,7 +45,6 @@ public class BackgroundDeviceAction extends Thread {
     private IShellOutputReceiver mReceiver;
     private ITestDevice mTestDevice;
     private String mCommand;
-    private String mSerialNumber;
     private String mDescriptor;
     private boolean mIsCancelled;
     private int mLogStartDelay;
@@ -63,7 +62,6 @@ public class BackgroundDeviceAction extends Thread {
             IShellOutputReceiver receiver, int startDelay) {
         mCommand = command;
         mDescriptor = descriptor;
-        mSerialNumber = device.getSerialNumber();
         mTestDevice = device;
         mReceiver = receiver;
         mLogStartDelay = startDelay;
@@ -84,7 +82,7 @@ public class BackgroundDeviceAction extends Thread {
         while (!isCancelled()) {
             if (mLogStartDelay > 0) {
                 CLog.d("Sleep for %d before starting %s for %s.", mLogStartDelay, mDescriptor,
-                        mSerialNumber);
+                        mTestDevice.getSerialNumber());
                 getRunUtil().sleep(mLogStartDelay);
             }
             blockUntilOnlineNoThrow();
@@ -92,7 +90,7 @@ public class BackgroundDeviceAction extends Thread {
             if (isCancelled()) {
                 break;
             }
-            CLog.d("Starting %s for %s.", mDescriptor, mSerialNumber);
+            CLog.d("Starting %s for %s.", mDescriptor, mTestDevice.getSerialNumber());
             mReceiver.addOutput(separator.getBytes(), 0, separator.length());
             try {
                 mTestDevice.getIDevice().executeShellCommand(mCommand, mReceiver,
@@ -111,7 +109,7 @@ public class BackgroundDeviceAction extends Thread {
      */
     private void waitForDeviceRecovery(String exceptionType) {
         CLog.d("%s while running %s on %s. May see duplicated content in log.", exceptionType,
-                mDescriptor, mSerialNumber);
+                mDescriptor, mTestDevice.getSerialNumber());
         blockUntilOnlineNoThrow();
     }
 
@@ -140,12 +138,12 @@ public class BackgroundDeviceAction extends Thread {
     }
 
     private void blockUntilOnlineNoThrow() {
-        CLog.d("Waiting for device %s online before starting.", mSerialNumber);
+        CLog.d("Waiting for device %s online before starting.", mTestDevice.getSerialNumber());
         while (!isCancelled()) {
             if (!TestDeviceState.ONLINE.equals(mTestDevice.getDeviceState())) {
                 getRunUtil().sleep(ONLINE_POLL_INTERVAL_MS);
             } else {
-                CLog.d("Device %s now online.", mSerialNumber);
+                CLog.d("Device %s now online.", mTestDevice.getSerialNumber());
                 break;
             }
         }
