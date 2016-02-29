@@ -16,7 +16,6 @@
 package com.android.tradefed.config;
 
 import com.android.ddmlib.Log;
-import com.android.ddmlib.Log.LogLevel;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.util.ClassPathScanner;
 import com.android.tradefed.util.ClassPathScanner.IClassPathFilter;
@@ -384,6 +383,11 @@ public class ConfigurationFactory implements IConfigurationFactory {
 
         ConfigurationDef configDef = getConfigurationDef(configName, false,
                 parserSettings.templateMap);
+
+        if (!parserSettings.templateMap.isEmpty()) {
+            throw new ConfigurationException(String.format("Unused template:map parameters: %s",
+                    parserSettings.templateMap.toString()));
+        }
         return configDef.createConfiguration();
     }
 

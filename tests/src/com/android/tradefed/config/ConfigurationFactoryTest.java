@@ -608,4 +608,27 @@ public class ConfigurationFactoryTest extends TestCase {
             // expected
         }
     }
+
+    /**
+     * If a template:map argument is passed but doesn't match any {@code <template-include>} tag
+     * a configuration exception will be thrown for unmatched arguments.
+     */
+    public void testCreateConfigurationFromArgs_templateName_notExist() throws Exception {
+        final String configName = "include-template-config-with-default";
+        final String targetName = "test-config";
+        final String missingNameTemplate = "NOTEXISTINGNAME";
+        Map<String, String> expected = new HashMap<String,String>();
+        expected.put(missingNameTemplate, targetName);
+        final String expError = String.format(
+                "Unused template:map parameters: %s", expected);
+
+        try {
+            mFactory.createConfigurationFromArgs(new String[]{configName,
+                    "--template:map", missingNameTemplate, targetName});
+            fail ("ConfigurationException not thrown");
+        } catch (ConfigurationException e) {
+            // Make sure that we get the expected error message
+            assertEquals(expError, e.getMessage());
+        }
+    }
 }
