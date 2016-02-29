@@ -272,12 +272,10 @@ public class HostTest implements IDeviceTest, ITestFilterReceiver, IRemoteTest {
     protected boolean shouldTestRun(AnnotatedElement annotatedElement) {
         if (!mExcludeAnnotation.isEmpty()) {
             for(Annotation a : annotatedElement.getAnnotations()) {
-                for (String excludeAnnotation : mExcludeAnnotation) {
-                    if (a.annotationType().getName().equals(excludeAnnotation)) {
-                        // If any of the method annotation match an ExcludeAnnotation, don't run it
-                        CLog.i("Skipping %s, ExcludeAnnotation exclude it", annotatedElement);
-                        return false;
-                    }
+                if (mExcludeAnnotation.contains(a.annotationType().getName())) {
+                    // If any of the method annotation match an ExcludeAnnotation, don't run it
+                    CLog.i("Skipping %s, ExcludeAnnotation exclude it", annotatedElement);
+                    return false;
                 }
             }
         }
