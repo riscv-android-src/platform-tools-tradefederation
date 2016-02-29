@@ -178,7 +178,8 @@ class ConfigurationXmlParser {
                 if (includeName == null) {
                     throw new SAXException(new TemplateResolutionError(templateName));
                 }
-
+                // Removing the used template from the map to avoid re-using it.
+                mTemplateMap.remove(templateName);
                 try {
                     mConfigDefLoader.loadIncludedConfiguration(mConfigDef, mName, includeName);
                 } catch (ConfigurationException e) {
