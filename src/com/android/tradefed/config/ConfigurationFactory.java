@@ -16,7 +16,6 @@
 package com.android.tradefed.config;
 
 import com.android.ddmlib.Log;
-import com.android.ddmlib.Log.LogLevel;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.util.ClassPathScanner;
 import com.android.tradefed.util.ClassPathScanner.IClassPathFilter;
@@ -190,10 +189,15 @@ public class ConfigurationFactory implements IConfigurationFactory {
             if (def == null || def.isStale()) {
                 def = new ConfigurationDef(configName);
                 loadConfiguration(configName, def, templateMap);
-
                 mConfigDefMap.put(configId, def);
+            } else {
+                if (templateMap != null) {
+                    // Clearing the map before returning the cached config to avoid seeing them as
+                    // unused.
+                    CLog.i("Using cached configuration, ensuring map is clean.");
+                    templateMap.clear();
+                }
             }
-
             return def;
         }
 
@@ -381,9 +385,12 @@ public class ConfigurationFactory implements IConfigurationFactory {
         final ConfigurationXmlParserSettings parserSettings = new ConfigurationXmlParserSettings();
         final ArgsOptionParser templateArgParser = new ArgsOptionParser(parserSettings);
         optionArgsRef.addAll(templateArgParser.parseBestEffort(listArgs));
-
         ConfigurationDef configDef = getConfigurationDef(configName, false,
                 parserSettings.templateMap);
+        if (!parserSettings.templateMap.isEmpty()) {
+            throw new ConfigurationException(String.format("Unused template:map parameters: %s",
+                    parserSettings.templateMap.toString()));
+        }
         return configDef.createConfiguration();
     }
 
