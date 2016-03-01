@@ -21,14 +21,21 @@ import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.result.ITestInvocationListener;
+import com.android.tradefed.util.TestFilterHelper;
 
 import junit.framework.Test;
 import junit.framework.TestCase;
 import junit.framework.TestResult;
 
+import java.lang.annotation.Annotation;
+import java.lang.reflect.AnnotatedElement;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
+import java.util.ArrayList;
 import java.util.Collection;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
 import java.util.Vector;
 
 /**
@@ -37,10 +44,32 @@ import java.util.Vector;
  * This is useful if you want to implement tests that follow the JUnit pattern of defining tests,
  * and still have full support for other tradefed features such as {@link Option}s
  */
-public class DeviceTestCase extends TestCase implements IDeviceTest, IRemoteTest {
+public class DeviceTestCase extends TestCase implements IDeviceTest, IRemoteTest,
+        ITestFilterReceiver {
 
     private static final String LOG_TAG = "DeviceTestCase";
     private ITestDevice mDevice;
+    private TestFilterHelper mFilterHelper;
+
+    /** The include filters of the test name to run */
+    @Option(name = "include-filter",
+            description="The include filters of the test name to run.")
+    protected List<String> mIncludeFilters = new ArrayList<>();
+
+    /** The exclude filters of the test name to run */
+    @Option(name = "exclude-filter",
+            description="The exclude filters of the test name to run.")
+    protected List<String> mExcludeFilters = new ArrayList<>();
+
+    /** The include annotations of the test to run */
+    @Option(name="include-annotation",
+            description="The set of annotations a test must have to be run.")
+    protected Set<String> mIncludeAnnotation = new HashSet<String>();
+
+    /** The exclude annotations of the test to run */
+    @Option(name="exclude-annotation",
+            description="The name of class for the notAnnotation filter to be used.")
+    protected Set<String> mExcludeAnnotation = new HashSet<String>();
 
     @Option(name = "method", description = "run a specific test method.")
     private String mMethodName = null;
@@ -49,10 +78,14 @@ public class DeviceTestCase extends TestCase implements IDeviceTest, IRemoteTest
 
     public DeviceTestCase() {
         super();
+        mFilterHelper = new TestFilterHelper(mIncludeFilters, mExcludeFilters,
+                mIncludeAnnotation, mExcludeAnnotation);
     }
 
     public DeviceTestCase(String name) {
         super(name);
+        mFilterHelper = new TestFilterHelper(mIncludeFilters, mExcludeFilters,
+                mIncludeAnnotation, mExcludeAnnotation);
     }
 
     /**
@@ -80,7 +113,9 @@ public class DeviceTestCase extends TestCase implements IDeviceTest, IRemoteTest
         if (getName() == null && mMethodName != null) {
             setName(mMethodName);
         }
-        JUnitRunUtil.runTest(listener, this);
+        if (mFilterHelper.shouldTestRun(this.getClass())) {
+            JUnitRunUtil.runTest(listener, this);
+        }
     }
 
     @Override
@@ -119,6 +154,52 @@ public class DeviceTestCase extends TestCase implements IDeviceTest, IRemoteTest
     }
 
     /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void addIncludeFilter(String filter) {
+        mIncludeFilters.add(filter);
+        mFilterHelper.addIncludeFilter(filter);
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void addAllIncludeFilters(List<String> filters) {
+        mIncludeFilters.addAll(filters);
+        mFilterHelper.addAllIncludeFilters(filters);
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void addExcludeFilter(String filter) {
+        mExcludeFilters.add(filter);
+        mFilterHelper.addExcludeFilter(filter);
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void addAllExcludeFilters(List<String> filters) {
+        mExcludeFilters.addAll(filters);
+        mFilterHelper.addAllExcludeFilters(filters);
+    }
+
+    void addIncludeAnnotation(String annotation) {
+        mIncludeAnnotation.add(annotation);
+        mFilterHelper.addIncludeAnnotation(annotation);
+    }
+
+    void addExcludeAnnotation(String notAnnotation) {
+        mExcludeAnnotation.add(notAnnotation);
+        mFilterHelper.addExcludeAnnotation(notAnnotation);
+    }
+
+    /**
      * Get list of test methods to run
      * @param class1
      * @return
@@ -133,8 +214,11 @@ public class DeviceTestCase extends TestCase implements IDeviceTest, IRemoteTest
             Class<?> superClass = theClass;
             while (Test.class.isAssignableFrom(superClass)) {
                 Method[] methods = superClass.getDeclaredMethods();
-                for (int i = 0; i < methods.length; i++) {
-                    addTestMethod(methods[i], mMethodNames, theClass);
+                for (Method method : methods) {
+                    if (mFilterHelper.shouldRun(
+                            theClass.getPackage().getName(), theClass.getName(), method)) {
+                        addTestMethod(method, mMethodNames, theClass);
+                    }
                 }
                 superClass = superClass.getSuperclass();
             }
@@ -168,5 +252,6 @@ public class DeviceTestCase extends TestCase implements IDeviceTest, IRemoteTest
         Class<?>[] parameters = m.getParameterTypes();
         Class<?> returnType = m.getReturnType();
         return parameters.length == 0 && name.startsWith("test") && returnType.equals(Void.TYPE);
-     }
+    }
+
 }

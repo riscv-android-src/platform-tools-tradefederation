@@ -24,6 +24,7 @@ import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.result.ITestInvocationListener;
+import com.android.tradefed.util.TestFilterHelper;
 
 import junit.framework.Test;
 import junit.framework.TestCase;
@@ -71,8 +72,12 @@ public class HostTest implements IDeviceTest, ITestFilterReceiver, IRemoteTest {
     private Set<String> mExcludeAnnotation = new HashSet<String>();
 
     private ITestDevice mDevice;
-    private Set<String> mIncludes = new HashSet<>();
-    private Set<String> mExcludes = new HashSet<>();
+    private TestFilterHelper mFilterHelper;
+
+    public HostTest() {
+        mFilterHelper = new TestFilterHelper(new ArrayList<String>(), new ArrayList<String>(),
+                mIncludeAnnotation, mExcludeAnnotation);
+    }
 
     /**
      * {@inheritDoc}
@@ -95,7 +100,7 @@ public class HostTest implements IDeviceTest, ITestFilterReceiver, IRemoteTest {
      */
     @Override
     public void addIncludeFilter(String filter) {
-        mIncludes.add(filter);
+        mFilterHelper.addIncludeFilter(filter);
     }
 
     /**
@@ -103,7 +108,7 @@ public class HostTest implements IDeviceTest, ITestFilterReceiver, IRemoteTest {
      */
     @Override
     public void addAllIncludeFilters(List<String> filters) {
-        mIncludes.addAll(filters);
+        mFilterHelper.addAllIncludeFilters(filters);
     }
 
     /**
@@ -111,7 +116,7 @@ public class HostTest implements IDeviceTest, ITestFilterReceiver, IRemoteTest {
      */
     @Override
     public void addExcludeFilter(String filter) {
-        mExcludes.add(filter);
+        mFilterHelper.addExcludeFilter(filter);
     }
 
     /**
@@ -119,7 +124,7 @@ public class HostTest implements IDeviceTest, ITestFilterReceiver, IRemoteTest {
      */
     @Override
     public void addAllExcludeFilters(List<String> filters) {
-        mExcludes.addAll(filters);
+        mFilterHelper.addAllExcludeFilters(filters);
     }
 
     /**
@@ -156,10 +161,12 @@ public class HostTest implements IDeviceTest, ITestFilterReceiver, IRemoteTest {
 
     void addIncludeAnnotation(String annotation) {
         mIncludeAnnotation.add(annotation);
+        mFilterHelper.addIncludeAnnotation(annotation);
     }
 
     void addExcludeAnnotation(String notAnnotation) {
         mExcludeAnnotation.add(notAnnotation);
+        mFilterHelper.addExcludeAnnotation(notAnnotation);
     }
 
     /**
@@ -177,11 +184,11 @@ public class HostTest implements IDeviceTest, ITestFilterReceiver, IRemoteTest {
         for (Class<?> classObj : classes) {
             if (IRemoteTest.class.isAssignableFrom(classObj)) {
                 IRemoteTest test = (IRemoteTest) loadObject(classObj);
-                List<String> includes = new ArrayList<>(mIncludes);
+                List<String> includes = new ArrayList<>(mFilterHelper.getIncludeFilters());
                 if (mMethodName != null) {
                     includes.add(String.format("%s#%s", classObj.getName(), mMethodName));
                 }
-                List<String> excludes = new ArrayList<>(mExcludes);
+                List<String> excludes = new ArrayList<>(mFilterHelper.getExcludeFilters());
                 if (test instanceof ITestFilterReceiver) {
                     ((ITestFilterReceiver) test).addAllIncludeFilters(includes);
                     ((ITestFilterReceiver) test).addAllExcludeFilters(excludes);
@@ -189,7 +196,7 @@ public class HostTest implements IDeviceTest, ITestFilterReceiver, IRemoteTest {
                     throw new IllegalArgumentException(String.format(
                             "%s does not implement ITestFilterReceiver", classObj.getName()));
                 }
-                if (shouldTestRun(test.getClass())) {
+                if (mFilterHelper.shouldTestRun(test.getClass())) {
                     test.run(listener);
                 }
             } else if (Test.class.isAssignableFrom(classObj)) {
@@ -251,7 +258,7 @@ public class HostTest implements IDeviceTest, ITestFilterReceiver, IRemoteTest {
                         || !method.getReturnType().equals(Void.TYPE)
                         || method.getParameterTypes().length > 0
                         || !method.getName().startsWith("test")
-                        || !shouldRun(packageName, className, method)) {
+                        || !mFilterHelper.shouldRun(packageName, className, method)) {
                     continue;
                 }
                 Test testObj = (Test) loadObject(classObj);
@@ -262,64 +269,6 @@ public class HostTest implements IDeviceTest, ITestFilterReceiver, IRemoteTest {
             }
         }
         return suite;
-    }
-
-    /**
-     * Check if an elements that has annotation pass the filter.
-     * @param annotatedElement
-     * @return false if the test should not run.
-     */
-    protected boolean shouldTestRun(AnnotatedElement annotatedElement) {
-        if (!mExcludeAnnotation.isEmpty()) {
-            for(Annotation a : annotatedElement.getAnnotations()) {
-                if (mExcludeAnnotation.contains(a.annotationType().getName())) {
-                    // If any of the method annotation match an ExcludeAnnotation, don't run it
-                    CLog.i("Skipping %s, ExcludeAnnotation exclude it", annotatedElement);
-                    return false;
-                }
-            }
-        }
-        if (!mIncludeAnnotation.isEmpty()) {
-            Set<String> neededAnnotation = new HashSet<String>();
-            neededAnnotation.addAll(mIncludeAnnotation);
-            for(Annotation a : annotatedElement.getAnnotations()) {
-                if (neededAnnotation.contains(a.annotationType().getName())) {
-                    neededAnnotation.remove(a.annotationType().getName());
-                }
-            }
-            if (neededAnnotation.size() != 0) {
-                // The test needs to have all the include annotation to pass.
-                CLog.i("Skipping %s, IncludeAnnotation filtered it", annotatedElement);
-                return false;
-            }
-        }
-        return true;
-    }
-
-    private boolean shouldRun(String packageName, String className, Method method) {
-        String methodName = String.format("%s#%s", className, method.getName());
-        if (mExcludes.contains(packageName)) {
-            // Skip package because it was excluded
-            CLog.i("Skip package because it was excluded");
-            return false;
-        }
-        if (mExcludes.contains(className)) {
-            // Skip class because it was excluded
-            CLog.i("Skip class because it was excluded");
-            return false;
-        }
-        if (mExcludes.contains(methodName)) {
-            // Skip method because it was excluded
-            CLog.i("Skip method because it was excluded");
-            return false;
-        }
-        if (!shouldTestRun(method)) {
-            return false;
-        }
-        return mIncludes.isEmpty()
-                || mIncludes.contains(methodName)
-                || mIncludes.contains(className)
-                || mIncludes.contains(packageName);
     }
 
     protected List<Class<?>> getClasses() throws IllegalArgumentException  {
@@ -372,5 +321,14 @@ public class HostTest implements IDeviceTest, ITestFilterReceiver, IRemoteTest {
             throw new IllegalArgumentException(String.format("Could not load Test class %s",
                     className), e);
         }
+    }
+
+    /**
+     * Check if an elements that has annotation pass the filter. Exposed for unit testing.
+     * @param annotatedElement
+     * @return false if the test should not run.
+     */
+    protected boolean shouldTestRun(AnnotatedElement annotatedElement) {
+        return mFilterHelper.shouldTestRun(annotatedElement);
     }
 }
