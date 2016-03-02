@@ -46,6 +46,7 @@ import java.util.Map;
 public class EmailResultReporter extends CollectingTestListener implements
         ITestSummaryListener {
     private static final String DEFAULT_SUBJECT_TAG = "Tradefed";
+    private static final String TEST_FAILURE_STATUS = "FAILED";
 
     @Option(name = "sender", description = "The envelope-sender address to use for the messages.",
             importance = Importance.IF_UNSET)
@@ -151,7 +152,7 @@ public class EmailResultReporter extends CollectingTestListener implements
         }
 
         subj.append(": ");
-        subj.append(getInvocationStatus());
+        subj.append(getInvocationOrTestStatus());
         return subj.toString();
     }
 
@@ -167,6 +168,23 @@ public class EmailResultReporter extends CollectingTestListener implements
             builder.append(" ");
             return true;
         }
+    }
+
+    protected String getInvocationOrTestStatus() {
+        InvocationStatus invStatus = getInvocationStatus();
+        // if invocation status is not success, report invocation status
+        if (!InvocationStatus.SUCCESS.equals(invStatus)) {
+            // special-case invocation failure and report as "ERROR" to avoid confusion with
+            // test failures
+            if (InvocationStatus.FAILED.equals(invStatus)) {
+                return "ERROR";
+            }
+            return invStatus.toString();
+        }
+        if (hasFailedTests()) {
+            return TEST_FAILURE_STATUS;
+        }
+        return invStatus.toString(); // should be success at this point
     }
 
     /**
