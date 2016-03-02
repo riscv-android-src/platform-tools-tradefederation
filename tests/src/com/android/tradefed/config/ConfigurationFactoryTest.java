@@ -608,4 +608,56 @@ public class ConfigurationFactoryTest extends TestCase {
             // expected
         }
     }
+
+    /**
+     * If a template:map argument is passed but doesn't match any {@code <template-include>} tag
+     * a configuration exception will be thrown for unmatched arguments.
+     */
+    public void testCreateConfigurationFromArgs_templateName_notExist() throws Exception {
+        final String configName = "include-template-config-with-default";
+        final String targetName = "test-config";
+        final String missingNameTemplate = "NOTEXISTINGNAME";
+        Map<String, String> expected = new HashMap<String,String>();
+        expected.put(missingNameTemplate, targetName);
+        final String expError = String.format(
+                "Unused template:map parameters: %s", expected);
+
+        try {
+            mFactory.createConfigurationFromArgs(new String[]{configName,
+                    "--template:map", missingNameTemplate, targetName});
+            fail ("ConfigurationException not thrown");
+        } catch (ConfigurationException e) {
+            // Make sure that we get the expected error message
+            assertEquals(expError, e.getMessage());
+        }
+    }
+
+    /**
+     * If a configuration is called a second time, ensure that the cached config is also properly
+     * returned, and that template:map did not cause issues.
+     */
+    public void testCreateConfigurationFromArgs_templateName_notExistTest() throws Exception {
+        final String configName = "template-include-config-with-default";
+        final String targetName = "local-config";
+        final String nameTemplate = "target";
+        Map<String, String> expected = new HashMap<String,String>();
+        expected.put(nameTemplate, targetName);
+        IConfiguration tmp = null;
+        try {
+            tmp = mFactory.createConfigurationFromArgs(new String[]{configName,
+                    "--template:map", nameTemplate, targetName});
+        } catch (ConfigurationException e) {
+            fail("ConfigurationException thrown: " + e.getMessage());
+        }
+        assertTrue(tmp.getTests().size() == 2);
+
+        // Call the same config a second time to make sure the cached version works.
+        try {
+            tmp = mFactory.createConfigurationFromArgs(new String[]{configName,
+                    "--template:map", nameTemplate, targetName});
+        } catch (ConfigurationException e) {
+            fail("ConfigurationException thrown: " + e.getMessage());
+        }
+        assertTrue(tmp.getTests().size() == 2);
+    }
 }
