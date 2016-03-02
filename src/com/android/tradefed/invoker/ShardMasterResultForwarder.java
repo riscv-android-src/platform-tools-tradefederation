@@ -16,7 +16,9 @@
 package com.android.tradefed.invoker;
 
 import com.android.tradefed.build.IBuildInfo;
+import com.android.tradefed.result.ILogSaver;
 import com.android.tradefed.result.ITestInvocationListener;
+import com.android.tradefed.result.LogSaverResultForwarder;
 import com.android.tradefed.result.ResultForwarder;
 
 import java.util.List;
@@ -28,7 +30,7 @@ import java.util.List;
  * This class is not thread safe. It is expected that clients will lock on this class when sending
  * test results, to prevent invocation callbacks from being called out of order.
  */
-class ShardMasterResultForwarder extends ResultForwarder {
+class ShardMasterResultForwarder extends LogSaverResultForwarder {
 
     private int mShardsRemaining;
     private int mTotalElapsed = 0;
@@ -41,8 +43,9 @@ class ShardMasterResultForwarder extends ResultForwarder {
      *            shards are completed
      * @param expectedShards the number of shards
      */
-    public ShardMasterResultForwarder(List<ITestInvocationListener> listeners, int expectedShards) {
-        super(listeners);
+    public ShardMasterResultForwarder(ILogSaver logSaver,
+            List<ITestInvocationListener> listeners, int expectedShards) {
+        super(logSaver, listeners);
         mShardsRemaining = expectedShards;
     }
 
