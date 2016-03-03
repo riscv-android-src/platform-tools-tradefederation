@@ -23,6 +23,8 @@ import junit.framework.TestCase;
 
 import org.easymock.EasyMock;
 
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
 import java.util.Collections;
 import java.util.Map;
 
@@ -35,6 +37,29 @@ public class DeviceTestCaseTest extends TestCase {
 
         public void test1() {};
         public void test2() {};
+    }
+
+    @MyAnnotation1
+    public static class MockAnnotatedTest extends DeviceTestCase {
+
+        @MyAnnotation1
+        public void test1() {};
+        @MyAnnotation2
+        public void test2() {};
+    }
+
+    /**
+     * Simple Annotation class for testing
+     */
+    @Retention(RetentionPolicy.RUNTIME)
+    public @interface MyAnnotation1 {
+    }
+
+    /**
+     * Simple Annotation class for testing
+     */
+    @Retention(RetentionPolicy.RUNTIME)
+    public @interface MyAnnotation2 {
     }
 
     public static class MockAbortTest extends DeviceTestCase {
@@ -61,6 +86,88 @@ public class DeviceTestCaseTest extends TestCase {
         listener.testEnded(test1, Collections.EMPTY_MAP);
         listener.testStarted(test2);
         listener.testEnded(test2, Collections.EMPTY_MAP);
+        listener.testRunEnded(EasyMock.anyLong(), (Map<String, String>) EasyMock.anyObject());
+        EasyMock.replay(listener);
+
+        test.run(listener);
+        EasyMock.verify(listener);
+    }
+
+    /**
+     * Verify that calling run on a {@link DeviceTestCase}
+     * will only run methods included by filtering.
+     */
+    @SuppressWarnings("unchecked")
+    public void testRun_includeFilter() throws Exception {
+        MockTest test = new MockTest();
+        test.addIncludeFilter("com.android.tradefed.testtype.DeviceTestCaseTest$MockTest#test1");
+        ITestInvocationListener listener = EasyMock.createMock(ITestInvocationListener.class);
+        listener.testRunStarted(MockTest.class.getName(), 1);
+        final TestIdentifier test1 = new TestIdentifier(MockTest.class.getName(), "test1");
+        listener.testStarted(test1);
+        listener.testEnded(test1, Collections.EMPTY_MAP);
+        listener.testRunEnded(EasyMock.anyLong(), (Map<String, String>) EasyMock.anyObject());
+        EasyMock.replay(listener);
+
+        test.run(listener);
+        EasyMock.verify(listener);
+    }
+
+    /**
+     * Verify that calling run on a {@link DeviceTestCase}
+     * will not run methods excluded by filtering.
+     */
+    @SuppressWarnings("unchecked")
+    public void testRun_excludeFilter() throws Exception {
+        MockTest test = new MockTest();
+        test.addExcludeFilter("com.android.tradefed.testtype.DeviceTestCaseTest$MockTest#test1");
+        ITestInvocationListener listener = EasyMock.createMock(ITestInvocationListener.class);
+        listener.testRunStarted(MockTest.class.getName(), 1);
+        final TestIdentifier test2 = new TestIdentifier(MockTest.class.getName(), "test2");
+        listener.testStarted(test2);
+        listener.testEnded(test2, Collections.EMPTY_MAP);
+        listener.testRunEnded(EasyMock.anyLong(), (Map<String, String>) EasyMock.anyObject());
+        EasyMock.replay(listener);
+
+        test.run(listener);
+        EasyMock.verify(listener);
+    }
+
+    /**
+     * Verify that calling run on a {@link DeviceTestCase} only runs AnnotatedElements
+     * included by filtering.
+     */
+    @SuppressWarnings("unchecked")
+    public void testRun_includeAnnotationFiltering() throws Exception {
+        MockAnnotatedTest test = new MockAnnotatedTest();
+        test.addIncludeAnnotation(
+                "com.android.tradefed.testtype.DeviceTestCaseTest$MyAnnotation1");
+        ITestInvocationListener listener = EasyMock.createMock(ITestInvocationListener.class);
+        listener.testRunStarted(MockAnnotatedTest.class.getName(), 1);
+        final TestIdentifier test1 = new TestIdentifier(MockAnnotatedTest.class.getName(), "test1");
+        listener.testStarted(test1);
+        listener.testEnded(test1, Collections.EMPTY_MAP);
+        listener.testRunEnded(EasyMock.anyLong(), (Map<String, String>) EasyMock.anyObject());
+        EasyMock.replay(listener);
+
+        test.run(listener);
+        EasyMock.verify(listener);
+    }
+
+    /**
+     * Verify that calling run on a {@link DeviceTestCase} does not run AnnotatedElements
+     * excluded by filtering.
+     */
+    @SuppressWarnings("unchecked")
+    public void testRun_excludeAnnotationFiltering() throws Exception {
+        MockAnnotatedTest test = new MockAnnotatedTest();
+        test.addExcludeAnnotation(
+                "com.android.tradefed.testtype.DeviceTestCaseTest$MyAnnotation2");
+        ITestInvocationListener listener = EasyMock.createMock(ITestInvocationListener.class);
+        listener.testRunStarted(MockAnnotatedTest.class.getName(), 1);
+        final TestIdentifier test1 = new TestIdentifier(MockAnnotatedTest.class.getName(), "test1");
+        listener.testStarted(test1);
+        listener.testEnded(test1, Collections.EMPTY_MAP);
         listener.testRunEnded(EasyMock.anyLong(), (Map<String, String>) EasyMock.anyObject());
         EasyMock.replay(listener);
 
