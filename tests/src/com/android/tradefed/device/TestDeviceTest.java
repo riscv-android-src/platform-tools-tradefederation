@@ -371,7 +371,12 @@ public class TestDeviceTest extends TestCase {
      */
     @SuppressWarnings("deprecation")
     public void testRecoverDevice_ThrowException() throws Exception {
-        TestDevice testDevice = new TestDevice(mMockIDevice, mMockStateMonitor, mMockDvcMonitor);
+        TestDevice testDevice = new TestDevice(mMockIDevice, mMockStateMonitor, mMockDvcMonitor) {
+            @Override
+            public boolean enableAdbRoot() throws DeviceNotAvailableException {
+                return true;
+            }
+        };
         testDevice.setRecovery(new IDeviceRecovery() {
 
             @Override

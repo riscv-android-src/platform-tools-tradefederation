@@ -186,5 +186,9 @@ public class DeviceBatteryLevelChecker implements IDeviceTest, IRemoteTest {
     public ITestDevice getDevice() {
         return mTestDevice;
     }
+
+    protected void setResumeLevel(int level) {
+        mResumeLevel = level;
+    }
 }
 
