@@ -80,7 +80,7 @@ public class TestDeviceTest extends TestCase {
         }
 
         @Override
-        IRunUtil getRunUtil() {
+        protected IRunUtil getRunUtil() {
             return mMockRunUtil;
         }
 

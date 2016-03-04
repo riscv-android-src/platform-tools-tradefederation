@@ -15,12 +15,60 @@
  */
 package com.android.tradefed.device;
 
+import com.android.ddmlib.AdbCommandRejectedException;
 import com.android.ddmlib.IDevice;
+import com.android.ddmlib.InstallException;
+import com.android.ddmlib.RawImage;
+import com.android.ddmlib.ShellCommandUnresponsiveException;
+import com.android.ddmlib.SyncException;
+import com.android.ddmlib.TimeoutException;
+import com.android.tradefed.log.LogUtil.CLog;
+import com.android.tradefed.result.ByteArrayInputStreamSource;
+import com.android.tradefed.result.InputStreamSource;
+import com.android.tradefed.util.StreamUtil;
+
+import java.awt.Image;
+import java.awt.image.BufferedImage;
+import java.io.ByteArrayOutputStream;
+import java.io.File;
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.concurrent.TimeUnit;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+
+import javax.imageio.ImageIO;
 
 /**
  * Implementation of a {@link ITestDevice} for a full stack android device
  */
 public class TestDevice extends AndroidNativeDevice {
+
+    /**
+     * Allow pauses of up to 2 minutes while receiving bugreport.  Note that dumpsys may pause up to
+     * a minute while waiting for unresponsive components, but should bail after that minute, if it
+     *  will ever terminate on its own.
+     */
+    private static final int BUGREPORT_TIMEOUT = 2 * 60 * 1000;
+    private static final String BUGREPORT_CMD = "bugreport";
+    /** number of attempts made to clear dialogs */
+    private static final int NUM_CLEAR_ATTEMPTS = 5;
+    /** the command used to dismiss a error dialog. Currently sends a DPAD_CENTER key event */
+    static final String DISMISS_DIALOG_CMD = "input keyevent 23";
+    /** Timeout to wait for input dispatch to become ready **/
+    private static final long INPUT_DISPATCH_READY_TIMEOUT = 5 * 1000;
+    /** command to test input dispatch readiness **/
+    private static final String TEST_INPUT_CMD = "dumpsys input";
+
+    static final String LIST_PACKAGES_CMD = "pm list packages -f";
+    private static final Pattern PACKAGE_REGEX = Pattern.compile("package:(.*)=(.*)");
+
+    private static final int FLAG_PRIMARY = 1; // From the UserInfo class
 
     /**
      * @param device
@@ -30,5 +78,708 @@ public class TestDevice extends AndroidNativeDevice {
     public TestDevice(IDevice device, IDeviceStateMonitor stateMonitor,
             IDeviceMonitor allocationMonitor) {
         super(device, stateMonitor, allocationMonitor);
+    }
+
+    /**
+     * Core implementation of package installation, with retries around
+     * {@link IDevice#installPackage(String, boolean, String...)}
+     * @param packageFile
+     * @param reinstall
+     * @param extraArgs
+     * @return the response from the installation
+     * @throws DeviceNotAvailableException
+     */
+    private String internalInstallPackage(
+            final File packageFile, final boolean reinstall, final List<String> extraArgs)
+                    throws DeviceNotAvailableException {
+        // use array to store response, so it can be returned to caller
+        final String[] response = new String[1];
+        DeviceAction installAction = new DeviceAction() {
+            @Override
+            public boolean run() throws InstallException {
+                String result = getIDevice().installPackage(packageFile.getAbsolutePath(),
+                        reinstall, extraArgs.toArray(new String[]{}));
+                response[0] = result;
+                return result == null;
+            }
+        };
+        performDeviceAction(String.format("install %s", packageFile.getAbsolutePath()),
+                installAction, MAX_RETRY_ATTEMPTS);
+        return response[0];
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public String installPackage(final File packageFile, final boolean reinstall,
+            final String... extraArgs) throws DeviceNotAvailableException {
+        boolean runtimePermissionSupported = isRuntimePermissionSupported();
+        List<String> args = new ArrayList<>(Arrays.asList(extraArgs));
+        // grant all permissions by default if feature is supported
+        if (runtimePermissionSupported) {
+            args.add("-g");
+        }
+        return internalInstallPackage(packageFile, reinstall, args);
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public String installPackage(File packageFile, boolean reinstall, boolean grantPermissions,
+            String... extraArgs) throws DeviceNotAvailableException {
+        ensureRuntimePermissionSupported();
+        List<String> args = new ArrayList<>(Arrays.asList(extraArgs));
+        if (grantPermissions) {
+            args.add("-g");
+        }
+        return internalInstallPackage(packageFile, reinstall, args);
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public String installPackageForUser(File packageFile, boolean reinstall, int userId,
+            String... extraArgs) throws DeviceNotAvailableException {
+        boolean runtimePermissionSupported = isRuntimePermissionSupported();
+        List<String> args = new ArrayList<>(Arrays.asList(extraArgs));
+        // grant all permissions by default if feature is supported
+        if (runtimePermissionSupported) {
+            args.add("-g");
+        }
+        args.add("--user");
+        args.add(Integer.toString(userId));
+        return internalInstallPackage(packageFile, reinstall, args);
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public String installPackageForUser(File packageFile, boolean reinstall,
+            boolean grantPermissions, int userId, String... extraArgs)
+                    throws DeviceNotAvailableException {
+        ensureRuntimePermissionSupported();
+        List<String> args = new ArrayList<>(Arrays.asList(extraArgs));
+        if (grantPermissions) {
+            args.add("-g");
+        }
+        args.add("--user");
+        args.add(Integer.toString(userId));
+        return internalInstallPackage(packageFile, reinstall, args);
+    }
+
+    public String installPackage(final File packageFile, final File certFile,
+            final boolean reinstall, final String... extraArgs) throws DeviceNotAvailableException {
+        // use array to store response, so it can be returned to caller
+        final String[] response = new String[1];
+        DeviceAction installAction = new DeviceAction() {
+            @Override
+            public boolean run() throws InstallException, SyncException, IOException,
+            TimeoutException, AdbCommandRejectedException {
+                // TODO: create a getIDevice().installPackage(File, File...) method when the dist
+                // cert functionality is ready to be open sourced
+                String remotePackagePath = getIDevice().syncPackageToDevice(
+                        packageFile.getAbsolutePath());
+                String remoteCertPath = getIDevice().syncPackageToDevice(
+                        certFile.getAbsolutePath());
+                // trick installRemotePackage into issuing a 'pm install <apk> <cert>' command,
+                // by adding apk path to extraArgs, and using cert as the 'apk file'
+                String[] newExtraArgs = new String[extraArgs.length + 1];
+                System.arraycopy(extraArgs, 0, newExtraArgs, 0, extraArgs.length);
+                newExtraArgs[newExtraArgs.length - 1] = String.format("\"%s\"", remotePackagePath);
+                try {
+                    response[0] = getIDevice().installRemotePackage(remoteCertPath, reinstall,
+                            newExtraArgs);
+                } finally {
+                    getIDevice().removeRemotePackage(remotePackagePath);
+                    getIDevice().removeRemotePackage(remoteCertPath);
+                }
+                return true;
+            }
+        };
+        performDeviceAction(String.format("install %s", packageFile.getAbsolutePath()),
+                installAction, MAX_RETRY_ATTEMPTS);
+        return response[0];
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public String uninstallPackage(final String packageName) throws DeviceNotAvailableException {
+        // use array to store response, so it can be returned to caller
+        final String[] response = new String[1];
+        DeviceAction uninstallAction = new DeviceAction() {
+            @Override
+            public boolean run() throws InstallException {
+                CLog.d("Uninstalling %s", packageName);
+                String result = getIDevice().uninstallPackage(packageName);
+                response[0] = result;
+                return result == null;
+            }
+        };
+        performDeviceAction(String.format("uninstall %s", packageName), uninstallAction,
+                MAX_RETRY_ATTEMPTS);
+        return response[0];
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public InputStreamSource getBugreport() {
+        CollectingByteOutputReceiver receiver = new CollectingByteOutputReceiver();
+        try {
+            executeShellCommand(BUGREPORT_CMD, receiver,
+                    BUGREPORT_TIMEOUT, TimeUnit.MILLISECONDS, 0 /* don't retry */);
+        } catch (DeviceNotAvailableException e) {
+            // Log, but don't throw, so the caller can get the bugreport contents even if the device
+            // goes away
+            CLog.e("Device %s became unresponsive while retrieving bugreport", getSerialNumber());
+        }
+
+        return new ByteArrayInputStreamSource(receiver.getOutput());
+    }
+
+    @Override
+    public InputStreamSource getScreenshot() throws DeviceNotAvailableException {
+        return getScreenshot("PNG");
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public InputStreamSource getScreenshot(String format) throws DeviceNotAvailableException {
+        if (!format.equalsIgnoreCase("PNG") && !format.equalsIgnoreCase("JPEG")){
+            CLog.e("Screenshot: Format %s is not supported, defaulting to PNG.", format);
+            format = "PNG";
+        }
+        ScreenshotAction action = new ScreenshotAction();
+        if (performDeviceAction("screenshot", action, MAX_RETRY_ATTEMPTS)) {
+            byte[] imageData = compressRawImage(action.mRawScreenshot, format.toUpperCase());
+            if (imageData != null) {
+                return new ByteArrayInputStreamSource(imageData);
+            }
+        }
+        return null;
+    }
+
+    private class ScreenshotAction implements DeviceAction {
+
+        RawImage mRawScreenshot;
+
+        /**
+         * {@inheritDoc}
+         */
+        @Override
+        public boolean run() throws IOException, TimeoutException, AdbCommandRejectedException,
+                ShellCommandUnresponsiveException, InstallException, SyncException {
+            mRawScreenshot = getIDevice().getScreenshot();
+            return mRawScreenshot != null;
+        }
+    }
+
+    private byte[] compressRawImage(RawImage rawImage, String format) {
+        BufferedImage image = null;
+
+        if ("JPEG".equalsIgnoreCase(format)) {
+            //JPEG does not support ARGB without a special encoder
+            image = new BufferedImage(rawImage.width, rawImage.height,
+                    BufferedImage.TYPE_3BYTE_BGR);
+        }
+        else {
+            image = new BufferedImage(rawImage.width, rawImage.height,
+                    BufferedImage.TYPE_INT_ARGB);
+        }
+
+        // borrowed conversion logic from platform/sdk/screenshot/.../Screenshot.java
+        int index = 0;
+        int IndexInc = rawImage.bpp >> 3;
+        for (int y = 0 ; y < rawImage.height ; y++) {
+            for (int x = 0 ; x < rawImage.width ; x++) {
+                int value = rawImage.getARGB(index);
+                index += IndexInc;
+                image.setRGB(x, y, value);
+            }
+        }
+
+        // Rescale to reduce size if needed
+        // Screenshot default format is 1080 x 1920, 8-bit/color RGBA
+        // By cutting in half we can easily keep good quality and smaller size
+        int shortEdge = Math.min(image.getHeight(), image.getWidth());
+        if (shortEdge > 720) {
+            Image resized = image.getScaledInstance(image.getWidth() / 2, image.getHeight() / 2,
+                    Image.SCALE_SMOOTH);
+            image = new BufferedImage(image.getWidth() / 2, image.getHeight() / 2,
+                    Image.SCALE_REPLICATE);
+            image.getGraphics().drawImage(resized, 0, 0, null);
+        }
+
+        // store compressed image in memory, and let callers write to persistent storage
+        // use initial buffer size of 128K
+        byte[] imageData = null;
+        ByteArrayOutputStream imageOut = new ByteArrayOutputStream(128*1024);
+        try {
+            if (ImageIO.write(image, format, imageOut)) {
+                imageData = imageOut.toByteArray();
+            } else {
+                CLog.e("Failed to compress screenshot to png");
+            }
+        } catch (IOException e) {
+            CLog.e("Failed to compress screenshot to png");
+            CLog.e(e);
+        }
+        StreamUtil.close(imageOut);
+        return imageData;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public boolean clearErrorDialogs() throws DeviceNotAvailableException {
+        // attempt to clear error dialogs multiple times
+        for (int i = 0; i < NUM_CLEAR_ATTEMPTS; i++) {
+            int numErrorDialogs = getErrorDialogCount();
+            if (numErrorDialogs == 0) {
+                return true;
+            }
+            doClearDialogs(numErrorDialogs);
+        }
+        if (getErrorDialogCount() > 0) {
+            // at this point, all attempts to clear error dialogs completely have failed
+            // it might be the case that the process keeps showing new dialogs immediately after
+            // clearing. There's really no workaround, but to dump an error
+            CLog.e("error dialogs still exist on %s.", getSerialNumber());
+            return false;
+        }
+        return true;
+    }
+
+    /**
+     * Detects the number of crash or ANR dialogs currently displayed.
+     * <p/>
+     * Parses output of 'dump activity processes'
+     *
+     * @return count of dialogs displayed
+     * @throws DeviceNotAvailableException
+     */
+    private int getErrorDialogCount() throws DeviceNotAvailableException {
+        int errorDialogCount = 0;
+        Pattern crashPattern = Pattern.compile(".*crashing=true.*AppErrorDialog.*");
+        Pattern anrPattern = Pattern.compile(".*notResponding=true.*AppNotRespondingDialog.*");
+        String systemStatusOutput = executeShellCommand("dumpsys activity processes");
+        Matcher crashMatcher = crashPattern.matcher(systemStatusOutput);
+        while (crashMatcher.find()) {
+            errorDialogCount++;
+        }
+        Matcher anrMatcher = anrPattern.matcher(systemStatusOutput);
+        while (anrMatcher.find()) {
+            errorDialogCount++;
+        }
+
+        return errorDialogCount;
+    }
+
+    private void doClearDialogs(int numDialogs) throws DeviceNotAvailableException {
+        CLog.i("Attempted to clear %d dialogs on %s", numDialogs, getSerialNumber());
+        for (int i=0; i < numDialogs; i++) {
+            // send DPAD_CENTER
+            executeShellCommand(DISMISS_DIALOG_CMD);
+        }
+    }
+
+    /**
+     * Gets the adb shell command to disable the keyguard for this device.
+     * <p/>
+     * Exposed for unit testing.
+     */
+    String getDisableKeyguardCmd() {
+        return mOptions.getDisableKeyguardCmd();
+    }
+
+    /**
+     * Attempts to disable the keyguard.
+     * <p>
+     * First wait for the input dispatch to become ready, this happens around the same time when the
+     * device reports BOOT_COMPLETE, apparently asynchronously, because current framework
+     * implementation has occasional race condition. Then command is sent to dismiss keyguard (works
+     * on non-secure ones only)
+     * @throws DeviceNotAvailableException
+     */
+    void disableKeyguard() throws DeviceNotAvailableException {
+        long start = System.currentTimeMillis();
+        while (true) {
+            Boolean ready = isDeviceInputReady();
+            if (ready == null) {
+                // unsupported API level, bail
+                break;
+            }
+            if (ready) {
+                // input dispatch is ready, bail
+                break;
+            }
+            long timeSpent = System.currentTimeMillis() - start;
+            if (timeSpent > INPUT_DISPATCH_READY_TIMEOUT) {
+                CLog.w("Timeout after waiting %dms on enabling of input dispatch", timeSpent);
+                // break & proceed anyway
+                break;
+            } else {
+                getRunUtil().sleep(1000);
+            }
+        }
+        CLog.i("Attempting to disable keyguard on %s using %s", getSerialNumber(),
+                getDisableKeyguardCmd());
+        executeShellCommand(getDisableKeyguardCmd());
+    }
+
+    /**
+     * Tests the device to see if input dispatcher is ready
+     * @return <code>null</code> if not supported by platform, or the actual readiness state
+     * @throws DeviceNotAvailableException
+     */
+    Boolean isDeviceInputReady() throws DeviceNotAvailableException {
+        CollectingOutputReceiver receiver = new CollectingOutputReceiver();
+        executeShellCommand(TEST_INPUT_CMD, receiver);
+        String output = receiver.getOutput();
+        Matcher m = INPUT_DISPATCH_STATE_REGEX.matcher(output);
+        if (!m.find()) {
+            // output does not contain the line at all, implying unsupported API level, bail
+            return null;
+        }
+        return "1".equals(m.group(1));
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    protected void prePostBootSetup() throws DeviceNotAvailableException {
+        if (mOptions.isDisableKeyguard()) {
+            disableKeyguard();
+        }
+    }
+
+    /**
+     * Performs an reboot via framework power manager
+     *
+     * Must have root access, device must be API Level 18 or above
+     *
+     * @param into the mode to reboot into, currently supported: bootloader, recovery, leave it
+     *         null for a plain reboot
+     * @return <code>true</code> if the device rebooted, <code>false</code> if not successful or
+     *          unsupported
+     * @throws DeviceNotAvailableException
+     */
+    private boolean doAdbFrameworkReboot(final String into) throws DeviceNotAvailableException {
+        // use framework reboot when:
+        // 1. device API level >= 18
+        // 2. has adb root
+        // 3. framework is running
+        if (!isEnableAdbRoot()) {
+            CLog.i("framework reboot is not supported; when enable root is disabled");
+            return false;
+        }
+        enableAdbRoot();
+        if (getApiLevel() >= 18 && isAdbRoot()) {
+            try {
+                // check framework running
+                String output = executeShellCommand("pm path android");
+                if (output == null || !output.contains("package:")) {
+                    CLog.v("framework reboot: can't detect framework running");
+                    return false;
+                }
+                String command = "svc power reboot";
+                if (into != null && !into.isEmpty()) {
+                    command = String.format("%s %s", command, into);
+                }
+                executeShellCommand(command);
+            } catch (DeviceUnresponsiveException due) {
+                CLog.v("framework reboot: device unresponsive to shell command, using fallback");
+                return false;
+            }
+            return waitForDeviceNotAvailable(30 * 1000);
+        } else {
+            CLog.v("framework reboot: not supported");
+            return false;
+        }
+    }
+
+    /**
+     * Perform a adb reboot.
+     *
+     * @param into the bootloader name to reboot into, or <code>null</code> to just reboot the
+     *            device.
+     * @throws DeviceNotAvailableException
+     */
+    @Override
+    protected void doAdbReboot(final String into) throws DeviceNotAvailableException {
+        // emulator doesn't support reboot, try just resetting framework and hoping for the best
+        if (getIDevice().isEmulator()) {
+            CLog.i("since emulator, performing shell stop & start instead of reboot");
+            executeShellCommand("stop");
+            executeShellCommand(String.format("setprop %s 0",
+                    DeviceStateMonitor.BOOTCOMPLETE_PROP));
+            executeShellCommand("start");
+            return;
+        }
+        if (!doAdbFrameworkReboot(into)) {
+            DeviceAction rebootAction = new DeviceAction() {
+                @Override
+                public boolean run() throws TimeoutException, IOException,
+                        AdbCommandRejectedException {
+                    getIDevice().reboot(into);
+                    return true;
+                }
+            };
+            performDeviceAction("reboot", rebootAction, MAX_RETRY_ATTEMPTS);
+        }
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public Set<String> getInstalledPackageNames() throws DeviceNotAvailableException {
+        return getInstalledPackageNames(new PkgFilter() {
+            @Override
+            public boolean accept(String pkgName, String apkPath) {
+                return true;
+            }
+        });
+    }
+
+    /**
+     * A {@link com.android.tradefed.device.AndroidNativeDevice.DeviceAction}
+     * for retrieving package system service info, and do retries on
+     * failures.
+     */
+    private class DumpPkgAction implements DeviceAction {
+
+        Map<String, PackageInfo> mPkgInfoMap;
+
+        DumpPkgAction() {
+        }
+
+        @Override
+        public boolean run() throws IOException, TimeoutException, AdbCommandRejectedException,
+                ShellCommandUnresponsiveException, InstallException, SyncException {
+            DumpsysPackageReceiver receiver = new DumpsysPackageReceiver();
+            getIDevice().executeShellCommand("dumpsys package p", receiver);
+            mPkgInfoMap = receiver.getPackages();
+            if (mPkgInfoMap.size() == 0) {
+                // Package parsing can fail if package manager is currently down. throw exception
+                // to retry
+                CLog.w("no packages found from dumpsys package p.");
+                throw new IOException();
+            }
+            return true;
+        }
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public Set<String> getUninstallablePackageNames() throws DeviceNotAvailableException {
+        DumpPkgAction action = new DumpPkgAction();
+        performDeviceAction("dumpsys package p", action, MAX_RETRY_ATTEMPTS);
+
+        Set<String> pkgs = new HashSet<String>();
+        for (PackageInfo pkgInfo : action.mPkgInfoMap.values()) {
+            if (!pkgInfo.isSystemApp() || pkgInfo.isUpdatedSystemApp()) {
+                CLog.d("Found uninstallable package %s", pkgInfo.getPackageName());
+                pkgs.add(pkgInfo.getPackageName());
+            }
+        }
+        return pkgs;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public PackageInfo getAppPackageInfo(String packageName) throws DeviceNotAvailableException {
+        DumpPkgAction action = new DumpPkgAction();
+        performDeviceAction("dumpsys package", action, MAX_RETRY_ATTEMPTS);
+        return action.mPkgInfoMap.get(packageName);
+    }
+
+    private static interface PkgFilter {
+        boolean accept(String pkgName, String apkPath);
+    }
+
+    // TODO: convert this to use DumpPkgAction
+    private Set<String> getInstalledPackageNames(PkgFilter filter)
+            throws DeviceNotAvailableException {
+        Set<String> packages= new HashSet<String>();
+        String output = executeShellCommand(LIST_PACKAGES_CMD);
+        if (output != null) {
+            Matcher m = PACKAGE_REGEX.matcher(output);
+            while (m.find()) {
+                String packagePath = m.group(1);
+                String packageName = m.group(2);
+                if (filter.accept(packageName, packagePath)) {
+                    packages.add(packageName);
+                }
+            }
+        }
+        return packages;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public ArrayList<Integer> listUsers() throws DeviceNotAvailableException {
+        ArrayList<String[]> users = tokenizeListUsers();
+        if (users == null) {
+            return null;
+        }
+        ArrayList<Integer> userIds = new ArrayList<Integer>(users.size());
+        for (String[] user : users) {
+            userIds.add(Integer.parseInt(user[1]));
+        }
+        return userIds;
+    }
+
+    /**
+     * Tokenizes the output of 'pm list users'.
+     * The returned tokens for each user have the form: {"\tUserInfo", Integer.toString(id), name,
+     * Integer.toHexString(flag), "[running]"}; (the last one being optional)
+     * @return a list of arrays of strings, each element of the list representing the tokens
+     * for a user, or {@code null} if there was an error while tokenizing the adb command output.
+     */
+    private ArrayList<String[]> tokenizeListUsers() throws DeviceNotAvailableException {
+        String command = "pm list users";
+        String commandOutput = executeShellCommand(command);
+        // Extract the id of all existing users.
+        String[] lines = commandOutput.split("\\r?\\n");
+        if (lines.length < 1) {
+            CLog.e("%s should contain at least one line", commandOutput);
+            return null;
+        }
+        if (!lines[0].equals("Users:")) {
+            CLog.e("%s in not a valid output for 'pm list users'", commandOutput);
+            return null;
+        }
+        ArrayList<String[]> users = new ArrayList<String[]>(lines.length - 1);
+        for (int i = 1; i < lines.length; i++) {
+            // Individual user is printed out like this:
+            // \tUserInfo{$id$:$name$:$Integer.toHexString(flags)$} [running]
+            String[] tokens = lines[i].split("\\{|\\}|:");
+            if (tokens.length != 4 && tokens.length != 5) {
+                CLog.e("%s doesn't contain 4 or 5 tokens", lines[i]);
+                return null;
+            }
+            users.add(tokens);
+        }
+        return users;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public int getMaxNumberOfUsersSupported() throws DeviceNotAvailableException {
+        String command = "pm get-max-users";
+        String commandOutput = executeShellCommand(command);
+        try {
+            return Integer.parseInt(commandOutput.substring(commandOutput.lastIndexOf(" ")).trim());
+        } catch (NumberFormatException e) {
+            CLog.e("Failed to parse result: %s", commandOutput);
+        }
+        return 0;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public boolean isMultiUserSupported() throws DeviceNotAvailableException {
+        return getMaxNumberOfUsersSupported() > 1;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public int createUser(String name) throws DeviceNotAvailableException, IllegalStateException {
+        final String output = executeShellCommand(String.format("pm create-user %s", name));
+        if (output.startsWith("Success")) {
+            try {
+                return Integer.parseInt(output.substring(output.lastIndexOf(" ")).trim());
+            } catch (NumberFormatException e) {
+                CLog.e("Failed to parse result: %s", output);
+            }
+        } else {
+            CLog.e("Failed to create user: %s", output);
+        }
+        throw new IllegalStateException();
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public boolean removeUser(int userId) throws DeviceNotAvailableException {
+        final String output = executeShellCommand(String.format("pm remove-user %s", userId));
+        if (output.startsWith("Error")) {
+            CLog.e("Failed to remove user: %s", output);
+            return false;
+        }
+        return true;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public boolean startUser(int userId) throws DeviceNotAvailableException {
+        final String output = executeShellCommand(String.format("am start-user %s", userId));
+        if (output.startsWith("Error")) {
+            CLog.e("Failed to start user: %s", output);
+            return false;
+        }
+        return true;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void stopUser(int userId) throws DeviceNotAvailableException {
+        // No error or status code is returned.
+        executeShellCommand(String.format("am stop-user %s", userId));
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public Integer getPrimaryUserId() throws DeviceNotAvailableException {
+        ArrayList<String[]> users = tokenizeListUsers();
+        if (users == null) {
+            return null;
+        }
+        for (String[] user : users) {
+            int flag = Integer.parseInt(user[3], 16);
+            if ((flag & FLAG_PRIMARY) != 0) {
+                return Integer.parseInt(user[1]);
+            }
+        }
+        return null;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    IWifiHelper createWifiHelper() throws DeviceNotAvailableException {
+        return new WifiHelper(this);
     }
 }
