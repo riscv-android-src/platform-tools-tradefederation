@@ -95,6 +95,11 @@ public class TestDeviceOptions {
             + "The actual wait time would be a multiple of this value.")
     private int mWifiRetryWaitTime = 60 * 1000;
 
+    @Option(name = "wifi-exponential-retry",
+            description = "Change the wifi connection retry strategy from a linear wait time into"
+                    + " a binary exponential back-offs when retrying.")
+    private boolean mWifiExpoRetryEnabled = true;
+
     @Option(name = "post-boot-command",
             description = "shell command to run after reboots during invocation")
     private List<String> mPostBootCommands = new ArrayList<String>();
@@ -331,9 +336,15 @@ public class TestDeviceOptions {
 
     /**
      * @return if device reboot should be disabled
-     * @return
      */
     public boolean shouldDisableReboot() {
         return mDisableReboot;
+    }
+
+    /**
+     * @return if the exponential retry strategy should be used.
+     */
+    public boolean isWifiExpoRetryEnabled() {
+        return mWifiExpoRetryEnabled;
     }
 }

@@ -1780,15 +1780,15 @@ public class AndroidNativeDevice implements IManagedTestDevice {
     @Override
     public boolean connectToWifiNetwork(String wifiSsid, String wifiPsk)
             throws DeviceNotAvailableException {
-
         // Clears the last connected wifi network.
         mLastConnectedWifiSsid = null;
         mLastConnectedWifiPsk = null;
 
         // Connects to wifi network. It retries up to {@link TestDeviceOptions@getWifiAttempts()}
-        // times and uses binary exponential back-offs when retrying.
+        // times
         Random rnd = new Random();
         int backoffSlotCount = 2;
+        int waitTime = mOptions.getWifiRetryWaitTime();
         IWifiHelper wifi = createWifiHelper();
         for (int i = 1; i <= mOptions.getWifiAttempts(); i++) {
             CLog.i("Connecting to wifi network %s on %s", wifiSsid, getSerialNumber());
@@ -1808,11 +1808,13 @@ public class AndroidNativeDevice implements IManagedTestDevice {
                         wifiSsid, wifiInfo.get("bssid"), getSerialNumber(), i,
                         mOptions.getWifiAttempts());
             }
-
             if (i < mOptions.getWifiAttempts()) {
-                int waitTime = rnd.nextInt(backoffSlotCount) * mOptions.getWifiRetryWaitTime();
-                backoffSlotCount *= 2;
-                CLog.i("Waiting for %d ms before reconnecting to %s...", waitTime, wifiSsid);
+                if (mOptions.isWifiExpoRetryEnabled()) {
+                    // use binary exponential back-offs when retrying.
+                    waitTime *= rnd.nextInt(backoffSlotCount) ;
+                    backoffSlotCount *= 2;
+                }
+                CLog.e("Waiting for %d ms before reconnecting to %s...", waitTime, wifiSsid);
                 getRunUtil().sleep(waitTime);
             }
         }
@@ -2216,6 +2218,9 @@ public class AndroidNativeDevice implements IManagedTestDevice {
             String output = executeAdbCommand("root");
             // wait for device to disappear from adb
             waitForDeviceNotAvailable("root", 20 * 1000);
+
+            postAdbRootAction();
+
             // wait for device to be back online
             waitForDeviceOnline();
 
@@ -2226,6 +2231,16 @@ public class AndroidNativeDevice implements IManagedTestDevice {
                     getSerialNumber(), i, attempts, output);
         }
         return false;
+    }
+
+    /**
+     * Override if the device needs some specific actions to be taken after adb root and before the
+     * device is back online.
+     * Default implementation doesn't include any addition actions.
+     * adb root is not guaranteed to be enabled at this stage.
+     */
+    public void postAdbRootAction() {
+        // Empty on purpose.
     }
 
     /**
