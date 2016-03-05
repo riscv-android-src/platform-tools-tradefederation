@@ -68,7 +68,6 @@ public class QuotationAwareTokenizer {
         Log.d(LOG_TAG, String.format("Trying to tokenize the line '%s'", line));
         while (charMatcher.find()) {
             aChar = charMatcher.group();
-            Log.v(LOG_TAG, String.format("Got a character: '%s'", aChar));
 
             if (" ".equals(aChar)) {
                 if (quotation) {
@@ -90,7 +89,6 @@ public class QuotationAwareTokenizer {
                 quotation ^= true;
             } else {
                 // default case: add the character to the token being built
-                Log.v(LOG_TAG, String.format("Adding character '%s' to token '%s'", aChar, token));
                 token.append(aChar);
             }
         }
