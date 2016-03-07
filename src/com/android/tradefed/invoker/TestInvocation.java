@@ -392,7 +392,7 @@ public class TestInvocation implements ITestInvocation {
         StringBuilder msg = new StringBuilder("Starting invocation for '");
         msg.append(info.getTestTag());
         msg.append("'");
-        if (!info.getBuildId().equals(IBuildInfo.UNKNOWN_BUILD_ID)) {
+        if (!IBuildInfo.UNKNOWN_BUILD_ID.equals(info.getBuildId())) {
             msg.append(" on build ");
             msg.append(getBuildDescription(info));
         }
