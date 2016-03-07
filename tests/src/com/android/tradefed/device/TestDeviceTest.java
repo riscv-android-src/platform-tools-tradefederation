@@ -276,7 +276,7 @@ public class TestDeviceTest extends TestCase {
      * Verify that {@link TestDevice#getProductType()} throws an exception if requesting a product
      * type directly fails while the device is in fastboot.
      */
-    public void testGetProductType_fastbootFail() throws DeviceNotAvailableException {
+    public void testGetProductType_fastbootFail() {
         EasyMock.expect(mMockIDevice.getProperty(EasyMock.<String>anyObject())).andStubReturn(null);
         CommandResult fastbootResult = new CommandResult();
         fastbootResult.setStatus(CommandStatus.SUCCESS);
@@ -369,9 +369,13 @@ public class TestDeviceTest extends TestCase {
      * Test that the unresponsive device exception is propagated from the recovery to TestDevice.
      * @throws Exception
      */
-    @SuppressWarnings("deprecation")
     public void testRecoverDevice_ThrowException() throws Exception {
-        TestDevice testDevice = new TestDevice(mMockIDevice, mMockStateMonitor, mMockDvcMonitor);
+        TestDevice testDevice = new TestDevice(mMockIDevice, mMockStateMonitor, mMockDvcMonitor) {
+            @Override
+            public boolean enableAdbRoot() throws DeviceNotAvailableException {
+                return true;
+            }
+        };
         testDevice.setRecovery(new IDeviceRecovery() {
 
             @Override
@@ -393,9 +397,9 @@ public class TestDeviceTest extends TestCase {
             }
         });
         testDevice.setRecoveryMode(RecoveryMode.AVAILABLE);
-        testDevice.executeShellCommand((String) EasyMock.anyObject(),
-                (CollectingOutputReceiver)EasyMock.anyObject(), EasyMock.anyInt(),
-                EasyMock.anyInt());
+        mMockIDevice.executeShellCommand((String) EasyMock.anyObject(),
+                (CollectingOutputReceiver)EasyMock.anyObject(), EasyMock.anyLong(),
+                EasyMock.eq(TimeUnit.MILLISECONDS));
         EasyMock.expectLastCall();
         EasyMock.replay(mMockIDevice);
         try {
@@ -671,7 +675,7 @@ public class TestDeviceTest extends TestCase {
     }
 
     /**
-     * Unit test for {@link TestDevice#syncFiles)}.
+     * Unit test for {@link TestDevice#syncFiles(File, String)}.
      * <p/>
      * Verify behavior when given local file does not exist
      */
@@ -1349,7 +1353,7 @@ public class TestDeviceTest extends TestCase {
 
     /**
      * Unit test to make sure that the simple convenience constructor for
-     * {@link ITestDevice#MountPointInfo} works as expected.
+     * {@link MountPointInfo#MountPointInfo(String, String, String, List)} works as expected.
      */
     public void testMountInfo_simple() throws Exception {
         List<String> empty = Collections.emptyList();
@@ -1362,7 +1366,7 @@ public class TestDeviceTest extends TestCase {
 
     /**
      * Unit test to make sure that the mount-option-parsing convenience constructor for
-     * {@link ITestDevice#MountPointInfo} works as expected.
+     * {@link MountPointInfo#MountPointInfo(String, String, String, List)} works as expected.
      */
     public void testMountInfo_parseOptions() throws Exception {
         MountPointInfo info = new MountPointInfo("filesystem", "mountpoint", "type", "rw,relatime");
@@ -1649,7 +1653,7 @@ public class TestDeviceTest extends TestCase {
     }
 
     /**
-     * Test that successful user creation is handled by {@link TestDevice#createUser()}.
+     * Test that successful user creation is handled by {@link TestDevice#createUser(String)}.
      */
     public void testCreateUser() throws Exception {
         final String createUserCommand = "pm create-user foo";
@@ -1659,7 +1663,7 @@ public class TestDeviceTest extends TestCase {
     }
 
     /**
-     * Test that a failure to create a user is handled by {@link TestDevice#createUser()}.
+     * Test that a failure to create a user is handled by {@link TestDevice#createUser(String)}.
      */
     public void testCreateUser_failed() throws Exception {
         final String createUserCommand = "pm create-user foo";
@@ -1674,7 +1678,7 @@ public class TestDeviceTest extends TestCase {
     }
 
     /**
-     * Test that successful user removal is handled by {@link TestDevice#removeUser()}.
+     * Test that successful user removal is handled by {@link TestDevice#removeUser(int)}.
      */
     public void testRemoveUser() throws Exception {
         final String removeUserCommand = "pm remove-user 10";
@@ -1684,7 +1688,7 @@ public class TestDeviceTest extends TestCase {
     }
 
     /**
-     * Test that a failure to remove a user is handled by {@link TestDevice#removeUser()}.
+     * Test that a failure to remove a user is handled by {@link TestDevice#removeUser(int)}.
      */
     public void testRemoveUser_failed() throws Exception {
         final String removeUserCommand = "pm remove-user 10";
@@ -1713,7 +1717,7 @@ public class TestDeviceTest extends TestCase {
     }
 
      /**
-     * Test that successful user start is handled by {@link TestDevice#startUser()}.
+     * Test that successful user start is handled by {@link TestDevice#startUser(int)}.
      */
     public void testStartUser() throws Exception {
         final String startUserCommand = "am start-user 10";
@@ -1723,7 +1727,7 @@ public class TestDeviceTest extends TestCase {
     }
 
     /**
-     * Test that a failure to start user is handled by {@link TestDevice#startUser()}.
+     * Test that a failure to start user is handled by {@link TestDevice#startUser(int)}.
      */
     public void testStartUser_failed() throws Exception {
         final String startUserCommand = "am start-user 10";

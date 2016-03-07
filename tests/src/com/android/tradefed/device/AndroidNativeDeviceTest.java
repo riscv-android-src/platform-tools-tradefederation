@@ -16,6 +16,7 @@
 package com.android.tradefed.device;
 
 import com.android.ddmlib.IDevice;
+import com.android.tradefed.util.FileUtil;
 import com.android.tradefed.util.IRunUtil;
 
 import junit.framework.TestCase;
@@ -83,6 +84,11 @@ public class AndroidNativeDeviceTest extends TestCase {
             }
 
             @Override
+            public IDevice getIDevice() {
+                return mMockIDevice;
+            }
+
+            @Override
             IWifiHelper createWifiHelper() {
                 return mMockWifi;
             }
@@ -99,6 +105,21 @@ public class AndroidNativeDeviceTest extends TestCase {
     public void testInstallPackages_exception() {
         try {
             mTestDevice.installPackage(new File(""), false);
+        } catch (UnsupportedOperationException onse) {
+            return;
+        } catch (DeviceNotAvailableException e) {
+            fail();
+        }
+        fail();
+    }
+
+    /**
+     * Test return exception for package installation
+     * {@link AndroidNativeDevice#uninstallPackage(String)}.
+     */
+    public void testUninstallPackages_exception() {
+        try {
+            mTestDevice.uninstallPackage("");
         } catch (UnsupportedOperationException onse) {
             return;
         } catch (DeviceNotAvailableException e) {
@@ -162,5 +183,63 @@ public class AndroidNativeDeviceTest extends TestCase {
             return;
         }
         fail();
+    }
+
+    /**
+     * Unit test for {@link AndroidNativeDevice#getScreenshot()}.
+     */
+    public void testGetScreenshot_exception() throws Exception {
+        try {
+            mTestDevice.getScreenshot();
+        } catch (UnsupportedOperationException onse) {
+            return;
+        }
+        fail();
+    }
+
+    /**
+     * Unit test for {@link AndroidNativeDevice#pushDir(File, String)}.
+     */
+    public void testPushDir_notADir() throws Exception {
+        assertFalse(mTestDevice.pushDir(new File(""), ""));
+    }
+
+    /**
+     * Unit test for {@link AndroidNativeDevice#pushDir(File, String)}.
+     */
+    public void testPushDir_childFile() throws Exception {
+        mTestDevice = new TestableAndroidNativeDevice() {
+            @Override
+            public boolean pushFile(File localFile, String remoteFilePath)
+                    throws DeviceNotAvailableException {
+                return true;
+            }
+        };
+        File testDir = FileUtil.createTempDir("pushDirTest");
+        FileUtil.createTempFile("test1", ".txt", testDir);
+        assertTrue(mTestDevice.pushDir(testDir, ""));
+        FileUtil.recursiveDelete(testDir);
+    }
+
+    /**
+     * Unit test for {@link AndroidNativeDevice#pushDir(File, String)}.
+     */
+    public void testPushDir_childDir() throws Exception {
+        mTestDevice = new TestableAndroidNativeDevice() {
+            @Override
+            public String executeShellCommand(String cmd) throws DeviceNotAvailableException {
+                return "";
+            }
+            @Override
+            public boolean pushFile(File localFile, String remoteFilePath)
+                    throws DeviceNotAvailableException {
+                return false;
+            }
+        };
+        File testDir = FileUtil.createTempDir("pushDirTest");
+        File subDir = FileUtil.createTempDir("testSubDir", testDir);
+        FileUtil.createTempDir("test1", subDir);
+        assertTrue(mTestDevice.pushDir(testDir, ""));
+        FileUtil.recursiveDelete(testDir);
     }
 }
