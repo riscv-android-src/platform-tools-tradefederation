@@ -31,14 +31,11 @@ import com.android.tradefed.log.ILeveledLogOutput;
 import com.android.tradefed.log.ILogRegistry;
 import com.android.tradefed.log.LogRegistry;
 import com.android.tradefed.log.LogUtil.CLog;
-import com.android.tradefed.result.ILogSaver;
-import com.android.tradefed.result.ILogSaverListener;
 import com.android.tradefed.result.IShardableListener;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.InputStreamSource;
-import com.android.tradefed.result.InvocationSummaryHelper;
 import com.android.tradefed.result.LogDataType;
-import com.android.tradefed.result.LogFile;
+import com.android.tradefed.result.LogSaverResultForwarder;
 import com.android.tradefed.result.ResultForwarder;
 import com.android.tradefed.targetprep.BuildError;
 import com.android.tradefed.targetprep.DeviceFailedToBootError;
@@ -116,78 +113,6 @@ public class TestInvocation implements ITestInvocation {
         @Override
         public void invocationEnded(long newElapsedTime) {
             super.invocationEnded(mCurrentElapsedTime + newElapsedTime);
-        }
-    }
-
-    /**
-     * A {@link ResultForwarder} for saving logs with the global file saver.
-     */
-    private class LogSaverResultForwarder extends ResultForwarder {
-
-        ILogSaver mLogSaver;
-
-        public LogSaverResultForwarder(ILogSaver logSaver,
-                List<ITestInvocationListener> listeners) {
-            super(listeners);
-            mLogSaver = logSaver;
-            for (ITestInvocationListener listener : listeners) {
-                if (listener instanceof ILogSaverListener) {
-                    ((ILogSaverListener) listener).setLogSaver(mLogSaver);
-                }
-            }
-        }
-
-        /**
-         * {@inheritDoc}
-         */
-        @Override
-        public void invocationStarted(IBuildInfo buildInfo) {
-            // Intentionally call invocationStarted for the log saver first.
-            mLogSaver.invocationStarted(buildInfo);
-            for (ITestInvocationListener listener : getListeners()) {
-                try {
-                    listener.invocationStarted(buildInfo);
-                } catch (RuntimeException e) {
-                    // don't let the listener leave the invocation in a bad state
-                    CLog.e("Caught runtime exception from ITestInvocationListener");
-                    CLog.e(e);
-                }
-            }
-        }
-
-        /**
-         * {@inheritDoc}
-         */
-        @Override
-        public void invocationEnded(long elapsedTime) {
-            InvocationSummaryHelper.reportInvocationEnded(getListeners(), elapsedTime);
-            // Intentionally call invocationEnded for the log saver last.
-            mLogSaver.invocationEnded(elapsedTime);
-        }
-
-        /**
-         * {@inheritDoc}
-         * <p/>
-         * Also, save the log file with the global {@link ILogSaver} and call
-         * {@link ILogSaverListener#testLogSaved(String, LogDataType, InputStreamSource, LogFile)}
-         * for those listeners implementing the {@link ILogSaverListener} interface.
-         */
-        @Override
-        public void testLog(String dataName, LogDataType dataType, InputStreamSource dataStream) {
-            super.testLog(dataName, dataType, dataStream);
-            try {
-                LogFile logFile = mLogSaver.saveLogData(dataName, dataType,
-                        dataStream.createInputStream());
-                for (ITestInvocationListener listener : getListeners()) {
-                    if (listener instanceof ILogSaverListener) {
-                        ((ILogSaverListener) listener).testLogSaved(dataName, dataType,
-                                dataStream, logFile);
-                    }
-                }
-            } catch (IOException e) {
-                CLog.e("Failed to save log data");
-                CLog.e(e);
-            }
         }
     }
 
@@ -301,7 +226,7 @@ public class TestInvocation implements ITestInvocation {
             // and forward them to the original set of listeners (minus any ISharddableListeners)
             // once all shards complete
             ShardMasterResultForwarder resultCollector = new ShardMasterResultForwarder(
-                    buildMasterShardListeners(config), shardableTests.size());
+                    config.getLogSaver(), buildMasterShardListeners(config), shardableTests.size());
 
             // report invocation started using original buildinfo
             resultCollector.invocationStarted(info);
