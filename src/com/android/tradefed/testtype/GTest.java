@@ -23,7 +23,6 @@ import com.android.ddmlib.testrunner.ITestRunListener;
 import com.android.tradefed.config.Option;
 import com.android.tradefed.config.OptionClass;
 import com.android.tradefed.device.DeviceNotAvailableException;
-import com.android.tradefed.device.IFileEntry;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.util.ArrayUtil;
@@ -291,33 +290,45 @@ public class GTest implements IDeviceTest, IRemoteTest, ITestFilterReceiver, IRu
      * <p/>
      * Exposed for unit testing.
      *
-     * @param rootEntry The root folder to begin searching for native tests
+     * @param root The root folder to begin searching for native tests
      * @param testDevice The device to run tests on
      * @param listener the {@link ITestRunListener)
      * @throws DeviceNotAvailableException
      */
-    void doRunAllTestsInSubdirectory(IFileEntry rootEntry, ITestDevice testDevice,
+    void doRunAllTestsInSubdirectory(String root, ITestDevice testDevice,
             ITestRunListener listener) throws DeviceNotAvailableException {
-
-        if (rootEntry.isDirectory()) {
+        if (isDirectory(testDevice, root)) {
             // recursively run tests in all subdirectories
-            for (IFileEntry childEntry : rootEntry.getChildren(false)) {
-                doRunAllTestsInSubdirectory(childEntry, testDevice, listener);
+            for (String child : getChildren(testDevice, root)) {
+                doRunAllTestsInSubdirectory(root + "/" + child, testDevice, listener);
             }
         } else {
             // assume every file is a valid gtest binary.
-            IShellOutputReceiver resultParser = createResultParser(rootEntry.getName(), listener);
-            String fullPath = rootEntry.getFullEscapedPath();
-            if (shouldSkipFile(fullPath)) {
+            IShellOutputReceiver resultParser = createResultParser(root, listener);
+            if (shouldSkipFile(root)) {
                 return;
             }
             String flags = getAllGTestFlags();
-            Log.i(LOG_TAG, String.format("Running gtest %s %s on %s", fullPath, flags,
-                    mDevice.getSerialNumber()));
+            Log.i(LOG_TAG, String.format("Running gtest %s %s on %s", root, flags,
+                    testDevice.getSerialNumber()));
             // force file to be executable
-            testDevice.executeShellCommand(String.format("chmod 755 %s", fullPath));
-            runTest(testDevice, resultParser, fullPath, flags);
+            testDevice.executeShellCommand(String.format("chmod 755 %s", root));
+            runTest(testDevice, resultParser, root, flags);
         }
+    }
+
+    private boolean isDirectory(ITestDevice device, String path)
+            throws DeviceNotAvailableException {
+        return device.executeShellCommand(String.format("ls -ld %s", path)).charAt(0) == 'd';
+    }
+
+    private String[] getChildren(ITestDevice device, String path)
+            throws DeviceNotAvailableException {
+        String lsOutput = device.executeShellCommand(String.format("ls -A1 %s", path));
+        if (lsOutput.trim().isEmpty()) {
+            return new String[0];
+        }
+        return lsOutput.split("\r?\n");
     }
 
     /**
@@ -425,12 +436,11 @@ public class GTest implements IDeviceTest, IRemoteTest, ITestFilterReceiver, IRu
         }
 
         String testPath = getTestPath();
-        IFileEntry nativeTestDirectory = mDevice.getFileEntry(testPath);
-        if (nativeTestDirectory == null) {
+        if (!mDevice.doesFileExist(testPath)) {
             Log.w(LOG_TAG, String.format("Could not find native test directory %s in %s!",
                     testPath, mDevice.getSerialNumber()));
             return;
         }
-        doRunAllTestsInSubdirectory(nativeTestDirectory, mDevice, listener);
+        doRunAllTestsInSubdirectory(testPath, mDevice, listener);
     }
 }

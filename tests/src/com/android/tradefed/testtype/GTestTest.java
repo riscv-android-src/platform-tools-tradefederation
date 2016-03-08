@@ -35,6 +35,14 @@ import java.util.concurrent.TimeUnit;
  */
 public class GTestTest extends TestCase {
     private static final String GTEST_FLAG_FILTER = "--gtest_filter";
+    private static final String LS_LD_TEST1_OUTPUT =
+            "-rw-rw-rw- 1 root root 0 2016-02-19 10:02 /data/nativetest/test1";
+    private static final String LS_LD_TEST2_OUTPUT =
+            "-rw-rw-rw- 1 root root 0 2016-02-19 10:02 /data/nativetest/test2";
+    private static final String LS_LD_NATIVETEST_OUTPUT =
+            "drwxrwx--x 4 shell shell 4096 2016-03-07 11:46 /data/nativetest";
+    private static final String LS_LD_SUBDIR_OUTPUT =
+            "drwxrwx--x 4 shell shell 4096 2016-03-07 11:46 /data/nativetest/subfolder";
     private ITestInvocationListener mMockInvocationListener = null;
     private IShellOutputReceiver mMockReceiver = null;
     private ITestDevice mMockITestDevice = null;
@@ -82,13 +90,24 @@ public class GTestTest extends TestCase {
         final String test2 = "test2";
 
         MockFileUtil.setMockDirContents(mMockITestDevice, nativeTestPath, test1, test2);
+        EasyMock.expect(mMockITestDevice.doesFileExist(nativeTestPath)).andReturn(true);
+        EasyMock.expect(mMockITestDevice.executeShellCommand(
+                "ls -ld /data/nativetest")).andReturn(LS_LD_NATIVETEST_OUTPUT);
+        EasyMock.expect(mMockITestDevice.executeShellCommand(
+                "ls -ld /data/nativetest/test1")).andReturn(LS_LD_TEST1_OUTPUT);
+        EasyMock.expect(mMockITestDevice.executeShellCommand(
+                "ls -ld /data/nativetest/test2")).andReturn(LS_LD_TEST2_OUTPUT);
+        EasyMock.expect(mMockITestDevice.executeShellCommand(
+                "ls -A1 /data/nativetest")).andReturn("test1\ntest2");
         EasyMock.expect(mMockITestDevice.executeShellCommand(EasyMock.contains("chmod")))
                 .andReturn("")
                 .times(2);
-        mMockITestDevice.executeShellCommand(EasyMock.contains(test1), EasyMock.same(mMockReceiver),
-                EasyMock.anyLong(), (TimeUnit)EasyMock.anyObject(), EasyMock.anyInt());
-        mMockITestDevice.executeShellCommand(EasyMock.contains(test2), EasyMock.same(mMockReceiver),
-                EasyMock.anyLong(), (TimeUnit)EasyMock.anyObject(), EasyMock.anyInt());
+        mMockITestDevice.executeShellCommand(EasyMock.contains(test1),
+                EasyMock.same(mMockReceiver), EasyMock.anyLong(),
+                (TimeUnit)EasyMock.anyObject(), EasyMock.anyInt());
+        mMockITestDevice.executeShellCommand(EasyMock.contains(test2),
+                EasyMock.same(mMockReceiver), EasyMock.anyLong(),
+                (TimeUnit)EasyMock.anyObject(), EasyMock.anyInt());
 
         replayMocks();
 
@@ -107,6 +126,9 @@ public class GTestTest extends TestCase {
 
         mGTest.setModuleName(module);
 
+        EasyMock.expect(mMockITestDevice.doesFileExist(modulePath)).andReturn(true);
+        EasyMock.expect(mMockITestDevice.executeShellCommand(
+                "ls -ld /data/nativetest/test1")).andReturn(LS_LD_TEST1_OUTPUT);
         // expect test1 to be executed
         EasyMock.expect(mMockITestDevice.executeShellCommand(EasyMock.contains("chmod")))
                 .andReturn("");
@@ -133,6 +155,17 @@ public class GTestTest extends TestCase {
                 FileListingService.FILE_SEPARATOR, test1);
 
         MockFileUtil.setMockDirPath(mMockITestDevice, nativeTestPath, subFolderName, test1);
+        EasyMock.expect(mMockITestDevice.doesFileExist(nativeTestPath)).andReturn(true);
+        EasyMock.expect(mMockITestDevice.executeShellCommand(
+                "ls -ld /data/nativetest")).andReturn(LS_LD_NATIVETEST_OUTPUT);
+        EasyMock.expect(mMockITestDevice.executeShellCommand(
+                "ls -ld /data/nativetest/" + subFolderName)).andReturn(LS_LD_SUBDIR_OUTPUT);
+        EasyMock.expect(mMockITestDevice.executeShellCommand(
+                "ls -ld " + test1Path)).andReturn(LS_LD_TEST1_OUTPUT);
+        EasyMock.expect(mMockITestDevice.executeShellCommand(
+                "ls -A1 /data/nativetest")).andReturn(subFolderName);
+        EasyMock.expect(mMockITestDevice.executeShellCommand(
+                "ls -A1 /data/nativetest/" + subFolderName)).andReturn("test1");
         EasyMock.expect(mMockITestDevice.executeShellCommand(EasyMock.contains("chmod")))
                 .andReturn("");
         mMockITestDevice.executeShellCommand(EasyMock.contains(test1Path),
@@ -152,9 +185,16 @@ public class GTestTest extends TestCase {
      * @throws DeviceNotAvailableException
      */
     private void doTestFilter(String filterString) throws DeviceNotAvailableException {
+        String nativeTestPath = GTest.DEFAULT_NATIVETEST_PATH;
         // configure the mock file system to have a single test
-        MockFileUtil.setMockDirContents(mMockITestDevice, GTest.DEFAULT_NATIVETEST_PATH, "test1");
-
+        MockFileUtil.setMockDirContents(mMockITestDevice, nativeTestPath, "test1");
+        EasyMock.expect(mMockITestDevice.doesFileExist(nativeTestPath)).andReturn(true);
+        EasyMock.expect(mMockITestDevice.executeShellCommand(
+                "ls -ld /data/nativetest")).andReturn(LS_LD_NATIVETEST_OUTPUT);
+        EasyMock.expect(mMockITestDevice.executeShellCommand(
+                "ls -A1 /data/nativetest")).andReturn("test1");
+        EasyMock.expect(mMockITestDevice.executeShellCommand(
+                "ls -ld /data/nativetest/test1")).andReturn(LS_LD_TEST1_OUTPUT);
         EasyMock.expect(mMockITestDevice.executeShellCommand(EasyMock.contains("chmod")))
                     .andReturn("");
             mMockITestDevice.executeShellCommand(EasyMock.contains(filterString),
@@ -174,7 +214,6 @@ public class GTestTest extends TestCase {
         String includeFilter2 = "def";
         mGTest.addIncludeFilter(includeFilter1);
         mGTest.addIncludeFilter(includeFilter2);
-
         doTestFilter(String.format("%s=%s:%s", GTEST_FLAG_FILTER, includeFilter1, includeFilter2));
     }
 
@@ -187,7 +226,8 @@ public class GTestTest extends TestCase {
         mGTest.addExcludeFilter(excludeFilter1);
         mGTest.addExcludeFilter(excludeFilter2);
 
-        doTestFilter(String.format("%s=-%s:%s", GTEST_FLAG_FILTER, excludeFilter1, excludeFilter2));
+        doTestFilter(String.format(
+                "%s=-%s:%s", GTEST_FLAG_FILTER, excludeFilter1, excludeFilter2));
     }
 
     /**
