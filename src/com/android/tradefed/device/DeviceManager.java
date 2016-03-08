@@ -138,7 +138,7 @@ public class DeviceManager implements IDeviceManager {
      * Initialize the device manager. This must be called once and only once before any other
      * methods are called.
      */
-    protected synchronized void init(IDeviceSelection globalDeviceFilter,
+    public synchronized void init(IDeviceSelection globalDeviceFilter,
             List<IDeviceMonitor> globalDeviceMonitors, IManagedTestDeviceFactory deviceFactory) {
         if (mIsInitialized) {
             throw new IllegalStateException("already initialized");
@@ -356,7 +356,7 @@ public class DeviceManager implements IDeviceManager {
         }
     }
 
-    private void addAvailableDevice(IDevice stubDevice) {
+    public void addAvailableDevice(IDevice stubDevice) {
         IManagedTestDevice d = mManagedDeviceList.findOrCreate(stubDevice);
         if (d != null) {
             mManagedDeviceList.handleDeviceEvent(d, DeviceEvent.FORCE_AVAILABLE);
