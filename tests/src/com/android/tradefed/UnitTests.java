@@ -86,6 +86,7 @@ import com.android.tradefed.testtype.DeviceTestSuite;
 import com.android.tradefed.testtype.FakeTestTest;
 import com.android.tradefed.testtype.GTestResultParserTest;
 import com.android.tradefed.testtype.GTestTest;
+import com.android.tradefed.testtype.GTestXmlResultParserTest;
 import com.android.tradefed.testtype.HostTestTest;
 import com.android.tradefed.testtype.InstrumentationFileTestTest;
 import com.android.tradefed.testtype.InstrumentationSerialTestTest;
@@ -216,6 +217,7 @@ public class UnitTests extends DeviceTestSuite {
         addTestSuite(FakeTestTest.class);
         addTestSuite(GTestResultParserTest.class);
         addTestSuite(GTestTest.class);
+        addTestSuite(GTestXmlResultParserTest.class);
         addTestSuite(HostTestTest.class);
         addTestSuite(InstrumentationSerialTestTest.class);
         addTestSuite(InstrumentationFileTestTest.class);

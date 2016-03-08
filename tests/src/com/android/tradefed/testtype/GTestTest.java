@@ -18,6 +18,7 @@ package com.android.tradefed.testtype;
 import com.android.ddmlib.FileListingService;
 import com.android.ddmlib.IShellOutputReceiver;
 import com.android.ddmlib.testrunner.ITestRunListener;
+import com.android.tradefed.device.CollectingOutputReceiver;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.device.MockFileUtil;
@@ -27,6 +28,7 @@ import junit.framework.TestCase;
 
 import org.easymock.EasyMock;
 
+import java.io.File;
 import java.util.concurrent.TimeUnit;
 
 
@@ -57,11 +59,22 @@ public class GTestTest extends TestCase {
         mMockInvocationListener = EasyMock.createMock(ITestInvocationListener.class);
         mMockReceiver = EasyMock.createMock(IShellOutputReceiver.class);
         mMockITestDevice = EasyMock.createMock(ITestDevice.class);
+        mMockReceiver.flush();
+        EasyMock.expectLastCall().anyTimes();
         EasyMock.expect(mMockITestDevice.getSerialNumber()).andStubReturn("serial");
         mGTest = new GTest() {
             @Override
             IShellOutputReceiver createResultParser(String runName, ITestRunListener listener) {
                 return mMockReceiver;
+            }
+            @Override
+            GTestXmlResultParser createXmlParser(String testRunName, ITestRunListener listener) {
+                return new GTestXmlResultParser(testRunName, listener) {
+                    @Override
+                    public void parseResult(File f, CollectingOutputReceiver output) {
+                        return;
+                    }
+                };
             }
         };
         mGTest.setDevice(mMockITestDevice);
@@ -284,5 +297,45 @@ public class GTestTest extends TestCase {
         assertFalse(mGTest.shouldSkipFile("/some/path/file/binary"));
         assertTrue(mGTest.shouldSkipFile("/some/path/file/random.dat"));
         assertTrue(mGTest.shouldSkipFile("/some/path/file/test.txt"));
+    }
+
+    /**
+     * Test the run method for a couple tests
+     */
+    public void testRunXml() throws DeviceNotAvailableException {
+        mGTest.setEnableXmlOutput(true);
+
+        final String nativeTestPath = GTest.DEFAULT_NATIVETEST_PATH;
+        final String test1 = "test1";
+        final String test2 = "test2";
+
+        MockFileUtil.setMockDirContents(mMockITestDevice, nativeTestPath, test1, test2);
+        EasyMock.expect(mMockITestDevice.doesFileExist(nativeTestPath)).andReturn(true);
+        EasyMock.expect(mMockITestDevice.executeShellCommand(
+                "ls -ld /data/nativetest")).andReturn(LS_LD_NATIVETEST_OUTPUT);
+        EasyMock.expect(mMockITestDevice.executeShellCommand(
+                "ls -ld /data/nativetest/test1")).andReturn(LS_LD_TEST1_OUTPUT);
+        EasyMock.expect(mMockITestDevice.executeShellCommand(
+                "ls -ld /data/nativetest/test2")).andReturn(LS_LD_TEST2_OUTPUT);
+        EasyMock.expect(mMockITestDevice.executeShellCommand(
+                "ls -A1 /data/nativetest")).andReturn("test1\ntest2");
+        EasyMock.expect(mMockITestDevice.executeShellCommand(EasyMock.contains("chmod")))
+                .andReturn("")
+                .times(2);
+        EasyMock.expect(mMockITestDevice.executeShellCommand(EasyMock.contains("rm")))
+                .andReturn("")
+                .times(2);
+        EasyMock.expect(mMockITestDevice.pullFile((String)EasyMock.anyObject(),
+                (File)EasyMock.anyObject())).andStubReturn(true);
+        mMockITestDevice.executeShellCommand(EasyMock.contains(test1),
+                (CollectingOutputReceiver) EasyMock.anyObject(),
+                EasyMock.anyLong(), (TimeUnit)EasyMock.anyObject(), EasyMock.anyInt());
+        mMockITestDevice.executeShellCommand(EasyMock.contains(test2),
+                (CollectingOutputReceiver) EasyMock.anyObject(),
+                EasyMock.anyLong(), (TimeUnit)EasyMock.anyObject(), EasyMock.anyInt());
+        replayMocks();
+
+        mGTest.run(mMockInvocationListener);
+        verifyMocks();
     }
 }
