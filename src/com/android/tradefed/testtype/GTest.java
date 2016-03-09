@@ -22,11 +22,15 @@ import com.android.ddmlib.Log;
 import com.android.ddmlib.testrunner.ITestRunListener;
 import com.android.tradefed.config.Option;
 import com.android.tradefed.config.OptionClass;
+import com.android.tradefed.device.CollectingOutputReceiver;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.util.ArrayUtil;
+import com.android.tradefed.util.FileUtil;
 
+import java.io.File;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
@@ -104,6 +108,11 @@ public class GTest implements IDeviceTest, IRemoteTest, ITestFilterReceiver, IRu
             description="The hint about the test's runtime.")
     private long mRuntimeHint = 60000;// 1 minute
 
+    @Option(name = "xml-output",
+            description="Use gtest xml output for test results, if test binaries crash, no output"
+                    + "will be available.")
+    private boolean mEnableXmlOutput = false;
+
     /** coverage target value. Just report all gtests as 'native' for now */
     private static final String COVERAGE_TARGET = "Native";
 
@@ -111,6 +120,7 @@ public class GTest implements IDeviceTest, IRemoteTest, ITestFilterReceiver, IRu
     private static final String GTEST_FLAG_PRINT_TIME = "--gtest_print_time";
     private static final String GTEST_FLAG_FILTER = "--gtest_filter";
     private static final String GTEST_FLAG_RUN_DISABLED_TESTS = "--gtest_also_run_disabled_tests";
+    private static final String GTEST_XML_OUTPUT = "--gtest_output=xml:%s";
 
     /**
      * {@inheritDoc}
@@ -128,6 +138,10 @@ public class GTest implements IDeviceTest, IRemoteTest, ITestFilterReceiver, IRu
         return mDevice;
     }
 
+    public void setEnableXmlOutput(boolean b) {
+        mEnableXmlOutput = b;
+    }
+
     /**
      * Set the Android native test module to run.
      *
@@ -142,7 +156,7 @@ public class GTest implements IDeviceTest, IRemoteTest, ITestFilterReceiver, IRu
      *
      * @return the name of the native test module to run, or null if not set
      */
-    public String getModuleName(String moduleName) {
+    public String getModuleName() {
         return mTestModule;
     }
 
@@ -292,7 +306,7 @@ public class GTest implements IDeviceTest, IRemoteTest, ITestFilterReceiver, IRu
      *
      * @param root The root folder to begin searching for native tests
      * @param testDevice The device to run tests on
-     * @param listener the {@link ITestRunListener)
+     * @param listener the {@link ITestRunListener}
      * @throws DeviceNotAvailableException
      */
     void doRunAllTestsInSubdirectory(String root, ITestDevice testDevice,
@@ -313,7 +327,11 @@ public class GTest implements IDeviceTest, IRemoteTest, ITestFilterReceiver, IRu
                     testDevice.getSerialNumber()));
             // force file to be executable
             testDevice.executeShellCommand(String.format("chmod 755 %s", root));
-            runTest(testDevice, resultParser, root, flags);
+            if (mEnableXmlOutput) {
+                runTestXml(testDevice, root, flags, listener);
+            } else {
+                runTest(testDevice, resultParser, root, flags);
+            }
         }
     }
 
@@ -375,18 +393,75 @@ public class GTest implements IDeviceTest, IRemoteTest, ITestFilterReceiver, IRu
                     TimeUnit.MILLISECONDS,
                     0 /* retryAttempts */);
         } catch (DeviceNotAvailableException e) {
+            throw e;
+        } catch (RuntimeException e) {
+            throw e;
+        } finally {
             // TODO: consider moving the flush of parser data on exceptions to TestDevice or
             // AdbHelper
             resultParser.flush();
-            throw e;
-        } catch (RuntimeException e) {
-            resultParser.flush();
-            throw e;
-        } finally {
             for (String cmd : mAfterTestCmd) {
                 testDevice.executeShellCommand(cmd);
             }
         }
+    }
+
+    /**
+     * Run the given gtest binary and parse XML results
+     * This methods typically requires the filter for .tff and .xml files, otherwise it will post
+     * some unwanted results.
+     *
+     * @param testDevice the {@link ITestDevice}
+     * @param fullPath absolute file system path to gtest binary on device
+     * @param flags gtest execution flags
+     * @param listener the {@link ITestRunListener}
+     * @throws DeviceNotAvailableException
+     */
+    private void runTestXml(final ITestDevice testDevice, final String fullPath,
+            final String flags, ITestRunListener listener) throws DeviceNotAvailableException {
+        CollectingOutputReceiver outputCollector = new CollectingOutputReceiver();
+        File tmpOutput = null;
+        try {
+            String testRunName = fullPath.substring(fullPath.lastIndexOf("/") + 1);
+            tmpOutput = FileUtil.createTempFile(testRunName, ".xml");
+            String tmpResName = fullPath + "_res.xml";
+            String extraFlag = String.format(GTEST_XML_OUTPUT, tmpResName);
+            String fullFlagCmd =  String.format("%s %s", flags, extraFlag);
+
+            // Run the tests with modified flags
+            runTest(testDevice, outputCollector, fullPath, fullFlagCmd);
+            // Pull the result file, may not exist if issue with the test.
+            testDevice.pullFile(tmpResName, tmpOutput);
+            // Clean the file on the device
+            testDevice.executeShellCommand("rm " + tmpResName);
+            GTestXmlResultParser parser = createXmlParser(testRunName, listener);
+            // Attempt to parse the file, doesn't matter if the content is invalid.
+            if (tmpOutput.exists()) {
+                parser.parseResult(tmpOutput, outputCollector);
+            }
+        } catch (DeviceNotAvailableException | RuntimeException e) {
+            throw e;
+        } catch (IOException e) {
+            throw new RuntimeException(e.getMessage());
+        } finally {
+            outputCollector.flush();
+            for (String cmd : mAfterTestCmd) {
+                testDevice.executeShellCommand(cmd);
+            }
+            if (tmpOutput != null && tmpOutput.exists()) {
+                FileUtil.deleteFile(tmpOutput);
+            }
+        }
+    }
+
+    /**
+     * Exposed for testing
+     * @param testRunName
+     * @param listener
+     * @return a {@link GTestXmlResultParser}
+     */
+    GTestXmlResultParser createXmlParser(String testRunName, ITestRunListener listener) {
+        return new GTestXmlResultParser(testRunName, listener);
     }
 
     /**
