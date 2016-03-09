@@ -22,6 +22,9 @@ import junit.framework.TestCase;
 import org.easymock.EasyMock;
 
 import java.io.File;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.OutputStream;
 
 /**
  * Unit tests for {@link RunUtilTest}
@@ -221,6 +224,96 @@ public class RunUtilTest extends TestCase {
             fail("RunInterruptedException was expected, but not thrown.");
         } catch (final RunInterruptedException e) {
             assertEquals(message3, e.getMessage());
+        }
+    }
+
+    /**
+     * Test whether a {@link RunUtil#runTimedCmd(long, OutputStream, OutputStream, String[])}
+     * call correctly redirect the output to files.
+     */
+    public void testRuntimedCmd_withFileOutputStream() {
+        File stdout = null;
+        File stderr = null;
+        OutputStream stdoutStream = null;
+        OutputStream stderrStream = null;
+        try {
+            stdout = FileUtil.createTempFile("stdout_subprocess_", ".txt");
+            stdoutStream = new FileOutputStream(stdout);
+            stderr = FileUtil.createTempFile("stderr_subprocess_", ".txt");
+            stderrStream = new FileOutputStream(stderr);
+        } catch (IOException e) {
+            fail("Failed to create output files: " + e.getMessage());
+        }
+        String[] command = {"echo", "TEST"};
+        CommandResult result = mRunUtil.runTimedCmd(100, stdoutStream, stderrStream, command);
+        assertEquals(CommandStatus.SUCCESS, result.getStatus());
+        assertEquals(result.getStdout(),
+                "redirected to " + stdoutStream.getClass().getSimpleName());
+        assertEquals(result.getStderr(),
+                "redirected to " + stderrStream.getClass().getSimpleName());
+        assertTrue(stdout.exists());
+        assertTrue(stderr.exists());
+        try {
+            assertEquals("TEST\n", FileUtil.readStringFromFile(stdout));
+            assertEquals("", FileUtil.readStringFromFile(stderr));
+        } catch (IOException e) {
+            fail(e.getMessage());
+        } finally {
+            FileUtil.deleteFile(stdout);
+            FileUtil.deleteFile(stderr);
+        }
+    }
+
+    /**
+     * Test whether a {@link RunUtil#runTimedCmd(long, OutputStream, OutputStream, String[])}
+     * call correctly redirect the output to stdout because files are null.
+     */
+    public void testRuntimedCmd_regularOutput_fileNull() {
+        String[] command = {"echo", "TEST"};
+        CommandResult result = mRunUtil.runTimedCmd(100, null, null, command);
+        assertEquals(CommandStatus.SUCCESS, result.getStatus());
+        assertEquals(result.getStdout(), "TEST\n");
+        assertEquals(result.getStderr(), "");
+    }
+
+    /**
+     * Test whether a {@link RunUtil#runTimedCmd(long, OutputStream, OutputStream, String[])}
+     * redirect to the file even if they become non-writable afterward.
+     */
+    public void testRuntimedCmd_notWritable() {
+        File stdout = null;
+        File stderr = null;
+        OutputStream stdoutStream = null;
+        OutputStream stderrStream = null;
+        try {
+            stdout = FileUtil.createTempFile("stdout_subprocess_", ".txt");
+            stdoutStream = new FileOutputStream(stdout);
+            stdout.setWritable(false);
+            stderr = FileUtil.createTempFile("stderr_subprocess_", ".txt");
+            stderrStream = new FileOutputStream(stderr);
+            stderr.setWritable(false);
+        } catch (IOException e) {
+            fail("Failed to create output files: " + e.getMessage());
+        }
+        String[] command = {"echo", "TEST"};
+        CommandResult result = mRunUtil.runTimedCmd(100, stdoutStream, stderrStream, command);
+        assertEquals(CommandStatus.SUCCESS, result.getStatus());
+        assertEquals(result.getStdout(),
+                "redirected to " + stdoutStream.getClass().getSimpleName());
+        assertEquals(result.getStderr(),
+                "redirected to " + stderrStream.getClass().getSimpleName());
+        assertTrue(stdout.exists());
+        assertTrue(stderr.exists());
+        try {
+            assertEquals("TEST\n", FileUtil.readStringFromFile(stdout));
+            assertEquals("", FileUtil.readStringFromFile(stderr));
+        } catch (IOException e) {
+            fail(e.getMessage());
+        } finally {
+            stdout.setWritable(true);
+            stderr.setWritable(true);
+            FileUtil.deleteFile(stdout);
+            FileUtil.deleteFile(stderr);
         }
     }
 }
