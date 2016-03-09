@@ -494,9 +494,11 @@ public class GTestResultParser extends MultiLineReceiver {
             }
         }
         if (mNumTestsExpected > 0) {
-          reportTestRunStarted();
-          mNumTestsRun = 0;
-          mTestRunInProgress = true;
+            reportTestRunStarted();
+            mNumTestsRun = 0;
+            mTestRunInProgress = true;
+        } else if (mNumTestsExpected == 0) {
+            reportTestRunStarted();
         }
     }
 

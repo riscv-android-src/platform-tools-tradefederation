@@ -32,7 +32,9 @@ import com.android.tradefed.util.FileUtil;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.concurrent.TimeUnit;
 
 /**
@@ -68,10 +70,10 @@ public class GTest implements IDeviceTest, IRemoteTest, ITestFilterReceiver, IRu
 
     @Option(name = "include-filter",
             description="The GTest-based positive filter of the test names to run.")
-    private List<String> mIncludeFilters = new ArrayList<>();
+    private Set<String> mIncludeFilters = new HashSet<>();
     @Option(name = "exclude-filter",
             description="The GTest-based negative filter of the test names to run.")
-    private List<String> mExcludeFilters = new ArrayList<>();
+    private Set<String> mExcludeFilters = new HashSet<>();
 
     @Option(name = "native-test-timeout", description =
             "The max time in ms for a gtest to run. " +
