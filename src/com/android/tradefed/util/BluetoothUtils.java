@@ -20,7 +20,17 @@ import com.android.tradefed.device.CollectingOutputReceiver;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.log.LogUtil.CLog;
+import com.android.tradefed.result.ITestInvocationListener;
+import com.android.tradefed.result.InputStreamSource;
+import com.android.tradefed.result.LogDataType;
+import com.android.tradefed.result.SnapshotInputStreamSource;
 import com.android.tradefed.util.RunUtil;
+
+import java.io.BufferedReader;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileReader;
+import java.io.IOException;
 
 import java.util.HashSet;
 import java.util.Set;
@@ -44,6 +54,8 @@ public class BluetoothUtils {
     private static final int MAX_RETRIES = 3;
     private static final Pattern BONDED_MAC_HEADER =
             Pattern.compile("INSTRUMENTATION_RESULT: device-\\d{2}=(.*)$");
+    private static final String BTSNOOP_LOG_FILE = "btsnoop_hci.log";
+    private static final String BTSNOOP_CONF_FILE = "/etc/bluetooth/bt_stack.conf";
 
     /**
      * Convenience method to execute BT instrumentation command and return output
@@ -147,5 +159,112 @@ public class BluetoothUtils {
             }
         }
         return ret;
+    }
+
+    /**
+     * Enable btsnoop logging by changing the BtSnoopLogOutput line in /etc/bluetooth/bt_stack.conf
+     * to true.
+     */
+    public static boolean enableBtsnoopLogging(ITestDevice device)
+            throws DeviceNotAvailableException {
+        File confFile = device.pullFile(BTSNOOP_CONF_FILE);
+        if (confFile == null) {
+            return false;
+        }
+
+        BufferedReader confReader = null;
+        try {
+            confReader = new BufferedReader(new FileReader(confFile));
+            StringBuilder newConf = new StringBuilder();
+            String line;
+            while ((line = confReader.readLine()) != null) {
+                if (line.startsWith("BtSnoopLogOutput=")) {
+                    newConf.append("BtSnoopLogOutput=true\n");
+                } else {
+                    newConf.append(line).append("\n");
+                }
+            }
+            device.remountSystemWritable();
+            CLog.d("System remount complete");
+            return device.pushString(newConf.toString(), BTSNOOP_CONF_FILE);
+        } catch (IOException e) {
+            return false;
+        } finally {
+            // Delete host's copy of configuration file
+            confFile.delete();
+            StreamUtil.close(confReader);
+            device.reboot();
+        }
+    }
+
+    /**
+     * Disable btsnoop logging by changing the BtSnoopLogOutput line in /etc/bluetooth/bt_stack.conf
+     * to false.
+     */
+    public static boolean disableBtsnoopLogging(ITestDevice device)
+            throws DeviceNotAvailableException {
+        File confFile = device.pullFile(BTSNOOP_CONF_FILE);
+        if (confFile == null) {
+            return false;
+        }
+
+        BufferedReader confReader = null;
+        try {
+            confReader = new BufferedReader(new FileReader(confFile));
+            StringBuilder newConf = new StringBuilder();
+            String line;
+            while ((line = confReader.readLine()) != null) {
+                if (line.startsWith("BtSnoopLogOutput=")) {
+                    newConf.append("BtSnoopLogOutput=false\n");
+                } else {
+                    newConf.append(line).append("\n");
+                }
+            }
+            device.remountSystemWritable();
+            return device.pushString(newConf.toString(), BTSNOOP_CONF_FILE);
+        } catch (IOException e) {
+            return false;
+        } finally {
+            // Delete host's copy of configuration file
+            confFile.delete();
+            StreamUtil.close(confReader);
+            // Delete BT snoop log
+            cleanLogFile(device);
+        }
+    }
+
+    /**
+     * Upload snoop log file for test results
+     */
+    public static void uploadLogFiles(ITestInvocationListener listener, ITestDevice device,
+            String type, int iteration) throws DeviceNotAvailableException {
+        File logFile = null;
+        InputStreamSource logSource = null;
+        try {
+            logFile = device.pullFileFromExternal(BTSNOOP_LOG_FILE);
+            if (logFile != null) {
+                CLog.d("Sending %s %d byte file %s into the logosphere!", type, logFile.length(),
+                        logFile);
+                logSource = new SnapshotInputStreamSource(new FileInputStream(logFile));
+                listener.testLog(String.format("%s_btsnoop_%d", type, iteration),
+                        LogDataType.UNKNOWN, logSource);
+            }
+        } catch (IOException e) {
+            CLog.e("Got an IO Exception: %s", e);
+        } finally {
+            if (logFile != null) {
+                logFile.delete();
+            }
+            if (logSource != null) {
+                logSource.cancel();
+            }
+        }
+    }
+
+    /**
+     * Delete snoop log file from device
+     */
+    public static void cleanLogFile(ITestDevice device) throws DeviceNotAvailableException {
+        device.executeShellCommand(String.format("rm ${EXTERNAL_STORAGE}/%s", BTSNOOP_LOG_FILE));
     }
 }
