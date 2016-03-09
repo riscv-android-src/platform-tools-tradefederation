@@ -105,7 +105,7 @@ class DeviceStateMonitor implements IDeviceStateMonitor {
     }
 
     /**
-     * @return
+     * @return {@link IDevice} associate with the state monitor
      */
     private IDevice getIDevice() {
         synchronized (mDevice) {
@@ -163,7 +163,7 @@ class DeviceStateMonitor implements IDeviceStateMonitor {
         long startTime = System.currentTimeMillis();
         int counter = 1;
         while (System.currentTimeMillis() - startTime < waitTime) {
-            final CollectingOutputReceiver receiver = new CollectingOutputReceiver();
+            final CollectingOutputReceiver receiver = createOutputReceiver();
             final String cmd = "ls /system/bin/adb";
             try {
                 getIDevice().executeShellCommand(cmd, receiver, MAX_OP_TIME, TimeUnit.MILLISECONDS);
@@ -180,7 +180,7 @@ class DeviceStateMonitor implements IDeviceStateMonitor {
             } catch (ShellCommandUnresponsiveException e) {
                 CLog.i("%s failed: %s", cmd, e.getMessage());
             }
-            getRunUtil().sleep(Math.min(CHECK_POLL_TIME * counter, MAX_CHECK_POLL_TIME));
+            getRunUtil().sleep(Math.min(getCheckPollTime() * counter, MAX_CHECK_POLL_TIME));
             counter++;
         }
         CLog.w("Device %s shell is unresponsive", getSerialNumber());
@@ -251,7 +251,7 @@ class DeviceStateMonitor implements IDeviceStateMonitor {
             } catch (ExecutionException e) {
                 CLog.i("%s on device %s failed: %s", cmd, getSerialNumber(), e.getMessage());
             }
-            getRunUtil().sleep(Math.min(CHECK_POLL_TIME * counter, MAX_CHECK_POLL_TIME));
+            getRunUtil().sleep(Math.min(getCheckPollTime() * counter, MAX_CHECK_POLL_TIME));
             counter++;
         }
         CLog.w("Device %s did not boot after %d ms", getSerialNumber(), waitTime);
@@ -265,13 +265,13 @@ class DeviceStateMonitor implements IDeviceStateMonitor {
      * @return <code>true</code> if package manage becomes responsive before waitTime expires.
      * <code>false</code> otherwise
      */
-    private boolean waitForPmResponsive(final long waitTime) {
+    protected boolean waitForPmResponsive(final long waitTime) {
         CLog.i("Waiting %d ms for device %s package manager",
                 waitTime, getSerialNumber());
         long startTime = System.currentTimeMillis();
         int counter = 1;
         while (System.currentTimeMillis() - startTime < waitTime) {
-            final CollectingOutputReceiver receiver = new CollectingOutputReceiver();
+            final CollectingOutputReceiver receiver = createOutputReceiver();
             final String cmd = "pm path android";
             try {
                 getIDevice().executeShellCommand(cmd, receiver, MAX_OP_TIME, TimeUnit.MILLISECONDS);
@@ -293,7 +293,7 @@ class DeviceStateMonitor implements IDeviceStateMonitor {
                 Log.i(LOG_TAG, String.format("%s on device %s failed: %s", cmd, getSerialNumber(),
                         e.getMessage()));
             }
-            getRunUtil().sleep(Math.min(CHECK_POLL_TIME * counter, MAX_CHECK_POLL_TIME));
+            getRunUtil().sleep(Math.min(getCheckPollTime() * counter, MAX_CHECK_POLL_TIME));
             counter++;
         }
         Log.w(LOG_TAG, String.format("Device %s package manager is unresponsive",
@@ -308,15 +308,15 @@ class DeviceStateMonitor implements IDeviceStateMonitor {
      * @return <code>true</code> if external store is mounted before waitTime expires.
      * <code>false</code> otherwise
      */
-    private boolean waitForStoreMount(final long waitTime) {
+    protected boolean waitForStoreMount(final long waitTime) {
         Log.i(LOG_TAG, String.format("Waiting %d ms for device %s external store", waitTime,
                 getSerialNumber()));
         long startTime = System.currentTimeMillis();
         int counter = 1;
         while (System.currentTimeMillis() - startTime < waitTime) {
-            final CollectingOutputReceiver receiver = new CollectingOutputReceiver();
+            final CollectingOutputReceiver receiver = createOutputReceiver();
             final CollectingOutputReceiver bitBucket = new CollectingOutputReceiver();
-            final long number = System.currentTimeMillis();
+            final long number = getCurrentTime();
             final String externalStore = getMountPoint(IDevice.MNT_EXTERNAL_STORAGE);
 
             final String testFile = String.format("'%s/%d'", externalStore, number);
@@ -362,7 +362,7 @@ class DeviceStateMonitor implements IDeviceStateMonitor {
                 Log.w(LOG_TAG, String.format("Failed to get external store mount point for %s",
                         getSerialNumber()));
             }
-            getRunUtil().sleep(Math.min(CHECK_POLL_TIME * counter, MAX_CHECK_POLL_TIME));
+            getRunUtil().sleep(Math.min(getCheckPollTime() * counter, MAX_CHECK_POLL_TIME));
             counter++;
         }
         Log.w(LOG_TAG, String.format("Device %s external storage is not mounted after %d ms",
@@ -380,7 +380,7 @@ class DeviceStateMonitor implements IDeviceStateMonitor {
             return mountPoint;
         }
         // cached mount point is null - try querying directly
-        CollectingOutputReceiver receiver = new CollectingOutputReceiver();
+        CollectingOutputReceiver receiver = createOutputReceiver();
         try {
             getIDevice().executeShellCommand("echo $" + mountName, receiver);
             return receiver.getOutput().trim();
@@ -555,5 +555,27 @@ class DeviceStateMonitor implements IDeviceStateMonitor {
     @Override
     public boolean isAdbTcp() {
         return mDevice.getSerialNumber().contains(":");
+    }
+
+    /**
+     * Exposed for testing
+     * @return {@link CollectingOutputReceiver}
+     */
+    protected CollectingOutputReceiver createOutputReceiver() {
+        return new CollectingOutputReceiver();
+    }
+
+    /**
+     * Exposed for testing
+     */
+    protected long getCheckPollTime() {
+        return CHECK_POLL_TIME;
+    }
+
+    /**
+     * Exposed for testing
+     */
+    protected long getCurrentTime() {
+        return System.currentTimeMillis();
     }
 }

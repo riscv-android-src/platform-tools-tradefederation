@@ -81,12 +81,14 @@ import com.android.tradefed.targetprep.SdkAvdPreparerTest;
 import com.android.tradefed.targetprep.StopServicesSetupTest;
 import com.android.tradefed.targetprep.SystemUpdaterDeviceFlasherTest;
 import com.android.tradefed.testtype.AndroidJUnitTestTest;
+import com.android.tradefed.testtype.DeviceBatteryLevelCheckerTest;
 import com.android.tradefed.testtype.DeviceTestCaseTest;
 import com.android.tradefed.testtype.DeviceTestSuite;
 import com.android.tradefed.testtype.FakeTestTest;
 import com.android.tradefed.testtype.GTestResultParserTest;
 import com.android.tradefed.testtype.GTestTest;
 import com.android.tradefed.testtype.HostTestTest;
+import com.android.tradefed.testtype.InstalledInstrumentationsTestTest;
 import com.android.tradefed.testtype.InstrumentationFileTestTest;
 import com.android.tradefed.testtype.InstrumentationSerialTestTest;
 import com.android.tradefed.testtype.InstrumentationTestTest;
@@ -212,11 +214,13 @@ public class UnitTests extends DeviceTestSuite {
 
         // testtype
         addTestSuite(AndroidJUnitTestTest.class);
+        addTestSuite(DeviceBatteryLevelCheckerTest.class);
         addTestSuite(DeviceTestCaseTest.class);
         addTestSuite(FakeTestTest.class);
         addTestSuite(GTestResultParserTest.class);
         addTestSuite(GTestTest.class);
         addTestSuite(HostTestTest.class);
+        addTestSuite(InstalledInstrumentationsTestTest.class);
         addTestSuite(InstrumentationSerialTestTest.class);
         addTestSuite(InstrumentationFileTestTest.class);
         addTestSuite(InstrumentationTestTest.class);

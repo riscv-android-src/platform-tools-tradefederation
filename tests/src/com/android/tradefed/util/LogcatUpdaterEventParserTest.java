@@ -153,11 +153,12 @@ public class LogcatUpdaterEventParserTest extends TestCase {
         for (String line : logLines) {
             try {
                 sMockPipe.write(line.getBytes());
-                Thread.sleep(500);
-            } catch (IOException|InterruptedException e) {
+            } catch (IOException e) {
                 fail(e.getLocalizedMessage());
             }
         }
+        // Allow short time for thread to switch state.
+        RunUtil.getDefault().sleep(50);
         assertEquals(waitThread.getState(), Thread.State.TERMINATED);
     }
 }
