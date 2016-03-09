@@ -149,6 +149,16 @@ public class TestAppInstallSetup implements ITargetCleaner, IAbiReceiver {
             if (abiName != null) {
                 mInstallArgs.add(String.format("--abi %s", abiName));
             }
+            AaptParser parser = AaptParser.parse(testAppFile);
+            if (parser == null) {
+                throw new TargetSetupError("AaptParser failed");
+            }
+            String testAppPkgName = parser.getPackageName();
+            if (device.getAppPackageInfo(testAppPkgName) != null) {
+                CLog.d("Package %s already present on device, uninstalling ...");
+                device.uninstallPackage(testAppPkgName);
+            }
+
             CLog.d("Installing apk from %s ...", testAppFile.getAbsolutePath());
             String result = device.installPackage(testAppFile, true,
                     mInstallArgs.toArray(new String[]{}));
@@ -158,11 +168,7 @@ public class TestAppInstallSetup implements ITargetCleaner, IAbiReceiver {
                                 device.getSerialNumber(), result));
             }
             if (mCleanup) {
-                AaptParser parser = AaptParser.parse(testAppFile);
-                if (parser == null) {
-                    throw new TargetSetupError("apk installed but AaptParser failed");
-                }
-                mPackagesInstalled.add(parser.getPackageName());
+                mPackagesInstalled.add(testAppPkgName);
             }
         }
     }
