@@ -28,6 +28,7 @@ import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.Vector;
 
@@ -124,11 +125,12 @@ public class GTestResultParserTest extends TestCase {
     @SuppressWarnings("unchecked")
     public void testParseNoTests() throws Exception {
         String[] contents =  readInFile(GTEST_OUTPUT_FILE_3);
+        Map<String, String> expected = new HashMap<String, String>();
+        expected.put("Pass", "0");
+        expected.put("Fail", "0");
         ITestRunListener mockRunListener = EasyMock.createMock(ITestRunListener.class);
         mockRunListener.testRunStarted(TEST_MODULE_NAME, 0);
-        // TODO: validate param values
-        mockRunListener.testRunEnded(EasyMock.anyLong(),
-                (Map<String, String>) EasyMock.anyObject());
+        mockRunListener.testRunEnded(EasyMock.anyLong(), EasyMock.eq(expected));
         EasyMock.replay(mockRunListener);
         GTestResultParser resultParser = new GTestResultParser(TEST_MODULE_NAME, mockRunListener);
         resultParser.processNewLines(contents);

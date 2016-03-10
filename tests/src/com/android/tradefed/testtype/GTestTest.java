@@ -209,10 +209,10 @@ public class GTestTest extends TestCase {
         EasyMock.expect(mMockITestDevice.executeShellCommand(
                 "ls -ld /data/nativetest/test1")).andReturn(LS_LD_TEST1_OUTPUT);
         EasyMock.expect(mMockITestDevice.executeShellCommand(EasyMock.contains("chmod")))
-                    .andReturn("");
-            mMockITestDevice.executeShellCommand(EasyMock.contains(filterString),
-                    EasyMock.same(mMockReceiver),
-                    EasyMock.anyLong(), (TimeUnit)EasyMock.anyObject(), EasyMock.anyInt());
+                .andReturn("");
+        mMockITestDevice.executeShellCommand(EasyMock.contains(filterString),
+                EasyMock.same(mMockReceiver), EasyMock.anyLong(), (TimeUnit)EasyMock.anyObject(),
+                EasyMock.anyInt());
         replayMocks();
         mGTest.run(mMockInvocationListener);
 
@@ -235,12 +235,10 @@ public class GTestTest extends TestCase {
      */
     public void testExcludeFilter() throws DeviceNotAvailableException {
         String excludeFilter1 = "*don?tRunMe*";
-        String excludeFilter2 = "*orMe?*";
         mGTest.addExcludeFilter(excludeFilter1);
-        mGTest.addExcludeFilter(excludeFilter2);
 
         doTestFilter(String.format(
-                "%s=-%s:%s", GTEST_FLAG_FILTER, excludeFilter1, excludeFilter2));
+                "%s=-%s", GTEST_FLAG_FILTER, excludeFilter1));
     }
 
     /**
