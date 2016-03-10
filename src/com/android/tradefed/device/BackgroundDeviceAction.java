@@ -107,7 +107,7 @@ public class BackgroundDeviceAction extends Thread {
      * so we just have to block until it recovers or invocation fails for device unavailable.
      * @param exceptionType
      */
-    private void waitForDeviceRecovery(String exceptionType) {
+    protected void waitForDeviceRecovery(String exceptionType) {
         CLog.d("%s while running %s on %s. May see duplicated content in log.", exceptionType,
                 mDescriptor, mTestDevice.getSerialNumber());
         blockUntilOnlineNoThrow();
