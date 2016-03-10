@@ -194,7 +194,7 @@ public class ConfigurationFactory implements IConfigurationFactory {
                 if (templateMap != null) {
                     // Clearing the map before returning the cached config to avoid seeing them as
                     // unused.
-                    CLog.i("Using cached configuration, ensuring map is clean.");
+                    CLog.d("Using cached configuration, ensuring map is clean.");
                     templateMap.clear();
                 }
             }
@@ -281,7 +281,7 @@ public class ConfigurationFactory implements IConfigurationFactory {
          */
         void loadConfiguration(String name, ConfigurationDef def, Map<String, String> templateMap)
                 throws ConfigurationException {
-            Log.i(LOG_TAG, String.format("Loading configuration '%s'", name));
+            Log.d(LOG_TAG, String.format("Loading configuration '%s'", name));
             BufferedInputStream bufStream = getConfigStream(name);
             ConfigurationXmlParser parser = new ConfigurationXmlParser(this);
             parser.parse(def, name, bufStream, templateMap);
