@@ -73,7 +73,7 @@ public class TestDeviceFuncTest extends DeviceTestCase {
      * <p/>
      * Do a 'shell ls' command, and verify /data and /system are listed in result.
      */
-    public void testExecuteShellCommand() throws IOException, DeviceNotAvailableException {
+    public void testExecuteShellCommand() throws DeviceNotAvailableException {
         Log.i(LOG_TAG, "testExecuteShellCommand");
         assertSimpleShellCommand();
     }
@@ -218,7 +218,7 @@ public class TestDeviceFuncTest extends DeviceTestCase {
      * <p/>
      * Expect {@link TestDevice#pullFile(String)} to return <code>false</code>
      */
-    public void testPull_noexist() throws IOException, DeviceNotAvailableException {
+    public void testPull_noexist() throws DeviceNotAvailableException {
         Log.i(LOG_TAG, "testPull_noexist");
 
         // make sure the root path is valid
@@ -262,9 +262,9 @@ public class TestDeviceFuncTest extends DeviceTestCase {
     /**
      * Test pushing a file onto device that does not exist.
      * <p/>
-     * Expect {@link TestDevice#pushFile(String)} to return <code>false</code>
+     * Expect {@link TestDevice#pushFile(File, String)} to return <code>false</code>
      */
-    public void testPush_noexist() throws IOException, DeviceNotAvailableException {
+    public void testPush_noexist() throws DeviceNotAvailableException {
         Log.i(LOG_TAG, "testPush_noexist");
 
         // make sure the root path is valid
@@ -529,7 +529,8 @@ public class TestDeviceFuncTest extends DeviceTestCase {
             mTestDevice.rebootIntoRecovery();
             assertEquals(TestDeviceState.RECOVERY, mMonitor.getDeviceState());
         } finally {
-            mTestDevice.reboot();
+            // Recover from Recovery Mode by calling reboot on IDevice not ITestDevice.
+            getDevice().reboot();
         }
     }
 
@@ -597,7 +598,7 @@ public class TestDeviceFuncTest extends DeviceTestCase {
     }
 
     /**
-     * Basic test for {@link TestDevice#getLogcat(long)}.
+     * Basic test for {@link TestDevice#getLogcat(int)}.
      * <p/>
      * Dumps a bunch of messages to logcat, calls getLogcat(), and verifies size of capture file is
      * equal to provided data.
