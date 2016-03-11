@@ -37,14 +37,6 @@ import java.util.concurrent.TimeUnit;
  */
 public class GTestTest extends TestCase {
     private static final String GTEST_FLAG_FILTER = "--gtest_filter";
-    private static final String LS_LD_TEST1_OUTPUT =
-            "-rw-rw-rw- 1 root root 0 2016-02-19 10:02 /data/nativetest/test1";
-    private static final String LS_LD_TEST2_OUTPUT =
-            "-rw-rw-rw- 1 root root 0 2016-02-19 10:02 /data/nativetest/test2";
-    private static final String LS_LD_NATIVETEST_OUTPUT =
-            "drwxrwx--x 4 shell shell 4096 2016-03-07 11:46 /data/nativetest";
-    private static final String LS_LD_SUBDIR_OUTPUT =
-            "drwxrwx--x 4 shell shell 4096 2016-03-07 11:46 /data/nativetest/subfolder";
     private ITestInvocationListener mMockInvocationListener = null;
     private IShellOutputReceiver mMockReceiver = null;
     private ITestDevice mMockITestDevice = null;
@@ -104,14 +96,11 @@ public class GTestTest extends TestCase {
 
         MockFileUtil.setMockDirContents(mMockITestDevice, nativeTestPath, test1, test2);
         EasyMock.expect(mMockITestDevice.doesFileExist(nativeTestPath)).andReturn(true);
-        EasyMock.expect(mMockITestDevice.executeShellCommand(
-                "ls -ld /data/nativetest")).andReturn(LS_LD_NATIVETEST_OUTPUT);
-        EasyMock.expect(mMockITestDevice.executeShellCommand(
-                "ls -ld /data/nativetest/test1")).andReturn(LS_LD_TEST1_OUTPUT);
-        EasyMock.expect(mMockITestDevice.executeShellCommand(
-                "ls -ld /data/nativetest/test2")).andReturn(LS_LD_TEST2_OUTPUT);
-        EasyMock.expect(mMockITestDevice.executeShellCommand(
-                "ls -A1 /data/nativetest")).andReturn("test1\ntest2");
+        EasyMock.expect(mMockITestDevice.isDirectory(nativeTestPath)).andReturn(true);
+        EasyMock.expect(mMockITestDevice.isDirectory(nativeTestPath + "/test1")).andReturn(false);
+        EasyMock.expect(mMockITestDevice.isDirectory(nativeTestPath + "/test2")).andReturn(false);
+        String[] files = new String[] {"test1", "test2"};
+        EasyMock.expect(mMockITestDevice.getChildren(nativeTestPath)).andReturn(files);
         EasyMock.expect(mMockITestDevice.executeShellCommand(EasyMock.contains("chmod")))
                 .andReturn("")
                 .times(2);
@@ -140,8 +129,7 @@ public class GTestTest extends TestCase {
         mGTest.setModuleName(module);
 
         EasyMock.expect(mMockITestDevice.doesFileExist(modulePath)).andReturn(true);
-        EasyMock.expect(mMockITestDevice.executeShellCommand(
-                "ls -ld /data/nativetest/test1")).andReturn(LS_LD_TEST1_OUTPUT);
+        EasyMock.expect(mMockITestDevice.isDirectory(modulePath)).andReturn(false);
         // expect test1 to be executed
         EasyMock.expect(mMockITestDevice.executeShellCommand(EasyMock.contains("chmod")))
                 .andReturn("");
@@ -166,19 +154,17 @@ public class GTestTest extends TestCase {
                 FileListingService.FILE_SEPARATOR,
                 subFolderName,
                 FileListingService.FILE_SEPARATOR, test1);
-
         MockFileUtil.setMockDirPath(mMockITestDevice, nativeTestPath, subFolderName, test1);
         EasyMock.expect(mMockITestDevice.doesFileExist(nativeTestPath)).andReturn(true);
-        EasyMock.expect(mMockITestDevice.executeShellCommand(
-                "ls -ld /data/nativetest")).andReturn(LS_LD_NATIVETEST_OUTPUT);
-        EasyMock.expect(mMockITestDevice.executeShellCommand(
-                "ls -ld /data/nativetest/" + subFolderName)).andReturn(LS_LD_SUBDIR_OUTPUT);
-        EasyMock.expect(mMockITestDevice.executeShellCommand(
-                "ls -ld " + test1Path)).andReturn(LS_LD_TEST1_OUTPUT);
-        EasyMock.expect(mMockITestDevice.executeShellCommand(
-                "ls -A1 /data/nativetest")).andReturn(subFolderName);
-        EasyMock.expect(mMockITestDevice.executeShellCommand(
-                "ls -A1 /data/nativetest/" + subFolderName)).andReturn("test1");
+        EasyMock.expect(mMockITestDevice.isDirectory(nativeTestPath)).andReturn(true);
+        EasyMock.expect(mMockITestDevice.isDirectory(nativeTestPath + "/" + subFolderName))
+                .andReturn(true);
+        EasyMock.expect(mMockITestDevice.isDirectory(test1Path)).andReturn(false);
+        String[] files = new String[] {subFolderName};
+        EasyMock.expect(mMockITestDevice.getChildren(nativeTestPath)).andReturn(files);
+        String[] files2 = new String[] {"test1"};
+        EasyMock.expect(mMockITestDevice.getChildren(nativeTestPath + "/" + subFolderName))
+                .andReturn(files2);
         EasyMock.expect(mMockITestDevice.executeShellCommand(EasyMock.contains("chmod")))
                 .andReturn("");
         mMockITestDevice.executeShellCommand(EasyMock.contains(test1Path),
@@ -202,12 +188,10 @@ public class GTestTest extends TestCase {
         // configure the mock file system to have a single test
         MockFileUtil.setMockDirContents(mMockITestDevice, nativeTestPath, "test1");
         EasyMock.expect(mMockITestDevice.doesFileExist(nativeTestPath)).andReturn(true);
-        EasyMock.expect(mMockITestDevice.executeShellCommand(
-                "ls -ld /data/nativetest")).andReturn(LS_LD_NATIVETEST_OUTPUT);
-        EasyMock.expect(mMockITestDevice.executeShellCommand(
-                "ls -A1 /data/nativetest")).andReturn("test1");
-        EasyMock.expect(mMockITestDevice.executeShellCommand(
-                "ls -ld /data/nativetest/test1")).andReturn(LS_LD_TEST1_OUTPUT);
+        EasyMock.expect(mMockITestDevice.isDirectory(nativeTestPath)).andReturn(true);
+        EasyMock.expect(mMockITestDevice.isDirectory(nativeTestPath + "/test1")).andReturn(false);
+        String[] files = new String[] {"test1"};
+        EasyMock.expect(mMockITestDevice.getChildren(nativeTestPath)).andReturn(files);
         EasyMock.expect(mMockITestDevice.executeShellCommand(EasyMock.contains("chmod")))
                 .andReturn("");
         mMockITestDevice.executeShellCommand(EasyMock.contains(filterString),
@@ -309,14 +293,11 @@ public class GTestTest extends TestCase {
 
         MockFileUtil.setMockDirContents(mMockITestDevice, nativeTestPath, test1, test2);
         EasyMock.expect(mMockITestDevice.doesFileExist(nativeTestPath)).andReturn(true);
-        EasyMock.expect(mMockITestDevice.executeShellCommand(
-                "ls -ld /data/nativetest")).andReturn(LS_LD_NATIVETEST_OUTPUT);
-        EasyMock.expect(mMockITestDevice.executeShellCommand(
-                "ls -ld /data/nativetest/test1")).andReturn(LS_LD_TEST1_OUTPUT);
-        EasyMock.expect(mMockITestDevice.executeShellCommand(
-                "ls -ld /data/nativetest/test2")).andReturn(LS_LD_TEST2_OUTPUT);
-        EasyMock.expect(mMockITestDevice.executeShellCommand(
-                "ls -A1 /data/nativetest")).andReturn("test1\ntest2");
+        EasyMock.expect(mMockITestDevice.isDirectory(nativeTestPath)).andReturn(true);
+        EasyMock.expect(mMockITestDevice.isDirectory(nativeTestPath + "/test1")).andReturn(false);
+        EasyMock.expect(mMockITestDevice.isDirectory(nativeTestPath + "/test2")).andReturn(false);
+        String[] files = new String[] {"test1", "test2"};
+        EasyMock.expect(mMockITestDevice.getChildren(nativeTestPath)).andReturn(files);
         EasyMock.expect(mMockITestDevice.executeShellCommand(EasyMock.contains("chmod")))
                 .andReturn("")
                 .times(2);

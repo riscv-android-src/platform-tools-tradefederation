@@ -329,9 +329,9 @@ public class GTest implements IDeviceTest, IRemoteTest, ITestFilterReceiver, IRu
      */
     void doRunAllTestsInSubdirectory(String root, ITestDevice testDevice,
             ITestRunListener listener) throws DeviceNotAvailableException {
-        if (isDirectory(testDevice, root)) {
+        if (testDevice.isDirectory(root)) {
             // recursively run tests in all subdirectories
-            for (String child : getChildren(testDevice, root)) {
+            for (String child : testDevice.getChildren(root)) {
                 doRunAllTestsInSubdirectory(root + "/" + child, testDevice, listener);
             }
         } else {
@@ -363,20 +363,6 @@ public class GTest implements IDeviceTest, IRemoteTest, ITestFilterReceiver, IRu
             throw new IllegalArgumentException("input should not end with \"/\"");
         }
         return fileName;
-    }
-
-    private boolean isDirectory(ITestDevice device, String path)
-            throws DeviceNotAvailableException {
-        return device.executeShellCommand(String.format("ls -ld %s", path)).charAt(0) == 'd';
-    }
-
-    private String[] getChildren(ITestDevice device, String path)
-            throws DeviceNotAvailableException {
-        String lsOutput = device.executeShellCommand(String.format("ls -A1 %s", path));
-        if (lsOutput.trim().isEmpty()) {
-            return new String[0];
-        }
-        return lsOutput.split("\r?\n");
     }
 
     /**

@@ -1080,6 +1080,26 @@ public class AndroidNativeDevice implements IManagedTestDevice {
     }
 
     /**
+     * {@inheritDoc}
+     */
+    @Override
+    public boolean isDirectory(String path) throws DeviceNotAvailableException {
+        return executeShellCommand(String.format("ls -ld %s", path)).charAt(0) == 'd';
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public String[] getChildren(String path) throws DeviceNotAvailableException {
+        String lsOutput = executeShellCommand(String.format("ls -A1 %s", path));
+        if (lsOutput.trim().isEmpty()) {
+            return new String[0];
+        }
+        return lsOutput.split("\r?\n");
+    }
+
+    /**
      * Retrieve the {@link FileListingService} for the {@link IDevice}, making multiple attempts
      * and recovery operations if necessary.
      * <p/>

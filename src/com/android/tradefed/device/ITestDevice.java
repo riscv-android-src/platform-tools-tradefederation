@@ -711,6 +711,22 @@ public interface ITestDevice {
     public IFileEntry getFileEntry(String path) throws DeviceNotAvailableException;
 
     /**
+     * Return True if the path on the device is a directory, false otherwise.
+     *
+     * @throws DeviceNotAvailableException
+     */
+    public boolean isDirectory(String deviceFilePath) throws DeviceNotAvailableException;
+
+    /**
+     * Alternative to using {@link IFileEntry} that sometimes won't work because of permissions.
+     *
+     * @param deviceFilePath is the path on the device where to do the search
+     * @return Array of string containing all the file in a path on the device.
+     * @throws DeviceNotAvailableException
+     */
+    public String[] getChildren(String deviceFilePath) throws DeviceNotAvailableException;
+
+    /**
      * Start capturing logcat output from device in the background.
      * <p/>
      * Will have no effect if logcat output is already being captured.

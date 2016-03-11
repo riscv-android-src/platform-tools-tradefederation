@@ -90,6 +90,8 @@ import com.android.tradefed.testtype.FakeTestTest;
 import com.android.tradefed.testtype.GTestResultParserTest;
 import com.android.tradefed.testtype.GTestTest;
 import com.android.tradefed.testtype.GTestXmlResultParserTest;
+import com.android.tradefed.testtype.GoogleBenchmarkResultParserTest;
+import com.android.tradefed.testtype.GoogleBenchmarkTestTest;
 import com.android.tradefed.testtype.HostTestTest;
 import com.android.tradefed.testtype.InstalledInstrumentationsTestTest;
 import com.android.tradefed.testtype.InstrumentationFileTestTest;
@@ -222,6 +224,8 @@ public class UnitTests extends DeviceTestSuite {
         addTestSuite(DeviceBatteryLevelCheckerTest.class);
         addTestSuite(DeviceTestCaseTest.class);
         addTestSuite(FakeTestTest.class);
+        addTestSuite(GoogleBenchmarkResultParserTest.class);
+        addTestSuite(GoogleBenchmarkTestTest.class);
         addTestSuite(GTestResultParserTest.class);
         addTestSuite(GTestTest.class);
         addTestSuite(GTestXmlResultParserTest.class);
