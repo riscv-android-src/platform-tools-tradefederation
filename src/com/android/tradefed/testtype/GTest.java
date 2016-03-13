@@ -320,7 +320,7 @@ public class GTest implements IDeviceTest, IRemoteTest, ITestFilterReceiver, IRu
             }
         } else {
             // assume every file is a valid gtest binary.
-            IShellOutputReceiver resultParser = createResultParser(root, listener);
+            IShellOutputReceiver resultParser = createResultParser(getFileName(root), listener);
             if (shouldSkipFile(root)) {
                 return;
             }
@@ -335,6 +335,18 @@ public class GTest implements IDeviceTest, IRemoteTest, ITestFilterReceiver, IRu
                 runTest(testDevice, resultParser, root, flags);
             }
         }
+    }
+
+    String getFileName(String fullPath) {
+        int pos = fullPath.lastIndexOf('/');
+        if (pos == -1) {
+            return fullPath;
+        }
+        String fileName = fullPath.substring(pos + 1);
+        if (fileName.isEmpty()) {
+            throw new IllegalArgumentException("input should not end with \"/\"");
+        }
+        return fileName;
     }
 
     private boolean isDirectory(ITestDevice device, String path)

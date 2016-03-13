@@ -336,4 +336,19 @@ public class GTestTest extends TestCase {
         mGTest.run(mMockInvocationListener);
         verifyMocks();
     }
+
+    public void testGetFileName() {
+        String expected = "bar";
+        String s1 = "/foo/" + expected;
+        String s2 = expected;
+        String s3 = "/foo/";
+        assertEquals(expected, mGTest.getFileName(s1));
+        assertEquals(expected, mGTest.getFileName(s2));
+        try {
+            mGTest.getFileName(s3);
+            fail("Expected IllegalArgumentException not thrown");
+        } catch (IllegalArgumentException iae) {
+            // expected
+        }
+    }
 }
