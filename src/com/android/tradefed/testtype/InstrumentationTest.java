@@ -52,7 +52,7 @@ import java.util.concurrent.TimeUnit;
  * A Test that runs an instrumentation test package on given device.
  */
 @OptionClass(alias = "instrumentation")
-public class InstrumentationTest implements IDeviceTest, IResumableTest {
+public class InstrumentationTest implements IDeviceTest, IResumableTest, ITestCollector {
 
     private static final String LOG_TAG = "InstrumentationTest";
 
@@ -176,6 +176,12 @@ public class InstrumentationTest implements IDeviceTest, IResumableTest {
             importance = Importance.IF_UNSET)
     private String mForceAbi = null;
 
+    @Option(name = "collect-tests-only",
+            description = "Only invoke the instrumentation to collect list of applicable test "
+                    + "cases. All test run callbacks will be triggered, but test execution will "
+                    + "not be actually carried out.")
+    private boolean mCollectTestsOnly = false;
+
     private ITestDevice mDevice = null;
 
     private IRemoteAndroidTestRunner mRunner;
@@ -185,13 +191,6 @@ public class InstrumentationTest implements IDeviceTest, IResumableTest {
     private String mCoverageTarget = null;
 
     private String mTestFilePathOnDevice = null;
-
-    /**
-     * Max time in ms to allow for the 'max time to shell output response' when collecting tests.
-     * TODO: currently the collect tests command may take a long time to even start, so this is set
-     * to a overly generous value
-     */
-    private int mCollectTestsShellTimeout = 2 * 60 * 1000;
 
     private boolean mForceBatchMode = false;
 
@@ -438,15 +437,6 @@ public class InstrumentationTest implements IDeviceTest, IResumableTest {
     public ITestDevice getDevice() {
         return mDevice;
     }
-    /**
-     * Set the max time in ms to allow for the 'max time to shell output response' when collecting
-     * tests.
-     * <p/>
-     * Exposed for testing.
-     */
-    public void setCollectsTestsShellTimeout(int timeout) {
-        mCollectTestsShellTimeout = timeout;
-    }
 
     /**
      * Set the frequency with which to automatically collect bugreports after test failures.
@@ -544,10 +534,10 @@ public class InstrumentationTest implements IDeviceTest, IResumableTest {
         setRunnerArgs(mRunner);
         if (mInstallFile != null) {
             Assert.assertNull(mDevice.installPackage(mInstallFile, true));
-            doTestRun(listener);
+        }
+        doTestRun(listener);
+        if (mInstallFile != null) {
             mDevice.uninstallPackage(mPackageName);
-        } else {
-            doTestRun(listener);
         }
     }
 
@@ -614,8 +604,13 @@ public class InstrumentationTest implements IDeviceTest, IResumableTest {
             rerunTests(listener);
             return;
         }
+        ITestInvocationListener testCollectionListener = null;
+        if (mCollectTestsOnly) {
+            // if collecting test only, pass a non-null listener to collection method
+            testCollectionListener = listener;
+        }
         if (mRemainingTests == null) {
-            mRemainingTests = collectTestsToRun(mRunner);
+            mRemainingTests = collectTestsToRun(mRunner, testCollectionListener);
         }
         if (mBugreportFrequency != null) {
             // Collect a bugreport after EACH/FIRST failed testcase
@@ -639,13 +634,24 @@ public class InstrumentationTest implements IDeviceTest, IResumableTest {
         }
 
         if (mRemainingTests == null) {
-            // failed to collect the tests or collection is off. Just try to run them all
-            mDevice.runInstrumentationTests(mRunner, listener);
-        } else if (mRemainingTests.size() != 0) {
-            runWithRerun(listener, mRemainingTests);
+            if (mCollectTestsOnly) {
+                // print an error in collect test only mode and return
+                CLog.e("Failed to collect tests for %s", mPackageName);
+                return;
+            } else {
+                // failed to collect the tests or collection is off. Just try to
+                // run them all
+                mDevice.runInstrumentationTests(mRunner, listener);
+            }
+        } else if (!mRemainingTests.isEmpty()) {
+            if (mCollectTestsOnly) {
+                CLog.i("Collected %d tests for %s", mRemainingTests.size(), mPackageName);
+            } else {
+                runWithRerun(listener, mRemainingTests);
+            }
 
         } else {
-            Log.i(LOG_TAG, String.format("No tests expected for %s, skipping", mPackageName));
+            CLog.i("No tests expected for %s, skipping", mPackageName);
         }
     }
 
@@ -753,15 +759,15 @@ public class InstrumentationTest implements IDeviceTest, IResumableTest {
      * executed by this run
      * @throws DeviceNotAvailableException
      */
-    private Collection<TestIdentifier> collectTestsToRun(final IRemoteAndroidTestRunner runner)
-            throws DeviceNotAvailableException {
+    private Collection<TestIdentifier> collectTestsToRun(final IRemoteAndroidTestRunner runner,
+            final ITestInvocationListener listener) throws DeviceNotAvailableException {
         if (isRerunMode()) {
             Log.d(LOG_TAG, String.format("Collecting test info for %s on device %s",
                     mPackageName, mDevice.getSerialNumber()));
             runner.setTestCollection(true);
             // try to collect tests multiple times, in case device is temporarily not available
             // on first attempt
-            Collection<TestIdentifier>  tests = collectTestsAndRetry(runner);
+            Collection<TestIdentifier>  tests = collectTestsAndRetry(runner, listener);
             // done with "logOnly" mode, restore proper test timeout before real test execution
             addTimeoutsToRunner(runner);
             runner.setTestCollection(false);
@@ -776,13 +782,18 @@ public class InstrumentationTest implements IDeviceTest, IResumableTest {
      * @return the collection of tests, or <code>null</code> if tests could not be collected
      * @throws DeviceNotAvailableException if communication with the device was lost
      */
-    private Collection<TestIdentifier> collectTestsAndRetry(final IRemoteAndroidTestRunner runner)
-            throws DeviceNotAvailableException {
+    private Collection<TestIdentifier> collectTestsAndRetry(final IRemoteAndroidTestRunner runner,
+            final ITestInvocationListener listener) throws DeviceNotAvailableException {
         boolean communicationFailure = false;
         for (int i=0; i < COLLECT_TESTS_ATTEMPTS; i++) {
-            CollectingTestListener listener = new CollectingTestListener();
-            boolean instrResult = mDevice.runInstrumentationTests(runner, listener);
-            TestRunResult runResults = listener.getCurrentRunResults();
+            CollectingTestListener collector = new CollectingTestListener();
+            boolean instrResult = false;
+            if (listener == null) {
+                instrResult = mDevice.runInstrumentationTests(runner, collector);
+            } else {
+                instrResult = mDevice.runInstrumentationTests(runner, collector, listener);
+            }
+            TestRunResult runResults = collector.getCurrentRunResults();
             if (!instrResult || !runResults.isRunComplete()) {
                 // communication failure with device, retry
                 Log.w(LOG_TAG, String.format(
@@ -881,5 +892,13 @@ public class InstrumentationTest implements IDeviceTest, IResumableTest {
                     LogDataType.TEXT, logSource);
             logSource.cancel();
         }
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void setCollectTestsOnly(boolean shouldCollectTest) {
+        mCollectTestsOnly = shouldCollectTest;
     }
 }

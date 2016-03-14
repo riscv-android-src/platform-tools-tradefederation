@@ -39,7 +39,6 @@ public class AndroidJUnitTestTest extends TestCase {
     private static final String TEST_PACKAGE_VALUE = "com.foo";
     private static final TestIdentifier TEST1 = new TestIdentifier("Test", "test1");
     private static final TestIdentifier TEST2 = new TestIdentifier("Test", "test2");
-    private static final int COLLECT_TESTS_SHELL_TIMEOUT = 1;
 
     /** The {@link AndroidJUnitTest} under test, with all dependencies mocked out */
     private AndroidJUnitTest mAndroidJUnitTest;
@@ -78,7 +77,6 @@ public class AndroidJUnitTestTest extends TestCase {
         mMockRemoteRunner.setMaxTimeToOutputResponse(SHELL_TIMEOUT, TimeUnit.MILLISECONDS);
         mMockRemoteRunner.addInstrumentationArg(InstrumentationTest.TEST_TIMEOUT_INST_ARGS_KEY,
                 Long.toString(SHELL_TIMEOUT));
-        mAndroidJUnitTest.setCollectsTestsShellTimeout(COLLECT_TESTS_SHELL_TIMEOUT);
     }
 
     /**

@@ -41,7 +41,8 @@ import java.util.concurrent.TimeUnit;
  * A Test that runs a native test package on given device.
  */
 @OptionClass(alias = "gtest")
-public class GTest implements IDeviceTest, IRemoteTest, ITestFilterReceiver, IRuntimeHintProvider {
+public class GTest implements IDeviceTest, IRemoteTest, ITestFilterReceiver, IRuntimeHintProvider,
+    ITestCollector {
 
     private static final String LOG_TAG = "GTest";
     static final String DEFAULT_NATIVETEST_PATH = "/data/nativetest";
@@ -115,6 +116,12 @@ public class GTest implements IDeviceTest, IRemoteTest, ITestFilterReceiver, IRu
                     + "will be available.")
     private boolean mEnableXmlOutput = false;
 
+    @Option(name = "collect-tests-only",
+            description = "Only invoke the test binary to collect list of applicable test cases. "
+                    + "All test run callbacks will be triggered, but test execution will "
+                    + "not be actually carried out.")
+    private boolean mCollectTestsOnly = false;
+
     /** coverage target value. Just report all gtests as 'native' for now */
     private static final String COVERAGE_TARGET = "Native";
 
@@ -122,6 +129,7 @@ public class GTest implements IDeviceTest, IRemoteTest, ITestFilterReceiver, IRu
     private static final String GTEST_FLAG_PRINT_TIME = "--gtest_print_time";
     private static final String GTEST_FLAG_FILTER = "--gtest_filter";
     private static final String GTEST_FLAG_RUN_DISABLED_TESTS = "--gtest_also_run_disabled_tests";
+    private static final String GTEST_FLAG_LIST_TESTS = "--gtest_list_tests";
     private static final String GTEST_XML_OUTPUT = "--gtest_output=xml:%s";
 
     /**
@@ -279,6 +287,10 @@ public class GTest implements IDeviceTest, IRemoteTest, ITestFilterReceiver, IRu
 
         if (mRunDisabledTests) {
             flags = String.format("%s %s", flags, GTEST_FLAG_RUN_DISABLED_TESTS);
+        }
+
+        if (mCollectTestsOnly) {
+            flags = String.format("%s %s", flags, GTEST_FLAG_LIST_TESTS);
         }
 
         for (String gTestFlag : mGTestFlags) {
@@ -505,13 +517,21 @@ public class GTest implements IDeviceTest, IRemoteTest, ITestFilterReceiver, IRu
      * @return a {@link IShellOutputReceiver}
      */
     IShellOutputReceiver createResultParser(String runName, ITestRunListener listener) {
-        GTestResultParser resultParser = new GTestResultParser(runName, listener);
-        resultParser.setPrependFileName(mPrependFileName);
-        // TODO: find a better solution for sending coverage info
-        if (mSendCoverage) {
-            resultParser.setCoverageTarget(COVERAGE_TARGET);
+        IShellOutputReceiver receiver = null;
+        if (mCollectTestsOnly) {
+            GTestListTestParser resultParser = new GTestListTestParser(runName, listener);
+            resultParser.setPrependFileName(mPrependFileName);
+            receiver = resultParser;
+        } else {
+            GTestResultParser resultParser = new GTestResultParser(runName, listener);
+            resultParser.setPrependFileName(mPrependFileName);
+            // TODO: find a better solution for sending coverage info
+            if (mSendCoverage) {
+                resultParser.setCoverageTarget(COVERAGE_TARGET);
+            }
+            receiver = resultParser;
         }
-        return resultParser;
+        return receiver;
     }
 
     /**
@@ -531,5 +551,13 @@ public class GTest implements IDeviceTest, IRemoteTest, ITestFilterReceiver, IRu
             return;
         }
         doRunAllTestsInSubdirectory(testPath, mDevice, listener);
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void setCollectTestsOnly(boolean shouldCollectTest) {
+        mCollectTestsOnly = shouldCollectTest;
     }
 }

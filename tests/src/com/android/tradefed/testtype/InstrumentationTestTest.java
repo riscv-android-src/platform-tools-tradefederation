@@ -46,7 +46,6 @@ public class InstrumentationTestTest extends TestCase {
     private static final TestIdentifier TEST2 = new TestIdentifier("Test", "test2");
     private static final String RUN_ERROR_MSG = "error";
     private static final Map<String, String> EMPTY_STRING_MAP = Collections.emptyMap();
-    private static final int COLLECT_TESTS_SHELL_TIMEOUT = 1;
 
     /** The {@link InstrumentationTest} under test, with all dependencies mocked out */
     private InstrumentationTest mInstrumentationTest;
@@ -119,7 +118,6 @@ public class InstrumentationTestTest extends TestCase {
         mMockRemoteRunner.setMaxTimeToOutputResponse(SHELL_TIMEOUT, TimeUnit.MILLISECONDS);
         mMockRemoteRunner.addInstrumentationArg(InstrumentationTest.TEST_TIMEOUT_INST_ARGS_KEY,
                 Long.toString(SHELL_TIMEOUT));
-        mInstrumentationTest.setCollectsTestsShellTimeout(COLLECT_TESTS_SHELL_TIMEOUT);
     }
 
     /**

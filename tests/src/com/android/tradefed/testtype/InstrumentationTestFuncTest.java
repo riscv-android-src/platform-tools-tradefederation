@@ -307,7 +307,6 @@ public class InstrumentationTestFuncTest extends DeviceTestCase {
         mInstrumentationTest.setClassName(TestAppConstants.HANG_ON_INIT_TEST_CLASS);
         mInstrumentationTest.setRerunMode(true);
         mInstrumentationTest.setShellTimeout(1000);
-        mInstrumentationTest.setCollectsTestsShellTimeout(2 * 1000);
         CollectingTestListener listener = new CollectingTestListener();
         mInstrumentationTest.run(listener);
         assertEquals(0, listener.getNumTotalTests());

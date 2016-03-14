@@ -15,65 +15,19 @@
  */
 package com.android.tradefed.testtype;
 
-import com.android.ddmlib.Log;
 import com.android.ddmlib.testrunner.ITestRunListener;
 import com.android.ddmlib.testrunner.TestIdentifier;
 
-import junit.framework.TestCase;
-
 import org.easymock.EasyMock;
 
-import java.io.BufferedReader;
-import java.io.File;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.InputStreamReader;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.Vector;
 
 
 /**
  * Unit tests for {@link GTestResultParserTest}.
  */
-public class GTestResultParserTest extends TestCase {
-    private static final String TEST_TYPE_DIR = "testtype";
-    private static final String TEST_MODULE_NAME = "module";
-    private static final String GTEST_OUTPUT_FILE_1 = "gtest_output1.txt";
-    private static final String GTEST_OUTPUT_FILE_2 = "gtest_output2.txt";
-    private static final String GTEST_OUTPUT_FILE_3 = "gtest_output3.txt";
-    private static final String GTEST_OUTPUT_FILE_4 = "gtest_output4.txt";
-    private static final String GTEST_OUTPUT_FILE_5 = "gtest_output5.txt";
-    private static final String GTEST_OUTPUT_FILE_6 = "gtest_output6.txt";
-    private static final String GTEST_OUTPUT_FILE_7 = "gtest_output7.txt";
-    private static final String GTEST_OUTPUT_FILE_8 = "gtest_output8.txt";
-    private static final String LOG_TAG = "GTestResultParserTest";
-
-    /**
-     * Helper to read a file from the res/testtype directory and return its contents as a String[]
-     *
-     * @param filename the name of the file (without the extension) in the res/testtype directory
-     * @return a String[] of the
-     */
-    private String[] readInFile(String filename) {
-        Vector<String> fileContents = new Vector<String>();
-        try {
-            InputStream gtestResultStream1 = getClass().getResourceAsStream(File.separator +
-                    TEST_TYPE_DIR + File.separator + filename);
-            BufferedReader reader = new BufferedReader(new InputStreamReader(gtestResultStream1));
-            String line = null;
-            while ((line = reader.readLine()) != null) {
-                fileContents.add(line);
-            }
-        }
-        catch (NullPointerException e) {
-            Log.e(LOG_TAG, "Gest output file does not exist: " + filename);
-        }
-        catch (IOException e) {
-            Log.e(LOG_TAG, "Unable to read contents of gtest output file: " + filename);
-        }
-        return fileContents.toArray(new String[fileContents.size()]);
-    }
+public class GTestResultParserTest extends GTestParserTestBase {
 
     /**
      * Tests the parser for a simple test run output with 11 tests.
@@ -95,6 +49,7 @@ public class GTestResultParserTest extends TestCase {
         EasyMock.replay(mockRunListener);
         GTestResultParser resultParser = new GTestResultParser(TEST_MODULE_NAME, mockRunListener);
         resultParser.processNewLines(contents);
+        resultParser.flush();
         EasyMock.verify(mockRunListener);
     }
 
@@ -118,13 +73,13 @@ public class GTestResultParserTest extends TestCase {
         EasyMock.replay(mockRunListener);
         GTestResultParser resultParser = new GTestResultParser(TEST_MODULE_NAME, mockRunListener);
         resultParser.processNewLines(contents);
+        resultParser.flush();
         EasyMock.verify(mockRunListener);
     }
 
     /**
      * Tests the parser for a simple test run output with 0 tests and no times.
      */
-    @SuppressWarnings("unchecked")
     public void testParseNoTests() throws Exception {
         String[] contents =  readInFile(GTEST_OUTPUT_FILE_3);
         Map<String, String> expected = new HashMap<String, String>();
@@ -136,6 +91,7 @@ public class GTestResultParserTest extends TestCase {
         EasyMock.replay(mockRunListener);
         GTestResultParser resultParser = new GTestResultParser(TEST_MODULE_NAME, mockRunListener);
         resultParser.processNewLines(contents);
+        resultParser.flush();
         EasyMock.verify(mockRunListener);
     }
 
@@ -159,6 +115,7 @@ public class GTestResultParserTest extends TestCase {
         EasyMock.replay(mockRunListener);
         GTestResultParser resultParser = new GTestResultParser(TEST_MODULE_NAME, mockRunListener);
         resultParser.processNewLines(contents);
+        resultParser.flush();
         EasyMock.verify(mockRunListener);
     }
 
@@ -214,6 +171,7 @@ public class GTestResultParserTest extends TestCase {
         EasyMock.replay(mockRunListener);
         GTestResultParser resultParser = new GTestResultParser(TEST_MODULE_NAME, mockRunListener);
         resultParser.processNewLines(contents);
+        resultParser.flush();
         EasyMock.verify(mockRunListener);
     }
 
@@ -260,6 +218,7 @@ public class GTestResultParserTest extends TestCase {
         EasyMock.replay(mockRunListener);
         GTestResultParser resultParser = new GTestResultParser(TEST_MODULE_NAME, mockRunListener);
         resultParser.processNewLines(contents);
+        resultParser.flush();
         EasyMock.verify(mockRunListener);
     }
 
@@ -282,6 +241,7 @@ public class GTestResultParserTest extends TestCase {
         EasyMock.replay(mockRunListener);
         GTestResultParser resultParser = new GTestResultParser(TEST_MODULE_NAME, mockRunListener);
         resultParser.processNewLines(contents);
+        resultParser.flush();
         EasyMock.verify(mockRunListener);
     }
 
@@ -327,6 +287,7 @@ public class GTestResultParserTest extends TestCase {
         EasyMock.replay(mockRunListener);
         GTestResultParser resultParser = new GTestResultParser(TEST_MODULE_NAME, mockRunListener);
         resultParser.processNewLines(contents);
+        resultParser.flush();
         EasyMock.verify(mockRunListener);
     }
 }
