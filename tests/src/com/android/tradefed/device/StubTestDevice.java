@@ -30,6 +30,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Date;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
 
@@ -919,6 +920,15 @@ public class StubTestDevice implements IManagedTestDevice {
      * {@inheritDoc}
      */
     @Override
+    public int createUser(String name, boolean guest, boolean ephemeral)
+            throws DeviceNotAvailableException {
+        return 0;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
     public boolean removeUser(int userId) throws DeviceNotAvailableException {
         return false;
     }
@@ -951,7 +961,17 @@ public class StubTestDevice implements IManagedTestDevice {
      * {@inheritDoc}
      */
     @Override
-    public void stopUser(int userId) throws DeviceNotAvailableException {
+    public boolean stopUser(int userId) throws DeviceNotAvailableException {
+        return false;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public boolean stopUser(int userId, boolean waitFlag, boolean forceFlag)
+            throws DeviceNotAvailableException {
+        return false;
     }
 
     /**
@@ -1017,8 +1037,97 @@ public class StubTestDevice implements IManagedTestDevice {
      * {@inheritDoc}
      */
     @Override
+    public int getCurrentUser() throws DeviceNotAvailableException {
+        return -1;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public int getUserFlags(int userId) throws DeviceNotAvailableException {
+        return -1;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public int getUserSerialNumber(int userId) throws DeviceNotAvailableException {
+        return -1;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public boolean switchUser(int userId) throws DeviceNotAvailableException {
+        return switchUser(userId, 0);
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public boolean switchUser(int userId, long timeout) throws DeviceNotAvailableException {
+        return false;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public boolean isUserRunning(int userId) throws DeviceNotAvailableException {
+        return false;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public boolean hasFeature(String feature) throws DeviceNotAvailableException {
+        return false;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public String getSetting(int userId, String namespace, String key)
+            throws DeviceNotAvailableException {
+        return null;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void setSetting(int userId, String namespace, String key, String value)
+            throws DeviceNotAvailableException {
+        // ignore
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public String getAndroidId(int userId) throws DeviceNotAvailableException {
+        return null;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public Map<Integer, String> getAndroidIds() throws DeviceNotAvailableException {
+        return null;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
     public String getBuildSigningKeys() throws DeviceNotAvailableException {
-        // TODO Auto-generated method stub
         return null;
     }
 

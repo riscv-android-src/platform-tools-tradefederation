@@ -108,9 +108,9 @@ public class AndroidNativeDeviceTest extends TestCase {
         } catch (UnsupportedOperationException onse) {
             return;
         } catch (DeviceNotAvailableException e) {
-            fail();
+            fail("installPackage should have thrown an Unsupported exception, not dnae");
         }
-        fail();
+        fail("installPackage should have thrown an exception");
     }
 
     /**
@@ -123,9 +123,9 @@ public class AndroidNativeDeviceTest extends TestCase {
         } catch (UnsupportedOperationException onse) {
             return;
         } catch (DeviceNotAvailableException e) {
-            fail();
+            fail("uninstallPackage should have thrown an Unsupported exception, not dnae");
         }
-        fail();
+        fail("uninstallPackageForUser should have thrown an exception");
     }
 
     /**
@@ -138,9 +138,9 @@ public class AndroidNativeDeviceTest extends TestCase {
         } catch (UnsupportedOperationException onse) {
             return;
         } catch (DeviceNotAvailableException e) {
-            fail();
+            fail("installPackage should have thrown an Unsupported exception, not dnae");
         }
-        fail();
+        fail("installPackage should have thrown an exception");
     }
 
     /**
@@ -153,9 +153,9 @@ public class AndroidNativeDeviceTest extends TestCase {
         } catch (UnsupportedOperationException onse) {
             return;
         } catch (DeviceNotAvailableException e) {
-            fail();
+            fail("installPackageForUser should have thrown an Unsupported exception, not dnae");
         }
-        fail();
+        fail("installPackageForUser should have thrown an exception");
     }
 
     /**
@@ -168,9 +168,9 @@ public class AndroidNativeDeviceTest extends TestCase {
         } catch (UnsupportedOperationException onse) {
             return;
         } catch (DeviceNotAvailableException e) {
-            fail();
+            fail("installPackageForUser should have thrown an Unsupported exception, not dnae");
         }
-        fail();
+        fail("installPackageForUser should have thrown an exception");
     }
 
     /**
@@ -182,7 +182,7 @@ public class AndroidNativeDeviceTest extends TestCase {
         } catch (UnsupportedOperationException onse) {
             return;
         }
-        fail();
+        fail("getInstalledPackageNames should have thrown an exception");
     }
 
     /**
@@ -194,7 +194,7 @@ public class AndroidNativeDeviceTest extends TestCase {
         } catch (UnsupportedOperationException onse) {
             return;
         }
-        fail();
+        fail("getScreenshot should have thrown an exception");
     }
 
     /**
@@ -241,5 +241,161 @@ public class AndroidNativeDeviceTest extends TestCase {
         FileUtil.createTempDir("test1", subDir);
         assertTrue(mTestDevice.pushDir(testDir, ""));
         FileUtil.recursiveDelete(testDir);
+    }
+
+    /**
+     * Unit test for {@link AndroidNativeDevice#getCurrentUser()}.
+     */
+    public void testGetCurrentUser_exception() throws Exception {
+        try {
+            mTestDevice.getScreenshot();
+        } catch (UnsupportedOperationException onse) {
+            return;
+        }
+        fail("getCurrentUser should have thrown an exception.");
+    }
+
+    /**
+     * Unit test for {@link AndroidNativeDevice#getUserFlags(int)}.
+     */
+    public void testGetUserFlags_exception() throws Exception {
+        try {
+            mTestDevice.getUserFlags(0);
+        } catch (UnsupportedOperationException onse) {
+            return;
+        }
+        fail("getUserFlags should have thrown an exception.");
+    }
+
+    /**
+     * Unit test for {@link AndroidNativeDevice#getUserSerialNumber(int)}.
+     */
+    public void testGetUserSerialNumber_exception() throws Exception {
+        try {
+            mTestDevice.getUserSerialNumber(0);
+        } catch (UnsupportedOperationException onse) {
+            return;
+        }
+        fail("getUserSerialNumber should have thrown an exception.");
+    }
+
+    /**
+     * Unit test for {@link AndroidNativeDevice#switchUser(int)}.
+     */
+    public void testSwitchUser_exception() throws Exception {
+        try {
+            mTestDevice.switchUser(10);
+        } catch (UnsupportedOperationException onse) {
+            return;
+        }
+        fail("switchUser should have thrown an exception.");
+    }
+
+    /**
+     * Unit test for {@link AndroidNativeDevice#switchUser(int, long)}.
+     */
+    public void testSwitchUserTimeout_exception() throws Exception {
+        try {
+            mTestDevice.switchUser(10, 5*1000);
+        } catch (UnsupportedOperationException onse) {
+            return;
+        }
+        fail("switchUser should have thrown an exception.");
+    }
+
+    /**
+     * Unit test for {@link AndroidNativeDevice#stopUser(int)}.
+     */
+    public void testStopUser_exception() throws Exception {
+        try {
+            mTestDevice.stopUser(0);
+        } catch (UnsupportedOperationException onse) {
+            return;
+        }
+        fail("stopUser should have thrown an exception.");
+    }
+
+    /**
+     * Unit test for {@link AndroidNativeDevice#stopUser(int, boolean, boolean)}.
+     */
+    public void testStopUserFlags_exception() throws Exception {
+        try {
+            mTestDevice.stopUser(0, true, true);
+        } catch (UnsupportedOperationException onse) {
+            return;
+        }
+        fail("stopUser should have thrown an exception.");
+    }
+
+    /**
+     * Unit test for {@link AndroidNativeDevice#isUserRunning(int)}.
+     */
+    public void testIsUserIdRunning_exception() throws Exception {
+        try {
+            mTestDevice.isUserRunning(0);
+        } catch (UnsupportedOperationException onse) {
+            return;
+        }
+        fail("stopUser should have thrown an exception.");
+    }
+
+    /**
+     * Unit test for {@link AndroidNativeDevice#hasFeature(String)}.
+     */
+    public void testHasFeature_exception() throws Exception {
+        try {
+            mTestDevice.hasFeature("feature:test");
+        } catch (UnsupportedOperationException onse) {
+            return;
+        }
+        fail("hasFeature should have thrown an exception.");
+    }
+
+    /**
+     * Unit test for {@link AndroidNativeDevice#getSetting(int, String, String)}.
+     */
+    public void testGetSetting_exception() throws Exception {
+        try {
+            mTestDevice.getSetting(0, "global", "wifi_on");
+        } catch (UnsupportedOperationException onse) {
+            return;
+        }
+        fail("getSettings should have thrown an exception.");
+    }
+
+    /**
+     * Unit test for {@link AndroidNativeDevice#setSetting(int, String, String, String)}.
+     */
+    public void testSetSetting_exception() throws Exception {
+        try {
+            mTestDevice.setSetting(0, "global", "wifi_on", "0");
+        } catch (UnsupportedOperationException onse) {
+            return;
+        }
+        fail("putSettings should have thrown an exception.");
+    }
+
+    /**
+     * Unit test for {@link AndroidNativeDevice#getAndroidId(int)}.
+     */
+    public void testGetAndroidId_exception() throws Exception {
+        try {
+            mTestDevice.getAndroidId(0);
+        } catch (UnsupportedOperationException onse) {
+            return;
+        }
+        fail("getAndroidId should have thrown an exception.");
+    }
+
+    /**
+     * Unit test for {@link AndroidNativeDevice#getAndroidIds()}.
+     */
+    public void testGetAndroidIds_exception() throws Exception {
+        try {
+            mTestDevice.getAndroidIds();
+        } catch (UnsupportedOperationException onse) {
+            return;
+        }
+        fail("getAndroidIds should have thrown an exception.");
     }
 }

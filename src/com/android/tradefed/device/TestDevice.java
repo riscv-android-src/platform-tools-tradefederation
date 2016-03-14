@@ -25,6 +25,7 @@ import com.android.ddmlib.TimeoutException;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.result.ByteArrayInputStreamSource;
 import com.android.tradefed.result.InputStreamSource;
+import com.android.tradefed.util.RunUtil;
 import com.android.tradefed.util.StreamUtil;
 
 import java.awt.Image;
@@ -34,6 +35,7 @@ import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -65,10 +67,18 @@ public class TestDevice extends AndroidNativeDevice {
     /** command to test input dispatch readiness **/
     private static final String TEST_INPUT_CMD = "dumpsys input";
 
+    private static final long AM_COMMAND_TIMEOUT = 10 * 1000;
+    private static final long CHECK_NEW_USER = 1000;
+
     static final String LIST_PACKAGES_CMD = "pm list packages -f";
     private static final Pattern PACKAGE_REGEX = Pattern.compile("package:(.*)=(.*)");
 
     private static final int FLAG_PRIMARY = 1; // From the UserInfo class
+
+    private static final String[] SETTINGS_NAMESPACE = {"system", "secure", "global"};
+
+    /** user pattern in the output of "pm list users" =  TEXT{<id>:<name>:<flags>} TEXT **/
+    private static String USER_PATTERN = "(.*?\\{)(\\d+)(:)(.*)(:)(\\d+)(\\}.*)";
 
     /**
      * @param device
@@ -709,7 +719,18 @@ public class TestDevice extends AndroidNativeDevice {
      */
     @Override
     public int createUser(String name) throws DeviceNotAvailableException, IllegalStateException {
-        final String output = executeShellCommand(String.format("pm create-user %s", name));
+        return createUser(name, false, false);
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public int createUser(String name, boolean guest, boolean ephemeral)
+            throws DeviceNotAvailableException, IllegalStateException {
+        String command ="pm create-user " + (guest ? "--guest " : "")
+                + (ephemeral ? "--ephemeral " : "") + name;
+        final String output = executeShellCommand(command);
         if (output.startsWith("Success")) {
             try {
                 return Integer.parseInt(output.substring(output.lastIndexOf(" ")).trim());
@@ -752,9 +773,40 @@ public class TestDevice extends AndroidNativeDevice {
      * {@inheritDoc}
      */
     @Override
-    public void stopUser(int userId) throws DeviceNotAvailableException {
+    public boolean stopUser(int userId) throws DeviceNotAvailableException {
         // No error or status code is returned.
-        executeShellCommand(String.format("am stop-user %s", userId));
+        return stopUser(userId, false, false);
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public boolean stopUser(int userId, boolean waitFlag, boolean forceFlag)
+            throws DeviceNotAvailableException {
+        checkApiLevelAgainst("stopUser", 22);
+        if (userId == getCurrentUser()) {
+            CLog.d("Cannot stop current user.");
+            return false;
+        }
+        String cmd = String.format("am stop-user %s", userId);
+        if (waitFlag) {
+            cmd = cmd + " -w";
+        }
+        if (forceFlag) {
+            cmd = cmd + " -f";
+        }
+        CLog.d("stopping user with command: %s", cmd);
+        final String output = executeShellCommand(cmd);
+        if (output.contains("Error: Can't stop system user")) {
+            CLog.e("Cannot stop System user.");
+            return false;
+        }
+        if (isUserRunning(userId)) {
+            CLog.w("User Id: %s is still running after the stop-user command.", userId);
+            return false;
+        }
+        return true;
     }
 
     /**
@@ -779,7 +831,227 @@ public class TestDevice extends AndroidNativeDevice {
      * {@inheritDoc}
      */
     @Override
+    public int getCurrentUser() throws DeviceNotAvailableException {
+        checkApiLevelAgainst("get-current-user", 16);
+        final String output = executeShellCommand("am get-current-user");
+        try {
+            int userId = Integer.parseInt(output);
+            return userId;
+        } catch (NumberFormatException e) {
+            CLog.e(e);
+        }
+        return INVALID_USER_ID;
+    }
+
+    private Matcher findUserInfo(String pmListUsersOutput) {
+        Pattern pattern = Pattern.compile(USER_PATTERN);
+        Matcher matcher = pattern.matcher(pmListUsersOutput);
+        return matcher;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public int getUserFlags(int userId) throws DeviceNotAvailableException {
+        checkApiLevelAgainst("getUserFlags", 22);
+        final String commandOutput = executeShellCommand("pm list users");
+        Matcher matcher = findUserInfo(commandOutput);
+        while(matcher.find()) {
+            if (Integer.parseInt(matcher.group(2)) == userId) {
+                return Integer.parseInt(matcher.group(6), 16);
+            }
+        }
+        CLog.w("Could not find any flags for userId: %d in output: %s", userId, commandOutput);
+        return INVALID_USER_ID;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public boolean isUserRunning(int userId) throws DeviceNotAvailableException {
+        checkApiLevelAgainst("isUserIdRunning", 22);
+        final String commandOutput = executeShellCommand("pm list users");
+        Matcher matcher = findUserInfo(commandOutput);
+        while(matcher.find()) {
+            if (Integer.parseInt(matcher.group(2)) == userId) {
+                if (matcher.group(7).contains("running")) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public int getUserSerialNumber(int userId) throws DeviceNotAvailableException {
+        checkApiLevelAgainst("getUserSerialNumber", 22);
+        final String commandOutput = executeShellCommand("dumpsys user");
+        // example: UserInfo{0:Test:13} serialNo=0
+        String userSerialPatter = "(.*\\{)(\\d+)(.*\\})(.*=)(\\d+)";
+        Pattern pattern = Pattern.compile(userSerialPatter);
+        Matcher matcher = pattern.matcher(commandOutput);
+        while(matcher.find()) {
+            if (Integer.parseInt(matcher.group(2)) == userId) {
+                return Integer.parseInt(matcher.group(5));
+            }
+        }
+        CLog.w("Could not find user serial number for userId: %d, in output: %s",
+                userId, commandOutput);
+        return INVALID_USER_ID;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public boolean switchUser(int userId) throws DeviceNotAvailableException {
+        return switchUser(userId, AM_COMMAND_TIMEOUT);
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public boolean switchUser(int userId, long timeout) throws DeviceNotAvailableException {
+        checkApiLevelAgainst("switchUser", 22);
+        if (userId == getCurrentUser()) {
+            CLog.w("Already running as user id: %s. Nothing to be done.", userId);
+            return true;
+        }
+        executeShellCommand(String.format("am switch-user %d", userId));
+        long initialTime = getHostCurrentTime();
+        while (getHostCurrentTime() - initialTime <= timeout) {
+            if (userId == getCurrentUser()) {
+                // disable keyguard if option is true
+                prePostBootSetup();
+                return true;
+            } else {
+                RunUtil.getDefault().sleep(getCheckNewUserSleep());
+            }
+        }
+        CLog.e("User did not switch in the given %d timeout", timeout);
+        return false;
+    }
+
+    /**
+     * Exposed for testing.
+     */
+    protected long getCheckNewUserSleep() {
+        return CHECK_NEW_USER;
+    }
+
+    /**
+     * Exposed for testing
+     */
+    protected long getHostCurrentTime() {
+        return System.currentTimeMillis();
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public boolean hasFeature(String feature) throws DeviceNotAvailableException {
+        final String output = executeShellCommand("pm list features");
+        if (output.contains(feature)) {
+            return true;
+        }
+        CLog.w("Feature: %s is not available on %s", feature, getSerialNumber());
+        return false;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public String getSetting(int userId, String namespace, String key)
+            throws DeviceNotAvailableException {
+        if (Arrays.asList(SETTINGS_NAMESPACE).contains(namespace.toLowerCase())) {
+            String cmd = String.format("settings --user %d get %s %s", userId, namespace, key);
+            String output = executeShellCommand(cmd);
+            if ("null".equals(output)) {
+                CLog.w("settings returned null for command: %s. "
+                        + "please check if the namespace:key exists", cmd);
+                return null;
+            }
+            return output.trim();
+        }
+        CLog.e("Namespace requested: %s is not part of {system, secure, global}", namespace);
+        return null;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void setSetting(int userId, String namespace, String key, String value)
+            throws DeviceNotAvailableException {
+        checkApiLevelAgainst("Changing settings", 22);
+        if (Arrays.asList(SETTINGS_NAMESPACE).contains(namespace.toLowerCase())) {
+            executeShellCommand(String.format("settings --user %d put %s %s %s",
+                    userId, namespace, key, value));
+        } else {
+            throw new IllegalArgumentException("Namespace must be one of system, secure, global."
+                    + " You provided: " + namespace);
+        }
+        CLog.e("Namespace requested: %s is not part of {system, secure, global}", namespace);
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public String getAndroidId(int userId) throws DeviceNotAvailableException {
+        if (isAdbRoot()) {
+            String cmd = String.format(
+                    "sqlite3 /data/user/%d/com.google.android.gsf/databases/gservices.db "
+                    + "'select value from main where name = \"android_id\"'", userId);
+            String output = executeShellCommand(cmd).trim();
+            if (!output.contains("unable to open database")) {
+                return output;
+            }
+            CLog.w("Couldn't find android-id, output: %s", output);
+        } else {
+            CLog.w("adb root is required.");
+        }
+        return null;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public Map<Integer, String> getAndroidIds() throws DeviceNotAvailableException {
+        ArrayList<Integer> userIds = listUsers();
+        if (userIds == null) {
+            return null;
+        }
+        Map<Integer, String> androidIds = new HashMap<Integer, String>();
+        for (Integer id : userIds) {
+            String androidId = getAndroidId(id);
+            androidIds.put(id, androidId);
+        }
+        return androidIds;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
     IWifiHelper createWifiHelper() throws DeviceNotAvailableException {
         return new WifiHelper(this);
+    }
+
+    private void checkApiLevelAgainst(String feature, int strictMinLevel)
+            throws DeviceNotAvailableException {
+        if (getApiLevel() < strictMinLevel){
+            throw new IllegalArgumentException(String.format("%s not supported on %s. "
+                    + "Must be API %d.", feature, getSerialNumber(), strictMinLevel));
+        }
     }
 }
