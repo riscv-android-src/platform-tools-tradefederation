@@ -27,4 +27,4 @@ fault.
 stack_unwinding.unwind_through_signal_frame_SA_SIGINFO terminated by signal:
 Segmentation fault.
 [    OK    ] stdatomic.LOCK_FREE (7 ms)
-
+[==========] 18 tests from 10 test cases ran.

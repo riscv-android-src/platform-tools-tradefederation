@@ -95,6 +95,7 @@ public class GTestResultParserTest extends TestCase {
         EasyMock.replay(mockRunListener);
         GTestResultParser resultParser = new GTestResultParser(TEST_MODULE_NAME, mockRunListener);
         resultParser.processNewLines(contents);
+        EasyMock.verify(mockRunListener);
     }
 
     /**
@@ -117,6 +118,7 @@ public class GTestResultParserTest extends TestCase {
         EasyMock.replay(mockRunListener);
         GTestResultParser resultParser = new GTestResultParser(TEST_MODULE_NAME, mockRunListener);
         resultParser.processNewLines(contents);
+        EasyMock.verify(mockRunListener);
     }
 
     /**
@@ -134,6 +136,7 @@ public class GTestResultParserTest extends TestCase {
         EasyMock.replay(mockRunListener);
         GTestResultParser resultParser = new GTestResultParser(TEST_MODULE_NAME, mockRunListener);
         resultParser.processNewLines(contents);
+        EasyMock.verify(mockRunListener);
     }
 
     /**
@@ -156,6 +159,7 @@ public class GTestResultParserTest extends TestCase {
         EasyMock.replay(mockRunListener);
         GTestResultParser resultParser = new GTestResultParser(TEST_MODULE_NAME, mockRunListener);
         resultParser.processNewLines(contents);
+        EasyMock.verify(mockRunListener);
     }
 
     /**
@@ -278,6 +282,7 @@ public class GTestResultParserTest extends TestCase {
         EasyMock.replay(mockRunListener);
         GTestResultParser resultParser = new GTestResultParser(TEST_MODULE_NAME, mockRunListener);
         resultParser.processNewLines(contents);
+        EasyMock.verify(mockRunListener);
     }
 
     /**
@@ -322,5 +327,6 @@ public class GTestResultParserTest extends TestCase {
         EasyMock.replay(mockRunListener);
         GTestResultParser resultParser = new GTestResultParser(TEST_MODULE_NAME, mockRunListener);
         resultParser.processNewLines(contents);
+        EasyMock.verify(mockRunListener);
     }
 }

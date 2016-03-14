@@ -89,6 +89,7 @@ public class GTestXmlResultParserTest extends TestCase {
                 new GTestXmlResultParser(TEST_MODULE_NAME, mockRunListener);
         resultParser.parseResult(contents, null);
         FileUtil.deleteFile(contents);
+        EasyMock.verify(mockRunListener);
     }
 
     /**
@@ -112,6 +113,7 @@ public class GTestXmlResultParserTest extends TestCase {
                 new GTestXmlResultParser(TEST_MODULE_NAME, mockRunListener);
         resultParser.parseResult(contents, null);
         FileUtil.deleteFile(contents);
+        EasyMock.verify(mockRunListener);
     }
 
     /**
@@ -190,6 +192,7 @@ public class GTestXmlResultParserTest extends TestCase {
                 new GTestXmlResultParser(TEST_MODULE_NAME, mockRunListener);
         resultParser.parseResult(contents, null);
         FileUtil.deleteFile(contents);
+        EasyMock.verify(mockRunListener);
     }
 
     /**
@@ -216,6 +219,7 @@ public class GTestXmlResultParserTest extends TestCase {
                 new GTestXmlResultParser(TEST_MODULE_NAME, mockRunListener);
         resultParser.parseResult(contents, null);
         FileUtil.deleteFile(contents);
+        EasyMock.verify(mockRunListener);
     }
 
     /**
