@@ -185,7 +185,7 @@ public class Console extends Thread {
             if (sConsoleStream == null) {
                 final ConsoleReader reader = new ConsoleReader();
                 sConsoleStream = new ConsoleReaderOutputStream(reader);
-                System.setOut(new PrintStream(sConsoleStream));
+                System.setOut(new PrintStream(sConsoleStream, true));
             }
             return sConsoleStream.getConsoleReader();
         } catch (IOException e) {
