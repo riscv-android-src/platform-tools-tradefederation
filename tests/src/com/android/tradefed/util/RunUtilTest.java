@@ -33,6 +33,7 @@ public class RunUtilTest extends TestCase {
 
     private RunUtil mRunUtil;
     private long mSleepTime = 0;
+    private boolean success = false;
 
     @Override
     protected void setUp() throws Exception {
@@ -75,7 +76,7 @@ public class RunUtilTest extends TestCase {
     }
 
     /**
-     * Test that {@link RunUtil#runTimedCmd(long, String)} fails when given a garbage command.
+     * Test that {@link RunUtil#runTimedCmd(long, String[])} fails when given a garbage command.
      */
     public void testRunTimedCmd_failed() {
         CommandResult result = mRunUtil.runTimedCmd(1000, "blahggggwarggg");
@@ -85,7 +86,7 @@ public class RunUtilTest extends TestCase {
     }
 
     /**
-     * Test that {@link RunUtil#runTimedCmd(long, String)} fails when garbage times out.
+     * Test that {@link RunUtil#runTimedCmd(long, String[])} fails when garbage times out.
      */
     public void testRunTimedCmd_timeout() {
         String[] command = {"sleep", "10000"};
@@ -96,7 +97,7 @@ public class RunUtilTest extends TestCase {
     }
 
     /**
-     * Verify that calling {@link RunUtil#setWorkingDir()} is not allowed on default instance.
+     * Verify that calling {@link RunUtil#setWorkingDir(File)} is not allowed on default instance.
      */
     public void testSetWorkingDir_default() {
         try {
@@ -134,8 +135,8 @@ public class RunUtilTest extends TestCase {
     }
 
     /**
-     * Test that {@link RunUtil#runEscalatingTimedRetry()} fails when operation continually fails,
-     * and that the maxTime variable is respected.
+     * Test that {@link RunUtil#runEscalatingTimedRetry(long, long, long, long, IRunnableResult)}
+     * fails when operation continually fails, and that the maxTime variable is respected.
      */
     public void testRunEscalatingTimedRetry_timeout() throws Exception {
         // create a RunUtil fixture with methods mocked out for
@@ -199,8 +200,8 @@ public class RunUtilTest extends TestCase {
         mRunUtil.allowInterrupt(false);
         mRunUtil.interrupt(Thread.currentThread(), message);
         mRunUtil.sleep(1);
-        mRunUtil.allowInterrupt(true);
         try{
+            mRunUtil.allowInterrupt(true);
             mRunUtil.sleep(1);
             fail("RunInterruptedException was expected, but not thrown.");
         } catch (final RunInterruptedException e) {
@@ -315,5 +316,48 @@ public class RunUtilTest extends TestCase {
             FileUtil.deleteFile(stdout);
             FileUtil.deleteFile(stderr);
         }
+    }
+
+    /**
+     * Test whether a {@link RunUtil#setInterruptibleInFuture} change properly the interruptible
+     * state.
+     */
+    public void testSetInterruptibleInFuture() {
+        final Thread test = new Thread(new Runnable() {
+            @Override
+            public void run() {
+                mRunUtil.allowInterrupt(false);
+                assertFalse(mRunUtil.isInterruptAllowed());
+                mRunUtil.setInterruptibleInFuture(Thread.currentThread(), 10);
+                try {
+                    mRunUtil.sleep(25);
+                    mRunUtil.sleep(25);
+                    fail();
+                } catch (RunInterruptedException rie) {
+                    assertEquals("TEST", rie.getMessage());
+                }
+                success = mRunUtil.isInterruptAllowed();
+            }
+        });
+        mRunUtil.interrupt(test, "TEST");
+        test.start();
+        try {
+            test.join();
+        } catch (InterruptedException e) {
+            // Ignore
+        }
+        assertTrue(success);
+    }
+
+    /**
+     * Test whether a {@link RunUtil#setInterruptibleInFuture} has not change the state yet.
+     */
+    public void testSetInterruptibleInFuture_beforeTimeout() {
+        mRunUtil.allowInterrupt(false);
+        assertFalse(mRunUtil.isInterruptAllowed());
+        mRunUtil.setInterruptibleInFuture(Thread.currentThread(), 1000);
+        mRunUtil.sleep(10);
+        // Should still be false
+        assertFalse(mRunUtil.isInterruptAllowed());
     }
 }

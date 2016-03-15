@@ -16,6 +16,7 @@
 package com.android.tradefed.device;
 
 import com.android.tradefed.config.Option;
+import com.android.tradefed.log.LogUtil.CLog;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -318,6 +319,18 @@ public class TestDeviceOptions {
      */
     public Integer getCutoffBattery() {
         return mCutoffBattery;
+    }
+
+    /**
+     * set the minimum battery level to continue the invocation.
+     */
+    public void setCutoffBattery(int cutoffBattery) {
+        if (cutoffBattery < 0 || cutoffBattery > 100) {
+            // Prevent impossible value.
+            throw new RuntimeException(String.format("Battery cutoff wasn't changed,"
+                    + "the value %s isn't within possible range (0-100).", cutoffBattery));
+        }
+        mCutoffBattery = cutoffBattery;
     }
 
     /**

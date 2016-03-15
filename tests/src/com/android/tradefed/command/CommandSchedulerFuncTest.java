@@ -16,6 +16,9 @@
 
 package com.android.tradefed.command;
 
+import com.google.common.util.concurrent.SettableFuture;
+
+import com.android.ddmlib.IDevice;
 import com.android.ddmlib.Log;
 import com.android.tradefed.config.IConfiguration;
 import com.android.tradefed.config.IConfigurationFactory;
@@ -24,14 +27,21 @@ import com.android.tradefed.device.DeviceSelectionOptions;
 import com.android.tradefed.device.IDeviceManager;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.device.MockDeviceManager;
+import com.android.tradefed.device.StubDevice;
+import com.android.tradefed.device.TestDeviceOptions;
+import com.android.tradefed.device.TestDeviceState;
 import com.android.tradefed.invoker.IRescheduler;
 import com.android.tradefed.invoker.ITestInvocation;
+import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.result.ITestInvocationListener;
+import com.android.tradefed.util.RunInterruptedException;
 import com.android.tradefed.util.RunUtil;
 
 import junit.framework.TestCase;
 
 import org.easymock.EasyMock;
+
+import java.util.concurrent.Future;
 
 /**
  * Longer running test for {@link CommandScheduler}
@@ -42,16 +52,17 @@ public class CommandSchedulerFuncTest extends TestCase {
     /** the {@link CommandScheduler} under test, with all dependencies mocked out */
     private CommandScheduler mCommandScheduler;
     private MeasuredInvocation mMockTestInvoker;
-    private IDeviceManager mMockDeviceManager;
+    private MockDeviceManager mMockDeviceManager;
     private IConfiguration mSlowConfig;
     private IConfiguration mFastConfig;
     private IConfigurationFactory mMockConfigFactory;
     private CommandOptions mCommandOptions;
+    private boolean mInterruptible = false;
 
     @Override
     protected void setUp() throws Exception {
         super.setUp();
-
+        mInterruptible = false;
         mSlowConfig = EasyMock.createNiceMock(IConfiguration.class);
         mFastConfig = EasyMock.createNiceMock(IConfiguration.class);
         mMockDeviceManager = new MockDeviceManager(1);
@@ -80,6 +91,10 @@ public class CommandSchedulerFuncTest extends TestCase {
 
             @Override
             IConfigurationFactory getConfigFactory() {
+                if (mInterruptible) {
+                    // simulate the invocation becoming interruptible
+                    RunUtil.getDefault().allowInterrupt(true);
+                }
                 return mMockConfigFactory;
             }
 
@@ -133,36 +148,344 @@ public class CommandSchedulerFuncTest extends TestCase {
         // some variance since the execution time of each config (governed via Thread.sleep) will
         // not be 100% accurate
         assertEquals(mMockTestInvoker.mSlowCount * 2, mMockTestInvoker.mFastCount, 5);
+        assertFalse(mMockTestInvoker.runInterrupted);
     }
 
     private class MeasuredInvocation implements ITestInvocation {
         Integer mSlowCount = 0;
         Integer mFastCount = 0;
         Integer mSlowCountLimit = 40;
+        public boolean runInterrupted = false;
 
         @Override
         public void invoke(ITestDevice device, IConfiguration config, IRescheduler rescheduler,
                 ITestInvocationListener... listeners)
                 throws DeviceNotAvailableException {
-            if (config.equals(mSlowConfig)) {
-                // sleep for 2 * fast config time
-                RunUtil.getDefault().sleep(200);
-                synchronized (mSlowCount) {
-                    mSlowCount++;
+            try {
+                if (mInterruptible) {
+                    // simulate the invocation becoming interruptible
+                    RunUtil.getDefault().allowInterrupt(true);
                 }
-                if (mSlowCount >= mSlowCountLimit) {
-                    synchronized (this) {
-                        notify();
+                if (config.equals(mSlowConfig)) {
+                    // sleep for 2 * fast config time
+                    RunUtil.getDefault().sleep(200);
+                    synchronized (mSlowCount) {
+                        mSlowCount++;
                     }
+                    if (mSlowCount >= mSlowCountLimit) {
+                        synchronized (this) {
+                            notify();
+                        }
+                    }
+                } else if (config.equals(mFastConfig)) {
+                    RunUtil.getDefault().sleep(100);
+                    synchronized (mFastCount) {
+                        mFastCount++;
+                    }
+                } else {
+                    throw new IllegalArgumentException("unknown config");
                 }
-            } else if (config.equals(mFastConfig)) {
-                RunUtil.getDefault().sleep(100);
-                synchronized (mFastCount) {
-                    mFastCount++;
+            } catch (RunInterruptedException e) {
+                CLog.e(e);
+                // Yield right away if an exception occur due to an interrupt.
+                runInterrupted = true;
+                synchronized (this) {
+                    notify();
                 }
-            } else {
-                throw new IllegalArgumentException("unknown config");
             }
         }
    }
+
+    /**
+     * Test that the Invocation is not interruptible even when Battery is low.
+     */
+    public void testBatteryLowLevel() throws Throwable {
+        ITestDevice mockDevice = EasyMock.createNiceMock(ITestDevice.class);
+        EasyMock.expect(mockDevice.getSerialNumber()).andReturn("serial").anyTimes();
+        IDevice mockIDevice = new StubDevice("serial");
+        EasyMock.expect(mockDevice.getIDevice()).andReturn(mockIDevice).anyTimes();
+        EasyMock.expect(mockDevice.getDeviceState()).andReturn(
+                TestDeviceState.ONLINE).anyTimes();
+
+        TestDeviceOptions testDeviceOptions= new TestDeviceOptions();
+        testDeviceOptions.setCutoffBattery(20);
+        assertTrue(testDeviceOptions.getCutoffBattery() == 20);
+        EasyMock.expect(mSlowConfig.getDeviceOptions()).andReturn(testDeviceOptions).anyTimes();
+
+        EasyMock.replay(mockDevice);
+        mMockDeviceManager.clearAllDevices();
+        mMockDeviceManager.addDevice(mockDevice);
+
+        String[] slowConfigArgs = new String[] {"slowConfig"};
+
+        EasyMock.expect(
+                mMockConfigFactory.createConfigurationFromArgs(EasyMock.aryEq(slowConfigArgs)))
+                .andReturn(mSlowConfig).anyTimes();
+
+        EasyMock.replay(mFastConfig, mSlowConfig, mMockConfigFactory);
+        mCommandScheduler.start();
+        mCommandScheduler.addCommand(slowConfigArgs);
+
+        synchronized (mMockTestInvoker) {
+            mMockTestInvoker.wait();
+        }
+
+        mCommandScheduler.shutdown();
+        mCommandScheduler.join();
+        assertFalse(mMockTestInvoker.runInterrupted);
+    }
+
+    /**
+     * Test that the Invocation is interruptible when Battery is low.
+     */
+    public void testBatteryLowLevel_interruptible() throws Throwable {
+        ITestDevice mockDevice = EasyMock.createNiceMock(ITestDevice.class);
+        EasyMock.expect(mockDevice.getSerialNumber()).andReturn("serial").anyTimes();
+        IDevice mockIDevice = new StubDevice("serial") {
+            @Override
+            public Future<Integer> getBattery() {
+                SettableFuture<Integer> f = SettableFuture.create();
+                f.set(10);
+                return f;
+            }
+        };
+
+        EasyMock.expect(mockDevice.getIDevice()).andReturn(mockIDevice).anyTimes();
+        EasyMock.expect(mockDevice.getDeviceState()).andReturn(
+                TestDeviceState.ONLINE).anyTimes();
+
+        TestDeviceOptions testDeviceOptions= new TestDeviceOptions();
+        testDeviceOptions.setCutoffBattery(20);
+        EasyMock.expect(mSlowConfig.getDeviceOptions()).andReturn(testDeviceOptions).anyTimes();
+
+        EasyMock.replay(mockDevice);
+        mMockDeviceManager.clearAllDevices();
+        mMockDeviceManager.addDevice(mockDevice);
+
+        String[] slowConfigArgs = new String[] {"slowConfig"};
+
+        EasyMock.expect(
+                mMockConfigFactory.createConfigurationFromArgs(EasyMock.aryEq(slowConfigArgs)))
+                .andReturn(mSlowConfig).anyTimes();
+
+        EasyMock.replay(mFastConfig, mSlowConfig, mMockConfigFactory);
+        mCommandScheduler.start();
+        mInterruptible = true;
+        mCommandScheduler.addCommand(slowConfigArgs);
+
+        synchronized (mMockTestInvoker) {
+            mMockTestInvoker.wait();
+        }
+
+        mCommandScheduler.shutdown();
+        mCommandScheduler.join();
+        assertTrue(mMockTestInvoker.runInterrupted);
+    }
+
+    /**
+     * Test that the Invocation is interrupted by the shutdownHard and finishes with an
+     * interruption.
+     * {@link CommandScheduler#shutdownHard()}
+     */
+    public void testShutdown_interruptible() throws Throwable {
+        String[] slowConfigArgs = new String[] {"slowConfig"};
+
+        EasyMock.expect(
+                mMockConfigFactory.createConfigurationFromArgs(EasyMock.aryEq(slowConfigArgs)))
+                .andReturn(mSlowConfig).anyTimes();
+
+        EasyMock.replay(mFastConfig, mSlowConfig, mMockConfigFactory);
+        mCommandScheduler.start();
+        mInterruptible = true;
+        mCommandScheduler.addCommand(slowConfigArgs);
+
+        Thread test = new Thread(new Runnable() {
+            @Override
+            public void run() {
+                RunUtil.getDefault().sleep(1000);
+                mCommandScheduler.shutdownHard();
+            }
+        });
+        test.start();
+        synchronized (mMockTestInvoker) {
+            mMockTestInvoker.wait();
+        }
+        test.join();
+        mCommandScheduler.join();
+        // Was interrupted during execution.
+        assertTrue(mMockTestInvoker.runInterrupted);
+    }
+
+    /**
+     * Test that the Invocation is not interrupted by shutdownHard. Invocation terminate then
+     * scheduler finishes.
+     * {@link CommandScheduler#shutdownHard()}
+     */
+    public void testShutdown_notInterruptible() throws Throwable {
+        final LongInvocation li = new LongInvocation(5);
+        mCommandOptions.setLoopMode(false);
+        mCommandScheduler = new CommandScheduler() {
+            @Override
+            ITestInvocation createRunInstance() {
+                return li;
+            }
+
+            @Override
+            IDeviceManager getDeviceManager() {
+                return mMockDeviceManager;
+            }
+
+            @Override
+            IConfigurationFactory getConfigFactory() {
+                if (mInterruptible) {
+                    // simulate the invocation becoming interruptible
+                    RunUtil.getDefault().allowInterrupt(true);
+                }
+                return mMockConfigFactory;
+            }
+
+            @Override
+            void initLogging() {
+                // ignore
+            }
+
+            @Override
+            void cleanUp() {
+                // ignore
+            }
+
+            @Override
+            public long getShutdownTimeout() {
+                return 30000;
+            }
+        };
+        String[] slowConfigArgs = new String[] {"slowConfig"};
+
+        EasyMock.expect(
+                mMockConfigFactory.createConfigurationFromArgs(EasyMock.aryEq(slowConfigArgs)))
+                .andReturn(mSlowConfig).anyTimes();
+
+        EasyMock.replay(mFastConfig, mSlowConfig, mMockConfigFactory);
+        mCommandScheduler.start();
+        mInterruptible = false;
+        mCommandScheduler.addCommand(slowConfigArgs);
+
+        Thread shutdownThread = new Thread(new Runnable() {
+            @Override
+            public void run() {
+                RunUtil.getDefault().sleep(1000);
+                mCommandScheduler.shutdownHard();
+            }
+        });
+        shutdownThread.start();
+        synchronized (li) {
+            // Invocation will finish first because shorter than shutdownHard final timeout
+            li.wait();
+        }
+        shutdownThread.join();
+        mCommandScheduler.join();
+        // Stop but was not interrupted
+        assertFalse(mMockTestInvoker.runInterrupted);
+    }
+
+    private class LongInvocation implements ITestInvocation {
+        public boolean runInterrupted = false;
+        private int mIteration = 15;
+
+        public LongInvocation(int iteration) {
+            mIteration = iteration;
+        }
+
+        @Override
+        public void invoke(ITestDevice device, IConfiguration config, IRescheduler rescheduler,
+                ITestInvocationListener... listeners)
+                throws DeviceNotAvailableException {
+            try {
+                if (mInterruptible) {
+                    // simulate the invocation becoming interruptible
+                    RunUtil.getDefault().allowInterrupt(true);
+                }
+                for (int i = 0; i < mIteration; i++) {
+                    RunUtil.getDefault().sleep(2000);
+                }
+                synchronized (this) {
+                    notify();
+                }
+            } catch (RunInterruptedException e) {
+                CLog.e(e);
+                // Yield right away if an exception occur due to an interrupt.
+                runInterrupted = true;
+                synchronized (this) {
+                    notify();
+                }
+            }
+        }
+    }
+
+    /**
+     * Test that the Invocation is interrupted by {@link CommandScheduler#shutdownHard()} but only
+     * after the shutdown timeout is expired because the invocation was uninterruptible so we only
+     * allow for so much time before shutting down.
+     */
+    public void testShutdown_notInterruptible_timeout() throws Throwable {
+        final LongInvocation li = new LongInvocation(15);
+        mCommandOptions.setLoopMode(false);
+        mCommandScheduler = new CommandScheduler() {
+            @Override
+            ITestInvocation createRunInstance() {
+                return li;
+            }
+            @Override
+            IDeviceManager getDeviceManager() {
+                return mMockDeviceManager;
+            }
+            @Override
+            IConfigurationFactory getConfigFactory() {
+                if (mInterruptible) {
+                    // simulate the invocation becoming interruptible
+                    RunUtil.getDefault().allowInterrupt(true);
+                }
+                return mMockConfigFactory;
+            }
+            @Override
+            void initLogging() {
+                // ignore
+            }
+            @Override
+            void cleanUp() {
+                // ignore
+            }
+            @Override
+            public long getShutdownTimeout() {
+                return 5000;
+            }
+        };
+        String[] slowConfigArgs = new String[] {"slowConfig"};
+
+        EasyMock.expect(
+                mMockConfigFactory.createConfigurationFromArgs(EasyMock.aryEq(slowConfigArgs)))
+                .andReturn(mSlowConfig).anyTimes();
+
+        EasyMock.replay(mFastConfig, mSlowConfig, mMockConfigFactory);
+        mCommandScheduler.start();
+        mInterruptible = false;
+        mCommandScheduler.addCommand(slowConfigArgs);
+
+        Thread shutdownThread = new Thread(new Runnable() {
+            @Override
+            public void run() {
+                RunUtil.getDefault().sleep(1000);
+                mCommandScheduler.shutdownHard();
+            }
+        });
+        shutdownThread.start();
+        synchronized (li) {
+            // Setting a timeout longer than the shutdown timeout.
+            li.wait(mCommandScheduler.getShutdownTimeout() * 2);
+        }
+        shutdownThread.join();
+        mCommandScheduler.join();
+        // Stop and was interrupted by timeout of shutdownHard()
+        assertTrue(li.runInterrupted);
+    }
 }

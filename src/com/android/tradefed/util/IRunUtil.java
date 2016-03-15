@@ -16,6 +16,8 @@
 
 package com.android.tradefed.util;
 
+import com.android.tradefed.command.CommandScheduler;
+
 import java.io.File;
 import java.io.IOException;
 import java.io.OutputStream;
@@ -124,8 +126,8 @@ public interface IRunUtil {
 
     /**
      * Helper method to execute a system command, and aborting if it takes longer than a specified
-     * time. Similar to {@link #runTimedCmdRetry(long, String...)}, but does not log any errors on
-     * exception.
+     * time. Similar to {@link #runTimedCmdRetry(long, long, int, String[])},
+     * but does not log any errors on exception.
      *
      * @param timeout maximum time to wait in ms
      * @param command the specified system command and optionally arguments to exec
@@ -258,6 +260,21 @@ public interface IRunUtil {
      * @param allow whether to allow run interrupts on the current thread.
      */
     public void allowInterrupt(boolean allow);
+
+    /**
+     * Give the interrupt status of the RunUtil.
+     * @return true if the Run can be interrupted, false otherwise.
+     */
+    public boolean isInterruptAllowed();
+
+    /**
+     * Set as interruptible after some waiting time.
+     * {@link CommandScheduler#shutdownHard()} to enforce we terminate eventually.
+     *
+     * @param thread the thread that will become interruptible.
+     * @param timeMs time to wait before setting interruptible.
+     */
+    public void setInterruptibleInFuture(Thread thread, long timeMs);
 
     /**
      * Interrupts the ongoing/forthcoming run operations on the given thread. The run operations on
