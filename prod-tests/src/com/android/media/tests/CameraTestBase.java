@@ -18,6 +18,8 @@ package com.android.media.tests;
 
 import com.android.ddmlib.CollectingOutputReceiver;
 import com.android.ddmlib.testrunner.TestIdentifier;
+import com.android.tradefed.config.IConfiguration;
+import com.android.tradefed.config.IConfigurationReceiver;
 import com.android.tradefed.config.Option;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
@@ -32,6 +34,8 @@ import com.android.tradefed.testtype.IDeviceTest;
 import com.android.tradefed.testtype.IRemoteTest;
 import com.android.tradefed.testtype.InstrumentationTest;
 import com.android.tradefed.util.FileUtil;
+import com.android.tradefed.util.IRunUtil;
+import com.android.tradefed.util.RunUtil;
 
 import junit.framework.Assert;
 
@@ -57,16 +61,16 @@ import java.util.concurrent.TimeUnit;
  * Camera2StressTest, CameraStartupTest, Camera2LatencyTest and CameraPerformanceTest use this base
  * class for Camera ivvavik and later.
  */
-public class CameraTestBase implements IDeviceTest, IRemoteTest {
+public class CameraTestBase implements IDeviceTest, IRemoteTest, IConfigurationReceiver {
 
     private static final String LOG_TAG = CameraTestBase.class.getSimpleName();
     private static final long SHELL_TIMEOUT_MS = 60 * 1000;  // 1 min
     private static final int SHELL_MAX_ATTEMPTS = 3;
-    private static final String PROCESS_CAMERA_DAEMON = "mm-qcamera-daemon";
-    private static final String PROCESS_MEDIASERVER = "mediaserver";
-    private static final String PROCESS_CAMERA_APP = "com.google.android.GoogleCamera";
-    private static final String DUMP_ION_HEAPS_COMMAND = "cat /d/ion/heaps/system";
-    private static final String ARGUMENT_TEST_ITERATIONS = "iterations";
+    protected static final String PROCESS_CAMERA_DAEMON = "mm-qcamera-daemon";
+    protected static final String PROCESS_MEDIASERVER = "mediaserver";
+    protected static final String PROCESS_CAMERA_APP = "com.google.android.GoogleCamera";
+    protected static final String DUMP_ION_HEAPS_COMMAND = "cat /d/ion/heaps/system";
+    protected static final String ARGUMENT_TEST_ITERATIONS = "iterations";
 
     @Option(name = "test-package", description = "Test package to run.")
     private String mTestPackage = "com.google.android.camera";
@@ -136,6 +140,8 @@ public class CameraTestBase implements IDeviceTest, IRemoteTest {
 
     private MeminfoTimer mMeminfoTimer = null;
     private ThreadTrackerTimer mThreadTrackerTimer = null;
+
+    protected IConfiguration mConfiguration;
 
     /**
      * {@inheritDoc}
@@ -299,6 +305,12 @@ public class CameraTestBase implements IDeviceTest, IRemoteTest {
                 CLog.d("Test (%s) failed due to fatal error : %s", test.getTestName(), trace);
             }
             mListener.testFailed(test, trace);
+        }
+
+        @Override
+        public void testRunFailed(String errorMessage) {
+            super.testRunFailed(errorMessage);
+            mFatalErrors.put(getRuKey(), errorMessage);
         }
 
         @Override
@@ -733,6 +745,23 @@ public class CameraTestBase implements IDeviceTest, IRemoteTest {
     @Override
     public ITestDevice getDevice() {
         return mDevice;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void setConfiguration(IConfiguration configuration) {
+        mConfiguration = configuration;
+    }
+
+    /**
+     * Get the {@link IRunUtil} instance to use.
+     * <p/>
+     * Exposed so unit tests can mock.
+     */
+    IRunUtil getRunUtil() {
+        return RunUtil.getDefault();
     }
 
     /**
