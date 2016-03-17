@@ -43,6 +43,7 @@ import com.android.tradefed.util.StringEscapeUtils;
 import junit.framework.Assert;
 
 import java.io.File;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
@@ -52,7 +53,8 @@ import java.util.concurrent.TimeUnit;
  * A Test that runs an instrumentation test package on given device.
  */
 @OptionClass(alias = "instrumentation")
-public class InstrumentationTest implements IDeviceTest, IResumableTest, ITestCollector {
+public class InstrumentationTest implements IDeviceTest, IResumableTest, ITestCollector,
+        IAbiReceiver {
 
     private static final String LOG_TAG = "InstrumentationTest";
 
@@ -181,6 +183,10 @@ public class InstrumentationTest implements IDeviceTest, IResumableTest, ITestCo
                     + "cases. All test run callbacks will be triggered, but test execution will "
                     + "not be actually carried out.")
     private boolean mCollectTestsOnly = false;
+
+    private IAbi mAbi = null;
+
+    private Collection<String> mInstallArgs = new ArrayList<>();
 
     private ITestDevice mDevice = null;
 
@@ -505,16 +511,29 @@ public class InstrumentationTest implements IDeviceTest, IResumableTest, ITestCo
             IDevice device) throws DeviceNotAvailableException {
         RemoteAndroidTestRunner runner = new RemoteAndroidTestRunner(
                 packageName, runnerName, device);
-        if (mForceAbi != null && !mForceAbi.isEmpty()) {
-            String abi = AbiFormatter.getDefaultAbi(mDevice, mForceAbi);
-            if (abi != null) {
-                runner.setRunOptions(String.format("--abi %s", abi));
-            } else {
+        String abiName = resolveAbiName();
+        if (abiName != null) {
+            mInstallArgs.add(String.format("--abi %s", abiName));
+            runner.setRunOptions(String.format("--abi %s", abiName));
+        }
+        return runner;
+    }
+
+    private String resolveAbiName() throws DeviceNotAvailableException {
+        if (mAbi != null && mForceAbi != null) {
+            throw new IllegalArgumentException("cannot specify both abi flags");
+        }
+        String abiName = null;
+        if (mAbi != null) {
+            abiName = mAbi.getName();
+        } else if (mForceAbi != null && !mForceAbi.isEmpty()) {
+            abiName = AbiFormatter.getDefaultAbi(mDevice, mForceAbi);
+            if (abiName == null) {
                 throw new RuntimeException(
                         String.format("Cannot find abi for force-abi %s", mForceAbi));
             }
         }
-        return runner;
+        return abiName;
     }
 
     /**
@@ -533,7 +552,8 @@ public class InstrumentationTest implements IDeviceTest, IResumableTest, ITestCo
                 mDevice.getIDevice());
         setRunnerArgs(mRunner);
         if (mInstallFile != null) {
-            Assert.assertNull(mDevice.installPackage(mInstallFile, true));
+            Assert.assertNull(mDevice.installPackage(mInstallFile, true,
+                    mInstallArgs.toArray(new String[]{})));
         }
         doTestRun(listener);
         if (mInstallFile != null) {
@@ -900,5 +920,10 @@ public class InstrumentationTest implements IDeviceTest, IResumableTest, ITestCo
     @Override
     public void setCollectTestsOnly(boolean shouldCollectTest) {
         mCollectTestsOnly = shouldCollectTest;
+    }
+
+    @Override
+    public void setAbi(IAbi abi) {
+        mAbi = abi;
     }
 }

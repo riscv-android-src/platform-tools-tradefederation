@@ -139,6 +139,31 @@ public class InstrumentationTestTest extends TestCase {
         mInstrumentationTest.run(mMockListener);
     }
 
+    public void testRun_bothAbi() throws DeviceNotAvailableException {
+        mInstrumentationTest = new InstrumentationTest();
+        mInstrumentationTest.setPackageName(TEST_PACKAGE_VALUE);
+        mInstrumentationTest.setRunnerName(TEST_RUNNER_VALUE);
+        mInstrumentationTest.setDevice(mMockTestDevice);
+        mInstrumentationTest.setAbi(new IAbi() {
+            @Override
+            public String getName() {
+                return null;
+            }
+            @Override
+            public String getBitness() {
+                return null;
+            }
+        });
+        mInstrumentationTest.setForceAbi("test");
+        try {
+            mInstrumentationTest.run(mMockListener);
+        } catch (IllegalArgumentException e) {
+            // expected
+            return;
+        }
+        fail("Should have thrown an exception.");
+    }
+
     /**
      * Test normal run scenario with a test class specified.
      */
