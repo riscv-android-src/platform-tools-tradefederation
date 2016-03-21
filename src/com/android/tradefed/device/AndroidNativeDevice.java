@@ -3030,7 +3030,25 @@ public class AndroidNativeDevice implements IManagedTestDevice {
      * {@inheritDoc}
      */
     @Override
+    public String getSetting(String namespace, String key)
+            throws DeviceNotAvailableException {
+        throw new UnsupportedOperationException("No support for setting's feature.");
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
     public String getSetting(int userId, String namespace, String key)
+            throws DeviceNotAvailableException {
+        throw new UnsupportedOperationException("No support for setting's feature.");
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void setSetting(String namespace, String key, String value)
             throws DeviceNotAvailableException {
         throw new UnsupportedOperationException("No support for setting's feature.");
     }
