@@ -16,15 +16,18 @@
 
 package com.android.tradefed.targetprep;
 
+import com.google.common.io.Files;
+
 import com.android.tradefed.build.DeviceBuildInfo;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
-import com.android.tradefed.device.StubTestDevice;
 import com.android.tradefed.util.FakeTestsZipFolder;
 import com.android.tradefed.util.FakeTestsZipFolder.ItemType;
-import com.google.common.io.Files;
 
 import junit.framework.TestCase;
+
+import org.easymock.EasyMock;
+import org.easymock.IAnswer;
 
 import java.io.File;
 import java.util.ArrayList;
@@ -71,29 +74,30 @@ public class TestFilePushSetupFuncTest extends TestCase {
         stubBuild.setTestsDir(mFakeTestsZipFolder.getBasePath(), "0");
         assertFalse(mFiles.isEmpty());
         assertFalse(mDeviceLocationList.isEmpty());
-        ITestDevice device = new StubTestDevice() {
-            @Override
-            public boolean pushDir(File localDir, String deviceFilePath)
-                    throws DeviceNotAvailableException {
-                return mDeviceLocationList.remove(deviceFilePath);
-            }
-
-            @Override
-            public boolean pushFile(File localFile, String deviceFilePath)
-                    throws DeviceNotAvailableException {
-                return mDeviceLocationList.remove(deviceFilePath);
-            }
-
-            @Override
-            public String executeShellCommand(String command) throws DeviceNotAvailableException {
-                return "";
-            }
-        };
+        ITestDevice device = EasyMock.createMock(ITestDevice.class);
+        EasyMock.expect(device.pushDir((File) EasyMock.anyObject(), (String) EasyMock.anyObject()))
+                .andAnswer(new IAnswer<Boolean>() {
+                    @Override
+                    public Boolean answer() throws Throwable {
+                        return mDeviceLocationList.remove(EasyMock.getCurrentArguments()[1]);
+                    }
+                });
+        EasyMock.expect(device.pushFile((File) EasyMock.anyObject(),
+                (String) EasyMock.anyObject())).andAnswer(new IAnswer<Boolean>() {
+                    @Override
+                    public Boolean answer() throws Throwable {
+                        return mDeviceLocationList.remove(EasyMock.getCurrentArguments()[1]);
+                    }
+                }).times(3);
+        EasyMock.expect(device.executeShellCommand((String) EasyMock.anyObject()))
+                .andReturn("").times(4);
+        EasyMock.replay(device);
         for (String file : mFiles.keySet()) {
             testFilePushSetup.addTestFileName(file);
         }
         testFilePushSetup.setUp(device, stubBuild);
         assertTrue(mDeviceLocationList.isEmpty());
+        EasyMock.verify(device);
     }
 
     /**

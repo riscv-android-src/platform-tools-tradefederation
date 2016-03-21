@@ -16,6 +16,6 @@
 <configuration
     description="test fixture to help test mandatory options">
 
-    <test class="com.android.tradefed.config.StubMandatoryTest" />
+    <test class="com.android.tradefed.config.StubOptionTest" />
 
 </configuration>

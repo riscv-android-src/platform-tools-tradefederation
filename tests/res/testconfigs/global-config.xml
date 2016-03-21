@@ -16,7 +16,7 @@
 <configuration
     description="test for global configurations">
 
-    <device_monitor class="com.android.tradefed.device.StubDeviceMonitor" />
-    <wtf_handler class="com.android.tradefed.log.StubTerribleFailureHandler" />
+    <device_monitor class="com.android.tradefed.device.DeviceMonitorMultiplexer" />
+    <wtf_handler class="com.android.tradefed.log.TerribleFailureEmailHandler" />
 
 </configuration>
