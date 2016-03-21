@@ -378,6 +378,7 @@ public class HostTestTest extends TestCase {
         mListener.testRunEnded(EasyMock.anyLong(), (Map<String, String>)EasyMock.anyObject());
         EasyMock.replay(mListener);
         mHostTest.run(mListener);
+        EasyMock.verify(mListener);
     }
 
     /**
@@ -395,6 +396,7 @@ public class HostTestTest extends TestCase {
         mListener.testRunEnded(EasyMock.anyLong(), (Map<String, String>)EasyMock.anyObject());
         EasyMock.replay(mListener);
         mHostTest.run(mListener);
+        EasyMock.verify(mListener);
     }
 
     /**
@@ -413,6 +415,7 @@ public class HostTestTest extends TestCase {
         mListener.testRunEnded(EasyMock.anyLong(), (Map<String, String>)EasyMock.anyObject());
         EasyMock.replay(mListener);
         mHostTest.run(mListener);
+        EasyMock.verify(mListener);
     }
 
     /**
@@ -431,6 +434,7 @@ public class HostTestTest extends TestCase {
         mListener.testRunEnded(EasyMock.anyLong(), (Map<String, String>)EasyMock.anyObject());
         EasyMock.replay(mListener);
         mHostTest.run(mListener);
+        EasyMock.verify(mListener);
     }
 
     /**
@@ -481,5 +485,44 @@ public class HostTestTest extends TestCase {
     public void testRun_shouldRun_exclude() throws Exception {
         mHostTest.addExcludeAnnotation("com.android.tradefed.testtype.HostTestTest$MyAnnotation2");
         assertTrue(mHostTest.shouldTestRun(SuccessTestCase.class));
+    }
+
+    /**
+     * Test success case for {@link HostTest#run(ITestInvocationListener)}, where test to run is a
+     * {@link TestCase} with annotation filtering.
+     */
+    public void testRun_testcaseCollectMode() throws Exception {
+        mHostTest.setClassName(SuccessTestCase.class.getName());
+        mHostTest.setCollectTestsOnly(true);
+        mListener.testRunStarted((String)EasyMock.anyObject(), EasyMock.eq(2));
+        mListener.testStarted((TestIdentifier) EasyMock.anyObject());
+        mListener.testEnded((TestIdentifier) EasyMock.anyObject(),
+                (Map<String, String>)EasyMock.anyObject());
+        mListener.testStarted((TestIdentifier) EasyMock.anyObject());
+        mListener.testEnded((TestIdentifier) EasyMock.anyObject(),
+                (Map<String, String>)EasyMock.anyObject());
+        mListener.testRunEnded(EasyMock.anyLong(), (Map<String, String>)EasyMock.anyObject());
+        EasyMock.replay(mListener);
+        mHostTest.run(mListener);
+        EasyMock.verify(mListener);
+    }
+
+    /**
+     * Test success case for {@link HostTest#run(ITestInvocationListener)}, where the
+     * {@link IRemoteTest} does not implements {@link ITestCollector}
+     */
+    public void testRun_testcaseCollectMode_IRemotedevice() throws Exception {
+        final ITestDevice device = EasyMock.createMock(ITestDevice.class);
+        mHostTest.setClassName(SuccessDeviceTest.class.getName());
+        mHostTest.setDevice(device);
+        mHostTest.setCollectTestsOnly(true);
+        EasyMock.replay(mListener);
+        try {
+            mHostTest.run(mListener);
+        } catch (IllegalArgumentException expected) {
+            EasyMock.verify(mListener);
+            return;
+        }
+        fail("HostTest run() should have thrown an exception.");
     }
 }

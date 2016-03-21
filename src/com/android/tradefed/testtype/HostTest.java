@@ -15,6 +15,7 @@
  */
 package com.android.tradefed.testtype;
 
+import com.android.ddmlib.testrunner.TestIdentifier;
 import com.android.tradefed.config.ConfigurationException;
 import com.android.tradefed.config.Option;
 import com.android.tradefed.config.Option.Importance;
@@ -22,7 +23,6 @@ import com.android.tradefed.config.OptionClass;
 import com.android.tradefed.config.OptionSetter;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
-import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.util.TestFilterHelper;
 
@@ -30,14 +30,15 @@ import junit.framework.Test;
 import junit.framework.TestCase;
 import junit.framework.TestSuite;
 
-import java.lang.annotation.Annotation;
 import java.lang.reflect.AnnotatedElement;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Enumeration;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 /**
@@ -45,7 +46,7 @@ import java.util.Set;
  * this runner will pass a reference to the device.
  */
 @OptionClass(alias = "host")
-public class HostTest implements IDeviceTest, ITestFilterReceiver, IRemoteTest {
+public class HostTest implements IDeviceTest, ITestFilterReceiver, IRemoteTest, ITestCollector {
 
     @Option(name="class", description="The JUnit test classes to run, in the format "
             + "<package>.<class>. eg. \"com.android.foo.Bar\". This field can be repeated.",
@@ -70,6 +71,12 @@ public class HostTest implements IDeviceTest, ITestFilterReceiver, IRemoteTest {
     @Option(name="exclude-annotation",
             description="The name of class for the notAnnotation filter to be used.")
     private Set<String> mExcludeAnnotation = new HashSet<String>();
+
+    @Option(name = "collect-tests-only",
+            description = "Only invoke the instrumentation to collect list of applicable test "
+                    + "cases. All test run callbacks will be triggered, but test execution will "
+                    + "not be actually carried out.")
+    private boolean mCollectTestsOnly = false;
 
     private ITestDevice mDevice;
     private TestFilterHelper mFilterHelper;
@@ -197,11 +204,39 @@ public class HostTest implements IDeviceTest, ITestFilterReceiver, IRemoteTest {
                             "%s does not implement ITestFilterReceiver", classObj.getName()));
                 }
                 if (mFilterHelper.shouldTestRun(test.getClass())) {
+                    if (mCollectTestsOnly) {
+                        // Collect only mode is propagated to the test.
+                        if (test instanceof ITestCollector) {
+                            ((ITestCollector)test).setCollectTestsOnly(true);
+                        } else {
+                            throw new IllegalArgumentException(String.format(
+                                    "%s does not implement ITestCollector", test.getClass()));
+                        }
+                    }
                     test.run(listener);
                 }
             } else if (Test.class.isAssignableFrom(classObj)) {
-                JUnitRunUtil.runTest(listener, collectTests(collectClasses(classObj)),
-                        classObj.getName());
+                if (mCollectTestsOnly) {
+                    // Collect only mode, fake the junit test execution.
+                    TestSuite junitTest = collectTests(collectClasses(classObj));
+                    listener.testRunStarted(classObj.getName(), junitTest.countTestCases());
+                    Map<String, String> empty = Collections.emptyMap();
+                    for (int i = 0; i < junitTest.countTestCases(); i++) {
+                        Test t = junitTest.testAt(i);
+                        // Test does not have a getName method.
+                        // using the toString format instead: <testName>(className)
+                        String testName = t.toString().split("\\(")[0];
+                        TestIdentifier testId =
+                                new TestIdentifier(t.getClass().getCanonicalName(), testName);
+                        listener.testStarted(testId);
+                        listener.testEnded(testId, empty);
+                    }
+                    Map<String, String> emptyMap = Collections.emptyMap();
+                    listener.testRunEnded(0, emptyMap);
+                } else {
+                    JUnitRunUtil.runTest(listener, collectTests(collectClasses(classObj)),
+                            classObj.getName());
+                }
             } else {
                 // TODO: Add junit4 support here
                 throw new IllegalArgumentException(
@@ -330,5 +365,13 @@ public class HostTest implements IDeviceTest, ITestFilterReceiver, IRemoteTest {
      */
     protected boolean shouldTestRun(AnnotatedElement annotatedElement) {
         return mFilterHelper.shouldTestRun(annotatedElement);
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void setCollectTestsOnly(boolean shouldCollectTest) {
+        mCollectTestsOnly = shouldCollectTest;
     }
 }
