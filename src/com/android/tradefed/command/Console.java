@@ -141,7 +141,6 @@ public class Console extends Thread {
                     }
                     parser.parse(optionArgs);
                 }
-
                 String exitMode = "invocations";
                 if (mHandoverPort == null) {
                     if (mExitOnEmpty) {
