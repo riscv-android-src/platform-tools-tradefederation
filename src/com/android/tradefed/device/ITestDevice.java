@@ -32,6 +32,7 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.Date;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
 
@@ -272,7 +273,7 @@ public interface ITestDevice {
      * @param name the property name
      * @return the property value or <code>null</code> if it does not exist
      * @throws DeviceNotAvailableException
-     * @deprecated use {@link getProperty(String)}
+     * @deprecated use {@link #getProperty(String)}
      */
     @Deprecated
     public String getPropertySync(String name) throws DeviceNotAvailableException;
@@ -566,7 +567,7 @@ public interface ITestDevice {
      * /proc/mounts as a mountpoint.
      *
      * @return A {@link List} of {@link MountPointInfo} containing the information in "/proc/mounts"
-     * @see {@link getMountPointInfo()}
+     * @see {@link #getMountPointInfo()}
      */
     public MountPointInfo getMountPointInfo(String mountpoint) throws DeviceNotAvailableException;
 
@@ -1212,13 +1213,25 @@ public interface ITestDevice {
     public boolean isMultiUserSupported() throws DeviceNotAvailableException;
 
     /**
-     * Create a user with a given name.
+     * Create a user with a given name and default flags 0.
      *
      * @param name of the user to create on the device
      * @return the integer for the user id created
      * @throws DeviceNotAvailableException
      */
     public int createUser(String name) throws DeviceNotAvailableException, IllegalStateException;
+
+    /**
+     * Create a user with a given name and the provided flags
+     *
+     * @param name of the user to create on the device
+     * @param guest enable the user flag --guest during creation
+     * @param ephemeral enable the user flag --ephemeral during creation
+     * @return id of the created user
+     * @throws DeviceNotAvailableException
+     */
+    public int createUser(String name, boolean guest, boolean ephemeral)
+            throws DeviceNotAvailableException, IllegalStateException;
 
     /**
      * Remove a given user from the device.
@@ -1249,17 +1262,33 @@ public interface ITestDevice {
      * Starts a given user in the background if it is currently stopped. If the user is already
      * running in the background, this method is a NOOP.
      * @param userId of the user to start in the background
-     * @return true if the user was succesfully started in the background.
+     * @return true if the user was successfully started in the background.
      * @throws DeviceNotAvailableException
      */
     public boolean startUser(int userId) throws DeviceNotAvailableException;
 
     /**
      * Stops a given user. If the user is already stopped, this method is a NOOP.
+     * Cannot stop current and system user.
+     *
      * @param userId of the user to stop.
+     * @return true if the user was successfully stopped.
      * @throws DeviceNotAvailableException
      */
-    public void stopUser(int userId) throws DeviceNotAvailableException;
+    public boolean stopUser(int userId) throws DeviceNotAvailableException;
+
+    /**
+     * Stop a given user. Possible to provide extra flags to wait for the operation to have effect,
+     * and force terminate the user. Cannot stop current and system user.
+     *
+     * @param userId of the user to stop.
+     * @param waitFlag will make the command wait until user is stopped.
+     * @param forceFlag will force stop the user.
+     * @return true if the user was successfully stopped.
+     * @throws DeviceNotAvailableException
+     */
+    public boolean stopUser(int userId, boolean waitFlag, boolean forceFlag)
+            throws DeviceNotAvailableException;
 
     /**
      * Get the stream of emulator stdout and stderr
@@ -1280,7 +1309,7 @@ public interface ITestDevice {
 
     /**
      * Check whether platform on device supports runtime permission granting
-     * @return
+     * @return True if runtime permission are supported, false otherwise.
      * @throws DeviceNotAvailableException
      */
     public boolean isRuntimePermissionSupported() throws DeviceNotAvailableException;
@@ -1297,8 +1326,102 @@ public interface ITestDevice {
      * <p>
      * Typically Android devices may be signed with test-keys (like in AOSP) or release-keys
      * (controlled by individual device manufacturers)
-     * @return
+     * @return The signing key if found, null otherwise.
      * @throws DeviceNotAvailableException
      */
     public String getBuildSigningKeys() throws DeviceNotAvailableException;
+
+    /**
+     * Return the id of the current running user.
+     *
+     * @throws DeviceNotAvailableException
+     */
+    public int getCurrentUser() throws DeviceNotAvailableException;
+
+    /**
+     * Find and return the flags of a given user.
+     * Flags are defined in {@link android.content.pm.UserInfo} in Android Open Source Project.
+     *
+     * @return the flags associated with the userId provided if found, -10000 in any other cases.
+     * @throws DeviceNotAvailableException
+     */
+    public int getUserFlags(int userId) throws DeviceNotAvailableException;
+
+    /**
+     * Return the serial number associated to the userId if found, -10000 in any other cases.
+     *
+     * @throws DeviceNotAvailableException
+     */
+    public int getUserSerialNumber(int userId) throws DeviceNotAvailableException;
+
+    /**
+     * Switch to another userId with a default timeout. {@link #switchUser(int, long)}.
+     *
+     * @return True if the new userId matches the userId provider. False otherwise.
+     * @throws DeviceNotAvailableException
+     */
+    public boolean switchUser(int userId) throws DeviceNotAvailableException;
+
+    /**
+     * Switch to another userId with the provided timeout as deadline.
+     * Attempt to disable keyguard after user change is successful.
+     *
+     * @param timeout to wait before returning false for switch-user failed.
+     * @return True if the new userId matches the userId provider. False otherwise.
+     * @throws DeviceNotAvailableException
+     */
+    public boolean switchUser(int userId, long timeout) throws DeviceNotAvailableException;
+
+    /**
+     * Check if a given user is running.
+     *
+     * @return True if the user is running, false in every other cases.
+     * @throws DeviceNotAvailableException
+     */
+    public boolean isUserRunning(int userId) throws DeviceNotAvailableException;
+
+    /**
+     * Check if a feature is available on a device.
+     *
+     * @param feature which format should be "feature:<name>".
+     * @return True if feature is found, false otherwise.
+     * @throws DeviceNotAvailableException
+     */
+    public boolean hasFeature(String feature) throws DeviceNotAvailableException;
+
+    /**
+     * Return the value of the requested setting.
+     * namespace must be one of: {"system", "secure", "global"}
+     *
+     * @return the value associated with the namespace:key of a user. Null if not found.
+     * @throws DeviceNotAvailableException
+     */
+    public String getSetting(int userId, String namespace, String key)
+            throws DeviceNotAvailableException;
+
+    /**
+     * Add a setting value to the namespace of a given user. Some settings will only be available
+     * after a reboot.
+     * namespace must be one of: {"system", "secure", "global"}
+     *
+     * @throws DeviceNotAvailableException
+     */
+    public void setSetting(int userId, String namespace, String key, String value)
+            throws DeviceNotAvailableException;
+
+    /**
+     * Find and return the android-id associated to a userId, null if not found.
+     *
+     * @throws DeviceNotAvailableException
+     */
+    public String getAndroidId(int userId) throws DeviceNotAvailableException;
+
+    /**
+     * Create a Map of android ids found matching user ids. There is no insurance that each user
+     * id will found an android id associated in this function so some user ids may match null.
+     *
+     * @return Map of android ids found matching user ids.
+     * @throws DeviceNotAvailableException
+     */
+    public Map<Integer, String> getAndroidIds() throws DeviceNotAvailableException;
 }

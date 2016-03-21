@@ -703,4 +703,16 @@ public class TestDeviceFuncTest extends DeviceTestCase {
         getDevice().runInstrumentationTests(uirunner, uilistener);
         return TestAppConstants.UI_TOTAL_TESTS == uilistener.getNumTestsInState(TestStatus.PASSED);
     }
+
+    /**
+     * Test for {@link AndroidNativeDevice#setSetting(int, String, String, String)}
+     */
+    public void testPutSettings() throws Exception {
+        String initValue = mTestDevice.getSetting(0, "system", "screen_brightness");
+        assertTrue(!initValue.equals("50"));
+        mTestDevice.setSetting(0, "system", "screen_brightness", "50");
+        String secondValue = mTestDevice.getSetting(0, "system", "screen_brightness");
+        assertTrue(secondValue.trim().equals("50"));
+        mTestDevice.setSetting(0, "system", "screen_brightness", initValue);
+    }
 }

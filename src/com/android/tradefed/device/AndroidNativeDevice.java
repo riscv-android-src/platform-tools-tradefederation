@@ -74,6 +74,9 @@ public class AndroidNativeDevice implements IManagedTestDevice {
     /** the default number of command retry attempts to perform */
     protected static final int MAX_RETRY_ATTEMPTS = 2;
 
+    /** Value returned for any invalid/not found user id: UserHandle defined the -10000 value **/
+    protected static final int INVALID_USER_ID = -10000;
+
     /** regex to match input dispatch readiness line **/
     static final Pattern INPUT_DISPATCH_STATE_REGEX =
             Pattern.compile("DispatchEnabled:\\s?([01])");
@@ -2905,6 +2908,15 @@ public class AndroidNativeDevice implements IManagedTestDevice {
      * {@inheritDoc}
      */
     @Override
+    public int createUser(String name, boolean guest, boolean ephemeral)
+            throws DeviceNotAvailableException, IllegalStateException {
+        throw new UnsupportedOperationException("No support for user's feature.");
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
     public boolean removeUser(int userId) throws DeviceNotAvailableException {
         throw new UnsupportedOperationException("No support for user's feature.");
     }
@@ -2921,7 +2933,16 @@ public class AndroidNativeDevice implements IManagedTestDevice {
      * {@inheritDoc}
      */
     @Override
-    public void stopUser(int userId) throws DeviceNotAvailableException {
+    public boolean stopUser(int userId) throws DeviceNotAvailableException {
+        throw new UnsupportedOperationException("No support for user's feature.");
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public boolean stopUser(int userId, boolean waitFlag, boolean forceFlag)
+            throws DeviceNotAvailableException {
         throw new UnsupportedOperationException("No support for user's feature.");
     }
 
@@ -2953,6 +2974,80 @@ public class AndroidNativeDevice implements IManagedTestDevice {
      * {@inheritDoc}
      */
     @Override
+    public int getCurrentUser() throws DeviceNotAvailableException {
+        throw new UnsupportedOperationException("No support for user's feature.");
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public int getUserFlags(int userId) throws DeviceNotAvailableException {
+        throw new UnsupportedOperationException("No support for user's feature.");
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public int getUserSerialNumber(int userId) throws DeviceNotAvailableException {
+        throw new UnsupportedOperationException("No support for user's feature.");
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public boolean switchUser(int userId) throws DeviceNotAvailableException {
+        throw new UnsupportedOperationException("No support for user's feature.");
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public boolean switchUser(int userId, long timeout) throws DeviceNotAvailableException {
+        throw new UnsupportedOperationException("No support for user's feature.");
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public boolean isUserRunning(int userId) throws DeviceNotAvailableException {
+        throw new UnsupportedOperationException("No support for user's feature.");
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public boolean hasFeature(String feature) throws DeviceNotAvailableException {
+        throw new UnsupportedOperationException("No support pm's features.");
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public String getSetting(int userId, String namespace, String key)
+            throws DeviceNotAvailableException {
+        throw new UnsupportedOperationException("No support for setting's feature.");
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void setSetting(int userId, String namespace, String key, String value)
+            throws DeviceNotAvailableException {
+        throw new UnsupportedOperationException("No support for setting's feature.");
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
     public String getBuildSigningKeys() throws DeviceNotAvailableException {
         String buildTags = getProperty(BUILD_TAGS);
         if (buildTags != null) {
@@ -2965,6 +3060,22 @@ public class AndroidNativeDevice implements IManagedTestDevice {
             }
         }
         return null;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public String getAndroidId(int userId) throws DeviceNotAvailableException {
+        throw new UnsupportedOperationException("No support for user's feature.");
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public Map<Integer, String> getAndroidIds() throws DeviceNotAvailableException {
+        throw new UnsupportedOperationException("No support for user's feature.");
     }
 
     /**

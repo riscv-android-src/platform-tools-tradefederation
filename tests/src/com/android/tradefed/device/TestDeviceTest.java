@@ -15,6 +15,8 @@
  */
 package com.android.tradefed.device;
 
+import com.google.common.util.concurrent.SettableFuture;
+
 import com.android.ddmlib.AdbCommandRejectedException;
 import com.android.ddmlib.IDevice;
 import com.android.ddmlib.IShellOutputReceiver;
@@ -30,8 +32,8 @@ import com.android.tradefed.util.ArrayUtil;
 import com.android.tradefed.util.CommandResult;
 import com.android.tradefed.util.CommandStatus;
 import com.android.tradefed.util.IRunUtil;
+import com.android.tradefed.util.RunUtil;
 import com.android.tradefed.util.StreamUtil;
-import com.google.common.util.concurrent.SettableFuture;
 
 import junit.framework.TestCase;
 
@@ -44,7 +46,9 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
@@ -1663,6 +1667,39 @@ public class TestDeviceTest extends TestCase {
     }
 
     /**
+     * Test that successful user creation is handled by
+     * {@link TestDevice#createUser(String, boolean, boolean)}.
+     */
+    public void testCreateUserFlags() throws Exception {
+        mTestDevice = new TestableTestDevice() {
+            @Override
+            public String executeShellCommand(String command) throws DeviceNotAvailableException {
+                return "Success: created user id 12";
+            }
+        };
+        assertEquals(12, mTestDevice.createUser("TEST", true, true));
+    }
+
+    /**
+     * Test that {@link TestDevice#createUser(String, boolean, boolean)} fails when bad output
+     */
+    public void testCreateUser_wrongOutput() throws Exception {
+        mTestDevice = new TestableTestDevice() {
+            @Override
+            public String executeShellCommand(String command) throws DeviceNotAvailableException {
+                return "Success: created user id WRONG";
+            }
+        };
+        try {
+            mTestDevice.createUser("TEST", true, true);
+        } catch (IllegalStateException e) {
+            // expected
+            return;
+        }
+        fail("CreateUser should have thrown an exception");
+    }
+
+    /**
      * Test that a failure to create a user is handled by {@link TestDevice#createUser(String)}.
      */
     public void testCreateUser_failed() throws Exception {
@@ -1826,5 +1863,682 @@ public class TestDeviceTest extends TestCase {
         injectSystemProperty(TestDevice.BUILD_TAGS, "huh,foo,bar,yadda");
         replayMocks();
         assertNull(mTestDevice.getBuildSigningKeys());
+    }
+
+    /**
+     * Test that {@link TestDevice#getCurrentUser()} returns the current user id.
+     * @throws Exception
+     */
+    public void testGetCurrentUser() throws Exception {
+        mTestDevice = new TestableTestDevice() {
+            @Override
+            public String executeShellCommand(String command) throws DeviceNotAvailableException {
+                return "3";
+            }
+            @Override
+            public int getApiLevel() throws DeviceNotAvailableException {
+                return 22;
+            }
+        };
+        int res = mTestDevice.getCurrentUser();
+        assertEquals(3, res);
+    }
+
+    /**
+     * Test that {@link TestDevice#getCurrentUser()} returns null when output is not expected
+     * @throws Exception
+     */
+    public void testGetCurrentUser_null() throws Exception {
+        mTestDevice = new TestableTestDevice() {
+            @Override
+            public String executeShellCommand(String command) throws DeviceNotAvailableException {
+                return "not found.";
+            }
+            @Override
+            public int getApiLevel() throws DeviceNotAvailableException {
+                return 22;
+            }
+        };
+        int res = mTestDevice.getCurrentUser();
+        assertEquals(AndroidNativeDevice.INVALID_USER_ID, res);
+    }
+
+    /**
+     * Test that {@link TestDevice#getCurrentUser()} returns null when api level is too low
+     * @throws Exception
+     */
+    public void testGetCurrentUser_lowApi() throws Exception {
+        mTestDevice = new TestableTestDevice() {
+            @Override
+            public int getApiLevel() throws DeviceNotAvailableException {
+                return 15;
+            }
+        };
+        try {
+            mTestDevice.getCurrentUser();
+        } catch (IllegalArgumentException e) {
+            // expected
+            return;
+        }
+        fail("getCurrentUser should have thrown an exception.");
+    }
+
+    /**
+     * Unit test for {@link TestDevice#getUserFlags(int)}.
+     */
+    public void testGetUserFlag() throws Exception {
+        mTestDevice = new TestableTestDevice() {
+            @Override
+            public String executeShellCommand(String command) throws DeviceNotAvailableException {
+                return "Users:\n\tUserInfo{0:Owner:13} running";
+            }
+            @Override
+            public int getApiLevel() throws DeviceNotAvailableException {
+                return 22;
+            }
+        };
+        int flags = mTestDevice.getUserFlags(0);
+        // Expected 19 because using radix 16 (so 13 becomes (1 * 16^1 + 3 * 16^0) = 19)
+        assertEquals(19, flags);
+    }
+
+    /**
+     * Unit test for {@link TestDevice#getUserFlags(int)} when command return empty list
+     * of users.
+     */
+    public void testGetUserFlag_emptyReturn() throws Exception {
+        mTestDevice = new TestableTestDevice() {
+            @Override
+            public String executeShellCommand(String command) throws DeviceNotAvailableException {
+                return "";
+            }
+            @Override
+            public int getApiLevel() throws DeviceNotAvailableException {
+                return 22;
+            }
+        };
+        int flags = mTestDevice.getUserFlags(2);
+        assertEquals(AndroidNativeDevice.INVALID_USER_ID, flags);
+    }
+
+    /**
+     * Unit test for {@link TestDevice#getUserFlags(int)} when there is multiple users in
+     * the list.
+     */
+    public void testGetUserFlag_multiUser() throws Exception {
+        mTestDevice = new TestableTestDevice() {
+            @Override
+            public String executeShellCommand(String command) throws DeviceNotAvailableException {
+                return "Users:\n\tUserInfo{0:Owner:13}\n\tUserInfo{WRONG:Owner:14}\n\t"
+                        + "UserInfo{}\n\tUserInfo{3:Owner:15} Running";
+            }
+            @Override
+            public int getApiLevel() throws DeviceNotAvailableException {
+                return 22;
+            }
+        };
+        int flags = mTestDevice.getUserFlags(3);
+        assertEquals(21, flags);
+    }
+
+    /**
+     * Unit test for {@link TestDevice#getUserSerialNumber(int)}
+     */
+    public void testGetUserSerialNumber() throws Exception {
+        mTestDevice = new TestableTestDevice() {
+            @Override
+            public String executeShellCommand(String command) throws DeviceNotAvailableException {
+                return "Users:\nUserInfo{0:Owner:13} serialNo=666";
+            }
+            @Override
+            public int getApiLevel() throws DeviceNotAvailableException {
+                return 22;
+            }
+        };
+        int serial = mTestDevice.getUserSerialNumber(0);
+        assertEquals(666, serial);
+    }
+
+    /**
+     * Unit test for {@link TestDevice#getUserSerialNumber(int)} when the dumpsys return some
+     * bad data.
+     */
+    public void testGetUserSerialNumber_badData() throws Exception {
+        mTestDevice = new TestableTestDevice() {
+            @Override
+            public String executeShellCommand(String command) throws DeviceNotAvailableException {
+                return "Users:\nUserInfo{0:Owner:13} serialNo=WRONG";
+            }
+            @Override
+            public int getApiLevel() throws DeviceNotAvailableException {
+                return 22;
+            }
+        };
+        int serial = mTestDevice.getUserSerialNumber(0);
+        assertEquals(AndroidNativeDevice.INVALID_USER_ID, serial);
+    }
+
+    /**
+     * Unit test for {@link TestDevice#getUserSerialNumber(int)} when the dumpsys return an empty
+     * serial
+     */
+    public void testGetUserSerialNumber_emptySerial() throws Exception {
+        mTestDevice = new TestableTestDevice() {
+            @Override
+            public String executeShellCommand(String command) throws DeviceNotAvailableException {
+                return "Users:\nUserInfo{0:Owner:13} serialNo=";
+            }
+            @Override
+            public int getApiLevel() throws DeviceNotAvailableException {
+                return 22;
+            }
+        };
+        int serial = mTestDevice.getUserSerialNumber(0);
+        assertEquals(AndroidNativeDevice.INVALID_USER_ID, serial);
+    }
+
+    /**
+     * Unit test for {@link TestDevice#getUserSerialNumber(int)} when there is multiple users in
+     * the dumpsys
+     */
+    public void testGetUserSerialNumber_multiUsers() throws Exception {
+        mTestDevice = new TestableTestDevice() {
+            @Override
+            public String executeShellCommand(String command) throws DeviceNotAvailableException {
+                return "Users:\nUserInfo{0:Owner:13} serialNo=1\nUserInfo{1:Owner:13} serialNo=2"
+                        + "\nUserInfo{2:Owner:13} serialNo=3";
+            }
+            @Override
+            public int getApiLevel() throws DeviceNotAvailableException {
+                return 22;
+            }
+        };
+        int serial = mTestDevice.getUserSerialNumber(2);
+        assertEquals(3, serial);
+    }
+
+    /**
+     * Unit test for {@link TestDevice#switchUser(int)} when user requested is already is current
+     * user.
+     */
+    public void testSwitchUser_alreadySameUser() throws Exception {
+        mTestDevice = new TestableTestDevice() {
+            @Override
+            public int getCurrentUser() throws DeviceNotAvailableException {
+                return 0;
+            }
+            @Override
+            public void prePostBootSetup() {
+                // skip for this test
+            }
+            @Override
+            public int getApiLevel() throws DeviceNotAvailableException {
+                return 22;
+            }
+        };
+        assertTrue(mTestDevice.switchUser(0));
+    }
+
+    /**
+     * Unit test for {@link TestDevice#switchUser(int)} when user switch instantly.
+     */
+    public void testSwitchUser() throws Exception {
+        mTestDevice = new TestableTestDevice() {
+            int ret = 0;
+            @Override
+            public int getCurrentUser() throws DeviceNotAvailableException {
+                return ret;
+            }
+            @Override
+            public String executeShellCommand(String command) throws DeviceNotAvailableException {
+                ret = 10;
+                return "";
+            }
+            @Override
+            public void prePostBootSetup() {
+                // skip for this test
+            }
+            @Override
+            public int getApiLevel() throws DeviceNotAvailableException {
+                return 22;
+            }
+        };
+        assertTrue(mTestDevice.switchUser(10));
+    }
+
+    /**
+     * Unit test for {@link TestDevice#switchUser(int)} when user switch with a short delay.
+     */
+    public void testSwitchUser_delay() throws Exception {
+        mTestDevice = new TestableTestDevice() {
+            int ret = 0;
+            @Override
+            public int getCurrentUser() throws DeviceNotAvailableException {
+                return ret;
+            }
+            @Override
+            public String executeShellCommand(String command) throws DeviceNotAvailableException {
+                test.start();
+                return "";
+            }
+            @Override
+            public int getApiLevel() throws DeviceNotAvailableException {
+                return 22;
+            }
+            @Override
+            public void prePostBootSetup() {
+                // skip for this test
+            }
+            @Override
+            protected long getCheckNewUserSleep() {
+                return 100;
+            }
+            Thread test = new Thread(new Runnable() {
+                @Override
+                public void run() {
+                    RunUtil.getDefault().sleep(100);
+                    ret = 10;
+                }
+            });
+        };
+        assertTrue(mTestDevice.switchUser(10));
+    }
+
+    /**
+     * Unit test for {@link TestDevice#switchUser(int)} when user never change.
+     */
+    public void testSwitchUser_noChange() throws Exception {
+        mTestDevice = new TestableTestDevice() {
+            int ret = 0;
+            @Override
+            public int getCurrentUser() throws DeviceNotAvailableException {
+                return ret;
+            }
+            @Override
+            public String executeShellCommand(String command) throws DeviceNotAvailableException {
+                ret = 0;
+                return "";
+            }
+            @Override
+            public int getApiLevel() throws DeviceNotAvailableException {
+                return 22;
+            }
+            @Override
+            protected long getCheckNewUserSleep() {
+                return 50;
+            }
+            @Override
+            public void prePostBootSetup() {
+                // skip for this test
+            }
+        };
+        assertFalse(mTestDevice.switchUser(10, 100));
+    }
+
+    /**
+     * Unit test for {@link TestDevice#stopUser(int)}, cannot stop current user.
+     */
+    public void testStopUser_notCurrent() throws Exception {
+        mTestDevice = new TestableTestDevice() {
+            @Override
+            public int getCurrentUser() throws DeviceNotAvailableException {
+                return 0;
+            }
+            @Override
+            public int getApiLevel() throws DeviceNotAvailableException {
+                return 22;
+            }
+        };
+        assertFalse(mTestDevice.stopUser(0));
+    }
+
+    /**
+     * Unit test for {@link TestDevice#stopUser(int)}, cannot stop system
+     */
+    public void testStopUser_notSystem() throws Exception {
+        mTestDevice = new TestableTestDevice() {
+            @Override
+            public String executeShellCommand(String command) throws DeviceNotAvailableException {
+                return "Error: Can't stop system user 0";
+            }
+            @Override
+            public int getCurrentUser() throws DeviceNotAvailableException {
+                return 10;
+            }
+            @Override
+            public int getApiLevel() throws DeviceNotAvailableException {
+                return 22;
+            }
+        };
+        assertFalse(mTestDevice.stopUser(0));
+    }
+
+    /**
+     * Unit test for {@link TestDevice#stopUser(int)}, for a success stop
+     */
+    public void testStopUser_success() throws Exception {
+        mTestDevice = new TestableTestDevice() {
+            @Override
+            public String executeShellCommand(String command) throws DeviceNotAvailableException {
+                return "Users:\n\tUserInfo{0:Test:13}";
+            }
+            @Override
+            public int getCurrentUser() throws DeviceNotAvailableException {
+                return 10;
+            }
+            @Override
+            public int getApiLevel() throws DeviceNotAvailableException {
+                return 22;
+            }
+        };
+        assertTrue(mTestDevice.stopUser(0, true, true));
+    }
+
+    /**
+     * Unit test for {@link TestDevice#stopUser(int)}, for a failed stop
+     */
+    public void testStopUser_failed() throws Exception {
+        mTestDevice = new TestableTestDevice() {
+            @Override
+            public String executeShellCommand(String command) throws DeviceNotAvailableException {
+                return "Users:\n\tUserInfo{0:Test:13} running";
+            }
+            @Override
+            public int getCurrentUser() throws DeviceNotAvailableException {
+                return 10;
+            }
+            @Override
+            public int getApiLevel() throws DeviceNotAvailableException {
+                return 22;
+            }
+        };
+        assertFalse(mTestDevice.stopUser(0));
+    }
+
+    /**
+     * Unit test for {@link TestDevice#isUserRunning(int)}.
+     */
+    public void testIsUserIdRunning_true() throws Exception {
+        mTestDevice = new TestableTestDevice() {
+            @Override
+            public String executeShellCommand(String command) throws DeviceNotAvailableException {
+                return "Users:\n\tUserInfo{0:Test:13} running";
+            }
+            @Override
+            public int getApiLevel() throws DeviceNotAvailableException {
+                return 22;
+            }
+        };
+        assertTrue(mTestDevice.isUserRunning(0));
+    }
+
+    /**
+     * Unit test for {@link TestDevice#isUserRunning(int)}.
+     */
+    public void testIsUserIdRunning_false() throws Exception {
+        mTestDevice = new TestableTestDevice() {
+            @Override
+            public String executeShellCommand(String command) throws DeviceNotAvailableException {
+                return "Users:\n\tUserInfo{0:Test:13} running\n\tUserInfo{10:New user:10}";
+            }
+            @Override
+            public int getApiLevel() throws DeviceNotAvailableException {
+                return 22;
+            }
+        };
+        assertFalse(mTestDevice.isUserRunning(10));
+    }
+
+    /**
+     * Unit test for {@link TestDevice#isUserRunning(int)}.
+     */
+    public void testIsUserIdRunning_badFormat() throws Exception {
+        mTestDevice = new TestableTestDevice() {
+            @Override
+            public String executeShellCommand(String command) throws DeviceNotAvailableException {
+                return "Users:\n\tUserInfo{WRONG:Test:13} running";
+            }
+            @Override
+            public int getApiLevel() throws DeviceNotAvailableException {
+                return 22;
+            }
+        };
+        assertFalse(mTestDevice.isUserRunning(0));
+    }
+
+    /**
+     * Unit test for {@link TestDevice#hasFeature(String)} on success.
+     */
+    public void testHasFeature_true() throws Exception {
+        mTestDevice = new TestableTestDevice() {
+            @Override
+            public String executeShellCommand(String command) throws DeviceNotAvailableException {
+                return "feature:com.google.android.feature.EXCHANGE_6_2\n" +
+                        "feature:com.google.android.feature.GOOGLE_BUILD\n" +
+                        "feature:com.google.android.feature.GOOGLE_EXPERIENCE";
+            }
+        };
+        assertTrue(mTestDevice.hasFeature("com.google.android.feature.EXCHANGE_6_2"));
+    }
+
+    /**
+     * Unit test for {@link TestDevice#hasFeature(String)} on failure.
+     */
+    public void testHasFeature_fail() throws Exception {
+        mTestDevice = new TestableTestDevice() {
+            @Override
+            public String executeShellCommand(String command) throws DeviceNotAvailableException {
+                return "feature:com.google.android.feature.EXCHANGE_6_2\n" +
+                        "feature:com.google.android.feature.GOOGLE_BUILD\n" +
+                        "feature:com.google.android.feature.GOOGLE_EXPERIENCE";
+            }
+        };
+        assertFalse(mTestDevice.hasFeature("feature:test"));
+    }
+
+    /**
+     * Unit test for {@link TestDevice#getSetting(int, String, String)}.
+     */
+    public void testGetSetting() throws Exception {
+        mTestDevice = new TestableTestDevice() {
+            @Override
+            public String executeShellCommand(String command) throws DeviceNotAvailableException {
+                return "78";
+            }
+        };
+        assertEquals("78", mTestDevice.getSetting(0, "system", "screen_brightness"));
+    }
+
+    /**
+     * Unit test for {@link TestDevice#getSetting(int, String, String)}.
+     */
+    public void testGetSetting_nulloutput() throws Exception {
+        mTestDevice = new TestableTestDevice() {
+            @Override
+            public String executeShellCommand(String command) throws DeviceNotAvailableException {
+                return "null";
+            }
+        };
+        assertNull(mTestDevice.getSetting(0, "system", "screen_brightness"));
+    }
+
+    /**
+     * Unit test for {@link TestDevice#getSetting(int, String, String)} with a namespace
+     * that is not in {global, system, secure}.
+     */
+    public void testGetSetting_unexpectedNamespace() throws Exception {
+        mTestDevice = new TestableTestDevice() {
+            @Override
+            public int getApiLevel() throws DeviceNotAvailableException {
+                return 22;
+            }
+        };
+        assertNull(mTestDevice.getSetting(0, "TEST", "screen_brightness"));
+    }
+
+    /**
+     * Unit test for {@link TestDevice#setSetting(int, String, String, String)}
+     * with a namespace that is not in {global, system, secure}.
+     */
+    public void testSetSetting_unexpectedNamespace() throws Exception {
+        mTestDevice = new TestableTestDevice() {
+            @Override
+            public int getApiLevel() throws DeviceNotAvailableException {
+                return 22;
+            }
+        };
+        try {
+            mTestDevice.setSetting(0, "TEST", "screen_brightness", "75");
+        } catch (IllegalArgumentException e) {
+            // expected
+            return;
+        }
+        fail("putSettings should have thrown an exception.");
+    }
+
+    /**
+     * Unit test for {@link TestDevice#setSetting(int, String, String, String)}
+     * with a normal case.
+     */
+    public void testSetSettings() throws Exception {
+        mTestDevice = new TestableTestDevice() {
+            @Override
+            public int getApiLevel() throws DeviceNotAvailableException {
+                return 22;
+            }
+        };
+        try {
+            mTestDevice.setSetting(0, "system", "screen_brightness", "75");
+        } catch (IllegalArgumentException e) {
+            fail("putSettings should not have thrown an exception.");
+        }
+    }
+
+    /**
+     * Unit test for {@link TestDevice#setSetting(int, String, String, String)}
+     * when API level is too low
+     */
+    public void testSetSettings_lowApi() throws Exception {
+        mTestDevice = new TestableTestDevice() {
+            @Override
+            public int getApiLevel() throws DeviceNotAvailableException {
+                return 21;
+            }
+        };
+        try {
+            mTestDevice.setSetting(0, "system", "screen_brightness", "75");
+        } catch (IllegalArgumentException e) {
+            // expected
+            return;
+        }
+        fail("putSettings should have thrown an exception.");
+    }
+
+    /**
+     * Unit test for {@link TestDevice#getAndroidId(int)}.
+     */
+    public void testGetAndroidId() throws Exception {
+        mTestDevice = new TestableTestDevice() {
+            @Override
+            public String executeShellCommand(String command) throws DeviceNotAvailableException {
+                return "4433829313704884235";
+            }
+            @Override
+            public boolean isAdbRoot() throws DeviceNotAvailableException {
+                return true;
+            }
+        };
+        assertEquals("4433829313704884235", mTestDevice.getAndroidId(0));
+    }
+
+    /**
+     * Unit test for {@link TestDevice#getAndroidId(int)} when db containing the id is not found
+     */
+    public void testGetAndroidId_notFound() throws Exception {
+        mTestDevice = new TestableTestDevice() {
+            @Override
+            public String executeShellCommand(String command) throws DeviceNotAvailableException {
+                return "Error: unable to open database"
+                        + "\"/data/0/com.google.android.gsf/databases/gservices.db\": "
+                        + "unable to open database file";
+            }
+            @Override
+            public boolean isAdbRoot() throws DeviceNotAvailableException {
+                return true;
+            }
+        };
+        assertNull(mTestDevice.getAndroidId(0));
+    }
+
+    /**
+     * Unit test for {@link TestDevice#getAndroidId(int)} when adb root not enabled.
+     */
+    public void testGetAndroidId_notRoot() throws Exception {
+        mTestDevice = new TestableTestDevice() {
+            @Override
+            public boolean isAdbRoot() throws DeviceNotAvailableException {
+                return false;
+            }
+        };
+        assertNull(mTestDevice.getAndroidId(0));
+    }
+
+    /**
+     * Unit test for {@link TestDevice#getAndroidIds()}
+     */
+    public void testGetAndroidIds() throws Exception {
+        mTestDevice = new TestableTestDevice() {
+            @Override
+            public ArrayList<Integer> listUsers() throws DeviceNotAvailableException {
+                ArrayList<Integer> test = new ArrayList<Integer>();
+                test.add(0);
+                test.add(1);
+                return test;
+            }
+            @Override
+            public String getAndroidId(int userId) throws DeviceNotAvailableException {
+                return "44444";
+            }
+        };
+        Map<Integer, String> expected = new HashMap<Integer, String>();
+        expected.put(0, "44444");
+        expected.put(1, "44444");
+        assertEquals(expected, mTestDevice.getAndroidIds());
+    }
+
+    /**
+     * Unit test for {@link TestDevice#getAndroidIds()} when no user are found.
+     */
+    public void testGetAndroidIds_noUser() throws Exception {
+        mTestDevice = new TestableTestDevice() {
+            @Override
+            public ArrayList<Integer> listUsers() throws DeviceNotAvailableException {
+                return null;
+            }
+        };
+        assertNull(mTestDevice.getAndroidIds());
+    }
+
+    /**
+     * Unit test for {@link TestDevice#getAndroidIds()} when no match is found for user ids.
+     */
+    public void testGetAndroidIds_noMatch() throws Exception {
+        mTestDevice = new TestableTestDevice() {
+            @Override
+            public ArrayList<Integer> listUsers() throws DeviceNotAvailableException {
+                ArrayList<Integer> test = new ArrayList<Integer>();
+                test.add(0);
+                test.add(1);
+                return test;
+            }
+            @Override
+            public String getAndroidId(int userId) throws DeviceNotAvailableException {
+                return null;
+            }
+        };
+        Map<Integer, String> expected = new HashMap<Integer, String>();
+        expected.put(0, null);
+        expected.put(1, null);
+        assertEquals(expected, mTestDevice.getAndroidIds());
     }
 }
