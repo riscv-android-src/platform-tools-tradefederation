@@ -155,11 +155,13 @@ public class DeviceFileReporter {
      */
     public List<String> run() throws DeviceNotAvailableException {
         List<String> filenames = new LinkedList<String>();
+        CLog.d(String.format("Analyzing %d patterns.", mFilePatterns.size()));
         for (Map.Entry<String, LogDataType> pat : mFilePatterns.entrySet()) {
-            final String searchCmd = String.format("ls '%s'", pat.getKey());
+            final String searchCmd = String.format("ls %s", pat.getKey());
             final String fileList = mDevice.executeShellCommand(searchCmd);
 
             for (String filename : fileList.split("\r?\n")) {
+                filename = filename.trim();
                 if (filename.isEmpty() || filename.endsWith(": No such file or directory")) {
                     continue;
                 }
@@ -171,12 +173,13 @@ public class DeviceFileReporter {
                 File file = null;
                 InputStreamSource iss = null;
                 try {
-                    CLog.v("Trying to pull file %s from device %s", filename,
-                            mDevice.getSerialNumber());
+                    CLog.d("Trying to pull file '%s' from device %s", filename,
+                        mDevice.getSerialNumber());
                     file = mDevice.pullFile(filename);
-                    CLog.v("Local file %s has size %d", file, file.length());
                     iss = createIssForFile(file);
                     final LogDataType type = getDataType(filename, pat.getValue());
+                    CLog.d("Local file %s has size %d and type %s", file, file.length(),
+                        type.getFileExt());
                     mListener.testLog(filename, type, iss);
                     filenames.add(filename);
                     mReportedFiles.add(filename);

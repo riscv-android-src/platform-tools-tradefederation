@@ -25,6 +25,7 @@ import org.easymock.EasyMock;
 import java.io.File;
 import java.io.IOException;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -78,8 +79,8 @@ public class DeviceFileReporterTest extends TestCase {
         final String tombstone = "What do you want on your tombstone?";
         dfr.addPatterns("/data/tombstones/*");
 
-        EasyMock.expect(mDevice.executeShellCommand((String)EasyMock.anyObject()))
-                .andReturn(result);
+        EasyMock.expect(mDevice.executeShellCommand(EasyMock.eq("ls /data/tombstones/*")))
+          .andReturn(result);
         // This gets passed verbatim to createIssForFile above
         EasyMock.expect(mDevice.pullFile(EasyMock.eq(filename)))
                 .andReturn(new FakeFile(filename, tombstone.length()));
@@ -91,6 +92,31 @@ public class DeviceFileReporterTest extends TestCase {
 
         replayMocks();
         dfr.run();
+        verifyMocks();
+    }
+
+    // Files' paths should be trimmed to remove white spaces at the end of the lines.
+    public void testTrim() throws Exception {
+        // Result with trailing white spaces.
+        final String result = "/data/tombstones/tombstone_00  \r\n";
+
+        final String filename = "/data/tombstones/tombstone_00";
+        final String tombstone = "What do you want on your tombstone?";
+        dfr.addPatterns("/data/tombstones/*");
+
+        EasyMock.expect(mDevice.executeShellCommand(EasyMock.eq("ls /data/tombstones/*")))
+            .andReturn(result);
+        // This gets passed verbatim to createIssForFile above
+        EasyMock.expect(mDevice.pullFile(EasyMock.eq(filename)))
+            .andReturn(new FakeFile(filename, tombstone.length()));
+
+        mDfrIss = new ByteArrayInputStreamSource(tombstone.getBytes());
+        mListener.testLog(EasyMock.eq(filename), EasyMock.eq(LogDataType.UNKNOWN),
+            EasyMock.eq(mDfrIss));
+
+        replayMocks();
+        List<String> filenames = dfr.run();
+        assertEquals(filename, filenames.get(0));
         verifyMocks();
     }
 
