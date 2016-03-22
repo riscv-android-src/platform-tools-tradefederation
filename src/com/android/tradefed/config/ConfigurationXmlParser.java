@@ -23,7 +23,9 @@ import org.xml.sax.helpers.DefaultHandler;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.util.ArrayList;
 import java.util.Collections;
+import java.util.List;
 import java.util.Map;
 
 import javax.xml.parsers.ParserConfigurationException;
@@ -46,6 +48,7 @@ class ConfigurationXmlParser {
         private static final String INCLUDE_TAG = "include";
         private static final String TEMPLATE_INCLUDE_TAG = "template-include";
         private static final String CONFIG_TAG = "configuration";
+        private static final String DEVICE_TAG = "device";
 
         /**
          * A simple class to encapsulate a failure to resolve a &lt;template-include&gt;.  This
@@ -78,6 +81,11 @@ class ConfigurationXmlParser {
 
         // State-holding members
         private String mCurrentConfigObject;
+        private String mCurrentDeviceObject;
+        private Boolean isMultiDeviceConfigMode = false;
+        private List<String> mListDevice = new ArrayList<String>();
+        private List<String> mOutsideTag = new ArrayList<String>();
+
         private Boolean isLocalConfig = null;
 
         ConfigHandler(ConfigurationDef def, String name, IConfigDefLoader loader,
@@ -99,6 +107,31 @@ class ConfigurationXmlParser {
             if (OBJECT_TAG.equals(localName)) {
                 final String objectTypeName = attributes.getValue("type");
                 addObject(objectTypeName, attributes);
+            } else if (DEVICE_TAG.equals(localName)) {
+                if (mCurrentDeviceObject != null) {
+                    throw new SAXException(new ConfigurationException(
+                            "<device> tag cannot be included inside another device"));
+                }
+                // tag is a device tag (new format) for multi device definition.
+                String deviceName = attributes.getValue("name");
+                if (deviceName == null) {
+                    throw new SAXException(
+                            new ConfigurationException("device tag requires a name value"));
+                }
+                if (deviceName.equals(ConfigurationDef.DEFAULT_DEVICE_NAME)) {
+                    throw new SAXException(new ConfigurationException(String.format("device name "
+                            + "cannot be reserved name: '%s'",
+                            ConfigurationDef.DEFAULT_DEVICE_NAME)));
+                }
+                if (deviceName.contains(String.valueOf(OptionSetter.NAMESPACE_SEPARATOR))) {
+                    throw new SAXException(new ConfigurationException(String.format("device name "
+                            + "cannot contain reserved character: '%s'",
+                            OptionSetter.NAMESPACE_SEPARATOR)));
+                }
+                isMultiDeviceConfigMode = true;
+                mConfigDef.setMultiDeviceMode(true);
+                mCurrentDeviceObject = deviceName;
+                addObject(localName, attributes);
             } else if (Configuration.isBuiltInObjType(localName)) {
                 // tag is a built in local config object
                 if (isLocalConfig == null) {
@@ -107,6 +140,22 @@ class ConfigurationXmlParser {
                     throwException(String.format(
                             "Attempted to specify local object '%s' for global config!",
                             localName));
+                }
+
+                if (mCurrentDeviceObject == null &&
+                        Configuration.doesBuiltInObjSupportMultiDevice(localName)) {
+                    // Keep track of all the BuildInObj outside of device tag for final check
+                    // if it turns out we are in multi mode, we will throw an exception.
+                    mOutsideTag.add(localName);
+                }
+                //if we are inside a device object, some tags are not allowed.
+                if (mCurrentDeviceObject != null) {
+                    if (!Configuration.doesBuiltInObjSupportMultiDevice(localName)) {
+                        // Prevent some tags to be inside of a device in multi device mode.
+                        throw new SAXException(new ConfigurationException(
+                                String.format("Tag %s should not be included in a <device> tag.",
+                                        localName)));
+                    }
                 }
                 addObject(localName, attributes);
             } else if (GlobalConfiguration.isBuiltInObjType(localName)) {
@@ -140,6 +189,10 @@ class ConfigurationXmlParser {
                     optionName = String.format("%s%c%s", mCurrentConfigObject,
                             OptionSetter.NAMESPACE_SEPARATOR, optionName);
                 }
+                if (mCurrentDeviceObject != null) {
+                    // preprend the device name in extra if inside a device config object.
+                    optionName = String.format("{%s}%s", mCurrentDeviceObject, optionName);
+                }
                 mConfigDef.addOptionDef(optionName, optionKey, optionValue, mName);
             } else if (CONFIG_TAG.equals(localName)) {
                 String description = attributes.getValue("description");
@@ -150,6 +203,10 @@ class ConfigurationXmlParser {
                 String includeName = attributes.getValue("name");
                 if (includeName == null) {
                     throwException("Missing 'name' attribute for include");
+                }
+                if (mCurrentDeviceObject != null) {
+                    // TODO: Add this use case.
+                    throwException("<include> inside device object currently not supported.");
                 }
                 try {
                     mConfigDefLoader.loadIncludedConfiguration(mConfigDef, mName, includeName,
@@ -162,14 +219,16 @@ class ConfigurationXmlParser {
                         throwException(String.format(INNER_TEMPLATE_INCLUDE_ERROR,
                                 mConfigDef.getName(), includeName));
                     }
-
                     throw new SAXException(e);
                 }
-
             } else if (TEMPLATE_INCLUDE_TAG.equals(localName)) {
                 final String templateName = attributes.getValue("name");
                 if (templateName == null) {
                     throwException("Missing 'name' attribute for template-include");
+                }
+                if (mCurrentDeviceObject != null) {
+                    // TODO: Add this use case.
+                    throwException("<template> inside device object currently not supported.");
                 }
 
                 String includeName = mTemplateMap.get(templateName);
@@ -208,17 +267,35 @@ class ConfigurationXmlParser {
                     || GlobalConfiguration.isBuiltInObjType(localName)) {
                 mCurrentConfigObject = null;
             }
+            if (DEVICE_TAG.equals(localName)) {
+                mCurrentDeviceObject = null;
+            }
         }
 
         void addObject(String objectTypeName, Attributes attributes) throws SAXException {
-            String className = attributes.getValue("class");
-            if (className == null) {
-                throwException(String.format("Missing class attribute for object %s",
-                        objectTypeName));
+            if (Configuration.DEVICE_NAME.equals(objectTypeName)) {
+                // We still want to add a standalone device without any inner object.
+                String deviceName = attributes.getValue("name");
+                if (!mListDevice.contains(deviceName)) {
+                    mListDevice.add(deviceName);
+                    mConfigDef.addConfigObjectDef(objectTypeName,
+                            DeviceConfigurationHolder.class.getCanonicalName());
+                }
+            } else {
+                String className = attributes.getValue("class");
+                if (className == null) {
+                    throwException(String.format("Missing class attribute for object %s",
+                            objectTypeName));
+                }
+                if (mCurrentDeviceObject != null) {
+                    // Add the device name as a namespace to the type
+                    objectTypeName = mCurrentDeviceObject + OptionSetter.NAMESPACE_SEPARATOR
+                            + objectTypeName;
+                }
+                int classCount = mConfigDef.addConfigObjectDef(objectTypeName, className);
+                mCurrentConfigObject = String.format("%s%c%d", className,
+                        OptionSetter.NAMESPACE_SEPARATOR, classCount);
             }
-            int classCount = mConfigDef.addConfigObjectDef(objectTypeName, className);
-            mCurrentConfigObject = String.format("%s%c%d", className,
-                    OptionSetter.NAMESPACE_SEPARATOR, classCount);
         }
 
         private void throwException(String reason) throws SAXException {
@@ -253,6 +330,7 @@ class ConfigurationXmlParser {
             ConfigHandler configHandler = new ConfigHandler(configDef, name, mConfigDefLoader,
                     templateMap);
             parser.parse(new InputSource(xmlInput), configHandler);
+            checkValidMultiConfiguration(configHandler);
         } catch (ParserConfigurationException e) {
             throwConfigException(name, e);
         } catch (SAXException e) {
@@ -269,5 +347,17 @@ class ConfigurationXmlParser {
         }
         throw new ConfigurationException(String.format("Failed to parse config xml '%s' due to '%s'",
                 configName, e), e);
+    }
+
+    /**
+     * Validate that the configuration is valid from a multi device configuration standpoint:
+     * Some tags are not allowed outside the <device> tags.
+     */
+    private void checkValidMultiConfiguration(ConfigHandler configHandler) throws SAXException {
+        if (configHandler.isMultiDeviceConfigMode == true &&
+                !configHandler.mOutsideTag.isEmpty()) {
+            throw new SAXException(new ConfigurationException(String.format("Tags %s "
+                    + "should be included in a <device> tag.", configHandler.mOutsideTag)));
+        }
     }
 }

@@ -137,6 +137,18 @@ public interface IConfiguration {
     public List<?> getConfigurationObjectList(String typeName);
 
     /**
+     * Gets the {@link IDeviceConfig}s from the configuration.
+     *
+     * @return the {@link IDeviceConfig}s provided in order in the configuration
+     */
+    public List<IDeviceConfig> getDeviceConfig();
+
+    /**
+     * Return the {@link IDeviceConfig} associated to the name provided, null if not found.
+     */
+    public IDeviceConfig getDeviceConfigByName(String nameDevice);
+
+    /**
      * Inject a option value into the set of configuration objects.
      * <p/>
      * Useful to provide values for options that are generated dynamically.
@@ -173,7 +185,7 @@ public interface IConfiguration {
      * @throws ConfigurationException if failed to set the option's value
      */
     public void injectOptionValueWithSource(String optionName, String optionKey, String optionValue,
-            String source) throws ConfigurationException;
+            String optionSource) throws ConfigurationException;
 
     /**
      * Inject multiple option values into the set of configuration objects.
@@ -226,6 +238,20 @@ public interface IConfiguration {
      * @param preparer
      */
     public void setTargetPreparer(ITargetPreparer preparer);
+
+    /**
+     * Set a {@link IDeviceConfig}, replacing any existing value.
+     *
+     * @param deviceConfig
+     */
+    public void setDeviceConfig(IDeviceConfig deviceConfig);
+
+    /**
+     * Set the {@link IDeviceConfig}s, replacing any existing value.
+     *
+     * @param deviceConfigs
+     */
+    public void setDeviceConfigList(List<IDeviceConfig> deviceConfigs);
 
     /**
      * Convenience method to set a single {@link IRemoteTest} in this configuration, replacing any
@@ -300,7 +326,7 @@ public interface IConfiguration {
     /**
      * Set the config {@link Option} fields with given set of command line arguments
      * <p/>
-     * @see {@link ArgsOptionParser} for expected format
+     * {@link ArgsOptionParser} for expected format
      *
      * @param listArgs the command line arguments
      * @return the unconsumed arguments

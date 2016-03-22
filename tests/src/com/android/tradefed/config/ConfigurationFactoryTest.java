@@ -19,6 +19,7 @@ import com.android.ddmlib.Log.LogLevel;
 import com.android.tradefed.config.ConfigurationFactory.ConfigId;
 import com.android.tradefed.log.ILeveledLogOutput;
 import com.android.tradefed.log.LogUtil.CLog;
+import com.android.tradefed.targetprep.StubTargetPreparer;
 import com.android.tradefed.util.FileUtil;
 
 import junit.framework.TestCase;
@@ -849,5 +850,165 @@ public class ConfigurationFactoryTest extends TestCase {
         } catch (ConfigurationException e) {
             // expected
         }
+    }
+
+    /**
+     * Parse a config with 3 different device configuration specified.
+     */
+    public void testCreateConfigurationFromArgs_multidevice() throws Exception {
+        IConfiguration config = mFactory.createConfigurationFromArgs(
+                new String[]{"multi-device"});
+        assertEquals(1, config.getTests().size());
+        assertTrue(config.getTests().get(0) instanceof StubOptionTest);
+        // Verify that all attributes are in the right place:
+        assertNotNull(config.getDeviceConfigByName("device1"));
+        assertEquals("10", config.getDeviceConfigByName("device1")
+                .getBuildProvider().getBuild().getBuildId());
+        assertEquals("stub", config.getDeviceConfigByName("device1")
+                .getBuildProvider().getBuild().getTestTag());
+        assertEquals(0, config.getDeviceConfigByName("device1")
+                .getTargetPreparers().size());
+
+        assertNotNull(config.getDeviceConfigByName("device2"));
+        assertEquals("0", config.getDeviceConfigByName("device2")
+                .getBuildProvider().getBuild().getBuildId());
+        assertEquals("stub", config.getDeviceConfigByName("device2")
+                .getBuildProvider().getBuild().getTestTag());
+        assertEquals(1, config.getDeviceConfigByName("device2")
+                .getTargetPreparers().size());
+        assertTrue(config.getDeviceConfigByName("device2")
+                .getTargetPreparers().get(0) instanceof StubTargetPreparer);
+
+        assertNotNull(config.getDeviceConfigByName("device3"));
+        assertEquals("0", config.getDeviceConfigByName("device3")
+                .getBuildProvider().getBuild().getBuildId());
+        assertEquals("test-tag3", config.getDeviceConfigByName("device3")
+                .getBuildProvider().getBuild().getTestTag());
+        assertEquals(1, config.getDeviceConfigByName("device3")
+                .getTargetPreparers().size());
+        assertTrue(config.getDeviceConfigByName("device3")
+                .getTargetPreparers().get(0) instanceof StubTargetPreparer);
+    }
+
+    /**
+     * Parse a config with 3 different device configuration specified.
+     * And apply a command line to override some attributes.
+     */
+    public void testCreateConfigurationFromArgs_multidevice_applyCommandLine() throws Exception {
+        IConfiguration config = mFactory.createConfigurationFromArgs(
+                new String[]{"multi-device", "--{device2}build-id","20", "--{device1}null-device",
+                        "--{device3}com.android.tradefed.build.StubBuildProvider:build-id","30"});
+        assertEquals(1, config.getTests().size());
+        assertTrue(config.getTests().get(0) instanceof StubOptionTest);
+        // Verify that all attributes are in the right place:
+        assertNotNull(config.getDeviceConfigByName("device1"));
+        assertEquals("10", config.getDeviceConfigByName("device1")
+                .getBuildProvider().getBuild().getBuildId());
+        assertEquals("stub", config.getDeviceConfigByName("device1")
+                .getBuildProvider().getBuild().getTestTag());
+        assertEquals(0, config.getDeviceConfigByName("device1")
+                .getTargetPreparers().size());
+        assertTrue(config.getDeviceConfigByName("device1")
+                .getDeviceRequirements().nullDeviceRequested());
+
+        assertNotNull(config.getDeviceConfigByName("device2"));
+        // Device2 build provider is modified independently
+        assertEquals("20", config.getDeviceConfigByName("device2")
+                .getBuildProvider().getBuild().getBuildId());
+        assertEquals("stub", config.getDeviceConfigByName("device2")
+                .getBuildProvider().getBuild().getTestTag());
+        assertEquals(1, config.getDeviceConfigByName("device2")
+                .getTargetPreparers().size());
+        assertTrue(config.getDeviceConfigByName("device2")
+                .getTargetPreparers().get(0) instanceof StubTargetPreparer);
+        assertFalse(config.getDeviceConfigByName("device2")
+                .getDeviceRequirements().nullDeviceRequested());
+
+        // Device3 build provider is modified independently
+        assertNotNull(config.getDeviceConfigByName("device3"));
+        assertEquals("30", config.getDeviceConfigByName("device3")
+                .getBuildProvider().getBuild().getBuildId());
+        assertEquals("test-tag3", config.getDeviceConfigByName("device3")
+                .getBuildProvider().getBuild().getTestTag());
+        assertEquals(1, config.getDeviceConfigByName("device3")
+                .getTargetPreparers().size());
+        assertTrue(config.getDeviceConfigByName("device3")
+                .getTargetPreparers().get(0) instanceof StubTargetPreparer);
+        assertFalse(config.getDeviceConfigByName("device3")
+                .getDeviceRequirements().nullDeviceRequested());
+    }
+
+    /**
+     * Parse a config with 3 different device configuration specified.
+     * And apply a command line to override all attributes.
+     */
+    public void testCreateConfigurationFromArgs_multidevice_applyCommandLineGlobal() throws Exception {
+        IConfiguration config = mFactory.createConfigurationFromArgs(
+                new String[]{"multi-device", "--build-id","20"});
+        assertEquals(1, config.getTests().size());
+        assertTrue(config.getTests().get(0) instanceof StubOptionTest);
+        // Verify that all attributes are in the right place:
+        // All build id are now modified since option had a global scope
+        assertNotNull(config.getDeviceConfigByName("device1"));
+        assertEquals("20", config.getDeviceConfigByName("device1")
+                .getBuildProvider().getBuild().getBuildId());
+        assertEquals("stub", config.getDeviceConfigByName("device1")
+                .getBuildProvider().getBuild().getTestTag());
+        assertEquals(0, config.getDeviceConfigByName("device1")
+                .getTargetPreparers().size());
+
+        assertNotNull(config.getDeviceConfigByName("device2"));
+        assertEquals("20", config.getDeviceConfigByName("device2")
+                .getBuildProvider().getBuild().getBuildId());
+        assertEquals("stub", config.getDeviceConfigByName("device2")
+                .getBuildProvider().getBuild().getTestTag());
+        assertEquals(1, config.getDeviceConfigByName("device2")
+                .getTargetPreparers().size());
+        assertTrue(config.getDeviceConfigByName("device2")
+                .getTargetPreparers().get(0) instanceof StubTargetPreparer);
+
+        assertNotNull(config.getDeviceConfigByName("device3"));
+        assertEquals("20", config.getDeviceConfigByName("device3")
+                .getBuildProvider().getBuild().getBuildId());
+        assertEquals("test-tag3", config.getDeviceConfigByName("device3")
+                .getBuildProvider().getBuild().getTestTag());
+        assertEquals(1, config.getDeviceConfigByName("device3")
+                .getTargetPreparers().size());
+        assertTrue(config.getDeviceConfigByName("device3")
+                .getTargetPreparers().get(0) instanceof StubTargetPreparer);
+    }
+
+    /**
+     * Configuration for multi device is wrong since it contains a build_provider tag outside
+     * the devices tags.
+     */
+    public void testCreateConfigurationFromArgs_multidevice_exception() throws Exception {
+        String expectedException = "Tags [build_provider] should be included in a <device> tag.";
+        try {
+            mFactory.createConfigurationFromArgs(new String[]{"multi-device-outside-tag"});
+            fail("Should have thrown a Configuration Exception");
+        } catch(ConfigurationException e) {
+            assertEquals(expectedException, e.getMessage());
+        }
+    }
+
+    /**
+     * Parse a config with no multi device config, and expect the new device holder to still be
+     * there and adding a default device.
+     */
+    public void testCreateConfigurationFromArgs_old_config_with_deviceHolder() throws Exception {
+        IConfiguration config = mFactory.createConfigurationFromArgs(
+                new String[]{"test-config", "--build-id","20"});
+        assertEquals(1, config.getTests().size());
+        assertTrue(config.getTests().get(0) instanceof StubOptionTest);
+        // Verify that all attributes are in the right place:
+        // All build id are now modified since option had a global scope
+        assertNotNull(config.getDeviceConfigByName(ConfigurationDef.DEFAULT_DEVICE_NAME));
+        assertEquals("20", config.getDeviceConfigByName(ConfigurationDef.DEFAULT_DEVICE_NAME)
+                .getBuildProvider().getBuild().getBuildId());
+        assertEquals("stub", config.getDeviceConfigByName(ConfigurationDef.DEFAULT_DEVICE_NAME)
+                .getBuildProvider().getBuild().getTestTag());
+        assertEquals(1, config.getDeviceConfigByName(ConfigurationDef.DEFAULT_DEVICE_NAME)
+                .getTargetPreparers().size());
     }
 }

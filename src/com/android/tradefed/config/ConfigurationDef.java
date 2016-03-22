@@ -22,6 +22,8 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 /**
  * Holds a record of a configuration, its associated objects and their options.
@@ -60,6 +62,10 @@ public class ConfigurationDef {
             this.source = source;
         }
     }
+
+    private boolean mMultiDeviceMode = false;
+    private static String MULTI_PATTERN = "(.*)(:)(.*)";
+    public static String DEFAULT_DEVICE_NAME = "DEFAULT_DEVICE";
 
     /** the unique name of the configuration definition */
     private final String mName;
@@ -169,15 +175,55 @@ public class ConfigurationDef {
      */
     IConfiguration createConfiguration() throws ConfigurationException {
         IConfiguration config = new Configuration(getName(), getDescription());
+        List<IDeviceConfig> deviceObjectList = new ArrayList<IDeviceConfig>();
+        IDeviceConfig defaultDeviceConfig = new DeviceConfigurationHolder(DEFAULT_DEVICE_NAME);
+        // propagate multi mode
+        if (mMultiDeviceMode) {
+            ((Configuration)config).setMultiDeviceMode(true);
+        } else {
+            // We still populate a default device config to avoid special logic in the rest of the
+            // harness.
+            deviceObjectList.add(defaultDeviceConfig);
+        }
+        Pattern pattern = Pattern.compile(MULTI_PATTERN);
 
         for (Map.Entry<String, List<String>> objClassEntry : mObjectClassMap.entrySet()) {
             List<Object> objectList = new ArrayList<Object>(objClassEntry.getValue().size());
+            String entryName = objClassEntry.getKey();
+            Matcher matcher = pattern.matcher(entryName);
             for (String className : objClassEntry.getValue()) {
                 Object configObject = createObject(objClassEntry.getKey(), className);
-                objectList.add(configObject);
+                if (mMultiDeviceMode && matcher.find()) {
+                    // If we find the device namespace, fetch the matching device or create it if
+                    // it doesn't exists.
+                    IDeviceConfig multiDev = null;
+                    entryName = Configuration.DEVICE_NAME;
+                    for (IDeviceConfig iDevConfig : deviceObjectList) {
+                        if (matcher.group(1).equals(iDevConfig.getDeviceName())) {
+                            multiDev = iDevConfig;
+                            break;
+                        }
+                    }
+                    if (multiDev == null) {
+                        multiDev = new DeviceConfigurationHolder(matcher.group(1));
+                        deviceObjectList.add(multiDev);
+                    }
+                    // We reference the original object to the device and not to the flat list.
+                    multiDev.addSpecificConfig(configObject);
+                } else {
+                    if (Configuration.doesBuiltInObjSupportMultiDevice(entryName)) {
+                        defaultDeviceConfig.addSpecificConfig(configObject);
+                    }
+                    // Always add to the flat list for backward compatibility
+                    objectList.add(configObject);
+                }
             }
-            config.setConfigurationObjectList(objClassEntry.getKey(), objectList);
+            if (entryName != Configuration.DEVICE_NAME) {
+                config.setConfigurationObjectList(entryName, objectList);
+            }
         }
+        // We always add the device configuration list so we can rely on it everywhere
+        config.setConfigurationObjectList(Configuration.DEVICE_NAME, deviceObjectList);
         config.injectOptionValues(mOptionList);
 
         return config;
@@ -210,11 +256,13 @@ public class ConfigurationDef {
 
     /**
      * Gets the name of this configuration definition
-     *
-     * @return
      */
     public String getName() {
         return mName;
+    }
+
+    public void setMultiDeviceMode(boolean multiDeviceMode) {
+        mMultiDeviceMode = multiDeviceMode;
     }
 
     /**

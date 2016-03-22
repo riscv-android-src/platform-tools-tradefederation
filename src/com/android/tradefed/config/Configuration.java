@@ -15,6 +15,8 @@
  */
 package com.android.tradefed.config;
 
+import com.google.common.base.Joiner;
+
 import com.android.tradefed.build.IBuildProvider;
 import com.android.tradefed.build.StubBuildProvider;
 import com.android.tradefed.command.CommandOptions;
@@ -38,7 +40,6 @@ import com.android.tradefed.testtype.IRemoteTest;
 import com.android.tradefed.testtype.StubTest;
 import com.android.tradefed.util.MultiMap;
 import com.android.tradefed.util.QuotationAwareTokenizer;
-import com.google.common.base.Joiner;
 
 import org.json.JSONArray;
 import org.json.JSONException;
@@ -54,10 +55,12 @@ import java.lang.reflect.Type;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.Set;
 
 /**
  * A concrete {@link IConfiguration} implementation that stores the loaded config objects in a map
@@ -75,6 +78,7 @@ public class Configuration implements IConfiguration {
     public static final String CMD_OPTIONS_TYPE_NAME = "cmd_options";
     public static final String DEVICE_REQUIREMENTS_TYPE_NAME = "device_requirements";
     public static final String DEVICE_OPTIONS_TYPE_NAME = "device_options";
+    public static final String DEVICE_NAME = "device";
 
     // additional element names used for emitting the configuration XML.
     private static final String CONFIGURATION_NAME = "configuration";
@@ -85,6 +89,7 @@ public class Configuration implements IConfiguration {
     private static final String VALUE_NAME = "value";
 
     private static Map<String, ObjTypeInfo> sObjTypeMap = null;
+    private static Set<String> sMultiDeviceSupportedTag = null;
 
     /** Mapping of config object type name to config objects. */
     private Map<String, List<Object>> mConfigMap;
@@ -96,6 +101,7 @@ public class Configuration implements IConfiguration {
     // Used to track config names that were used to set field values
     private MultiMap<FieldDef, String> mFieldSources = new MultiMap<>();
 
+    private boolean mMultiDeviceMode = false;
 
     /**
      * Container struct for built-in config object type
@@ -109,6 +115,10 @@ public class Configuration implements IConfiguration {
             mExpectedType = expectedType;
             mIsListSupported = isList;
         }
+    }
+
+    public void setMultiDeviceMode(boolean multiDeviceMode) {
+        mMultiDeviceMode = multiDeviceMode;
     }
 
     /**
@@ -143,6 +153,35 @@ public class Configuration implements IConfiguration {
     }
 
     /**
+     * Determine if a given config object type is allowed to exists inside a device tag
+     * configuration.
+     * Authorized type are: build_provider, target_preparer, device_recovery, device_requirements,
+     * device_options
+     *
+     * @param typeName the config object type name
+     * @return True if name is allowed to exists inside the device tag
+     */
+    static boolean doesBuiltInObjSupportMultiDevice(String typeName) {
+        return getMultiDeviceSupportedTag().contains(typeName);
+    }
+
+    /**
+     * Return the {@link Set} of tags that are supported in a device tag for multi device
+     * configuration.
+     */
+    private static synchronized Set<String> getMultiDeviceSupportedTag() {
+        if (sMultiDeviceSupportedTag == null) {
+            sMultiDeviceSupportedTag = new HashSet<String>();
+            sMultiDeviceSupportedTag.add(BUILD_PROVIDER_TYPE_NAME);
+            sMultiDeviceSupportedTag.add(TARGET_PREPARER_TYPE_NAME);
+            sMultiDeviceSupportedTag.add(DEVICE_RECOVERY_TYPE_NAME);
+            sMultiDeviceSupportedTag.add(DEVICE_REQUIREMENTS_TYPE_NAME);
+            sMultiDeviceSupportedTag.add(DEVICE_OPTIONS_TYPE_NAME);
+        }
+        return sMultiDeviceSupportedTag;
+    }
+
+    /**
      * Creates an {@link Configuration} with default config objects.
      */
     public Configuration(String name, String description) {
@@ -159,6 +198,17 @@ public class Configuration implements IConfiguration {
         setLogOutput(new StdoutLogger());
         setLogSaver(new FileSystemLogSaver());  // FileSystemLogSaver saves to tmp by default.
         setTestInvocationListener(new TextResultReporter());
+    }
+
+    /**
+     * If we are in multi device mode, we cannot allow fetching the regular references because
+     * they are most likely wrong.
+     */
+    private void notAllowedInMultiMode(String function) {
+        if (mMultiDeviceMode && getConfigurationObjectList(DEVICE_NAME).size() > 1) {
+            throw new UnsupportedOperationException(String.format("Calling %s is not allowed "
+                    + "in multi device mode", function));
+        }
     }
 
     /**
@@ -200,8 +250,15 @@ public class Configuration implements IConfiguration {
     /**
      * {@inheritDoc}
      */
+    @SuppressWarnings("unchecked")
     @Override
     public IBuildProvider getBuildProvider() {
+        notAllowedInMultiMode("getBuildProvider");
+        if (mMultiDeviceMode && getConfigurationObjectList(DEVICE_NAME).size() == 1) {
+            return ((List<IDeviceConfig>)getConfigurationObjectList(DEVICE_NAME))
+                    .get(0).getBuildProvider();
+        }
+        // TODO: clean the special handling, everything should go through a device config.
         return (IBuildProvider)getConfigurationObject(BUILD_PROVIDER_TYPE_NAME);
     }
 
@@ -211,6 +268,12 @@ public class Configuration implements IConfiguration {
     @SuppressWarnings("unchecked")
     @Override
     public List<ITargetPreparer> getTargetPreparers() {
+        notAllowedInMultiMode("getTargetPreparers");
+        if (mMultiDeviceMode && getConfigurationObjectList(DEVICE_NAME).size() == 1) {
+            return ((List<IDeviceConfig>)getConfigurationObjectList(DEVICE_NAME))
+                    .get(0).getTargetPreparers();
+        }
+        // TODO: clean the special handling, everything should go through a device config.
         return (List<ITargetPreparer>)getConfigurationObjectList(TARGET_PREPARER_TYPE_NAME);
     }
 
@@ -226,8 +289,15 @@ public class Configuration implements IConfiguration {
     /**
      * {@inheritDoc}
      */
+    @SuppressWarnings("unchecked")
     @Override
     public IDeviceRecovery getDeviceRecovery() {
+        notAllowedInMultiMode("getDeviceRecovery");
+        if (mMultiDeviceMode && getConfigurationObjectList(DEVICE_NAME).size() == 1) {
+            return ((List<IDeviceConfig>)getConfigurationObjectList(DEVICE_NAME))
+                    .get(0).getDeviceRecovery();
+        }
+        // TODO: clean the special handling, everything should go through a device config.
         return (IDeviceRecovery)getConfigurationObject(DEVICE_RECOVERY_TYPE_NAME);
     }
 
@@ -267,16 +337,30 @@ public class Configuration implements IConfiguration {
     /**
      * {@inheritDoc}
      */
+    @SuppressWarnings("unchecked")
     @Override
     public IDeviceSelection getDeviceRequirements() {
+        notAllowedInMultiMode("getDeviceRequirements");
+        if (mMultiDeviceMode && getConfigurationObjectList(DEVICE_NAME).size() == 1) {
+            return ((List<IDeviceConfig>)getConfigurationObjectList(DEVICE_NAME))
+                    .get(0).getDeviceRequirements();
+        }
+        // TODO: clean the special handling, everything should go through a device config.
         return (IDeviceSelection)getConfigurationObject(DEVICE_REQUIREMENTS_TYPE_NAME);
     }
 
     /**
      * {@inheritDoc}
      */
+    @SuppressWarnings("unchecked")
     @Override
     public TestDeviceOptions getDeviceOptions() {
+        notAllowedInMultiMode("getDeviceOptions");
+        if (mMultiDeviceMode && getConfigurationObjectList(DEVICE_NAME).size() == 1) {
+            return ((List<IDeviceConfig>)getConfigurationObjectList(DEVICE_NAME))
+                    .get(0).getDeviceOptions();
+        }
+        // TODO: clean the special handling, everything should go through a device config.
         return (TestDeviceOptions)getConfigurationObject(DEVICE_OPTIONS_TYPE_NAME);
     }
 
@@ -286,6 +370,30 @@ public class Configuration implements IConfiguration {
     @Override
     public List<?> getConfigurationObjectList(String typeName) {
         return mConfigMap.get(typeName);
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @SuppressWarnings("unchecked")
+    @Override
+    public IDeviceConfig getDeviceConfigByName(String nameDevice) {
+        for (IDeviceConfig deviceHolder :
+                (List<IDeviceConfig>)getConfigurationObjectList(DEVICE_NAME)) {
+            if (deviceHolder.getDeviceName().equals(nameDevice)) {
+                return deviceHolder;
+            }
+        }
+        return null;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @SuppressWarnings("unchecked")
+    @Override
+    public List<IDeviceConfig> getDeviceConfig() {
+        return (List<IDeviceConfig>)getConfigurationObjectList(DEVICE_NAME);
     }
 
     /**
@@ -324,7 +432,7 @@ public class Configuration implements IConfiguration {
 
     /**
      * Creates an OptionSetter which is appropriate for setting options on all objects which
-     * will be returned by {@link getAllConfigurationObjects()}.
+     * will be returned by {@link #getAllConfigurationObjects}.
      */
     private OptionSetter createOptionSetter() throws ConfigurationException {
         return new OptionSetter(getAllConfigurationObjects());
@@ -392,7 +500,6 @@ public class Configuration implements IConfiguration {
         }
     }
 
-
     /**
      * Creates a shallow copy of this object.
      */
@@ -410,6 +517,7 @@ public class Configuration implements IConfiguration {
      */
     @Override
     public void setBuildProvider(IBuildProvider provider) {
+        notAllowedInMultiMode("setBuildProvider");
         setConfigurationObjectNoThrow(BUILD_PROVIDER_TYPE_NAME, provider);
     }
 
@@ -427,6 +535,22 @@ public class Configuration implements IConfiguration {
     @Override
     public void setTestInvocationListener(ITestInvocationListener listener) {
         setConfigurationObjectNoThrow(RESULT_REPORTER_TYPE_NAME, listener);
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void setDeviceConfig(IDeviceConfig deviceConfig) {
+        setConfigurationObjectNoThrow(DEVICE_NAME, deviceConfig);
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void setDeviceConfigList(List<IDeviceConfig> deviceConfigs) {
+        setConfigurationObjectListNoThrow(DEVICE_NAME, deviceConfigs);
     }
 
     /**
@@ -466,6 +590,7 @@ public class Configuration implements IConfiguration {
      */
     @Override
     public void setDeviceRecovery(IDeviceRecovery recovery) {
+        notAllowedInMultiMode("setDeviceRecovery");
         setConfigurationObjectNoThrow(DEVICE_RECOVERY_TYPE_NAME, recovery);
     }
 
@@ -474,6 +599,7 @@ public class Configuration implements IConfiguration {
      */
     @Override
     public void setTargetPreparer(ITargetPreparer preparer) {
+        notAllowedInMultiMode("setTargetPreparer");
         setConfigurationObjectNoThrow(TARGET_PREPARER_TYPE_NAME, preparer);
     }
 
@@ -490,6 +616,7 @@ public class Configuration implements IConfiguration {
      */
     @Override
     public void setDeviceRequirements(IDeviceSelection devRequirements) {
+        notAllowedInMultiMode("setDeviceRequirements");
         setConfigurationObjectNoThrow(DEVICE_REQUIREMENTS_TYPE_NAME, devRequirements);
     }
 
@@ -498,6 +625,7 @@ public class Configuration implements IConfiguration {
      */
     @Override
     public void setDeviceOptions(TestDeviceOptions devOptions) {
+        notAllowedInMultiMode("setDeviceOptions");
         setConfigurationObjectNoThrow(DEVICE_OPTIONS_TYPE_NAME, devOptions);
     }
 
@@ -587,7 +715,7 @@ public class Configuration implements IConfiguration {
      * correct type
      *
      * @param typeName
-     * @param configObject
+     * @param configList
      */
     private void setConfigurationObjectListNoThrow(String typeName, List<?> configList) {
         try {
@@ -613,7 +741,7 @@ public class Configuration implements IConfiguration {
      * Outputs a command line usage help text for this configuration to given printStream.
      *
      * @param out the {@link PrintStream} to use.
-     * @throws {@link ConfigurationException}
+     * @throw {@link ConfigurationException}
      */
     @Override
     public void printCommandUsage(boolean importantOnly, PrintStream out)
