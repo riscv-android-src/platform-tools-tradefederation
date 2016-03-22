@@ -42,6 +42,7 @@ public class RunUtil implements IRunUtil {
 
     private static final int POLL_TIME_INCREASE_FACTOR = 4;
     private static final long THREAD_JOIN_POLL_INTERVAL = 30 * 1000;
+    private static final long IO_THREAD_JOIN_INTERVAL = 5 * 1000;
     private static final long PROCESS_DESTROY_TIMEOUT_SEC = 2;
     private static IRunUtil sDefaultInstance = null;
     private File mWorkingDir = null;
@@ -308,7 +309,7 @@ public class RunUtil implements IRunUtil {
         if (runThread.getStatus() == CommandStatus.TIMED_OUT
                 || runThread.getStatus() == CommandStatus.EXCEPTION) {
             CLog.i("runTimed: Calling interrupt, status is %s", runThread.getStatus());
-            runThread.interrupt();
+            runThread.cancel();
         }
         checkInterrupted();
         return runThread.getStatus();
@@ -509,8 +510,7 @@ public class RunUtil implements IRunUtil {
             }
         }
 
-        @Override
-        public void interrupt() {
+        public void cancel() {
             mRunnable.cancel();
         }
 
@@ -580,13 +580,19 @@ public class RunUtil implements IRunUtil {
             Thread stdoutThread = inheritIO(mProcess.getInputStream(), stdOut);
             Thread stderrThread = inheritIO(mProcess.getErrorStream(), stdErr);
             // Wait for process to complete.
-            int rc = 1;
+            int rc = Integer.MIN_VALUE;
             try {
                 try {
                     rc = mProcess.waitFor();
                     // wait for stdout and stderr to be read
-                    stdoutThread.join();
-                    stderrThread.join();
+                    stdoutThread.join(IO_THREAD_JOIN_INTERVAL);
+                    if (stdoutThread.isAlive()) {
+                        CLog.d("stdout read thread %s still alive.", stdoutThread.toString());
+                    }
+                    stderrThread.join(IO_THREAD_JOIN_INTERVAL);
+                    if (stderrThread.isAlive()) {
+                        CLog.d("stderr read thread %s still alive.", stderrThread.toString());
+                    }
                     // close the buffer that holds stdout/err content if default stream
                     // stream specified by caller should be handled by the caller.
                     if (mCloseStreamAfterRun) {
@@ -625,7 +631,6 @@ public class RunUtil implements IRunUtil {
             if (mProcess != null) {
                 CLog.i("Cancelling the process execution");
                 mProcess.destroy();
-                mProcess = null;
                 try {
                     // Only allow to continue if the Stdout has been read
                     // RunnableNotifier#Interrupt is the next call and will terminate the thread
