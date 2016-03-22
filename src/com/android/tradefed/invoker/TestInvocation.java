@@ -371,7 +371,7 @@ public class TestInvocation implements ITestInvocation {
         long startTime = System.currentTimeMillis();
         long elapsedTime = -1;
         Throwable exception = null;
-        Exception tearDownException = null;
+        Throwable tearDownException = null;
 
         info.setDeviceSerial(device.getSerialNumber());
         startInvocation(config, device, info, listener);
@@ -443,7 +443,7 @@ public class TestInvocation implements ITestInvocation {
             mStatus = "tearing down";
             try {
                 doTeardown(config, device, info, exception);
-            } catch (DeviceNotAvailableException|RuntimeException e) {
+            } catch (Throwable e) {
                 tearDownException = e;
                 CLog.e("Exception when tearing down invocation: %s", tearDownException.toString());
                 CLog.e(tearDownException);
@@ -494,19 +494,30 @@ public class TestInvocation implements ITestInvocation {
     }
 
     private void doTeardown(IConfiguration config, ITestDevice device, IBuildInfo info,
-            Throwable exception) throws DeviceNotAvailableException {
+            Throwable exception) throws Throwable {
         // Clear wifi settings, to prevent wifi errors from interfering with teardown process.
         device.clearLastConnectedWifiNetwork();
         List<ITargetPreparer> preparers = config.getTargetPreparers();
         ListIterator<ITargetPreparer> itr = preparers.listIterator(preparers.size());
+        Throwable throwable = null;
         while (itr.hasPrevious()) {
             ITargetPreparer preparer = itr.previous();
             if(preparer instanceof ITargetCleaner) {
                 ITargetCleaner cleaner = (ITargetCleaner) preparer;
                 if (cleaner != null) {
-                    cleaner.tearDown(device, info, exception);
+                    try {
+                        cleaner.tearDown(device, info, exception);
+                    } catch (Throwable e) {
+                        // We catch it and rethrow later to allow each targetprep to be attempted.
+                        // Only the last one will be thrown but all should be logged.
+                        CLog.e("Deferring throw for: %s", e);
+                        throwable = e;
+                    }
                 }
             }
+        }
+        if (throwable != null) {
+            throw throwable;
         }
     }
 
