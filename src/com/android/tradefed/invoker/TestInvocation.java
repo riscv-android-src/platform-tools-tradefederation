@@ -33,6 +33,7 @@ import com.android.tradefed.log.LogRegistry;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.result.IShardableListener;
 import com.android.tradefed.result.ITestInvocationListener;
+import com.android.tradefed.result.ITestLoggerReceiver;
 import com.android.tradefed.result.InputStreamSource;
 import com.android.tradefed.result.LogDataType;
 import com.android.tradefed.result.LogSaverResultForwarder;
@@ -480,15 +481,19 @@ public class TestInvocation implements ITestInvocation {
             ITestInvocationListener listener) throws Throwable {
         getRunUtil().allowInterrupt(true);
         logDeviceBatteryLevel(device, "initial -> setup");
-        doSetup(config, device, info);
+        doSetup(config, device, info, listener);
         logDeviceBatteryLevel(device, "setup -> test");
         runTests(device, config, listener);
         logDeviceBatteryLevel(device, "after test");
     }
 
-    private void doSetup(IConfiguration config, ITestDevice device, IBuildInfo info)
+    private void doSetup(IConfiguration config, ITestDevice device, IBuildInfo info,
+            final ITestInvocationListener listener)
             throws TargetSetupError, BuildError, DeviceNotAvailableException {
         for (ITargetPreparer preparer : config.getTargetPreparers()) {
+            if (preparer instanceof ITestLoggerReceiver) {
+                ((ITestLoggerReceiver) preparer).setTestLogger(listener);
+            }
             preparer.setUp(device, info);
         }
     }

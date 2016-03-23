@@ -17,6 +17,7 @@ package com.android.tradefed.result;
 
 import com.android.ddmlib.testrunner.ITestRunListener;
 import com.android.tradefed.build.IBuildInfo;
+import com.android.tradefed.log.ITestLogger;
 
 /**
  * Listener for test results from the test invocation.
@@ -43,7 +44,7 @@ import com.android.tradefed.build.IBuildInfo;
  * Note that this is re-using the {@link com.android.ddmlib.testrunner.ITestRunListener}
  * because it's a generic interface. The results being reported are not necessarily device specific.
  */
-public interface ITestInvocationListener extends ITestRunListener {
+public interface ITestInvocationListener extends ITestRunListener, ITestLogger {
 
     /**
      * Reports the start of the test invocation.
@@ -53,25 +54,6 @@ public interface ITestInvocationListener extends ITestRunListener {
      * @param buildInfo information about the build being tested
      */
     public void invocationStarted(IBuildInfo buildInfo);
-
-    /**
-     * Provides the associated log or debug data from the test invocation.
-     * <p/>
-     * Must be called before {@link #invocationFailed(Throwable)} or {@link #invocationEnded(long)}
-     * <p/>
-     * The TradeFederation framework will automatically call this method, providing the host log
-     * and if applicable, the device logcat.
-     *
-     * @param dataName a {@link String} descriptive name of the data. e.g. "device_logcat". Note
-     *            dataName may not be unique per invocation. ie implementers must be able to handle
-     *            multiple calls with same dataName
-     * @param dataType the {@link LogDataType} of the data
-     * @param dataStream the {@link InputStreamSource} of the data. Implementers should call
-     *        createInputStream to start reading the data, and ensure to close the resulting
-     *        InputStream when complete. Callers should ensure the source of the data remains
-     *        present and accessible until the testLog method completes.
-     */
-    public void testLog(String dataName, LogDataType dataType, InputStreamSource dataStream);
 
     /**
      * Reports that the invocation has terminated, whether successfully or due to some error
