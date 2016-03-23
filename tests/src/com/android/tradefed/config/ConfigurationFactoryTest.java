@@ -660,4 +660,30 @@ public class ConfigurationFactoryTest extends TestCase {
         }
         assertTrue(tmp.getTests().size() == 2);
     }
+
+    /**
+     * If a configuration is called a second time with bad template name, it should still throw
+     * the unused config template:map
+     */
+    public void testCreateConfigurationFromArgs_templateName_stillThrow() throws Exception {
+        final String configName = "template-include-config-with-default";
+        final String targetName = "local-config";
+        final String nameTemplate = "target_not_exist";
+        try {
+            mFactory.createConfigurationFromArgs(new String[]{configName,
+                    "--template:map", nameTemplate, targetName});
+            fail("ConfigurationException should have been thrown");
+        } catch (ConfigurationException e) {
+            // expected
+        }
+
+        // Call the same config a second time to make sure it is also rejected.
+        try {
+            mFactory.createConfigurationFromArgs(new String[]{configName,
+                    "--template:map", nameTemplate, targetName});
+            fail("ConfigurationException should have been thrown");
+        } catch (ConfigurationException e) {
+            // expected
+        }
+    }
 }
