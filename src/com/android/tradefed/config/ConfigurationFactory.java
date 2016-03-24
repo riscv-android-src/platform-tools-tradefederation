@@ -437,14 +437,6 @@ public class ConfigurationFactory implements IConfigurationFactory {
      */
     @Override
     public void printHelp(PrintStream out) {
-        // print general help
-        // TODO: move this statement to Console
-        out.println("Use 'run command <configuration_name> --help' to get list of options for a " +
-                "configuration");
-        out.println("Use 'dump config <configuration_name>' to display the configuration's XML " +
-                "content.");
-        out.println();
-        out.println("Available configurations include:");
         try {
             loadAllConfigs(true);
         } catch (ConfigurationException e) {

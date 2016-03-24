@@ -318,8 +318,8 @@ public class Console extends Thread {
 
     /**
      * Return the generic help string to display
-     * @param genericHelp
-     * @return
+     *
+     * @param genericHelp a list of {@link String} representing the generic help to be aggregated.
      */
     protected String getGenericHelpString(List<String> genericHelp) {
         return ArrayUtil.join(LINE_SEPARATOR, genericHelp);
@@ -499,6 +499,12 @@ public class Console extends Thread {
         trie.put(new Runnable() {
             @Override
             public void run() {
+                printLine("Use 'run command <configuration_name> --help' to get list of options "
+                        + "for a configuration");
+                printLine("Use 'dump config <configuration_name>' to display the configuration's "
+                        + "XML content.");
+                printLine("");
+                printLine("Available configurations include:");
                 getConfigurationFactory().printHelp(System.out);
             }
         }, LIST_PATTERN, "configs");
