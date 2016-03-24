@@ -388,6 +388,14 @@ public class ConfigurationFactory implements IConfigurationFactory {
         ConfigurationDef configDef = getConfigurationDef(configName, false,
                 parserSettings.templateMap);
         if (!parserSettings.templateMap.isEmpty()) {
+            // remove the bad ConfigDef from the cache.
+            for (ConfigId cid : mConfigDefMap.keySet()) {
+                if (mConfigDefMap.get(cid) == configDef) {
+                    CLog.d("Cleaning the cache for this configdef");
+                    mConfigDefMap.remove(cid);
+                    break;
+                }
+            }
             throw new ConfigurationException(String.format("Unused template:map parameters: %s",
                     parserSettings.templateMap.toString()));
         }
@@ -410,14 +418,14 @@ public class ConfigurationFactory implements IConfigurationFactory {
     }
 
     /**
-     * Creates a {@link Configuration} from the name given in arguments.
+     * Creates a {@link GlobalConfiguration} from the name given in arguments.
      * <p/>
      * Note will not populate configuration with values from options
      *
      * @param arrayArgs the full list of command line arguments, including the config name
      * @param optionArgsRef an empty list, that will be populated with the remaining option
      *                      arguments
-     * @return
+     * @return a {@link GlobalConfiguration}
      * @throws ConfigurationException
      */
     private IGlobalConfiguration internalCreateGlobalConfigurationFromArgs(String[] arrayArgs,
