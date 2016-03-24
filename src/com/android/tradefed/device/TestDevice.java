@@ -969,10 +969,26 @@ public class TestDevice extends AndroidNativeDevice {
      * {@inheritDoc}
      */
     @Override
+    public String getSetting(String namespace, String key) throws DeviceNotAvailableException {
+        return getSettingInternal("", namespace, key);
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
     public String getSetting(int userId, String namespace, String key)
             throws DeviceNotAvailableException {
+        return getSettingInternal(String.format("--user %d", userId), namespace, key);
+    }
+
+    /**
+     * Internal Helper to get setting with or without a userId provided.
+     */
+    private String getSettingInternal(String userFlag, String namespace, String key)
+            throws DeviceNotAvailableException {
         if (Arrays.asList(SETTINGS_NAMESPACE).contains(namespace.toLowerCase())) {
-            String cmd = String.format("settings --user %d get %s %s", userId, namespace, key);
+            String cmd = String.format("settings %s get %s %s", userFlag, namespace, key);
             String output = executeShellCommand(cmd);
             if ("null".equals(output)) {
                 CLog.w("settings returned null for command: %s. "
@@ -989,12 +1005,29 @@ public class TestDevice extends AndroidNativeDevice {
      * {@inheritDoc}
      */
     @Override
+    public void setSetting(String namespace, String key, String value)
+            throws DeviceNotAvailableException {
+        setSettingInternal("", namespace, key, value);
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
     public void setSetting(int userId, String namespace, String key, String value)
+            throws DeviceNotAvailableException {
+        setSettingInternal(String.format("--user %d", userId), namespace, key, value);
+    }
+
+    /**
+     * Internal helper to set a setting with or without a userId provided.
+     */
+    private void setSettingInternal(String userFlag, String namespace, String key, String value)
             throws DeviceNotAvailableException {
         checkApiLevelAgainst("Changing settings", 22);
         if (Arrays.asList(SETTINGS_NAMESPACE).contains(namespace.toLowerCase())) {
-            executeShellCommand(String.format("settings --user %d put %s %s %s",
-                    userId, namespace, key, value));
+            executeShellCommand(String.format("settings %s put %s %s %s",
+                    userFlag, namespace, key, value));
         } else {
             throw new IllegalArgumentException("Namespace must be one of system, secure, global."
                     + " You provided: " + namespace);

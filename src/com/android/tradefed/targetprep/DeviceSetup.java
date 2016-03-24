@@ -695,14 +695,14 @@ public class DeviceSetup implements ITargetPreparer, ITargetCleaner {
         switch (mAirplaneMode) {
             case ON:
                 CLog.d("Changing global setting airplane_mode_on to 1");
-                device.executeShellCommand("settings put global \"airplane_mode_on\" \"1\"");
+                device.setSetting("global", "airplane_mode_on", "1");
                 if (!mForceSkipRunCommands) {
                     device.executeShellCommand(String.format(command, "true"));
                 }
                 break;
             case OFF:
                 CLog.d("Changing global setting airplane_mode_on to 0");
-                device.executeShellCommand("settings put global \"airplane_mode_on\" \"0\"");
+                device.setSetting("global", "airplane_mode_on", "0");
                 if (!mForceSkipRunCommands) {
                     device.executeShellCommand(String.format(command, "false"));
                 }
@@ -712,24 +712,23 @@ public class DeviceSetup implements ITargetPreparer, ITargetCleaner {
                 break;
         }
 
-        String settingCommand = "settings put %s \"%s\" \"%s\"";
         for (String key : mSystemSettings.keySet()) {
             for (String value : mSystemSettings.get(key)) {
                 CLog.d("Changing system setting %s to %s", key, value);
-                device.executeShellCommand(String.format(settingCommand, "system", key, value));
+                device.setSetting("system", key, value);
             }
         }
         for (String key : mSecureSettings.keySet()) {
             for (String value : mSecureSettings.get(key)) {
                 CLog.d("Changing secure setting %s to %s", key, value);
-                device.executeShellCommand(String.format(settingCommand, "secure", key, value));
+                device.setSetting("secure", key, value);
             }
         }
 
         for (String key : mGlobalSettings.keySet()) {
             for (String value : mGlobalSettings.get(key)) {
                 CLog.d("Changing global setting %s to %s", key, value);
-                device.executeShellCommand(String.format(settingCommand, "global", key, value));
+                device.setSetting("global", key, value);
             }
         }
     }

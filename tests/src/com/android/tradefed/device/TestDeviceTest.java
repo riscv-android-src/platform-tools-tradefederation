@@ -2350,6 +2350,19 @@ public class TestDeviceTest extends TestCase {
     }
 
     /**
+     * Unit test for {@link TestDevice#getSetting(String, String)}.
+     */
+    public void testGetSetting_SystemUser() throws Exception {
+        mTestDevice = new TestableTestDevice() {
+            @Override
+            public String executeShellCommand(String command) throws DeviceNotAvailableException {
+                return "78";
+            }
+        };
+        assertEquals("78", mTestDevice.getSetting("system", "screen_brightness"));
+    }
+
+    /**
      * Unit test for {@link TestDevice#getSetting(int, String, String)}.
      */
     public void testGetSetting_nulloutput() throws Exception {
@@ -2409,6 +2422,24 @@ public class TestDeviceTest extends TestCase {
         };
         try {
             mTestDevice.setSetting(0, "system", "screen_brightness", "75");
+        } catch (IllegalArgumentException e) {
+            fail("putSettings should not have thrown an exception.");
+        }
+    }
+
+    /**
+     * Unit test for {@link TestDevice#setSetting(String, String, String)}
+     * with a normal case.
+     */
+    public void testSetSettings_SystemUser() throws Exception {
+        mTestDevice = new TestableTestDevice() {
+            @Override
+            public int getApiLevel() throws DeviceNotAvailableException {
+                return 22;
+            }
+        };
+        try {
+            mTestDevice.setSetting("system", "screen_brightness", "75");
         } catch (IllegalArgumentException e) {
             fail("putSettings should not have thrown an exception.");
         }

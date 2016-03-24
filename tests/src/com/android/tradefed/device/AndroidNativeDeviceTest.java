@@ -352,6 +352,18 @@ public class AndroidNativeDeviceTest extends TestCase {
     }
 
     /**
+     * Unit test for {@link AndroidNativeDevice#getSetting(String, String)}.
+     */
+    public void testGetSettingSystemUser_exception() throws Exception {
+        try {
+            mTestDevice.getSetting("global", "wifi_on");
+        } catch (UnsupportedOperationException onse) {
+            return;
+        }
+        fail("getSettings should have thrown an exception.");
+    }
+
+    /**
      * Unit test for {@link AndroidNativeDevice#getSetting(int, String, String)}.
      */
     public void testGetSetting_exception() throws Exception {
@@ -361,6 +373,18 @@ public class AndroidNativeDeviceTest extends TestCase {
             return;
         }
         fail("getSettings should have thrown an exception.");
+    }
+
+    /**
+     * Unit test for {@link AndroidNativeDevice#setSetting(String, String, String)}.
+     */
+    public void testSetSettingSystemUser_exception() throws Exception {
+        try {
+            mTestDevice.setSetting("global", "wifi_on", "0");
+        } catch (UnsupportedOperationException onse) {
+            return;
+        }
+        fail("putSettings should have thrown an exception.");
     }
 
     /**

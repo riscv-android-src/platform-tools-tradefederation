@@ -1390,6 +1390,13 @@ public interface ITestDevice {
     public boolean hasFeature(String feature) throws DeviceNotAvailableException;
 
     /**
+     * See {@link #getSetting(int, String, String)} and performed on system user.
+     *
+     * @throws DeviceNotAvailableException
+     */
+    public String getSetting(String namespace, String key) throws DeviceNotAvailableException;
+
+    /**
      * Return the value of the requested setting.
      * namespace must be one of: {"system", "secure", "global"}
      *
@@ -1397,6 +1404,14 @@ public interface ITestDevice {
      * @throws DeviceNotAvailableException
      */
     public String getSetting(int userId, String namespace, String key)
+            throws DeviceNotAvailableException;
+
+    /**
+     * See {@link #setSetting(int, String, String, String)} and performed on system user.
+     *
+     * @throws DeviceNotAvailableException
+     */
+    public void setSetting(String namespace, String key, String value)
             throws DeviceNotAvailableException;
 
     /**
