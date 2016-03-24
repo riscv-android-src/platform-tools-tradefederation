@@ -445,6 +445,17 @@ public class InstrumentationTest implements IDeviceTest, IResumableTest, ITestCo
     }
 
     /**
+     * Set the max time in ms to allow for the 'max time to shell output response' when collecting
+     * tests.
+     * <p/>
+     * @deprecated This method is a no-op
+     */
+    @Deprecated
+    public void setCollectsTestsShellTimeout(int timeout) {
+        // no-op
+    }
+
+    /**
      * Set the frequency with which to automatically collect bugreports after test failures.
      * <p />
      * Note that there is _no feedback mechanism_ between the test runner and the bugreport
