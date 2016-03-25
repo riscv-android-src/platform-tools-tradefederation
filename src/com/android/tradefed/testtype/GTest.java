@@ -116,6 +116,10 @@ public class GTest implements IDeviceTest, IRemoteTest, ITestFilterReceiver, IRu
                     + "will be available.")
     private boolean mEnableXmlOutput = false;
 
+    @Option(name = "stop-runtime",
+            description="Stops the Java application runtime before test execution.")
+    private boolean mStopRuntime = false;
+
     @Option(name = "collect-tests-only",
             description = "Only invoke the test binary to collect list of applicable test cases. "
                     + "All test run callbacks will be triggered, but test execution will "
@@ -550,7 +554,23 @@ public class GTest implements IDeviceTest, IRemoteTest, ITestFilterReceiver, IRu
                     testPath, mDevice.getSerialNumber()));
             return;
         }
-        doRunAllTestsInSubdirectory(testPath, mDevice, listener);
+        if (mStopRuntime) {
+            mDevice.executeShellCommand("stop");
+        }
+        Throwable throwable = null;
+        try {
+            doRunAllTestsInSubdirectory(testPath, mDevice, listener);
+        } catch (Throwable t) {
+            throwable = t;
+            throw t;
+        } finally {
+            if (!(throwable instanceof DeviceNotAvailableException)) {
+                if (mStopRuntime) {
+                    mDevice.executeShellCommand("start");
+                    mDevice.waitForDeviceAvailable();
+                }
+            }
+        }
     }
 
     /**
