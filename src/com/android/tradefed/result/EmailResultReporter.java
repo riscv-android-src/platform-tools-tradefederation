@@ -290,7 +290,7 @@ public class EmailResultReporter extends CollectingTestListener implements
         }
 
         if (mDestinations.isEmpty()) {
-            CLog.e("Failed to send email because no destination addresses were set.");
+            CLog.i("No destinations set, not sending any emails");
             return;
         }
 
