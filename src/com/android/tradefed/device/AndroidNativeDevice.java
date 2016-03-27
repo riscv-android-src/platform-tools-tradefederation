@@ -685,29 +685,7 @@ public class AndroidNativeDevice implements IManagedTestDevice {
      */
     @Override
     public boolean isRuntimePermissionSupported() throws DeviceNotAvailableException {
-        //TODO: only keep API Level check once M is official
-        if (getApiLevel() > 22) {
-            return true;
-        }
-        String codeName = getProperty(BUILD_CODENAME_PROP).trim();
-        if (!"REL".equals(codeName)) {
-            // this is a development platform, check code name, if less than M, then not supported
-            if (codeName.charAt(0) < 'M') {
-                return false;
-            }
-        } else {
-            // released platform, none supports runtime permission yet
-            return false;
-        }
-        try {
-            long buildNumber = Long.parseLong(getBuildId());
-            // for platform commit 429270c3ed1da02914efb476be977dc3829d4c30
-            return buildNumber >= 1837705;
-        } catch (NumberFormatException nfe) {
-            // build id field is not a number, probably an eng build since we've already checked
-            // code name, assuming supported
-            return true;
-        }
+        return getApiLevel() > 22;
     }
 
     /**
