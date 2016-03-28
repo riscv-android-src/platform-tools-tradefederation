@@ -987,45 +987,6 @@ public class TestDeviceTest extends TestCase {
      * dev build attributes
      * @throws Exception
      */
-    public void testRuntimePermissionSupportedRandom1() throws Exception {
-        injectSystemProperty("ro.build.version.sdk", "22");
-        injectSystemProperty(TestDevice.BUILD_CODENAME_PROP, "YADDA");
-        injectSystemProperty(TestDevice.BUILD_ID_PROP, "XYZ");
-        replayMocks();
-        assertTrue(mTestDevice.isRuntimePermissionSupported());
-    }
-
-    /**
-     * Test that isRuntimePermissionSupported returns correct result for device reporting random
-     * mnc dev build attributes
-     * @throws Exception
-     */
-    public void testRuntimePermissionSupportedMncLocal() throws Exception {
-        injectSystemProperty("ro.build.version.sdk", "22");
-        injectSystemProperty(TestDevice.BUILD_CODENAME_PROP, "MNC");
-        injectSystemProperty(TestDevice.BUILD_ID_PROP, "eng.foo.20150414.190304");
-        replayMocks();
-        assertTrue(mTestDevice.isRuntimePermissionSupported());
-    }
-
-    /**
-     * Test that isRuntimePermissionSupported returns correct result for device reporting (bogus) N
-     * based device attributes
-     * @throws Exception
-     */
-    public void testRuntimePermissionSupportedNycLocal() throws Exception {
-        injectSystemProperty("ro.build.version.sdk", "22");
-        injectSystemProperty(TestDevice.BUILD_CODENAME_PROP, "NMC");
-        injectSystemProperty(TestDevice.BUILD_ID_PROP, "1937204");
-        replayMocks();
-        assertTrue(mTestDevice.isRuntimePermissionSupported());
-    }
-
-    /**
-     * Test that isRuntimePermissionSupported returns correct result for device reporting random
-     * dev build attributes
-     * @throws Exception
-     */
     public void testRuntimePermissionSupportedNonMncLocal() throws Exception {
         injectSystemProperty("ro.build.version.sdk", "21");
         injectSystemProperty(TestDevice.BUILD_CODENAME_PROP, "LMP");
@@ -1061,17 +1022,13 @@ public class TestDeviceTest extends TestCase {
      */
     private void setMockIDeviceRuntimePermissionNotSupported() {
         injectSystemProperty("ro.build.version.sdk", "22");
-        injectSystemProperty(TestDevice.BUILD_CODENAME_PROP, "MNC");
-        injectSystemProperty(TestDevice.BUILD_ID_PROP, "1816412");
     }
 
     /**
      * Convenience method for setting up mMockIDevice to support runtime permission
      */
     private void setMockIDeviceRuntimePermissionSupported() {
-        injectSystemProperty("ro.build.version.sdk", "22");
-        injectSystemProperty(TestDevice.BUILD_CODENAME_PROP, "MNC");
-        injectSystemProperty(TestDevice.BUILD_ID_PROP, "1844452");
+        injectSystemProperty("ro.build.version.sdk", "23");
     }
 
     /**
