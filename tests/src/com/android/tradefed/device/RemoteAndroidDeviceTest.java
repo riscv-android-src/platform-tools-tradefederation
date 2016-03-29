@@ -105,6 +105,50 @@ public class RemoteAndroidDeviceTest extends TestCase {
         assertFalse(mTestDevice.adbTcpConnect("localhost", "1234"));
     }
 
+    /**
+     * Test {@link RemoteAndroidDevice#adbTcpConnect(String, String)} in a case where adb connect
+     * always return connect success (never really connected so confirmation: "already connected"
+     * fails.
+     */
+    public void testAdbConnect_fails_confirmation() {
+        CommandResult adbResult = new CommandResult();
+        adbResult.setStatus(CommandStatus.SUCCESS);
+        adbResult.setStdout("connected to");
+        EasyMock.expect(mMockRunUtil.runTimedCmd(EasyMock.anyLong(),
+                EasyMock.eq("adb"), EasyMock.eq("connect"), EasyMock.eq(MOCK_DEVICE_SERIAL)))
+                .andReturn(adbResult).times(RemoteAndroidDevice.MAX_RETRIES * 2);
+        mMockRunUtil.sleep(EasyMock.anyLong());
+        EasyMock.expectLastCall().times(RemoteAndroidDevice.MAX_RETRIES);
+        EasyMock.replay(mMockRunUtil);
+        assertFalse(mTestDevice.adbTcpConnect("localhost", "1234"));
+    }
+
+    /**
+     * Test {@link RemoteAndroidDevice#adbTcpDisconnect(String, String)}.
+     */
+    public void testAdbDisconnect() {
+        CommandResult adbResult = new CommandResult();
+        adbResult.setStatus(CommandStatus.SUCCESS);
+        EasyMock.expect(mMockRunUtil.runTimedCmd(EasyMock.anyLong(),
+                EasyMock.eq("adb"), EasyMock.eq("disconnect"), EasyMock.eq(MOCK_DEVICE_SERIAL)))
+                .andReturn(adbResult);
+        EasyMock.replay(mMockRunUtil);
+        assertTrue(mTestDevice.adbTcpDisconnect("localhost", "1234"));
+    }
+
+    /**
+     * Test {@link RemoteAndroidDevice#adbTcpDisconnect(String, String)} in a failure case.
+     */
+    public void testAdbDisconnect_fails() {
+        CommandResult adbResult = new CommandResult();
+        adbResult.setStatus(CommandStatus.FAILED);
+        EasyMock.expect(mMockRunUtil.runTimedCmd(EasyMock.anyLong(),
+                EasyMock.eq("adb"), EasyMock.eq("disconnect"), EasyMock.eq(MOCK_DEVICE_SERIAL)))
+                .andReturn(adbResult);
+        EasyMock.replay(mMockRunUtil);
+        assertFalse(mTestDevice.adbTcpDisconnect("localhost", "1234"));
+    }
+
     public void testCheckSerial() {
         EasyMock.replay(mMockIDevice);
         assertEquals("localhost", mTestDevice.getHostName());

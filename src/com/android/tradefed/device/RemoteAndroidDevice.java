@@ -33,6 +33,7 @@ public class RemoteAndroidDevice extends TestDevice {
 
     private static final String ADB_SUCCESS_CONNECT_TAG = "connected to";
     private static final String ADB_ALREADY_CONNECTED_TAG = "already";
+    private static final String ADB_CONN_REFUSED = "Connection refused";
 
     /**
      * Creates a {@link RemoteAndroidDevice}.
@@ -45,7 +46,6 @@ public class RemoteAndroidDevice extends TestDevice {
             IDeviceMonitor allocationMonitor) {
         super(device, stateMonitor, allocationMonitor);
     }
-
 
     /**
      * {@inheritDoc}
@@ -131,11 +131,30 @@ public class RemoteAndroidDevice extends TestDevice {
                             resultConfirmation.getStatus(), resultConfirmation.getStdout(),
                             resultConfirmation.getStderr());
                 }
+            } else if (CommandStatus.SUCCESS.equals(result.getStatus()) &&
+                    result.getStdout().contains(ADB_CONN_REFUSED)) {
+                // If we find "Connection Refused", we bail out directly as more connect won't help
+                return false;
             }
             CLog.d("adb connect output: status: %s stdout: %s stderr: %s, retrying.",
                     result.getStatus(), result.getStdout(), result.getStderr());
             getRunUtil().sleep((i + 1) * RETRY_INTERVAL_MS);
         }
         return false;
+    }
+
+    /**
+     * Helper method to adb disconnect from a given tcp ip Android device
+     *
+     * @param host the hostname/ip of a tcp/ip Android device
+     * @param port the port number of a tcp/ip device
+     * @return true if we successfully disconnected to the device, false
+     *         otherwise.
+     */
+    public boolean adbTcpDisconnect(String host, String port) {
+        CommandResult result = getRunUtil().runTimedCmd(DEFAULT_SHORT_CMD_TIMEOUT, "adb",
+                "disconnect",
+                String.format("%s:%s", host, port));
+        return CommandStatus.SUCCESS.equals(result.getStatus());
     }
 }

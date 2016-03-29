@@ -123,6 +123,10 @@ public class TestInvocationTest extends TestCase {
         EasyMock.expect(mMockDevice.getSerialNumber()).andStubReturn(SERIAL);
         EasyMock.expect(mMockDevice.getIDevice()).andStubReturn(null);
         mMockDevice.setRecovery(mMockRecovery);
+        mMockDevice.preInvocationSetup((IBuildInfo)EasyMock.anyObject());
+        EasyMock.expectLastCall().anyTimes();
+        mMockDevice.postInvocationTearDown();
+        EasyMock.expectLastCall().anyTimes();
 
         EasyMock.expect(mMockBuildInfo.getBuildId()).andStubReturn("1");
         EasyMock.expect(mMockBuildInfo.getBuildAttributes()).andStubReturn(EMPTY_MAP);
@@ -159,7 +163,7 @@ public class TestInvocationTest extends TestCase {
     public void testInvoke_RemoteTest() throws Throwable {
         IRemoteTest test = EasyMock.createMock(IRemoteTest.class);
         setupMockSuccessListeners();
-        
+
         test.run((ITestInvocationListener)EasyMock.anyObject());
         setupNormalInvoke(test);
         EasyMock.replay(mockRescheduler);
