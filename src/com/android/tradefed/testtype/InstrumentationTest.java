@@ -184,6 +184,10 @@ public class InstrumentationTest implements IDeviceTest, IResumableTest, ITestCo
                     + "not be actually carried out.")
     private boolean mCollectTestsOnly = false;
 
+    @Option(name = "debug", description = "Wait for debugger before instrumentation starts. Note "
+            + "that this should only be used for local debugging, not suitable for automated runs.")
+    private boolean mDebug = false;
+
     private IAbi mAbi = null;
 
     private Collection<String> mInstallArgs = new ArrayList<>();
@@ -643,6 +647,10 @@ public class InstrumentationTest implements IDeviceTest, IResumableTest, ITestCo
         if (mRemainingTests == null) {
             mRemainingTests = collectTestsToRun(mRunner, testCollectionListener);
         }
+        // only set debug flag after collecting tests
+        if (mDebug) {
+            mRunner.setDebug(true);
+        }
         if (mBugreportFrequency != null) {
             // Collect a bugreport after EACH/FIRST failed testcase
             BugreportCollector.Predicate pred = new BugreportCollector.Predicate(
@@ -796,6 +804,8 @@ public class InstrumentationTest implements IDeviceTest, IResumableTest, ITestCo
             Log.d(LOG_TAG, String.format("Collecting test info for %s on device %s",
                     mPackageName, mDevice.getSerialNumber()));
             runner.setTestCollection(true);
+            // always explicitly set debug to false when collecting tests
+            runner.setDebug(false);
             // try to collect tests multiple times, in case device is temporarily not available
             // on first attempt
             Collection<TestIdentifier>  tests = collectTestsAndRetry(runner, listener);
