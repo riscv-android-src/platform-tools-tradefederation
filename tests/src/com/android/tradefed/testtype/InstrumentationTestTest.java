@@ -256,6 +256,7 @@ public class InstrumentationTestTest extends TestCase {
         mInstrumentationTest.setRerunMode(true);
         // expect test collection mode run first to collect tests
         mMockRemoteRunner.setTestCollection(true);
+        mMockRemoteRunner.setDebug(false);
         // collect tests run
         CollectTestAnswer collectTestResponse = new CollectTestAnswer() {
             @Override
@@ -383,6 +384,7 @@ public class InstrumentationTestTest extends TestCase {
         mInstrumentationTest.setRerunMode(true);
         // expect test collection mode run first to collect tests
         mMockRemoteRunner.setTestCollection(true);
+        mMockRemoteRunner.setDebug(false);
         CollectTestAnswer collectTestAnswer = new CollectTestAnswer() {
             @Override
             public Boolean answer(IRemoteAndroidTestRunner runner, ITestRunListener listener) {
