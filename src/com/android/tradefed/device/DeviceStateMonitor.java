@@ -36,7 +36,7 @@ import java.util.concurrent.TimeUnit;
 /**
  * Helper class for monitoring the state of a {@link IDevice}.
  */
-class DeviceStateMonitor implements IDeviceStateMonitor {
+public class DeviceStateMonitor implements IDeviceStateMonitor {
 
     private static final String LOG_TAG = "DeviceStateMonitor";
     static final String BOOTCOMPLETE_PROP = "dev.bootcomplete";
@@ -60,7 +60,7 @@ class DeviceStateMonitor implements IDeviceStateMonitor {
     private IDeviceManager mMgr;
     private final boolean mFastbootEnabled;
 
-    DeviceStateMonitor(IDeviceManager mgr, IDevice device, boolean fastbootEnabled) {
+    public DeviceStateMonitor(IDeviceManager mgr, IDevice device, boolean fastbootEnabled) {
         mMgr = mgr;
         mDevice = device;
         mStateListeners = new ArrayList<DeviceStateListener>();

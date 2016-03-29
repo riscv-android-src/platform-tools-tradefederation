@@ -20,7 +20,7 @@ import com.android.ddmlib.IDevice;
 /**
  * A ITestDevice whose lifecycle is managed.
  */
-interface IManagedTestDevice extends ITestDevice {
+public interface IManagedTestDevice extends ITestDevice {
 
     /**
      * Container for a response to a {@link IManagedTestDevice#handleAllocationEvent(DeviceEvent)}
