@@ -62,6 +62,7 @@ public class GoogleBenchmarkResultParser {
             CLog.e("Failed to Parse context:");
             CLog.e(e);
             mTestListener.testRunFailed(String.format("Failed to Parse context: %s", e));
+            return results;
         }
         try {
             // Benchmark results next

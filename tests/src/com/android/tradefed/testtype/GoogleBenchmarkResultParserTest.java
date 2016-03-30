@@ -148,22 +148,14 @@ public class GoogleBenchmarkResultParserTest extends TestCase {
     }
 
     /**
-     * Tests the parser with an error in the context, should still attempt to parse benchmark
-     * results.
+     * Tests the parser with an error in the context, should stop parsing because format is
+     * unexpected.
      */
     @SuppressWarnings("unchecked")
     public void testParse_contextError() throws Exception {
         ITestRunListener mMockInvocationListener =
                 EasyMock.createMock(ITestRunListener.class);
         mMockInvocationListener.testRunFailed((String)EasyMock.anyObject());
-        mMockInvocationListener.testStarted((TestIdentifier)EasyMock.anyObject());
-        Map<String, String> test1 = new HashMap<String, String>();
-        test1.put("cpu_time", "5");
-        test1.put("real_time", "5");
-        test1.put("name", "BM_one");
-        test1.put("iterations", "109451958");
-        mMockInvocationListener.testEnded((TestIdentifier)EasyMock.anyObject(),
-                EasyMock.eq(test1));
         EasyMock.replay(mMockInvocationListener);
         CollectingOutputReceiver contents =  readInFile(GBENCH_OUTPUT_FILE_3);
         GoogleBenchmarkResultParser resultParser =
