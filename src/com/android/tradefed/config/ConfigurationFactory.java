@@ -50,7 +50,6 @@ public class ConfigurationFactory implements IConfigurationFactory {
     private static IConfigurationFactory sInstance = null;
     private static final String CONFIG_SUFFIX = ".xml";
     private static final String CONFIG_PREFIX = "config/";
-    private static final String CONFIG_SPLIT = "|";
 
     private Map<ConfigId, ConfigurationDef> mConfigDefMap;
 
@@ -246,14 +245,21 @@ public class ConfigurationFactory implements IConfigurationFactory {
             String config_name = name;
             if (!isBundledConfig(name)) {
                 try {
-                    // Ensure bundled configs are not including local configs.
+                    // Check that included config is either bundled or exists in filesystem
                     if (isBundledConfig(parentName)) {
-                        throw new ConfigurationException(String.format("Invalid include; bundled " +
-                    "config '%s' is trying to include local config '%s'.", parentName, name));
+                        // check that 'name' maps to a local file that exists
+                        File localConfig = new File(name);
+                        if (!localConfig.exists()) {
+                            throw new ConfigurationException(String.format(
+                                    "Bundled config '%s' is including a config '%s' that's neither "
+                                    + "local nor bundled.", parentName, name));
+                        }
+                        config_name = localConfig.getAbsolutePath();
+                    } else {
+                        // Local configs' include should be relative to their parent's path.
+                        String parentRoot = new File(parentName).getParentFile().getCanonicalPath();
+                        config_name = getAbsolutePath(parentRoot, name);
                     }
-                    // Local configs' include should be relative to their parent's path.
-                    String parentRoot = new File(parentName).getParentFile().getCanonicalPath();
-                    config_name = getAbsolutePath(parentRoot, name);
                 } catch  (IOException e) {
                     throw new ConfigurationException(String.format(
                             "Failure when trying to determine local file canonical path %s", e));
