@@ -43,6 +43,7 @@ public class ConfigurationFactoryTest extends TestCase {
     /** the test config name that is built into this jar */
     private static final String TEST_CONFIG = "test-config";
     private static final String GLOBAL_TEST_CONFIG = "global-config";
+    private static final String INCLUDE_CONFIG = "include-config";
 
     /**
      * {@inheritDoc}
@@ -342,7 +343,7 @@ public class ConfigurationFactoryTest extends TestCase {
      */
     public void testCreateConfigurationFromArgs_includeConfig() throws Exception {
         IConfiguration config = mFactory.createConfigurationFromArgs(
-                new String[]{"include-config"});
+                new String[]{INCLUDE_CONFIG});
         assertTrue(config.getTests().get(0) instanceof StubOptionTest);
         assertTrue(config.getTests().get(1) instanceof StubOptionTest);
         StubOptionTest fromTestConfig = (StubOptionTest) config.getTests().get(0);
@@ -397,7 +398,7 @@ public class ConfigurationFactoryTest extends TestCase {
     public void testCreateConfigurationFromArgs_defaultTemplateInclude_alternate() throws Exception {
         IConfiguration config = mFactory.createConfigurationFromArgs(
                 new String[]{"template-include-config-with-default", "--template:map", "target",
-                "include-config"});
+                INCLUDE_CONFIG});
         assertEquals(3, config.getTests().size());
         assertTrue(config.getTests().get(0) instanceof StubOptionTest);
         assertTrue(config.getTests().get(1) instanceof StubOptionTest);
@@ -474,6 +475,30 @@ public class ConfigurationFactoryTest extends TestCase {
                     "config.  msg was: %s", msg), msg.contains(configName));
             assertTrue(String.format("Error message does not mention the name of the missing " +
                     "include target.  msg was: %s", msg), msg.contains(includeName));
+        }
+    }
+
+    /**
+     * Test loading a config that includes a local config.
+     */
+    public void testCreateConfigurationFromArgs_templateInclude_local() throws Exception {
+        final String configName = "template-include-config";
+        InputStream configStream = getClass().getResourceAsStream(
+                String.format("/testconfigs/%s.xml", INCLUDE_CONFIG));
+        File tmpConfig = FileUtil.createTempFile(INCLUDE_CONFIG, ".xml");
+        try {
+            FileUtil.writeToFile(configStream, tmpConfig);
+            final String includeName = tmpConfig.getAbsolutePath();
+            IConfiguration config = mFactory.createConfigurationFromArgs(
+                    new String[]{configName, "--template:map", "target", includeName});
+            assertTrue(config.getTests().get(0) instanceof StubOptionTest);
+            assertTrue(config.getTests().get(1) instanceof StubOptionTest);
+            StubOptionTest fromTestConfig = (StubOptionTest) config.getTests().get(0);
+            StubOptionTest fromIncludeConfig = (StubOptionTest) config.getTests().get(1);
+            assertEquals("valueFromTestConfig", fromTestConfig.mOption);
+            assertEquals("valueFromIncludeConfig", fromIncludeConfig.mOption);
+        } finally {
+            tmpConfig.delete();
         }
     }
 
