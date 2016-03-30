@@ -1032,7 +1032,6 @@ public class TestDevice extends AndroidNativeDevice {
             throw new IllegalArgumentException("Namespace must be one of system, secure, global."
                     + " You provided: " + namespace);
         }
-        CLog.e("Namespace requested: %s is not part of {system, secure, global}", namespace);
     }
 
     /**
