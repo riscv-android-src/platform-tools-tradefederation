@@ -763,6 +763,13 @@ public class CommandScheduler extends Thread implements ICommandScheduler, IComm
                     mExecutingCommands.add(cmd);
                     // track command matched with device
                     scheduledCommandMap.put(cmd, device);
+                } else {
+                    CLog.logAndDisplay(LogLevel.DEBUG, "No available device matching the config's "
+                            + "requirements for cmd id %d.", cmd.getCommandTracker().getId());
+                    // make sure not to record since it may contains password
+                    PrintWriter pw = new PrintWriter(System.out, true);
+                    pw.println(String.format("The command %s will be rescheduled.",
+                            Arrays.toString(cmd.getCommandTracker().getArgs())));
                 }
             }
         }
