@@ -19,7 +19,10 @@ package com.android.tradefed.testtype;
 public interface IRuntimeHintProvider {
 
     /**
-     * Give a hint about the test's runtime. Default is 1 minute.
+     * Return the expected runtime of the test in
+     * milliseconds.
+     *
+     * The time is used to load balance sharded execution
      */
     long getRuntimeHint();
 }
