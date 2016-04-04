@@ -47,9 +47,13 @@ import com.android.tradefed.util.RunUtil;
 import junit.framework.Assert;
 import junit.framework.AssertionFailedError;
 
+import java.io.DataInputStream;
+import java.io.DataOutputStream;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
+import java.net.ServerSocket;
+import java.net.Socket;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
@@ -70,7 +74,8 @@ import java.util.Map;
 public class SideloadOtaStabilityTest implements IDeviceTest, IBuildReceiver,
         IConfigurationReceiver, IShardableTest, IResumableTest {
 
-    private static final String CACHE_OTA_PATH = "/cache/recovery/otatest/update.zip";
+    private static final String UNCRYPT_FILE_PATH = "/cache/recovery/uncrypt_file";
+    private static final String BLOCK_MAP_PATH = "@/cache/recovery/block.map";
     private static final String RECOVERY_COMMAND_PATH = "/cache/recovery/command";
 
     private OtaDeviceBuildInfo mOtaDeviceBuild;
@@ -96,6 +101,11 @@ public class SideloadOtaStabilityTest implements IDeviceTest, IBuildReceiver,
     @Option(name = "max-install-time", description =
             "The maximum time to wait for an ota to install in seconds.")
     private int mMaxInstallOnlineTimeSec = 5 * 60;
+
+    @Option(name = "package-data-path", description =
+            "path on /data for the package to be saved to")
+    /* This is currently the only path readable by uncrypt on the userdata partition */
+    private String mPackageDataPath = "/data/data/com.google.android.gsf/app_download/update.zip";
 
     /** controls if this test should be resumed. Only used if mResumeMode is enabled */
     private boolean mResumable = true;
@@ -290,15 +300,23 @@ public class SideloadOtaStabilityTest implements IDeviceTest, IBuildReceiver,
 
     private void installOta(ITestInvocationListener listener, IDeviceBuildInfo otaBuild)
             throws DeviceNotAvailableException {
-        Assert.assertTrue(mDevice.pushFile(otaBuild.getOtaPackageFile(), CACHE_OTA_PATH));
-        String installOtaCmd = String.format("--update_package=%s", CACHE_OTA_PATH);
+        CLog.i("Pushing OTA package %s", otaBuild.getOtaPackageFile().getAbsolutePath());
+        Assert.assertTrue(mDevice.pushFile(otaBuild.getOtaPackageFile(), mPackageDataPath));
+        // this file needs to be uncrypted, since /data isn't mounted in recovery
+        // block.map should be empty since cache should be cleared
+        mDevice.pushString(mPackageDataPath + "\n", UNCRYPT_FILE_PATH);
+        doUncrypt(SocketFactory.getInstance());
+        String installOtaCmd = String.format("--update_package=%s\n", BLOCK_MAP_PATH);
         mDevice.pushString(installOtaCmd, RECOVERY_COMMAND_PATH);
-
         try {
             mDevice.rebootIntoRecovery();
         } catch (DeviceNotAvailableException e) {
-            CLog.e("Device %s did not boot into recovery", mDevice.getSerialNumber());
-            throw e;
+            CLog.w("Device %s did reach state 'recovery', instead in state %s",
+                    mDevice.getSerialNumber(), mDevice.getDeviceState());
+            // TODO: with a new ddmlib, this should be SIDELOAD, but for now it will be null
+            if (mDevice.getDeviceState() != null) {
+                throw e;
+            }
         }
 
         try {
@@ -308,6 +326,7 @@ public class SideloadOtaStabilityTest implements IDeviceTest, IBuildReceiver,
             sendRecoveryLog(listener);
             throw e;
         }
+
         try {
             mDevice.waitForDeviceAvailable();
         } catch (DeviceNotAvailableException e) {
@@ -355,6 +374,92 @@ public class SideloadOtaStabilityTest implements IDeviceTest, IBuildReceiver,
             mExpectedBasebandVersion = parser.getRequiredBasebandVersion();
         } catch (TargetSetupError e) {
             throw new RuntimeException("Error when trying to set up OTA version info");
+        }
+    }
+
+    /*
+     * Uncrypt needs to attach to a socket before it will actually begin work, so we need to
+     * attach a socket to it.
+     */
+    public int doUncrypt(ISocketFactory sockets) throws DeviceNotAvailableException {
+        // init has to start uncrypt or the socket will not be allocated
+        CLog.i("Starting uncrypt service");
+        mDevice.executeShellCommand("setprop ctl.start uncrypt");
+        int port;
+        try {
+            port = getFreePort();
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+        // The socket uncrypt wants to run on is a local unix socket, so we can forward a tcp
+        // port to connect to it.
+        CLog.i("Connecting to uncrypt on port %d", port);
+        mDevice.executeAdbCommand("forward", "tcp:" + port, "localreserved:uncrypt");
+        // connect to uncrypt!
+        Socket uncrypt = null;
+        DataInputStream dis = null;
+        DataOutputStream dos = null;
+        try {
+            uncrypt = sockets.createClientSocket("localhost", port);
+            int status = Integer.MIN_VALUE;
+            dis = new DataInputStream(uncrypt.getInputStream());
+            dos = new DataOutputStream(uncrypt.getOutputStream());
+            while (true) {
+                status = dis.readInt();
+                if (status == 100) {
+                    CLog.i("Uncrypt finished successfully");
+                    dos.writeInt(0);
+                    break;
+                } else if (status > 100 || status < 0) {
+                    // error, acknowledge it to let uncrypt finish
+                    CLog.w("Uncrypt sent error status %d", status);
+                    dos.writeInt(0);
+                    return Integer.MIN_VALUE;
+                }
+            }
+            return status;
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        } finally {
+            try {
+                if (dos != null) dos.close();
+                if (dis != null) dis.close();
+                if (uncrypt != null) uncrypt.close();
+            } catch (IOException e) {
+                // ignore
+            }
+        }
+    }
+
+    protected int getFreePort() throws IOException {
+        try (ServerSocket sock = new ServerSocket(0)) {
+            return sock.getLocalPort();
+        }
+    }
+
+    /**
+     * Provides a client socket. Allows for providing mock sockets to doUncrypt in unit testing.
+     */
+    public interface ISocketFactory {
+        public Socket createClientSocket(String host, int port) throws IOException;
+    }
+
+    /**
+     * Default implementation of {@link ISocketFactory}, which provides a {@link Socket}.
+     */
+    protected static class SocketFactory implements ISocketFactory {
+        private static SocketFactory sInstance;
+        private SocketFactory() { }
+        public static SocketFactory getInstance() {
+            if (sInstance == null) {
+                sInstance = new SocketFactory();
+            }
+            return sInstance;
+        }
+
+        @Override
+        public Socket createClientSocket(String host, int port) throws IOException {
+            return new Socket(host, port);
         }
     }
 }
