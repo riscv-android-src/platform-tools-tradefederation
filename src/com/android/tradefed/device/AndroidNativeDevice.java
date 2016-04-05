@@ -2599,6 +2599,14 @@ public class AndroidNativeDevice implements IManagedTestDevice {
      * {@inheritDoc}
      */
     @Override
+    public boolean isFastbootEnabled() {
+        return mFastbootEnabled;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
     public void setDeviceState(final TestDeviceState deviceState) {
         if (!deviceState.equals(getDeviceState())) {
             // disable state changes while fastboot lock is held, because issuing fastboot command
