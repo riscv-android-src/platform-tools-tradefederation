@@ -60,6 +60,8 @@ public class DeviceStateMonitor implements IDeviceStateMonitor {
     private IDeviceManager mMgr;
     private final boolean mFastbootEnabled;
 
+    protected static final String PERM_DENIED_ERROR_PATTERN = "Permission denied";
+
     public DeviceStateMonitor(IDeviceManager mgr, IDevice device, boolean fastbootEnabled) {
         mMgr = mgr;
         mDevice = device;
@@ -341,6 +343,10 @@ public class DeviceStateMonitor implements IDeviceStateMonitor {
                     Log.v(LOG_TAG, String.format("%s returned %s", checkCmd, output));
                     if (output.contains(testString)) {
                         return true;
+                    } else if (output.contains(PERM_DENIED_ERROR_PATTERN)) {
+                        CLog.w("Device %s mount check returned Permision Denied, "
+                                + "issue with mounting.", getSerialNumber());
+                        return false;
                     }
                 } catch (IOException e) {
                     Log.i(LOG_TAG,

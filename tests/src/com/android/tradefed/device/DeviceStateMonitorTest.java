@@ -490,6 +490,42 @@ public class DeviceStateMonitorTest extends TestCase {
     }
 
     /**
+     * Test {@link DeviceStateMonitor#waitForStoreMount(long)} when mount point return permission
+     * denied should return directly false.
+     */
+    public void testWaitForStoreMount_PermDenied() throws Exception {
+        mMockDevice = EasyMock.createMock(IDevice.class);
+        EasyMock.expect(mMockDevice.getState()).andReturn(DeviceState.ONLINE);
+        EasyMock.expect(mMockDevice.getSerialNumber()).andReturn(SERIAL_NUMBER).anyTimes();
+        mMockDevice.executeShellCommand((String) EasyMock.anyObject(),
+                (CollectingOutputReceiver)EasyMock.anyObject(), EasyMock.anyInt(),
+                EasyMock.eq(TimeUnit.MILLISECONDS));
+        EasyMock.expectLastCall().anyTimes();
+        EasyMock.replay(mMockDevice);
+        mMonitor = new DeviceStateMonitor(mMockMgr, mMockDevice, true) {
+            @Override
+            protected CollectingOutputReceiver createOutputReceiver() {
+                return new CollectingOutputReceiver() {
+                    @Override
+                    public String getOutput() {
+                        return "/system/bin/sh: cat: /sdcard/1459376318045: Permission denied";
+                    }
+                };
+            }
+            @Override
+            protected long getCurrentTime() {
+                return 10;
+            }
+            @Override
+            public String getMountPoint(String mountName) {
+                return "";
+            }
+        };
+        boolean res = mMonitor.waitForStoreMount(WAIT_TIMEOUT_NOT_REACHED_MS);
+        assertFalse(res);
+    }
+
+    /**
      * Test {@link DeviceStateMonitor#waitForStoreMount(long)} when mount point become available
      */
     public void testWaitForStoreMount_becomeAvailable() throws Exception {
