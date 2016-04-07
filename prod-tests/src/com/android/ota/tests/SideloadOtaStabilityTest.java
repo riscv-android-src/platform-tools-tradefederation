@@ -22,7 +22,6 @@ import com.android.tradefed.config.ConfigurationException;
 import com.android.tradefed.config.IConfiguration;
 import com.android.tradefed.config.IConfigurationReceiver;
 import com.android.tradefed.config.Option;
-import com.android.tradefed.config.Option.Importance;
 import com.android.tradefed.config.OptionClass;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
@@ -37,9 +36,7 @@ import com.android.tradefed.targetprep.ITargetPreparer;
 import com.android.tradefed.targetprep.TargetSetupError;
 import com.android.tradefed.testtype.IBuildReceiver;
 import com.android.tradefed.testtype.IDeviceTest;
-import com.android.tradefed.testtype.IRemoteTest;
 import com.android.tradefed.testtype.IResumableTest;
-import com.android.tradefed.testtype.IShardableTest;
 import com.android.tradefed.util.FileUtil;
 import com.android.tradefed.util.IRunUtil;
 import com.android.tradefed.util.RunUtil;
@@ -54,8 +51,6 @@ import java.io.FileInputStream;
 import java.io.IOException;
 import java.net.ServerSocket;
 import java.net.Socket;
-import java.util.ArrayList;
-import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -72,7 +67,7 @@ import java.util.Map;
  */
 @OptionClass(alias = "ota-stability")
 public class SideloadOtaStabilityTest implements IDeviceTest, IBuildReceiver,
-        IConfigurationReceiver, IShardableTest, IResumableTest {
+        IConfigurationReceiver, IResumableTest {
 
     private static final String UNCRYPT_FILE_PATH = "/cache/recovery/uncrypt_file";
     private static final String BLOCK_MAP_PATH = "@/cache/recovery/block.map";
@@ -89,10 +84,6 @@ public class SideloadOtaStabilityTest implements IDeviceTest, IBuildReceiver,
     @Option(name = "iterations", description =
             "Number of ota stability 'flash + wait for ota' iterations to run.")
     private int mIterations = 20;
-
-    @Option(name = "shards", description = "Optional number of shards to split test into. "
-            + "Iterations will be split evenly among shards.", importance = Importance.IF_UNSET)
-    private Integer mShards = null;
 
     @Option(name = "resume", description = "Resume the ota test run if an device setup error "
             + "stopped the previous test run.")
@@ -165,38 +156,6 @@ public class SideloadOtaStabilityTest implements IDeviceTest, IBuildReceiver,
      */
     void setIterations(int iterations) {
         mIterations = iterations;
-    }
-
-    /**
-     * Set the number of shards
-     */
-    void setShards(int shards) {
-        mShards = shards;
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public Collection<IRemoteTest> split() {
-        if (mShards == null || mShards <= 1) {
-            return null;
-        }
-        Collection<IRemoteTest> shards = new ArrayList<IRemoteTest>(mShards);
-        int remainingIterations = mIterations;
-        for (int i = mShards; i > 0; i--) {
-            SideloadOtaStabilityTest testShard = new SideloadOtaStabilityTest();
-            // device and configuration will be set by test invoker
-            testShard.setRunName(mRunName);
-            // attempt to divide iterations evenly among shards with no remainder
-            int iterationsForShard = remainingIterations / i;
-            if (iterationsForShard > 0) {
-                testShard.setIterations(iterationsForShard);
-                remainingIterations -= iterationsForShard;
-                shards.add(testShard);
-            }
-        }
-        return shards;
     }
 
     /**
