@@ -67,12 +67,14 @@ public class TestFilePushSetup implements ITargetPreparer {
     /**
      * Adds a file to the list of items to push
      *
-     * Used for unit testing
-     *
      * @param fileName
      */
-    void addTestFileName(String fileName) {
+    protected void addTestFileName(String fileName) {
         mTestPaths.add(fileName);
+    }
+
+    protected void clearTestFileName() {
+        mTestPaths.clear();
     }
 
     /**
