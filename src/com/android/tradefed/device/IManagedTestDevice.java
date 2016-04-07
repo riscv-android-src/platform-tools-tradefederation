@@ -64,6 +64,11 @@ public interface IManagedTestDevice extends ITestDevice {
     public void setFastbootEnabled(boolean fastbootEnabled);
 
     /**
+     * Return if fastboot is available for the device.
+     */
+    public boolean isFastbootEnabled();
+
+    /**
      * Invoke recovery on the device.
      *
      * @throws DeviceNotAvailableException if recovery was not successful

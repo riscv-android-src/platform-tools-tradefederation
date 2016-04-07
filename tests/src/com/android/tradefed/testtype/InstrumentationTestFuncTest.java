@@ -35,6 +35,8 @@ import java.util.Map;
 public class InstrumentationTestFuncTest extends DeviceTestCase {
 
     private static final String LOG_TAG = "InstrumentationTestFuncTest";
+    private static final long SHELL_TIMEOUT = 1000;
+    private static final int TEST_TIMEOUT = 1500;
 
     /** The {@link InstrumentationTest} under test */
     private InstrumentationTest mInstrumentationTest;
@@ -127,12 +129,12 @@ public class InstrumentationTestFuncTest extends DeviceTestCase {
     public void testRun_testTimeout() throws DeviceNotAvailableException {
         Log.i(LOG_TAG, "testRun_testTimeout");
 
-        final int timeout = 1000;
         TestIdentifier expectedTest = new TestIdentifier(TestAppConstants.TESTAPP_CLASS,
                 TestAppConstants.TIMEOUT_TEST_METHOD);
         mInstrumentationTest.setClassName(TestAppConstants.TESTAPP_CLASS);
         mInstrumentationTest.setMethodName(TestAppConstants.TIMEOUT_TEST_METHOD);
-        mInstrumentationTest.setShellTimeout(timeout);
+        mInstrumentationTest.setShellTimeout(SHELL_TIMEOUT);
+        mInstrumentationTest.setTestTimeout(TEST_TIMEOUT);
         mMockListener.testRunStarted(TestAppConstants.TESTAPP_PACKAGE, 1);
         mMockListener.testStarted(EasyMock.eq(expectedTest));
         mMockListener.testFailed(EasyMock.eq(expectedTest),
@@ -267,7 +269,8 @@ public class InstrumentationTestFuncTest extends DeviceTestCase {
         // run all tests in class
         mInstrumentationTest.setClassName(TestAppConstants.TESTAPP_CLASS);
         mInstrumentationTest.setRerunMode(true);
-        mInstrumentationTest.setShellTimeout(1000);
+        mInstrumentationTest.setShellTimeout(SHELL_TIMEOUT);
+        mInstrumentationTest.setTestTimeout(TEST_TIMEOUT);
         CollectingTestListener listener = new CollectingTestListener();
         mInstrumentationTest.run(listener);
         assertEquals(TestAppConstants.TOTAL_TEST_CLASS_TESTS, listener.getNumTotalTests());
@@ -286,7 +289,8 @@ public class InstrumentationTestFuncTest extends DeviceTestCase {
         mInstrumentationTest.setClassName(TestAppConstants.CRASH_ON_INIT_TEST_CLASS);
         mInstrumentationTest.setMethodName(TestAppConstants.CRASH_ON_INIT_TEST_METHOD);
         mInstrumentationTest.setRerunMode(true);
-        mInstrumentationTest.setShellTimeout(1000);
+        mInstrumentationTest.setShellTimeout(SHELL_TIMEOUT);
+        mInstrumentationTest.setTestTimeout(TEST_TIMEOUT);
         CollectingTestListener listener = new CollectingTestListener();
         mInstrumentationTest.run(listener);
         assertEquals(0, listener.getNumTotalTests());
@@ -306,7 +310,8 @@ public class InstrumentationTestFuncTest extends DeviceTestCase {
 
         mInstrumentationTest.setClassName(TestAppConstants.HANG_ON_INIT_TEST_CLASS);
         mInstrumentationTest.setRerunMode(true);
-        mInstrumentationTest.setShellTimeout(1000);
+        mInstrumentationTest.setShellTimeout(SHELL_TIMEOUT);
+        mInstrumentationTest.setTestTimeout(TEST_TIMEOUT);
         CollectingTestListener listener = new CollectingTestListener();
         mInstrumentationTest.run(listener);
         assertEquals(0, listener.getNumTotalTests());

@@ -455,13 +455,17 @@ public class TestDeviceFuncTest extends DeviceTestCase {
      */
     public void testExecuteFastbootCommand_deviceInAdb() throws DeviceNotAvailableException {
         Log.i(LOG_TAG, "testExecuteFastbootCommand_deviceInAdb");
+        if (!mTestDevice.isFastbootEnabled()) {
+            Log.i(LOG_TAG, "Fastboot not enabled skipping testExecuteFastbootCommand_deviceInAdb");
+            return;
+        }
         int origTimeout = mTestDevice.getCommandTimeout();
         try {
             assertEquals(TestDeviceState.ONLINE, mMonitor.getDeviceState());
             // reset operation timeout to small value to make test run quicker
             mTestDevice.setCommandTimeout(5*1000);
             assertEquals(CommandStatus.SUCCESS,
-                    mTestDevice.executeFastbootCommand("getvar", "product").getStatus());
+            mTestDevice.executeFastbootCommand("getvar", "product").getStatus());
             assertEquals(TestDeviceState.FASTBOOT, mMonitor.getDeviceState());
         } finally {
             mTestDevice.setCommandTimeout(origTimeout);
@@ -477,17 +481,21 @@ public class TestDeviceFuncTest extends DeviceTestCase {
      */
     public void testExecuteFastbootCommand_badCommand() throws DeviceNotAvailableException {
         Log.i(LOG_TAG, "testExecuteFastbootCommand_badCommand");
+        if (!mTestDevice.isFastbootEnabled()) {
+            Log.i(LOG_TAG, "Fastboot not enabled skipping testExecuteFastbootCommand_badCommand");
+            return;
+        }
         IDeviceRecovery origRecovery = mTestDevice.getRecovery();
         try {
             mTestDevice.rebootIntoBootloader();
             assertEquals(TestDeviceState.FASTBOOT, mMonitor.getDeviceState());
-            // substitute recovery mechanism to ensure recovery is not called when bad command is
-            // passed
+            // substitute recovery mechanism to ensure recovery is not called when bad command
+            // is passed
             IDeviceRecovery mockRecovery = EasyMock.createStrictMock(IDeviceRecovery.class);
             mTestDevice.setRecovery(mockRecovery);
             EasyMock.replay(mockRecovery);
             assertEquals(CommandStatus.FAILED,
-                    mTestDevice.executeFastbootCommand("badcommand").getStatus());
+            mTestDevice.executeFastbootCommand("badcommand").getStatus());
         } finally {
             mTestDevice.setRecovery(origRecovery);
             mTestDevice.reboot();
@@ -500,6 +508,10 @@ public class TestDeviceFuncTest extends DeviceTestCase {
      */
     public void testRebootIntoBootloader() throws DeviceNotAvailableException {
         Log.i(LOG_TAG, "testRebootIntoBootloader");
+        if (!mTestDevice.isFastbootEnabled()) {
+            Log.i(LOG_TAG, "Fastboot not enabled skipping testRebootInBootloader");
+            return;
+        }
         try {
             mTestDevice.rebootIntoBootloader();
             assertEquals(TestDeviceState.FASTBOOT, mMonitor.getDeviceState());
@@ -525,11 +537,14 @@ public class TestDeviceFuncTest extends DeviceTestCase {
      */
     public void testRebootIntoRecovery() throws DeviceNotAvailableException {
         Log.i(LOG_TAG, "testRebootIntoRecovery");
+        if (!mTestDevice.isFastbootEnabled()) {
+            Log.i(LOG_TAG, "Fastboot not enabled skipping testRebootInRecovery");
+            return;
+        }
         try {
             mTestDevice.rebootIntoRecovery();
             assertEquals(TestDeviceState.RECOVERY, mMonitor.getDeviceState());
         } finally {
-            // Recover from Recovery Mode by calling reboot on IDevice not ITestDevice.
             getDevice().reboot();
         }
     }
@@ -683,6 +698,10 @@ public class TestDeviceFuncTest extends DeviceTestCase {
      * Test that the recovery mechanism works in {@link TestDevice#getFileEntry(String)}
      */
     public void testGetFileEntry_recovery() throws Exception {
+        if (!mTestDevice.isFastbootEnabled()) {
+            Log.i(LOG_TAG, "Fastboot not enabled skipping testGetFileEntry_recovery");
+            return;
+        }
         try {
             getDevice().rebootIntoBootloader();
             // expect recovery to kick in, and reboot device back to adb so the call works
