@@ -16,6 +16,7 @@
 package com.android.tradefed.testtype;
 
 import com.android.ddmlib.Log;
+import com.android.ddmlib.testrunner.TestIdentifier;
 import com.android.tradefed.config.Option;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
@@ -27,14 +28,14 @@ import junit.framework.Test;
 import junit.framework.TestCase;
 import junit.framework.TestResult;
 
-import java.lang.annotation.Annotation;
-import java.lang.reflect.AnnotatedElement;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.Vector;
 
@@ -44,7 +45,7 @@ import java.util.Vector;
  * This is useful if you want to implement tests that follow the JUnit pattern of defining tests,
  * and still have full support for other tradefed features such as {@link Option}s
  */
-public class DeviceTestCase extends TestCase implements IDeviceTest, IRemoteTest,
+public class DeviceTestCase extends TestCase implements IDeviceTest, IRemoteTest, ITestCollector,
         ITestFilterReceiver {
 
     private static final String LOG_TAG = "DeviceTestCase";
@@ -73,6 +74,12 @@ public class DeviceTestCase extends TestCase implements IDeviceTest, IRemoteTest
 
     @Option(name = "method", description = "run a specific test method.")
     private String mMethodName = null;
+
+    @Option(name = "collect-tests-only",
+            description = "Only invoke the instrumentation to collect list of applicable test "
+                    + "cases. All test run callbacks will be triggered, but test execution will "
+                    + "not be actually carried out.")
+    private boolean mCollectTestsOnly = false;
 
     private Vector<String> mMethodNames = null;
 
@@ -106,7 +113,6 @@ public class DeviceTestCase extends TestCase implements IDeviceTest, IRemoteTest
 
     /**
      * {@inheritDoc}
-     * @throws DeviceNotAvailableException
      */
     @Override
     public void run(ITestInvocationListener listener) throws DeviceNotAvailableException {
@@ -114,7 +120,31 @@ public class DeviceTestCase extends TestCase implements IDeviceTest, IRemoteTest
             setName(mMethodName);
         }
         if (mFilterHelper.shouldTestRun(this.getClass())) {
-            JUnitRunUtil.runTest(listener, this);
+            if (mCollectTestsOnly) {
+                // Collect only mode, fake the junit test execution.
+                Map<String, String> empty = Collections.emptyMap();
+                String runName = this.getClass().getName();
+                if (getName() == null) {
+                    Collection<String> testMethodNames = getTestMethodNames();
+                    listener.testRunStarted(runName, testMethodNames.size());
+                    for (String methodName : testMethodNames) {
+                        TestIdentifier testId =
+                                new TestIdentifier(runName, methodName);
+                        listener.testStarted(testId);
+                        listener.testEnded(testId, empty);
+                    }
+                    listener.testRunEnded(0, empty);
+                } else {
+                    listener.testRunStarted(runName, 1);
+                    TestIdentifier testId =
+                            new TestIdentifier(runName, getName());
+                    listener.testStarted(testId);
+                    listener.testEnded(testId, empty);
+                    listener.testRunEnded(0, empty);
+                }
+            } else {
+                JUnitRunUtil.runTest(listener, this);
+            }
         }
     }
 
@@ -201,8 +231,8 @@ public class DeviceTestCase extends TestCase implements IDeviceTest, IRemoteTest
 
     /**
      * Get list of test methods to run
-     * @param class1
-     * @return
+     *
+     * @return a {@link Collection} of string that contains all the method names.
      */
     private Collection<String> getTestMethodNames() {
         if (mMethodNames == null) {
@@ -217,7 +247,7 @@ public class DeviceTestCase extends TestCase implements IDeviceTest, IRemoteTest
                 for (Method method : methods) {
                     if (mFilterHelper.shouldRun(
                             theClass.getPackage().getName(), theClass.getName(), method)) {
-                        addTestMethod(method, mMethodNames, theClass);
+                        addTestMethod(method, mMethodNames);
                     }
                 }
                 superClass = superClass.getSuperclass();
@@ -229,7 +259,7 @@ public class DeviceTestCase extends TestCase implements IDeviceTest, IRemoteTest
         return mMethodNames;
     }
 
-    private void addTestMethod(Method m, Vector<String> names, Class<?> theClass) {
+    private void addTestMethod(Method m, Vector<String> names) {
         String name = m.getName();
         if (names.contains(name)) {
             return;
@@ -254,4 +284,11 @@ public class DeviceTestCase extends TestCase implements IDeviceTest, IRemoteTest
         return parameters.length == 0 && name.startsWith("test") && returnType.equals(Void.TYPE);
     }
 
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void setCollectTestsOnly(boolean shouldCollectTest) {
+        mCollectTestsOnly = shouldCollectTest;
+    }
 }

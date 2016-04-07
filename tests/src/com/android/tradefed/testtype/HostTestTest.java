@@ -17,6 +17,7 @@ package com.android.tradefed.testtype;
 
 import com.android.ddmlib.testrunner.TestIdentifier;
 import com.android.tradefed.config.OptionSetter;
+import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.result.ITestInvocationListener;
 
@@ -114,6 +115,20 @@ public class HostTestTest extends TestCase {
 
         public void testPass() {
             assertNotNull(getDevice());
+        }
+    }
+
+    public static class TestRemoteNotCollector extends TestCase implements IDeviceTest,
+            IRemoteTest {
+        @Override
+        public void run(ITestInvocationListener listener) throws DeviceNotAvailableException {}
+
+        @Override
+        public void setDevice(ITestDevice device) {}
+
+        @Override
+        public ITestDevice getDevice() {
+            return null;
         }
     }
 
@@ -513,7 +528,7 @@ public class HostTestTest extends TestCase {
      */
     public void testRun_testcaseCollectMode_IRemotedevice() throws Exception {
         final ITestDevice device = EasyMock.createMock(ITestDevice.class);
-        mHostTest.setClassName(SuccessDeviceTest.class.getName());
+        mHostTest.setClassName(TestRemoteNotCollector.class.getName());
         mHostTest.setDevice(device);
         mHostTest.setCollectTestsOnly(true);
         EasyMock.replay(mListener);

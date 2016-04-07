@@ -35,17 +35,17 @@ public class DeviceTestCaseTest extends TestCase {
 
     public static class MockTest extends DeviceTestCase {
 
-        public void test1() {};
-        public void test2() {};
+        public void test1() {}
+        public void test2() {}
     }
 
     @MyAnnotation1
     public static class MockAnnotatedTest extends DeviceTestCase {
 
         @MyAnnotation1
-        public void test1() {};
+        public void test1() {}
         @MyAnnotation2
-        public void test2() {};
+        public void test2() {}
     }
 
     /**
@@ -69,7 +69,7 @@ public class DeviceTestCaseTest extends TestCase {
         public void test1() throws DeviceNotAvailableException {
             throw new DeviceNotAvailableException(EXCEP_MSG);
         }
-    };
+    }
 
     /**
      * Verify that calling run on a DeviceTestCase will run all test methods.
@@ -219,6 +219,48 @@ public class DeviceTestCaseTest extends TestCase {
         } catch (DeviceNotAvailableException e) {
             // expected
         }
+        EasyMock.verify(listener);
+    }
+
+    /**
+     * Test success case for {@link DeviceTestCase#run(ITestInvocationListener)} in collector mode,
+     * where test to run is a {@link TestCase}
+     */
+    @SuppressWarnings("unchecked")
+    public void testRun_testcaseCollectMode() throws Exception {
+        ITestInvocationListener listener = EasyMock.createMock(ITestInvocationListener.class);
+        MockTest test = new MockTest();
+        test.setCollectTestsOnly(true);
+        listener.testRunStarted((String)EasyMock.anyObject(), EasyMock.eq(2));
+        listener.testStarted((TestIdentifier) EasyMock.anyObject());
+        listener.testEnded((TestIdentifier) EasyMock.anyObject(),
+                (Map<String, String>)EasyMock.anyObject());
+        listener.testStarted((TestIdentifier) EasyMock.anyObject());
+        listener.testEnded((TestIdentifier) EasyMock.anyObject(),
+                (Map<String, String>)EasyMock.anyObject());
+        listener.testRunEnded(EasyMock.anyLong(), (Map<String, String>)EasyMock.anyObject());
+        EasyMock.replay(listener);
+        test.run(listener);
+        EasyMock.verify(listener);
+    }
+
+    /**
+     * Test success case for {@link DeviceTestCase#run(ITestInvocationListener)} in collector mode,
+     * where test to run is a {@link TestCase}
+     */
+    @SuppressWarnings("unchecked")
+    public void testRun_testcaseCollectMode_singleMethod() throws Exception {
+        ITestInvocationListener listener = EasyMock.createMock(ITestInvocationListener.class);
+        MockTest test = new MockTest();
+        test.setName("test1");
+        test.setCollectTestsOnly(true);
+        listener.testRunStarted((String)EasyMock.anyObject(), EasyMock.eq(1));
+        listener.testStarted((TestIdentifier) EasyMock.anyObject());
+        listener.testEnded((TestIdentifier) EasyMock.anyObject(),
+                (Map<String, String>)EasyMock.anyObject());
+        listener.testRunEnded(EasyMock.anyLong(), (Map<String, String>)EasyMock.anyObject());
+        EasyMock.replay(listener);
+        test.run(listener);
         EasyMock.verify(listener);
     }
 }
