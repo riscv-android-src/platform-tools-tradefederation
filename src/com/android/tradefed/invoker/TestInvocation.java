@@ -490,6 +490,11 @@ public class TestInvocation implements ITestInvocation {
     private void doSetup(IConfiguration config, ITestDevice device, IBuildInfo info,
             final ITestInvocationListener listener)
             throws TargetSetupError, BuildError, DeviceNotAvailableException {
+        device.preInvocationSetup(info);
+        if (device instanceof ITestLoggerReceiver) {
+            ((ITestLoggerReceiver) device).setTestLogger(listener);
+        }
+
         for (ITargetPreparer preparer : config.getTargetPreparers()) {
             if (preparer instanceof ITestLoggerReceiver) {
                 ((ITestLoggerReceiver) preparer).setTestLogger(listener);
@@ -521,6 +526,9 @@ public class TestInvocation implements ITestInvocation {
                 }
             }
         }
+        // Extra tear down step for the device
+        device.postInvocationTearDown();
+
         if (throwable != null) {
             throw throwable;
         }

@@ -39,17 +39,26 @@ public class ManagedTestDeviceFactory implements IManagedTestDeviceFactory {
      */
     @Override
     public IManagedTestDevice createDevice(IDevice idevice) {
-        // TODO: Based on idevice chose what device to implement
-        TestDevice testDevice = new TestDevice(idevice,
-                new DeviceStateMonitor(mDeviceManager, idevice, mFastbootEnabled),
-                mAllocationMonitor);
-        testDevice.setFastbootEnabled(mFastbootEnabled);
-
+        TestDevice testDevice = null;
+        if (idevice instanceof TcpDevice) {
+            // Special device for Tcp device for custom handling.
+            testDevice = new RemoteAndroidDevice(idevice,
+                    new DeviceStateMonitor(mDeviceManager, idevice, mFastbootEnabled),
+                    mAllocationMonitor);
+            testDevice.setDeviceState(TestDeviceState.NOT_AVAILABLE);
+        } else {
+            // Default to-go device is Android full stack device.
+            testDevice = new TestDevice(idevice,
+                    new DeviceStateMonitor(mDeviceManager, idevice, mFastbootEnabled),
+                    mAllocationMonitor);
+        }
+        // TODO: Handle creation of Non full stack device.
         if (idevice instanceof FastbootDevice) {
             testDevice.setDeviceState(TestDeviceState.FASTBOOT);
         } else if (idevice instanceof StubDevice) {
             testDevice.setDeviceState(TestDeviceState.NOT_AVAILABLE);
         }
+        testDevice.setFastbootEnabled(mFastbootEnabled);
         return testDevice;
     }
 

@@ -36,6 +36,7 @@ import com.android.tradefed.result.ByteArrayInputStreamSource;
 import com.android.tradefed.result.InputStreamSource;
 import com.android.tradefed.result.SnapshotInputStreamSource;
 import com.android.tradefed.result.StubTestRunListener;
+import com.android.tradefed.targetprep.TargetSetupError;
 import com.android.tradefed.util.ArrayUtil;
 import com.android.tradefed.util.CommandResult;
 import com.android.tradefed.util.CommandStatus;
@@ -3113,5 +3114,22 @@ public class AndroidNativeDevice implements IManagedTestDevice {
             return "";
         }
         return device.getClass().getSimpleName();
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void preInvocationSetup(IBuildInfo info)
+            throws TargetSetupError, DeviceNotAvailableException {
+        // Default implementation empty on purpose
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void postInvocationTearDown() {
+        // Default implementation empty on purpose
     }
 }

@@ -22,6 +22,7 @@ import com.android.ddmlib.testrunner.IRemoteAndroidTestRunner;
 import com.android.ddmlib.testrunner.ITestRunListener;
 import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.result.InputStreamSource;
+import com.android.tradefed.targetprep.TargetSetupError;
 import com.android.tradefed.util.CommandResult;
 import com.android.tradefed.util.TimeUtil;
 
@@ -1455,4 +1456,17 @@ public interface ITestDevice {
      * @throws DeviceNotAvailableException
      */
     public Map<Integer, String> getAndroidIds() throws DeviceNotAvailableException;
+
+    /**
+     * Extra steps for device specific required setup that will be executed on the device prior
+     * to the invocation flow.
+     */
+    public void preInvocationSetup(IBuildInfo info)
+            throws TargetSetupError, DeviceNotAvailableException;
+
+    /**
+     * Extra steps for device specific required clean up that will be executed after the invocation
+     * is done.
+     */
+    public void postInvocationTearDown();
 }
