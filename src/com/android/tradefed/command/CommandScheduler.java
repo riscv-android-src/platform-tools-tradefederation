@@ -94,6 +94,7 @@ public class CommandScheduler extends Thread implements ICommandScheduler, IComm
 
     /** the queue of commands ready to be executed. */
     private List<ExecutableCommand> mReadyCommands;
+    private Set<ExecutableCommand> mUnscheduledWarning;
 
     /** the queue of commands sleeping. */
     private Set<ExecutableCommand> mSleepingCommands;
@@ -210,7 +211,6 @@ public class CommandScheduler extends Thread implements ICommandScheduler, IComm
 
         /**
          * Return the path of the file this command is associated with. null if not applicable
-         * @return
          */
         String getCommandFilePath() {
             return mCommandFilePath;
@@ -404,7 +404,8 @@ public class CommandScheduler extends Thread implements ICommandScheduler, IComm
     }
 
     /**
-     * An {@link IScheduledInvocationListener} for locally scheduled commands added via addCommand.
+     * An {@link com.android.tradefed.command.ICommandScheduler.IScheduledInvocationListener}
+     * for locally scheduled commands added via addCommand.
      * <p/>
      * Returns device to device manager and remote handover server if applicable.
      */
@@ -605,6 +606,7 @@ public class CommandScheduler extends Thread implements ICommandScheduler, IComm
     public CommandScheduler() {
         super("CommandScheduler");  // set the thread name
         mReadyCommands = new LinkedList<>();
+        mUnscheduledWarning = new HashSet<>();
         mSleepingCommands = new HashSet<>();
         mExecutingCommands = new HashSet<>();
         mInvocationThreadMap = new HashMap<ITestDevice, InvocationThread>();
@@ -763,13 +765,19 @@ public class CommandScheduler extends Thread implements ICommandScheduler, IComm
                     mExecutingCommands.add(cmd);
                     // track command matched with device
                     scheduledCommandMap.put(cmd, device);
+                    // clean warned list to avoid piling over time.
+                    mUnscheduledWarning.remove(cmd);
                 } else {
-                    CLog.logAndDisplay(LogLevel.DEBUG, "No available device matching the config's "
-                            + "requirements for cmd id %d.", cmd.getCommandTracker().getId());
-                    // make sure not to record since it may contains password
-                    PrintWriter pw = new PrintWriter(System.out, true);
-                    pw.println(String.format("The command %s will be rescheduled.",
-                            Arrays.toString(cmd.getCommandTracker().getArgs())));
+                    if (!mUnscheduledWarning.contains(cmd)) {
+                        CLog.logAndDisplay(LogLevel.DEBUG, "No available device matching the "
+                                + "config's requirements for cmd id %d.",
+                                cmd.getCommandTracker().getId());
+                        // make sure not to record since it may contains password
+                        PrintWriter pw = new PrintWriter(System.out, true);
+                        pw.println(String.format("The command %s will be rescheduled.",
+                                Arrays.toString(cmd.getCommandTracker().getArgs())));
+                        mUnscheduledWarning.add(cmd);
+                    }
                 }
             }
         }
@@ -1099,8 +1107,9 @@ public class CommandScheduler extends Thread implements ICommandScheduler, IComm
      *
      * @param device the {@link ITestDevice}
      * @param cmd the {@link ExecutableCommand} to execute
-     * @param listeners the {@link IScheduledInvocationLister}s to invoke when complete
-     * @return the thread that will run the invocation
+     * @param listeners the
+     * {@link com.android.tradefed.command.ICommandScheduler.IScheduledInvocationListener}s
+     * to invoke when complete
      */
     private void startInvocation(ITestDevice device, ExecutableCommand cmd,
             IScheduledInvocationListener... listeners) {
