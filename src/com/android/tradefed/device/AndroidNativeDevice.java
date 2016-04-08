@@ -2241,7 +2241,7 @@ public class AndroidNativeDevice implements IManagedTestDevice {
      * Default implementation doesn't include any addition actions.
      * adb root is not guaranteed to be enabled at this stage.
      */
-    public void postAdbRootAction() {
+    public void postAdbRootAction() throws DeviceNotAvailableException {
         // Empty on purpose.
     }
 

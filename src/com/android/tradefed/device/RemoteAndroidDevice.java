@@ -26,6 +26,7 @@ import com.android.tradefed.util.CommandStatus;
  * Assume the device serial will be in the format <hostname>:<portnumber> in adb.
  */
 public class RemoteAndroidDevice extends TestDevice {
+    public static final long WAIT_FOR_ADB_CONNECT = 2 * 60 * 1000;
 
     protected static final long RETRY_INTERVAL_MS = 5000;
     protected static final int MAX_RETRIES = 5;
@@ -51,10 +52,11 @@ public class RemoteAndroidDevice extends TestDevice {
      * {@inheritDoc}
      */
     @Override
-    public void postAdbRootAction() {
+    public void postAdbRootAction() throws DeviceNotAvailableException {
         // attempt to reconnect first to make sure we didn't loose the connection because of
         // adb root.
         adbTcpConnect(getHostName(), getPortNum());
+        waitForAdbConnect(WAIT_FOR_ADB_CONNECT);
     }
 
     /**
@@ -117,19 +119,8 @@ public class RemoteAndroidDevice extends TestDevice {
 
                 // It is possible to get a positive result without it being connected because of
                 // the ssh bridge. Retrying to get confirmation, and expecting "already connected".
-                CommandResult resultConfirmation =
-                        getRunUtil().runTimedCmd(DEFAULT_SHORT_CMD_TIMEOUT, "adb", "connect",
-                        String.format("%s:%s", host, port));
-                if (CommandStatus.SUCCESS.equals(resultConfirmation.getStatus()) &&
-                        resultConfirmation.getStdout().contains(ADB_ALREADY_CONNECTED_TAG)) {
-                    CLog.d("adb connect confirmed:\nstdout: %s\nsterr: %s",
-                            resultConfirmation.getStdout(), resultConfirmation.getStderr());
+                if(confirmAdbTcpConnect(host, port)) {
                     return true;
-                }
-                else {
-                    CLog.d("adb connect confirmation failed:\nstatus:%s\nstdout: %s\nsterr: %s",
-                            resultConfirmation.getStatus(), resultConfirmation.getStdout(),
-                            resultConfirmation.getStderr());
                 }
             } else if (CommandStatus.SUCCESS.equals(result.getStatus()) &&
                     result.getStdout().contains(ADB_CONN_REFUSED)) {
@@ -139,6 +130,23 @@ public class RemoteAndroidDevice extends TestDevice {
             CLog.d("adb connect output: status: %s stdout: %s stderr: %s, retrying.",
                     result.getStatus(), result.getStdout(), result.getStderr());
             getRunUtil().sleep((i + 1) * RETRY_INTERVAL_MS);
+        }
+        return false;
+    }
+
+    private boolean confirmAdbTcpConnect(String host, String port) {
+        CommandResult resultConfirmation =
+                getRunUtil().runTimedCmd(DEFAULT_SHORT_CMD_TIMEOUT, "adb", "connect",
+                String.format("%s:%s", host, port));
+        if (CommandStatus.SUCCESS.equals(resultConfirmation.getStatus()) &&
+                resultConfirmation.getStdout().contains(ADB_ALREADY_CONNECTED_TAG)) {
+            CLog.d("adb connect confirmed:\nstdout: %s\nsterr: %s",
+                    resultConfirmation.getStdout(), resultConfirmation.getStderr());
+            return true;
+        } else {
+            CLog.d("adb connect confirmation failed:\nstatus:%s\nstdout: %s\nsterr: %s",
+                    resultConfirmation.getStatus(), resultConfirmation.getStdout(),
+                    resultConfirmation.getStderr());
         }
         return false;
     }
@@ -156,5 +164,32 @@ public class RemoteAndroidDevice extends TestDevice {
                 "disconnect",
                 String.format("%s:%s", host, port));
         return CommandStatus.SUCCESS.equals(result.getStatus());
+    }
+
+    /**
+     * Check if the adb connection is enabled.
+     */
+    public void waitForAdbConnect(final long waitTime) throws DeviceNotAvailableException {
+        CLog.i("Waiting %d ms for adb connection.", waitTime);
+        long startTime = System.currentTimeMillis();
+        while (System.currentTimeMillis() - startTime < waitTime) {
+            if (confirmAdbTcpConnect(getHostName(), getPortNum())) {
+                CLog.d("Adb connection confirmed.");
+                return;
+            }
+            getRunUtil().sleep(RETRY_INTERVAL_MS);
+        }
+        throw new DeviceNotAvailableException(
+                String.format("No adb connection after %sms.", waitTime));
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public boolean isEncryptionSupported() {
+        // Prevent device from being encrypted since we won't have a way to decrypt on Remote
+        // devices since fastboot cannot be use remotely
+        return false;
     }
 }
