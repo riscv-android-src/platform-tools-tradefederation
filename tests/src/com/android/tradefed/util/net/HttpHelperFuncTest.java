@@ -113,8 +113,9 @@ public class HttpHelperFuncTest extends TestCase {
         public ServerSocket mSS = null;
         public Throwable mException = null;
         public static final String RESPONSE = "HTTP/1.1 200 OK\r\n" +
-                "Content-Type: text/plain\r\n\r\n" +
-                "Hello, this is dog.\r\n";
+                "Content-Length: 30\r\n" +
+                "Content-Type: text/html\r\n\r\n" +
+                "<h1>Hello, this is dog.</h1>\r\n";
 
         private final int mDelay;
         private final int mTimeout;
