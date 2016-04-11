@@ -96,7 +96,7 @@ public class CommandSchedulerTest extends TestCase {
             }
 
             @Override
-            IConfigurationFactory getConfigFactory() {
+            protected IConfigurationFactory getConfigFactory() {
                 return mMockConfigFactory;
             }
 

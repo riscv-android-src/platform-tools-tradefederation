@@ -58,7 +58,7 @@ public class CommandSchedulerStressApp extends TestCase {
             }
 
             @Override
-            IConfigurationFactory getConfigFactory() {
+            protected IConfigurationFactory getConfigFactory() {
                 return mMockConfigFactory;
             }
         };

@@ -90,7 +90,7 @@ public class CommandSchedulerFuncTest extends TestCase {
             }
 
             @Override
-            IConfigurationFactory getConfigFactory() {
+            protected IConfigurationFactory getConfigFactory() {
                 if (mInterruptible) {
                     // simulate the invocation becoming interruptible
                     RunUtil.getDefault().allowInterrupt(true);
@@ -336,7 +336,7 @@ public class CommandSchedulerFuncTest extends TestCase {
             }
 
             @Override
-            IConfigurationFactory getConfigFactory() {
+            protected IConfigurationFactory getConfigFactory() {
                 if (mInterruptible) {
                     // simulate the invocation becoming interruptible
                     RunUtil.getDefault().allowInterrupt(true);
@@ -440,7 +440,7 @@ public class CommandSchedulerFuncTest extends TestCase {
                 return mMockDeviceManager;
             }
             @Override
-            IConfigurationFactory getConfigFactory() {
+            protected IConfigurationFactory getConfigFactory() {
                 if (mInterruptible) {
                     // simulate the invocation becoming interruptible
                     RunUtil.getDefault().allowInterrupt(true);

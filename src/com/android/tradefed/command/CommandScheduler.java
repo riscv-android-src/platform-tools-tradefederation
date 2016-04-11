@@ -686,7 +686,7 @@ public class CommandScheduler extends Thread implements ICommandScheduler, IComm
      *
      * @return the {@link IConfigurationFactory} to use
      */
-    IConfigurationFactory getConfigFactory() {
+    protected IConfigurationFactory getConfigFactory() {
         return ConfigurationFactory.getInstance();
     }
 
