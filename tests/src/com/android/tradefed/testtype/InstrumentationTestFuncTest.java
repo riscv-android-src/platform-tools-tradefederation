@@ -175,13 +175,11 @@ public class InstrumentationTestFuncTest extends DeviceTestCase {
                 // wait for test run to begin
                 try {
                     Thread.sleep(2000);
-                    Runtime.getRuntime().exec(
-                            String.format("adb -s %s reboot", getDevice().getIDevice()
-                                    .getSerialNumber()));
+                    getDevice().reboot();
                 } catch (InterruptedException e) {
                     Log.w(LOG_TAG, "interrupted");
-                } catch (IOException e) {
-                    Log.w(LOG_TAG, "IOException when rebooting");
+                } catch (DeviceNotAvailableException dnae) {
+                    Log.w(LOG_TAG, "Device did not come back online after reboot");
                 }
             }
         };

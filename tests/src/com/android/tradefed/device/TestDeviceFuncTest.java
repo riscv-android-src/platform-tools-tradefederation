@@ -31,11 +31,14 @@ import com.android.tradefed.util.StreamUtil;
 
 import org.easymock.EasyMock;
 
+import java.awt.image.BufferedImage;
 import java.io.BufferedInputStream;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
+
+import javax.imageio.ImageIO;
 
 /**
  * Functional tests for {@link TestDevice}.
@@ -561,7 +564,8 @@ public class TestDeviceFuncTest extends DeviceTestCase {
     public void testClearErrorDialogs_crash() throws DeviceNotAvailableException {
         Log.i(LOG_TAG, "testClearErrorDialogs_crash");
         // now cause a crash dialog to appear
-        getDevice().executeShellCommand("am start -W -n " + TestAppConstants.CRASH_ACTIVITY);
+        getDevice().executeShellCommand("am start -n " + TestAppConstants.CRASH_ACTIVITY);
+        RunUtil.getDefault().sleep(2000);
         getDevice().clearErrorDialogs();
         assertTrue(runUITests());
     }
@@ -603,9 +607,12 @@ public class TestDeviceFuncTest extends DeviceTestCase {
         try {
             FileUtil.writeToFile(source.createInputStream(), tmpPngFile);
             CLog.i("Created file at %s", tmpPngFile.getAbsolutePath());
-            assertTrue("Saved png file is less than 16K - is it invalid?",
-                    tmpPngFile.length() > 16*1024);
-            // TODO: add more stringent checks
+            // Decode the content, will return null if not an image.
+            BufferedImage image = ImageIO.read(tmpPngFile);
+            assertNotNull(image);
+            // All our device screenshot should be bigger than 200px
+            assertTrue(image.getWidth() > 200);
+            assertTrue(image.getHeight() > 200);
         } finally {
             FileUtil.deleteFile(tmpPngFile);
             source.cancel();
@@ -631,8 +638,9 @@ public class TestDeviceFuncTest extends DeviceTestCase {
         try {
             FileUtil.writeToFile(source.createInputStream(), tmpTxtFile);
             CLog.i("Created file at %s", tmpTxtFile.getAbsolutePath());
-            assertEquals("Saved text file is not equal to buffer size", 100 * 1024,
-                    tmpTxtFile.length());
+            // Check we have at least our 100 lines.
+            assertTrue("Saved text file is smaller than expected",
+                    100 * 1024 < tmpTxtFile.length());
             // ensure last log message is present in log
             String s = FileUtil.readStringFromFile(tmpTxtFile);
             assertTrue("last log message is not in captured logcat",
