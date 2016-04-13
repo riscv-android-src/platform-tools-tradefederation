@@ -640,7 +640,7 @@ public class TestDeviceFuncTest extends DeviceTestCase {
             CLog.i("Created file at %s", tmpTxtFile.getAbsolutePath());
             // Check we have at least our 100 lines.
             assertTrue("Saved text file is smaller than expected",
-                    100 * 1024 < tmpTxtFile.length());
+                    100 * 1024 <= tmpTxtFile.length());
             // ensure last log message is present in log
             String s = FileUtil.readStringFromFile(tmpTxtFile);
             assertTrue("last log message is not in captured logcat",

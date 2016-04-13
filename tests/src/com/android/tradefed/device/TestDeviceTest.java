@@ -892,11 +892,130 @@ public class TestDeviceTest extends TestCase {
     }
 
     /**
+     * Unit test for {@link TestDevice#encryptDevice(boolean)}.
+     */
+    public void testEncryptDevice_alreadyEncrypted() throws Exception {
+        mTestDevice = new TestableTestDevice() {
+            @Override
+            public boolean isDeviceEncrypted() throws DeviceNotAvailableException {
+                return true;
+            }
+        };
+        setEncryptedSupported();
+        EasyMock.replay(mMockIDevice, mMockRunUtil, mMockStateMonitor);
+        assertTrue(mTestDevice.encryptDevice(false));
+        EasyMock.verify(mMockIDevice, mMockRunUtil, mMockStateMonitor);
+    }
+
+    /**
+     * Unit test for {@link TestDevice#encryptDevice(boolean)}.
+     */
+    public void testEncryptDevice_encryptionFails() throws Exception {
+        mTestDevice = new TestableTestDevice() {
+            @Override
+            public boolean isDeviceEncrypted() throws DeviceNotAvailableException {
+                return false;
+            }
+        };
+        setEncryptedSupported();
+        setEnableAdbRootExpectations();
+        injectShellResponse("vdc cryptfs enablecrypto wipe \"android\"",
+                "500 0 Usage: cryptfs enablecrypto\r\n");
+        injectShellResponse("vdc cryptfs enablecrypto wipe default", "200 0 -1\r\n");
+        EasyMock.expect(mMockStateMonitor.waitForDeviceNotAvailable(EasyMock.anyLong())).andReturn(
+                Boolean.TRUE);
+        EasyMock.expect(mMockStateMonitor.waitForDeviceOnline()).andReturn(
+                mMockIDevice);
+        EasyMock.replay(mMockIDevice, mMockRunUtil, mMockStateMonitor);
+        assertFalse(mTestDevice.encryptDevice(false));
+        EasyMock.verify(mMockIDevice, mMockRunUtil, mMockStateMonitor);
+    }
+
+    /**
+     * Unit test for {@link TestDevice#unencryptDevice()} with fastboot erase.
+     */
+    public void testUnencryptDevice_erase() throws Exception {
+        mTestDevice = new TestableTestDevice() {
+            @Override
+            public boolean isDeviceEncrypted() throws DeviceNotAvailableException {
+                return true;
+            }
+            @Override
+            public void rebootIntoBootloader()
+                    throws DeviceNotAvailableException, UnsupportedOperationException {
+                // do nothing.
+            }
+            @Override
+            public void rebootUntilOnline() throws DeviceNotAvailableException {
+                // do nothing.
+            }
+            @Override
+            public CommandResult fastbootWipePartition(String partition)
+                    throws DeviceNotAvailableException {
+                return null;
+            }
+        };
+        setEncryptedSupported();
+        EasyMock.expect(mMockStateMonitor.waitForDeviceAvailable(EasyMock.anyLong()))
+                .andReturn(mMockIDevice);
+        EasyMock.replay(mMockIDevice, mMockRunUtil, mMockStateMonitor);
+        assertTrue(mTestDevice.unencryptDevice());
+        EasyMock.verify(mMockIDevice, mMockRunUtil, mMockStateMonitor);
+    }
+
+    /**
+     * Unit test for {@link TestDevice#unencryptDevice()} with fastboot wipe.
+     */
+    public void testUnencryptDevice_wipe() throws Exception {
+        mTestDevice = new TestableTestDevice() {
+            @Override
+            public boolean isDeviceEncrypted() throws DeviceNotAvailableException {
+                return true;
+            }
+            @Override
+            public void rebootIntoBootloader()
+                    throws DeviceNotAvailableException, UnsupportedOperationException {
+                // do nothing.
+            }
+            @Override
+            public void rebootUntilOnline() throws DeviceNotAvailableException {
+                // do nothing.
+            }
+            @Override
+            public CommandResult fastbootWipePartition(String partition)
+                    throws DeviceNotAvailableException {
+                return null;
+            }
+            @Override
+            public void reboot() throws DeviceNotAvailableException {
+                // do nothing.
+            }
+        };
+        mTestDevice.getOptions().setUseFastbootErase(true);
+        setEncryptedSupported();
+        injectShellResponse("vdc volume list", "110 sdcard /mnt/sdcard1");
+        injectShellResponse("vdc volume format sdcard", "200 0 -1:success");
+        EasyMock.replay(mMockIDevice, mMockRunUtil, mMockStateMonitor);
+        assertTrue(mTestDevice.unencryptDevice());
+        EasyMock.verify(mMockIDevice, mMockRunUtil, mMockStateMonitor);
+    }
+
+    /**
      * Configure EasyMock for a encryption check call, that returns that encryption is unsupported
      */
     private void setEncryptedUnsupportedExpectations() throws Exception {
         setEnableAdbRootExpectations();
         injectShellResponse("vdc cryptfs enablecrypto", "\r\n");
+    }
+
+    /**
+     * Configure EasyMock for a encryption check call, that returns that encryption is unsupported
+     */
+    private void setEncryptedSupported() throws Exception {
+        setEnableAdbRootExpectations();
+        injectShellResponse("vdc cryptfs enablecrypto",
+                "500 29805 Usage: cryptfs enablecrypto <wipe|inplace> "
+                + "default|password|pin|pattern [passwd] [noui]\r\n");
     }
 
     /**
@@ -1506,18 +1625,6 @@ public class TestDeviceTest extends TestCase {
 
         assertNotNull(mTestDevice.handleAllocationEvent(DeviceEvent.FREE_UNKNOWN));
         assertEquals(DeviceAllocationState.Unknown, mTestDevice.getAllocationState());
-    }
-
-    public void testCheckConnectivity() throws Exception {
-        EasyMock.expect(mMockWifi.checkConnectivity("http://www.google.com")).andReturn(true);
-        replayMocks();
-        assertTrue(mTestDevice.checkConnectivity());
-    }
-
-    public void testCheckConnectivity_NoConnectivity() throws Exception {
-        EasyMock.expect(mMockWifi.checkConnectivity("http://www.google.com")).andReturn(false);
-        replayMocks();
-        assertFalse(mTestDevice.checkConnectivity());
     }
 
     /**

@@ -24,6 +24,10 @@ import junit.framework.TestCase;
 import org.easymock.EasyMock;
 
 import java.io.File;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 /**
  * Unit tests for {@link AndroidNativeDevice}.
@@ -31,6 +35,9 @@ import java.io.File;
 public class AndroidNativeDeviceTest extends TestCase {
 
     private static final String MOCK_DEVICE_SERIAL = "serial";
+    private static final String FAKE_NETWORK_SSID = "FakeNet";
+    private static final String FAKE_NETWORK_PASSWORD ="FakePass";
+
     private IDevice mMockIDevice;
     private TestableAndroidNativeDevice mTestDevice;
     private IDeviceRecovery mMockRecovery;
@@ -421,5 +428,166 @@ public class AndroidNativeDeviceTest extends TestCase {
             return;
         }
         fail("getAndroidIds should have thrown an exception.");
+    }
+
+    /**
+     * Unit test for {@link AndroidNativeDevice#connectToWifiNetworkIfNeeded(String, String)}.
+     */
+    public void testConnectToWifiNetworkIfNeeded_alreadyConnected()
+            throws DeviceNotAvailableException {
+        EasyMock.expect(mMockWifi.checkConnectivity(mTestDevice.getOptions().getConnCheckUrl()))
+                .andReturn(true);
+        EasyMock.replay(mMockWifi);
+        assertTrue(mTestDevice.connectToWifiNetworkIfNeeded(FAKE_NETWORK_SSID,
+                FAKE_NETWORK_PASSWORD));
+        EasyMock.verify(mMockWifi);
+    }
+
+    /**
+     * Unit test for {@link AndroidNativeDevice#connectToWifiNetwork(String, String)}.
+     */
+    public void testConnectToWifiNetwork_success() throws DeviceNotAvailableException {
+        EasyMock.expect(mMockWifi.connectToNetwork(FAKE_NETWORK_SSID, FAKE_NETWORK_PASSWORD,
+                mTestDevice.getOptions().getConnCheckUrl())).andReturn(true);
+        Map<String, String> fakeWifiInfo = new HashMap<String, String>();
+        fakeWifiInfo.put("bssid", FAKE_NETWORK_SSID);
+        EasyMock.expect(mMockWifi.getWifiInfo()).andReturn(fakeWifiInfo);
+        EasyMock.replay(mMockWifi, mMockIDevice);
+        assertTrue(mTestDevice.connectToWifiNetwork(FAKE_NETWORK_SSID,
+                FAKE_NETWORK_PASSWORD));
+        EasyMock.verify(mMockWifi, mMockIDevice);
+    }
+
+    /**
+     * Unit test for {@link AndroidNativeDevice#connectToWifiNetwork(String, String)} for a failure
+     * to connect case.
+     */
+    public void testConnectToWifiNetwork_failure() throws DeviceNotAvailableException {
+        EasyMock.expect(mMockWifi.connectToNetwork(FAKE_NETWORK_SSID, FAKE_NETWORK_PASSWORD,
+                mTestDevice.getOptions().getConnCheckUrl())).andReturn(false)
+                .times(mTestDevice.getOptions().getWifiAttempts());
+        Map<String, String> fakeWifiInfo = new HashMap<String, String>();
+        fakeWifiInfo.put("bssid", FAKE_NETWORK_SSID);
+        EasyMock.expect(mMockWifi.getWifiInfo()).andReturn(fakeWifiInfo)
+                .times(mTestDevice.getOptions().getWifiAttempts());
+        mMockRunUtil.sleep(EasyMock.anyLong());
+        EasyMock.expectLastCall().times(mTestDevice.getOptions().getWifiAttempts() - 1);
+        EasyMock.replay(mMockWifi, mMockIDevice, mMockRunUtil);
+        assertFalse(mTestDevice.connectToWifiNetwork(FAKE_NETWORK_SSID,
+                FAKE_NETWORK_PASSWORD));
+        EasyMock.verify(mMockWifi, mMockIDevice, mMockRunUtil);
+    }
+
+    /**
+     * Unit test for {@link AndroidNativeDevice#checkWifiConnection(String)}.
+     */
+    public void testCheckWifiConnection() throws DeviceNotAvailableException {
+        EasyMock.expect(mMockWifi.isWifiEnabled()).andReturn(true);
+        EasyMock.expect(mMockWifi.getSSID()).andReturn("\"" + FAKE_NETWORK_SSID + "\"");
+        EasyMock.expect(mMockWifi.hasValidIp()).andReturn(true);
+        EasyMock.expect(mMockWifi.checkConnectivity(mTestDevice.getOptions().getConnCheckUrl()))
+                .andReturn(true);
+        EasyMock.replay(mMockWifi, mMockIDevice);
+        assertTrue(mTestDevice.checkWifiConnection(FAKE_NETWORK_SSID));
+        EasyMock.verify(mMockWifi, mMockIDevice);
+    }
+
+    /**
+     * Unit test for {@link AndroidNativeDevice#checkWifiConnection(String)} for a failure.
+     */
+    public void testCheckWifiConnection_failure() throws DeviceNotAvailableException {
+        EasyMock.expect(mMockWifi.isWifiEnabled()).andReturn(false);
+        EasyMock.replay(mMockWifi, mMockIDevice);
+        assertFalse(mTestDevice.checkWifiConnection(FAKE_NETWORK_SSID));
+        EasyMock.verify(mMockWifi, mMockIDevice);
+    }
+
+    /**
+     * Unit test for {@link AndroidNativeDevice#isWifiEnabled()}.
+     */
+    public void testIsWifiEnabled() throws DeviceNotAvailableException {
+        EasyMock.expect(mMockWifi.isWifiEnabled()).andReturn(true);
+        EasyMock.replay(mMockWifi, mMockIDevice);
+        assertTrue(mTestDevice.isWifiEnabled());
+        EasyMock.verify(mMockWifi, mMockIDevice);
+    }
+
+    /**
+     * Unit test for {@link AndroidNativeDevice#isWifiEnabled()} with runtime exception from
+     * wifihelper.
+     */
+    public void testIsWifiEnabled_exception() throws DeviceNotAvailableException {
+        EasyMock.expect(mMockWifi.isWifiEnabled()).andThrow(new RuntimeException());
+        EasyMock.replay(mMockWifi, mMockIDevice);
+        assertFalse(mTestDevice.isWifiEnabled());
+        EasyMock.verify(mMockWifi, mMockIDevice);
+    }
+
+    /**
+     * Unit test for {@link AndroidNativeDevice#disconnectFromWifi()}.
+     */
+    public void testDisconnectFromWifi() throws DeviceNotAvailableException {
+        EasyMock.expect(mMockWifi.disconnectFromNetwork()).andReturn(true);
+        EasyMock.replay(mMockWifi, mMockIDevice);
+        assertTrue(mTestDevice.disconnectFromWifi());
+        EasyMock.verify(mMockWifi, mMockIDevice);
+    }
+
+    /**
+     * Unit test for {@link AndroidNativeDevice#enableNetworkMonitor()}.
+     */
+    public void testEnableNetworkMonitor() throws DeviceNotAvailableException {
+        EasyMock.expect(mMockWifi.stopMonitor()).andReturn(null);
+        EasyMock.expect(mMockWifi.startMonitor(EasyMock.anyLong(),
+                EasyMock.eq(mTestDevice.getOptions().getConnCheckUrl()))).andReturn(true);
+        EasyMock.replay(mMockWifi, mMockIDevice);
+        assertTrue(mTestDevice.enableNetworkMonitor());
+        EasyMock.verify(mMockWifi, mMockIDevice);
+    }
+
+    /**
+     * Unit test for {@link AndroidNativeDevice#enableNetworkMonitor()} in case of failure.
+     */
+    public void testEnableNetworkMonitor_failure() throws DeviceNotAvailableException {
+        EasyMock.expect(mMockWifi.stopMonitor()).andReturn(null);
+        EasyMock.expect(mMockWifi.startMonitor(EasyMock.anyLong(),
+                EasyMock.eq(mTestDevice.getOptions().getConnCheckUrl()))).andReturn(false);
+        EasyMock.replay(mMockWifi, mMockIDevice);
+        assertFalse(mTestDevice.enableNetworkMonitor());
+        EasyMock.verify(mMockWifi, mMockIDevice);
+    }
+
+    /**
+     * Unit test for {@link AndroidNativeDevice#disableNetworkMonitor()}.
+     */
+    public void testDisableNetworkMonitor() throws DeviceNotAvailableException {
+        List<Long> samples = new ArrayList<Long>();
+        samples.add(new Long(42));
+        samples.add(new Long(256));
+        samples.add(new Long(-1)); // failure to connect
+        EasyMock.expect(mMockWifi.stopMonitor()).andReturn(samples);
+        EasyMock.replay(mMockWifi, mMockIDevice);
+        assertTrue(mTestDevice.disableNetworkMonitor());
+        EasyMock.verify(mMockWifi, mMockIDevice);
+    }
+
+    /**
+     * Unit test for {@link AndroidNativeDevice#reconnectToWifiNetwork()}.
+     */
+    public void testReconnectToWifiNetwork() throws DeviceNotAvailableException {
+        EasyMock.expect(mMockWifi.checkConnectivity(mTestDevice.getOptions().getConnCheckUrl()))
+                .andReturn(false);
+        EasyMock.expect(mMockWifi.checkConnectivity(mTestDevice.getOptions().getConnCheckUrl()))
+                .andReturn(true);
+        mMockRunUtil.sleep(EasyMock.anyLong());
+        EasyMock.expectLastCall();
+        EasyMock.replay(mMockWifi, mMockIDevice, mMockRunUtil);
+        try {
+            mTestDevice.reconnectToWifiNetwork();
+        } catch (NetworkNotAvailableException nnae) {
+            fail("reconnectToWifiNetwork() should not have thrown an exception.");
+        } finally {
+            EasyMock.verify(mMockWifi, mMockIDevice, mMockRunUtil);
+        }
     }
 }
