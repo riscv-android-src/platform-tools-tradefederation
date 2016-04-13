@@ -18,6 +18,7 @@ package com.android.ota.tests;
 
 import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.build.IDeviceBuildInfo;
+import com.android.tradefed.build.OtaDeviceBuildInfo;
 import com.android.tradefed.config.ConfigurationException;
 import com.android.tradefed.config.IConfiguration;
 import com.android.tradefed.config.IConfigurationReceiver;
@@ -308,15 +309,17 @@ public class SideloadOtaStabilityTest implements IDeviceTest, IBuildReceiver,
         doUncrypt(SocketFactory.getInstance());
         String installOtaCmd = String.format("--update_package=%s\n", BLOCK_MAP_PATH);
         mDevice.pushString(installOtaCmd, RECOVERY_COMMAND_PATH);
+        CLog.i("Rebooting to install OTA");
         try {
             mDevice.rebootIntoRecovery();
         } catch (DeviceNotAvailableException e) {
-            CLog.w("Device %s did reach state 'recovery', instead in state %s",
-                    mDevice.getSerialNumber(), mDevice.getDeviceState());
-            // TODO: with a new ddmlib, this should be SIDELOAD, but for now it will be null
-            if (mDevice.getDeviceState() != null) {
-                throw e;
-            }
+            // The device will only enter the RECOVERY state if it hits the recovery menu.
+            // Since we added a command to /cache/recovery/command, recovery mode executes the
+            // command rather than booting into the menu. While applying the update as a result
+            // of the installed command, the device reports its state as NOT_AVAILABLE. If the
+            // device *actually* becomes unavailable, we will catch the resulting DNAE in the
+            // next call to waitForDeviceOnline.
+            CLog.i("Didn't go to recovery, went straigh to update");
         }
 
         try {
@@ -334,12 +337,6 @@ public class SideloadOtaStabilityTest implements IDeviceTest, IBuildReceiver,
                     mDevice.getSerialNumber());
             throw e;
         }
-        Assert.assertEquals("build id does not equal expected value after OTA",
-                mDevice.getBuildId(), otaBuild.getOtaPackageVersion());
-        Assert.assertEquals("bootloader version does not equal expected value after OTA",
-                mDevice.getBootloaderVersion(), mExpectedBootloaderVersion);
-        Assert.assertEquals("baseband version does not equal expected value after OTA",
-                mDevice.getBasebandVersion(), mExpectedBasebandVersion);
 
     }
 
