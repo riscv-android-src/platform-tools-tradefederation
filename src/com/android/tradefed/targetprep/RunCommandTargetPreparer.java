@@ -19,13 +19,14 @@ package com.android.tradefed.targetprep;
 import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.config.Option;
 import com.android.tradefed.config.OptionClass;
+import com.android.tradefed.device.CollectingOutputReceiver;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.util.RunUtil;
-
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 
 @OptionClass(alias = "run-command")
 public class RunCommandTargetPreparer implements ITargetCleaner {
@@ -42,18 +43,31 @@ public class RunCommandTargetPreparer implements ITargetCleaner {
             description = "Time to delay after running commands, in msecs")
     private long mDelayMsecs = 0;
 
+    @Option(name = "run-command-timeout",
+            description = "Timeout for execute shell command",
+            isTimeVal = true)
+    private long mRunCmdTimeout = 0;
+
+
     /**
      * {@inheritDoc}
      */
     @Override
     public void setUp(ITestDevice device, IBuildInfo buildInfo) throws TargetSetupError,
             DeviceNotAvailableException {
-        if (mDisable) return;
+        if (mDisable)
+            return;
         for (String cmd : mCommands) {
             // If the command had any output, the executeShellCommand method will log it at the
             // VERBOSE level; so no need to do any logging from here.
             CLog.d("About to run setup command on device %s: %s", device.getSerialNumber(), cmd);
-            device.executeShellCommand(cmd);
+            if (mRunCmdTimeout > 0) {
+                CollectingOutputReceiver receiver = new CollectingOutputReceiver();
+                device.executeShellCommand(cmd, receiver, mRunCmdTimeout, TimeUnit.MILLISECONDS, 0);
+                CLog.v("%s returned %s", cmd, receiver.getOutput());
+            } else {
+                device.executeShellCommand(cmd);
+            }
         }
 
         CLog.d("Sleeping %d msecs on device %s", mDelayMsecs, device.getSerialNumber());
