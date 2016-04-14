@@ -49,6 +49,10 @@ public class CrashCollector extends TestFilePushSetup
             description = "Path to crashcollector binary in test artifact bundle.")
     private String mCrashCollectorPath = "local/tmp/crashcollector";
 
+    @Option(name = "crash-collector-binary",
+            description = "The name of crashcollector binary in test artifact bundle.")
+    private String mCrashCollectorBinary = "crashcollector";
+
     @Option(name = "disable", description = "If this preparer should be disabled.")
     private boolean mDisable = false;
 
@@ -63,10 +67,11 @@ public class CrashCollector extends TestFilePushSetup
         // first get pseudo API level to check for platform support
         String codeName = device.getProperty("ro.build.version.codename").trim();
         int apiLevel = device.getApiLevel();
-        if ("!REL".equals(codeName)) {
+        if (!"REL".equals(codeName)) {
             apiLevel++;
         }
         if (apiLevel < 24) {
+            CLog.i("API Level too low: %s.", apiLevel);
             return true;
         }
         if (!(buildInfo instanceof IDeviceBuildInfo)) {
@@ -85,6 +90,7 @@ public class CrashCollector extends TestFilePushSetup
             throws TargetSetupError, BuildError, DeviceNotAvailableException {
         mDisable = shouldDisable(device, buildInfo);
         if (mDisable) {
+            CLog.i("Crash collector disabled.");
             return;
         }
         // clear all existing test file names, since we may receive that from the parameter defined
@@ -93,10 +99,12 @@ public class CrashCollector extends TestFilePushSetup
         clearTestFileName();
         addTestFileName(mCrashCollectorPath);
         super.setUp(device, buildInfo);
+        String crashCollectorPath = String.format("/data/%s/%s",
+                mCrashCollectorPath, mCrashCollectorBinary);
+        device.executeShellCommand("chmod 755 " + crashCollectorPath);
         mCrashReceiver = new LargeOutputReceiver("crash-collector",
                 device.getSerialNumber(), mMaxCrashLogSize);
-        mCrashCollector = new BackgroundDeviceAction(
-                "/data/local/tmp/crashcollector/crashcollector", "crash-collector",
+        mCrashCollector = new BackgroundDeviceAction(crashCollectorPath, "crash-collector",
                 device, mCrashReceiver, 0);
         mCrashCollector.start();
     }
