@@ -36,7 +36,7 @@ import java.util.concurrent.TimeUnit;
 @OptionClass(alias = "gbenchmark")
 public class GoogleBenchmarkTest implements IDeviceTest, IRemoteTest {
 
-    static final String DEFAULT_TEST_PATH = "/data/nativetest";
+    static final String DEFAULT_TEST_PATH = "/data/benchmarktest";
 
     private static final String GBENCHMARK_JSON_OUTPUT_FORMAT = "--benchmark_format=json";
 
@@ -60,7 +60,7 @@ public class GoogleBenchmarkTest implements IDeviceTest, IRemoteTest {
 
     @Option(name = "max-run-time", description =
             "The maximum time to allow for each benchmark run in ms.", isTimeVal=true)
-    private long mMaxRunTime = 5 * 60 * 1000;
+    private long mMaxRunTime = 15 * 60 * 1000;
 
     private ITestDevice mDevice = null;
 
