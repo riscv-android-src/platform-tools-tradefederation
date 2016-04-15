@@ -125,7 +125,20 @@ public class ZipUtil {
      * @throws IOException if failed to create zip file
      */
     public static File createZip(File dir) throws IOException {
-        File zipFile = FileUtil.createTempFile("dir", ".zip");
+        return createZip(dir, "dir");
+    }
+
+    /**
+     * Utility method to create a temporary zip file containing the given directory and
+     * all its contents.
+     *
+     * @param dir the directory to zip
+     * @param name the base name of the zip file created without the extension.
+     * @return a temporary zip {@link File} containing directory contents
+     * @throws IOException if failed to create zip file
+     */
+    public static File createZip(File dir, String name) throws IOException {
+        File zipFile = FileUtil.createTempFile(name, ".zip");
         createZip(dir, zipFile);
         return zipFile;
     }

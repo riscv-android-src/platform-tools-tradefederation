@@ -208,8 +208,17 @@ public class LogRegistry implements ILogRegistry {
      */
     @Override
     public void saveGlobalLog() {
+        saveGlobalLogToDir(null);
+    }
+
+    /**
+     * Save the global log data to a file in the specified directory.
+     *
+     * @param dir directory to save file, can be null, file will be saved in tmp directory.
+     */
+    private void saveGlobalLogToDir(File dir) {
         InputStreamSource globalLog = mGlobalLogger.getLog();
-        saveLog("tradefed_global_log_", globalLog);
+        saveLog("tradefed_global_log_", globalLog, dir);
         globalLog.cancel();
     }
 
@@ -219,9 +228,9 @@ public class LogRegistry implements ILogRegistry {
      * @param filePrefix the file name prefix
      * @param logData the textual log data
      */
-    private void saveLog(String filePrefix, InputStreamSource logData) {
+    private void saveLog(String filePrefix, InputStreamSource logData, File parentdir) {
         try {
-            File tradefedLog = FileUtil.createTempFile(filePrefix, ".txt");
+            File tradefedLog = FileUtil.createTempFile(filePrefix, ".txt", parentdir);
             FileUtil.writeToFile(logData.createInputStream(), tradefedLog);
             System.out.println(String.format("Saved log to %s", tradefedLog.getAbsolutePath()));
         } catch (IOException e) {
@@ -234,14 +243,23 @@ public class LogRegistry implements ILogRegistry {
      */
     @Override
     public void dumpLogs() {
+        dumpLogsToDir(null);
+    }
+
+    /**
+     * Save the log data to files in the specified directory.
+     *
+     * @param dir directory to save file, can be null, file will be saved in tmp directory.
+     */
+    public void dumpLogsToDir(File dir) {
         for (Map.Entry<ThreadGroup, ILeveledLogOutput> logEntry : mLogTable.entrySet()) {
             // use thread group name as file name - assume its descriptive
             String filePrefix = String.format("%s_log_", logEntry.getKey().getName());
             InputStreamSource logSource = logEntry.getValue().getLog();
-            saveLog(filePrefix, logSource);
+            saveLog(filePrefix, logSource, dir);
             logSource.cancel();
         }
         // save global log last
-        saveGlobalLog();
+        saveGlobalLogToDir(dir);
     }
 }

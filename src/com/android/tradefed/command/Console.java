@@ -27,13 +27,16 @@ import com.android.tradefed.device.IDeviceManager;
 import com.android.tradefed.log.ConsoleReaderOutputStream;
 import com.android.tradefed.log.LogRegistry;
 import com.android.tradefed.util.ArrayUtil;
+import com.android.tradefed.util.FileUtil;
 import com.android.tradefed.util.QuotationAwareTokenizer;
 import com.android.tradefed.util.RegexTrie;
 import com.android.tradefed.util.RunUtil;
 import com.android.tradefed.util.VersionParser;
+import com.android.tradefed.util.ZipUtil;
 
 import jline.ConsoleReader;
 
+import java.io.File;
 import java.io.IOException;
 import java.io.PrintStream;
 import java.io.PrintWriter;
@@ -420,6 +423,8 @@ public class Console extends Thread {
                 "%s help:" + LINE_SEPARATOR +
                 "\ts[tack]             Dump the stack traces of all threads" + LINE_SEPARATOR +
                 "\tl[ogs]              Dump the logs of all invocations to files" + LINE_SEPARATOR +
+                "\tb[ugreport]         Dump a bugreport for the running Tradefed instance" +
+                LINE_SEPARATOR +
                 "\tc[onfig] <config>   Dump the content of the specified config" + LINE_SEPARATOR +
                 "\tcommandQueue        Dump the contents of the commmand execution queue" +
                 LINE_SEPARATOR +
@@ -514,7 +519,7 @@ public class Console extends Thread {
         trie.put(new Runnable() {
                     @Override
                     public void run() {
-                        dumpStacks();
+                        dumpStacks(System.out);
                     }
                 }, DUMP_PATTERN, "s(?:tacks?)?");
         trie.put(new Runnable() {
@@ -523,6 +528,12 @@ public class Console extends Thread {
                         dumpLogs();
                     }
                 }, DUMP_PATTERN, "l(?:ogs?)?");
+        trie.put(new Runnable() {
+                    @Override
+                    public void run() {
+                        dumpTfBugreport();
+                    }
+        }, DUMP_PATTERN, "b(?:ugreport?)?");
         ArgRunnable<CaptureList> dumpConfigRun = new ArgRunnable<CaptureList>() {
             @Override
             public void run(CaptureList args) {
@@ -770,6 +781,15 @@ public class Console extends Thread {
     }
 
     /**
+     * Print the line to a Printwriter
+     * @param output
+     */
+    protected void printLine(String output, PrintStream pw) {
+        pw.print(output);
+        pw.println();
+    }
+
+    /**
      * Execute a command.
      * <p />
      * Exposed for unit testing
@@ -906,19 +926,19 @@ public class Console extends Thread {
         return ConfigurationFactory.getInstance();
     }
 
-    private void dumpStacks() {
+    private void dumpStacks(PrintStream ps) {
         Map<Thread, StackTraceElement[]> threadMap = Thread.getAllStackTraces();
         for (Map.Entry<Thread, StackTraceElement[]> threadEntry : threadMap.entrySet()) {
-            dumpThreadStack(threadEntry.getKey(), threadEntry.getValue());
+            dumpThreadStack(threadEntry.getKey(), threadEntry.getValue(), ps);
         }
     }
 
-    private void dumpThreadStack(Thread thread, StackTraceElement[] trace) {
-        printLine(String.format("%s", thread));
+    private void dumpThreadStack(Thread thread, StackTraceElement[] trace, PrintStream ps) {
+        printLine(String.format("%s", thread), ps);
         for (int i=0; i < trace.length; i++) {
-            printLine(String.format("\t%s", trace[i]));
+            printLine(String.format("\t%s", trace[i]), ps);
         }
-        printLine("");
+        printLine("", ps);
     }
 
     private void dumpLogs() {
@@ -933,6 +953,33 @@ public class Console extends Thread {
         Map<String, String> env = new TreeMap<>(System.getenv());
         for (Map.Entry<String, String> entry : env.entrySet()) {
             printLine(String.format("\t%s=%s", entry.getKey(), entry.getValue()));
+        }
+    }
+
+    /**
+     * Dump a Tradefed Bugreport containing the stack traces and logs.
+     */
+    private void dumpTfBugreport() {
+        File tmpBugreportDir = null;
+        PrintStream ps = null;
+        try {
+            // dump stacks
+            tmpBugreportDir = FileUtil.createNamedTempDir("bugreport_tf");
+            File tmpStackFile = FileUtil.createTempFile("dump_stacks_", ".log", tmpBugreportDir);
+            ps = new PrintStream(tmpStackFile);
+            dumpStacks(ps);
+            ps.flush();
+            // dump logs
+            ((LogRegistry)LogRegistry.getLogRegistry()).dumpLogsToDir(tmpBugreportDir);
+            // add them to a zip and log.
+            File zippedBugreport = ZipUtil.createZip(tmpBugreportDir, "tradefed_bugreport_");
+            printLine(String.format("Output bugreport zip in %s",
+                    zippedBugreport.getAbsolutePath()));
+        } catch (IOException io) {
+            printLine("Error when trying to dump bugreport");
+        } finally {
+            ps.close();
+            FileUtil.recursiveDelete(tmpBugreportDir);
         }
     }
 
