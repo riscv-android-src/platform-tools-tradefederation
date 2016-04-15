@@ -2236,12 +2236,53 @@ public class AndroidNativeDevice implements IManagedTestDevice {
     }
 
     /**
+     * {@inheritDoc}
+     */
+    @Override
+    public boolean disableAdbRoot() throws DeviceNotAvailableException {
+        if (!isAdbRoot()) {
+            CLog.i("adb is already unroot on %s", getSerialNumber());
+            return true;
+        }
+
+        CLog.i("adb unroot on device %s", getSerialNumber());
+        int attempts = MAX_RETRY_ATTEMPTS + 1;
+        for (int i=1; i <= attempts; i++) {
+            String output = executeAdbCommand("unroot");
+            // wait for device to disappear from adb
+            waitForDeviceNotAvailable("unroot", 5 * 1000);
+
+            postAdbUnrootAction();
+
+            // wait for device to be back online
+            waitForDeviceOnline();
+
+            if (!isAdbRoot()) {
+                return true;
+            }
+            CLog.w("'adb unroot' on %s unsuccessful on attempt %d of %d. Output: '%s'",
+                    getSerialNumber(), i, attempts, output);
+        }
+        return false;
+    }
+
+    /**
      * Override if the device needs some specific actions to be taken after adb root and before the
      * device is back online.
      * Default implementation doesn't include any addition actions.
      * adb root is not guaranteed to be enabled at this stage.
      */
     public void postAdbRootAction() {
+        // Empty on purpose.
+    }
+
+    /**
+     * Override if the device needs some specific actions to be taken after adb unroot and before
+     * the device is back online.
+     * Default implementation doesn't include any additional actions.
+     * adb root is not guaranteed to be disabled at this stage.
+     */
+    public void postAdbUnrootAction() {
         // Empty on purpose.
     }
 
