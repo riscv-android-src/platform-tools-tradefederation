@@ -13,22 +13,25 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.android.tradefed.util;
+package com.android.tradefed.util.hostmetric;
 
 /**
  * Interface to dispatch host data
  */
 public interface IHostMonitor {
 
+    public enum HostMetricType {
+        NONE,
+        INVOCATION_STRAY_THREAD,
+    }
+
     /**
      * A method that will be called after all of the Monitor's @Option fields have been set.
      */
     public void start();
 
-    /**
-     * A method that will be called to add a special event to be sent.
-     */
-    public void addHostEvent(String tag, DataPoint event);
+    /** A method that will be called to add a special event to be sent. */
+    public void addHostEvent(HostMetricType tag, DataPoint event);
 
     /**
      * A method that will be called to stop the Host Monitor.
@@ -41,10 +44,17 @@ public interface IHostMonitor {
     static class DataPoint {
         public String name;
         public int value;
+        public String additionalInfo = null;
 
         public DataPoint(String name, int value) {
             this.name = name;
             this.value = value;
+        }
+
+        public DataPoint(String name, int value, String additionalInfo) {
+            this.name = name;
+            this.value = value;
+            this.additionalInfo = additionalInfo;
         }
 
         @Override

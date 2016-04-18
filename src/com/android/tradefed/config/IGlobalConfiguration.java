@@ -24,7 +24,7 @@ import com.android.tradefed.device.IDeviceSelection;
 import com.android.tradefed.device.IMultiDeviceRecovery;
 import com.android.tradefed.host.IHostOptions;
 import com.android.tradefed.log.ITerribleFailureHandler;
-import com.android.tradefed.util.IHostMonitor;
+import com.android.tradefed.util.hostmetric.IHostMonitor;
 import com.android.tradefed.util.keystore.IKeyStoreFactory;
 
 import java.util.List;
@@ -71,7 +71,7 @@ public interface IGlobalConfiguration {
      * @param hostMonitors The list of monitors
      * @throws ConfigurationException if an {@link IHostMonitor} has already been set.
      */
-    public void addHostMonitors(List<IHostMonitor> hostMonitors) throws ConfigurationException;
+    public void setHostMonitors(List<IHostMonitor> hostMonitors) throws ConfigurationException;
 
     /**
      * Set the {@link ITerribleFailureHandler}.

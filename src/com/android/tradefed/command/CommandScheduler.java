@@ -62,11 +62,11 @@ import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.ResultForwarder;
 import com.android.tradefed.util.ArrayUtil;
 import com.android.tradefed.util.FileUtil;
-import com.android.tradefed.util.IHostMonitor;
 import com.android.tradefed.util.QuotationAwareTokenizer;
 import com.android.tradefed.util.RunUtil;
 import com.android.tradefed.util.TableFormatter;
 import com.android.tradefed.util.TimeUtil;
+import com.android.tradefed.util.hostmetric.IHostMonitor;
 import com.android.tradefed.util.keystore.IKeyStoreClient;
 import com.android.tradefed.util.keystore.IKeyStoreFactory;
 import com.android.tradefed.util.keystore.KeyStoreException;
@@ -504,6 +504,7 @@ public class CommandScheduler extends Thread implements ICommandScheduler, IComm
          * for the next iteration of testing.
          */
         private static final long CHECK_WAIT_DEVICE_AVAIL_MS = 30 * 1000;
+
         private final IScheduledInvocationListener[] mListeners;
         private final IInvocationContext mInvocationContext;
         private final ExecutableCommand mCmd;
@@ -597,6 +598,7 @@ public class CommandScheduler extends Thread implements ICommandScheduler, IComm
                     // Reset the recovery mode at the end of the invocation.
                     device.setRecoveryMode(RecoveryMode.AVAILABLE);
                 }
+
                 for (final IScheduledInvocationListener listener : mListeners) {
                     try {
                         listener.invocationComplete(mInvocationContext, deviceStates);

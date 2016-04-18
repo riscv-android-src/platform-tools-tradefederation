@@ -332,22 +332,25 @@ public class RunUtilTest extends TestCase {
      * state.
      */
     public void testSetInterruptibleInFuture() {
-        final Thread test = new Thread(new Runnable() {
-            @Override
-            public void run() {
-                mRunUtil.allowInterrupt(false);
-                assertFalse(mRunUtil.isInterruptAllowed());
-                mRunUtil.setInterruptibleInFuture(Thread.currentThread(), 10);
-                try {
-                    mRunUtil.sleep(25);
-                    mRunUtil.sleep(25);
-                    fail();
-                } catch (RunInterruptedException rie) {
-                    assertEquals("TEST", rie.getMessage());
-                }
-                success = mRunUtil.isInterruptAllowed();
-            }
-        });
+        final Thread test =
+                new Thread(
+                        new Runnable() {
+                            @Override
+                            public void run() {
+                                mRunUtil.allowInterrupt(false);
+                                assertFalse(mRunUtil.isInterruptAllowed());
+                                mRunUtil.setInterruptibleInFuture(Thread.currentThread(), 10);
+                                try {
+                                    mRunUtil.sleep(25);
+                                    mRunUtil.sleep(25);
+                                    fail();
+                                } catch (RunInterruptedException rie) {
+                                    assertEquals("TEST", rie.getMessage());
+                                }
+                                success = mRunUtil.isInterruptAllowed();
+                                mRunUtil.terminateTimer();
+                            }
+                        });
         mRunUtil.interrupt(test, "TEST");
         test.start();
         try {
@@ -368,6 +371,7 @@ public class RunUtilTest extends TestCase {
         mRunUtil.sleep(10);
         // Should still be false
         assertFalse(mRunUtil.isInterruptAllowed());
+        mRunUtil.terminateTimer();
     }
 
     /**

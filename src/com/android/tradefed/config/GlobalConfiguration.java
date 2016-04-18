@@ -28,8 +28,8 @@ import com.android.tradefed.host.HostOptions;
 import com.android.tradefed.host.IHostOptions;
 import com.android.tradefed.log.ITerribleFailureHandler;
 import com.android.tradefed.util.ArrayUtil;
-import com.android.tradefed.util.IHostMonitor;
 import com.android.tradefed.util.MultiMap;
+import com.android.tradefed.util.hostmetric.IHostMonitor;
 import com.android.tradefed.util.keystore.IKeyStoreFactory;
 import com.android.tradefed.util.keystore.StubKeyStoreFactory;
 
@@ -415,12 +415,10 @@ public class GlobalConfiguration implements IGlobalConfiguration {
         setConfigurationObjectNoThrow(DEVICE_MONITOR_TYPE_NAME, monitor);
     }
 
-    /**
-     * {@inheritDoc}
-     */
+    /** {@inheritDoc} */
     @Override
-    public void addHostMonitors(List<IHostMonitor> monitors) {
-        setConfigurationObjectNoThrow(HOST_MONITOR_TYPE_NAME, monitors);
+    public void setHostMonitors(List<IHostMonitor> hostMonitors) {
+        setConfigurationObjectListNoThrow(HOST_MONITOR_TYPE_NAME, hostMonitors);
     }
 
     /**
@@ -488,6 +486,22 @@ public class GlobalConfiguration implements IGlobalConfiguration {
         mConfigMap.remove(typeName);
         for (Object configObject : configList) {
             addObject(typeName, configObject);
+        }
+    }
+
+    /**
+     * A wrapper around {@link #setConfigurationObjectList(String, List)} that will not throw {@link
+     * ConfigurationException}.
+     *
+     * <p>Intended to be used in cases where its guaranteed that <var>configObject</var> is the
+     * correct type
+     */
+    private void setConfigurationObjectListNoThrow(String typeName, List<?> configList) {
+        try {
+            setConfigurationObjectList(typeName, configList);
+        } catch (ConfigurationException e) {
+            // should never happen
+            throw new IllegalArgumentException(e);
         }
     }
 

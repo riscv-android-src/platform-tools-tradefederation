@@ -186,6 +186,7 @@ import com.android.tradefed.util.TimeUtilTest;
 import com.android.tradefed.util.TimeValTest;
 import com.android.tradefed.util.ZipUtil2Test;
 import com.android.tradefed.util.ZipUtilTest;
+import com.android.tradefed.util.hostmetric.AbstractHostMonitorTest;
 import com.android.tradefed.util.keystore.JSONFileKeyStoreClientTest;
 import com.android.tradefed.util.net.HttpHelperTest;
 import com.android.tradefed.util.net.HttpMultipartPostTest;
@@ -410,6 +411,9 @@ import org.junit.runners.Suite.SuiteClasses;
     XmlRpcHelperTest.class,
     ZipUtilTest.class,
     ZipUtil2Test.class,
+
+    //util/hostmetric
+    AbstractHostMonitorTest.class,
 
     // util subdirs
     AndroidManifestWriterTest.class,
