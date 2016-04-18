@@ -167,6 +167,35 @@ public class TestDeviceTest extends TestCase {
     }
 
     /**
+     * Test {@link TestDevice#disableAdbRoot()} when adb is already unroot
+     */
+    public void testDisableAdbRoot_alreadyUnroot() throws Exception {
+        injectShellResponse("id", "uid=2000(shell) gid=2000(shell) groups=2000(shell)");
+        EasyMock.replay(mMockIDevice);
+        assertTrue(mTestDevice.disableAdbRoot());
+        EasyMock.verify(mMockIDevice);
+    }
+
+    /**
+     * Test {@link TestDevice#disableAdbRoot()} when adb is root
+     */
+    public void testDisableAdbRoot_unroot() throws Exception {
+        injectShellResponse("id", "uid=0(root) gid=0(root)");
+        injectShellResponse("id", "uid=2000(shell) gid=2000(shell)");
+        CommandResult adbResult = new CommandResult();
+        adbResult.setStatus(CommandStatus.SUCCESS);
+        adbResult.setStdout("restarting adbd as non root");
+        setExecuteAdbCommandExpectations(adbResult, "unroot");
+        EasyMock.expect(mMockStateMonitor.waitForDeviceNotAvailable(EasyMock.anyLong())).andReturn(
+                Boolean.TRUE);
+        EasyMock.expect(mMockStateMonitor.waitForDeviceOnline()).andReturn(
+                mMockIDevice);
+        EasyMock.replay(mMockIDevice, mMockRunUtil, mMockStateMonitor);
+        assertTrue(mTestDevice.disableAdbRoot());
+        EasyMock.verify(mMockIDevice, mMockRunUtil, mMockStateMonitor);
+    }
+
+    /**
      * Configure EasyMock expectations for a successful adb root call
      */
     private void setEnableAdbRootExpectations() throws Exception {

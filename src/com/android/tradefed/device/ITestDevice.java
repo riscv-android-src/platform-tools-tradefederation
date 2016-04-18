@@ -551,7 +551,7 @@ public interface ITestDevice {
      *
      * @param mountName the name of the mount point
      * @return the mount point or <code>null</code>
-     * @see {@link IDevice#getMountPoint(String)}
+     * @see IDevice#getMountPoint(String)
      */
     public String getMountPoint(String mountName);
 
@@ -568,7 +568,7 @@ public interface ITestDevice {
      * /proc/mounts as a mountpoint.
      *
      * @return A {@link List} of {@link MountPointInfo} containing the information in "/proc/mounts"
-     * @see {@link #getMountPointInfo()}
+     * @see #getMountPointInfo()
      */
     public MountPointInfo getMountPointInfo(String mountpoint) throws DeviceNotAvailableException;
 
@@ -973,6 +973,18 @@ public interface ITestDevice {
      * recovered.
      */
     public boolean enableAdbRoot() throws DeviceNotAvailableException;
+
+    /**
+     * Turns off adb root.
+     * <p/>
+     * Disabling adb root may cause device to disconnect from adb. This method will block until
+     * device is available.
+     *
+     * @return <code>true</code> if successful.
+     * @throws DeviceNotAvailableException if connection with device is lost and cannot be
+     * recovered.
+     */
+    public boolean disableAdbRoot() throws DeviceNotAvailableException;
 
     /**
      * Get the device's state.
