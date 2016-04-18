@@ -16,18 +16,13 @@
 package com.android.tradefed.targetprep;
 
 import com.android.tradefed.build.IBuildInfo;
-import com.android.tradefed.build.IDeviceBuildInfo;
 import com.android.tradefed.config.Option;
 import com.android.tradefed.config.OptionClass;
-import com.android.tradefed.device.BackgroundDeviceAction;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
-import com.android.tradefed.device.LargeOutputReceiver;
 import com.android.tradefed.log.ITestLogger;
-import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.result.ByteArrayInputStreamSource;
 import com.android.tradefed.result.ITestLoggerReceiver;
-import com.android.tradefed.result.InputStreamSource;
 import com.android.tradefed.result.LogDataType;
 import com.android.tradefed.util.StreamUtil;
 
@@ -40,12 +35,17 @@ import com.android.tradefed.util.StreamUtil;
 @OptionClass(alias = "native-leak-collector")
 public class NativeLeakCollector implements ITestLoggerReceiver, ITargetCleaner {
     private static final String UNREACHABLE_MEMINFO_CMD =
-            "dumpsys -t 60 meminfo --unreachable -a";
+            "dumpsys -t %d meminfo --unreachable -a";
 
     private ITestLogger mTestLogger;
 
     @Option(name = "disable", description = "If this preparer should be disabled.")
     private boolean mDisable = false;
+
+    @Option(name = "dump-timeout", description = "Timeout limit in for dumping unreachable native "
+            + "memory allocation information. Can be in any valid duration format, e.g. 5m, 1h",
+            isTimeVal = true)
+    private long mDumpTimeout = 5 * 60 * 1000; // defaults to 5m
 
     @Option(name = "log-filename", description = "The filename to give this log.")
     private String mLogFilename = "unreachable-meminfo";
@@ -69,7 +69,8 @@ public class NativeLeakCollector implements ITestLoggerReceiver, ITargetCleaner 
             return;
         }
 
-        String output = device.executeShellCommand(UNREACHABLE_MEMINFO_CMD);
+        String output = device.executeShellCommand(String.format(
+                UNREACHABLE_MEMINFO_CMD, mDumpTimeout / 1000));
         if (output != null && !output.isEmpty()) {
             ByteArrayInputStreamSource byteOutput =
                     new ByteArrayInputStreamSource(output.getBytes());
