@@ -75,7 +75,7 @@ public class BugreportCollectorTest extends TestCase {
 
     public void testCreatePredicate() throws Exception {
         Predicate foo = new Predicate(Relation.AFTER, Freq.EACH, Noun.TESTCASE);
-        System.err.format("foo is %s\n", foo.toString());
+        assertEquals("AFTER_EACH_TESTCASE", foo.toString());
     }
 
     public void testPredicateEquals() throws Exception {

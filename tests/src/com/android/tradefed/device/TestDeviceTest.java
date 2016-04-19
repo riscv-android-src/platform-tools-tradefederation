@@ -805,9 +805,8 @@ public class TestDeviceTest extends TestCase {
     /**
      * Test that state changes are ignore while {@link TestDevice#executeFastbootCommand(String...)}
      * is active.
-     * @throws InterruptedException
      */
-    public void testExecuteFastbootCommand_state() throws InterruptedException {
+    public void testExecuteFastbootCommand_state() throws Exception {
         // build a fastboot response that will block
         IAnswer<CommandResult> blockResult = new IAnswer<CommandResult>() {
             @Override
@@ -823,11 +822,13 @@ public class TestDeviceTest extends TestCase {
         };
         EasyMock.expect(mMockRunUtil.runTimedCmd(EasyMock.anyLong(), EasyMock.eq("fastboot"),
                 EasyMock.eq("-s"),EasyMock.eq(MOCK_DEVICE_SERIAL), EasyMock.eq("foo"))).andAnswer(
-                        blockResult);
+                        blockResult).times(2);
 
         // expect
         mMockStateMonitor.setState(TestDeviceState.FASTBOOT);
         mMockStateMonitor.setState(TestDeviceState.NOT_AVAILABLE);
+        mMockRecovery.recoverDeviceBootloader((IDeviceStateMonitor)EasyMock.anyObject());
+        EasyMock.expectLastCall().times(2);
         replayMocks();
 
         mTestDevice.setDeviceState(TestDeviceState.FASTBOOT);
@@ -860,6 +861,7 @@ public class TestDeviceTest extends TestCase {
         fastbootThread.join();
         mTestDevice.setDeviceState(TestDeviceState.NOT_AVAILABLE);
         assertEquals(TestDeviceState.NOT_AVAILABLE, mTestDevice.getDeviceState());
+        verifyMocks();
     }
 
     /**

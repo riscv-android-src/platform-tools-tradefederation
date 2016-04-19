@@ -74,22 +74,25 @@ public class GTestXmlResultParserTest extends TestCase {
     @SuppressWarnings("unchecked")
     public void testParseSimpleFile() throws Exception {
         File contents =  readInFile(GTEST_OUTPUT_FILE_1);
-        ITestRunListener mockRunListener = EasyMock.createMock(ITestRunListener.class);
-        mockRunListener.testRunStarted(TEST_MODULE_NAME, 6);
-        // 6 passing test cases in this run
-        for (int i=0; i<6; ++i) {
-            mockRunListener.testStarted((TestIdentifier)EasyMock.anyObject());
-            mockRunListener.testEnded((TestIdentifier)EasyMock.anyObject(),
-                    (Map<String, String>)EasyMock.anyObject());
+        try {
+            ITestRunListener mockRunListener = EasyMock.createMock(ITestRunListener.class);
+            mockRunListener.testRunStarted(TEST_MODULE_NAME, 6);
+            // 6 passing test cases in this run
+            for (int i=0; i<6; ++i) {
+                mockRunListener.testStarted((TestIdentifier)EasyMock.anyObject());
+                mockRunListener.testEnded((TestIdentifier)EasyMock.anyObject(),
+                        (Map<String, String>)EasyMock.anyObject());
+            }
+            mockRunListener.testRunEnded(EasyMock.anyLong(),
+                    (Map<String, String>) EasyMock.anyObject());
+            EasyMock.replay(mockRunListener);
+            GTestXmlResultParser resultParser =
+                    new GTestXmlResultParser(TEST_MODULE_NAME, mockRunListener);
+            resultParser.parseResult(contents, null);
+            EasyMock.verify(mockRunListener);
+        } finally {
+            FileUtil.deleteFile(contents);
         }
-        mockRunListener.testRunEnded(EasyMock.anyLong(),
-                (Map<String, String>) EasyMock.anyObject());
-        EasyMock.replay(mockRunListener);
-        GTestXmlResultParser resultParser =
-                new GTestXmlResultParser(TEST_MODULE_NAME, mockRunListener);
-        resultParser.parseResult(contents, null);
-        FileUtil.deleteFile(contents);
-        EasyMock.verify(mockRunListener);
     }
 
     /**
@@ -98,22 +101,25 @@ public class GTestXmlResultParserTest extends TestCase {
     @SuppressWarnings("unchecked")
     public void testParseLargerFile() throws Exception {
         File contents =  readInFile(GTEST_OUTPUT_FILE_2);
-        ITestRunListener mockRunListener = EasyMock.createMock(ITestRunListener.class);
-        mockRunListener.testRunStarted(TEST_MODULE_NAME, 84);
-        // 84 passing test cases in this run
-        for (int i=0; i<84; ++i) {
-            mockRunListener.testStarted((TestIdentifier)EasyMock.anyObject());
-            mockRunListener.testEnded((TestIdentifier)EasyMock.anyObject(),
-                    (Map<String, String>)EasyMock.anyObject());
+        try {
+            ITestRunListener mockRunListener = EasyMock.createMock(ITestRunListener.class);
+            mockRunListener.testRunStarted(TEST_MODULE_NAME, 84);
+            // 84 passing test cases in this run
+            for (int i=0; i<84; ++i) {
+                mockRunListener.testStarted((TestIdentifier)EasyMock.anyObject());
+                mockRunListener.testEnded((TestIdentifier)EasyMock.anyObject(),
+                        (Map<String, String>)EasyMock.anyObject());
+            }
+            mockRunListener.testRunEnded(EasyMock.anyLong(),
+                    (Map<String, String>) EasyMock.anyObject());
+            EasyMock.replay(mockRunListener);
+            GTestXmlResultParser resultParser =
+                    new GTestXmlResultParser(TEST_MODULE_NAME, mockRunListener);
+            resultParser.parseResult(contents, null);
+            EasyMock.verify(mockRunListener);
+        } finally {
+            FileUtil.deleteFile(contents);
         }
-        mockRunListener.testRunEnded(EasyMock.anyLong(),
-                (Map<String, String>) EasyMock.anyObject());
-        EasyMock.replay(mockRunListener);
-        GTestXmlResultParser resultParser =
-                new GTestXmlResultParser(TEST_MODULE_NAME, mockRunListener);
-        resultParser.parseResult(contents, null);
-        FileUtil.deleteFile(contents);
-        EasyMock.verify(mockRunListener);
     }
 
     /**
@@ -124,29 +130,31 @@ public class GTestXmlResultParserTest extends TestCase {
         String expectedMessage = "Message\nFailed";
 
         File contents =  readInFile(GTEST_OUTPUT_FILE_3);
-        ITestRunListener mockRunListener = EasyMock.createMock(ITestRunListener.class);
-        mockRunListener.testRunStarted(TEST_MODULE_NAME, 7);
-        // 6 passing test cases in this run
-        for (int i=0; i<6; ++i) {
+        try {
+            ITestRunListener mockRunListener = EasyMock.createMock(ITestRunListener.class);
+            mockRunListener.testRunStarted(TEST_MODULE_NAME, 7);
+            // 6 passing test cases in this run
+            for (int i=0; i<6; ++i) {
+                mockRunListener.testStarted((TestIdentifier)EasyMock.anyObject());
+                mockRunListener.testEnded((TestIdentifier)EasyMock.anyObject(),
+                        (Map<String, String>)EasyMock.anyObject());
+            }
+            // 1 failed test
             mockRunListener.testStarted((TestIdentifier)EasyMock.anyObject());
+            mockRunListener.testFailed(
+                    (TestIdentifier)EasyMock.anyObject(), EasyMock.eq(expectedMessage));
             mockRunListener.testEnded((TestIdentifier)EasyMock.anyObject(),
                     (Map<String, String>)EasyMock.anyObject());
+            mockRunListener.testRunEnded(EasyMock.anyLong(),
+                    (Map<String, String>) EasyMock.anyObject());
+            EasyMock.replay(mockRunListener);
+            GTestXmlResultParser resultParser =
+                    new GTestXmlResultParser(TEST_MODULE_NAME, mockRunListener);
+            resultParser.parseResult(contents, null);
+            EasyMock.verify(mockRunListener);
+        } finally {
+            FileUtil.deleteFile(contents);
         }
-        // 1 failed test
-        mockRunListener.testStarted((TestIdentifier)EasyMock.anyObject());
-        mockRunListener.testFailed(
-                (TestIdentifier)EasyMock.anyObject(), EasyMock.eq(expectedMessage));
-        mockRunListener.testEnded((TestIdentifier)EasyMock.anyObject(),
-                (Map<String, String>)EasyMock.anyObject());
-
-        mockRunListener.testRunEnded(EasyMock.anyLong(),
-                (Map<String, String>) EasyMock.anyObject());
-        EasyMock.replay(mockRunListener);
-        GTestXmlResultParser resultParser =
-                new GTestXmlResultParser(TEST_MODULE_NAME, mockRunListener);
-        resultParser.parseResult(contents, null);
-        EasyMock.verify(mockRunListener);
-        FileUtil.deleteFile(contents);
     }
 
     /**
@@ -157,16 +165,20 @@ public class GTestXmlResultParserTest extends TestCase {
         String expected = "Failed to get an xml output from tests, it probably crashed";
 
         File contents = FileUtil.createTempFile("test", ".xml");
-        ITestRunListener mockRunListener = EasyMock.createMock(ITestRunListener.class);
-        mockRunListener.testRunStarted(TEST_MODULE_NAME, 0);
-        mockRunListener.testRunFailed(expected);
-        mockRunListener.testRunEnded(EasyMock.anyLong(),
-                (Map<String, String>) EasyMock.anyObject());
-        EasyMock.replay(mockRunListener);
-        GTestXmlResultParser resultParser =
-                new GTestXmlResultParser(TEST_MODULE_NAME, mockRunListener);
-        resultParser.parseResult(contents, null);
-        EasyMock.verify(mockRunListener);
+        try {
+            ITestRunListener mockRunListener = EasyMock.createMock(ITestRunListener.class);
+            mockRunListener.testRunStarted(TEST_MODULE_NAME, 0);
+            mockRunListener.testRunFailed(expected);
+            mockRunListener.testRunEnded(EasyMock.anyLong(),
+                    (Map<String, String>) EasyMock.anyObject());
+            EasyMock.replay(mockRunListener);
+            GTestXmlResultParser resultParser =
+                    new GTestXmlResultParser(TEST_MODULE_NAME, mockRunListener);
+            resultParser.parseResult(contents, null);
+            EasyMock.verify(mockRunListener);
+        } finally {
+            FileUtil.deleteFile(contents);
+        }
     }
 
     /**
@@ -176,23 +188,26 @@ public class GTestXmlResultParserTest extends TestCase {
     public void testParseUnexpectedNumberTest() throws Exception {
         String expected = "Test run incomplete. Expected 7 tests, received 6";
         File contents =  readInFile(GTEST_OUTPUT_FILE_4);
-        ITestRunListener mockRunListener = EasyMock.createMock(ITestRunListener.class);
-        mockRunListener.testRunStarted(TEST_MODULE_NAME, 7);
-        // 6 passing test cases in this run
-        for (int i=0; i<6; ++i) {
-            mockRunListener.testStarted((TestIdentifier)EasyMock.anyObject());
-            mockRunListener.testEnded((TestIdentifier)EasyMock.anyObject(),
-                    (Map<String, String>)EasyMock.anyObject());
+        try {
+            ITestRunListener mockRunListener = EasyMock.createMock(ITestRunListener.class);
+            mockRunListener.testRunStarted(TEST_MODULE_NAME, 7);
+            // 6 passing test cases in this run
+            for (int i=0; i<6; ++i) {
+                mockRunListener.testStarted((TestIdentifier)EasyMock.anyObject());
+                mockRunListener.testEnded((TestIdentifier)EasyMock.anyObject(),
+                        (Map<String, String>)EasyMock.anyObject());
+            }
+            mockRunListener.testRunFailed(expected);
+            mockRunListener.testRunEnded(EasyMock.anyLong(),
+                    (Map<String, String>) EasyMock.anyObject());
+            EasyMock.replay(mockRunListener);
+            GTestXmlResultParser resultParser =
+                    new GTestXmlResultParser(TEST_MODULE_NAME, mockRunListener);
+            resultParser.parseResult(contents, null);
+            EasyMock.verify(mockRunListener);
+        } finally {
+            FileUtil.deleteFile(contents);
         }
-        mockRunListener.testRunFailed(expected);
-        mockRunListener.testRunEnded(EasyMock.anyLong(),
-                (Map<String, String>) EasyMock.anyObject());
-        EasyMock.replay(mockRunListener);
-        GTestXmlResultParser resultParser =
-                new GTestXmlResultParser(TEST_MODULE_NAME, mockRunListener);
-        resultParser.parseResult(contents, null);
-        FileUtil.deleteFile(contents);
-        EasyMock.verify(mockRunListener);
     }
 
     /**
@@ -203,23 +218,26 @@ public class GTestXmlResultParserTest extends TestCase {
     public void testParseSimpleFile_badXmltag() throws Exception {
         String expected = "Test run incomplete. Expected 6 tests, received 3";
         File contents =  readInFile(GTEST_OUTPUT_FILE_5);
-        ITestRunListener mockRunListener = EasyMock.createMock(ITestRunListener.class);
-        mockRunListener.testRunStarted(TEST_MODULE_NAME, 6);
-        // 6 passing test cases in this run
-        for (int i=0; i<3; ++i) {
-            mockRunListener.testStarted((TestIdentifier)EasyMock.anyObject());
-            mockRunListener.testEnded((TestIdentifier)EasyMock.anyObject(),
-                    (Map<String, String>)EasyMock.anyObject());
+        try {
+            ITestRunListener mockRunListener = EasyMock.createMock(ITestRunListener.class);
+            mockRunListener.testRunStarted(TEST_MODULE_NAME, 6);
+            // 6 passing test cases in this run
+            for (int i=0; i<3; ++i) {
+                mockRunListener.testStarted((TestIdentifier)EasyMock.anyObject());
+                mockRunListener.testEnded((TestIdentifier)EasyMock.anyObject(),
+                        (Map<String, String>)EasyMock.anyObject());
+            }
+            mockRunListener.testRunFailed(expected);
+            mockRunListener.testRunEnded(EasyMock.anyLong(),
+                    (Map<String, String>) EasyMock.anyObject());
+            EasyMock.replay(mockRunListener);
+            GTestXmlResultParser resultParser =
+                    new GTestXmlResultParser(TEST_MODULE_NAME, mockRunListener);
+            resultParser.parseResult(contents, null);
+            EasyMock.verify(mockRunListener);
+        } finally {
+            FileUtil.deleteFile(contents);
         }
-        mockRunListener.testRunFailed(expected);
-        mockRunListener.testRunEnded(EasyMock.anyLong(),
-                (Map<String, String>) EasyMock.anyObject());
-        EasyMock.replay(mockRunListener);
-        GTestXmlResultParser resultParser =
-                new GTestXmlResultParser(TEST_MODULE_NAME, mockRunListener);
-        resultParser.parseResult(contents, null);
-        FileUtil.deleteFile(contents);
-        EasyMock.verify(mockRunListener);
     }
 
     /**
@@ -238,15 +256,19 @@ public class GTestXmlResultParserTest extends TestCase {
                 + exec_log;
 
         File contents = FileUtil.createTempFile("test", ".xml");
-        ITestRunListener mockRunListener = EasyMock.createMock(ITestRunListener.class);
-        mockRunListener.testRunStarted(TEST_MODULE_NAME, 0);
-        mockRunListener.testRunFailed(expected);
-        mockRunListener.testRunEnded(EasyMock.anyLong(),
-                (Map<String, String>) EasyMock.anyObject());
-        EasyMock.replay(mockRunListener);
-        GTestXmlResultParser resultParser =
-                new GTestXmlResultParser(TEST_MODULE_NAME, mockRunListener);
-        resultParser.parseResult(contents, fake);
-        EasyMock.verify(mockRunListener);
+        try {
+            ITestRunListener mockRunListener = EasyMock.createMock(ITestRunListener.class);
+            mockRunListener.testRunStarted(TEST_MODULE_NAME, 0);
+            mockRunListener.testRunFailed(expected);
+            mockRunListener.testRunEnded(EasyMock.anyLong(),
+                    (Map<String, String>) EasyMock.anyObject());
+            EasyMock.replay(mockRunListener);
+            GTestXmlResultParser resultParser =
+                    new GTestXmlResultParser(TEST_MODULE_NAME, mockRunListener);
+            resultParser.parseResult(contents, fake);
+            EasyMock.verify(mockRunListener);
+        } finally {
+            FileUtil.deleteFile(contents);
+        }
     }
 }
