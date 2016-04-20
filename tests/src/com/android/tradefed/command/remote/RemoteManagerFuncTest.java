@@ -77,7 +77,7 @@ public class RemoteManagerFuncTest extends TestCase {
                 EasyMock.eq(FreeDeviceState.AVAILABLE));
 
         EasyMock.replay(mMockDeviceManager, device);
-        mRemoteMgr.connect();
+        mRemoteMgr.connectAnyPort();
         mRemoteMgr.start();
         int port = mRemoteMgr.getPort();
         assertTrue(port != -1);
@@ -96,7 +96,7 @@ public class RemoteManagerFuncTest extends TestCase {
         }), EasyMock.anyInt())).andReturn(true);
 
         EasyMock.replay(mMockScheduler);
-        mRemoteMgr.connect();
+        mRemoteMgr.connectAnyPort();
         mRemoteMgr.start();
         int port = mRemoteMgr.getPort();
         assertTrue(port != -1);
@@ -114,7 +114,7 @@ public class RemoteManagerFuncTest extends TestCase {
         mMockScheduler.addCommandFile(EasyMock.eq(cmdFile), EasyMock.eq(extraArgs));
 
         EasyMock.replay(mMockScheduler);
-        mRemoteMgr.connect();
+        mRemoteMgr.connectAnyPort();
         mRemoteMgr.start();
         int port = mRemoteMgr.getPort();
         assertTrue(port != -1);
@@ -136,7 +136,7 @@ public class RemoteManagerFuncTest extends TestCase {
                 EasyMock.eq(FreeDeviceState.AVAILABLE));
 
         EasyMock.replay(mMockDeviceManager, device);
-        mRemoteMgr.connect();
+        mRemoteMgr.connectAnyPort();
         mRemoteMgr.start();
         int port = mRemoteMgr.getPort();
         assertTrue(port != -1);
@@ -160,7 +160,7 @@ public class RemoteManagerFuncTest extends TestCase {
                 EasyMock.eq(FreeDeviceState.AVAILABLE));
 
         EasyMock.replay(mMockDeviceManager, device);
-        mRemoteMgr.connect();
+        mRemoteMgr.connectAnyPort();
         mRemoteMgr.start();
         int port = mRemoteMgr.getPort();
         assertTrue(port != -1);
@@ -174,7 +174,7 @@ public class RemoteManagerFuncTest extends TestCase {
      * Test attempt to free an unknown device
      */
     public void testFree_unknown() throws Exception {
-        mRemoteMgr.connect();
+        mRemoteMgr.connectAnyPort();
         mRemoteMgr.start();
         int port = mRemoteMgr.getPort();
         assertTrue(port != -1);
@@ -217,7 +217,7 @@ public class RemoteManagerFuncTest extends TestCase {
             );
         EasyMock.expect(mMockDeviceManager.listAllDevices()).andReturn(deviceList);
         EasyMock.replay(mMockDeviceManager);
-        mRemoteMgr.connect();
+        mRemoteMgr.connectAnyPort();
         mRemoteMgr.start();
         int port = mRemoteMgr.getPort();
         assertTrue(port != -1);
@@ -258,7 +258,7 @@ public class RemoteManagerFuncTest extends TestCase {
                 EasyMock.eq(device), EasyMock.aryEq(args));
 
         EasyMock.replay(mMockDeviceManager, device, mMockScheduler);
-        mRemoteMgr.connect();
+        mRemoteMgr.connectAnyPort();
         mRemoteMgr.start();
         int port = mRemoteMgr.getPort();
         assertTrue(port != -1);
@@ -296,7 +296,7 @@ public class RemoteManagerFuncTest extends TestCase {
         mMockScheduler.execCommand((IScheduledInvocationListener)EasyMock.anyObject(),
             EasyMock.eq(device), EasyMock.aryEq(args));
         EasyMock.replay(mMockDeviceManager, device, mMockScheduler);
-        mRemoteMgr.connect();
+        mRemoteMgr.connectAnyPort();
         mRemoteMgr.start();
         int port = mRemoteMgr.getPort();
         assertTrue(port != -1);
@@ -321,7 +321,7 @@ public class RemoteManagerFuncTest extends TestCase {
      * An integration test for case where device was not allocated before {@link ExecCommandOp}
      */
     public void testExecCommand_noallocate() throws Exception {
-        mRemoteMgr.connect();
+        mRemoteMgr.connectAnyPort();
         mRemoteMgr.start();
         int port = mRemoteMgr.getPort();
         assertTrue(port != -1);
@@ -343,7 +343,7 @@ public class RemoteManagerFuncTest extends TestCase {
         EasyMock.expect(mMockScheduler.handoverShutdown(port)).andReturn(Boolean.TRUE);
 
         EasyMock.replay(mMockScheduler);
-        mRemoteMgr.connect();
+        mRemoteMgr.connectAnyPort();
         mRemoteMgr.start();
         int mgrPort = mRemoteMgr.getPort();
         assertTrue(mgrPort != -1);
@@ -362,7 +362,7 @@ public class RemoteManagerFuncTest extends TestCase {
         mMockScheduler.handoverInitiationComplete();
 
         EasyMock.replay(mMockScheduler);
-        mRemoteMgr.connect();
+        mRemoteMgr.connectAnyPort();
         mRemoteMgr.start();
         int mgrPort = mRemoteMgr.getPort();
         assertTrue(mgrPort != -1);
@@ -380,7 +380,7 @@ public class RemoteManagerFuncTest extends TestCase {
     public void testGetLastCommandResult_unknownDevice() throws Exception {
         ICommandResultHandler mockHandler = EasyMock.createStrictMock(ICommandResultHandler.class);
         mockHandler.notAllocated();
-        mRemoteMgr.connect();
+        mRemoteMgr.connectAnyPort();
         mRemoteMgr.start();
 
         int mgrPort = mRemoteMgr.getPort();
@@ -405,7 +405,7 @@ public class RemoteManagerFuncTest extends TestCase {
         mMockDeviceManager.freeDevice(EasyMock.eq(device), EasyMock.eq(FreeDeviceState.AVAILABLE));
         EasyMock.replay(mMockDeviceManager, device, mockHandler);
 
-        mRemoteMgr.connect();
+        mRemoteMgr.connectAnyPort();
         mRemoteMgr.start();
         int mgrPort = mRemoteMgr.getPort();
         assertTrue(mgrPort != -1);
@@ -435,7 +435,7 @@ public class RemoteManagerFuncTest extends TestCase {
                 EasyMock.eq(device), EasyMock.aryEq(args));
 
         EasyMock.replay(mMockDeviceManager, device, mMockScheduler, mockHandler);
-        mRemoteMgr.connect();
+        mRemoteMgr.connectAnyPort();
         mRemoteMgr.start();
         int port = mRemoteMgr.getPort();
         assertTrue(port != -1);
@@ -480,7 +480,7 @@ public class RemoteManagerFuncTest extends TestCase {
         EasyMock.expectLastCall().andAnswer(invErrorAnswer);
 
         EasyMock.replay(mMockDeviceManager, device, mMockScheduler, mockHandler);
-        mRemoteMgr.connect();
+        mRemoteMgr.connectAnyPort();
         mRemoteMgr.start();
         int port = mRemoteMgr.getPort();
         assertTrue(port != -1);
