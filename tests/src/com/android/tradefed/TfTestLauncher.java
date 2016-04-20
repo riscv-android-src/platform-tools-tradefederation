@@ -20,7 +20,9 @@ import com.android.tradefed.build.IFolderBuildInfo;
 import com.android.tradefed.config.Option;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.log.LogUtil.CLog;
+import com.android.tradefed.result.FileInputStreamSource;
 import com.android.tradefed.result.ITestInvocationListener;
+import com.android.tradefed.result.LogDataType;
 import com.android.tradefed.testtype.IBuildReceiver;
 import com.android.tradefed.testtype.IRemoteTest;
 import com.android.tradefed.util.CommandResult;
@@ -28,9 +30,14 @@ import com.android.tradefed.util.CommandStatus;
 import com.android.tradefed.util.FileUtil;
 import com.android.tradefed.util.IRunUtil;
 import com.android.tradefed.util.RunUtil;
+import com.android.tradefed.util.StreamUtil;
+import com.android.tradefed.util.SubprocessTestResultsParser;
 
 import junit.framework.Assert;
 
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -56,6 +63,7 @@ public class TfTestLauncher implements IRemoteTest, IBuildReceiver {
     private String mConfigName;
 
     private static final String TF_GLOBAL_CONFIG = "TF_GLOBAL_CONFIG";
+
     /**
      * {@inheritDoc}
      */
@@ -90,23 +98,61 @@ public class TfTestLauncher implements IRemoteTest, IBuildReceiver {
             args.add(mBuildInfo.getBuildFlavor());
         }
 
+        File stdoutFile = null;
+        File stderrFile = null;
+        File eventFile = null;
+        SubprocessTestResultsParser eventParser = new SubprocessTestResultsParser(listener);
+        FileOutputStream stdout = null;
+        FileOutputStream stderr = null;
+
         IRunUtil runUtil = new RunUtil();
         // clear the TF_GLOBAL_CONFIG env, so another tradefed will not reuse the global config file
         runUtil.unsetEnvVariable(TF_GLOBAL_CONFIG);
-        CommandResult result = runUtil.runTimedCmd(mMaxTfRunTimeMin * 60 * 1000,
-                args.toArray(new String[0]));
-        if (result.getStatus().equals(CommandStatus.SUCCESS)) {
-            CLog.d("Successfully ran TF tests for build %s", mBuildInfo.getBuildId());
-        } else {
-            CLog.w("Failed ran TF tests for build %s, status %s",
-                    mBuildInfo.getBuildId(), result.getStatus());
+
+        try {
+            stdoutFile = FileUtil.createTempFile("stdout_subprocess_", ".log");
+            stderrFile = FileUtil.createTempFile("stderr_subprocess_", ".log");
+            eventFile = FileUtil.createTempFile("event_subprocess_", ".log");
+            stdout = new FileOutputStream(stdoutFile);
+            stderr = new FileOutputStream(stderrFile);
+
+            args.add("--subprocess-report-file");
+            args.add(eventFile.getAbsolutePath());
+
+            CommandResult result = runUtil.runTimedCmd(mMaxTfRunTimeMin * 60 * 1000, stdout, stderr,
+                    args.toArray(new String[0]));
+            if (result.getStatus().equals(CommandStatus.SUCCESS)) {
+                CLog.d("Successfully ran TF tests for build %s", mBuildInfo.getBuildId());
+            } else {
+                CLog.w("Failed ran TF tests for build %s, status %s",
+                        mBuildInfo.getBuildId(), result.getStatus());
+                CLog.v("TF tests output:\nstdout:\n%s\nstderror:\n%s",
+                        result.getStdout(), result.getStderr());
+                throw new RuntimeException(
+                        String.format("%s Tests subprocess failed due to: %s\n", mConfigName,
+                                result.getStatus()));
+            }
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        } finally {
+            StreamUtil.close(stdout);
+            StreamUtil.close(stderr);
+            logAndCleanFile(stdoutFile, listener);
+            logAndCleanFile(stderrFile, listener);
+            if (eventFile != null) {
+                eventParser.parseFile(eventFile);
+                logAndCleanFile(eventFile, listener);
+            }
         }
-        CLog.v("TF tests output:\nstdout:\n%s\nstderror:\n%s",
-            result.getStdout(), result.getStderr());
     }
 
-    IRunUtil getRunUtil() {
-        return RunUtil.getDefault();
+    private void logAndCleanFile(File fileToExport, ITestInvocationListener listener) {
+        if (fileToExport != null) {
+            FileInputStreamSource stderrInputStream = new FileInputStreamSource(fileToExport);
+            listener.testLog(fileToExport.getName(), LogDataType.TEXT, stderrInputStream);
+            stderrInputStream.cancel();
+            FileUtil.deleteFile(fileToExport);
+        }
     }
 
     /**
