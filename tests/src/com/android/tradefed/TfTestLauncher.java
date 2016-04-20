@@ -44,14 +44,14 @@ import java.util.List;
 /**
  * A {@link IRemoteTest} for running tests against a separate TF installation.
  * <p/>
- * Launches an external java process to run the tests. Used for running the TF unit tests
- * continuously.
+ * Launches an external java process to run the tests. Used for running the TF unit or
+ * functional tests continuously.
  */
 public class TfTestLauncher implements IRemoteTest, IBuildReceiver {
 
     @Option(name = "max-run-time", description =
-        "the maximum time in minutes to allow for a TF test run.")
-    private int mMaxTfRunTimeMin = 20;
+            "the maximum time in minutes to allow for a TF test run.", isTimeVal = true)
+    private long mMaxTfRunTimeMin = 20;
 
     @Option(name = "remote-debug", description =
             "start the TF java process in remote debug mode.")
@@ -61,6 +61,22 @@ public class TfTestLauncher implements IRemoteTest, IBuildReceiver {
 
     @Option(name = "config-name", description = "the config that runs the TF tests")
     private String mConfigName;
+
+    @Option(name = "sub-branch", description = "the branch to be provided to the sub invocation, "
+            + "if null, the branch in build info will be used.")
+    private String mSubBranch = null;
+
+    @Option(name = "sub-build-flavor", description = "the build flavor to be provided to the "
+            + "sub invocation, if null, the build flavor in build info will be used.")
+    private String mSubBuildFlavor = null;
+
+    @Option(name = "sub-build-id", description = "the build id that the sub invocation will try "
+            + "to use in case where it needs its own device.")
+    private String mSubBuildId = null;
+
+    @Option(name = "use-virtual-device", description =
+            "flag if the subprocess is going to need to instantiate a virtual device to run.")
+    private boolean mNeedDevice = false;
 
     private static final String TF_GLOBAL_CONFIG = "TF_GLOBAL_CONFIG";
 
@@ -82,20 +98,36 @@ public class TfTestLauncher implements IRemoteTest, IBuildReceiver {
         args.add(jarClasspath);
         args.add("com.android.tradefed.command.CommandRunner");
         args.add(mConfigName);
-        args.add("-n");
-        args.add("--build-id");
-        args.add(mBuildInfo.getBuildId());
+        if (!mNeedDevice) {
+            args.add("-n");
+        } else {
+            // if it needs a device we also enable more logs
+            args.add("--log-level");
+            args.add("VERBOSE");
+            args.add("--log-level-display");
+            args.add("VERBOSE");
+        }
         args.add("--test-tag");
         args.add(mBuildInfo.getTestTag());
-        args.add("--build-target");
-        args.add(mBuildInfo.getBuildTargetName());
-        if (mBuildInfo.getBuildBranch() != null) {
-            args.add("--branch");
-            args.add(mBuildInfo.getBuildBranch());
+        if (mSubBuildId != null) {
+            args.add("--build-id");
+            args.add(mSubBuildId);
         }
-        if (mBuildInfo.getBuildFlavor() != null) {
-            args.add("--build-flavor");
+        args.add("--branch");
+        if (mSubBranch != null) {
+            args.add(mSubBranch);
+        } else if (mBuildInfo.getBuildBranch() != null) {
+            args.add(mBuildInfo.getBuildBranch());
+        } else {
+            throw new RuntimeException("Branch option is required for the sub invocation.");
+        }
+        args.add("--build-flavor");
+        if (mSubBuildFlavor != null) {
+            args.add(mSubBuildFlavor);
+        } else if (mBuildInfo.getBuildFlavor() != null) {
             args.add(mBuildInfo.getBuildFlavor());
+        } else {
+            throw new RuntimeException("Build flavor option is required for the sub invocation.");
         }
 
         File stdoutFile = null;
