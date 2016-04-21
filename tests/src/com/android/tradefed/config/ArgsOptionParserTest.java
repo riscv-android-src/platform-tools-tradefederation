@@ -16,8 +16,11 @@
 package com.android.tradefed.config;
 
 import com.android.tradefed.config.Option.Importance;
+import com.android.tradefed.util.keystore.IKeyStoreClient;
 
 import junit.framework.TestCase;
+
+import org.easymock.EasyMock;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -998,4 +1001,233 @@ public class ArgsOptionParserTest extends TestCase {
             // expected
         }
     }
+
+    // Key Store related
+    public void testKeyStore_string() throws Exception {
+        final String expectedValue = "set";
+        // Mock key store
+        IKeyStoreClient c = EasyMock.createNiceMock(IKeyStoreClient.class);
+        EasyMock.expect(c.isAvailable()).andReturn(true);
+        EasyMock.expect(c.containsKey("foo")).andStubReturn(true);
+        EasyMock.expect(c.fetchKey("foo")).andReturn(expectedValue);
+        EasyMock.replay(c);
+        OneOptionSource object = new OneOptionSource();
+        ArgsOptionParser parser = new ArgsOptionParser(object);
+        parser.setKeyStore(c);
+        parser.parse(new String[] {"--my_option", "USE_KEYSTORE@foo"});
+        // Key store value is set for the option as expected.
+        assertEquals(expectedValue, object.mMyOption);
+        EasyMock.verify(c);
+    }
+
+    public void testKeyStore_stringWithNullKeyStore() throws Exception {
+        final String expectedValue = "set";
+        OneOptionSource object = new OneOptionSource();
+        ArgsOptionParser parser = new ArgsOptionParser(object);
+        parser.setKeyStore(null);
+        // An null key store should not affect normal operations.
+        parser.parse(new String[] {"--my_option", expectedValue});
+        assertEquals(expectedValue, object.mMyOption);
+    }
+
+    public void testKeyStore_stringWithNullKeyStoreAndKey() throws Exception {
+        final String expectedValue = "";
+        OneOptionSource object = new OneOptionSource();
+        ArgsOptionParser parser = new ArgsOptionParser(object);
+        parser.setKeyStore(null);
+        // We try to fetch a key store value with null key store this should return an empty value.
+        try {
+            parser.parse(new String[] {"--my_option", "USE_KEYSTORE@foo"});
+        } catch (ConfigurationException e) {
+            //expected
+            return;
+        }
+        fail("ConfigurationException not thrown for attempted use of null keystore.");
+    }
+
+    public void testKeyStore_stringWithUnavalableKeyStore() throws Exception {
+        final String expectedValue = "set";
+        // Mock key store
+        IKeyStoreClient c = EasyMock.createNiceMock(IKeyStoreClient.class);
+        EasyMock.expect(c.isAvailable()).andStubReturn(false);
+        EasyMock.replay(c);
+        OneOptionSource object = new OneOptionSource();
+        ArgsOptionParser parser = new ArgsOptionParser(object);
+        parser.setKeyStore(c);
+        // An unavailable key store should not affect normal operations.
+        parser.parse(new String[] {"--my_option", expectedValue});
+        assertEquals(expectedValue, object.mMyOption);
+        EasyMock.verify(c);
+    }
+
+    public void testKeyStore_stringWithUnavalableKeyStoreWithKey() throws Exception {
+        final String expectedValue = "";
+        // Mock key store
+        IKeyStoreClient c = EasyMock.createNiceMock(IKeyStoreClient.class);
+        EasyMock.expect(c.isAvailable()).andReturn(false);
+        EasyMock.replay(c);
+        OneOptionSource object = new OneOptionSource();
+        ArgsOptionParser parser = new ArgsOptionParser(object);
+        parser.setKeyStore(c);
+        // We try to fetch a key store value with unavailable key store this should throw an
+        // exception
+        try {
+            parser.parse(new String[] {"--my_option", "USE_KEYSTORE@foo"});
+        } catch (ConfigurationException e) {
+            //expected
+            EasyMock.verify(c);
+            return;
+        }
+        fail("ConfiguationException not thrown for attempted use of unavailable keystore.");
+    }
+
+    public void testKeyStore_stringWithUnavalableKey() throws Exception {
+        final String expectedValue = "";
+        // Mock key store
+        IKeyStoreClient c = EasyMock.createNiceMock(IKeyStoreClient.class);
+        EasyMock.expect(c.isAvailable()).andReturn(true);
+        EasyMock.expect(c.containsKey("foobar")).andStubReturn(true);
+        EasyMock.replay(c);
+        OneOptionSource object = new OneOptionSource();
+        ArgsOptionParser parser = new ArgsOptionParser(object);
+        parser.setKeyStore(c);
+        // We try to fetch a key store value with unavailable key this should throw an exception
+        try {
+            parser.parse(new String[] {"--my_option", "USE_KEYSTORE@foo"});
+        } catch (ConfigurationException e) {
+            //expected
+            EasyMock.verify(c);
+            return;
+        }
+        fail("ConfiguationException not thrown for attempted use of unavailable keystore.");
+    }
+
+    public void testKeyStore_mapOptions() throws Exception {
+        final String option = "--my_option";
+        final String key = "hello";
+        final String value = "USE_KEYSTORE@foobar";
+        final String expKey = "hello";
+        final String expValue = "123";
+
+        // Mock key store
+        IKeyStoreClient c = EasyMock.createNiceMock(IKeyStoreClient.class);
+        EasyMock.expect(c.isAvailable()).andReturn(true);
+        EasyMock.expect(c.containsKey("foobar")).andStubReturn(true);
+        EasyMock.expect(c.fetchKey("foobar")).andReturn(expValue);
+        EasyMock.replay(c);
+        MapStringOptionSource object = new MapStringOptionSource();
+        ArgsOptionParser parser = new ArgsOptionParser(object);
+        parser.setKeyStore(c);
+        // --option hello USE_KEYSTORE@foobar should give --option hello 123;
+        // where hello is set to 123
+        final List<String> leftovers = parser.parseBestEffort(
+                new String[] {option, key, value});
+
+        assertEquals(0, leftovers.size());
+        assertNotNull(object.mMyOption);
+        assertEquals(1, object.mMyOption.size());
+        assertTrue(object.mMyOption.containsKey(expKey));
+        assertEquals(expValue, object.mMyOption.get(expKey));
+        EasyMock.verify(c);
+    }
+
+    public void testKeyStore_mapOptionsSingleValue() throws Exception {
+        final String option = "--my_option";
+        final String value = "hello=USE_KEYSTORE@foobar";
+        final String expKey = "hello";
+        final String expValue = "123";
+
+        // Mock key store
+        IKeyStoreClient c = EasyMock.createNiceMock(IKeyStoreClient.class);
+        EasyMock.expect(c.isAvailable()).andReturn(true);
+        EasyMock.expect(c.containsKey("foobar")).andStubReturn(true);
+        EasyMock.expect(c.fetchKey("foobar")).andReturn(expValue);
+        EasyMock.replay(c);
+        MapStringOptionSource object = new MapStringOptionSource();
+        ArgsOptionParser parser = new ArgsOptionParser(object);
+        parser.setKeyStore(c);
+        // --option hello=USE_KEYSTORE@foobar should give --option hello=123
+        final List<String> leftovers = parser.parseBestEffort(
+                new String[] {option, value});
+
+        assertEquals(0, leftovers.size());
+        assertNotNull(object.mMyOption);
+        assertEquals(1, object.mMyOption.size());
+        assertTrue(object.mMyOption.containsKey(expKey));
+        assertEquals(expValue, object.mMyOption.get(expKey));
+        EasyMock.verify(c);
+
+    }
+
+    public void testKeyStore_mapOptionsMixedValue() throws Exception {
+        final String option = "--my_option";
+        final String value = "hello=123";
+        final String key2 = "byebye";
+        final String value2 = "USE_KEYSTORE@bar";
+        final String expKey = "hello";
+        final String expValue = "123";
+        final String expKey2 = "byebye";
+        final String expValue2 = "456";
+
+        // Mock key store
+        IKeyStoreClient c = EasyMock.createNiceMock(IKeyStoreClient.class);
+        EasyMock.expect(c.isAvailable()).andReturn(true);
+        EasyMock.expect(c.containsKey("bar")).andStubReturn(true);
+        EasyMock.expect(c.fetchKey("bar")).andReturn(expValue2);
+        EasyMock.replay(c);
+        MapStringOptionSource object = new MapStringOptionSource();
+        ArgsOptionParser parser = new ArgsOptionParser(object);
+        parser.setKeyStore(c);
+
+        final List<String> leftovers = parser.parseBestEffort(
+                new String[] {option, key2, value2, option, value});
+
+        assertEquals(0, leftovers.size());
+        assertNotNull(object.mMyOption);
+        assertEquals(2, object.mMyOption.size());
+
+        assertTrue(object.mMyOption.containsKey(expKey2));
+        assertEquals(expValue2, object.mMyOption.get(expKey2));
+        assertTrue(object.mMyOption.containsKey(expKey));
+        assertEquals(expValue, object.mMyOption.get(expKey));
+        EasyMock.verify(c);
+    }
+
+    public void testKeyStore_mapOptionsMixedValue_allKeys() throws Exception {
+        final String option = "--my_option";
+        final String value = "hello=USE_KEYSTORE@foobar";
+        final String key2 = "byebye";
+        final String value2 = "USE_KEYSTORE@bar";
+        final String expKey = "hello";
+        final String expValue = "123";
+        final String expKey2 = "byebye";
+        final String expValue2 = "456";
+
+        // Mock key store
+        IKeyStoreClient c = EasyMock.createNiceMock(IKeyStoreClient.class);
+        EasyMock.expect(c.isAvailable()).andStubReturn(true);
+        EasyMock.expect(c.containsKey("foobar")).andStubReturn(true);
+        EasyMock.expect(c.fetchKey("foobar")).andReturn(expValue);
+        EasyMock.expect(c.containsKey("bar")).andStubReturn(true);
+        EasyMock.expect(c.fetchKey("bar")).andReturn(expValue2);
+        EasyMock.replay(c);
+        MapStringOptionSource object = new MapStringOptionSource();
+        ArgsOptionParser parser = new ArgsOptionParser(object);
+        parser.setKeyStore(c);
+
+        final List<String> leftovers = parser.parseBestEffort(
+                new String[] {option, key2, value2, option, value});
+
+        assertEquals(0, leftovers.size());
+        assertNotNull(object.mMyOption);
+        assertEquals(2, object.mMyOption.size());
+
+        assertTrue(object.mMyOption.containsKey(expKey2));
+        assertEquals(expValue2, object.mMyOption.get(expKey2));
+        assertTrue(object.mMyOption.containsKey(expKey));
+        assertEquals(expValue, object.mMyOption.get(expKey));
+        EasyMock.verify(c);
+    }
+
+
 }

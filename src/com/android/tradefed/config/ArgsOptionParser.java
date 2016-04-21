@@ -16,7 +16,9 @@
 package com.android.tradefed.config;
 
 import com.android.ddmlib.Log;
+import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.util.ArrayUtil;
+import com.android.tradefed.util.keystore.IKeyStoreClient;
 
 import java.lang.reflect.Field;
 import java.util.ArrayList;
@@ -24,6 +26,7 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
 import java.util.ListIterator;
+import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /**
@@ -295,6 +298,7 @@ public class ArgsOptionParser extends OptionSetter {
         final int equalsIndex = name.indexOf('=');
         if (equalsIndex != -1) {
             value = name.substring(equalsIndex + 1);
+            value = getKeyStoreValueIfNeeded(value);
             name = name.substring(0, equalsIndex);
         }
 
@@ -324,6 +328,7 @@ public class ArgsOptionParser extends OptionSetter {
                 value = grabNextValue(args, name);
             }
         }
+        value = getKeyStoreValueIfNeeded(value);
         setOptionValue(name, key, value);
     }
 
@@ -350,6 +355,7 @@ public class ArgsOptionParser extends OptionSetter {
                     value = grabNextValue(args, name);
                 }
             }
+            value = getKeyStoreValueIfNeeded(value);
             setOptionValue(name, value);
         }
     }
@@ -504,5 +510,36 @@ public class ArgsOptionParser extends OptionSetter {
         } else {
             return String.format(" Default: %s.", defaultValue);
         }
+    }
+
+    /**
+     * Replaces value with key store value if needed
+     *
+     * @param valueText the value
+     * @return the value or the translated key store value.
+     *
+     * @throws ConfigurationException
+     */
+    private String getKeyStoreValueIfNeeded(String valueText) throws ConfigurationException {
+        Matcher m = USE_KEYSTORE_REGEX.matcher(valueText);
+        if (m.matches() && m.groupCount() > 0) {
+            IKeyStoreClient c = getKeyStore();
+            if (c == null) {
+                throw new ConfigurationException("Key store is null, but we tried to fetch a key");
+            }
+            if (!c.isAvailable()) {
+               throw new ConfigurationException(
+                       "Key store is unavailable, but we tried to fetch a key");
+            }
+            String key = m.group(1);
+            String v = c.fetchKey(key);
+            if (v == null) {
+                throw new ConfigurationException(String.format(
+                        "Failed to fetch key %s in keystore", key));
+            }
+            return v;
+        }
+        // Did not match the key store pattern, do nothing.
+        return valueText;
     }
 }

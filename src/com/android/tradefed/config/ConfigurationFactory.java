@@ -390,6 +390,7 @@ public class ConfigurationFactory implements IConfigurationFactory {
         // Steal ConfigurationXmlParser arguments from the command line
         final ConfigurationXmlParserSettings parserSettings = new ConfigurationXmlParserSettings();
         final ArgsOptionParser templateArgParser = new ArgsOptionParser(parserSettings);
+        templateArgParser.setKeyStore(GlobalConfiguration.getInstance().getKeyStoreClient());
         optionArgsRef.addAll(templateArgParser.parseBestEffort(listArgs));
         ConfigurationDef configDef = getConfigurationDef(configName, false,
                 parserSettings.templateMap);

@@ -28,6 +28,7 @@ import com.android.tradefed.log.ITerribleFailureHandler;
 import com.android.tradefed.util.ArrayUtil;
 import com.android.tradefed.util.IHostMonitor;
 import com.android.tradefed.util.MultiMap;
+import com.android.tradefed.util.keystore.IKeyStoreClient;
 
 import java.io.File;
 import java.io.PrintStream;
@@ -52,6 +53,7 @@ public class GlobalConfiguration implements IGlobalConfiguration {
     public static final String DEVICE_REQUIREMENTS_TYPE_NAME = "device_requirements";
     public static final String SCHEDULER_TYPE_NAME = "command_scheduler";
     public static final String MULTI_DEVICE_RECOVERY_TYPE_NAME = "multi_device_recovery";
+    public static final String KEY_STORE_TYPE_NAME = "key_store";
 
     private static Map<String, ObjTypeInfo> sObjTypeMap = null;
     private static IGlobalConfiguration sInstance = null;
@@ -205,6 +207,8 @@ public class GlobalConfiguration implements IGlobalConfiguration {
                     new ObjTypeInfo(ICommandScheduler.class, false));
             sObjTypeMap.put(MULTI_DEVICE_RECOVERY_TYPE_NAME,
                     new ObjTypeInfo(IMultiDeviceRecovery.class, true));
+            sObjTypeMap.put(KEY_STORE_TYPE_NAME,
+                    new ObjTypeInfo(IKeyStoreClient.class, false));
 
         }
         return sObjTypeMap;
@@ -268,6 +272,14 @@ public class GlobalConfiguration implements IGlobalConfiguration {
     @Override
     public ITerribleFailureHandler getWtfHandler() {
         return (ITerribleFailureHandler) getConfigurationObject(WTF_HANDLER_TYPE_NAME);
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public IKeyStoreClient getKeyStoreClient() {
+        return (IKeyStoreClient) getConfigurationObject(KEY_STORE_TYPE_NAME);
     }
 
     /**
@@ -401,6 +413,14 @@ public class GlobalConfiguration implements IGlobalConfiguration {
     @Override
     public void setWtfHandler(ITerribleFailureHandler wtfHandler) {
         setConfigurationObjectNoThrow(WTF_HANDLER_TYPE_NAME, wtfHandler);
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void setKeyStoreClient(IKeyStoreClient client) {
+        setConfigurationObjectNoThrow(KEY_STORE_TYPE_NAME, client);
     }
 
     /**
