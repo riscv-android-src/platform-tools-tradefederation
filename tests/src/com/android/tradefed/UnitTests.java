@@ -119,6 +119,7 @@ import com.android.tradefed.util.RegexTrieTest;
 import com.android.tradefed.util.RunUtilTest;
 import com.android.tradefed.util.SizeLimitedOutputStreamTest;
 import com.android.tradefed.util.SubprocessTestResultsParserTest;
+import com.android.tradefed.util.keystore.JSONFileKeyStoreClientTest;
 import com.android.tradefed.util.net.HttpHelperTest;
 import com.android.tradefed.util.net.HttpMultipartPostTest;
 import com.android.tradefed.util.xml.AndroidManifestWriterTest;
@@ -265,6 +266,9 @@ public class UnitTests extends DeviceTestSuite {
 
         // util subdirs
         addTestSuite(AndroidManifestWriterTest.class);
+
+        // util/keystore
+        addTestSuite(JSONFileKeyStoreClientTest.class);
     }
 
     public static Test suite() {
