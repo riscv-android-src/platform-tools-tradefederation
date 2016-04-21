@@ -78,7 +78,6 @@ import com.android.tradefed.targetprep.FastbootDeviceFlasherTest;
 import com.android.tradefed.targetprep.FlashingResourcesParserTest;
 import com.android.tradefed.targetprep.InstrumentationPreparerTest;
 import com.android.tradefed.targetprep.KernelFlashPreparerTest;
-import com.android.tradefed.targetprep.OtaFaultInjectionPreparerTest;
 import com.android.tradefed.targetprep.SdkAvdPreparerTest;
 import com.android.tradefed.targetprep.StopServicesSetupTest;
 import com.android.tradefed.targetprep.SystemUpdaterDeviceFlasherTest;
@@ -218,7 +217,6 @@ public class UnitTests extends DeviceTestSuite {
         addTestSuite(StopServicesSetupTest.class);
         addTestSuite(SystemUpdaterDeviceFlasherTest.class);
         addTestSuite(InstrumentationPreparerTest.class);
-        addTestSuite(OtaFaultInjectionPreparerTest.class);
 
         // testtype
         addTestSuite(AndroidJUnitTestTest.class);

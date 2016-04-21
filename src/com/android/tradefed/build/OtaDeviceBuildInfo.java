@@ -14,11 +14,7 @@
  * limitations under the License.
  */
 
-package com.android.ota.tests;
-
-import com.android.tradefed.build.IBuildInfo;
-import com.android.tradefed.build.IDeviceBuildInfo;
-import com.android.tradefed.build.VersionedFile;
+package com.android.tradefed.build;
 
 import java.io.File;
 import java.util.Collection;
@@ -38,8 +34,8 @@ import java.util.Map;
  */
 public class OtaDeviceBuildInfo implements IDeviceBuildInfo {
 
-    private IDeviceBuildInfo mOtaBuild;
-    private IDeviceBuildInfo mBaselineBuild;
+    protected IDeviceBuildInfo mOtaBuild;
+    protected IDeviceBuildInfo mBaselineBuild;
 
     public void setOtaBuild(IDeviceBuildInfo otaBuild) {
         mOtaBuild = otaBuild;
