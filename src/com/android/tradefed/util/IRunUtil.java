@@ -52,7 +52,7 @@ public interface IRunUtil {
      *
      * @param dir the working directory
      *
-     * @see {@link ProcessBuilder#directory(File)}
+     * @see ProcessBuilder#directory(File)
      */
     public void setWorkingDir(File dir);
 
@@ -62,7 +62,7 @@ public interface IRunUtil {
      * @param key the variable name
      * @param value the variable value
      *
-     * @see {@link ProcessBuilder#environment()}
+     * @see ProcessBuilder#environment()
      *
      */
     public void setEnvVariable(String key, String value);
@@ -72,7 +72,7 @@ public interface IRunUtil {
      *
      * @param key the variable name
      *
-     * @see {@link ProcessBuilder#environment()}
+     * @see ProcessBuilder#environment()
      */
     public void unsetEnvVariable(String key);
 
