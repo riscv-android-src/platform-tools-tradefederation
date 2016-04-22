@@ -41,13 +41,15 @@ public class FileDownloadCacheFuncTest extends TestCase {
     private IFileDownloader mMockDownloader;
 
     private FileDownloadCache mCache;
+    private File mTmpDir;
     private List<File> mReturnedFiles;
 
     @Override
     protected void setUp() throws Exception {
         super.setUp();
         mMockDownloader = EasyMock.createStrictMock(IFileDownloader.class);
-        mCache = new FileDownloadCache(FileUtil.createTempDir("functest"));
+        mTmpDir = FileUtil.createTempDir("functest");
+        mCache = new FileDownloadCache(mTmpDir);
         mReturnedFiles = new ArrayList<File>(2);
     }
 
@@ -56,6 +58,7 @@ public class FileDownloadCacheFuncTest extends TestCase {
         for (File file : mReturnedFiles) {
             file.delete();
         }
+        FileUtil.recursiveDelete(mTmpDir);
         super.tearDown();
     }
 

@@ -1968,7 +1968,7 @@ public class TestDeviceTest extends TestCase {
         mTestDevice = new TestableTestDevice() {
             @Override
             public String executeShellCommand(String command) throws DeviceNotAvailableException {
-                return "3";
+                return "3\n";
             }
             @Override
             public int getApiLevel() throws DeviceNotAvailableException {

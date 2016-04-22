@@ -835,7 +835,7 @@ public class TestDevice extends AndroidNativeDevice {
         checkApiLevelAgainst("get-current-user", 16);
         final String output = executeShellCommand("am get-current-user");
         try {
-            int userId = Integer.parseInt(output);
+            int userId = Integer.parseInt(output.trim());
             return userId;
         } catch (NumberFormatException e) {
             CLog.e(e);

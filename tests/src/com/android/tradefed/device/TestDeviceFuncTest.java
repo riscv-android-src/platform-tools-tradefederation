@@ -162,6 +162,7 @@ public class TestDeviceFuncTest extends DeviceTestCase {
             assertTrue(mTestDevice.pullFile(deviceFilePath, tmpDestFile));
             assertTrue(compareFiles(tmpFile, tmpDestFile));
         } finally {
+            FileUtil.deleteFile(tmpFile);
             if (tmpDestFile != null) {
                 tmpDestFile.delete();
             }
@@ -204,6 +205,7 @@ public class TestDeviceFuncTest extends DeviceTestCase {
             assertNotNull(tmpDestFile2);
             assertTrue(compareFiles(tmpFile, tmpDestFile2));
         } finally {
+            FileUtil.deleteFile(tmpFile);
             if (tmpDestFile != null) {
                 tmpDestFile.delete();
             }
