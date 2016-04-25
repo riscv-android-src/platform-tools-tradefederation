@@ -90,10 +90,10 @@ public class RunUtilTest extends TestCase {
      */
     public void testRunTimedCmd_timeout() {
         String[] command = {"sleep", "10000"};
-        CommandResult result = mRunUtil.runTimedCmd(10, command);
+        CommandResult result = mRunUtil.runTimedCmd(200, command);
         assertEquals(CommandStatus.TIMED_OUT, result.getStatus());
-        assertEquals(result.getStdout(),"");
-        assertEquals(result.getStderr(),"");
+        assertEquals("", result.getStdout());
+        assertEquals("", result.getStderr());
     }
 
     /**

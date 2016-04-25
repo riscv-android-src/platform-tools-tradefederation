@@ -107,7 +107,7 @@ public class RunUtil implements IRunUtil {
      * the environment variable from {@link ProcessBuilder#environment()}
      *
      * @param key the variable name
-     * @see {@link ProcessBuilder#environment()}
+     * @see ProcessBuilder#environment()
      */
     @Override
     public synchronized void unsetEnvVariable(String key) {
@@ -304,15 +304,17 @@ public class RunUtil implements IRunUtil {
                     CLog.i("runTimed: received an interrupt but uninterruptible mode, ignoring");
                 }
             }
+            checkInterrupted();
         } while ((System.currentTimeMillis() - startTime) < timeout && runThread.isAlive());
-
-        if (runThread.getStatus() == CommandStatus.TIMED_OUT
-                || runThread.getStatus() == CommandStatus.EXCEPTION) {
-            CLog.i("runTimed: Calling interrupt, status is %s", runThread.getStatus());
+        // Snapshot the status when out of the run loop because thread may terminate and return a
+        // false FAILED instead of TIMED_OUT.
+        CommandStatus status = runThread.getStatus();
+        if (CommandStatus.TIMED_OUT.equals(status) || CommandStatus.EXCEPTION.equals(status)) {
+            CLog.i("runTimed: Calling interrupt, status is %s", status);
             runThread.cancel();
         }
         checkInterrupted();
-        return runThread.getStatus();
+        return status;
     }
 
     /**
