@@ -78,6 +78,11 @@ public class TfTestLauncher implements IRemoteTest, IBuildReceiver {
             "flag if the subprocess is going to need to instantiate a virtual device to run.")
     private boolean mNeedDevice = false;
 
+    @Option(name = "sub-apk-path", description = "The name of all the Apks that needs to be "
+            + "installed by the subprocess invocation. Apk need to be inside the downloaded zip. "
+            + "Can be repeated.")
+    private List<String> mSubApkPath = new ArrayList<String>();
+
     private static final String TF_GLOBAL_CONFIG = "TF_GLOBAL_CONFIG";
 
     /**
@@ -128,6 +133,14 @@ public class TfTestLauncher implements IRemoteTest, IBuildReceiver {
             args.add(mBuildInfo.getBuildFlavor());
         } else {
             throw new RuntimeException("Build flavor option is required for the sub invocation.");
+        }
+
+        for (String apk : mSubApkPath) {
+            args.add("--apk-path");
+            String apkPath = String.format("%s%s%s",
+                    ((IFolderBuildInfo)mBuildInfo).getRootDir().getAbsolutePath(),
+                    File.separator, apk);
+            args.add(apkPath);
         }
 
         File stdoutFile = null;
