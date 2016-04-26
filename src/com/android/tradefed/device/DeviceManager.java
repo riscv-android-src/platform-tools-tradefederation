@@ -108,6 +108,10 @@ public class DeviceManager implements IDeviceManager {
             description = "the interval in ms between attempts to recover unavailable devices.")
     private long mDeviceRecoveryInterval = 10 * 60 * 1000;
 
+    @Option(name = "adb-path", description = "path of the adb binary to use, "
+            + "default use the one in $PATH")
+    private String mAdbPath = "adb";
+
     private DeviceRecoverer mDeviceRecoverer;
 
     private List<IHostMonitor> mGlobalHostMonitors = null;
@@ -203,9 +207,7 @@ public class DeviceManager implements IDeviceManager {
             mDvcMon.run();
         }
 
-        // assume "adb" is in PATH
-        // TODO: make this configurable
-        mAdbBridge.init(false /* client support */, "adb");
+        mAdbBridge.init(false /* client support */, mAdbPath);
         addEmulators();
         addNullDevices();
         addTcpDevices();
