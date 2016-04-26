@@ -26,6 +26,7 @@ import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.DeviceUnresponsiveException;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.device.ITestDevice.RecoveryMode;
+import com.android.tradefed.device.StubDevice;
 import com.android.tradefed.device.TestDeviceState;
 import com.android.tradefed.log.ILeveledLogOutput;
 import com.android.tradefed.log.ILogRegistry;
@@ -490,10 +491,10 @@ public class TestInvocation implements ITestInvocation {
     private void doSetup(IConfiguration config, ITestDevice device, IBuildInfo info,
             final ITestInvocationListener listener)
             throws TargetSetupError, BuildError, DeviceNotAvailableException {
-        device.preInvocationSetup(info);
         if (device instanceof ITestLoggerReceiver) {
             ((ITestLoggerReceiver) device).setTestLogger(listener);
         }
+        device.preInvocationSetup(info);
 
         for (ITargetPreparer preparer : config.getTargetPreparers()) {
             if (preparer instanceof ITestLoggerReceiver) {
@@ -662,6 +663,9 @@ public class TestInvocation implements ITestInvocation {
     private void takeBugreport(ITestDevice device, ITestInvocationListener listener,
             String bugreportName) {
         if (device == null) {
+            return;
+        }
+        if (device.getIDevice() instanceof StubDevice) {
             return;
         }
 
