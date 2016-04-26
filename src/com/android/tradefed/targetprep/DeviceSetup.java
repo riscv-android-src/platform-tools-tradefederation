@@ -94,6 +94,12 @@ public class DeviceSetup implements ITargetPreparer, ITargetCleaner {
     // ON:  service call bluetooth_manager 6
     // OFF: service call bluetooth_manager 8
 
+    @Option(name = "nfc",
+            description = "Turn nfc on or off")
+    protected BinaryState mNfc = BinaryState.IGNORE;
+    // ON:  svc nfc enable
+    // OFF: svc nfc disable
+
     // Screen
     @Option(name = "screen-adaptive-brightness",
             description = "Turn screen adaptive brightness on or off")
@@ -490,6 +496,9 @@ public class DeviceSetup implements ITargetPreparer, ITargetCleaner {
 
         setCommandForBinaryState(mBluetooth, mRunCommandAfterSettings,
                 "service call bluetooth_manager 6", "service call bluetooth_manager 8");
+
+        setCommandForBinaryState(mNfc, mRunCommandAfterSettings,
+                "svc nfc enable", "svc nfc disable");
 
         if (mScreenBrightness != null && BinaryState.ON.equals(mScreenAdaptiveBrightness)) {
             throw new TargetSetupError("Option screen-brightness cannot be set when " +
@@ -928,6 +937,13 @@ public class DeviceSetup implements ITargetPreparer, ITargetCleaner {
      */
     protected void setBluetooth(BinaryState bluetooth) {
         mBluetooth = bluetooth;
+    }
+
+    /**
+     * Exposed for unit testing
+     */
+    protected void setNfc(BinaryState nfc) {
+        mNfc = nfc;
     }
 
     /**

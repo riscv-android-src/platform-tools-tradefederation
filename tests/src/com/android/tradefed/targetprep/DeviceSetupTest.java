@@ -242,6 +242,30 @@ public class DeviceSetupTest extends TestCase {
         EasyMock.verify(mMockDevice);
     }
 
+    public void testSetup_nfc_on() throws DeviceNotAvailableException, TargetSetupError {
+        doSetupExpectations();
+        doCheckExternalStoreSpaceExpectations();
+        doCommandsExpectations("svc nfc enable");
+        EasyMock.replay(mMockDevice);
+
+        mDeviceSetup.setNfc(BinaryState.ON);
+        mDeviceSetup.setUp(mMockDevice, mMockBuildInfo);
+
+        EasyMock.verify(mMockDevice);
+    }
+
+    public void testSetup_nfc_off() throws DeviceNotAvailableException, TargetSetupError {
+        doSetupExpectations();
+        doCheckExternalStoreSpaceExpectations();
+        doCommandsExpectations("svc nfc disable");
+        EasyMock.replay(mMockDevice);
+
+        mDeviceSetup.setNfc(BinaryState.OFF);
+        mDeviceSetup.setUp(mMockDevice, mMockBuildInfo);
+
+        EasyMock.verify(mMockDevice);
+    }
+
     public void testSetup_screen_adaptive_on() throws DeviceNotAvailableException,
             TargetSetupError {
         doSetupExpectations();
