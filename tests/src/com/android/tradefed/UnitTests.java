@@ -125,6 +125,7 @@ import com.android.tradefed.util.ConditionPriorityBlockingQueueTest;
 import com.android.tradefed.util.ConfigCompletorTest;
 import com.android.tradefed.util.DirectedGraphTest;
 import com.android.tradefed.util.EmailTest;
+import com.android.tradefed.util.EmmaXmlReporterParserTest;
 import com.android.tradefed.util.FakeTestsZipFolderTest;
 import com.android.tradefed.util.FileUtilTest;
 import com.android.tradefed.util.FixedByteArrayOutputStreamTest;
@@ -231,6 +232,7 @@ import org.junit.runners.Suite.SuiteClasses;
     CollectingTestListenerTest.class,
     DeviceFileReporterTest.class,
     EmailResultReporterTest.class,
+    EmmaXmlReporterParserTest.class,
     FailureEmailResultReporterTest.class,
     FileSystemLogSaverTest.class,
     InvocationFailureEmailResultReporterTest.class,
