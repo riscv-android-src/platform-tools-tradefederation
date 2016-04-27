@@ -42,6 +42,8 @@ public class SubprocessResultsReporter implements ITestInvocationListener {
     @Option(name = "subprocess-report-file", description = "the file where to log the events.")
     private String mReportFile = null;
 
+    private boolean mPrintWarning = true;
+
     /**
      * {@inheritDoc}
      */
@@ -185,7 +187,11 @@ public class SubprocessResultsReporter implements ITestInvocationListener {
                         String.format("report file: %s is not writable", mReportFile));
             }
         } else {
-            CLog.w("No report file has been specified, skipping this reporter.");
+            if (mPrintWarning) {
+                // Only print the warning the first time.
+                mPrintWarning = false;
+                CLog.w("No report file has been specified, skipping this reporter.");
+            }
         }
     }
 }
