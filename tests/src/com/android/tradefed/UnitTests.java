@@ -99,6 +99,7 @@ import com.android.tradefed.testtype.InstrumentationTestTest;
 import com.android.tradefed.testtype.NativeBenchmarkTestParserTest;
 import com.android.tradefed.testtype.NativeStressTestParserTest;
 import com.android.tradefed.testtype.NativeStressTestTest;
+import com.android.tradefed.testtype.PythonUnitTestResultParserTest;
 import com.android.tradefed.testtype.testdefs.XmlDefsParserTest;
 import com.android.tradefed.testtype.testdefs.XmlDefsTestTest;
 import com.android.tradefed.util.AaptParserTest;
@@ -237,6 +238,7 @@ public class UnitTests extends DeviceTestSuite {
         addTestSuite(NativeBenchmarkTestParserTest.class);
         addTestSuite(NativeStressTestParserTest.class);
         addTestSuite(NativeStressTestTest.class);
+        addTestSuite(PythonUnitTestResultParserTest.class);
 
         // testtype/testdefs
         addTestSuite(XmlDefsParserTest.class);
