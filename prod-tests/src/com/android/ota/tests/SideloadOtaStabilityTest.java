@@ -45,6 +45,7 @@ import com.android.tradefed.testtype.IShardableTest;
 import com.android.tradefed.util.FileUtil;
 import com.android.tradefed.util.IRunUtil;
 import com.android.tradefed.util.RunUtil;
+import com.android.tradefed.util.StreamUtil;
 
 import junit.framework.Assert;
 import junit.framework.AssertionFailedError;
@@ -79,6 +80,8 @@ public class SideloadOtaStabilityTest implements IDeviceTest, IBuildReceiver,
     private static final String UNCRYPT_FILE_PATH = "/cache/recovery/uncrypt_file";
     private static final String BLOCK_MAP_PATH = "@/cache/recovery/block.map";
     private static final String RECOVERY_COMMAND_PATH = "/cache/recovery/command";
+    private static final String LOG_RECOV = "/cache/recovery/last_log";
+    private static final String LOG_KMSG = "/cache/recovery/last_kmsg";
 
     private static final String KMSG_CMD = "cat /proc/kmsg";
 
@@ -249,9 +252,11 @@ public class SideloadOtaStabilityTest implements IDeviceTest, IBuildReceiver,
         } catch (ConfigurationException e) {
             CLog.e(e);
         } finally {
+            double updateTime = sendRecoveryLog(listener);
             Map<String, String> metrics = new HashMap<String, String>(1);
             metrics.put("iterations", Integer.toString(actualIterations));
             metrics.put("failed_iterations", Integer.toString(mIterations - actualIterations));
+            metrics.put("update_time", Double.toString(updateTime));
             long endTime = System.currentTimeMillis() - startTime;
             listener.testRunEnded(endTime, metrics);
         }
@@ -336,7 +341,7 @@ public class SideloadOtaStabilityTest implements IDeviceTest, IBuildReceiver,
             mDevice.waitForDeviceOnline(mMaxInstallOnlineTimeSec * 1000);
         } catch (DeviceNotAvailableException e) {
             CLog.e("Device %s did not come back online after recovery", mDevice.getSerialNumber());
-            sendRecoveryLog(listener);
+            listener.testRunFailed("Device did not come back online after recovery");
             throw e;
         }
 
@@ -345,32 +350,51 @@ public class SideloadOtaStabilityTest implements IDeviceTest, IBuildReceiver,
         } catch (DeviceNotAvailableException e) {
             CLog.e("Device %s did not boot up successfully after installing OTA",
                     mDevice.getSerialNumber());
+            listener.testRunFailed("Device failed to boot after OTA");
             throw e;
         }
 
     }
 
-    private void sendRecoveryLog(ITestInvocationListener listener)
+    private InputStreamSource pullLogFile(String location)
             throws DeviceNotAvailableException {
         File destFile = null;
         InputStreamSource destSource = null;
         try {
             // get recovery log
             destFile = FileUtil.createTempFile("recovery", "log");
-            boolean gotFile = mDevice.pullFile("/tmp/recovery.log", destFile);
+            boolean gotFile = mDevice.pullFile(location, destFile);
             if (gotFile) {
                 destSource = new SnapshotInputStreamSource(new FileInputStream(destFile));
-                listener.testLog("recovery_log", LogDataType.TEXT, destSource);
+                return destSource;
             }
         } catch (IOException e) {
             CLog.e("Failed to get recovery log from device %s", mDevice.getSerialNumber());
             CLog.e(e);
-        } finally {
-            if (destSource != null) {
-                destSource.cancel();
-            }
-            FileUtil.deleteFile(destFile);
         }
+        return null;
+    }
+
+    protected double sendRecoveryLog(ITestInvocationListener listener)
+            throws DeviceNotAvailableException {
+        InputStreamSource lastLog = pullLogFile(LOG_RECOV);
+        double elapsedTime = 0;
+        // last_log contains a timing metric in its last line, capture it here and return it
+        // for the metrics map to report
+        try {
+            String[] lastLogLines = StreamUtil.getStringFromSource(lastLog).split("\n");
+            String endLine = lastLogLines[lastLogLines.length-1];
+            elapsedTime = Double.parseDouble(
+                    endLine.substring(endLine.indexOf('['), endLine.indexOf(']')));
+        } catch (IOException|NumberFormatException e) {
+            CLog.w("Couldn't get elapsed time from last_log due to exception %s", e);
+        }
+        listener.testLog(this.mRunName + "_recovery_log", LogDataType.TEXT,
+                lastLog);
+        listener.testLog(this.mRunName + "_recovery_kmsg", LogDataType.TEXT,
+                pullLogFile(LOG_KMSG));
+        lastLog.cancel();
+        return elapsedTime;
     }
 
     private void getBasebandBootloaderVersions(IDeviceBuildInfo otaBuild) {
