@@ -202,7 +202,8 @@ class ConfigurationXmlParser {
 
         @Override
         public void endElement (String uri, String localName, String qName) throws SAXException {
-            if (OBJECT_TAG.equals(localName) || Configuration.isBuiltInObjType(localName)) {
+            if (OBJECT_TAG.equals(localName) || Configuration.isBuiltInObjType(localName)
+                    || GlobalConfiguration.isBuiltInObjType(localName)) {
                 mCurrentConfigObject = null;
             }
         }

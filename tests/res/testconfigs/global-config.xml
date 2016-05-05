@@ -18,5 +18,6 @@
 
     <device_monitor class="com.android.tradefed.device.DeviceMonitorMultiplexer" />
     <wtf_handler class="com.android.tradefed.log.TerribleFailureEmailHandler" />
-
+    <device_manager class="com.android.tradefed.device.DeviceManager" />
+    <option name="dmgr:max-emulators" value="25" />
 </configuration>
