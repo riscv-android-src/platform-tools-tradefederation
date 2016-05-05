@@ -27,6 +27,7 @@ import com.android.tradefed.config.Option.Importance;
 import com.android.tradefed.config.OptionClass;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
+import com.android.tradefed.log.LogReceiver;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.InputStreamSource;
@@ -79,6 +80,8 @@ public class SideloadOtaStabilityTest implements IDeviceTest, IBuildReceiver,
     private static final String BLOCK_MAP_PATH = "@/cache/recovery/block.map";
     private static final String RECOVERY_COMMAND_PATH = "/cache/recovery/command";
 
+    private static final String KMSG_CMD = "cat /proc/kmsg";
+
     private OtaDeviceBuildInfo mOtaDeviceBuild;
     private IConfiguration mConfiguration;
     private ITestDevice mDevice;
@@ -112,6 +115,7 @@ public class SideloadOtaStabilityTest implements IDeviceTest, IBuildReceiver,
     private boolean mResumable = true;
 
     private String mExpectedBootloaderVersion, mExpectedBasebandVersion;
+    private LogReceiver mKmsgReceiver;
 
     /**
      * {@inheritDoc}
@@ -207,6 +211,7 @@ public class SideloadOtaStabilityTest implements IDeviceTest, IBuildReceiver,
     public void run(ITestInvocationListener listener) throws DeviceNotAvailableException {
         // started run, turn to off
         mResumable = false;
+        mKmsgReceiver = new LogReceiver(getDevice(), KMSG_CMD, "kmsg");
         checkFields();
 
         CLog.i("Starting OTA sideload test from %s to %s, for %d iterations",
@@ -301,6 +306,7 @@ public class SideloadOtaStabilityTest implements IDeviceTest, IBuildReceiver,
 
     private void installOta(ITestInvocationListener listener, IDeviceBuildInfo otaBuild)
             throws DeviceNotAvailableException {
+        mKmsgReceiver.start();
         CLog.i("Pushing OTA package %s", otaBuild.getOtaPackageFile().getAbsolutePath());
         Assert.assertTrue(mDevice.pushFile(otaBuild.getOtaPackageFile(), mPackageDataPath));
         // this file needs to be uncrypted, since /data isn't mounted in recovery
@@ -310,6 +316,10 @@ public class SideloadOtaStabilityTest implements IDeviceTest, IBuildReceiver,
         String installOtaCmd = String.format("--update_package=%s\n", BLOCK_MAP_PATH);
         mDevice.pushString(installOtaCmd, RECOVERY_COMMAND_PATH);
         CLog.i("Rebooting to install OTA");
+        // Kmsg contents during the OTA will be capture in last_kmsg, so we can turn off the
+        // kmsg receiver now
+        mKmsgReceiver.postLog(listener);
+        mKmsgReceiver.stop();
         try {
             mDevice.rebootIntoRecovery();
         } catch (DeviceNotAvailableException e) {
