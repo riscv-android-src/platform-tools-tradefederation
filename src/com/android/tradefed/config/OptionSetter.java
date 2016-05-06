@@ -20,6 +20,7 @@ import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.util.ArrayUtil;
 import com.android.tradefed.util.MultiMap;
 import com.android.tradefed.util.TimeVal;
+import com.android.tradefed.util.keystore.IKeyStoreClient;
 import com.google.common.base.Objects;
 
 import java.io.File;
@@ -36,6 +37,7 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.regex.Pattern;
 
 /**
  * Populates {@link Option} fields.
@@ -64,6 +66,8 @@ public class OptionSetter {
     static final String BOOL_FALSE_PREFIX = "no-";
     private static final HashMap<Class<?>, Handler> handlers = new HashMap<Class<?>, Handler>();
     static final char NAMESPACE_SEPARATOR = ':';
+    static final Pattern USE_KEYSTORE_REGEX = Pattern.compile("USE_KEYSTORE@(.*)");
+    private IKeyStoreClient mKeyStoreClient = null;
 
     static {
         handlers.put(boolean.class, new BooleanHandler());
@@ -293,7 +297,7 @@ public class OptionSetter {
      * @throws ConfigurationException
      */
     public OptionSetter(Object... optionSources) throws ConfigurationException {
-        this(Arrays.asList(optionSources));
+        this(Arrays.asList(optionSources), null);
     }
 
     /**
@@ -301,8 +305,41 @@ public class OptionSetter {
      * @throws ConfigurationException
      */
     public OptionSetter(Collection<Object> optionSources) throws ConfigurationException {
+        this(optionSources, null);
+    }
+
+    /**
+     * Constructs a new OptionParser for setting the @Option fields of 'optionSources'.
+     * @throws ConfigurationException
+     */
+    public OptionSetter(Collection<Object> optionSources, IKeyStoreClient keyStore)
+            throws ConfigurationException {
         mOptionSources = optionSources;
         mOptionMap = makeOptionMap();
+        if (keyStore != null) {
+            CLog.d("Setting keystore %s", keyStore.toString());
+            setKeyStore(keyStore);
+        } else {
+            try {
+                IKeyStoreClient c = GlobalConfiguration.getInstance().getKeyStoreClient();
+                 if (c != null) {
+                     CLog.d("Keystore is null, Setting keystore %s", c.toString());
+                     setKeyStore(c);
+                 }else {
+                     CLog.d("null keystore");
+                 }
+            } catch (Exception e) {
+               CLog.i(e.getMessage());
+            }
+        }
+    }
+
+    public void setKeyStore(IKeyStoreClient keyStore) {
+        mKeyStoreClient = keyStore;
+    }
+
+    public IKeyStoreClient getKeyStore() {
+        return mKeyStoreClient;
     }
 
     private OptionFieldsForName fieldsForArg(String name) throws ConfigurationException {

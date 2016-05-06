@@ -33,6 +33,7 @@ import com.android.tradefed.util.RegexTrie;
 import com.android.tradefed.util.RunUtil;
 import com.android.tradefed.util.VersionParser;
 import com.android.tradefed.util.ZipUtil;
+import com.android.tradefed.util.keystore.IKeyStoreClient;
 
 import jline.ConsoleReader;
 
@@ -84,6 +85,7 @@ public class Console extends Thread {
     private static ConsoleReaderOutputStream sConsoleStream = null;
 
     protected ICommandScheduler mScheduler;
+    protected IKeyStoreClient mKeyStoreClient;
     protected ConsoleReader mConsoleReader;
     private RegexTrie<Runnable> mCommandTrie = new RegexTrie<Runnable>();
     private boolean mShouldExit = false;
@@ -134,6 +136,9 @@ public class Console extends Thread {
                 if (args.size() >= 2 && !args.get(1).isEmpty()) {
                     List<String> optionArgs = getFlatArgs(1, args);
                     ArgsOptionParser parser = new ArgsOptionParser(this);
+                    if (mKeyStoreClient != null) {
+                        parser.setKeyStore(mKeyStoreClient);
+                    }
                     parser.parse(optionArgs);
                 }
 
@@ -220,6 +225,10 @@ public class Console extends Thread {
 
     void setCommandScheduler(ICommandScheduler scheduler) {
         mScheduler = scheduler;
+    }
+
+    void setKeyStoreClient(IKeyStoreClient keyStoreClient) {
+        mKeyStoreClient = keyStoreClient;
     }
 
     /**
@@ -1010,6 +1019,7 @@ public class Console extends Thread {
 
         console.setArgs(nonGlobalArgs);
         console.setCommandScheduler(GlobalConfiguration.getInstance().getCommandScheduler());
+        console.setKeyStoreClient(GlobalConfiguration.getInstance().getKeyStoreClient());
         console.setDaemon(true);
         console.start();
 

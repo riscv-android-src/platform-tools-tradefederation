@@ -16,6 +16,9 @@
 
 package com.android.tradefed.util.keystore;
 
+import com.android.tradefed.config.Option;
+import com.android.tradefed.config.OptionClass;
+import com.android.tradefed.config.Option.Importance;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.util.FileUtil;
 
@@ -29,18 +32,17 @@ import java.io.IOException;
  * A sample implementation where a local JSON file acts a key store. The JSON
  * text file should have key to value in string format.
  */
+@OptionClass(alias = "json-keystore")
 public class JSONFileKeyStoreClient implements IKeyStoreClient {
-    // JSON file from where to read the key store.
-    private File mJsonFile;
+
+    @Option(name = "json-key-store-file",
+            description = "The JSON file from where to read the key store",
+            importance = Importance.IF_UNSET)
+    private File mJsonFile = null;
     // JSON key store read from the JSON file.
     protected JSONObject mJsonKeyStore = null;
 
-    /**
-     * Default Ctor; used for testing.
-     */
-    JSONFileKeyStoreClient() {
-        mJsonFile = null;
-    }
+    public JSONFileKeyStoreClient() {}
 
     public JSONFileKeyStoreClient(File jsonFile) {
         mJsonFile = jsonFile;
@@ -88,6 +90,7 @@ public class JSONFileKeyStoreClient implements IKeyStoreClient {
 
     @Override
     public boolean containsKey(String key) {
+        CLog.i("fetching key for %s", key);
         try {
             if (getKeyStore() == null) {
                 CLog.w("Key Store is null");

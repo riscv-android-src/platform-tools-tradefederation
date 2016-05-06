@@ -24,6 +24,7 @@ import com.android.tradefed.device.IDeviceSelection;
 import com.android.tradefed.device.IMultiDeviceRecovery;
 import com.android.tradefed.log.ITerribleFailureHandler;
 import com.android.tradefed.util.IHostMonitor;
+import com.android.tradefed.util.keystore.IKeyStoreClient;
 
 import java.util.List;
 
@@ -177,6 +178,14 @@ public interface IGlobalConfiguration {
      */
     public List<IMultiDeviceRecovery> getMultiDeviceRecoveryHandlers();
 
+
+    /**
+     * Gets the {@link IKeyStoreClient} to use from the configuration.
+     *
+     * @return the {@link IKeyStoreClient} or null if no key store is set.
+     */
+    public IKeyStoreClient getKeyStoreClient();
+
     /**
      * Set the {@link IDeviceManager}, replacing any existing values. This sets the manager
      * for the test devices
@@ -191,6 +200,14 @@ public interface IGlobalConfiguration {
      * @param scheduler
      */
     public void setCommandScheduler(ICommandScheduler scheduler);
+
+
+    /**
+     * Set the {@link IKeyStoreClient}, replacing any existing values.
+     *
+     * @param client
+     */
+    public void setKeyStoreClient(IKeyStoreClient client);
 
     /**
      * Generic method to set the config object with the given name, replacing any existing value.

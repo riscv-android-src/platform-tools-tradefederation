@@ -605,6 +605,7 @@ public class Configuration implements IConfiguration {
     public List<String> setOptionsFromCommandLineArgs(List<String> listArgs)
             throws ConfigurationException {
         ArgsOptionParser parser = new ArgsOptionParser(getAllConfigurationObjects());
+        parser.setKeyStore(GlobalConfiguration.getInstance().getKeyStoreClient());
         return parser.parse(listArgs);
     }
 
