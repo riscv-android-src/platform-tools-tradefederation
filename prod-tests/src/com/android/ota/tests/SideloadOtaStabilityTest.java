@@ -16,6 +16,7 @@
 
 package com.android.ota.tests;
 
+import com.android.ddmlib.IDevice.DeviceState;
 import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.build.IDeviceBuildInfo;
 import com.android.tradefed.build.OtaDeviceBuildInfo;
@@ -26,6 +27,7 @@ import com.android.tradefed.config.Option;
 import com.android.tradefed.config.Option.Importance;
 import com.android.tradefed.config.OptionClass;
 import com.android.tradefed.device.DeviceNotAvailableException;
+import com.android.tradefed.device.IManagedTestDevice;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.log.LogReceiver;
 import com.android.tradefed.log.LogUtil.CLog;
@@ -252,6 +254,17 @@ public class SideloadOtaStabilityTest implements IDeviceTest, IBuildReceiver,
         } catch (ConfigurationException e) {
             CLog.e(e);
         } finally {
+            // if the device is down, we need to recover it so we can safely pull logs
+            IManagedTestDevice managedDevice = (IManagedTestDevice) mDevice;
+            if (!managedDevice.getDeviceState().equals(DeviceState.ONLINE)) {
+                // not all IDeviceRecovery implementations can handle getting out of recovery mode,
+                // so we should just reboot in that case since we no longer need to be in
+                // recovery
+                if (managedDevice.getDeviceState().equals(DeviceState.RECOVERY)) {
+                    managedDevice.reboot();
+                }
+                mConfiguration.getDeviceRecovery().recoverDevice(managedDevice.getMonitor(), true);
+            }
             double updateTime = sendRecoveryLog(listener);
             Map<String, String> metrics = new HashMap<String, String>(1);
             metrics.put("iterations", Integer.toString(actualIterations));
@@ -385,7 +398,7 @@ public class SideloadOtaStabilityTest implements IDeviceTest, IBuildReceiver,
             String[] lastLogLines = StreamUtil.getStringFromSource(lastLog).split("\n");
             String endLine = lastLogLines[lastLogLines.length-1];
             elapsedTime = Double.parseDouble(
-                    endLine.substring(endLine.indexOf('['), endLine.indexOf(']')));
+                    endLine.substring(endLine.indexOf('[') + 1, endLine.indexOf(']')).trim());
         } catch (IOException|NumberFormatException e) {
             CLog.w("Couldn't get elapsed time from last_log due to exception %s", e);
         }
