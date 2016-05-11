@@ -288,7 +288,7 @@ public class FileUtil {
     public static File createTempFile(String prefix, String suffix, File parentDir)
             throws IOException {
         if (parentDir != null) {
-            CLog.d("Creating temp file at %s with prefix \"%s\" suffix \"\"",
+            CLog.d("Creating temp file at %s with prefix \"%s\" suffix \"%s\"",
                 parentDir.getAbsolutePath(), prefix, suffix);
         }
         File returnFile = File.createTempFile(prefix, suffix, parentDir);
