@@ -137,7 +137,7 @@ public class FileSystemLogSaver implements ILogSaver {
         }
 
         FileUtil.writeToFile(dataStream, log);
-        CLog.i("Saved log file %s", log.getAbsolutePath());
+        CLog.i("Saved raw log file %s", log.getAbsolutePath());
         return new LogFile(log.getAbsolutePath(), getUrl(log));
     }
 
