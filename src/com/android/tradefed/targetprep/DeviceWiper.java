@@ -56,8 +56,11 @@ public class DeviceWiper implements ITargetPreparer {
     }
 
     private void doFormat(ITestDevice device) throws DeviceNotAvailableException, TargetSetupError {
-        performFastbootOp(device, "format", "cache");
-        performFastbootOp(device, "format", "userdata");
+        CLog.d("Attempting fastboot wiping");
+        CommandResult r = device.executeLongFastbootCommand("-w");
+        if (r.getStatus() != CommandStatus.SUCCESS) {
+            throw new TargetSetupError(String.format("fastboot wiping failed: %s", r.getStderr()));
+        }
     }
 
     private void doErase(ITestDevice device) throws DeviceNotAvailableException, TargetSetupError {
