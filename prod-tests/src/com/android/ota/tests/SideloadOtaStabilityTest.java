@@ -16,7 +16,9 @@
 
 package com.android.ota.tests;
 
+import com.android.ddmlib.AdbCommandRejectedException;
 import com.android.ddmlib.IDevice.DeviceState;
+import com.android.ddmlib.TimeoutException;
 import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.build.IDeviceBuildInfo;
 import com.android.tradefed.build.OtaDeviceBuildInfo;
@@ -29,6 +31,7 @@ import com.android.tradefed.config.OptionClass;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.IManagedTestDevice;
 import com.android.tradefed.device.ITestDevice;
+import com.android.tradefed.device.TestDeviceState;
 import com.android.tradefed.log.LogReceiver;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.result.ITestInvocationListener;
@@ -115,6 +118,10 @@ public class SideloadOtaStabilityTest implements IDeviceTest, IBuildReceiver,
             "path on /data for the package to be saved to")
     /* This is currently the only path readable by uncrypt on the userdata partition */
     private String mPackageDataPath = "/data/data/com.google.android.gsf/app_download/update.zip";
+
+    @Option(name = "max-reboot-time", description =
+            "The maximum time to wait for a device to reboot out of recovery if it fails")
+    private long mMaxRebootTimeSec = 5 * 60;
 
     /** controls if this test should be resumed. Only used if mResumeMode is enabled */
     private boolean mResumable = true;
@@ -256,14 +263,24 @@ public class SideloadOtaStabilityTest implements IDeviceTest, IBuildReceiver,
         } finally {
             // if the device is down, we need to recover it so we can safely pull logs
             IManagedTestDevice managedDevice = (IManagedTestDevice) mDevice;
-            if (!managedDevice.getDeviceState().equals(DeviceState.ONLINE)) {
+            if (!managedDevice.getDeviceState().equals(TestDeviceState.ONLINE)) {
                 // not all IDeviceRecovery implementations can handle getting out of recovery mode,
                 // so we should just reboot in that case since we no longer need to be in
                 // recovery
-                if (managedDevice.getDeviceState().equals(DeviceState.RECOVERY)) {
-                    managedDevice.reboot();
+                CLog.i("Device is not online, attempting to recover before capturing logs");
+                if (managedDevice.getDeviceState().equals(TestDeviceState.RECOVERY)) {
+                    CLog.i("Rebooting to exit recovery");
+                    try {
+                        // we don't want to enable root until the reboot is fully finished and
+                        // the device is available, or it may get stuck in recovery and time out
+                        managedDevice.getIDevice().reboot(null);
+                        managedDevice.waitForDeviceAvailable(mMaxRebootTimeSec * 1000);
+                        managedDevice.postBootSetup();
+                    } catch (TimeoutException | AdbCommandRejectedException | IOException e) {
+                        CLog.e("Failed to reboot due to %s, trying last-ditch recovery", e);
+                    }
                 }
-                mConfiguration.getDeviceRecovery().recoverDevice(managedDevice.getMonitor(), true);
+                mConfiguration.getDeviceRecovery().recoverDevice(managedDevice.getMonitor(), false);
             }
             double updateTime = sendRecoveryLog(listener);
             Map<String, String> metrics = new HashMap<String, String>(1);
@@ -330,14 +347,17 @@ public class SideloadOtaStabilityTest implements IDeviceTest, IBuildReceiver,
         // this file needs to be uncrypted, since /data isn't mounted in recovery
         // block.map should be empty since cache should be cleared
         mDevice.pushString(mPackageDataPath + "\n", UNCRYPT_FILE_PATH);
-        doUncrypt(SocketFactory.getInstance());
-        String installOtaCmd = String.format("--update_package=%s\n", BLOCK_MAP_PATH);
-        mDevice.pushString(installOtaCmd, RECOVERY_COMMAND_PATH);
-        CLog.i("Rebooting to install OTA");
-        // Kmsg contents during the OTA will be capture in last_kmsg, so we can turn off the
-        // kmsg receiver now
-        mKmsgReceiver.postLog(listener);
-        mKmsgReceiver.stop();
+        try {
+            doUncrypt(SocketFactory.getInstance(), listener);
+            String installOtaCmd = String.format("--update_package=%s\n", BLOCK_MAP_PATH);
+            mDevice.pushString(installOtaCmd, RECOVERY_COMMAND_PATH);
+            CLog.i("Rebooting to install OTA");
+        } finally {
+            // Kmsg contents during the OTA will be capture in last_kmsg, so we can turn off the
+            // kmsg receiver now
+            mKmsgReceiver.postLog(listener);
+            mKmsgReceiver.stop();
+        }
         try {
             mDevice.rebootIntoRecovery();
         } catch (DeviceNotAvailableException e) {
@@ -347,7 +367,7 @@ public class SideloadOtaStabilityTest implements IDeviceTest, IBuildReceiver,
             // of the installed command, the device reports its state as NOT_AVAILABLE. If the
             // device *actually* becomes unavailable, we will catch the resulting DNAE in the
             // next call to waitForDeviceOnline.
-            CLog.i("Didn't go to recovery, went straigh to update");
+            CLog.i("Didn't go to recovery, went straight to update");
         }
 
         try {
@@ -399,8 +419,9 @@ public class SideloadOtaStabilityTest implements IDeviceTest, IBuildReceiver,
             String endLine = lastLogLines[lastLogLines.length-1];
             elapsedTime = Double.parseDouble(
                     endLine.substring(endLine.indexOf('[') + 1, endLine.indexOf(']')).trim());
-        } catch (IOException|NumberFormatException e) {
+        } catch (IOException|NumberFormatException|NullPointerException e) {
             CLog.w("Couldn't get elapsed time from last_log due to exception %s", e);
+            return 0;
         }
         listener.testLog(this.mRunName + "_recovery_log", LogDataType.TEXT,
                 lastLog);
@@ -425,7 +446,8 @@ public class SideloadOtaStabilityTest implements IDeviceTest, IBuildReceiver,
      * Uncrypt needs to attach to a socket before it will actually begin work, so we need to
      * attach a socket to it.
      */
-    public int doUncrypt(ISocketFactory sockets) throws DeviceNotAvailableException {
+    public int doUncrypt(ISocketFactory sockets, ITestInvocationListener listener)
+            throws DeviceNotAvailableException {
         // init has to start uncrypt or the socket will not be allocated
         CLog.i("Starting uncrypt service");
         mDevice.executeShellCommand("setprop ctl.start uncrypt");
@@ -461,6 +483,7 @@ public class SideloadOtaStabilityTest implements IDeviceTest, IBuildReceiver,
                     return Integer.MIN_VALUE;
                 }
             }
+            CLog.i("Final uncrypt status: %d", status);
             return status;
         } catch (IOException e) {
             throw new RuntimeException(e);
