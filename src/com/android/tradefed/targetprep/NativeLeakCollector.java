@@ -18,13 +18,17 @@ package com.android.tradefed.targetprep;
 import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.config.Option;
 import com.android.tradefed.config.OptionClass;
+import com.android.tradefed.device.CollectingOutputReceiver;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.log.ITestLogger;
 import com.android.tradefed.result.ByteArrayInputStreamSource;
 import com.android.tradefed.result.ITestLoggerReceiver;
 import com.android.tradefed.result.LogDataType;
+import com.android.tradefed.util.RunUtil;
 import com.android.tradefed.util.StreamUtil;
+
+import java.util.concurrent.TimeUnit;
 
 /**
  * A {@link ITargetCleaner} that runs 'dumpsys meminfo --unreachable -a' to identify the unreachable
@@ -69,11 +73,12 @@ public class NativeLeakCollector implements ITestLoggerReceiver, ITargetCleaner 
             return;
         }
 
-        String output = device.executeShellCommand(String.format(
-                UNREACHABLE_MEMINFO_CMD, mDumpTimeout / 1000));
-        if (output != null && !output.isEmpty()) {
+        CollectingOutputReceiver receiver = new CollectingOutputReceiver();
+        device.executeShellCommand(String.format(UNREACHABLE_MEMINFO_CMD,
+                mDumpTimeout / 1000), receiver, mDumpTimeout, TimeUnit.MILLISECONDS, 1);
+        if (!receiver.getOutput().isEmpty()) {
             ByteArrayInputStreamSource byteOutput =
-                    new ByteArrayInputStreamSource(output.getBytes());
+                    new ByteArrayInputStreamSource(receiver.getOutput().getBytes());
             mTestLogger.testLog(mLogFilename, LogDataType.TEXT, byteOutput);
             StreamUtil.cancel(byteOutput);
         }
