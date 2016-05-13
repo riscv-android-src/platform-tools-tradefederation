@@ -119,12 +119,29 @@ public class FastbootDeviceFlasher implements IDeviceFlasher  {
         device.rebootIntoBootloader();
 
         downloadFlashingResources(device, deviceBuild);
-
+        handleUserDataFlashing(device, deviceBuild);
         checkAndFlashBootloader(device, deviceBuild);
         checkAndFlashBaseband(device, deviceBuild);
-        flashUserData(device, deviceBuild);
-        wipeCache(device);
         checkAndFlashSystem(device, systemBuildId, systemBuildFlavor, deviceBuild);
+    }
+
+    /**
+     * Handle flashing of userdata/cache partition
+     * @param device the {@link ITestDevice} to flash
+     * @param deviceBuild the {@link IDeviceBuildInfo} that contains the files to flash
+     * @throws DeviceNotAvailableException
+     * @throws TargetSetupError
+     */
+    protected void handleUserDataFlashing(ITestDevice device, IDeviceBuildInfo deviceBuild)
+            throws DeviceNotAvailableException, TargetSetupError {
+        if (UserDataFlashOption.FORCE_WIPE.equals(mUserDataFlashOption) ||
+                UserDataFlashOption.WIPE.equals(mUserDataFlashOption)) {
+            CommandResult result = device.executeFastbootCommand("-w");
+            handleFastbootResult(device, result, "-w");
+        } else {
+            flashUserData(device, deviceBuild);
+            wipeCache(device);
+        }
     }
 
     /**

@@ -104,8 +104,7 @@ public class DeviceCleaner implements ITargetCleaner {
                     break;
                 case FORMAT:
                     device.rebootIntoBootloader();
-                    device.executeLongFastbootCommand("format", "cache");
-                    device.executeLongFastbootCommand("format", "userdata");
+                    device.executeLongFastbootCommand("-w");
                     device.executeFastbootCommand("reboot");
                     device.waitForDeviceAvailable();
                     break;

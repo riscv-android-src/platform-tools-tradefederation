@@ -199,6 +199,43 @@ public class FastbootDeviceFlasherTest extends TestCase {
     }
 
     /**
+     * Verify that correct fastboot command is called with WIPE data option
+     * @throws DeviceNotAvailableException
+     * @throws TargetSetupError
+     */
+    public void testFlashUserData_wipe() throws DeviceNotAvailableException, TargetSetupError {
+        mFlasher.setUserDataFlashOption(UserDataFlashOption.WIPE);
+        doTestFlashWithWipe();
+    }
+
+    /**
+     * Verify that correct fastboot command is called with FORCE_WIPE data option
+     * @throws DeviceNotAvailableException
+     * @throws TargetSetupError
+     */
+    public void testFlashUserData_forceWipe() throws DeviceNotAvailableException, TargetSetupError {
+        mFlasher.setUserDataFlashOption(UserDataFlashOption.FORCE_WIPE);
+        doTestFlashWithWipe();
+    }
+
+    /**
+     * Convenience function to set expectations for `fastboot -w` and execute test
+     * @throws DeviceNotAvailableException
+     * @throws TargetSetupError
+     */
+    private void doTestFlashWithWipe()  throws DeviceNotAvailableException, TargetSetupError {
+        CommandResult result = new CommandResult();
+        result.setStatus(CommandStatus.SUCCESS);
+        result.setStderr("");
+        result.setStdout("");
+        EasyMock.expect(mMockDevice.executeFastbootCommand("-w")).andReturn(result);
+
+        EasyMock.replay(mMockDevice);
+        mFlasher.handleUserDataFlashing(mMockDevice, mMockBuildInfo);
+        EasyMock.verify(mMockDevice);
+    }
+
+    /**
      * Test doing a user data with with rm
      *
      * @throws TargetSetupError
