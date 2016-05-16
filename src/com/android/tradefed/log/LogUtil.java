@@ -194,6 +194,17 @@ public class LogUtil {
          * The shim version of {@link Log#logAndDisplay(LogLevel, String, String)}.
          *
          * @param logLevel the {@link LogLevel}
+         * @param message The {@code String} to log
+         */
+        public static void logAndDisplay(LogLevel logLevel, String message) {
+            // frame 2: skip frames 0 (#getClassName) and 1 (this method)
+            Log.logAndDisplay(logLevel, getClassName(2), message);
+        }
+
+        /**
+         * The shim version of {@link Log#logAndDisplay(LogLevel, String, String)}.
+         *
+         * @param logLevel the {@link LogLevel}
          * @param format A format string for the message to log
          * @param args The format string arguments
          */

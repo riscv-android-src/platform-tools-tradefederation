@@ -17,6 +17,7 @@
 package com.android.tradefed.log;
 
 import com.android.ddmlib.Log;
+import com.android.ddmlib.Log.LogLevel;
 import com.android.tradefed.config.ConfigurationException;
 import com.android.tradefed.config.IGlobalConfiguration;
 import com.android.tradefed.log.LogUtil.CLog;
@@ -173,5 +174,9 @@ public class LogUtilFuncTest extends TestCase {
                 "com.android.tradefed.log.OuterClass$InnerClass"));
         assertEquals("OuterClass", CLog.parseClassName("com.android.tradefed.log.OuterClass"));
         assertEquals("SimpleClassNameOnly", CLog.parseClassName("SimpleClassNameOnly"));
+    }
+
+    public void testLogAndDisplay_specialSerial() {
+        CLog.logAndDisplay(LogLevel.VERBOSE, "[fe80::ba27:ebff:feb3:e8%em1]:5555");
     }
 }
