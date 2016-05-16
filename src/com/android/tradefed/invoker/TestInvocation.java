@@ -162,6 +162,10 @@ public class TestInvocation implements ITestInvocation {
                 CLog.d("No build to test");
                 rescheduleTest(config, rescheduler);
             } else {
+                if (cmdLineArgs != null) {
+                    // TODO: Store this in an invocation metadata class later
+                    info.addBuildAttribute("command_line_args", cmdLineArgs);
+                }
                 injectBuild(info, config.getTests());
                 if (options.getShardCount() > 1) {
                     if (options.getShardIndex() == -1) {

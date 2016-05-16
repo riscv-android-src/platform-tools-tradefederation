@@ -69,6 +69,7 @@ import java.util.Map;
 public class TestInvocationTest extends TestCase {
 
     private static final String SERIAL = "serial";
+    private static final String COMMAND_LINE_ARGS = "command_line_args";
     private static final Map<String, String> EMPTY_MAP = Collections.emptyMap();
     private static final String PATH = "path";
     private static final String URL = "url";
@@ -646,6 +647,8 @@ public class TestInvocationTest extends TestCase {
             EasyMock.expect(mMockLogger.clone()).andReturn(mMockLogger);
             EasyMock.expect(mockRescheduler.scheduleConfig(shardConfig)).andReturn(true);
         }
+        // TODO: replace this buildInfo method call with the invocation metadata class equivalent
+        mMockBuildInfo.addBuildAttribute(COMMAND_LINE_ARGS, mStubConfiguration.getCommandLine());
         mMockBuildProvider.cleanUp(mMockBuildInfo);
         replayMocks(test, mockRescheduler);
 
@@ -679,6 +682,8 @@ public class TestInvocationTest extends TestCase {
         setupMockSuccessListeners();
         EasyMock.expect(mMockBuildProvider.getBuild()).andReturn(mMockBuildInfo);
         EasyMock.expect(test.split(shardCount)).andReturn(testShards);
+        // TODO: replace this buildInfo method call with the invocation metadata class equivalent
+        mMockBuildInfo.addBuildAttribute(COMMAND_LINE_ARGS, mStubConfiguration.getCommandLine());
         testShard.run((ITestInvocationListener) EasyMock.anyObject());
         mMockPreparer.setUp(mMockDevice, mMockBuildInfo);
         replayMocks(test, testShard);
