@@ -13,6 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 package com.android.tradefed.config;
 
 import com.google.common.base.Joiner;
@@ -40,6 +41,7 @@ import com.android.tradefed.testtype.IRemoteTest;
 import com.android.tradefed.testtype.StubTest;
 import com.android.tradefed.util.MultiMap;
 import com.android.tradefed.util.QuotationAwareTokenizer;
+import com.android.tradefed.util.keystore.IKeyStoreClient;
 
 import org.json.JSONArray;
 import org.json.JSONException;
@@ -63,7 +65,7 @@ import java.util.Map.Entry;
 import java.util.Set;
 
 /**
- * A concrete {@link IConfiguration} implementation that stores the loaded config objects in a map
+ * A concrete {@link IConfiguration} implementation that stores the loaded config objects in a map.
  */
 public class Configuration implements IConfiguration {
 
@@ -108,7 +110,9 @@ public class Configuration implements IConfiguration {
      */
     private static class ObjTypeInfo {
         final Class<?> mExpectedType;
-        /** true if a list (ie many objects in a single config) are supported for this type */
+        /**
+         * true if a list (ie many objects in a single config) are supported for this type
+         */
         final boolean mIsListSupported;
 
         ObjTypeInfo(Class<?> expectedType, boolean isList) {
@@ -135,13 +139,15 @@ public class Configuration implements IConfiguration {
         if (sObjTypeMap == null) {
             sObjTypeMap = new HashMap<String, ObjTypeInfo>();
             sObjTypeMap.put(BUILD_PROVIDER_TYPE_NAME, new ObjTypeInfo(IBuildProvider.class, false));
-            sObjTypeMap.put(TARGET_PREPARER_TYPE_NAME, new ObjTypeInfo(ITargetPreparer.class, true));
+            sObjTypeMap.put(TARGET_PREPARER_TYPE_NAME,
+                    new ObjTypeInfo(ITargetPreparer.class, true));
             sObjTypeMap.put(TEST_TYPE_NAME, new ObjTypeInfo(IRemoteTest.class, true));
-            sObjTypeMap.put(DEVICE_RECOVERY_TYPE_NAME, new ObjTypeInfo(IDeviceRecovery.class, false));
+            sObjTypeMap.put(DEVICE_RECOVERY_TYPE_NAME,
+                    new ObjTypeInfo(IDeviceRecovery.class, false));
             sObjTypeMap.put(LOGGER_TYPE_NAME, new ObjTypeInfo(ILeveledLogOutput.class, false));
             sObjTypeMap.put(LOG_SAVER_TYPE_NAME, new ObjTypeInfo(ILogSaver.class, false));
-            sObjTypeMap.put(RESULT_REPORTER_TYPE_NAME, new ObjTypeInfo(ITestInvocationListener.class,
-                    true));
+            sObjTypeMap.put(RESULT_REPORTER_TYPE_NAME,
+                    new ObjTypeInfo(ITestInvocationListener.class, true));
             sObjTypeMap.put(CMD_OPTIONS_TYPE_NAME, new ObjTypeInfo(ICommandOptions.class,
                     false));
             sObjTypeMap.put(DEVICE_REQUIREMENTS_TYPE_NAME, new ObjTypeInfo(IDeviceSelection.class,
@@ -196,7 +202,7 @@ public class Configuration implements IConfiguration {
         setTest(new StubTest());
         setDeviceRecovery(new WaitDeviceRecovery());
         setLogOutput(new StdoutLogger());
-        setLogSaver(new FileSystemLogSaver());  // FileSystemLogSaver saves to tmp by default.
+        setLogSaver(new FileSystemLogSaver()); // FileSystemLogSaver saves to tmp by default.
         setTestInvocationListener(new TextResultReporter());
     }
 
@@ -225,7 +231,6 @@ public class Configuration implements IConfiguration {
         return mDescription;
     }
 
-
     /**
      * {@inheritDoc}
      */
@@ -239,7 +244,7 @@ public class Configuration implements IConfiguration {
      */
     @Override
     public String getCommandLine() {
-        //FIXME: obfuscated passwords from command line.
+        // FIXME: obfuscated passwords from command line.
         if (mCommandLine != null && mCommandLine.length != 0) {
             return QuotationAwareTokenizer.combineTokens(mCommandLine);
         }
@@ -259,7 +264,7 @@ public class Configuration implements IConfiguration {
                     .get(0).getBuildProvider();
         }
         // TODO: clean the special handling, everything should go through a device config.
-        return (IBuildProvider)getConfigurationObject(BUILD_PROVIDER_TYPE_NAME);
+        return (IBuildProvider) getConfigurationObject(BUILD_PROVIDER_TYPE_NAME);
     }
 
     /**
@@ -274,7 +279,7 @@ public class Configuration implements IConfiguration {
                     .get(0).getTargetPreparers();
         }
         // TODO: clean the special handling, everything should go through a device config.
-        return (List<ITargetPreparer>)getConfigurationObjectList(TARGET_PREPARER_TYPE_NAME);
+        return (List<ITargetPreparer>) getConfigurationObjectList(TARGET_PREPARER_TYPE_NAME);
     }
 
     /**
@@ -283,7 +288,7 @@ public class Configuration implements IConfiguration {
     @SuppressWarnings("unchecked")
     @Override
     public List<IRemoteTest> getTests() {
-        return (List<IRemoteTest>)getConfigurationObjectList(TEST_TYPE_NAME);
+        return (List<IRemoteTest>) getConfigurationObjectList(TEST_TYPE_NAME);
     }
 
     /**
@@ -298,7 +303,7 @@ public class Configuration implements IConfiguration {
                     .get(0).getDeviceRecovery();
         }
         // TODO: clean the special handling, everything should go through a device config.
-        return (IDeviceRecovery)getConfigurationObject(DEVICE_RECOVERY_TYPE_NAME);
+        return (IDeviceRecovery) getConfigurationObject(DEVICE_RECOVERY_TYPE_NAME);
     }
 
     /**
@@ -306,7 +311,7 @@ public class Configuration implements IConfiguration {
      */
     @Override
     public ILeveledLogOutput getLogOutput() {
-        return (ILeveledLogOutput)getConfigurationObject(LOGGER_TYPE_NAME);
+        return (ILeveledLogOutput) getConfigurationObject(LOGGER_TYPE_NAME);
     }
 
     /**
@@ -314,7 +319,7 @@ public class Configuration implements IConfiguration {
      */
     @Override
     public ILogSaver getLogSaver() {
-        return (ILogSaver)getConfigurationObject(LOG_SAVER_TYPE_NAME);
+        return (ILogSaver) getConfigurationObject(LOG_SAVER_TYPE_NAME);
     }
 
     /**
@@ -323,7 +328,8 @@ public class Configuration implements IConfiguration {
     @SuppressWarnings("unchecked")
     @Override
     public List<ITestInvocationListener> getTestInvocationListeners() {
-        return (List<ITestInvocationListener>)getConfigurationObjectList(RESULT_REPORTER_TYPE_NAME);
+        return (List<ITestInvocationListener>) getConfigurationObjectList(
+                RESULT_REPORTER_TYPE_NAME);
     }
 
     /**
@@ -331,7 +337,7 @@ public class Configuration implements IConfiguration {
      */
     @Override
     public ICommandOptions getCommandOptions() {
-        return (ICommandOptions)getConfigurationObject(CMD_OPTIONS_TYPE_NAME);
+        return (ICommandOptions) getConfigurationObject(CMD_OPTIONS_TYPE_NAME);
     }
 
     /**
@@ -346,7 +352,7 @@ public class Configuration implements IConfiguration {
                     .get(0).getDeviceRequirements();
         }
         // TODO: clean the special handling, everything should go through a device config.
-        return (IDeviceSelection)getConfigurationObject(DEVICE_REQUIREMENTS_TYPE_NAME);
+        return (IDeviceSelection) getConfigurationObject(DEVICE_REQUIREMENTS_TYPE_NAME);
     }
 
     /**
@@ -361,7 +367,7 @@ public class Configuration implements IConfiguration {
                     .get(0).getDeviceOptions();
         }
         // TODO: clean the special handling, everything should go through a device config.
-        return (TestDeviceOptions)getConfigurationObject(DEVICE_OPTIONS_TYPE_NAME);
+        return (TestDeviceOptions) getConfigurationObject(DEVICE_OPTIONS_TYPE_NAME);
     }
 
     /**
@@ -409,7 +415,7 @@ public class Configuration implements IConfiguration {
         if (typeInfo != null && typeInfo.mIsListSupported) {
             throw new IllegalStateException(String.format("Wrong method call. " +
                     "Used getConfigurationObject() for a config object that is stored as a list",
-                        typeName));
+                    typeName));
         }
         if (configObjects.size() != 1) {
             throw new IllegalStateException(String.format(
@@ -664,7 +670,8 @@ public class Configuration implements IConfiguration {
      * @param configObject the configuration object
      * @throws ConfigurationException if object was not the correct type
      */
-    private synchronized void addObject(String typeName, Object configObject) throws ConfigurationException {
+    private synchronized void addObject(String typeName, Object configObject)
+            throws ConfigurationException {
         List<Object> objList = mConfigMap.get(typeName);
         if (objList == null) {
             objList = new ArrayList<Object>(1);
@@ -684,16 +691,16 @@ public class Configuration implements IConfiguration {
         }
         objList.add(configObject);
         if (configObject instanceof IConfigurationReceiver) {
-            ((IConfigurationReceiver)configObject).setConfiguration(this);
+            ((IConfigurationReceiver) configObject).setConfiguration(this);
         }
     }
 
     /**
-     * A wrapper around {@link #setConfigurationObject(String, Object)} that will not throw
-     * {@link ConfigurationException}.
+     * A wrapper around {@link #setConfigurationObject(String, Object)} that
+     * will not throw {@link ConfigurationException}.
      * <p/>
-     * Intended to be used in cases where its guaranteed that <var>configObject</var> is the
-     * correct type.
+     * Intended to be used in cases where its guaranteed that
+     * <var>configObject</var> is the correct type.
      *
      * @param typeName
      * @param configObject
@@ -708,11 +715,11 @@ public class Configuration implements IConfiguration {
     }
 
     /**
-     * A wrapper around {@link #setConfigurationObjectList(String, List)} that will not throw
-     * {@link ConfigurationException}.
+     * A wrapper around {@link #setConfigurationObjectList(String, List)} that
+     * will not throw {@link ConfigurationException}.
      * <p/>
-     * Intended to be used in cases where its guaranteed that <var>configObject</var> is the
-     * correct type
+     * Intended to be used in cases where its guaranteed that
+     * <var>configObject</var> is the correct type
      *
      * @param typeName
      * @param configList
@@ -732,16 +739,29 @@ public class Configuration implements IConfiguration {
     @Override
     public List<String> setOptionsFromCommandLineArgs(List<String> listArgs)
             throws ConfigurationException {
+        return setOptionsFromCommandLineArgs(listArgs, null);
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public List<String> setOptionsFromCommandLineArgs(List<String> listArgs,
+            IKeyStoreClient keyStoreClient)
+            throws ConfigurationException {
         ArgsOptionParser parser = new ArgsOptionParser(getAllConfigurationObjects());
-        parser.setKeyStore(GlobalConfiguration.getInstance().getKeyStoreClient());
+        if (keyStoreClient != null) {
+            parser.setKeyStore(keyStoreClient);
+        }
         return parser.parse(listArgs);
     }
 
     /**
-     * Outputs a command line usage help text for this configuration to given printStream.
+     * Outputs a command line usage help text for this configuration to given
+     * printStream.
      *
      * @param out the {@link PrintStream} to use.
-     * @throw {@link ConfigurationException}
+     * @throws ConfigurationException
      */
     @Override
     public void printCommandUsage(boolean importantOnly, PrintStream out)
@@ -777,7 +797,9 @@ public class Configuration implements IConfiguration {
     /**
      * Get the JSON representation of a single {@link Option} field.
      */
-    @SuppressWarnings({"unchecked", "rawtypes"})
+    @SuppressWarnings({
+            "unchecked", "rawtypes"
+    })
     private JSONObject getOptionJson(Object optionObject, Field field) throws JSONException {
         // Build a JSON representation of the option
         JSONObject jsonOption = new JSONObject();
@@ -798,10 +820,10 @@ public class Configuration implements IConfiguration {
         Type fieldType = field.getGenericType();
         if (fieldType instanceof ParameterizedType) {
             // Resolve paramaterized type arguments
-            Type[] paramTypes = ((ParameterizedType)fieldType).getActualTypeArguments();
+            Type[] paramTypes = ((ParameterizedType) fieldType).getActualTypeArguments();
             String[] paramStrings = new String[paramTypes.length];
             for (int i = 0; i < paramTypes.length; i++) {
-                paramStrings[i] = ((Class<?>)paramTypes[i]).getName();
+                paramStrings[i] = ((Class<?>) paramTypes[i]).getName();
             }
 
             jsonOption.put("javaClass", String.format("%s<%s>",
@@ -819,18 +841,18 @@ public class Configuration implements IConfiguration {
             // Convert nulls to JSONObject.NULL
             if (value == null) {
                 jsonOption.put("value", JSONObject.NULL);
-            // Convert MuliMap values to a JSON representation
+                // Convert MuliMap values to a JSON representation
             } else if (value instanceof MultiMap) {
-                MultiMap multimap = (MultiMap)value;
+                MultiMap multimap = (MultiMap) value;
                 JSONObject jsonValue = new JSONObject();
                 for (Object keyObj : multimap.keySet()) {
                     jsonValue.put(keyObj.toString(), multimap.get(keyObj));
                 }
                 jsonOption.put("value", jsonValue);
-            // Convert Map values to JSON
+                // Convert Map values to JSON
             } else if (value instanceof Map) {
-                jsonOption.put("value", new JSONObject((Map)value));
-            // For everything else, just use the default representation
+                jsonOption.put("value", new JSONObject((Map) value));
+                // For everything else, just use the default representation
             } else {
                 jsonOption.put("value", value);
             }
@@ -840,12 +862,13 @@ public class Configuration implements IConfiguration {
         }
 
         // Store the field's source
-        // Maps and MultiMaps track sources per key, so use a JSONObject to represent their sources
+        // Maps and MultiMaps track sources per key, so use a JSONObject to
+        // represent their sources
         if (Map.class.isAssignableFrom(field.getType())) {
             JSONObject jsonSourcesMap = new JSONObject();
             if (value != null) {
                 // For each entry in the map, store the source as a JSONArray
-                for (Object key : ((Map)value).keySet()) {
+                for (Object key : ((Map) value).keySet()) {
                     List<String> source = mFieldSources.get(new FieldDef(optionObject, field, key));
                     jsonSourcesMap.put(key.toString(), source == null ? new JSONArray() : source);
                 }
@@ -856,15 +879,16 @@ public class Configuration implements IConfiguration {
             JSONObject jsonSourcesMap = new JSONObject();
             if (value != null) {
                 // For each entry in the map, store the sources as a JSONArray
-                for (Object key : ((MultiMap)value).keySet()) {
+                for (Object key : ((MultiMap) value).keySet()) {
                     List<String> source = mFieldSources.get(new FieldDef(optionObject, field, key));
                     jsonSourcesMap.put(key.toString(), source == null ? new JSONArray() : source);
                 }
             }
             jsonOption.put("source", jsonSourcesMap);
 
-        // Collections and regular objects only have one set of sources for the whole field, so use
-        // a JSONArray
+            // Collections and regular objects only have one set of sources for
+            // the whole field, so use
+            // a JSONArray
         } else {
             List<String> source = mFieldSources.get(new FieldDef(optionObject, field, null));
             jsonOption.put("source", source == null ? new JSONArray() : source);
@@ -872,7 +896,6 @@ public class Configuration implements IConfiguration {
 
         return jsonOption;
     }
-
 
     /**
      * {@inheritDoc}
@@ -888,19 +911,20 @@ public class Configuration implements IConfiguration {
                 jsonClass.put("name", configObjectsEntry.getKey());
                 String alias = null;
                 if (optionObject.getClass().isAnnotationPresent(OptionClass.class)) {
-                    OptionClass optionClass =
-                            optionObject.getClass().getAnnotation(OptionClass.class);
+                    OptionClass optionClass = optionObject.getClass()
+                            .getAnnotation(OptionClass.class);
                     alias = optionClass.alias();
                 }
                 jsonClass.put("alias", alias == null ? JSONObject.NULL : alias);
                 jsonClass.put("class", optionObject.getClass().getName());
 
                 // For each of the @Option annotated fields
-                Collection<Field> optionFields =
-                        OptionSetter.getOptionFieldsForClass(optionObject.getClass());
+                Collection<Field> optionFields = OptionSetter
+                        .getOptionFieldsForClass(optionObject.getClass());
                 JSONArray jsonOptions = new JSONArray();
                 for (Field field : optionFields) {
-                    // Add the JSON field representation to the JSON class representation
+                    // Add the JSON field representation to the JSON class
+                    // representation
                     jsonOptions.put(getOptionJson(optionObject, field));
                 }
                 jsonClass.put("options", jsonOptions);
@@ -917,8 +941,8 @@ public class Configuration implements IConfiguration {
      * Prints out the available config options for given configuration object.
      *
      * @param importantOnly print only the important options
-     * @param objectTypeName the config object type name. Used to generate more descriptive error
-     *            messages
+     * @param objectTypeName the config object type name. Used to generate more
+     *            descriptive error messages
      * @param configObject the config object
      * @return a {@link String} of option help text
      * @throws ConfigurationException
@@ -982,7 +1006,9 @@ public class Configuration implements IConfiguration {
     /**
      * Add all the options of class to the command XML dump.
      */
-    @SuppressWarnings({"rawtypes", "unchecked"})
+    @SuppressWarnings({
+            "rawtypes", "unchecked"
+    })
     private void dumpOptionsToXml(KXmlSerializer serializer, Object obj) throws IOException {
         for (Field field : OptionSetter.getOptionFieldsForClass(obj.getClass())) {
             Option option = field.getAnnotation(Option.class);

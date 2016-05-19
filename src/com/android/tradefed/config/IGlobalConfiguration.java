@@ -25,6 +25,7 @@ import com.android.tradefed.device.IMultiDeviceRecovery;
 import com.android.tradefed.log.ITerribleFailureHandler;
 import com.android.tradefed.util.IHostMonitor;
 import com.android.tradefed.util.keystore.IKeyStoreClient;
+import com.android.tradefed.util.keystore.IKeyStoreFactory;
 
 import java.util.List;
 
@@ -180,11 +181,11 @@ public interface IGlobalConfiguration {
 
 
     /**
-     * Gets the {@link IKeyStoreClient} to use from the configuration.
+     * Gets the {@link IKeyStoreFactory} to use from the configuration.
      *
-     * @return the {@link IKeyStoreClient} or null if no key store is set.
+     * @return the {@link IKeyStoreFactory} or null if no key store factory is set.
      */
-    public IKeyStoreClient getKeyStoreClient();
+    public IKeyStoreFactory getKeyStoreFactory();
 
     /**
      * Set the {@link IDeviceManager}, replacing any existing values. This sets the manager
@@ -203,11 +204,11 @@ public interface IGlobalConfiguration {
 
 
     /**
-     * Set the {@link IKeyStoreClient}, replacing any existing values.
+     * Set the {@link IKeyStoreFactory}, replacing any existing values.
      *
-     * @param client
+     * @param factory
      */
-    public void setKeyStoreClient(IKeyStoreClient client);
+    public void setKeyStoreFactory(IKeyStoreFactory factory);
 
     /**
      * Generic method to set the config object with the given name, replacing any existing value.

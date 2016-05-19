@@ -39,6 +39,8 @@ import com.android.tradefed.invoker.ITestInvocation;
 import com.android.tradefed.log.ITerribleFailureHandler;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.result.ITestInvocationListener;
+import com.android.tradefed.util.keystore.IKeyStoreClient;
+import com.android.tradefed.util.keystore.StubKeyStoreClient;
 
 import junit.framework.TestCase;
 
@@ -651,7 +653,8 @@ public class CommandSchedulerTest extends TestCase {
     private void setCreateConfigExpectations(String[] args, int times)
             throws ConfigurationException {
         EasyMock.expect(
-                mMockConfigFactory.createConfigurationFromArgs(EasyMock.aryEq(args)))
+                mMockConfigFactory.createConfigurationFromArgs(EasyMock.aryEq(args),
+                        EasyMock.isNull(), EasyMock.anyObject()))
                 .andReturn(mMockConfiguration)
                 .times(times);
         EasyMock.expect(mMockConfiguration.getCommandOptions()).andStubReturn(mCommandOptions);

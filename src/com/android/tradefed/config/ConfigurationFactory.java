@@ -13,6 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 package com.android.tradefed.config;
 
 import com.android.ddmlib.Log;
@@ -20,6 +21,9 @@ import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.util.ClassPathScanner;
 import com.android.tradefed.util.ClassPathScanner.IClassPathFilter;
 import com.android.tradefed.util.StreamUtil;
+import com.android.tradefed.util.keystore.IKeyStoreClient;
+import com.android.tradefed.util.keystore.IKeyStoreFactory;
+import com.android.tradefed.util.keystore.KeyStoreException;
 
 import java.io.BufferedInputStream;
 import java.io.ByteArrayOutputStream;
@@ -54,10 +58,11 @@ public class ConfigurationFactory implements IConfigurationFactory {
     private Map<ConfigId, ConfigurationDef> mConfigDefMap;
 
     /**
-     * A simple struct-like class that stores a configuration's name alongside the arguments for
-     * any {@code <template-include>} tags it may contain.  Because the actual bits stored by the
-     * configuration may vary with template arguments, they must be considered as essential a part
-     * of the configuration's identity as the filename.
+     * A simple struct-like class that stores a configuration's name alongside
+     * the arguments for any {@code <template-include>} tags it may contain.
+     * Because the actual bits stored by the configuration may vary with
+     * template arguments, they must be considered as essential a part of the
+     * configuration's identity as the filename.
      */
     static class ConfigId {
         public String name = null;
@@ -66,18 +71,19 @@ public class ConfigurationFactory implements IConfigurationFactory {
         /**
          * No-op constructor
          */
-        public ConfigId() {}
+        public ConfigId() {
+        }
 
         /**
-         * Convenience constructor.  Equivalent to calling two-arg constructor with {@code null}
-         * {@code templateMap}.
+         * Convenience constructor. Equivalent to calling two-arg constructor
+         * with {@code null} {@code templateMap}.
          */
         public ConfigId(String name) {
             this(name, null);
         }
 
         /**
-         * Two-arg convenience constructor.  {@code templateMap} may be null.
+         * Two-arg convenience constructor. {@code templateMap} may be null.
          */
         public ConfigId(String name, Map<String, String> templateMap) {
             this.name = name;
@@ -95,8 +101,10 @@ public class ConfigurationFactory implements IConfigurationFactory {
         }
 
         private boolean matches(Object a, Object b) {
-            if (a == null && b == null) return true;
-            if (a == null || b == null) return false;
+            if (a == null && b == null)
+                return true;
+            if (a == null || b == null)
+                return false;
             return a.equals(b);
         }
 
@@ -105,8 +113,10 @@ public class ConfigurationFactory implements IConfigurationFactory {
          */
         @Override
         public boolean equals(Object other) {
-            if (other == null) return false;
-            if (!(other instanceof ConfigId)) return false;
+            if (other == null)
+                return false;
+            if (!(other instanceof ConfigId))
+                return false;
 
             final ConfigId otherConf = (ConfigId) other;
             return matches(name, otherConf.name) && matches(templateMap, otherConf.templateMap);
@@ -158,8 +168,9 @@ public class ConfigurationFactory implements IConfigurationFactory {
     }
 
     /**
-     * Implementation of {@link IConfigDefLoader} that tracks the included configurations from one
-     * root config, and throws an exception on circular includes.
+     * Implementation of {@link IConfigDefLoader} that tracks the included
+     * configurations from one root config, and throws an exception on circular
+     * includes.
      */
     class ConfigLoader implements IConfigDefLoader {
 
@@ -191,7 +202,8 @@ public class ConfigurationFactory implements IConfigurationFactory {
                 mConfigDefMap.put(configId, def);
             } else {
                 if (templateMap != null) {
-                    // Clearing the map before returning the cached config to avoid seeing them as
+                    // Clearing the map before returning the cached config to
+                    // avoid seeing them as
                     // unused.
                     CLog.d("Using cached configuration, ensuring map is clean.");
                     templateMap.clear();
@@ -211,6 +223,7 @@ public class ConfigurationFactory implements IConfigurationFactory {
 
         /**
          * Get the absolute path of a local config file.
+         *
          * @param root parent path of config file
          * @param name config file
          * @return absolute path for local config file.
@@ -220,7 +233,8 @@ public class ConfigurationFactory implements IConfigurationFactory {
             File file = new File(name);
             if (!file.isAbsolute()) {
                 if (root == null) {
-                    // if root directory was not specified, get the current working directory.
+                    // if root directory was not specified, get the current
+                    // working directory.
                     root = System.getProperty("user.dir");
                 }
                 file = new File(root, name);
@@ -235,9 +249,10 @@ public class ConfigurationFactory implements IConfigurationFactory {
 
         @Override
         /**
-         * Configs that are bundled inside the tradefed.jar can only include other configs also
-         * bundled inside tradefed.jar. However, local (external) configs can include both local
-         * (external) and bundled configs.
+         * Configs that are bundled inside the tradefed.jar can only include
+         * other configs also bundled inside tradefed.jar. However, local
+         * (external) configs can include both local (external) and bundled
+         * configs.
          */
         public void loadIncludedConfiguration(ConfigurationDef def, String parentName, String name,
                 Map<String, String> templateMap) throws ConfigurationException {
@@ -252,7 +267,8 @@ public class ConfigurationFactory implements IConfigurationFactory {
                         if (!localConfig.exists()) {
                             throw new ConfigurationException(String.format(
                                     "Bundled config '%s' is including a config '%s' that's neither "
-                                    + "local nor bundled.", parentName, name));
+                                            + "local nor bundled.",
+                                    parentName, name));
                         }
                         config_name = localConfig.getAbsolutePath();
                     } else {
@@ -260,7 +276,7 @@ public class ConfigurationFactory implements IConfigurationFactory {
                         String parentRoot = new File(parentName).getParentFile().getCanonicalPath();
                         config_name = getAbsolutePath(parentRoot, name);
                     }
-                } catch  (IOException e) {
+                } catch (IOException e) {
                     throw new ConfigurationException(String.format(
                             "Failure when trying to determine local file canonical path %s", e));
                 }
@@ -280,8 +296,8 @@ public class ConfigurationFactory implements IConfigurationFactory {
          * @param name the name of a built-in configuration to load or a file
          *            path to configuration xml to load
          * @param def the loaded {@link ConfigurationDef}
-         * @param templateMap map from template-include names to their respective concrete
-         *                    configuration files
+         * @param templateMap map from template-include names to their
+         *            respective concrete configuration files
          * @throws ConfigurationException if a configuration with given
          *             name/file path cannot be loaded or parsed
          */
@@ -324,8 +340,8 @@ public class ConfigurationFactory implements IConfigurationFactory {
     /**
      * Retrieve the {@link ConfigurationDef} for the given name
      *
-     * @param name the name of a built-in configuration to load or a file path to configuration xml
-     *            to load
+     * @param name the name of a built-in configuration to load or a file path
+     *            to configuration xml to load
      * @return {@link ConfigurationDef}
      * @throws ConfigurationException if an error occurred loading the config
      */
@@ -349,13 +365,26 @@ public class ConfigurationFactory implements IConfigurationFactory {
     @Override
     public IConfiguration createConfigurationFromArgs(String[] arrayArgs,
             List<String> unconsumedArgs) throws ConfigurationException {
+        return createConfigurationFromArgs(arrayArgs, unconsumedArgs, null);
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public IConfiguration createConfigurationFromArgs(String[] arrayArgs,
+            List<String> unconsumedArgs, IKeyStoreClient keyStoreClient)
+            throws ConfigurationException {
         List<String> listArgs = new ArrayList<String>(arrayArgs.length);
-        IConfiguration config = internalCreateConfigurationFromArgs(arrayArgs, listArgs);
+        IConfiguration config = internalCreateConfigurationFromArgs(
+                arrayArgs, listArgs, keyStoreClient);
         config.setCommandLine(arrayArgs);
-        final List<String> tmpUnconsumedArgs = config.setOptionsFromCommandLineArgs(listArgs);
+        final List<String> tmpUnconsumedArgs = config.setOptionsFromCommandLineArgs(
+                listArgs, keyStoreClient);
 
         if (unconsumedArgs == null && tmpUnconsumedArgs.size() > 0) {
-            // (unconsumedArgs == null) is taken as a signal that the caller expects all args to
+            // (unconsumedArgs == null) is taken as a signal that the caller
+            // expects all args to
             // be processed.
             throw new ConfigurationException(String.format(
                     "Invalid arguments provided. Unprocessed arguments: %s", tmpUnconsumedArgs));
@@ -372,14 +401,19 @@ public class ConfigurationFactory implements IConfigurationFactory {
      * <p/>
      * Note will not populate configuration with values from options
      *
-     * @param arrayArgs the full list of command line arguments, including the config name
-     * @param optionArgsRef an empty list, that will be populated with the option arguments left
-     *                      to be interpreted
-     * @return An {@link IConfiguration} object representing the configuration that was loaded
+     * @param arrayArgs the full list of command line arguments, including the
+     *            config name
+     * @param optionArgsRef an empty list, that will be populated with the
+     *            option arguments left to be interpreted
+     * @param keyStoreClient {@link IKeyStoreClient} keystore client to use if
+     *            any.
+     * @return An {@link IConfiguration} object representing the configuration
+     *         that was loaded
      * @throws ConfigurationException
      */
     private IConfiguration internalCreateConfigurationFromArgs(String[] arrayArgs,
-            List<String> optionArgsRef) throws ConfigurationException {
+            List<String> optionArgsRef, IKeyStoreClient keyStoreClient)
+            throws ConfigurationException {
         if (arrayArgs.length == 0) {
             throw new ConfigurationException("Configuration to run was not specified");
         }
@@ -390,7 +424,9 @@ public class ConfigurationFactory implements IConfigurationFactory {
         // Steal ConfigurationXmlParser arguments from the command line
         final ConfigurationXmlParserSettings parserSettings = new ConfigurationXmlParserSettings();
         final ArgsOptionParser templateArgParser = new ArgsOptionParser(parserSettings);
-        templateArgParser.setKeyStore(GlobalConfiguration.getInstance().getKeyStoreClient());
+        if (keyStoreClient != null) {
+            templateArgParser.setKeyStore(keyStoreClient);
+        }
         optionArgsRef.addAll(templateArgParser.parseBestEffort(listArgs));
         ConfigurationDef configDef = getConfigurationDef(configName, false,
                 parserSettings.templateMap);
@@ -409,7 +445,6 @@ public class ConfigurationFactory implements IConfigurationFactory {
         return configDef.createConfiguration();
     }
 
-
     /**
      * {@inheritDoc}
      */
@@ -417,8 +452,8 @@ public class ConfigurationFactory implements IConfigurationFactory {
     public IGlobalConfiguration createGlobalConfigurationFromArgs(String[] arrayArgs,
             List<String> remainingArgs) throws ConfigurationException {
         List<String> listArgs = new ArrayList<String>(arrayArgs.length);
-        IGlobalConfiguration config =
-                internalCreateGlobalConfigurationFromArgs(arrayArgs, listArgs);
+        IGlobalConfiguration config = internalCreateGlobalConfigurationFromArgs(arrayArgs,
+                listArgs);
         remainingArgs.addAll(config.setOptionsFromCommandLineArgs(listArgs));
 
         return config;
@@ -430,8 +465,8 @@ public class ConfigurationFactory implements IConfigurationFactory {
      * Note will not populate configuration with values from options
      *
      * @param arrayArgs the full list of command line arguments, including the config name
-     * @param optionArgsRef an empty list, that will be populated with the remaining option
-     *                      arguments
+     * @param optionArgsRef an empty list, that will be populated with the
+     *            remaining option arguments
      * @return a {@link IGlobalConfiguration} created from the args
      * @throws ConfigurationException
      */
@@ -461,7 +496,7 @@ public class ConfigurationFactory implements IConfigurationFactory {
         SortedSet<ConfigurationDef> configDefs = new TreeSet<ConfigurationDef>(
                 new ConfigDefComparator());
         configDefs.addAll(mConfigDefMap.values());
-        for (ConfigurationDef def: configDefs) {
+        for (ConfigurationDef def : configDefs) {
             out.printf("  %s: %s", def.getName(), def.getDescription());
             out.println();
         }
@@ -470,8 +505,8 @@ public class ConfigurationFactory implements IConfigurationFactory {
     /**
      * Loads all configurations found in classpath.
      *
-     * @param discardExceptions true if any ConfigurationException should be ignored. Exposed for
-     * unit testing
+     * @param discardExceptions true if any ConfigurationException should be
+     *            ignored. Exposed for unit testing
      * @throws ConfigurationException
      */
     void loadAllConfigs(boolean discardExceptions) throws ConfigurationException {
@@ -509,7 +544,7 @@ public class ConfigurationFactory implements IConfigurationFactory {
     public void printHelpForConfig(String[] args, boolean importantOnly, PrintStream out) {
         try {
             IConfiguration config = internalCreateConfigurationFromArgs(args,
-                    new ArrayList<String>(args.length));
+                    new ArrayList<String>(args.length), null);
             config.printCommandUsage(importantOnly, out);
         } catch (ConfigurationException e) {
             // config must not be specified. Print generic help
@@ -536,6 +571,7 @@ public class ConfigurationFactory implements IConfigurationFactory {
      * Return the path prefix of config xml files on classpath
      * <p/>
      * Exposed so unit tests can mock.
+     *
      * @return {@link String} path with trailing /
      */
     String getConfigPrefix() {
@@ -566,8 +602,8 @@ public class ConfigurationFactory implements IConfigurationFactory {
     }
 
     /**
-     * Utility method that checks that all configs can be loaded, parsed, and all option values
-     * set.
+     * Utility method that checks that all configs can be loaded, parsed, and
+     * all option values set.
      *
      * @throws ConfigurationException if one or more configs failed to load
      */
