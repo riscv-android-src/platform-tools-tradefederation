@@ -34,7 +34,7 @@ public interface ICommandScheduler {
 
     /**
     * Listener for invocation events when invocation completes.
-    * @see execCommand()
+    * @see #execCommand(IScheduledInvocationListener, String[])
     */
     public static interface IScheduledInvocationListener extends ITestInvocationListener {
         /**
@@ -60,7 +60,7 @@ public interface ICommandScheduler {
      * @return <code>true</code> if command was added successfully
      * @throws ConfigurationException if command could not be parsed
      *
-     * @see {@link IConfigurationFactory#createConfigurationFromArgs(String[])}
+     * @see IConfigurationFactory#createConfigurationFromArgs(String[])
      */
     public boolean addCommand(String[] args) throws ConfigurationException;
 
@@ -71,7 +71,7 @@ public interface ICommandScheduler {
      * @param extraArgs a {@link List} of {@link String} arguments to append to each command parsed
      *            from file. Can be empty but should not be null.
      * @throws ConfigurationException if command file could not be parsed
-     * @see {@link CommandFileParser}
+     * @see CommandFileParser
      */
     public void addCommandFile(String cmdFile, List<String> extraArgs)
             throws ConfigurationException;
@@ -182,7 +182,7 @@ public interface ICommandScheduler {
     /**
      * Waits for scheduler to complete.
      *
-     * @see {@link Thread#join()}.
+     * @see Thread#join()
      */
     public void join() throws InterruptedException;
 
@@ -203,7 +203,7 @@ public interface ICommandScheduler {
      * Stop a running invocation.
      *
      * @return true if the invocation was stopped, false otherwise
-     * @throws {@link UnsupportedOperationException} if the implementation doesn't support this
+     * @throw {@link UnsupportedOperationException} if the implementation doesn't support this
      */
     public boolean stopInvocation(ITestInvocation invocation) throws UnsupportedOperationException;
 
@@ -242,4 +242,10 @@ public interface ICommandScheduler {
      * Return true if we need to shutdown the scheduler on a command errors
      */
     public boolean shouldShutdownOnCmdfileError();
+
+    /**
+     * Return the error code of the last invocation that ran.
+     * Return 0 (no error), if no invocation has ran yet.
+     */
+    public int getLastInvocationExitCode();
 }

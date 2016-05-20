@@ -134,6 +134,9 @@ public class CommandScheduler extends Thread implements ICommandScheduler, IComm
 
     private WaitObj mCommandProcessWait = new WaitObj();
 
+    /** The last {@link InvocationThread} that ran error code */
+    private int mLastInvocationExitCode = 0;
+
     @Option(name = "reload-cmdfiles", description =
             "Whether to enable the command file autoreload mechanism")
     // FIXME: enable this to be enabled or disabled on a per-cmdfile basis
@@ -463,19 +466,24 @@ public class CommandScheduler extends Thread implements ICommandScheduler, IComm
                 mCmd.commandStarted();
                 instance.invoke(mDevice, config, new Rescheduler(mCmd.getCommandTracker()),
                         mListeners);
+                setLastInvocationExitCode(0);
             } catch (DeviceUnresponsiveException e) {
                 CLog.w("Device %s is unresponsive. Reason: %s", mDevice.getSerialNumber(),
                         e.getMessage());
                 deviceState = FreeDeviceState.UNRESPONSIVE;
+                setLastInvocationExitCode(1);
             } catch (DeviceNotAvailableException e) {
                 CLog.w("Device %s is not available. Reason: %s", mDevice.getSerialNumber(),
                         e.getMessage());
                 deviceState = FreeDeviceState.UNAVAILABLE;
+                setLastInvocationExitCode(1);
             } catch (FatalHostError e) {
                 CLog.wtf(String.format("Fatal error occurred: %s, shutting down", e.getMessage()),
                         e);
+                setLastInvocationExitCode(1);
                 shutdown();
             } catch (Throwable e) {
+                setLastInvocationExitCode(1);
                 CLog.e(e);
             } finally {
                 long elapsedTime = System.currentTimeMillis() - mStartTime;
@@ -1788,5 +1796,17 @@ public class CommandScheduler extends Thread implements ICommandScheduler, IComm
 
     public long getShutdownTimeout() {
         return mShutdownTimeout;
+    }
+
+    @Override
+    public int getLastInvocationExitCode() {
+        return mLastInvocationExitCode;
+    }
+
+    /**
+     * Helper method, when running inside a {@link CommandRunner} context, set an exit error code.
+     */
+    private void setLastInvocationExitCode(int errorcode) {
+        mLastInvocationExitCode = errorcode;
     }
 }
