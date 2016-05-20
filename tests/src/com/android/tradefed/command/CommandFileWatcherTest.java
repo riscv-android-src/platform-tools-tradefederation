@@ -28,7 +28,7 @@ import java.util.Collections;
 import java.util.List;
 
 /**
- * Unit tests for {@link CommandFileWatcher}.  Mocks all filesystem accesses.
+ * Unit tests for {@link CommandFileWatcher}.  Mocks all file system accesses.
  */
 public class CommandFileWatcherTest extends TestCase {
     private static final List<String> EMPTY_ARGS = Collections.<String>emptyList();

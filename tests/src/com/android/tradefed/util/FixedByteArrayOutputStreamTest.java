@@ -45,9 +45,9 @@ public class FixedByteArrayOutputStreamTest extends TestCase {
 
     /**
      * Util method to write a string into the {@link FixedByteArrayOutputStream} under test and
-     * return content as String
+     *
      * @param text
-     * @return
+     * @return content as String
      */
     private String writeTextIntoStreamAndReturn(String text) throws IOException {
         mOutStream.write(text.getBytes());

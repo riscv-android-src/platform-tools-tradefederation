@@ -23,7 +23,7 @@ import junit.framework.TestCase;
 import java.util.Set;
 
 /**
- * Unit tests for {@link ClassPathScannerTest}
+ * Unit tests for {@link ClassPathScanner}
  */
 public class ClassPathScannerTest extends TestCase {
 

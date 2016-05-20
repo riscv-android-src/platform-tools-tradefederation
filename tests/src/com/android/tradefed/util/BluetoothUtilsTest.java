@@ -20,7 +20,7 @@ import junit.framework.TestCase;
 
 import java.util.Set;
 
-public class BluetoothUtilsTests extends TestCase {
+public class BluetoothUtilsTest extends TestCase {
 
     public void testParseBondedDeviceInstrumentationOutput() throws Exception {
         String[] lines = {

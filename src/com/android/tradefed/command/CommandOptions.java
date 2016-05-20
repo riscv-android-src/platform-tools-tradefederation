@@ -239,7 +239,7 @@ public class CommandOptions implements ICommandOptions {
     }
 
     /**
-     * {@inheritDoc)
+     * {@inheritDoc}
      */
     @Override
     public void setShardCount(int shardCount) {

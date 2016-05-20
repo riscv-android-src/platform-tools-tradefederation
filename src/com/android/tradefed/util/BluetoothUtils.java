@@ -59,11 +59,12 @@ public class BluetoothUtils {
 
     /**
      * Convenience method to execute BT instrumentation command and return output
+     *
      * @param device
      * @param command a command string sent over to BT instrumentation, currently supported:
      *                 enable, disable, unpairAll, getName, getAddress, getBondedDevices; refer to
      *                 AOSP source for more details
-     * @return
+     * @return output of BluetoothInstrumentation
      * @throws DeviceNotAvailableException
      */
     public static String runBluetoothInstrumentation(ITestDevice device, String command)
@@ -100,8 +101,9 @@ public class BluetoothUtils {
 
     /**
      * Retrieves BT mac of the given device
+     *
      * @param device
-     * @return
+     * @return BT mac or null if not found
      * @throws DeviceNotAvailableException
      */
     public static String getBluetoothMac(ITestDevice device) throws DeviceNotAvailableException {
@@ -117,8 +119,9 @@ public class BluetoothUtils {
 
     /**
      * Enables bluetooth on the given device
+     *
      * @param device
-     * @return
+     * @return True if enable is successful, false otherwise
      * @throws DeviceNotAvailableException
      */
     public static boolean enable(ITestDevice device)
@@ -128,8 +131,9 @@ public class BluetoothUtils {
 
     /**
      * Disables bluetooth on the given device
+     *
      * @param device
-     * @return
+     * @return True if disable is successful, false otherwise
      * @throws DeviceNotAvailableException
      */
     public static boolean disable(ITestDevice device)
@@ -139,8 +143,9 @@ public class BluetoothUtils {
 
     /**
      * Returns bluetooth mac addresses of devices that the given device has bonded with
+     *
      * @param device
-     * @return
+     * @return bluetooth mac addresses
      * @throws DeviceNotAvailableException
      */
     public static Set<String> getBondedDevices(ITestDevice device)
