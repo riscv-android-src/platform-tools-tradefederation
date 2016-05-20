@@ -21,15 +21,16 @@ import junit.framework.TestResult;
 
 import java.io.File;
 import java.io.InputStream;
+import java.util.Collection;
 import java.util.Collections;
 
 /**
- *
+ * Test {@link TestLoader}
  */
 public class TestLoaderTest extends TestCase {
 
     /**
-     * Basic test for {@link TestLoader#loadTests(java.io.File)}.
+     * Basic test for {@link TestLoader#loadTests(File, Collection)}.
      * <p/>
      * Extracts a tests.jar containing one test and one inner test, and ensures that (only) the
      * public test is loaded and run.

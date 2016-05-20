@@ -123,7 +123,6 @@ public class StreamUtilTest extends TestCase {
 
     /**
      * Returns a large chunk of text that's at least 16K in size
-     * @return
      */
     private String getLargeText() {
         String text = "Lorem ipsum dolor sit amet, consectetur adipiscing elit, "

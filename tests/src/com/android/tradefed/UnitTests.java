@@ -24,6 +24,8 @@ import com.android.tradefed.build.KernelDeviceBuildInfoTest;
 import com.android.tradefed.build.OtaZipfileBuildProviderTest;
 import com.android.tradefed.build.SdkBuildInfoTest;
 import com.android.tradefed.command.CommandFileParserTest;
+import com.android.tradefed.command.CommandFileWatcherTest;
+import com.android.tradefed.command.CommandOptionsTest;
 import com.android.tradefed.command.CommandSchedulerTest;
 import com.android.tradefed.command.ConsoleTest;
 import com.android.tradefed.command.VerifyTest;
@@ -49,6 +51,7 @@ import com.android.tradefed.device.ManagedDeviceListTest;
 import com.android.tradefed.device.ReconnectingRecoveryTest;
 import com.android.tradefed.device.RemoteAndroidDeviceTest;
 import com.android.tradefed.device.TestDeviceTest;
+import com.android.tradefed.device.TopHelperTest;
 import com.android.tradefed.device.WaitDeviceRecoveryTest;
 import com.android.tradefed.device.WifiHelperTest;
 import com.android.tradefed.invoker.TestInvocationTest;
@@ -78,6 +81,7 @@ import com.android.tradefed.targetprep.FastbootDeviceFlasherTest;
 import com.android.tradefed.targetprep.FlashingResourcesParserTest;
 import com.android.tradefed.targetprep.InstrumentationPreparerTest;
 import com.android.tradefed.targetprep.KernelFlashPreparerTest;
+import com.android.tradefed.targetprep.PushFilePreparerTest;
 import com.android.tradefed.targetprep.SdkAvdPreparerTest;
 import com.android.tradefed.targetprep.StopServicesSetupTest;
 import com.android.tradefed.targetprep.SystemUpdaterDeviceFlasherTest;
@@ -85,7 +89,9 @@ import com.android.tradefed.testtype.AndroidJUnitTestTest;
 import com.android.tradefed.testtype.DeviceBatteryLevelCheckerTest;
 import com.android.tradefed.testtype.DeviceTestCaseTest;
 import com.android.tradefed.testtype.DeviceTestSuite;
+import com.android.tradefed.testtype.DeviceTestSuiteTest;
 import com.android.tradefed.testtype.FakeTestTest;
+import com.android.tradefed.testtype.GTestListTestParserTest;
 import com.android.tradefed.testtype.GTestResultParserTest;
 import com.android.tradefed.testtype.GTestTest;
 import com.android.tradefed.testtype.GTestXmlResultParserTest;
@@ -105,10 +111,14 @@ import com.android.tradefed.testtype.testdefs.XmlDefsTestTest;
 import com.android.tradefed.util.AaptParserTest;
 import com.android.tradefed.util.AbiFormatterTest;
 import com.android.tradefed.util.ArrayUtilTest;
+import com.android.tradefed.util.BluetoothUtilsTest;
 import com.android.tradefed.util.ByteArrayListTest;
+import com.android.tradefed.util.ClassPathScannerTest;
 import com.android.tradefed.util.ConditionPriorityBlockingQueueTest;
 import com.android.tradefed.util.EmailTest;
+import com.android.tradefed.util.FakeTestsZipFolderTest;
 import com.android.tradefed.util.FileUtilTest;
+import com.android.tradefed.util.FixedByteArrayOutputStreamTest;
 import com.android.tradefed.util.JUnitXmlParserTest;
 import com.android.tradefed.util.ListInstrumentationParserTest;
 import com.android.tradefed.util.LogcatUpdaterEventParserTest;
@@ -118,11 +128,18 @@ import com.android.tradefed.util.PairTest;
 import com.android.tradefed.util.QuotationAwareTokenizerTest;
 import com.android.tradefed.util.RegexTrieTest;
 import com.android.tradefed.util.RunUtilTest;
+import com.android.tradefed.util.SimpleStatsTest;
 import com.android.tradefed.util.SizeLimitedOutputStreamTest;
+import com.android.tradefed.util.StreamUtilTest;
+import com.android.tradefed.util.StringEscapeUtilsTest;
 import com.android.tradefed.util.SubprocessTestResultsParserTest;
+import com.android.tradefed.util.TableFormatterTest;
+import com.android.tradefed.util.TestLoaderTest;
+import com.android.tradefed.util.TimeValTest;
 import com.android.tradefed.util.keystore.JSONFileKeyStoreClientTest;
 import com.android.tradefed.util.net.HttpHelperTest;
 import com.android.tradefed.util.net.HttpMultipartPostTest;
+import com.android.tradefed.util.net.XmlRpcHelperTest;
 import com.android.tradefed.util.xml.AndroidManifestWriterTest;
 
 import junit.framework.Test;
@@ -148,7 +165,9 @@ public class UnitTests extends DeviceTestSuite {
 
         // command
         addTestSuite(CommandFileParserTest.class);
+        addTestSuite(CommandFileWatcherTest.class);
         addTestSuite(CommandSchedulerTest.class);
+        addTestSuite(CommandOptionsTest.class);
         addTestSuite(ConsoleTest.class);
         addTestSuite(VerifyTest.class);
 
@@ -179,6 +198,7 @@ public class UnitTests extends DeviceTestSuite {
         addTestSuite(ReconnectingRecoveryTest.class);
         addTestSuite(RemoteAndroidDeviceTest.class);
         addTestSuite(TestDeviceTest.class);
+        addTestSuite(TopHelperTest.class);
         addTestSuite(WaitDeviceRecoveryTest.class);
         addTestSuite(WifiHelperTest.class);
 
@@ -215,6 +235,7 @@ public class UnitTests extends DeviceTestSuite {
         addTestSuite(FastbootDeviceFlasherTest.class);
         addTestSuite(FlashingResourcesParserTest.class);
         addTestSuite(KernelFlashPreparerTest.class);
+        addTestSuite(PushFilePreparerTest.class);
         addTestSuite(SdkAvdPreparerTest.class);
         addTestSuite(StopServicesSetupTest.class);
         addTestSuite(SystemUpdaterDeviceFlasherTest.class);
@@ -224,9 +245,11 @@ public class UnitTests extends DeviceTestSuite {
         addTestSuite(AndroidJUnitTestTest.class);
         addTestSuite(DeviceBatteryLevelCheckerTest.class);
         addTestSuite(DeviceTestCaseTest.class);
+        addTestSuite(DeviceTestSuiteTest.class);
         addTestSuite(FakeTestTest.class);
         addTestSuite(GoogleBenchmarkResultParserTest.class);
         addTestSuite(GoogleBenchmarkTestTest.class);
+        addTestSuite(GTestListTestParserTest.class);
         addTestSuite(GTestResultParserTest.class);
         addTestSuite(GTestTest.class);
         addTestSuite(GTestXmlResultParserTest.class);
@@ -248,10 +271,14 @@ public class UnitTests extends DeviceTestSuite {
         addTestSuite(AaptParserTest.class);
         addTestSuite(AbiFormatterTest.class);
         addTestSuite(ArrayUtilTest.class);
+        addTestSuite(BluetoothUtilsTest.class);
         addTestSuite(ByteArrayListTest.class);
+        addTestSuite(ClassPathScannerTest.class);
         addTestSuite(ConditionPriorityBlockingQueueTest.class);
         addTestSuite(EmailTest.class);
+        addTestSuite(FakeTestsZipFolderTest.class);
         addTestSuite(FileUtilTest.class);
+        addTestSuite(FixedByteArrayOutputStreamTest.class);
         addTestSuite(HttpHelperTest.class);
         addTestSuite(HttpMultipartPostTest.class);
         addTestSuite(JUnitXmlParserTest.class);
@@ -264,7 +291,14 @@ public class UnitTests extends DeviceTestSuite {
         addTestSuite(RegexTrieTest.class);
         addTestSuite(RunUtilTest.class);
         addTestSuite(SizeLimitedOutputStreamTest.class);
+        addTestSuite(StreamUtilTest.class);
         addTestSuite(SubprocessTestResultsParserTest.class);
+        addTestSuite(TableFormatterTest.class);
+        addTestSuite(TestLoaderTest.class);
+        addTestSuite(TimeValTest.class);
+        addTestSuite(SimpleStatsTest.class);
+        addTestSuite(StringEscapeUtilsTest.class);
+        addTestSuite(XmlRpcHelperTest.class);
 
         // util subdirs
         addTestSuite(AndroidManifestWriterTest.class);

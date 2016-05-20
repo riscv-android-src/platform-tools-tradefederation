@@ -27,14 +27,14 @@ import java.util.Collections;
 import java.util.Map;
 
 /**
- * Unit tests for {@link DeviceSuiteCase}.
+ * Unit tests for {@link DeviceTestSuite}.
  */
 public class DeviceTestSuiteTest extends TestCase {
 
     public static class MockTest extends DeviceTestCase {
 
-        public void test1() {};
-        public void test2() {};
+        public void test1() {}
+        public void test2() {}
     }
 
     public static class MockAbortTest extends DeviceTestCase {
@@ -44,7 +44,7 @@ public class DeviceTestSuiteTest extends TestCase {
         public void test1() throws DeviceNotAvailableException {
             throw new DeviceNotAvailableException(EXCEP_MSG);
         }
-    };
+    }
 
     /**
      * Verify that calling run on a DeviceTestSuite will run all test methods.

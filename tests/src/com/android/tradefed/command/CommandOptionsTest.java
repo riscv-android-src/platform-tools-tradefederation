@@ -52,12 +52,12 @@ public class CommandOptionsTest extends TestCase {
     }
 
     /**
-     * Test that setting multiple --min-loop-time values results in the lowest value provided.
+     * Test that setting multiple --min-loop-time values results in the latest value provided
      */
     public void testGetLoopTime_least() throws ConfigurationException {
         CommandOptions co = new CommandOptions();
         ArgsOptionParser p = new ArgsOptionParser(co);
-        p.parse("--min-loop-time", "0", "--min-loop-time", "5");
+        p.parse("--min-loop-time", "5", "--min-loop-time", "0");
         assertEquals(0, co.getLoopTime());
     }
 }

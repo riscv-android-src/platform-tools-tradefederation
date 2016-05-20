@@ -104,9 +104,10 @@ public class PushFilePreparer implements ITargetCleaner {
 
     /**
      * Resolve relative file path via {@link IBuildInfo}
+     *
      * @param buildInfo the build artifact information
      * @param fileName relative file path to be resolved
-     * @return
+     * @return the file from the build info
      */
     public File resolveRelativeFilePath(IBuildInfo buildInfo, String fileName) {
         return buildInfo.getFile(fileName);

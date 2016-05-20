@@ -640,7 +640,7 @@ public class TestInvocationTest extends TestCase {
         IConfiguration shardConfig = new Configuration("foo", "bar");
         for (int i = 0; i < shardCount; i++) {
             EasyMock.expect(
-                    mMockConfigFactory.createConfigurationFromArgs(EasyMock.anyObject()))
+                    mMockConfigFactory.createConfigurationFromArgs((String[]) EasyMock.anyObject()))
                     .andReturn(shardConfig);
             EasyMock.expect(mMockBuildInfo.clone()).andReturn(mMockBuildInfo);
             EasyMock.expect(mMockLogger.clone()).andReturn(mMockLogger);
@@ -679,7 +679,7 @@ public class TestInvocationTest extends TestCase {
         setupMockSuccessListeners();
         EasyMock.expect(mMockBuildProvider.getBuild()).andReturn(mMockBuildInfo);
         EasyMock.expect(test.split(shardCount)).andReturn(testShards);
-        testShard.run(EasyMock.anyObject());
+        testShard.run((ITestInvocationListener) EasyMock.anyObject());
         mMockPreparer.setUp(mMockDevice, mMockBuildInfo);
         replayMocks(test, testShard);
 

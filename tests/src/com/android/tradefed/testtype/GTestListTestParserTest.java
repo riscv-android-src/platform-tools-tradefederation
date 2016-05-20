@@ -23,6 +23,9 @@ import org.easymock.EasyMock;
 
 import java.util.Map;
 
+/**
+ * Test {@link GTestListTestParser}
+ */
 public class GTestListTestParserTest extends GTestParserTestBase {
 
     /**
