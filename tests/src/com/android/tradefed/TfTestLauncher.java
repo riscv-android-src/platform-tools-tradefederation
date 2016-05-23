@@ -29,6 +29,7 @@ import com.android.tradefed.util.CommandResult;
 import com.android.tradefed.util.CommandStatus;
 import com.android.tradefed.util.FileUtil;
 import com.android.tradefed.util.IRunUtil;
+import com.android.tradefed.util.IRunUtil.EnvPriority;
 import com.android.tradefed.util.RunUtil;
 import com.android.tradefed.util.StreamUtil;
 import com.android.tradefed.util.SubprocessTestResultsParser;
@@ -82,6 +83,11 @@ public class TfTestLauncher implements IRemoteTest, IBuildReceiver {
             + "installed by the subprocess invocation. Apk need to be inside the downloaded zip. "
             + "Can be repeated.")
     private List<String> mSubApkPath = new ArrayList<String>();
+
+    @Option(name = "sub-global-config", description = "The global config name to pass to the"
+            + "sub process, can be local or from jar resources. Be careful of conflicts with "
+            + "parent process.")
+    private String mGlobalConfig = null;
 
     private static final String TF_GLOBAL_CONFIG = "TF_GLOBAL_CONFIG";
 
@@ -153,7 +159,11 @@ public class TfTestLauncher implements IRemoteTest, IBuildReceiver {
         IRunUtil runUtil = new RunUtil();
         // clear the TF_GLOBAL_CONFIG env, so another tradefed will not reuse the global config file
         runUtil.unsetEnvVariable(TF_GLOBAL_CONFIG);
-
+        if (mGlobalConfig != null) {
+            // We allow overriding this global config and then set it for the subprocess.
+            runUtil.setEnvVariablePriority(EnvPriority.SET);
+            runUtil.setEnvVariable(TF_GLOBAL_CONFIG, mGlobalConfig);
+        }
         try {
             stdoutFile = FileUtil.createTempFile("stdout_subprocess_", ".log");
             stderrFile = FileUtil.createTempFile("stderr_subprocess_", ".log");

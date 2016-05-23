@@ -48,6 +48,7 @@ public class RunUtil implements IRunUtil {
     private File mWorkingDir = null;
     private Map<String, String> mEnvVariables = new HashMap<String, String>();
     private Set<String> mUnsetEnvVariables = new HashSet<String>();
+    private EnvPriority mEnvVariablePriority = EnvPriority.UNSET;
     private ThreadLocal<Boolean> mIsInterruptAllowed = new ThreadLocal<Boolean>() {
         @Override
         protected Boolean initialValue() {
@@ -177,12 +178,24 @@ public class RunUtil implements IRunUtil {
         if (mWorkingDir != null) {
             processBuilder.directory(mWorkingDir);
         }
-        if (!mEnvVariables.isEmpty()) {
-            processBuilder.environment().putAll(mEnvVariables);
-        }
-        if (!mUnsetEnvVariables.isEmpty()) {
-            // in this implementation, the unsetEnv's priority is higher than set.
-            processBuilder.environment().keySet().removeAll(mUnsetEnvVariables);
+        // By default unset an env. for process has higher priority, but in some case we might want
+        // the 'set' to have priority.
+        if (EnvPriority.UNSET.equals(mEnvVariablePriority)) {
+            if (!mEnvVariables.isEmpty()) {
+                processBuilder.environment().putAll(mEnvVariables);
+            }
+            if (!mUnsetEnvVariables.isEmpty()) {
+                // in this implementation, the unsetEnv's priority is higher than set.
+                processBuilder.environment().keySet().removeAll(mUnsetEnvVariables);
+            }
+        } else {
+            if (!mUnsetEnvVariables.isEmpty()) {
+                processBuilder.environment().keySet().removeAll(mUnsetEnvVariables);
+            }
+            if (!mEnvVariables.isEmpty()) {
+                // in this implementation, the setEnv's priority is higher than set.
+                processBuilder.environment().putAll(mEnvVariables);
+            }
         }
         return processBuilder.command(commandList);
     }
@@ -687,5 +700,16 @@ public class RunUtil implements IRunUtil {
                 mToInterrupt.interrupt();
             }
         }
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void setEnvVariablePriority(EnvPriority priority) {
+        if (this.equals(sDefaultInstance)) {
+            throw new UnsupportedOperationException("Cannot setWorkingDir on default RunUtil");
+        }
+        mEnvVariablePriority = priority;
     }
 }
