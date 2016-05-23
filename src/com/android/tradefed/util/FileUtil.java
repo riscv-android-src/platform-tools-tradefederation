@@ -58,6 +58,16 @@ public class FileUtil {
             ' ', 'K', 'M', 'G', 'T'
     };
 
+    private static String CHMOD = "chmod";
+
+    /**
+     * Exposed for testing. Allows to modify the chmod binary name we look for, in order to tests
+     * system with no chmod support.
+     */
+    protected static void setChmodBinary(String chmodName) {
+        CHMOD = chmodName;
+    }
+
     /**
      * Thrown if usable disk space is below minimum threshold.
      */
@@ -137,7 +147,7 @@ public class FileUtil {
     public static boolean chmod(File file, String perms) {
         Log.d(LOG_TAG, String.format("Attempting to chmod %s to %s",
                 file.getAbsolutePath(), perms));
-        CommandResult result = RunUtil.getDefault().runTimedCmd(10 * 1000, "chmod", perms,
+        CommandResult result = RunUtil.getDefault().runTimedCmd(10 * 1000, CHMOD, perms,
                 file.getAbsolutePath());
         return result.getStatus().equals(CommandStatus.SUCCESS);
     }
@@ -156,11 +166,16 @@ public class FileUtil {
      *         otherwise
      */
     public static boolean chmodGroupRW(File file) {
-        if (chmod(file, "ug+rw")) {
-            return true;
+        if (chmodExists()) {
+            if (chmod(file, "ug+rw")) {
+                return true;
+            } else {
+                Log.d(LOG_TAG, String.format("Failed chmod on %s", file.getAbsolutePath()));
+                return false;
+            }
         } else {
-            Log.d(LOG_TAG, String.format("Failed chmod; attempting to set %s globally RW",
-                    file.getAbsolutePath()));
+            Log.d(LOG_TAG, String.format("chmod not available; "
+                    + "attempting to set %s globally RW", file.getAbsolutePath()));
             return file.setWritable(true, false /* false == writable for all */) &&
                     file.setReadable(true, false /* false == readable for all */);
         }
@@ -176,15 +191,33 @@ public class FileUtil {
      * @return <code>true</code> if permissions were set successfully, <code>false</code> otherwise
      */
     public static boolean chmodGroupRWX(File file) {
-        if (chmod(file, "ug+rwx")) {
-            return true;
+        if (chmodExists()) {
+            if (chmod(file, "ug+rwx")) {
+                return true;
+            } else {
+                Log.d(LOG_TAG, String.format("Failed chmod on %s", file.getAbsolutePath()));
+                return false;
+            }
         } else {
-            Log.d(LOG_TAG, String.format("Failed chmod; attempting to set %s globally RWX",
-                    file.getAbsolutePath()));
+            Log.d(LOG_TAG, String.format("chmod not available; "
+                    + "attempting to set %s globally RWX", file.getAbsolutePath()));
             return file.setExecutable(true, false /* false == executable for all */) &&
                     file.setWritable(true, false /* false == writable for all */) &&
                     file.setReadable(true, false /* false == readable for all */);
         }
+    }
+
+    /**
+     * Internal helper to determine if 'chmod' is available on the system OS.
+     */
+    protected static boolean chmodExists() {
+        CommandResult result = RunUtil.getDefault().runTimedCmd(10 * 1000, CHMOD);
+        // We expect a status fail because 'chmod' requires arguments.
+        if (CommandStatus.FAILED.equals(result.getStatus()) &&
+                result.getStdout().contains("chmod: missing operand")) {
+            return true;
+        }
+        return false;
     }
 
     /**
@@ -268,7 +301,7 @@ public class FileUtil {
      * Helper wrapper function around {@link File#createTempFile(String, String)} that audits for
      * potential out of disk space scenario.
      *
-     * @see {@link File#createTempFile(String, String)}
+     * @see File#createTempFile(String, String)
      * @throws LowDiskSpaceException if disk space on temporary partition is lower than minimum
      *             allowed
      */
@@ -279,10 +312,10 @@ public class FileUtil {
     }
 
     /**
-     * Helper wrapper function around {@link File#createTempFile(String, String, File parentDir)}
+     * Helper wrapper function around {@link File#createTempFile(String, String, File)}
      * that audits for potential out of disk space scenario.
      *
-     * @see {@link File#createTempFile(String, String, File)}
+     * @see File#createTempFile(String, String, File)
      * @throws LowDiskSpaceException if disk space on partition is lower than minimum allowed
      */
     public static File createTempFile(String prefix, String suffix, File parentDir)
@@ -556,7 +589,9 @@ public class FileUtil {
 
     /**
      * Try to delete a file. Intended for use when cleaning up
-     * in {@code finally} stanzas. {@param file} may be null.
+     * in {@code finally} stanzas.
+     *
+     * @param file may be null.
      */
     public static void deleteFile(File file) {
         if (file != null) {
