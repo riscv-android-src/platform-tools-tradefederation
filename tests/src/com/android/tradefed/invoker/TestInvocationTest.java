@@ -16,19 +16,17 @@
 package com.android.tradefed.invoker;
 
 import com.android.tradefed.build.BuildRetrievalError;
-import com.android.tradefed.build.ExistingBuildProvider;
 import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.build.IBuildProvider;
 import com.android.tradefed.command.FatalHostError;
 import com.android.tradefed.config.Configuration;
-import com.android.tradefed.config.ConfigurationException;
 import com.android.tradefed.config.IConfiguration;
 import com.android.tradefed.config.IConfigurationFactory;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.IDeviceRecovery;
 import com.android.tradefed.device.ITestDevice;
-import com.android.tradefed.device.TestDeviceOptions;
 import com.android.tradefed.device.ITestDevice.RecoveryMode;
+import com.android.tradefed.device.TestDeviceOptions;
 import com.android.tradefed.log.ILeveledLogOutput;
 import com.android.tradefed.log.ILogRegistry;
 import com.android.tradefed.result.ByteArrayInputStreamSource;

@@ -25,9 +25,9 @@ import java.util.Set;
 import java.util.zip.ZipFile;
 
 /**
- * Functional tests for {@link ZipUtil}
+ * Unit tests for {@link ZipUtil}
  */
-public class ZipUtilFuncTest extends TestCase {
+public class ZipUtilTest extends TestCase {
     private Set<File> mTempFiles = new HashSet<File>();
 
     @Override

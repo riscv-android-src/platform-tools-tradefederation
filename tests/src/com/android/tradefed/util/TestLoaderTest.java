@@ -46,6 +46,7 @@ public class TestLoaderTest extends TestCase {
             assertNotNull(loadedSuite);
             TestResult result = new TestResult();
             loadedSuite.run(result);
+            assertEquals(1, loadedSuite.countTestCases());
             assertEquals(1, result.runCount());
             assertTrue(result.wasSuccessful());
 

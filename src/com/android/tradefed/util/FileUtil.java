@@ -214,7 +214,7 @@ public class FileUtil {
         CommandResult result = RunUtil.getDefault().runTimedCmd(10 * 1000, CHMOD);
         // We expect a status fail because 'chmod' requires arguments.
         if (CommandStatus.FAILED.equals(result.getStatus()) &&
-                result.getStdout().contains("chmod: missing operand")) {
+                result.getStderr().contains("chmod: missing operand")) {
             return true;
         }
         return false;

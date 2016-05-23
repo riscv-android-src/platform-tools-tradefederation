@@ -51,7 +51,7 @@ public class CommandFileParserTest extends TestCase {
         BufferedReader createCommandFileReader(File file) {
             return new BufferedReader(new StringReader(mDataMap.get(file)));
         }
-    };
+    }
 
     /** the {@link CommandFileParser} under test, with all dependencies mocked out */
     private CommandFileParser mCommandFile;

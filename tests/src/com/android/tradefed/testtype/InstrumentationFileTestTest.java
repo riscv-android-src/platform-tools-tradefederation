@@ -71,7 +71,7 @@ public class InstrumentationFileTestTest extends TestCase {
      * Test normal run scenario with a single test.
      */
     @SuppressWarnings("unchecked")
-    public void testRun_singleSuccessfulTest() throws DeviceNotAvailableException, IOException,
+    public void testRun_singleSuccessfulTest() throws DeviceNotAvailableException,
             ConfigurationException {
         final Collection<TestIdentifier> testsList = new ArrayList<>(1);
         final TestIdentifier test = new TestIdentifier("ClassFoo", "methodBar");
@@ -132,7 +132,7 @@ public class InstrumentationFileTestTest extends TestCase {
      */
     @SuppressWarnings("unchecked")
     public void testRun_reRunOneFailedToCompleteTest()
-            throws DeviceNotAvailableException, IOException, ConfigurationException {
+            throws DeviceNotAvailableException, ConfigurationException {
         final Collection<TestIdentifier> testsList = new ArrayList<>(1);
         final TestIdentifier test1 = new TestIdentifier("ClassFoo1", "methodBar1");
         final TestIdentifier test2 = new TestIdentifier("ClassFoo2", "methodBar2");
@@ -229,7 +229,7 @@ public class InstrumentationFileTestTest extends TestCase {
      */
     @SuppressWarnings("unchecked")
     public void testRun_serialReRunOfTwoFailedToCompleteTests()
-            throws DeviceNotAvailableException, IOException, ConfigurationException {
+            throws DeviceNotAvailableException, ConfigurationException {
         final Collection<TestIdentifier> testsList = new ArrayList<>(1);
         final TestIdentifier test1 = new TestIdentifier("ClassFoo1", "methodBar1");
         final TestIdentifier test2 = new TestIdentifier("ClassFoo2", "methodBar2");
@@ -334,7 +334,7 @@ public class InstrumentationFileTestTest extends TestCase {
      */
     @SuppressWarnings("unchecked")
     public void testRun_noSerialReRun()
-            throws DeviceNotAvailableException, IOException, ConfigurationException {
+            throws DeviceNotAvailableException, ConfigurationException {
         final Collection<TestIdentifier> testsList = new ArrayList<>(1);
         final TestIdentifier test1 = new TestIdentifier("ClassFoo1", "methodBar1");
         final TestIdentifier test2 = new TestIdentifier("ClassFoo2", "methodBar2");
@@ -395,7 +395,7 @@ public class InstrumentationFileTestTest extends TestCase {
      */
     @SuppressWarnings("unchecked")
     public void testRun_exceedMaxAttempts()
-            throws DeviceNotAvailableException, IOException, ConfigurationException {
+            throws DeviceNotAvailableException, ConfigurationException {
         final ArrayList<TestIdentifier> testsList = new ArrayList<>(1);
         final TestIdentifier test1 = new TestIdentifier("ClassFoo1", "methodBar1");
         final TestIdentifier test2 = new TestIdentifier("ClassFoo2", "methodBar2");

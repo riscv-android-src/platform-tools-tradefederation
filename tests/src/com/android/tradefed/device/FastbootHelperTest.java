@@ -25,7 +25,7 @@ import org.easymock.EasyMock;
 import java.util.Collection;
 
 /**
- * Unit tests for {@link FastBootHelper}.
+ * Unit tests for {@link FastbootHelper}.
  */
 public class FastbootHelperTest extends TestCase {
 

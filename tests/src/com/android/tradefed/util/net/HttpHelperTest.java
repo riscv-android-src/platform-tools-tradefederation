@@ -128,7 +128,7 @@ public class HttpHelperTest extends TestCase {
     /**
      * Normal case test for {@link HttpHelper#doGet(String, OutputStream)}
      */
-    public void testDoGetStream() throws IOException, DataSizeException {
+    public void testDoGetStream() throws IOException {
         ByteArrayOutputStream out = new ByteArrayOutputStream();
 
         mHelper.doGet(TEST_URL_STRING, out);

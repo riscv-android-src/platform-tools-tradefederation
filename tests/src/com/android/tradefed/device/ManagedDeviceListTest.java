@@ -28,6 +28,7 @@ public class ManagedDeviceListTest extends TestCase {
 
     private ManagedDeviceList mManagedDeviceList;
 
+    @Override
     public void setUp() {
         mManagedDeviceList = new ManagedDeviceList(new IManagedTestDeviceFactory() {
 

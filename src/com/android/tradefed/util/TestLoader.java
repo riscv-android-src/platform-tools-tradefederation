@@ -82,7 +82,7 @@ public class TestLoader {
                     testSuite.addTestSuite((Class<? extends TestCase>)testClass);
                 }
             } catch (ClassNotFoundException e) {
-                // ignore for now
+                Log.e(LOG_TAG, e);
             } catch (RuntimeException e) {
                 // catch this to prevent one bad test from stopping run
                 Log.e(LOG_TAG, e);

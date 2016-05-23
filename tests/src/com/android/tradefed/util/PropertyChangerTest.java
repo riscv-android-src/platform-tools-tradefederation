@@ -30,7 +30,7 @@ import java.util.Map.Entry;
 /**
  * Functional test for {@link PropertyChanger}
  */
-public class PropertyChangerFuncTest extends TestCase {
+public class PropertyChangerTest extends TestCase {
 
     private File mTmpInput;
     private File mTmpOutput;
@@ -56,7 +56,7 @@ public class PropertyChangerFuncTest extends TestCase {
         mExpected.put("foo3", "bar3*");
         mExpected.put("foo4", "bar4");
         mExpected.put("foo5", "bar5-new");
-    };
+    }
 
     public void testChangeProperty() throws Exception {
         mTmpOutput = PropertyChanger.changeProperties(mTmpInput, mChanges);

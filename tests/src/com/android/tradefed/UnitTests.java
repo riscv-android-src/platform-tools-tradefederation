@@ -125,6 +125,7 @@ import com.android.tradefed.util.LogcatUpdaterEventParserTest;
 import com.android.tradefed.util.MultiMapTest;
 import com.android.tradefed.util.NullUtilTest;
 import com.android.tradefed.util.PairTest;
+import com.android.tradefed.util.PropertyChangerTest;
 import com.android.tradefed.util.QuotationAwareTokenizerTest;
 import com.android.tradefed.util.RegexTrieTest;
 import com.android.tradefed.util.RunUtilTest;
@@ -136,6 +137,7 @@ import com.android.tradefed.util.SubprocessTestResultsParserTest;
 import com.android.tradefed.util.TableFormatterTest;
 import com.android.tradefed.util.TestLoaderTest;
 import com.android.tradefed.util.TimeValTest;
+import com.android.tradefed.util.ZipUtilTest;
 import com.android.tradefed.util.keystore.JSONFileKeyStoreClientTest;
 import com.android.tradefed.util.net.HttpHelperTest;
 import com.android.tradefed.util.net.HttpMultipartPostTest;
@@ -195,6 +197,7 @@ public class UnitTests extends DeviceTestSuite {
         addTestSuite(DumpsysPackageReceiverTest.class);
         addTestSuite(FastbootHelperTest.class);
         addTestSuite(ManagedDeviceListTest.class);
+        addTestSuite(PropertyChangerTest.class);
         addTestSuite(ReconnectingRecoveryTest.class);
         addTestSuite(RemoteAndroidDeviceTest.class);
         addTestSuite(TestDeviceTest.class);
@@ -299,6 +302,7 @@ public class UnitTests extends DeviceTestSuite {
         addTestSuite(SimpleStatsTest.class);
         addTestSuite(StringEscapeUtilsTest.class);
         addTestSuite(XmlRpcHelperTest.class);
+        addTestSuite(ZipUtilTest.class);
 
         // util subdirs
         addTestSuite(AndroidManifestWriterTest.class);
