@@ -18,17 +18,24 @@ package com.android.tradefed.testtype;
 
 import com.android.ddmlib.testrunner.IRemoteAndroidTestRunner;
 import com.android.tradefed.config.Option;
+import com.android.tradefed.device.DeviceNotAvailableException;
+import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.util.ArrayUtil;
 
+import java.io.File;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.List;
+
+import junit.framework.Assert;
 
 /**
  * A Test that runs an instrumentation test package on given device using the
  * android.support.test.runner.AndroidJUnitRunner.
  */
 public class AndroidJUnitTest extends InstrumentationTest implements IRuntimeHintProvider,
-        ITestFilterReceiver {
+        ITestFileFilterReceiver, ITestFilterReceiver {
 
     private static final String AJUR = "android.support.test.runner.AndroidJUnitRunner";
 
@@ -44,6 +51,10 @@ public class AndroidJUnitTest extends InstrumentationTest implements IRuntimeHin
     private static final String ANNOTATION_INST_ARGS_KEY = "annotation";
     /** instrumentation test runner argument key used for adding notAnnotation filter */
     private static final String NOT_ANNOTATION_INST_ARGS_KEY = "notAnnotation";
+    /** instrumentation test runner argument used for adding testFile filter */
+    private static final String TEST_FILE_INST_ARGS_KEY = "testFile";
+    /** instrumentation test runner argument used for adding notTestFile filter */
+    private static final String NOT_TEST_FILE_INST_ARGS_KEY = "notTestFile";
 
     @Option(name = "runtime-hint",
             isTimeVal=true,
@@ -65,6 +76,16 @@ public class AndroidJUnitTest extends InstrumentationTest implements IRuntimeHin
     @Option(name = "exclude-annotation",
             description="The notAnnotation class name of the test name to run, can be repeated")
     private List<String> mExcludeAnnotation = new ArrayList<>();
+
+    @Option(name = "test-file-include-filter",
+            description="A file containing a list of line separated test classes and optionally"
+            + " methods to include")
+    private File mIncludeTestFile = null;
+
+    @Option(name = "test-file-exclude-filter",
+            description="A file containing a list of line separated test classes and optionally"
+            + " methods to exclude")
+    private File mExcludeTestFile = null;
 
     public AndroidJUnitTest() {
         super();
@@ -113,6 +134,22 @@ public class AndroidJUnitTest extends InstrumentationTest implements IRuntimeHin
     }
 
     /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void setIncludeTestFile(File testFile) {
+        mIncludeTestFile = testFile;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void setExcludeTestFile(File testFile) {
+        mExcludeTestFile = testFile;
+    }
+
+    /**
      * Add annotation that is needed for a test to run
      * @param annotation to be added to the include filter.
      */
@@ -134,6 +171,19 @@ public class AndroidJUnitTest extends InstrumentationTest implements IRuntimeHin
     @Override
     protected void setRunnerArgs(IRemoteAndroidTestRunner runner) {
         super.setRunnerArgs(runner);
+
+        // if mIncludeTestFile is set, perform filtering with this file
+        if (mIncludeTestFile != null) {
+            String deviceIncludeFilePath = pushTestFile(mIncludeTestFile);
+            runner.addInstrumentationArg(TEST_FILE_INST_ARGS_KEY, deviceIncludeFilePath);
+        }
+
+        // if mExcludeTestFile is set, perform filtering with this file
+        if (mExcludeTestFile != null) {
+            String deviceExcludeFilePath = pushTestFile(mExcludeTestFile);
+            runner.addInstrumentationArg(NOT_TEST_FILE_INST_ARGS_KEY, deviceExcludeFilePath);
+        }
+
         // Split filters into class, notClass, package and notPackage
         List<String> classArg = new ArrayList<String>();
         List<String> notClassArg = new ArrayList<String>();
@@ -177,6 +227,32 @@ public class AndroidJUnitTest extends InstrumentationTest implements IRuntimeHin
             runner.addInstrumentationArg(NOT_ANNOTATION_INST_ARGS_KEY,
                     ArrayUtil.join(",", mExcludeAnnotation));
         }
+    }
+
+    /* Push testFile to device, and return absolute path of file on device.
+       This should only be called for a non-null testFile */
+    private String pushTestFile(File testFile) {
+        ITestDevice device = getDevice();
+        Assert.assertNotNull("Device must be set before setting the test file", device);
+        Assert.assertTrue(String.format("Cannot read test file %s", testFile.getAbsolutePath()),
+                testFile.canRead());
+        Assert.assertTrue(String.format("test file %s is not a file", testFile.getAbsolutePath()),
+                testFile.isFile());
+
+        String dateString = new SimpleDateFormat("yyyy.MM.dd.HH.mm.ss").format(new Date());
+        String deviceFileName = String.format(
+                "/data/local/tmp/%s%s.txt", testFile.getName(), dateString);
+        try {
+            if (!device.pushFile(testFile, deviceFileName)) {
+                throw new RuntimeException(String.format("Failed to push file %s to %s for %s "
+                        + "in pushTestFile", testFile.getAbsolutePath(), deviceFileName,
+                        device.getSerialNumber()));
+            }
+        } catch (DeviceNotAvailableException e) {
+            throw new RuntimeException("Received DeviceNotAvailableException when pushing "
+                    + "file to device, pushTestFile failed");
+        }
+        return deviceFileName;
     }
 
     /**
