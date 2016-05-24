@@ -59,6 +59,9 @@ import java.util.concurrent.TimeUnit;
 public class TestDeviceTest extends TestCase {
 
     private static final String MOCK_DEVICE_SERIAL = "serial";
+    // For getCurrentUser, the min api should be 24. We make the stub return 23, the logic should
+    // increment it by one.
+    private static final int MIN_API_LEVEL_GET_CURRENT_USER = 23;
     private IDevice mMockIDevice;
     private IShellOutputReceiver mMockReceiver;
     private TestDevice mTestDevice;
@@ -1972,7 +1975,11 @@ public class TestDeviceTest extends TestCase {
             }
             @Override
             public int getApiLevel() throws DeviceNotAvailableException {
-                return 22;
+                return MIN_API_LEVEL_GET_CURRENT_USER;
+            }
+            @Override
+            public String getProperty(String name) throws DeviceNotAvailableException {
+                return "N\n";
             }
         };
         int res = mTestDevice.getCurrentUser();
@@ -1991,7 +1998,11 @@ public class TestDeviceTest extends TestCase {
             }
             @Override
             public int getApiLevel() throws DeviceNotAvailableException {
-                return 22;
+                return MIN_API_LEVEL_GET_CURRENT_USER;
+            }
+            @Override
+            public String getProperty(String name) throws DeviceNotAvailableException {
+                return "N\n";
             }
         };
         int res = mTestDevice.getCurrentUser();
@@ -2007,6 +2018,10 @@ public class TestDeviceTest extends TestCase {
             @Override
             public int getApiLevel() throws DeviceNotAvailableException {
                 return 15;
+            }
+            @Override
+            public String getProperty(String name) throws DeviceNotAvailableException {
+                return "REL\n";
             }
         };
         try {
@@ -2168,7 +2183,11 @@ public class TestDeviceTest extends TestCase {
             }
             @Override
             public int getApiLevel() throws DeviceNotAvailableException {
-                return 22;
+                return MIN_API_LEVEL_GET_CURRENT_USER;
+            }
+            @Override
+            public String getProperty(String name) throws DeviceNotAvailableException {
+                return "N\n";
             }
         };
         assertTrue(mTestDevice.switchUser(0));
@@ -2195,7 +2214,11 @@ public class TestDeviceTest extends TestCase {
             }
             @Override
             public int getApiLevel() throws DeviceNotAvailableException {
-                return 22;
+                return MIN_API_LEVEL_GET_CURRENT_USER;
+            }
+            @Override
+            public String getProperty(String name) throws DeviceNotAvailableException {
+                return "N\n";
             }
         };
         assertTrue(mTestDevice.switchUser(10));
@@ -2218,7 +2241,11 @@ public class TestDeviceTest extends TestCase {
             }
             @Override
             public int getApiLevel() throws DeviceNotAvailableException {
-                return 22;
+                return MIN_API_LEVEL_GET_CURRENT_USER;
+            }
+            @Override
+            public String getProperty(String name) throws DeviceNotAvailableException {
+                return "N\n";
             }
             @Override
             public void prePostBootSetup() {
@@ -2256,7 +2283,11 @@ public class TestDeviceTest extends TestCase {
             }
             @Override
             public int getApiLevel() throws DeviceNotAvailableException {
-                return 22;
+                return MIN_API_LEVEL_GET_CURRENT_USER;
+            }
+            @Override
+            public String getProperty(String name) throws DeviceNotAvailableException {
+                return "N\n";
             }
             @Override
             protected long getCheckNewUserSleep() {
@@ -2281,7 +2312,11 @@ public class TestDeviceTest extends TestCase {
             }
             @Override
             public int getApiLevel() throws DeviceNotAvailableException {
-                return 22;
+                return MIN_API_LEVEL_GET_CURRENT_USER;
+            }
+            @Override
+            public String getProperty(String name) throws DeviceNotAvailableException {
+                return "N\n";
             }
         };
         assertFalse(mTestDevice.stopUser(0));
@@ -2302,7 +2337,11 @@ public class TestDeviceTest extends TestCase {
             }
             @Override
             public int getApiLevel() throws DeviceNotAvailableException {
-                return 22;
+                return MIN_API_LEVEL_GET_CURRENT_USER;
+            }
+            @Override
+            public String getProperty(String name) throws DeviceNotAvailableException {
+                return "N\n";
             }
         };
         assertFalse(mTestDevice.stopUser(0));
@@ -2323,7 +2362,11 @@ public class TestDeviceTest extends TestCase {
             }
             @Override
             public int getApiLevel() throws DeviceNotAvailableException {
-                return 22;
+                return MIN_API_LEVEL_GET_CURRENT_USER;
+            }
+            @Override
+            public String getProperty(String name) throws DeviceNotAvailableException {
+                return "N\n";
             }
         };
         assertTrue(mTestDevice.stopUser(0, true, true));
@@ -2344,7 +2387,11 @@ public class TestDeviceTest extends TestCase {
             }
             @Override
             public int getApiLevel() throws DeviceNotAvailableException {
-                return 22;
+                return MIN_API_LEVEL_GET_CURRENT_USER;
+            }
+            @Override
+            public String getProperty(String name) throws DeviceNotAvailableException {
+                return "N\n";
             }
         };
         assertFalse(mTestDevice.stopUser(0));
@@ -2361,7 +2408,7 @@ public class TestDeviceTest extends TestCase {
             }
             @Override
             public int getApiLevel() throws DeviceNotAvailableException {
-                return 22;
+                return MIN_API_LEVEL_GET_CURRENT_USER;
             }
         };
         assertTrue(mTestDevice.isUserRunning(0));
