@@ -23,6 +23,7 @@ import com.android.tradefed.TestAppConstants;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.result.CollectingTestListener;
 import com.android.tradefed.result.ITestInvocationListener;
+import com.android.tradefed.util.RunUtil;
 
 import org.easymock.EasyMock;
 
@@ -186,16 +187,26 @@ public class InstrumentationTestFuncTest extends DeviceTestCase {
         rebootThread.start();
         mInstrumentationTest.run(mMockListener);
         EasyMock.verify(mMockListener);
+        // Give some times to detect offline
+        RunUtil.getDefault().sleep(2000);
+        getDevice().waitForDeviceAvailable();
+        // Give some time after device available so that keyguard disabled is picked up.
+        RunUtil.getDefault().sleep(2000);
         // now run the ui tests and verify success
         // done to ensure keyguard is cleared after reboot
-        InstrumentationTest uiTest = new InstrumentationTest();
-        uiTest.setPackageName(TestAppConstants.UITESTAPP_PACKAGE);
-        uiTest.setDevice(getDevice());
-        CollectingTestListener uilistener = new CollectingTestListener();
-        uiTest.run(uilistener);
-        assertFalse(uilistener.hasFailedTests());
-        assertEquals(TestAppConstants.UI_TOTAL_TESTS,
-                uilistener.getNumTestsInState(TestStatus.PASSED));
+        try {
+            InstrumentationTest uiTest = new InstrumentationTest();
+            uiTest.setPackageName(TestAppConstants.UITESTAPP_PACKAGE);
+            uiTest.setDevice(getDevice());
+            CollectingTestListener uilistener = new CollectingTestListener();
+            uiTest.run(uilistener);
+            assertFalse(uilistener.hasFailedTests());
+            assertEquals(TestAppConstants.UI_TOTAL_TESTS,
+                    uilistener.getNumTestsInState(TestStatus.PASSED));
+        } finally {
+            // In case it fails, make sure next test will have a device online.
+            getDevice().waitForDeviceAvailable();
+        }
     }
 
     /**
@@ -244,16 +255,24 @@ public class InstrumentationTestFuncTest extends DeviceTestCase {
         resetThread.start();
         mInstrumentationTest.run(mMockListener);
         EasyMock.verify(mMockListener);
-        // now run the ui tests and verify success
-        // done to ensure keyguard is cleared after runtime reset
-        InstrumentationTest uiTest = new InstrumentationTest();
-        uiTest.setPackageName(TestAppConstants.UITESTAPP_PACKAGE);
-        uiTest.setDevice(getDevice());
-        CollectingTestListener uilistener = new CollectingTestListener();
-        uiTest.run(uilistener);
-        assertFalse(uilistener.hasFailedTests());
-        assertEquals(TestAppConstants.UI_TOTAL_TESTS,
-                uilistener.getNumTestsInState(TestStatus.PASSED));
+        RunUtil.getDefault().sleep(2000);
+        getDevice().waitForDeviceAvailable();
+        RunUtil.getDefault().sleep(2000);
+        try {
+            // now run the ui tests and verify success
+            // done to ensure keyguard is cleared after runtime reset
+            InstrumentationTest uiTest = new InstrumentationTest();
+            uiTest.setPackageName(TestAppConstants.UITESTAPP_PACKAGE);
+            uiTest.setDevice(getDevice());
+            CollectingTestListener uilistener = new CollectingTestListener();
+            uiTest.run(uilistener);
+            assertFalse(uilistener.hasFailedTests());
+            assertEquals(TestAppConstants.UI_TOTAL_TESTS,
+                    uilistener.getNumTestsInState(TestStatus.PASSED));
+        } finally {
+            // In case it fails, make sure next test will have a device online.
+            getDevice().waitForDeviceAvailable();
+        }
     }
 
     /**

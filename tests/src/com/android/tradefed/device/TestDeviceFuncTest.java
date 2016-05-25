@@ -565,6 +565,7 @@ public class TestDeviceFuncTest extends DeviceTestCase {
      */
     public void testClearErrorDialogs_crash() throws DeviceNotAvailableException {
         Log.i(LOG_TAG, "testClearErrorDialogs_crash");
+        mTestDevice.disableKeyguard();
         // now cause a crash dialog to appear
         getDevice().executeShellCommand("am start -n " + TestAppConstants.CRASH_ACTIVITY);
         RunUtil.getDefault().sleep(2000);
@@ -582,6 +583,7 @@ public class TestDeviceFuncTest extends DeviceTestCase {
     public void testDisableKeyguard() throws DeviceNotAvailableException {
         Log.i(LOG_TAG, "testDisableKeyguard");
         getDevice().reboot();
+        mTestDevice.waitForDeviceAvailable();
         assertTrue(runUITests());
     }
 
@@ -738,10 +740,12 @@ public class TestDeviceFuncTest extends DeviceTestCase {
      */
     public void testPutSettings() throws Exception {
         String initValue = mTestDevice.getSetting(0, "system", "screen_brightness");
+        CLog.i("initial value was: %d", initValue);
         assertTrue(!initValue.equals("50"));
         mTestDevice.setSetting(0, "system", "screen_brightness", "50");
         String secondValue = mTestDevice.getSetting(0, "system", "screen_brightness");
-        assertTrue(secondValue.trim().equals("50"));
+        assertEquals("50", secondValue);
+        // restore initial value
         mTestDevice.setSetting(0, "system", "screen_brightness", initValue);
     }
 }
