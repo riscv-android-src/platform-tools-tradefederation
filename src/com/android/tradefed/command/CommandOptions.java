@@ -74,16 +74,6 @@ public class CommandOptions implements ICommandOptions {
             "take a bugreport when the test invocation has ended")
     private boolean mTakeBugreportOnInvocationEnded = false;
 
-    @Option(name = "shards", description = "the number of total shards to run. Without " +
-            "--shard-index option, this will cause the command to spawn multiple shards in the " +
-            "current TF instance. With --shard-index option, it will cause the command to run " +
-            "a single shard of tests only.")
-    private int mShards = 1;
-
-    @Option(name = "shard-index", description = "the index of shard to run. This option must " +
-            "be accompanied with --shards.")
-    private int mShardIndex = -1;
-
     /**
      * Set the help mode for the config.
      * <p/>
@@ -121,7 +111,6 @@ public class CommandOptions implements ICommandOptions {
     /**
      * {@inheritDoc}
      */
-    @Override
     public boolean isJsonHelpMode() {
         return mJsonHelpMode;
     }
@@ -229,37 +218,4 @@ public class CommandOptions implements ICommandOptions {
     public boolean takeBugreportOnInvocationEnded() {
         return mTakeBugreportOnInvocationEnded;
     }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public int getShardCount() {
-        return mShards;
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public void setShardCount(int shardCount) {
-        mShards = shardCount;
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public int getShardIndex() {
-        return mShardIndex;
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public void setShardIndex(int shardIndex) {
-        mShardIndex = shardIndex;
-    }
-
 }

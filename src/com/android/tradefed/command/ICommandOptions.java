@@ -89,23 +89,4 @@ public interface ICommandOptions {
      */
     public boolean takeBugreportOnInvocationEnded();
 
-    /**
-     * Return the total shard count for the command.
-     */
-    public int getShardCount();
-
-    /**
-     * Sets the shard count for the command.
-     */
-    public void setShardCount(int shardCount);
-
-    /**
-     * Return the shard index for the command.
-     */
-    public int getShardIndex();
-
-    /**
-     * Sets the shard index for the command.
-     */
-    public void setShardIndex(int shardIndex);
 }

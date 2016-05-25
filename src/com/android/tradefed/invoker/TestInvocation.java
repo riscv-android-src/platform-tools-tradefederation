@@ -21,11 +21,7 @@ import com.android.tradefed.build.BuildRetrievalError;
 import com.android.tradefed.build.ExistingBuildProvider;
 import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.build.IDeviceBuildProvider;
-import com.android.tradefed.command.ICommandOptions;
-import com.android.tradefed.config.ConfigurationException;
-import com.android.tradefed.config.ConfigurationFactory;
 import com.android.tradefed.config.IConfiguration;
-import com.android.tradefed.config.IConfigurationFactory;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.DeviceUnresponsiveException;
 import com.android.tradefed.device.ITestDevice;
@@ -56,7 +52,6 @@ import com.android.tradefed.testtype.IResumableTest;
 import com.android.tradefed.testtype.IRetriableTest;
 import com.android.tradefed.testtype.IShardableTest;
 import com.android.tradefed.util.IRunUtil;
-import com.android.tradefed.util.QuotationAwareTokenizer;
 import com.android.tradefed.util.RunInterruptedException;
 import com.android.tradefed.util.RunUtil;
 
@@ -138,7 +133,7 @@ public class TestInvocation implements ITestInvocation {
                 allListeners);
 
         IBuildInfo info = null;
-        ICommandOptions options = config.getCommandOptions();
+
         try {
             mStatus = "fetching build";
             config.getLogOutput().init();
@@ -157,38 +152,21 @@ public class TestInvocation implements ITestInvocation {
             } else {
                 info = config.getBuildProvider().getBuild();
             }
-            if (info == null) {
-                mStatus = "(no build to test)";
-                CLog.d("No build to test");
-                rescheduleTest(config, rescheduler);
-            } else {
-                if (cmdLineArgs != null) {
-                    // TODO: Store this in an invocation metadata class later
-                    info.addBuildAttribute("command_line_args", cmdLineArgs);
-                }
+            if (info != null) {
                 injectBuild(info, config.getTests());
-                if (options.getShardCount() > 1) {
-                    if (options.getShardIndex() == -1) {
-                        // If a shard index is not given, schedule all shards.
-                        scheduleShards(config, info, rescheduler, options.getShardCount());
-                        // clean up original build
-                        config.getBuildProvider().cleanUp(info);
-                        CLog.i("Invocation has been sharded to %d shards", options.getShardCount());
-                        device.stopLogcat();
-                        getLogRegistry().unregisterLogger();
-                        config.getLogOutput().closeLog();
-                        return;
-                    } else {
-                        config = getShardConfig(config, options.getShardCount(),
-                                options.getShardIndex());
-                    }
-                }
-                if (config != null) {
+                if (shardConfig(config, info, rescheduler)) {
+                    CLog.i("Invocation for %s has been sharded, rescheduling",
+                            device.getSerialNumber());
+                } else {
                     device.setRecovery(config.getDeviceRecovery());
                     performInvocation(config, device, info, rescheduler, listener);
                     // exit here, depend on performInvocation to deregister logger
                     return;
                 }
+            } else {
+                mStatus = "(no build to test)";
+                CLog.d("No build to test");
+                rescheduleTest(config, rescheduler);
             }
         } catch (BuildRetrievalError e) {
             CLog.e(e);
@@ -223,84 +201,57 @@ public class TestInvocation implements ITestInvocation {
     }
 
     /**
-     * Schedule shards.
-     * @param config the {@link IConfiguration} to shard
-     * @param info the {@link IBuildInfo}
-     * @param rescheduler the {@link IRescheduler}
-     * @param shardCount the shard count
-     */
-    private void scheduleShards(IConfiguration config, IBuildInfo info, IRescheduler rescheduler,
-            int shardCount) {
-        mStatus = "sharding";
-        ShardMasterResultForwarder resultCollector = new ShardMasterResultForwarder(
-                config.getLogSaver(), buildMasterShardListeners(config), shardCount);
-        // report invocation started using original buildinfo
-        resultCollector.invocationStarted(info);
-        for (int i = 0; i < shardCount; i++) {
-            IConfiguration shardConfig = null;
-            // Create a deep copy of the configuration.
-            try {
-                shardConfig = getConfigFactory().createConfigurationFromArgs(
-                        QuotationAwareTokenizer.tokenizeLine(config.getCommandLine()));
-            } catch (ConfigurationException e) {
-                // This must not happen.
-                throw new RuntimeException("failed to copy a configuration", e);
-            }
-            shardConfig.setBuildProvider(new ExistingBuildProvider(info.clone(),
-                    config.getBuildProvider()));
-            shardConfig.setTestInvocationListeners(
-                    buildShardListeners(resultCollector, config.getTestInvocationListeners()));
-            shardConfig.setLogOutput(config.getLogOutput().clone());
-            shardConfig.setCommandOptions(config.getCommandOptions().clone());
-            shardConfig.getCommandOptions().setShardIndex(i);
-            // use the same {@link ITargetPreparer}, {@link IDeviceRecovery} etc as original
-            // config
-            rescheduler.scheduleConfig(shardConfig);
-        }
-    }
-
-    /**
-     * Factory method for getting a reference to the {@link IConfigurationFactory}
+     * Attempt to shard the configuration into sub-configurations, to be re-scheduled to run on
+     * multiple resources in parallel.
+     * <p/>
+     * A successful shard action renders the current config empty, and invocation should not proceed.
      *
-     * @return the {@link IConfigurationFactory} to use
+     * @see IShardableTest
+     * @see IRescheduler
+     *
+     * @param config the current {@link IConfiguration}.
+     * @param info the {@link IBuildInfo} to test
+     * @param rescheduler the {@link IRescheduler}
+     * @return true if test was sharded. Otherwise return <code>false</code>
      */
-    protected IConfigurationFactory getConfigFactory() {
-        return ConfigurationFactory.getInstance();
-    }
-
-    /**
-     * Get a sharded {@link IConfiguration}.
-     * @param config the {@link IConfiguration}
-     * @param shardCount the shard count.
-     * @param shardIndex the shard index.
-     * @return a sharded {@link IConfiguration}
-     */
-    private IConfiguration getShardConfig(IConfiguration config, int shardCount, int shardIndex) {
-        List<IRemoteTest> tests = new ArrayList<IRemoteTest>();
+    private boolean shardConfig(IConfiguration config, IBuildInfo info, IRescheduler rescheduler) {
+        mStatus = "sharding";
+        List<IRemoteTest> shardableTests = new ArrayList<IRemoteTest>();
         boolean isSharded = false;
         for (IRemoteTest test : config.getTests()) {
-            if (!(test instanceof IShardableTest)) {
-                if (shardIndex == 0) {
-                    // If a test is not shardable, add it to the shard 0.
-                    tests.add(test);
-                }
-                continue;
-            }
-
-            IShardableTest shardableTest = (IShardableTest)test;
-            Collection<IRemoteTest> shards = shardableTest.split(shardCount);
-            if (shardIndex < shards.size()) {
-                tests.add((IRemoteTest)shards.toArray()[shardIndex]);
-            }
+            isSharded |= shardTest(shardableTests, test);
         }
-        if (tests.isEmpty()) {
-            CLog.w("No test to run for shard index %d", shardIndex);
-            return null;
-        }
+        if (isSharded) {
+            // shard this invocation!
 
-        IConfiguration shardConfig = config.clone();
-        shardConfig.setTests(tests);
-        return shardConfig;
+            // create the TestInvocationListener that will collect results from all the shards,
+            // and forward them to the original set of listeners (minus any ISharddableListeners)
+            // once all shards complete
+            ShardMasterResultForwarder resultCollector = new ShardMasterResultForwarder(
+                    config.getLogSaver(), buildMasterShardListeners(config), shardableTests.size());
+
+            // report invocation started using original buildinfo
+            resultCollector.invocationStarted(info);
+            for (IRemoteTest testShard : shardableTests) {
+                CLog.i("Rescheduling sharded config...");
+                IConfiguration shardConfig = config.clone();
+                shardConfig.setTest(testShard);
+                shardConfig.setBuildProvider(new ExistingBuildProvider(info.clone(),
+                        config.getBuildProvider()));
+
+                shardConfig.setTestInvocationListeners(
+                        buildShardListeners(resultCollector, config.getTestInvocationListeners()));
+                shardConfig.setLogOutput(config.getLogOutput().clone());
+                shardConfig.setCommandOptions(config.getCommandOptions().clone());
+                // use the same {@link ITargetPreparer}, {@link IDeviceRecovery} etc as original
+                // config
+                rescheduler.scheduleConfig(shardConfig);
+            }
+            // clean up original build
+            config.getBuildProvider().cleanUp(info);
+            return true;
+        }
+        return false;
     }
 
     /**
