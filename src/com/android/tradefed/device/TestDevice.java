@@ -80,6 +80,8 @@ public class TestDevice extends AndroidNativeDevice {
     /** user pattern in the output of "pm list users" =  TEXT{<id>:<name>:<flags>} TEXT **/
     private static String USER_PATTERN = "(.*?\\{)(\\d+)(:)(.*)(:)(\\d+)(\\}.*)";
 
+    private static final int API_LEVEL_GET_CURRENT_USER = 24;
+
     /**
      * @param device
      * @param stateMonitor
@@ -784,7 +786,7 @@ public class TestDevice extends AndroidNativeDevice {
     @Override
     public boolean stopUser(int userId, boolean waitFlag, boolean forceFlag)
             throws DeviceNotAvailableException {
-        checkApiLevelAgainst("stopUser", 22);
+        checkApiLevelAgainstNextRelease("stopUser", API_LEVEL_GET_CURRENT_USER);
         if (userId == getCurrentUser()) {
             CLog.d("Cannot stop current user.");
             return false;
@@ -832,7 +834,7 @@ public class TestDevice extends AndroidNativeDevice {
      */
     @Override
     public int getCurrentUser() throws DeviceNotAvailableException {
-        checkApiLevelAgainst("get-current-user", 16);
+        checkApiLevelAgainstNextRelease("get-current-user", API_LEVEL_GET_CURRENT_USER);
         final String output = executeShellCommand("am get-current-user");
         try {
             int userId = Integer.parseInt(output.trim());
@@ -918,7 +920,7 @@ public class TestDevice extends AndroidNativeDevice {
      */
     @Override
     public boolean switchUser(int userId, long timeout) throws DeviceNotAvailableException {
-        checkApiLevelAgainst("switchUser", 22);
+        checkApiLevelAgainstNextRelease("switchUser", API_LEVEL_GET_CURRENT_USER);
         if (userId == getCurrentUser()) {
             CLog.w("Already running as user id: %s. Nothing to be done.", userId);
             return true;
@@ -1082,6 +1084,20 @@ public class TestDevice extends AndroidNativeDevice {
     private void checkApiLevelAgainst(String feature, int strictMinLevel)
             throws DeviceNotAvailableException {
         if (getApiLevel() < strictMinLevel){
+            throw new IllegalArgumentException(String.format("%s not supported on %s. "
+                    + "Must be API %d.", feature, getSerialNumber(), strictMinLevel));
+        }
+    }
+
+    /**
+     * Helper for Api level checking of features in the new release before we incremented the api
+     * number.
+     */
+    private void checkApiLevelAgainstNextRelease(String feature, int strictMinLevel)
+            throws DeviceNotAvailableException {
+        String codeName = getProperty(BUILD_CODENAME_PROP).trim();
+        int apiLevel =  getApiLevel() + (codeName == "REL" ? 0 : 1);
+        if (apiLevel < strictMinLevel){
             throw new IllegalArgumentException(String.format("%s not supported on %s. "
                     + "Must be API %d.", feature, getSerialNumber(), strictMinLevel));
         }
