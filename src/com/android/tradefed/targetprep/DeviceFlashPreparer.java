@@ -41,7 +41,7 @@ public abstract class DeviceFlashPreparer implements ITargetCleaner {
     /**
      * Enum of options for handling the encryption of userdata image
      */
-    public static enum EncryptionOptions {ENCRYPT, IGNORE};
+    public static enum EncryptionOptions {ENCRYPT, IGNORE}
 
     private static final int BOOT_POLL_TIME_MS = 5 * 1000;
 
@@ -230,14 +230,20 @@ public abstract class DeviceFlashPreparer implements ITargetCleaner {
             if (mSkipPostFlashingSetup) {
                 return;
             }
+            // Temporary re-enable interruptable since the critical flashing operation is over.
+            getRunUtil().allowInterrupt(true);
             device.waitForDeviceOnline();
             // device may lose date setting if wiped, update with host side date in case anything on
             // device side malfunction with an invalid date
             if (device.enableAdbRoot()) {
                 device.setDate(null);
             }
+            // Disable interrupt for encryption operation.
+            getRunUtil().allowInterrupt(false);
             checkBuild(device, deviceBuild);
             postEncryptDevice(device, flasher);
+            // Once critical operation is done, we re-enable interruptable
+            getRunUtil().allowInterrupt(true);
             // only want logcat captured for current build, delete any accumulated log data
             device.clearLogcat();
             try {
@@ -251,6 +257,7 @@ public abstract class DeviceFlashPreparer implements ITargetCleaner {
             }
             device.postBootSetup();
         } finally {
+            // Allow interruption at the end no matter what.
             getRunUtil().allowInterrupt(true);
         }
     }
