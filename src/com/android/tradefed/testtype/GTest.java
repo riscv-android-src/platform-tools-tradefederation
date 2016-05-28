@@ -135,6 +135,8 @@ public class GTest implements IDeviceTest, IRemoteTest, ITestFilterReceiver, IRu
     private static final String GTEST_FLAG_RUN_DISABLED_TESTS = "--gtest_also_run_disabled_tests";
     private static final String GTEST_FLAG_LIST_TESTS = "--gtest_list_tests";
     private static final String GTEST_XML_OUTPUT = "--gtest_output=xml:%s";
+    // Max characters allowed for executing GTest via command line
+    private static final int GTEST_CMD_CHAR_LIMIT = 1000;
 
     /**
      * {@inheritDoc}
@@ -388,6 +390,25 @@ public class GTest implements IDeviceTest, IRemoteTest, ITestFilterReceiver, IRu
     }
 
     /**
+     * Helper method to run a gtest command from a temporary script, in the case that the command
+     * is too long to be run directly by adb.
+     * @param testDevice the device on which to run the command
+     * @param cmd the command string to run
+     * @param resultParser the output receiver for reading test results
+     */
+    protected void executeCommandByScript(final ITestDevice testDevice, final String cmd,
+            final IShellOutputReceiver resultParser) throws DeviceNotAvailableException {
+        String tmpFileDevice = "/data/local/tmp/gtest_script.sh";
+        testDevice.pushString(String.format("#!/bin/bash\n%s", cmd), tmpFileDevice);
+        // force file to be executable
+        testDevice.executeShellCommand(String.format("chmod 755 %s", tmpFileDevice));
+        testDevice.executeShellCommand(String.format("sh %s", tmpFileDevice),
+                resultParser, mMaxTestTimeMs /* maxTimeToShellOutputResponse */,
+                TimeUnit.MILLISECONDS, 0 /* retry attempts */);
+        testDevice.executeShellCommand(String.format("rm %s", tmpFileDevice));
+    }
+
+    /**
      * Run the given gtest binary
      *
      * @param testDevice the {@link ITestDevice}
@@ -404,10 +425,16 @@ public class GTest implements IDeviceTest, IRemoteTest, ITestFilterReceiver, IRu
                 testDevice.executeShellCommand(cmd);
             }
             String cmd = getGTestCmdLine(fullPath, flags);
-            testDevice.executeShellCommand(cmd, resultParser,
-                    mMaxTestTimeMs /* maxTimeToShellOutputResponse */,
-                    TimeUnit.MILLISECONDS,
-                    0 /* retryAttempts */);
+            // ensure that command is not too long for adb
+            if (cmd.length() < GTEST_CMD_CHAR_LIMIT) {
+                testDevice.executeShellCommand(cmd, resultParser,
+                        mMaxTestTimeMs /* maxTimeToShellOutputResponse */,
+                        TimeUnit.MILLISECONDS,
+                        0 /* retryAttempts */);
+            } else {
+                // wrap adb shell command in script if command is too long for direct execution
+                executeCommandByScript(testDevice, cmd, resultParser);
+            }
         } catch (DeviceNotAvailableException e) {
             throw e;
         } catch (RuntimeException e) {
