@@ -209,8 +209,8 @@ public class ConfigurationTest extends TestCase {
      * Test method for {@link Configuration#getTargetPreparers()}.
      */
     public void testGetTargetPreparers() throws Exception {
-        // check that the default preparer is present and doesn't blow up
-        mConfig.getTargetPreparers().get(0).setUp(null, null);
+        // check that the callback is working and doesn't blow up
+        assertEquals(0, mConfig.getTargetPreparers().size());
         // test set and get
         final ITargetPreparer prep = EasyMock.createMock(ITargetPreparer.class);
         mConfig.setTargetPreparer(prep);

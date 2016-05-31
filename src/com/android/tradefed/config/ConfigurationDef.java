@@ -177,10 +177,7 @@ public class ConfigurationDef {
         IConfiguration config = new Configuration(getName(), getDescription());
         List<IDeviceConfig> deviceObjectList = new ArrayList<IDeviceConfig>();
         IDeviceConfig defaultDeviceConfig = new DeviceConfigurationHolder(DEFAULT_DEVICE_NAME);
-        // propagate multi mode
-        if (mMultiDeviceMode) {
-            ((Configuration)config).setMultiDeviceMode(true);
-        } else {
+        if (!mMultiDeviceMode) {
             // We still populate a default device config to avoid special logic in the rest of the
             // harness.
             deviceObjectList.add(defaultDeviceConfig);
@@ -213,9 +210,10 @@ public class ConfigurationDef {
                 } else {
                     if (Configuration.doesBuiltInObjSupportMultiDevice(entryName)) {
                         defaultDeviceConfig.addSpecificConfig(configObject);
+                    } else {
+                        // Only add to flat list if they are not part of multi device config.
+                        objectList.add(configObject);
                     }
-                    // Always add to the flat list for backward compatibility
-                    objectList.add(configObject);
                 }
             }
             if (entryName != Configuration.DEVICE_NAME) {

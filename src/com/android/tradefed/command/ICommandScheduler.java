@@ -21,6 +21,7 @@ import com.android.tradefed.config.IConfigurationFactory;
 import com.android.tradefed.device.FreeDeviceState;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.device.NoDeviceException;
+import com.android.tradefed.invoker.IInvocationMetadata;
 import com.android.tradefed.invoker.ITestInvocation;
 import com.android.tradefed.result.ITestInvocationListener;
 
@@ -43,8 +44,19 @@ public interface ICommandScheduler {
          *
          * @param device
          * @param deviceState
+         * @deprecated use {@link #invocationComplete(IInvocationMetadata, FreeDeviceState)}.
          */
+        @Deprecated
         public void invocationComplete(ITestDevice device, FreeDeviceState deviceState);
+
+        /**
+         * Callback when entire invocation has completed, including all
+         * {@link ITestInvocationListener#invocationEnded(long)} events.
+         *
+         * @param metadata
+         * @param deviceState
+         */
+        public void invocationComplete(IInvocationMetadata metadata, FreeDeviceState deviceState);
     }
 
     /**

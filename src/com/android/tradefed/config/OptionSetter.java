@@ -563,16 +563,9 @@ public class OptionSetter {
             addOptionsForObject(objectSource, optionMap, index, null);
 
             if (objectSource instanceof IDeviceConfig) {
-                // If it's a configuration holder, expand it to find the inner attributes
-                // Except if it's the default device.
-                // TODO: Remove handling of the special case, everything should go through device
-                // holder.
-                if (!ConfigurationDef.DEFAULT_DEVICE_NAME.equals(
-                        ((IDeviceConfig)objectSource).getDeviceName())) {
-                    for (Object deviceObject : ((IDeviceConfig)objectSource).getAllObjects()) {
-                        addOptionsForObject(deviceObject, optionMap, index,
-                                ((IDeviceConfig)objectSource).getDeviceName());
-                    }
+                for (Object deviceObject : ((IDeviceConfig)objectSource).getAllObjects()) {
+                    addOptionsForObject(deviceObject, optionMap, index,
+                            ((IDeviceConfig)objectSource).getDeviceName());
                 }
             }
         }

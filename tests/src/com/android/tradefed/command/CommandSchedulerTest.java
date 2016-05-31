@@ -21,8 +21,10 @@ import com.android.tradefed.command.CommandScheduler.CommandTracker;
 import com.android.tradefed.command.CommandScheduler.CommandTrackerIdComparator;
 import com.android.tradefed.command.ICommandScheduler.IScheduledInvocationListener;
 import com.android.tradefed.config.ConfigurationException;
+import com.android.tradefed.config.DeviceConfigurationHolder;
 import com.android.tradefed.config.IConfiguration;
 import com.android.tradefed.config.IConfigurationFactory;
+import com.android.tradefed.config.IDeviceConfig;
 import com.android.tradefed.config.IGlobalConfiguration;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.DeviceSelectionOptions;
@@ -34,6 +36,7 @@ import com.android.tradefed.device.MockDeviceManager;
 import com.android.tradefed.device.StubDevice;
 import com.android.tradefed.device.TcpDevice;
 import com.android.tradefed.device.TestDeviceState;
+import com.android.tradefed.invoker.IInvocationMetadata;
 import com.android.tradefed.invoker.IRescheduler;
 import com.android.tradefed.invoker.ITestInvocation;
 import com.android.tradefed.log.ITerribleFailureHandler;
@@ -51,6 +54,7 @@ import org.junit.Assert;
 
 import java.io.File;
 import java.lang.Thread.UncaughtExceptionHandler;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
@@ -69,6 +73,7 @@ public class CommandSchedulerTest extends TestCase {
     private CommandOptions mCommandOptions;
     private DeviceSelectionOptions mDeviceOptions;
     private CommandFileParser mMockCmdFileParser;
+    private List<IDeviceConfig> mMockDeviceConfig;
 
     /**
      * {@inheritDoc}
@@ -83,6 +88,7 @@ public class CommandSchedulerTest extends TestCase {
         mMockConfiguration = EasyMock.createMock(IConfiguration.class);
         mCommandOptions = new CommandOptions();
         mDeviceOptions = new DeviceSelectionOptions();
+        mMockDeviceConfig = new ArrayList<IDeviceConfig>();
 
         mScheduler = new CommandScheduler() {
 
@@ -281,7 +287,8 @@ public class CommandSchedulerTest extends TestCase {
         EasyMock.expect(mockDevice.getIDevice()).andStubReturn(mockIDevice);
         IScheduledInvocationListener mockListener = EasyMock
                 .createMock(IScheduledInvocationListener.class);
-        mockListener.invocationComplete(mockDevice, FreeDeviceState.AVAILABLE);
+        mockListener.invocationComplete((IInvocationMetadata)EasyMock.anyObject(),
+                EasyMock.eq(FreeDeviceState.AVAILABLE));
         replayMocks(mockDevice, mockListener);
         mScheduler.start();
         mScheduler.execCommand(mockListener, mockDevice, args);
@@ -478,6 +485,8 @@ public class CommandSchedulerTest extends TestCase {
         EasyMock.expect(rescheduledConfig.getCommandOptions()).andStubReturn(mCommandOptions);
         EasyMock.expect(rescheduledConfig.getDeviceRequirements()).andStubReturn(
                 mDeviceOptions);
+        EasyMock.expect(rescheduledConfig.getDeviceConfig()).andStubReturn(mMockDeviceConfig);
+        EasyMock.expect(rescheduledConfig.getCommandLine()).andStubReturn("");
 
         // an ITestInvocationn#invoke response for calling reschedule
         IAnswer<Object> rescheduleAndThrowAnswer = new IAnswer<Object>() {
@@ -654,12 +663,21 @@ public class CommandSchedulerTest extends TestCase {
         List<String> nullArg = null;
         EasyMock.expect(
                 mMockConfigFactory.createConfigurationFromArgs(EasyMock.aryEq(args),
-                        EasyMock.eq(nullArg), (IKeyStoreClient)EasyMock.anyObject()))
+                EasyMock.eq(nullArg), (IKeyStoreClient)EasyMock.anyObject()))
                 .andReturn(mMockConfiguration)
                 .times(times);
         EasyMock.expect(mMockConfiguration.getCommandOptions()).andStubReturn(mCommandOptions);
         EasyMock.expect(mMockConfiguration.getDeviceRequirements()).andStubReturn(
                 mDeviceOptions);
+        EasyMock.expect(mMockConfiguration.getDeviceConfig()).andStubReturn(mMockDeviceConfig);
+        EasyMock.expect(mMockConfiguration.getCommandLine()).andStubReturn("");
+
+        // Assume all legacy test are single device
+        if (mMockDeviceConfig.isEmpty()) {
+            IDeviceConfig mockConfig = new DeviceConfigurationHolder("device");
+            mockConfig.addSpecificConfig(mDeviceOptions);
+            mMockDeviceConfig.add(mockConfig);
+        }
     }
 
     /**

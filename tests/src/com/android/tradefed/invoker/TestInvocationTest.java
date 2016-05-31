@@ -16,12 +16,10 @@
 package com.android.tradefed.invoker;
 
 import com.android.tradefed.build.BuildRetrievalError;
-import com.android.tradefed.build.ExistingBuildProvider;
 import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.build.IBuildProvider;
 import com.android.tradefed.command.FatalHostError;
 import com.android.tradefed.config.Configuration;
-import com.android.tradefed.config.ConfigurationException;
 import com.android.tradefed.config.IConfiguration;
 import com.android.tradefed.config.IConfigurationFactory;
 import com.android.tradefed.device.DeviceNotAvailableException;
@@ -48,7 +46,6 @@ import com.android.tradefed.testtype.IDeviceTest;
 import com.android.tradefed.testtype.IRemoteTest;
 import com.android.tradefed.testtype.IResumableTest;
 import com.android.tradefed.testtype.IRetriableTest;
-import com.android.tradefed.testtype.IShardableTest;
 import com.android.tradefed.testtype.IStrictShardableTest;
 
 import junit.framework.Test;
@@ -639,7 +636,7 @@ public class TestInvocationTest extends TestCase {
         IConfiguration shardConfig = new Configuration("foo", "bar");
         for (int i = 1; i <= shardCount; i++) {
             EasyMock.expect(
-                    mMockConfigFactory.createConfigurationFromArgs(EasyMock.anyObject()))
+                    mMockConfigFactory.createConfigurationFromArgs((String[])EasyMock.anyObject()))
                     .andReturn(shardConfig);
             EasyMock.expect(mMockBuildInfo.clone()).andReturn(mMockBuildInfo);
             EasyMock.expect(mockRescheduler.scheduleConfig(shardConfig)).andReturn(true);
@@ -676,7 +673,7 @@ public class TestInvocationTest extends TestCase {
         mMockBuildInfo.addBuildAttribute("shard_count", "10");
         mMockBuildInfo.addBuildAttribute("shard_index", "5");
         EasyMock.expect(test.getTestShard(shardCount, shardIndex)).andReturn(testShard);
-        testShard.run(EasyMock.anyObject());
+        testShard.run((ITestInvocationListener)EasyMock.anyObject());
         mMockPreparer.setUp(mMockDevice, mMockBuildInfo);
         replayMocks(test, testShard);
 

@@ -15,12 +15,13 @@
  */
 package com.android.tradefed.command.remote;
 
+import com.google.common.collect.ImmutableMap;
+
 import com.android.tradefed.command.ICommandScheduler.IScheduledInvocationListener;
 import com.android.tradefed.device.FreeDeviceState;
 import com.android.tradefed.device.ITestDevice;
+import com.android.tradefed.invoker.IInvocationMetadata;
 import com.android.tradefed.result.StubTestInvocationListener;
-
-import com.google.common.collect.ImmutableMap;
 
 import java.io.ByteArrayOutputStream;
 import java.io.PrintStream;
@@ -44,8 +45,16 @@ class ExecCommandTracker extends StubTestInvocationListener implements
         mErrorDetails = outputStream.toString();
     }
 
+    @Deprecated
     @Override
     public void invocationComplete(ITestDevice device, FreeDeviceState deviceState) {
+        IInvocationMetadata nullMeta = null;
+        // Fake metadata for compatibility, works because first arg is not used.
+        invocationComplete(nullMeta, deviceState);
+    }
+
+    @Override
+    public void invocationComplete(IInvocationMetadata metadata, FreeDeviceState deviceState) {
         mState = deviceState;
         if (mErrorDetails != null) {
             mStatus = CommandResult.Status.INVOCATION_ERROR;

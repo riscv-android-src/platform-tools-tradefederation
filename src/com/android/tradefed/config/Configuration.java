@@ -19,16 +19,13 @@ package com.android.tradefed.config;
 import com.google.common.base.Joiner;
 
 import com.android.tradefed.build.IBuildProvider;
-import com.android.tradefed.build.StubBuildProvider;
 import com.android.tradefed.command.CommandOptions;
 import com.android.tradefed.command.ICommandOptions;
 import com.android.tradefed.config.ConfigurationDef.OptionDef;
 import com.android.tradefed.config.OptionSetter.FieldDef;
-import com.android.tradefed.device.DeviceSelectionOptions;
 import com.android.tradefed.device.IDeviceRecovery;
 import com.android.tradefed.device.IDeviceSelection;
 import com.android.tradefed.device.TestDeviceOptions;
-import com.android.tradefed.device.WaitDeviceRecovery;
 import com.android.tradefed.log.ILeveledLogOutput;
 import com.android.tradefed.log.StdoutLogger;
 import com.android.tradefed.result.FileSystemLogSaver;
@@ -36,7 +33,6 @@ import com.android.tradefed.result.ILogSaver;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.TextResultReporter;
 import com.android.tradefed.targetprep.ITargetPreparer;
-import com.android.tradefed.targetprep.StubTargetPreparer;
 import com.android.tradefed.testtype.IRemoteTest;
 import com.android.tradefed.testtype.StubTest;
 import com.android.tradefed.util.MultiMap;
@@ -103,8 +99,6 @@ public class Configuration implements IConfiguration {
     // Used to track config names that were used to set field values
     private MultiMap<FieldDef, String> mFieldSources = new MultiMap<>();
 
-    private boolean mMultiDeviceMode = false;
-
     /**
      * Container struct for built-in config object type
      */
@@ -119,10 +113,6 @@ public class Configuration implements IConfiguration {
             mExpectedType = expectedType;
             mIsListSupported = isList;
         }
-    }
-
-    public void setMultiDeviceMode(boolean multiDeviceMode) {
-        mMultiDeviceMode = multiDeviceMode;
     }
 
     /**
@@ -154,6 +144,7 @@ public class Configuration implements IConfiguration {
                     false));
             sObjTypeMap.put(DEVICE_OPTIONS_TYPE_NAME, new ObjTypeInfo(TestDeviceOptions.class,
                     false));
+            sObjTypeMap.put(DEVICE_NAME, new ObjTypeInfo(IDeviceConfig.class, true));
         }
         return sObjTypeMap;
     }
@@ -194,13 +185,9 @@ public class Configuration implements IConfiguration {
         mName = name;
         mDescription = description;
         mConfigMap = new LinkedHashMap<String, List<Object>>();
+        setDeviceConfig(new DeviceConfigurationHolder(ConfigurationDef.DEFAULT_DEVICE_NAME));
         setCommandOptions(new CommandOptions());
-        setDeviceRequirements(new DeviceSelectionOptions());
-        setDeviceOptions(new TestDeviceOptions());
-        setBuildProvider(new StubBuildProvider());
-        setTargetPreparer(new StubTargetPreparer());
         setTest(new StubTest());
-        setDeviceRecovery(new WaitDeviceRecovery());
         setLogOutput(new StdoutLogger());
         setLogSaver(new FileSystemLogSaver()); // FileSystemLogSaver saves to tmp by default.
         setTestInvocationListener(new TextResultReporter());
@@ -211,9 +198,13 @@ public class Configuration implements IConfiguration {
      * they are most likely wrong.
      */
     private void notAllowedInMultiMode(String function) {
-        if (mMultiDeviceMode && getConfigurationObjectList(DEVICE_NAME).size() > 1) {
+        if (getConfigurationObjectList(DEVICE_NAME).size() > 1) {
             throw new UnsupportedOperationException(String.format("Calling %s is not allowed "
                     + "in multi device mode", function));
+        }
+        if (getConfigurationObjectList(DEVICE_NAME).size() == 0) {
+            throw new UnsupportedOperationException(
+                    "We should always have at least 1 Device config");
         }
     }
 
@@ -259,12 +250,8 @@ public class Configuration implements IConfiguration {
     @Override
     public IBuildProvider getBuildProvider() {
         notAllowedInMultiMode("getBuildProvider");
-        if (mMultiDeviceMode && getConfigurationObjectList(DEVICE_NAME).size() == 1) {
-            return ((List<IDeviceConfig>)getConfigurationObjectList(DEVICE_NAME))
-                    .get(0).getBuildProvider();
-        }
-        // TODO: clean the special handling, everything should go through a device config.
-        return (IBuildProvider) getConfigurationObject(BUILD_PROVIDER_TYPE_NAME);
+        return ((List<IDeviceConfig>)getConfigurationObjectList(DEVICE_NAME))
+                .get(0).getBuildProvider();
     }
 
     /**
@@ -274,12 +261,8 @@ public class Configuration implements IConfiguration {
     @Override
     public List<ITargetPreparer> getTargetPreparers() {
         notAllowedInMultiMode("getTargetPreparers");
-        if (mMultiDeviceMode && getConfigurationObjectList(DEVICE_NAME).size() == 1) {
-            return ((List<IDeviceConfig>)getConfigurationObjectList(DEVICE_NAME))
-                    .get(0).getTargetPreparers();
-        }
-        // TODO: clean the special handling, everything should go through a device config.
-        return (List<ITargetPreparer>) getConfigurationObjectList(TARGET_PREPARER_TYPE_NAME);
+        return ((List<IDeviceConfig>)getConfigurationObjectList(DEVICE_NAME))
+                .get(0).getTargetPreparers();
     }
 
     /**
@@ -298,12 +281,8 @@ public class Configuration implements IConfiguration {
     @Override
     public IDeviceRecovery getDeviceRecovery() {
         notAllowedInMultiMode("getDeviceRecovery");
-        if (mMultiDeviceMode && getConfigurationObjectList(DEVICE_NAME).size() == 1) {
-            return ((List<IDeviceConfig>)getConfigurationObjectList(DEVICE_NAME))
-                    .get(0).getDeviceRecovery();
-        }
-        // TODO: clean the special handling, everything should go through a device config.
-        return (IDeviceRecovery) getConfigurationObject(DEVICE_RECOVERY_TYPE_NAME);
+        return ((List<IDeviceConfig>)getConfigurationObjectList(DEVICE_NAME))
+                .get(0).getDeviceRecovery();
     }
 
     /**
@@ -347,12 +326,8 @@ public class Configuration implements IConfiguration {
     @Override
     public IDeviceSelection getDeviceRequirements() {
         notAllowedInMultiMode("getDeviceRequirements");
-        if (mMultiDeviceMode && getConfigurationObjectList(DEVICE_NAME).size() == 1) {
-            return ((List<IDeviceConfig>)getConfigurationObjectList(DEVICE_NAME))
-                    .get(0).getDeviceRequirements();
-        }
-        // TODO: clean the special handling, everything should go through a device config.
-        return (IDeviceSelection) getConfigurationObject(DEVICE_REQUIREMENTS_TYPE_NAME);
+        return ((List<IDeviceConfig>)getConfigurationObjectList(DEVICE_NAME))
+                .get(0).getDeviceRequirements();
     }
 
     /**
@@ -362,12 +337,8 @@ public class Configuration implements IConfiguration {
     @Override
     public TestDeviceOptions getDeviceOptions() {
         notAllowedInMultiMode("getDeviceOptions");
-        if (mMultiDeviceMode && getConfigurationObjectList(DEVICE_NAME).size() == 1) {
-            return ((List<IDeviceConfig>)getConfigurationObjectList(DEVICE_NAME))
-                    .get(0).getDeviceOptions();
-        }
-        // TODO: clean the special handling, everything should go through a device config.
-        return (TestDeviceOptions) getConfigurationObject(DEVICE_OPTIONS_TYPE_NAME);
+        return ((List<IDeviceConfig>)getConfigurationObjectList(DEVICE_NAME))
+                .get(0).getDeviceOptions();
     }
 
     /**
@@ -513,9 +484,28 @@ public class Configuration implements IConfiguration {
     public Configuration clone() {
         Configuration clone = new Configuration(getName(), getDescription());
         for (Map.Entry<String, List<Object>> entry : mConfigMap.entrySet()) {
-            clone.setConfigurationObjectListNoThrow(entry.getKey(), entry.getValue());
+            if (DEVICE_NAME.equals(entry.getKey())) {
+                List<Object> newDeviceConfigList = new ArrayList<Object>();
+                for (Object deviceConfig : entry.getValue()) {
+                    IDeviceConfig config = ((IDeviceConfig)deviceConfig);
+                    IDeviceConfig newDeviceConfig = config.clone();
+                    newDeviceConfigList.add(newDeviceConfig);
+                }
+                clone.setConfigurationObjectListNoThrow(entry.getKey(), newDeviceConfigList);
+            } else {
+                clone.setConfigurationObjectListNoThrow(entry.getKey(), entry.getValue());
+            }
         }
         return clone;
+    }
+
+    private void addToDefaultDeviceConfig(Object obj) {
+        try {
+            getDeviceConfigByName(ConfigurationDef.DEFAULT_DEVICE_NAME).addSpecificConfig(obj);
+        } catch (ConfigurationException e) {
+            // should never happen
+            throw new IllegalArgumentException(e);
+        }
     }
 
     /**
@@ -524,7 +514,7 @@ public class Configuration implements IConfiguration {
     @Override
     public void setBuildProvider(IBuildProvider provider) {
         notAllowedInMultiMode("setBuildProvider");
-        setConfigurationObjectNoThrow(BUILD_PROVIDER_TYPE_NAME, provider);
+        addToDefaultDeviceConfig(provider);
     }
 
     /**
@@ -597,7 +587,7 @@ public class Configuration implements IConfiguration {
     @Override
     public void setDeviceRecovery(IDeviceRecovery recovery) {
         notAllowedInMultiMode("setDeviceRecovery");
-        setConfigurationObjectNoThrow(DEVICE_RECOVERY_TYPE_NAME, recovery);
+        addToDefaultDeviceConfig(recovery);
     }
 
     /**
@@ -606,7 +596,7 @@ public class Configuration implements IConfiguration {
     @Override
     public void setTargetPreparer(ITargetPreparer preparer) {
         notAllowedInMultiMode("setTargetPreparer");
-        setConfigurationObjectNoThrow(TARGET_PREPARER_TYPE_NAME, preparer);
+        addToDefaultDeviceConfig(preparer);
     }
 
     /**
@@ -623,7 +613,7 @@ public class Configuration implements IConfiguration {
     @Override
     public void setDeviceRequirements(IDeviceSelection devRequirements) {
         notAllowedInMultiMode("setDeviceRequirements");
-        setConfigurationObjectNoThrow(DEVICE_REQUIREMENTS_TYPE_NAME, devRequirements);
+        addToDefaultDeviceConfig(devRequirements);
     }
 
     /**
@@ -632,7 +622,7 @@ public class Configuration implements IConfiguration {
     @Override
     public void setDeviceOptions(TestDeviceOptions devOptions) {
         notAllowedInMultiMode("setDeviceOptions");
-        setConfigurationObjectNoThrow(DEVICE_OPTIONS_TYPE_NAME, devOptions);
+        addToDefaultDeviceConfig(devOptions);
     }
 
     /**
@@ -775,22 +765,35 @@ public class Configuration implements IConfiguration {
         }
         for (Map.Entry<String, List<Object>> configObjectsEntry : mConfigMap.entrySet()) {
             for (Object configObject : configObjectsEntry.getValue()) {
-                String optionHelp = printOptionsForObject(importantOnly,
-                        configObjectsEntry.getKey(), configObject);
-                // only print help for object if optionHelp is non zero length
-                if (optionHelp.length() > 0) {
-                    String classAlias = "";
-                    if (configObject.getClass().isAnnotationPresent(OptionClass.class)) {
-                        final OptionClass classAnnotation = configObject.getClass().getAnnotation(
-                                OptionClass.class);
-                        classAlias = String.format("'%s' ", classAnnotation.alias());
+                if (configObject instanceof IDeviceConfig) {
+                    // We expand the Device Config Object.
+                    for (Object subconfigObject : ((IDeviceConfig)configObject).getAllObjects()) {
+                        printCommandUsageForObject(importantOnly, out, configObjectsEntry.getKey(),
+                                subconfigObject);
                     }
-                    out.printf("  %s%s options:", classAlias, configObjectsEntry.getKey());
-                    out.println();
-                    out.print(optionHelp);
-                    out.println();
+                } else {
+                    printCommandUsageForObject(importantOnly, out, configObjectsEntry.getKey(),
+                            configObject);
                 }
             }
+        }
+    }
+
+    private void printCommandUsageForObject(boolean importantOnly, PrintStream out, String key,
+            Object obj) throws ConfigurationException {
+        String optionHelp = printOptionsForObject(importantOnly, key, obj);
+        // only print help for object if optionHelp is non zero length
+        if (optionHelp.length() > 0) {
+            String classAlias = "";
+            if (obj.getClass().isAnnotationPresent(OptionClass.class)) {
+                final OptionClass classAnnotation = obj.getClass().getAnnotation(
+                        OptionClass.class);
+                classAlias = String.format("'%s' ", classAnnotation.alias());
+            }
+            out.printf("  %s%s options:", classAlias, key);
+            out.println();
+            out.print(optionHelp);
+            out.println();
         }
     }
 

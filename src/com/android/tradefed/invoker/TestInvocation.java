@@ -855,4 +855,15 @@ public class TestInvocation implements ITestInvocation {
 
         CLog.v("Failed to get battery level");
     }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void invoke(
+            IInvocationMetadata metadata, IConfiguration config, IRescheduler rescheduler,
+            ITestInvocationListener... extraListeners)
+                    throws DeviceNotAvailableException, Throwable {
+        throw new RuntimeException("This TestInvocation does not support multi devices.");
+    }
 }

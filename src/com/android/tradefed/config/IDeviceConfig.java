@@ -75,4 +75,9 @@ public interface IDeviceConfig {
      * Return {@link IDeviceSelection} that the device configuration holder has.
      */
     public IDeviceSelection getDeviceRequirements();
+
+    /**
+     * Return a shallow copy of this {@IDeviceConfig} object.
+     */
+    public IDeviceConfig clone();
 }

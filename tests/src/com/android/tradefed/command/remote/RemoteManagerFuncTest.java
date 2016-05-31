@@ -23,6 +23,7 @@ import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.FreeDeviceState;
 import com.android.tradefed.device.IDeviceManager;
 import com.android.tradefed.device.ITestDevice;
+import com.android.tradefed.invoker.IInvocationMetadata;
 
 import junit.framework.TestCase;
 
@@ -287,7 +288,8 @@ public class RemoteManagerFuncTest extends TestCase {
             public Object answer() {
               ExecCommandTracker commandTracker =
                   (ExecCommandTracker) EasyMock.getCurrentArguments()[0];
-              commandTracker.invocationComplete(null, FreeDeviceState.AVAILABLE);
+              IInvocationMetadata nullMeta = null;
+              commandTracker.invocationComplete(nullMeta, FreeDeviceState.AVAILABLE);
               return null;
             }
         };
@@ -473,7 +475,8 @@ public class RemoteManagerFuncTest extends TestCase {
                 listener.invocationStarted(new BuildInfo());
                 listener.invocationFailed(new DeviceNotAvailableException());
                 listener.invocationEnded(1);
-                listener.invocationComplete(null, FreeDeviceState.UNAVAILABLE);
+                IInvocationMetadata nullMeta = null;
+                listener.invocationComplete(nullMeta, FreeDeviceState.UNAVAILABLE);
                 return null;
             }
         };

@@ -29,8 +29,7 @@ public interface ITestInvocation {
     /**
      * Perform the test invocation.
      *
-     * @param device the {@link ITestDevice} to perform tests. May be <code>null</code> if tests to
-     *            run are not dependent on a device
+     * @param device the {@link ITestDevice} to perform tests.
      * @param config the {@link IConfiguration} of this test run.
      * @param rescheduler the {@link IRescheduler}, for rescheduling portions of the invocation for
      *            execution on another resource(s)
@@ -43,4 +42,19 @@ public interface ITestInvocation {
             ITestInvocationListener... extraListeners) throws DeviceNotAvailableException,
             Throwable;
 
+    /**
+     * Perform the test invocation.
+     *
+     * @param metadata the {@link IInvocationMetadata} to perform tests.
+     * @param config the {@link IConfiguration} of this test run.
+     * @param rescheduler the {@link IRescheduler}, for rescheduling portions of the invocation for
+     *            execution on another resource(s)
+     * @param extraListeners {@link ITestInvocationListener}s to notify, in addition to those in
+     *            <var>config</var>
+     * @throws DeviceNotAvailableException if communication with device was lost
+     * @throws Throwable
+     */
+    public void invoke(IInvocationMetadata metadata, IConfiguration config,
+            IRescheduler rescheduler, ITestInvocationListener... extraListeners)
+            throws DeviceNotAvailableException, Throwable;
 }

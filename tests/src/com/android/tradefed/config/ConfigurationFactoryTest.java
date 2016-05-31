@@ -682,7 +682,7 @@ public class ConfigurationFactoryTest extends TestCase {
         final String configName = "template-collision-include-config";
         final String depTargetName = "template-include-config-with-default";
         final String expError =
-                "Only one config object allowed for build_provider, but multiple were specified.";
+                "Only one config object allowed for logger, but multiple were specified.";
         try {
             mFactory.createConfigurationFromArgs(new String[]{configName,
                     "--template:map", "target-col", depTargetName,
@@ -988,7 +988,7 @@ public class ConfigurationFactoryTest extends TestCase {
      */
     public void testCreateConfigurationFromArgs_old_config_with_deviceHolder() throws Exception {
         IConfiguration config = mFactory.createConfigurationFromArgs(
-                new String[]{"test-config", "--build-id","20"});
+                new String[]{"test-config", "--build-id","20", "--serial", "test"});
         assertEquals(1, config.getTests().size());
         assertTrue(config.getTests().get(0) instanceof StubOptionTest);
         // Verify that all attributes are in the right place:
@@ -1000,5 +1000,10 @@ public class ConfigurationFactoryTest extends TestCase {
                 .getBuildProvider().getBuild().getTestTag());
         assertEquals(1, config.getDeviceConfigByName(ConfigurationDef.DEFAULT_DEVICE_NAME)
                 .getTargetPreparers().size());
+        List<String> serials = new ArrayList<String>();
+        serials.add("test");
+        assertEquals(serials, config.getDeviceRequirements().getSerials());
+        assertEquals(serials, config.getDeviceConfigByName(ConfigurationDef.DEFAULT_DEVICE_NAME)
+                .getDeviceRequirements().getSerials());
     }
 }

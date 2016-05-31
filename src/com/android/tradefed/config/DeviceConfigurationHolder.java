@@ -22,6 +22,7 @@ import com.android.tradefed.device.IDeviceRecovery;
 import com.android.tradefed.device.IDeviceSelection;
 import com.android.tradefed.device.TestDeviceOptions;
 import com.android.tradefed.device.WaitDeviceRecovery;
+import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.targetprep.ITargetPreparer;
 
 import java.util.ArrayList;
@@ -128,5 +129,22 @@ public class DeviceConfigurationHolder implements IDeviceConfig {
     @Override
     public TestDeviceOptions getDeviceOptions() {
         return mTestDeviceOption;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public IDeviceConfig clone() {
+        IDeviceConfig newDeviceConfig = new DeviceConfigurationHolder(getDeviceName());
+        for (Object obj : getAllObjects()) {
+            try {
+                newDeviceConfig.addSpecificConfig(obj);
+            } catch (ConfigurationException e) {
+                // Shoud never happen.
+                CLog.e(e);
+            }
+        }
+        return newDeviceConfig;
     }
 }
