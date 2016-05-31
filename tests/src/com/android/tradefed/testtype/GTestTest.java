@@ -243,6 +243,50 @@ public class GTestTest extends TestCase {
     }
 
     /**
+     * Test behavior for command lines too long to be run by ADB
+     */
+    public void testCommandTooLong() throws DeviceNotAvailableException {
+        String deviceScriptPath = "/data/local/tmp/gtest_script.sh";
+        StringBuilder filterString = new StringBuilder(GTEST_FLAG_FILTER);
+        filterString.append("=-");
+        for (int i = 0; i < 100; i++) {
+            if (i != 0) {
+                filterString.append(":");
+            }
+            String filter = String.format("ExcludeClass%d", i);
+            filterString.append(filter);
+            mGTest.addExcludeFilter(filter);
+        }
+        // filter string will be longer than GTest.GTEST_CMD_CHAR_LIMIT
+
+        String nativeTestPath = GTest.DEFAULT_NATIVETEST_PATH;
+        // configure the mock file system to have a single test
+        MockFileUtil.setMockDirContents(mMockITestDevice, nativeTestPath, "test1");
+        EasyMock.expect(mMockITestDevice.doesFileExist(nativeTestPath)).andReturn(true);
+        EasyMock.expect(mMockITestDevice.isDirectory(nativeTestPath)).andReturn(true);
+        EasyMock.expect(mMockITestDevice.isDirectory(nativeTestPath + "/test1")).andReturn(false);
+        String[] files = new String[] {"test1"};
+        EasyMock.expect(mMockITestDevice.getChildren(nativeTestPath)).andReturn(files);
+        // Expect push of script file
+        EasyMock.expect(mMockITestDevice.pushString(EasyMock.<String>anyObject(),
+                EasyMock.eq(deviceScriptPath))).andReturn(Boolean.TRUE);
+        // chmod 755 for both the gtest executable and the shell script
+        EasyMock.expect(mMockITestDevice.executeShellCommand(EasyMock.contains("chmod")))
+                .andReturn("").times(2);
+        // Expect command to run shell script, rather than direct adb command
+        mMockITestDevice.executeShellCommand(EasyMock.eq(String.format("sh %s", deviceScriptPath)),
+                EasyMock.same(mMockReceiver), EasyMock.anyLong(), (TimeUnit)EasyMock.anyObject(),
+                EasyMock.anyInt());
+        // Expect deletion of file on device
+        EasyMock.expect(mMockITestDevice.executeShellCommand(
+                EasyMock.eq(String.format("rm %s", deviceScriptPath)))).andReturn("");
+        replayMocks();
+        mGTest.run(mMockInvocationListener);
+
+        verifyMocks();
+    }
+
+    /**
      * Empty file exclusion regex filter should not skip any files
      */
     public void testFileExclusionRegexFilter_emptyfilters() {
