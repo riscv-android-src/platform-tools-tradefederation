@@ -57,7 +57,7 @@ public class EncryptionStressTest implements IDeviceTest, IRemoteTest {
             String message = String.format("Failed to unencrypt device %s",
                     mTestDevice.getSerialNumber());
             CLog.e(message);
-            throw new DeviceNotAvailableException(message);
+            throw new DeviceNotAvailableException(message, mTestDevice.getSerialNumber());
         }
 
         long start = System.currentTimeMillis();
@@ -67,7 +67,7 @@ public class EncryptionStressTest implements IDeviceTest, IRemoteTest {
             String message = String.format("Failed to unencrypt device %s",
                     mTestDevice.getSerialNumber());
             CLog.e(message);
-            throw new DeviceNotAvailableException(message);
+            throw new DeviceNotAvailableException(message, mTestDevice.getSerialNumber());
         }
 
         mEncryptionStats.add((System.currentTimeMillis() - start) / 1000.0);
@@ -76,7 +76,7 @@ public class EncryptionStressTest implements IDeviceTest, IRemoteTest {
             String message = String.format("Failed to unencrypt device %s",
                     mTestDevice.getSerialNumber());
             CLog.e(message);
-            throw new DeviceNotAvailableException(message);
+            throw new DeviceNotAvailableException(message, mTestDevice.getSerialNumber());
         }
 
         mTestDevice.waitForDeviceAvailable();
@@ -87,7 +87,7 @@ public class EncryptionStressTest implements IDeviceTest, IRemoteTest {
             String message = String.format("Failed to unencrypt device %s",
                     mTestDevice.getSerialNumber());
             CLog.e(message);
-            throw new DeviceNotAvailableException(message);
+            throw new DeviceNotAvailableException(message, mTestDevice.getSerialNumber());
         }
     }
 

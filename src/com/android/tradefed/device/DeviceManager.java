@@ -522,19 +522,21 @@ public class DeviceManager implements IDeviceManager {
             Process p = runUtil.runCmdInBackground(fullArgs, emulatorOutput);
             // sleep a small amount to wait for process to start successfully
             getRunUtil().sleep(500);
-            assertEmulatorProcessAlive(p);
+            assertEmulatorProcessAlive(p, device);
             TestDevice testDevice = (TestDevice) device;
             testDevice.setEmulatorProcess(p);
             testDevice.setEmulatorOutputStream(emulatorOutput);
         } catch (IOException e) {
             // TODO: is this the most appropriate exception to throw?
-            throw new DeviceNotAvailableException("Failed to start emulator process", e);
+            throw new DeviceNotAvailableException("Failed to start emulator process", e,
+                    device.getSerialNumber());
         }
 
         device.waitForDeviceAvailable(bootTimeout);
     }
 
-    private void assertEmulatorProcessAlive(Process p) throws DeviceNotAvailableException {
+    private void assertEmulatorProcessAlive(Process p, ITestDevice device)
+            throws DeviceNotAvailableException {
         if (!isProcessRunning(p)) {
             try {
                 CLog.e("Emulator process has died . stdout: '%s', stderr: '%s'",
@@ -543,7 +545,8 @@ public class DeviceManager implements IDeviceManager {
             } catch (IOException e) {
                 // ignore
             }
-            throw new DeviceNotAvailableException("emulator died after launch");
+            throw new DeviceNotAvailableException("emulator died after launch",
+                    device.getSerialNumber());
         }
     }
 
@@ -589,7 +592,7 @@ public class DeviceManager implements IDeviceManager {
         }
         if (!device.waitForDeviceNotAvailable(20 * 1000)) {
             throw new DeviceNotAvailableException(String.format("Failed to kill emulator %s",
-                    device.getSerialNumber()));
+                    device.getSerialNumber()), device.getSerialNumber());
         }
     }
 
@@ -759,7 +762,8 @@ public class DeviceManager implements IDeviceManager {
         @Override
         public void recoverDevice(IDeviceStateMonitor monitor, boolean recoverUntilOnline)
                 throws DeviceNotAvailableException {
-            throw new DeviceNotAvailableException("aborted test session");
+            throw new DeviceNotAvailableException("aborted test session",
+                    monitor.getSerialNumber());
         }
 
         /**
@@ -768,7 +772,8 @@ public class DeviceManager implements IDeviceManager {
         @Override
         public void recoverDeviceBootloader(IDeviceStateMonitor monitor)
                 throws DeviceNotAvailableException {
-            throw new DeviceNotAvailableException("aborted test session");
+            throw new DeviceNotAvailableException("aborted test session",
+                    monitor.getSerialNumber());
         }
 
         /**
@@ -777,7 +782,8 @@ public class DeviceManager implements IDeviceManager {
         @Override
         public void recoverDeviceRecovery(IDeviceStateMonitor monitor)
                 throws DeviceNotAvailableException {
-            throw new DeviceNotAvailableException("aborted test session");
+            throw new DeviceNotAvailableException("aborted test session",
+                    monitor.getSerialNumber());
         }
     }
 

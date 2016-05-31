@@ -125,7 +125,7 @@ public class Camera2StressTest extends CameraTestBase {
                 getDevice().pullFile(RESULT_FILE, outputFile);
                 if (outputFile == null) {
                     throw new DeviceNotAvailableException(String.format("Failed to pull the result"
-                            + "file: %s", RESULT_FILE));
+                            + "file: %s", RESULT_FILE), getDevice().getSerialNumber());
                 }
                 BufferedReader reader = new BufferedReader(new FileReader(outputFile));
                 String line;

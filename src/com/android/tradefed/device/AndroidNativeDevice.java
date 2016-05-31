@@ -411,7 +411,8 @@ public class AndroidNativeDevice implements IManagedTestDevice {
 
             if (nullOrEmpty(productType)) {
                 throw new DeviceNotAvailableException(String.format(
-                        "Could not determine product type for device %s.", getSerialNumber()));
+                        "Could not determine product type for device %s.", getSerialNumber()),
+                        getSerialNumber());
             }
         }
 
@@ -935,7 +936,7 @@ public class AndroidNativeDevice implements IManagedTestDevice {
         }
         throw new DeviceUnresponsiveException(String.format(
                 "Device %s not returning output from df command after %d attempts",
-                getSerialNumber(), MAX_RETRY_ATTEMPTS));
+                getSerialNumber(), MAX_RETRY_ATTEMPTS), getSerialNumber());
     }
 
     /**
@@ -1389,7 +1390,7 @@ public class AndroidNativeDevice implements IManagedTestDevice {
         }
         throw new DeviceUnresponsiveException(String.format("Attempted fastboot %s multiple "
                 + "times on device %s without communication success. Aborting.", cmdArgs[0],
-                getSerialNumber()));
+                getSerialNumber()), getSerialNumber());
     }
 
     /**
@@ -1536,7 +1537,7 @@ public class AndroidNativeDevice implements IManagedTestDevice {
         if (retryAttempts > 0) {
             throw new DeviceUnresponsiveException(String.format("Attempted %s multiple times "
                     + "on device %s without communication success. Aborting.", actionDescription,
-                    getSerialNumber()));
+                    getSerialNumber()), getSerialNumber());
         }
         return false;
     }

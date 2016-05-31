@@ -91,7 +91,7 @@ public class BootstrapBuildProvider implements IDeviceBuildProvider {
         if (!device.waitForDeviceShell(mShellAvailableTimeout * 1000)) {
             throw new DeviceNotAvailableException(
                     String.format("Shell did not become available in %d seconds",
-                            mShellAvailableTimeout));
+                            mShellAvailableTimeout), device.getSerialNumber());
         }
         if (mBranch == null) {
             mBranch = String.format("%s-%s-%s-%s",

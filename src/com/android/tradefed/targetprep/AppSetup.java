@@ -93,7 +93,8 @@ public class AppSetup implements ITargetPreparer, ITargetCleaner {
             // of service
             // TODO: in future, consider doing more sophisticated recovery operations
             throw new DeviceNotAvailableException(String.format(
-                    "Failed to uninstall apps on %s", device.getSerialNumber()));
+                    "Failed to uninstall apps on %s", device.getSerialNumber()),
+                    device.getSerialNumber());
         }
 
         if (mInstall) {
@@ -165,7 +166,8 @@ public class AppSetup implements ITargetPreparer, ITargetCleaner {
             // of service
             // TODO: in future, consider doing more sophisticated recovery operations
             throw new DeviceNotAvailableException(String.format(
-                    "Failed to uninstall apps on %s", device.getSerialNumber()));
+                    "Failed to uninstall apps on %s", device.getSerialNumber()),
+                    device.getSerialNumber());
         }
     }
 

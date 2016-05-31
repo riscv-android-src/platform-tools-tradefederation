@@ -484,7 +484,7 @@ public class CommandSchedulerTest extends TestCase {
             public Object answer() throws Throwable {
                 IRescheduler rescheduler =  (IRescheduler) EasyMock.getCurrentArguments()[2];
                 rescheduler.scheduleConfig(rescheduledConfig);
-                throw new DeviceNotAvailableException("not avail");
+                throw new DeviceNotAvailableException("not avail", "fakeserial");
             }
         };
 

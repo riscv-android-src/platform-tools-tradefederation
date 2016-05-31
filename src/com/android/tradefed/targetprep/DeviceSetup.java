@@ -835,7 +835,8 @@ public class DeviceSetup implements ITargetPreparer, ITargetCleaner {
         if (freeSpace < mMinExternalStorageKb) {
             throw new DeviceNotAvailableException(String.format(
                     "External store free space %dK is less than required %dK for device %s",
-                    freeSpace , mMinExternalStorageKb, device.getSerialNumber()));
+                    freeSpace , mMinExternalStorageKb, device.getSerialNumber()),
+                    device.getSerialNumber());
         }
     }
 

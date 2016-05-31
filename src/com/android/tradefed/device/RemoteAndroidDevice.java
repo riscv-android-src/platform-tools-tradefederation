@@ -180,7 +180,7 @@ public class RemoteAndroidDevice extends TestDevice {
             getRunUtil().sleep(RETRY_INTERVAL_MS);
         }
         throw new DeviceNotAvailableException(
-                String.format("No adb connection after %sms.", waitTime));
+                String.format("No adb connection after %sms.", waitTime), getSerialNumber());
     }
 
     /**

@@ -16,7 +16,6 @@
 
 package com.android.sdk;
 
-import com.android.ddmlib.Log;
 import com.android.ddmlib.testrunner.TestIdentifier;
 import com.android.sdk.tests.EmulatorGpsPreparer;
 import com.android.sdk.tests.EmulatorSmsPreparer;
@@ -103,13 +102,13 @@ public class EmulatorBootTest implements IDeviceTest, IRemoteTest, IBuildReceive
             mAvdPreparer.setUp(mDevice, mBuildInfo);
             mSmsPreparer.setUp(mDevice, mBuildInfo);
             mGpsPreparer.setUp(mDevice, mBuildInfo);
-            
             checkLauncherRunningOnEmulator(mDevice);
         }
         catch(BuildError b) {
             listener.testFailed(bootTest, StreamUtil.getStackTrace(b));
             // throw exception to prevent other tests from executing needlessly
-            throw new DeviceUnresponsiveException("The emulator failed to boot", b);
+            throw new DeviceUnresponsiveException("The emulator failed to boot", b,
+                    mDevice.getSerialNumber());
         }
         catch(RuntimeException e) {
             listener.testFailed(bootTest, StreamUtil.getStackTrace(e));
@@ -123,7 +122,7 @@ public class EmulatorBootTest implements IDeviceTest, IRemoteTest, IBuildReceive
             listener.testRunEnded(0, new HashMap<String,String>());
         }
     }
-    
+
     private void checkLauncherRunningOnEmulator(ITestDevice device) throws BuildError, DeviceNotAvailableException {
         Integer apiLevel = device.getApiLevel();
         String cmd = "ps";

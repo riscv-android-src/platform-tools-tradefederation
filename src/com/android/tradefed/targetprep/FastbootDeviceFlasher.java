@@ -193,7 +193,8 @@ public class FastbootDeviceFlasher implements IDeviceFlasher  {
         if (deviceProductType == null) {
             // treat this as a fatal device error
             throw new DeviceNotAvailableException(String.format(
-                    "Could not determine product type for device %s", device.getSerialNumber()));
+                    "Could not determine product type for device %s", device.getSerialNumber()),
+                    device.getSerialNumber());
         }
         verifyRequiredBoards(device, resourceParser, deviceProductType);
 

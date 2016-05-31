@@ -271,22 +271,24 @@ public abstract class DeviceFlashPreparer implements ITargetCleaner {
         // Need to use deviceBuild.getDeviceBuildId instead of getBuildId because the build info
         // could be an AppBuildInfo and return app build id. Need to be more explicit that we
         // check for the device build here.
-        checkBuildAttribute(deviceBuild.getDeviceBuildId(), device.getBuildId());
+        checkBuildAttribute(deviceBuild.getDeviceBuildId(), device.getBuildId(),
+                device.getSerialNumber());
         if (!mSkipPostFlashFlavorCheck) {
-            checkBuildAttribute(deviceBuild.getBuildFlavor(), device.getBuildFlavor());
+            checkBuildAttribute(deviceBuild.getBuildFlavor(), device.getBuildFlavor(),
+                    device.getSerialNumber());
         }
         // TODO: check bootloader and baseband versions too
     }
 
-    private void checkBuildAttribute(String expectedBuildAttr, String actualBuildAttr)
-            throws DeviceNotAvailableException {
+    private void checkBuildAttribute(String expectedBuildAttr, String actualBuildAttr,
+            String serial) throws DeviceNotAvailableException {
         if (expectedBuildAttr == null || actualBuildAttr == null ||
                 !expectedBuildAttr.equals(actualBuildAttr)) {
             // throw DNAE - assume device hardware problem - we think flash was successful but
             // device is not running right bits
             throw new DeviceNotAvailableException(
                     String.format("Unexpected build after flashing. Expected %s, actual %s",
-                            expectedBuildAttr, actualBuildAttr));
+                            expectedBuildAttr, actualBuildAttr), serial);
         }
     }
 

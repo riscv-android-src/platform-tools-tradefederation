@@ -149,7 +149,7 @@ public class DeviceFlashPreparerTest extends TestCase {
         EasyMock.expect(mMockDevice.isDeviceEncrypted()).andStubReturn(Boolean.FALSE);
         mMockDevice.clearLogcat();
         mMockDevice.waitForDeviceAvailable(EasyMock.anyLong());
-        EasyMock.expectLastCall().andThrow(new DeviceUnresponsiveException("foo"));
+        EasyMock.expectLastCall().andThrow(new DeviceUnresponsiveException("foo", "fakeserial"));
         mMockDevice.setRecoveryMode(RecoveryMode.AVAILABLE);
         EasyMock.replay(mMockFlasher, mMockDevice);
         try {

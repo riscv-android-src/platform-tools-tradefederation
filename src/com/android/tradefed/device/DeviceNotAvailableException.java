@@ -23,6 +23,9 @@ package com.android.tradefed.device;
  */
 @SuppressWarnings("serial")
 public class DeviceNotAvailableException extends Exception {
+
+    private String mSerial = null;
+
     /**
      * Creates a {@link DeviceNotAvailableException}.
      */
@@ -34,7 +37,10 @@ public class DeviceNotAvailableException extends Exception {
      * Creates a {@link DeviceNotAvailableException}.
      *
      * @param msg a descriptive message.
+     *
+     * @deprecated use {@link #DeviceNotAvailableException(String msg, String serial)} instead
      */
+    @Deprecated
     public DeviceNotAvailableException(String msg) {
         super(msg);
     }
@@ -43,9 +49,43 @@ public class DeviceNotAvailableException extends Exception {
      * Creates a {@link DeviceNotAvailableException}.
      *
      * @param msg a descriptive message.
-     * @param cause the root {@link Throwable} that caused the device to become unavailable.
+     * @param serial the serial of the device concerned
      */
+    public DeviceNotAvailableException(String msg, String serial) {
+        super(msg);
+        mSerial = serial;
+    }
+
+    /**
+     * Creates a {@link DeviceNotAvailableException}.
+     *
+     * @param msg a descriptive message.
+     * @param cause the root {@link Throwable} that caused the device to become unavailable.
+     *
+     * @deprecated use
+     * {@link #DeviceNotAvailableException(String msg, Throwable cause, String serial)} instead
+     */
+    @Deprecated
     public DeviceNotAvailableException(String msg, Throwable cause) {
         super(msg, cause);
+    }
+
+    /**
+     * Creates a {@link DeviceNotAvailableException}.
+     *
+     * @param msg a descriptive message.
+     * @param cause the root {@link Throwable} that caused the device to become unavailable.
+     * @param serial the serial of the device concerned by the exception
+     */
+    public DeviceNotAvailableException(String msg, Throwable cause, String serial) {
+        super(msg, cause);
+        mSerial = serial;
+    }
+
+    /**
+     * Return Serial of the device associated with exception.
+     */
+    public String getSerial() {
+        return mSerial;
     }
 }

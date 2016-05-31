@@ -113,7 +113,8 @@ public class Camera2FrameworkStressTest extends CameraTestBase {
                     getDevice().pullFile(resultFilePath, outputFile);
                     if (outputFile == null) {
                         throw new DeviceNotAvailableException(String.format("Failed to pull the "
-                                + "result file: %s", resultFilePath));
+                                + "result file: %s", resultFilePath),
+                                getDevice().getSerialNumber());
                     }
 
                     BufferedReader reader = new BufferedReader(new FileReader(outputFile));

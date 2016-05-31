@@ -156,7 +156,7 @@ public class FastbootDeviceFlasherTest extends TestCase {
      * Test that baseband can be flashed when current baseband version is empty
      */
     public void testFlashBaseband_noVersion()
-            throws DeviceNotAvailableException, TargetSetupError, IOException {
+            throws DeviceNotAvailableException, TargetSetupError {
         final String newBasebandVersion = "1.0.1";
         ITestDevice mockDevice = EasyMock.createMock(ITestDevice.class);
         // expect a fastboot getvar version-baseband command
@@ -291,8 +291,7 @@ public class FastbootDeviceFlasherTest extends TestCase {
                         (String)EasyMock.anyObject())).andReturn(result);
     }
 
-    private FastbootDeviceFlasher getFlasherWithParserData(final String androidInfoData)
-            throws IOException {
+    private FastbootDeviceFlasher getFlasherWithParserData(final String androidInfoData) {
         FastbootDeviceFlasher flasher = new FastbootDeviceFlasher() {
             @Override
             protected IFlashingResourcesParser createFlashingResourcesParser(
@@ -308,7 +307,7 @@ public class FastbootDeviceFlasherTest extends TestCase {
             @Override
             protected void flashBootloader(ITestDevice device, File bootloaderImageFile)
                     throws DeviceNotAvailableException, TargetSetupError {
-                throw new DeviceNotAvailableException("error");
+                throw new DeviceNotAvailableException("error", "fakeserial");
             }
         };
         flasher.setFlashingResourcesRetriever(EasyMock.createNiceMock(

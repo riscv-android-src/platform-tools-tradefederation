@@ -65,9 +65,10 @@ public class DeviceTestCaseTest extends TestCase {
     public static class MockAbortTest extends DeviceTestCase {
 
         private static final String EXCEP_MSG = "failed";
+        private static final String FAKE_SERIAL = "fakeserial";
 
         public void test1() throws DeviceNotAvailableException {
-            throw new DeviceNotAvailableException(EXCEP_MSG);
+            throw new DeviceNotAvailableException(EXCEP_MSG, FAKE_SERIAL);
         }
     }
 
