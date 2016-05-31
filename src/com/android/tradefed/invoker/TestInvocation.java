@@ -153,6 +153,10 @@ public class TestInvocation implements ITestInvocation {
                 info = config.getBuildProvider().getBuild();
             }
             if (info != null) {
+                if (cmdLineArgs != null) {
+                    // TODO: Store this in an invocation metadata class later
+                    info.addBuildAttribute("command_line_args", cmdLineArgs);
+                }
                 injectBuild(info, config.getTests());
                 if (shardConfig(config, info, rescheduler)) {
                     CLog.i("Invocation for %s has been sharded, rescheduling",
