@@ -32,6 +32,7 @@ import com.android.tradefed.config.ConfigurationFactory;
 import com.android.tradefed.config.GlobalConfiguration;
 import com.android.tradefed.config.IConfiguration;
 import com.android.tradefed.config.IConfigurationFactory;
+import com.android.tradefed.config.IGlobalConfiguration;
 import com.android.tradefed.config.Option;
 import com.android.tradefed.device.DeviceAllocationState;
 import com.android.tradefed.device.DeviceManager;
@@ -58,6 +59,9 @@ import com.android.tradefed.util.IHostMonitor;
 import com.android.tradefed.util.QuotationAwareTokenizer;
 import com.android.tradefed.util.RunUtil;
 import com.android.tradefed.util.TableFormatter;
+import com.android.tradefed.util.keystore.IKeyStoreClient;
+import com.android.tradefed.util.keystore.IKeyStoreFactory;
+import com.android.tradefed.util.keystore.KeyStoreException;
 
 import org.json.JSONException;
 
@@ -691,6 +695,27 @@ public class CommandScheduler extends Thread implements ICommandScheduler, IComm
     }
 
     /**
+     * Fetches a {@link IKeyStoreClient} using the {@link IKeyStoreFactory}
+     * declared in {@link IGlobalConfiguration} or null if none is defined.
+     * @return IKeyStoreClient
+     */
+    protected IKeyStoreClient getKeyStoreClient() {
+       try {
+           IKeyStoreFactory f = GlobalConfiguration.getInstance().getKeyStoreFactory();
+           if (f != null) {
+               try {
+                  return f.createKeyStoreClient();
+               } catch (KeyStoreException e) {
+                   CLog.e("Failed to create key store client", e);
+               }
+           }
+       } catch (IllegalStateException e) {
+           CLog.w("Global configuration has not been created, failed to get keystore", e);
+       }
+       return null;
+    }
+
+    /**
      * The main execution block of this thread.
      */
     @Override
@@ -849,7 +874,8 @@ public class CommandScheduler extends Thread implements ICommandScheduler, IComm
     private boolean internalAddCommand(String[] args, long totalExecTime, String cmdFilePath)
             throws ConfigurationException {
         assertStarted();
-        IConfiguration config = getConfigFactory().createConfigurationFromArgs(args);
+        IConfiguration config = getConfigFactory().createConfigurationFromArgs(args, null,
+                getKeyStoreClient());
         if (config.getCommandOptions().isHelpMode()) {
             getConfigFactory().printHelpForConfig(args, true, System.out);
         } else if (config.getCommandOptions().isFullHelpMode()) {
@@ -962,7 +988,7 @@ public class CommandScheduler extends Thread implements ICommandScheduler, IComm
                 CommandTracker cmdTracker = createCommandTracker(argsWithDevice, cmdFilePath);
                 cmdTracker.incrementExecTime(totalExecTime);
                 IConfiguration config = getConfigFactory().createConfigurationFromArgs(
-                        cmdTracker.getArgs());
+                        cmdTracker.getArgs(), null, getKeyStoreClient());
                 CLog.logAndDisplay(LogLevel.INFO, "Scheduling '%s' on '%s'", cmdTracker.getArgs()[0],
                         device);
                 config.getDeviceRequirements().setSerial(device);
@@ -1001,7 +1027,7 @@ public class CommandScheduler extends Thread implements ICommandScheduler, IComm
     private void addNewExecCommandToQueue(CommandTracker commandTracker) {
         try {
             IConfiguration config = getConfigFactory().createConfigurationFromArgs(
-                    commandTracker.getArgs());
+                    commandTracker.getArgs(), null, getKeyStoreClient());
             ExecutableCommand execCmd = createExecutableCommand(commandTracker, config, false);
             addExecCommandToQueue(execCmd, config.getCommandOptions().getLoopTime());
         } catch (ConfigurationException e) {
@@ -1063,7 +1089,7 @@ public class CommandScheduler extends Thread implements ICommandScheduler, IComm
         IDeviceManager manager = getDeviceManager();
         CommandTracker cmdTracker = createCommandTracker(args, null);
         IConfiguration config = getConfigFactory().createConfigurationFromArgs(
-                cmdTracker.getArgs());
+                cmdTracker.getArgs(), null, getKeyStoreClient());
         config.validateOptions();
 
         ExecutableCommand execCmd = createExecutableCommand(cmdTracker, config, false);
@@ -1090,7 +1116,7 @@ public class CommandScheduler extends Thread implements ICommandScheduler, IComm
         assertStarted();
         CommandTracker cmdTracker = createCommandTracker(args, null);
         IConfiguration config = getConfigFactory().createConfigurationFromArgs(
-                cmdTracker.getArgs());
+                cmdTracker.getArgs(), null, getKeyStoreClient());
         config.validateOptions();
         CLog.i("Executing '%s' on '%s'", cmdTracker.getArgs()[0], device.getSerialNumber());
         ExecutableCommand execCmd = createExecutableCommand(cmdTracker, config, false);

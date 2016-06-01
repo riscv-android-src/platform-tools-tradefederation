@@ -27,7 +27,7 @@ import com.android.tradefed.result.ILogSaver;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.targetprep.ITargetPreparer;
 import com.android.tradefed.testtype.IRemoteTest;
-
+import com.android.tradefed.util.keystore.IKeyStoreClient;
 import org.json.JSONArray;
 import org.json.JSONException;
 
@@ -332,6 +332,19 @@ public interface IConfiguration {
      * @return the unconsumed arguments
      */
     public List<String> setOptionsFromCommandLineArgs(List<String> listArgs)
+            throws ConfigurationException;
+
+    /**
+     * Set the config {@link Option} fields with given set of command line arguments
+     * <p/>
+     * @see {@link ArgsOptionParser} for expected format
+     *
+     * @param listArgs the command line arguments
+     * @param keyStoreClient {@link IKeyStoreClient} to use.
+     * @return the unconsumed arguments
+     */
+    public List<String> setOptionsFromCommandLineArgs(List<String> listArgs,
+            IKeyStoreClient keyStoreClient)
             throws ConfigurationException;
 
     /**

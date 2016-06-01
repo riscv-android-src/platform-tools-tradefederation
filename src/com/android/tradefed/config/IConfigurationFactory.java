@@ -16,6 +16,9 @@
 
 package com.android.tradefed.config;
 
+import com.android.tradefed.util.keystore.IKeyStoreClient;
+import com.android.tradefed.util.keystore.IKeyStoreFactory;
+
 import java.io.PrintStream;
 import java.util.List;
 
@@ -51,6 +54,27 @@ public interface IConfigurationFactory {
      */
     public IConfiguration createConfigurationFromArgs(String[] args, List<String> unconsumedArgs)
             throws ConfigurationException;
+
+    /**
+     * Create the {@link IConfiguration} from command line arguments with a key store.
+     * <p/>
+     * Expected format is "CONFIG [options]", where CONFIG is the built-in configuration name or
+     * a file path to a configuration xml file.
+     *
+     * @param args the command line arguments
+     * @param unconsumedArgs a List which will be populated with the arguments that were not
+     *                       consumed by the Objects associated with the specified config. If this
+     *                       is {@code null}, then the implementation will throw
+     *                       {@link ConfigurationException} if any unprocessed args remain.
+     * @param keyStoreClient a {@link IKeyStoreClient} which is used to obtain sensitive info in
+     *                       the args.
+     *
+     * @return the loaded {@link IConfiguration}. The delegate object {@link Option} fields have
+     *         been populated with values in args.
+     * @throws ConfigurationException if configuration could not be loaded
+     */
+    public IConfiguration createConfigurationFromArgs(String[] args, List<String> unconsumedArgs,
+            IKeyStoreClient keyStoreClient) throws ConfigurationException;
 
     /**
      * Create a {@link IGlobalConfiguration} from command line arguments.

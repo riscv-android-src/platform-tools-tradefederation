@@ -16,9 +16,6 @@
 
 package com.android.tradefed.util.keystore;
 
-import com.android.tradefed.config.Option;
-import com.android.tradefed.config.OptionClass;
-import com.android.tradefed.config.Option.Importance;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.util.FileUtil;
 
@@ -32,75 +29,52 @@ import java.io.IOException;
  * A sample implementation where a local JSON file acts a key store. The JSON
  * text file should have key to value in string format.
  */
-@OptionClass(alias = "json-keystore")
 public class JSONFileKeyStoreClient implements IKeyStoreClient {
 
-    @Option(name = "json-key-store-file",
-            description = "The JSON file from where to read the key store",
-            importance = Importance.IF_UNSET)
     private File mJsonFile = null;
     // JSON key store read from the JSON file.
     protected JSONObject mJsonKeyStore = null;
 
-    public JSONFileKeyStoreClient() {}
-
-    public JSONFileKeyStoreClient(File jsonFile) {
-        mJsonFile = jsonFile;
+    public JSONFileKeyStoreClient() {
     }
 
-    /**
-     * Helper method to lazily load the JSON key store.
-     *
-     * @return the JSONObject of the key store.
-     * @throws KeyStoreException
-     */
-    protected JSONObject getKeyStore() throws KeyStoreException {
-        if (mJsonKeyStore == null) {
-            if (mJsonFile == null) {
-                throw new KeyStoreException("JSON key store file not set.");
-            }
-            if (!mJsonFile.canRead()) {
-                throw new KeyStoreException(
-                        String.format("Unable to read the JSON key store file %s",
-                                mJsonFile.toString()));
-            }
-            try {
-                String data = FileUtil.readStringFromFile(mJsonFile);
-                mJsonKeyStore = new JSONObject(data);
-            } catch (IOException e) {
-                throw new KeyStoreException(String.format("Failed to read JSON key file %s: %s",
-                        mJsonFile.toString(), e));
-            } catch (JSONException e) {
-                throw new KeyStoreException(
-                        String.format("Failed to parse JSON data from file %s with exception: %s",
-                                mJsonFile.toString(), e));
-            }
+    public JSONFileKeyStoreClient(File jsonFile) throws KeyStoreException {
+        mJsonFile = jsonFile;
+        if (mJsonFile == null) {
+            throw new KeyStoreException("JSON key store file not set.");
         }
-        return mJsonKeyStore;
+        if (!mJsonFile.canRead()) {
+            throw new KeyStoreException(
+                    String.format("Unable to read the JSON key store file %s",
+                            mJsonFile.toString()));
+        }
+        try {
+            String data = FileUtil.readStringFromFile(mJsonFile);
+            mJsonKeyStore = new JSONObject(data);
+        } catch (IOException e) {
+            throw new KeyStoreException(String.format("Failed to read JSON key file %s: %s",
+                    mJsonFile.toString(), e));
+        } catch (JSONException e) {
+            throw new KeyStoreException(
+                    String.format("Failed to parse JSON data from file %s with exception: %s",
+                            mJsonFile.toString(), e));
+        }
+
     }
 
     @Override
     public boolean isAvailable() {
-        if (mJsonFile == null) {
-            CLog.w("Null file specified for key store.");
-            return false;
-        }
-        return mJsonFile.canRead();
+        return mJsonKeyStore != null;
     }
 
     @Override
     public boolean containsKey(String key) {
         CLog.i("fetching key for %s", key);
-        try {
-            if (getKeyStore() == null) {
-                CLog.w("Key Store is null");
-                return false;
-            }
-            return getKeyStore().has(key);
-        } catch (KeyStoreException e) {
-            CLog.e("Key store error while trying to fetch key %s: %s", key, e);
+        if (mJsonKeyStore == null) {
+            CLog.w("Key Store is null");
             return false;
         }
+        return mJsonKeyStore.has(key);
     }
 
     @Override
@@ -109,10 +83,14 @@ public class JSONFileKeyStoreClient implements IKeyStoreClient {
             CLog.w("null key passed");
             return null;
         }
+        if (mJsonKeyStore == null) {
+            CLog.w("null keystore");
+            return null;
+        }
         try {
-            return getKeyStore().getString(key);
-        } catch (JSONException | KeyStoreException e) {
-            CLog.e("Failed to fetch key '%s' inside JSON key store: %s", key, e);
+            return mJsonKeyStore.getString(key);
+        } catch (JSONException e) {
+            CLog.e("failed to fetch key from json key store:", e);
             return null;
         }
     }

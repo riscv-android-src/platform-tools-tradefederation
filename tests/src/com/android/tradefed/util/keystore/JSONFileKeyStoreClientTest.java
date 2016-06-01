@@ -18,7 +18,6 @@ package com.android.tradefed.util.keystore;
 
 import junit.framework.TestCase;
 
-import org.json.JSONException;
 import org.json.JSONObject;
 
 /**
@@ -30,54 +29,51 @@ public class JSONFileKeyStoreClientTest extends TestCase {
 
     @Override
     protected void setUp() throws Exception {
-        mKeyStore = new JSONFileKeyStoreClient() {
-
-            @Override
-            // Don't lazily load key store. used for unit testing
-            protected JSONObject getKeyStore() {
-                return mJsonKeyStore;
-            }
-        };
+        mKeyStore = new JSONFileKeyStoreClient();
     }
 
-    public void testKeyStoreNullFile() {
-        IKeyStoreClient k = new JSONFileKeyStoreClient(null);
-        assertFalse("Key store should not be available for null file", k.isAvailable());
+    public void testKeyStoreNullFile() throws Exception {
+        try {
+            IKeyStoreClient k = new JSONFileKeyStoreClient(null);
+            fail("Key store should not be available for null file");
+        } catch (KeyStoreException e) {
+            // Expected.
+        }
     }
 
-    public void testContainsKeyinNullKeyStore() {
+    public void testContainsKeyinNullKeyStore() throws Exception {
         mKeyStore.setKeyStore(null);
         assertFalse("Key should not exist in null key store", mKeyStore.containsKey("test"));
     }
 
-    public void testDoesNotContainMissingKey() throws JSONException {
+    public void testDoesNotContainMissingKey() throws Exception {
         JSONObject data = new JSONObject(mJsonData);
         mKeyStore.setKeyStore(data);
         assertFalse("Missing key should not exist in key store",
                 mKeyStore.containsKey("invalid key"));
     }
 
-    public void testContainsValidKey() throws JSONException {
+    public void testContainsValidKey() throws Exception {
         JSONObject data = new JSONObject(mJsonData);
         mKeyStore.setKeyStore(data);
         assertTrue("Failed to fetch valid key in key store", mKeyStore.containsKey("key1"));
     }
 
-    public void testFetchMissingKey() throws JSONException {
+    public void testFetchMissingKey() throws Exception {
         JSONObject data = new JSONObject(mJsonData);
         mKeyStore.setKeyStore(data);
         assertNull("Missing key should not exist in key store",
                 mKeyStore.fetchKey("invalid key"));
     }
 
-    public void testFetchNullKey() throws JSONException {
+    public void testFetchNullKey() throws Exception {
         JSONObject data = new JSONObject(mJsonData);
         mKeyStore.setKeyStore(data);
         assertNull("Null key should not exist in key store",
                 mKeyStore.fetchKey(null));
     }
 
-    public void testFetchValidKey() throws JSONException {
+    public void testFetchValidKey() throws Exception {
         JSONObject data = new JSONObject(mJsonData);
         mKeyStore.setKeyStore(data);
         assertEquals("value 1", mKeyStore.fetchKey("key1"));

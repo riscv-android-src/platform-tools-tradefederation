@@ -33,7 +33,8 @@ import com.android.tradefed.util.RegexTrie;
 import com.android.tradefed.util.RunUtil;
 import com.android.tradefed.util.VersionParser;
 import com.android.tradefed.util.ZipUtil;
-import com.android.tradefed.util.keystore.IKeyStoreClient;
+import com.android.tradefed.util.keystore.IKeyStoreFactory;
+import com.android.tradefed.util.keystore.KeyStoreException;
 
 import jline.ConsoleReader;
 
@@ -85,7 +86,7 @@ public class Console extends Thread {
     private static ConsoleReaderOutputStream sConsoleStream = null;
 
     protected ICommandScheduler mScheduler;
-    protected IKeyStoreClient mKeyStoreClient;
+    protected IKeyStoreFactory mKeyStoreFactory;
     protected ConsoleReader mConsoleReader;
     private RegexTrie<Runnable> mCommandTrie = new RegexTrie<Runnable>();
     private boolean mShouldExit = false;
@@ -136,8 +137,8 @@ public class Console extends Thread {
                 if (args.size() >= 2 && !args.get(1).isEmpty()) {
                     List<String> optionArgs = getFlatArgs(1, args);
                     ArgsOptionParser parser = new ArgsOptionParser(this);
-                    if (mKeyStoreClient != null) {
-                        parser.setKeyStore(mKeyStoreClient);
+                    if (mKeyStoreFactory != null) {
+                        parser.setKeyStore(mKeyStoreFactory.createKeyStoreClient());
                     }
                     parser.parse(optionArgs);
                 }
@@ -160,6 +161,8 @@ public class Console extends Thread {
                 printLine(String.format("TF will exit without warning when remaining %s complete.",
                         exitMode));
             } catch (ConfigurationException e) {
+                printLine(e.toString());
+            } catch (KeyStoreException e) {
                 printLine(e.toString());
             }
         }
@@ -227,8 +230,8 @@ public class Console extends Thread {
         mScheduler = scheduler;
     }
 
-    void setKeyStoreClient(IKeyStoreClient keyStoreClient) {
-        mKeyStoreClient = keyStoreClient;
+    void setKeyStoreFactory(IKeyStoreFactory factory) {
+        mKeyStoreFactory = factory;
     }
 
     /**
@@ -1008,7 +1011,7 @@ public class Console extends Thread {
     }
 
     /**
-     * Starts the given tradefed console with given args
+     * Starts the given Tradefed console with given args
      *
      * @param console the {@link Console} to start
      * @param args the command line arguments
@@ -1019,7 +1022,7 @@ public class Console extends Thread {
 
         console.setArgs(nonGlobalArgs);
         console.setCommandScheduler(GlobalConfiguration.getInstance().getCommandScheduler());
-        console.setKeyStoreClient(GlobalConfiguration.getInstance().getKeyStoreClient());
+        console.setKeyStoreFactory(GlobalConfiguration.getInstance().getKeyStoreFactory());
         console.setDaemon(true);
         console.start();
 

@@ -28,7 +28,8 @@ import com.android.tradefed.log.ITerribleFailureHandler;
 import com.android.tradefed.util.ArrayUtil;
 import com.android.tradefed.util.IHostMonitor;
 import com.android.tradefed.util.MultiMap;
-import com.android.tradefed.util.keystore.IKeyStoreClient;
+import com.android.tradefed.util.keystore.IKeyStoreFactory;
+import com.android.tradefed.util.keystore.StubKeyStoreFactory;
 
 import java.io.File;
 import java.io.PrintStream;
@@ -208,7 +209,7 @@ public class GlobalConfiguration implements IGlobalConfiguration {
             sObjTypeMap.put(MULTI_DEVICE_RECOVERY_TYPE_NAME,
                     new ObjTypeInfo(IMultiDeviceRecovery.class, true));
             sObjTypeMap.put(KEY_STORE_TYPE_NAME,
-                    new ObjTypeInfo(IKeyStoreClient.class, false));
+                    new ObjTypeInfo(IKeyStoreFactory.class, false));
 
         }
         return sObjTypeMap;
@@ -232,6 +233,7 @@ public class GlobalConfiguration implements IGlobalConfiguration {
         setDeviceRequirements(new DeviceSelectionOptions());
         setDeviceManager(new DeviceManager());
         setCommandScheduler(new CommandScheduler());
+        setKeyStoreFactory(new StubKeyStoreFactory());
     }
 
     /**
@@ -278,8 +280,8 @@ public class GlobalConfiguration implements IGlobalConfiguration {
      * {@inheritDoc}
      */
     @Override
-    public IKeyStoreClient getKeyStoreClient() {
-        return (IKeyStoreClient) getConfigurationObject(KEY_STORE_TYPE_NAME);
+    public IKeyStoreFactory getKeyStoreFactory() {
+        return (IKeyStoreFactory) getConfigurationObject(KEY_STORE_TYPE_NAME);
     }
 
     /**
@@ -419,8 +421,8 @@ public class GlobalConfiguration implements IGlobalConfiguration {
      * {@inheritDoc}
      */
     @Override
-    public void setKeyStoreClient(IKeyStoreClient client) {
-        setConfigurationObjectNoThrow(KEY_STORE_TYPE_NAME, client);
+    public void setKeyStoreFactory(IKeyStoreFactory factory) {
+        setConfigurationObjectNoThrow(KEY_STORE_TYPE_NAME, factory);
     }
 
     /**

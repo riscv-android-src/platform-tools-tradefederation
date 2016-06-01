@@ -300,7 +300,7 @@ public class OptionSetter {
      * @throws ConfigurationException
      */
     public OptionSetter(Object... optionSources) throws ConfigurationException {
-        this(Arrays.asList(optionSources), null);
+        this(Arrays.asList(optionSources));
     }
 
     /**
@@ -308,33 +308,8 @@ public class OptionSetter {
      * @throws ConfigurationException
      */
     public OptionSetter(Collection<Object> optionSources) throws ConfigurationException {
-        this(optionSources, null);
-    }
-
-    /**
-     * Constructs a new OptionParser for setting the @Option fields of 'optionSources'.
-     * @throws ConfigurationException
-     */
-    public OptionSetter(Collection<Object> optionSources, IKeyStoreClient keyStore)
-            throws ConfigurationException {
         mOptionSources = optionSources;
         mOptionMap = makeOptionMap();
-        if (keyStore != null) {
-            CLog.d("Setting keystore %s", keyStore.toString());
-            setKeyStore(keyStore);
-        } else {
-            try {
-                IKeyStoreClient c = GlobalConfiguration.getInstance().getKeyStoreClient();
-                 if (c != null) {
-                     CLog.d("Keystore is null, Setting keystore %s", c.toString());
-                     setKeyStore(c);
-                 }else {
-                     CLog.d("null keystore");
-                 }
-            } catch (Exception e) {
-               CLog.i(e.getMessage());
-            }
-        }
     }
 
     public void setKeyStore(IKeyStoreClient keyStore) {

@@ -256,6 +256,8 @@ public class ConfigurationDef {
 
     /**
      * Gets the name of this configuration definition
+     *
+     * @return name of this configuration.
      */
     public String getName() {
         return mName;
