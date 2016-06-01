@@ -972,7 +972,7 @@ public class TestDevice extends AndroidNativeDevice {
      */
     @Override
     public String getSetting(String namespace, String key) throws DeviceNotAvailableException {
-        return getSettingInternal("", namespace, key);
+        return getSettingInternal("", namespace.trim(), key.trim());
     }
 
     /**
@@ -981,7 +981,7 @@ public class TestDevice extends AndroidNativeDevice {
     @Override
     public String getSetting(int userId, String namespace, String key)
             throws DeviceNotAvailableException {
-        return getSettingInternal(String.format("--user %d", userId), namespace, key);
+        return getSettingInternal(String.format("--user %d", userId), namespace.trim(), key.trim());
     }
 
     /**
@@ -989,7 +989,8 @@ public class TestDevice extends AndroidNativeDevice {
      */
     private String getSettingInternal(String userFlag, String namespace, String key)
             throws DeviceNotAvailableException {
-        if (Arrays.asList(SETTINGS_NAMESPACE).contains(namespace.toLowerCase())) {
+        namespace = namespace.toLowerCase();
+        if (Arrays.asList(SETTINGS_NAMESPACE).contains(namespace)) {
             String cmd = String.format("settings %s get %s %s", userFlag, namespace, key);
             String output = executeShellCommand(cmd);
             if ("null".equals(output)) {
@@ -999,7 +1000,7 @@ public class TestDevice extends AndroidNativeDevice {
             }
             return output.trim();
         }
-        CLog.e("Namespace requested: %s is not part of {system, secure, global}", namespace);
+        CLog.e("Namespace requested: '%s' is not part of {system, secure, global}", namespace);
         return null;
     }
 
@@ -1009,7 +1010,7 @@ public class TestDevice extends AndroidNativeDevice {
     @Override
     public void setSetting(String namespace, String key, String value)
             throws DeviceNotAvailableException {
-        setSettingInternal("", namespace, key, value);
+        setSettingInternal("", namespace.trim(), key.trim(), value.trim());
     }
 
     /**
@@ -1018,7 +1019,8 @@ public class TestDevice extends AndroidNativeDevice {
     @Override
     public void setSetting(int userId, String namespace, String key, String value)
             throws DeviceNotAvailableException {
-        setSettingInternal(String.format("--user %d", userId), namespace, key, value);
+        setSettingInternal(String.format("--user %d", userId), namespace.trim(), key.trim(),
+                value.trim());
     }
 
     /**
