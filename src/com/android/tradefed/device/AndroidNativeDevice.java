@@ -1351,6 +1351,15 @@ public class AndroidNativeDevice implements IManagedTestDevice {
      * {@inheritDoc}
      */
     @Override
+    public CommandResult executeFastbootCommand(long timeout, String... cmdArgs)
+            throws DeviceNotAvailableException, UnsupportedOperationException {
+        return doFastbootCommand(timeout, cmdArgs);
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
     public CommandResult executeLongFastbootCommand(String... cmdArgs)
             throws DeviceNotAvailableException, UnsupportedOperationException {
         return doFastbootCommand(getLongCommandTimeout(), cmdArgs);
@@ -1968,6 +1977,7 @@ public class AndroidNativeDevice implements IManagedTestDevice {
      * <p/>
      * Exposed so unit tests can mock
      */
+    @SuppressWarnings("unused")
     IWifiHelper createWifiHelper() throws DeviceNotAvailableException {
         // current wifi helper won't work on AndroidNativeDevice
         // TODO: create a new Wifi helper with supported feature of AndroidNativeDevice when
@@ -2273,6 +2283,7 @@ public class AndroidNativeDevice implements IManagedTestDevice {
      * Default implementation doesn't include any addition actions.
      * adb root is not guaranteed to be enabled at this stage.
      */
+    @SuppressWarnings("unused")
     public void postAdbRootAction() throws DeviceNotAvailableException {
         // Empty on purpose.
     }

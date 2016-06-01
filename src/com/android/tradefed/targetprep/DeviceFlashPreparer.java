@@ -80,6 +80,10 @@ public abstract class DeviceFlashPreparer implements ITargetCleaner {
             description = "whether or not to skip post-flashing setup steps")
     private boolean mSkipPostFlashingSetup = false;
 
+    @Option(name = "wipe-timeout",
+            description = "the timeout for the command of wiping user data.", isTimeVal = true)
+    private long mWipeTimeout = 4 * 60 * 1000;
+
     private static Semaphore sConcurrentFlashLock = null;
 
     /**
@@ -211,6 +215,7 @@ public abstract class DeviceFlashPreparer implements ITargetCleaner {
             IDeviceBuildInfo deviceBuild = (IDeviceBuildInfo)buildInfo;
             device.setRecoveryMode(RecoveryMode.ONLINE);
             IDeviceFlasher flasher = createFlasher(device);
+            flasher.setWipeTimeout(mWipeTimeout);
             // only surround fastboot related operations with flashing permit restriction
             try {
                 long start = System.currentTimeMillis();
