@@ -170,4 +170,12 @@ public class SystemUpdaterDeviceFlasher implements IDeviceFlasher {
             mTestsZipInstaller.setDataWipeSkipList(mDataWipeSkipList);
         }
     }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void setWipeTimeout(long timeout) {
+        // ignore
+    }
 }

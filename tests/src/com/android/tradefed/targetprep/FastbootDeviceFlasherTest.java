@@ -228,7 +228,8 @@ public class FastbootDeviceFlasherTest extends TestCase {
         result.setStatus(CommandStatus.SUCCESS);
         result.setStderr("");
         result.setStdout("");
-        EasyMock.expect(mMockDevice.executeFastbootCommand("-w")).andReturn(result);
+        EasyMock.expect(mMockDevice.executeFastbootCommand(EasyMock.anyLong(),
+                EasyMock.eq("-w"))).andReturn(result);
 
         EasyMock.replay(mMockDevice);
         mFlasher.handleUserDataFlashing(mMockDevice, mMockBuildInfo);
@@ -250,7 +251,6 @@ public class FastbootDeviceFlasherTest extends TestCase {
         // expect
         mMockDevice.rebootUntilOnline();
         mMockDevice.rebootIntoBootloader();
-        EasyMock.expect(mMockDevice.isEncryptionSupported()).andReturn(Boolean.FALSE);
 
         EasyMock.replay(mMockDevice, mockZipInstaller);
         mFlasher.flashUserData(mMockDevice, mMockBuildInfo);

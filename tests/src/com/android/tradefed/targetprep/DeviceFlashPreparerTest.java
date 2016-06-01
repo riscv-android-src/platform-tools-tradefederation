@@ -105,6 +105,7 @@ public class DeviceFlashPreparerTest extends TestCase {
         mMockFlasher.setForceSystemFlash(false);
         mMockFlasher.setDataWipeSkipList(Arrays.asList(new String[]{}));
         mMockFlasher.flash(mMockDevice, mMockBuildInfo);
+        mMockFlasher.setWipeTimeout(EasyMock.anyLong());
         mMockDevice.waitForDeviceOnline();
         EasyMock.expect(mMockDevice.enableAdbRoot()).andStubReturn(Boolean.TRUE);
         mMockDevice.setDate(null);
@@ -140,6 +141,7 @@ public class DeviceFlashPreparerTest extends TestCase {
         mMockFlasher.setForceSystemFlash(false);
         mMockFlasher.setDataWipeSkipList(Arrays.asList(new String[]{}));
         mMockFlasher.flash(mMockDevice, mMockBuildInfo);
+        mMockFlasher.setWipeTimeout(EasyMock.anyLong());
         mMockDevice.waitForDeviceOnline();
         EasyMock.expect(mMockDevice.enableAdbRoot()).andStubReturn(Boolean.TRUE);
         mMockDevice.setDate(null);

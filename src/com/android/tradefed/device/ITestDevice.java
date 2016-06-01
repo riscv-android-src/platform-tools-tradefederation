@@ -296,7 +296,7 @@ public interface ITestDevice {
     /**
      * Executes a adb shell command, with more parameters to control command behavior.
      *
-     * @see {@link IDevice#executeShellCommand(String, IShellOutputReceiver, int)}
+     * @see #executeShellCommand(String, IShellOutputReceiver)
      * @param command the adb shell command to run
      * @param receiver the {@link IShellOutputReceiver} to direct shell output to.
      * @param maxTimeToOutputShellResponse the maximum amount of time during which the command is
@@ -315,7 +315,7 @@ public interface ITestDevice {
     /**
      * Executes a adb shell command, with more parameters to control command behavior.
      *
-     * @see {@link IDevice#executeShellCommand(String, IShellOutputReceiver, int)}
+     * @see IDevice#executeShellCommand(String, IShellOutputReceiver, int)
      * @param command the adb shell command to run
      * @param receiver the {@link IShellOutputReceiver} to direct shell output to.
      * @param maxTimeToOutputShellResponse the maximum amount of time during which the command is
@@ -355,7 +355,8 @@ public interface ITestDevice {
     public String executeAdbCommand(String... commandArgs) throws DeviceNotAvailableException;
 
     /**
-     * Helper method which executes a fastboot command as a system command.
+     * Helper method which executes a fastboot command as a system command with a default timeout
+     * of 2 minutes.
      * <p/>
      * Expected to be used when device is already in fastboot mode.
      *
@@ -365,6 +366,20 @@ public interface ITestDevice {
      * recovered.
      */
     public CommandResult executeFastbootCommand(String... commandArgs)
+            throws DeviceNotAvailableException;
+
+    /**
+     * Helper method which executes a fastboot command as a system command.
+     * <p/>
+     * Expected to be used when device is already in fastboot mode.
+     *
+     * @param timeout the time in milliseconds before the command expire
+     * @param commandArgs the fastboot command and arguments to run
+     * @return the CommandResult containing output of command
+     * @throws DeviceNotAvailableException if connection with device is lost and cannot be
+     * recovered.
+     */
+    public CommandResult executeFastbootCommand(long timeout, String... commandArgs)
             throws DeviceNotAvailableException;
 
     /**
@@ -1374,6 +1389,7 @@ public interface ITestDevice {
      * @return the flags associated with the userId provided if found, -10000 in any other cases.
      * @throws DeviceNotAvailableException
      */
+    @SuppressWarnings("javadoc")
     public int getUserFlags(int userId) throws DeviceNotAvailableException;
 
     /**

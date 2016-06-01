@@ -44,6 +44,8 @@ public class FastbootDeviceFlasher implements IDeviceFlasher  {
     private static final int MAX_RETRY_ATTEMPTS = 3;
     private static final int RETRY_SLEEP = 2 * 1000; // 2s sleep between retries
 
+    private long mWipeTimeout = 4 * 60 * 1000;
+
     private UserDataFlashOption mUserDataFlashOption = UserDataFlashOption.FLASH;
 
     private IFlashingResourcesRetriever mResourceRetriever;
@@ -136,7 +138,7 @@ public class FastbootDeviceFlasher implements IDeviceFlasher  {
             throws DeviceNotAvailableException, TargetSetupError {
         if (UserDataFlashOption.FORCE_WIPE.equals(mUserDataFlashOption) ||
                 UserDataFlashOption.WIPE.equals(mUserDataFlashOption)) {
-            CommandResult result = device.executeFastbootCommand("-w");
+            CommandResult result = device.executeFastbootCommand(mWipeTimeout, "-w");
             handleFastbootResult(device, result, "-w");
         } else {
             flashUserData(device, deviceBuild);
@@ -254,7 +256,7 @@ public class FastbootDeviceFlasher implements IDeviceFlasher  {
      * Exposed for unit testing.
      *
      * @param localBuild the {@link IDeviceBuildInfo} to parse
-     * @return
+     * @return a {@link IFlashingResourcesParser} created by the factory method.
      * @throws TargetSetupError
      */
     protected IFlashingResourcesParser createFlashingResourcesParser(IDeviceBuildInfo localBuild)
@@ -430,10 +432,6 @@ public class FastbootDeviceFlasher implements IDeviceFlasher  {
 
             case WIPE_RM:
                 device.rebootUntilOnline(); // required to install tests
-                if (device.isEncryptionSupported() && device.isDeviceEncrypted()) {
-                    // TODO: move this logic into rebootUntilOnline
-                    device.unlockDevice();
-                }
                 getTestsZipInstaller().deleteData(device);
                 // Reboot into bootloader to continue the flashing process
                 device.rebootIntoBootloader();
@@ -671,5 +669,13 @@ public class FastbootDeviceFlasher implements IDeviceFlasher  {
             dataWipeSkipList.add("media");
         }
         mDataWipeSkipList = dataWipeSkipList;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void setWipeTimeout(long timeout) {
+        mWipeTimeout = timeout;
     }
 }
