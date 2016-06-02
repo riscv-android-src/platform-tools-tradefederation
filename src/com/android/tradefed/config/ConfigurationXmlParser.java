@@ -50,22 +50,6 @@ class ConfigurationXmlParser {
         private static final String CONFIG_TAG = "configuration";
         private static final String DEVICE_TAG = "device";
 
-        /**
-         * A simple class to encapsulate a failure to resolve a &lt;template-include&gt;.  This
-         * allows the error to be easily detected programmatically.
-         */
-        @SuppressWarnings("serial")
-        private class TemplateResolutionError extends ConfigurationException {
-            TemplateResolutionError(String templateName) {
-                super(String.format(
-                        "Failed to parse config xml '%s'. Reason: " +
-                        "Couldn't resolve template-include named " +
-                        "'%s': No 'default' attribute and no matching manual resolution. " +
-                        "Try using argument --template:map %s (config path)",
-                        mConfigDef.getName(), templateName, templateName));
-            }
-        }
-
         /** Note that this simply hasn't been implemented; it is not intentionally forbidden. */
         static final String INNER_TEMPLATE_INCLUDE_ERROR =
                 "Configurations which contain a <template-include> tag, not having a 'default' " +
@@ -106,6 +90,15 @@ class ConfigurationXmlParser {
                 throws SAXException {
             if (OBJECT_TAG.equals(localName)) {
                 final String objectTypeName = attributes.getValue("type");
+                if (objectTypeName == null) {
+                    throw new SAXException(new ConfigurationException(
+                            "<object> must have a 'type' attribute"));
+                }
+                if (GlobalConfiguration.isBuiltInObjType(objectTypeName) ||
+                        Configuration.isBuiltInObjType(objectTypeName)) {
+                    throw new SAXException(new ConfigurationException(String.format("<object> "
+                            + "cannot be type '%s' this is a reserved type.", objectTypeName)));
+                }
                 addObject(objectTypeName, attributes);
             } else if (DEVICE_TAG.equals(localName)) {
                 if (mCurrentDeviceObject != null) {
@@ -213,9 +206,6 @@ class ConfigurationXmlParser {
                             mTemplateMap);
                 } catch (ConfigurationException e) {
                     if (e instanceof TemplateResolutionError) {
-                        // The actual cause of this error is that recursive <template-include>
-                        // invocations aren't currently supported.  So replace that exception
-                        // with something more useful.
                         throwException(String.format(INNER_TEMPLATE_INCLUDE_ERROR,
                                 mConfigDef.getName(), includeName));
                     }
@@ -236,7 +226,7 @@ class ConfigurationXmlParser {
                     includeName = attributes.getValue("default");
                 }
                 if (includeName == null) {
-                    throw new SAXException(new TemplateResolutionError(templateName));
+                    throwTemplateException(mConfigDef.getName(), templateName);
                 }
                 // Removing the used template from the map to avoid re-using it.
                 mTemplateMap.remove(templateName);
@@ -245,16 +235,11 @@ class ConfigurationXmlParser {
                             mTemplateMap);
                 } catch (ConfigurationException e) {
                     if (e instanceof TemplateResolutionError) {
-                        // The actual cause of this error is that recursive <template-include>
-                        // invocations aren't currently supported.  So replace that exception
-                        // with something more useful.
                         throwException(String.format(INNER_TEMPLATE_INCLUDE_ERROR,
                                 mConfigDef.getName(), includeName));
                     }
-
                     throw new SAXException(e);
                 }
-
             } else {
                 throw new SAXException(String.format(
                         "Unrecognized tag '%s' in configuration", localName));
@@ -302,6 +287,11 @@ class ConfigurationXmlParser {
             throw new SAXException(new ConfigurationException(String.format(
                     "Failed to parse config xml '%s'. Reason: %s", mConfigDef.getName(), reason)));
         }
+
+        private void throwTemplateException(String configName, String templateName)
+                throws SAXException {
+            throw new SAXException(new TemplateResolutionError(configName, templateName));
+        }
     }
 
     private final IConfigDefLoader mConfigDefLoader;
@@ -340,13 +330,16 @@ class ConfigurationXmlParser {
         }
     }
 
+    /**
+     * Helper to encapsulate exceptions in a {@link ConfigurationException}
+     */
     private void throwConfigException(String configName, Throwable e)
             throws ConfigurationException {
         if (e.getCause() instanceof ConfigurationException) {
             throw (ConfigurationException)e.getCause();
         }
-        throw new ConfigurationException(String.format("Failed to parse config xml '%s' due to '%s'",
-                configName, e), e);
+        throw new ConfigurationException(String.format("Failed to parse config xml '%s' due to "
+                + "'%s'", configName, e), e);
     }
 
     /**
