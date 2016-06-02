@@ -116,7 +116,7 @@ public class CpuThrottlingWaiter implements ITargetPreparer {
     protected Map<String, String> getCpuMaxFreqs(ITestDevice device)
             throws DeviceNotAvailableException {
         Map<String, String> ret = new HashMap<>();
-        String result = device.executeShellCommand("ls -d /sys/devices/system/cpu/cpu*/cpufreq");
+        String result = device.executeShellCommand("ls -1 -d /sys/devices/system/cpu/cpu*/cpufreq");
         String[] lines = result.split("\r?\n");
         List<String> cpuPaths = new ArrayList<>();
         for (String line : lines) {
