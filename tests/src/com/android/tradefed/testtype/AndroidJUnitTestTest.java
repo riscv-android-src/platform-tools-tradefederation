@@ -19,15 +19,18 @@ import com.android.ddmlib.IDevice;
 import com.android.ddmlib.testrunner.IRemoteAndroidTestRunner;
 import com.android.ddmlib.testrunner.ITestRunListener;
 import com.android.ddmlib.testrunner.TestIdentifier;
+import com.android.tradefed.config.OptionSetter;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.result.ITestInvocationListener;
+import com.android.tradefed.util.FileUtil;
 
 import junit.framework.TestCase;
 
-import org.easymock.EasyMock;
-
+import java.io.File;
 import java.util.concurrent.TimeUnit;
+
+import org.easymock.EasyMock;
 
 /**
  * Unit tests for {@link AndroidJUnitTest}
@@ -178,6 +181,108 @@ public class AndroidJUnitTestTest extends TestCase {
         mAndroidJUnitTest.addExcludeFilter("com.android.not");
         mAndroidJUnitTest.run(mMockListener);
         EasyMock.verify(mMockRemoteRunner, mMockTestDevice);
+    }
+
+    /**
+     * Test list of tests to run is filtered by include file.
+     */
+    public void testRun_includeFile() throws Exception {
+        mMockRemoteRunner.addInstrumentationArg(
+                EasyMock.eq("testFile"), EasyMock.<String>anyObject());
+        setRunTestExpectations();
+        EasyMock.expect(mMockTestDevice.pushFile(
+                EasyMock.<File>anyObject(), EasyMock.<String>anyObject())).andReturn(Boolean.TRUE);
+        EasyMock.replay(mMockRemoteRunner, mMockTestDevice);
+
+        File tmpFile = FileUtil.createTempFile("testFile", ".txt");
+        try {
+            mAndroidJUnitTest.setIncludeTestFile(tmpFile);
+            mAndroidJUnitTest.run(mMockListener);
+            EasyMock.verify(mMockRemoteRunner, mMockTestDevice);
+        } finally {
+            FileUtil.deleteFile(tmpFile);
+        }
+
+    }
+
+    /**
+     * Test list of tests to run is filtered by exclude file.
+     */
+    public void testRun_excludeFile() throws Exception {
+        mMockRemoteRunner.addInstrumentationArg(
+                EasyMock.eq("notTestFile"), EasyMock.<String>anyObject());
+        setRunTestExpectations();
+        EasyMock.expect(mMockTestDevice.pushFile(
+                EasyMock.<File>anyObject(), EasyMock.<String>anyObject())).andReturn(Boolean.TRUE);
+        EasyMock.replay(mMockRemoteRunner, mMockTestDevice);
+
+        File tmpFile = FileUtil.createTempFile("notTestFile", ".txt");
+        try {
+            mAndroidJUnitTest.setExcludeTestFile(tmpFile);
+            mAndroidJUnitTest.run(mMockListener);
+            EasyMock.verify(mMockRemoteRunner, mMockTestDevice);
+        } finally {
+            FileUtil.deleteFile(tmpFile);
+        }
+
+    }
+
+    /**
+     * Test list of tests to run is filtered by include file, does not override existing filters.
+     */
+    public void testRun_testFileAndFilters() throws Exception {
+        mMockRemoteRunner.addInstrumentationArg(
+                EasyMock.eq("testFile"), EasyMock.<String>anyObject());
+        mMockRemoteRunner.addInstrumentationArg(
+                EasyMock.eq("notTestFile"), EasyMock.<String>anyObject());
+        mMockRemoteRunner.addInstrumentationArg("class", TEST1.getClassName());
+        mMockRemoteRunner.addInstrumentationArg("notClass", TEST2.toString());
+        setRunTestExpectations();
+        EasyMock.expect(mMockTestDevice.pushFile(EasyMock.<File>anyObject(),
+                EasyMock.<String>anyObject())).andReturn(Boolean.TRUE).times(2);
+        EasyMock.replay(mMockRemoteRunner, mMockTestDevice);
+
+        File tmpFileInclude = FileUtil.createTempFile("includeFile", ".txt");
+        File tmpFileExclude = FileUtil.createTempFile("excludeFile", ".txt");
+        try {
+            mAndroidJUnitTest.addIncludeFilter(TEST1.getClassName());
+            mAndroidJUnitTest.addExcludeFilter(TEST2.toString());
+            mAndroidJUnitTest.setIncludeTestFile(tmpFileInclude);
+            mAndroidJUnitTest.setExcludeTestFile(tmpFileExclude);
+            mAndroidJUnitTest.run(mMockListener);
+            EasyMock.verify(mMockRemoteRunner, mMockTestDevice);
+        } finally {
+            FileUtil.deleteFile(tmpFileInclude);
+            FileUtil.deleteFile(tmpFileExclude);
+        }
+    }
+
+    /**
+     * Test that setting option for "test-file-filter" works as intended
+     */
+    public void testRun_setTestFileOptions() throws Exception {
+        mMockRemoteRunner.addInstrumentationArg(
+                EasyMock.eq("testFile"), EasyMock.<String>anyObject());
+        mMockRemoteRunner.addInstrumentationArg(
+                EasyMock.eq("notTestFile"), EasyMock.<String>anyObject());
+        setRunTestExpectations();
+        EasyMock.expect(mMockTestDevice.pushFile(EasyMock.<File>anyObject(),
+                EasyMock.<String>anyObject())).andReturn(Boolean.TRUE).times(2);
+        EasyMock.replay(mMockRemoteRunner, mMockTestDevice);
+
+        File tmpFileInclude = FileUtil.createTempFile("includeFile", ".txt");
+        File tmpFileExclude = FileUtil.createTempFile("excludeFile", ".txt");
+        try {
+            OptionSetter setter = new OptionSetter(mAndroidJUnitTest);
+            setter.setOptionValue("test-file-include-filter", tmpFileInclude.getAbsolutePath());
+            setter.setOptionValue("test-file-exclude-filter", tmpFileExclude.getAbsolutePath());
+            mAndroidJUnitTest.run(mMockListener);
+            EasyMock.verify(mMockRemoteRunner, mMockTestDevice);
+        } finally {
+            FileUtil.deleteFile(tmpFileInclude);
+            FileUtil.deleteFile(tmpFileExclude);
+        }
+
     }
 
     private void setRunTestExpectations() throws DeviceNotAvailableException {
