@@ -17,7 +17,6 @@
 package com.android.ota.tests;
 
 import com.android.ddmlib.AdbCommandRejectedException;
-import com.android.ddmlib.IDevice.DeviceState;
 import com.android.ddmlib.TimeoutException;
 import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.build.IDeviceBuildInfo;
@@ -27,6 +26,7 @@ import com.android.tradefed.config.IConfiguration;
 import com.android.tradefed.config.IConfigurationReceiver;
 import com.android.tradefed.config.Option;
 import com.android.tradefed.config.OptionClass;
+import com.android.tradefed.device.AndroidNativeDevice;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.IManagedTestDevice;
 import com.android.tradefed.device.ITestDevice;
@@ -56,6 +56,7 @@ import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.File;
 import java.io.FileInputStream;
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.net.ServerSocket;
 import java.net.Socket;
@@ -237,9 +238,9 @@ public class SideloadOtaStabilityTest implements IDeviceTest, IBuildReceiver,
                         managedDevice.postBootSetup();
                     } catch (TimeoutException | AdbCommandRejectedException | IOException e) {
                         CLog.e("Failed to reboot due to %s, trying last-ditch recovery", e);
+                        managedDevice.recoverDevice();
                     }
                 }
-                mConfiguration.getDeviceRecovery().recoverDevice(managedDevice.getMonitor(), false);
             }
             double updateTime = sendRecoveryLog(listener);
             Map<String, String> metrics = new HashMap<String, String>(1);
@@ -334,7 +335,8 @@ public class SideloadOtaStabilityTest implements IDeviceTest, IBuildReceiver,
         } catch (DeviceNotAvailableException e) {
             CLog.e("Device %s did not come back online after recovery", mDevice.getSerialNumber());
             listener.testRunFailed("Device did not come back online after recovery");
-            throw e;
+            sendUpdatePackage(listener);
+            throw new AssertionError("Device did not come back online after recovery");
         }
 
         try {
@@ -343,7 +345,8 @@ public class SideloadOtaStabilityTest implements IDeviceTest, IBuildReceiver,
             CLog.e("Device %s did not boot up successfully after installing OTA",
                     mDevice.getSerialNumber());
             listener.testRunFailed("Device failed to boot after OTA");
-            throw e;
+            sendUpdatePackage(listener);
+            throw new AssertionError("Device failed to boot after OTA");
         }
 
     }
@@ -367,9 +370,26 @@ public class SideloadOtaStabilityTest implements IDeviceTest, IBuildReceiver,
         return null;
     }
 
+    protected void sendUpdatePackage(ITestInvocationListener listener) {
+        InputStreamSource pkgSource = null;
+        try {
+            pkgSource = new SnapshotInputStreamSource(
+                    new FileInputStream(mOtaDeviceBuild.getOtaPackageFile()));
+            listener.testLog(mRunName + "_package", LogDataType.ZIP, pkgSource);
+        } catch (FileNotFoundException e) {
+            CLog.w("Couldn't save update package due to exception %s", e);
+            return;
+        } finally {
+            if (pkgSource != null) {
+                pkgSource.cancel();
+            }
+        }
+    }
+
     protected double sendRecoveryLog(ITestInvocationListener listener)
             throws DeviceNotAvailableException {
         InputStreamSource lastLog = pullLogFile(LOG_RECOV);
+        InputStreamSource lastKmsg = pullLogFile(LOG_KMSG);
         double elapsedTime = 0;
         // last_log contains a timing metric in its last line, capture it here and return it
         // for the metrics map to report
@@ -385,8 +405,9 @@ public class SideloadOtaStabilityTest implements IDeviceTest, IBuildReceiver,
         listener.testLog(this.mRunName + "_recovery_log", LogDataType.TEXT,
                 lastLog);
         listener.testLog(this.mRunName + "_recovery_kmsg", LogDataType.TEXT,
-                pullLogFile(LOG_KMSG));
+                lastKmsg);
         lastLog.cancel();
+        lastKmsg.cancel();
         return elapsedTime;
     }
 
