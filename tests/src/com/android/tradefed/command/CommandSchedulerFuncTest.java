@@ -36,11 +36,13 @@ import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.util.RunInterruptedException;
 import com.android.tradefed.util.RunUtil;
+import com.android.tradefed.util.keystore.IKeyStoreClient;
 
 import junit.framework.TestCase;
 
 import org.easymock.EasyMock;
 
+import java.util.List;
 import java.util.concurrent.Future;
 
 /**
@@ -123,12 +125,14 @@ public class CommandSchedulerFuncTest extends TestCase {
     public void testRun_scheduling() throws Exception {
         String[] fastConfigArgs = new String[] {"fastConfig"};
         String[] slowConfigArgs = new String[] {"slowConfig"};
-
+        List<String> nullArg = null;
         EasyMock.expect(
-                mMockConfigFactory.createConfigurationFromArgs(EasyMock.aryEq(fastConfigArgs)))
+                mMockConfigFactory.createConfigurationFromArgs(EasyMock.aryEq(fastConfigArgs),
+                EasyMock.eq(nullArg), (IKeyStoreClient)EasyMock.anyObject()))
                 .andReturn(mFastConfig).anyTimes();
         EasyMock.expect(
-                mMockConfigFactory.createConfigurationFromArgs(EasyMock.aryEq(slowConfigArgs)))
+                mMockConfigFactory.createConfigurationFromArgs(EasyMock.aryEq(slowConfigArgs),
+                EasyMock.eq(nullArg), (IKeyStoreClient)EasyMock.anyObject()))
                 .andReturn(mSlowConfig).anyTimes();
 
         EasyMock.replay(mFastConfig, mSlowConfig, mMockConfigFactory);
@@ -217,9 +221,10 @@ public class CommandSchedulerFuncTest extends TestCase {
         mMockDeviceManager.addDevice(mockDevice);
 
         String[] slowConfigArgs = new String[] {"slowConfig"};
-
+        List<String> nullArg = null;
         EasyMock.expect(
-                mMockConfigFactory.createConfigurationFromArgs(EasyMock.aryEq(slowConfigArgs)))
+                mMockConfigFactory.createConfigurationFromArgs(EasyMock.aryEq(slowConfigArgs),
+                EasyMock.eq(nullArg), (IKeyStoreClient)EasyMock.anyObject()))
                 .andReturn(mSlowConfig).anyTimes();
 
         EasyMock.replay(mFastConfig, mSlowConfig, mMockConfigFactory);
@@ -263,9 +268,10 @@ public class CommandSchedulerFuncTest extends TestCase {
         mMockDeviceManager.addDevice(mockDevice);
 
         String[] slowConfigArgs = new String[] {"slowConfig"};
-
+        List<String> nullArg = null;
         EasyMock.expect(
-                mMockConfigFactory.createConfigurationFromArgs(EasyMock.aryEq(slowConfigArgs)))
+                mMockConfigFactory.createConfigurationFromArgs(EasyMock.aryEq(slowConfigArgs),
+                EasyMock.eq(nullArg), (IKeyStoreClient)EasyMock.anyObject()))
                 .andReturn(mSlowConfig).anyTimes();
 
         EasyMock.replay(mFastConfig, mSlowConfig, mMockConfigFactory);
@@ -289,9 +295,10 @@ public class CommandSchedulerFuncTest extends TestCase {
      */
     public void testShutdown_interruptible() throws Throwable {
         String[] slowConfigArgs = new String[] {"slowConfig"};
-
+        List<String> nullArg = null;
         EasyMock.expect(
-                mMockConfigFactory.createConfigurationFromArgs(EasyMock.aryEq(slowConfigArgs)))
+                mMockConfigFactory.createConfigurationFromArgs(EasyMock.aryEq(slowConfigArgs),
+                EasyMock.eq(nullArg), (IKeyStoreClient)EasyMock.anyObject()))
                 .andReturn(mSlowConfig).anyTimes();
 
         EasyMock.replay(mFastConfig, mSlowConfig, mMockConfigFactory);
@@ -360,9 +367,10 @@ public class CommandSchedulerFuncTest extends TestCase {
             }
         };
         String[] slowConfigArgs = new String[] {"slowConfig"};
-
+        List<String> nullArg = null;
         EasyMock.expect(
-                mMockConfigFactory.createConfigurationFromArgs(EasyMock.aryEq(slowConfigArgs)))
+                mMockConfigFactory.createConfigurationFromArgs(EasyMock.aryEq(slowConfigArgs),
+                EasyMock.eq(nullArg), (IKeyStoreClient)EasyMock.anyObject()))
                 .andReturn(mSlowConfig).anyTimes();
 
         EasyMock.replay(mFastConfig, mSlowConfig, mMockConfigFactory);
@@ -461,9 +469,10 @@ public class CommandSchedulerFuncTest extends TestCase {
             }
         };
         String[] slowConfigArgs = new String[] {"slowConfig"};
-
+        List<String> nullArg = null;
         EasyMock.expect(
-                mMockConfigFactory.createConfigurationFromArgs(EasyMock.aryEq(slowConfigArgs)))
+                mMockConfigFactory.createConfigurationFromArgs(EasyMock.aryEq(slowConfigArgs),
+                EasyMock.eq(nullArg), (IKeyStoreClient)EasyMock.anyObject()))
                 .andReturn(mSlowConfig).anyTimes();
 
         EasyMock.replay(mFastConfig, mSlowConfig, mMockConfigFactory);

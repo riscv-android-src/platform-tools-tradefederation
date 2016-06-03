@@ -58,6 +58,8 @@ public class TestDeviceFuncTest extends DeviceTestCase {
         super.setUp();
         mTestDevice = (TestDevice)getDevice();
         mMonitor = mTestDevice.getDeviceStateMonitor();
+        // Ensure at set-up that the device is available.
+        mTestDevice.waitForDeviceAvailable();
     }
 
     /**
@@ -540,7 +542,7 @@ public class TestDeviceFuncTest extends DeviceTestCase {
     /**
      * Verify device can be rebooted into adb recovery.
      */
-    public void testRebootIntoRecovery() throws DeviceNotAvailableException {
+    public void testRebootIntoRecovery() throws Exception {
         Log.i(LOG_TAG, "testRebootIntoRecovery");
         if (!mTestDevice.isFastbootEnabled()) {
             Log.i(LOG_TAG, "Fastboot not enabled skipping testRebootInRecovery");
@@ -550,7 +552,9 @@ public class TestDeviceFuncTest extends DeviceTestCase {
             mTestDevice.rebootIntoRecovery();
             assertEquals(TestDeviceState.RECOVERY, mMonitor.getDeviceState());
         } finally {
-            getDevice().reboot();
+            // Recovery is a special case to recover from, we need to call reboot on the idevice.
+            RunUtil.getDefault().sleep(15 * 1000);
+            getDevice().getIDevice().reboot(null);
         }
     }
 
@@ -565,6 +569,9 @@ public class TestDeviceFuncTest extends DeviceTestCase {
      */
     public void testClearErrorDialogs_crash() throws DeviceNotAvailableException {
         Log.i(LOG_TAG, "testClearErrorDialogs_crash");
+        // Ensure device is in a known state, we doing extra care here otherwise it may be flaky
+        getDevice().reboot();
+        mTestDevice.waitForDeviceAvailable();
         mTestDevice.disableKeyguard();
         // now cause a crash dialog to appear
         getDevice().executeShellCommand("am start -n " + TestAppConstants.CRASH_ACTIVITY);
@@ -590,7 +597,7 @@ public class TestDeviceFuncTest extends DeviceTestCase {
     /**
      * Test that TradeFed can successfully recover from the adb host daemon process being killed
      */
-    public void testExecuteShellCommand_adbKilled() throws DeviceNotAvailableException {
+    public void testExecuteShellCommand_adbKilled() {
         // FIXME: adb typically does not recover, and this causes rest of tests to fail
         //Log.i(LOG_TAG, "testExecuteShellCommand_adbKilled");
         //CommandResult result = RunUtil.getInstance().runTimedCmd(30*1000, "adb", "kill-server");
@@ -697,7 +704,7 @@ public class TestDeviceFuncTest extends DeviceTestCase {
     /**
      * Test that {@link TestDevice#getPropertySync(String)} works for volatile properties.
      */
-    @SuppressWarnings("deprecation")
+    @SuppressWarnings({ "deprecation", "javadoc" })
     public void testGetPropertySync() throws Exception {
         getDevice().executeShellCommand("setprop prop.test 0");
         assertEquals("0", getDevice().getPropertySync("prop.test"));
@@ -740,7 +747,7 @@ public class TestDeviceFuncTest extends DeviceTestCase {
      */
     public void testPutSettings() throws Exception {
         String initValue = mTestDevice.getSetting(0, "system", "screen_brightness");
-        CLog.i("initial value was: %d", initValue);
+        CLog.i("initial value was: %s", initValue);
         assertTrue(!initValue.equals("50"));
         mTestDevice.setSetting(0, "system", "screen_brightness", "50");
         String secondValue = mTestDevice.getSetting(0, "system", "screen_brightness");
