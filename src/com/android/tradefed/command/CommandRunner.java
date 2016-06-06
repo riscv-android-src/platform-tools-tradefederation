@@ -54,6 +54,10 @@ public class CommandRunner {
         }
         try {
             mScheduler.join();
+            // If no error code has been raised yet, we checked the invocation error code.
+            if (mErrorCode == 0) {
+                mErrorCode = mScheduler.getLastInvocationExitCode();
+            }
         } catch (InterruptedException e) {
             e.printStackTrace();
             mErrorCode = 1;
