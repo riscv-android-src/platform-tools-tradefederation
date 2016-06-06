@@ -2294,7 +2294,8 @@ public class AndroidNativeDevice implements IManagedTestDevice {
      * Default implementation doesn't include any additional actions.
      * adb root is not guaranteed to be disabled at this stage.
      */
-    public void postAdbUnrootAction() {
+    @SuppressWarnings("unused")
+    public void postAdbUnrootAction() throws DeviceNotAvailableException {
         // Empty on purpose.
     }
 

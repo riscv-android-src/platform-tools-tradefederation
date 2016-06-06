@@ -60,6 +60,17 @@ public class RemoteAndroidDevice extends TestDevice {
     }
 
     /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void postAdbUnrootAction() throws DeviceNotAvailableException {
+        // attempt to reconnect first to make sure we didn't loose the connection because of
+        // adb unroot.
+        adbTcpConnect(getHostName(), getPortNum());
+        waitForAdbConnect(WAIT_FOR_ADB_CONNECT);
+    }
+
+    /**
      * Return the hostname associated with the device. Extracted from the serial.
      */
     public String getHostName() {
