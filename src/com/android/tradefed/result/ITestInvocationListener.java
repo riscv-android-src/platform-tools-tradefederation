@@ -17,6 +17,7 @@ package com.android.tradefed.result;
 
 import com.android.ddmlib.testrunner.ITestRunListener;
 import com.android.tradefed.build.IBuildInfo;
+import com.android.tradefed.command.ICommandScheduler;
 import com.android.tradefed.log.ITestLogger;
 
 /**
@@ -81,4 +82,11 @@ public interface ITestInvocationListener extends ITestRunListener, ITestLogger {
      */
     public TestSummary getSummary();
 
+    /**
+     * Called on {@link ICommandScheduler#shutdown()}, gives the invocation the opportunity to do
+     * something before terminating.
+     */
+    default public void invocationInterrupted() {
+        // do nothing in default implementation.
+    }
 }

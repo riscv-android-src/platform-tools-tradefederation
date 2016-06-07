@@ -544,6 +544,18 @@ public class CommandScheduler extends Thread implements ICommandScheduler, IComm
         }
 
         /**
+         * Disable the reporting from reporters that implements a non-default
+         * {@link ITestInvocationListener#invocationInterrupted()}.
+         * Should be called on shutdown.
+         */
+        public void disableReporters() {
+            for (ITestInvocationListener listener :
+                    mCmd.getConfiguration().getTestInvocationListeners()) {
+                listener.invocationInterrupted();
+            }
+        }
+
+        /**
          * Checks whether the device battery level is above the required value to keep running the
          * invocation.
          */
@@ -1393,6 +1405,7 @@ public class CommandScheduler extends Thread implements ICommandScheduler, IComm
 
         CLog.logAndDisplay(LogLevel.WARN, "Stopping invocation threads...");
         for (InvocationThread thread : mInvocationThreadMap.values()) {
+            thread.disableReporters();
             thread.stopInvocation("TF is shutting down");
         }
         getDeviceManager().terminateHard();

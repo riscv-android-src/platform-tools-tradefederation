@@ -25,6 +25,8 @@ import com.android.tradefed.util.IEmail;
 @OptionClass(alias = "invocation-failure-email")
 public class InvocationFailureEmailResultReporter extends EmailResultReporter {
 
+    private boolean mDisabled = false;
+
     /**
      * Default constructor
      */
@@ -52,6 +54,18 @@ public class InvocationFailureEmailResultReporter extends EmailResultReporter {
      */
     @Override
     protected boolean shouldSendMessage() {
+        if (mDisabled) {
+            // Inhibit the failure from sending emails if we are shutting down TF.
+            return false;
+        }
         return !getInvocationStatus().equals(InvocationStatus.SUCCESS);
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void invocationInterrupted() {
+        mDisabled = true;
     }
 }
