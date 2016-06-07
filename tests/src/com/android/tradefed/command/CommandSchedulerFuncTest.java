@@ -42,6 +42,7 @@ import junit.framework.TestCase;
 
 import org.easymock.EasyMock;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.Future;
 
@@ -51,6 +52,7 @@ import java.util.concurrent.Future;
 public class CommandSchedulerFuncTest extends TestCase {
 
     private static final String LOG_TAG = "CommandSchedulerFuncTest";
+    private static final long WAIT_TIMEOUT_MS = 30 * 1000;
     /** the {@link CommandScheduler} under test, with all dependencies mocked out */
     private CommandScheduler mCommandScheduler;
     private MeasuredInvocation mMockTestInvoker;
@@ -74,7 +76,11 @@ public class CommandSchedulerFuncTest extends TestCase {
         mCommandOptions.setLoopMode(true);
         mCommandOptions.setMinLoopTime(0);
         EasyMock.expect(mSlowConfig.getCommandOptions()).andStubReturn(mCommandOptions);
+        EasyMock.expect(mSlowConfig.getTestInvocationListeners())
+                .andStubReturn(new ArrayList<ITestInvocationListener>());
         EasyMock.expect(mFastConfig.getCommandOptions()).andStubReturn(mCommandOptions);
+        EasyMock.expect(mFastConfig.getTestInvocationListeners())
+                .andStubReturn(new ArrayList<ITestInvocationListener>());
         EasyMock.expect(mSlowConfig.getDeviceRequirements()).andStubReturn(
                 new DeviceSelectionOptions());
         EasyMock.expect(mFastConfig.getDeviceRequirements()).andStubReturn(
@@ -141,10 +147,10 @@ public class CommandSchedulerFuncTest extends TestCase {
         mCommandScheduler.addCommand(slowConfigArgs);
 
         synchronized (mMockTestInvoker) {
-            mMockTestInvoker.wait();
+            mMockTestInvoker.wait(WAIT_TIMEOUT_MS);
         }
         mCommandScheduler.shutdown();
-        mCommandScheduler.join();
+        mCommandScheduler.join(WAIT_TIMEOUT_MS);
 
         Log.i(LOG_TAG, String.format("fast times %d slow times %d",
                 mMockTestInvoker.mFastCount, mMockTestInvoker.mSlowCount));
@@ -232,11 +238,11 @@ public class CommandSchedulerFuncTest extends TestCase {
         mCommandScheduler.addCommand(slowConfigArgs);
 
         synchronized (mMockTestInvoker) {
-            mMockTestInvoker.wait();
+            mMockTestInvoker.wait(WAIT_TIMEOUT_MS);
         }
 
         mCommandScheduler.shutdown();
-        mCommandScheduler.join();
+        mCommandScheduler.join(WAIT_TIMEOUT_MS);
         assertFalse(mMockTestInvoker.runInterrupted);
     }
 
@@ -280,11 +286,11 @@ public class CommandSchedulerFuncTest extends TestCase {
         mCommandScheduler.addCommand(slowConfigArgs);
 
         synchronized (mMockTestInvoker) {
-            mMockTestInvoker.wait();
+            mMockTestInvoker.wait(WAIT_TIMEOUT_MS);
         }
 
         mCommandScheduler.shutdown();
-        mCommandScheduler.join();
+        mCommandScheduler.join(WAIT_TIMEOUT_MS);
         assertTrue(mMockTestInvoker.runInterrupted);
     }
 
@@ -315,10 +321,10 @@ public class CommandSchedulerFuncTest extends TestCase {
         });
         test.start();
         synchronized (mMockTestInvoker) {
-            mMockTestInvoker.wait();
+            mMockTestInvoker.wait(WAIT_TIMEOUT_MS);
         }
         test.join();
-        mCommandScheduler.join();
+        mCommandScheduler.join(WAIT_TIMEOUT_MS);
         // Was interrupted during execution.
         assertTrue(mMockTestInvoker.runInterrupted);
     }
@@ -388,10 +394,10 @@ public class CommandSchedulerFuncTest extends TestCase {
         shutdownThread.start();
         synchronized (li) {
             // Invocation will finish first because shorter than shutdownHard final timeout
-            li.wait();
+            li.wait(WAIT_TIMEOUT_MS);
         }
         shutdownThread.join();
-        mCommandScheduler.join();
+        mCommandScheduler.join(WAIT_TIMEOUT_MS);
         // Stop but was not interrupted
         assertFalse(mMockTestInvoker.runInterrupted);
     }
@@ -490,10 +496,10 @@ public class CommandSchedulerFuncTest extends TestCase {
         shutdownThread.start();
         synchronized (li) {
             // Setting a timeout longer than the shutdown timeout.
-            li.wait(mCommandScheduler.getShutdownTimeout() * 2);
+            li.wait(WAIT_TIMEOUT_MS);
         }
         shutdownThread.join();
-        mCommandScheduler.join();
+        mCommandScheduler.join(WAIT_TIMEOUT_MS);
         // Stop and was interrupted by timeout of shutdownHard()
         assertTrue(li.runInterrupted);
     }
