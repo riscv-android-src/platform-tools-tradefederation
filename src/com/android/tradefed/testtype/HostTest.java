@@ -30,7 +30,6 @@ import junit.framework.Test;
 import junit.framework.TestCase;
 import junit.framework.TestSuite;
 
-import java.io.File;
 import java.lang.reflect.AnnotatedElement;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
@@ -47,8 +46,7 @@ import java.util.Set;
  * this runner will pass a reference to the device.
  */
 @OptionClass(alias = "host")
-public class HostTest implements IDeviceTest, ITestFileFilterReceiver, ITestFilterReceiver,
-        IRemoteTest, ITestCollector {
+public class HostTest implements IDeviceTest, ITestFilterReceiver, IRemoteTest, ITestCollector {
 
     @Option(name="class", description="The JUnit test classes to run, in the format "
             + "<package>.<class>. eg. \"com.android.foo.Bar\". This field can be repeated.",
@@ -82,8 +80,6 @@ public class HostTest implements IDeviceTest, ITestFileFilterReceiver, ITestFilt
 
     private ITestDevice mDevice;
     private TestFilterHelper mFilterHelper;
-    private File mIncludeTestFile;
-    private File mExcludeTestFile;
 
     public HostTest() {
         mFilterHelper = new TestFilterHelper(new ArrayList<String>(), new ArrayList<String>(),
@@ -136,22 +132,6 @@ public class HostTest implements IDeviceTest, ITestFileFilterReceiver, ITestFilt
     @Override
     public void addAllExcludeFilters(List<String> filters) {
         mFilterHelper.addAllExcludeFilters(filters);
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public void setIncludeTestFile(File testFile) {
-        mIncludeTestFile = testFile;
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public void setExcludeTestFile(File testFile) {
-        mExcludeTestFile = testFile;
     }
 
     /**
@@ -216,14 +196,6 @@ public class HostTest implements IDeviceTest, ITestFileFilterReceiver, ITestFilt
                     includes.add(String.format("%s#%s", classObj.getName(), mMethodName));
                 }
                 List<String> excludes = new ArrayList<>(mFilterHelper.getExcludeFilters());
-                if (test instanceof ITestFileFilterReceiver) {
-                    if (mIncludeTestFile != null) {
-                        ((ITestFileFilterReceiver) test).setIncludeTestFile(mIncludeTestFile);
-                    }
-                    if (mExcludeTestFile != null) {
-                        ((ITestFileFilterReceiver) test).setExcludeTestFile(mExcludeTestFile);
-                    }
-                }
                 if (test instanceof ITestFilterReceiver) {
                     ((ITestFilterReceiver) test).addAllIncludeFilters(includes);
                     ((ITestFilterReceiver) test).addAllExcludeFilters(excludes);
