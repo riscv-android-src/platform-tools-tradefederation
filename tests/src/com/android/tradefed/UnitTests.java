@@ -82,6 +82,7 @@ import com.android.tradefed.targetprep.FlashingResourcesParserTest;
 import com.android.tradefed.targetprep.InstrumentationPreparerTest;
 import com.android.tradefed.targetprep.KernelFlashPreparerTest;
 import com.android.tradefed.targetprep.PushFilePreparerTest;
+import com.android.tradefed.targetprep.PythonVirtualenvPreparerTest;
 import com.android.tradefed.targetprep.SdkAvdPreparerTest;
 import com.android.tradefed.targetprep.StopServicesSetupTest;
 import com.android.tradefed.targetprep.SystemUpdaterDeviceFlasherTest;
@@ -106,6 +107,7 @@ import com.android.tradefed.testtype.NativeBenchmarkTestParserTest;
 import com.android.tradefed.testtype.NativeStressTestParserTest;
 import com.android.tradefed.testtype.NativeStressTestTest;
 import com.android.tradefed.testtype.PythonUnitTestResultParserTest;
+import com.android.tradefed.testtype.PythonUnitTestRunnerTest;
 import com.android.tradefed.testtype.testdefs.XmlDefsParserTest;
 import com.android.tradefed.testtype.testdefs.XmlDefsTestTest;
 import com.android.tradefed.util.AaptParserTest;
@@ -239,6 +241,7 @@ public class UnitTests extends DeviceTestSuite {
         addTestSuite(FlashingResourcesParserTest.class);
         addTestSuite(KernelFlashPreparerTest.class);
         addTestSuite(PushFilePreparerTest.class);
+        addTestSuite(PythonVirtualenvPreparerTest.class);
         addTestSuite(SdkAvdPreparerTest.class);
         addTestSuite(StopServicesSetupTest.class);
         addTestSuite(SystemUpdaterDeviceFlasherTest.class);
@@ -265,6 +268,7 @@ public class UnitTests extends DeviceTestSuite {
         addTestSuite(NativeStressTestParserTest.class);
         addTestSuite(NativeStressTestTest.class);
         addTestSuite(PythonUnitTestResultParserTest.class);
+        addTestSuite(PythonUnitTestRunnerTest.class);
 
         // testtype/testdefs
         addTestSuite(XmlDefsParserTest.class);
