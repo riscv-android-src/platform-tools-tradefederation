@@ -64,7 +64,7 @@ public class DefaultTestsZipInstallerTest extends TestCase {
                 files.add(SOME_PATH_1);
                 files.add(SOME_PATH_2);
                 return files;
-            };
+            }
 
             @Override
             IRunUtil getRunUtil() {

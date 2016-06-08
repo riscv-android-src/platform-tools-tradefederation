@@ -74,7 +74,7 @@ public class SystemUpdaterDeviceFlasherTest extends TestCase {
         mControl.verify();
     }
 
-    public void testFlash_noOta() throws DeviceNotAvailableException, TargetSetupError {
+    public void testFlash_noOta() throws DeviceNotAvailableException {
         yieldDifferentBuilds(true);
         EasyMock.expect(mMockDeviceBuild.getOtaPackageFile()).andReturn(null);
 
