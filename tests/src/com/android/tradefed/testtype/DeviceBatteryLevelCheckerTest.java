@@ -82,6 +82,8 @@ public class DeviceBatteryLevelCheckerTest extends TestCase {
      * Low battery with a resume level very low to check a resume if some level are reached.
      */
     public void testLow() throws Exception {
+        mFakeTestDevice.stopLogcat();
+        EasyMock.expectLastCall();
         expectBattLevel(5);
         EasyMock.expect(mFakeTestDevice.executeShellCommand("svc power stayon false"))
                 .andStubReturn("");
@@ -97,6 +99,8 @@ public class DeviceBatteryLevelCheckerTest extends TestCase {
      * Battery is low, device idles and battery gets high again.
      */
     public void testLow_becomeHigh() throws Exception {
+        mFakeTestDevice.stopLogcat();
+        EasyMock.expectLastCall();
         expectBattLevel(5);
         EasyMock.expect(mFakeTestDevice.executeShellCommand("svc power stayon false"))
                 .andStubReturn("");
@@ -123,6 +127,8 @@ public class DeviceBatteryLevelCheckerTest extends TestCase {
      * Battery is low, device idles and battery gets null, break the loop.
      */
     public void testLow_becomeNull() throws Exception {
+        mFakeTestDevice.stopLogcat();
+        EasyMock.expectLastCall();
         expectBattLevel(5);
         EasyMock.expect(mFakeTestDevice.executeShellCommand("svc power stayon false"))
                 .andStubReturn("");
