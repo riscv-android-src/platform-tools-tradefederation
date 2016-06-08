@@ -75,7 +75,6 @@ public interface ICommandOptions {
 
     /**
      * Creates a copy of the {@link ICommandOptions} object.
-     * @return
      */
     public ICommandOptions clone();
 
@@ -89,4 +88,13 @@ public interface ICommandOptions {
      */
     public boolean takeBugreportOnInvocationEnded();
 
+    /**
+     * Return the invocation timeout specified. 0 if no timeout to be used.
+     */
+    public long getInvocationTimeout();
+
+    /**
+     * Set the invocation timeout. 0 if no timeout to be used.
+     */
+    public void setInvocationTimeout(Long mInvocationTimeout);
 }

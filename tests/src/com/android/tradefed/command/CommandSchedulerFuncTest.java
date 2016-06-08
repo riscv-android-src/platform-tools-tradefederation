@@ -503,4 +503,49 @@ public class CommandSchedulerFuncTest extends TestCase {
         // Stop and was interrupted by timeout of shutdownHard()
         assertTrue(li.runInterrupted);
     }
+
+    /**
+     * Test that if the invocation run time goes over the timeout, it will be forced stopped.
+     */
+    public void testShutdown_invocation_timeout() throws Throwable {
+        final LongInvocation li = new LongInvocation(2);
+        mCommandOptions.setLoopMode(false);
+        mCommandOptions.setInvocationTimeout(500l);
+        mCommandScheduler = new CommandScheduler() {
+            @Override
+            ITestInvocation createRunInstance() {
+                return li;
+            }
+            @Override
+            IDeviceManager getDeviceManager() {
+                return mMockDeviceManager;
+            }
+            @Override
+            protected IConfigurationFactory getConfigFactory() {
+                return mMockConfigFactory;
+            }
+            @Override
+            void initLogging() {
+                // ignore
+            }
+            @Override
+            void cleanUp() {
+                // ignore
+            }
+        };
+        String[] slowConfigArgs = new String[] {"slowConfig"};
+        List<String> nullArg = null;
+        EasyMock.expect(
+                mMockConfigFactory.createConfigurationFromArgs(EasyMock.aryEq(slowConfigArgs),
+                EasyMock.eq(nullArg), (IKeyStoreClient)EasyMock.anyObject()))
+                .andReturn(mSlowConfig).anyTimes();
+
+        EasyMock.replay(mFastConfig, mSlowConfig, mMockConfigFactory);
+        mCommandScheduler.start();
+        mInterruptible = true;
+        mCommandScheduler.addCommand(slowConfigArgs);
+        mCommandScheduler.join(mCommandOptions.getInvocationTimeout() * 2);
+        // Stop and was interrupted by timeout
+        assertTrue(li.runInterrupted);
+    }
 }
