@@ -113,6 +113,7 @@ public class AndroidNativeDevice implements IManagedTestDevice {
     private static final String BUILD_TYPE_PROP = "ro.build.type";
     private static final String BUILD_ALIAS_PROP = "ro.build.id";
     private static final String BUILD_FLAVOR = "ro.build.flavor";
+    private static final String HEADLESS_PROP = "ro.build.headless";
     static final String BUILD_CODENAME_PROP = "ro.build.version.codename";
     static final String BUILD_TAGS = "ro.build.tags";
 
@@ -3185,5 +3186,16 @@ public class AndroidNativeDevice implements IManagedTestDevice {
     @Override
     public void postInvocationTearDown() {
         // Default implementation empty on purpose
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public boolean isHeadless() throws DeviceNotAvailableException {
+        if (getProperty(HEADLESS_PROP) != null) {
+            return true;
+        }
+        return false;
     }
 }

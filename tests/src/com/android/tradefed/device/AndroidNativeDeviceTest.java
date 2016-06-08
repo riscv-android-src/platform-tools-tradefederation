@@ -590,4 +590,30 @@ public class AndroidNativeDeviceTest extends TestCase {
             EasyMock.verify(mMockWifi, mMockIDevice, mMockRunUtil);
         }
     }
+
+    /**
+     * Unit test for {@link AndroidNativeDevice#isHeadless()}.
+     */
+    public void testIsHeadless() throws DeviceNotAvailableException {
+        mTestDevice = new TestableAndroidNativeDevice() {
+            @Override
+            public String getProperty(String name) throws DeviceNotAvailableException {
+                return "1\n";
+            }
+        };
+        assertTrue(mTestDevice.isHeadless());
+    }
+
+    /**
+     * Unit test for {@link AndroidNativeDevice#isHeadless()}.
+     */
+    public void testIsHeadless_notHeadless() throws DeviceNotAvailableException {
+        mTestDevice = new TestableAndroidNativeDevice() {
+            @Override
+            public String getProperty(String name) throws DeviceNotAvailableException {
+                return null;
+            }
+        };
+        assertFalse(mTestDevice.isHeadless());
+    }
 }
