@@ -121,6 +121,7 @@ import com.android.tradefed.util.ByteArrayListTest;
 import com.android.tradefed.util.ClassPathScannerTest;
 import com.android.tradefed.util.ConditionPriorityBlockingQueueTest;
 import com.android.tradefed.util.ConfigCompletorTest;
+import com.android.tradefed.util.DirectedGraphTest;
 import com.android.tradefed.util.EmailTest;
 import com.android.tradefed.util.FakeTestsZipFolderTest;
 import com.android.tradefed.util.FileUtilTest;
@@ -290,6 +291,7 @@ public class UnitTests extends DeviceTestSuite {
         addTestSuite(ClassPathScannerTest.class);
         addTestSuite(ConditionPriorityBlockingQueueTest.class);
         addTestSuite(ConfigCompletorTest.class);
+        addTestSuite(DirectedGraphTest.class);
         addTestSuite(EmailTest.class);
         addTestSuite(FakeTestsZipFolderTest.class);
         addTestSuite(FileUtilTest.class);
