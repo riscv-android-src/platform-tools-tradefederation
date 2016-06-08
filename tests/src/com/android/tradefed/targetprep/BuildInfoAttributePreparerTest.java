@@ -24,7 +24,7 @@ import junit.framework.TestCase;
 import java.util.Map;
 
 /**
- * Unit tests for {@link BuildInfoAttributeParser}
+ * Unit tests for {@link BuildInfoAttributePreparer}
  */
 public class BuildInfoAttributePreparerTest extends TestCase {
     private BuildInfoAttributePreparer mPrep = null;

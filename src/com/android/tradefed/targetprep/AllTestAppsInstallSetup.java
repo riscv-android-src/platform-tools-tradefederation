@@ -57,6 +57,11 @@ public class AllTestAppsInstallSetup implements ITargetCleaner, IAbiReceiver {
                     + "preparer does not verify if the apks are successfully removed.")
     private boolean mCleanup = false;
 
+    @Option(name = "stop-install-on-failure",
+            description = "Whether to stop the preparer by throwing an exception or only log the "
+                    + "error on continue.")
+    private boolean mStopInstallOnFailure = true;
+
     private IAbi mAbi = null;
 
     private List<String> mPackagesInstalled = new ArrayList<>();
@@ -116,21 +121,25 @@ public class AllTestAppsInstallSetup implements ITargetCleaner, IAbiReceiver {
      */
     void installApk(File appFile, ITestDevice device) throws TargetSetupError,
             DeviceNotAvailableException {
-
         CLog.d("Installing apk from %s ...", appFile.getAbsolutePath());
         String result = device.installPackage(appFile, true,
                 mInstallArgs.toArray(new String[] {}));
-        if (result != null) {
-            throw new TargetSetupError(
-                    String.format("Failed to install %s on %s. Reason: '%s'", appFile,
-                            device.getSerialNumber(), result));
-        }
-        if (mCleanup) {
-            AaptParser parser = AaptParser.parse(appFile);
-            if (parser == null) {
-                throw new TargetSetupError("apk installed but AaptParser failed");
+        if (result == null) {
+            // only consider cleanup if install was successful
+            if (mCleanup) {
+                AaptParser parser = AaptParser.parse(appFile);
+                if (parser == null) {
+                    throw new TargetSetupError("apk installed but AaptParser failed");
+                }
+                mPackagesInstalled.add(parser.getPackageName());
             }
-            mPackagesInstalled.add(parser.getPackageName());
+        } else if (mStopInstallOnFailure) {
+            // if flag is true, we stop the sequence for an exception.
+            throw new TargetSetupError(String.format("Failed to install %s on %s. Reason: '%s'",
+                    appFile, device.getSerialNumber(), result));
+        } else {
+            CLog.e("Failed to install %s on %s. Reason: '%s'", appFile,
+                    device.getSerialNumber(), result);
         }
     }
 
