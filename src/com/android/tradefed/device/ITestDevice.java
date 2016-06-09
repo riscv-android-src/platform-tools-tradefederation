@@ -1497,4 +1497,9 @@ public interface ITestDevice {
      * is done.
      */
     public void postInvocationTearDown();
+
+    /**
+     * Return true if the device is headless (no screen), false otherwise.
+     */
+    public boolean isHeadless() throws DeviceNotAvailableException;
 }
