@@ -598,6 +598,7 @@ public class TestDeviceFuncTest extends DeviceTestCase {
         getDevice().reboot();
         mTestDevice.waitForDeviceAvailable();
         mTestDevice.disableKeyguard();
+        RunUtil.getDefault().sleep(2000);
         // now cause a crash dialog to appear
         getDevice().executeShellCommand("am start -n " + TestAppConstants.CRASH_ACTIVITY);
         RunUtil.getDefault().sleep(2000);
@@ -667,7 +668,7 @@ public class TestDeviceFuncTest extends DeviceTestCase {
             getDevice().executeShellCommand(String.format("log testGetLogcat_size log dump %d", i));
         }
         // sleep a small amount of time to ensure last log message makes it into capture
-        RunUtil.getDefault().sleep(10);
+        RunUtil.getDefault().sleep(500);
         InputStreamSource source = getDevice().getLogcat(100 * 1024);
         assertNotNull(source);
         File tmpTxtFile = FileUtil.createTempFile("logcat", ".txt");

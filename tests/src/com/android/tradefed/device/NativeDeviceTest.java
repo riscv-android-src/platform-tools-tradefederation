@@ -17,12 +17,14 @@ package com.android.tradefed.device;
 
 import com.android.ddmlib.IDevice;
 import com.android.ddmlib.IShellOutputReceiver;
+import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.log.ITestLogger;
 import com.android.tradefed.result.ByteArrayInputStreamSource;
 import com.android.tradefed.result.FileInputStreamSource;
 import com.android.tradefed.result.InputStreamSource;
 import com.android.tradefed.result.LogDataType;
 import com.android.tradefed.util.Bugreport;
+import com.android.tradefed.util.CommandResult;
 import com.android.tradefed.util.FileUtil;
 import com.android.tradefed.util.IRunUtil;
 import com.android.tradefed.util.StreamUtil;
@@ -63,6 +65,9 @@ public class NativeDeviceTest extends TestCase {
      * A {@link TestDevice} that is suitable for running tests against
      */
     private class TestableAndroidNativeDevice extends NativeDevice {
+
+        public boolean wasCalled = false;
+
         public TestableAndroidNativeDevice() {
             super(mMockIDevice, mMockStateMonitor, mMockDvcMonitor);
         }
@@ -75,10 +80,6 @@ public class NativeDeviceTest extends TestCase {
         @Override
         protected IRunUtil getRunUtil() {
             return mMockRunUtil;
-        }
-
-        @Override
-        void doReboot() throws DeviceNotAvailableException, UnsupportedOperationException {
         }
     }
 
@@ -1130,5 +1131,360 @@ public class NativeDeviceTest extends TestCase {
         } finally {
             FileUtil.deleteFile(localFile);
         }
+    }
+
+    /**
+     * Unit test for {@link NativeDevice#getBuildAlias()}.
+     */
+    public void testGetBuildAlias() throws DeviceNotAvailableException {
+        final String alias = "alias\n";
+        mTestDevice = new TestableAndroidNativeDevice() {
+            @Override
+            public String getProperty(String name) throws DeviceNotAvailableException {
+                return alias;
+            }
+        };
+        assertEquals(alias, mTestDevice.getBuildAlias());
+    }
+
+    /**
+     * Unit test for {@link NativeDevice#getBuildAlias()}.
+     */
+    public void testGetBuildAlias_null() throws DeviceNotAvailableException {
+        final String alias = null;
+        final String buildId = "alias\n";
+        mTestDevice = new TestableAndroidNativeDevice() {
+            @Override
+            public String getProperty(String name) throws DeviceNotAvailableException {
+                return alias;
+            }
+            @Override
+            public String getBuildId() throws DeviceNotAvailableException {
+                return buildId;
+            }
+        };
+        assertEquals(buildId, mTestDevice.getBuildAlias());
+    }
+
+    /**
+     * Unit test for {@link NativeDevice#getBuildAlias()}.
+     */
+    public void testGetBuildAlias_empty() throws DeviceNotAvailableException {
+        final String alias = "";
+        final String buildId = "alias\n";
+        mTestDevice = new TestableAndroidNativeDevice() {
+            @Override
+            public String getProperty(String name) throws DeviceNotAvailableException {
+                return alias;
+            }
+            @Override
+            public String getBuildId() throws DeviceNotAvailableException {
+                return buildId;
+            }
+        };
+        assertEquals(buildId, mTestDevice.getBuildAlias());
+    }
+
+    /**
+     * Unit test for {@link NativeDevice#getBuildId()}.
+     */
+    public void testGetBuildId() throws DeviceNotAvailableException {
+        final String buildId = "299865";
+        mTestDevice = new TestableAndroidNativeDevice() {
+            @Override
+            public String getProperty(String name) throws DeviceNotAvailableException {
+                return buildId;
+            }
+        };
+        assertEquals(buildId, mTestDevice.getBuildId());
+    }
+
+    /**
+     * Unit test for {@link NativeDevice#getBuildId()}.
+     */
+    public void testGetBuildId_null() throws DeviceNotAvailableException {
+        final String buildId = null;
+        mTestDevice = new TestableAndroidNativeDevice() {
+            @Override
+            public String getProperty(String name) throws DeviceNotAvailableException {
+                return buildId;
+            }
+        };
+        assertEquals(IBuildInfo.UNKNOWN_BUILD_ID, mTestDevice.getBuildId());
+    }
+
+    /**
+     * Unit test for {@link NativeDevice#getBuildFlavor()}.
+     */
+    public void testGetBuildFlavor() throws DeviceNotAvailableException {
+        final String flavor = "ham-user";
+        mTestDevice = new TestableAndroidNativeDevice() {
+            @Override
+            public String getProperty(String name) throws DeviceNotAvailableException {
+                return flavor;
+            }
+        };
+        assertEquals(flavor, mTestDevice.getBuildFlavor());
+    }
+
+    /**
+     * Unit test for {@link NativeDevice#getBuildFlavor()}.
+     */
+    public void testGetBuildFlavor_null_flavor() throws DeviceNotAvailableException {
+        final String productName = "prod";
+        final String buildType = "buildtype";
+        String expected = String.format("%s-%s", productName, buildType);
+        mTestDevice = new TestableAndroidNativeDevice() {
+            @Override
+            public String getProperty(String name) throws DeviceNotAvailableException {
+                if ("ro.build.flavor".equals(name)) {
+                    return null;
+                } else if ("ro.product.name".equals(name)) {
+                    return productName;
+                } else if ("ro.build.type".equals(name)) {
+                    return buildType;
+                } else {
+                    return null;
+                }
+            }
+        };
+        assertEquals(expected, mTestDevice.getBuildFlavor());
+    }
+
+    /**
+     * Unit test for {@link NativeDevice#getBuildFlavor()}.
+     */
+    public void testGetBuildFlavor_null() throws DeviceNotAvailableException {
+        final String productName = null;
+        final String buildType = "buildtype";
+        mTestDevice = new TestableAndroidNativeDevice() {
+            @Override
+            public String getProperty(String name) throws DeviceNotAvailableException {
+                if ("ro.build.flavor".equals(name)) {
+                    return "";
+                } else if ("ro.product.name".equals(name)) {
+                    return productName;
+                } else if ("ro.build.type".equals(name)) {
+                    return buildType;
+                } else {
+                    return null;
+                }
+            }
+        };
+        assertNull(mTestDevice.getBuildFlavor());
+    }
+
+    /**
+     * Unit test for {@link NativeDevice#doAdbReboot(String)}.
+     */
+    public void testDoAdbReboot_emulator() throws Exception {
+        final String into = "bootloader";
+        EasyMock.expect(mMockIDevice.isEmulator()).andReturn(true);
+        mMockIDevice.executeShellCommand(EasyMock.eq("stop"),
+                (IShellOutputReceiver)EasyMock.anyObject(), EasyMock.anyLong(),
+                EasyMock.eq(TimeUnit.MILLISECONDS));
+        mMockIDevice.executeShellCommand(EasyMock.eq("setprop dev.bootcomplete 0"),
+                (IShellOutputReceiver)EasyMock.anyObject(), EasyMock.anyLong(),
+                EasyMock.eq(TimeUnit.MILLISECONDS));
+        mMockIDevice.executeShellCommand(EasyMock.eq("start"),
+                (IShellOutputReceiver)EasyMock.anyObject(), EasyMock.anyLong(),
+                EasyMock.eq(TimeUnit.MILLISECONDS));
+        EasyMock.expectLastCall();
+        EasyMock.replay(mMockIDevice);
+        mTestDevice.doAdbReboot(into);
+        EasyMock.verify(mMockIDevice);
+    }
+
+    /**
+     * Unit test for {@link NativeDevice#doReboot()}.
+     */
+    public void testDoReboot() throws Exception {
+        NativeDevice testDevice = new NativeDevice(mMockIDevice,
+                mMockStateMonitor, mMockDvcMonitor) {
+            @Override
+            public TestDeviceState getDeviceState() {
+                return TestDeviceState.ONLINE;
+            }
+        };
+        EasyMock.expect(mMockIDevice.isEmulator()).andReturn(false);
+        mMockIDevice.reboot(null);
+        EasyMock.expectLastCall();
+        EasyMock.expect(mMockStateMonitor.waitForDeviceNotAvailable(EasyMock.anyLong()))
+                .andReturn(true);
+        EasyMock.replay(mMockIDevice, mMockStateMonitor, mMockDvcMonitor);
+        testDevice.doReboot();
+        EasyMock.verify(mMockIDevice, mMockStateMonitor, mMockDvcMonitor);
+    }
+
+    /**
+     * Unit test for {@link NativeDevice#doReboot()}.
+     */
+    public void testDoReboot_skipped() throws Exception {
+        NativeDevice testDevice = new NativeDevice(mMockIDevice,
+                mMockStateMonitor, mMockDvcMonitor) {
+            @Override
+            public TestDeviceState getDeviceState() {
+                mOptions = new TestDeviceOptions() {
+                    @Override
+                    public boolean shouldDisableReboot() {
+                        return true;
+                    }
+                };
+                return TestDeviceState.ONLINE;
+            }
+        };
+        EasyMock.replay(mMockIDevice, mMockStateMonitor, mMockDvcMonitor);
+        testDevice.doReboot();
+        EasyMock.verify(mMockIDevice, mMockStateMonitor, mMockDvcMonitor);
+    }
+
+    /**
+     * Unit test for {@link NativeDevice#doReboot()}.
+     */
+    public void testDoReboot_fastboot() throws Exception {
+        mTestDevice = new TestableAndroidNativeDevice() {
+            @Override
+            public TestDeviceState getDeviceState() {
+                return TestDeviceState.FASTBOOT;
+            }
+            @Override
+            public CommandResult executeFastbootCommand(String... cmdArgs)
+                    throws DeviceNotAvailableException, UnsupportedOperationException {
+                wasCalled = true;
+                return new CommandResult();
+            }
+        };
+        EasyMock.replay(mMockIDevice, mMockStateMonitor, mMockDvcMonitor);
+        mTestDevice.doReboot();
+        assertTrue(mTestDevice.wasCalled);
+        EasyMock.verify(mMockIDevice, mMockStateMonitor, mMockDvcMonitor);
+    }
+
+    /**
+     * Unit test for {@link NativeDevice#unlockDevice()} already decrypted.
+     */
+    public void testUnlockDevice_skipping() throws Exception {
+        mTestDevice = new TestableAndroidNativeDevice() {
+            @Override
+            public boolean isEncryptionSupported() throws DeviceNotAvailableException {
+                return true;
+            }
+            @Override
+            public boolean isDeviceEncrypted() throws DeviceNotAvailableException {
+                return false;
+            }
+        };
+        EasyMock.replay(mMockIDevice, mMockStateMonitor, mMockDvcMonitor);
+        assertTrue(mTestDevice.unlockDevice());
+        EasyMock.verify(mMockIDevice, mMockStateMonitor, mMockDvcMonitor);
+    }
+
+    /**
+     * Unit test for {@link NativeDevice#unlockDevice()}.
+     */
+    public void testUnlockDevice() throws Exception {
+        mTestDevice = new TestableAndroidNativeDevice() {
+            @Override
+            public boolean isEncryptionSupported() throws DeviceNotAvailableException {
+                return true;
+            }
+            @Override
+            public boolean isDeviceEncrypted() throws DeviceNotAvailableException {
+                return true;
+            }
+            @Override
+            public boolean enableAdbRoot() throws DeviceNotAvailableException {
+                return true;
+            }
+            @Override
+            public String executeShellCommand(String command) throws DeviceNotAvailableException {
+                return "200 checkpw -1";
+            }
+        };
+        EasyMock.replay(mMockIDevice, mMockStateMonitor, mMockDvcMonitor);
+        assertTrue(mTestDevice.unlockDevice());
+        EasyMock.verify(mMockIDevice, mMockStateMonitor, mMockDvcMonitor);
+    }
+
+    /**
+     * Unit test for {@link NativeDevice#unlockDevice()}.
+     */
+    public void testUnlockDevice_garbageOutput() throws Exception {
+        mTestDevice = new TestableAndroidNativeDevice() {
+            @Override
+            public boolean isEncryptionSupported() throws DeviceNotAvailableException {
+                return true;
+            }
+            @Override
+            public boolean isDeviceEncrypted() throws DeviceNotAvailableException {
+                return true;
+            }
+            @Override
+            public boolean enableAdbRoot() throws DeviceNotAvailableException {
+                return true;
+            }
+            @Override
+            public String executeShellCommand(String command) throws DeviceNotAvailableException {
+                return "gdsgdgggsgdg not working";
+            }
+        };
+        EasyMock.replay(mMockIDevice, mMockStateMonitor, mMockDvcMonitor);
+        assertFalse(mTestDevice.unlockDevice());
+        EasyMock.verify(mMockIDevice, mMockStateMonitor, mMockDvcMonitor);
+    }
+
+    /**
+     * Unit test for {@link NativeDevice#unlockDevice()}.
+     */
+    public void testUnlockDevice_emptyOutput() throws Exception {
+        mTestDevice = new TestableAndroidNativeDevice() {
+            @Override
+            public boolean isEncryptionSupported() throws DeviceNotAvailableException {
+                return true;
+            }
+            @Override
+            public boolean isDeviceEncrypted() throws DeviceNotAvailableException {
+                return true;
+            }
+            @Override
+            public boolean enableAdbRoot() throws DeviceNotAvailableException {
+                return true;
+            }
+            @Override
+            public String executeShellCommand(String command) throws DeviceNotAvailableException {
+                return "";
+            }
+        };
+        EasyMock.replay(mMockIDevice, mMockStateMonitor, mMockDvcMonitor);
+        assertFalse(mTestDevice.unlockDevice());
+        EasyMock.verify(mMockIDevice, mMockStateMonitor, mMockDvcMonitor);
+    }
+
+    /**
+     * Unit test for {@link NativeDevice#unlockDevice()}.
+     */
+    public void testUnlockDevice_goodOutputPasswordEnteredCorrectly() throws Exception {
+        mTestDevice = new TestableAndroidNativeDevice() {
+            @Override
+            public boolean isEncryptionSupported() throws DeviceNotAvailableException {
+                return true;
+            }
+            @Override
+            public boolean isDeviceEncrypted() throws DeviceNotAvailableException {
+                return true;
+            }
+            @Override
+            public boolean enableAdbRoot() throws DeviceNotAvailableException {
+                return true;
+            }
+            @Override
+            public String executeShellCommand(String command) throws DeviceNotAvailableException {
+                return "200 encryption 0";
+            }
+        };
+        EasyMock.expect(mMockStateMonitor.waitForDeviceAvailable()).andReturn(mMockIDevice);
+        EasyMock.replay(mMockIDevice, mMockStateMonitor, mMockDvcMonitor);
+        assertTrue(mTestDevice.unlockDevice());
+        EasyMock.verify(mMockIDevice, mMockStateMonitor, mMockDvcMonitor);
     }
 }

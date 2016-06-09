@@ -72,8 +72,8 @@ public class WaitDeviceRecoveryTest extends TestCase {
     }
 
     /**
-     * Test {@link WaitDeviceRecovery#recoverDevice(IDeviceStateMonitor, boolean)}
-     * when device is not available.
+     * Test {@link WaitDeviceRecovery#recoverDevice(IDeviceStateMonitor, boolean)} when device is
+     * not available.
      */
     public void testRecoverDevice_unavailable()  {
         // expect initial sleep
@@ -92,8 +92,8 @@ public class WaitDeviceRecoveryTest extends TestCase {
     }
 
     /**
-     * Test {@link WaitDeviceRecovery#recoverDevice(IDeviceStateMonitor, boolean)}
-     * when device is not responsive.
+     * Test {@link WaitDeviceRecovery#recoverDevice(IDeviceStateMonitor, boolean)} when device is
+     * not responsive.
      */
     public void testRecoverDevice_unresponsive() throws Exception {
         // expect initial sleep
@@ -117,8 +117,8 @@ public class WaitDeviceRecoveryTest extends TestCase {
     }
 
     /**
-     * Test {@link WaitDeviceRecovery#recoverDevice(IDeviceStateMonitor, boolean)}
-     * when device is in fastboot.
+     * Test {@link WaitDeviceRecovery#recoverDevice(IDeviceStateMonitor, boolean)} when device is
+     * in fastboot.
      */
     public void testRecoverDevice_fastboot() throws DeviceNotAvailableException {
         // expect initial sleep
