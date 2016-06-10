@@ -87,6 +87,32 @@ public class GTestTest extends TestCase {
     }
 
     /**
+     * Test run when the test dir is not found on the device.
+     */
+    public void testRun_noTestDir() throws DeviceNotAvailableException {
+        EasyMock.expect(mMockITestDevice.doesFileExist(GTest.DEFAULT_NATIVETEST_PATH))
+                .andReturn(false);
+        replayMocks();
+        mGTest.run(mMockInvocationListener);
+        verifyMocks();
+    }
+
+    /**
+     * Test run when no device is set should throw an exception.
+     */
+    public void testRun_noDevice() throws DeviceNotAvailableException {
+        mGTest.setDevice(null);
+        replayMocks();
+        try {
+            mGTest.run(mMockInvocationListener);
+            fail("an exception should have been thrown");
+        } catch (IllegalArgumentException e) {
+            // expected
+        }
+        verifyMocks();
+    }
+
+    /**
      * Test the run method for a couple tests
      */
     public void testRun() throws DeviceNotAvailableException {
@@ -375,5 +401,50 @@ public class GTestTest extends TestCase {
         } catch (IllegalArgumentException iae) {
             // expected
         }
+    }
+
+    /**
+     * Test the include filtering by file of test methods.
+     */
+    public void testFileFilter() throws DeviceNotAvailableException {
+        String fileFilter = "presubmit";
+        mGTest.setLoadFilterFromFile(fileFilter);
+        String expectedFilterFile = String.format("%s/test1%s",
+                GTest.DEFAULT_NATIVETEST_PATH, GTest.FILTER_EXTENSION);
+        String fakeContent = "{\n" +
+                             "    \"presubmit\": {\n" +
+                             "        \"filter\": \"Foo1.*:Foo2.*\"\n" +
+                             "    },\n" +
+                             "    \"continuous\": {\n" +
+                             "        \"filter\": \"Foo1.*:Foo2.*:Bar.*\"\n" +
+                             "    }\n" +
+                             "}\n";
+        EasyMock.expect(mMockITestDevice.doesFileExist(expectedFilterFile)).andReturn(true);
+        EasyMock.expect(mMockITestDevice.executeShellCommand("cat \"" + expectedFilterFile + "\""))
+                .andReturn(fakeContent);
+        doTestFilter(String.format("%s=%s", GTEST_FLAG_FILTER, "Foo1.*:Foo2.*"));
+    }
+
+    /**
+     * Test the include filtering by providing a non existing filter. No filter will be applied in
+     * this case.
+     */
+    public void testFileFilter_notfound() throws DeviceNotAvailableException {
+        String fileFilter = "garbage";
+        mGTest.setLoadFilterFromFile(fileFilter);
+        String expectedFilterFile = String.format("%s/test1%s",
+                GTest.DEFAULT_NATIVETEST_PATH, GTest.FILTER_EXTENSION);
+        String fakeContent = "{\n" +
+                             "    \"presubmit\": {\n" +
+                             "        \"filter\": \"Foo1.*:Foo2.*\"\n" +
+                             "    },\n" +
+                             "    \"continuous\": {\n" +
+                             "        \"filter\": \"Foo1.*:Foo2.*:Bar.*\"\n" +
+                             "    }\n" +
+                             "}\n";
+        EasyMock.expect(mMockITestDevice.doesFileExist(expectedFilterFile)).andReturn(true);
+        EasyMock.expect(mMockITestDevice.executeShellCommand("cat \"" + expectedFilterFile + "\""))
+                .andReturn(fakeContent);
+        doTestFilter("");
     }
 }
