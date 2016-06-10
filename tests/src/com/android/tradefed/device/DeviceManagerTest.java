@@ -124,24 +124,19 @@ public class DeviceManagerTest extends TestCase {
             public void addDeviceChangeListener(final IDeviceChangeListener listener) {
                 mDeviceListener = listener;
             }
-
             @Override
             public IDevice[] getDevices() {
                 return null;
             }
-
             @Override
             public void removeDeviceChangeListener(IDeviceChangeListener listener) {
             }
-
             @Override
             public void init(boolean clientSupport, String adbOsLocation) {
             }
-
             @Override
             public void terminate() {
             }
-
             @Override
             public void disconnectBridge() {
             }

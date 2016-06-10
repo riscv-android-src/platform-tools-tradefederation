@@ -19,10 +19,10 @@ package com.android.tradefed.device;
 import com.google.common.annotations.VisibleForTesting;
 
 import com.android.ddmlib.AndroidDebugBridge.IDeviceChangeListener;
-import com.android.ddmlib.IDevice.DeviceState;
 import com.android.ddmlib.DdmPreferences;
 import com.android.ddmlib.EmulatorConsole;
 import com.android.ddmlib.IDevice;
+import com.android.ddmlib.IDevice.DeviceState;
 import com.android.ddmlib.Log.LogLevel;
 import com.android.tradefed.command.remote.DeviceDescriptor;
 import com.android.tradefed.config.GlobalConfiguration;

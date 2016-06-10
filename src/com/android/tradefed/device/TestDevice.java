@@ -40,7 +40,6 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.concurrent.TimeUnit;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -51,13 +50,6 @@ import javax.imageio.ImageIO;
  */
 public class TestDevice extends NativeDevice {
 
-    /**
-     * Allow pauses of up to 2 minutes while receiving bugreport.  Note that dumpsys may pause up to
-     * a minute while waiting for unresponsive components, but should bail after that minute, if it
-     *  will ever terminate on its own.
-     */
-    private static final int BUGREPORT_TIMEOUT = 2 * 60 * 1000;
-    private static final String BUGREPORT_CMD = "bugreport";
     /** number of attempts made to clear dialogs */
     private static final int NUM_CLEAR_ATTEMPTS = 5;
     /** the command used to dismiss a error dialog. Currently sends a DPAD_CENTER key event */
@@ -236,24 +228,6 @@ public class TestDevice extends NativeDevice {
         performDeviceAction(String.format("uninstall %s", packageName), uninstallAction,
                 MAX_RETRY_ATTEMPTS);
         return response[0];
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public InputStreamSource getBugreport() {
-        CollectingByteOutputReceiver receiver = new CollectingByteOutputReceiver();
-        try {
-            executeShellCommand(BUGREPORT_CMD, receiver,
-                    BUGREPORT_TIMEOUT, TimeUnit.MILLISECONDS, 0 /* don't retry */);
-        } catch (DeviceNotAvailableException e) {
-            // Log, but don't throw, so the caller can get the bugreport contents even if the device
-            // goes away
-            CLog.e("Device %s became unresponsive while retrieving bugreport", getSerialNumber());
-        }
-
-        return new ByteArrayInputStreamSource(receiver.getOutput());
     }
 
     @Override
@@ -1081,14 +1055,6 @@ public class TestDevice extends NativeDevice {
     @Override
     IWifiHelper createWifiHelper() throws DeviceNotAvailableException {
         return new WifiHelper(this);
-    }
-
-    private void checkApiLevelAgainst(String feature, int strictMinLevel)
-            throws DeviceNotAvailableException {
-        if (getApiLevel() < strictMinLevel){
-            throw new IllegalArgumentException(String.format("%s not supported on %s. "
-                    + "Must be API %d.", feature, getSerialNumber(), strictMinLevel));
-        }
     }
 
     /**

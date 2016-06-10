@@ -22,6 +22,7 @@ import com.android.ddmlib.testrunner.TestResult.TestStatus;
 import com.android.tradefed.TestAppConstants;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.result.CollectingTestListener;
+import com.android.tradefed.result.FileInputStreamSource;
 import com.android.tradefed.result.InputStreamSource;
 import com.android.tradefed.testtype.DeviceTestCase;
 import com.android.tradefed.util.CommandStatus;
@@ -70,6 +71,26 @@ public class TestDeviceFuncTest extends DeviceTestCase {
                 mTestDevice.getBugreport().createInputStream());
         assertTrue(String.format("Expected at least %d characters; only saw %d", mMinBugreportBytes,
                 data.length()), data.length() >= mMinBugreportBytes);
+    }
+
+    /**
+     * Simple testcase to ensure that the grabbing a bugreportz from a real TestDevice works.
+     */
+    public void testBugreportz() throws Exception {
+        FileInputStreamSource f = null;
+        try {
+            f = (FileInputStreamSource) mTestDevice.getBugreportz();
+            assertNotNull(f);
+            FileInputStream contents = (FileInputStream) f.createInputStream();
+            assertTrue(String.format("Expected at least %d characters; only saw %d",
+                    mMinBugreportBytes, contents.available()),
+                    contents.available() >= mMinBugreportBytes);
+        } finally {
+            StreamUtil.cancel(f);
+            if (f != null) {
+                f.cleanFile();
+            }
+        }
     }
 
     /**
