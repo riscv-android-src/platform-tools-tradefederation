@@ -73,8 +73,8 @@ public class GlobalConfiguration implements IGlobalConfiguration {
      * Returns a reference to the singleton {@link GlobalConfiguration} instance for this TF
      * instance.
      *
-     * @throws IllegalStateException if {@see createGlobalConfiguration(String[])} has not already
-     *         been called.
+     * @throws IllegalStateException if {@link #createGlobalConfiguration(String[])} has not
+     *         already been called.
      */
     public static IGlobalConfiguration getInstance() {
         if (sInstance == null) {
@@ -87,8 +87,8 @@ public class GlobalConfiguration implements IGlobalConfiguration {
      * Returns a reference to the singleton {@link DeviceManager} instance for this TF
      * instance.
      *
-     * @throws IllegalStateException if {@see createGlobalConfiguration(String[])} has not already
-     *         been called.
+     * @throws IllegalStateException if {@link #createGlobalConfiguration(String[])} has not
+     *         already been called.
      */
     public static IDeviceManager getDeviceManagerInstance() {
         if (sInstance == null) {
@@ -106,7 +106,7 @@ public class GlobalConfiguration implements IGlobalConfiguration {
 
     /**
      * Sets up the {@link GlobalConfiguration} singleton for this TF instance.  Must be called
-     * once and only once, before anything attempts to call {@see getInstance()}
+     * once and only once, before anything attempts to call {@link #getInstance()}
      *
      * @throws IllegalStateException if called more than once
      */
@@ -131,6 +131,8 @@ public class GlobalConfiguration implements IGlobalConfiguration {
                 sInstance = new GlobalConfiguration();
                 nonGlobalArgs = Arrays.asList(args);
             }
+            // Validate that madatory options have been set
+            sInstance.validateOptions();
             return nonGlobalArgs;
         }
     }
@@ -147,7 +149,7 @@ public class GlobalConfiguration implements IGlobalConfiguration {
      *       lives</li>
      * </ol>
      */
-    private static String getGlobalConfigPath() throws ConfigurationException {
+    private static String getGlobalConfigPath() {
         String path = System.getenv(GLOBAL_CONFIG_VARIABLE);
         if (path != null) {
             // don't actually check for accessibility here, since the variable might be specifying
@@ -319,10 +321,9 @@ public class GlobalConfiguration implements IGlobalConfiguration {
     }
 
     /**
-     * {@inheritDoc}
+     * Internal helper to get the list of config object
      */
-//    @Override
-    public List<?> getConfigurationObjectList(String typeName) {
+    private List<?> getConfigurationObjectList(String typeName) {
         return mConfigMap.get(typeName);
     }
 
@@ -538,7 +539,7 @@ public class GlobalConfiguration implements IGlobalConfiguration {
      * Outputs a command line usage help text for this configuration to given printStream.
      *
      * @param out the {@link PrintStream} to use.
-     * @throws {@link ConfigurationException}
+     * @throw {@link ConfigurationException}
      */
 //    @Override
     public void printCommandUsage(boolean importantOnly, PrintStream out)
@@ -589,7 +590,7 @@ public class GlobalConfiguration implements IGlobalConfiguration {
     /**
      * {@inheritDoc}
      */
-//    @Override
+    @Override
     public void validateOptions() throws ConfigurationException {
         new ArgsOptionParser(getAllConfigurationObjects()).validateMandatoryOptions();
     }

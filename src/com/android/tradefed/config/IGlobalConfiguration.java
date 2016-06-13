@@ -24,7 +24,6 @@ import com.android.tradefed.device.IDeviceSelection;
 import com.android.tradefed.device.IMultiDeviceRecovery;
 import com.android.tradefed.log.ITerribleFailureHandler;
 import com.android.tradefed.util.IHostMonitor;
-import com.android.tradefed.util.keystore.IKeyStoreClient;
 import com.android.tradefed.util.keystore.IKeyStoreFactory;
 
 import java.util.List;
@@ -61,7 +60,7 @@ public interface IGlobalConfiguration {
     /**
      * Set the {@link IHostMonitor} list.
      *
-     * @param hostMonitor The monitor
+     * @param hostMonitors The list of monitors
      * @throws ConfigurationException if an {@link IHostMonitor} has already been set.
      */
     public void addHostMonitors(List<IHostMonitor> hostMonitors) throws ConfigurationException;
@@ -123,7 +122,7 @@ public interface IGlobalConfiguration {
     /**
      * Set the global config {@link Option} fields with given set of command line arguments
      * <p/>
-     * @see {@link ArgsOptionParser} for expected format
+     * See {@link ArgsOptionParser} for expected format
      *
      * @param listArgs the command line arguments
      * @return the unconsumed arguments
@@ -227,4 +226,13 @@ public interface IGlobalConfiguration {
      * @return the object or null if object with that name is not found
      */
     public Object getConfigurationObject(String typeName);
+
+    /**
+     * Validate option values.
+     * <p/>
+     * Currently this will just validate that all mandatory options have been set
+     *
+     * @throws ConfigurationException if configuration is missing mandatory fields
+     */
+    public void validateOptions() throws ConfigurationException;
 }
