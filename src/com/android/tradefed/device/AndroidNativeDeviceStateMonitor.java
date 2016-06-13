@@ -245,6 +245,8 @@ public class AndroidNativeDeviceStateMonitor implements IDeviceStateMonitor {
                 }
             } catch (InterruptedException e) {
                 CLog.i("%s on device %s failed: %s", cmd, getSerialNumber(), e.getMessage());
+                // exit the loop for InterruptedException
+                break;
             } catch (ExecutionException e) {
                 CLog.i("%s on device %s failed: %s", cmd, getSerialNumber(), e.getMessage());
             }
@@ -399,9 +401,11 @@ public class AndroidNativeDeviceStateMonitor implements IDeviceStateMonitor {
                 listener.wait();
             } catch (InterruptedException e) {
                 CLog.w("wait for device bootloader state update interrupted");
+                throw new RuntimeException(e);
+            } finally {
+                mMgr.removeFastbootListener(listener);
             }
         }
-        mMgr.removeFastbootListener(listener);
     }
 
     private boolean waitForDeviceState(TestDeviceState state, long time) {
@@ -419,9 +423,11 @@ public class AndroidNativeDeviceStateMonitor implements IDeviceStateMonitor {
                 listener.wait(time);
             } catch (InterruptedException e) {
                 CLog.w("wait for device state interrupted");
+                throw new RuntimeException(e);
+            } finally {
+                removeDeviceStateListener(listener);
             }
         }
-        removeDeviceStateListener(listener);
         return getDeviceState().equals(state);
     }
 
