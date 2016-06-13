@@ -22,8 +22,6 @@ import com.android.tradefed.util.ClassPathScanner;
 import com.android.tradefed.util.ClassPathScanner.IClassPathFilter;
 import com.android.tradefed.util.StreamUtil;
 import com.android.tradefed.util.keystore.IKeyStoreClient;
-import com.android.tradefed.util.keystore.IKeyStoreFactory;
-import com.android.tradefed.util.keystore.KeyStoreException;
 
 import java.io.BufferedInputStream;
 import java.io.ByteArrayOutputStream;
@@ -54,6 +52,7 @@ public class ConfigurationFactory implements IConfigurationFactory {
     private static IConfigurationFactory sInstance = null;
     private static final String CONFIG_SUFFIX = ".xml";
     private static final String CONFIG_PREFIX = "config/";
+    private static final String DRY_RUN_TEMPLATE_CONFIG = "empty";
 
     private Map<ConfigId, ConfigurationDef> mConfigDefMap;
 
@@ -176,9 +175,11 @@ public class ConfigurationFactory implements IConfigurationFactory {
 
         private final boolean mIsGlobalConfig;
         private Set<String> mIncludedConfigs = new HashSet<String>();
+        private boolean mTemplateDryRun = false;
 
-        public ConfigLoader(boolean isGlobalConfig) {
+        public ConfigLoader(boolean isGlobalConfig, boolean templateDryRun) {
             mIsGlobalConfig = isGlobalConfig;
+            mTemplateDryRun = templateDryRun;
         }
 
         /**
@@ -281,7 +282,8 @@ public class ConfigurationFactory implements IConfigurationFactory {
                             "Failure when trying to determine local file canonical path %s", e));
                 }
             }
-            if (mIncludedConfigs.contains(config_name)) {
+            if (mIncludedConfigs.contains(config_name) && !mTemplateDryRun) {
+                // We only throw if we are not in template dry-run.
                 throw new ConfigurationException(String.format(
                         "Circular configuration include: config '%s' is already included",
                         config_name));
@@ -346,8 +348,8 @@ public class ConfigurationFactory implements IConfigurationFactory {
      * @throws ConfigurationException if an error occurred loading the config
      */
     private ConfigurationDef getConfigurationDef(String name, boolean isGlobal,
-            Map<String, String> templateMap) throws ConfigurationException {
-        return new ConfigLoader(isGlobal).getConfigurationDef(name, templateMap);
+            Map<String, String> templateMap, boolean templateDryRun) throws ConfigurationException {
+        return new ConfigLoader(isGlobal, templateDryRun).getConfigurationDef(name, templateMap);
     }
 
     /**
@@ -429,7 +431,7 @@ public class ConfigurationFactory implements IConfigurationFactory {
         }
         optionArgsRef.addAll(templateArgParser.parseBestEffort(listArgs));
         ConfigurationDef configDef = getConfigurationDef(configName, false,
-                parserSettings.templateMap);
+                parserSettings.templateMap, false);
         if (!parserSettings.templateMap.isEmpty()) {
             // remove the bad ConfigDef from the cache.
             for (ConfigId cid : mConfigDefMap.keySet()) {
@@ -478,7 +480,7 @@ public class ConfigurationFactory implements IConfigurationFactory {
         optionArgsRef.addAll(Arrays.asList(arrayArgs));
         // first arg is config name
         final String configName = optionArgsRef.remove(0);
-        ConfigurationDef configDef = getConfigurationDef(configName, true, null);
+        ConfigurationDef configDef = getConfigurationDef(configName, true, null, false);
         return configDef.createGlobalConfiguration();
     }
 
@@ -518,13 +520,12 @@ public class ConfigurationFactory implements IConfigurationFactory {
         for (String configName : configNames) {
             final ConfigId configId = new ConfigId(configName);
             try {
-                ConfigurationDef configDef = getConfigurationDef(configName, false, null);
+                ConfigurationDef configDef = attemptLoad(configId, null);
                 mConfigDefMap.put(configId, configDef);
             } catch (ConfigurationException e) {
                 ps.printf("Failed to load %s: %s", configName, e.getMessage());
                 ps.println();
                 failed = true;
-
             }
         }
         if (failed) {
@@ -534,6 +535,28 @@ public class ConfigurationFactory implements IConfigurationFactory {
             } else {
                 throw new ConfigurationException(baos.toString());
             }
+        }
+    }
+
+    /**
+     * Helper to load a configuration.
+     */
+    private ConfigurationDef attemptLoad(ConfigId configId, Map<String, String> templateMap)
+            throws ConfigurationException {
+        ConfigurationDef configDef = null;
+        try {
+            configDef = getConfigurationDef(configId.name, false, templateMap, true);
+            return configDef;
+        } catch (TemplateResolutionError tre) {
+            // When a template does not have a default, we try again with known good template
+            // to make sure file formatting at the very least is fine.
+            Map<String, String> fakeTemplateMap = new HashMap<String, String>();
+            if (templateMap != null) {
+                fakeTemplateMap.putAll(templateMap);
+            }
+            fakeTemplateMap.put(tre.getTemplateKey(), DRY_RUN_TEMPLATE_CONFIG);
+            // We go recursively in case there are several template to dry run.
+            return attemptLoad(configId, fakeTemplateMap);
         }
     }
 
@@ -604,6 +627,7 @@ public class ConfigurationFactory implements IConfigurationFactory {
     /**
      * Utility method that checks that all configs can be loaded, parsed, and
      * all option values set.
+     * Only Used for internal validation of all configs. Should not be exposed in the console.
      *
      * @throws ConfigurationException if one or more configs failed to load
      */
@@ -617,6 +641,26 @@ public class ConfigurationFactory implements IConfigurationFactory {
                 def.createConfiguration().printCommandUsage(false,
                         new PrintStream(StreamUtil.nullOutputStream()));
             } catch (ConfigurationException e) {
+                if (e.getCause() != null &&
+                        e.getCause() instanceof ClassNotFoundException) {
+                    ClassNotFoundException cnfe = (ClassNotFoundException)e.getCause();
+                    String className = cnfe.getLocalizedMessage();
+                    // Some Cts configs are shipped with Trade Federation, we exclude those from
+                    // the failure since these packages are not available for loading.
+                    if (className != null && (className.startsWith("com.android.cts.") ||
+                                    className.startsWith("com.android.xts."))) {
+                        ps.printf("Could not confirm %s: %s because not part of Trade Federation "
+                                + "packages.", def.getName(), e.getMessage());
+                        ps.println();
+                        continue;
+                    }
+                } else if (e.getMessage().contains("Could not find option with name")) {
+                    // We cannot confirm if an option is indeed missing since a template of option
+                    // only is possible to avoid repetition in configuration with the same base.
+                    ps.printf("Could not confirm %s: %s", def.getName(), e.getMessage());
+                    ps.println();
+                    continue;
+                }
                 ps.printf("Failed to print %s: %s", def.getName(), e.getMessage());
                 ps.println();
                 failed = true;
@@ -625,5 +669,13 @@ public class ConfigurationFactory implements IConfigurationFactory {
         if (failed) {
             throw new ConfigurationException(baos.toString());
         }
+    }
+
+    /**
+     * Exposed for testing. Return a copy of the Map.
+     */
+    protected Map<ConfigId, ConfigurationDef> getMapConfig() {
+        // We return a copy to ensure it is not modified outside
+        return new HashMap<ConfigId, ConfigurationDef>(mConfigDefMap);
     }
 }

@@ -18,7 +18,6 @@ package com.android.tradefed.config;
 import com.android.ddmlib.Log.LogLevel;
 import com.android.tradefed.config.ConfigurationFactory.ConfigId;
 import com.android.tradefed.log.ILeveledLogOutput;
-import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.targetprep.StubTargetPreparer;
 import com.android.tradefed.util.FileUtil;
 
@@ -63,21 +62,21 @@ public class ConfigurationFactoryTest extends TestCase {
     /**
      * Sanity test to ensure all config names on classpath are loadable
      */
-    public void disabled__testLoadAllConfigs() throws ConfigurationException {
-        new ConfigurationFactory().loadAllConfigs(false);
+    public void testLoadAllConfigs() throws ConfigurationException {
+        ConfigurationFactory cf = new ConfigurationFactory();
+        // we dry-run the templates otherwise it will always fail.
+        cf.loadAllConfigs(false);
+        assertTrue(cf.getMapConfig().size() > 0);
     }
 
     /**
      * Sanity test to ensure all configs on classpath can be fully loaded and parsed
      */
-    public void testLoadAndPrintAllConfigs() {
-        try {
-            new ConfigurationFactory().loadAndPrintAllConfigs();
-        } catch (ConfigurationException e) {
-            // TODO: temporarily suppress this error, until all configs are cleaned up b/14027179
-            CLog.e("Suppressing failed test testLoadAndPrintAllConfigs");
-            CLog.e(e);
-        }
+    public void testLoadAndPrintAllConfigs() throws ConfigurationException {
+        ConfigurationFactory cf = new ConfigurationFactory();
+        // Printing the help involves more checks since it tries to resolve the config objects.
+        cf.loadAndPrintAllConfigs();
+        assertTrue(cf.getMapConfig().size() > 0);
     }
 
     /**
