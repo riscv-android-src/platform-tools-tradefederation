@@ -48,6 +48,7 @@ import com.android.tradefed.device.DeviceUtilStatsMonitorTest;
 import com.android.tradefed.device.DumpsysPackageReceiverTest;
 import com.android.tradefed.device.FastbootHelperTest;
 import com.android.tradefed.device.ManagedDeviceListTest;
+import com.android.tradefed.device.ManagedTestDeviceFactoryTest;
 import com.android.tradefed.device.ReconnectingRecoveryTest;
 import com.android.tradefed.device.RemoteAndroidDeviceTest;
 import com.android.tradefed.device.TestDeviceTest;
@@ -200,6 +201,7 @@ public class UnitTests extends DeviceTestSuite {
         addTestSuite(DumpsysPackageReceiverTest.class);
         addTestSuite(FastbootHelperTest.class);
         addTestSuite(ManagedDeviceListTest.class);
+        addTestSuite(ManagedTestDeviceFactoryTest.class);
         addTestSuite(PropertyChangerTest.class);
         addTestSuite(ReconnectingRecoveryTest.class);
         addTestSuite(RemoteAndroidDeviceTest.class);
