@@ -225,7 +225,7 @@ public class GTest implements IDeviceTest, IRemoteTest, ITestFilterReceiver, IRu
      */
     @Override
     public void addIncludeFilter(String filter) {
-        mIncludeFilters.add(filter);
+        mIncludeFilters.add(cleanFilter(filter));
     }
 
     /**
@@ -233,7 +233,9 @@ public class GTest implements IDeviceTest, IRemoteTest, ITestFilterReceiver, IRu
      */
     @Override
     public void addAllIncludeFilters(List<String> filters) {
-        mIncludeFilters.addAll(filters);
+        for (String filter : filters) {
+            mIncludeFilters.add(cleanFilter(filter));
+        }
     }
 
     /**
@@ -241,7 +243,7 @@ public class GTest implements IDeviceTest, IRemoteTest, ITestFilterReceiver, IRu
      */
     @Override
     public void addExcludeFilter(String filter) {
-        mExcludeFilters.add(filter);
+        mExcludeFilters.add(cleanFilter(filter));
     }
 
     /**
@@ -249,7 +251,17 @@ public class GTest implements IDeviceTest, IRemoteTest, ITestFilterReceiver, IRu
      */
     @Override
     public void addAllExcludeFilters(List<String> filters) {
-        mExcludeFilters.addAll(filters);
+        for (String filter : filters) {
+            mExcludeFilters.add(cleanFilter(filter));
+        }
+    }
+
+    /*
+     * Conforms filters using a {@link com.android.ddmlib.testrunner.TestIdentifier} format
+     * to be recognized by the GTest executable.
+     */
+    private String cleanFilter(String filter) {
+        return filter.replace('#', '.');
     }
 
     /**
