@@ -20,6 +20,7 @@ import com.android.ddmlib.testrunner.IRemoteAndroidTestRunner;
 import com.android.tradefed.config.Option;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
+import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.util.ArrayUtil;
 
 import java.io.File;
@@ -56,6 +57,9 @@ public class AndroidJUnitTest extends InstrumentationTest implements IRuntimeHin
     /** instrumentation test runner argument used for adding notTestFile filter */
     private static final String NOT_TEST_FILE_INST_ARGS_KEY = "notTestFile";
 
+    private static final String INCLUDE_FILE = "includes.txt";
+    private static final String EXCLUDE_FILE = "excludes.txt";
+
     @Option(name = "runtime-hint",
             isTimeVal=true,
             description="The hint about the test's runtime.")
@@ -86,6 +90,13 @@ public class AndroidJUnitTest extends InstrumentationTest implements IRuntimeHin
             description="A file containing a list of line separated test classes and optionally"
             + " methods to exclude")
     private File mExcludeTestFile = null;
+
+    @Option(name = "test-filter-dir",
+            description="The device directory path to which the test filtering files are pushed")
+    private String mTestFilterDir = "/data/local/tmp/ajur";
+
+    private String mDeviceIncludeFile = null;
+    private String mDeviceExcludeFile = null;
 
     public AndroidJUnitTest() {
         super();
@@ -169,19 +180,39 @@ public class AndroidJUnitTest extends InstrumentationTest implements IRuntimeHin
      * {@inheritDoc}
      */
     @Override
-    protected void setRunnerArgs(IRemoteAndroidTestRunner runner) {
-        super.setRunnerArgs(runner);
-
+    public void run(final ITestInvocationListener listener) throws DeviceNotAvailableException {
+        if (getDevice() == null) {
+            throw new IllegalArgumentException("Device has not been set");
+        }
         // if mIncludeTestFile is set, perform filtering with this file
         if (mIncludeTestFile != null) {
-            String deviceIncludeFilePath = pushTestFile(mIncludeTestFile);
-            runner.addInstrumentationArg(TEST_FILE_INST_ARGS_KEY, deviceIncludeFilePath);
+            mDeviceIncludeFile = mTestFilterDir.replaceAll("/$", "") + "/" + INCLUDE_FILE;
+            pushTestFile(mIncludeTestFile, mDeviceIncludeFile);
         }
 
         // if mExcludeTestFile is set, perform filtering with this file
         if (mExcludeTestFile != null) {
-            String deviceExcludeFilePath = pushTestFile(mExcludeTestFile);
-            runner.addInstrumentationArg(NOT_TEST_FILE_INST_ARGS_KEY, deviceExcludeFilePath);
+            mDeviceExcludeFile = mTestFilterDir.replaceAll("/$", "") + "/" + EXCLUDE_FILE;
+            pushTestFile(mExcludeTestFile, mDeviceExcludeFile);
+        }
+        super.run(listener);
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    protected void setRunnerArgs(IRemoteAndroidTestRunner runner) {
+        super.setRunnerArgs(runner);
+
+        // if mIncludeTestFile is set, perform filtering with this file
+        if (mDeviceIncludeFile != null) {
+            runner.addInstrumentationArg(TEST_FILE_INST_ARGS_KEY, mDeviceIncludeFile);
+        }
+
+        // if mExcludeTestFile is set, perform filtering with this file
+        if (mDeviceExcludeFile != null) {
+            runner.addInstrumentationArg(NOT_TEST_FILE_INST_ARGS_KEY, mDeviceExcludeFile);
         }
 
         // Split filters into class, notClass, package and notPackage
@@ -229,30 +260,22 @@ public class AndroidJUnitTest extends InstrumentationTest implements IRuntimeHin
         }
     }
 
-    /* Push testFile to device, and return absolute path of file on device.
-       This should only be called for a non-null testFile */
-    private String pushTestFile(File testFile) {
-        ITestDevice device = getDevice();
-        Assert.assertNotNull("Device must be set before setting the test file", device);
-        Assert.assertTrue(String.format("Cannot read test file %s", testFile.getAbsolutePath()),
-                testFile.canRead());
-        Assert.assertTrue(String.format("test file %s is not a file", testFile.getAbsolutePath()),
-                testFile.isFile());
-
-        String dateString = new SimpleDateFormat("yyyy.MM.dd.HH.mm.ss").format(new Date());
-        String deviceFileName = String.format(
-                "/data/local/tmp/%s%s.txt", testFile.getName(), dateString);
-        try {
-            if (!device.pushFile(testFile, deviceFileName)) {
-                throw new RuntimeException(String.format("Failed to push file %s to %s for %s "
-                        + "in pushTestFile", testFile.getAbsolutePath(), deviceFileName,
-                        device.getSerialNumber()));
-            }
-        } catch (DeviceNotAvailableException e) {
-            throw new RuntimeException("Received DeviceNotAvailableException when pushing "
-                    + "file to device, pushTestFile failed");
+    /*
+     * @param testFile file to be pushed from the host to the device.
+     * @param destination the path on the device to which testFile is pushed
+     * This should only be called for a non-null testFile
+     */
+    private void pushTestFile(File testFile, String destination) throws DeviceNotAvailableException {
+        if (!testFile.canRead() || !testFile.isFile()) {
+            throw new IllegalArgumentException(
+                    String.format("Cannot read test file %s", testFile.getAbsolutePath()));
         }
-        return deviceFileName;
+        ITestDevice device = getDevice();
+        if (!device.pushFile(testFile, destination)) {
+            throw new RuntimeException(String.format("Failed to push file %s to %s for %s "
+                    + "in pushTestFile", testFile.getAbsolutePath(), destination,
+                    device.getSerialNumber()));
+        }
     }
 
     /**
