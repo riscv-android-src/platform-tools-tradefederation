@@ -21,6 +21,7 @@ import com.android.tradefed.result.StubTestInvocationListener;
 
 import org.easymock.EasyMock;
 
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -29,7 +30,7 @@ import java.util.Map;
 public class GTestListTestParserTest extends GTestParserTestBase {
 
     /**
-     * Tests the parser for a simple test run output with 11 tests.
+     * Tests the parser for a test run output with 1 class and 23 tests.
      */
     @SuppressWarnings("unchecked")
     public void testParseSimpleList() throws Exception {
@@ -42,7 +43,6 @@ public class GTestListTestParserTest extends GTestParserTestBase {
             mockRunListener.testEnded((TestIdentifier)EasyMock.anyObject(),
                     (Map<String, String>)EasyMock.anyObject());
         }
-        // TODO: validate param values
         mockRunListener.testRunEnded(EasyMock.anyLong(),
                 (Map<String, String>) EasyMock.anyObject());
         EasyMock.replay(mockRunListener);
@@ -50,10 +50,11 @@ public class GTestListTestParserTest extends GTestParserTestBase {
         parser.processNewLines(contents);
         parser.flush();
         EasyMock.verify(mockRunListener);
+        verifyTestIdentifiers(parser.mTests, 1);
     }
 
     /**
-     * Tests the parser for a simple test run output with 11 tests.
+     * Tests the parser for a test run output with 29 classes and 127 tests.
      */
     @SuppressWarnings("unchecked")
     public void testParseMultiClassList() throws Exception {
@@ -66,7 +67,6 @@ public class GTestListTestParserTest extends GTestParserTestBase {
             mockRunListener.testEnded((TestIdentifier)EasyMock.anyObject(),
                     (Map<String, String>)EasyMock.anyObject());
         }
-        // TODO: validate param values
         mockRunListener.testRunEnded(EasyMock.anyLong(),
                 (Map<String, String>) EasyMock.anyObject());
         EasyMock.replay(mockRunListener);
@@ -74,11 +74,12 @@ public class GTestListTestParserTest extends GTestParserTestBase {
         parser.processNewLines(contents);
         parser.flush();
         EasyMock.verify(mockRunListener);
+        verifyTestIdentifiers(parser.mTests, 29);
     }
     /**
-     * Tests the parser for a simple test run output with 11 tests.
+     * Tests the parser against a malformed list of tests.
      */
-    public void testParseMalformedListt() throws Exception {
+    public void testParseMalformedList() throws Exception {
         String[] contents =  readInFile(GTEST_LIST_FILE_3);
         GTestListTestParser parser = new GTestListTestParser(TEST_MODULE_NAME,
                 new StubTestInvocationListener());
@@ -89,5 +90,24 @@ public class GTestListTestParserTest extends GTestParserTestBase {
         } catch (IllegalStateException ise) {
             // expected
         }
+    }
+
+    private void verifyTestIdentifiers(List<TestIdentifier> tests, int classesExpected)
+            throws Exception {
+        int classesFound = 0;
+        String lastClass = "notaclass";
+        for (TestIdentifier test : tests) {
+            String className = test.getClassName();
+            String methodName = test.getTestName();
+            assertFalse(String.format("Class name %s improperly formatted", className),
+                    className.matches("^.*\\.$")); // should not end with '.'
+            assertFalse(String.format("Method name %s improperly formatted", methodName),
+                    methodName.matches("^\\s+.*")); // should not begin with whitespace
+            if (!className.equals(lastClass)) {
+                lastClass = className;
+                classesFound++;
+            }
+        }
+        assertEquals(classesExpected, classesFound);
     }
 }

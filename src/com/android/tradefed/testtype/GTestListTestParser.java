@@ -24,8 +24,8 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-
 /**
  * A result parser for gtest dry run mode with "--gtest_list_tests" parameter.
  *
@@ -40,12 +40,13 @@ public class GTestListTestParser extends MultiLineReceiver {
 
     // test class name should start without leading spaces, and end with a "."
     // example: <line start>RecordingCanvas.<line end>
-    private static Pattern TEST_CLASS = Pattern.compile("^[a-zA-Z]+.*\\.$");
+    private static Pattern TEST_CLASS = Pattern.compile("^([a-zA-Z]+.*)\\.$");
     // test method name should start with leading spaces, named as however valid as a C function
     // example: <line start>  emptyPlayback<line end>
-    private static Pattern TEST_METHOD = Pattern.compile("\\s+\\w+$");
+    private static Pattern TEST_METHOD = Pattern.compile("\\s+(\\w+)$");
 
-    private List<TestIdentifier> mTests = new ArrayList<>();
+    // exposed for unit testing
+    protected List<TestIdentifier> mTests = new ArrayList<>();
 
     /**
      * Creates the GTestListTestParser for a single listener.
@@ -91,15 +92,19 @@ public class GTestListTestParser extends MultiLineReceiver {
     }
 
     private void parse(String line) {
-        // parsing a new test class
-        if (TEST_CLASS.matcher(line).matches()) {
-            mLastTestClassName = line;
-        } else if (TEST_METHOD.matcher(line).matches()) {
+        Matcher classMatcher = TEST_CLASS.matcher(line);
+        Matcher methodMatcher = TEST_METHOD.matcher(line);
+        if (classMatcher.matches()) {
+            // New test class name found
+            mLastTestClassName = classMatcher.group(1);
+        } else if (methodMatcher.matches()) {
             if (mLastTestClassName == null) {
                 throw new IllegalStateException(String.format(
                         "parsed new test case name %s but no test class name has been set", line));
             }
-            mTests.add(new TestIdentifier(getTestClass(mLastTestClassName), line));
+            // Test method name found
+            mTests.add(new TestIdentifier(
+                    getTestClass(mLastTestClassName), methodMatcher.group(1)));
         } else {
             CLog.v("line ignored: %s", line);
         }
