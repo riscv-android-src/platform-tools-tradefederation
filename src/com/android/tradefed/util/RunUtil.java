@@ -623,7 +623,7 @@ public class RunUtil implements IRunUtil {
             if (rc == 0) {
                 return true;
             } else {
-                CLog.i("%s command failed. return code %d", mProcessBuilder.command(), rc);
+                CLog.d("%s command failed. return code %d", mProcessBuilder.command(), rc);
             }
             return false;
         }
