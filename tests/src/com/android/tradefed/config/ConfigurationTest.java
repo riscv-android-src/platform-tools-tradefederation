@@ -41,7 +41,6 @@ import org.json.JSONObject;
 import java.io.ByteArrayOutputStream;
 import java.io.PrintStream;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -96,7 +95,7 @@ public class ConfigurationTest extends TestCase {
     }
 
     /**
-     * Test that {@link Configuration#getConfigurationObject(String, Class)} can retrieve
+     * Test that {@link Configuration#getConfigurationObject(String)} can retrieve
      * a previously stored object.
      */
     public void testGetConfigurationObject() throws ConfigurationException {
@@ -171,7 +170,7 @@ public class ConfigurationTest extends TestCase {
     }
 
     /**
-     * Test {@link Configuration#getConfigurationObjectList(String, Class)} when config object
+     * Test {@link Configuration#getConfigurationObjectList(String)} when config object
      * with given name does not exist.
      */
     public void testGetConfigurationObjectList_wrongname() {
@@ -182,7 +181,7 @@ public class ConfigurationTest extends TestCase {
      * Test {@link Configuration#setConfigurationObjectList(String, List)} when config object
      * is the wrong type
      */
-    public void testSetConfigurationObjectList_wrongtype() throws ConfigurationException  {
+    public void testSetConfigurationObjectList_wrongtype() {
         try {
             List<TestConfigObject> myList = new ArrayList<TestConfigObject>(1);
             myList.add(new TestConfigObject());
@@ -195,9 +194,9 @@ public class ConfigurationTest extends TestCase {
     }
 
     /**
-     * Test method for {@link com.android.tradefed.config.Configuration#getBuildProvider()}.
+     * Test method for {@link Configuration#getBuildProvider()}.
      */
-    public void testGetBuildProvider() throws ConfigurationException, BuildRetrievalError {
+    public void testGetBuildProvider() throws BuildRetrievalError {
         // check that the default provider is present and doesn't blow up
         assertNotNull(mConfig.getBuildProvider().getBuild());
         // check set and get
@@ -207,7 +206,7 @@ public class ConfigurationTest extends TestCase {
     }
 
     /**
-     * Test method for {@link Configuration#getTargetPreparer()}.
+     * Test method for {@link Configuration#getTargetPreparers()}.
      */
     public void testGetTargetPreparers() throws Exception {
         // check that the default preparer is present and doesn't blow up
@@ -221,7 +220,7 @@ public class ConfigurationTest extends TestCase {
     /**
      * Test method for {@link Configuration#getTests()}.
      */
-    public void testGetTests() throws ConfigurationException, DeviceNotAvailableException {
+    public void testGetTests() throws DeviceNotAvailableException {
         // check that the default test is present and doesn't blow up
         mConfig.getTests().get(0).run(new TextResultReporter());
         IRemoteTest test1 = EasyMock.createMock(IRemoteTest.class);
@@ -232,7 +231,7 @@ public class ConfigurationTest extends TestCase {
     /**
      * Test method for {@link Configuration#getDeviceRecovery()}.
      */
-    public void testGetDeviceRecovery() throws ConfigurationException {
+    public void testGetDeviceRecovery() {
         // check that the default recovery is present
         assertNotNull(mConfig.getDeviceRecovery());
         final IDeviceRecovery recovery = EasyMock.createMock(IDeviceRecovery.class);
@@ -243,7 +242,7 @@ public class ConfigurationTest extends TestCase {
     /**
      * Test method for {@link Configuration#getLogOutput()}.
      */
-    public void testGetLogOutput() throws ConfigurationException {
+    public void testGetLogOutput() {
         // check that the default logger is present and doesn't blow up
         mConfig.getLogOutput().printLog(LogLevel.INFO, "testGetLogOutput", "test");
         final ILeveledLogOutput logger = EasyMock.createMock(ILeveledLogOutput.class);
@@ -270,7 +269,7 @@ public class ConfigurationTest extends TestCase {
     /**
      * Test method for {@link Configuration#getCommandOptions()}.
      */
-    public void testGetCommandOptions() throws ConfigurationException {
+    public void testGetCommandOptions() {
         // check that the default object is present
         assertNotNull(mConfig.getCommandOptions());
         final ICommandOptions cmdOptions = EasyMock.createMock(ICommandOptions.class);
@@ -281,7 +280,7 @@ public class ConfigurationTest extends TestCase {
     /**
      * Test method for {@link Configuration#getDeviceRequirements()}.
      */
-    public void testGetDeviceRequirements() throws ConfigurationException {
+    public void testGetDeviceRequirements() {
         // check that the default object is present
         assertNotNull(mConfig.getDeviceRequirements());
         final IDeviceSelection deviceSelection = EasyMock.createMock(
@@ -331,7 +330,7 @@ public class ConfigurationTest extends TestCase {
     }
 
     /**
-     * Test {@link Configuration#injectOptionValues(List<OptionDef>))}
+     * Test {@link Configuration#injectOptionValues(List)}
      */
     public void testInjectOptionValues() throws ConfigurationException {
         final String key = "hello";
@@ -351,7 +350,7 @@ public class ConfigurationTest extends TestCase {
     }
 
     /**
-     * Basic test for {@link Configuration#printCommandUsage(java.io.PrintStream)}.
+     * Basic test for {@link Configuration#printCommandUsage(boolean, java.io.PrintStream)}.
      */
     public void testPrintCommandUsage() throws ConfigurationException {
         TestConfigObject testConfigObject = new TestConfigObject();
