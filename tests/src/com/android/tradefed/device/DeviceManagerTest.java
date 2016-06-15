@@ -36,6 +36,7 @@ import org.easymock.IAnswer;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 
 /**
  * Unit tests for {@link DeviceManager}.
@@ -497,8 +498,14 @@ public class DeviceManagerTest extends TestCase {
      * Test {@link DeviceManager#init(IDeviceSelection, List)}
      * with a global exclusion filter
      */
-    public void testInit_excludeDevice() {
+    public void testInit_excludeDevice() throws Exception {
+        String expectedCmd = String.format(ManagedTestDeviceFactory.CHECK_PM_CMD,
+                ManagedTestDeviceFactory.EXPECTED_RES);
         EasyMock.expect(mMockIDevice.getState()).andReturn(DeviceState.ONLINE).times(2);
+        mMockIDevice.executeShellCommand(EasyMock.eq(expectedCmd),
+                (CollectingOutputReceiver)EasyMock.anyObject(), EasyMock.eq(60000l),
+                EasyMock.eq(TimeUnit.MILLISECONDS));
+        EasyMock.expectLastCall();
         replayMocks();
         DeviceManager manager = createDeviceManagerNoInit();
         DeviceSelectionOptions excludeFilter = new DeviceSelectionOptions();
@@ -512,12 +519,16 @@ public class DeviceManagerTest extends TestCase {
     /**
      * Test {@link DeviceManager#init(IDeviceSelection, List)} with a global inclusion filter
      */
-    public void testInit_includeDevice() {
+    public void testInit_includeDevice() throws Exception {
         IDevice excludedDevice = EasyMock.createMock(IDevice.class);
         EasyMock.expect(excludedDevice.getSerialNumber()).andStubReturn("excluded");
         EasyMock.expect(excludedDevice.getState()).andStubReturn(DeviceState.ONLINE);
         EasyMock.expect(mMockIDevice.getState()).andStubReturn(DeviceState.ONLINE);
         EasyMock.expect(excludedDevice.isEmulator()).andStubReturn(Boolean.FALSE);
+        excludedDevice.executeShellCommand((String)EasyMock.anyObject(),
+                (CollectingOutputReceiver)EasyMock.anyObject(), EasyMock.eq(60000l),
+                EasyMock.eq(TimeUnit.MILLISECONDS));
+        EasyMock.expectLastCall();
         replayMocks(excludedDevice);
         DeviceManager manager = createDeviceManagerNoInit();
         DeviceSelectionOptions includeFilter = new DeviceSelectionOptions();
