@@ -25,10 +25,19 @@ import com.android.tradefed.log.LogUtil.CLog;
 import java.io.IOException;
 import java.util.concurrent.TimeUnit;
 
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+
 /**
  * Factory to create the different kind of devices that can be monitored by Tf
  */
 public class ManagedTestDeviceFactory implements IManagedTestDeviceFactory {
+
+    private static final String IPADDRESS_PATTERN =
+            "((^([01]?\\d\\d?|2[0-4]\\d|25[0-5])\\." +
+            "([01]?\\d\\d?|2[0-4]\\d|25[0-5])\\." +
+            "([01]?\\d\\d?|2[0-4]\\d|25[0-5])\\." +
+            "([01]?\\d\\d?|2[0-4]\\d|25[0-5]))|(localhost)){1}";
 
     protected boolean mFastbootEnabled;
     protected IDeviceManager mDeviceManager;
@@ -49,7 +58,7 @@ public class ManagedTestDeviceFactory implements IManagedTestDeviceFactory {
     @Override
     public IManagedTestDevice createDevice(IDevice idevice) {
         IManagedTestDevice testDevice = null;
-        if (idevice instanceof TcpDevice) {
+        if (idevice instanceof TcpDevice || isTcpDeviceSerial(idevice.getSerialNumber())) {
             // Special device for Tcp device for custom handling.
             testDevice = new RemoteAndroidDevice(idevice,
                     new DeviceStateMonitor(mDeviceManager, idevice, mFastbootEnabled),
@@ -108,5 +117,19 @@ public class ManagedTestDeviceFactory implements IManagedTestDeviceFactory {
     @Override
     public void setFastbootEnabled(boolean enable) {
         mFastbootEnabled = enable;
+    }
+
+    /**
+     * Helper to device if it's a serial from a remotely connected device.
+     * serial format of tcp device is <ip or locahost>:<port>
+     */
+    protected boolean isTcpDeviceSerial(String serial) {
+        final String remotePattern = IPADDRESS_PATTERN + "(:)([0-9]{2,5})(\\b)";
+        Pattern pattern = Pattern.compile(remotePattern);
+        Matcher match = pattern.matcher(serial.trim());
+        if (match.find()) {
+            return true;
+        }
+        return false;
     }
 }
