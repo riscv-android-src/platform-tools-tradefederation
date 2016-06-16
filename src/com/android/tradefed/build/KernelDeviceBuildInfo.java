@@ -55,6 +55,14 @@ public class KernelDeviceBuildInfo extends BuildInfo implements IDeviceBuildInfo
      * {@inheritDoc}
      */
     @Override
+    public String getDeviceBuildFlavor() {
+        return mDeviceBuild.getDeviceBuildFlavor();
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
     public File getDeviceImageFile() {
         return mDeviceBuild.getDeviceImageFile();
     }

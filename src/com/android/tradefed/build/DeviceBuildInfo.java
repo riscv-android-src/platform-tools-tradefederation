@@ -63,6 +63,14 @@ public class DeviceBuildInfo extends BuildInfo implements IDeviceBuildInfo {
      * {@inheritDoc}
      */
     @Override
+    public String getDeviceBuildFlavor() {
+        return getBuildFlavor();
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
     public File getDeviceImageFile() {
         return getFile(DEVICE_IMAGE_NAME);
     }
