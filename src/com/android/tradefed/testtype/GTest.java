@@ -18,16 +18,19 @@ package com.android.tradefed.testtype;
 
 import com.android.ddmlib.FileListingService;
 import com.android.ddmlib.IShellOutputReceiver;
-import com.android.ddmlib.Log;
 import com.android.ddmlib.testrunner.ITestRunListener;
 import com.android.tradefed.config.Option;
 import com.android.tradefed.config.OptionClass;
 import com.android.tradefed.device.CollectingOutputReceiver;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
+import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.util.ArrayUtil;
 import com.android.tradefed.util.FileUtil;
+
+import org.json.JSONException;
+import org.json.JSONObject;
 
 import java.io.File;
 import java.io.IOException;
@@ -44,7 +47,6 @@ import java.util.concurrent.TimeUnit;
 public class GTest implements IDeviceTest, IRemoteTest, ITestFilterReceiver, IRuntimeHintProvider,
     ITestCollector {
 
-    private static final String LOG_TAG = "GTest";
     static final String DEFAULT_NATIVETEST_PATH = "/data/nativetest";
 
     private ITestDevice mDevice = null;
@@ -106,18 +108,16 @@ public class GTest implements IDeviceTest, IRemoteTest, ITestFilterReceiver, IRu
             "Flags should be complete, including any necessary dashes: \"--flag=value\"")
     private List<String> mGTestFlags = new ArrayList<>();
 
-    @Option(name = "runtime-hint",
-            isTimeVal=true,
-            description="The hint about the test's runtime.")
+    @Option(name = "runtime-hint", description="The hint about the test's runtime.",
+            isTimeVal = true)
     private long mRuntimeHint = 60000;// 1 minute
 
-    @Option(name = "xml-output",
-            description="Use gtest xml output for test results, if test binaries crash, no output"
-                    + "will be available.")
+    @Option(name = "xml-output", description = "Use gtest xml output for test results, "
+            + "if test binaries crash, no output will be available.")
     private boolean mEnableXmlOutput = false;
 
     @Option(name = "stop-runtime",
-            description="Stops the Java application runtime before test execution.")
+            description = "Stops the Java application runtime before test execution.")
     private boolean mStopRuntime = false;
 
     @Option(name = "collect-tests-only",
@@ -125,6 +125,12 @@ public class GTest implements IDeviceTest, IRemoteTest, ITestFilterReceiver, IRu
                     + "All test run callbacks will be triggered, but test execution will "
                     + "not be actually carried out.")
     private boolean mCollectTestsOnly = false;
+
+    @Option(name = "test-filter-key",
+            description = "run the gtest with the --gtest_filter populated with the filter from "
+                    + "the json filter file associated with the binary, the filter file will have "
+                    + "the same name as the binary with the .json extension.")
+    private String mTestFilterKey = null;
 
     /** coverage target value. Just report all gtests as 'native' for now */
     private static final String COVERAGE_TARGET = "Native";
@@ -137,7 +143,8 @@ public class GTest implements IDeviceTest, IRemoteTest, ITestFilterReceiver, IRu
     private static final String GTEST_XML_OUTPUT = "--gtest_output=xml:%s";
     // Max characters allowed for executing GTest via command line
     private static final int GTEST_CMD_CHAR_LIMIT = 1000;
-
+    // Expected extension for the filter file associated with the binary (json formatted file)
+    protected static final String FILTER_EXTENSION = ".filter";
     /**
      * {@inheritDoc}
      */
@@ -270,10 +277,11 @@ public class GTest implements IDeviceTest, IRemoteTest, ITestFilterReceiver, IRu
      * Note that filters filter on the function name only (eg: Google Test "Test"); all Google Test
      * "Test Cases" will be considered.
      *
+     * @param binaryOnDevice the full path of the binary on the device.
      * @return the full filter flag to pass to the Gtest, or an empty string if none have been
      * specified
      */
-    private String getGTestFilters() {
+    private String getGTestFilters(String binaryOnDevice) throws DeviceNotAvailableException {
         StringBuilder filter = new StringBuilder();
         if (mTestNamePositiveFilter != null) {
             mIncludeFilters.add(mTestNamePositiveFilter);
@@ -281,27 +289,64 @@ public class GTest implements IDeviceTest, IRemoteTest, ITestFilterReceiver, IRu
         if (mTestNameNegativeFilter != null) {
             mExcludeFilters.add(mTestNameNegativeFilter);
         }
-        if (!mIncludeFilters.isEmpty() || !mExcludeFilters.isEmpty()) {
-            filter.append(GTEST_FLAG_FILTER);
-            filter.append("=");
-            if (!mIncludeFilters.isEmpty()) {
-              filter.append(ArrayUtil.join(":", mIncludeFilters));
+        if (mTestFilterKey != null) {
+            if (!mIncludeFilters.isEmpty() || !mExcludeFilters.isEmpty()) {
+                CLog.w("Using json file filter, --include/exclude-filter will be ignored.");
             }
-            if (!mExcludeFilters.isEmpty()) {
-              filter.append("-");
-              filter.append(ArrayUtil.join(":", mExcludeFilters));
-          }
+            String fileFilters = loadFilter(binaryOnDevice);
+            if (fileFilters != null && !fileFilters.isEmpty()) {
+                filter.append(GTEST_FLAG_FILTER);
+                filter.append("=");
+                filter.append(fileFilters);
+            }
+        } else {
+            if (!mIncludeFilters.isEmpty() || !mExcludeFilters.isEmpty()) {
+                filter.append(GTEST_FLAG_FILTER);
+                filter.append("=");
+                if (!mIncludeFilters.isEmpty()) {
+                  filter.append(ArrayUtil.join(":", mIncludeFilters));
+                }
+                if (!mExcludeFilters.isEmpty()) {
+                  filter.append("-");
+                  filter.append(ArrayUtil.join(":", mExcludeFilters));
+              }
+            }
         }
         return filter.toString();
+    }
+
+    private String loadFilter(String binaryOnDevice) throws DeviceNotAvailableException {
+        CLog.i("Loading filter from file for key: '%s'", mTestFilterKey);
+        String filterFile = String.format("%s%s", binaryOnDevice, FILTER_EXTENSION);
+        if (getDevice().doesFileExist(filterFile)) {
+            String content =
+                    getDevice().executeShellCommand(String.format("cat \"%s\"", filterFile));
+            if (content != null && !content.isEmpty()) {
+                try {
+                    JSONObject filter = new JSONObject(content);
+                    String key = mTestFilterKey;
+                    JSONObject filterObject = filter.getJSONObject(key);
+                    return filterObject.getString("filter");
+                } catch (JSONException e) {
+                    CLog.e(e);
+                }
+            }
+            CLog.e("Error with content of the filter file %s: %s", filterFile, content);
+        } else {
+            CLog.e("Filter file %s not found", filterFile);
+        }
+        return null;
     }
 
     /**
      * Helper to get all the GTest flags to pass into the adb shell command.
      *
+     * @param binaryOnDevice the full path of the binary on the device.
      * @return the {@link String} of all the GTest flags that should be passed to the GTest
      */
-    private String getAllGTestFlags() {
-        String flags = String.format("%s %s", GTEST_FLAG_PRINT_TIME, getGTestFilters());
+    private String getAllGTestFlags(String binaryOnDevice) throws DeviceNotAvailableException {
+        String flags = String.format("%s %s", GTEST_FLAG_PRINT_TIME,
+                getGTestFilters(binaryOnDevice));
 
         if (mRunDisabledTests) {
             flags = String.format("%s %s", flags, GTEST_FLAG_RUN_DISABLED_TESTS);
@@ -354,9 +399,8 @@ public class GTest implements IDeviceTest, IRemoteTest, ITestFilterReceiver, IRu
             if (shouldSkipFile(root)) {
                 return;
             }
-            String flags = getAllGTestFlags();
-            Log.i(LOG_TAG, String.format("Running gtest %s %s on %s", root, flags,
-                    testDevice.getSerialNumber()));
+            String flags = getAllGTestFlags(root);
+            CLog.i("Running gtest %s %s on %s", root, flags, testDevice.getSerialNumber());
             // force file to be executable
             testDevice.executeShellCommand(String.format("chmod 755 %s", root));
             if (mEnableXmlOutput) {
@@ -393,8 +437,7 @@ public class GTest implements IDeviceTest, IRemoteTest, ITestFilterReceiver, IRu
         }
         for (String regex : mFileExclusionFilterRegex) {
             if (fullPath.matches(regex)) {
-                Log.i(LOG_TAG, String.format("File %s matches exclusion file regex %s, skipping",
-                        fullPath, regex));
+                CLog.i("File %s matches exclusion file regex %s, skipping", fullPath, regex);
                 return true;
             }
         }
@@ -568,15 +611,15 @@ public class GTest implements IDeviceTest, IRemoteTest, ITestFilterReceiver, IRu
      */
     @Override
     public void run(ITestInvocationListener listener) throws DeviceNotAvailableException {
-        // @TODO: add support for rerunning tests
+        // TODO: add support for rerunning tests
         if (mDevice == null) {
             throw new IllegalArgumentException("Device has not been set");
         }
 
         String testPath = getTestPath();
         if (!mDevice.doesFileExist(testPath)) {
-            Log.w(LOG_TAG, String.format("Could not find native test directory %s in %s!",
-                    testPath, mDevice.getSerialNumber()));
+            CLog.w("Could not find native test directory %s in %s!", testPath,
+                    mDevice.getSerialNumber());
             return;
         }
         if (mStopRuntime) {
@@ -604,5 +647,9 @@ public class GTest implements IDeviceTest, IRemoteTest, ITestFilterReceiver, IRu
     @Override
     public void setCollectTestsOnly(boolean shouldCollectTest) {
         mCollectTestsOnly = shouldCollectTest;
+    }
+
+    protected void setLoadFilterFromFile(String loadFilterFromFile) {
+        mTestFilterKey = loadFilterFromFile;
     }
 }
