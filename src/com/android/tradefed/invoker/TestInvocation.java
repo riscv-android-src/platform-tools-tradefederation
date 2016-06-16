@@ -164,13 +164,14 @@ public class TestInvocation implements ITestInvocation {
                 } else {
                     device.setRecovery(config.getDeviceRecovery());
                     performInvocation(config, device, info, rescheduler, listener);
-                    // exit here, depend on performInvocation to deregister logger
                     return;
                 }
             } else {
                 mStatus = "(no build to test)";
                 CLog.d("No build to test");
                 rescheduleTest(config, rescheduler);
+                // save current log contents to global log
+                getLogRegistry().dumpToGlobalLog(config.getLogOutput());
             }
         } catch (BuildRetrievalError e) {
             CLog.e(e);
@@ -183,12 +184,12 @@ public class TestInvocation implements ITestInvocation {
             return;
         } catch (IOException e) {
             CLog.e(e);
+        } finally {
+            // ensure we always deregister the logger
+            device.stopLogcat();
+            getLogRegistry().unregisterLogger();
+            config.getLogOutput().closeLog();
         }
-        device.stopLogcat();
-        // save current log contents to global log
-        getLogRegistry().dumpToGlobalLog(config.getLogOutput());
-        getLogRegistry().unregisterLogger();
-        config.getLogOutput().closeLog();
     }
 
     /**
@@ -634,7 +635,6 @@ public class TestInvocation implements ITestInvocation {
         InputStreamSource emulatorOutput = null;
         if (device != null) {
             logcatSource = device.getLogcat();
-            device.stopLogcat();
             if (device.getIDevice() != null && device.getIDevice().isEmulator()) {
                 emulatorOutput = device.getEmulatorOutput();
             }
@@ -648,7 +648,6 @@ public class TestInvocation implements ITestInvocation {
         }
         listener.testLog(TRADEFED_LOG_NAME, LogDataType.TEXT, globalLogSource);
 
-
         // Clean up after our ISSen
         if (logcatSource != null) {
             logcatSource.cancel();
@@ -657,11 +656,6 @@ public class TestInvocation implements ITestInvocation {
             emulatorOutput.cancel();
         }
         globalLogSource.cancel();
-
-        // once tradefed log is reported, all further log calls for this invocation can get lost
-        // unregister logger so future log calls get directed to the tradefed global log
-        getLogRegistry().unregisterLogger();
-        logger.closeLog();
     }
 
     private void takeBugreport(ITestDevice device, ITestInvocationListener listener,

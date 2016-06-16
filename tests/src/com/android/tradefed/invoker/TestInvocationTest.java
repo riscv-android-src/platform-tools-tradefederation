@@ -65,7 +65,6 @@ import java.util.Map;
 public class TestInvocationTest extends TestCase {
 
     private static final String SERIAL = "serial";
-    private static final String COMMAND_LINE_ARGS = "command_line_args";
     private static final Map<String, String> EMPTY_MAP = Collections.emptyMap();
     private static final String PATH = "path";
     private static final String URL = "url";
@@ -178,10 +177,8 @@ public class TestInvocationTest extends TestCase {
      * an {@link ITestInvocationListener}.
      * <p/>
      * Verifies that all external interfaces get notified as expected.
-     * TODO: For results_reporters to work as both ITestInvocationListener and ITestSummaryListener,
-     * TODO: this test _must_ pass.  Currently, it does not, so that mode of usage is not supported.
      */
-    public void DISABLED_testInvoke_twoSummary() throws Throwable {
+    public void testInvoke_twoSummary() throws Throwable {
 
         IRemoteTest test = EasyMock.createMock(IRemoteTest.class);
         setupMockSuccessListeners();
