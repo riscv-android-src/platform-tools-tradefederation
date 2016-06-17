@@ -181,6 +181,14 @@ public class OtaDeviceBuildInfo implements IDeviceBuildInfo {
      * {@inheritDoc}
      */
     @Override
+    public String getDeviceBuildFlavor() {
+        return mBaselineBuild.getDeviceBuildFlavor();
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
     public File getDeviceImageFile() {
         return mBaselineBuild.getDeviceImageFile();
     }

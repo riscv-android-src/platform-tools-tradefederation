@@ -63,6 +63,13 @@ public class AppDeviceBuildInfo extends BuildInfo implements IDeviceBuildInfo, I
      * {@inheritDoc}
      */
     @Override
+    public String getDeviceBuildFlavor() {
+        return mDeviceBuild.getDeviceBuildFlavor();
+    }
+    /**
+     * {@inheritDoc}
+     */
+    @Override
     public File getDeviceImageFile() {
         return mDeviceBuild.getDeviceImageFile();
     }

@@ -279,7 +279,7 @@ public abstract class DeviceFlashPreparer implements ITargetCleaner {
         checkBuildAttribute(deviceBuild.getDeviceBuildId(), device.getBuildId(),
                 device.getSerialNumber());
         if (!mSkipPostFlashFlavorCheck) {
-            checkBuildAttribute(deviceBuild.getBuildFlavor(), device.getBuildFlavor(),
+            checkBuildAttribute(deviceBuild.getDeviceBuildFlavor(), device.getBuildFlavor(),
                     device.getSerialNumber());
         }
         // TODO: check bootloader and baseband versions too
