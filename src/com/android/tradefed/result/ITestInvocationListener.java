@@ -26,7 +26,7 @@ import com.android.tradefed.log.ITestLogger;
  * A test invocation can itself include multiple test runs, so the sequence of calls will be
  * <ul>
  * <li>invocationStarted(BuildInfo)</li>
- * <li>testRunStarted>/li>
+ * <li>testRunStarted</li>
  * <li>testStarted</li>
  * <li>[testFailed]</li>
  * <li>testEnded</li>
