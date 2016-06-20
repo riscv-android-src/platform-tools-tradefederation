@@ -616,4 +616,30 @@ public class AndroidNativeDeviceTest extends TestCase {
         };
         assertFalse(mTestDevice.isHeadless());
     }
+
+    /**
+     * Unit test for {@link AndroidNativeDevice#getDeviceDate()}.
+     */
+    public void testGetDeviceDate() throws DeviceNotAvailableException {
+        mTestDevice = new TestableAndroidNativeDevice() {
+            @Override
+            public String executeShellCommand(String name) throws DeviceNotAvailableException {
+                return "21692641\n";
+            }
+        };
+        assertEquals(21692641, mTestDevice.getDeviceDate());
+    }
+
+    /**
+     * Unit test for {@link AndroidNativeDevice#getDeviceDate()}.
+     */
+    public void testGetDeviceDate_wrongformat() throws DeviceNotAvailableException {
+        mTestDevice = new TestableAndroidNativeDevice() {
+            @Override
+            public String executeShellCommand(String name) throws DeviceNotAvailableException {
+                return "WRONG\n";
+            }
+        };
+        assertEquals(0, mTestDevice.getDeviceDate());
+    }
 }
