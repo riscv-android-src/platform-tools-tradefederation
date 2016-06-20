@@ -72,8 +72,9 @@ public class LogcatUpdaterEventParserTest extends TestCase {
      * of the trigger contains the matched line.
      */
     public void testParseEventType_mappedEventPartialLine() {
-        String mappedLogLine = "11-11 00:00:00.001  123 321 I update_engine: Update succeeded";
-        assertEquals(sParser.parseEventType(mappedLogLine), UpdaterEventType.UPDATE_COMPLETE);
+        String mappedLogLine = "11-11 00:00:00.001  123 321 I update_engine:" +
+                " Update successfully applied";
+        assertEquals(UpdaterEventType.UPDATE_COMPLETE, sParser.parseEventType(mappedLogLine));
     }
 
     /**
@@ -123,7 +124,7 @@ public class LogcatUpdaterEventParserTest extends TestCase {
                 "11-11 00:00:00.001  123 321 I update_engine: foo bar baz\n",
                 "11-11 00:00:00.001  123 321 I update_engine: foo bar baz\n",
                 "11-11 00:00:00.001  123 321 I update_engine: foo bar baz\n",
-                "11-11 00:00:00.001  123 321 I update_engine: Update succeeded\n"
+                "11-11 00:00:00.001  123 321 I update_engine: Update successfully applied\n"
             };
         waitAndAssertTerminated(waitThread, logLines);
     }
@@ -143,7 +144,7 @@ public class LogcatUpdaterEventParserTest extends TestCase {
                 "11-11 00:00:00.001  123 321 I update_engine: foo bar baz\n",
                 "11-11 00:00:00.001  123 321 I update_engine: foo bar baz\n",
                 "11-11 00:00:00.001  123 321 I update_engine: foo bar baz\n",
-                "11-11 00:00:00.001  123 321 I update_engine: Update succeeded\n"
+                "11-11 00:00:00.001  123 321 I update_engine: Update successfully applied\n"
             };
         waitAndAssertTerminated(waitThread, logLines);
     }

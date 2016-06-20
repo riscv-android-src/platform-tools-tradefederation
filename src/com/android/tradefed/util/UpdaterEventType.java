@@ -25,5 +25,6 @@ public enum UpdaterEventType {
     UPDATE_VERIFIER_COMPLETE,
     D2O_COMPLETE,
     UPDATE_COMPLETE,
+    ERROR
 }
 
