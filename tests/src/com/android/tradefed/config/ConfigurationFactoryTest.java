@@ -339,6 +339,18 @@ public class ConfigurationFactoryTest extends TestCase {
     }
 
     /**
+     * Test {@link ConfigurationFactory#getConfigList()}
+     */
+    public void testListAllConfigs() {
+        List<String> listConfigs = mFactory.getConfigList();
+        assertTrue(listConfigs.size() != 0);
+        // Check that our basic configs are always here
+        assertTrue(listConfigs.contains("empty"));
+        assertTrue(listConfigs.contains("host"));
+        assertTrue(listConfigs.contains("instrument"));
+    }
+
+    /**
      * Test loading a config that includes another config.
      */
     public void testCreateConfigurationFromArgs_includeConfig() throws Exception {
