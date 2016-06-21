@@ -284,4 +284,21 @@ public interface IRunUtil {
      * @param message the message for {@link RunInterruptedException}.
      */
     public void interrupt(Thread thread, String message);
+
+    /**
+     * Decide whether or not when creating a process, unsetting environment variable is higher
+     * priority than setting them.
+     * By Default, unsetting is higher priority: meaning if an attempt to set a variable with the
+     * same name is made, it won't happen since the variable will be unset.
+     * Cannot be used on the default {@link IRunUtil} instance.
+     */
+    public void setEnvVariablePriority(EnvPriority priority);
+
+    /**
+     * Enum that defines whether setting or unsetting a particular env. variable has priority.
+     */
+    public enum EnvPriority {
+        SET,
+        UNSET
+    }
 }

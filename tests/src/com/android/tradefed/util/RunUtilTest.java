@@ -16,6 +16,7 @@
 package com.android.tradefed.util;
 
 import com.android.tradefed.util.IRunUtil.IRunnableResult;
+import com.android.tradefed.util.IRunUtil.EnvPriority;
 
 import junit.framework.TestCase;
 
@@ -359,5 +360,38 @@ public class RunUtilTest extends TestCase {
         mRunUtil.sleep(10);
         // Should still be false
         assertFalse(mRunUtil.isInterruptAllowed());
+    }
+
+    /**
+     * Test {@link RunUtil#setEnvVariablePriority(EnvPriority)} properly prioritize unset.
+     */
+    public void testUnsetPriority() {
+        final String ENV_NAME = "TF_GLO";
+        RunUtil testRunUtil = new RunUtil();
+        testRunUtil.setEnvVariablePriority(EnvPriority.UNSET);
+        testRunUtil.setEnvVariable(ENV_NAME, "initvalue");
+        testRunUtil.unsetEnvVariable(ENV_NAME);
+        CommandResult result =
+                testRunUtil.runTimedCmd(1000, "/bin/bash", "-c", "echo $" + ENV_NAME);
+        assertNotNull(result.getStdout());
+        // Variable should be unset, some echo return empty line break.
+        assertEquals("\n", result.getStdout());
+    }
+
+    /**
+     * Test {@link RunUtil#setEnvVariablePriority(EnvPriority)} properly prioritize set.
+     */
+    public void testUnsetPriority_inverted() {
+        final String ENV_NAME = "TF_GLO";
+        final String expected = "initvalue";
+        RunUtil testRunUtil = new RunUtil();
+        testRunUtil.setEnvVariablePriority(EnvPriority.SET);
+        testRunUtil.setEnvVariable(ENV_NAME, expected);
+        testRunUtil.unsetEnvVariable(ENV_NAME);
+        CommandResult result =
+                testRunUtil.runTimedCmd(1000, "/bin/bash", "-c", "echo $" + ENV_NAME);
+        assertNotNull(result.getStdout());
+        // Variable should be set and returned.
+        assertEquals(expected + "\n", result.getStdout());
     }
 }
