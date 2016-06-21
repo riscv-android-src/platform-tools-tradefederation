@@ -794,6 +794,15 @@ public interface ITestDevice {
     public InputStreamSource getLogcat(int maxBytes);
 
     /**
+     * Grabs a snapshot stream of captured logcat data starting the date provided.
+     * The time on the device should be used {@link #getDeviceDate}.
+     * <p/>
+     * @param date in epoch format of when to start the snapshot until present. (can be
+     *        be obtained using 'date +%s')
+     */
+    public InputStreamSource getLogcatSince(long date);
+
+    /**
     * Get a dump of the current logcat for device. Unlike {@link #getLogcat()}, this method will
     * always return a static dump of the logcat.
     * <p/>
@@ -1238,6 +1247,14 @@ public interface ITestDevice {
      * @throws DeviceNotAvailableException
      */
     public void setDate(Date date) throws DeviceNotAvailableException;
+
+    /**
+     * Return the date of the device.
+     * <p/>
+     * @return the date of the device in epoch format.
+     * @throws DeviceNotAvailableException
+     */
+    public long getDeviceDate() throws DeviceNotAvailableException;
 
     /**
      * Blocks until the device's boot complete flag is set.

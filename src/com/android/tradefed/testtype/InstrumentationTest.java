@@ -37,7 +37,6 @@ import com.android.tradefed.result.InputStreamSource;
 import com.android.tradefed.result.LogDataType;
 import com.android.tradefed.result.ResultForwarder;
 import com.android.tradefed.util.AbiFormatter;
-import com.android.tradefed.util.RunUtil;
 import com.android.tradefed.util.StringEscapeUtils;
 
 import junit.framework.Assert;
@@ -455,6 +454,7 @@ public class InstrumentationTest implements IDeviceTest, IResumableTest, ITestCo
      * @deprecated This method is a no-op
      */
     @Deprecated
+    @SuppressWarnings("unused")
     public void setCollectsTestsShellTimeout(int timeout) {
         // no-op
     }
@@ -904,12 +904,27 @@ public class InstrumentationTest implements IDeviceTest, IResumableTest, ITestCo
     private static class FailedTestLogcatGenerator extends ResultForwarder {
         private ITestDevice mDevice;
         private int mNumLogcatBytes;
+        private Map<TestIdentifier, Long> mMapStartTime = new HashMap<TestIdentifier, Long>();
 
         public FailedTestLogcatGenerator(ITestInvocationListener listener, ITestDevice device,
                 int maxLogcatBytes) {
             super(listener);
             mDevice = device;
             mNumLogcatBytes = maxLogcatBytes;
+        }
+
+        @Override
+        public void testStarted(TestIdentifier test) {
+            super.testStarted(test);
+            // capture the starting date of the tests.
+            try {
+                mMapStartTime.put(test, mDevice.getDeviceDate());
+            } catch (DeviceNotAvailableException e) {
+                // For convenience of interface we catch here, test will mostlikely throw it again
+                // and it will be properly handle (recovery, etc.)
+                CLog.e(e);
+                mMapStartTime.put(test, 0l);
+            }
         }
 
         @Override
@@ -925,10 +940,17 @@ public class InstrumentationTest implements IDeviceTest, IResumableTest, ITestCo
         }
 
         private void captureLog(TestIdentifier test) {
-            // sleep a small amount of time to ensure test failure stack trace makes it into logcat
-            // capture
-            RunUtil.getDefault().sleep(10);
-            InputStreamSource logSource = mDevice.getLogcat(mNumLogcatBytes);
+            InputStreamSource logSource = null;
+            // if we can, capture starting the beginning of the test only to be more precise
+            long startTime = 0;
+            if (mMapStartTime.containsKey(test)) {
+                startTime = mMapStartTime.remove(test);
+            }
+            if (startTime != 0) {
+                logSource = mDevice.getLogcatSince(startTime);
+            } else {
+                logSource = mDevice.getLogcat(mNumLogcatBytes);
+            }
             super.testLog(String.format("logcat-%s_%s", test.getClassName(), test.getTestName()),
                     LogDataType.TEXT, logSource);
             logSource.cancel();

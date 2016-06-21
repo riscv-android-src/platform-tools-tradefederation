@@ -1704,6 +1704,38 @@ public class AndroidNativeDevice implements IManagedTestDevice {
      * {@inheritDoc}
      */
     @Override
+    public InputStreamSource getLogcatSince(long date) {
+        try {
+            if (getApiLevel() <= 22) {
+                CLog.i("Api level too low to use logcat -t 'time' reverting to dump");
+                return getLogcatDump();
+            }
+        } catch (DeviceNotAvailableException e) {
+            // For convenience of interface, we catch the DNAE here.
+            CLog.e(e);
+            return getLogcatDump();
+        }
+
+        byte[] output = new byte[0];
+        try {
+            // use IDevice directly because we don't want callers to handle
+            // DeviceNotAvailableException for this method
+            CollectingByteOutputReceiver receiver = new CollectingByteOutputReceiver();
+            String command = String.format("%s -t '%s'", LogcatReceiver.LOGCAT_CMD, date);
+            getIDevice().executeShellCommand(command, receiver);
+            output = receiver.getOutput();
+        } catch (IOException|AdbCommandRejectedException|
+                ShellCommandUnresponsiveException|TimeoutException e) {
+            CLog.w("Failed to get logcat dump from %s: %s", getSerialNumber(), e.getMessage());
+            CLog.e(e);
+        }
+        return new ByteArrayInputStreamSource(output);
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
     public InputStreamSource getLogcatDump() {
         byte[] output = new byte[0];
         try {
@@ -2879,16 +2911,9 @@ public class AndroidNativeDevice implements IManagedTestDevice {
     }
 
     private long getDeviceTimeOffset(Date date) throws DeviceNotAvailableException {
-        String deviceTimeString = executeShellCommand("date +%s");
-        Long deviceTime = null;
+        Long deviceTime = getDeviceDate();
         long offset = 0;
 
-        try {
-            deviceTime = Long.valueOf(deviceTimeString.trim());
-        } catch (NumberFormatException nfe) {
-            CLog.i("Invalid device time: \"%s\", ignored.");
-            return 0;
-        }
         if (date == null) {
             date = new Date();
         }
@@ -2924,6 +2949,22 @@ public class AndroidNativeDevice implements IManagedTestDevice {
         }
         // best effort, no verification
         executeShellCommand("date -u " + dateString);
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public long getDeviceDate() throws DeviceNotAvailableException {
+        String deviceTimeString = executeShellCommand("date +%s");
+        Long deviceTime = null;
+        try {
+            deviceTime = Long.valueOf(deviceTimeString.trim());
+        } catch (NumberFormatException nfe) {
+            CLog.i("Invalid device time: \"%s\", ignored.", nfe);
+            return 0;
+        }
+        return deviceTime;
     }
 
     /**
