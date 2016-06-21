@@ -66,8 +66,8 @@ public class ManagedTestDeviceFactory implements IManagedTestDeviceFactory {
             testDevice.setDeviceState(TestDeviceState.NOT_AVAILABLE);
         } else if (!checkFrameworkSupport(idevice)) {
             // Brillo device instance tier 1 (no framework support)
-            testDevice = new AndroidNativeDevice(idevice,
-                    new AndroidNativeDeviceStateMonitor(mDeviceManager, idevice, mFastbootEnabled),
+            testDevice = new NativeDevice(idevice,
+                    new NativeDeviceStateMonitor(mDeviceManager, idevice, mFastbootEnabled),
                     mAllocationMonitor);
         } else {
             // Default to-go device is Android full stack device.

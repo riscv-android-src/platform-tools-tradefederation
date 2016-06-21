@@ -28,7 +28,7 @@ import java.util.concurrent.TimeUnit;
 /**
  * Helper class for monitoring the state of a {@link IDevice}.
  */
-public class DeviceStateMonitor extends AndroidNativeDeviceStateMonitor {
+public class DeviceStateMonitor extends NativeDeviceStateMonitor {
 
     public DeviceStateMonitor(IDeviceManager mgr, IDevice device, boolean fastbootEnabled) {
         super(mgr, device, fastbootEnabled);

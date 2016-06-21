@@ -49,7 +49,7 @@ import javax.imageio.ImageIO;
 /**
  * Implementation of a {@link ITestDevice} for a full stack android device
  */
-public class TestDevice extends AndroidNativeDevice {
+public class TestDevice extends NativeDevice {
 
     /**
      * Allow pauses of up to 2 minutes while receiving bugreport.  Note that dumpsys may pause up to
@@ -566,7 +566,7 @@ public class TestDevice extends AndroidNativeDevice {
     }
 
     /**
-     * A {@link com.android.tradefed.device.AndroidNativeDevice.DeviceAction}
+     * A {@link com.android.tradefed.device.NativeDevice.DeviceAction}
      * for retrieving package system service info, and do retries on
      * failures.
      */

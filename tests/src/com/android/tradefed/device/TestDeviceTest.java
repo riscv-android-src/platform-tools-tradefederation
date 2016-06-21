@@ -2006,7 +2006,7 @@ public class TestDeviceTest extends TestCase {
             }
         };
         int res = mTestDevice.getCurrentUser();
-        assertEquals(AndroidNativeDevice.INVALID_USER_ID, res);
+        assertEquals(NativeDevice.INVALID_USER_ID, res);
     }
 
     /**
@@ -2068,7 +2068,7 @@ public class TestDeviceTest extends TestCase {
             }
         };
         int flags = mTestDevice.getUserFlags(2);
-        assertEquals(AndroidNativeDevice.INVALID_USER_ID, flags);
+        assertEquals(NativeDevice.INVALID_USER_ID, flags);
     }
 
     /**
@@ -2125,7 +2125,7 @@ public class TestDeviceTest extends TestCase {
             }
         };
         int serial = mTestDevice.getUserSerialNumber(0);
-        assertEquals(AndroidNativeDevice.INVALID_USER_ID, serial);
+        assertEquals(NativeDevice.INVALID_USER_ID, serial);
     }
 
     /**
@@ -2144,7 +2144,7 @@ public class TestDeviceTest extends TestCase {
             }
         };
         int serial = mTestDevice.getUserSerialNumber(0);
-        assertEquals(AndroidNativeDevice.INVALID_USER_ID, serial);
+        assertEquals(NativeDevice.INVALID_USER_ID, serial);
     }
 
     /**

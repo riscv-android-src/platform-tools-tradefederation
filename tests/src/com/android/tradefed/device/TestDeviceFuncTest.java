@@ -743,7 +743,7 @@ public class TestDeviceFuncTest extends DeviceTestCase {
     }
 
     /**
-     * Test for {@link AndroidNativeDevice#setSetting(int, String, String, String)}
+     * Test for {@link NativeDevice#setSetting(int, String, String, String)}
      */
     public void testPutSettings() throws Exception {
         String initValue = mTestDevice.getSetting(0, "system", "screen_brightness");
