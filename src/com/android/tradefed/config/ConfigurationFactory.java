@@ -649,16 +649,14 @@ public class ConfigurationFactory implements IConfigurationFactory {
                     // the failure since these packages are not available for loading.
                     if (className != null && (className.startsWith("com.android.cts.") ||
                                     className.startsWith("com.android.xts."))) {
-                        ps.printf("Could not confirm %s: %s because not part of Trade Federation "
+                        CLog.w("Could not confirm %s: %s because not part of Trade Federation "
                                 + "packages.", def.getName(), e.getMessage());
-                        ps.println();
                         continue;
                     }
                 } else if (e.getMessage().contains("Could not find option with name")) {
                     // We cannot confirm if an option is indeed missing since a template of option
                     // only is possible to avoid repetition in configuration with the same base.
-                    ps.printf("Could not confirm %s: %s", def.getName(), e.getMessage());
-                    ps.println();
+                    CLog.w("Could not confirm %s: %s", def.getName(), e.getMessage());
                     continue;
                 }
                 ps.printf("Failed to print %s: %s", def.getName(), e.getMessage());
