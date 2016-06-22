@@ -21,8 +21,6 @@ import com.android.tradefed.build.BuildRetrievalError;
 import com.android.tradefed.build.ExistingBuildProvider;
 import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.build.IDeviceBuildProvider;
-import com.android.tradefed.command.CommandOptions;
-import com.android.tradefed.command.ICommandOptions;
 import com.android.tradefed.config.ConfigurationException;
 import com.android.tradefed.config.ConfigurationFactory;
 import com.android.tradefed.config.IConfiguration;
@@ -50,9 +48,9 @@ import com.android.tradefed.targetprep.IHostCleaner;
 import com.android.tradefed.targetprep.ITargetCleaner;
 import com.android.tradefed.targetprep.ITargetPreparer;
 import com.android.tradefed.targetprep.TargetSetupError;
-import com.android.tradefed.testtype.INativeDeviceTest;
 import com.android.tradefed.testtype.IBuildReceiver;
 import com.android.tradefed.testtype.IDeviceTest;
+import com.android.tradefed.testtype.INativeDeviceTest;
 import com.android.tradefed.testtype.IRemoteTest;
 import com.android.tradefed.testtype.IResumableTest;
 import com.android.tradefed.testtype.IRetriableTest;
@@ -391,6 +389,12 @@ public class TestInvocation implements ITestInvocation {
             info.addBuildAttribute("shard_index",
                     config.getCommandOptions().getShardIndex().toString());
         }
+        String testTag = config.getCommandOptions().getTestTag();
+        if (config.getCommandOptions().getTestTagSuffix() != null) {
+            testTag = String.format("%s-%s", testTag,
+                    config.getCommandOptions().getTestTagSuffix());
+        }
+        info.setTestTag(testTag);
     }
 
     /**

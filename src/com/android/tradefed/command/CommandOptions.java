@@ -66,6 +66,13 @@ public class CommandOptions implements ICommandOptions {
             importance = Importance.ALWAYS)
     private boolean mLoopMode = false;
 
+    @Option(name = "test-tag", description = "Identifier for the invocation during reporting.")
+    private String mTestTag = "stub";
+
+    @Option(name = "test-tag-suffix", description = "suffix for test-tag. appended to test-tag to "
+            + "represents some variants of one test.")
+    private String mTestTagSuffix = null;
+
     @Option(name = "all-devices", description =
             "fork this command to run on all connected devices.")
     private boolean mAllDevices = false;
@@ -256,8 +263,32 @@ public class CommandOptions implements ICommandOptions {
      * {@inheritDoc}
      */
     @Override
+    public void setTestTag(String testTag) {
+       mTestTag = testTag;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public String getTestTag() {
+        return mTestTag;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
     public Integer getShardCount() {
         return mShardCount;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public String getTestTagSuffix() {
+        return mTestTagSuffix;
     }
 
     /**

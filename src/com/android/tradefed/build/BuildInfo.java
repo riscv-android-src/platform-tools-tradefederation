@@ -52,6 +52,18 @@ public class BuildInfo implements IBuildInfo {
      * Creates a {@link BuildInfo}
      *
      * @param buildId the build id
+     * @param buildTargetName the build target name
+     */
+    public BuildInfo(String buildId, String buildTargetName) {
+        mBuildId = buildId;
+        mBuildTargetName = buildTargetName;
+        mVersionedFileMap = new Hashtable<String, VersionedFile>();
+    }
+
+    /**
+     * Creates a {@link BuildInfo}
+     *
+     * @param buildId the build id
      * @param testTag the test tag name
      * @param buildTargetName the build target name
      */
@@ -99,6 +111,14 @@ public class BuildInfo implements IBuildInfo {
     @Override
     public String getTestTag() {
         return mTestTag;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void setTestTag(String testTag) {
+        mTestTag = testTag;
     }
 
     /**
