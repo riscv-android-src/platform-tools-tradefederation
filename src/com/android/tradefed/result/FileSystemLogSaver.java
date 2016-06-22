@@ -93,7 +93,9 @@ public class FileSystemLogSaver implements ILogSaver {
     public LogFile saveLogData(String dataName, LogDataType dataType, InputStream dataStream)
             throws IOException {
         if (!mCompressFiles || dataType.isCompressed()) {
-            return saveLogDataRaw(dataName, dataType.getFileExt(), dataStream);
+            File log = saveLogDataInternal(dataName, dataType.getFileExt(), dataStream);
+            return new LogFile(log.getAbsolutePath(), getUrl(log), dataType.isCompressed(),
+                    dataType.isText());
         }
         BufferedInputStream bufferedDataStream = null;
         ZipOutputStream outputStream = null;
@@ -114,7 +116,7 @@ public class FileSystemLogSaver implements ILogSaver {
             outputStream.putNextEntry(new ZipEntry(saneDataName + "." + dataType.getFileExt()));
             StreamUtil.copyStreams(bufferedDataStream, outputStream);
             CLog.i("Saved log file %s", log.getAbsolutePath());
-            return new LogFile(log.getAbsolutePath(), getUrl(log));
+            return new LogFile(log.getAbsolutePath(), getUrl(log), true, dataType.isText());
         } finally {
             StreamUtil.close(bufferedDataStream);
             StreamUtil.close(outputStream);
@@ -127,6 +129,12 @@ public class FileSystemLogSaver implements ILogSaver {
     @Override
     public LogFile saveLogDataRaw(String dataName, String ext, InputStream dataStream)
             throws IOException {
+        File log = saveLogDataInternal(dataName, ext, dataStream);
+        return new LogFile(log.getAbsolutePath(), getUrl(log), false, false);
+    }
+
+    private File saveLogDataInternal(String dataName, String ext, InputStream dataStream)
+            throws IOException {
         final String saneDataName = sanitizeFilename(dataName);
         // add underscore to end of data name to make generated name more readable
         File log = FileUtil.createTempFile(saneDataName + "_", "." + ext, mLogReportDir);
@@ -138,7 +146,7 @@ public class FileSystemLogSaver implements ILogSaver {
 
         FileUtil.writeToFile(dataStream, log);
         CLog.i("Saved raw log file %s", log.getAbsolutePath());
-        return new LogFile(log.getAbsolutePath(), getUrl(log));
+        return log;
     }
 
     /**
@@ -146,7 +154,7 @@ public class FileSystemLogSaver implements ILogSaver {
      */
     @Override
     public LogFile getLogReportDir() {
-        return new LogFile(mLogReportDir.getAbsolutePath(), getUrl(mLogReportDir));
+        return new LogFile(mLogReportDir.getAbsolutePath(), getUrl(mLogReportDir), false, false);
     }
 
     /**

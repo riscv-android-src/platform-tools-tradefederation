@@ -41,17 +41,17 @@ public class XmlResultReporterTest extends TestCase {
         @Override
         public LogFile saveLogData(String dataName, LogDataType dataType,
                 InputStream dataStream) {
-            return new LogFile(PATH, URL);
+            return new LogFile(PATH, URL, dataType.isCompressed(), dataType.isText());
         }
 
         @Override
         public LogFile saveLogDataRaw(String dataName, String ext, InputStream dataStream) {
-            return new LogFile(PATH, URL);
+            return new LogFile(PATH, URL, false, false);
         }
 
         @Override
         public LogFile getLogReportDir() {
-            return new LogFile(PATH, URL);
+            return new LogFile(PATH, URL, false, false);
         }
 
         @Override

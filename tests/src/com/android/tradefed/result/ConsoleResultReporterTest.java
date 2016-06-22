@@ -93,8 +93,10 @@ public class ConsoleResultReporterTest extends TestCase {
     public void testGetInvocationSummary_logs() {
         ConsoleResultReporter reporter = new ConsoleResultReporter();
         reporter.invocationStarted(null);
-        reporter.testLogSaved(null, null, null, new LogFile("/path/to/log1", "http://log1"));
-        reporter.testLogSaved(null, null, null, new LogFile("/path/to/log2", null));
+        reporter.testLogSaved(null, null, null, new LogFile(
+                "/path/to/log1", "http://log1", false /* compressed */, true /* text */));
+        reporter.testLogSaved(null, null, null, new LogFile(
+                "/path/to/log2", null, false /* compressed */, true /* text */));
         reporter.invocationEnded(0);
         assertEquals(
                 "Test results:\n" +
@@ -177,8 +179,10 @@ public class ConsoleResultReporterTest extends TestCase {
         reporter.testRunStarted("Test Run 4", 0);
         reporter.testRunEnded(0, EMPTY_MAP);
 
-        reporter.testLogSaved(null, null, null, new LogFile("/path/to/log1", "http://log1"));
-        reporter.testLogSaved(null, null, null, new LogFile("/path/to/log2", null));
+        reporter.testLogSaved(null, null, null, new LogFile(
+                "/path/to/log1", "http://log1", false /* compressed */, true /* text */));
+        reporter.testLogSaved(null, null, null, new LogFile(
+                "/path/to/log2", null, false /* compressed */, true /* text */));
         reporter.invocationEnded(0);
 
         StringBuilder expected = new StringBuilder();
