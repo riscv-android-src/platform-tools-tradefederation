@@ -43,6 +43,7 @@ import java.util.List;
 public class NativeLeakCollector implements ITestLoggerReceiver, ITargetCleaner {
     private static final String UNREACHABLE_MEMINFO_CMD = "dumpsys -t %d meminfo --unreachable -a";
     private static final String DIRECT_UNREACHABLE_CMD = "dumpsys -t %d %s --unreachable";
+    private static final String OUTPUT_HEADER = "\nExecuted command: %s\n";
 
     private ITestLogger mTestLogger;
 
@@ -87,13 +88,15 @@ public class NativeLeakCollector implements ITestLoggerReceiver, ITargetCleaner 
         }
 
         CollectingOutputReceiver receiver = new CollectingOutputReceiver();
-        device.executeShellCommand(String.format(UNREACHABLE_MEMINFO_CMD,
-                mDumpTimeout / 1000), receiver, mDumpTimeout, TimeUnit.MILLISECONDS, 1);
+        String allCommand = String.format(UNREACHABLE_MEMINFO_CMD, mDumpTimeout / 1000);
+        writeToReceiver(String.format(OUTPUT_HEADER, allCommand), receiver);
+        device.executeShellCommand(allCommand, receiver, mDumpTimeout, TimeUnit.MILLISECONDS, 1);
 
         for (String proc : mAdditionalProc) {
-            CLog.v("Querying for process, %s", proc);
-            device.executeShellCommand(String.format(DIRECT_UNREACHABLE_CMD,
-                    mAdditionalDumpTimeout / 1000, proc), receiver, mAdditionalDumpTimeout,
+            String procCommand = String.format(DIRECT_UNREACHABLE_CMD,
+                    mAdditionalDumpTimeout / 1000, proc);
+            writeToReceiver(String.format(OUTPUT_HEADER, procCommand), receiver);
+            device.executeShellCommand(procCommand, receiver, mAdditionalDumpTimeout,
                     TimeUnit.MILLISECONDS, 1);
         }
 
@@ -107,6 +110,12 @@ public class NativeLeakCollector implements ITestLoggerReceiver, ITargetCleaner 
                 CLog.w("No test logger available, printing output here:\n%s", receiver.getOutput());
             }
         }
+    }
+
+    private void writeToReceiver (String msg, CollectingOutputReceiver receiver) {
+        byte[] msgBytes = msg.getBytes();
+        int byteCount = msgBytes.length;
+        receiver.addOutput(msgBytes, 0, byteCount);
     }
 
     /**
