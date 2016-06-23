@@ -373,4 +373,21 @@ public class FileDownloadCache {
     long getMaxFileCacheSize() {
         return mMaxFileCacheSize;
     }
+
+    /**
+     * Allow deleting an entry from the cache. In case the entry is invalid or corrupted.
+     */
+    public void deleteCacheEntry(String remoteFilePath) {
+        mCacheMapLock.lock();
+        try {
+            File file = mCacheMap.remove(remoteFilePath);
+            if (file != null) {
+                FileUtil.recursiveDelete(file);
+            } else {
+                CLog.i("No cache entry to delete for %s", remoteFilePath);
+            }
+        } finally {
+            mCacheMapLock.unlock();
+        }
+    }
 }
