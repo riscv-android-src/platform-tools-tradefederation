@@ -93,6 +93,9 @@ public class CrashCollector extends TestFilePushSetup
             CLog.i("Crash collector disabled.");
             return;
         }
+        // for backwards compatibility, don't throw if the crash collector does not exist in
+        // test zip bundle
+        setThrowIfNoFile(false);
         // clear all existing test file names, since we may receive that from the parameter defined
         // in parent class TestFilePushSetup when this class is used together with TestFilePushSetup
         // in a same config
