@@ -20,10 +20,8 @@ import com.android.tradefed.log.LogUtil.CLog;
 import java.lang.annotation.Annotation;
 import java.lang.reflect.AnnotatedElement;
 import java.lang.reflect.Method;
-import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashSet;
-import java.util.List;
 import java.util.Set;
 
 /**
@@ -32,16 +30,16 @@ import java.util.Set;
 public class TestFilterHelper {
 
     /** The include filters of the test name to run */
-    private List<String> mIncludeFilters = new ArrayList<>();
+    private Set<String> mIncludeFilters = new HashSet<>();
 
     /** The exclude filters of the test name to run */
-    private List<String> mExcludeFilters = new ArrayList<>();
+    private Set<String> mExcludeFilters = new HashSet<>();
 
     /** The include annotations of the test to run */
-    private Set<String> mIncludeAnnotation = new HashSet<String>();
+    private Set<String> mIncludeAnnotation = new HashSet<>();
 
     /** The exclude annotations of the test to run */
-    private Set<String> mExcludeAnnotation = new HashSet<String>();
+    private Set<String> mExcludeAnnotation = new HashSet<>();
 
     public TestFilterHelper() {
     }
@@ -62,9 +60,9 @@ public class TestFilterHelper {
     }
 
     /**
-     * Adds the {@link List} of filters of which tests to include
+     * Adds the {@link Set} of filters of which tests to include
      */
-    public void addAllIncludeFilters(List<String> filters) {
+    public void addAllIncludeFilters(Set<String> filters) {
         mIncludeFilters.addAll(filters);
     }
 
@@ -76,27 +74,45 @@ public class TestFilterHelper {
     }
 
     /**
-     * Adds the {@link List} of filters of which tests to exclude.
+     * Adds the {@link Set} of filters of which tests to exclude.
      */
-    public void addAllExcludeFilters(List<String> filters) {
+    public void addAllExcludeFilters(Set<String> filters) {
         mExcludeFilters.addAll(filters);
     }
 
-    /** Adds an include annotation of the test to run */
+    /**
+     * Adds an include annotation of the test to run
+     */
     public void addIncludeAnnotation(String annotation) {
         mIncludeAnnotation.add(annotation);
     }
 
-    /** Adds an exclude annotation of the test to run */
+    /**
+     * Adds the {@link Set} of include annotation of the test to run
+     */
+    public void addAllIncludeAnnotation(Set<String> annotations) {
+        mIncludeAnnotation.addAll(annotations);
+    }
+
+    /**
+     * Adds an exclude annotation of the test to run
+     */
     public void addExcludeAnnotation(String notAnnotation) {
         mExcludeAnnotation.add(notAnnotation);
     }
 
-    public List<String> getIncludeFilters() {
+    /**
+     * Adds the {@link Set} of exclude annotation of the test to run
+     */
+    public void addAllExcludeAnnotation(Set<String> notAnnotations) {
+        mExcludeAnnotation.addAll(notAnnotations);
+    }
+
+    public Set<String> getIncludeFilters() {
         return mIncludeFilters;
     }
 
-    public List<String> getExcludeFilters() {
+    public Set<String> getExcludeFilters() {
         return mExcludeFilters;
     }
 

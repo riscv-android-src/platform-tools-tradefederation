@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015 The Android Open Source Project
+ * Copyright (C) 2016 The Android Open Source Project
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,35 +18,30 @@ package com.android.tradefed.testtype;
 import java.util.Set;
 
 /**
- * A runner that can filter which tests to run.
+ * A runner that can filter which tests to run based on annotations.
  *
  * <p>A test will be run IFF it matches one or more of the include filters AND does not match any
  * of the exclude filters. If no include filters are given all tests should be run as long as they
  * do not match any of the exclude filters.</p>
- *
- * <p>The format of the filters is defined by the runner, and could be structured as
- * &lt;package&gt;, &lt;package&gt;.&lt;class&gt;, &lt;package&gt;.&lt;class&gt;#&lt;method&gt; or
- * &lt;native_name&gt;. They can even be regexes.</p>
  */
-public interface ITestFilterReceiver {
+public interface ITestAnnotationFilterReceiver {
+    /**
+     * Adds an annotation to include if a tests if marked with it.
+     */
+    void addIncludeAnnotation(String annotation);
 
     /**
-     * Adds a filter of which tests to include.
+     * Adds an annotation to exclude if a tests if marked with it.
      */
-    void addIncludeFilter(String filter);
+    void addExcludeAnnotation(String notAnnotation);
 
     /**
-     * Adds the {@link Set} of filters of which tests to include.
+     * Adds a {@link Set} of annotations to include if a tests if marked with it.
      */
-    void addAllIncludeFilters(Set<String> filters);
+    void addAllIncludeAnnotation(Set<String> annotations);
 
     /**
-     * Adds a filter of which tests to exclude.
+     * Adds a {@link Set} of annotations to exclude if a tests if marked with it.
      */
-    void addExcludeFilter(String filter);
-
-    /**
-     * Adds the {@link Set} of filters of which tests to exclude.
-     */
-    void addAllExcludeFilters(Set<String> filters);
+    void addAllExcludeAnnotation(Set<String> notAnnotations);
 }

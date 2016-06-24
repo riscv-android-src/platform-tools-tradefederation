@@ -24,19 +24,16 @@ import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.util.ArrayUtil;
 
 import java.io.File;
-import java.text.SimpleDateFormat;
 import java.util.ArrayList;
-import java.util.Date;
 import java.util.List;
-
-import junit.framework.Assert;
+import java.util.Set;
 
 /**
  * A Test that runs an instrumentation test package on given device using the
  * android.support.test.runner.AndroidJUnitRunner.
  */
 public class AndroidJUnitTest extends InstrumentationTest implements IRuntimeHintProvider,
-        ITestFileFilterReceiver, ITestFilterReceiver {
+        ITestFileFilterReceiver, ITestFilterReceiver, ITestAnnotationFilterReceiver {
 
     private static final String AJUR = "android.support.test.runner.AndroidJUnitRunner";
 
@@ -124,7 +121,7 @@ public class AndroidJUnitTest extends InstrumentationTest implements IRuntimeHin
      * {@inheritDoc}
      */
     @Override
-    public void addAllIncludeFilters(List<String> filters) {
+    public void addAllIncludeFilters(Set<String> filters) {
         mIncludeFilters.addAll(filters);
     }
 
@@ -140,7 +137,7 @@ public class AndroidJUnitTest extends InstrumentationTest implements IRuntimeHin
      * {@inheritDoc}
      */
     @Override
-    public void addAllExcludeFilters(List<String> filters) {
+    public void addAllExcludeFilters(Set<String> filters) {
         mExcludeFilters.addAll(filters);
     }
 
@@ -161,19 +158,35 @@ public class AndroidJUnitTest extends InstrumentationTest implements IRuntimeHin
     }
 
     /**
-     * Add annotation that is needed for a test to run
-     * @param annotation to be added to the include filter.
+     * {@inheritDoc}
      */
+    @Override
     public void addIncludeAnnotation(String annotation) {
         mIncludeAnnotation.add(annotation);
     }
 
     /**
-     * Add annotation that if a test have will not run
-     * @param excludeAnnotation to be added to the exclude filter.
+     * {@inheritDoc}
      */
+    @Override
+    public void addAllIncludeAnnotation(Set<String> annotations) {
+        mIncludeAnnotation.addAll(annotations);
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
     public void addExcludeAnnotation(String excludeAnnotation) {
         mExcludeAnnotation.add(excludeAnnotation);
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void addAllExcludeAnnotation(Set<String> excludeAnnotations) {
+        mExcludeAnnotation.addAll(excludeAnnotations);
     }
 
     /**

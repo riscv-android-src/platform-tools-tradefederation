@@ -239,7 +239,7 @@ public class GTest implements IDeviceTest, IRemoteTest, ITestFilterReceiver, IRu
      * {@inheritDoc}
      */
     @Override
-    public void addAllIncludeFilters(List<String> filters) {
+    public void addAllIncludeFilters(Set<String> filters) {
         for (String filter : filters) {
             mIncludeFilters.add(cleanFilter(filter));
         }
@@ -257,7 +257,7 @@ public class GTest implements IDeviceTest, IRemoteTest, ITestFilterReceiver, IRu
      * {@inheritDoc}
      */
     @Override
-    public void addAllExcludeFilters(List<String> filters) {
+    public void addAllExcludeFilters(Set<String> filters) {
         for (String filter : filters) {
             mExcludeFilters.add(cleanFilter(filter));
         }
