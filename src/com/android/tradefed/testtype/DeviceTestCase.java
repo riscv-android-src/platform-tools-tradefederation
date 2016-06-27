@@ -30,11 +30,9 @@ import junit.framework.TestResult;
 
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
-import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashSet;
-import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.Vector;
@@ -46,7 +44,7 @@ import java.util.Vector;
  * and still have full support for other tradefed features such as {@link Option}s
  */
 public class DeviceTestCase extends TestCase implements IDeviceTest, IRemoteTest, ITestCollector,
-        ITestFilterReceiver {
+        ITestFilterReceiver, ITestAnnotationFilterReceiver {
 
     private static final String LOG_TAG = "DeviceTestCase";
     private ITestDevice mDevice;
@@ -55,12 +53,12 @@ public class DeviceTestCase extends TestCase implements IDeviceTest, IRemoteTest
     /** The include filters of the test name to run */
     @Option(name = "include-filter",
             description="The include filters of the test name to run.")
-    protected List<String> mIncludeFilters = new ArrayList<>();
+    protected Set<String> mIncludeFilters = new HashSet<>();
 
     /** The exclude filters of the test name to run */
     @Option(name = "exclude-filter",
             description="The exclude filters of the test name to run.")
-    protected List<String> mExcludeFilters = new ArrayList<>();
+    protected Set<String> mExcludeFilters = new HashSet<>();
 
     /** The include annotations of the test to run */
     @Option(name="include-annotation",
@@ -169,6 +167,10 @@ public class DeviceTestCase extends TestCase implements IDeviceTest, IRemoteTest
      */
     @Override
     public void run(TestResult result) {
+        mFilterHelper.addAllExcludeAnnotation(mExcludeAnnotation);
+        mFilterHelper.addAllIncludeAnnotation(mIncludeAnnotation);
+        mFilterHelper.addAllExcludeFilters(mExcludeFilters);
+        mFilterHelper.addAllIncludeFilters(mIncludeFilters);
         // check if test method to run aka name is null
         if (getName() == null) {
             Collection<String> testMethodNames = getTestMethodNames();
@@ -196,7 +198,7 @@ public class DeviceTestCase extends TestCase implements IDeviceTest, IRemoteTest
      * {@inheritDoc}
      */
     @Override
-    public void addAllIncludeFilters(List<String> filters) {
+    public void addAllIncludeFilters(Set<String> filters) {
         mIncludeFilters.addAll(filters);
         mFilterHelper.addAllIncludeFilters(filters);
     }
@@ -214,19 +216,45 @@ public class DeviceTestCase extends TestCase implements IDeviceTest, IRemoteTest
      * {@inheritDoc}
      */
     @Override
-    public void addAllExcludeFilters(List<String> filters) {
+    public void addAllExcludeFilters(Set<String> filters) {
         mExcludeFilters.addAll(filters);
         mFilterHelper.addAllExcludeFilters(filters);
     }
 
-    void addIncludeAnnotation(String annotation) {
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void addIncludeAnnotation(String annotation) {
         mIncludeAnnotation.add(annotation);
         mFilterHelper.addIncludeAnnotation(annotation);
     }
 
-    void addExcludeAnnotation(String notAnnotation) {
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void addAllIncludeAnnotation(Set<String> annotations) {
+        mIncludeAnnotation.addAll(annotations);
+        mFilterHelper.addAllIncludeAnnotation(annotations);
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void addExcludeAnnotation(String notAnnotation) {
         mExcludeAnnotation.add(notAnnotation);
         mFilterHelper.addExcludeAnnotation(notAnnotation);
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void addAllExcludeAnnotation(Set<String> notAnnotations) {
+        mExcludeAnnotation.addAll(notAnnotations);
+        mFilterHelper.addAllExcludeAnnotation(notAnnotations);
     }
 
     /**

@@ -46,7 +46,8 @@ import java.util.Set;
  * this runner will pass a reference to the device.
  */
 @OptionClass(alias = "host")
-public class HostTest implements IDeviceTest, ITestFilterReceiver, IRemoteTest, ITestCollector {
+public class HostTest implements IDeviceTest, ITestFilterReceiver, ITestAnnotationFilterReceiver,
+        IRemoteTest, ITestCollector {
 
     @Option(name="class", description="The JUnit test classes to run, in the format "
             + "<package>.<class>. eg. \"com.android.foo.Bar\". This field can be repeated.",
@@ -114,7 +115,7 @@ public class HostTest implements IDeviceTest, ITestFilterReceiver, IRemoteTest, 
      * {@inheritDoc}
      */
     @Override
-    public void addAllIncludeFilters(List<String> filters) {
+    public void addAllIncludeFilters(Set<String> filters) {
         mFilterHelper.addAllIncludeFilters(filters);
     }
 
@@ -130,7 +131,7 @@ public class HostTest implements IDeviceTest, ITestFilterReceiver, IRemoteTest, 
      * {@inheritDoc}
      */
     @Override
-    public void addAllExcludeFilters(List<String> filters) {
+    public void addAllExcludeFilters(Set<String> filters) {
         mFilterHelper.addAllExcludeFilters(filters);
     }
 
@@ -166,12 +167,29 @@ public class HostTest implements IDeviceTest, ITestFilterReceiver, IRemoteTest, 
         mMethodName = methodName;
     }
 
-    void addIncludeAnnotation(String annotation) {
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void addIncludeAnnotation(String annotation) {
         mIncludeAnnotation.add(annotation);
         mFilterHelper.addIncludeAnnotation(annotation);
     }
 
-    void addExcludeAnnotation(String notAnnotation) {
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void addAllIncludeAnnotation(Set<String> annotations) {
+        mIncludeAnnotation.addAll(annotations);
+        mFilterHelper.addAllIncludeAnnotation(annotations);
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void addExcludeAnnotation(String notAnnotation) {
         mExcludeAnnotation.add(notAnnotation);
         mFilterHelper.addExcludeAnnotation(notAnnotation);
     }
@@ -180,7 +198,20 @@ public class HostTest implements IDeviceTest, ITestFilterReceiver, IRemoteTest, 
      * {@inheritDoc}
      */
     @Override
+    public void addAllExcludeAnnotation(Set<String> notAnnotations) {
+        mExcludeAnnotation.addAll(notAnnotations);
+        mFilterHelper.addAllExcludeAnnotation(notAnnotations);
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
     public void run(ITestInvocationListener listener) throws DeviceNotAvailableException {
+        // Ensure filters are set in the helper
+        mFilterHelper.addAllIncludeAnnotation(mIncludeAnnotation);
+        mFilterHelper.addAllExcludeAnnotation(mExcludeAnnotation);
+
         List<Class<?>> classes = getClasses();
         if (classes.isEmpty()) {
             throw new IllegalArgumentException("Missing Test class name");
@@ -191,17 +222,23 @@ public class HostTest implements IDeviceTest, ITestFilterReceiver, IRemoteTest, 
         for (Class<?> classObj : classes) {
             if (IRemoteTest.class.isAssignableFrom(classObj)) {
                 IRemoteTest test = (IRemoteTest) loadObject(classObj);
-                List<String> includes = new ArrayList<>(mFilterHelper.getIncludeFilters());
+                Set<String> includes = mFilterHelper.getIncludeFilters();
                 if (mMethodName != null) {
                     includes.add(String.format("%s#%s", classObj.getName(), mMethodName));
                 }
-                List<String> excludes = new ArrayList<>(mFilterHelper.getExcludeFilters());
+                Set<String> excludes = mFilterHelper.getExcludeFilters();
                 if (test instanceof ITestFilterReceiver) {
                     ((ITestFilterReceiver) test).addAllIncludeFilters(includes);
                     ((ITestFilterReceiver) test).addAllExcludeFilters(excludes);
                 } else if (!includes.isEmpty() || !excludes.isEmpty()) {
                     throw new IllegalArgumentException(String.format(
                             "%s does not implement ITestFilterReceiver", classObj.getName()));
+                }
+                if (test instanceof ITestAnnotationFilterReceiver) {
+                    ((ITestAnnotationFilterReceiver) test).addAllIncludeAnnotation(
+                            mIncludeAnnotation);
+                    ((ITestAnnotationFilterReceiver) test).addAllExcludeAnnotation(
+                            mExcludeAnnotation);
                 }
                 if (mFilterHelper.shouldTestRun(test.getClass())) {
                     if (mCollectTestsOnly) {
@@ -374,4 +411,5 @@ public class HostTest implements IDeviceTest, ITestFilterReceiver, IRemoteTest, 
     public void setCollectTestsOnly(boolean shouldCollectTest) {
         mCollectTestsOnly = shouldCollectTest;
     }
+
 }
