@@ -22,6 +22,7 @@ import com.android.tradefed.util.IRunUtil.IRunnableResult;
 import com.android.tradefed.util.MultiMap;
 import com.android.tradefed.util.RunUtil;
 import com.android.tradefed.util.StreamUtil;
+import com.android.tradefed.util.VersionParser;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -47,6 +48,8 @@ public class HttpHelper implements IHttpHelper {
     private int mMaxTime = 10 * 60 * 1000;
     /** Max number of redirects to follow */
     private int mMaxRedirects = 5;
+
+    private final static String USER_AGENT = "TradeFederation";
 
     /**
      * {@inheritDoc}
@@ -164,6 +167,8 @@ public class HttpHelper implements IHttpHelper {
         connection.setDoOutput(true);
         connection.setConnectTimeout(getOpTimeout());  // timeout for establishing the connection
         connection.setReadTimeout(getOpTimeout());  // timeout for receiving a read() response
+        connection.setRequestProperty("User-Agent",
+                String.format("%s/%s", USER_AGENT, VersionParser.fetchVersion()));
         return connection;
     }
 
