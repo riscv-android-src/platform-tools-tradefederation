@@ -80,7 +80,6 @@ class ManagedDeviceList implements Iterable<IManagedTestDevice> {
 
     /**
      * Get a copy of the contents of the queue.
-     * @return
      */
     List<IManagedTestDevice> getCopy() {
         mListLock.lock();
@@ -107,6 +106,7 @@ class ManagedDeviceList implements Iterable<IManagedTestDevice> {
 
     /**
      * Finds the device with the given serial
+     *
      * @param serialNumber
      * @return the {@link IManagedTestDevice} or <code>null</code> if not found
      */
@@ -148,7 +148,7 @@ class ManagedDeviceList implements Iterable<IManagedTestDevice> {
     /**
      * Attempt to allocate a device from the list
      * @param options
-     * @return
+     * @return the {@link IManagedTestDevice} that was successfully allocated, null otherwise
      */
     public IManagedTestDevice allocate(IDeviceSelection options) {
         AllocationMatcher m = new AllocationMatcher(options);
@@ -215,7 +215,8 @@ class ManagedDeviceList implements Iterable<IManagedTestDevice> {
         mListLock.lock();
         try {
             IManagedTestDevice d = find(idevice.getSerialNumber());
-            if (d == null) {
+            if (d == null || DeviceAllocationState.Unavailable.equals(d.getAllocationState())) {
+                mList.remove(d);
                 d = mDeviceFactory.createDevice(idevice);
                 mList.add(d);
             }

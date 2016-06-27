@@ -42,6 +42,8 @@ interface DeviceAllocationEventHandler {
                     return DeviceAllocationState.Allocated;
                 case CONNECTED_ONLINE:
                     return DeviceAllocationState.Checking_Availability;
+                case CONNECTED_OFFLINE:
+                    return DeviceAllocationState.Unavailable;
                 case STATE_CHANGE_ONLINE:
                     return DeviceAllocationState.Checking_Availability;
                 case FORCE_AVAILABLE:

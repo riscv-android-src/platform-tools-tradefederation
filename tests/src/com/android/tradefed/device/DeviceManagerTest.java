@@ -394,6 +394,8 @@ public class DeviceManagerTest extends TestCase {
      */
     public void testForceAllocateDevice_available() {
         setCheckAvailableDeviceExpectations();
+        EasyMock.expect(mMockTestDevice.getAllocationState())
+                .andReturn(DeviceAllocationState.Available);
         EasyMock.expect(mMockTestDevice.handleAllocationEvent(DeviceEvent.FORCE_ALLOCATE_REQUEST))
                 .andReturn(new DeviceEventResponse(DeviceAllocationState.Allocated, true));
         replayMocks();
@@ -407,6 +409,8 @@ public class DeviceManagerTest extends TestCase {
      */
     public void testForceAllocateDevice_alreadyAllocated() {
         setCheckAvailableDeviceExpectations();
+        EasyMock.expect(mMockTestDevice.getAllocationState())
+                .andReturn(DeviceAllocationState.Allocated);
         EasyMock.expect(mMockTestDevice.handleAllocationEvent(DeviceEvent.ALLOCATE_REQUEST))
                 .andReturn(new DeviceEventResponse(DeviceAllocationState.Allocated, true));
         EasyMock.expect(mMockTestDevice.handleAllocationEvent(DeviceEvent.FORCE_ALLOCATE_REQUEST))
@@ -459,6 +463,8 @@ public class DeviceManagerTest extends TestCase {
      */
     public void testSetIDevice() {
         setCheckAvailableDeviceExpectations();
+        EasyMock.expect(mMockTestDevice.getAllocationState())
+                .andReturn(DeviceAllocationState.Available);
         EasyMock.expect(mMockTestDevice.handleAllocationEvent(DeviceEvent.ALLOCATE_REQUEST))
                 .andReturn(new DeviceEventResponse(DeviceAllocationState.Allocated, true));
         EasyMock.expect(mMockTestDevice.handleAllocationEvent(DeviceEvent.DISCONNECTED)).andReturn(
@@ -562,6 +568,8 @@ public class DeviceManagerTest extends TestCase {
      */
     public void testSetState_offline() {
         setCheckAvailableDeviceExpectations();
+        EasyMock.expect(mMockTestDevice.getAllocationState())
+                .andReturn(DeviceAllocationState.Allocated);
         EasyMock.expect(mMockTestDevice.handleAllocationEvent(DeviceEvent.ALLOCATE_REQUEST))
                 .andReturn(new DeviceEventResponse(DeviceAllocationState.Allocated, true));
         mMockTestDevice.setDeviceState(TestDeviceState.NOT_AVAILABLE);
@@ -600,6 +608,8 @@ public class DeviceManagerTest extends TestCase {
         final String ipAndPort = "ip:5555";
         setConnectToTcpDeviceExpectations(ipAndPort);
         mMockTestDevice.waitForDeviceOnline();
+        EasyMock.expect(mMockTestDevice.getAllocationState())
+                .andReturn(DeviceAllocationState.Allocated);
         EasyMock.expect(mMockTestDevice.handleAllocationEvent(DeviceEvent.FORCE_ALLOCATE_REQUEST))
                 .andReturn(new DeviceEventResponse(DeviceAllocationState.Allocated, false));
         replayMocks();

@@ -105,6 +105,7 @@ public class ManagedTestDeviceFactory implements IManagedTestDeviceFactory {
             }
         } catch (TimeoutException | AdbCommandRejectedException | ShellCommandUnresponsiveException
                 | IOException e) {
+            CLog.e("Exception '%s' with device: %s", e.getMessage(), idevice.getSerialNumber());
             CLog.e(e);
         }
         // We default to support for framework to get same behavior as before.
