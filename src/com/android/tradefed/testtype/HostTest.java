@@ -24,11 +24,20 @@ import com.android.tradefed.config.OptionSetter;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.result.ITestInvocationListener;
+import com.android.tradefed.result.JUnit4ResultForwarder;
+import com.android.tradefed.util.JUnit4TestFilter;
 import com.android.tradefed.util.TestFilterHelper;
 
 import junit.framework.Test;
 import junit.framework.TestCase;
 import junit.framework.TestSuite;
+
+import org.junit.internal.runners.ErrorReportingRunner;
+import org.junit.runner.Description;
+import org.junit.runner.JUnitCore;
+import org.junit.runner.Request;
+import org.junit.runner.Runner;
+import org.junit.runners.Suite.SuiteClasses;
 
 import java.lang.reflect.AnnotatedElement;
 import java.lang.reflect.Method;
@@ -49,29 +58,30 @@ import java.util.Set;
 public class HostTest implements IDeviceTest, ITestFilterReceiver, ITestAnnotationFilterReceiver,
         IRemoteTest, ITestCollector {
 
-    @Option(name="class", description="The JUnit test classes to run, in the format "
+    @Option(name = "class", description = "The JUnit test classes to run, in the format "
             + "<package>.<class>. eg. \"com.android.foo.Bar\". This field can be repeated.",
             importance = Importance.IF_UNSET)
     private Set<String> mClasses = new HashSet<>();
 
-    @Option(name="method", description="The name of the method in the JUnit TestCase to run. "
+    @Option(name = "method", description = "The name of the method in the JUnit TestCase to run. "
             + "eg. \"testFooBar\"",
             importance = Importance.IF_UNSET)
     private String mMethodName;
 
-    @Option(name="set-option", description = "Options to be passed down to the class "
+    @Option(name = "set-option", description = "Options to be passed down to the class "
             + "under test, key and value should be separated by colon \":\"; for example, if class "
             + "under test supports \"--iteration 1\" from a command line, it should be passed in as"
             + " \"--set-option iteration:1\"; escaping of \":\" is currently not supported")
     private List<String> mKeyValueOptions = new ArrayList<>();
 
-    @Option(name="include-annotation",
-            description="The set of annotations a test must have to be run.")
-    private Set<String> mIncludeAnnotation = new HashSet<String>();
+    @Option(name = "include-annotation",
+            description = "The set of annotations a test must have to be run.")
+    private Set<String> mIncludeAnnotations = new HashSet<String>();
 
-    @Option(name="exclude-annotation",
-            description="The name of class for the notAnnotation filter to be used.")
-    private Set<String> mExcludeAnnotation = new HashSet<String>();
+    @Option(name = "exclude-annotation",
+            description = "The set of annotations to exclude tests from running. A test must have "
+                    + "none of the annotations in this list to run.")
+    private Set<String> mExcludeAnnotations = new HashSet<String>();
 
     @Option(name = "collect-tests-only",
             description = "Only invoke the instrumentation to collect list of applicable test "
@@ -84,7 +94,7 @@ public class HostTest implements IDeviceTest, ITestFilterReceiver, ITestAnnotati
 
     public HostTest() {
         mFilterHelper = new TestFilterHelper(new ArrayList<String>(), new ArrayList<String>(),
-                mIncludeAnnotation, mExcludeAnnotation);
+                mIncludeAnnotations, mExcludeAnnotations);
     }
 
     /**
@@ -172,7 +182,7 @@ public class HostTest implements IDeviceTest, ITestFilterReceiver, ITestAnnotati
      */
     @Override
     public void addIncludeAnnotation(String annotation) {
-        mIncludeAnnotation.add(annotation);
+        mIncludeAnnotations.add(annotation);
         mFilterHelper.addIncludeAnnotation(annotation);
     }
 
@@ -181,7 +191,7 @@ public class HostTest implements IDeviceTest, ITestFilterReceiver, ITestAnnotati
      */
     @Override
     public void addAllIncludeAnnotation(Set<String> annotations) {
-        mIncludeAnnotation.addAll(annotations);
+        mIncludeAnnotations.addAll(annotations);
         mFilterHelper.addAllIncludeAnnotation(annotations);
     }
 
@@ -190,7 +200,7 @@ public class HostTest implements IDeviceTest, ITestFilterReceiver, ITestAnnotati
      */
     @Override
     public void addExcludeAnnotation(String notAnnotation) {
-        mExcludeAnnotation.add(notAnnotation);
+        mExcludeAnnotations.add(notAnnotation);
         mFilterHelper.addExcludeAnnotation(notAnnotation);
     }
 
@@ -199,7 +209,7 @@ public class HostTest implements IDeviceTest, ITestFilterReceiver, ITestAnnotati
      */
     @Override
     public void addAllExcludeAnnotation(Set<String> notAnnotations) {
-        mExcludeAnnotation.addAll(notAnnotations);
+        mExcludeAnnotations.addAll(notAnnotations);
         mFilterHelper.addAllExcludeAnnotation(notAnnotations);
     }
 
@@ -209,8 +219,8 @@ public class HostTest implements IDeviceTest, ITestFilterReceiver, ITestAnnotati
     @Override
     public void run(ITestInvocationListener listener) throws DeviceNotAvailableException {
         // Ensure filters are set in the helper
-        mFilterHelper.addAllIncludeAnnotation(mIncludeAnnotation);
-        mFilterHelper.addAllExcludeAnnotation(mExcludeAnnotation);
+        mFilterHelper.addAllIncludeAnnotation(mIncludeAnnotations);
+        mFilterHelper.addAllExcludeAnnotation(mExcludeAnnotations);
 
         List<Class<?>> classes = getClasses();
         if (classes.isEmpty()) {
@@ -236,9 +246,9 @@ public class HostTest implements IDeviceTest, ITestFilterReceiver, ITestAnnotati
                 }
                 if (test instanceof ITestAnnotationFilterReceiver) {
                     ((ITestAnnotationFilterReceiver) test).addAllIncludeAnnotation(
-                            mIncludeAnnotation);
+                            mIncludeAnnotations);
                     ((ITestAnnotationFilterReceiver) test).addAllExcludeAnnotation(
-                            mExcludeAnnotation);
+                            mExcludeAnnotations);
                 }
                 if (mFilterHelper.shouldTestRun(test.getClass())) {
                     if (mCollectTestsOnly) {
@@ -264,7 +274,7 @@ public class HostTest implements IDeviceTest, ITestFilterReceiver, ITestAnnotati
                         // using the toString format instead: <testName>(className)
                         String testName = t.toString().split("\\(")[0];
                         TestIdentifier testId =
-                                new TestIdentifier(t.getClass().getCanonicalName(), testName);
+                                new TestIdentifier(t.getClass().getName(), testName);
                         listener.testStarted(testId);
                         listener.testEnded(testId, empty);
                     }
@@ -274,11 +284,48 @@ public class HostTest implements IDeviceTest, ITestFilterReceiver, ITestAnnotati
                     JUnitRunUtil.runTest(listener, collectTests(collectClasses(classObj)),
                             classObj.getName());
                 }
+            } else if (hasJUnit4Annotation(classObj)) {
+                // Running in a full JUnit4 manner, no downgrade to JUnit3 {@link Test}
+                JUnitCore runnerCore = new JUnitCore();
+                JUnit4ResultForwarder list = new JUnit4ResultForwarder(listener);
+                runnerCore.addListener(list);
+                Request req = Request.aClass(classObj);
+                req = req.filterWith(new JUnit4TestFilter(mFilterHelper));
+                // If no tests are remaining after filtering, it returns an Error Runner.
+                Runner checkRunner = req.getRunner();
+                if (!(checkRunner instanceof ErrorReportingRunner)) {
+                    long startTime = System.currentTimeMillis();
+                    listener.testRunStarted(classObj.getName(), checkRunner.testCount());
+                    if (mCollectTestsOnly) {
+                        fakeDescriptionExecution(checkRunner.getDescription(), list);
+                    } else {
+                        runnerCore.run(req);
+                    }
+                    listener.testRunEnded(System.currentTimeMillis() - startTime,
+                            Collections.emptyMap());
+                } else {
+                    // Can't use testCount() in case of error because it returns 1.
+                    listener.testRunStarted(classObj.getName(), 0);
+                    listener.testRunEnded(0, Collections.emptyMap());
+                }
             } else {
-                // TODO: Add junit4 support here
                 throw new IllegalArgumentException(
-                        String.format("%s is not a test", classObj.getName()));
+                        String.format("%s is not a supported test", classObj.getName()));
             }
+        }
+    }
+
+    /**
+     * Helper to fake the execution of JUnit4 Tests, using the {@link Description}
+     */
+    private void fakeDescriptionExecution(Description desc, JUnit4ResultForwarder listener) {
+        if (desc.getMethodName() == null) {
+            for (Description child : desc.getChildren()) {
+                fakeDescriptionExecution(child, listener);
+            }
+        } else {
+            listener.testStarted(desc);
+            listener.testFinished(desc);
         }
     }
 
@@ -325,6 +372,7 @@ public class HostTest implements IDeviceTest, ITestFilterReceiver, ITestAnnotati
                             String.format("Cannot find %s#%s", className, mMethodName), e);
                 }
             }
+
             for (Method method : methods) {
                 if (!Modifier.isPublic(method.getModifiers())
                         || !method.getReturnType().equals(Void.TYPE)
@@ -410,6 +458,21 @@ public class HostTest implements IDeviceTest, ITestFilterReceiver, ITestAnnotati
     @Override
     public void setCollectTestsOnly(boolean shouldCollectTest) {
         mCollectTestsOnly = shouldCollectTest;
+    }
+
+    /**
+     * Helper to determine if we are dealing with a Test class with Junit4 annotations.
+     */
+    private boolean hasJUnit4Annotation(Class<?> classObj) {
+        if (classObj.isAnnotationPresent(SuiteClasses.class)) {
+            return true;
+        }
+        for (Method m : classObj.getMethods()) {
+            if (m.isAnnotationPresent(org.junit.Test.class)) {
+                return true;
+            }
+        }
+        return false;
     }
 
 }

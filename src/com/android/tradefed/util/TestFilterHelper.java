@@ -17,9 +17,12 @@ package com.android.tradefed.util;
 
 import com.android.tradefed.log.LogUtil.CLog;
 
+import org.junit.runner.Description;
+
 import java.lang.annotation.Annotation;
 import java.lang.reflect.AnnotatedElement;
 import java.lang.reflect.Method;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashSet;
 import java.util.Set;
@@ -36,10 +39,10 @@ public class TestFilterHelper {
     private Set<String> mExcludeFilters = new HashSet<>();
 
     /** The include annotations of the test to run */
-    private Set<String> mIncludeAnnotation = new HashSet<>();
+    private Set<String> mIncludeAnnotations = new HashSet<>();
 
     /** The exclude annotations of the test to run */
-    private Set<String> mExcludeAnnotation = new HashSet<>();
+    private Set<String> mExcludeAnnotations = new HashSet<>();
 
     public TestFilterHelper() {
     }
@@ -48,8 +51,8 @@ public class TestFilterHelper {
             Collection<String> includeAnnotation, Collection<String> excludeAnnotation) {
         mIncludeFilters.addAll(includeFilters);
         mExcludeFilters.addAll(excludeFilters);
-        mIncludeAnnotation.addAll(includeAnnotation);
-        mExcludeAnnotation.addAll(excludeAnnotation);
+        mIncludeAnnotations.addAll(includeAnnotation);
+        mExcludeAnnotations.addAll(excludeAnnotation);
     }
 
     /**
@@ -84,28 +87,28 @@ public class TestFilterHelper {
      * Adds an include annotation of the test to run
      */
     public void addIncludeAnnotation(String annotation) {
-        mIncludeAnnotation.add(annotation);
+        mIncludeAnnotations.add(annotation);
     }
 
     /**
      * Adds the {@link Set} of include annotation of the test to run
      */
     public void addAllIncludeAnnotation(Set<String> annotations) {
-        mIncludeAnnotation.addAll(annotations);
+        mIncludeAnnotations.addAll(annotations);
     }
 
     /**
      * Adds an exclude annotation of the test to run
      */
     public void addExcludeAnnotation(String notAnnotation) {
-        mExcludeAnnotation.add(notAnnotation);
+        mExcludeAnnotations.add(notAnnotation);
     }
 
     /**
      * Adds the {@link Set} of exclude annotation of the test to run
      */
     public void addAllExcludeAnnotation(Set<String> notAnnotations) {
-        mExcludeAnnotation.addAll(notAnnotations);
+        mExcludeAnnotations.addAll(notAnnotations);
     }
 
     public Set<String> getIncludeFilters() {
@@ -117,11 +120,11 @@ public class TestFilterHelper {
     }
 
     public Set<String> getIncludeAnnotation() {
-        return mIncludeAnnotation;
+        return mIncludeAnnotations;
     }
 
     public Set<String> getExcludeAnnotation() {
-        return mExcludeAnnotation;
+        return mExcludeAnnotations;
     }
 
 
@@ -132,26 +135,43 @@ public class TestFilterHelper {
      * @return true if the test should run, false otherwise
      */
     public boolean shouldTestRun(AnnotatedElement annotatedElement) {
-        if (!mExcludeAnnotation.isEmpty()) {
-            for (Annotation a : annotatedElement.getAnnotations()) {
-                if (mExcludeAnnotation.contains(a.annotationType().getName())) {
+        return shouldTestRun(Arrays.asList(annotatedElement.getAnnotations()));
+    }
+
+    /**
+     * Check if the {@link Description} that contains annotations passes the filter
+     *
+     * @param desc the element to filter
+     * @return true if the test should run, false otherwise
+     */
+    public boolean shouldTestRun(Description desc) {
+        return shouldTestRun(desc.getAnnotations());
+    }
+
+    /**
+     * Internal helper to determine if a particular test should run based on its annotations.
+     */
+    private boolean shouldTestRun(Collection<Annotation> annotationsList) {
+        if (!mExcludeAnnotations.isEmpty()) {
+            for (Annotation a : annotationsList) {
+                if (mExcludeAnnotations.contains(a.annotationType().getName())) {
                     // If any of the method annotation match an ExcludeAnnotation, don't run it
-                    CLog.i("Skipping %s, ExcludeAnnotation exclude it", annotatedElement);
+                    CLog.i("Skipping %s, ExcludeAnnotation exclude it", a);
                     return false;
                 }
             }
         }
-        if (!mIncludeAnnotation.isEmpty()) {
+        if (!mIncludeAnnotations.isEmpty()) {
             Set<String> neededAnnotation = new HashSet<String>();
-            neededAnnotation.addAll(mIncludeAnnotation);
-            for (Annotation a : annotatedElement.getAnnotations()) {
+            neededAnnotation.addAll(mIncludeAnnotations);
+            for (Annotation a : annotationsList) {
                 if (neededAnnotation.contains(a.annotationType().getName())) {
                     neededAnnotation.remove(a.annotationType().getName());
                 }
             }
             if (neededAnnotation.size() != 0) {
                 // The test needs to have all the include annotation to pass.
-                CLog.i("Skipping %s, IncludeAnnotation filtered it", annotatedElement);
+                CLog.i("Skipping, IncludeAnnotation filtered it");
                 return false;
             }
         }
@@ -168,6 +188,54 @@ public class TestFilterHelper {
      */
     public boolean shouldRun(String packageName, String className, Method method) {
         String methodName = String.format("%s#%s", className, method.getName());
+        if (!shouldRunFilter(packageName, className, methodName)) {
+            return false;
+        }
+        if (!shouldTestRun(method)) {
+            return false;
+        }
+        return mIncludeFilters.isEmpty()
+                || mIncludeFilters.contains(methodName)
+                || mIncludeFilters.contains(className)
+                || mIncludeFilters.contains(packageName);
+    }
+
+    /**
+     * Check if an element that has annotation passes the filter
+     *
+     * @param desc a {@link Description} that describes the test.
+     * @return true if the test method should run, false otherwise
+     */
+    public boolean shouldRun(Description desc) {
+        // We need to build the packageName for a description object
+        Class<?> classObj = null;
+        try {
+            classObj = Class.forName(desc.getClassName());
+        } catch (ClassNotFoundException e) {
+            throw new IllegalArgumentException(String.format("Could not load Test class %s",
+                    classObj), e);
+        }
+        String packageName = classObj.getPackage().getName();
+
+        String className = desc.getClassName();
+        String methodName = String.format("%s#%s", className, desc.getMethodName());
+        if (!shouldRunFilter(packageName, className, methodName)) {
+            return false;
+        }
+        if (!shouldTestRun(desc)) {
+            return false;
+        }
+        return mIncludeFilters.isEmpty()
+                || mIncludeFilters.contains(methodName)
+                || mIncludeFilters.contains(className)
+                || mIncludeFilters.contains(packageName);
+    }
+
+    /**
+     * Internal helper to check if a particular test should run based on its package, class, method
+     * names.
+     */
+    private boolean shouldRunFilter(String packageName, String className, String methodName) {
         if (mExcludeFilters.contains(packageName)) {
             // Skip package because it was excluded
             CLog.i("Skip package because it was excluded");
@@ -183,12 +251,6 @@ public class TestFilterHelper {
             CLog.i("Skip method because it was excluded");
             return false;
         }
-        if (!shouldTestRun(method)) {
-            return false;
-        }
-        return mIncludeFilters.isEmpty()
-                || mIncludeFilters.contains(methodName)
-                || mIncludeFilters.contains(className)
-                || mIncludeFilters.contains(packageName);
+        return true;
     }
 }

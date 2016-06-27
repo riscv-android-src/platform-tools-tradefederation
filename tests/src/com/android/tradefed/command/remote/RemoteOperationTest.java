@@ -15,26 +15,21 @@
  */
 package com.android.tradefed.command.remote;
 
-import junit.framework.TestCase;
+import org.junit.Test;
 
 /**
  * Unit tests for {@link RemoteOperation}.
  */
-public class RemoteOperationTest extends TestCase {
+public class RemoteOperationTest {
 
     /**
      * Test that exception is thrown when incoming data has a different than expected protocol
      * version.
      */
+    @Test(expected = RemoteException.class)
     public void testProtocolVersionMismatch() throws RemoteException {
         CloseOp o = new CloseOp();
         String data = o.pack(0);
-        try {
-            RemoteOperation.createRemoteOpFromString(data);
-        } catch (RemoteException e) {
-            // expected
-            return;
-        }
-        fail("did not throw RemoteException");
+        RemoteOperation.createRemoteOpFromString(data);
     }
 }

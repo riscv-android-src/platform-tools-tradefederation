@@ -26,6 +26,9 @@ import junit.framework.TestCase;
 import junit.framework.TestSuite;
 
 import org.easymock.EasyMock;
+import org.junit.runner.RunWith;
+import org.junit.runners.Suite;
+import org.junit.runners.Suite.SuiteClasses;
 
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
@@ -79,6 +82,33 @@ public class HostTestTest extends TestCase {
         @MyAnnotation
         public void testPass4() {
         }
+    }
+
+    /**
+     * Test class, we have to annotate with full org.junit.Test to avoid name collision in import.
+     */
+    public static class Junit4Testclass {
+        public Junit4Testclass() {
+        }
+
+        @MyAnnotation
+        @MyAnnotation2
+        @org.junit.Test
+        public void testPass5() {
+        }
+
+        @MyAnnotation
+        @org.junit.Test
+        public void testPass6() {
+        }
+    }
+
+    @RunWith(Suite.class)
+    @SuiteClasses({
+        Junit4Testclass.class,
+        SuccessTestCase.class,
+    })
+    public class Junit4Suiteclass {
     }
 
     /**
@@ -174,6 +204,7 @@ public class HostTestTest extends TestCase {
         mListener.testRunEnded(EasyMock.anyLong(), (Map<String, String>)EasyMock.anyObject());
         EasyMock.replay(mListener);
         mHostTest.run(mListener);
+        EasyMock.verify(mListener);
     }
 
     /**
@@ -192,6 +223,7 @@ public class HostTestTest extends TestCase {
         mListener.testRunEnded(EasyMock.anyLong(), (Map<String, String>)EasyMock.anyObject());
         EasyMock.replay(mListener);
         mHostTest.run(mListener);
+        EasyMock.verify(mListener);
     }
 
     /**
@@ -210,6 +242,7 @@ public class HostTestTest extends TestCase {
         mListener.testRunEnded(EasyMock.anyLong(), (Map<String, String>)EasyMock.anyObject());
         EasyMock.replay(mListener);
         mHostTest.run(mListener);
+        EasyMock.verify(mListener);
     }
 
     /**
@@ -226,6 +259,7 @@ public class HostTestTest extends TestCase {
         mListener.testRunEnded(EasyMock.anyLong(), (Map<String, String>)EasyMock.anyObject());
         EasyMock.replay(mListener);
         mHostTest.run(mListener);
+        EasyMock.verify(mListener);
     }
 
     /**
@@ -306,7 +340,8 @@ public class HostTestTest extends TestCase {
         TestIdentifier test2 = new TestIdentifier(SuccessTestCase.class.getName(), "testPass2");
         TestIdentifier test3 = new TestIdentifier(AnotherTestCase.class.getName(), "testPass3");
         TestIdentifier test4 = new TestIdentifier(AnotherTestCase.class.getName(), "testPass4");
-        mListener.testRunStarted((String)EasyMock.anyObject(), EasyMock.eq(4));
+        mListener.testRunStarted((String)EasyMock.anyObject(), EasyMock.eq(2));
+        EasyMock.expectLastCall().times(2);
         mListener.testStarted(EasyMock.eq(test1));
         mListener.testEnded(EasyMock.eq(test1), (Map<String, String>)EasyMock.anyObject());
         mListener.testStarted(EasyMock.eq(test2));
@@ -316,7 +351,10 @@ public class HostTestTest extends TestCase {
         mListener.testStarted(EasyMock.eq(test4));
         mListener.testEnded(EasyMock.eq(test4), (Map<String, String>)EasyMock.anyObject());
         mListener.testRunEnded(EasyMock.anyLong(), (Map<String, String>)EasyMock.anyObject());
+        EasyMock.expectLastCall().times(2);
         EasyMock.replay(mListener);
+        mHostTest.run(mListener);
+        EasyMock.verify(mListener);
     }
 
     /**
@@ -539,5 +577,166 @@ public class HostTestTest extends TestCase {
             return;
         }
         fail("HostTest run() should have thrown an exception.");
+    }
+
+    /**
+     * Test for {@link HostTest#run(ITestInvocationListener)}, for test with Junit4 style.
+     */
+    public void testRun_junit4style() throws Exception {
+        mHostTest.setClassName(Junit4Testclass.class.getName());
+        TestIdentifier test1 = new TestIdentifier(Junit4Testclass.class.getName(), "testPass5");
+        TestIdentifier test2 = new TestIdentifier(Junit4Testclass.class.getName(), "testPass6");
+        mListener.testRunStarted((String)EasyMock.anyObject(), EasyMock.eq(2));
+        mListener.testStarted(EasyMock.eq(test1));
+        mListener.testEnded(EasyMock.eq(test1), (Map<String, String>)EasyMock.anyObject());
+        mListener.testStarted(EasyMock.eq(test2));
+        mListener.testEnded(EasyMock.eq(test2), (Map<String, String>)EasyMock.anyObject());
+        mListener.testRunEnded(EasyMock.anyLong(), (Map<String, String>)EasyMock.anyObject());
+        EasyMock.replay(mListener);
+        mHostTest.run(mListener);
+        EasyMock.verify(mListener);
+    }
+
+    /**
+     * Test for {@link HostTest#run(ITestInvocationListener)}, for a mix of test junit3 and 4
+     */
+    public void testRun_junit_version_mix() throws Exception {
+        OptionSetter setter = new OptionSetter(mHostTest);
+        setter.setOptionValue("class", SuccessTestCase.class.getName());
+        setter.setOptionValue("class", Junit4Testclass.class.getName());
+        runMixJunitTest(mHostTest, 2, 2);
+    }
+
+    /**
+     * Test for {@link HostTest#run(ITestInvocationListener)}, for a mix of test junit3 and 4 in
+     * collect only mode
+     */
+    public void testRun_junit_version_mix_collect() throws Exception {
+        OptionSetter setter = new OptionSetter(mHostTest);
+        setter.setOptionValue("class", SuccessTestCase.class.getName());
+        setter.setOptionValue("class", Junit4Testclass.class.getName());
+        setter.setOptionValue("collect-tests-only", "true");
+        runMixJunitTest(mHostTest, 2, 2);
+    }
+
+    /**
+     * Test for {@link HostTest#run(ITestInvocationListener)}, for a mix of test junit3 and 4 in
+     * a Junit 4 suite class.
+     */
+    public void testRun_junit_suite_mix() throws Exception {
+        OptionSetter setter = new OptionSetter(mHostTest);
+        setter.setOptionValue("class", Junit4Suiteclass.class.getName());
+        runMixJunitTest(mHostTest, 4, 1);
+    }
+
+    /**
+     * Test for {@link HostTest#run(ITestInvocationListener)}, for a mix of test junit3 and 4 in
+     * a Junit 4 suite class, in collect only mode.
+     */
+    public void testRun_junit_suite_mix_collect() throws Exception {
+        OptionSetter setter = new OptionSetter(mHostTest);
+        setter.setOptionValue("class", Junit4Suiteclass.class.getName());
+        setter.setOptionValue("collect-tests-only", "true");
+        runMixJunitTest(mHostTest, 4, 1);
+    }
+
+    /**
+     * Helper for test option variation and avoid repeating the same setup
+     */
+    private void runMixJunitTest(HostTest hostTest, int expectedTest, int expectedRun)
+            throws Exception {
+        TestIdentifier test1 = new TestIdentifier(SuccessTestCase.class.getName(), "testPass");
+        TestIdentifier test2 = new TestIdentifier(SuccessTestCase.class.getName(), "testPass2");
+        TestIdentifier test3 = new TestIdentifier(Junit4Testclass.class.getName(), "testPass5");
+        TestIdentifier test4 = new TestIdentifier(Junit4Testclass.class.getName(), "testPass6");
+        mListener.testRunStarted((String)EasyMock.anyObject(), EasyMock.eq(expectedTest));
+        EasyMock.expectLastCall().times(expectedRun);
+        mListener.testStarted(EasyMock.eq(test1));
+        mListener.testEnded(EasyMock.eq(test1), (Map<String, String>)EasyMock.anyObject());
+        mListener.testStarted(EasyMock.eq(test2));
+        mListener.testEnded(EasyMock.eq(test2), (Map<String, String>)EasyMock.anyObject());
+        mListener.testStarted(EasyMock.eq(test3));
+        mListener.testEnded(EasyMock.eq(test3), (Map<String, String>)EasyMock.anyObject());
+        mListener.testStarted(EasyMock.eq(test4));
+        mListener.testEnded(EasyMock.eq(test4), (Map<String, String>)EasyMock.anyObject());
+        mListener.testRunEnded(EasyMock.anyLong(), (Map<String, String>)EasyMock.anyObject());
+        EasyMock.expectLastCall().times(expectedRun);
+        EasyMock.replay(mListener);
+        hostTest.run(mListener);
+        EasyMock.verify(mListener);
+    }
+
+    /**
+     * Test success case for {@link HostTest#run(ITestInvocationListener)} with a filtering and
+     * junit 4 handling.
+     */
+    public void testRun_testcase_Junit4TestNotAnnotationFiltering() throws Exception {
+        mHostTest.setClassName(Junit4Testclass.class.getName());
+        mHostTest.addExcludeAnnotation("com.android.tradefed.testtype.HostTestTest$MyAnnotation2");
+        TestIdentifier test1 = new TestIdentifier(Junit4Testclass.class.getName(), "testPass6");
+        // Only test1 will run, test2 should be filtered out.
+        mListener.testRunStarted((String)EasyMock.anyObject(), EasyMock.eq(1));
+        mListener.testStarted(EasyMock.eq(test1));
+        mListener.testEnded(EasyMock.eq(test1), (Map<String, String>)EasyMock.anyObject());
+        mListener.testRunEnded(EasyMock.anyLong(), (Map<String, String>)EasyMock.anyObject());
+        EasyMock.replay(mListener);
+        mHostTest.run(mListener);
+        EasyMock.verify(mListener);
+    }
+
+    /**
+     * Test success case for {@link HostTest#run(ITestInvocationListener)}, where filtering is
+     * applied and results in 0 tests to run.
+     */
+    public void testRun_testcase_Junit4Test_filtering_no_more_tests() throws Exception {
+        mHostTest.setClassName(Junit4Testclass.class.getName());
+        mHostTest.addExcludeAnnotation("com.android.tradefed.testtype.HostTestTest$MyAnnotation");
+        mListener.testRunStarted((String)EasyMock.anyObject(), EasyMock.eq(0));
+        mListener.testRunEnded(EasyMock.anyLong(), (Map<String, String>)EasyMock.anyObject());
+        EasyMock.replay(mListener);
+        mHostTest.run(mListener);
+        EasyMock.verify(mListener);
+    }
+
+    /**
+     * Test for {@link HostTest#run(ITestInvocationListener)}, for a mix of test junit3 and 4 in
+     * a Junit 4 suite class, and filtering is applied.
+     */
+    public void testRun_junit_suite_mix_filtering() throws Exception {
+        OptionSetter setter = new OptionSetter(mHostTest);
+        setter.setOptionValue("class", Junit4Suiteclass.class.getName());
+        runMixJunitTestWithFilter(mHostTest);
+    }
+
+    /**
+     * Test for {@link HostTest#run(ITestInvocationListener)}, for a mix of test junit3 and 4 in
+     * a Junit 4 suite class, and filtering is applied, in collect mode
+     */
+    public void testRun_junit_suite_mix_filtering_collect() throws Exception {
+        OptionSetter setter = new OptionSetter(mHostTest);
+        setter.setOptionValue("class", Junit4Suiteclass.class.getName());
+        setter.setOptionValue("collect-tests-only", "true");
+        runMixJunitTestWithFilter(mHostTest);
+    }
+
+    /**
+     * Helper for test option variation and avoid repeating the same setup
+     */
+    private void runMixJunitTestWithFilter(HostTest hostTest)
+            throws Exception {
+        hostTest.addExcludeAnnotation("com.android.tradefed.testtype.HostTestTest$MyAnnotation2");
+        TestIdentifier test1 = new TestIdentifier(SuccessTestCase.class.getName(), "testPass");
+        TestIdentifier test4 = new TestIdentifier(Junit4Testclass.class.getName(), "testPass6");
+        mListener.testRunStarted((String)EasyMock.anyObject(), EasyMock.eq(2));
+        EasyMock.expectLastCall().times(1);
+        mListener.testStarted(EasyMock.eq(test1));
+        mListener.testEnded(EasyMock.eq(test1), (Map<String, String>)EasyMock.anyObject());
+        mListener.testStarted(EasyMock.eq(test4));
+        mListener.testEnded(EasyMock.eq(test4), (Map<String, String>)EasyMock.anyObject());
+        mListener.testRunEnded(EasyMock.anyLong(), (Map<String, String>)EasyMock.anyObject());
+        EasyMock.expectLastCall().times(1);
+        EasyMock.replay(mListener);
+        hostTest.run(mListener);
+        EasyMock.verify(mListener);
     }
 }
