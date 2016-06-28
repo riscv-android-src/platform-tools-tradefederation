@@ -34,7 +34,6 @@ import com.android.tradefed.util.keystore.StubKeyStoreFactory;
 import java.io.File;
 import java.io.PrintStream;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
@@ -62,6 +61,9 @@ public class GlobalConfiguration implements IGlobalConfiguration {
 
     private static final String GLOBAL_CONFIG_VARIABLE = "TF_GLOBAL_CONFIG";
     private static final String GLOBAL_CONFIG_FILENAME = "tf_global_config.xml";
+
+    // Empty embedded configuration available by default
+    private static final String DEFAULT_EMPTY_CONFIG_NAME = "empty";
 
     /** Mapping of config object type name to config objects. */
     private Map<String, List<Object>> mConfigMap;
@@ -120,17 +122,13 @@ public class GlobalConfiguration implements IGlobalConfiguration {
             List<String> nonGlobalArgs = new ArrayList<String>(args.length);
             IConfigurationFactory configFactory = ConfigurationFactory.getInstance();
             String globalConfigPath = getGlobalConfigPath();
-
-            if (globalConfigPath != null) {
-                // Found a global config file; attempt to parse and use it
-                sInstance = configFactory.createGlobalConfigurationFromArgs(
-                        ArrayUtil.buildArray(new String[] {globalConfigPath}, args), nonGlobalArgs);
+            sInstance = configFactory.createGlobalConfigurationFromArgs(
+                    ArrayUtil.buildArray(new String[] {globalConfigPath}, args), nonGlobalArgs);
+            if (!DEFAULT_EMPTY_CONFIG_NAME.equals(globalConfigPath)) {
+                // Only print when using different from default
                 System.err.format("Success!  Using global config \"%s\"\n", globalConfigPath);
-            } else {
-                // Use default global config
-                sInstance = new GlobalConfiguration();
-                nonGlobalArgs = Arrays.asList(args);
             }
+
             // Validate that madatory options have been set
             sInstance.validateOptions();
             return nonGlobalArgs;
@@ -169,7 +167,8 @@ public class GlobalConfiguration implements IGlobalConfiguration {
 
         // FIXME: search in tradefed.sh launch dir (or classpath?)
 
-        return null;
+        // Use default empty known global config
+        return DEFAULT_EMPTY_CONFIG_NAME;
     }
 
     /**
@@ -215,13 +214,6 @@ public class GlobalConfiguration implements IGlobalConfiguration {
 
         }
         return sObjTypeMap;
-    }
-
-    /**
-     * Creates a {@link GlobalConfiguration} with default config objects and stock name/description
-     */
-    private GlobalConfiguration() {
-        this("default", "default global configuration");
     }
 
     /**
