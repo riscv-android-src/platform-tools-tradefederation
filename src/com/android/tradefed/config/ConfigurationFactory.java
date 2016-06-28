@@ -505,6 +505,28 @@ public class ConfigurationFactory implements IConfigurationFactory {
     }
 
     /**
+     * {@inheritDoc}
+     */
+    @Override
+    public List<String> getConfigList() {
+        Set<String> configNames = getConfigSetFromClasspath();
+        // sort the configs by name before adding to list
+        SortedSet<String> configDefs = new TreeSet<String>();
+        configDefs.addAll(configNames);
+        List<String> configs = new ArrayList<String>();
+        configs.addAll(configDefs);
+        return configs;
+    }
+
+    /**
+     * Private helper to get the full set of configurations.
+     */
+    private Set<String> getConfigSetFromClasspath() {
+        ClassPathScanner cpScanner = new ClassPathScanner();
+        return cpScanner.getClassPathEntries(new ConfigClasspathFilter());
+    }
+
+    /**
      * Loads all configurations found in classpath.
      *
      * @param discardExceptions true if any ConfigurationException should be
@@ -515,8 +537,7 @@ public class ConfigurationFactory implements IConfigurationFactory {
         ByteArrayOutputStream baos = new ByteArrayOutputStream();
         PrintStream ps = new PrintStream(baos);
         boolean failed = false;
-        ClassPathScanner cpScanner = new ClassPathScanner();
-        Set<String> configNames = cpScanner.getClassPathEntries(new ConfigClasspathFilter());
+        Set<String> configNames = getConfigSetFromClasspath();
         for (String configName : configNames) {
             final ConfigId configId = new ConfigId(configName);
             try {

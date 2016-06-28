@@ -27,6 +27,7 @@ import com.android.tradefed.device.IDeviceManager;
 import com.android.tradefed.log.ConsoleReaderOutputStream;
 import com.android.tradefed.log.LogRegistry;
 import com.android.tradefed.util.ArrayUtil;
+import com.android.tradefed.util.ConfigCompletor;
 import com.android.tradefed.util.FileUtil;
 import com.android.tradefed.util.QuotationAwareTokenizer;
 import com.android.tradefed.util.RegexTrie;
@@ -217,6 +218,10 @@ public class Console extends Thread {
     Console(ConsoleReader reader) {
         super();
         mConsoleReader = reader;
+        if (reader != null) {
+            mConsoleReader.addCompletor(
+                    new ConfigCompletor(getConfigurationFactory().getConfigList()));
+        }
 
         List<String> genericHelp = new LinkedList<String>();
         Map<String, String> commandHelp = new LinkedHashMap<String, String>();

@@ -17,7 +17,6 @@
 package com.android.tradefed.config;
 
 import com.android.tradefed.util.keystore.IKeyStoreClient;
-import com.android.tradefed.util.keystore.IKeyStoreFactory;
 
 import java.io.PrintStream;
 import java.util.List;
@@ -28,11 +27,11 @@ import java.util.List;
 public interface IConfigurationFactory {
 
     /**
-     * A convenience method which calls {@link createConfigurationFromArgs(String[], List<String>)}
+     * A convenience method which calls {@link #createConfigurationFromArgs(String[], List)}
      * with a {@code null} second argument.  Thus, it will throw {@link ConfigurationException} if
      * any unconsumed arguments remain.
      *
-     * @see createConfigurationFromArgs(String[] List<String>)
+     * @see #createConfigurationFromArgs(String[], List)
      */
     public IConfiguration createConfigurationFromArgs(String[] args) throws ConfigurationException;
 
@@ -50,7 +49,7 @@ public interface IConfigurationFactory {
      *
      * @return the loaded {@link IConfiguration}. The delegate object {@link Option} fields have
      *         been populated with values in args.
-     * @throws {@link ConfigurationException} if configuration could not be loaded
+     * @throw {@link ConfigurationException} if configuration could not be loaded
      */
     public IConfiguration createConfigurationFromArgs(String[] args, List<String> unconsumedArgs)
             throws ConfigurationException;
@@ -87,7 +86,7 @@ public interface IConfigurationFactory {
      *                      processed as global arguments
      * @return the loaded {@link IGlobalConfiguration}. The delegate object {@link Option} fields
      *         have been populated with values in args.
-     * @throws {@link ConfigurationException} if configuration could not be loaded
+     * @throw {@link ConfigurationException} if configuration could not be loaded
      */
     public IGlobalConfiguration createGlobalConfigurationFromArgs(String[] args,
             List<String> nonGlobalArgs) throws ConfigurationException;
@@ -127,4 +126,10 @@ public interface IConfigurationFactory {
      * @param out the {@link PrintStream} to dump output to
      */
     public void dumpConfig(String configName, PrintStream out);
+
+    /**
+     * Return the list of names of all the configs found. Does not attempt to load any of the
+     * configs, so it is possible to have non working config in this list.
+     */
+    public List<String> getConfigList();
 }
