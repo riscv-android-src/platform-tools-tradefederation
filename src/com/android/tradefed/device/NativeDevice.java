@@ -1166,6 +1166,59 @@ public class NativeDevice implements IManagedTestDevice {
      * {@inheritDoc}
      */
     @Override
+    public boolean pullDir(String deviceFilePath, File localDir)
+            throws DeviceNotAvailableException {
+        if (!localDir.isDirectory()) {
+            CLog.e("Local path %s is not a directory", localDir.getAbsolutePath());
+            return false;
+        }
+        if (!isDirectory(deviceFilePath)) {
+            CLog.e("Device path %s is not a directory", deviceFilePath);
+            return false;
+        }
+        String lsOutput = executeShellCommand(String.format("ls -Ap1 %s", deviceFilePath));
+        if (lsOutput.trim().isEmpty()) {
+            CLog.i("Device path is empty, nothing to do.");
+            return true;
+        }
+        String[] items = lsOutput.split("\r?\n");
+        for (String item : items) {
+            if (item.isEmpty()) {
+                // skip empty entries
+                continue;
+            }
+            if (item.endsWith("/")) {
+                // handle sub dir
+                // prepare local path first
+                item = item.substring(0, item.length() - 1);
+                File subDir = new File(localDir, item);
+                if (!subDir.mkdir()) {
+                    CLog.w("Failed to create sub directory %s, aborting.",
+                            subDir.getAbsolutePath());
+                    return false;
+                }
+                String deviceSubDir = String.format("%s/%s", deviceFilePath, item);
+                if (!pullDir(deviceSubDir, subDir)) {
+                    CLog.w("Failed to pull sub directory %s from device, aborting", deviceSubDir);
+                    return false;
+                }
+            } else {
+                // handle regular file
+                String deviceFile = String.format("%s/%s", deviceFilePath, item);
+                File localFile = new File(localDir, item);
+                if (!pullFile(deviceFile, localFile)) {
+                    CLog.w("Failed to pull file %s from device, aborting", deviceFile);
+                    return false;
+                }
+            }
+        }
+        return true;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
     public boolean syncFiles(File localFileDir, String deviceFilePath)
             throws DeviceNotAvailableException {
         if (localFileDir == null || deviceFilePath == null) {
@@ -2010,7 +2063,6 @@ public class NativeDevice implements IManagedTestDevice {
      * <p/>
      * Exposed so unit tests can mock
      */
-    @SuppressWarnings("unused")
     IWifiHelper createWifiHelper() throws DeviceNotAvailableException {
         // current wifi helper won't work on AndroidNativeDevice
         // TODO: create a new Wifi helper with supported feature of AndroidNativeDevice when
@@ -2316,7 +2368,6 @@ public class NativeDevice implements IManagedTestDevice {
      * Default implementation doesn't include any addition actions.
      * adb root is not guaranteed to be enabled at this stage.
      */
-    @SuppressWarnings("unused")
     public void postAdbRootAction() throws DeviceNotAvailableException {
         // Empty on purpose.
     }
@@ -2327,7 +2378,6 @@ public class NativeDevice implements IManagedTestDevice {
      * Default implementation doesn't include any additional actions.
      * adb root is not guaranteed to be disabled at this stage.
      */
-    @SuppressWarnings("unused")
     public void postAdbUnrootAction() throws DeviceNotAvailableException {
         // Empty on purpose.
     }
