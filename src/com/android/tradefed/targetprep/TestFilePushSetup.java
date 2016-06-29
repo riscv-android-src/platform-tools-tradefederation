@@ -167,6 +167,10 @@ public class TestFilePushSetup implements ITargetPreparer {
         }
     }
 
+    protected void setThrowIfNoFile(boolean throwIfNoFile) {
+        mThrowIfNoFile = throwIfNoFile;
+    }
+
     /**
      * Set an alternate directory.
      */
