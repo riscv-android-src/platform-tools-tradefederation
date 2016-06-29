@@ -18,6 +18,7 @@ package com.android.tradefed.device;
 
 import com.android.ddmlib.IDevice;
 import com.android.tradefed.device.IManagedTestDevice.DeviceEventResponse;
+import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.util.ConditionPriorityBlockingQueue.IMatcher;
 
 import java.util.ArrayList;
@@ -129,6 +130,7 @@ class ManagedDeviceList implements Iterable<IManagedTestDevice> {
      * @param serials the devices currently on fastboot
      */
     public void updateFastbootStates(Set<String> serials) {
+        List<IManagedTestDevice> toRemove = new ArrayList<>();
         mListLock.lock();
         try {
             for (IManagedTestDevice d : mList) {
@@ -137,11 +139,15 @@ class ManagedDeviceList implements Iterable<IManagedTestDevice> {
                 } else if (d.getDeviceState() == TestDeviceState.FASTBOOT) {
                     // device was previously on fastboot, assume its gone now
                     d.setDeviceState(TestDeviceState.NOT_AVAILABLE);
-                    // TODO: change allocation state?
+                    CLog.d("Device %s was in fastboot and not found anymore", d.getSerialNumber());
+                    toRemove.add(d);
                 }
             }
         } finally {
             mListLock.unlock();
+        }
+        for (IManagedTestDevice d : toRemove) {
+            handleDeviceEvent(d, DeviceEvent.DISCONNECTED);
         }
     }
 

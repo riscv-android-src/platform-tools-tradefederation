@@ -183,8 +183,8 @@ public class DeviceManager implements IDeviceManager {
             // don't set fastboot enabled bit until mFastbootListeners has been initialized
             mFastbootEnabled = true;
             deviceFactory.setFastbootEnabled(mFastbootEnabled);
-            // TODO: consider only adding fastboot devices if explicit option is set, because
-            // device property selection options won't work properly with a device in fastboot
+            // Populate the fastboot devices
+            // TODO: remove when refactoring fastboot handling
             addFastbootDevices();
         } else {
             CLog.w("Fastboot is not available.");
@@ -1014,20 +1014,25 @@ public class DeviceManager implements IDeviceManager {
         public void run() {
             final FastbootHelper fastboot = new FastbootHelper(getRunUtil(), mFastbootPath);
             while (!mQuit) {
-                // only poll fastboot devices if there are listeners, as polling it
-                // indiscriminately can cause fastboot commands to hang
-                if (!mFastbootListeners.isEmpty()) {
-                    Set<String> serials = fastboot.getDevices();
-                    if (serials != null) {
-                        mManagedDeviceList.updateFastbootStates(serials);
-
-                        // create a copy of listeners for notification to prevent deadlocks
-                        Collection<IFastbootListener> listenersCopy =
-                                new ArrayList<IFastbootListener>(mFastbootListeners.size());
-                        listenersCopy.addAll(mFastbootListeners);
-                        for (IFastbootListener listener : listenersCopy) {
-                            listener.stateUpdated();
+                Set<String> serials = fastboot.getDevices();
+                if (serials != null) {
+                    // Update known fastboot devices state
+                    mManagedDeviceList.updateFastbootStates(serials);
+                    // Add new fastboot devices.
+                    for (String serial : serials) {
+                        FastbootDevice d = new FastbootDevice(serial);
+                        if (mGlobalDeviceFilter != null && mGlobalDeviceFilter.matches(d)) {
+                            addAvailableDevice(d);
                         }
+                    }
+                }
+                if (!mFastbootListeners.isEmpty()) {
+                    // create a copy of listeners for notification to prevent deadlocks
+                    Collection<IFastbootListener> listenersCopy =
+                            new ArrayList<IFastbootListener>(mFastbootListeners.size());
+                    listenersCopy.addAll(mFastbootListeners);
+                    for (IFastbootListener listener : listenersCopy) {
+                        listener.stateUpdated();
                     }
                 }
                 getRunUtil().sleep(FASTBOOT_POLL_WAIT_TIME);

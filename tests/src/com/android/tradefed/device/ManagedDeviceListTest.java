@@ -16,10 +16,14 @@
 package com.android.tradefed.device;
 
 import com.android.ddmlib.IDevice;
+import com.android.tradefed.device.IManagedTestDevice.DeviceEventResponse;
 
 import junit.framework.TestCase;
 
 import org.easymock.EasyMock;
+
+import java.util.HashSet;
+import java.util.Set;
 
 /**
  * Unit tests for {@link ManagedDeviceList}.
@@ -102,6 +106,48 @@ public class ManagedDeviceListTest extends TestCase {
         d.handleAllocationEvent(DeviceEvent.FREE_AVAILABLE);
         // verify available device is removed from list on disconnect
         mManagedDeviceList.handleDeviceEvent(d, DeviceEvent.DISCONNECTED);
+        assertEquals(0, mManagedDeviceList.size());
+    }
+
+    /**
+     * Test for {@link ManagedDeviceList#updateFastbootStates(Set)} when device switch to fastboot
+     * state.
+     */
+    public void testUpdateFastbootState() {
+        IManagedTestDevice mockDevice = EasyMock.createMock(IManagedTestDevice.class);
+        EasyMock.expect(mockDevice.getSerialNumber()).andReturn("serial1");
+        mockDevice.setDeviceState(TestDeviceState.FASTBOOT);
+        EasyMock.expectLastCall();
+        mManagedDeviceList.add(mockDevice);
+        assertEquals(1, mManagedDeviceList.size());
+        EasyMock.replay(mockDevice);
+        Set<String> serialFastbootSet = new HashSet<>();
+        serialFastbootSet.add("serial1");
+        mManagedDeviceList.updateFastbootStates(serialFastbootSet);
+        EasyMock.verify(mockDevice);
+        // Device is still showing in the list of device
+        assertEquals(1, mManagedDeviceList.size());
+    }
+
+    /**
+     * Test for {@link ManagedDeviceList#updateFastbootStates(Set)} when device was in fastboot and
+     * appears to be gone now.
+     */
+    public void testUpdateFastbootState_gone() {
+        IManagedTestDevice mockDevice = EasyMock.createMock(IManagedTestDevice.class);
+        EasyMock.expect(mockDevice.getSerialNumber()).andStubReturn("serial1");
+        EasyMock.expect(mockDevice.getDeviceState()).andReturn(TestDeviceState.FASTBOOT);
+        mockDevice.setDeviceState(TestDeviceState.NOT_AVAILABLE);
+        EasyMock.expectLastCall();
+        DeviceEventResponse der = new DeviceEventResponse(DeviceAllocationState.Unknown, true);
+        EasyMock.expect(mockDevice.handleAllocationEvent(DeviceEvent.DISCONNECTED)).andReturn(der);
+        mManagedDeviceList.add(mockDevice);
+        assertEquals(1, mManagedDeviceList.size());
+        EasyMock.replay(mockDevice);
+        Set<String> serialFastbootSet = new HashSet<>();
+        mManagedDeviceList.updateFastbootStates(serialFastbootSet);
+        EasyMock.verify(mockDevice);
+        // Device has been removed from list
         assertEquals(0, mManagedDeviceList.size());
     }
 }
