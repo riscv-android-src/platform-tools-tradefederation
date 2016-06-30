@@ -35,7 +35,7 @@ import java.util.concurrent.TimeUnit;
 /**
  * Helper class for monitoring the state of a {@link IDevice} with no framework support.
  */
-public class AndroidNativeDeviceStateMonitor implements IDeviceStateMonitor {
+public class NativeDeviceStateMonitor implements IDeviceStateMonitor {
 
     static final String BOOTCOMPLETE_PROP = "dev.bootcomplete";
 
@@ -60,7 +60,7 @@ public class AndroidNativeDeviceStateMonitor implements IDeviceStateMonitor {
 
     protected static final String PERM_DENIED_ERROR_PATTERN = "Permission denied";
 
-    public AndroidNativeDeviceStateMonitor(IDeviceManager mgr, IDevice device,
+    public NativeDeviceStateMonitor(IDeviceManager mgr, IDevice device,
             boolean fastbootEnabled) {
         mMgr = mgr;
         mDevice = device;

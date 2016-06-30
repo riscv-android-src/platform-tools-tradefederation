@@ -70,7 +70,7 @@ import javax.annotation.concurrent.GuardedBy;
  * Default implementation of a {@link ITestDevice}
  * Non-full stack android devices.
  */
-public class AndroidNativeDevice implements IManagedTestDevice {
+public class NativeDevice implements IManagedTestDevice {
 
     /** the default number of command retry attempts to perform */
     protected static final int MAX_RETRY_ATTEMPTS = 2;
@@ -211,7 +211,7 @@ public class AndroidNativeDevice implements IManagedTestDevice {
      * @param allocationMonitor the {@link IDeviceMonitor} to inform of allocation state changes.
      *            Can be null
      */
-    public AndroidNativeDevice(IDevice device, IDeviceStateMonitor stateMonitor,
+    public NativeDevice(IDevice device, IDeviceStateMonitor stateMonitor,
             IDeviceMonitor allocationMonitor) {
         throwIfNull(device);
         throwIfNull(stateMonitor);

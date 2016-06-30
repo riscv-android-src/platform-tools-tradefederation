@@ -30,9 +30,9 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * Unit tests for {@link AndroidNativeDevice}.
+ * Unit tests for {@link NativeDevice}.
  */
-public class AndroidNativeDeviceTest extends TestCase {
+public class NativeDeviceTest extends TestCase {
 
     private static final String MOCK_DEVICE_SERIAL = "serial";
     private static final String FAKE_NETWORK_SSID = "FakeNet";
@@ -49,7 +49,7 @@ public class AndroidNativeDeviceTest extends TestCase {
     /**
      * A {@link TestDevice} that is suitable for running tests against
      */
-    private class TestableAndroidNativeDevice extends AndroidNativeDevice {
+    private class TestableAndroidNativeDevice extends NativeDevice {
         public TestableAndroidNativeDevice() {
             super(mMockIDevice, mMockStateMonitor, mMockDvcMonitor);
         }
@@ -107,7 +107,7 @@ public class AndroidNativeDeviceTest extends TestCase {
 
     /**
      * Test return exception for package installation
-     * {@link AndroidNativeDevice#installPackage(File, boolean, String...)}.
+     * {@link NativeDevice#installPackage(File, boolean, String...)}.
      */
     public void testInstallPackages_exception() {
         try {
@@ -122,7 +122,7 @@ public class AndroidNativeDeviceTest extends TestCase {
 
     /**
      * Test return exception for package installation
-     * {@link AndroidNativeDevice#uninstallPackage(String)}.
+     * {@link NativeDevice#uninstallPackage(String)}.
      */
     public void testUninstallPackages_exception() {
         try {
@@ -137,7 +137,7 @@ public class AndroidNativeDeviceTest extends TestCase {
 
     /**
      * Test return exception for package installation
-     * {@link AndroidNativeDevice#installPackage(File, boolean, boolean, String...)}.
+     * {@link NativeDevice#installPackage(File, boolean, boolean, String...)}.
      */
     public void testInstallPackagesBool_exception() {
         try {
@@ -152,7 +152,7 @@ public class AndroidNativeDeviceTest extends TestCase {
 
     /**
      * Test return exception for package installation
-     * {@link AndroidNativeDevice#installPackageForUser(File, boolean, int, String...)}.
+     * {@link NativeDevice#installPackageForUser(File, boolean, int, String...)}.
      */
     public void testInstallPackagesForUser_exception() {
         try {
@@ -167,7 +167,7 @@ public class AndroidNativeDeviceTest extends TestCase {
 
     /**
      * Test return exception for package installation
-     * {@link AndroidNativeDevice#installPackageForUser(File, boolean, boolean, int, String...)}.
+     * {@link NativeDevice#installPackageForUser(File, boolean, boolean, int, String...)}.
      */
     public void testInstallPackagesForUserWithPermission_exception() {
         try {
@@ -181,7 +181,7 @@ public class AndroidNativeDeviceTest extends TestCase {
     }
 
     /**
-     * Unit test for {@link AndroidNativeDevice#getInstalledPackageNames()}.
+     * Unit test for {@link NativeDevice#getInstalledPackageNames()}.
      */
     public void testGetInstalledPackageNames_exception() throws Exception {
         try {
@@ -193,7 +193,7 @@ public class AndroidNativeDeviceTest extends TestCase {
     }
 
     /**
-     * Unit test for {@link AndroidNativeDevice#getScreenshot()}.
+     * Unit test for {@link NativeDevice#getScreenshot()}.
      */
     public void testGetScreenshot_exception() throws Exception {
         try {
@@ -205,14 +205,14 @@ public class AndroidNativeDeviceTest extends TestCase {
     }
 
     /**
-     * Unit test for {@link AndroidNativeDevice#pushDir(File, String)}.
+     * Unit test for {@link NativeDevice#pushDir(File, String)}.
      */
     public void testPushDir_notADir() throws Exception {
         assertFalse(mTestDevice.pushDir(new File(""), ""));
     }
 
     /**
-     * Unit test for {@link AndroidNativeDevice#pushDir(File, String)}.
+     * Unit test for {@link NativeDevice#pushDir(File, String)}.
      */
     public void testPushDir_childFile() throws Exception {
         mTestDevice = new TestableAndroidNativeDevice() {
@@ -229,7 +229,7 @@ public class AndroidNativeDeviceTest extends TestCase {
     }
 
     /**
-     * Unit test for {@link AndroidNativeDevice#pushDir(File, String)}.
+     * Unit test for {@link NativeDevice#pushDir(File, String)}.
      */
     public void testPushDir_childDir() throws Exception {
         mTestDevice = new TestableAndroidNativeDevice() {
@@ -251,7 +251,7 @@ public class AndroidNativeDeviceTest extends TestCase {
     }
 
     /**
-     * Unit test for {@link AndroidNativeDevice#getCurrentUser()}.
+     * Unit test for {@link NativeDevice#getCurrentUser()}.
      */
     public void testGetCurrentUser_exception() throws Exception {
         try {
@@ -263,7 +263,7 @@ public class AndroidNativeDeviceTest extends TestCase {
     }
 
     /**
-     * Unit test for {@link AndroidNativeDevice#getUserFlags(int)}.
+     * Unit test for {@link NativeDevice#getUserFlags(int)}.
      */
     public void testGetUserFlags_exception() throws Exception {
         try {
@@ -275,7 +275,7 @@ public class AndroidNativeDeviceTest extends TestCase {
     }
 
     /**
-     * Unit test for {@link AndroidNativeDevice#getUserSerialNumber(int)}.
+     * Unit test for {@link NativeDevice#getUserSerialNumber(int)}.
      */
     public void testGetUserSerialNumber_exception() throws Exception {
         try {
@@ -287,7 +287,7 @@ public class AndroidNativeDeviceTest extends TestCase {
     }
 
     /**
-     * Unit test for {@link AndroidNativeDevice#switchUser(int)}.
+     * Unit test for {@link NativeDevice#switchUser(int)}.
      */
     public void testSwitchUser_exception() throws Exception {
         try {
@@ -299,7 +299,7 @@ public class AndroidNativeDeviceTest extends TestCase {
     }
 
     /**
-     * Unit test for {@link AndroidNativeDevice#switchUser(int, long)}.
+     * Unit test for {@link NativeDevice#switchUser(int, long)}.
      */
     public void testSwitchUserTimeout_exception() throws Exception {
         try {
@@ -311,7 +311,7 @@ public class AndroidNativeDeviceTest extends TestCase {
     }
 
     /**
-     * Unit test for {@link AndroidNativeDevice#stopUser(int)}.
+     * Unit test for {@link NativeDevice#stopUser(int)}.
      */
     public void testStopUser_exception() throws Exception {
         try {
@@ -323,7 +323,7 @@ public class AndroidNativeDeviceTest extends TestCase {
     }
 
     /**
-     * Unit test for {@link AndroidNativeDevice#stopUser(int, boolean, boolean)}.
+     * Unit test for {@link NativeDevice#stopUser(int, boolean, boolean)}.
      */
     public void testStopUserFlags_exception() throws Exception {
         try {
@@ -335,7 +335,7 @@ public class AndroidNativeDeviceTest extends TestCase {
     }
 
     /**
-     * Unit test for {@link AndroidNativeDevice#isUserRunning(int)}.
+     * Unit test for {@link NativeDevice#isUserRunning(int)}.
      */
     public void testIsUserIdRunning_exception() throws Exception {
         try {
@@ -347,7 +347,7 @@ public class AndroidNativeDeviceTest extends TestCase {
     }
 
     /**
-     * Unit test for {@link AndroidNativeDevice#hasFeature(String)}.
+     * Unit test for {@link NativeDevice#hasFeature(String)}.
      */
     public void testHasFeature_exception() throws Exception {
         try {
@@ -359,7 +359,7 @@ public class AndroidNativeDeviceTest extends TestCase {
     }
 
     /**
-     * Unit test for {@link AndroidNativeDevice#getSetting(String, String)}.
+     * Unit test for {@link NativeDevice#getSetting(String, String)}.
      */
     public void testGetSettingSystemUser_exception() throws Exception {
         try {
@@ -371,7 +371,7 @@ public class AndroidNativeDeviceTest extends TestCase {
     }
 
     /**
-     * Unit test for {@link AndroidNativeDevice#getSetting(int, String, String)}.
+     * Unit test for {@link NativeDevice#getSetting(int, String, String)}.
      */
     public void testGetSetting_exception() throws Exception {
         try {
@@ -383,7 +383,7 @@ public class AndroidNativeDeviceTest extends TestCase {
     }
 
     /**
-     * Unit test for {@link AndroidNativeDevice#setSetting(String, String, String)}.
+     * Unit test for {@link NativeDevice#setSetting(String, String, String)}.
      */
     public void testSetSettingSystemUser_exception() throws Exception {
         try {
@@ -395,7 +395,7 @@ public class AndroidNativeDeviceTest extends TestCase {
     }
 
     /**
-     * Unit test for {@link AndroidNativeDevice#setSetting(int, String, String, String)}.
+     * Unit test for {@link NativeDevice#setSetting(int, String, String, String)}.
      */
     public void testSetSetting_exception() throws Exception {
         try {
@@ -407,7 +407,7 @@ public class AndroidNativeDeviceTest extends TestCase {
     }
 
     /**
-     * Unit test for {@link AndroidNativeDevice#getAndroidId(int)}.
+     * Unit test for {@link NativeDevice#getAndroidId(int)}.
      */
     public void testGetAndroidId_exception() throws Exception {
         try {
@@ -419,7 +419,7 @@ public class AndroidNativeDeviceTest extends TestCase {
     }
 
     /**
-     * Unit test for {@link AndroidNativeDevice#getAndroidIds()}.
+     * Unit test for {@link NativeDevice#getAndroidIds()}.
      */
     public void testGetAndroidIds_exception() throws Exception {
         try {
@@ -431,7 +431,7 @@ public class AndroidNativeDeviceTest extends TestCase {
     }
 
     /**
-     * Unit test for {@link AndroidNativeDevice#connectToWifiNetworkIfNeeded(String, String)}.
+     * Unit test for {@link NativeDevice#connectToWifiNetworkIfNeeded(String, String)}.
      */
     public void testConnectToWifiNetworkIfNeeded_alreadyConnected()
             throws DeviceNotAvailableException {
@@ -444,7 +444,7 @@ public class AndroidNativeDeviceTest extends TestCase {
     }
 
     /**
-     * Unit test for {@link AndroidNativeDevice#connectToWifiNetwork(String, String)}.
+     * Unit test for {@link NativeDevice#connectToWifiNetwork(String, String)}.
      */
     public void testConnectToWifiNetwork_success() throws DeviceNotAvailableException {
         EasyMock.expect(mMockWifi.connectToNetwork(FAKE_NETWORK_SSID, FAKE_NETWORK_PASSWORD,
@@ -459,7 +459,7 @@ public class AndroidNativeDeviceTest extends TestCase {
     }
 
     /**
-     * Unit test for {@link AndroidNativeDevice#connectToWifiNetwork(String, String)} for a failure
+     * Unit test for {@link NativeDevice#connectToWifiNetwork(String, String)} for a failure
      * to connect case.
      */
     public void testConnectToWifiNetwork_failure() throws DeviceNotAvailableException {
@@ -479,7 +479,7 @@ public class AndroidNativeDeviceTest extends TestCase {
     }
 
     /**
-     * Unit test for {@link AndroidNativeDevice#checkWifiConnection(String)}.
+     * Unit test for {@link NativeDevice#checkWifiConnection(String)}.
      */
     public void testCheckWifiConnection() throws DeviceNotAvailableException {
         EasyMock.expect(mMockWifi.isWifiEnabled()).andReturn(true);
@@ -493,7 +493,7 @@ public class AndroidNativeDeviceTest extends TestCase {
     }
 
     /**
-     * Unit test for {@link AndroidNativeDevice#checkWifiConnection(String)} for a failure.
+     * Unit test for {@link NativeDevice#checkWifiConnection(String)} for a failure.
      */
     public void testCheckWifiConnection_failure() throws DeviceNotAvailableException {
         EasyMock.expect(mMockWifi.isWifiEnabled()).andReturn(false);
@@ -503,7 +503,7 @@ public class AndroidNativeDeviceTest extends TestCase {
     }
 
     /**
-     * Unit test for {@link AndroidNativeDevice#isWifiEnabled()}.
+     * Unit test for {@link NativeDevice#isWifiEnabled()}.
      */
     public void testIsWifiEnabled() throws DeviceNotAvailableException {
         EasyMock.expect(mMockWifi.isWifiEnabled()).andReturn(true);
@@ -513,7 +513,7 @@ public class AndroidNativeDeviceTest extends TestCase {
     }
 
     /**
-     * Unit test for {@link AndroidNativeDevice#isWifiEnabled()} with runtime exception from
+     * Unit test for {@link NativeDevice#isWifiEnabled()} with runtime exception from
      * wifihelper.
      */
     public void testIsWifiEnabled_exception() throws DeviceNotAvailableException {
@@ -524,7 +524,7 @@ public class AndroidNativeDeviceTest extends TestCase {
     }
 
     /**
-     * Unit test for {@link AndroidNativeDevice#disconnectFromWifi()}.
+     * Unit test for {@link NativeDevice#disconnectFromWifi()}.
      */
     public void testDisconnectFromWifi() throws DeviceNotAvailableException {
         EasyMock.expect(mMockWifi.disconnectFromNetwork()).andReturn(true);
@@ -534,7 +534,7 @@ public class AndroidNativeDeviceTest extends TestCase {
     }
 
     /**
-     * Unit test for {@link AndroidNativeDevice#enableNetworkMonitor()}.
+     * Unit test for {@link NativeDevice#enableNetworkMonitor()}.
      */
     public void testEnableNetworkMonitor() throws DeviceNotAvailableException {
         EasyMock.expect(mMockWifi.stopMonitor()).andReturn(null);
@@ -546,7 +546,7 @@ public class AndroidNativeDeviceTest extends TestCase {
     }
 
     /**
-     * Unit test for {@link AndroidNativeDevice#enableNetworkMonitor()} in case of failure.
+     * Unit test for {@link NativeDevice#enableNetworkMonitor()} in case of failure.
      */
     public void testEnableNetworkMonitor_failure() throws DeviceNotAvailableException {
         EasyMock.expect(mMockWifi.stopMonitor()).andReturn(null);
@@ -558,7 +558,7 @@ public class AndroidNativeDeviceTest extends TestCase {
     }
 
     /**
-     * Unit test for {@link AndroidNativeDevice#disableNetworkMonitor()}.
+     * Unit test for {@link NativeDevice#disableNetworkMonitor()}.
      */
     public void testDisableNetworkMonitor() throws DeviceNotAvailableException {
         List<Long> samples = new ArrayList<Long>();
@@ -572,7 +572,7 @@ public class AndroidNativeDeviceTest extends TestCase {
     }
 
     /**
-     * Unit test for {@link AndroidNativeDevice#reconnectToWifiNetwork()}.
+     * Unit test for {@link NativeDevice#reconnectToWifiNetwork()}.
      */
     public void testReconnectToWifiNetwork() throws DeviceNotAvailableException {
         EasyMock.expect(mMockWifi.checkConnectivity(mTestDevice.getOptions().getConnCheckUrl()))
@@ -592,7 +592,7 @@ public class AndroidNativeDeviceTest extends TestCase {
     }
 
     /**
-     * Unit test for {@link AndroidNativeDevice#isHeadless()}.
+     * Unit test for {@link NativeDevice#isHeadless()}.
      */
     public void testIsHeadless() throws DeviceNotAvailableException {
         mTestDevice = new TestableAndroidNativeDevice() {
@@ -605,7 +605,7 @@ public class AndroidNativeDeviceTest extends TestCase {
     }
 
     /**
-     * Unit test for {@link AndroidNativeDevice#isHeadless()}.
+     * Unit test for {@link NativeDevice#isHeadless()}.
      */
     public void testIsHeadless_notHeadless() throws DeviceNotAvailableException {
         mTestDevice = new TestableAndroidNativeDevice() {
@@ -618,7 +618,7 @@ public class AndroidNativeDeviceTest extends TestCase {
     }
 
     /**
-     * Unit test for {@link AndroidNativeDevice#getDeviceDate()}.
+     * Unit test for {@link NativeDevice#getDeviceDate()}.
      */
     public void testGetDeviceDate() throws DeviceNotAvailableException {
         mTestDevice = new TestableAndroidNativeDevice() {
@@ -631,7 +631,7 @@ public class AndroidNativeDeviceTest extends TestCase {
     }
 
     /**
-     * Unit test for {@link AndroidNativeDevice#getDeviceDate()}.
+     * Unit test for {@link NativeDevice#getDeviceDate()}.
      */
     public void testGetDeviceDate_wrongformat() throws DeviceNotAvailableException {
         mTestDevice = new TestableAndroidNativeDevice() {

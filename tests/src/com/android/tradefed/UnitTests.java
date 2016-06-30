@@ -39,7 +39,7 @@ import com.android.tradefed.config.GlobalConfigurationTest;
 import com.android.tradefed.config.OptionCopierTest;
 import com.android.tradefed.config.OptionSetterTest;
 import com.android.tradefed.config.OptionUpdateRuleTest;
-import com.android.tradefed.device.AndroidNativeDeviceTest;
+import com.android.tradefed.device.NativeDeviceTest;
 import com.android.tradefed.device.BackgroundDeviceActionTest;
 import com.android.tradefed.device.CpuStatsCollectorTest;
 import com.android.tradefed.device.DeviceManagerTest;
@@ -194,7 +194,6 @@ public class UnitTests extends DeviceTestSuite {
         addTestSuite(OptionUpdateRuleTest.class);
 
         // device
-        addTestSuite(AndroidNativeDeviceTest.class);
         addTestSuite(BackgroundDeviceActionTest.class);
         addTestSuite(CpuStatsCollectorTest.class);
         addTestSuite(DeviceManagerTest.class);
@@ -205,6 +204,7 @@ public class UnitTests extends DeviceTestSuite {
         addTestSuite(FastbootHelperTest.class);
         addTestSuite(ManagedDeviceListTest.class);
         addTestSuite(ManagedTestDeviceFactoryTest.class);
+        addTestSuite(NativeDeviceTest.class);
         addTestSuite(PropertyChangerTest.class);
         addTestSuite(ReconnectingRecoveryTest.class);
         addTestSuite(RemoteAndroidDeviceTest.class);
