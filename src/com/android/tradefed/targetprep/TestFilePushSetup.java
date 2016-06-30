@@ -73,6 +73,13 @@ public class TestFilePushSetup implements ITargetPreparer {
         mTestPaths.add(fileName);
     }
 
+    /**
+     * Retrieves the list of files to be pushed from test zip onto device
+     */
+    protected Collection<String> getTestFileNames() {
+        return mTestPaths;
+    }
+
     protected void clearTestFileName() {
         mTestPaths.clear();
     }
