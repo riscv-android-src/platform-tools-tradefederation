@@ -74,6 +74,11 @@ public class CommandOptions implements ICommandOptions {
             "take a bugreport when the test invocation has ended")
     private boolean mTakeBugreportOnInvocationEnded = false;
 
+    @Option(name = "invocation-timeout", description =
+            "the maximum time to wait for an invocation to terminate before attempting to force"
+            + "stop it.", isTimeVal = true)
+    private long mInvocationTimeout = 0;
+
     /**
      * Set the help mode for the config.
      * <p/>
@@ -111,6 +116,7 @@ public class CommandOptions implements ICommandOptions {
     /**
      * {@inheritDoc}
      */
+    @Override
     public boolean isJsonHelpMode() {
         return mJsonHelpMode;
     }
@@ -217,5 +223,21 @@ public class CommandOptions implements ICommandOptions {
     @Override
     public boolean takeBugreportOnInvocationEnded() {
         return mTakeBugreportOnInvocationEnded;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public long getInvocationTimeout() {
+        return mInvocationTimeout;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void setInvocationTimeout(Long invocationTimeout) {
+        mInvocationTimeout = invocationTimeout;
     }
 }

@@ -80,6 +80,8 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.Timer;
+import java.util.TimerTask;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ScheduledThreadPoolExecutor;
@@ -438,11 +440,38 @@ public class CommandScheduler extends Thread implements ICommandScheduler, IComm
         }
     }
 
+    /**
+     * Monitor Class for {@link InvocationThread} to make sure it does not run for too long.
+     */
+    private class InvocationThreadMonitor extends TimerTask {
+
+        private InvocationThread mInvocationThread = null;
+        private boolean mTriggered = false;
+
+        public InvocationThreadMonitor(InvocationThread toMonitor) {
+            mInvocationThread = toMonitor;
+        }
+
+        @Override
+        public void run() {
+            if (mInvocationThread != null) {
+                mTriggered = true;
+                mInvocationThread.stopInvocation("Invocation Timeout Reached.");
+            }
+        }
+
+        public boolean isTriggered() {
+            return mTriggered;
+        }
+    }
+
     private class InvocationThread extends Thread {
         private final IScheduledInvocationListener[] mListeners;
         private final ITestDevice mDevice;
         private final ExecutableCommand mCmd;
         private final ITestInvocation mInvocation;
+        private final InvocationThreadMonitor mInvocationThreadMonitor;
+        private final Timer mExecutionTimer;
         private long mStartTime = -1;
 
         public InvocationThread(String name, ITestDevice device, ExecutableCommand command,
@@ -453,6 +482,10 @@ public class CommandScheduler extends Thread implements ICommandScheduler, IComm
             mDevice = device;
             mCmd = command;
             mInvocation = createRunInstance();
+
+            // Daemon timer
+            mExecutionTimer = new Timer(true);
+            mInvocationThreadMonitor = new InvocationThreadMonitor(this);
         }
 
         public long getStartTime() {
@@ -468,6 +501,11 @@ public class CommandScheduler extends Thread implements ICommandScheduler, IComm
 
             try {
                 mCmd.commandStarted();
+                long invocTimeout = config.getCommandOptions().getInvocationTimeout();
+                if (invocTimeout > 0) {
+                    CLog.i("Setting a timer for the invocation in %sms", invocTimeout);
+                    mExecutionTimer.schedule(mInvocationThreadMonitor, invocTimeout);
+                }
                 instance.invoke(mDevice, config, new Rescheduler(mCmd.getCommandTracker()),
                         mListeners);
                 setLastInvocationExitCode(0);
@@ -490,6 +528,10 @@ public class CommandScheduler extends Thread implements ICommandScheduler, IComm
                 setLastInvocationExitCode(1);
                 CLog.e(e);
             } finally {
+                mExecutionTimer.cancel();
+                if (mInvocationThreadMonitor.isTriggered()) {
+                    CLog.e("Invocation reached its timeout. Cleaning up.");
+                }
                 long elapsedTime = System.currentTimeMillis() - mStartTime;
                 CLog.i("Updating command %d with elapsed time %d ms",
                        mCmd.getCommandTracker().getId(), elapsedTime);
@@ -525,7 +567,6 @@ public class CommandScheduler extends Thread implements ICommandScheduler, IComm
          * all running invocations.
          */
         public void stopInvocation(String message) {
-
             if (mDevice != null && mDevice.getIDevice().isOnline()) {
                 // Kill all running processes on device.
                 try {
@@ -537,10 +578,16 @@ public class CommandScheduler extends Thread implements ICommandScheduler, IComm
             // If invocation is not currently in an interruptible state we provide a timer
             // after which it will become interruptible.
             // If timeout is 0, we do not enforce future interruption.
-            if (getShutdownTimeout() != 0) {
+            if (!mInvocationThreadMonitor.isTriggered() && getShutdownTimeout() != 0) {
                 RunUtil.getDefault().setInterruptibleInFuture(this, getShutdownTimeout());
             }
             RunUtil.getDefault().interrupt(this, message);
+
+            if (mInvocationThreadMonitor.isTriggered()) {
+                // if we enforce the invocation timeout, we force interrupt the thread.
+                CLog.e("Forcing the interruption.");
+                this.interrupt();
+            }
         }
 
         /**
