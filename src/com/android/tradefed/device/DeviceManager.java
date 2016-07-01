@@ -19,6 +19,7 @@ package com.android.tradefed.device;
 import com.google.common.annotations.VisibleForTesting;
 
 import com.android.ddmlib.AndroidDebugBridge.IDeviceChangeListener;
+import com.android.ddmlib.IDevice.DeviceState;
 import com.android.ddmlib.DdmPreferences;
 import com.android.ddmlib.EmulatorConsole;
 import com.android.ddmlib.IDevice;
@@ -875,9 +876,7 @@ public class DeviceManager implements IDeviceManager {
     }
 
     /**
-     * Gets a displayable string for given object
-     * @param o
-     * @return
+     * Return the displayable string for given object
      */
     private String getDisplay(Object o) {
         return o == null ? "unknown" : o.toString();
@@ -935,6 +934,9 @@ public class DeviceManager implements IDeviceManager {
                         DeviceAllocationState.Checking_Availability) {
                     checkAndAddAvailableDevice(testDevice);
                 }
+            } else if (DeviceState.OFFLINE.equals(idevice.getState()) ||
+                    DeviceState.UNAUTHORIZED.equals(idevice.getState())) {
+                mManagedDeviceList.handleDeviceEvent(testDevice, DeviceEvent.CONNECTED_OFFLINE);
             }
         }
 
@@ -987,9 +989,10 @@ public class DeviceManager implements IDeviceManager {
             setDaemon(true);
         }
 
-        public void terminate() {
+        @Override
+        public void interrupt() {
             mQuit = true;
-            interrupt();
+            super.interrupt();
         }
 
         @Override
