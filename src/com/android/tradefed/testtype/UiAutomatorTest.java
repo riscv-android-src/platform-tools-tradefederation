@@ -18,6 +18,7 @@ package com.android.tradefed.testtype;
 
 import com.android.ddmlib.FileListingService;
 import com.android.ddmlib.testrunner.IRemoteAndroidTestRunner;
+import com.android.ddmlib.testrunner.ITestRunListener;
 import com.android.ddmlib.testrunner.RemoteAndroidTestRunner;
 import com.android.ddmlib.testrunner.TestIdentifier;
 import com.android.tradefed.config.Option;
@@ -67,6 +68,7 @@ public class UiAutomatorTest implements IRemoteTest, IDeviceTest {
 
     private ITestDevice mDevice = null;
     private IRemoteAndroidTestRunner mRunner = null;
+    protected Collection<ITestRunListener> mListeners = new ArrayList<ITestRunListener>();
 
     @Option(name = "jar-path", description = "path to jars containing UI Automator test cases and"
             + " dependencies; May be repeated. " +
@@ -170,6 +172,7 @@ public class UiAutomatorTest implements IRemoteTest, IDeviceTest {
      */
     @Override
     public void run(ITestInvocationListener listener) throws DeviceNotAvailableException {
+        mListeners.add(listener);
         if (!isInstrumentationTest()) {
             buildJarPaths();
         }
@@ -188,10 +191,10 @@ public class UiAutomatorTest implements IRemoteTest, IDeviceTest {
             ((UiAutomatorRunner)getTestRunner()).setIgnoreSighup(mIgnoreSighup);
         }
         if (mLoggingOption != LoggingOption.OFF) {
-            getDevice().runInstrumentationTests(getTestRunner(), listener,
-                    new LoggingWrapper(listener));
+            mListeners.add(new LoggingWrapper(listener));
+            getDevice().runInstrumentationTests(getTestRunner(), mListeners);
         } else {
-            getDevice().runInstrumentationTests(getTestRunner(), listener);
+            getDevice().runInstrumentationTests(getTestRunner(), mListeners);
         }
 
         if (getTestRunArgMap().containsKey(TRACE_ITERATIONS) &&
