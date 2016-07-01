@@ -18,6 +18,7 @@ package com.android.framework.tests;
 
 import com.android.ddmlib.testrunner.IRemoteAndroidTestRunner;
 import com.android.ddmlib.testrunner.RemoteAndroidTestRunner;
+import com.android.ddmlib.testrunner.TestIdentifier;
 import com.android.ddmlib.testrunner.TestResult;
 import com.android.loganalysis.item.BugreportItem;
 import com.android.loganalysis.item.LogcatItem;
@@ -38,9 +39,8 @@ import junit.framework.Assert;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
-import java.util.Collection;
-import java.util.HashMap;
 import java.util.Map;
+import java.util.Map.Entry;
 
 /**
  * Test that instruments a stress test package, gathers iterations metrics, and posts the results.
@@ -65,9 +65,17 @@ public class FrameworkStressTest implements IDeviceTest, IRemoteTest {
     private String mSetupShellCommand;
 
     private static final String CURRENT_ITERATION_LABEL= "currentiterations";
+    private static final String ANR_COUNT_LABEL = "anrs";
+    private static final String JAVA_CRASH_COUNT_LABEL = "java_crashes";
+    private static final String NATIVE_CRASH_COUNT_LABEL = "native_crashes";
+    private static final String ITERATION_COUNT_LABEL = "iterations";
+
+    private int mNumAnrsTotal = 0;
+    private int mNumJavaCrashesTotal = 0;
+    private int mNumNativeCrashesTotal = 0;
 
     @Override
-    public void run(ITestInvocationListener listener) throws DeviceNotAvailableException {
+    public void run(final ITestInvocationListener listener) throws DeviceNotAvailableException {
         Assert.assertNotNull(mTestDevice);
         if (mSetupShellCommand != null) {
             mTestDevice.executeShellCommand(mSetupShellCommand);
@@ -75,67 +83,24 @@ public class FrameworkStressTest implements IDeviceTest, IRemoteTest {
         IRemoteAndroidTestRunner runner = new RemoteAndroidTestRunner(mTestPackageName,
                 mTestDevice.getIDevice());
         runner.setClassName(mTestClassName);
-        CollectingTestListener collectingListener = new CollectingTestListener();
+        CollectingTestListener collectingListener = new CollectingMetricsTestListener(listener);
         mTestDevice.runInstrumentationTests(runner, collectingListener, listener);
-        // Retrieve bugreport
-        BugreportParser parser = new BugreportParser();
-        BugreportItem bugreport = null;
-        InputStreamSource bugSource = mTestDevice.getBugreport();
 
-        try {
-            listener.testLog(BUGREPORT_LOG_NAME, LogDataType.BUGREPORT, bugSource);
-            bugreport = parser.parse(new BufferedReader(new InputStreamReader(
-                    bugSource.createInputStream())));
-
-            Assert.assertNotNull(bugreport);
-            Assert.assertNotNull(bugreport.getSystemLog());
-        } catch (IOException e) {
-            Assert.fail(String.format("Failed to fetch and parse bugreport for device %s: %s",
-                    mTestDevice.getSerialNumber(), e));
-        } finally {
-            bugSource.cancel();
-        }
-
-        Map<String, String> stressTestMetrics = new HashMap<String, String>();
-        Integer numIterations = 0;
-        Integer numSuccessfulIterations = 0;
-
-        LogcatItem systemLog = bugreport.getSystemLog();
-        Integer numAnrs = systemLog.getAnrs().size();
-        Integer numJavaCrashes = systemLog.getJavaCrashes().size();
-        Integer numNativeCrashes = systemLog.getNativeCrashes().size();
-
-        // Fetch the last iteration count from the InstrumentationTestResult. We only expect to have
-        // one test, and we take the result from the first test result.
-        Collection<TestResult> testResults =
-            collectingListener.getCurrentRunResults().getTestResults().values();
-        if (testResults != null && testResults.iterator().hasNext()) {
-            Map<String, String> testMetrics = testResults.iterator().next().getMetrics();
-            if (testMetrics != null) {
-                CLog.d(testMetrics.toString());
-                // We want to report all test metrics as well.
-                for (String metric : testMetrics.keySet()) {
-                    if (metric.equalsIgnoreCase(CURRENT_ITERATION_LABEL)) {
-                        String test_iterations = testMetrics.get(metric);
-                        numIterations = Integer.parseInt(test_iterations);
-                    } else {
-                        stressTestMetrics.put(metric, testMetrics.get(metric));
-                    }
+        Map<TestIdentifier, TestResult> testResults =
+                collectingListener.getCurrentRunResults().getTestResults();
+        if (testResults != null) {
+            for (Entry<TestIdentifier, TestResult> e : testResults.entrySet()) {
+                TestResult res = e.getValue();
+                Map<String, String> testMetrics = res.getMetrics();
+                if (testMetrics != null) {
+                    CLog.d(testMetrics.toString());
+                    // Post everything to the dashboard.
+                    String label = String.format("%s#%s", mDashboardTestLabel,
+                            e.getKey().getTestName());
+                    reportMetrics(listener, label, testMetrics);
                 }
             }
         }
-
-        // Calculate the number of successful iterations.
-        numSuccessfulIterations = numIterations - numAnrs - numJavaCrashes - numNativeCrashes;
-
-        // Report other metrics from bugreport.
-        stressTestMetrics.put("anrs", numAnrs.toString());
-        stressTestMetrics.put("java_crashes", numJavaCrashes.toString());
-        stressTestMetrics.put("native_crashes", numNativeCrashes.toString());
-        stressTestMetrics.put("iterations", numSuccessfulIterations.toString());
-
-        // Post everything to the dashboard.
-        reportMetrics(listener, mDashboardTestLabel, stressTestMetrics);
     }
 
     /**
@@ -148,7 +113,7 @@ public class FrameworkStressTest implements IDeviceTest, IRemoteTest {
     void reportMetrics(ITestInvocationListener listener, String runName,
             Map<String, String> metrics) {
         // Create an empty testRun to report the parsed runMetrics
-        CLog.d("About to report metrics: %s", metrics);
+        CLog.d("About to report metrics: %s with label: %s", metrics, runName);
         listener.testRunStarted(runName, 0);
         listener.testRunEnded(0, metrics);
     }
@@ -161,5 +126,57 @@ public class FrameworkStressTest implements IDeviceTest, IRemoteTest {
     @Override
     public ITestDevice getDevice() {
         return mTestDevice;
+    }
+
+    /**
+     * Helper class to collect the Framework metrics at the end of each test.
+     */
+    private class CollectingMetricsTestListener extends CollectingTestListener {
+
+        private ITestInvocationListener mListener;
+
+        public CollectingMetricsTestListener(ITestInvocationListener listener) {
+            mListener = listener;
+        }
+
+        @Override
+        public void testEnded(TestIdentifier test, Map<String, String> testMetrics) {
+            // Retrieve bugreport
+            BugreportParser parser = new BugreportParser();
+            BugreportItem bugreport = null;
+            InputStreamSource bugSource = mTestDevice.getBugreport();
+            try {
+                mListener.testLog(BUGREPORT_LOG_NAME, LogDataType.BUGREPORT, bugSource);
+                bugreport = parser.parse(new BufferedReader(new InputStreamReader(
+                        bugSource.createInputStream())));
+                Assert.assertNotNull(bugreport);
+                Assert.assertNotNull(bugreport.getSystemLog());
+            } catch (IOException e) {
+                Assert.fail(String.format("Failed to fetch and parse bugreport for device %s: "
+                        + "%s", mTestDevice.getSerialNumber(), e));
+            } finally {
+                bugSource.cancel();
+            }
+            LogcatItem systemLog = bugreport.getSystemLog();
+            // We only add errors found since last test run.
+            Integer numArns = systemLog.getAnrs().size() - mNumAnrsTotal;
+            mNumAnrsTotal = systemLog.getAnrs().size();
+            testMetrics.put(ANR_COUNT_LABEL, numArns.toString());
+
+            Integer numJavaCrashes = systemLog.getJavaCrashes().size() - mNumJavaCrashesTotal;
+            mNumJavaCrashesTotal = systemLog.getJavaCrashes().size();
+            testMetrics.put(JAVA_CRASH_COUNT_LABEL, numJavaCrashes.toString());
+
+            Integer numNativeCrashes = systemLog.getNativeCrashes().size() - mNumNativeCrashesTotal;
+            mNumNativeCrashesTotal = systemLog.getNativeCrashes().size();
+            testMetrics.put(NATIVE_CRASH_COUNT_LABEL, numNativeCrashes.toString());
+
+            Integer numSuccessfulIterations =
+                    Integer.parseInt(testMetrics.get(CURRENT_ITERATION_LABEL))
+                    - numArns - numJavaCrashes - numNativeCrashes;
+            testMetrics.put(ITERATION_COUNT_LABEL, numSuccessfulIterations.toString());
+
+            super.testEnded(test, testMetrics);
+        }
     }
 }
