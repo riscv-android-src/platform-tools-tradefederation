@@ -810,6 +810,7 @@ public class TestDeviceTest extends TestCase {
      * is active.
      */
     public void testExecuteFastbootCommand_state() throws Exception {
+        final long waitTimeMs = 150;
         // build a fastboot response that will block
         IAnswer<CommandResult> blockResult = new IAnswer<CommandResult>() {
             @Override
@@ -818,7 +819,7 @@ public class TestDeviceTest extends TestCase {
                     // first inform this test that fastboot cmd is executing
                     notifyAll();
                     // now wait for test to unblock us when its done testing logic
-                    wait(1000);
+                    wait(waitTimeMs);
                 }
                 return new CommandResult(CommandStatus.SUCCESS);
             }
@@ -851,7 +852,7 @@ public class TestDeviceTest extends TestCase {
         fastbootThread.start();
         try {
             synchronized (blockResult) {
-                blockResult.wait(1000);
+                blockResult.wait(waitTimeMs);
             }
             // expect to ignore this
             mTestDevice.setDeviceState(TestDeviceState.NOT_AVAILABLE);
