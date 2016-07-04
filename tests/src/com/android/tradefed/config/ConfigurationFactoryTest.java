@@ -39,6 +39,9 @@ import java.util.Map;
 public class ConfigurationFactoryTest extends TestCase {
 
     private ConfigurationFactory mFactory;
+    // Create a real instance for tests that checks the content of our configs. making it static to
+    // reduce the runtime of reloading the config thanks to the caching of configurations.
+    private static ConfigurationFactory mRealFactory = new ConfigurationFactory();
 
     /** the test config name that is built into this jar */
     private static final String TEST_CONFIG = "test-config";
@@ -63,20 +66,18 @@ public class ConfigurationFactoryTest extends TestCase {
      * Sanity test to ensure all config names on classpath are loadable
      */
     public void testLoadAllConfigs() throws ConfigurationException {
-        ConfigurationFactory cf = new ConfigurationFactory();
         // we dry-run the templates otherwise it will always fail.
-        cf.loadAllConfigs(false);
-        assertTrue(cf.getMapConfig().size() > 0);
+        mRealFactory.loadAllConfigs(false);
+        assertTrue(mRealFactory.getMapConfig().size() > 0);
     }
 
     /**
      * Sanity test to ensure all configs on classpath can be fully loaded and parsed
      */
     public void testLoadAndPrintAllConfigs() throws ConfigurationException {
-        ConfigurationFactory cf = new ConfigurationFactory();
         // Printing the help involves more checks since it tries to resolve the config objects.
-        cf.loadAndPrintAllConfigs();
-        assertTrue(cf.getMapConfig().size() > 0);
+        mRealFactory.loadAndPrintAllConfigs();
+        assertTrue(mRealFactory.getMapConfig().size() > 0);
     }
 
     /**
@@ -316,7 +317,7 @@ public class ConfigurationFactoryTest extends TestCase {
     public void testPrintHelp() {
         ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
         PrintStream mockPrintStream = new PrintStream(outputStream);
-        new ConfigurationFactory().printHelp(mockPrintStream);
+        mRealFactory.printHelp(mockPrintStream);
         // verify all the instrument config names are present
         final String usageString = outputStream.toString();
         assertTrue(usageString.contains("instrument"));

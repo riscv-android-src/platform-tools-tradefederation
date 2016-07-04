@@ -23,6 +23,7 @@ import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.targetprep.IDeviceFlasher.UserDataFlashOption;
 import com.android.tradefed.util.CommandResult;
 import com.android.tradefed.util.CommandStatus;
+import com.android.tradefed.util.IRunUtil;
 
 import junit.framework.TestCase;
 
@@ -45,6 +46,7 @@ public class FastbootDeviceFlasherTest extends TestCase {
     private IDeviceBuildInfo mMockBuildInfo;
     private IFlashingResourcesRetriever mMockRetriever;
     private IFlashingResourcesParser mMockParser;
+    private IRunUtil mMockRunUtil;
 
     /**
      * {@inheritDoc}
@@ -62,12 +64,17 @@ public class FastbootDeviceFlasherTest extends TestCase {
         mMockBuildInfo.setUserDataImageFile(new File(TEST_STRING), "0");
         mMockRetriever = EasyMock.createNiceMock(IFlashingResourcesRetriever.class);
         mMockParser = EasyMock.createNiceMock(IFlashingResourcesParser.class);
+        mMockRunUtil = EasyMock.createMock(IRunUtil.class);
 
         mFlasher = new FastbootDeviceFlasher() {
             @Override
             protected IFlashingResourcesParser createFlashingResourcesParser(
                     IDeviceBuildInfo localBuild) {
                 return mMockParser;
+            }
+            @Override
+            protected IRunUtil getRunUtil() {
+                return mMockRunUtil;
             }
         };
         mFlasher.setFlashingResourcesRetriever(mMockRetriever);
@@ -120,9 +127,10 @@ public class FastbootDeviceFlasherTest extends TestCase {
         fastbootResult.setStdout("");
         EasyMock.expect(mMockDevice.executeFastbootCommand("getvar", "version-bootloader")).
                 andReturn(fastbootResult);
-        EasyMock.replay(mMockDevice);
+        EasyMock.replay(mMockDevice, mMockRunUtil);
         String actualVersion = mFlasher.getImageVersion(mMockDevice, "bootloader");
         assertEquals("1.0.1", actualVersion);
+        EasyMock.verify(mMockDevice, mMockRunUtil);
     }
 
     /**
@@ -146,9 +154,12 @@ public class FastbootDeviceFlasherTest extends TestCase {
                 andReturn(fastbootInValidResult);
         EasyMock.expect(mMockDevice.executeFastbootCommand("getvar", "version-baseband")).
                 andReturn(fastbootValidResult);
+        mMockRunUtil.sleep(EasyMock.anyLong());
+        EasyMock.expectLastCall();
 
-        EasyMock.replay(mMockDevice);
+        EasyMock.replay(mMockDevice, mMockRunUtil);
         String actualVersion = mFlasher.getImageVersion(mMockDevice, "baseband");
+        EasyMock.verify(mMockDevice, mMockRunUtil);
         assertEquals("1.0.1", actualVersion);
     }
 
@@ -165,7 +176,7 @@ public class FastbootDeviceFlasherTest extends TestCase {
         // expect a 'flash radio' command
         setFastbootFlashExpectations(mockDevice, "radio");
         mockDevice.rebootIntoBootloader();
-        EasyMock.replay(mockDevice);
+        EasyMock.replay(mockDevice, mMockRunUtil);
 
         FastbootDeviceFlasher flasher = getFlasherWithParserData(
                 String.format("require version-baseband=%s", newBasebandVersion));
@@ -173,7 +184,7 @@ public class FastbootDeviceFlasherTest extends TestCase {
         IDeviceBuildInfo build = new DeviceBuildInfo("1234", "target", "build-name");
         build.setBasebandImage(new File("tmp"), newBasebandVersion);
         flasher.checkAndFlashBaseband(mockDevice, build);
-        EasyMock.verify(mockDevice);
+        EasyMock.verify(mockDevice, mMockRunUtil);
     }
 
     /**
