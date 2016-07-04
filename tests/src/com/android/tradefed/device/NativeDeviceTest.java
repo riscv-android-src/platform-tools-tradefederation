@@ -24,10 +24,13 @@ import junit.framework.TestCase;
 import org.easymock.EasyMock;
 
 import java.io.File;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 /**
  * Unit tests for {@link NativeDevice}.
@@ -248,6 +251,112 @@ public class NativeDeviceTest extends TestCase {
         FileUtil.createTempDir("test1", subDir);
         assertTrue(mTestDevice.pushDir(testDir, ""));
         FileUtil.recursiveDelete(testDir);
+    }
+
+    private List<String> getFlatDir(File root) {
+        List<String> ret = new ArrayList<>();
+        for (File f : root.listFiles()) {
+            if (f.isDirectory()) {
+                String base = f.getName() + "/";
+                ret.add(base);
+                List<String> list = getFlatDir(f);
+                for (String e :list) {
+                    ret.add(base + e);
+                }
+            } else {
+                ret.add(f.getName());
+            }
+        }
+        return ret;
+    }
+
+    public void testPullDir() throws Exception {
+        final String base = "/foo";
+        final String[][] dirs = new String[][]{
+            {base, "bar1/"},
+            {base, "bar2/"},
+            {base + "/bar1", ""},
+            {base + "/bar2", "file1"},
+            {base + "/bar2", "file2"},
+            {base + "/bar2", "bar3/"},
+            {base + "/bar2/bar3", "file1"},
+        };
+        String lsCmd = "ls -Ap1 ";
+        mTestDevice = new TestableAndroidNativeDevice() {
+            @Override
+            public String executeShellCommand(String command) throws DeviceNotAvailableException {
+                if (!command.startsWith(command)) {
+                    fail("unsupported shell command");
+                    return null;
+                }
+                // assuming passed in command should always be a full directory path without
+                // trailing "/"
+                command = command.substring(lsCmd.length());
+                StringBuilder ret = new StringBuilder();
+                for (String[] item : dirs) {
+                    if (item[0].equals(command)) {
+                        if (item[1].isEmpty()) {
+                            return "";
+                        } else {
+                            ret.append(item[1]);
+                            ret.append('\n');
+                        }
+                    }
+                }
+                return ret.toString();
+            };
+            @Override
+            public boolean isDirectory(String path) throws DeviceNotAvailableException {
+                for (String[] item : dirs) {
+                    if (item[0].equals(path)) {
+                        return true;
+                    }
+                }
+                return false;
+            }
+            @Override
+            public boolean pullFile(String remoteFilePath, File localFile)
+                    throws DeviceNotAvailableException {
+                // check that remoteFilePath is valid
+                boolean found = false;
+                for (String[] item : dirs) {
+                    if (String.format("%s/%s", item[0], item[1]).equals(remoteFilePath)) {
+                        found = true;
+                        break;
+                    }
+                }
+                assertTrue("trying to pull non-existent file: " + remoteFilePath, found);
+                try {
+                    return localFile.createNewFile();
+                } catch (IOException ioe) {
+                    throw new RuntimeException("failed to create empty file", ioe);
+                }
+            }
+        };
+        File dir = FileUtil.createTempDir("tf-test");
+        try {
+            mTestDevice.pullDir(base, dir);
+            // verify local directory structure
+            Set<String> files = new HashSet<>();
+            files.addAll(getFlatDir(dir));
+            for (String[] item : dirs) {
+                if (item[1].isEmpty()) {
+                    // skip empty directories (already covered when listing parent directory)
+                    continue;
+                }
+                String path = String.format("%s/%s", item[0], item[1]);
+                // remove the "/foo/" prefix
+                path = path.substring(base.length() + 1);
+                if (!files.contains(path)) {
+                    fail("unknown path: " + path);
+                } else {
+                    files.remove(path);
+                }
+            }
+            assertTrue("failed validation: " + files.toString(), files.isEmpty());
+        } finally {
+            FileUtil.recursiveDelete(dir);
+        }
     }
 
     /**
