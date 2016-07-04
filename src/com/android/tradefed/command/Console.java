@@ -69,7 +69,7 @@ import java.util.regex.Pattern;
  */
 public class Console extends Thread {
 
-    private static final String CONSOLE_PROMPT = "\u001B[0;32mtf >\u001B[0;37m";
+    private static final String CONSOLE_PROMPT = "\u001B[0;32mtf >\u001B[0;0m";
 
     protected static final String HELP_PATTERN = "\\?|h|help";
     protected static final String LIST_PATTERN = "l(?:ist)?";
