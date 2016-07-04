@@ -44,7 +44,7 @@ public class MultiMap<K, V> {
     /**
      * Checks whether the map contains the specified key.
      *
-     * @see {@link Map#containsKey()}
+     * @see Map#containsKey(Object)
      */
     public boolean containsKey(K key) {
         return mInternalMap.containsKey(key);
@@ -53,7 +53,7 @@ public class MultiMap<K, V> {
     /**
      * Checks whether the map contains the specified value.
      *
-     * @see {@link Map#containsValue()}
+     * @see Map#containsValue(Object)
      */
     public boolean containsValue(V value) {
         for (List<V> valueList : mInternalMap.values()) {
@@ -72,7 +72,7 @@ public class MultiMap<K, V> {
     }
 
     /**
-     * @see {@link Map#isEmpty()}
+     * @see Map#isEmpty()
      */
     public boolean isEmpty() {
         return mInternalMap.isEmpty();
@@ -88,7 +88,7 @@ public class MultiMap<K, V> {
     /**
      * Adds the value to the list associated with a key.
      *
-     * @see {@link Map#put()}
+     * @see Map#put(Object, Object)
      */
     public V put(K key, V value) {
         List<V> valueList = mInternalMap.get(key);

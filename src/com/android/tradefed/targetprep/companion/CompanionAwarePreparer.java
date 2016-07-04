@@ -33,7 +33,7 @@ public abstract class CompanionAwarePreparer implements ITargetPreparer {
      * Retrieves the {@link ITestDevice} instance of companion device allocated for the primary
      * {@link ITestDevice}
      * @param primary
-     * @return
+     * @return the {@link ITestDevice} instance of companion device allocated
      * @throws TargetSetupError if no companion device has been allocated for the primary device
      */
     protected ITestDevice getCompanion(ITestDevice primary) throws TargetSetupError {

@@ -20,7 +20,7 @@ package com.android.tradefed.log;
  * An interface to handle terrible failures from
  * {@link com.android.tradefed.log.LogUtil.CLog#wtf(String, Throwable)}
  * <br>
- * @see {@link TerribleFailureEmailHandler} for an example.
+ * @see TerribleFailureEmailHandler
  */
 public interface ITerribleFailureHandler {
 

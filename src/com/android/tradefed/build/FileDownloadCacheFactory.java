@@ -36,7 +36,6 @@ public class FileDownloadCacheFactory {
 
     /**
      * Get the singleton instance of FileDownloadCacheFactory
-     * @return
      */
     public static FileDownloadCacheFactory getInstance() {
         return SingletonHolder.INSTANCE;

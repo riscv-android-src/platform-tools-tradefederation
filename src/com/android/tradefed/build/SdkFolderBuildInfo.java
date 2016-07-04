@@ -35,6 +35,7 @@ public class SdkFolderBuildInfo extends BuildInfo implements ISdkBuildInfo, IFol
     public SdkFolderBuildInfo() {
     }
 
+    @Override
     public void cleanUp() {
         if (mSdkBuild != null) {
             mSdkBuild.cleanUp();
@@ -44,6 +45,7 @@ public class SdkFolderBuildInfo extends BuildInfo implements ISdkBuildInfo, IFol
         }
     }
 
+    @Override
     public File getRootDir() {
         if (mFolderBuild != null) {
             return mFolderBuild.getRootDir();
@@ -51,12 +53,14 @@ public class SdkFolderBuildInfo extends BuildInfo implements ISdkBuildInfo, IFol
         return null;
     }
 
+    @Override
     public void setRootDir(File rootDir) {
         if (mFolderBuild != null) {
             mFolderBuild.setRootDir(rootDir);
         }
     }
 
+    @Override
     public File getSdkDir() {
         if (mSdkBuild != null) {
             return mSdkBuild.getSdkDir();
@@ -64,6 +68,7 @@ public class SdkFolderBuildInfo extends BuildInfo implements ISdkBuildInfo, IFol
         return null;
     }
 
+    @Override
     public File getTestsDir() {
         if (mSdkBuild != null) {
             return mSdkBuild.getTestsDir();
@@ -71,24 +76,28 @@ public class SdkFolderBuildInfo extends BuildInfo implements ISdkBuildInfo, IFol
         return null;
     }
 
+    @Override
     public void setTestsDir(File testsDir) {
         if (mSdkBuild != null) {
             mSdkBuild.setTestsDir(testsDir);
         }
     }
 
+    @Override
     public void setSdkDir(File sdkDir) {
         if (mSdkBuild != null) {
             mSdkBuild.setSdkDir(sdkDir);
         }
     }
 
+    @Override
     public void setSdkDir(File sdkDir, boolean deleteParent) {
         if (mSdkBuild != null) {
             mSdkBuild.setSdkDir(sdkDir, deleteParent);
         }
     }
 
+    @Override
     public String getAndroidToolPath() {
         if (mSdkBuild != null) {
             return mSdkBuild.getAndroidToolPath();
@@ -96,6 +105,7 @@ public class SdkFolderBuildInfo extends BuildInfo implements ISdkBuildInfo, IFol
         return null;
     }
 
+    @Override
     public String getEmulatorToolPath() {
         if (mSdkBuild != null) {
             return mSdkBuild.getEmulatorToolPath();
@@ -103,6 +113,7 @@ public class SdkFolderBuildInfo extends BuildInfo implements ISdkBuildInfo, IFol
         return null;
     }
 
+    @Override
     public String[] getSdkTargets() {
         if (mSdkBuild != null) {
             return mSdkBuild.getSdkTargets();
@@ -110,6 +121,7 @@ public class SdkFolderBuildInfo extends BuildInfo implements ISdkBuildInfo, IFol
         return null;
     }
 
+    @Override
     public void makeToolsExecutable() {
         if (mSdkBuild != null) {
             mSdkBuild.makeToolsExecutable();

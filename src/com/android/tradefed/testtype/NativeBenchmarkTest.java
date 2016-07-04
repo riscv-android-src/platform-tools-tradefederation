@@ -123,7 +123,7 @@ public class NativeBenchmarkTest implements IDeviceTest, IRemoteTest {
      *
      * @return the name of the native test module to run, or null if not set
      */
-    public String getModuleName(String moduleName) {
+    public String getModuleName() {
         return mTestModule;
     }
 

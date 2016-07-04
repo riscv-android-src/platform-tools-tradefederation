@@ -74,7 +74,6 @@ public abstract class AbstractXmlParser {
 
     /**
      * Creates a {@link DefaultHandler} to process the xml
-     * @return
      */
     protected abstract DefaultHandler createXmlHandler();
 

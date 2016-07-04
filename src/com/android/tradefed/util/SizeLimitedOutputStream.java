@@ -182,8 +182,6 @@ public class SizeLimitedOutputStream extends OutputStream {
 
     /**
      * Gets the next index to use for <var>mFiles</var>, treating it as a circular list.
-     *
-     * @return
      */
     private int getNextIndex(int i) {
         return (i + 1) % mFiles.length;

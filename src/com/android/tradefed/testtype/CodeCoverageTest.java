@@ -99,9 +99,7 @@ public class CodeCoverageTest extends InstrumentationTest {
     }
 
     /**
-     * Fetch the runtime coverage file path from instrumentation test metrics.
-     *
-     * @return
+     * Returns the runtime coverage file path from instrumentation test metrics.
      */
     private String fetchCoverageFilePath(CollectingTestListener listener) {
         TestRunResult runResult = listener.getCurrentRunResults();

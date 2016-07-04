@@ -42,7 +42,7 @@ public class AppBuildInfo extends BuildInfo implements IAppBuildInfo {
     }
 
     /**
-     * @see {@link BuildInfo#BuildInfo(BuildInfo)}
+     * @see BuildInfo#BuildInfo(BuildInfo)
      */
     public AppBuildInfo(BuildInfo buildToCopy) {
         super(buildToCopy);

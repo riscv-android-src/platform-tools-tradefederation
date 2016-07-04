@@ -111,11 +111,11 @@ public class QuotationAwareTokenizer {
     }
 
     /**
-     * Perform the reverse of {@link tokenizeLine}. <br/>
+     * Perform the reverse of {@link #tokenizeLine(String)}. <br/>
      * Given array of tokens, combine them into a single line.
      *
      * @param tokens
-     * @return
+     * @return A {@link String} created from all the tokens.
      */
     public static String combineTokens(String... tokens) {
         final Pattern wsPattern = Pattern.compile("\\s");

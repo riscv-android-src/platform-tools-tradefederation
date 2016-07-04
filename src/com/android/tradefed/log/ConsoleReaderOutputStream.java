@@ -41,8 +41,8 @@ public class ConsoleReaderOutputStream extends OutputStream {
      * Otherwise, we try to shuffle the prompt when none is displayed, and we end up clearing lines
      * that shouldn't be cleared.
      *
-     * @see setSyncMode()
-     * @see setAsyncMode()
+     * @see #setSyncMode()
+     * @see #setAsyncMode()
      */
     private boolean mInAsyncMode = false;
 

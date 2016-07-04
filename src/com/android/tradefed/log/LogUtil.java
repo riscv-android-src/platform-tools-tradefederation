@@ -53,7 +53,7 @@ public class LogUtil {
      * is specifically useful because it includes the day and month (to differentiate times for
      * long-running TF instances), and also uses 24-hour time to disambiguate morning from evening.
      * <p/>
-     * {@see Log#getLogFormatString()}
+     * @see Log#getLogFormatString(LogLevel, String, String)
      */
     public static String getLogFormatString(LogLevel logLevel, String tag, String message) {
         SimpleDateFormat formatter = new SimpleDateFormat("MM-dd HH:mm:ss");
