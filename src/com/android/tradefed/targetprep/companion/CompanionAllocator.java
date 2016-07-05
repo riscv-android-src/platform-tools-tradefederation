@@ -52,8 +52,7 @@ public abstract class CompanionAllocator implements ITargetCleaner {
     }
 
     /**
-     * Describe the selection options for the companion device
-     * @return
+     * Describe the {@link DeviceSelectionOptions} for the companion device
      */
     protected abstract DeviceSelectionOptions getCompanionDeviceSelectionOptions();
 

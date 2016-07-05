@@ -479,7 +479,7 @@ public class DeviceSelectionOptions implements IDeviceSelection {
     /**
      * Get the device's supported API level or -1 if it cannot be retrieved
      * @param device
-     * @return
+     * @return the device's supported API level.
      */
     private int getDeviceSdkLevel(IDevice device) {
         int apiLevel = -1;

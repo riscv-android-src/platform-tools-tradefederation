@@ -15,8 +15,6 @@
  */
 package com.android.tradefed.testtype;
 
-import com.android.ddmlib.IShellOutputReceiver;
-import com.android.ddmlib.MultiLineReceiver;
 import com.android.tradefed.config.ConfigurationException;
 import com.android.tradefed.config.Option;
 import com.android.tradefed.config.Option.Importance;
@@ -38,8 +36,6 @@ import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 /**
  * Runs all instrumentation found on current device.
@@ -50,8 +46,6 @@ public class InstalledInstrumentationsTest implements IDeviceTest, IResumableTes
     /** the metric key name for the test coverage target value */
     // TODO: move this to a more generic location
     public static final String COVERAGE_TARGET_KEY = XmlDefsTest.COVERAGE_TARGET_KEY;
-    private static final Pattern LIST_INSTR_PATTERN =
-            Pattern.compile("instrumentation:(.+)/(.+) \\(target=(.+)\\)");
 
     private ITestDevice mDevice;
 

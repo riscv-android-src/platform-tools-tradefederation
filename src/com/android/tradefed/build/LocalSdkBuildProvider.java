@@ -88,7 +88,7 @@ public class LocalSdkBuildProvider implements IBuildProvider {
      * <i>
      * ${ANDROID_BUILD_TOP}/out/host/{os.name}-x86/sdk/android-sdk_eng.{user.name}_{os.name}-x86
      * </i>
-     * @return
+     * @return the {@link File} to the output sdk location.
      */
     private File getSdkFromBuildEnv() {
         String buildRoot = System.getenv("ANDROID_BUILD_TOP");

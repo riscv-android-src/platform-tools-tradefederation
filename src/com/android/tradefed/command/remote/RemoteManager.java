@@ -185,7 +185,7 @@ public class RemoteManager extends Thread {
      * necessary.
      * <p/>
      * {@link #start()} should be called before this method.
-     * @return
+     * @return the port the remote manager is listening on, or -1 if no port is setup.
      */
     public synchronized int getPort() {
         if (mServerSocket == null) {

@@ -36,7 +36,7 @@ import java.util.concurrent.locks.ReentrantLock;
  * iteration, a {@link ConcurrentModificationException} will not be thrown, but the iterator
  * will also not reflect the modified contents.
  * <p/>
- * @see {@link PriorityBlockingQueue}
+ * @see PriorityBlockingQueue
  */
 public class ConditionPriorityBlockingQueue<T> implements Iterable<T> {
 
@@ -56,7 +56,8 @@ public class ConditionPriorityBlockingQueue<T> implements Iterable<T> {
     }
 
     /**
-     * A {@link IMatcher} that matches any object.
+     * A {@link com.android.tradefed.util.ConditionPriorityBlockingQueue.IMatcher}
+     * that matches any object.
      *
      * @param <T>
      */
@@ -323,7 +324,6 @@ public class ConditionPriorityBlockingQueue<T> implements Iterable<T> {
 
     /**
      * Get a copy of the contents of the queue.
-     * @return
      */
     public List<T> getCopy() {
         mLock.lock();

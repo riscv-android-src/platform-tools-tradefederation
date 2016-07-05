@@ -19,10 +19,8 @@ import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.result.FileInputStreamSource;
-import com.android.tradefed.util.ArrayUtil;
 
 import java.io.File;
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 
@@ -38,7 +36,6 @@ import java.util.List;
  * with the --from-file option to generate an HTML viewer.
  */
 public class CircularAtraceUtil {
-    private static final String LOG_TAG = "CircularAtraceUtil";
 
     private static final String ATRACE_START_CMD = "atrace --async_start -b %d -c %s -z";
     private static final String ATRACE_STOP_CMD = "atrace --async_stop -z -b %d > %s";
@@ -93,7 +90,7 @@ public class CircularAtraceUtil {
         // Execute shell command to stop atrace with results
         String command = String.format(ATRACE_STOP_CMD, bufferSizeKB, DEVICE_FILE);
         CLog.d("Ending atrace utility with command: %s", command);
-        String result = device.executeShellCommand(command);
+        device.executeShellCommand(command);
 
         File temp = device.pullFile(DEVICE_FILE);
         if (temp != null) {

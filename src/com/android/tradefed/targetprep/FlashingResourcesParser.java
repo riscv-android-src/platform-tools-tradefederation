@@ -116,7 +116,7 @@ public class FlashingResourcesParser implements IFlashingResourcesParser {
      *        disable filtering.
      */
     public FlashingResourcesParser(BufferedReader infoReader, Map<String, Constraint> c)
-            throws TargetSetupError, IOException {
+            throws IOException {
         mReqs = parseAndroidInfo(infoReader, c);
     }
 
@@ -128,8 +128,7 @@ public class FlashingResourcesParser implements IFlashingResourcesParser {
      * @param infoReader a {@link BufferedReader} containing the equivalent of android-info.txt to
      *        parse
      */
-    public FlashingResourcesParser(BufferedReader infoReader) throws TargetSetupError,
-            IOException {
+    public FlashingResourcesParser(BufferedReader infoReader) throws IOException {
         this(infoReader, null);
     }
 

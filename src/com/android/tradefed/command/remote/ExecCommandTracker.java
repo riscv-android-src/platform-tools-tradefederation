@@ -61,7 +61,6 @@ class ExecCommandTracker extends StubTestInvocationListener implements
 
     /**
      * Returns the current state as a {@link CommandResult}.
-     * @return
      */
     CommandResult getCommandResult() {
         return new CommandResult(mStatus, mErrorDetails, mState,

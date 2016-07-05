@@ -62,7 +62,7 @@ public class RegexTrie<V> {
     /**
      * Patterns aren't comparable by default, which prevents you from retrieving them from a
      * HashTable.  This is a simple stub class that makes a Pattern with a working
-     * {@link CompPattern#equals()} method.
+     * {@link com.android.tradefed.util.RegexTrie.CompPattern#equals(Object)} method.
      */
     static class CompPattern {
         protected final Pattern mPattern;
@@ -141,7 +141,7 @@ public class RegexTrie<V> {
      * A helper method to consolidate validation before adding an entry to the trie.
      *
      * @param value The value to set
-     * @param patterns The sequence of {@link CompPattern}s that must be sequentially matched to
+     * @param pList The sequence of {@link CompPattern}s that must be sequentially matched to
      *        retrieve the associated {@code value}
      */
     private V validateAndPut(V value, List<CompPattern> pList) {
@@ -177,7 +177,7 @@ public class RegexTrie<V> {
      * @param value The value to set
      * @param regexen The sequence of regular expressions (as {@link String}s) that must be
      *        sequentially matched to retrieve the associated {@code value}.  Each String will be
-     *        compiled as a {@link Pattern} before invoking {@link #put(V, Pattern...)}.
+     *        compiled as a {@link Pattern} before invoking {@link #put(Object, Pattern...)}.
      */
     public V put(V value, String... regexen) {
         List<CompPattern> pList = new ArrayList<CompPattern>(regexen.length);

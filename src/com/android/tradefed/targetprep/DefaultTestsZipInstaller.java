@@ -152,7 +152,7 @@ public class DefaultTestsZipInstaller implements ITestsZipInstaller {
     /**
      * Deletes userdata from device without toggling {@link RecoveryMode}.
      * <p/>
-     * Expects callers to have set device to {@link RecoveryMode.ONLINE}.
+     * Expects callers to have set device to {@link RecoveryMode#ONLINE}.
      */
     private void doDeleteData(ITestDevice device) throws DeviceNotAvailableException,
             TargetSetupError {

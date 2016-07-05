@@ -83,7 +83,7 @@ public interface IDeviceManager {
      * Attempts to return a device that hasn't been previously allocated will be ignored.
      *
      * @param device the {@link ITestDevice} to free
-     * @param state the {@link IDeviceManager.FreeDeviceState}. Used to control if device is
+     * @param state the {@link FreeDeviceState}. Used to control if device is
      *            returned to available device pool.
      */
     public void freeDevice(ITestDevice device, FreeDeviceState state);

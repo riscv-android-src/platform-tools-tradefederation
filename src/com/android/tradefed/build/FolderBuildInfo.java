@@ -29,14 +29,14 @@ public class FolderBuildInfo extends BuildInfo implements IFolderBuildInfo {
     private File mRootDir;
 
     /**
-     * @see {@link BuildInfo#BuildInfo(String, String, String)}
+     * @see BuildInfo#BuildInfo(String, String, String)
      */
     public FolderBuildInfo(String buildId, String testTarget, String buildName) {
         super(buildId, testTarget, buildName);
     }
 
     /**
-     * @see {@link BuildInfo#BuildInfo(BuildInfo)}
+     * @see BuildInfo#BuildInfo(BuildInfo)
      */
     FolderBuildInfo(BuildInfo buildToCopy) {
         super(buildToCopy);
