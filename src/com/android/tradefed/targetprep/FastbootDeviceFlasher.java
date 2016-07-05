@@ -23,6 +23,7 @@ import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.util.CommandResult;
 import com.android.tradefed.util.CommandStatus;
 import com.android.tradefed.util.FileUtil;
+import com.android.tradefed.util.IRunUtil;
 import com.android.tradefed.util.RunUtil;
 import com.android.tradefed.util.ZipUtil;
 
@@ -565,13 +566,20 @@ public class FastbootDeviceFlasher implements IDeviceFlasher  {
                 attempts++;
                 CLog.w("Could not find version for '%s'. Output '%s', retrying.",
                             imageName, queryOutput);
-                RunUtil.getDefault().sleep(RETRY_SLEEP * (attempts - 1)
+                getRunUtil().sleep(RETRY_SLEEP * (attempts - 1)
                         + new Random(System.currentTimeMillis()).nextInt(RETRY_SLEEP));
                 continue;
             }
         }
         throw new TargetSetupError(String.format(
                 "Could not find version for '%s' after %d retry attempts", imageName, attempts));
+    }
+
+    /**
+     * Exposed for testing.
+     */
+    protected IRunUtil getRunUtil() {
+        return RunUtil.getDefault();
     }
 
     /**
