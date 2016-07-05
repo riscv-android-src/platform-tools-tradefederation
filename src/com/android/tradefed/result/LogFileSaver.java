@@ -237,7 +237,7 @@ public class LogFileSaver {
     /**
      * Creates a output stream to write GZIP-compressed data to a file
      *
-     * @param dataFile the {@link File} to write to
+     * @param logFile the {@link File} to write to
      * @return the {@link OutputStream} to compress and write data to the file.
      *         this stream when complete
      * @throws IOException if stream could not be generated

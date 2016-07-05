@@ -26,7 +26,7 @@ import java.util.List;
 public class ArrayUtilTest extends TestCase {
 
     /**
-     * Simple test for {@link ArrayUtil#buildArray(String[]...)}
+     * Simple test for {@link ArrayUtil#buildArray(String[])}
      */
     public void testBuildArray_arrays() {
         String[] newArray = ArrayUtil.buildArray(new String[] {"1", "2"}, new String[] {"3"},

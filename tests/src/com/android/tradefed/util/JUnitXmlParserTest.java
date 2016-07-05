@@ -26,7 +26,6 @@ import junit.framework.TestCase;
 
 import java.io.ByteArrayInputStream;
 import java.io.File;
-import java.io.IOException;
 import java.io.InputStream;
 
 /**
@@ -58,7 +57,7 @@ public class JUnitXmlParserTest extends TestCase {
     /**
      * Simple success test for xml parsing
      */
-    public void testParse() throws ParseException, IOException {
+    public void testParse() throws ParseException {
         mParser.parse(extractTestXml("JUnitXmlParserTest_testParse.xml"));
         assertEquals(3, mListener.getNumTotalTests());
         assertEquals(1, mListener.getNumAllFailedTests());
@@ -70,7 +69,7 @@ public class JUnitXmlParserTest extends TestCase {
         assertTrue(result.getStackTrace().contains("java.lang.NullPointerException"));
     }
 
-    private InputStream extractTestXml(String fileName) throws IOException {
+    private InputStream extractTestXml(String fileName) {
         return getClass().getResourceAsStream(File.separator + "util" +
                 File.separator + fileName);
     }

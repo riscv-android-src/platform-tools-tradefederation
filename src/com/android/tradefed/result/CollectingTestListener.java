@@ -260,7 +260,6 @@ public class CollectingTestListener implements ITestInvocationListener {
 
     /**
      * Return total number of tests in a failure state (failed, assumption failure)
-     * @return
      */
     public int getNumAllFailedTests() {
         return getNumTestsInState(TestStatus.FAILURE) +

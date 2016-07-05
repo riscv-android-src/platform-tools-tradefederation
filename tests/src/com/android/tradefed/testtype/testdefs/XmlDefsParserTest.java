@@ -23,7 +23,7 @@ import java.io.ByteArrayInputStream;
 import java.io.InputStream;
 
 /**
- * Unit tests for {@link XmlDefsParser).
+ * Unit tests for {@link XmlDefsParser}.
  */
 public class XmlDefsParserTest extends TestCase {
 

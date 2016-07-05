@@ -62,7 +62,7 @@ public class LogFileSaverTest extends TestCase {
     /**
      * Test that a unique directory is created
      */
-    public void testGetFileDir() throws IOException {
+    public void testGetFileDir() {
         final String buildId = "88888";
         final String branch = "somebranch";
         final String testtag = "sometest";
@@ -98,7 +98,7 @@ public class LogFileSaverTest extends TestCase {
     /**
      * Test that a unique directory is created when no branch is specified
      */
-    public void testGetFileDir_nobranch() throws IOException {
+    public void testGetFileDir_nobranch() {
         final String buildId = "88888";
         final String testtag = "sometest";
         IBuildInfo mockBuild = EasyMock.createMock(IBuildInfo.class);
@@ -176,6 +176,7 @@ public class LogFileSaverTest extends TestCase {
      */
     public void testSaveAndZipLogData() throws IOException {
         File logFile = null;
+        ZipFile zipFile = null;
         try {
             // TODO: would be nice to create a mock file output to make this test not use disk I/O
             LogFileSaver saver = new LogFileSaver(new BuildInfo(), mRootDir);
@@ -185,12 +186,15 @@ public class LogFileSaverTest extends TestCase {
 
             assertTrue(logFile.getName().endsWith(LogDataType.ZIP.getFileExt()));
             // Verify test data was written to file
-            ZipFile zipFile = new ZipFile(logFile);
+            zipFile = new ZipFile(logFile);
 
             String actualLogString = StreamUtil.getStringFromStream(zipFile.getInputStream(
                     new ZipEntry("testSaveLogData.txt")));
             assertTrue(actualLogString.equals(testData));
         } finally {
+            if (zipFile != null) {
+                zipFile.close();
+            }
             FileUtil.deleteFile(logFile);
         }
     }

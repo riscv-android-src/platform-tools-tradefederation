@@ -35,10 +35,7 @@ public abstract class CompanionAllocator implements ITargetCleaner {
     /**
      * Sets up the device.
      * <p>
-     * Internal implementation of this method will request a companion device, and invoke
-     * {@link #setUpWithCompanionDevice(ITestDevice, ITestDevice, IBuildInfo)}. It's recommended not
-     * to override this method, but put setup logic into
-     * {@link #setUpWithCompanionDevice(ITestDevice, ITestDevice, IBuildInfo)} instead
+     * Internal implementation of this method will request a companion device, and allocate it.
      */
     @Override
     public void setUp(ITestDevice device, IBuildInfo buildInfo) throws TargetSetupError,

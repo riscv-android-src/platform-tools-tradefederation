@@ -63,7 +63,6 @@ import java.util.concurrent.TimeUnit;
  */
 public class CameraTestBase implements IDeviceTest, IRemoteTest, IConfigurationReceiver {
 
-    private static final String LOG_TAG = CameraTestBase.class.getSimpleName();
     private static final long SHELL_TIMEOUT_MS = 60 * 1000;  // 1 min
     private static final int SHELL_MAX_ATTEMPTS = 3;
     protected static final String PROCESS_CAMERA_DAEMON = "mm-qcamera-daemon";
@@ -425,6 +424,7 @@ public class CameraTestBase implements IDeviceTest, IRemoteTest, IConfigurationR
             super(listener);
         }
 
+        @Override
         public void handleMetricsOnTestEnded(TestIdentifier test, Map<String, String> testMetrics) {
             if (testMetrics == null) {
                 return; // No-op if there is nothing to post.
@@ -432,6 +432,7 @@ public class CameraTestBase implements IDeviceTest, IRemoteTest, IConfigurationR
             getAggregatedMetrics().putAll(testMetrics);
         }
 
+        @Override
         public void handleTestRunEnded(ITestInvocationListener listener, long elapsedTime,
                 Map<String, String> runMetrics) {
             // Post aggregated metrics at the end of test run.

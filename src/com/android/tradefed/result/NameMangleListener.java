@@ -19,8 +19,6 @@ package com.android.tradefed.result;
 import com.android.ddmlib.testrunner.TestIdentifier;
 import com.android.tradefed.build.IBuildInfo;
 
-import junit.framework.TestFailure;
-
 import java.util.Map;
 
 /**
@@ -37,7 +35,7 @@ public abstract class NameMangleListener implements ITestInvocationListener {
     /**
      * This method is run on all {@link TestIdentifier}s that are passed to the
      * {@link #testStarted(TestIdentifier)},
-     * {@link #testFailed(TestFailure, TestIdentifier, String)}, and
+     * {@link #testFailed(TestIdentifier, String)}, and
      * {@link #testEnded(TestIdentifier, Map)} callbacks.  The method should return a
      * possibly-different {@link TestIdentifier} that will be passed to the downstream
      * {@link ITestInvocationListener} that was specified during construction.

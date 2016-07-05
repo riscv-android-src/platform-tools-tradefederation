@@ -199,6 +199,7 @@ public class CdmaDeviceFlasher extends FastbootDeviceFlasher {
      * <p/>
      * Exposed for unit testing.
      */
+    @Override
     protected IRunUtil getRunUtil() {
         return RunUtil.getDefault();
     }

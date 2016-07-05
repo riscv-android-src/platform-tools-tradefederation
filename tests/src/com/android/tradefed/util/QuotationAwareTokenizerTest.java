@@ -62,7 +62,7 @@ public class QuotationAwareTokenizerTest extends TestCase {
     }
 
     /**
-     * Inverse of {@link testTokenizeLine_whitespace}.
+     * Inverse of {@link #testTokenizeLine_whitespace}.
      */
     public void testCombineTokens_whitespace() throws IllegalArgumentException {
         assertEquals("--foo \"this is a config\"", QuotationAwareTokenizer.combineTokens("--foo",
@@ -80,7 +80,7 @@ public class QuotationAwareTokenizerTest extends TestCase {
     }
 
     /**
-     * Inverse of {@link testTokenizeLine_whitespace}.
+     * Inverse of {@link #testTokenizeLine_escapedQuotation}.
      */
     public void testCombineTokens_escapedQuotation() throws IllegalArgumentException {
         assertEquals("--bar \"escap\\\\ed \\\" quotation\"", QuotationAwareTokenizer.combineTokens(

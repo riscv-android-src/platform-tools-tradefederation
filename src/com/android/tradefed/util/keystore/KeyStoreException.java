@@ -20,6 +20,8 @@ package com.android.tradefed.util.keystore;
  * Thrown when a fatal key store error happens.
  */
 public class KeyStoreException extends Exception {
+    private static final long serialVersionUID = 7742154448269011969L;
+
     /**
      * Creates a {@link KeyStoreException}.
      */

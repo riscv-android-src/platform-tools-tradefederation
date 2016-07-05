@@ -122,6 +122,8 @@ public class PythonUnitTestResultParser extends MultiLineReceiver {
     }
 
     private class PythonUnitTestParseException extends Exception {
+        static final long serialVersionUID = -3387516993124229948L;
+
         public PythonUnitTestParseException(String reason) {
             super(reason);
         }

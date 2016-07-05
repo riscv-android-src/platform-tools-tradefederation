@@ -100,7 +100,9 @@ interface IWifiHelper {
     /**
      * Gets the service set identifier of the currently connected network.
      *
-     * @see http://developer.android.com/reference/android/net/wifi/WifiInfo.html#getSSID()
+     * @see
+     * <a href="http://developer.android.com/reference/android/net/wifi/WifiInfo.html#getSSID()">
+     * http://developer.android.com/reference/android/net/wifi/WifiInfo.html#getSSID()</a>
      * @throws DeviceNotAvailableException
      */
     String getSSID() throws DeviceNotAvailableException;
@@ -108,7 +110,9 @@ interface IWifiHelper {
     /**
      * Gets the basic service set identifier (BSSID) of the currently access point.
      *
-     * @see http://developer.android.com/reference/android/net/wifi/WifiInfo.html#getBSSID()
+     * @see
+     * <a href="http://developer.android.com/reference/android/net/wifi/WifiInfo.html#getSSID()">
+     * http://developer.android.com/reference/android/net/wifi/WifiInfo.html#getSSID()</a>
      * @throws DeviceNotAvailableException
      */
     String getBSSID() throws DeviceNotAvailableException;

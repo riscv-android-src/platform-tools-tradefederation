@@ -133,16 +133,20 @@ public class Camera2StressTest extends CameraTestBase {
 
                 // Parse results from log file that contain the key-value pairs.
                 // eg. "numAttempts=10|iteration=9"
-                while ((line = reader.readLine()) != null) {
-                    String[] pairs = line.split("\\|");
-                    for (String pair : pairs) {
-                        String[] keyValue = pair.split("=");
-                        // Each should be a pair of key and value.
-                        String key = keyValue[0].trim();
-                        String value = keyValue[1].trim();
-                        resultMap.put(key, value);
-                        CLog.v("%s: %s", key, value);
+                try {
+                    while ((line = reader.readLine()) != null) {
+                        String[] pairs = line.split("\\|");
+                        for (String pair : pairs) {
+                            String[] keyValue = pair.split("=");
+                            // Each should be a pair of key and value.
+                            String key = keyValue[0].trim();
+                            String value = keyValue[1].trim();
+                            resultMap.put(key, value);
+                            CLog.v("%s: %s", key, value);
+                        }
                     }
+                } finally {
+                    reader.close();
                 }
 
                 // Fail if a stress test doesn't start.

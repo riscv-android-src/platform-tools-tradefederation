@@ -26,8 +26,6 @@ import junit.framework.TestResult;
 
 import org.junit.internal.AssumptionViolatedException;
 
-import java.io.PrintStream;
-import java.io.PrintWriter;
 import java.util.Map;
 
 /**
@@ -171,53 +169,6 @@ import java.util.Map;
         public String toString() {
             // TODO: use ':' or '#' as separator? The eternal debate rages on!
             return String.format("%s:%s", mTestId.getClassName(), mTestId.getTestName());
-        }
-    }
-
-    /**
-     * Class that can represent a remote {@link String} stack trace as a {@link Throwable} or
-     * for display purposes.
-     */
-    private static class RemoteException extends Throwable  {
-        private static final long serialVersionUID = 8510440697482917390L;
-
-        private final String mStackTrace;
-
-        RemoteException(String stack) {
-            mStackTrace = stack;
-        }
-
-        @Override
-        public void   printStackTrace() {
-            System.err.print(mStackTrace);
-        }
-
-        @Override
-        public void   printStackTrace(PrintStream s) {
-            s.print(mStackTrace);
-        }
-
-        @Override
-        public void   printStackTrace(PrintWriter s) {
-            s.print(mStackTrace);
-        }
-
-        @Override
-        public void   setStackTrace(StackTraceElement[] stackTrace) {
-            // Force exception to be thrown here. don't want parent to override the data.
-            // alternatively could make this a no-op
-            throw new UnsupportedOperationException();
-        }
-
-
-        @Override
-        public String toString() {
-            return mStackTrace;
-        }
-
-        @Override
-        public Throwable fillInStackTrace() {
-            return this;
         }
     }
 
