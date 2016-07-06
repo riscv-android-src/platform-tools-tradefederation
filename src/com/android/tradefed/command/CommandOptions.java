@@ -79,6 +79,17 @@ public class CommandOptions implements ICommandOptions {
             + "stop it.", isTimeVal = true)
     private long mInvocationTimeout = 0;
 
+    @Option(name = "shard-count", description =
+            "the number of total shards to run. Without --shard-index option, this will cause " +
+            "the command to spawn multiple shards in the current TF instance. With --shard-index " +
+            "option, it will cause the command to run a single shard of tests only.")
+    private Integer mShardCount;
+
+    @Option(name = "shard-index", description =
+            "the index of shard to run. Only set if shard-count > 1 and the value is in range " +
+            "[0, shard-count)")
+    private Integer mShardIndex;
+
     /**
      * Set the help mode for the config.
      * <p/>
@@ -239,5 +250,37 @@ public class CommandOptions implements ICommandOptions {
     @Override
     public void setInvocationTimeout(Long invocationTimeout) {
         mInvocationTimeout = invocationTimeout;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public Integer getShardCount() {
+        return mShardCount;
+    }
+
+    /**
+     * {@inheritDoc)
+     */
+    @Override
+    public void setShardCount(Integer shardCount) {
+        mShardCount = shardCount;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public Integer getShardIndex() {
+        return mShardIndex;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void setShardIndex(Integer shardIndex) {
+        mShardIndex = shardIndex;
     }
 }

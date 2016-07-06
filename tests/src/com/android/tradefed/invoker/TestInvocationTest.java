@@ -16,11 +16,14 @@
 package com.android.tradefed.invoker;
 
 import com.android.tradefed.build.BuildRetrievalError;
+import com.android.tradefed.build.ExistingBuildProvider;
 import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.build.IBuildProvider;
 import com.android.tradefed.command.FatalHostError;
 import com.android.tradefed.config.Configuration;
+import com.android.tradefed.config.ConfigurationException;
 import com.android.tradefed.config.IConfiguration;
+import com.android.tradefed.config.IConfigurationFactory;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.IDeviceRecovery;
 import com.android.tradefed.device.ITestDevice;
@@ -45,6 +48,8 @@ import com.android.tradefed.testtype.IDeviceTest;
 import com.android.tradefed.testtype.IRemoteTest;
 import com.android.tradefed.testtype.IResumableTest;
 import com.android.tradefed.testtype.IRetriableTest;
+import com.android.tradefed.testtype.IShardableTest;
+import com.android.tradefed.testtype.IStrictShardableTest;
 
 import junit.framework.Test;
 import junit.framework.TestCase;
@@ -87,6 +92,7 @@ public class TestInvocationTest extends TestCase {
     private IDeviceRecovery mMockRecovery;
     private Capture<List<TestSummary>> mUriCapture;
     private ILogRegistry mMockLogRegistry;
+    private IConfigurationFactory mMockConfigFactory;
     private IRescheduler mockRescheduler;
 
     @Override
@@ -107,6 +113,7 @@ public class TestInvocationTest extends TestCase {
         mMockLogger = EasyMock.createMock(ILeveledLogOutput.class);
         mMockLogRegistry = EasyMock.createMock(ILogRegistry.class);
         mMockLogSaver = EasyMock.createMock(ILogSaver.class);
+        mMockConfigFactory = EasyMock.createMock(IConfigurationFactory.class);
         mockRescheduler = EasyMock.createMock(IRescheduler.class);
 
         mStubConfiguration.setDeviceRecovery(mMockRecovery);
@@ -145,6 +152,11 @@ public class TestInvocationTest extends TestCase {
             @Override
             ILogRegistry getLogRegistry() {
                 return mMockLogRegistry;
+            }
+
+            @Override
+            protected IConfigurationFactory getConfigFactory() {
+                return mMockConfigFactory;
             }
         };
     }
@@ -608,6 +620,74 @@ public class TestInvocationTest extends TestCase {
     }
 
     /**
+     * Test the
+     * {@link TestInvocation#invoke(ITestDevice, IConfiguration, IRescheduler, ITestInvocationListener[])}
+     * scenario with {@link IStrictShardableTest}.
+     */
+    public void testInvoke_strictShardableTest() throws Throwable {
+        String[] commandLine = {"config", "arg"};
+        int shardCount = 10;
+        IStrictShardableTest test = EasyMock.createMock(IStrictShardableTest.class);
+        mStubConfiguration.setTest(test);
+        mStubConfiguration.setCommandLine(commandLine);
+        mStubConfiguration.getCommandOptions().setShardCount(shardCount);
+
+        setupInvoke();
+        EasyMock.expect(mMockBuildProvider.getBuild()).andReturn(mMockBuildInfo);
+        mMockBuildInfo.addBuildAttribute("command_line_args", "config arg");
+        mMockBuildInfo.addBuildAttribute("shard_count", "10");
+        IConfiguration shardConfig = new Configuration("foo", "bar");
+        for (int i = 1; i <= shardCount; i++) {
+            EasyMock.expect(
+                    mMockConfigFactory.createConfigurationFromArgs(EasyMock.anyObject()))
+                    .andReturn(shardConfig);
+            EasyMock.expect(mMockBuildInfo.clone()).andReturn(mMockBuildInfo);
+            EasyMock.expect(mockRescheduler.scheduleConfig(shardConfig)).andReturn(true);
+        }
+        replayMocks(test, mockRescheduler);
+
+        mTestInvocation.invoke(mMockDevice, mStubConfiguration, mockRescheduler);
+
+        verifyMocks(test, mockRescheduler);
+        assertEquals(shardCount, (int)shardConfig.getCommandOptions().getShardCount());
+        assertEquals(shardCount - 1, (int)shardConfig.getCommandOptions().getShardIndex());
+    }
+
+    /**
+     * Test the
+     * {@link TestInvocation#invoke(ITestDevice, IConfiguration, IRescheduler, ITestInvocationListener[])}
+     * scenario with {@link IStrictShardableTest} when a shard index is given.
+     */
+    public void testInvoke_strictShardableTest_withShardIndex() throws Throwable {
+        String[] commandLine = {"config", "arg"};
+        int shardCount = 10;
+        int shardIndex = 5;
+        IStrictShardableTest test = EasyMock.createMock(IStrictShardableTest.class);
+        IRemoteTest testShard = EasyMock.createMock(IRemoteTest.class);
+        mStubConfiguration.setTest(test);
+        mStubConfiguration.setCommandLine(commandLine);
+        mStubConfiguration.getCommandOptions().setShardCount(shardCount);
+        mStubConfiguration.getCommandOptions().setShardIndex(shardIndex);
+
+        setupInvokeWithBuild();
+        setupMockSuccessListeners();
+        EasyMock.expect(mMockBuildProvider.getBuild()).andReturn(mMockBuildInfo);
+        mMockBuildInfo.addBuildAttribute("command_line_args", "config arg");
+        mMockBuildInfo.addBuildAttribute("shard_count", "10");
+        mMockBuildInfo.addBuildAttribute("shard_index", "5");
+        EasyMock.expect(test.getTestShard(shardCount, shardIndex)).andReturn(testShard);
+        testShard.run(EasyMock.anyObject());
+        mMockPreparer.setUp(mMockDevice, mMockBuildInfo);
+        replayMocks(test, testShard);
+
+        mTestInvocation.invoke(mMockDevice, mStubConfiguration, mockRescheduler);
+
+        verifyMocks(test, testShard);
+    }
+
+    /**
+     * Set up expected conditions for normal run up to the part where tests are run.
+     *
      * @param test the {@link Test} to use.
      */
     private void setupNormalInvoke(IRemoteTest test) throws Throwable {
@@ -749,7 +829,7 @@ public class TestInvocationTest extends TestCase {
     private void replayMocks(Object... mocks) {
         EasyMock.replay(mMockTestListener, mMockSummaryListener, mMockPreparer,
                 mMockBuildProvider, mMockLogger, mMockBuildInfo, mMockLogRegistry,
-                mMockLogSaver, mMockDevice);
+                mMockLogSaver, mMockDevice, mMockConfigFactory);
         if (mocks.length > 0) {
             EasyMock.replay(mocks);
         }
