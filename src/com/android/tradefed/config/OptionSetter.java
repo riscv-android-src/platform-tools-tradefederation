@@ -582,6 +582,13 @@ public class OptionSetter {
     /**
      * Adds all option fields (both declared and inherited) to the <var>optionMap</var> for
      * provided <var>optionClass</var>.
+     * <p>
+     * Also adds option fields with all the alias namespaced from the class they are found in, and
+     * their child classes.
+     * <p>
+     * For example:
+     * if class1(@alias1) extends class2(@alias2), all the option from class2 will be available
+     * with the alias1 and alias2. All the option from class1 are available with alias1 only.
      *
      * @param optionSource
      * @param optionMap
@@ -666,6 +673,46 @@ public class OptionSetter {
                 addNamespacedOptionToMap(optionMap, optionSource, BOOL_FALSE_PREFIX + option.name(),
                         field, index, deviceName);
             }
+        }
+        // Handling for inherited alias
+        Class<?> parent = optionSource.getClass().getSuperclass();
+        Map<String, Class<?>> aliasFound = new HashMap<>();
+        if (optionSource.getClass().isAnnotationPresent(OptionClass.class)) {
+            Class<?> child = optionSource.getClass();
+            aliasFound.put(child.getAnnotation(OptionClass.class).alias(), child);
+        }
+        while (parent != null) {
+            if (parent.isAnnotationPresent(OptionClass.class)) {
+                final OptionClass classAnnotation = parent.getAnnotation(OptionClass.class);
+                String aliasName = classAnnotation.alias();
+                // Ensure alias uniqueness in the class hierarchy
+                if (aliasFound.containsKey(aliasName)) {
+                    throw new ConfigurationException(String.format(
+                            "The alias '%s' has been found several time in the class hierarchy "
+                            + "of %s and %s", aliasName, parent, aliasFound.get(aliasName)));
+                } else {
+                    aliasFound.put(aliasName, parent);
+                }
+                Collection<Field> parentOptionFields = getOptionFieldsForClass(parent);
+                for (Field field : parentOptionFields) {
+                    final Option option = field.getAnnotation(Option.class);
+                    addNamespacedAliasOptionToMap(optionMap, optionSource, option.name(), field,
+                            index, deviceName, aliasName);
+                    if (isBooleanField(field)) {
+                        // add the corresponding "no" option to make boolean false
+                        addNamespacedAliasOptionToMap(optionMap, optionSource,
+                                BOOL_FALSE_PREFIX + option.name(), field, index, deviceName,
+                                aliasName);
+                    }
+                    if (option.shortName() != Option.NO_SHORT_NAME) {
+                        // add the corresponding shortname option
+                        addNamespacedAliasOptionToMap(optionMap, optionSource,
+                                String.valueOf(option.shortName()), field, index, deviceName,
+                                aliasName);
+                    }
+                }
+            }
+            parent = parent.getSuperclass();
         }
     }
 
@@ -865,8 +912,8 @@ public class OptionSetter {
         fields.addField(name, optionSource, field);
         if (getHandler(field.getGenericType()) == null) {
             throw new ConfigurationException(String.format(
-                    "Option name '%s' in class '%s' is invalid. Unsupported @Option field type '%s'",
-                    name, optionSource.getClass().getName(), field.getType()));
+                    "Option name '%s' in class '%s' is invalid. Unsupported @Option field type "
+                    + "'%s'", name, optionSource.getClass().getName(), field.getType()));
         }
     }
 
@@ -883,27 +930,8 @@ public class OptionSetter {
         if (optionSource.getClass().isAnnotationPresent(OptionClass.class)) {
             final OptionClass classAnnotation = optionSource.getClass().getAnnotation(
                     OptionClass.class);
-            addNameToMap(optionMap, optionSource, String.format("%s%c%s", classAnnotation.alias(),
-                    NAMESPACE_SEPARATOR, name), field);
-
-            // Allows use of an enumerated namespace, to enable options to map to specific instances
-            // of a class alias, rather than just to all instances of that particular alias.
-            // Example option name: alias:2:option-name
-            addNameToMap(optionMap, optionSource, String.format("%s%c%d%c%s",
-                    classAnnotation.alias(), NAMESPACE_SEPARATOR, index, NAMESPACE_SEPARATOR, name),
-                    field);
-
-            if (deviceName != null) {
-                addNameToMap(optionMap, optionSource, String.format("{%s}%s%c%s", deviceName,
-                        classAnnotation.alias(), NAMESPACE_SEPARATOR, name), field);
-                // Allows use of an enumerated namespace, to enable options to map to specific
-                // instances of a class alias inside a device configuration holder,
-                // rather than just to all instances of that particular alias.
-                // Example option name: {device1}alias:2:option-name
-                addNameToMap(optionMap, optionSource, String.format("{%s}%s%c%d%c%s",
-                        deviceName, classAnnotation.alias(), NAMESPACE_SEPARATOR, index,
-                        NAMESPACE_SEPARATOR, name), field);
-            }
+            addNamespacedAliasOptionToMap(optionMap, optionSource, name, field, index, deviceName,
+                    classAnnotation.alias());
         }
 
         // Allows use of a className-delimited namespace.
@@ -929,6 +957,37 @@ public class OptionSetter {
             addNameToMap(optionMap, optionSource, String.format("{%s}%s%c%d%c%s",
                     deviceName, className, NAMESPACE_SEPARATOR, index, NAMESPACE_SEPARATOR, name),
                     field);
+        }
+    }
+
+    /**
+     * Adds the alias namespaced versions of the option to the map
+     *
+     * See {@link #makeOptionMap()} for details on the enumeration scheme
+     */
+    private void addNamespacedAliasOptionToMap(Map<String, OptionFieldsForName> optionMap,
+            Object optionSource, String name, Field field, int index, String deviceName,
+            String alias) throws ConfigurationException {
+        addNameToMap(optionMap, optionSource, String.format("%s%c%s", alias,
+                NAMESPACE_SEPARATOR, name), field);
+
+        // Allows use of an enumerated namespace, to enable options to map to specific instances
+        // of a class alias, rather than just to all instances of that particular alias.
+        // Example option name: alias:2:option-name
+        addNameToMap(optionMap, optionSource, String.format("%s%c%d%c%s",
+                alias, NAMESPACE_SEPARATOR, index, NAMESPACE_SEPARATOR, name),
+                field);
+
+        if (deviceName != null) {
+            addNameToMap(optionMap, optionSource, String.format("{%s}%s%c%s", deviceName,
+                    alias, NAMESPACE_SEPARATOR, name), field);
+            // Allows use of an enumerated namespace, to enable options to map to specific
+            // instances of a class alias inside a device configuration holder,
+            // rather than just to all instances of that particular alias.
+            // Example option name: {device1}alias:2:option-name
+            addNameToMap(optionMap, optionSource, String.format("{%s}%s%c%d%c%s",
+                    deviceName, alias, NAMESPACE_SEPARATOR, index,
+                    NAMESPACE_SEPARATOR, name), field);
         }
     }
 

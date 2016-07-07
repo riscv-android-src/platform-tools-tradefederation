@@ -20,6 +20,8 @@ import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
+import java.util.Collection;
+import java.util.Map;
 
 /**
  * Annotates a field as representing a {@link IConfiguration} option.
@@ -79,7 +81,7 @@ public @interface Option {
      * following is true of a mandatory field after options have been parsed from all sources:
      * <ul>
      *   <li>The field is {@code null}.</li>
-     *   <li>The field is an empty {@link java.util.Collection}.</li>
+     *   <li>The field is an empty {@link Collection}.</li>
      * </ul>
      */
     boolean mandatory() default false;
