@@ -49,8 +49,7 @@ public class ReconnectingRecoveryTest extends TestCase {
     }
 
     /**
-     * Test {@link
-     * com.android.tradefed.device.ReconnectingRecovery#recoverDevice()}
+     * Test {@link ReconnectingRecovery#recoverDevice(IDeviceStateMonitor, boolean)}
      * when device is actually recoverable upon the first attempt.
      */
     public final void testRecoverDevice_successOnFirstTry() throws DeviceNotAvailableException {
@@ -64,8 +63,7 @@ public class ReconnectingRecoveryTest extends TestCase {
     }
 
     /**
-     * Test
-     * {@link com.android.tradefed.device.ReconnectingRecovery#recoverDevice()}
+     * Test {@link ReconnectingRecovery#recoverDevice(IDeviceStateMonitor, boolean)}
      * when device is actually recoverable, but not on the first attempt.
      */
     public final void testRecoverDevice_successRetrying() throws DeviceNotAvailableException {
@@ -84,8 +82,7 @@ public class ReconnectingRecoveryTest extends TestCase {
     }
 
     /**
-     * Test {@link
-     * com.android.tradefed.device.ReconnectingRecovery#recoverDevice()}
+     * Test {@link ReconnectingRecovery#recoverDevice(IDeviceStateMonitor, boolean)}
      * when device is actually irrecoverable.
      */
     public final void testRecoverDevice_failure() throws DeviceNotAvailableException {

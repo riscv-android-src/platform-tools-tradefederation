@@ -80,7 +80,7 @@ public class WifiHelperTest extends TestCase {
     }
 
     /**
-     * Test {@link WifiHelper#waitForIp()} that gets invalid data on first attempt, but then
+     * Test {@link WifiHelper#waitForIp(long)} that gets invalid data on first attempt, but then
      * succeeds on second.
      */
     public void testWaitForIp_failThenPass() throws Exception {

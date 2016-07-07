@@ -19,7 +19,7 @@ import com.android.ddmlib.IDevice;
 
 /**
  * A placeholder {@link IDevice} used by {@link DeviceManager} to allocate when
- * {@link IDeviceSelection#tcpDeviceSelected()} is <code>true</code>
+ * {@link DeviceSelectionOptions#tcpDeviceRequested()} is <code>true</code>
  */
 public class TcpDevice extends StubDevice {
 

@@ -442,6 +442,18 @@ public interface INativeDevice {
     public File pullFileFromExternal(String remoteFilePath) throws DeviceNotAvailableException;
 
     /**
+     * Recursively pull directory contents from device.
+     *
+     * @param deviceFilePath the absolute file path of the remote source
+     * @param localDir the local directory to pull files into
+     * @return <code>true</code> if file was pulled successfully. <code>false</code> otherwise.
+     * @throws DeviceNotAvailableException if connection with device is lost and cannot be
+     * recovered.
+     */
+    public boolean pullDir(String deviceFilePath, File localDir)
+            throws DeviceNotAvailableException;
+
+    /**
      * Push a file to device
      *
      * @param localFile the local file to push

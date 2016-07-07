@@ -51,7 +51,6 @@ public class Camera2FrameworkStressTest extends CameraTestBase {
             "^fwk-stress_camera_(?<id>.+).txt");
     private static final String KEY_NUM_ATTEMPTS = "numAttempts";
     private static final String KEY_ITERATION = "iteration";
-    private static final String KEY_CAMERA_ID = "cameraId";
 
     public Camera2FrameworkStressTest() {
         // Note that default value in constructor will be overridden by the passing option from
@@ -123,15 +122,19 @@ public class Camera2FrameworkStressTest extends CameraTestBase {
 
                     // Parse results from log file that contain the key-value pairs.
                     // eg. "numAttempts=10|iteration=9[|cameraId=0]"
-                    while ((line = reader.readLine()) != null) {
-                        String[] pairs = line.split("\\|");
-                        for (String pair : pairs) {
-                            String[] keyValue = pair.split("=");
-                            // Each should be a pair of key and value.
-                            String key = keyValue[0].trim();
-                            String value = keyValue[1].trim();
-                            resultMap.put(key, value);
+                    try {
+                        while ((line = reader.readLine()) != null) {
+                            String[] pairs = line.split("\\|");
+                            for (String pair : pairs) {
+                                String[] keyValue = pair.split("=");
+                                // Each should be a pair of key and value.
+                                String key = keyValue[0].trim();
+                                String value = keyValue[1].trim();
+                                resultMap.put(key, value);
+                            }
                         }
+                    } finally {
+                        reader.close();
                     }
 
                     // Fail if a stress test doesn't start.

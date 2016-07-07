@@ -21,6 +21,8 @@ package com.android.tradefed.config;
  */
 public class TemplateResolutionError extends ConfigurationException {
 
+    private static final long serialVersionUID = 7742154438569011969L;
+
     private String mTemplateKey = null;
     private String mConfigName = null;
 

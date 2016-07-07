@@ -181,7 +181,6 @@ public class OpenGlPerformanceTest implements IDeviceTest, IRemoteTest {
     /**
      * Collect test results, report test results to test listener.
      *
-     * @param test
      * @param listener
      */
     private void logOutputFile(ITestInvocationListener listener)

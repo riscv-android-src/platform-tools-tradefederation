@@ -207,7 +207,7 @@ public class PackageManagerOTATestUtils {
     /**
      * Check if a given package has the said permission.
      * @param packageName {@link String} the package in question
-     * @param permission {@link String} the permission to look for
+     * @param flag {@link String} the permission to look for
      *
      * @return true if the permission exists, false otherwise
      *

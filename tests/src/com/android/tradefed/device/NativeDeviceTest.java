@@ -281,7 +281,7 @@ public class NativeDeviceTest extends TestCase {
             {base + "/bar2", "bar3/"},
             {base + "/bar2/bar3", "file1"},
         };
-        String lsCmd = "ls -Ap1 ";
+        final String lsCmd = "ls -Ap1 ";
         mTestDevice = new TestableAndroidNativeDevice() {
             @Override
             public String executeShellCommand(String command) throws DeviceNotAvailableException {
@@ -304,7 +304,7 @@ public class NativeDeviceTest extends TestCase {
                     }
                 }
                 return ret.toString();
-            };
+            }
             @Override
             public boolean isDirectory(String path) throws DeviceNotAvailableException {
                 for (String[] item : dirs) {

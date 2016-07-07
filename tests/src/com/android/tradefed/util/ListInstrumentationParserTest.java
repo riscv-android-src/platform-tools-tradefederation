@@ -43,6 +43,7 @@ public class ListInstrumentationParserTest extends TestCase {
 
     private ListInstrumentationParser mParser;
 
+    @Override
     public void setUp() {
         mParser = new ListInstrumentationParser();
     }
@@ -93,7 +94,8 @@ public class ListInstrumentationParserTest extends TestCase {
             // Must equal one of the expected targets
             boolean matched = false;
             for (InstrumentationTarget expectedTarget : expectedTargets) {
-                if (matched = areTargetsEqual(expectedTarget, actualTarget)) {
+                matched = areTargetsEqual(expectedTarget, actualTarget);
+                if (matched) {
                     expectedTargets.remove(expectedTarget);
                     break;
                 }

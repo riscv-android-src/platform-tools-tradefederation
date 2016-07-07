@@ -34,7 +34,7 @@ public class JSONFileKeyStoreClientTest extends TestCase {
 
     public void testKeyStoreNullFile() throws Exception {
         try {
-            IKeyStoreClient k = new JSONFileKeyStoreClient(null);
+            new JSONFileKeyStoreClient(null);
             fail("Key store should not be available for null file");
         } catch (KeyStoreException e) {
             // Expected.

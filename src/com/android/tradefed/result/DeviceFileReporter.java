@@ -116,7 +116,7 @@ public class DeviceFileReporter {
      * Set the default log data type set for patterns that don't have an associated type.
      *
      * @param type the {@link LogDataType}
-     * @see addPatterns(List<String>)
+     * @see #addPatterns(List)
      */
     public void setDefaultLogDataType(LogDataType type) {
         if (type == null) {
@@ -129,7 +129,7 @@ public class DeviceFileReporter {
      * Whether or not to skip files which have already been reported.  This is only relevant when
      * multiple patterns are being used, and two or more of those patterns match the same file.
      * <p />
-     * Note that this <emph>must only</emph> be called prior to calling {@see #run()}.  Doing
+     * Note that this <emph>must only</emph> be called prior to calling {@link #run()}. Doing
      * otherwise will cause undefined behavior.
      */
     public void setSkipRepeatFiles(boolean skip) {

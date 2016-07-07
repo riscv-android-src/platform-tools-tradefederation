@@ -24,7 +24,7 @@ import java.util.List;
  * Interface for recovering multiple offline devices. There are some device recovery methods which
  * can affect multiple devices (ex) restarting adb, resetting usb, ...). We can implement those
  * recovery methods through this interface. Once the implementation is configured through
- * {@link GlobalConfiguration}, {@link #recoverDevices(List<DeviceDescriptor>)} will be called
+ * {@link GlobalConfiguration}, {@link #recoverDevices(List)} will be called
  * periodically from {@link DeviceManager}.
  */
 public interface IMultiDeviceRecovery {
