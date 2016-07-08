@@ -80,9 +80,14 @@ public class Camera2StressTest extends CameraTestBase {
                 CLog.v("The instrumentation result not found. Fall back to get the metrics from a "
                         + "log file. errorMsg: %s", getCollectingListener().getErrorMessage());
             }
-            // For stress test, parse the metrics from a log file and overwrite the instrumentation
-            // results passed.
-            testMetrics = parseLog(test.getTestName());
+            // TODO: Will get the additional metrics to file to prevent result loss
+
+            // Don't need to report the KEY_NUM_ATTEMPS to dashboard
+            testMetrics.remove(KEY_NUM_ATTEMPTS);
+
+            // parse the iterations metrics from the stress log files
+            parseLog(test.getTestName(), testMetrics);
+
             postScreenshotOnFailure(test);
             super.testEnded(test, testMetrics);
         }
@@ -118,8 +123,7 @@ public class Camera2StressTest extends CameraTestBase {
         }
 
         // Return null if failed to parse the result file or the test didn't even start.
-        private Map<String, String> parseLog(String testName) {
-            Map<String, String> postMetrics = new HashMap<String, String>();
+        private void parseLog(String testName, Map<String, String> testMetrics) {
             try {
                 File outputFile = FileUtil.createTempFile("stress", ".txt");
                 getDevice().pullFile(RESULT_FILE, outputFile);
@@ -152,10 +156,10 @@ public class Camera2StressTest extends CameraTestBase {
                 // Fail if a stress test doesn't start.
                 if (0 == Integer.parseInt(resultMap.get(KEY_NUM_ATTEMPTS))) {
                     CLog.w("Failed to start stress tests. test setup configured incorrectly?");
-                    return null;
+                    return;
                 }
                 // Post the number of iterations only with the test name as key.
-                postMetrics.put(testName, resultMap.get(KEY_ITERATION));
+                testMetrics.put(testName, resultMap.get(KEY_ITERATION));
             } catch (IOException e) {
                 CLog.w("Couldn't parse the output log file: ", e);
             } catch (DeviceNotAvailableException e) {
@@ -163,7 +167,6 @@ public class Camera2StressTest extends CameraTestBase {
             } catch (NumberFormatException e) {
                 CLog.w("Could not find the key in file: %s, error: %s", KEY_NUM_ATTEMPTS, e);
             }
-            return postMetrics;
         }
     }
 }
