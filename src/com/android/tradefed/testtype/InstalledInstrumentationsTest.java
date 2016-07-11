@@ -41,7 +41,8 @@ import java.util.Map;
  * Runs all instrumentation found on current device.
  */
 @OptionClass(alias = "installed-instrumentation")
-public class InstalledInstrumentationsTest implements IDeviceTest, IResumableTest, IShardableTest {
+public class InstalledInstrumentationsTest
+        implements IDeviceTest, IResumableTest, IShardableTest, IStrictShardableTest {
 
     /** the metric key name for the test coverage target value */
     // TODO: move this to a more generic location
@@ -335,5 +336,22 @@ public class InstalledInstrumentationsTest implements IDeviceTest, IResumableTes
             return shards;
         }
         return null;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public IRemoteTest getTestShard(int shardCount, int shardIndex) {
+        InstalledInstrumentationsTest shard = new InstalledInstrumentationsTest();
+        try {
+            OptionCopier.copyOptions(this, shard);
+        } catch (ConfigurationException e) {
+            CLog.e("failed to copy instrumentation options: %s", e.getMessage());
+        }
+        shard.mShards = 0;
+        shard.mShardIndex = shardIndex;
+        shard.mTotalShards = shardCount;
+        return shard;
     }
 }

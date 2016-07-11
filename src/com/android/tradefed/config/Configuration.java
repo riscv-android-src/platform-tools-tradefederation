@@ -958,6 +958,15 @@ public class Configuration implements IConfiguration {
     @Override
     public void validateOptions() throws ConfigurationException {
         new ArgsOptionParser(getAllConfigurationObjects()).validateMandatoryOptions();
+        ICommandOptions options = getCommandOptions();
+        if (options.getShardCount() != null && options.getShardCount() < 1) {
+            throw new ConfigurationException("a shard count must be a positive number");
+        }
+        if (options.getShardIndex() != null
+                && (options.getShardCount() == null || options.getShardIndex() < 0
+                        || options.getShardIndex() >= options.getShardCount())) {
+            throw new ConfigurationException("a shard index must be in range [0, shard count)");
+        }
     }
 
     /**

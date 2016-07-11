@@ -97,4 +97,24 @@ public interface ICommandOptions {
      * Set the invocation timeout. 0 if no timeout to be used.
      */
     public void setInvocationTimeout(Long mInvocationTimeout);
+
+    /**
+     * Return the total shard count for the command.
+     */
+    public Integer getShardCount();
+
+    /**
+     * Sets the shard count for the command.
+     */
+    public void setShardCount(Integer shardCount);
+
+    /**
+     * Return the shard index for the command.
+     */
+    public Integer getShardIndex();
+
+    /**
+     * Sets the shard index for the command.
+     */
+    public void setShardIndex(Integer shardIndex);
 }

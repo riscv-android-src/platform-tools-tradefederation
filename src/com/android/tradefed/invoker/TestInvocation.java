@@ -21,7 +21,12 @@ import com.android.tradefed.build.BuildRetrievalError;
 import com.android.tradefed.build.ExistingBuildProvider;
 import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.build.IDeviceBuildProvider;
+import com.android.tradefed.command.CommandOptions;
+import com.android.tradefed.command.ICommandOptions;
+import com.android.tradefed.config.ConfigurationException;
+import com.android.tradefed.config.ConfigurationFactory;
 import com.android.tradefed.config.IConfiguration;
+import com.android.tradefed.config.IConfigurationFactory;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.DeviceUnresponsiveException;
 import com.android.tradefed.device.ITestDevice;
@@ -52,7 +57,9 @@ import com.android.tradefed.testtype.IRemoteTest;
 import com.android.tradefed.testtype.IResumableTest;
 import com.android.tradefed.testtype.IRetriableTest;
 import com.android.tradefed.testtype.IShardableTest;
+import com.android.tradefed.testtype.IStrictShardableTest;
 import com.android.tradefed.util.IRunUtil;
+import com.android.tradefed.util.QuotationAwareTokenizer;
 import com.android.tradefed.util.RunInterruptedException;
 import com.android.tradefed.util.RunUtil;
 
@@ -154,15 +161,13 @@ public class TestInvocation implements ITestInvocation {
                 info = config.getBuildProvider().getBuild();
             }
             if (info != null) {
-                if (cmdLineArgs != null) {
-                    // TODO: Store this in an invocation metadata class later
-                    info.addBuildAttribute("command_line_args", cmdLineArgs);
-                }
+                updateBuild(info, config);
                 injectBuild(info, config.getTests());
                 if (shardConfig(config, info, rescheduler)) {
                     CLog.i("Invocation for %s has been sharded, rescheduling",
                             device.getSerialNumber());
                 } else {
+                    updateConfigIfSharded(config);
                     device.setRecovery(config.getDeviceRecovery());
                     performInvocation(config, device, info, rescheduler, listener);
                     return;
@@ -210,6 +215,59 @@ public class TestInvocation implements ITestInvocation {
      * Attempt to shard the configuration into sub-configurations, to be re-scheduled to run on
      * multiple resources in parallel.
      * <p/>
+     * If a shard count is greater than 1, it will simply create configs for each shard by setting
+     * shard indices and reschedule them.
+     * If a shard count is not set,it would fallback to {@link #legacyShardConfig}.
+     *
+     * @param config the current {@link IConfiguration}.
+     * @param info the {@link IBuildInfo} to test
+     * @param rescheduler the {@link IRescheduler}
+     * @return true if test was sharded. Otherwise return <code>false</code>
+     */
+    private boolean shardConfig(IConfiguration config, IBuildInfo info, IRescheduler rescheduler) {
+        if (config.getCommandOptions().getShardIndex() != null) {
+            // The config is already for a single shard.
+            return false;
+        }
+
+        mStatus = "sharding";
+        if (config.getCommandOptions().getShardCount() == null) {
+            return legacyShardConfig(config, info, rescheduler);
+        }
+        // Schedules shard configs.
+        int shardCount = config.getCommandOptions().getShardCount();
+        for (int i = 0; i < config.getCommandOptions().getShardCount(); i++) {
+            IConfiguration shardConfig = null;
+            // Create a deep copy of the configuration.
+            try {
+                shardConfig = getConfigFactory().createConfigurationFromArgs(
+                        QuotationAwareTokenizer.tokenizeLine(config.getCommandLine()));
+            } catch (ConfigurationException e) {
+                // This must not happen.
+                throw new RuntimeException("failed to deep copy a configuration", e);
+            }
+            shardConfig.setBuildProvider(new ExistingBuildProvider(info.clone(),
+                    config.getBuildProvider()));
+            shardConfig.getCommandOptions().setShardCount(shardCount);
+            shardConfig.getCommandOptions().setShardIndex(i);
+            rescheduler.scheduleConfig(shardConfig);
+        }
+        return true;
+    }
+
+    /**
+     * Factory method for getting a reference to the {@link IConfigurationFactory}
+     *
+     * @return the {@link IConfigurationFactory} to use
+     */
+    protected IConfigurationFactory getConfigFactory() {
+        return ConfigurationFactory.getInstance();
+    }
+
+    /**
+     * Attempt to shard the configuration into sub-configurations, to be re-scheduled to run on
+     * multiple resources in parallel.
+     * <p/>
      * A successful shard action renders the current config empty, and invocation should not proceed.
      *
      * @see IShardableTest
@@ -220,8 +278,7 @@ public class TestInvocation implements ITestInvocation {
      * @param rescheduler the {@link IRescheduler}
      * @return true if test was sharded. Otherwise return <code>false</code>
      */
-    private boolean shardConfig(IConfiguration config, IBuildInfo info, IRescheduler rescheduler) {
-        mStatus = "sharding";
+    private boolean legacyShardConfig(IConfiguration config, IBuildInfo info, IRescheduler rescheduler) {
         List<IRemoteTest> shardableTests = new ArrayList<IRemoteTest>();
         boolean isSharded = false;
         for (IRemoteTest test : config.getTests()) {
@@ -316,12 +373,71 @@ public class TestInvocation implements ITestInvocation {
     }
 
     /**
+     * Update the {@link IBuildInfo} with additional info from the {@link IConfiguration}.
+     *
+     * @param info the {@link IBuildInfo}
+     * @param config the {@link IConfiguration}
+     */
+    private void updateBuild(IBuildInfo info, IConfiguration config) {
+        if (config.getCommandLine() != null) {
+            // TODO: Store this in an invocation metadata class later
+            info.addBuildAttribute("command_line_args", config.getCommandLine());
+        }
+        if (config.getCommandOptions().getShardCount() != null) {
+            info.addBuildAttribute("shard_count",
+                    config.getCommandOptions().getShardCount().toString());
+        }
+        if (config.getCommandOptions().getShardIndex() != null) {
+            info.addBuildAttribute("shard_index",
+                    config.getCommandOptions().getShardIndex().toString());
+        }
+    }
+
+    /**
+     * Updates the {@link IConfiguration} to run a single shard if a shard index is set.
+     *
+     * @see IStrctiShardableTest
+     *
+     * @param config the {@link IConfiguration}.
+     */
+    private void updateConfigIfSharded(IConfiguration config) {
+        if (config.getCommandOptions().getShardIndex() == null) {
+            return;
+        }
+
+        int shardCount = config.getCommandOptions().getShardCount();
+        int shardIndex = config.getCommandOptions().getShardIndex();
+        List<IRemoteTest> testShards = new ArrayList<IRemoteTest>();
+        for (IRemoteTest test : config.getTests()) {
+            if (!(test instanceof IStrictShardableTest)) {
+                CLog.w("%s is not shardable; the whole test will run in shard 0",
+                        test.getClass().getName());
+                if (shardIndex == 0) {
+                    testShards.add(test);
+                }
+                continue;
+            }
+            IRemoteTest testShard = ((IStrictShardableTest) test).getTestShard(shardCount,
+                    shardIndex);
+            testShards.add(testShard);
+        }
+        config.setTests(testShards);
+    }
+
+    /**
      * Display a log message informing the user of a invocation being started.
      *
      * @param info the {@link IBuildInfo}
      * @param device the {@link ITestDevice}
+     * @param config the {@link IConfiguration}
      */
-    private void logStartInvocation(IBuildInfo info, ITestDevice device) {
+    private void logStartInvocation(IBuildInfo info, ITestDevice device, IConfiguration config) {
+        String shardSuffix = "";
+        if (config.getCommandOptions().getShardIndex() != null) {
+            shardSuffix = String.format(" (shard %d of %d)",
+                    config.getCommandOptions().getShardIndex(),
+                    config.getCommandOptions().getShardCount());
+        }
         StringBuilder msg = new StringBuilder("Starting invocation for '");
         msg.append(info.getTestTag());
         msg.append("'");
@@ -333,11 +449,12 @@ public class TestInvocation implements ITestInvocation {
             msg.append(" ");
             msg.append(buildAttr);
         }
+        msg.append(shardSuffix);
         msg.append(" on device ");
         msg.append(device.getSerialNumber());
         CLog.logAndDisplay(LogLevel.INFO, msg.toString());
         mStatus = String.format("running %s on build %s", info.getTestTag(),
-                getBuildDescription(info));
+                getBuildDescription(info)) + shardSuffix;
     }
 
     /**
@@ -566,7 +683,7 @@ public class TestInvocation implements ITestInvocation {
      */
     private void startInvocation(IConfiguration config, ITestDevice device, IBuildInfo info,
             ITestInvocationListener listener) {
-        logStartInvocation(info, device);
+        logStartInvocation(info, device, config);
         listener.invocationStarted(info);
     }
 
