@@ -20,6 +20,7 @@ import com.android.ddmlib.Log;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.util.ClassPathScanner;
 import com.android.tradefed.util.ClassPathScanner.IClassPathFilter;
+import com.android.tradefed.util.DirectedGraph;
 import com.android.tradefed.util.StreamUtil;
 import com.android.tradefed.util.keystore.IKeyStoreClient;
 
@@ -35,7 +36,6 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Comparator;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.Hashtable;
 import java.util.List;
 import java.util.Map;
@@ -174,12 +174,11 @@ public class ConfigurationFactory implements IConfigurationFactory {
     class ConfigLoader implements IConfigDefLoader {
 
         private final boolean mIsGlobalConfig;
-        private Set<String> mIncludedConfigs = new HashSet<String>();
-        private boolean mTemplateDryRun = false;
+        private DirectedGraph<String> mConfigGraph = new DirectedGraph<String>();
 
-        public ConfigLoader(boolean isGlobalConfig, boolean templateDryRun) {
+
+        public ConfigLoader(boolean isGlobalConfig) {
             mIsGlobalConfig = isGlobalConfig;
-            mTemplateDryRun = templateDryRun;
         }
 
         /**
@@ -282,13 +281,15 @@ public class ConfigurationFactory implements IConfigurationFactory {
                             "Failure when trying to determine local file canonical path %s", e));
                 }
             }
-            if (mIncludedConfigs.contains(config_name) && !mTemplateDryRun) {
-                // We only throw if we are not in template dry-run.
+
+            mConfigGraph.addEdge(parentName, config_name);
+            // If the inclusion of configurations is a cycle we throw an exception.
+            if (!mConfigGraph.isDag()) {
+                CLog.e("%s", mConfigGraph);
                 throw new ConfigurationException(String.format(
                         "Circular configuration include: config '%s' is already included",
                         config_name));
             }
-            mIncludedConfigs.add(config_name);
             loadConfiguration(config_name, def, templateMap);
         }
 
@@ -348,8 +349,8 @@ public class ConfigurationFactory implements IConfigurationFactory {
      * @throws ConfigurationException if an error occurred loading the config
      */
     private ConfigurationDef getConfigurationDef(String name, boolean isGlobal,
-            Map<String, String> templateMap, boolean templateDryRun) throws ConfigurationException {
-        return new ConfigLoader(isGlobal, templateDryRun).getConfigurationDef(name, templateMap);
+            Map<String, String> templateMap) throws ConfigurationException {
+        return new ConfigLoader(isGlobal).getConfigurationDef(name, templateMap);
     }
 
     /**
@@ -431,7 +432,7 @@ public class ConfigurationFactory implements IConfigurationFactory {
         }
         optionArgsRef.addAll(templateArgParser.parseBestEffort(listArgs));
         ConfigurationDef configDef = getConfigurationDef(configName, false,
-                parserSettings.templateMap, false);
+                parserSettings.templateMap);
         if (!parserSettings.templateMap.isEmpty()) {
             // remove the bad ConfigDef from the cache.
             for (ConfigId cid : mConfigDefMap.keySet()) {
@@ -480,7 +481,7 @@ public class ConfigurationFactory implements IConfigurationFactory {
         optionArgsRef.addAll(Arrays.asList(arrayArgs));
         // first arg is config name
         final String configName = optionArgsRef.remove(0);
-        ConfigurationDef configDef = getConfigurationDef(configName, true, null, false);
+        ConfigurationDef configDef = getConfigurationDef(configName, true, null);
         return configDef.createGlobalConfiguration();
     }
 
@@ -566,7 +567,7 @@ public class ConfigurationFactory implements IConfigurationFactory {
             throws ConfigurationException {
         ConfigurationDef configDef = null;
         try {
-            configDef = getConfigurationDef(configId.name, false, templateMap, true);
+            configDef = getConfigurationDef(configId.name, false, templateMap);
             return configDef;
         } catch (TemplateResolutionError tre) {
             // When a template does not have a default, we try again with known good template

@@ -635,16 +635,14 @@ public class ConfigurationFactoryTest extends TestCase {
     }
 
     /**
-     * Test loading a config that tries to replace a template with itself will fail because each
-     * template:map can only be applied once.
+     * Test loading a config that tries to replace a template with itself will fail because it
+     * creates a cycle of configuration.
      */
     public void testCreateConfigurationFromArgs_recursiveTemplate() throws Exception {
         final String configName = "depend-template-include-config";
         final String depTargetName = "depend-template-include-config";
         final String expError = String.format(
-                "Failed to parse config xml '%s'. Reason: " +
-                ConfigurationXmlParser.ConfigHandler.INNER_TEMPLATE_INCLUDE_ERROR,
-                configName, configName, depTargetName);
+                "Circular configuration include: config '%s' is already included", depTargetName);
         try {
             mFactory.createConfigurationFromArgs(new String[]{configName,
                     "--template:map", "dep-target", depTargetName});
@@ -661,7 +659,7 @@ public class ConfigurationFactoryTest extends TestCase {
     public void testCreateConfigurationFromArgs_template_multilevel() throws Exception {
         final String configName = "depend-template-include-config";
         final String depTargetName = "template-include-config";
-        final String depTargetName2 = "depend-template-include-config";
+        final String depTargetName2 = "template-collision-include-config";
         final String expError = String.format(
                 "Failed to parse config xml '%s'. Reason: " +
                 ConfigurationXmlParser.ConfigHandler.INNER_TEMPLATE_INCLUDE_ERROR,
@@ -677,38 +675,18 @@ public class ConfigurationFactoryTest extends TestCase {
     }
 
     /**
-     * Re-apply a template twice. Should result in an error
+     * Re-apply a template twice. Should result in an error only because the configs included have
+     * several build_provider
      */
     public void testCreateConfigurationFromArgs_templateCollision() throws Exception {
         final String configName = "template-collision-include-config";
         final String depTargetName = "template-include-config-with-default";
-        final String expError = String.format(
-                "Circular configuration include: config '%s' is already included", depTargetName);
+        final String expError =
+                "Only one config object allowed for build_provider, but multiple were specified.";
         try {
             mFactory.createConfigurationFromArgs(new String[]{configName,
                     "--template:map", "target-col", depTargetName,
                     "--template:map", "target-col2", depTargetName});
-            fail ("ConfigurationException not thrown");
-        } catch (ConfigurationException e) {
-            assertEquals(expError, e.getMessage());
-        }
-    }
-
-    /**
-     * One template directly replaced by test-config, the other one replaced by another template
-     * with default value to test-config. Results in Circular error.
-     */
-    public void testCreateConfigurationFromArgs_templateCollision_finalEvaluation()
-            throws Exception {
-        final String configName = "template-collision-include-config";
-        final String depTargetName = "template-include-config-with-default";
-        final String depTargetName2 = "test-config";
-        final String expError = String.format(
-                "Circular configuration include: config '%s' is already included", depTargetName2);
-        try {
-            mFactory.createConfigurationFromArgs(new String[]{configName,
-                    "--template:map", "target-col", depTargetName,
-                    "--template:map", "target-col2", depTargetName2});
             fail ("ConfigurationException not thrown");
         } catch (ConfigurationException e) {
             assertEquals(expError, e.getMessage());
