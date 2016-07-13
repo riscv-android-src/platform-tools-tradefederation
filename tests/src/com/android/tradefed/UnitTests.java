@@ -29,6 +29,7 @@ import com.android.tradefed.command.CommandOptionsTest;
 import com.android.tradefed.command.CommandSchedulerTest;
 import com.android.tradefed.command.ConsoleTest;
 import com.android.tradefed.command.VerifyTest;
+import com.android.tradefed.command.remote.RemoteOperationTest;
 import com.android.tradefed.config.ArgsOptionParserTest;
 import com.android.tradefed.config.ConfigurationDefTest;
 import com.android.tradefed.config.ConfigurationFactoryTest;
@@ -38,7 +39,6 @@ import com.android.tradefed.config.GlobalConfigurationTest;
 import com.android.tradefed.config.OptionCopierTest;
 import com.android.tradefed.config.OptionSetterTest;
 import com.android.tradefed.config.OptionUpdateRuleTest;
-import com.android.tradefed.device.NativeDeviceTest;
 import com.android.tradefed.device.BackgroundDeviceActionTest;
 import com.android.tradefed.device.CpuStatsCollectorTest;
 import com.android.tradefed.device.DeviceManagerTest;
@@ -49,6 +49,7 @@ import com.android.tradefed.device.DumpsysPackageReceiverTest;
 import com.android.tradefed.device.FastbootHelperTest;
 import com.android.tradefed.device.ManagedDeviceListTest;
 import com.android.tradefed.device.ManagedTestDeviceFactoryTest;
+import com.android.tradefed.device.NativeDeviceTest;
 import com.android.tradefed.device.ReconnectingRecoveryTest;
 import com.android.tradefed.device.RemoteAndroidDeviceTest;
 import com.android.tradefed.device.TestDeviceTest;
@@ -91,7 +92,6 @@ import com.android.tradefed.targetprep.SystemUpdaterDeviceFlasherTest;
 import com.android.tradefed.testtype.AndroidJUnitTestTest;
 import com.android.tradefed.testtype.DeviceBatteryLevelCheckerTest;
 import com.android.tradefed.testtype.DeviceTestCaseTest;
-import com.android.tradefed.testtype.DeviceTestSuite;
 import com.android.tradefed.testtype.DeviceTestSuiteTest;
 import com.android.tradefed.testtype.FakeTestTest;
 import com.android.tradefed.testtype.GTestListTestParserTest;
@@ -150,179 +150,182 @@ import com.android.tradefed.util.net.HttpMultipartPostTest;
 import com.android.tradefed.util.net.XmlRpcHelperTest;
 import com.android.tradefed.util.xml.AndroidManifestWriterTest;
 
-import junit.framework.Test;
+import org.junit.runner.RunWith;
+import org.junit.runners.Suite;
+import org.junit.runners.Suite.SuiteClasses;
 
 /**
- * TODO: Remove this class in favor of the JUnit4 one.
- * A test suite for all Trade Federation unit tests.
+ * A test suite for all Trade Federation unit tests running under Junit4.
  * <p/>
  * All tests listed here should be self-contained, and should not require any external dependencies.
  */
-public class UnitTests extends DeviceTestSuite {
+@RunWith(Suite.class)
+@SuiteClasses({
 
-    public UnitTests() {
-        super();
-        // build
-        addTestSuite(BuildInfoTest.class);
-        addTestSuite(DeviceBuildInfoTest.class);
-        addTestSuite(DeviceBuildDescriptorTest.class);
-        addTestSuite(FileDownloadCacheTest.class);
-        addTestSuite(KernelBuildInfoTest.class);
-        addTestSuite(KernelDeviceBuildInfoTest.class);
-        addTestSuite(OtaZipfileBuildProviderTest.class);
-        addTestSuite(SdkBuildInfoTest.class);
+    // build
+    BuildInfoTest.class,
+    DeviceBuildInfoTest.class,
+    DeviceBuildDescriptorTest.class,
+    FileDownloadCacheTest.class,
+    KernelBuildInfoTest.class,
+    KernelDeviceBuildInfoTest.class,
+    OtaZipfileBuildProviderTest.class,
+    SdkBuildInfoTest.class,
 
-        // command
-        addTestSuite(CommandFileParserTest.class);
-        addTestSuite(CommandFileWatcherTest.class);
-        addTestSuite(CommandSchedulerTest.class);
-        addTestSuite(CommandOptionsTest.class);
-        addTestSuite(ConsoleTest.class);
-        addTestSuite(VerifyTest.class);
+    // command
+    CommandFileParserTest.class,
+    CommandFileWatcherTest.class,
+    CommandSchedulerTest.class,
+    CommandOptionsTest.class,
+    ConsoleTest.class,
+    VerifyTest.class,
 
-        // config
-        addTestSuite(ArgsOptionParserTest.class);
-        addTestSuite(ConfigurationDefTest.class);
-        addTestSuite(ConfigurationFactoryTest.class);
-        addTestSuite(ConfigurationTest.class);
-        addTestSuite(ConfigurationXmlParserTest.class);
-        addTestSuite(GlobalConfigurationTest.class);
-        addTestSuite(OptionCopierTest.class);
-        addTestSuite(OptionSetterTest.class);
-        addTestSuite(OptionUpdateRuleTest.class);
+    // command.remote
+    RemoteOperationTest.class,
 
-        // device
-        addTestSuite(BackgroundDeviceActionTest.class);
-        addTestSuite(CpuStatsCollectorTest.class);
-        addTestSuite(DeviceManagerTest.class);
-        addTestSuite(DeviceSelectionOptionsTest.class);
-        addTestSuite(DeviceStateMonitorTest.class);
-        addTestSuite(DeviceUtilStatsMonitorTest.class);
-        addTestSuite(DumpsysPackageReceiverTest.class);
-        addTestSuite(FastbootHelperTest.class);
-        addTestSuite(ManagedDeviceListTest.class);
-        addTestSuite(ManagedTestDeviceFactoryTest.class);
-        addTestSuite(NativeDeviceTest.class);
-        addTestSuite(PropertyChangerTest.class);
-        addTestSuite(ReconnectingRecoveryTest.class);
-        addTestSuite(RemoteAndroidDeviceTest.class);
-        addTestSuite(TestDeviceTest.class);
-        addTestSuite(TopHelperTest.class);
-        addTestSuite(WaitDeviceRecoveryTest.class);
-        addTestSuite(WifiHelperTest.class);
+    // config
+    ArgsOptionParserTest.class,
+    ConfigurationDefTest.class,
+    ConfigurationFactoryTest.class,
+    ConfigurationTest.class,
+    ConfigurationXmlParserTest.class,
+    GlobalConfigurationTest.class,
+    OptionCopierTest.class,
+    OptionSetterTest.class,
+    OptionUpdateRuleTest.class,
 
-        // invoker
-        addTestSuite(TestInvocationTest.class);
+    // device
+    BackgroundDeviceActionTest.class,
+    CpuStatsCollectorTest.class,
+    DeviceManagerTest.class,
+    DeviceSelectionOptionsTest.class,
+    DeviceStateMonitorTest.class,
+    DeviceUtilStatsMonitorTest.class,
+    DumpsysPackageReceiverTest.class,
+    FastbootHelperTest.class,
+    ManagedDeviceListTest.class,
+    ManagedTestDeviceFactoryTest.class,
+    NativeDeviceTest.class,
+    ReconnectingRecoveryTest.class,
+    RemoteAndroidDeviceTest.class,
+    PropertyChangerTest.class,
+    TestDeviceTest.class,
+    TopHelperTest.class,
+    WaitDeviceRecoveryTest.class,
+    WifiHelperTest.class,
 
-        // log
-        addTestSuite(FileLoggerTest.class);
-        addTestSuite(LogRegistryTest.class);
-        addTestSuite(TerribleFailureEmailHandlerTest.class);
+    // invoker
+    TestInvocationTest.class,
 
-        // result
-        addTestSuite(BugreportCollectorTest.class);
-        addTestSuite(ConsoleResultReporterTest.class);
-        addTestSuite(CollectingTestListenerTest.class);
-        addTestSuite(DeviceFileReporterTest.class);
-        addTestSuite(EmailResultReporterTest.class);
-        addTestSuite(FailureEmailResultReporterTest.class);
-        addTestSuite(FileSystemLogSaverTest.class);
-        addTestSuite(InvocationFailureEmailResultReporterTest.class);
-        addTestSuite(InvocationToJUnitResultForwarderTest.class);
-        addTestSuite(JUnitToInvocationResultForwarderTest.class);
-        addTestSuite(LogFileSaverTest.class);
-        addTestSuite(SnapshotInputStreamSourceTest.class);
-        addTestSuite(TestSummaryTest.class);
-        addTestSuite(TestFailureEmailResultReporterTest.class);
-        addTestSuite(XmlResultReporterTest.class);
+    // log
+    FileLoggerTest.class,
+    LogRegistryTest.class,
+    TerribleFailureEmailHandlerTest.class,
 
-        // targetprep
-        addTestSuite(AllTestAppsInstallSetupTest.class);
-        addTestSuite(BuildInfoAttributePreparerTest.class);
-        addTestSuite(DefaultTestsZipInstallerTest.class);
-        addTestSuite(DeviceFlashPreparerTest.class);
-        addTestSuite(DeviceSetupTest.class);
-        addTestSuite(FastbootDeviceFlasherTest.class);
-        addTestSuite(FlashingResourcesParserTest.class);
-        addTestSuite(KernelFlashPreparerTest.class);
-        addTestSuite(PushFilePreparerTest.class);
-        addTestSuite(PythonVirtualenvPreparerTest.class);
-        addTestSuite(SdkAvdPreparerTest.class);
-        addTestSuite(StopServicesSetupTest.class);
-        addTestSuite(SystemUpdaterDeviceFlasherTest.class);
-        addTestSuite(InstrumentationPreparerTest.class);
+    // result
+    BugreportCollectorTest.class,
+    ConsoleResultReporterTest.class,
+    CollectingTestListenerTest.class,
+    DeviceFileReporterTest.class,
+    EmailResultReporterTest.class,
+    FailureEmailResultReporterTest.class,
+    FileSystemLogSaverTest.class,
+    InvocationFailureEmailResultReporterTest.class,
+    InvocationToJUnitResultForwarderTest.class,
+    JUnitToInvocationResultForwarderTest.class,
+    LogFileSaverTest.class,
+    SnapshotInputStreamSourceTest.class,
+    TestSummaryTest.class,
+    TestFailureEmailResultReporterTest.class,
+    XmlResultReporterTest.class,
 
-        // testtype
-        addTestSuite(AndroidJUnitTestTest.class);
-        addTestSuite(DeviceBatteryLevelCheckerTest.class);
-        addTestSuite(DeviceTestCaseTest.class);
-        addTestSuite(DeviceTestSuiteTest.class);
-        addTestSuite(FakeTestTest.class);
-        addTestSuite(GoogleBenchmarkResultParserTest.class);
-        addTestSuite(GoogleBenchmarkTestTest.class);
-        addTestSuite(GTestListTestParserTest.class);
-        addTestSuite(GTestResultParserTest.class);
-        addTestSuite(GTestTest.class);
-        addTestSuite(GTestXmlResultParserTest.class);
-        addTestSuite(HostTestTest.class);
-        addTestSuite(InstalledInstrumentationsTestTest.class);
-        addTestSuite(InstrumentationSerialTestTest.class);
-        addTestSuite(InstrumentationFileTestTest.class);
-        addTestSuite(InstrumentationTestTest.class);
-        addTestSuite(NativeBenchmarkTestParserTest.class);
-        addTestSuite(NativeStressTestParserTest.class);
-        addTestSuite(NativeStressTestTest.class);
-        addTestSuite(PythonUnitTestResultParserTest.class);
-        addTestSuite(PythonUnitTestRunnerTest.class);
+    // targetprep
+    AllTestAppsInstallSetupTest.class,
+    BuildInfoAttributePreparerTest.class,
+    DefaultTestsZipInstallerTest.class,
+    DeviceFlashPreparerTest.class,
+    DeviceSetupTest.class,
+    FastbootDeviceFlasherTest.class,
+    FlashingResourcesParserTest.class,
+    InstrumentationPreparerTest.class,
+    KernelFlashPreparerTest.class,
+    PushFilePreparerTest.class,
+    PythonVirtualenvPreparerTest.class,
+    SdkAvdPreparerTest.class,
+    StopServicesSetupTest.class,
+    SystemUpdaterDeviceFlasherTest.class,
 
-        // testtype/testdefs
-        addTestSuite(XmlDefsParserTest.class);
-        addTestSuite(XmlDefsTestTest.class);
+    // testtype
+    AndroidJUnitTestTest.class,
+    DeviceBatteryLevelCheckerTest.class,
+    DeviceTestCaseTest.class,
+    DeviceTestSuiteTest.class,
+    FakeTestTest.class,
+    GoogleBenchmarkResultParserTest.class,
+    GoogleBenchmarkTestTest.class,
+    GTestListTestParserTest.class,
+    GTestResultParserTest.class,
+    GTestTest.class,
+    GTestXmlResultParserTest.class,
+    HostTestTest.class,
+    InstalledInstrumentationsTestTest.class,
+    InstrumentationSerialTestTest.class,
+    InstrumentationFileTestTest.class,
+    InstrumentationTestTest.class,
+    NativeBenchmarkTestParserTest.class,
+    NativeStressTestParserTest.class,
+    NativeStressTestTest.class,
+    PythonUnitTestResultParserTest.class,
+    PythonUnitTestRunnerTest.class,
 
-        // util
-        addTestSuite(AaptParserTest.class);
-        addTestSuite(AbiFormatterTest.class);
-        addTestSuite(ArrayUtilTest.class);
-        addTestSuite(BluetoothUtilsTest.class);
-        addTestSuite(ByteArrayListTest.class);
-        addTestSuite(ClassPathScannerTest.class);
-        addTestSuite(ConditionPriorityBlockingQueueTest.class);
-        addTestSuite(ConfigCompletorTest.class);
-        addTestSuite(DirectedGraphTest.class);
-        addTestSuite(EmailTest.class);
-        addTestSuite(FakeTestsZipFolderTest.class);
-        addTestSuite(FileUtilTest.class);
-        addTestSuite(FixedByteArrayOutputStreamTest.class);
-        addTestSuite(HttpHelperTest.class);
-        addTestSuite(HttpMultipartPostTest.class);
-        addTestSuite(JUnitXmlParserTest.class);
-        addTestSuite(ListInstrumentationParserTest.class);
-        addTestSuite(LogcatUpdaterEventParserTest.class);
-        addTestSuite(MultiMapTest.class);
-        addTestSuite(NullUtilTest.class);
-        addTestSuite(PairTest.class);
-        addTestSuite(QuotationAwareTokenizerTest.class);
-        addTestSuite(RegexTrieTest.class);
-        addTestSuite(RunUtilTest.class);
-        addTestSuite(SizeLimitedOutputStreamTest.class);
-        addTestSuite(StreamUtilTest.class);
-        addTestSuite(SubprocessTestResultsParserTest.class);
-        addTestSuite(TableFormatterTest.class);
-        addTestSuite(TestLoaderTest.class);
-        addTestSuite(TimeValTest.class);
-        addTestSuite(SimpleStatsTest.class);
-        addTestSuite(StringEscapeUtilsTest.class);
-        addTestSuite(XmlRpcHelperTest.class);
-        addTestSuite(ZipUtilTest.class);
+    // testtype/testdefs
+    XmlDefsParserTest.class,
+    XmlDefsTestTest.class,
 
-        // util subdirs
-        addTestSuite(AndroidManifestWriterTest.class);
+    // util
+    AaptParserTest.class,
+    AbiFormatterTest.class,
+    ArrayUtilTest.class,
+    BluetoothUtilsTest.class,
+    ByteArrayListTest.class,
+    ClassPathScannerTest.class,
+    ConditionPriorityBlockingQueueTest.class,
+    ConfigCompletorTest.class,
+    DirectedGraphTest.class,
+    EmailTest.class,
+    FakeTestsZipFolderTest.class,
+    FileUtilTest.class,
+    FixedByteArrayOutputStreamTest.class,
+    HttpHelperTest.class,
+    HttpMultipartPostTest.class,
+    JUnitXmlParserTest.class,
+    ListInstrumentationParserTest.class,
+    LogcatUpdaterEventParserTest.class,
+    MultiMapTest.class,
+    NullUtilTest.class,
+    PairTest.class,
+    QuotationAwareTokenizerTest.class,
+    RegexTrieTest.class,
+    RunUtilTest.class,
+    SizeLimitedOutputStreamTest.class,
+    StreamUtilTest.class,
+    SubprocessTestResultsParserTest.class,
+    TableFormatterTest.class,
+    TestLoaderTest.class,
+    TimeValTest.class,
+    SimpleStatsTest.class,
+    StringEscapeUtilsTest.class,
+    XmlRpcHelperTest.class,
+    ZipUtilTest.class,
 
-        // util/keystore
-        addTestSuite(JSONFileKeyStoreClientTest.class);
-    }
+    // util subdirs
+    AndroidManifestWriterTest.class,
 
-    public static Test suite() {
-        return new UnitTests();
-    }
+    // util/keystore
+    JSONFileKeyStoreClientTest.class,
+
+})
+public class UnitTests {
+    // empty of purpose
 }
+
