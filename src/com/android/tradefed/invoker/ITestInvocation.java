@@ -28,16 +28,20 @@ public interface ITestInvocation {
 
     /**
      * Perform the test invocation.
+     * FIXME: Remove when fully moved to new interface.
      *
      * @param device the {@link ITestDevice} to perform tests.
      * @param config the {@link IConfiguration} of this test run.
      * @param rescheduler the {@link IRescheduler}, for rescheduling portions of the invocation for
-     *            execution on another resource(s)
+     *        execution on another resource(s)
      * @param extraListeners {@link ITestInvocationListener}s to notify, in addition to those in
-     *            <var>config</var>
+     *        <var>config</var>
      * @throws DeviceNotAvailableException if communication with device was lost
      * @throws Throwable
+     * @Deprecated Use {@link #invoke(IInvocationContext, IConfiguration, IRescheduler,
+     *        ITestInvocationListener...)} instead.
      */
+    @Deprecated
     public void invoke(ITestDevice device, IConfiguration config, IRescheduler rescheduler,
             ITestInvocationListener... extraListeners) throws DeviceNotAvailableException,
             Throwable;
@@ -45,16 +49,16 @@ public interface ITestInvocation {
     /**
      * Perform the test invocation.
      *
-     * @param metadata the {@link IInvocationMetadata} to perform tests.
+     * @param metadata the {@link IInvocationContext} to perform tests.
      * @param config the {@link IConfiguration} of this test run.
      * @param rescheduler the {@link IRescheduler}, for rescheduling portions of the invocation for
-     *            execution on another resource(s)
+     *        execution on another resource(s)
      * @param extraListeners {@link ITestInvocationListener}s to notify, in addition to those in
-     *            <var>config</var>
+     *        <var>config</var>
      * @throws DeviceNotAvailableException if communication with device was lost
      * @throws Throwable
      */
-    public void invoke(IInvocationMetadata metadata, IConfiguration config,
+    public void invoke(IInvocationContext metadata, IConfiguration config,
             IRescheduler rescheduler, ITestInvocationListener... extraListeners)
             throws DeviceNotAvailableException, Throwable;
 }

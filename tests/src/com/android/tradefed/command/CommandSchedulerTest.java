@@ -24,7 +24,7 @@ import com.android.tradefed.config.ConfigurationException;
 import com.android.tradefed.config.DeviceConfigurationHolder;
 import com.android.tradefed.config.IConfiguration;
 import com.android.tradefed.config.IConfigurationFactory;
-import com.android.tradefed.config.IDeviceConfig;
+import com.android.tradefed.config.IDeviceConfiguration;
 import com.android.tradefed.config.IGlobalConfiguration;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.DeviceSelectionOptions;
@@ -36,7 +36,7 @@ import com.android.tradefed.device.MockDeviceManager;
 import com.android.tradefed.device.StubDevice;
 import com.android.tradefed.device.TcpDevice;
 import com.android.tradefed.device.TestDeviceState;
-import com.android.tradefed.invoker.IInvocationMetadata;
+import com.android.tradefed.invoker.IInvocationContext;
 import com.android.tradefed.invoker.IRescheduler;
 import com.android.tradefed.invoker.ITestInvocation;
 import com.android.tradefed.log.ITerribleFailureHandler;
@@ -58,6 +58,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 
 
 /**
@@ -73,7 +74,7 @@ public class CommandSchedulerTest extends TestCase {
     private CommandOptions mCommandOptions;
     private DeviceSelectionOptions mDeviceOptions;
     private CommandFileParser mMockCmdFileParser;
-    private List<IDeviceConfig> mMockDeviceConfig;
+    private List<IDeviceConfiguration> mMockDeviceConfig;
 
     /**
      * {@inheritDoc}
@@ -88,7 +89,7 @@ public class CommandSchedulerTest extends TestCase {
         mMockConfiguration = EasyMock.createMock(IConfiguration.class);
         mCommandOptions = new CommandOptions();
         mDeviceOptions = new DeviceSelectionOptions();
-        mMockDeviceConfig = new ArrayList<IDeviceConfig>();
+        mMockDeviceConfig = new ArrayList<IDeviceConfiguration>();
 
         mScheduler = new CommandScheduler() {
 
@@ -272,6 +273,7 @@ public class CommandSchedulerTest extends TestCase {
      * Test simple case for
      * {@link CommandScheduler#execCommand(IScheduledInvocationListener, ITestDevice, String[])}
      */
+    @SuppressWarnings("unchecked")
     public void testExecCommand() throws Throwable {
         String[] args = new String[] {
             "foo"
@@ -287,8 +289,8 @@ public class CommandSchedulerTest extends TestCase {
         EasyMock.expect(mockDevice.getIDevice()).andStubReturn(mockIDevice);
         IScheduledInvocationListener mockListener = EasyMock
                 .createMock(IScheduledInvocationListener.class);
-        mockListener.invocationComplete((IInvocationMetadata)EasyMock.anyObject(),
-                EasyMock.eq(FreeDeviceState.AVAILABLE));
+        mockListener.invocationComplete((IInvocationContext)EasyMock.anyObject(),
+                (Map<ITestDevice, FreeDeviceState>)EasyMock.anyObject());
         replayMocks(mockDevice, mockListener);
         mScheduler.start();
         mScheduler.execCommand(mockListener, mockDevice, args);
@@ -299,13 +301,13 @@ public class CommandSchedulerTest extends TestCase {
 
     /**
      * Sets the number of expected
-     * {@link ITestInvocation#invoke(ITestDevice, IConfiguration, IRescheduler,
+     * {@link ITestInvocation#invoke(IInvocationContext, IConfiguration, IRescheduler,
      *      ITestInvocationListener[])} calls
      *
      * @param times
      */
     private void setExpectedInvokeCalls(int times) throws Throwable {
-        mMockInvocation.invoke((ITestDevice)EasyMock.anyObject(),
+        mMockInvocation.invoke((IInvocationContext)EasyMock.anyObject(),
                 (IConfiguration)EasyMock.anyObject(), (IRescheduler)EasyMock.anyObject(),
                 (ITestInvocationListener)EasyMock.anyObject());
         EasyMock.expectLastCall().times(times);
@@ -313,7 +315,7 @@ public class CommandSchedulerTest extends TestCase {
 
     /**
      * Sets up a object that will notify when the expected number of
-     * {@link ITestInvocation#invoke(ITestDevice, IConfiguration, IRescheduler,
+     * {@link ITestInvocation#invoke(IInvocationContext, IConfiguration, IRescheduler,
      *      ITestInvocationListener[])} calls occurs
      *
      * @param times
@@ -332,7 +334,7 @@ public class CommandSchedulerTest extends TestCase {
                 return null;
             }
         };
-        mMockInvocation.invoke((ITestDevice)EasyMock.anyObject(),
+        mMockInvocation.invoke((IInvocationContext)EasyMock.anyObject(),
                 (IConfiguration)EasyMock.anyObject(), (IRescheduler)EasyMock.anyObject(),
                 (ITestInvocationListener)EasyMock.anyObject());
         EasyMock.expectLastCall().andAnswer(blockResult);
@@ -390,7 +392,7 @@ public class CommandSchedulerTest extends TestCase {
      * Verify that scheduler goes into shutdown mode when a {@link FatalHostError} is thrown.
      */
     public void testRun_fatalError() throws Throwable {
-        mMockInvocation.invoke((ITestDevice)EasyMock.anyObject(),
+        mMockInvocation.invoke((IInvocationContext)EasyMock.anyObject(),
                 (IConfiguration)EasyMock.anyObject(), (IRescheduler)EasyMock.anyObject(),
                 (ITestInvocationListener)EasyMock.anyObject());
         EasyMock.expectLastCall().andThrow(new FatalHostError("error"));
@@ -498,7 +500,7 @@ public class CommandSchedulerTest extends TestCase {
             }
         };
 
-        mMockInvocation.invoke(EasyMock.<ITestDevice>anyObject(),
+        mMockInvocation.invoke(EasyMock.<IInvocationContext>anyObject(),
                 EasyMock.<IConfiguration>anyObject(), EasyMock.<IRescheduler>anyObject(),
                 EasyMock.<ITestInvocationListener>anyObject());
         EasyMock.expectLastCall().andAnswer(rescheduleAndThrowAnswer);
@@ -674,7 +676,7 @@ public class CommandSchedulerTest extends TestCase {
 
         // Assume all legacy test are single device
         if (mMockDeviceConfig.isEmpty()) {
-            IDeviceConfig mockConfig = new DeviceConfigurationHolder("device");
+            IDeviceConfiguration mockConfig = new DeviceConfigurationHolder("device");
             mockConfig.addSpecificConfig(mDeviceOptions);
             mMockDeviceConfig.add(mockConfig);
         }

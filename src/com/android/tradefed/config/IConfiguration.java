@@ -26,6 +26,7 @@ import com.android.tradefed.log.ILeveledLogOutput;
 import com.android.tradefed.result.ILogSaver;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.targetprep.ITargetPreparer;
+import com.android.tradefed.targetprep.multi.IMultiTargetPreparer;
 import com.android.tradefed.testtype.IRemoteTest;
 import com.android.tradefed.util.keystore.IKeyStoreClient;
 import org.json.JSONArray;
@@ -102,6 +103,13 @@ public interface IConfiguration {
     public ILogSaver getLogSaver();
 
     /**
+     * Gets the {@link IMultiTargetPreparer}s from the configuration.
+     *
+     * @return the {@link IMultiTargetPreparer}s provided in order in the configuration
+     */
+    public List<IMultiTargetPreparer> getMultiTargetPreparers();
+
+    /**
      * Gets the {@link ICommandOptions} to use from the configuration.
      *
      * @return the {@link ICommandOptions} provided in the configuration.
@@ -137,16 +145,16 @@ public interface IConfiguration {
     public List<?> getConfigurationObjectList(String typeName);
 
     /**
-     * Gets the {@link IDeviceConfig}s from the configuration.
+     * Gets the {@link IDeviceConfiguration}s from the configuration.
      *
-     * @return the {@link IDeviceConfig}s provided in order in the configuration
+     * @return the {@link IDeviceConfiguration}s provided in order in the configuration
      */
-    public List<IDeviceConfig> getDeviceConfig();
+    public List<IDeviceConfiguration> getDeviceConfig();
 
     /**
-     * Return the {@link IDeviceConfig} associated to the name provided, null if not found.
+     * Return the {@link IDeviceConfiguration} associated to the name provided, null if not found.
      */
-    public IDeviceConfig getDeviceConfigByName(String nameDevice);
+    public IDeviceConfiguration getDeviceConfigByName(String nameDevice);
 
     /**
      * Inject a option value into the set of configuration objects.
@@ -240,18 +248,18 @@ public interface IConfiguration {
     public void setTargetPreparer(ITargetPreparer preparer);
 
     /**
-     * Set a {@link IDeviceConfig}, replacing any existing value.
+     * Set a {@link IDeviceConfiguration}, replacing any existing value.
      *
      * @param deviceConfig
      */
-    public void setDeviceConfig(IDeviceConfig deviceConfig);
+    public void setDeviceConfig(IDeviceConfiguration deviceConfig);
 
     /**
-     * Set the {@link IDeviceConfig}s, replacing any existing value.
+     * Set the {@link IDeviceConfiguration}s, replacing any existing value.
      *
      * @param deviceConfigs
      */
-    public void setDeviceConfigList(List<IDeviceConfig> deviceConfigs);
+    public void setDeviceConfigList(List<IDeviceConfiguration> deviceConfigs);
 
     /**
      * Convenience method to set a single {@link IRemoteTest} in this configuration, replacing any
@@ -268,6 +276,22 @@ public interface IConfiguration {
      * @param tests
      */
     public void setTests(List<IRemoteTest> tests);
+
+    /**
+     * Set the list of {@link IMultiTargetPreparer}s in this configuration, replacing any
+     * existing values
+     *
+     * @param multiTargPreps
+     */
+    public void setMultiTargetPreparers(List<IMultiTargetPreparer> multiTargPreps);
+
+    /**
+     * Convenience method to set a single {@link IMultiTargetPreparer} in this configuration,
+     * replacing any existing values
+     *
+     * @param multiTargPrep
+     */
+    public void setMultiTargetPreparer(IMultiTargetPreparer multiTargPrep);
 
     /**
      * Set the list of {@link ITestInvocationListener}s, replacing any existing values
@@ -337,7 +361,7 @@ public interface IConfiguration {
     /**
      * Set the config {@link Option} fields with given set of command line arguments
      * <p/>
-     * @see {@link ArgsOptionParser} for expected format
+     * See {@link ArgsOptionParser} for expected format
      *
      * @param listArgs the command line arguments
      * @param keyStoreClient {@link IKeyStoreClient} to use.

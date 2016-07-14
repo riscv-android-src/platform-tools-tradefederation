@@ -23,7 +23,8 @@ import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.FreeDeviceState;
 import com.android.tradefed.device.IDeviceManager;
 import com.android.tradefed.device.ITestDevice;
-import com.android.tradefed.invoker.IInvocationMetadata;
+import com.android.tradefed.invoker.IInvocationContext;
+import com.android.tradefed.invoker.InvocationContext;
 
 import junit.framework.TestCase;
 
@@ -32,6 +33,7 @@ import org.easymock.IAnswer;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -274,7 +276,7 @@ public class RemoteManagerFuncTest extends TestCase {
      * An integration test for consecutive executes {@link ExecCommandOp}
      */
     public void testConsecutiveExecCommand() throws Exception {
-        ITestDevice device = EasyMock.createMock(ITestDevice.class);
+        final ITestDevice device = EasyMock.createMock(ITestDevice.class);
         EasyMock.expect(device.getSerialNumber()).andStubReturn("serial");
         EasyMock.expect(mMockDeviceManager.forceAllocateDevice("serial")).andReturn(device);
         mMockDeviceManager.freeDevice(EasyMock.eq(device), EasyMock.eq(FreeDeviceState.AVAILABLE));
@@ -284,12 +286,16 @@ public class RemoteManagerFuncTest extends TestCase {
         mMockScheduler.execCommand((IScheduledInvocationListener)EasyMock.anyObject(),
                 EasyMock.eq(device), EasyMock.aryEq(args));
         IAnswer<Object> commandSuccessAnswer = new IAnswer<Object>() {
+            @SuppressWarnings("unchecked")
             @Override
             public Object answer() {
               ExecCommandTracker commandTracker =
                   (ExecCommandTracker) EasyMock.getCurrentArguments()[0];
-              IInvocationMetadata nullMeta = null;
-              commandTracker.invocationComplete(nullMeta, FreeDeviceState.AVAILABLE);
+              IInvocationContext nullMeta = new InvocationContext();
+              nullMeta.addAllocatedDevice("device", device);
+              Map<ITestDevice, FreeDeviceState> state = new HashMap<>();
+              state.put(device, FreeDeviceState.UNAVAILABLE);
+              commandTracker.invocationComplete(nullMeta, state);
               return null;
             }
         };
@@ -457,7 +463,7 @@ public class RemoteManagerFuncTest extends TestCase {
         ICommandResultHandler mockHandler = EasyMock.createStrictMock(ICommandResultHandler.class);
         mockHandler.failure((String)EasyMock.anyObject(), EasyMock.eq(FreeDeviceState.UNAVAILABLE),
                 (Map<String, String>)EasyMock.anyObject());
-        ITestDevice device = EasyMock.createMock(ITestDevice.class);
+        final ITestDevice device = EasyMock.createMock(ITestDevice.class);
         EasyMock.expect(device.getSerialNumber()).andStubReturn("serial");
         EasyMock.expect(mMockDeviceManager.forceAllocateDevice("serial")).andReturn(device);
         // TODO: change to not available
@@ -475,8 +481,11 @@ public class RemoteManagerFuncTest extends TestCase {
                 listener.invocationStarted(new BuildInfo());
                 listener.invocationFailed(new DeviceNotAvailableException());
                 listener.invocationEnded(1);
-                IInvocationMetadata nullMeta = null;
-                listener.invocationComplete(nullMeta, FreeDeviceState.UNAVAILABLE);
+                IInvocationContext nullMeta = new InvocationContext();
+                nullMeta.addAllocatedDevice("device", device);
+                Map<ITestDevice, FreeDeviceState> state = new HashMap<>();
+                state.put(device, FreeDeviceState.UNAVAILABLE);
+                listener.invocationComplete(nullMeta, state);
                 return null;
             }
         };

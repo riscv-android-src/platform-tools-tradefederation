@@ -21,12 +21,13 @@ import com.android.tradefed.config.IConfigurationFactory;
 import com.android.tradefed.device.FreeDeviceState;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.device.NoDeviceException;
-import com.android.tradefed.invoker.IInvocationMetadata;
+import com.android.tradefed.invoker.IInvocationContext;
 import com.android.tradefed.invoker.ITestInvocation;
 import com.android.tradefed.result.ITestInvocationListener;
 
 import java.io.PrintWriter;
 import java.util.List;
+import java.util.Map;
 
 /**
  * A scheduler for running TradeFederation commands.
@@ -44,7 +45,7 @@ public interface ICommandScheduler {
          *
          * @param device
          * @param deviceState
-         * @deprecated use {@link #invocationComplete(IInvocationMetadata, FreeDeviceState)}.
+         * @deprecated use {@link #invocationComplete(IInvocationContext, Map)}.
          */
         @Deprecated
         public void invocationComplete(ITestDevice device, FreeDeviceState deviceState);
@@ -54,9 +55,10 @@ public interface ICommandScheduler {
          * {@link ITestInvocationListener#invocationEnded(long)} events.
          *
          * @param metadata
-         * @param deviceState
+         * @param devicesStates
          */
-        public void invocationComplete(IInvocationMetadata metadata, FreeDeviceState deviceState);
+        public void invocationComplete(IInvocationContext metadata,
+                Map<ITestDevice, FreeDeviceState> devicesStates);
     }
 
     /**

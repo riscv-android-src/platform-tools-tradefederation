@@ -29,10 +29,10 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * A concrete {@link IDeviceConfig} implementation that stores the loaded device
+ * A concrete {@link IDeviceConfiguration} implementation that stores the loaded device
  * configuration objects in its attributes.
  */
-public class DeviceConfigurationHolder implements IDeviceConfig {
+public class DeviceConfigurationHolder implements IDeviceConfiguration {
     private final String mDeviceName;
     private IBuildProvider mBuildProvider = new StubBuildProvider();
     private List<ITargetPreparer> mListTargetPreparer = new ArrayList<ITargetPreparer>();
@@ -135,8 +135,8 @@ public class DeviceConfigurationHolder implements IDeviceConfig {
      * {@inheritDoc}
      */
     @Override
-    public IDeviceConfig clone() {
-        IDeviceConfig newDeviceConfig = new DeviceConfigurationHolder(getDeviceName());
+    public IDeviceConfiguration clone() {
+        IDeviceConfiguration newDeviceConfig = new DeviceConfigurationHolder(getDeviceName());
         for (Object obj : getAllObjects()) {
             try {
                 newDeviceConfig.addSpecificConfig(obj);

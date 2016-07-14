@@ -13,21 +13,25 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.android.tradefed.testtype;
+package com.android.tradefed.targetprep.multi;
 
 import com.android.tradefed.build.IBuildInfo;
-import com.android.tradefed.invoker.IInvocationMetadata;
-import com.android.tradefed.targetprep.ITargetPreparer;
+import com.android.tradefed.device.ITestDevice;
+import com.android.tradefed.log.LogUtil.CLog;
+import com.android.tradefed.targetprep.TargetSetupError;
+
+import java.util.Map;
 
 /**
- * A test that needs reference to the meta data of the invocation.
- * <p/>
- * Should be used when test needs to know the details of the invocation without needing a reference
- * to the {@link IBuildInfo}.
- * Most tests should not have a dependency on the build-under-test, and
- * should rely on {@link ITargetPreparer}s to prepare the test environment.
+ * Placeholder empty implementation of a {@link IMultiTargetPreparer}.
  */
-public interface IInvocationMetadataReceiver {
+public class StubMultiTargetPreparer implements IMultiTargetPreparer {
 
-    public void setInvocationMetadata(IInvocationMetadata invocationMetadata);
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void setUp(Map<ITestDevice, IBuildInfo> deviceBuildInfo) throws TargetSetupError {
+        CLog.d("skipping target prepare step");
+    }
 }

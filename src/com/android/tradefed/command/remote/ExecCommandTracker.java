@@ -18,9 +18,11 @@ package com.android.tradefed.command.remote;
 import com.google.common.collect.ImmutableMap;
 
 import com.android.tradefed.command.ICommandScheduler.IScheduledInvocationListener;
+import com.android.tradefed.config.Configuration;
 import com.android.tradefed.device.FreeDeviceState;
 import com.android.tradefed.device.ITestDevice;
-import com.android.tradefed.invoker.IInvocationMetadata;
+import com.android.tradefed.invoker.IInvocationContext;
+import com.android.tradefed.invoker.InvocationContext;
 import com.android.tradefed.result.StubTestInvocationListener;
 
 import java.io.ByteArrayOutputStream;
@@ -48,14 +50,19 @@ class ExecCommandTracker extends StubTestInvocationListener implements
     @Deprecated
     @Override
     public void invocationComplete(ITestDevice device, FreeDeviceState deviceState) {
-        IInvocationMetadata nullMeta = null;
-        // Fake metadata for compatibility, works because first arg is not used.
-        invocationComplete(nullMeta, deviceState);
+        IInvocationContext stubMeta = new InvocationContext();
+        stubMeta.addAllocatedDevice(Configuration.DEVICE_NAME, device);
+        // Stub metadata for compatibility
+        Map<ITestDevice, FreeDeviceState> state = new HashMap<>();
+        state.put(device, deviceState);
+        invocationComplete(stubMeta, state);
     }
 
     @Override
-    public void invocationComplete(IInvocationMetadata metadata, FreeDeviceState deviceState) {
-        mState = deviceState;
+    public void invocationComplete(IInvocationContext metadata,
+            Map<ITestDevice, FreeDeviceState> devicesStates) {
+        // FIXME: CommandTracker should handle multiple device states.
+        mState = devicesStates.get(metadata.getDevices().get(0));
         if (mErrorDetails != null) {
             mStatus = CommandResult.Status.INVOCATION_ERROR;
         } else {
