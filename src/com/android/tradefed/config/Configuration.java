@@ -648,6 +648,7 @@ public class Configuration implements IConfiguration {
             throw new IllegalArgumentException("configList cannot be null");
         }
         mConfigMap.remove(typeName);
+        mConfigMap.put(typeName, new ArrayList<Object>(1));
         for (Object configObject : configList) {
             addObject(typeName, configObject);
         }
