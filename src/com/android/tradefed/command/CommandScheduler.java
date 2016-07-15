@@ -1568,8 +1568,10 @@ public class CommandScheduler extends Thread implements ICommandScheduler, IComm
         if (mInvocationThreadMap == null || mInvocationThreadMap.size() == 0) {
             return;
         }
-        List<InvocationThread> copy =
-                new ArrayList<InvocationThread>(mInvocationThreadMap.values());
+        List<InvocationThread> copy = new ArrayList<InvocationThread>();
+        synchronized(this) {
+            copy.addAll(mInvocationThreadMap.values());
+        }
         ArrayList<List<String>> displayRows = new ArrayList<List<String>>();
         displayRows.add(Arrays.asList("Command Id", "Exec Time", "Device", "State"));
         long curTime = System.currentTimeMillis();
