@@ -16,6 +16,12 @@
 
 package com.android.tradefed.config;
 
+import com.android.tradefed.build.IBuildInfo;
+import com.android.tradefed.device.DeviceNotAvailableException;
+import com.android.tradefed.device.ITestDevice;
+import com.android.tradefed.targetprep.BuildError;
+import com.android.tradefed.targetprep.ITargetPreparer;
+import com.android.tradefed.targetprep.TargetSetupError;
 import com.android.tradefed.util.FileUtil;
 import com.android.tradefed.util.MultiMap;
 import com.android.tradefed.util.TimeVal;
@@ -180,7 +186,7 @@ public class OptionSetterTest extends TestCase {
     }
 
     @OptionClass(alias = "parent")
-    private static class ParentOptionSource {
+    private static class ParentOptionSource implements ITargetPreparer {
         @Option(name = "string", shortName = 's')
         private String mString = null;
 
@@ -193,6 +199,12 @@ public class OptionSetterTest extends TestCase {
 
         protected boolean getParentBoolean() {
             return mBoolean;
+        }
+
+        @Override
+        public void setUp(ITestDevice device, IBuildInfo buildInfo)
+                throws TargetSetupError, BuildError, DeviceNotAvailableException {
+            // empty on purpose
         }
     }
 
@@ -431,6 +443,29 @@ public class OptionSetterTest extends TestCase {
         } catch (ConfigurationException e) {
             // expected: cannot set child shortname option with parent alias
         }
+    }
+
+    /**
+     * Test creating an {@link OptionSetter} with a {@link IDeviceConfig} and ensure that
+     * frequencies are still correctly incremented.
+     */
+    public void testOptionSetter_frequencyForDeviceObject() throws ConfigurationException {
+        ParentOptionSource object_base = new ParentOptionSource();
+        ParentOptionSource object1 = new ParentOptionSource();
+        ParentOptionSource object2 = new ParentOptionSource();
+        IDeviceConfig configHolder = new DeviceConfigurationHolder("default");
+        configHolder.addSpecificConfig(object1);
+        configHolder.addSpecificConfig(object2);
+        OptionSetter setter = new OptionSetter(object_base, configHolder);
+        setter.setOptionValue(
+                "com.android.tradefed.config.OptionSetterTest$ParentOptionSource:1:string", "one");
+        setter.setOptionValue(
+                "com.android.tradefed.config.OptionSetterTest$ParentOptionSource:2:string", "two");
+        setter.setOptionValue(
+                "com.android.tradefed.config.OptionSetterTest$ParentOptionSource:3:string", "3");
+        assertEquals(object_base.mString, "one");
+        assertEquals(object1.mString, "two");
+        assertEquals(object2.mString, "3");
     }
 
     /**
