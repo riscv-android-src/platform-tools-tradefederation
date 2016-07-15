@@ -41,6 +41,7 @@ import java.util.List;
 public class PythonVirtualenvPreparer implements ITargetPreparer {
 
     private static final String PIP = "pip";
+    private static final String PATH = "PATH";
     protected static final String PYTHONPATH = "PYTHONPATH";
     private static final int BASE_TIMEOUT = 1000 * 60;
 
@@ -54,6 +55,7 @@ public class PythonVirtualenvPreparer implements ITargetPreparer {
     private List<String> mDepModules = new ArrayList<>();
 
     IRunUtil mRunUtil = new RunUtil();
+    String mPip = PIP;
 
     @Override
     public void setUp(ITestDevice device, IBuildInfo buildInfo)
@@ -65,7 +67,7 @@ public class PythonVirtualenvPreparer implements ITargetPreparer {
     protected void installDeps(IBuildInfo buildInfo) throws TargetSetupError {
         boolean hasDependencies = false;
         if (mRequirementsFile != null) {
-            CommandResult c = mRunUtil.runTimedCmd(BASE_TIMEOUT * 5, PIP,
+            CommandResult c = mRunUtil.runTimedCmd(BASE_TIMEOUT * 5, mPip,
                     "install", "-r", mRequirementsFile.getAbsolutePath());
             if (c.getStatus() != CommandStatus.SUCCESS) {
                 CLog.e("Installing dependencies from %s failed",
@@ -77,7 +79,7 @@ public class PythonVirtualenvPreparer implements ITargetPreparer {
         if (!mDepModules.isEmpty()) {
             for (String dep : mDepModules) {
                 CLog.i("Attempting installation of %s", dep);
-                CommandResult c = mRunUtil.runTimedCmd(BASE_TIMEOUT * 5, PIP,
+                CommandResult c = mRunUtil.runTimedCmd(BASE_TIMEOUT * 5, mPip,
                         "install", dep);
                 if (c.getStatus() != CommandStatus.SUCCESS) {
                     CLog.e("Installing %s failed", dep);
@@ -124,5 +126,10 @@ public class PythonVirtualenvPreparer implements ITargetPreparer {
     private void activate() {
         File binDir = new File(mVenvDir, "bin");
         mRunUtil.setWorkingDir(binDir);
+        String path = System.getenv(PATH);
+        mRunUtil.setEnvVariable(PATH, binDir + ":" + path);
+        File pipFile = new File(binDir, PIP);
+        pipFile.setExecutable(true);
+        mPip = pipFile.getAbsolutePath();
     }
 }
