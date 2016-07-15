@@ -564,6 +564,9 @@ public class OptionSetter {
 
             if (objectSource instanceof IDeviceConfig) {
                 for (Object deviceObject : ((IDeviceConfig)objectSource).getAllObjects()) {
+                    index = freqMap.get(deviceObject.getClass().getName());
+                    index = index == null ? 1 : index + 1;
+                    freqMap.put(deviceObject.getClass().getName(), index);
                     addOptionsForObject(deviceObject, optionMap, index,
                             ((IDeviceConfig)objectSource).getDeviceName());
                 }
