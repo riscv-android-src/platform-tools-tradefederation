@@ -220,9 +220,30 @@ public class MonkeyBase implements IDeviceTest, IRemoteTest, IRetriableTest {
             description = "Enable a continuous circular buffer to collect atrace information")
     private boolean mAtraceEnabled = false;
 
+    // options for generating ANR report via post processing script
+    @Option(name = "generate-anr-report", description = "Generate ANR report via post-processing")
+    private boolean mGenerateAnrReport = false;
+
+    @Option(name = "anr-report-script", description = "Path to the script for monkey ANR "
+            + "report generation.")
+    private String mAnrReportScriptPath = null;
+
+    @Option(name = "anr-report-storage-backend-base-path", description = "Base path to the storage "
+            + "backend used for saving the reports")
+    private String mAnrReportBasePath = null;
+
+    @Option(name = "anr-report-storage-backend-url-prefix", description = "URL prefix for the "
+            + "storage backend that would enable web acess to the stored reports.")
+    private String mAnrReportUrlPrefix = null;
+
+    @Option(name = "anr-report-storage-path", description = "Sub path under the base storage "
+            + "location for generated monkey ANR reports.")
+    private String mAnrReportPath = null;
+
     private ITestDevice mTestDevice = null;
     private MonkeyLogItem mMonkeyLog = null;
     private BugreportItem mBugreport = null;
+    private AnrReportGenerator mAnrGen = null;
 
     /**
      * {@inheritDoc}
@@ -313,6 +334,12 @@ public class MonkeyBase implements IDeviceTest, IRemoteTest, IRetriableTest {
             CircularAtraceUtil.startTrace(getDevice(), null, 10);
         }
 
+        if (mGenerateAnrReport) {
+            mAnrGen = new AnrReportGenerator(mAnrReportScriptPath, mAnrReportBasePath,
+                    mAnrReportUrlPrefix, mAnrReportPath, mTestDevice.getBuildId(),
+                    mTestDevice.getBuildFlavor(), mTestDevice.getSerialNumber());
+        }
+
         try {
             onMonkeyStart();
             commandHelper.runCommand(mTestDevice, command, getMonkeyTimeoutMs());
@@ -347,9 +374,22 @@ public class MonkeyBase implements IDeviceTest, IRemoteTest, IRetriableTest {
                         duration / 1000 / 60, duration / 1000 % 60));
                 mMonkeyLog = createMonkeyLog(listener, MONKEY_LOG_NAME, outputBuilder.toString());
 
-                if (mAtraceEnabled && mMonkeyLog.getCrash() instanceof AnrItem) {
+                boolean isAnr = mMonkeyLog.getCrash() instanceof AnrItem;
+                if (mAtraceEnabled && isAnr) {
                     // This was identified as an ANR; post atrace data
                     listener.testLog("circular-atrace", LogDataType.TEXT, atraceStream);
+                }
+                if (mAnrGen != null) {
+                    if (isAnr) {
+                        if (!mAnrGen.genereateAnrReport(listener)) {
+                            CLog.w("Failed to post-process ANR.");
+                        } else {
+                            CLog.i("Successfully post-processed ANR.");
+                        }
+                        mAnrGen.cleanTempFiles();
+                    } else {
+                        CLog.d("ANR post-processing enabled but no ANR detected.");
+                    }
                 }
                 StreamUtil.cancel(atraceStream);
             }
@@ -416,11 +456,15 @@ public class MonkeyBase implements IDeviceTest, IRemoteTest, IRetriableTest {
     protected BugreportItem takeBugreport(ITestInvocationListener listener, String bugreportName) {
         InputStreamSource bugreport = mTestDevice.getBugreport();
         try {
+            if (mAnrGen != null) {
+                mAnrGen.setBugReportInfo(bugreport);
+            }
             listener.testLog(bugreportName, LogDataType.BUGREPORT, bugreport);
             return new BugreportParser().parse(new BufferedReader(new InputStreamReader(
                     bugreport.createInputStream())));
         } catch (IOException e) {
-            CLog.e("Could not parse bugreport");
+            CLog.e("Could not process bugreport");
+            CLog.e(e);
             return null;
         } finally {
             bugreport.cancel();
@@ -447,11 +491,15 @@ public class MonkeyBase implements IDeviceTest, IRemoteTest, IRetriableTest {
 
         InputStreamSource source = new ByteArrayInputStreamSource(log.getBytes());
         try {
+            if (mAnrGen != null) {
+                mAnrGen.setMonkeyLogInfo(source);
+            }
             listener.testLog(monkeyLogName, LogDataType.MONKEY_LOG, source);
             return new MonkeyLogParser().parse(new BufferedReader(new InputStreamReader(
                     source.createInputStream())));
         } catch (IOException e) {
-            CLog.e("Could not parse monkey log");
+            CLog.e("Could not process monkey log.");
+            CLog.e(e);
             return null;
         } finally {
             source.cancel();
