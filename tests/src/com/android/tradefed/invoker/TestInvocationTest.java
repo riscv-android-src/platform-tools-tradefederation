@@ -683,6 +683,65 @@ public class TestInvocationTest extends TestCase {
     }
 
     /**
+     * Test the
+     * {@link TestInvocation#invoke(ITestDevice, IConfiguration, IRescheduler, ITestInvocationListener[])}
+     * scenario with non-{@link IStrictShardableTest} when shard index 0 is given.
+     */
+    public void testInvoke_nonStrictShardableTest_withShardIndexZero() throws Throwable {
+        String[] commandLine = {"config", "arg"};
+        int shardCount = 10;
+        int shardIndex = 0;
+        IRemoteTest test = EasyMock.createMock(IRemoteTest.class);
+        mStubConfiguration.setTest(test);
+        mStubConfiguration.setCommandLine(commandLine);
+        mStubConfiguration.getCommandOptions().setShardCount(shardCount);
+        mStubConfiguration.getCommandOptions().setShardIndex(shardIndex);
+
+        setupInvokeWithBuild();
+        setupMockSuccessListeners();
+        EasyMock.expect(mMockBuildProvider.getBuild()).andReturn(mMockBuildInfo);
+        mMockBuildInfo.addBuildAttribute("command_line_args", "config arg");
+        mMockBuildInfo.addBuildAttribute("shard_count", "10");
+        mMockBuildInfo.addBuildAttribute("shard_index", "0");
+        test.run((ITestInvocationListener)EasyMock.anyObject());
+        mMockPreparer.setUp(mMockDevice, mMockBuildInfo);
+        replayMocks(test);
+
+        mTestInvocation.invoke(mMockDevice, mStubConfiguration, mockRescheduler);
+
+        verifyMocks(test);
+    }
+
+    /**
+     * Test the
+     * {@link TestInvocation#invoke(ITestDevice, IConfiguration, IRescheduler, ITestInvocationListener[])}
+     * scenario with non-{@link IStrictShardableTest} when a shard index non-0 is given.
+     */
+    public void testInvoke_nonStrictShardableTest_withShardIndexNonZero() throws Throwable {
+        String[] commandLine = {"config", "arg"};
+        int shardCount = 10;
+        int shardIndex = 1;
+        IRemoteTest test = EasyMock.createMock(IRemoteTest.class);
+        mStubConfiguration.setTest(test);
+        mStubConfiguration.setCommandLine(commandLine);
+        mStubConfiguration.getCommandOptions().setShardCount(shardCount);
+        mStubConfiguration.getCommandOptions().setShardIndex(shardIndex);
+
+        setupInvokeWithBuild();
+        setupMockSuccessListeners();
+        EasyMock.expect(mMockBuildProvider.getBuild()).andReturn(mMockBuildInfo);
+        mMockBuildInfo.addBuildAttribute("command_line_args", "config arg");
+        mMockBuildInfo.addBuildAttribute("shard_count", "10");
+        mMockBuildInfo.addBuildAttribute("shard_index", "1");
+        mMockPreparer.setUp(mMockDevice, mMockBuildInfo);
+        replayMocks(test);
+
+        mTestInvocation.invoke(mMockDevice, mStubConfiguration, mockRescheduler);
+
+        verifyMocks(test);
+    }
+
+    /**
      * Set up expected conditions for normal run up to the part where tests are run.
      *
      * @param test the {@link Test} to use.
