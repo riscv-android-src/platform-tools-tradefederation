@@ -117,4 +117,47 @@ public class FileUtilTest extends TestCase {
             FileUtil.deleteFile(testFile);
         }
     }
+
+    /**
+     * test {@link FileUtil#createTempFile(String, String)} with a very long file name. FileSystem
+     * should not throw any exception.
+     */
+    public void testCreateTempFile_filenameTooLong() throws IOException {
+        File testFile = null;
+        try {
+            final String prefix = "logcat-android.support.v7.widget.GridLayoutManagerWrapContent"
+                    + "WithAspectRatioTest_testAllChildrenWrapContentInOtherDirection_"
+                    + "WrapContentConfig_unlimitedWidth=true_ unlimitedHeight=true_padding="
+                    + "Rect(0_0-0_0)_Config_mSpanCount=3_ mOrientation=v_mItemCount=1000_"
+                    + "mReverseLayout=false_ 8__";
+            testFile = FileUtil.createTempFile(prefix, ".gz");
+            assertTrue(testFile.getName().length() <= FileUtil.FILESYSTEM_FILENAME_MAX_LENGTH);
+        } finally {
+            FileUtil.deleteFile(testFile);
+        }
+    }
+
+    /**
+     * test {@link FileUtil#createTempFile(String, String)} with a very long file name. FileSystem
+     * should not throw any exception.
+     * If both suffix is smaller than overflow length, it will be completely truncated, and prefix
+     * will truncate the remaining.
+     */
+    public void testCreateTempFile_filenameTooLongEdge() throws IOException {
+        File testFile = null;
+        try {
+            final String prefix = "logcat-android.support.v7.widget.GridLayoutManagerWrapContent"
+                    + "WithAspectRatioTest_testAllChildrenWrapContentInOtherDirection_"
+                    + "WrapContentConfig_unlimitedWidth=true_ unlimitedHeight=true_padding="
+                    + "Rect(0_0-0_0)_Config_mSpanCount=3_ mOrientation";
+            final String suffix = "logcat-android.support.v7.widget.GridLayoutManagerWrapContent"
+                    + "WithAspectRatioTest_testAllChildrenWrapContentInOtherDirection_"
+                    + "WrapContentConfig_unlimitedWidth=true_ unlimitedHeight=true_padding="
+                    + "Rect(0_0-0_0)_Config_mSpanCount=3_ mOrientat";
+            testFile = FileUtil.createTempFile(prefix, suffix);
+            assertTrue(testFile.getName().length() <= FileUtil.FILESYSTEM_FILENAME_MAX_LENGTH);
+        } finally {
+            FileUtil.deleteFile(testFile);
+        }
+    }
 }

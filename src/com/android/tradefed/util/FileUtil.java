@@ -60,6 +60,8 @@ public class FileUtil {
 
     private static String CHMOD = "chmod";
 
+    public static int FILESYSTEM_FILENAME_MAX_LENGTH = 255;
+
     /**
      * Exposed for testing. Allows to modify the chmod binary name we look for, in order to tests
      * system with no chmod support.
@@ -306,9 +308,7 @@ public class FileUtil {
      *             allowed
      */
     public static File createTempFile(String prefix, String suffix) throws IOException {
-        File returnFile = File.createTempFile(prefix, suffix);
-        verifyDiskSpace(returnFile);
-        return returnFile;
+        return internalCreateTempFile(prefix, suffix, null);
     }
 
     /**
@@ -320,11 +320,45 @@ public class FileUtil {
      */
     public static File createTempFile(String prefix, String suffix, File parentDir)
             throws IOException {
+        return internalCreateTempFile(prefix, suffix, parentDir);
+    }
+
+    /**
+     * Internal helper to create a temporary file.
+     */
+    private static File internalCreateTempFile(String prefix, String suffix, File parentDir)
+            throws IOException {
+        // File.createTempFile add an additional random long in the name so we remove the length.
+        int overflowLength = prefix.length() + 19 - FILESYSTEM_FILENAME_MAX_LENGTH;
+        if (suffix != null) {
+            // suffix may be null
+            overflowLength += suffix.length();
+        }
+        if (overflowLength > 0) {
+            CLog.w("Filename for prefix: %s and suffix: %s, would be too long for FileSystem,"
+                    + "truncating it.", prefix, suffix);
+            // We truncate from suffix in priority because File.createTempFile wants prefix to be
+            // at least 3 characters.
+            if (suffix.length() >= overflowLength) {
+                int temp = overflowLength;
+                overflowLength -= suffix.length();
+                suffix = suffix.substring(temp, suffix.length());
+            } else {
+                overflowLength -= suffix.length();
+                suffix = "";
+            }
+            if (overflowLength > 0) {
+                // Whatever remaining to remove after suffix has been truncating should be inside
+                // prefix, otherwise there would not be overflow.
+                prefix = prefix.substring(0, prefix.length() - overflowLength);
+            }
+        }
+        File returnFile = null;
         if (parentDir != null) {
             CLog.d("Creating temp file at %s with prefix \"%s\" suffix \"%s\"",
-                parentDir.getAbsolutePath(), prefix, suffix);
+                    parentDir.getAbsolutePath(), prefix, suffix);
         }
-        File returnFile = File.createTempFile(prefix, suffix, parentDir);
+        returnFile = File.createTempFile(prefix, suffix, parentDir);
         verifyDiskSpace(returnFile);
         return returnFile;
     }
