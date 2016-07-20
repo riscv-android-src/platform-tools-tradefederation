@@ -386,66 +386,6 @@ public class OptionSetterTest extends TestCase {
     }
 
     /**
-     * Test namespaced options using inherited OptionClass aliases
-     */
-    public void testOptionSetter_inheritedNamespacedAlias() throws ConfigurationException {
-        ChildOptionSource object1 = new ChildOptionSource();
-        OptionSetter setter = new OptionSetter(object1);
-        // Child inherited options and alias, so we can set parent
-        setter.setOptionValue("child:string", "childAlias");
-        assertEquals("childAlias", object1.getParentString());
-        setter.setOptionValue("parent:string", "parentAlias");
-        assertEquals("parentAlias", object1.getParentString());
-        try {
-            setter.setOptionValue("parent:child-string", "parentAlias-childOption");
-            fail("Should have thrown an exception");
-        } catch (ConfigurationException e) {
-            // expected: cannot set child option with parent alias
-        }
-    }
-
-    /**
-     * Test namespaced options using inherited OptionClass aliases for boolean option.
-     */
-    public void testOptionSetter_inheritedAlias_Boolean_Short() throws ConfigurationException {
-        ChildOptionSource object1 = new ChildOptionSource();
-        OptionSetter setter = new OptionSetter(object1);
-        // Child inherited options and alias, so we can set parent
-        setter.setOptionValue("child:boolean", "true");
-        assertTrue(object1.getParentBoolean());
-        setter.setOptionValue("parent:boolean", "false");
-        assertFalse(object1.getParentBoolean());
-        try {
-            setter.setOptionValue("parent:child-boolean", "true");
-            fail("Should have thrown an exception");
-        } catch (ConfigurationException e) {
-            // expected: cannot set child boolean option with parent alias
-        }
-        // the 'no-' variation is found for both parent and child
-        setter.setOptionValue("child:no-boolean", "true");
-        assertTrue(object1.getParentBoolean());
-        setter.setOptionValue("parent:no-boolean", "false");
-        assertFalse(object1.getParentBoolean());
-        try {
-            setter.setOptionValue("parent:no-child-boolean", "true");
-            fail("Should have thrown an exception");
-        } catch (ConfigurationException e) {
-            // expected: cannot set child 'no-' option with parent alias
-        }
-        // the shortname variation is found for both parent and child
-        setter.setOptionValue("child:s", "childAlias");
-        assertEquals("childAlias", object1.getParentString());
-        setter.setOptionValue("parent:s", "parentAlias");
-        assertEquals("parentAlias", object1.getParentString());
-        try {
-            setter.setOptionValue("parent:c", "parentAlias-childOption");
-            fail("Should have thrown an exception");
-        } catch (ConfigurationException e) {
-            // expected: cannot set child shortname option with parent alias
-        }
-    }
-
-    /**
      * Test creating an {@link OptionSetter} with a {@link IDeviceConfig} and ensure that
      * frequencies are still correctly incremented.
      */
@@ -502,19 +442,6 @@ public class OptionSetterTest extends TestCase {
         setter.setOptionValue("child-string", "child");
         assertEquals("parent", source.getParentString());
         assertEquals("child", source.mChildString);
-    }
-
-    /**
-     * Test creating an {@link OptionSetter} for a class inheriting with the same alias.
-     */
-    public void testOptionSetter_inherited_AliasError() {
-        GrandChildOptionSource source = new GrandChildOptionSource();
-        try {
-            new OptionSetter(source);
-            fail("Should have thrown an exception");
-        } catch (ConfigurationException ce) {
-            // expected
-        }
     }
 
     /**

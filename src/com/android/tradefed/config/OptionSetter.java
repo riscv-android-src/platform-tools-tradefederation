@@ -670,46 +670,6 @@ public class OptionSetter {
                         field, index, deviceName);
             }
         }
-        // Handling for inherited alias
-        Class<?> parent = optionSource.getClass().getSuperclass();
-        Map<String, Class<?>> aliasFound = new HashMap<>();
-        if (optionSource.getClass().isAnnotationPresent(OptionClass.class)) {
-            Class<?> child = optionSource.getClass();
-            aliasFound.put(child.getAnnotation(OptionClass.class).alias(), child);
-        }
-        while (parent != null) {
-            if (parent.isAnnotationPresent(OptionClass.class)) {
-                final OptionClass classAnnotation = parent.getAnnotation(OptionClass.class);
-                String aliasName = classAnnotation.alias();
-                // Ensure alias uniqueness in the class hierarchy
-                if (aliasFound.containsKey(aliasName)) {
-                    throw new ConfigurationException(String.format(
-                            "The alias '%s' has been found several time in the class hierarchy "
-                            + "of %s and %s", aliasName, parent, aliasFound.get(aliasName)));
-                } else {
-                    aliasFound.put(aliasName, parent);
-                }
-                Collection<Field> parentOptionFields = getOptionFieldsForClass(parent);
-                for (Field field : parentOptionFields) {
-                    final Option option = field.getAnnotation(Option.class);
-                    addNamespacedAliasOptionToMap(optionMap, optionSource, option.name(), field,
-                            index, deviceName, aliasName);
-                    if (isBooleanField(field)) {
-                        // add the corresponding "no" option to make boolean false
-                        addNamespacedAliasOptionToMap(optionMap, optionSource,
-                                BOOL_FALSE_PREFIX + option.name(), field, index, deviceName,
-                                aliasName);
-                    }
-                    if (option.shortName() != Option.NO_SHORT_NAME) {
-                        // add the corresponding shortname option
-                        addNamespacedAliasOptionToMap(optionMap, optionSource,
-                                String.valueOf(option.shortName()), field, index, deviceName,
-                                aliasName);
-                    }
-                }
-            }
-            parent = parent.getSuperclass();
-        }
     }
 
     /**
