@@ -44,9 +44,24 @@ public class KernelBuildInfo extends BuildInfo implements IKernelBuildInfo {
      * @param testTarget the test target
      * @param buildName the build name
      */
-    public KernelBuildInfo(String sha1, String shortSha1, long commitTime, String testTarget,
+    protected KernelBuildInfo(String sha1, String shortSha1, long commitTime, String testTarget,
             String buildName) {
         super(sha1, testTarget, buildName);
+        mSha1 = sha1;
+        mShortSha1 = shortSha1;
+        mCommitTime = commitTime;
+    }
+
+    /**
+     * Creates a {@link KernelBuildInfo}.
+     *
+     * @param sha1 the git sha1, used as the build id
+     * @param shortSha1 the git short sha1
+     * @param commitTime the git commit time
+     * @param buildName the build name
+     */
+    public KernelBuildInfo(String sha1, String shortSha1, long commitTime, String buildName) {
+        super(sha1, buildName);
         mSha1 = sha1;
         mShortSha1 = shortSha1;
         mCommitTime = commitTime;

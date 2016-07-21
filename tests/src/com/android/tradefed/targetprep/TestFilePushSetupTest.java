@@ -86,7 +86,7 @@ public class TestFilePushSetupTest extends TestCase {
 
     public void testSetup() throws TargetSetupError, BuildError, DeviceNotAvailableException {
         TestFilePushSetup testFilePushSetup = new TestFilePushSetup();
-        DeviceBuildInfo stubBuild = new DeviceBuildInfo("0", "stub", "stub");
+        DeviceBuildInfo stubBuild = new DeviceBuildInfo("0", "stub");
         stubBuild.setTestsDir(mFakeTestsZipFolder.getBasePath(), "0");
         assertFalse(mFiles.isEmpty());
         assertFalse(mDeviceLocationList.isEmpty());

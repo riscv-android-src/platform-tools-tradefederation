@@ -32,6 +32,10 @@ public class SdkFolderBuildInfo extends BuildInfo implements ISdkBuildInfo, IFol
         super(buildId, testTarget, buildName);
     }
 
+    public SdkFolderBuildInfo(String buildId, String buildName) {
+        super(buildId, buildName);
+    }
+
     public SdkFolderBuildInfo() {
     }
 

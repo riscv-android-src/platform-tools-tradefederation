@@ -42,6 +42,16 @@ public class AppBuildInfo extends BuildInfo implements IAppBuildInfo {
     }
 
     /**
+     * Creates a {@link AppBuildInfo}.
+     *
+     * @param buildId the unique build id
+     * @param buildName the build name
+     */
+    public AppBuildInfo(String buildId, String buildName) {
+        super(buildId, buildName);
+    }
+
+    /**
      * @see BuildInfo#BuildInfo(BuildInfo)
      */
     public AppBuildInfo(BuildInfo buildToCopy) {

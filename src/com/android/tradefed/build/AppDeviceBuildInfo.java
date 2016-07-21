@@ -38,6 +38,13 @@ public class AppDeviceBuildInfo extends BuildInfo implements IDeviceBuildInfo, I
     }
 
     /**
+     * @see DeviceBuildInfo#DeviceBuildInfo(String, String)
+     */
+    public AppDeviceBuildInfo(String buildId, String buildName) {
+        super(buildId, buildName);
+    }
+
+    /**
      * @return the {@link IDeviceBuildInfo} for the device.
      */
     public IDeviceBuildInfo getDeviceBuildInfo() {

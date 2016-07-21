@@ -36,6 +36,13 @@ public class FolderBuildInfo extends BuildInfo implements IFolderBuildInfo {
     }
 
     /**
+     * @see BuildInfo#BuildInfo(String, String)
+     */
+    public FolderBuildInfo(String buildId, String buildName) {
+        super(buildId, buildName);
+    }
+
+    /**
      * @see BuildInfo#BuildInfo(BuildInfo)
      */
     FolderBuildInfo(BuildInfo buildToCopy) {

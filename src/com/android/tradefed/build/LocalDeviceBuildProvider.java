@@ -73,7 +73,7 @@ public class LocalDeviceBuildProvider extends StubBuildProvider {
 
         BuildInfo stubBuild = (BuildInfo)super.getBuild();
         DeviceBuildInfo buildInfo = new DeviceBuildInfo(stubBuild.getBuildId(),
-                stubBuild.getTestTag(), stubBuild.getBuildTargetName());
+                stubBuild.getBuildTargetName());
         buildInfo.addAllBuildAttributes(stubBuild);
 
         findDeviceImageFile(buildInfo);
