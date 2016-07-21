@@ -153,7 +153,7 @@ public class TestFilePushSetup implements ITargetPreparer {
                 if (mThrowIfNoFile) {
                     throw new TargetSetupError(String.format(
                             "Could not find test file %s directory in extracted tests.zip",
-                            localFile));
+                            fileName));
                 } else {
                     continue;
                 }
