@@ -219,4 +219,8 @@ public interface IDeviceManager {
      */
     public void removeDeviceMonitor(IDeviceMonitor mon);
 
+    /**
+     * Returns the path to the fastboot binary path to use.
+     */
+    public String getFastbootPath();
 }

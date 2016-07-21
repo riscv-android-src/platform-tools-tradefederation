@@ -110,8 +110,12 @@ public class DeviceManager implements IDeviceManager {
     private long mDeviceRecoveryInterval = 10 * 60 * 1000;
 
     @Option(name = "adb-path", description = "path of the adb binary to use, "
-            + "default use the one in $PATH")
+            + "default use the one in $PATH.")
     private String mAdbPath = "adb";
+
+    @Option(name = "fastboot-path", description = "path of the fastboot binary to use, "
+            + "default use the one in $PATH.")
+    private String mFastbootPath = "fastboot";
 
     private DeviceRecoverer mDeviceRecoverer;
 
@@ -171,7 +175,7 @@ public class DeviceManager implements IDeviceManager {
         }
         mManagedDeviceList = new ManagedDeviceList(deviceFactory);
 
-        final FastbootHelper fastboot = new FastbootHelper(getRunUtil());
+        final FastbootHelper fastboot = new FastbootHelper(getRunUtil(), mFastbootPath);
         if (fastboot.isFastbootAvailable()) {
             mFastbootListeners = Collections.synchronizedSet(new HashSet<IFastbootListener>());
             mFastbootMonitor = new FastbootMonitor();
@@ -214,8 +218,13 @@ public class DeviceManager implements IDeviceManager {
         addTcpDevices();
 
         List<IMultiDeviceRecovery> recoverers = getGlobalConfig().getMultiDeviceRecoveryHandlers();
-        mDeviceRecoverer = new DeviceRecoverer(recoverers);
-        startDeviceRecoverer();
+        if (recoverers != null) {
+            for (IMultiDeviceRecovery recoverer : recoverers) {
+                recoverer.setFastbootPath(mFastbootPath);
+            }
+            mDeviceRecoverer = new DeviceRecoverer(recoverers);
+            startDeviceRecoverer();
+        }
     }
 
     /**
@@ -369,7 +378,7 @@ public class DeviceManager implements IDeviceManager {
     }
 
     private void addFastbootDevices() {
-        final FastbootHelper fastboot = new FastbootHelper(getRunUtil());
+        final FastbootHelper fastboot = new FastbootHelper(getRunUtil(), mFastbootPath);
         Set<String> serials = fastboot.getDevices();
         if (serials != null) {
             for (String serial : serials) {
@@ -997,7 +1006,7 @@ public class DeviceManager implements IDeviceManager {
 
         @Override
         public void run() {
-            final FastbootHelper fastboot = new FastbootHelper(getRunUtil());
+            final FastbootHelper fastboot = new FastbootHelper(getRunUtil(), mFastbootPath);
             while (!mQuit) {
                 // only poll fastboot devices if there are listeners, as polling it
                 // indiscriminately can cause fastboot commands to hang
@@ -1091,5 +1100,10 @@ public class DeviceManager implements IDeviceManager {
     @Override
     public void removeDeviceMonitor(IDeviceMonitor mon) {
         mDvcMon.removeMonitor(mon);
+    }
+
+    @Override
+    public String getFastbootPath() {
+        return mFastbootPath;
     }
 }

@@ -69,6 +69,18 @@ public interface IManagedTestDevice extends ITestDevice {
     public boolean isFastbootEnabled();
 
     /**
+     * Sets the path to the fastboot binary that should be used.
+     * Still requires {@link #isFastbootEnabled()} to be true, to have fastboot functions enabled.
+     */
+    public void setFastbootPath(String fastbootPath);
+
+    /**
+     * Returns the path of the fastboot binary being used.
+     * Still requires {@link #isFastbootEnabled()} to be true, to have fastboot functions enabled.
+     */
+    public String getFastbootPath();
+
+    /**
      * Invoke recovery on the device.
      *
      * @throws DeviceNotAvailableException if recovery was not successful

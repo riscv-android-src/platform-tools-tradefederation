@@ -35,17 +35,22 @@ public class FastbootHelper {
     private static final long FASTBOOT_CMD_TIMEOUT = 1 * 60 * 1000;
 
     private IRunUtil mRunUtil;
+    private String mFastbootPath = "fastboot";
 
     /**
      * Constructor.
      *
      * @param runUtil a {@link IRunUtil}.
      */
-    public FastbootHelper(final IRunUtil runUtil) {
+    public FastbootHelper(final IRunUtil runUtil, final String fastbootPath) {
         if (runUtil == null) {
             throw new IllegalArgumentException("runUtil cannot be null");
         }
+        if (fastbootPath == null) {
+            throw new IllegalArgumentException("fastboot cannot be null");
+        }
         mRunUtil = runUtil;
+        mFastbootPath = fastbootPath;
     }
 
     /**
@@ -54,7 +59,7 @@ public class FastbootHelper {
     public boolean isFastbootAvailable() {
         // Run "fastboot help" to check the existence and the version of fastboot
         // (Old versions do not support "help" command).
-        CommandResult fastbootResult = mRunUtil.runTimedCmdSilently(5000, "fastboot", "help");
+        CommandResult fastbootResult = mRunUtil.runTimedCmdSilently(5000, mFastbootPath, "help");
         if (fastbootResult.getStatus() == CommandStatus.SUCCESS) {
             return true;
         }
@@ -77,7 +82,7 @@ public class FastbootHelper {
      */
     public Set<String> getDevices() {
         CommandResult fastbootResult = mRunUtil.runTimedCmd(FASTBOOT_CMD_TIMEOUT,
-                "fastboot", "devices");
+                mFastbootPath, "devices");
         if (fastbootResult.getStatus().equals(CommandStatus.SUCCESS)) {
             CLog.v("fastboot devices returned\n %s",
                     fastbootResult.getStdout());
@@ -115,7 +120,7 @@ public class FastbootHelper {
      */
     public String executeCommand(String serial, String command) {
         final CommandResult fastbootResult = mRunUtil.runTimedCmd(FASTBOOT_CMD_TIMEOUT,
-                "fastboot", "-s", serial, command);
+                mFastbootPath, "-s", serial, command);
         if (fastbootResult.getStatus() != CommandStatus.SUCCESS) {
             CLog.w("'fastboot -s %s %s' failed. Result: %s, stderr: %s", serial, command,
                     fastbootResult.getStatus(), fastbootResult.getStderr());

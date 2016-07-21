@@ -78,6 +78,8 @@ public class WaitDeviceRecovery implements IDeviceRecovery {
             "fastboot or is expected to be in fastboot.")
     protected boolean mDisableUnresponsiveReboot = false;
 
+    private String mFastbootPath = "fastboot";
+
     /**
      * Get the {@link RunUtil} instance to use.
      * <p/>
@@ -92,6 +94,14 @@ public class WaitDeviceRecovery implements IDeviceRecovery {
      */
     void setWaitTime(long waitTime) {
         mWaitTime = waitTime;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void setFastbootPath(String fastbootPath) {
+        mFastbootPath = fastbootPath;
     }
 
     /**
@@ -115,8 +125,8 @@ public class WaitDeviceRecovery implements IDeviceRecovery {
                     "Found device %s in fastboot but expected online. Rebooting...",
                     monitor.getSerialNumber()));
             // TODO: retry if failed
-            getRunUtil().runTimedCmd(mFastbootWaitTime, "fastboot", "-s", monitor.getSerialNumber(),
-                    "reboot");
+            getRunUtil().runTimedCmd(mFastbootWaitTime, mFastbootPath, "-s",
+                    monitor.getSerialNumber(), "reboot");
         }
 
         // wait for device online
@@ -289,7 +299,7 @@ public class WaitDeviceRecovery implements IDeviceRecovery {
         CLog.i("Found device %s in fastboot but potentially unresponsive.",
                 monitor.getSerialNumber());
         // TODO: retry reboot
-        getRunUtil().runTimedCmd(mFastbootWaitTime, "fastboot", "-s", monitor.getSerialNumber(),
+        getRunUtil().runTimedCmd(mFastbootWaitTime, mFastbootPath, "-s", monitor.getSerialNumber(),
                 "reboot-bootloader");
         // wait for device to reboot
         monitor.waitForDeviceNotAvailable(20*1000);
@@ -299,7 +309,7 @@ public class WaitDeviceRecovery implements IDeviceRecovery {
                     monitor.getSerialNumber());
         }
         // running a meaningless command just to see whether the device is responsive.
-        CommandResult result = getRunUtil().runTimedCmd(mFastbootWaitTime, "fastboot", "-s",
+        CommandResult result = getRunUtil().runTimedCmd(mFastbootWaitTime, mFastbootPath, "-s",
                 monitor.getSerialNumber(), "getvar", "product");
         if (result.getStatus().equals(CommandStatus.TIMED_OUT)) {
             throw new DeviceNotAvailableException(String.format(

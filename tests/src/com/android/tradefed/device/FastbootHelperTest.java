@@ -39,7 +39,7 @@ public class FastbootHelperTest extends TestCase {
     protected void setUp() throws Exception {
         super.setUp();
         mMockRunUtil = EasyMock.createMock(IRunUtil.class);
-        mFastbootHelper = new FastbootHelper(mMockRunUtil);
+        mFastbootHelper = new FastbootHelper(mMockRunUtil, "fastboot");
     }
 
     /**

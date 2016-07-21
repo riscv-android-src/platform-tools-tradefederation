@@ -337,4 +337,9 @@ public class MockDeviceManager implements IDeviceManager {
     public void removeDeviceMonitor(IDeviceMonitor mon) {
         mDvcMon.removeMonitor(mon);
     }
+
+    @Override
+    public String getFastbootPath() {
+        return "fastboot";
+    }
 }

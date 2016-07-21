@@ -36,4 +36,10 @@ public interface IMultiDeviceRecovery {
      */
     void recoverDevices(List<DeviceDescriptor> managedDevices);
 
+    /**
+     * Sets the path to the fastboot binary to be used.
+     */
+    public default void setFastbootPath(String fastbootPath) {
+        // empty by default for implementation that do not require fastboot.
+    }
 }
