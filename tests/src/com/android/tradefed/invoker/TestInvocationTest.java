@@ -137,6 +137,8 @@ public class TestInvocationTest extends TestCase {
         EasyMock.expect(mMockBuildInfo.getBuildBranch()).andStubReturn("branch");
         EasyMock.expect(mMockBuildInfo.getBuildFlavor()).andStubReturn("flavor");
         EasyMock.expect(mMockBuildInfo.getTestTag()).andStubReturn("");
+        mMockBuildInfo.setTestTag((String) EasyMock.anyObject());
+        EasyMock.expectLastCall().anyTimes();
         // always expect logger initialization and cleanup calls
         mMockLogRegistry.registerLogger(mMockLogger);
         mMockLogger.init();

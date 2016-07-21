@@ -48,6 +48,11 @@ public interface IBuildInfo {
     public String getTestTag();
 
     /**
+     * Sets the unique name for the tests being run.
+     */
+    public void setTestTag(String testTag);
+
+    /**
      * Return complete name for the build being tested.
      * <p/>
      * A common implementation is to construct the build target name from a combination of

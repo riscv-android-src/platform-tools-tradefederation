@@ -872,8 +872,8 @@ public class ConfigurationFactoryTest extends TestCase {
         assertNotNull(config.getDeviceConfigByName("device3"));
         assertEquals("0", config.getDeviceConfigByName("device3")
                 .getBuildProvider().getBuild().getBuildId());
-        assertEquals("test-tag3", config.getDeviceConfigByName("device3")
-                .getBuildProvider().getBuild().getTestTag());
+        assertEquals("build-flavor3", config.getDeviceConfigByName("device3")
+                .getBuildProvider().getBuild().getBuildFlavor());
         assertEquals(1, config.getDeviceConfigByName("device3")
                 .getTargetPreparers().size());
         assertTrue(config.getDeviceConfigByName("device3")
@@ -918,8 +918,8 @@ public class ConfigurationFactoryTest extends TestCase {
         assertNotNull(config.getDeviceConfigByName("device3"));
         assertEquals("30", config.getDeviceConfigByName("device3")
                 .getBuildProvider().getBuild().getBuildId());
-        assertEquals("test-tag3", config.getDeviceConfigByName("device3")
-                .getBuildProvider().getBuild().getTestTag());
+        assertEquals("build-flavor3", config.getDeviceConfigByName("device3")
+                .getBuildProvider().getBuild().getBuildFlavor());
         assertEquals(1, config.getDeviceConfigByName("device3")
                 .getTargetPreparers().size());
         assertTrue(config.getDeviceConfigByName("device3")
@@ -960,8 +960,8 @@ public class ConfigurationFactoryTest extends TestCase {
         assertNotNull(config.getDeviceConfigByName("device3"));
         assertEquals("20", config.getDeviceConfigByName("device3")
                 .getBuildProvider().getBuild().getBuildId());
-        assertEquals("test-tag3", config.getDeviceConfigByName("device3")
-                .getBuildProvider().getBuild().getTestTag());
+        assertEquals("build-flavor3", config.getDeviceConfigByName("device3")
+                .getBuildProvider().getBuild().getBuildFlavor());
         assertEquals(1, config.getDeviceConfigByName("device3")
                 .getTargetPreparers().size());
         assertTrue(config.getDeviceConfigByName("device3")

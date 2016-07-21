@@ -28,7 +28,7 @@
 
     <device name="device3" >
         <build_provider class="com.android.tradefed.build.StubBuildProvider">
-            <option name="test-tag" value="test-tag3" />
+            <option name="build-flavor" value="build-flavor3" />
         </build_provider>
         <target_preparer class="com.android.tradefed.targetprep.StubTargetPreparer" />
     </device>
