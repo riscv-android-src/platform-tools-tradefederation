@@ -21,6 +21,7 @@ import com.android.ddmlib.MultiLineReceiver;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -45,6 +46,37 @@ public class ListInstrumentationParser extends MultiLineReceiver {
             this.packageName = packageName;
             this.runnerName = runnerName;
             this.targetName = targetName;
+        }
+
+        /**
+         * {@inheritDoc}
+         */
+        @Override
+        public boolean equals(Object object) {
+            if (object instanceof InstrumentationTarget) {
+                InstrumentationTarget that = (InstrumentationTarget)object;
+                return Objects.equals(this.packageName, that.packageName)
+                        && Objects.equals(this.runnerName, that.runnerName)
+                        && Objects.equals(this.targetName, that.targetName);
+            }
+            return false;
+        }
+
+        /**
+         * {@inheritDoc}
+         */
+        @Override
+        public int hashCode() {
+            return Objects.hash(packageName, runnerName, targetName);
+        }
+
+        /**
+         * {@inheritDoc}
+         */
+        @Override
+        public String toString() {
+            return String.format("instrumentation:%s/%s (target=%s)",
+                    packageName, runnerName, targetName);
         }
     }
 
