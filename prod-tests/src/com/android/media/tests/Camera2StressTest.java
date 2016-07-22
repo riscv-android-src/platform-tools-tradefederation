@@ -33,6 +33,7 @@ import java.io.FileReader;
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Map.Entry;
 
 /**
  * Camera2 stress test
@@ -83,13 +84,21 @@ public class Camera2StressTest extends CameraTestBase {
             // TODO: Will get the additional metrics to file to prevent result loss
 
             // Don't need to report the KEY_NUM_ATTEMPS to dashboard
+            // Iteration will be read from file
             testMetrics.remove(KEY_NUM_ATTEMPTS);
+            testMetrics.remove(KEY_ITERATION);
+
+            // add testMethod name to the metric
+            Map<String, String> namedTestMetrics = new HashMap<>();
+            for (Entry<String, String> entry : testMetrics.entrySet()) {
+                namedTestMetrics.put(test.getTestName() + entry.getKey(), entry.getValue());
+            }
 
             // parse the iterations metrics from the stress log files
-            parseLog(test.getTestName(), testMetrics);
+            parseLog(test.getTestName(), namedTestMetrics);
 
             postScreenshotOnFailure(test);
-            super.testEnded(test, testMetrics);
+            super.testEnded(test, namedTestMetrics);
         }
 
         private void postScreenshotOnFailure(TestIdentifier test) {
