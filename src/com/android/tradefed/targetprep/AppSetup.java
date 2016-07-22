@@ -72,6 +72,10 @@ public class AppSetup implements ITargetPreparer, ITargetCleaner {
             "DeviceUnresponsiveException will be thrown if it is timed out.")
     private long mPostInstallCmdTimeout = 2 * 60 * 1000;  // default to 2 minutes
 
+    @Option(name = "check-min-sdk", description =
+            "check app's min sdk prior to install and skip if device api level is too low.")
+    private boolean mCheckMinSdk = false;
+
     /** contains package names of installed apps. Used for uninstall */
     private Set<String> mInstalledPkgs = new HashSet<String>();
 
@@ -99,6 +103,21 @@ public class AppSetup implements ITargetPreparer, ITargetCleaner {
 
         if (mInstall) {
             for (VersionedFile apkFile : appBuild.getAppPackageFiles()) {
+                if (mCheckMinSdk) {
+                    AaptParser aaptParser = AaptParser.parse(apkFile.getFile());
+                    if (aaptParser == null) {
+                        throw new TargetSetupError(
+                                String.format("Failed to extract info from '%s' using aapt",
+                                        apkFile.toString()));
+                    }
+                    if (device.getApiLevel() < aaptParser.getSdkVersion()) {
+                        CLog.w("Skipping installing apk %s on device %s because " +
+                                "SDK level require is %d, but device SDK level is %d",
+                                apkFile.toString(), device.getSerialNumber(),
+                                aaptParser.getSdkVersion(), device.getApiLevel());
+                        continue;
+                    }
+                }
                 String result = device.installPackage(apkFile.getFile(), true,
                         mInstallFlags.toArray(new String[mInstallFlags.size()]));
                 if (result != null) {

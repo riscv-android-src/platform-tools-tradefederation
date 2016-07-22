@@ -33,12 +33,16 @@ public class AaptParser {
     private static final Pattern LABEL_PATTERN = Pattern.compile(
             "^application-label:'(.+?)'.*$",
             Pattern.MULTILINE);
+    private static final Pattern SDK_PATTERN = Pattern.compile(
+            "^sdkVersion:'(\\d+)'", Pattern.MULTILINE);
     private static final int AAPT_TIMEOUT_MS = 60000;
+    private static final int INVALID_SDK = -1;
 
     private String mPackageName;
     private String mVersionCode;
     private String mVersionName;
     private String mLabel;
+    private int mSdkVersion = INVALID_SDK;
 
     // @VisibleForTesting
     AaptParser() {
@@ -54,6 +58,10 @@ public class AaptParser {
             m = LABEL_PATTERN.matcher(aaptOut);
             if (m.find()) {
                 mLabel = m.group(1);
+            }
+            m = SDK_PATTERN.matcher(aaptOut);
+            if (m.find()) {
+                mSdkVersion = Integer.parseInt(m.group(1));
             }
             return true;
         }
@@ -101,5 +109,9 @@ public class AaptParser {
 
     public String getLabel() {
         return mLabel;
+    }
+
+    public int getSdkVersion() {
+        return mSdkVersion;
     }
 }

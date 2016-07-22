@@ -18,9 +18,14 @@ package com.android.tradefed.util;
 import junit.framework.TestCase;
 
 /**
- *
+ * Tests for AaptParser.
  */
 public class AaptParserTest extends TestCase {
+
+    public void testParseInvalidInput() {
+        AaptParser p = new AaptParser();
+        assertFalse(p.parse("Bad data"));
+    }
 
     public void testParsePackageNameVersionLabel() {
         AaptParser p = new AaptParser();
@@ -33,6 +38,7 @@ public class AaptParserTest extends TestCase {
         assertEquals("13", p.getVersionCode());
         assertEquals("2.3", p.getVersionName());
         assertEquals("Foo", p.getLabel());
+        assertEquals(5, p.getSdkVersion());
     }
 
     public void testParseVersionMultipleFieldsNoLabel() {
@@ -48,5 +54,18 @@ public class AaptParserTest extends TestCase {
         assertEquals("217173", p.getVersionCode());
         assertEquals("1.7173", p.getVersionName());
         assertEquals("com.android.foo", p.getLabel());
+        assertEquals(10, p.getSdkVersion());
+    }
+
+    public void testParseInvalidSdkVersion() {
+        AaptParser p = new AaptParser();
+        p.parse("package: name='com.android.foo' versionCode='217173' versionName='1.7173' " +
+                "platformBuildVersionName=''\n" +
+                "install-location:'preferExternal'\n" +
+                "sdkVersion:'notavalidsdk'\n" +
+                "targetSdkVersion:'21'\n" +
+                "uses-permission: name='android.permission.INTERNET'\n" +
+                "uses-permission: name='android.permission.ACCESS_NETWORK_STATE'\n");
+        assertEquals(-1, p.getSdkVersion());
     }
 }
