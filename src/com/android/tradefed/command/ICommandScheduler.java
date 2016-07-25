@@ -220,6 +220,22 @@ public interface ICommandScheduler {
     public boolean stopInvocation(ITestInvocation invocation) throws UnsupportedOperationException;
 
     /**
+     * Stop a running invocation by specifying it's id.
+     *
+     * @return true if the invocation was stopped, false otherwise
+     * @throw {@link UnsupportedOperationException} if the implementation doesn't support this
+     */
+    public boolean stopInvocation(int invocationId) throws UnsupportedOperationException;
+
+    /**
+     * Return the information on an invocation bu specifying the invocation id.
+     *
+     * @param invocationId the tracking id of the invocation.
+     * @return A {@link String} containing information about the invocation.
+     */
+    public String getInvocationInfo(int invocationId);
+
+    /**
      * Output a list of current commands.
      *
      * @param printWriter the {@link PrintWriter} to output to.
