@@ -28,7 +28,7 @@ import java.util.regex.Pattern;
  */
 public class AaptParser {
     private static final Pattern PKG_PATTERN = Pattern.compile(
-            "^package:\\s+name='(.*?)'\\s+versionCode='(\\d+)'\\s+versionName='(.*?)'.*$",
+            "^package:\\s+name='(.*?)'\\s+versionCode='(\\d*)'\\s+versionName='(.*?)'.*$",
             Pattern.MULTILINE);
     private static final Pattern LABEL_PATTERN = Pattern.compile(
             "^application-label:'(.+?)'.*$",

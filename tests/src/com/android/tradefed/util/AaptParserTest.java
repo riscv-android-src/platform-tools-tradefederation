@@ -13,6 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 package com.android.tradefed.util;
 
 import junit.framework.TestCase;
@@ -27,13 +28,37 @@ public class AaptParserTest extends TestCase {
         assertFalse(p.parse("Bad data"));
     }
 
+    public void testParseEmptyVersionCode() {
+        AaptParser p = new AaptParser();
+        assertTrue(p.parse("package: name='android.support.graphics.drawable.animated.test'" +
+                " versionCode='' versionName=''\n" +
+                "sdkVersion:'11'\n" +
+                "targetSdkVersion:'23'\n" +
+                "uses-permission:'android.permission.WRITE_EXTERNAL_STORAGE'\n" +
+                "application: label='' icon=''\n" +
+                "application-debuggable\n" +
+                "uses-library:'android.test.runner'\n" +
+                "uses-permission:'android.permission.READ_EXTERNAL_STORAGE'\n" +
+                "uses-implied-permission:'android.permission.READ_EXTERNAL_STORAGE'," +
+                "'requested WRITE_EXTERNAL_STORAGE'\n" +
+                "uses-feature:'android.hardware.touchscreen'\n" +
+                "uses-implied-feature:'android.hardware.touchscreen'," +
+                "'assumed you require a touch screen unless explicitly made optional'\n" +
+                "other-activities\n" +
+                "supports-screens: 'small' 'normal' 'large' 'xlarge'\n" +
+                "supports-any-density: 'true'\n" +
+                "locales: '--_--'\n" +
+                "densities: '160'"));
+        assertEquals("", p.getVersionCode());
+    }
+
     public void testParsePackageNameVersionLabel() {
         AaptParser p = new AaptParser();
         p.parse("package: name='com.android.foo' versionCode='13' versionName='2.3'\n" +
-            "sdkVersion:'5'\n" +
-            "application-label:'Foo'\n" +
-            "application-label-fr:'Faa'\n"+
-            "uses-permission:'android.permission.INTERNET'");
+                "sdkVersion:'5'\n" +
+                "application-label:'Foo'\n" +
+                "application-label-fr:'Faa'\n" +
+                "uses-permission:'android.permission.INTERNET'");
         assertEquals("com.android.foo", p.getPackageName());
         assertEquals("13", p.getVersionCode());
         assertEquals("2.3", p.getVersionName());
