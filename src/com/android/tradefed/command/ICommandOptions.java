@@ -74,23 +74,6 @@ public interface ICommandOptions {
     public void setLoopMode(boolean loopMode);
 
     /**
-     * Return the test-tag for the invocation. Default is 'stub' if unspecified.
-     */
-    public String getTestTag();
-
-    /**
-     * Sets the test-tag for the invocation.
-     *
-     * @param testTag
-     */
-    public void setTestTag(String testTag);
-
-    /**
-     * Return the test-tag suffix, appended to test-tag to represents some variants of one test.
-     */
-    public String getTestTagSuffix();
-
-    /**
      * Creates a copy of the {@link ICommandOptions} object.
      */
     public ICommandOptions clone();
