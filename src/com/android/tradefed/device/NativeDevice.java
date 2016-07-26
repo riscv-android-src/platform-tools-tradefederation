@@ -139,6 +139,7 @@ public class NativeDevice implements IManagedTestDevice {
     private final ReentrantLock mFastbootLock = new ReentrantLock();
     private LogcatReceiver mLogcatReceiver;
     private boolean mFastbootEnabled = true;
+    private String mFastbootPath = "fastboot";
 
     protected TestDeviceOptions mOptions = new TestDeviceOptions();
     private Process mEmulatorProcess;
@@ -1549,7 +1550,7 @@ public class NativeDevice implements IManagedTestDevice {
      * Builds the OS command for the given fastboot command and args
      */
     private String[] buildFastbootCommand(String... commandArgs) {
-        return ArrayUtil.buildArray(new String[] {"fastboot", "-s", getSerialNumber()},
+        return ArrayUtil.buildArray(new String[] {getFastbootPath(), "-s", getSerialNumber()},
                 commandArgs);
     }
 
@@ -2739,6 +2740,24 @@ public class NativeDevice implements IManagedTestDevice {
     @Override
     public boolean isFastbootEnabled() {
         return mFastbootEnabled;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void setFastbootPath(String fastbootPath) {
+        mFastbootPath = fastbootPath;
+        // ensure the device and its associated recovery use the same fastboot version.
+        mRecovery.setFastbootPath(fastbootPath);
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public String getFastbootPath() {
+        return mFastbootPath;
     }
 
     /**

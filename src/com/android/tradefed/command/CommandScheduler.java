@@ -43,6 +43,7 @@ import com.android.tradefed.device.DeviceUnresponsiveException;
 import com.android.tradefed.device.FreeDeviceState;
 import com.android.tradefed.device.IDeviceManager;
 import com.android.tradefed.device.IDeviceMonitor;
+import com.android.tradefed.device.IManagedTestDevice;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.device.ITestDevice.RecoveryMode;
 import com.android.tradefed.device.NoDeviceException;
@@ -451,6 +452,10 @@ public class CommandScheduler extends Thread implements ICommandScheduler, IComm
             for (ITestDevice device : metadata.getDevices()) {
                 mDeviceManager.freeDevice(device, deviceState);
                 remoteFreeDevice(device);
+                if (device instanceof IManagedTestDevice) {
+                    // This quite an important setting so we do make sure it's reset.
+                    ((IManagedTestDevice)device).setFastbootPath(mDeviceManager.getFastbootPath());
+                }
             }
         }
     }
