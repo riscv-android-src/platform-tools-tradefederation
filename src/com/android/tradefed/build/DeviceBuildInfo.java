@@ -41,10 +41,6 @@ public class DeviceBuildInfo extends BuildInfo implements IDeviceBuildInfo {
         super(buildId, testTag, buildTargetName);
     }
 
-    public DeviceBuildInfo(String buildId, String buildTargetName) {
-        super(buildId, buildTargetName);
-    }
-
     public DeviceBuildInfo(BuildInfo buildInfo) {
         super(buildInfo);
     }
