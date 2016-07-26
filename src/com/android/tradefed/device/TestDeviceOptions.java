@@ -70,7 +70,7 @@ public class TestDeviceOptions {
     private int mUnencryptRebootTimeout = 0;
 
     @Option(name = "online-timeout", description = "default time in ms to wait for the device to "
-            + "be visible on adb.")
+            + "be visible on adb.", isTimeVal = true)
     private long mOnlineTimeout = 1 * 60 * 1000;
 
     @Option(name = "available-timeout", description = "default time in ms to wait for the device "

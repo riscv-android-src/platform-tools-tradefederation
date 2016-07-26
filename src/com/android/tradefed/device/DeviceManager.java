@@ -106,8 +106,9 @@ public class DeviceManager implements IDeviceManager {
     private boolean mSynchronousMode = false;
 
     @Option(name = "device-recovery-interval",
-            description = "the interval in ms between attempts to recover unavailable devices.")
-    private long mDeviceRecoveryInterval = 10 * 60 * 1000;
+            description = "the interval in ms between attempts to recover unavailable devices.",
+            isTimeVal = true)
+    private long mDeviceRecoveryInterval = 30 * 60 * 1000;
 
     @Option(name = "adb-path", description = "path of the adb binary to use, "
             + "default use the one in $PATH.")
@@ -1054,6 +1055,8 @@ public class DeviceManager implements IDeviceManager {
         public DeviceRecoverer(List<IMultiDeviceRecovery> multiDeviceRecoverers) {
             super("DeviceRecoverer");
             mMultiDeviceRecoverers = multiDeviceRecoverers;
+            // Ensure that this thread doesn't prevent TF from terminating
+            setDaemon(true);
         }
 
         @Override
@@ -1062,9 +1065,7 @@ public class DeviceManager implements IDeviceManager {
                 getRunUtil().sleep(mDeviceRecoveryInterval);
                 if (mMultiDeviceRecoverers != null && !mMultiDeviceRecoverers.isEmpty()) {
                     for (IMultiDeviceRecovery m : mMultiDeviceRecoverers) {
-                        // Always fetch a list of devices prior to running the recovery.
-                        List<DeviceDescriptor> devices = listAllDevices();
-                        m.recoverDevices(devices);
+                        m.recoverDevices(getDeviceList());
                     }
                 }
             }

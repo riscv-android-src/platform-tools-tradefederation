@@ -15,7 +15,6 @@
  */
 package com.android.tradefed.device;
 
-import com.android.tradefed.command.remote.DeviceDescriptor;
 import com.android.tradefed.config.GlobalConfiguration;
 
 import java.util.List;
@@ -32,13 +31,14 @@ public interface IMultiDeviceRecovery {
     /**
      * Recovers offline devices on host.
      *
-     * @param managedDevices a list of {@link DeviceDescriptor}s.
+     * @param managedDevices a list of {@link ITestDevice}s.
      */
-    void recoverDevices(List<DeviceDescriptor> managedDevices);
+    void recoverDevices(List<IManagedTestDevice> managedDevices);
 
     /**
      * Sets the path to the fastboot binary to be used.
      */
+    @SuppressWarnings("unused")
     public default void setFastbootPath(String fastbootPath) {
         // empty by default for implementation that do not require fastboot.
     }
