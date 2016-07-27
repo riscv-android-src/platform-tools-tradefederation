@@ -296,7 +296,7 @@ public class DeviceManager implements IDeviceManager {
      */
     private void checkAndAddAvailableDevice(final IManagedTestDevice testDevice) {
         if (mGlobalDeviceFilter != null && !mGlobalDeviceFilter.matches(testDevice.getIDevice())) {
-            CLog.v("device %s doesn't match global filter, ignoring",
+            CLog.logAndDisplay(LogLevel.INFO, "device %s doesn't match global filter, ignoring",
                     testDevice.getSerialNumber());
             mManagedDeviceList.handleDeviceEvent(testDevice, DeviceEvent.AVAILABLE_CHECK_IGNORED);
             return;
