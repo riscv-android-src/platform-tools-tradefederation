@@ -33,6 +33,7 @@ import com.android.ddmlib.testrunner.RemoteAndroidTestRunner;
 import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.result.ByteArrayInputStreamSource;
+import com.android.tradefed.result.FileInputStreamSource;
 import com.android.tradefed.result.InputStreamSource;
 import com.android.tradefed.result.SnapshotInputStreamSource;
 import com.android.tradefed.result.StubTestRunListener;
@@ -72,6 +73,16 @@ import javax.annotation.concurrent.GuardedBy;
  */
 public class NativeDevice implements IManagedTestDevice {
 
+    /**
+     * Allow pauses of up to 2 minutes while receiving bugreport.
+     * <p/>
+     * Note that dumpsys may pause up to a minute while waiting for unresponsive components.
+     * It still should bail after that minute, if it will ever terminate on its own.
+     */
+    private static final int BUGREPORT_TIMEOUT = 2 * 60 * 1000;
+    private static final String BUGREPORT_CMD = "bugreport";
+    private static final String BUGREPORTZ_CMD = "bugreportz";
+
     /** the default number of command retry attempts to perform */
     protected static final int MAX_RETRY_ATTEMPTS = 2;
 
@@ -86,6 +97,7 @@ public class NativeDevice implements IManagedTestDevice {
     private static final Pattern DF_PATTERN = Pattern.compile(
             //Fs 1K-blks Used    Available Use%      Mounted on
             "^[/a-z]+\\s+\\d+\\s+\\d+\\s+(\\d+)\\s+\\d+%\\s+[/a-z]+$", Pattern.MULTILINE);
+    private static final Pattern BUGREPORTZ_RESPONSE_PATTERN = Pattern.compile("(OK:)(.*)");
 
     private static final long MAX_HOST_DEVICE_TIME_OFFSET = 5 * 1000;
 
@@ -1845,7 +1857,66 @@ public class NativeDevice implements IManagedTestDevice {
      */
     @Override
     public InputStreamSource getBugreport() {
-        throw new UnsupportedOperationException("No support for Bugreport");
+        CollectingByteOutputReceiver receiver = new CollectingByteOutputReceiver();
+        try {
+            executeShellCommand(BUGREPORT_CMD, receiver,
+                    BUGREPORT_TIMEOUT, TimeUnit.MILLISECONDS, 0 /* don't retry */);
+        } catch (DeviceNotAvailableException e) {
+            // Log, but don't throw, so the caller can get the bugreport contents even if the device
+            // goes away
+            CLog.e("Device %s became unresponsive while retrieving bugreport", getSerialNumber());
+        }
+
+        return new ByteArrayInputStreamSource(receiver.getOutput());
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public InputStreamSource getBugreportz() {
+        checkApiLevelAgainst("getBugreportz", 22);
+        // Does not rely on {@link ITestDevice#executeAdbCommand(String...)} because it does not
+        // provide a timeout.
+        CollectingOutputReceiver receiver = new CollectingOutputReceiver();
+        try {
+            executeShellCommand(BUGREPORTZ_CMD, receiver,
+                    BUGREPORT_TIMEOUT, TimeUnit.MILLISECONDS, 0 /* don't retry */);
+            String output = receiver.getOutput().trim();
+            Matcher match = BUGREPORTZ_RESPONSE_PATTERN.matcher(output);
+            if (!match.find()) {
+                CLog.e("Something went went wrong during bugreportz collection: '%s'", output);
+                return null;
+            } else {
+                String remoteFilePath = match.group(2);
+                File zipFile = null;
+                try {
+                    if (!doesFileExist(remoteFilePath)) {
+                        CLog.e("Did not find bugreportz at: %s", remoteFilePath);
+                        return null;
+                    }
+                    // Create a placeholder to replace the file
+                    zipFile = FileUtil.createTempFile("bugreportz", ".zip");
+                    pullFile(remoteFilePath, zipFile);
+                    String bugreportDir =
+                            remoteFilePath.substring(0, remoteFilePath.lastIndexOf('/'));
+                    if (!bugreportDir.isEmpty()) {
+                        // clean bugreport files directory on device
+                        executeShellCommand(String.format("rm %s/*", bugreportDir));
+                    }
+
+                    InputStreamSource isc = new FileInputStreamSource(zipFile);
+                    return isc;
+                } catch (IOException e) {
+                    CLog.e("Failed to create the temporary file.");
+                    return null;
+                }
+            }
+        } catch (DeviceNotAvailableException e) {
+            CLog.e("Device %s became unresponsive while retrieving bugreportz", getSerialNumber());
+            CLog.e(e);
+        }
+        return null;
     }
 
     /**
@@ -3307,5 +3378,16 @@ public class NativeDevice implements IManagedTestDevice {
             return true;
         }
         return false;
+    }
+
+    protected void checkApiLevelAgainst(String feature, int strictMinLevel) {
+        try {
+            if (getApiLevel() < strictMinLevel){
+                throw new IllegalArgumentException(String.format("%s not supported on %s. "
+                        + "Must be API %d.", feature, getSerialNumber(), strictMinLevel));
+            }
+        } catch (DeviceNotAvailableException e) {
+            throw new RuntimeException("Device became unavailable while checking API level", e);
+        }
     }
 }

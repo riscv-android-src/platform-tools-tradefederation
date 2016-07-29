@@ -20,7 +20,6 @@ import com.android.ddmlib.IDevice;
 import com.android.tradefed.result.InputStreamSource;
 
 import java.io.File;
-import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -162,18 +161,6 @@ public interface ITestDevice extends INativeDevice {
      *             recovered.
      */
     public String uninstallPackage(String packageName) throws DeviceNotAvailableException;
-
-    /**
-     * Retrieves a bugreport from the device.
-     * <p/>
-     * The implementation of this is guaranteed to continue to work on a device without an sdcard
-     * (or where the sdcard is not yet mounted).
-     *
-     * @return An {@link InputStreamSource} which will produce the bugreport contents on demand.  In
-     *         case of failure, the {@code InputStreamSource} will produce an empty
-     *         {@link InputStream}.
-     */
-    public InputStreamSource getBugreport();
 
     /**
      * Grabs a screenshot from the device.

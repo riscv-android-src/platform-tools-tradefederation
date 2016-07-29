@@ -15,6 +15,8 @@
  */
 package com.android.tradefed.result;
 
+import com.android.tradefed.util.FileUtil;
+
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
@@ -63,6 +65,13 @@ public class FileInputStreamSource implements InputStreamSource {
     @Override
     public long size() {
         return mFile.length();
+    }
+
+    /**
+     * Convenience method to delete the file associated with the FileInputStreamSource. Not safe.
+     */
+    public void cleanFile() {
+        FileUtil.deleteFile(mFile);
     }
 }
 

@@ -16,8 +16,11 @@
 package com.android.tradefed.device;
 
 import com.android.ddmlib.IDevice;
+import com.android.ddmlib.IShellOutputReceiver;
+import com.android.tradefed.result.FileInputStreamSource;
 import com.android.tradefed.util.FileUtil;
 import com.android.tradefed.util.IRunUtil;
+import com.android.tradefed.util.StreamUtil;
 
 import junit.framework.TestCase;
 
@@ -31,6 +34,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.TimeUnit;
 
 /**
  * Unit tests for {@link NativeDevice}.
@@ -750,5 +754,72 @@ public class NativeDeviceTest extends TestCase {
             }
         };
         assertEquals(0, mTestDevice.getDeviceDate());
+    }
+
+    /**
+     * Unit test for {@link NativeDevice#getBugreportz()}.
+     */
+    public void testGetBugreportz() throws IOException {
+        mTestDevice = new TestableAndroidNativeDevice() {
+            @Override
+            public void executeShellCommand(
+                    String command, IShellOutputReceiver receiver,
+                    long maxTimeToOutputShellResponse, TimeUnit timeUnit, int retryAttempts)
+                            throws DeviceNotAvailableException {
+                String fakeRep = "OK:/data/0/com.android.shell/bugreports/bugreport1970-10-27.zip";
+                receiver.addOutput(fakeRep.getBytes(), 0, fakeRep.getBytes().length);
+            }
+            @Override
+            public boolean doesFileExist(String destPath) throws DeviceNotAvailableException {
+                return true;
+            }
+            @Override
+            public boolean pullFile(String remoteFilePath, File localFile)
+                    throws DeviceNotAvailableException {
+                return true;
+            }
+            @Override
+            public String executeShellCommand(String command) throws DeviceNotAvailableException {
+                assertEquals("rm /data/0/com.android.shell/bugreports/*", command);
+                return null;
+            }
+            @Override
+            public int getApiLevel() throws DeviceNotAvailableException {
+                return 22;
+            }
+        };
+        FileInputStreamSource f = null;
+        try {
+            f = (FileInputStreamSource) mTestDevice.getBugreportz();
+            assertNotNull(f);
+            assertTrue(f.createInputStream().available() == 0);
+        } finally {
+            StreamUtil.cancel(f);
+            if (f != null) {
+                f.cleanFile();
+            }
+        }
+    }
+
+    /**
+     * Unit test for {@link NativeDevice#getBugreportz()}.
+     */
+    public void testGetBugreportz_fails() {
+        mTestDevice = new TestableAndroidNativeDevice() {
+            @Override
+            public int getApiLevel() throws DeviceNotAvailableException {
+                return 22;
+            }
+        };
+        FileInputStreamSource f = null;
+        try {
+            f = (FileInputStreamSource) mTestDevice.getBugreportz();
+            assertNull(f);
+        } finally {
+            StreamUtil.cancel(f);
+            if (f != null) {
+                f.cleanFile();
+            }
+        }
     }
 }

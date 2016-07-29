@@ -28,6 +28,7 @@ import com.android.tradefed.util.CommandResult;
 import com.android.tradefed.util.TimeUtil;
 
 import java.io.File;
+import java.io.InputStream;
 import java.util.Collection;
 import java.util.Date;
 import java.util.List;
@@ -995,6 +996,29 @@ public interface INativeDevice {
      * @throws DeviceNotAvailableException
      */
     public String getBuildSigningKeys() throws DeviceNotAvailableException;
+
+    /**
+     * Retrieves a bugreport from the device.
+     * <p/>
+     * The implementation of this is guaranteed to continue to work on a device without an sdcard
+     * (or where the sdcard is not yet mounted).
+     *
+     * @return An {@link InputStreamSource} which will produce the bugreport contents on demand.  In
+     *         case of failure, the {@code InputStreamSource} will produce an empty
+     *         {@link InputStream}.
+     */
+    public InputStreamSource getBugreport();
+
+    /**
+     * Retrieves a bugreportz from the device. Zip format bugreport contains the main bugreport
+     * and other log files that are useful for debugging.
+     * <p/>
+     * Only supported for 'adb version' > 1.0.36
+     *
+     * @return a {@link InputStreamSource} of the zip file containing the bugreportz, return null
+     *         in case of failure.
+     */
+    public InputStreamSource getBugreportz();
 
     /**
      * Get the device class.
