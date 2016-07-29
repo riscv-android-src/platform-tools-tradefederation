@@ -1623,6 +1623,37 @@ public class CommandScheduler extends Thread implements ICommandScheduler, IComm
      * {@inheritDoc}
      */
     @Override
+    public synchronized boolean stopInvocation(int invocationId) {
+        // TODO: make invocationID part of InvocationMetadata
+        for (InvocationThread thread : mInvocationThreadMap.values()) {
+            if (thread.mCmd.getCommandTracker().mId == invocationId) {
+                thread.stopInvocation("User requested stopping invocation " + invocationId);
+                return true;
+            }
+        }
+        CLog.w("No invocation found matching the id: %s", invocationId);
+        return false;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public synchronized String getInvocationInfo(int invocationId) {
+        for (InvocationThread thread : mInvocationThreadMap.values()) {
+            if (thread.mCmd.getCommandTracker().mId == invocationId) {
+                String info = Arrays.toString(thread.mCmd.getCommandTracker().getArgs());
+                return info;
+            }
+        }
+        CLog.w("No invocation found matching the id: %s", invocationId);
+        return null;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
     public void displayCommandsInfo(PrintWriter printWriter, String regex) {
         assertStarted();
         Pattern regexPattern = null;

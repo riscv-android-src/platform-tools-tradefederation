@@ -77,6 +77,7 @@ public class Console extends Thread {
     protected static final String RUN_PATTERN = "r(?:un)?";
     protected static final String EXIT_PATTERN = "(?:q|exit)";
     protected static final String SET_PATTERN = "s(?:et)?";
+    protected static final String INVOC_PATTERN = "i(?:nvocation)?";
     protected static final String VERSION_PATTERN = "version";
     protected static final String REMOVE_PATTERN = "remove";
     protected static final String DEBUG_PATTERN = "debug";
@@ -416,12 +417,13 @@ public class Console extends Thread {
         genericHelp.add("");
         genericHelp.add("Enter 'help all' to see all embedded documentation at once.");
         genericHelp.add("");
-        genericHelp.add("Enter 'help list'   for help with 'list' commands");
-        genericHelp.add("Enter 'help run'    for help with 'run' commands");
-        genericHelp.add("Enter 'help dump'   for help with 'dump' commands");
-        genericHelp.add("Enter 'help set'    for help with 'set' commands");
-        genericHelp.add("Enter 'help remove' for help with 'remove' commands");
-        genericHelp.add("Enter 'help debug'  for help with 'debug' commands");
+        genericHelp.add("Enter 'help list'       for help with 'list' commands");
+        genericHelp.add("Enter 'help run'        for help with 'run' commands");
+        genericHelp.add("Enter 'help invocation' for help with 'invocation' commands");
+        genericHelp.add("Enter 'help dump'       for help with 'dump' commands");
+        genericHelp.add("Enter 'help set'        for help with 'set' commands");
+        genericHelp.add("Enter 'help remove'     for help with 'remove' commands");
+        genericHelp.add("Enter 'help debug'      for help with 'debug' commands");
         genericHelp.add("Enter 'version'  to get the current version of Tradefed");
 
         commandHelp.put(LIST_PATTERN, String.format(
@@ -482,6 +484,13 @@ public class Console extends Thread {
                 "\tgc      Attempt to force a GC" + LINE_SEPARATOR,
                 DEBUG_PATTERN));
 
+        commandHelp.put(INVOC_PATTERN, String.format(
+                "%s help:" + LINE_SEPARATOR +
+                "\ti[nvocation] [Command Id]        Information of the invocation thread" +
+                LINE_SEPARATOR +
+                "\ti[nvocation] [Command Id] stop   Notify to stop the invocation" + LINE_SEPARATOR,
+                INVOC_PATTERN));
+
         // Handle quit commands
         trie.put(new QuitRunnable(), EXIT_PATTERN, null);
         trie.put(new QuitRunnable(), EXIT_PATTERN);
@@ -530,6 +539,35 @@ public class Console extends Thread {
             }
         }, LIST_PATTERN, "configs");
 
+        // Invocation commands
+        trie.put(new ArgRunnable<CaptureList>() {
+                    @Override
+                    public void run(CaptureList args) {
+                        int invocId = Integer.parseInt(args.get(1).get(0));
+                        String info = mScheduler.getInvocationInfo(invocId);
+                        if (info != null) {
+                            printLine(String.format("invocation %s: %s", invocId, info));
+                        } else {
+                            printLine(String.format("No information found for invocation %s.",
+                                    invocId));
+                        }
+                    }
+        }, INVOC_PATTERN, "([0-9]*)");
+        trie.put(new ArgRunnable<CaptureList>() {
+                    @Override
+                    public void run(CaptureList args) {
+                        int invocId = Integer.parseInt(args.get(1).get(0));
+                        if (mScheduler.stopInvocation(invocId)) {
+                            printLine(String.format("Invocation %s has been requested to stop."
+                                    + " It may take some times.",
+                                    invocId));
+                        } else {
+                            printLine(String.format("Could not stop invocation %s, try 'list "
+                                    + "invocation' or 'invocation %s' for more information.",
+                                    invocId, invocId));
+                        }
+                    }
+        }, INVOC_PATTERN, "([0-9]*)", "stop");
 
         // Dump commands
         trie.put(new Runnable() {
