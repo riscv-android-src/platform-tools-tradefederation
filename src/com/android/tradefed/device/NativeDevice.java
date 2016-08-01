@@ -1162,7 +1162,7 @@ public class NativeDevice implements IManagedTestDevice {
         for (File childFile : childFiles) {
             String remotePath = String.format("%s/%s", deviceFilePath, childFile.getName());
             if (childFile.isDirectory()) {
-                executeShellCommand(String.format("mkdir %s", remotePath));
+                executeShellCommand(String.format("mkdir -p \"%s\"", remotePath));
                 if (!pushDir(childFile, remotePath)) {
                     return false;
                 }
@@ -1248,7 +1248,7 @@ public class NativeDevice implements IManagedTestDevice {
         deviceFilePath = String.format("%s/%s", interpolatePathVariables(deviceFilePath),
                 localFileDir.getName());
         if (!doesFileExist(deviceFilePath)) {
-            executeShellCommand(String.format("mkdir -p %s", deviceFilePath));
+            executeShellCommand(String.format("mkdir -p \"%s\"", deviceFilePath));
         }
         IFileEntry remoteFileEntry = getFileEntry(deviceFilePath);
         if (remoteFileEntry == null) {
