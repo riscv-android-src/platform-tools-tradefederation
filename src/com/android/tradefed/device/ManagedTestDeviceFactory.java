@@ -42,8 +42,8 @@ public class ManagedTestDeviceFactory implements IManagedTestDeviceFactory {
     protected boolean mFastbootEnabled;
     protected IDeviceManager mDeviceManager;
     protected IDeviceMonitor mAllocationMonitor;
-    protected static final String CHECK_PM_CMD = "test -e /system/bin/pm && echo %s";
-    protected static final String EXPECTED_RES = "exists";
+    protected static final String CHECK_PM_CMD = "ls %s";
+    protected static final String EXPECTED_RES = "/system/bin/pm";
 
     public ManagedTestDeviceFactory(boolean fastbootEnabled, IDeviceManager deviceManager,
             IDeviceMonitor allocationMonitor) {
@@ -89,14 +89,14 @@ public class ManagedTestDeviceFactory implements IManagedTestDeviceFactory {
     /**
      * Helper that return true if device has framework support.
      */
-    private boolean checkFrameworkSupport(IDevice idevice) {
+    protected boolean checkFrameworkSupport(IDevice idevice) {
         if (idevice instanceof StubDevice) {
             // Assume stub device should go to the default full framework support for
             // backward compatibility
             return true;
         }
         final long timeout = 60 * 1000;
-        CollectingOutputReceiver receiver = new CollectingOutputReceiver();
+        CollectingOutputReceiver receiver = createOutputReceiver();
         try {
             String cmd = String.format(CHECK_PM_CMD, EXPECTED_RES);
             idevice.executeShellCommand(cmd, receiver, timeout, TimeUnit.MILLISECONDS);
@@ -111,6 +111,14 @@ public class ManagedTestDeviceFactory implements IManagedTestDeviceFactory {
         }
         // We default to support for framework to get same behavior as before.
         return true;
+    }
+
+    /**
+     * Create a {@link CollectingOutputReceiver}.
+     * Exposed for testing.
+     */
+    protected CollectingOutputReceiver createOutputReceiver() {
+        return new CollectingOutputReceiver();
     }
 
     /**

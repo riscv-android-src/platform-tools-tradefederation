@@ -15,9 +15,13 @@
  */
 package com.android.tradefed.device;
 
+import com.android.ddmlib.IDevice;
+
 import junit.framework.TestCase;
 
 import org.easymock.EasyMock;
+
+import java.util.concurrent.TimeUnit;
 
 /**
  * Unit Tests for {@link ManagedTestDeviceFactory}
@@ -59,5 +63,55 @@ public class ManagedTestDeviceFactoryTest extends TestCase {
     public void testIsSerialTcpDevice_nohost() {
         String input = ":5555";
         assertFalse(mFactory.isTcpDeviceSerial(input));
+    }
+
+    /**
+     * Test that {@link ManagedTestDeviceFactory#checkFrameworkSupport(IDevice)} is true when the
+     * device returns a proper 'pm' path.
+     */
+    public void testFrameworkAvailable() throws Exception {
+        final CollectingOutputReceiver cor = new CollectingOutputReceiver();
+        mFactory = new ManagedTestDeviceFactory(true, mMockDeviceManager, mMockDeviceMonitor) {
+            @Override
+            protected CollectingOutputReceiver createOutputReceiver() {
+                String response = ManagedTestDeviceFactory.EXPECTED_RES + "\n";
+                cor.addOutput(response.getBytes(), 0, response.length());
+                return cor;
+            }
+        };
+        IDevice mMockDevice = EasyMock.createMock(IDevice.class);
+        String expectedCmd = String.format(ManagedTestDeviceFactory.CHECK_PM_CMD,
+                ManagedTestDeviceFactory.EXPECTED_RES);
+        mMockDevice.executeShellCommand(EasyMock.eq(expectedCmd), EasyMock.eq(cor),
+                EasyMock.anyLong(), EasyMock.eq(TimeUnit.MILLISECONDS));
+        EasyMock.expectLastCall();
+        EasyMock.replay(mMockDevice);
+        assertTrue(mFactory.checkFrameworkSupport(mMockDevice));
+        EasyMock.verify(mMockDevice);
+    }
+
+    /**
+     * Test that {@link ManagedTestDeviceFactory#checkFrameworkSupport(IDevice)} is false when the
+     * device does not have the 'pm' binary.
+     */
+    public void testFrameworkNotAvailable() throws Exception {
+        final CollectingOutputReceiver cor = new CollectingOutputReceiver();
+        mFactory = new ManagedTestDeviceFactory(true, mMockDeviceManager, mMockDeviceMonitor) {
+            @Override
+            protected CollectingOutputReceiver createOutputReceiver() {
+                String response = "ls: /system/bin/pm: No such file or directory\n";
+                cor.addOutput(response.getBytes(), 0, response.length());
+                return cor;
+            }
+        };
+        IDevice mMockDevice = EasyMock.createMock(IDevice.class);
+        String expectedCmd = String.format(ManagedTestDeviceFactory.CHECK_PM_CMD,
+                ManagedTestDeviceFactory.EXPECTED_RES);
+        mMockDevice.executeShellCommand(EasyMock.eq(expectedCmd), EasyMock.eq(cor),
+                EasyMock.anyLong(), EasyMock.eq(TimeUnit.MILLISECONDS));
+        EasyMock.expectLastCall();
+        EasyMock.replay(mMockDevice);
+        assertFalse(mFactory.checkFrameworkSupport(mMockDevice));
+        EasyMock.verify(mMockDevice);
     }
 }
