@@ -17,6 +17,7 @@ package com.android.tradefed.device;
 
 import com.android.ddmlib.AdbCommandRejectedException;
 import com.android.ddmlib.IDevice;
+import com.android.ddmlib.IDevice.DeviceState;
 import com.android.ddmlib.ShellCommandUnresponsiveException;
 import com.android.ddmlib.TimeoutException;
 import com.android.tradefed.device.DeviceManager.FastbootDevice;
@@ -24,7 +25,6 @@ import com.android.tradefed.log.LogUtil.CLog;
 
 import java.io.IOException;
 import java.util.concurrent.TimeUnit;
-
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -98,15 +98,22 @@ public class ManagedTestDeviceFactory implements IManagedTestDeviceFactory {
         final long timeout = 60 * 1000;
         CollectingOutputReceiver receiver = createOutputReceiver();
         try {
+            if (!DeviceState.ONLINE.equals(idevice.getState())) {
+                // Device will be 'unavailable' and recreated in DeviceManager so no need to check.
+                CLog.w("Device state is not Online, assuming Framework support for now.");
+                return true;
+            }
             String cmd = String.format(CHECK_PM_CMD, EXPECTED_RES);
             idevice.executeShellCommand(cmd, receiver, timeout, TimeUnit.MILLISECONDS);
             if (!EXPECTED_RES.equals(receiver.getOutput().trim())) {
-                CLog.i("No support for Framework, creating a native device");
+                CLog.i("No support for Framework, creating a native device. "
+                        + "output: %s", receiver.getOutput());
                 return false;
             }
         } catch (TimeoutException | AdbCommandRejectedException | ShellCommandUnresponsiveException
                 | IOException e) {
-            CLog.e("Exception '%s' with device: %s", e.getMessage(), idevice.getSerialNumber());
+            CLog.w("Exception during checkFrameworkSupport, assuming True: '%s' with device: %s",
+                    e.getMessage(), idevice.getSerialNumber());
             CLog.e(e);
         }
         // We default to support for framework to get same behavior as before.

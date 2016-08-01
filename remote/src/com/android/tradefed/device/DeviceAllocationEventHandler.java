@@ -30,7 +30,9 @@ interface DeviceAllocationEventHandler {
      * <ul>
      * <li>Unknown -> FORCE_ALLOCATE_REQUEST -> Allocated</li>
      * <li>Unknown -> CONNECTED_ONLINE -> Checking_Availability</li>
+     * <li>Unknown -> CONNECTED_OFFLINE -> Unavailable</li>
      * <li>Unknown -> STATE_CHANGE_ONLINE -> Checking_Availability</li>
+     * <li>Unknown -> STATE_CHANGE_OFFLINE -> Unavailable</li>
      * <li>Unknown -> FORCE_AVAILABLE -> Available</li>
      * </ul>
      */
@@ -46,6 +48,8 @@ interface DeviceAllocationEventHandler {
                     return DeviceAllocationState.Unavailable;
                 case STATE_CHANGE_ONLINE:
                     return DeviceAllocationState.Checking_Availability;
+                case STATE_CHANGE_OFFLINE:
+                    return DeviceAllocationState.Unavailable;
                 case FORCE_AVAILABLE:
                     return DeviceAllocationState.Available;
                 default:
@@ -93,6 +97,7 @@ interface DeviceAllocationEventHandler {
      * <ul>
      * <li>Available -> ALLOCATE_REQUEST -> Allocated</li>
      * <li>Available -> FORCE_ALLOCATE_REQUEST -> Allocated</li>
+     * <li>Available -> STATE_CHANGE_OFFLINE -> Unavailable</li>
      * <li>Available -> DISCONNECTED -> Unknown</li>
      * </ul>
      */
@@ -103,6 +108,8 @@ interface DeviceAllocationEventHandler {
                 case ALLOCATE_REQUEST:
                 case FORCE_ALLOCATE_REQUEST:
                     return DeviceAllocationState.Allocated;
+                case STATE_CHANGE_OFFLINE:
+                    return DeviceAllocationState.Unavailable;
                 case DISCONNECTED:
                     return DeviceAllocationState.Unknown;
                 default:

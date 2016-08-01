@@ -502,7 +502,7 @@ public class DeviceManagerTest extends TestCase {
     public void testInit_excludeDevice() throws Exception {
         String expectedCmd = String.format(ManagedTestDeviceFactory.CHECK_PM_CMD,
                 ManagedTestDeviceFactory.EXPECTED_RES);
-        EasyMock.expect(mMockIDevice.getState()).andReturn(DeviceState.ONLINE).times(2);
+        EasyMock.expect(mMockIDevice.getState()).andReturn(DeviceState.ONLINE).times(3);
         mMockIDevice.executeShellCommand(EasyMock.eq(expectedCmd),
                 (CollectingOutputReceiver)EasyMock.anyObject(), EasyMock.eq(60000l),
                 EasyMock.eq(TimeUnit.MILLISECONDS));
@@ -568,12 +568,14 @@ public class DeviceManagerTest extends TestCase {
         EasyMock.expect(mMockTestDevice.handleAllocationEvent(DeviceEvent.ALLOCATE_REQUEST))
                 .andReturn(new DeviceEventResponse(DeviceAllocationState.Allocated, true));
         mMockTestDevice.setDeviceState(TestDeviceState.NOT_AVAILABLE);
+        EasyMock.expect(mMockTestDevice.handleAllocationEvent(DeviceEvent.STATE_CHANGE_OFFLINE))
+                .andReturn(new DeviceEventResponse(DeviceAllocationState.Unavailable, true));
         replayMocks();
         DeviceManager manager = createDeviceManager(null, mMockIDevice);
         assertEquals(mMockTestDevice, manager.allocateDevice());
         IDevice newDevice = EasyMock.createMock(IDevice.class);
         EasyMock.expect(newDevice.getSerialNumber()).andReturn(DEVICE_SERIAL).anyTimes();
-        EasyMock.expect(newDevice.getState()).andReturn(DeviceState.OFFLINE);
+        EasyMock.expect(newDevice.getState()).andReturn(DeviceState.OFFLINE).times(2);
         EasyMock.replay(newDevice);
         mDeviceListener.deviceChanged(newDevice, IDevice.CHANGE_STATE);
         verifyMocks();
