@@ -136,7 +136,7 @@ public class TestInvocationTest extends TestCase {
         EasyMock.expect(mMockBuildInfo.getBuildAttributes()).andStubReturn(EMPTY_MAP);
         EasyMock.expect(mMockBuildInfo.getBuildBranch()).andStubReturn("branch");
         EasyMock.expect(mMockBuildInfo.getBuildFlavor()).andStubReturn("flavor");
-        EasyMock.expect(mMockBuildInfo.getTestTag()).andStubReturn("");
+
         // always expect logger initialization and cleanup calls
         mMockLogRegistry.registerLogger(mMockLogger);
         mMockLogger.init();
@@ -208,6 +208,7 @@ public class TestInvocationTest extends TestCase {
     public void testInvoke_buildFailed() throws Throwable  {
         BuildRetrievalError exception = new BuildRetrievalError("error", null, mMockBuildInfo);
         EasyMock.expect(mMockBuildProvider.getBuild()).andThrow(exception);
+        EasyMock.expect(mMockBuildInfo.getTestTag()).andStubReturn("");
         setupMockFailureListeners(exception);
         setupInvoke();
         IRemoteTest test = EasyMock.createMock(IRemoteTest.class);
@@ -390,6 +391,7 @@ public class TestInvocationTest extends TestCase {
         mMockDevice.clearLastConnectedWifiNetwork();
         mMockDevice.setOptions((TestDeviceOptions)EasyMock.anyObject());
         mMockBuildInfo.setDeviceSerial(SERIAL);
+        EasyMock.expect(mMockBuildInfo.getTestTag()).andStubReturn("");
         mMockDevice.startLogcat();
         mMockPreparer.setUp(mMockDevice, mMockBuildInfo);
 
@@ -430,6 +432,8 @@ public class TestInvocationTest extends TestCase {
         mMockDevice.clearLastConnectedWifiNetwork();
         mMockDevice.setOptions((TestDeviceOptions)EasyMock.anyObject());
         mMockBuildInfo.setDeviceSerial(SERIAL);
+        mMockBuildInfo.setTestTag(EasyMock.eq("stub"));
+        EasyMock.expectLastCall().times(2);
         mMockDevice.startLogcat();
         mMockPreparer.setUp(mMockDevice, mMockBuildInfo);
         mMockLogSaver.invocationStarted(mMockBuildInfo);
@@ -628,9 +632,12 @@ public class TestInvocationTest extends TestCase {
         mStubConfiguration.setTest(test);
         mStubConfiguration.setCommandLine(commandLine);
         mStubConfiguration.getCommandOptions().setShardCount(shardCount);
+        mMockBuildInfo.setTestTag(EasyMock.eq("stub"));
+        EasyMock.expectLastCall();
 
         setupInvoke();
         EasyMock.expect(mMockBuildProvider.getBuild()).andReturn(mMockBuildInfo);
+        EasyMock.expect(mMockBuildInfo.getTestTag()).andStubReturn("");
         mMockBuildInfo.addBuildAttribute("command_line_args", "config arg");
         mMockBuildInfo.addBuildAttribute("shard_count", "10");
         IConfiguration shardConfig = new Configuration("foo", "bar");
@@ -742,6 +749,84 @@ public class TestInvocationTest extends TestCase {
     }
 
     /**
+     * Test the test-tag is set when the IBuildInfo's test-tag is not.
+     */
+    public void testInvoke_testtag() throws Throwable {
+        String[] commandLine = {"run", "empty"};
+        mStubConfiguration.setCommandLine(commandLine);
+        mStubConfiguration.getCommandOptions().setTestTag("not-default");
+
+        setupInvoke();
+        EasyMock.expect(mMockDevice.getLogcat())
+                .andReturn(new ByteArrayInputStreamSource(new byte[0])).times(2);
+        EasyMock.expect(mMockLogger.getLog())
+                .andReturn(new ByteArrayInputStreamSource(new byte[0]));
+        mMockBuildInfo.setDeviceSerial(SERIAL);
+        mMockBuildProvider.cleanUp(mMockBuildInfo);
+        setupMockSuccessListeners();
+        EasyMock.expect(mMockBuildProvider.getBuild()).andReturn(mMockBuildInfo);
+        mMockBuildInfo.addBuildAttribute("command_line_args", "run empty");
+        mMockPreparer.setUp(mMockDevice, mMockBuildInfo);
+        // Default build is "stub" so we set the test-tag
+        mMockBuildInfo.setTestTag(EasyMock.eq("not-default"));
+        EasyMock.expectLastCall();
+        EasyMock.expect(mMockBuildInfo.getTestTag()).andStubReturn("stub");
+        replayMocks();
+        mTestInvocation.invoke(mMockDevice, mStubConfiguration, mockRescheduler);
+        verifyMocks();
+    }
+
+    /**
+     * Test the test-tag of the IBuildInfo is not modified when the CommandOption default test-tag
+     * is not modified.
+     */
+    public void testInvoke_testtag_notset() throws Throwable {
+        String[] commandLine = {"run", "empty"};
+        mStubConfiguration.setCommandLine(commandLine);
+        setupInvoke();
+        EasyMock.expect(mMockDevice.getLogcat())
+                .andReturn(new ByteArrayInputStreamSource(new byte[0])).times(2);
+        EasyMock.expect(mMockLogger.getLog())
+                .andReturn(new ByteArrayInputStreamSource(new byte[0]));
+        mMockBuildInfo.setDeviceSerial(SERIAL);
+        mMockBuildProvider.cleanUp(mMockBuildInfo);
+        setupMockSuccessListeners();
+        EasyMock.expect(mMockBuildProvider.getBuild()).andReturn(mMockBuildInfo);
+        mMockBuildInfo.addBuildAttribute("command_line_args", "run empty");
+        mMockPreparer.setUp(mMockDevice, mMockBuildInfo);
+        EasyMock.expect(mMockBuildInfo.getTestTag()).andStubReturn("buildprovidertesttag");
+
+        replayMocks();
+        mTestInvocation.invoke(mMockDevice, mStubConfiguration, mockRescheduler);
+        verifyMocks();
+    }
+
+    /**
+     * Test the test-tag of the IBuildInfo is not set and Command Option is not set either.
+     * A default 'stub' test-tag is set to ensure reporting is done.
+     */
+    public void testInvoke_notesttag() throws Throwable {
+        String[] commandLine = {"run", "empty"};
+        mStubConfiguration.setCommandLine(commandLine);
+        setupInvoke();
+        EasyMock.expect(mMockDevice.getLogcat())
+                .andReturn(new ByteArrayInputStreamSource(new byte[0])).times(2);
+        EasyMock.expect(mMockLogger.getLog())
+                .andReturn(new ByteArrayInputStreamSource(new byte[0]));
+        mMockBuildInfo.setDeviceSerial(SERIAL);
+        mMockBuildProvider.cleanUp(mMockBuildInfo);
+        setupMockSuccessListeners();
+        EasyMock.expect(mMockBuildProvider.getBuild()).andReturn(mMockBuildInfo);
+        mMockBuildInfo.addBuildAttribute("command_line_args", "run empty");
+        mMockPreparer.setUp(mMockDevice, mMockBuildInfo);
+        EasyMock.expect(mMockBuildInfo.getTestTag()).andStubReturn(null);
+        mMockBuildInfo.setTestTag(EasyMock.eq("stub"));
+        EasyMock.expectLastCall();
+        replayMocks();
+        mTestInvocation.invoke(mMockDevice, mStubConfiguration, mockRescheduler);
+        verifyMocks();
+    }
+    /**
      * Set up expected conditions for normal run up to the part where tests are run.
      *
      * @param test the {@link Test} to use.
@@ -779,6 +864,9 @@ public class TestInvocationTest extends TestCase {
                 .andReturn(new ByteArrayInputStreamSource(new byte[0]));
         mMockBuildInfo.setDeviceSerial(SERIAL);
         mMockBuildProvider.cleanUp(mMockBuildInfo);
+        mMockBuildInfo.setTestTag(EasyMock.eq("stub"));
+        EasyMock.expectLastCall();
+        EasyMock.expect(mMockBuildInfo.getTestTag()).andStubReturn("");
     }
 
     /**

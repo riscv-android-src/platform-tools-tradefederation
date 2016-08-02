@@ -62,6 +62,13 @@ public class CommandOptions implements ICommandOptions {
             updateRule = OptionUpdateRule.LEAST)
     private Long mMaxRandomLoopTime = null;
 
+    @Option(name = "test-tag", description = "Identifier for the invocation during reporting.")
+    private String mTestTag = "stub";
+
+    @Option(name = "test-tag-suffix", description = "suffix for test-tag. appended to test-tag to "
+            + "represents some variants of one test.")
+    private String mTestTagSuffix = null;
+
     @Option(name = "loop", description = "keep running continuously.",
             importance = Importance.ALWAYS)
     private boolean mLoopMode = false;
@@ -261,7 +268,7 @@ public class CommandOptions implements ICommandOptions {
     }
 
     /**
-     * {@inheritDoc)
+     * {@inheritDoc}
      */
     @Override
     public void setShardCount(Integer shardCount) {
@@ -282,5 +289,29 @@ public class CommandOptions implements ICommandOptions {
     @Override
     public void setShardIndex(Integer shardIndex) {
         mShardIndex = shardIndex;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void setTestTag(String testTag) {
+       mTestTag = testTag;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public String getTestTag() {
+        return mTestTag;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public String getTestTagSuffix() {
+        return mTestTagSuffix;
     }
 }

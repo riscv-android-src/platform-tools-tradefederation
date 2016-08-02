@@ -21,8 +21,6 @@ import com.android.tradefed.build.BuildRetrievalError;
 import com.android.tradefed.build.ExistingBuildProvider;
 import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.build.IDeviceBuildProvider;
-import com.android.tradefed.command.CommandOptions;
-import com.android.tradefed.command.ICommandOptions;
 import com.android.tradefed.config.ConfigurationException;
 import com.android.tradefed.config.ConfigurationFactory;
 import com.android.tradefed.config.IConfiguration;
@@ -50,9 +48,9 @@ import com.android.tradefed.targetprep.IHostCleaner;
 import com.android.tradefed.targetprep.ITargetCleaner;
 import com.android.tradefed.targetprep.ITargetPreparer;
 import com.android.tradefed.targetprep.TargetSetupError;
-import com.android.tradefed.testtype.INativeDeviceTest;
 import com.android.tradefed.testtype.IBuildReceiver;
 import com.android.tradefed.testtype.IDeviceTest;
+import com.android.tradefed.testtype.INativeDeviceTest;
 import com.android.tradefed.testtype.IRemoteTest;
 import com.android.tradefed.testtype.IResumableTest;
 import com.android.tradefed.testtype.IRetriableTest;
@@ -391,12 +389,29 @@ public class TestInvocation implements ITestInvocation {
             info.addBuildAttribute("shard_index",
                     config.getCommandOptions().getShardIndex().toString());
         }
+        // TODO: update all the configs to only use test-tag from CommandOption and not build
+        // providers.
+        // When CommandOption is set, it overrides any test-tag from build_providers
+        if (!"stub".equals(config.getCommandOptions().getTestTag())) {
+            String testTag = config.getCommandOptions().getTestTag();
+            if (config.getCommandOptions().getTestTagSuffix() != null) {
+                testTag = String.format("%s-%s", testTag,
+                        config.getCommandOptions().getTestTagSuffix());
+            }
+            info.setTestTag(testTag);
+        } else if (info.getTestTag() == null || info.getTestTag().isEmpty()) {
+            // We ensure that that a default test-tag is always available.
+            info.setTestTag("stub");
+        } else {
+            CLog.w("Using the test-tag from the build_provider. Consider updating your config to"
+                    + " have no alias/namespace in front of test-tag.");
+        }
     }
 
     /**
      * Updates the {@link IConfiguration} to run a single shard if a shard index is set.
      *
-     * @see IStrctiShardableTest
+     * @see IStrictShardableTest
      *
      * @param config the {@link IConfiguration}.
      */

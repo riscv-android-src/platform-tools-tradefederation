@@ -37,6 +37,10 @@ public class DeviceBuildInfo extends BuildInfo implements IDeviceBuildInfo {
         super();
     }
 
+    public DeviceBuildInfo(String buildId, String buildTargetName) {
+        super(buildId, buildTargetName);
+    }
+
     public DeviceBuildInfo(String buildId, String testTag, String buildTargetName) {
         super(buildId, testTag, buildTargetName);
     }

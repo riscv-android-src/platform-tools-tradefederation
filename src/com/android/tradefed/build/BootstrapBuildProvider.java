@@ -50,9 +50,6 @@ import java.io.File;
 @OptionClass(alias = "bootstrap-build")
 public class BootstrapBuildProvider implements IDeviceBuildProvider {
 
-    @Option(name="test-tag", description="test tag name to supply.")
-    private String mTestTag = "stub";
-
     @Option(name="build-target", description="build target name to supply.")
     private String mBuildTargetName = "bootstrapped";
 
@@ -87,7 +84,7 @@ public class BootstrapBuildProvider implements IDeviceBuildProvider {
     public IBuildInfo getBuild(ITestDevice device) throws BuildRetrievalError,
             DeviceNotAvailableException {
         String buildId = device.getBuildId();
-        IBuildInfo info = new DeviceBuildInfo(buildId, mTestTag, mBuildTargetName);
+        IBuildInfo info = new DeviceBuildInfo(buildId, mBuildTargetName);
         if (!device.waitForDeviceShell(mShellAvailableTimeout * 1000)) {
             throw new DeviceNotAvailableException(
                     String.format("Shell did not become available in %d seconds",
