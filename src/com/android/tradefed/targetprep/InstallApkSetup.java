@@ -108,4 +108,8 @@ public class InstallApkSetup implements ITargetPreparer {
             }
         }
     }
+
+    protected Collection<File> getApkPaths() {
+        return mApkPaths;
+    }
 }
