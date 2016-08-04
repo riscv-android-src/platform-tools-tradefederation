@@ -469,6 +469,7 @@ public class DeviceManager implements IDeviceManager {
                 // when deviceDisconnected event is received
                 ideviceToReturn = new StubDevice(ideviceToReturn.getSerialNumber(), true);
                 deviceState = FreeDeviceState.AVAILABLE;
+                managedDevice.setIDevice(ideviceToReturn);
             } catch (DeviceNotAvailableException e) {
                 CLog.e(e);
                 deviceState = FreeDeviceState.UNAVAILABLE;
