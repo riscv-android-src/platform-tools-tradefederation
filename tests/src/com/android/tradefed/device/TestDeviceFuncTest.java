@@ -723,15 +723,13 @@ public class TestDeviceFuncTest extends DeviceTestCase {
     }
 
     /**
-     * Test that {@link TestDevice#getPropertySync(String)} works for volatile properties.
+     * Test that {@link TestDevice#getProperty(String)} works for volatile properties.
      */
-    @SuppressWarnings({ "deprecation", "javadoc" })
-    public void testGetPropertySync() throws Exception {
+    public void testGetProperty_volatile() throws Exception {
         getDevice().executeShellCommand("setprop prop.test 0");
-        assertEquals("0", getDevice().getPropertySync("prop.test"));
+        assertEquals("0", getDevice().getProperty("prop.test"));
         getDevice().executeShellCommand("setprop prop.test 1");
-        assertEquals("1", getDevice().getPropertySync("prop.test"));
-
+        assertEquals("1", getDevice().getProperty("prop.test"));
     }
 
     /**

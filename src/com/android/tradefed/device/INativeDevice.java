@@ -80,17 +80,6 @@ public interface INativeDevice {
     public String getProperty(String name) throws DeviceNotAvailableException;
 
     /**
-     * Retrieve the given property value from the device.
-     *
-     * @param name the property name
-     * @return the property value or <code>null</code> if it does not exist
-     * @throws DeviceNotAvailableException
-     * @deprecated use {@link #getProperty(String)}
-     */
-    @Deprecated
-    public String getPropertySync(String name) throws DeviceNotAvailableException;
-
-    /**
      * Convenience method to get the bootloader version of this device.
      * <p/>
      * Will attempt to retrieve bootloader version from the device's current state. (ie if device
@@ -199,7 +188,8 @@ public interface INativeDevice {
     /**
      * Executes the given adb shell command, retrying multiple times if command fails.
      * <p/>
-     * A simpler form of {@link #executeShellCommand(String, IShellOutputReceiver, int, int)} with
+     * A simpler form of
+     * {@link #executeShellCommand(String, IShellOutputReceiver, long, TimeUnit, int)} with
      * default values.
      *
      * @param command the adb shell command to run
@@ -228,25 +218,6 @@ public interface INativeDevice {
     public void executeShellCommand(String command, IShellOutputReceiver receiver,
             long maxTimeToOutputShellResponse, TimeUnit timeUnit, int retryAttempts)
                     throws DeviceNotAvailableException;
-
-    /**
-     * Executes a adb shell command, with more parameters to control command behavior.
-     *
-     * @see IDevice#executeShellCommand(String, IShellOutputReceiver, int)
-     * @param command the adb shell command to run
-     * @param receiver the {@link IShellOutputReceiver} to direct shell output to.
-     * @param maxTimeToOutputShellResponse the maximum amount of time during which the command is
-     *            allowed to not output any response.
-     * @param retryAttempts the maximum number of times to retry command if it fails due to a
-     *            exception. DeviceNotResponsiveException will be thrown if <var>retryAttempts</var>
-     *            are performed without success.
-     * @throws DeviceNotAvailableException if connection with device is lost and cannot be
-     *             recovered.
-     * @deprecated Use {@link #executeShellCommand(String, IShellOutputReceiver, long, TimeUnit, int)}
-     */
-    @Deprecated
-    public void executeShellCommand(String command, IShellOutputReceiver receiver,
-            int maxTimeToOutputShellResponse, int retryAttempts) throws DeviceNotAvailableException;
 
     /**
      * Helper method which executes a adb shell command and returns output as a {@link String}.

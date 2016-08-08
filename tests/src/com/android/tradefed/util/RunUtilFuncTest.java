@@ -41,7 +41,7 @@ public class RunUtilFuncTest extends TestCase {
     }
 
     /**
-     * Test timeout case for {@link RunUtil#runTimed(long, IRunnableResult)}.
+     * Test timeout case for {@link RunUtil#runTimed(long, IRunnableResult, boolean)}.
      */
     public void testRunTimed_timeout() {
         final long timeout = 200;
@@ -62,7 +62,7 @@ public class RunUtilFuncTest extends TestCase {
     }
 
     /**
-     * Test method for {@link RunUtil#runTimedRetry(long, long, , int, IRunnableResult)}.
+     * Test method for {@link RunUtil#runTimedRetry(long, long, int, IRunnableResult)}.
      * Verify that multiple attempts are made.
      */
     public void testRunTimedRetry() {
@@ -90,10 +90,10 @@ public class RunUtilFuncTest extends TestCase {
     }
 
     /**
-     * Test timeout case for {@link RunUtil#runTimed(long, IRunnableResult)} and ensure we
+     * Test timeout case for {@link RunUtil#runTimedCmd(long, String...)} and ensure we
      * consistently get the right stdout for a fast running command.
      */
-    public void testRunTimed_repeatedOutput() {
+    public void testRunTimedCmd_repeatedOutput() {
         for (int i=0; i < 1000; i++) {
             final long timeOut = 200;
             CommandResult result = RunUtil.getDefault().runTimedCmd(timeOut, "echo", "hello");
@@ -104,11 +104,11 @@ public class RunUtilFuncTest extends TestCase {
     }
 
     /**
-     * Test case for {@link RunUtil#runTimed(long, IRunnableResult)} for a command that produces
+     * Test case for {@link RunUtil#runTimedCmd(long, String...)} for a command that produces
      * a large amount of output
      * @throws IOException
      */
-    public void testRunTimed_largeOutput() throws IOException {
+    public void testRunTimedCmd_largeOutput() throws IOException {
         // 1M  chars
         int dataSize = 1000000;
         File f = FileUtil.createTempFile("foo", ".txt");

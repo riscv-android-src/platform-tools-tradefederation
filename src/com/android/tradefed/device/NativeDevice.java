@@ -378,15 +378,6 @@ public class NativeDevice implements IManagedTestDevice {
     /**
      * {@inheritDoc}
      */
-    @Deprecated
-    @Override
-    public String getPropertySync(final String name) throws DeviceNotAvailableException {
-        return getProperty(name);
-    }
-
-    /**
-     * {@inheritDoc}
-     */
     @Override
     public String getBootloaderVersion() throws UnsupportedOperationException,
             DeviceNotAvailableException {
@@ -536,18 +527,6 @@ public class NativeDevice implements IManagedTestDevice {
             }
         };
         performDeviceAction(String.format("shell %s", command), action, MAX_RETRY_ATTEMPTS);
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Deprecated
-    @Override
-    public void executeShellCommand(final String command, final IShellOutputReceiver receiver,
-            final int maxTimeToOutputShellResponse, int retryAttempts)
-            throws DeviceNotAvailableException {
-        executeShellCommand(command, receiver,
-                maxTimeToOutputShellResponse, TimeUnit.MILLISECONDS, retryAttempts);
     }
 
     /**
@@ -2666,7 +2645,7 @@ public class NativeDevice implements IManagedTestDevice {
      */
     @Override
     public boolean isDeviceEncrypted() throws DeviceNotAvailableException {
-        String output = getPropertySync("ro.crypto.state");
+        String output = getProperty("ro.crypto.state");
 
         if (output == null && isEncryptionSupported()) {
             CLog.w("Property ro.crypto.state is null on device %s", getSerialNumber());
