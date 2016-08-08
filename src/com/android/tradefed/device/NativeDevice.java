@@ -45,6 +45,7 @@ import com.android.tradefed.util.FileUtil;
 import com.android.tradefed.util.IRunUtil;
 import com.android.tradefed.util.RunUtil;
 import com.android.tradefed.util.SizeLimitedOutputStream;
+import com.android.tradefed.util.ZipUtil;
 
 import java.io.File;
 import java.io.FilenameFilter;
@@ -64,6 +65,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.zip.ZipFile;
 
 import javax.annotation.concurrent.GuardedBy;
 
@@ -1836,17 +1838,50 @@ public class NativeDevice implements IManagedTestDevice {
      */
     @Override
     public InputStreamSource getBugreport() {
-        CollectingByteOutputReceiver receiver = new CollectingByteOutputReceiver();
+        int apiLevel;
         try {
-            executeShellCommand(BUGREPORT_CMD, receiver,
-                    BUGREPORT_TIMEOUT, TimeUnit.MILLISECONDS, 0 /* don't retry */);
+            apiLevel = getApiLevel();
         } catch (DeviceNotAvailableException e) {
-            // Log, but don't throw, so the caller can get the bugreport contents even if the device
-            // goes away
-            CLog.e("Device %s became unresponsive while retrieving bugreport", getSerialNumber());
+            CLog.e("Device became unavailable while checking API level.");
+            CLog.e(e);
+            return null;
         }
 
-        return new ByteArrayInputStreamSource(receiver.getOutput());
+        if (apiLevel < 24) {
+            CollectingByteOutputReceiver receiver = new CollectingByteOutputReceiver();
+            try {
+                executeShellCommand(BUGREPORT_CMD, receiver,
+                        BUGREPORT_TIMEOUT, TimeUnit.MILLISECONDS, 0 /* don't retry */);
+            } catch (DeviceNotAvailableException e) {
+                // Log, but don't throw, so the caller can get the bugreport contents even
+                // if the device goes away
+                CLog.e("Device %s became unresponsive while retrieving bugreport",
+                        getSerialNumber());
+            }
+            return new ByteArrayInputStreamSource(receiver.getOutput());
+        } else {
+            CLog.d("Api level above 24, using bugreportz instead.");
+            ZipFile zip;
+            File mainEntry = null;
+            File bugreportzFile = null;
+            try {
+                bugreportzFile = getBugreportzInternal();
+                zip = new ZipFile(bugreportzFile);
+                // We get the main_entry.txt that contains the bugreport name.
+                mainEntry = ZipUtil.extractFileFromZip(zip, "main_entry.txt");
+                String bugreportName = FileUtil.readStringFromFile(mainEntry).trim();
+                CLog.d("bugreport name: '%s'", bugreportName);
+                File bugreport = ZipUtil.extractFileFromZip(zip, bugreportName);
+                return new FileInputStreamSource(bugreport, true);
+            } catch (IOException e) {
+                CLog.e("Error while unzipping bugreportz");
+                CLog.e(e);
+                return null;
+            } finally {
+                FileUtil.deleteFile(bugreportzFile);
+                FileUtil.deleteFile(mainEntry);
+            }
+        }
     }
 
     /**
@@ -1854,10 +1889,22 @@ public class NativeDevice implements IManagedTestDevice {
      */
     @Override
     public InputStreamSource getBugreportz() {
-        checkApiLevelAgainst("getBugreportz", 22);
+        checkApiLevelAgainst("getBugreportz", 24);
+        File bugreportZip = getBugreportzInternal();
+        if (bugreportZip != null) {
+            InputStreamSource isc = new FileInputStreamSource(bugreportZip, true);
+            return isc;
+        }
+        return null;
+    }
+
+    /**
+     * Internal Helper method to get the bugreportz zip file as a {@link File}.
+     */
+    private File getBugreportzInternal() {
+        CollectingOutputReceiver receiver = new CollectingOutputReceiver();
         // Does not rely on {@link ITestDevice#executeAdbCommand(String...)} because it does not
         // provide a timeout.
-        CollectingOutputReceiver receiver = new CollectingOutputReceiver();
         try {
             executeShellCommand(BUGREPORTZ_CMD, receiver,
                     BUGREPORT_TIMEOUT, TimeUnit.MILLISECONDS, 0 /* don't retry */);
@@ -1884,8 +1931,7 @@ public class NativeDevice implements IManagedTestDevice {
                         executeShellCommand(String.format("rm %s/*", bugreportDir));
                     }
 
-                    InputStreamSource isc = new FileInputStreamSource(zipFile);
-                    return isc;
+                    return zipFile;
                 } catch (IOException e) {
                     CLog.e("Failed to create the temporary file.");
                     return null;

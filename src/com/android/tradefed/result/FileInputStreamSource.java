@@ -31,9 +31,22 @@ public class FileInputStreamSource implements InputStreamSource {
 
     private final File mFile;
     private boolean mIsCancelled = false;
+    private boolean mDeleteOnCancel = false;
 
     public FileInputStreamSource(File file) {
         mFile = file;
+    }
+
+    /**
+     * Ctor
+     *
+     * @param file {@link File} containing the data to be streamed
+     * @param deleteFileOnCancel if true, the file associated will be deleted when
+     *        {@link #cancel()} is called
+     */
+    public FileInputStreamSource(File file, boolean deleteFileOnCancel) {
+        mFile = file;
+        mDeleteOnCancel = deleteFileOnCancel;
     }
 
     /**
@@ -57,6 +70,9 @@ public class FileInputStreamSource implements InputStreamSource {
     @Override
     public synchronized void cancel() {
         mIsCancelled = true;
+        if (mDeleteOnCancel) {
+            cleanFile();
+        }
     }
 
     /**

@@ -387,20 +387,6 @@ public class TestDeviceTest extends TestCase {
         mTestDevice.clearErrorDialogs();
     }
 
-    public void testGetBugreport_deviceUnavail() throws Exception {
-        final String testCommand = "bugreport";
-        final String expectedOutput = "this is the output\r\n in two lines\r\n";
-        // FIXME: this isn't actually causing a DeviceNotAvailableException to be thrown
-        injectShellResponse(testCommand, expectedOutput);
-        mMockRecovery.recoverDevice(EasyMock.eq(mMockStateMonitor), EasyMock.eq(false));
-        EasyMock.expectLastCall().andThrow(new DeviceNotAvailableException());
-
-        EasyMock.replay(mMockIDevice);
-        EasyMock.replay(mMockRecovery);
-        assertEquals(expectedOutput, StreamUtil.getStringFromStream(
-                mTestDevice.getBugreport().createInputStream()));
-    }
-
     /**
      * Test that the unresponsive device exception is propagated from the recovery to TestDevice.
      * @throws Exception

@@ -756,6 +756,33 @@ public class NativeDeviceTest extends TestCase {
         assertEquals(0, mTestDevice.getDeviceDate());
     }
 
+    public void testGetBugreport_deviceUnavail() throws Exception {
+        final String expectedOutput = "this is the output\r\n in two lines\r\n";
+        mTestDevice = new TestableAndroidNativeDevice() {
+            @Override
+            public void executeShellCommand(
+                    String command, IShellOutputReceiver receiver,
+                    long maxTimeToOutputShellResponse, TimeUnit timeUnit, int retryAttempts)
+                            throws DeviceNotAvailableException {
+                String fakeRep = expectedOutput;
+                receiver.addOutput(fakeRep.getBytes(), 0, fakeRep.getBytes().length);
+            }
+            @Override
+            public int getApiLevel() throws DeviceNotAvailableException {
+                return 22;
+            }
+        };
+
+        // FIXME: this isn't actually causing a DeviceNotAvailableException to be thrown
+        mMockRecovery.recoverDevice(EasyMock.eq(mMockStateMonitor), EasyMock.eq(false));
+        EasyMock.expectLastCall().andThrow(new DeviceNotAvailableException());
+
+        EasyMock.replay(mMockIDevice);
+        EasyMock.replay(mMockRecovery);
+        assertEquals(expectedOutput, StreamUtil.getStringFromStream(
+                mTestDevice.getBugreport().createInputStream()));
+    }
+
     /**
      * Unit test for {@link NativeDevice#getBugreportz()}.
      */
@@ -785,7 +812,7 @@ public class NativeDeviceTest extends TestCase {
             }
             @Override
             public int getApiLevel() throws DeviceNotAvailableException {
-                return 22;
+                return 24;
             }
         };
         FileInputStreamSource f = null;
@@ -808,7 +835,7 @@ public class NativeDeviceTest extends TestCase {
         mTestDevice = new TestableAndroidNativeDevice() {
             @Override
             public int getApiLevel() throws DeviceNotAvailableException {
-                return 22;
+                return 24;
             }
         };
         FileInputStreamSource f = null;

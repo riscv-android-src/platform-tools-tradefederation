@@ -77,6 +77,10 @@ public class TestDeviceFuncTest extends DeviceTestCase {
      * Simple testcase to ensure that the grabbing a bugreportz from a real TestDevice works.
      */
     public void testBugreportz() throws Exception {
+        if (mTestDevice.getApiLevel() < 24) {
+            CLog.i("testBugreportz() not supported by this device, skipping.");
+            return;
+        }
         FileInputStreamSource f = null;
         try {
             f = (FileInputStreamSource) mTestDevice.getBugreportz();
