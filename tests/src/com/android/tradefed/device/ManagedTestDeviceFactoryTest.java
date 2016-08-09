@@ -16,6 +16,7 @@
 package com.android.tradefed.device;
 
 import com.android.ddmlib.IDevice;
+import com.android.ddmlib.IDevice.DeviceState;
 
 import junit.framework.TestCase;
 
@@ -80,6 +81,7 @@ public class ManagedTestDeviceFactoryTest extends TestCase {
             }
         };
         IDevice mMockDevice = EasyMock.createMock(IDevice.class);
+        EasyMock.expect(mMockDevice.getState()).andReturn(DeviceState.ONLINE);
         String expectedCmd = String.format(ManagedTestDeviceFactory.CHECK_PM_CMD,
                 ManagedTestDeviceFactory.EXPECTED_RES);
         mMockDevice.executeShellCommand(EasyMock.eq(expectedCmd), EasyMock.eq(cor),
@@ -105,6 +107,7 @@ public class ManagedTestDeviceFactoryTest extends TestCase {
             }
         };
         IDevice mMockDevice = EasyMock.createMock(IDevice.class);
+        EasyMock.expect(mMockDevice.getState()).andReturn(DeviceState.ONLINE);
         String expectedCmd = String.format(ManagedTestDeviceFactory.CHECK_PM_CMD,
                 ManagedTestDeviceFactory.EXPECTED_RES);
         mMockDevice.executeShellCommand(EasyMock.eq(expectedCmd), EasyMock.eq(cor),

@@ -916,6 +916,11 @@ public class DeviceManager implements IDeviceManager {
                             DeviceAllocationState.Checking_Availability) {
                         checkAndAddAvailableDevice(testDevice);
                     }
+                } else if (DeviceState.OFFLINE.equals(idevice.getState()) ||
+                        DeviceState.UNAUTHORIZED.equals(idevice.getState())) {
+                    // handle device changing to offline or unauthorized.
+                    mManagedDeviceList.handleDeviceEvent(testDevice,
+                            DeviceEvent.STATE_CHANGE_OFFLINE);
                 }
             }
         }
