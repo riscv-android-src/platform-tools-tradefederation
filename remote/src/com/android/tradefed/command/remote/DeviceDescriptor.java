@@ -16,12 +16,17 @@
 
 package com.android.tradefed.command.remote;
 
+import com.android.ddmlib.IDevice.DeviceState;
 import com.android.tradefed.device.DeviceAllocationState;
 
+/**
+ * A class containing information describing a device under test.
+ */
 public class DeviceDescriptor {
 
     private final String mSerial;
     private final boolean mIsStubDevice;
+    private final DeviceState mDeviceState;
     private final DeviceAllocationState mState;
     private final String mProduct;
     private final String mProductVariant;
@@ -40,8 +45,16 @@ public class DeviceDescriptor {
     public DeviceDescriptor(String serial, boolean isStubDevice, DeviceAllocationState state,
             String product, String productVariant, String sdkVersion, String buildId,
             String batteryLevel, String deviceClass) {
+        this(serial, isStubDevice, null, state, product, productVariant, sdkVersion, buildId,
+                batteryLevel, deviceClass);
+    }
+
+    public DeviceDescriptor(String serial, boolean isStubDevice, DeviceState deviceState,
+            DeviceAllocationState state, String product, String productVariant, String sdkVersion,
+            String buildId, String batteryLevel, String deviceClass) {
         mSerial = serial;
         mIsStubDevice = isStubDevice;
+        mDeviceState = deviceState;
         mState = state;
         mProduct = product;
         mProductVariant = productVariant;
@@ -57,6 +70,10 @@ public class DeviceDescriptor {
 
     public boolean isStubDevice() {
         return mIsStubDevice;
+    }
+
+    public DeviceState getDeviceState() {
+        return mDeviceState;
     }
 
     public DeviceAllocationState getState() {

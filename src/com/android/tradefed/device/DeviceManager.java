@@ -811,6 +811,7 @@ public class DeviceManager implements IDeviceManager {
             IDevice idevice = d.getIDevice();
             serialStates.add(new DeviceDescriptor(idevice.getSerialNumber(),
                     idevice instanceof StubDevice,
+                    idevice.getState(),
                     d.getAllocationState(),
                     getDisplay(selector.getDeviceProductType(idevice)),
                     getDisplay(selector.getDeviceProductVariant(idevice)),
@@ -825,8 +826,8 @@ public class DeviceManager implements IDeviceManager {
     @Override
     public void displayDevicesInfo(PrintWriter stream) {
         ArrayList<List<String>> displayRows = new ArrayList<List<String>>();
-        displayRows.add(Arrays.asList("Serial", "State", "Product", "Variant", "Build",
-                "Battery"));
+        displayRows.add(Arrays.asList("Serial", "State", "Allocation", "Product", "Variant",
+                "Build", "Battery"));
         List<DeviceDescriptor> deviceList = listAllDevices();
         sortDeviceList(deviceList);
         addDevicesInfo(displayRows, deviceList);
@@ -877,6 +878,7 @@ public class DeviceManager implements IDeviceManager {
             }
             displayRows.add(Arrays.asList(
                     desc.getSerial(),
+                    desc.getDeviceState().toString(),
                     desc.getState().toString(),
                     desc.getProduct(),
                     desc.getProductVariant(),
