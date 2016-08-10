@@ -2526,7 +2526,7 @@ public class NativeDevice implements IManagedTestDevice {
         String command = String.format("vdc cryptfs enablecrypto %s \"%s\"", encryptMethod,
                 ENCRYPTION_PASSWORD);
         executeShellCommand(command, receiver, timeout, TimeUnit.MINUTES, 1);
-        if (receiver.getOutput().startsWith("500 0 Usage:")) {
+        if (receiver.getOutput().split(":")[0].matches("500 \\d+ Usage")) {
             command = String.format("vdc cryptfs enablecrypto %s default", encryptMethod);
             executeShellCommand(command, new NullOutputReceiver(), timeout, TimeUnit.MINUTES, 1);
         }

@@ -33,7 +33,6 @@ import com.android.tradefed.util.CommandResult;
 import com.android.tradefed.util.CommandStatus;
 import com.android.tradefed.util.IRunUtil;
 import com.android.tradefed.util.RunUtil;
-import com.android.tradefed.util.StreamUtil;
 
 import junit.framework.TestCase;
 
@@ -941,7 +940,7 @@ public class TestDeviceTest extends TestCase {
         setEncryptedSupported();
         setEnableAdbRootExpectations();
         injectShellResponse("vdc cryptfs enablecrypto wipe \"android\"",
-                "500 0 Usage: cryptfs enablecrypto\r\n");
+                "500 2280 Usage: cryptfs enablecrypto\r\n");
         injectShellResponse("vdc cryptfs enablecrypto wipe default", "200 0 -1\r\n");
         EasyMock.expect(mMockStateMonitor.waitForDeviceNotAvailable(EasyMock.anyLong())).andReturn(
                 Boolean.TRUE);
