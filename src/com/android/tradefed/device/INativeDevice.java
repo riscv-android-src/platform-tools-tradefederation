@@ -22,8 +22,10 @@ import com.android.ddmlib.testrunner.ITestRunListener;
 import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.device.ITestDevice.MountPointInfo;
 import com.android.tradefed.device.ITestDevice.RecoveryMode;
+import com.android.tradefed.log.ITestLogger;
 import com.android.tradefed.result.InputStreamSource;
 import com.android.tradefed.targetprep.TargetSetupError;
+import com.android.tradefed.util.Bugreport;
 import com.android.tradefed.util.CommandResult;
 import com.android.tradefed.util.TimeUtil;
 
@@ -990,6 +992,23 @@ public interface INativeDevice {
      *         in case of failure.
      */
     public InputStreamSource getBugreportz();
+
+    /**
+     * Helper method to take a bugreport and log it to the reporters.
+     *
+     * @param dataName name under which the bugreport will be reported.
+     * @param listener an {@link ITestLogger} to log the bugreport.
+     * @return True if the logging was sucessful, false otherwise.
+     */
+    public boolean logBugreport(String dataName, ITestLogger listener);
+
+    /**
+     * Take a bugreport and returns it inside a {@link Bugreport} object to handle it. Return null
+     * in case of issue.
+     * </p>
+     * File referenced in the Bugreport object need to be cleaned via {@link Bugreport#close()}.
+     */
+    public Bugreport takeBugreport();
 
     /**
      * Get the device class.

@@ -32,6 +32,7 @@ public enum LogDataType {
     COVERAGE("ec", false, false),  /* Emma coverage file */
     /* Specific text file types */
     BUGREPORT("txt", false, true),
+    BUGREPORTZ("zip", true, false),
     LOGCAT("txt", false, true),
     KERNEL_LOG("txt", false, true),
     MONKEY_LOG("txt", false, true),

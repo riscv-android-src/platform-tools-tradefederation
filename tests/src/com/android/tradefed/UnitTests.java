@@ -118,6 +118,7 @@ import com.android.tradefed.util.AaptParserTest;
 import com.android.tradefed.util.AbiFormatterTest;
 import com.android.tradefed.util.ArrayUtilTest;
 import com.android.tradefed.util.BluetoothUtilsTest;
+import com.android.tradefed.util.BugreportTest;
 import com.android.tradefed.util.ByteArrayListTest;
 import com.android.tradefed.util.ClassPathScannerTest;
 import com.android.tradefed.util.ConditionPriorityBlockingQueueTest;
@@ -291,6 +292,7 @@ import org.junit.runners.Suite.SuiteClasses;
     AbiFormatterTest.class,
     ArrayUtilTest.class,
     BluetoothUtilsTest.class,
+    BugreportTest.class,
     ByteArrayListTest.class,
     ClassPathScannerTest.class,
     ConditionPriorityBlockingQueueTest.class,

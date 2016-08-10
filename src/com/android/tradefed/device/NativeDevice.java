@@ -31,22 +31,27 @@ import com.android.ddmlib.testrunner.IRemoteAndroidTestRunner;
 import com.android.ddmlib.testrunner.ITestRunListener;
 import com.android.ddmlib.testrunner.RemoteAndroidTestRunner;
 import com.android.tradefed.build.IBuildInfo;
+import com.android.tradefed.log.ITestLogger;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.result.ByteArrayInputStreamSource;
 import com.android.tradefed.result.FileInputStreamSource;
 import com.android.tradefed.result.InputStreamSource;
+import com.android.tradefed.result.LogDataType;
 import com.android.tradefed.result.SnapshotInputStreamSource;
 import com.android.tradefed.result.StubTestRunListener;
 import com.android.tradefed.targetprep.TargetSetupError;
 import com.android.tradefed.util.ArrayUtil;
+import com.android.tradefed.util.Bugreport;
 import com.android.tradefed.util.CommandResult;
 import com.android.tradefed.util.CommandStatus;
 import com.android.tradefed.util.FileUtil;
 import com.android.tradefed.util.IRunUtil;
 import com.android.tradefed.util.RunUtil;
 import com.android.tradefed.util.SizeLimitedOutputStream;
+import com.android.tradefed.util.StreamUtil;
 import com.android.tradefed.util.ZipUtil;
 
+import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.io.FilenameFilter;
 import java.io.IOException;
@@ -1931,6 +1936,74 @@ public class NativeDevice implements IManagedTestDevice {
      * {@inheritDoc}
      */
     @Override
+    public boolean logBugreport(String dataName, ITestLogger listener) {
+        InputStreamSource bugreport = getBugreportz();
+        LogDataType type = LogDataType.BUGREPORTZ;
+        try {
+            if (bugreport == null) {
+                bugreport = getBugreport();
+                type = LogDataType.BUGREPORT;
+            }
+            if (bugreport != null) {
+                listener.testLog(dataName, type, bugreport);
+                return true;
+            }
+        } finally {
+            StreamUtil.cancel(bugreport);
+        }
+        CLog.d("takeBugreport() was not successful in collecting and logging the bugreport "
+                + "for device %s", getSerialNumber());
+        return false;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public Bugreport takeBugreport() {
+        int apiLevel;
+        try {
+            apiLevel = getApiLevel();
+        } catch (DeviceNotAvailableException e) {
+            CLog.e("Device became unavailable while checking API level.");
+            CLog.e(e);
+            return null;
+        }
+        File bugreportFile = null;
+        if (apiLevel < 24) {
+            CollectingByteOutputReceiver receiver = new CollectingByteOutputReceiver();
+            try {
+                executeShellCommand(BUGREPORT_CMD, receiver,
+                        BUGREPORT_TIMEOUT, TimeUnit.MILLISECONDS, 0 /* don't retry */);
+                bugreportFile = FileUtil.createTempFile("bugreport", ".txt");
+                FileUtil.writeToFile(new ByteArrayInputStream(receiver.getOutput()), bugreportFile);
+                return new Bugreport(bugreportFile, false);
+            } catch (DeviceNotAvailableException e) {
+                // Log, but don't throw, so the caller can get the bugreport contents even
+                // if the device goes away
+                CLog.e("Device %s became unresponsive while retrieving bugreport",
+                        getSerialNumber());
+            } catch (IOException e) {
+                CLog.e("Error when writing the bugreport file");
+                CLog.e(e);
+            }
+            return null;
+        } else {
+            CLog.d("Api level above 24, using bugreportz instead.");
+            bugreportFile = getBugreportzInternal();
+            if (bugreportFile != null) {
+                return new Bugreport(bugreportFile, true);
+            } else {
+                CLog.w("Error when collecting the bugreportz.");
+                return null;
+            }
+        }
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
     public InputStreamSource getBugreportz() {
         checkApiLevelAgainst("getBugreportz", 24);
         File bugreportZip = getBugreportzInternal();
@@ -1943,8 +2016,9 @@ public class NativeDevice implements IManagedTestDevice {
 
     /**
      * Internal Helper method to get the bugreportz zip file as a {@link File}.
+     * Exposed for testing.
      */
-    private File getBugreportzInternal() {
+    protected File getBugreportzInternal() {
         CollectingOutputReceiver receiver = new CollectingOutputReceiver();
         // Does not rely on {@link ITestDevice#executeAdbCommand(String...)} because it does not
         // provide a timeout.

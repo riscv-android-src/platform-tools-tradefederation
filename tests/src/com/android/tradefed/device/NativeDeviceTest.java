@@ -17,7 +17,12 @@ package com.android.tradefed.device;
 
 import com.android.ddmlib.IDevice;
 import com.android.ddmlib.IShellOutputReceiver;
+import com.android.tradefed.log.ITestLogger;
+import com.android.tradefed.result.ByteArrayInputStreamSource;
 import com.android.tradefed.result.FileInputStreamSource;
+import com.android.tradefed.result.InputStreamSource;
+import com.android.tradefed.result.LogDataType;
+import com.android.tradefed.util.Bugreport;
 import com.android.tradefed.util.FileUtil;
 import com.android.tradefed.util.IRunUtil;
 import com.android.tradefed.util.StreamUtil;
@@ -742,6 +747,130 @@ public class NativeDeviceTest extends TestCase {
             }
         };
         assertEquals(21692641, mTestDevice.getDeviceDate());
+    }
+
+    /**
+     * Unit test for {@link NativeDevice#logBugreport(String, ITestLogger)}.
+     */
+    public void testTestLogBugreport() {
+        final String dataName = "test";
+        final InputStreamSource stream = new ByteArrayInputStreamSource(null);
+        mTestDevice = new TestableAndroidNativeDevice() {
+            @Override
+            public InputStreamSource getBugreportz() {
+                return stream;
+            }
+        };
+        ITestLogger listener = EasyMock.createMock(ITestLogger.class);
+        listener.testLog(dataName, LogDataType.BUGREPORTZ, stream);
+        EasyMock.replay(listener);
+        assertTrue(mTestDevice.logBugreport(dataName, listener));
+        EasyMock.verify(listener);
+    }
+
+    /**
+     * Unit test for {@link NativeDevice#logBugreport(String, ITestLogger)}.
+     */
+    public void testTestLogBugreport_oldDevice() {
+        final String dataName = "test";
+        final InputStreamSource stream = new ByteArrayInputStreamSource(null);
+        mTestDevice = new TestableAndroidNativeDevice() {
+            @Override
+            public InputStreamSource getBugreportz() {
+                // Older device do not support bugreportz and return null
+                return null;
+            }
+            @Override
+            public InputStreamSource getBugreport() {
+                return stream;
+            }
+        };
+        ITestLogger listener = EasyMock.createMock(ITestLogger.class);
+        listener.testLog(dataName, LogDataType.BUGREPORT, stream);
+        EasyMock.replay(listener);
+        assertTrue(mTestDevice.logBugreport(dataName, listener));
+        EasyMock.verify(listener);
+    }
+
+    /**
+     * Unit test for {@link NativeDevice#logBugreport(String, ITestLogger)}.
+     */
+    public void testTestLogBugreport_fail() {
+        mTestDevice = new TestableAndroidNativeDevice() {
+            @Override
+            public InputStreamSource getBugreportz() {
+                return null;
+            }
+            @Override
+            public InputStreamSource getBugreport() {
+                return null;
+            }
+        };
+        ITestLogger listener = EasyMock.createMock(ITestLogger.class);
+        EasyMock.replay(listener);
+        assertFalse(mTestDevice.logBugreport("test", listener));
+        EasyMock.verify(listener);
+    }
+
+    /**
+     * Unit test for {@link NativeDevice#takeBugreport()}.
+     */
+    public void testTakeBugreport_apiLevelFail() {
+        mTestDevice = new TestableAndroidNativeDevice() {
+            @Override
+            public int getApiLevel() throws DeviceNotAvailableException {
+                throw new DeviceNotAvailableException();
+            }
+        };
+        // If we can't check API level it should return null.
+        assertNull(mTestDevice.takeBugreport());
+    }
+
+    /**
+     * Unit test for {@link NativeDevice#takeBugreport()}.
+     */
+    public void testTakeBugreport_oldDevice() throws Exception {
+        mTestDevice = new TestableAndroidNativeDevice() {
+            @Override
+            public int getApiLevel() throws DeviceNotAvailableException {
+                return 19;
+            }
+        };
+        Bugreport report = mTestDevice.takeBugreport();
+        try {
+            assertNotNull(report);
+            // older device report a non zipped bugreport
+            assertFalse(report.isZipped());
+        } finally {
+            report.close();
+        }
+    }
+
+    /**
+     * Unit test for {@link NativeDevice#takeBugreport()}.
+     */
+    public void testTakeBugreport() throws Exception {
+        mTestDevice = new TestableAndroidNativeDevice() {
+            @Override
+            public int getApiLevel() throws DeviceNotAvailableException {
+                return 24;
+            }
+            @Override
+            protected File getBugreportzInternal() {
+                try {
+                    return FileUtil.createTempFile("bugreportz", ".zip");
+                } catch (IOException e) {
+                    return null;
+                }
+            }
+        };
+        Bugreport report = mTestDevice.takeBugreport();
+        try {
+            assertNotNull(report);
+            assertTrue(report.isZipped());
+        } finally {
+            report.close();
+        }
     }
 
     /**
