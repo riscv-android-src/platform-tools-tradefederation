@@ -60,11 +60,11 @@ public class PythonVirtualenvPreparer implements ITargetPreparer {
     @Override
     public void setUp(ITestDevice device, IBuildInfo buildInfo)
             throws TargetSetupError, BuildError, DeviceNotAvailableException {
-        startVirtualenv(buildInfo);
-        installDeps(buildInfo);
+        startVirtualenv(buildInfo, device);
+        installDeps(buildInfo, device);
     }
 
-    protected void installDeps(IBuildInfo buildInfo) throws TargetSetupError {
+    protected void installDeps(IBuildInfo buildInfo, ITestDevice device) throws TargetSetupError {
         boolean hasDependencies = false;
         if (mRequirementsFile != null) {
             CommandResult c = mRunUtil.runTimedCmd(BASE_TIMEOUT * 5, mPip,
@@ -72,7 +72,8 @@ public class PythonVirtualenvPreparer implements ITargetPreparer {
             if (c.getStatus() != CommandStatus.SUCCESS) {
                 CLog.e("Installing dependencies from %s failed",
                         mRequirementsFile.getAbsolutePath());
-                throw new TargetSetupError("Failed to install dependencies with pip");
+                throw new TargetSetupError("Failed to install dependencies with pip",
+                        device.getDeviceDescriptor());
             }
             hasDependencies = true;
         }
@@ -83,7 +84,8 @@ public class PythonVirtualenvPreparer implements ITargetPreparer {
                         "install", dep);
                 if (c.getStatus() != CommandStatus.SUCCESS) {
                     CLog.e("Installing %s failed", dep);
-                    throw new TargetSetupError("Failed to install dependencies with pip");
+                    throw new TargetSetupError("Failed to install dependencies with pip",
+                            device.getDeviceDescriptor());
                 }
                 hasDependencies = true;
             }
@@ -99,7 +101,8 @@ public class PythonVirtualenvPreparer implements ITargetPreparer {
         }
     }
 
-    protected void startVirtualenv(IBuildInfo buildInfo) throws TargetSetupError {
+    protected void startVirtualenv(IBuildInfo buildInfo, ITestDevice device)
+            throws TargetSetupError {
         if (mVenvDir != null) {
             CLog.i("Using existing virtualenv based at %s", mVenvDir.getAbsolutePath());
             activate();
@@ -111,7 +114,8 @@ public class PythonVirtualenvPreparer implements ITargetPreparer {
             activate();
         } catch (IOException e) {
             CLog.e("Failed to create temp directory for virtualenv");
-            throw new TargetSetupError("Error creating virtualenv", e);
+            throw new TargetSetupError("Error creating virtualenv", e,
+                    device.getDeviceDescriptor());
         }
     }
 

@@ -54,7 +54,8 @@ public class KeyValueConfigPreparer implements ITargetPreparer {
     public void setUp(ITestDevice device, IBuildInfo buildInfo) throws DeviceNotAvailableException,
             TargetSetupError {
         if (mPath == null) {
-            throw new TargetSetupError("Option path must be specified");
+            throw new TargetSetupError("Option path must be specified",
+                    device.getDeviceDescriptor());
         }
 
         StringBuilder config = new StringBuilder();

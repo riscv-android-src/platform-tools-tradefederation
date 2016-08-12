@@ -98,7 +98,7 @@ public class InstrumentationPreparer implements ITargetPreparer {
             return;
         }
 
-        BuildError e = new BuildError("unknown error");
+        BuildError e = new BuildError("unknown error", device.getDeviceDescriptor());
         for (int i = 0; i < mAttempts; i++) {
             try {
                 runInstrumentation(device);
@@ -139,7 +139,7 @@ public class InstrumentationPreparer implements ITargetPreparer {
             String msg = String.format("Failed to run instrumentation %s on %s. failed tests = %s",
                     mPackageName, device.getSerialNumber(), getFailedTestNames(listener));
             CLog.w(msg);
-            throw new BuildError(msg);
+            throw new BuildError(msg, device.getDeviceDescriptor());
         }
     }
 

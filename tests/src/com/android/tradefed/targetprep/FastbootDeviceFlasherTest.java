@@ -18,6 +18,7 @@ package com.android.tradefed.targetprep;
 
 import com.android.tradefed.build.DeviceBuildInfo;
 import com.android.tradefed.build.IDeviceBuildInfo;
+import com.android.tradefed.command.remote.DeviceDescriptor;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.targetprep.IDeviceFlasher.UserDataFlashOption;
@@ -59,6 +60,7 @@ public class FastbootDeviceFlasherTest extends TestCase {
         EasyMock.expect(mMockDevice.getProductType()).andStubReturn(TEST_STRING);
         EasyMock.expect(mMockDevice.getBuildId()).andStubReturn("1");
         EasyMock.expect(mMockDevice.getBuildFlavor()).andStubReturn("test-debug");
+        EasyMock.expect(mMockDevice.getDeviceDescriptor()).andStubReturn(null);
         mMockBuildInfo = new DeviceBuildInfo("0", TEST_STRING, TEST_STRING);
         mMockBuildInfo.setDeviceImageFile(new File(TEST_STRING), "0");
         mMockBuildInfo.setUserDataImageFile(new File(TEST_STRING), "0");
@@ -69,7 +71,7 @@ public class FastbootDeviceFlasherTest extends TestCase {
         mFlasher = new FastbootDeviceFlasher() {
             @Override
             protected IFlashingResourcesParser createFlashingResourcesParser(
-                    IDeviceBuildInfo localBuild) {
+                    IDeviceBuildInfo localBuild, DeviceDescriptor descriptor) {
                 return mMockParser;
             }
             @Override
@@ -306,7 +308,7 @@ public class FastbootDeviceFlasherTest extends TestCase {
         FastbootDeviceFlasher flasher = new FastbootDeviceFlasher() {
             @Override
             protected IFlashingResourcesParser createFlashingResourcesParser(
-                    IDeviceBuildInfo localBuild) throws TargetSetupError {
+                    IDeviceBuildInfo localBuild, DeviceDescriptor desc) throws TargetSetupError {
                 BufferedReader reader = new BufferedReader(new StringReader(androidInfoData));
                 try {
                     return new FlashingResourcesParser(reader);

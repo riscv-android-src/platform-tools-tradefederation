@@ -40,6 +40,8 @@ public class PushFilePreparerTest extends TestCase {
     protected void setUp() throws Exception {
         super.setUp();
         mMockDevice = EasyMock.createStrictMock(ITestDevice.class);
+        EasyMock.expect(mMockDevice.getDeviceDescriptor()).andStubReturn(null);
+        EasyMock.expect(mMockDevice.getSerialNumber()).andStubReturn("SERIAL");
         mPreparer = new PushFilePreparer();
     }
 

@@ -93,9 +93,9 @@ public class PushFilePreparer implements ITargetCleaner {
      * Helper method to only throw if mAbortOnFailure is enabled.  Callers should behave as if this
      * method may return.
      */
-    private void fail(String message) throws TargetSetupError {
+    private void fail(String message, ITestDevice device) throws TargetSetupError {
         if (mAbortOnFailure) {
-            throw new TargetSetupError(message);
+            throw new TargetSetupError(message, device.getDeviceDescriptor());
         } else {
             // Log the error and return
             Log.w(LOG_TAG, message);
@@ -126,7 +126,7 @@ public class PushFilePreparer implements ITargetCleaner {
         for (String pushspec : mPushSpecs) {
             String[] pair = pushspec.split("->");
             if (pair.length != 2) {
-                fail(String.format("Invalid pushspec: '%s'"));
+                fail(String.format("Invalid pushspec: '%s'"), device);
                 continue;
             }
             Log.d(LOG_TAG, String.format("Trying to push local '%s' to remote '%s'", pair[0],
@@ -137,13 +137,13 @@ public class PushFilePreparer implements ITargetCleaner {
                 src = resolveRelativeFilePath(buildInfo, pair[0]);
             }
             if (src == null || !src.exists()) {
-                fail(String.format("Local source file '%s' does not exist", pair[0]));
+                fail(String.format("Local source file '%s' does not exist", pair[0]), device);
                 continue;
             }
             if (src.isDirectory()) {
                 if (!device.pushDir(src, pair[1])) {
                     fail(String.format("Failed to push local '%s' to remote '%s'", pair[0],
-                            pair[1]));
+                            pair[1]), device);
                     continue;
                 } else {
                     mFilesPushed.add(pair[1]);
@@ -151,7 +151,7 @@ public class PushFilePreparer implements ITargetCleaner {
             } else {
                 if (!device.pushFile(src, pair[1])) {
                     fail(String.format("Failed to push local '%s' to remote '%s'", pair[0],
-                            pair[1]));
+                            pair[1]), device);
                     continue;
                 } else {
                     mFilesPushed.add(pair[1]);

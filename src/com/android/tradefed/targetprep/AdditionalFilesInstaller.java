@@ -52,7 +52,7 @@ public class AdditionalFilesInstaller implements ITargetPreparer, ITargetCleaner
             CLog.d("Pushing %s to %s", file.getName(), remotePath);
             if (!device.pushFile(file, remotePath)) {
                 throw new TargetSetupError(String.format("Failed to push %s to %s",
-                        file.getName(), remotePath));
+                        file.getName(), remotePath), device.getDeviceDescriptor());
             }
         }
     }
@@ -87,7 +87,8 @@ public class AdditionalFilesInstaller implements ITargetPreparer, ITargetCleaner
                     return;
                 }
             }
-            throw new TargetSetupError(String.format("failed to remove files from %s", DEST_PATH));
+            throw new TargetSetupError(String.format("failed to remove files from %s", DEST_PATH),
+                    device.getDeviceDescriptor());
         }
     }
 

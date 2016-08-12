@@ -122,7 +122,7 @@ public class DefaultTestsZipInstaller implements ITestsZipInstaller {
         CLog.d("Syncing test files/apks");
         File hostDir = new File(deviceBuild.getTestsDir(), "DATA");
 
-        File[] hostDataFiles = getTestsZipDataFiles(hostDir);
+        File[] hostDataFiles = getTestsZipDataFiles(hostDir, device);
         for (File hostSubDir : hostDataFiles) {
             device.syncFiles(hostSubDir, DEVICE_DATA_PATH);
         }
@@ -172,13 +172,14 @@ public class DefaultTestsZipInstaller implements ITestsZipInstaller {
         boolean yayTurtle = device.pushString("I like turtles", turtlePath);
         if (!yayTurtle) {
             throw new TargetSetupError(String.format("Failed userdata write check on device %s",
-                    device.getSerialNumber()));
+                    device.getSerialNumber()), device.getDeviceDescriptor());
         }
 
         IFileEntry dataEntry = device.getFileEntry(FileListingService.DIRECTORY_DATA);
         if (dataEntry == null) {
             throw new TargetSetupError(String.format("Could not find %s folder on %s",
-                    FileListingService.DIRECTORY_DATA, device.getSerialNumber()));
+                    FileListingService.DIRECTORY_DATA, device.getSerialNumber()),
+                    device.getDeviceDescriptor());
         }
         for (IFileEntry dataSubDir : dataEntry.getChildren(false)) {
             if (!mDataWipeSkipList.contains(dataSubDir.getName())) {
@@ -206,7 +207,7 @@ public class DefaultTestsZipInstaller implements ITestsZipInstaller {
             getRunUtil().sleep(1000 * i * i);
         }
         throw new TargetSetupError(String.format("Failed to delete dir %s. rm output: %s",
-                fullEscapedPath, result));
+                fullEscapedPath, result), device.getDeviceDescriptor());
     }
 
     /**
@@ -235,14 +236,16 @@ public class DefaultTestsZipInstaller implements ITestsZipInstaller {
      *            contents 'DATA' sub-folder
      * @return array of {@link File}
      */
-    File[] getTestsZipDataFiles(File hostDir) throws TargetSetupError {
+    File[] getTestsZipDataFiles(File hostDir, ITestDevice device) throws TargetSetupError {
         if (!hostDir.isDirectory()) {
-            throw new TargetSetupError("Unrecognized tests.zip content: missing DATA folder");
+            throw new TargetSetupError("Unrecognized tests.zip content: missing DATA folder",
+                    device.getDeviceDescriptor());
         }
         File[] childFiles = hostDir.listFiles();
         if (childFiles == null || childFiles.length <= 0) {
             throw new TargetSetupError(
-                    "Unrecognized tests.zip content: DATA folder has no content");
+                    "Unrecognized tests.zip content: DATA folder has no content",
+                    device.getDeviceDescriptor());
         }
         return childFiles;
     }

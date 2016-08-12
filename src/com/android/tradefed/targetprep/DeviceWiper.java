@@ -59,7 +59,8 @@ public class DeviceWiper implements ITargetPreparer {
         CLog.d("Attempting fastboot wiping");
         CommandResult r = device.executeLongFastbootCommand("-w");
         if (r.getStatus() != CommandStatus.SUCCESS) {
-            throw new TargetSetupError(String.format("fastboot wiping failed: %s", r.getStderr()));
+            throw new TargetSetupError(String.format("fastboot wiping failed: %s", r.getStderr()),
+                    device.getDeviceDescriptor());
         }
     }
 
@@ -74,7 +75,7 @@ public class DeviceWiper implements ITargetPreparer {
         CommandResult r = device.executeLongFastbootCommand(op, partition);
         if (r.getStatus() != CommandStatus.SUCCESS) {
             throw new TargetSetupError(String.format("%s %s failed: %s", op, partition,
-                    r.getStderr()));
+                    r.getStderr()), device.getDeviceDescriptor());
         }
     }
 }

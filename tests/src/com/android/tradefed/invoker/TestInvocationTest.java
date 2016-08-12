@@ -19,12 +19,14 @@ import com.android.tradefed.build.BuildRetrievalError;
 import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.build.IBuildProvider;
 import com.android.tradefed.command.FatalHostError;
+import com.android.tradefed.command.remote.DeviceDescriptor;
 import com.android.tradefed.config.Configuration;
 import com.android.tradefed.config.ConfigurationDef;
 import com.android.tradefed.config.DeviceConfigurationHolder;
 import com.android.tradefed.config.IConfiguration;
 import com.android.tradefed.config.IConfigurationFactory;
 import com.android.tradefed.config.IDeviceConfiguration;
+import com.android.tradefed.device.DeviceAllocationState;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.IDeviceRecovery;
 import com.android.tradefed.device.ITestDevice;
@@ -97,6 +99,7 @@ public class TestInvocationTest extends TestCase {
     private ILogRegistry mMockLogRegistry;
     private IConfigurationFactory mMockConfigFactory;
     private IRescheduler mockRescheduler;
+    private DeviceDescriptor mFakeDescriptor;
 
     @Override
     protected void setUp() throws Exception {
@@ -150,6 +153,9 @@ public class TestInvocationTest extends TestCase {
         EasyMock.expectLastCall().anyTimes();
         mMockDevice.postInvocationTearDown();
         EasyMock.expectLastCall().anyTimes();
+        mFakeDescriptor = new DeviceDescriptor(SERIAL, false, DeviceAllocationState.Available,
+                "unknown", "unknown", "unknown", "unknown", "unknown");
+        EasyMock.expect(mMockDevice.getDeviceDescriptor()).andStubReturn(mFakeDescriptor);
 
         EasyMock.expect(mMockBuildInfo.getBuildId()).andStubReturn("1");
         EasyMock.expect(mMockBuildInfo.getBuildAttributes()).andStubReturn(EMPTY_MAP);
@@ -398,7 +404,7 @@ public class TestInvocationTest extends TestCase {
      * @throws Exception if unexpected error occurs
      */
     public void testInvoke_buildError() throws Throwable {
-        BuildError exception = new BuildError("error");
+        BuildError exception = new BuildError("error", mFakeDescriptor);
         IRemoteTest test = EasyMock.createMock(IRemoteTest.class);
         mStubConfiguration.setTest(test);
         EasyMock.expect(mMockBuildProvider.getBuild()).andReturn(mMockBuildInfo);

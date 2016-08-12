@@ -40,7 +40,7 @@ public abstract class CompanionAwarePreparer implements ITargetPreparer {
         ITestDevice companionDevice = getCompanionDeviceTracker().getCompanionDevice(primary);
         if (companionDevice == null) {
             throw new TargetSetupError(String.format("no companion device allocated for %s",
-                    primary.getSerialNumber()));
+                    primary.getSerialNumber()), primary.getDeviceDescriptor());
         }
         return companionDevice;
     }

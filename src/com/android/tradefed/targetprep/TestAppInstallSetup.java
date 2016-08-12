@@ -96,17 +96,19 @@ public class TestAppInstallSetup implements ITargetCleaner, IAbiReceiver {
      *
      * @param buildInfo build artifact information
      * @param apkFileName filename of the apk to install
+     * @param device the {@link ITestDevice} being prepared
      * @return a {@link File} representing the physical apk file on host or {@code null} if the
      *     file does not exist.
      */
-    protected File getLocalPathForFilename(IBuildInfo buildInfo, String apkFileName)
-            throws TargetSetupError {
+    protected File getLocalPathForFilename(IBuildInfo buildInfo, String apkFileName,
+            ITestDevice device) throws TargetSetupError {
         try {
             return BuildTestsZipUtils.getApkFile(buildInfo, apkFileName, mAltDirs, mAltDirBehavior,
                     false /* use resource as fallback */,
                     null /* device signing key */);
         } catch (IOException ioe) {
-            throw new TargetSetupError("failed to resolve apk path", ioe);
+            throw new TargetSetupError("failed to resolve apk path", ioe,
+                    device.getDeviceDescriptor());
         }
     }
 
@@ -127,7 +129,7 @@ public class TestAppInstallSetup implements ITargetCleaner, IAbiReceiver {
             if (testAppName == null || testAppName.trim().isEmpty()) {
                 continue;
             }
-            File testAppFile = getLocalPathForFilename(buildInfo, testAppName);
+            File testAppFile = getLocalPathForFilename(buildInfo, testAppName, device);
             if (testAppFile == null) {
                 CLog.d("Test app %s was not found", testAppName);
                 continue;
@@ -155,12 +157,13 @@ public class TestAppInstallSetup implements ITargetCleaner, IAbiReceiver {
             if (result != null) {
                 throw new TargetSetupError(
                         String.format("Failed to install %s on %s. Reason: '%s'", testAppName,
-                                device.getSerialNumber(), result));
+                                device.getSerialNumber(), result), device.getDeviceDescriptor());
             }
             if (mCleanup) {
                 AaptParser parser = AaptParser.parse(testAppFile);
                 if (parser == null) {
-                    throw new TargetSetupError("apk installed but AaptParser failed");
+                    throw new TargetSetupError("apk installed but AaptParser failed",
+                            device.getDeviceDescriptor());
                 }
                 mPackagesInstalled.add(parser.getPackageName());
             }

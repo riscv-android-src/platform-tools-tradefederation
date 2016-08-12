@@ -207,8 +207,8 @@ public class FlashingResourcesParserTest extends TestCase {
     }
 
     /**
-     * Test {@link FlashingResourcesParser#getBuildRequirements(File, Map)} when passed a file that
-     * is not a zip.
+     * Test {@link FlashingResourcesParser#getBuildRequirements(File, Map)} when passed a
+     * file that is not a zip.
      */
     public void testGetBuildRequirements_notAZip() throws IOException {
         File badFile = FileUtil.createTempFile("foo", ".zip");

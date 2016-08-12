@@ -51,7 +51,7 @@ public class TestJarInstaller implements ITargetPreparer, ITargetCleaner {
                 CLog.d("Pushing %s to %s", file.getName(), remotePath);
                 if (!device.pushFile(file, remotePath)) {
                     throw new TargetSetupError(String.format("Failed to push %s to %s",
-                            file.getName(), remotePath));
+                            file.getName(), remotePath), device.getDeviceDescriptor());
                 }
             }
         }

@@ -54,6 +54,7 @@ public class DeviceSetupTest extends TestCase {
         mMockDevice = EasyMock.createMock(ITestDevice.class);
         mMockIDevice = EasyMock.createMock(IDevice.class);
         EasyMock.expect(mMockDevice.getSerialNumber()).andReturn("foo").anyTimes();
+        EasyMock.expect(mMockDevice.getDeviceDescriptor()).andStubReturn(null);
         mMockBuildInfo = new DeviceBuildInfo("0", "", "");
         mDeviceSetup = new DeviceSetup();
         mTmpDir = FileUtil.createTempDir("tmp");

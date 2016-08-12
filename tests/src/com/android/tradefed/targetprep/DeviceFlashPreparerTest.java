@@ -19,6 +19,8 @@ package com.android.tradefed.targetprep;
 import com.android.tradefed.build.DeviceBuildInfo;
 import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.build.IDeviceBuildInfo;
+import com.android.tradefed.command.remote.DeviceDescriptor;
+import com.android.tradefed.device.DeviceAllocationState;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.DeviceUnresponsiveException;
 import com.android.tradefed.device.ITestDevice;
@@ -153,6 +155,9 @@ public class DeviceFlashPreparerTest extends TestCase {
         mMockDevice.waitForDeviceAvailable(EasyMock.anyLong());
         EasyMock.expectLastCall().andThrow(new DeviceUnresponsiveException("foo", "fakeserial"));
         mMockDevice.setRecoveryMode(RecoveryMode.AVAILABLE);
+        EasyMock.expect(mMockDevice.getDeviceDescriptor()).andReturn(
+                new DeviceDescriptor("SERIAL", false, DeviceAllocationState.Available, "unknown",
+                        "unknown", "unknown", "unknown", "unknown"));
         EasyMock.replay(mMockFlasher, mMockDevice);
         try {
             mDeviceFlashPreparer.setUp(mMockDevice, mMockBuildInfo);

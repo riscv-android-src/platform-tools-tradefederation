@@ -32,6 +32,7 @@ public class AllTestAppsInstallSetupTest extends TestCase {
         mMockBuildInfo = EasyMock.createMock(IDeviceBuildInfo.class);
         mMockTestDevice = EasyMock.createMock(ITestDevice.class);
         EasyMock.expect(mMockTestDevice.getSerialNumber()).andStubReturn(SERIAL);
+        EasyMock.expect(mMockTestDevice.getDeviceDescriptor()).andStubReturn(null);
     }
 
     public void testNotIDeviceBuildInfo() throws DeviceNotAvailableException {
@@ -42,7 +43,8 @@ public class AllTestAppsInstallSetupTest extends TestCase {
             fail("Should have thrown a TargetSetupError");
         } catch (TargetSetupError e) {
             // expected
-            assertEquals("Invalid buildInfo, expecting an IDeviceBuildInfo", e.getMessage());
+            assertEquals("Invalid buildInfo, expecting an IDeviceBuildInfo null",
+                    e.getMessage());
         }
         EasyMock.verify(mockBuildInfo, mMockTestDevice);
     }
@@ -54,7 +56,8 @@ public class AllTestAppsInstallSetupTest extends TestCase {
             mPrep.setUp(mMockTestDevice, mMockBuildInfo);
             fail("Should have thrown a TargetSetupError");
         } catch (TargetSetupError e) {
-            assertEquals("Failed to find a valid test zip directory.", e.getMessage());
+            assertEquals("Failed to find a valid test zip directory. null",
+                    e.getMessage());
         }
         EasyMock.verify(mMockBuildInfo, mMockTestDevice);
     }
@@ -66,7 +69,7 @@ public class AllTestAppsInstallSetupTest extends TestCase {
             mPrep.installApksRecursively(null, mMockTestDevice);
             fail("Should have thrown a TargetSetupError");
         } catch (TargetSetupError e) {
-            assertEquals("Invalid test zip directory!", e.getMessage());
+            assertEquals("Invalid test zip directory! null", e.getMessage());
         }
         EasyMock.verify(mMockBuildInfo, mMockTestDevice);
     }
@@ -100,8 +103,8 @@ public class AllTestAppsInstallSetupTest extends TestCase {
         try {
             mPrep.installApk(new File("TEST"), mMockTestDevice);
         } catch (TargetSetupError e) {
-            String expected = String.format("Failed to install %s on %s. Reason: '%s'",
-                    file, SERIAL, failure);
+            String expected = String.format("Failed to install %s on %s. Reason: '%s' "
+                    + "null", file, SERIAL, failure);
             assertEquals(expected, e.getMessage());
         }
         EasyMock.verify(mMockBuildInfo, mMockTestDevice);

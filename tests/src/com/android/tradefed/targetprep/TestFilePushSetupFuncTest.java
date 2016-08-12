@@ -47,6 +47,8 @@ public class TestFilePushSetupFuncTest extends TestCase {
     private static final String ALT_FILENAME1 = "foobar";
     private static final String ALT_FILENAME2 = "barfoo";
 
+    private ITestDevice mMockDevice;
+
     @Override
     protected void setUp() throws Exception {
         super.setUp();
@@ -66,6 +68,8 @@ public class TestFilePushSetupFuncTest extends TestCase {
         assertTrue("failed to create temp file", mAltDirFile1.createNewFile());
         mAltDirFile2 = new File(tmpBase, ALT_FILENAME2);
         assertTrue("failed to create temp file", mAltDirFile2.createNewFile());
+        mMockDevice = EasyMock.createMock(ITestDevice.class);
+        EasyMock.expect(mMockDevice.getSerialNumber()).andStubReturn("SERIAL");
     }
 
     public void testSetup() throws TargetSetupError, BuildError, DeviceNotAvailableException {
@@ -110,7 +114,7 @@ public class TestFilePushSetupFuncTest extends TestCase {
         DeviceBuildInfo info = new DeviceBuildInfo();
         info.setTestsDir(mFakeTestsZipFolder.getBasePath(), "0");
         setup.setAltDir(mAltDirFile1.getParentFile());
-        File apk = setup.getLocalPathForFilename(info, ALT_FILENAME1);
+        File apk = setup.getLocalPathForFilename(info, ALT_FILENAME1, mMockDevice);
         assertEquals(mAltDirFile1.getAbsolutePath(), apk.getAbsolutePath());
     }
 
@@ -123,7 +127,7 @@ public class TestFilePushSetupFuncTest extends TestCase {
         DeviceBuildInfo info = new DeviceBuildInfo();
         info.setTestsDir(mFakeTestsZipFolder.getBasePath(), "0");
         setup.setAltDir(mAltDirFile1.getParentFile());
-        File apk = setup.getLocalPathForFilename(info, ALT_FILENAME1);
+        File apk = setup.getLocalPathForFilename(info, ALT_FILENAME1, mMockDevice);
         File apkInTestDir = new File(
                 new File(mFakeTestsZipFolder.getBasePath(), "DATA"), ALT_FILENAME1);
         assertEquals(apkInTestDir.getAbsolutePath(), apk.getAbsolutePath());
@@ -138,7 +142,7 @@ public class TestFilePushSetupFuncTest extends TestCase {
         DeviceBuildInfo info = new DeviceBuildInfo();
         info.setTestsDir(mFakeTestsZipFolder.getBasePath(), "0");
         setup.setAltDir(mAltDirFile2.getParentFile());
-        File apk = setup.getLocalPathForFilename(info, ALT_FILENAME2);
+        File apk = setup.getLocalPathForFilename(info, ALT_FILENAME2, mMockDevice);
         assertEquals(mAltDirFile2.getAbsolutePath(), apk.getAbsolutePath());
     }
 

@@ -258,7 +258,8 @@ public abstract class DeviceFlashPreparer implements ITargetCleaner {
                 // assume this is a build problem
                 throw new DeviceFailedToBootError(String.format(
                         "Device %s did not become available after flashing %s",
-                        device.getSerialNumber(), deviceBuild.getDeviceBuildId()));
+                        device.getSerialNumber(), deviceBuild.getDeviceBuildId()),
+                        device.getDeviceDescriptor());
             }
             device.postBootSetup();
         } finally {
@@ -319,7 +320,8 @@ public abstract class DeviceFlashPreparer implements ITargetCleaner {
                 return;
             case ENCRYPT:
                 if (!device.isEncryptionSupported()) {
-                    throw new TargetSetupError("Encryption is not supported");
+                    throw new TargetSetupError("Encryption is not supported",
+                            device.getDeviceDescriptor());
                 }
                 if (!device.isDeviceEncrypted()) {
                     switch(flasher.getUserDataFlashOption()) {
@@ -329,19 +331,23 @@ public abstract class DeviceFlashPreparer implements ITargetCleaner {
                             // partition is expected to be cleared anyway, so we encrypt the device
                             // with wipe
                             if (!device.encryptDevice(false)) {
-                                throw new TargetSetupError("Failed to encrypt device");
+                                throw new TargetSetupError("Failed to encrypt device",
+                                        device.getDeviceDescriptor());
                             }
                             if (!device.unlockDevice()) {
-                                throw new TargetSetupError("Failed to unlock device");
+                                throw new TargetSetupError("Failed to unlock device",
+                                        device.getDeviceDescriptor());
                             }
                             break;
                         case RETAIN:
                             // original filesystem must be retained, so we encrypt in place
                             if (!device.encryptDevice(true)) {
-                                throw new TargetSetupError("Failed to encrypt device");
+                                throw new TargetSetupError("Failed to encrypt device",
+                                        device.getDeviceDescriptor());
                             }
                             if (!device.unlockDevice()) {
-                                throw new TargetSetupError("Failed to unlock device");
+                                throw new TargetSetupError("Failed to unlock device",
+                                        device.getDeviceDescriptor());
                             }
                             break;
                         default:
@@ -374,26 +380,30 @@ public abstract class DeviceFlashPreparer implements ITargetCleaner {
                 return;
             case ENCRYPT:
                 if (!device.isEncryptionSupported()) {
-                    throw new TargetSetupError("Encryption is not supported");
+                    throw new TargetSetupError("Encryption is not supported",
+                            device.getDeviceDescriptor());
                 }
                 switch(flasher.getUserDataFlashOption()) {
                     case FLASH:
                         if (!device.encryptDevice(true)) {
-                            throw new TargetSetupError("Failed to encrypt device");
+                            throw new TargetSetupError("Failed to encrypt device",
+                                    device.getDeviceDescriptor());
                         }
                         break;
                     case WIPE: // Intentional fall through.
                     case FORCE_WIPE:
                         // since the device was just wiped, encrypt with wipe
                         if (!device.encryptDevice(false)) {
-                            throw new TargetSetupError("Failed to encrypt device");
+                            throw new TargetSetupError("Failed to encrypt device",
+                                    device.getDeviceDescriptor());
                         }
                         break;
                     default:
                         // Do nothing, userdata was encrypted pre-flash.
                 }
                 if (!device.unlockDevice()) {
-                    throw new TargetSetupError("Failed to unlock device");
+                    throw new TargetSetupError("Failed to unlock device",
+                            device.getDeviceDescriptor());
                 }
                 break;
             default:

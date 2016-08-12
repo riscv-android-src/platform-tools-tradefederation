@@ -40,7 +40,8 @@ import java.util.HashMap;
 /**
  * A class for posting emulator boot result as a test
  */
-public class EmulatorBootTest implements IDeviceTest, IRemoteTest, IBuildReceiver, IConfigurationReceiver {
+public class EmulatorBootTest implements IDeviceTest, IRemoteTest, IBuildReceiver,
+        IConfigurationReceiver {
     private IConfiguration mConfiguration;
     private String mTestLabel = "emulator_boot_test";
     private SdkAvdPreparer mAvdPreparer;
@@ -94,7 +95,8 @@ public class EmulatorBootTest implements IDeviceTest, IRemoteTest, IBuildReceive
      */
     @Override
     public void run(ITestInvocationListener listener) throws DeviceNotAvailableException {
-        TestIdentifier bootTest = new TestIdentifier(EmulatorBootTest.class.getSimpleName(), mTestLabel);
+        TestIdentifier bootTest = new TestIdentifier(EmulatorBootTest.class.getSimpleName(),
+                mTestLabel);
         listener.testRunStarted(EmulatorBootTest.class.getSimpleName(), 1);
         listener.testStarted(bootTest);
         try {
@@ -123,7 +125,8 @@ public class EmulatorBootTest implements IDeviceTest, IRemoteTest, IBuildReceive
         }
     }
 
-    private void checkLauncherRunningOnEmulator(ITestDevice device) throws BuildError, DeviceNotAvailableException {
+    private void checkLauncherRunningOnEmulator(ITestDevice device) throws BuildError,
+            DeviceNotAvailableException {
         Integer apiLevel = device.getApiLevel();
         String cmd = "ps";
         if (apiLevel >= 21) {
@@ -142,7 +145,8 @@ public class EmulatorBootTest implements IDeviceTest, IRemoteTest, IBuildReceive
             }
         }
         if(i == cmdResultLines.length) {
-            throw new BuildError("The emulator do not have launcher run");
+            throw new BuildError("The emulator do not have launcher run",
+                    device.getDeviceDescriptor());
         }
     }
 }

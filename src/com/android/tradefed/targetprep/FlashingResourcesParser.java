@@ -16,6 +16,7 @@
 
 package com.android.tradefed.targetprep;
 
+import com.android.tradefed.command.remote.DeviceDescriptor;
 import com.android.tradefed.util.MultiMap;
 
 import java.io.BufferedReader;
@@ -261,8 +262,9 @@ public class FlashingResourcesParser implements IFlashingResourcesParser {
             deviceZip = new ZipFile(deviceImgZipFile);
             ZipEntry androidInfoEntry = deviceZip.getEntry(ANDROID_INFO_FILE_NAME);
             if (androidInfoEntry == null) {
+                DeviceDescriptor nullDescriptor = null;
                 throw new TargetSetupError(String.format("Could not find %s in device image zip %s",
-                        ANDROID_INFO_FILE_NAME, deviceImgZipFile.getName()));
+                        ANDROID_INFO_FILE_NAME, deviceImgZipFile.getName()), nullDescriptor);
             }
             infoReader = new BufferedReader(new InputStreamReader(
                     deviceZip.getInputStream(androidInfoEntry)));
@@ -270,10 +272,10 @@ public class FlashingResourcesParser implements IFlashingResourcesParser {
             return parseAndroidInfo(infoReader, constraints);
         } catch (ZipException e) {
             throw new TargetSetupError(String.format("Could not read device image zip %s",
-                    deviceImgZipFile.getName()), e);
+                    deviceImgZipFile.getName()), e, null);
         } catch (IOException e) {
             throw new TargetSetupError(String.format("Could not read device image zip %s",
-                    deviceImgZipFile.getName()), e);
+                    deviceImgZipFile.getName()), e, null);
         } finally {
             if (deviceZip != null) {
                 try {

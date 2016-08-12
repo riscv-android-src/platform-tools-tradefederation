@@ -15,6 +15,8 @@
  */
 package com.android.tradefed.targetprep;
 
+import com.android.tradefed.command.remote.DeviceDescriptor;
+
 /**
  * A fatal error occurred while preparing the target for testing.
  */
@@ -22,13 +24,27 @@ public class TargetSetupError extends Exception {
 
     private static final long serialVersionUID = 2202987086655357201L;
 
+    private DeviceDescriptor mDescriptor = null;
+
     /**
      * Constructs a new (@link TargetSetupError} with a meaningful error message.
      *
      * @param reason a error message describing the cause of the error
+     * @deprecated use {@link #TargetSetupError(String, DeviceDescriptor)} instead.
      */
+    @Deprecated
     public TargetSetupError(String reason) {
         super(reason);
+    }
+
+    /**
+     * Constructs a new (@link TargetSetupError} with a meaningful error message.
+     *
+     * @param reason a error message describing the cause of the error
+     * @param descriptor the descriptor of the device concerned
+     */
+    public TargetSetupError(String reason, DeviceDescriptor descriptor) {
+        this(reason, null, descriptor);
     }
 
     /**
@@ -37,8 +53,30 @@ public class TargetSetupError extends Exception {
      *
      * @param reason a detailed error message.
      * @param cause a {@link Throwable} capturing the original cause of the TargetSetupError
+     * @deprecated use {@link #TargetSetupError(String, Throwable, DeviceDescriptor)} instead.
      */
+    @Deprecated
     public TargetSetupError(String reason, Throwable cause) {
         super(reason, cause);
+    }
+
+    /**
+     * Constructs a new (@link TargetSetupError} with a meaningful error message, and a
+     * cause.
+     *
+     * @param reason a detailed error message.
+     * @param cause a {@link Throwable} capturing the original cause of the TargetSetupError
+     * @param descriptor the descriptor of the device concerned
+     */
+    public TargetSetupError(String reason, Throwable cause, DeviceDescriptor descriptor) {
+        super(reason + " " + descriptor, cause);
+        mDescriptor = descriptor;
+    }
+
+    /**
+     * Return the descriptor of the device associated with exception.
+     */
+    public DeviceDescriptor getDeviceDescriptor() {
+        return mDescriptor;
     }
 }
