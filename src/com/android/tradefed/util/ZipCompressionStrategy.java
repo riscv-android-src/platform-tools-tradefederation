@@ -28,6 +28,7 @@ public class ZipCompressionStrategy implements ICompressionStrategy {
     /**
      * {@inheritDoc}
      */
+    @Override
     public File compress(File source) throws IOException {
         return ZipUtil.createZip(source);
     }
@@ -35,6 +36,7 @@ public class ZipCompressionStrategy implements ICompressionStrategy {
     /**
      * {@inheritDoc}
      */
+    @Override
     public LogDataType getLogDataType() {
         return LogDataType.ZIP;
     }

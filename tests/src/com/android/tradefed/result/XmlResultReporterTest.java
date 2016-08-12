@@ -18,6 +18,7 @@ package com.android.tradefed.result;
 import com.android.ddmlib.testrunner.TestIdentifier;
 import com.android.tradefed.build.BuildInfo;
 import com.android.tradefed.build.IBuildInfo;
+import com.android.tradefed.invoker.IInvocationContext;
 
 import junit.framework.TestCase;
 
@@ -55,7 +56,12 @@ public class XmlResultReporterTest extends TestCase {
         }
 
         @Override
-        public void invocationStarted(IBuildInfo buildInfo) {
+        public void invocationStarted(IBuildInfo info) {
+            // Ignore
+        }
+
+        @Override
+        public void invocationStarted(IInvocationContext context) {
             // Ignore
         }
 

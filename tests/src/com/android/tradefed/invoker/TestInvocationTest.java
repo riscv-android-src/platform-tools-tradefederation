@@ -128,7 +128,8 @@ public class TestInvocationTest extends TestCase {
         mStubConfiguration.setBuildProvider(mMockBuildProvider);
 
         List<IDeviceConfiguration> deviceConfigs = new ArrayList<IDeviceConfiguration>();
-        IDeviceConfiguration device1 = new DeviceConfigurationHolder("DEVICE1");
+        IDeviceConfiguration device1 =
+                new DeviceConfigurationHolder(ConfigurationDef.DEFAULT_DEVICE_NAME);
         device1.addSpecificConfig(mMockRecovery);
         device1.addSpecificConfig(mMockPreparer);
         device1.addSpecificConfig(mMockBuildProvider);
@@ -172,6 +173,8 @@ public class TestInvocationTest extends TestCase {
         mStubInvocationMetadata = new InvocationContext();
         mStubInvocationMetadata.addAllocatedDevice(ConfigurationDef.DEFAULT_DEVICE_NAME,
                 mMockDevice);
+        mStubInvocationMetadata.addDeviceBuildInfo(ConfigurationDef.DEFAULT_DEVICE_NAME,
+                mMockBuildInfo);
 
         // create the BaseTestInvocation to test
         mTestInvocation = new TestInvocation() {
@@ -222,9 +225,7 @@ public class TestInvocationTest extends TestCase {
         test.run((ITestInvocationListener)EasyMock.anyObject());
         setupNormalInvoke(test);
         EasyMock.replay(mockRescheduler);
-        IInvocationContext metadata = new InvocationContext();
-        metadata.addAllocatedDevice("DEVICE1", mMockDevice);
-        mTestInvocation.invoke(metadata, mStubMultiConfiguration, mockRescheduler);
+        mTestInvocation.invoke(mStubInvocationMetadata, mStubMultiConfiguration, mockRescheduler);
         verifyMocks(test, mockRescheduler);
         verifySummaryListener();
     }
@@ -435,7 +436,7 @@ public class TestInvocationTest extends TestCase {
         mStubConfiguration.setTestInvocationListener(resumeListener);
 
         EasyMock.expect(mMockBuildProvider.getBuild()).andReturn(mMockBuildInfo);
-        resumeListener.invocationStarted(mMockBuildInfo);
+        resumeListener.invocationStarted(mStubInvocationMetadata);
         mMockDevice.clearLastConnectedWifiNetwork();
         mMockDevice.setOptions((TestDeviceOptions)EasyMock.anyObject());
         mMockBuildInfo.setDeviceSerial(SERIAL);
@@ -475,7 +476,7 @@ public class TestInvocationTest extends TestCase {
         mMockDevice.stopLogcat();
 
         mMockLogger.init();
-        mMockLogSaver.invocationStarted(mMockBuildInfo);
+        mMockLogSaver.invocationStarted(mStubInvocationMetadata);
         // now set resumed invocation expectations
         mMockDevice.clearLastConnectedWifiNetwork();
         mMockDevice.setOptions((TestDeviceOptions)EasyMock.anyObject());
@@ -484,7 +485,7 @@ public class TestInvocationTest extends TestCase {
         EasyMock.expectLastCall().times(2);
         mMockDevice.startLogcat();
         mMockPreparer.setUp(mMockDevice, mMockBuildInfo);
-        mMockLogSaver.invocationStarted(mMockBuildInfo);
+        mMockLogSaver.invocationStarted(mStubInvocationMetadata);
         mMockDevice.setRecovery(mMockRecovery);
         resumableTest.run((ITestInvocationListener)EasyMock.anyObject());
         EasyMock.expect(mMockDevice.getLogcat())
@@ -644,7 +645,7 @@ public class TestInvocationTest extends TestCase {
         mStubConfiguration.setTestInvocationListeners(listenerList);
 
         logSaverListener.setLogSaver(mMockLogSaver);
-        logSaverListener.invocationStarted(mMockBuildInfo);
+        logSaverListener.invocationStarted(mStubInvocationMetadata);
         logSaverListener.testLog(EasyMock.eq(TestInvocation.DEVICE_LOG_NAME),
                 EasyMock.eq(LogDataType.LOGCAT), (InputStreamSource)EasyMock.anyObject());
         logSaverListener.testLogSaved(EasyMock.eq(TestInvocation.DEVICE_LOG_NAME),
@@ -826,7 +827,7 @@ public class TestInvocationTest extends TestCase {
         EasyMock.expectLastCall();
         EasyMock.expect(mMockBuildInfo.getTestTag()).andStubReturn("stub");
         replayMocks();
-        mTestInvocation.invoke(mMockDevice, mStubConfiguration, mockRescheduler);
+        mTestInvocation.invoke(mStubInvocationMetadata, mStubConfiguration, mockRescheduler);
         verifyMocks();
     }
 
@@ -851,7 +852,7 @@ public class TestInvocationTest extends TestCase {
         EasyMock.expect(mMockBuildInfo.getTestTag()).andStubReturn("buildprovidertesttag");
 
         replayMocks();
-        mTestInvocation.invoke(mMockDevice, mStubConfiguration, mockRescheduler);
+        mTestInvocation.invoke(mStubInvocationMetadata, mStubConfiguration, mockRescheduler);
         verifyMocks();
     }
 
@@ -877,7 +878,7 @@ public class TestInvocationTest extends TestCase {
         mMockBuildInfo.setTestTag(EasyMock.eq("stub"));
         EasyMock.expectLastCall();
         replayMocks();
-        mTestInvocation.invoke(mMockDevice, mStubConfiguration, mockRescheduler);
+        mTestInvocation.invoke(mStubInvocationMetadata, mStubConfiguration, mockRescheduler);
         verifyMocks();
     }
     /**
@@ -943,9 +944,9 @@ public class TestInvocationTest extends TestCase {
     private void setupMockListeners(InvocationStatus status, Throwable throwable)
             throws IOException {
         // invocationStarted
-        mMockLogSaver.invocationStarted(mMockBuildInfo);
-        mMockTestListener.invocationStarted(mMockBuildInfo);
-        mMockSummaryListener.invocationStarted(mMockBuildInfo);
+        mMockLogSaver.invocationStarted(mStubInvocationMetadata);
+        mMockTestListener.invocationStarted(mStubInvocationMetadata);
+        mMockSummaryListener.invocationStarted(mStubInvocationMetadata);
 
         // invocationFailed
         if (!status.equals(InvocationStatus.SUCCESS)) {

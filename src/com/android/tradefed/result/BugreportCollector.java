@@ -20,6 +20,7 @@ import com.android.ddmlib.testrunner.TestRunResult;
 import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
+import com.android.tradefed.invoker.IInvocationContext;
 import com.android.tradefed.log.LogUtil.CLog;
 
 import java.util.ArrayList;
@@ -521,6 +522,16 @@ public class BugreportCollector implements ITestInvocationListener {
     public void invocationStarted(IBuildInfo buildInfo) {
         mListener.invocationStarted(buildInfo);
         mCollector.invocationStarted(buildInfo);
+        check(Relation.AT_START_OF, Noun.INVOCATION);
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void invocationStarted(IInvocationContext context) {
+        mListener.invocationStarted(context);
+        mCollector.invocationStarted(context);
         check(Relation.AT_START_OF, Noun.INVOCATION);
     }
 

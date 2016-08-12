@@ -74,6 +74,7 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
 import java.util.ListIterator;
+import java.util.Map.Entry;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 
@@ -118,8 +119,14 @@ public class TestInvocation implements ITestInvocation {
             mCurrentElapsedTime = currentElapsedTime;
         }
 
+        @Deprecated
         @Override
         public void invocationStarted(IBuildInfo buildInfo) {
+            // ignore
+        }
+
+        @Override
+        public void invocationStarted(IInvocationContext context) {
             // ignore
         }
 
@@ -250,8 +257,7 @@ public class TestInvocation implements ITestInvocation {
             ShardMasterResultForwarder resultCollector = new ShardMasterResultForwarder(
                     config.getLogSaver(), buildMasterShardListeners(config), shardableTests.size());
 
-            // FIXME: report invocation on the first build info
-            resultCollector.invocationStarted(context.getBuildInfos().get(0));
+            resultCollector.invocationStarted(context);
             for (IRemoteTest testShard : shardableTests) {
                 CLog.i("Rescheduling sharded config...");
                 IConfiguration shardConfig = config.clone();
@@ -432,34 +438,38 @@ public class TestInvocation implements ITestInvocation {
     /**
      * Display a log message informing the user of a invocation being started.
      *
-     * @param info the {@link IBuildInfo}
-     * @param serials the list of all serials
+     * @param context the {@link IInvocationContext}
      * @param config the {@link IConfiguration}
      */
-    private void logStartInvocation(IBuildInfo info, List<String> serials, IConfiguration config) {
+    private void logStartInvocation(IInvocationContext context, IConfiguration config) {
         String shardSuffix = "";
         if (config.getCommandOptions().getShardIndex() != null) {
             shardSuffix = String.format(" (shard %d of %d)",
                     config.getCommandOptions().getShardIndex(),
                     config.getCommandOptions().getShardCount());
         }
+        StringBuilder buildInfos = new StringBuilder();
         StringBuilder msg = new StringBuilder("Starting invocation for '");
-        msg.append(info.getTestTag());
-        msg.append("'");
-        if (!IBuildInfo.UNKNOWN_BUILD_ID.equals(info.getBuildId())) {
-            msg.append(" on build ");
-            msg.append(getBuildDescription(info));
-        }
-        for (String buildAttr : info.getBuildAttributes().values()) {
-            msg.append(" ");
-            msg.append(buildAttr);
+        msg.append(context.getTestTag());
+        msg.append("' with ");
+        for (Entry<ITestDevice, IBuildInfo> entry : context.getDeviceBuildMap().entrySet()) {
+            buildInfos.append("[").append(getBuildDescription(entry.getValue())).append("]");
+            if (!IBuildInfo.UNKNOWN_BUILD_ID.equals(entry.getValue().getBuildId())) {
+                msg.append("[build ");
+                msg.append(getBuildDescription(entry.getValue()));
+            }
+            for (String buildAttr : entry.getValue().getBuildAttributes().values()) {
+                msg.append(" ");
+                msg.append(buildAttr);
+            }
+            msg.append(" on device '");
+            msg.append(entry.getKey().getSerialNumber());
+            msg.append("'] ");
         }
         msg.append(shardSuffix);
-        msg.append(" on device(s) ");
-        msg.append(serials.toString());
         CLog.logAndDisplay(LogLevel.INFO, msg.toString());
-        mStatus = String.format("running %s on build %s", info.getTestTag(),
-                getBuildDescription(info)) + shardSuffix;
+        mStatus = String.format("running %s on build(s) '%s'", context.getTestTag(),
+                buildInfos.toString()) + shardSuffix;
     }
 
     /**
@@ -503,10 +513,7 @@ public class TestInvocation implements ITestInvocation {
         Throwable tearDownException = null;
         ITestDevice badDevice = null;
 
-        // TODO: Fix reporting on more than just first build info.
-        IBuildInfo reportingBuildInfo = context.getBuildInfos().get(0);
-
-        startInvocation(config, context.getSerials(), reportingBuildInfo, listener);
+        startInvocation(config, context, listener);
         try {
             logDeviceBatteryLevel(context, "initial");
             prepareAndRun(config, context, listener);
@@ -754,13 +761,12 @@ public class TestInvocation implements ITestInvocation {
      * Starts logging, and informs listeners that invocation has been started.
      *
      * @param config
-     * @param serials
-     * @param info
+     * @param context
      */
-    private void startInvocation(IConfiguration config, List<String> serials, IBuildInfo info,
+    private void startInvocation(IConfiguration config, IInvocationContext context,
             ITestInvocationListener listener) {
-        logStartInvocation(info, serials, config);
-        listener.invocationStarted(info);
+        logStartInvocation(context, config);
+        listener.invocationStarted(context);
     }
 
     /**
@@ -974,7 +980,7 @@ public class TestInvocation implements ITestInvocation {
         allListeners.addAll(Arrays.asList(extraListeners));
         ITestInvocationListener listener = new LogSaverResultForwarder(config.getLogSaver(),
                 allListeners);
-
+        String currentDeviceName = null;
         try {
             mStatus = "fetching build";
             config.getLogOutput().init();
@@ -995,6 +1001,7 @@ public class TestInvocation implements ITestInvocation {
             }
             // TODO: evaluate fetching build in parallel
             for (String deviceName : context.getDeviceConfigNames()) {
+                currentDeviceName = deviceName;
                 IBuildInfo info = null;
                 ITestDevice device = context.getDevice(deviceName);
                 IDeviceConfiguration deviceConfig = config.getDeviceConfigByName(deviceName);
@@ -1033,9 +1040,11 @@ public class TestInvocation implements ITestInvocation {
             }
         } catch (BuildRetrievalError e) {
             CLog.e(e);
+            if (currentDeviceName != null) {
+                context.addDeviceBuildInfo(currentDeviceName, e.getBuildInfo());
+            }
             // report an empty invocation, so this error is sent to listeners
-            startInvocation(config, context.getSerials(), e.getBuildInfo(),
-                    listener);
+            startInvocation(config, context, listener);
             // don't want to use #reportFailure, since that will call buildNotTested
             listener.invocationFailed(e);
             for (ITestDevice device : context.getDevices()) {

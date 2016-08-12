@@ -53,11 +53,23 @@ class ShardListener extends CollectingTestListener {
     /**
      * {@inheritDoc}
      */
+    @Deprecated
     @Override
     public void invocationStarted(IBuildInfo buildInfo) {
         super.invocationStarted(buildInfo);
         synchronized (mMasterListener) {
             mMasterListener.invocationStarted(buildInfo);
+        }
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void invocationStarted(IInvocationContext context) {
+        super.invocationStarted(context);
+        synchronized (mMasterListener) {
+            mMasterListener.invocationStarted(context);
         }
     }
 

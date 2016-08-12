@@ -16,6 +16,7 @@
 package com.android.tradefed.result;
 
 import com.android.ddmlib.testrunner.TestIdentifier;
+import com.android.tradefed.invoker.IInvocationContext;
 
 import junit.framework.TestCase;
 
@@ -36,7 +37,8 @@ public class ConsoleResultReporterTest extends TestCase {
      */
     public void testGetInvocationSummary_empty() {
         ConsoleResultReporter reporter = new ConsoleResultReporter();
-        reporter.invocationStarted(null);
+        IInvocationContext nullContext = null;
+        reporter.invocationStarted(nullContext);
         reporter.invocationEnded(0);
         assertEquals("No test results\n", reporter.getInvocationSummary());
     }
@@ -46,7 +48,8 @@ public class ConsoleResultReporterTest extends TestCase {
      */
     public void testGetInvocationSummary_test_run_metrics() {
         ConsoleResultReporter reporter = new ConsoleResultReporter();
-        reporter.invocationStarted(null);
+        IInvocationContext nullContext = null;
+        reporter.invocationStarted(nullContext);
         reporter.testRunStarted("Test Run", 0);
         Map<String, String> metrics = new HashMap<>();
         metrics.put("key2", "value2");
@@ -66,7 +69,8 @@ public class ConsoleResultReporterTest extends TestCase {
      */
     public void testGetInvocationSummary_test_metrics() {
         ConsoleResultReporter reporter = new ConsoleResultReporter();
-        reporter.invocationStarted(null);
+        IInvocationContext nullContext = null;
+        reporter.invocationStarted(nullContext);
         reporter.testRunStarted("Test Run", 1);
         TestIdentifier testId = new TestIdentifier("class", "method");
         reporter.testStarted(testId);
@@ -92,7 +96,8 @@ public class ConsoleResultReporterTest extends TestCase {
      */
     public void testGetInvocationSummary_logs() {
         ConsoleResultReporter reporter = new ConsoleResultReporter();
-        reporter.invocationStarted(null);
+        IInvocationContext nullContext = null;
+        reporter.invocationStarted(nullContext);
         reporter.testLogSaved(null, null, null, new LogFile(
                 "/path/to/log1", "http://log1", false /* compressed */, true /* text */));
         reporter.testLogSaved(null, null, null, new LogFile(
@@ -112,7 +117,8 @@ public class ConsoleResultReporterTest extends TestCase {
      */
     public void testGetInvocationSummary_all() {
         ConsoleResultReporter reporter = new ConsoleResultReporter();
-        reporter.invocationStarted(null);
+        IInvocationContext nullContext = null;
+        reporter.invocationStarted(nullContext);
 
         reporter.testRunStarted("Test Run 1", 3);
 

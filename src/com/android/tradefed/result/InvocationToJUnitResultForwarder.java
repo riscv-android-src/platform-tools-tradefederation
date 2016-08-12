@@ -18,6 +18,7 @@ package com.android.tradefed.result;
 import com.android.ddmlib.Log;
 import com.android.ddmlib.testrunner.TestIdentifier;
 import com.android.tradefed.build.IBuildInfo;
+import com.android.tradefed.invoker.IInvocationContext;
 
 import junit.framework.AssertionFailedError;
 import junit.framework.Test;
@@ -199,9 +200,19 @@ import java.util.Map;
 
     /**
      * {@inheritDoc}
+     * @deprecated
      */
+    @Deprecated
     @Override
     public void invocationStarted(IBuildInfo buildInfo) {
+        // ignore
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void invocationStarted(IInvocationContext context) {
         // ignore
     }
 
