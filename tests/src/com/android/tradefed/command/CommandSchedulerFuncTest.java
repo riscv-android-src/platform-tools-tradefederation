@@ -23,7 +23,7 @@ import com.android.ddmlib.Log;
 import com.android.tradefed.config.DeviceConfigurationHolder;
 import com.android.tradefed.config.IConfiguration;
 import com.android.tradefed.config.IConfigurationFactory;
-import com.android.tradefed.config.IDeviceConfig;
+import com.android.tradefed.config.IDeviceConfiguration;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.DeviceSelectionOptions;
 import com.android.tradefed.device.IDeviceManager;
@@ -32,7 +32,7 @@ import com.android.tradefed.device.MockDeviceManager;
 import com.android.tradefed.device.StubDevice;
 import com.android.tradefed.device.TestDeviceOptions;
 import com.android.tradefed.device.TestDeviceState;
-import com.android.tradefed.invoker.IInvocationMetadata;
+import com.android.tradefed.invoker.IInvocationContext;
 import com.android.tradefed.invoker.IRescheduler;
 import com.android.tradefed.invoker.ITestInvocation;
 import com.android.tradefed.log.LogUtil.CLog;
@@ -60,20 +60,20 @@ public class CommandSchedulerFuncTest extends TestCase {
     private CommandScheduler mCommandScheduler;
     private MeasuredInvocation mMockTestInvoker;
     private MockDeviceManager mMockDeviceManager;
-    private List<IDeviceConfig> mMockDeviceConfig;
+    private List<IDeviceConfiguration> mMockDeviceConfig;
     private IConfiguration mSlowConfig;
     private IConfiguration mFastConfig;
     private IConfigurationFactory mMockConfigFactory;
     private CommandOptions mCommandOptions;
     private DeviceSelectionOptions mDeviceOptions;
     private boolean mInterruptible = false;
-    private IDeviceConfig mMockConfig;
+    private IDeviceConfiguration mMockConfig;
 
     @Override
     protected void setUp() throws Exception {
         super.setUp();
         mDeviceOptions = new DeviceSelectionOptions();
-        mMockDeviceConfig = new ArrayList<IDeviceConfig>();
+        mMockDeviceConfig = new ArrayList<IDeviceConfiguration>();
         mMockConfig = new DeviceConfigurationHolder("device");
         mMockConfig.addSpecificConfig(mDeviceOptions);
         mMockConfig.addSpecificConfig(new TestDeviceOptions());
@@ -188,6 +188,7 @@ public class CommandSchedulerFuncTest extends TestCase {
         Integer mSlowCountLimit = 40;
         public boolean runInterrupted = false;
 
+        @Deprecated
         @Override
         public void invoke(ITestDevice device, IConfiguration config, IRescheduler rescheduler,
                 ITestInvocationListener... listeners)
@@ -228,10 +229,10 @@ public class CommandSchedulerFuncTest extends TestCase {
 
         @Override
         public void invoke(
-                IInvocationMetadata metadata, IConfiguration config, IRescheduler rescheduler,
+                IInvocationContext metadata, IConfiguration config, IRescheduler rescheduler,
                 ITestInvocationListener... extraListeners)
                         throws DeviceNotAvailableException, Throwable {
-            // ignore
+            invoke(metadata.getDevices().get(0), config, rescheduler, extraListeners);
         }
    }
 
@@ -441,6 +442,7 @@ public class CommandSchedulerFuncTest extends TestCase {
             mIteration = iteration;
         }
 
+        @Deprecated
         @Override
         public void invoke(ITestDevice device, IConfiguration config, IRescheduler rescheduler,
                 ITestInvocationListener... listeners)
@@ -468,10 +470,10 @@ public class CommandSchedulerFuncTest extends TestCase {
 
         @Override
         public void invoke(
-                IInvocationMetadata metadata, IConfiguration config, IRescheduler rescheduler,
+                IInvocationContext metadata, IConfiguration config, IRescheduler rescheduler,
                 ITestInvocationListener... extraListeners)
                         throws DeviceNotAvailableException, Throwable {
-            // ignore
+            invoke(metadata.getDevices().get(0), config, rescheduler, extraListeners);
         }
     }
 

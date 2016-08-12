@@ -197,10 +197,6 @@ public class OptionSetterTest extends TestCase {
             return mString;
         }
 
-        protected boolean getParentBoolean() {
-            return mBoolean;
-        }
-
         @Override
         public void setUp(ITestDevice device, IBuildInfo buildInfo)
                 throws TargetSetupError, BuildError, DeviceNotAvailableException {
@@ -386,14 +382,14 @@ public class OptionSetterTest extends TestCase {
     }
 
     /**
-     * Test creating an {@link OptionSetter} with a {@link IDeviceConfig} and ensure that
+     * Test creating an {@link OptionSetter} with a {@link IDeviceConfiguration} and ensure that
      * frequencies are still correctly incremented.
      */
     public void testOptionSetter_frequencyForDeviceObject() throws ConfigurationException {
         ParentOptionSource object_base = new ParentOptionSource();
         ParentOptionSource object1 = new ParentOptionSource();
         ParentOptionSource object2 = new ParentOptionSource();
-        IDeviceConfig configHolder = new DeviceConfigurationHolder("default");
+        IDeviceConfiguration configHolder = new DeviceConfigurationHolder("default");
         configHolder.addSpecificConfig(object1);
         configHolder.addSpecificConfig(object2);
         OptionSetter setter = new OptionSetter(object_base, configHolder);

@@ -33,6 +33,8 @@ import com.android.tradefed.result.ILogSaver;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.TextResultReporter;
 import com.android.tradefed.targetprep.ITargetPreparer;
+import com.android.tradefed.targetprep.multi.IMultiTargetPreparer;
+import com.android.tradefed.targetprep.multi.StubMultiTargetPreparer;
 import com.android.tradefed.testtype.IRemoteTest;
 import com.android.tradefed.testtype.StubTest;
 import com.android.tradefed.util.MultiMap;
@@ -68,6 +70,7 @@ public class Configuration implements IConfiguration {
     // type names for built in configuration objects
     public static final String BUILD_PROVIDER_TYPE_NAME = "build_provider";
     public static final String TARGET_PREPARER_TYPE_NAME = "target_preparer";
+    public static final String MULTI_PREPARER_TYPE_NAME = "multi_target_preparer";
     public static final String TEST_TYPE_NAME = "test";
     public static final String DEVICE_RECOVERY_TYPE_NAME = "device_recovery";
     public static final String LOGGER_TYPE_NAME = "logger";
@@ -131,6 +134,8 @@ public class Configuration implements IConfiguration {
             sObjTypeMap.put(BUILD_PROVIDER_TYPE_NAME, new ObjTypeInfo(IBuildProvider.class, false));
             sObjTypeMap.put(TARGET_PREPARER_TYPE_NAME,
                     new ObjTypeInfo(ITargetPreparer.class, true));
+            sObjTypeMap.put(MULTI_PREPARER_TYPE_NAME,
+                    new ObjTypeInfo(IMultiTargetPreparer.class, true));
             sObjTypeMap.put(TEST_TYPE_NAME, new ObjTypeInfo(IRemoteTest.class, true));
             sObjTypeMap.put(DEVICE_RECOVERY_TYPE_NAME,
                     new ObjTypeInfo(IDeviceRecovery.class, false));
@@ -144,7 +149,7 @@ public class Configuration implements IConfiguration {
                     false));
             sObjTypeMap.put(DEVICE_OPTIONS_TYPE_NAME, new ObjTypeInfo(TestDeviceOptions.class,
                     false));
-            sObjTypeMap.put(DEVICE_NAME, new ObjTypeInfo(IDeviceConfig.class, true));
+            sObjTypeMap.put(DEVICE_NAME, new ObjTypeInfo(IDeviceConfiguration.class, true));
         }
         return sObjTypeMap;
     }
@@ -191,6 +196,7 @@ public class Configuration implements IConfiguration {
         setLogOutput(new StdoutLogger());
         setLogSaver(new FileSystemLogSaver()); // FileSystemLogSaver saves to tmp by default.
         setTestInvocationListener(new TextResultReporter());
+        setMultiTargetPreparer(new StubMultiTargetPreparer());
     }
 
     /**
@@ -250,7 +256,7 @@ public class Configuration implements IConfiguration {
     @Override
     public IBuildProvider getBuildProvider() {
         notAllowedInMultiMode("getBuildProvider");
-        return ((List<IDeviceConfig>)getConfigurationObjectList(DEVICE_NAME))
+        return ((List<IDeviceConfiguration>)getConfigurationObjectList(DEVICE_NAME))
                 .get(0).getBuildProvider();
     }
 
@@ -261,7 +267,7 @@ public class Configuration implements IConfiguration {
     @Override
     public List<ITargetPreparer> getTargetPreparers() {
         notAllowedInMultiMode("getTargetPreparers");
-        return ((List<IDeviceConfig>)getConfigurationObjectList(DEVICE_NAME))
+        return ((List<IDeviceConfiguration>)getConfigurationObjectList(DEVICE_NAME))
                 .get(0).getTargetPreparers();
     }
 
@@ -281,7 +287,7 @@ public class Configuration implements IConfiguration {
     @Override
     public IDeviceRecovery getDeviceRecovery() {
         notAllowedInMultiMode("getDeviceRecovery");
-        return ((List<IDeviceConfig>)getConfigurationObjectList(DEVICE_NAME))
+        return ((List<IDeviceConfiguration>)getConfigurationObjectList(DEVICE_NAME))
                 .get(0).getDeviceRecovery();
     }
 
@@ -299,6 +305,15 @@ public class Configuration implements IConfiguration {
     @Override
     public ILogSaver getLogSaver() {
         return (ILogSaver) getConfigurationObject(LOG_SAVER_TYPE_NAME);
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @SuppressWarnings("unchecked")
+    @Override
+    public List<IMultiTargetPreparer> getMultiTargetPreparers() {
+        return (List<IMultiTargetPreparer>) getConfigurationObjectList(MULTI_PREPARER_TYPE_NAME);
     }
 
     /**
@@ -326,7 +341,7 @@ public class Configuration implements IConfiguration {
     @Override
     public IDeviceSelection getDeviceRequirements() {
         notAllowedInMultiMode("getDeviceRequirements");
-        return ((List<IDeviceConfig>)getConfigurationObjectList(DEVICE_NAME))
+        return ((List<IDeviceConfiguration>)getConfigurationObjectList(DEVICE_NAME))
                 .get(0).getDeviceRequirements();
     }
 
@@ -337,7 +352,7 @@ public class Configuration implements IConfiguration {
     @Override
     public TestDeviceOptions getDeviceOptions() {
         notAllowedInMultiMode("getDeviceOptions");
-        return ((List<IDeviceConfig>)getConfigurationObjectList(DEVICE_NAME))
+        return ((List<IDeviceConfiguration>)getConfigurationObjectList(DEVICE_NAME))
                 .get(0).getDeviceOptions();
     }
 
@@ -354,9 +369,9 @@ public class Configuration implements IConfiguration {
      */
     @SuppressWarnings("unchecked")
     @Override
-    public IDeviceConfig getDeviceConfigByName(String nameDevice) {
-        for (IDeviceConfig deviceHolder :
-                (List<IDeviceConfig>)getConfigurationObjectList(DEVICE_NAME)) {
+    public IDeviceConfiguration getDeviceConfigByName(String nameDevice) {
+        for (IDeviceConfiguration deviceHolder :
+                (List<IDeviceConfiguration>)getConfigurationObjectList(DEVICE_NAME)) {
             if (deviceHolder.getDeviceName().equals(nameDevice)) {
                 return deviceHolder;
             }
@@ -369,8 +384,8 @@ public class Configuration implements IConfiguration {
      */
     @SuppressWarnings("unchecked")
     @Override
-    public List<IDeviceConfig> getDeviceConfig() {
-        return (List<IDeviceConfig>)getConfigurationObjectList(DEVICE_NAME);
+    public List<IDeviceConfiguration> getDeviceConfig() {
+        return (List<IDeviceConfiguration>)getConfigurationObjectList(DEVICE_NAME);
     }
 
     /**
@@ -487,8 +502,8 @@ public class Configuration implements IConfiguration {
             if (DEVICE_NAME.equals(entry.getKey())) {
                 List<Object> newDeviceConfigList = new ArrayList<Object>();
                 for (Object deviceConfig : entry.getValue()) {
-                    IDeviceConfig config = ((IDeviceConfig)deviceConfig);
-                    IDeviceConfig newDeviceConfig = config.clone();
+                    IDeviceConfiguration config = ((IDeviceConfiguration)deviceConfig);
+                    IDeviceConfiguration newDeviceConfig = config.clone();
                     newDeviceConfigList.add(newDeviceConfig);
                 }
                 clone.setConfigurationObjectListNoThrow(entry.getKey(), newDeviceConfigList);
@@ -537,7 +552,7 @@ public class Configuration implements IConfiguration {
      * {@inheritDoc}
      */
     @Override
-    public void setDeviceConfig(IDeviceConfig deviceConfig) {
+    public void setDeviceConfig(IDeviceConfiguration deviceConfig) {
         setConfigurationObjectNoThrow(DEVICE_NAME, deviceConfig);
     }
 
@@ -545,7 +560,7 @@ public class Configuration implements IConfiguration {
      * {@inheritDoc}
      */
     @Override
-    public void setDeviceConfigList(List<IDeviceConfig> deviceConfigs) {
+    public void setDeviceConfigList(List<IDeviceConfiguration> deviceConfigs) {
         setConfigurationObjectListNoThrow(DEVICE_NAME, deviceConfigs);
     }
 
@@ -563,6 +578,22 @@ public class Configuration implements IConfiguration {
     @Override
     public void setTests(List<IRemoteTest> tests) {
         setConfigurationObjectListNoThrow(TEST_TYPE_NAME, tests);
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void setMultiTargetPreparers(List<IMultiTargetPreparer> multiTargPreps) {
+        setConfigurationObjectListNoThrow(MULTI_PREPARER_TYPE_NAME, multiTargPreps);
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void setMultiTargetPreparer(IMultiTargetPreparer multiTargPrep) {
+        setConfigurationObjectNoThrow(MULTI_PREPARER_TYPE_NAME, multiTargPrep);
     }
 
     /**
@@ -766,9 +797,10 @@ public class Configuration implements IConfiguration {
         }
         for (Map.Entry<String, List<Object>> configObjectsEntry : mConfigMap.entrySet()) {
             for (Object configObject : configObjectsEntry.getValue()) {
-                if (configObject instanceof IDeviceConfig) {
+                if (configObject instanceof IDeviceConfiguration) {
                     // We expand the Device Config Object.
-                    for (Object subconfigObject : ((IDeviceConfig)configObject).getAllObjects()) {
+                    for (Object subconfigObject : ((IDeviceConfiguration)configObject)
+                            .getAllObjects()) {
                         printCommandUsageForObject(importantOnly, out, configObjectsEntry.getKey(),
                                 subconfigObject);
                     }
@@ -984,6 +1016,10 @@ public class Configuration implements IConfiguration {
         serializer.startDocument("UTF-8", null);
         serializer.startTag(null, CONFIGURATION_NAME);
 
+        for (IMultiTargetPreparer multipreparer : getMultiTargetPreparers()) {
+            dumpClassToXml(serializer, MULTI_PREPARER_TYPE_NAME, multipreparer);
+        }
+        // TODO: fix device specific config object for multi device
         dumpClassToXml(serializer, BUILD_PROVIDER_TYPE_NAME, getBuildProvider());
         for (ITargetPreparer preparer : getTargetPreparers()) {
             dumpClassToXml(serializer, TARGET_PREPARER_TYPE_NAME, preparer);

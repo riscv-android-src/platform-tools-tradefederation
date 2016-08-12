@@ -175,8 +175,9 @@ public class ConfigurationDef {
      */
     IConfiguration createConfiguration() throws ConfigurationException {
         IConfiguration config = new Configuration(getName(), getDescription());
-        List<IDeviceConfig> deviceObjectList = new ArrayList<IDeviceConfig>();
-        IDeviceConfig defaultDeviceConfig = new DeviceConfigurationHolder(DEFAULT_DEVICE_NAME);
+        List<IDeviceConfiguration> deviceObjectList = new ArrayList<IDeviceConfiguration>();
+        IDeviceConfiguration defaultDeviceConfig =
+                new DeviceConfigurationHolder(DEFAULT_DEVICE_NAME);
         if (!mMultiDeviceMode) {
             // We still populate a default device config to avoid special logic in the rest of the
             // harness.
@@ -193,9 +194,9 @@ public class ConfigurationDef {
                 if (mMultiDeviceMode && matcher.find()) {
                     // If we find the device namespace, fetch the matching device or create it if
                     // it doesn't exists.
-                    IDeviceConfig multiDev = null;
+                    IDeviceConfiguration multiDev = null;
                     entryName = Configuration.DEVICE_NAME;
-                    for (IDeviceConfig iDevConfig : deviceObjectList) {
+                    for (IDeviceConfiguration iDevConfig : deviceObjectList) {
                         if (matcher.group(1).equals(iDevConfig.getDeviceName())) {
                             multiDev = iDevConfig;
                             break;

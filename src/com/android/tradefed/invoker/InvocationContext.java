@@ -18,6 +18,8 @@ package com.android.tradefed.invoker;
 import com.android.tradefed.build.BuildInfo;
 import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.device.ITestDevice;
+import com.android.tradefed.device.ITestDevice.RecoveryMode;
+import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.util.MultiMap;
 import com.android.tradefed.util.UniqueMultiMap;
 
@@ -27,20 +29,23 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * Generic implementation of a {@link IInvocationMetadata}.
+ * Generic implementation of a {@link IInvocationContext}.
  */
-public class InvocationMetadata implements IInvocationMetadata {
+public class InvocationContext implements IInvocationContext {
 
     private Map<ITestDevice, IBuildInfo> mAllocatedDeviceAndBuildMap;
+    /** Map of the configuration device name and the actual {@link ITestDevice} **/
     private Map<String, ITestDevice> mNameAndDeviceMap;
     private Map<String, IBuildInfo> mNameAndBuildinfoMap;
     private final UniqueMultiMap<String, String> mInvocationAttributes =
             new UniqueMultiMap<String, String>();
+    /** Invocation test-tag **/
+    private String mTestTag;
 
     /**
      * Creates a {@link BuildInfo} using default attribute values.
      */
-    public InvocationMetadata() {
+    public InvocationContext() {
         mAllocatedDeviceAndBuildMap = new HashMap<ITestDevice, IBuildInfo>();
         mNameAndDeviceMap = new HashMap<String, ITestDevice>();
         mNameAndBuildinfoMap = new HashMap<String, IBuildInfo>();
@@ -58,8 +63,8 @@ public class InvocationMetadata implements IInvocationMetadata {
      * {@inheritDoc}
      */
     @Override
-    public void addAllocatedDevice(String devicename, ITestDevice testDevices) {
-        mNameAndDeviceMap.put(devicename, testDevices);
+    public void addAllocatedDevice(String devicename, ITestDevice testDevice) {
+        mNameAndDeviceMap.put(devicename, testDevice);
     }
 
     /**
@@ -84,6 +89,14 @@ public class InvocationMetadata implements IInvocationMetadata {
     @Override
     public List<ITestDevice> getDevices() {
         return new ArrayList<ITestDevice>(mNameAndDeviceMap.values());
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public List<IBuildInfo> getBuildInfos() {
+        return new ArrayList<IBuildInfo>(mAllocatedDeviceAndBuildMap.values());
     }
 
     /**
@@ -155,5 +168,45 @@ public class InvocationMetadata implements IInvocationMetadata {
     @Override
     public MultiMap<String, String> getAttributes() {
         return mInvocationAttributes;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public ITestDevice getDeviceBySerial(String serial) {
+        for (ITestDevice testDevice : mNameAndDeviceMap.values()) {
+            if (testDevice.getSerialNumber().equals(serial)) {
+                return testDevice;
+            }
+        }
+        CLog.e("Device with serial '%s', not found in the metadata", serial);
+        return null;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public String getTestTag() {
+        return mTestTag;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void setTestTag(String testTag) {
+        mTestTag = testTag;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void setRecoveryModeForAllDevices(RecoveryMode mode) {
+        for (ITestDevice device : getDevices()) {
+            device.setRecoveryMode(mode);
+        }
     }
 }

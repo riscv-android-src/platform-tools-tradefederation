@@ -20,8 +20,11 @@ import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.build.IBuildProvider;
 import com.android.tradefed.command.FatalHostError;
 import com.android.tradefed.config.Configuration;
+import com.android.tradefed.config.ConfigurationDef;
+import com.android.tradefed.config.DeviceConfigurationHolder;
 import com.android.tradefed.config.IConfiguration;
 import com.android.tradefed.config.IConfigurationFactory;
+import com.android.tradefed.config.IDeviceConfiguration;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.IDeviceRecovery;
 import com.android.tradefed.device.ITestDevice;
@@ -76,6 +79,9 @@ public class TestInvocationTest extends TestCase {
     private TestInvocation mTestInvocation;
 
     private IConfiguration mStubConfiguration;
+    private IConfiguration mStubMultiConfiguration;
+
+    private IInvocationContext mStubInvocationMetadata;
 
     // The mock objects.
     private ITestDevice mMockDevice;
@@ -97,6 +103,7 @@ public class TestInvocationTest extends TestCase {
         super.setUp();
 
         mStubConfiguration = new Configuration("foo", "bar");
+        mStubMultiConfiguration = new Configuration("foo", "bar");
 
         mMockDevice = EasyMock.createMock(ITestDevice.class);
         mMockRecovery = EasyMock.createMock(IDeviceRecovery.class);
@@ -116,14 +123,26 @@ public class TestInvocationTest extends TestCase {
         mStubConfiguration.setDeviceRecovery(mMockRecovery);
         mStubConfiguration.setTargetPreparer(mMockPreparer);
         mStubConfiguration.setBuildProvider(mMockBuildProvider);
+
+        List<IDeviceConfiguration> deviceConfigs = new ArrayList<IDeviceConfiguration>();
+        IDeviceConfiguration device1 = new DeviceConfigurationHolder("DEVICE1");
+        device1.addSpecificConfig(mMockRecovery);
+        device1.addSpecificConfig(mMockPreparer);
+        device1.addSpecificConfig(mMockBuildProvider);
+        deviceConfigs.add(device1);
+        mStubMultiConfiguration.setDeviceConfigList(deviceConfigs);
+
         mStubConfiguration.setLogSaver(mMockLogSaver);
+        mStubMultiConfiguration.setLogSaver(mMockLogSaver);
 
         List<ITestInvocationListener> listenerList = new ArrayList<ITestInvocationListener>(1);
         listenerList.add(mMockTestListener);
         listenerList.add(mMockSummaryListener);
         mStubConfiguration.setTestInvocationListeners(listenerList);
+        mStubMultiConfiguration.setTestInvocationListeners(listenerList);
 
         mStubConfiguration.setLogOutput(mMockLogger);
+        mStubMultiConfiguration.setLogOutput(mMockLogger);
         EasyMock.expect(mMockDevice.getSerialNumber()).andStubReturn(SERIAL);
         EasyMock.expect(mMockDevice.getIDevice()).andStubReturn(null);
         mMockDevice.setRecovery(mMockRecovery);
@@ -143,6 +162,10 @@ public class TestInvocationTest extends TestCase {
         mMockLogger.closeLog();
         mMockLogRegistry.unregisterLogger();
         mUriCapture = new Capture<List<TestSummary>>();
+
+        mStubInvocationMetadata = new InvocationContext();
+        mStubInvocationMetadata.addAllocatedDevice(ConfigurationDef.DEFAULT_DEVICE_NAME,
+                mMockDevice);
 
         // create the BaseTestInvocation to test
         mTestInvocation = new TestInvocation() {
@@ -176,7 +199,26 @@ public class TestInvocationTest extends TestCase {
         test.run((ITestInvocationListener)EasyMock.anyObject());
         setupNormalInvoke(test);
         EasyMock.replay(mockRescheduler);
-        mTestInvocation.invoke(mMockDevice, mStubConfiguration, mockRescheduler);
+        mTestInvocation.invoke(mStubInvocationMetadata, mStubConfiguration, mockRescheduler);
+        verifyMocks(test, mockRescheduler);
+        verifySummaryListener();
+    }
+
+    /**
+     * Test the normal case for multi invoke scenario with a {@link IRemoteTest}.
+     * <p/>
+     * Verifies that all external interfaces get notified as expected.
+     */
+    public void testInvokeMulti_RemoteTest() throws Throwable {
+        IRemoteTest test = EasyMock.createMock(IRemoteTest.class);
+        setupMockSuccessListeners();
+
+        test.run((ITestInvocationListener)EasyMock.anyObject());
+        setupNormalInvoke(test);
+        EasyMock.replay(mockRescheduler);
+        IInvocationContext metadata = new InvocationContext();
+        metadata.addAllocatedDevice("DEVICE1", mMockDevice);
+        mTestInvocation.invoke(metadata, mStubMultiConfiguration, mockRescheduler);
         verifyMocks(test, mockRescheduler);
         verifySummaryListener();
     }
@@ -195,7 +237,7 @@ public class TestInvocationTest extends TestCase {
         test.run((ITestInvocationListener)EasyMock.anyObject());
         setupNormalInvoke(test);
         EasyMock.replay(mockRescheduler);
-        mTestInvocation.invoke(mMockDevice, mStubConfiguration, mockRescheduler);
+        mTestInvocation.invoke(mStubInvocationMetadata, mStubConfiguration, mockRescheduler);
         verifyMocks(test, mockRescheduler);
         verifySummaryListener();
     }
@@ -218,7 +260,7 @@ public class TestInvocationTest extends TestCase {
         EasyMock.expect(mMockDevice.getLogcat())
         .andReturn(new ByteArrayInputStreamSource(new byte[0])).times(2);
         replayMocks(test, mockRescheduler);
-        mTestInvocation.invoke(mMockDevice, mStubConfiguration, mockRescheduler);
+        mTestInvocation.invoke(mStubInvocationMetadata, mStubConfiguration, mockRescheduler);
         verifyMocks(test, mockRescheduler);
     }
 
@@ -232,7 +274,7 @@ public class TestInvocationTest extends TestCase {
         mMockLogRegistry.dumpToGlobalLog(mMockLogger);
         setupInvoke();
         replayMocks(test, mockRescheduler);
-        mTestInvocation.invoke(mMockDevice, mStubConfiguration, mockRescheduler);
+        mTestInvocation.invoke(mStubInvocationMetadata, mStubConfiguration, mockRescheduler);
         verifyMocks(test);
     }
 
@@ -253,13 +295,13 @@ public class TestInvocationTest extends TestCase {
         setupInvoke();
         replayMocks(test);
         EasyMock.replay(mockRescheduler);
-        mTestInvocation.invoke(mMockDevice, mStubConfiguration, mockRescheduler);
+        mTestInvocation.invoke(mStubInvocationMetadata, mStubConfiguration, mockRescheduler);
         EasyMock.verify(mockRescheduler);
         verifyMocks(test);
     }
 
     /**
-     * Test the{@link TestInvocation#invoke(ITestDevice, IConfiguration, IRescheduler,
+     * Test the{@link TestInvocation#invoke(IInvocationContext, IConfiguration, IRescheduler,
      * ITestInvocationListener[])} scenario
      * where the test is a {@link IDeviceTest}
      */
@@ -271,7 +313,7 @@ public class TestInvocationTest extends TestCase {
          setupMockSuccessListeners();
          setupNormalInvoke(mockDeviceTest);
          EasyMock.replay(mockRescheduler);
-         mTestInvocation.invoke(mMockDevice, mStubConfiguration, mockRescheduler);
+         mTestInvocation.invoke(mStubInvocationMetadata, mStubConfiguration, mockRescheduler);
          verifyMocks(mockDeviceTest, mockRescheduler);
          verifySummaryListener();
     }
@@ -291,7 +333,7 @@ public class TestInvocationTest extends TestCase {
         setupNormalInvoke(test);
         EasyMock.replay(mockRescheduler);
         try {
-            mTestInvocation.invoke(mMockDevice, mStubConfiguration, mockRescheduler);
+            mTestInvocation.invoke(mStubInvocationMetadata, mStubConfiguration, mockRescheduler);
             fail("IllegalArgumentException was not rethrown");
         } catch (IllegalArgumentException e) {
             // expected
@@ -315,7 +357,7 @@ public class TestInvocationTest extends TestCase {
         setupNormalInvoke(test);
         EasyMock.replay(mockRescheduler);
         try {
-            mTestInvocation.invoke(mMockDevice, mStubConfiguration, mockRescheduler);
+            mTestInvocation.invoke(mStubInvocationMetadata, mStubConfiguration, mockRescheduler);
             fail("FatalHostError was not rethrown");
         } catch (FatalHostError e)  {
             // expected
@@ -330,7 +372,7 @@ public class TestInvocationTest extends TestCase {
      * @throws Exception if unexpected error occurs
      */
     public void testInvoke_deviceNotAvail() throws Throwable {
-        DeviceNotAvailableException exception = new DeviceNotAvailableException();
+        DeviceNotAvailableException exception = new DeviceNotAvailableException("ERROR", SERIAL);
         IRemoteTest test = EasyMock.createMock(IRemoteTest.class);
         test.run((ITestInvocationListener)EasyMock.anyObject());
         EasyMock.expectLastCall().andThrow(exception);
@@ -341,7 +383,7 @@ public class TestInvocationTest extends TestCase {
         setupNormalInvoke(test);
         EasyMock.replay(mockRescheduler);
         try {
-            mTestInvocation.invoke(mMockDevice, mStubConfiguration, mockRescheduler);
+            mTestInvocation.invoke(mStubInvocationMetadata, mStubConfiguration, mockRescheduler);
             fail("DeviceNotAvailableException not thrown");
         } catch (DeviceNotAvailableException e) {
             // expected
@@ -369,7 +411,7 @@ public class TestInvocationTest extends TestCase {
         setupInvokeWithBuild();
         replayMocks(test);
         EasyMock.replay(mockRescheduler);
-        mTestInvocation.invoke(mMockDevice, mStubConfiguration, mockRescheduler);
+        mTestInvocation.invoke(mStubInvocationMetadata, mStubConfiguration, mockRescheduler);
         verifyMocks(test, mockRescheduler);
         verifySummaryListener();
     }
@@ -396,7 +438,7 @@ public class TestInvocationTest extends TestCase {
         mMockPreparer.setUp(mMockDevice, mMockBuildInfo);
 
         resumableTest.run((ITestInvocationListener)EasyMock.anyObject());
-        EasyMock.expectLastCall().andThrow(new DeviceNotAvailableException());
+        EasyMock.expectLastCall().andThrow(new DeviceNotAvailableException("ERROR", SERIAL));
         EasyMock.expect(resumableTest.isResumable()).andReturn(Boolean.TRUE);
         mMockDevice.setRecoveryMode(RecoveryMode.NONE);
         EasyMock.expectLastCall();
@@ -465,13 +507,13 @@ public class TestInvocationTest extends TestCase {
                 mMockBuildProvider, mMockLogger, mMockLogSaver, mMockDevice, mMockBuildInfo);
 
         try {
-            mTestInvocation.invoke(mMockDevice, mStubConfiguration, mockRescheduler);
+            mTestInvocation.invoke(mStubInvocationMetadata, mStubConfiguration, mockRescheduler);
             fail("DeviceNotAvailableException not thrown");
         } catch (DeviceNotAvailableException e) {
             // expect
         }
         // now call again, and expect invocation to be resumed properly
-        mTestInvocation.invoke(mMockDevice, capturedConfig.getValue(), mockRescheduler);
+        mTestInvocation.invoke(mStubInvocationMetadata, capturedConfig.getValue(), mockRescheduler);
 
         EasyMock.verify(mockRescheduler, resumeListener, resumableTest, mMockPreparer,
                 mMockBuildProvider, mMockLogger, mMockLogSaver, mMockDevice, mMockBuildInfo);
@@ -495,13 +537,13 @@ public class TestInvocationTest extends TestCase {
         setupMockFailureListeners(exception);
         setupNormalInvoke(test);
         EasyMock.replay(mockRescheduler);
-        mTestInvocation.invoke(mMockDevice, mStubConfiguration, mockRescheduler);
+        mTestInvocation.invoke(mStubInvocationMetadata, mStubConfiguration, mockRescheduler);
         verifyMocks(test, mockRescheduler);
         verifySummaryListener();
     }
 
     /**
-     * Test the {@link TestInvocation#invoke(ITestDevice, IConfiguration, IRescheduler,
+     * Test the {@link TestInvocation#invoke(IInvocationContext, IConfiguration, IRescheduler,
      * ITestInvocationListener[])} scenario
      * when a {@link ITargetCleaner} is part of the config.
      */
@@ -514,19 +556,19 @@ public class TestInvocationTest extends TestCase {
          setupMockSuccessListeners();
          setupNormalInvoke(test);
          EasyMock.replay(mockCleaner, mockRescheduler);
-         mTestInvocation.invoke(mMockDevice, mStubConfiguration, mockRescheduler);
+         mTestInvocation.invoke(mStubInvocationMetadata, mStubConfiguration, mockRescheduler);
          verifyMocks(mockCleaner, mockRescheduler);
          verifySummaryListener();
     }
 
     /**
-     * Test the {@link TestInvocation#invoke(ITestDevice, IConfiguration, IRescheduler,
+     * Test the {@link TestInvocation#invoke(IInvocationContext, IConfiguration, IRescheduler,
      * ITestInvocationListener[])} scenario
      * when a {@link ITargetCleaner} is part of the config, and the test throws a
      * {@link DeviceNotAvailableException}.
      */
     public void testInvoke_tearDown_deviceNotAvail() throws Throwable {
-        DeviceNotAvailableException exception = new DeviceNotAvailableException();
+        DeviceNotAvailableException exception = new DeviceNotAvailableException("ERROR", SERIAL);
         IRemoteTest test = EasyMock.createMock(IRemoteTest.class);
         test.run((ITestInvocationListener)EasyMock.anyObject());
         EasyMock.expectLastCall().andThrow(exception);
@@ -543,7 +585,7 @@ public class TestInvocationTest extends TestCase {
         mMockBuildProvider.buildNotTested(mMockBuildInfo);
         setupNormalInvoke(test);
         try {
-            mTestInvocation.invoke(mMockDevice, mStubConfiguration, mockRescheduler);
+            mTestInvocation.invoke(mStubInvocationMetadata, mStubConfiguration, mockRescheduler);
             fail("DeviceNotAvailableException not thrown");
         } catch (DeviceNotAvailableException e) {
             // expected
@@ -553,7 +595,7 @@ public class TestInvocationTest extends TestCase {
     }
 
     /**
-     * Test the {@link TestInvocation#invoke(ITestDevice, IConfiguration, IRescheduler,
+     * Test the {@link TestInvocation#invoke(IInvocationContext, IConfiguration, IRescheduler,
      * ITestInvocationListener[])} scenario
      * when a {@link ITargetCleaner} is part of the config, and the test throws a
      * {@link RuntimeException}.
@@ -573,7 +615,7 @@ public class TestInvocationTest extends TestCase {
         setupNormalInvoke(test);
         EasyMock.replay(mockCleaner, mockRescheduler);
         try {
-            mTestInvocation.invoke(mMockDevice, mStubConfiguration, mockRescheduler);
+            mTestInvocation.invoke(mStubInvocationMetadata, mStubConfiguration, mockRescheduler);
             fail("RuntimeException not thrown");
         } catch (RuntimeException e) {
             // expected
@@ -583,7 +625,7 @@ public class TestInvocationTest extends TestCase {
     }
 
     /**
-     * Test the {@link TestInvocation#invoke(ITestDevice, IConfiguration, IRescheduler,
+     * Test the {@link TestInvocation#invoke(IInvocationContext, IConfiguration, IRescheduler,
      * ITestInvocationListener[])} scenario
      * when there is {@link ITestInvocationListener} which implements the {@link ILogSaverListener}
      * interface.
@@ -615,14 +657,14 @@ public class TestInvocationTest extends TestCase {
         test.run((ITestInvocationListener)EasyMock.anyObject());
         setupNormalInvoke(test);
         EasyMock.replay(logSaverListener, mockRescheduler);
-        mTestInvocation.invoke(mMockDevice, mStubConfiguration, mockRescheduler);
+        mTestInvocation.invoke(mStubInvocationMetadata, mStubConfiguration, mockRescheduler);
         verifyMocks(test, logSaverListener, mockRescheduler);
         assertEquals(2, mUriCapture.getValue().size());
     }
 
     /**
-     * Test the
-     * {@link TestInvocation#invoke(ITestDevice, IConfiguration, IRescheduler, ITestInvocationListener[])}
+     * Test the {@link TestInvocation#invoke(IInvocationContext, IConfiguration, IRescheduler,
+     * ITestInvocationListener[])}
      * scenario with {@link IStrictShardableTest}.
      */
     public void testInvoke_strictShardableTest() throws Throwable {
@@ -648,9 +690,11 @@ public class TestInvocationTest extends TestCase {
             EasyMock.expect(mMockBuildInfo.clone()).andReturn(mMockBuildInfo);
             EasyMock.expect(mockRescheduler.scheduleConfig(shardConfig)).andReturn(true);
         }
+        mMockBuildInfo.setDeviceSerial(SERIAL);
+        EasyMock.expectLastCall();
         replayMocks(test, mockRescheduler);
 
-        mTestInvocation.invoke(mMockDevice, mStubConfiguration, mockRescheduler);
+        mTestInvocation.invoke(mStubInvocationMetadata, mStubConfiguration, mockRescheduler);
 
         verifyMocks(test, mockRescheduler);
         assertEquals(shardCount, (int)shardConfig.getCommandOptions().getShardCount());
@@ -658,8 +702,8 @@ public class TestInvocationTest extends TestCase {
     }
 
     /**
-     * Test the
-     * {@link TestInvocation#invoke(ITestDevice, IConfiguration, IRescheduler, ITestInvocationListener[])}
+     * Test the {@link TestInvocation#invoke(IInvocationContext, IConfiguration, IRescheduler,
+     * ITestInvocationListener[])}
      * scenario with {@link IStrictShardableTest} when a shard index is given.
      */
     public void testInvoke_strictShardableTest_withShardIndex() throws Throwable {
@@ -684,14 +728,14 @@ public class TestInvocationTest extends TestCase {
         mMockPreparer.setUp(mMockDevice, mMockBuildInfo);
         replayMocks(test, testShard);
 
-        mTestInvocation.invoke(mMockDevice, mStubConfiguration, mockRescheduler);
+        mTestInvocation.invoke(mStubInvocationMetadata, mStubConfiguration, mockRescheduler);
 
         verifyMocks(test, testShard);
     }
 
     /**
-     * Test the
-     * {@link TestInvocation#invoke(ITestDevice, IConfiguration, IRescheduler, ITestInvocationListener[])}
+     * Test the {@link TestInvocation#invoke(IInvocationContext, IConfiguration, IRescheduler,
+     * ITestInvocationListener[])}
      * scenario with non-{@link IStrictShardableTest} when shard index 0 is given.
      */
     public void testInvoke_nonStrictShardableTest_withShardIndexZero() throws Throwable {
@@ -714,22 +758,26 @@ public class TestInvocationTest extends TestCase {
         mMockPreparer.setUp(mMockDevice, mMockBuildInfo);
         replayMocks(test);
 
-        mTestInvocation.invoke(mMockDevice, mStubConfiguration, mockRescheduler);
+        mTestInvocation.invoke(mStubInvocationMetadata, mStubConfiguration, mockRescheduler);
 
         verifyMocks(test);
     }
 
     /**
-     * Test the
-     * {@link TestInvocation#invoke(ITestDevice, IConfiguration, IRescheduler, ITestInvocationListener[])}
+     * Test the {@link TestInvocation#invoke(IInvocationContext, IConfiguration, IRescheduler,
+     * ITestInvocationListener[])}
      * scenario with non-{@link IStrictShardableTest} when a shard index non-0 is given.
      */
     public void testInvoke_nonStrictShardableTest_withShardIndexNonZero() throws Throwable {
         String[] commandLine = {"config", "arg"};
         int shardCount = 10;
         int shardIndex = 1;
+        IStrictShardableTest shardableTest = EasyMock.createMock(IStrictShardableTest.class);
         IRemoteTest test = EasyMock.createMock(IRemoteTest.class);
-        mStubConfiguration.setTest(test);
+        EasyMock.expect(shardableTest.getTestShard(10, 1)).andReturn(test);
+        test.run((ITestInvocationListener)EasyMock.anyObject());
+        EasyMock.expectLastCall();
+        mStubConfiguration.setTest(shardableTest);
         mStubConfiguration.setCommandLine(commandLine);
         mStubConfiguration.getCommandOptions().setShardCount(shardCount);
         mStubConfiguration.getCommandOptions().setShardIndex(shardIndex);
@@ -741,11 +789,11 @@ public class TestInvocationTest extends TestCase {
         mMockBuildInfo.addBuildAttribute("shard_count", "10");
         mMockBuildInfo.addBuildAttribute("shard_index", "1");
         mMockPreparer.setUp(mMockDevice, mMockBuildInfo);
-        replayMocks(test);
+        replayMocks(shardableTest, test);
 
-        mTestInvocation.invoke(mMockDevice, mStubConfiguration, mockRescheduler);
+        mTestInvocation.invoke(mStubInvocationMetadata, mStubConfiguration, mockRescheduler);
 
-        verifyMocks(test);
+        verifyMocks(shardableTest, test);
     }
 
     /**
@@ -834,6 +882,7 @@ public class TestInvocationTest extends TestCase {
     private void setupNormalInvoke(IRemoteTest test) throws Throwable {
         setupInvokeWithBuild();
         mStubConfiguration.setTest(test);
+        mStubMultiConfiguration.setTest(test);
         EasyMock.expect(mMockBuildProvider.getBuild()).andReturn(mMockBuildInfo);
 
         mMockPreparer.setUp(mMockDevice, mMockBuildInfo);
@@ -900,12 +949,14 @@ public class TestInvocationTest extends TestCase {
 
         if (throwable instanceof BuildError) {
             EasyMock.expect(mMockLogSaver.saveLogData(
-                    EasyMock.eq(TestInvocation.BUILD_ERROR_BUGREPORT_NAME),
-                    EasyMock.eq(LogDataType.BUGREPORT), (InputStream)EasyMock.anyObject())
-                    ).andReturn(new LogFile(PATH, URL, false /* compressed */, true /* text */));
-            mMockTestListener.testLog(EasyMock.eq(TestInvocation.BUILD_ERROR_BUGREPORT_NAME),
+                    EasyMock.eq(TestInvocation.BUILD_ERROR_BUGREPORT_NAME + "_" + SERIAL),
+                    EasyMock.eq(LogDataType.BUGREPORT), (InputStream)EasyMock.anyObject()))
+                    .andReturn(new LogFile(PATH, URL, false /* compressed */, true /* text */));
+            mMockTestListener.testLog(
+                    EasyMock.eq(TestInvocation.BUILD_ERROR_BUGREPORT_NAME + "_" + SERIAL),
                     EasyMock.eq(LogDataType.BUGREPORT), (InputStreamSource)EasyMock.anyObject());
-            mMockSummaryListener.testLog(EasyMock.eq(TestInvocation.BUILD_ERROR_BUGREPORT_NAME),
+            mMockSummaryListener.testLog(
+                    EasyMock.eq(TestInvocation.BUILD_ERROR_BUGREPORT_NAME + "_" + SERIAL),
                     EasyMock.eq(LogDataType.BUGREPORT), (InputStreamSource)EasyMock.anyObject());
         }
 

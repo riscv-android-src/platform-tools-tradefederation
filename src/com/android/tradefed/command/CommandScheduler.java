@@ -33,7 +33,7 @@ import com.android.tradefed.config.ConfigurationFactory;
 import com.android.tradefed.config.GlobalConfiguration;
 import com.android.tradefed.config.IConfiguration;
 import com.android.tradefed.config.IConfigurationFactory;
-import com.android.tradefed.config.IDeviceConfig;
+import com.android.tradefed.config.IDeviceConfiguration;
 import com.android.tradefed.config.IGlobalConfiguration;
 import com.android.tradefed.config.Option;
 import com.android.tradefed.device.DeviceAllocationState;
@@ -49,10 +49,10 @@ import com.android.tradefed.device.ITestDevice.RecoveryMode;
 import com.android.tradefed.device.NoDeviceException;
 import com.android.tradefed.device.StubDevice;
 import com.android.tradefed.device.TestDeviceState;
-import com.android.tradefed.invoker.IInvocationMetadata;
+import com.android.tradefed.invoker.IInvocationContext;
 import com.android.tradefed.invoker.IRescheduler;
 import com.android.tradefed.invoker.ITestInvocation;
-import com.android.tradefed.invoker.InvocationMetadata;
+import com.android.tradefed.invoker.InvocationContext;
 import com.android.tradefed.invoker.TestInvocation;
 import com.android.tradefed.log.LogRegistry;
 import com.android.tradefed.log.LogUtil.CLog;
@@ -114,7 +114,7 @@ public class CommandScheduler extends Thread implements ICommandScheduler, IComm
     private Set<ExecutableCommand> mExecutingCommands;
 
     /** map of device to active invocation threads */
-    private Map<IInvocationMetadata, InvocationThread> mInvocationThreadMap;
+    private Map<IInvocationContext, InvocationThread> mInvocationThreadMap;
 
     /** timer for scheduling commands to be re-queued for execution */
     private ScheduledThreadPoolExecutor mCommandTimer;
@@ -437,20 +437,23 @@ public class CommandScheduler extends Thread implements ICommandScheduler, IComm
         @Deprecated
         @Override
         public void invocationComplete(ITestDevice device, FreeDeviceState deviceState) {
-            IInvocationMetadata metadata = new InvocationMetadata();
-            // Fake a single device metadata for compatibility
-            metadata.addAllocatedDevice(ConfigurationDef.DEFAULT_DEVICE_NAME, device);
-            invocationComplete(metadata, deviceState);
+            IInvocationContext context = new InvocationContext();
+            // Fake a single device context for compatibility
+            context.addAllocatedDevice(ConfigurationDef.DEFAULT_DEVICE_NAME, device);
+            Map<ITestDevice, FreeDeviceState> state = new HashMap<>();
+            state.put(device, deviceState);
+            invocationComplete(context, state);
         }
 
         @Override
-        public void invocationComplete(IInvocationMetadata metadata, FreeDeviceState deviceState) {
+        public void invocationComplete(IInvocationContext context,
+                Map<ITestDevice, FreeDeviceState> devicesStates) {
             for (ITestInvocationListener listener : getListeners()) {
-                ((IScheduledInvocationListener) listener).invocationComplete(metadata, deviceState);
+                ((IScheduledInvocationListener) listener).invocationComplete(context, devicesStates);
             }
 
-            for (ITestDevice device : metadata.getDevices()) {
-                mDeviceManager.freeDevice(device, deviceState);
+            for (ITestDevice device : context.getDevices()) {
+                mDeviceManager.freeDevice(device, devicesStates.get(device));
                 remoteFreeDevice(device);
                 if (device instanceof IManagedTestDevice) {
                     // This quite an important setting so we do make sure it's reset.
@@ -487,19 +490,19 @@ public class CommandScheduler extends Thread implements ICommandScheduler, IComm
 
     private class InvocationThread extends Thread {
         private final IScheduledInvocationListener[] mListeners;
-        private final IInvocationMetadata mMetadata;
+        private final IInvocationContext mInvocationContext;
         private final ExecutableCommand mCmd;
         private final ITestInvocation mInvocation;
         private final InvocationThreadMonitor mInvocationThreadMonitor;
         private final Timer mExecutionTimer;
         private long mStartTime = -1;
 
-        public InvocationThread(String name, IInvocationMetadata metadata,
+        public InvocationThread(String name, IInvocationContext invocationContext,
                 ExecutableCommand command, IScheduledInvocationListener... listeners) {
             // create a thread group so LoggerRegistry can identify this as an invocationThread
             super(new ThreadGroup(name), name);
             mListeners = listeners;
-            mMetadata = metadata;
+            mInvocationContext = invocationContext;
             mCmd = command;
             mInvocation = createRunInstance();
 
@@ -514,7 +517,10 @@ public class CommandScheduler extends Thread implements ICommandScheduler, IComm
 
         @Override
         public void run() {
-            FreeDeviceState deviceState = FreeDeviceState.AVAILABLE;
+            Map<ITestDevice, FreeDeviceState> deviceStates = new HashMap<>();
+            for (ITestDevice device : mInvocationContext.getDevices()) {
+                deviceStates.put(device, FreeDeviceState.AVAILABLE);
+            }
             mStartTime = System.currentTimeMillis();
             ITestInvocation instance = getInvocation();
             IConfiguration config = mCmd.getConfiguration();
@@ -526,22 +532,22 @@ public class CommandScheduler extends Thread implements ICommandScheduler, IComm
                     CLog.i("Setting a timer for the invocation in %sms", invocTimeout);
                     mExecutionTimer.schedule(mInvocationThreadMonitor, invocTimeout);
                 }
-                // TODO: obfuscate the password if any.
-                mMetadata.addInvocationAttribute("command_line_args", config.getCommandLine());
-                // TODO: TestInvocation refactoring to handle metadata (multi-devices)
-                if (mMetadata.getDevices().size() > 1) {
-                    throw new RuntimeException("Not possible to run multi device invoc yet.");
-                }
-                instance.invoke(mMetadata.getDevices().get(0), config,
+                instance.invoke(mInvocationContext, config,
                         new Rescheduler(mCmd.getCommandTracker()), mListeners);
                 setLastInvocationExitCode(0);
             } catch (DeviceUnresponsiveException e) {
                 CLog.w("Device %s is unresponsive. Reason: %s", e.getSerial(), e.getMessage());
-                deviceState = FreeDeviceState.UNRESPONSIVE;
+                ITestDevice badDevice = mInvocationContext.getDeviceBySerial(e.getSerial());
+                if (badDevice != null) {
+                    deviceStates.put(badDevice, FreeDeviceState.UNRESPONSIVE);
+                }
                 setLastInvocationExitCode(1);
             } catch (DeviceNotAvailableException e) {
                 CLog.w("Device %s is not available. Reason: %s", e.getSerial(), e.getMessage());
-                deviceState = FreeDeviceState.UNAVAILABLE;
+                ITestDevice badDevice = mInvocationContext.getDeviceBySerial(e.getSerial());
+                if (badDevice != null) {
+                    deviceStates.put(badDevice, FreeDeviceState.UNAVAILABLE);
+                }
                 setLastInvocationExitCode(1);
             } catch (FatalHostError e) {
                 CLog.wtf(String.format("Fatal error occurred: %s, shutting down", e.getMessage()),
@@ -562,20 +568,20 @@ public class CommandScheduler extends Thread implements ICommandScheduler, IComm
                 // remove invocation thread first so another invocation can be started on device
                 // when freed
                 removeInvocationThread(this);
-                for (ITestDevice device : mMetadata.getDevices()) {
+                for (ITestDevice device : mInvocationContext.getDevices()) {
                     if (device.getIDevice() instanceof StubDevice) {
                         // Never release stub and Tcp devices, otherwise they will disappear
                         // during deallocation since they are only placeholder.
-                        deviceState = FreeDeviceState.AVAILABLE;
+                        deviceStates.put(device, FreeDeviceState.AVAILABLE);
                     } else if (!TestDeviceState.ONLINE.equals(device.getDeviceState())) {
                         // If the device is offline at the end of the test
-                        deviceState = FreeDeviceState.UNAVAILABLE;
+                        deviceStates.put(device, FreeDeviceState.UNAVAILABLE);
                     }
                     // Reset the recovery mode at the end of the invocation.
                     device.setRecoveryMode(RecoveryMode.AVAILABLE);
                 }
                 for (final IScheduledInvocationListener listener : mListeners) {
-                    listener.invocationComplete(mMetadata, deviceState);
+                    listener.invocationComplete(mInvocationContext, deviceStates);
                 }
                 mCmd.commandFinished(elapsedTime);
             }
@@ -585,8 +591,8 @@ public class CommandScheduler extends Thread implements ICommandScheduler, IComm
             return mInvocation;
         }
 
-        IInvocationMetadata getMetadata() {
-            return mMetadata;
+        IInvocationContext getInvocationContext() {
+            return mInvocationContext;
         }
 
         /**
@@ -594,7 +600,7 @@ public class CommandScheduler extends Thread implements ICommandScheduler, IComm
          * all running invocations.
          */
         public void stopInvocation(String message) {
-            for (ITestDevice device : mMetadata.getDevices()) {
+            for (ITestDevice device : mInvocationContext.getDevices()) {
                 if (device != null && device.getIDevice().isOnline()) {
                     // Kill all running processes on device.
                     try {
@@ -639,7 +645,7 @@ public class CommandScheduler extends Thread implements ICommandScheduler, IComm
          * invocation.
          */
         public void checkDeviceBatteryLevel() {
-            for (String deviceName : mMetadata.getDeviceConfigNames()) {
+            for (String deviceName : mInvocationContext.getDeviceConfigNames()) {
                 if (mCmd.getConfiguration().getDeviceConfigByName(deviceName)
                         .getDeviceOptions() == null) {
                     CLog.d("No deviceOptions in the configuration, cannot do Battery level check");
@@ -648,8 +654,8 @@ public class CommandScheduler extends Thread implements ICommandScheduler, IComm
                 final Integer cutoffBattery = mCmd.getConfiguration()
                         .getDeviceConfigByName(deviceName).getDeviceOptions().getCutoffBattery();
 
-                if (mMetadata.getDevice(deviceName) != null && cutoffBattery != null) {
-                    final IDevice device = mMetadata.getDevice(deviceName).getIDevice();
+                if (mInvocationContext.getDevice(deviceName) != null && cutoffBattery != null) {
+                    final IDevice device = mInvocationContext.getDevice(deviceName).getIDevice();
                     int batteryLevel = -1;
                     try {
                         batteryLevel = device.getBattery(500, TimeUnit.MILLISECONDS).get();
@@ -716,7 +722,7 @@ public class CommandScheduler extends Thread implements ICommandScheduler, IComm
         mUnscheduledWarning = new HashSet<>();
         mSleepingCommands = new HashSet<>();
         mExecutingCommands = new HashSet<>();
-        mInvocationThreadMap = new HashMap<IInvocationMetadata, InvocationThread>();
+        mInvocationThreadMap = new HashMap<IInvocationContext, InvocationThread>();
         // use a ScheduledThreadPoolExecutorTimer as a single-threaded timer. This class
         // is used instead of a java.util.Timer because it offers advanced shutdown options
         mCommandTimer = new ScheduledThreadPoolExecutor(1);
@@ -877,7 +883,7 @@ public class CommandScheduler extends Thread implements ICommandScheduler, IComm
     }
 
     protected void processReadyCommands(IDeviceManager manager) {
-        Map<ExecutableCommand, IInvocationMetadata> scheduledCommandMap = new HashMap<>();
+        Map<ExecutableCommand, IInvocationContext> scheduledCommandMap = new HashMap<>();
         // minimize length of synchronized block by just matching commands with device first,
         // then scheduling invocations/adding looping commands back to queue
         synchronized (this) {
@@ -887,11 +893,11 @@ public class CommandScheduler extends Thread implements ICommandScheduler, IComm
             while (cmdIter.hasNext()) {
                 ExecutableCommand cmd = cmdIter.next();
                 IConfiguration config = cmd.getConfiguration();
-                IInvocationMetadata metadata = new InvocationMetadata();
+                IInvocationContext context = new InvocationContext();
                 Map<String, ITestDevice> devices = new HashMap<String, ITestDevice>();
 
                 if (!config.getDeviceConfig().isEmpty()) {
-                    for (IDeviceConfig deviceConfig : config.getDeviceConfig()) {
+                    for (IDeviceConfiguration deviceConfig : config.getDeviceConfig()) {
                         ITestDevice device =
                                 manager.allocateDevice(deviceConfig.getDeviceRequirements());
                         if (device != null) {
@@ -923,10 +929,10 @@ public class CommandScheduler extends Thread implements ICommandScheduler, IComm
                 if (!devices.isEmpty()) {
                     cmdIter.remove();
                     mExecutingCommands.add(cmd);
-                    metadata.addAllocatedDevice(devices);
+                    context.addAllocatedDevice(devices);
 
                     // track command matched with device
-                    scheduledCommandMap.put(cmd, metadata);
+                    scheduledCommandMap.put(cmd, context);
                     // clean warned list to avoid piling over time.
                     mUnscheduledWarning.remove(cmd);
                 } else {
@@ -945,7 +951,7 @@ public class CommandScheduler extends Thread implements ICommandScheduler, IComm
         }
 
         // now actually execute the commands
-        for (Map.Entry<ExecutableCommand, IInvocationMetadata> cmdDeviceEntry : scheduledCommandMap
+        for (Map.Entry<ExecutableCommand, IInvocationContext> cmdDeviceEntry : scheduledCommandMap
                 .entrySet()) {
             ExecutableCommand cmd = cmdDeviceEntry.getKey();
             startInvocation(cmdDeviceEntry.getValue(), cmd,
@@ -1231,7 +1237,7 @@ public class CommandScheduler extends Thread implements ICommandScheduler, IComm
 
         ExecutableCommand execCmd = createExecutableCommand(cmdTracker, config, false);
         ITestDevice device;
-        IInvocationMetadata metadata = new InvocationMetadata();
+        IInvocationContext context = new InvocationContext();
         synchronized(this) {
             // TODO: add support for execCommand multi-device allocation
             if (config.getDeviceConfig().size() > 1) {
@@ -1241,12 +1247,12 @@ public class CommandScheduler extends Thread implements ICommandScheduler, IComm
             if (device == null) {
                 throw new NoDeviceException("no device is available for command: " + args);
             }
-            metadata.addAllocatedDevice(config.getDeviceConfig().get(0).getDeviceName(), device);
+            context.addAllocatedDevice(config.getDeviceConfig().get(0).getDeviceName(), device);
             CLog.i("Executing '%s' on '%s'", cmdTracker.getArgs()[0], device.getSerialNumber());
             mExecutingCommands.add(execCmd);
         }
 
-        startInvocation(metadata, execCmd, listener, new FreeDeviceHandler(manager));
+        startInvocation(context, execCmd, listener, new FreeDeviceHandler(manager));
     }
 
     /**
@@ -1270,30 +1276,30 @@ public class CommandScheduler extends Thread implements ICommandScheduler, IComm
         synchronized(this) {
             mExecutingCommands.add(execCmd);
         }
-        IInvocationMetadata metadata = new InvocationMetadata();
-        metadata.addAllocatedDevice(config.getDeviceConfig().get(0).getDeviceName(), device);
-        startInvocation(metadata, execCmd, listener);
+        IInvocationContext context = new InvocationContext();
+        context.addAllocatedDevice(config.getDeviceConfig().get(0).getDeviceName(), device);
+        startInvocation(context, execCmd, listener);
     }
 
     /**
      * Spawns off thread to run invocation for given device.
      *
-     * @param metadata the {@link IInvocationMetadata}
+     * @param context the {@link IInvocationContext}
      * @param cmd the {@link ExecutableCommand} to execute
      * @param listeners the
      * {@link com.android.tradefed.command.ICommandScheduler.IScheduledInvocationListener}s
      * to invoke when complete
      */
-    private void startInvocation(IInvocationMetadata metadata, ExecutableCommand cmd,
+    private void startInvocation(IInvocationContext context, ExecutableCommand cmd,
             IScheduledInvocationListener... listeners) {
         // Check if device is not used in another invocation.
-        throwIfDeviceInInvocationThread(metadata.getDevices());
+        throwIfDeviceInInvocationThread(context.getDevices());
 
         CLog.d("starting invocation for command id %d", cmd.getCommandTracker().getId());
         // Name invocation with first device serial
         final String invocationName = String.format("Invocation-%s",
-                metadata.getSerials().get(0));
-        InvocationThread invocationThread = new InvocationThread(invocationName, metadata, cmd,
+                context.getSerials().get(0));
+        InvocationThread invocationThread = new InvocationThread(invocationName, context, cmd,
                 listeners);
         invocationThread.start();
         addInvocationThread(invocationThread);
@@ -1303,7 +1309,7 @@ public class CommandScheduler extends Thread implements ICommandScheduler, IComm
      * Removes a {@link InvocationThread} from the active list.
      */
     private synchronized void removeInvocationThread(InvocationThread invThread) {
-        mInvocationThreadMap.remove(invThread.getMetadata());
+        mInvocationThreadMap.remove(invThread.getInvocationContext());
     }
 
     private synchronized void throwIfDeviceInInvocationThread(List<ITestDevice> devices) {
@@ -1320,7 +1326,7 @@ public class CommandScheduler extends Thread implements ICommandScheduler, IComm
      * Adds a {@link InvocationThread} to the active list.
      */
     private synchronized void addInvocationThread(InvocationThread invThread) {
-        mInvocationThreadMap.put(invThread.getMetadata(), invThread);
+        mInvocationThreadMap.put(invThread.getInvocationContext(), invThread);
     }
 
     protected synchronized boolean isShutdown() {
@@ -1585,7 +1591,7 @@ public class CommandScheduler extends Thread implements ICommandScheduler, IComm
             displayRows.add(Arrays.asList(
                     Integer.toString(invThread.mCmd.getCommandTracker().getId()),
                     getTimeString(curTime - invThread.getStartTime()),
-                    invThread.getMetadata().getSerials().toString(),
+                    invThread.getInvocationContext().getSerials().toString(),
                     invThread.getInvocation().toString()));
         }
         new TableFormatter().displayTable(displayRows, printWriter);
@@ -1624,7 +1630,7 @@ public class CommandScheduler extends Thread implements ICommandScheduler, IComm
      */
     @Override
     public synchronized boolean stopInvocation(int invocationId) {
-        // TODO: make invocationID part of InvocationMetadata
+        // TODO: make invocationID part of InvocationContext
         for (InvocationThread thread : mInvocationThreadMap.values()) {
             if (thread.mCmd.getCommandTracker().mId == invocationId) {
                 thread.stopInvocation("User requested stopping invocation " + invocationId);

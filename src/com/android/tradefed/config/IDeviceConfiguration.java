@@ -27,7 +27,7 @@ import java.util.List;
  * Device Configuration Holder Interface.
  * Use to represent an object that can hold the information for the configuration of a device.
  */
-public interface IDeviceConfig {
+public interface IDeviceConfiguration {
 
     /**
      * Return The Name of the device specified in the field "name" of the configuration.
@@ -36,7 +36,7 @@ public interface IDeviceConfig {
 
     /**
      * Return The list of all the configuration objects held the instance of
-     * {@link IDeviceConfig}
+     * {@link IDeviceConfiguration}
      */
     public List<Object> getAllObjects();
 
@@ -79,5 +79,5 @@ public interface IDeviceConfig {
     /**
      * Return a shallow copy of this {@IDeviceConfig} object.
      */
-    public IDeviceConfig clone();
+    public IDeviceConfiguration clone();
 }

@@ -562,13 +562,13 @@ public class OptionSetter {
             freqMap.put(className, index);
             addOptionsForObject(objectSource, optionMap, index, null);
 
-            if (objectSource instanceof IDeviceConfig) {
-                for (Object deviceObject : ((IDeviceConfig)objectSource).getAllObjects()) {
+            if (objectSource instanceof IDeviceConfiguration) {
+                for (Object deviceObject : ((IDeviceConfiguration)objectSource).getAllObjects()) {
                     index = freqMap.get(deviceObject.getClass().getName());
                     index = index == null ? 1 : index + 1;
                     freqMap.put(deviceObject.getClass().getName(), index);
                     addOptionsForObject(deviceObject, optionMap, index,
-                            ((IDeviceConfig)objectSource).getDeviceName());
+                            ((IDeviceConfiguration)objectSource).getDeviceName());
                 }
             }
         }

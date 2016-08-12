@@ -17,6 +17,7 @@ package com.android.tradefed.invoker;
 
 import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.device.ITestDevice;
+import com.android.tradefed.device.ITestDevice.RecoveryMode;
 import com.android.tradefed.util.MultiMap;
 
 import java.util.List;
@@ -24,9 +25,10 @@ import java.util.Map;
 
 /**
  * Holds information about the Invocation for the tests to access if needed.
- * Tests should not modify the meta data contained here so only getters will be available.
+ * Tests should not modify the context contained here so only getters will be available, except for
+ * the context attributes for reporting purpose.
  */
-public interface IInvocationMetadata {
+public interface IInvocationContext {
 
     /**
      * Return the number of devices allocated for the invocation.
@@ -61,6 +63,11 @@ public interface IInvocationMetadata {
     public List<ITestDevice> getDevices();
 
     /**
+     * Return all the {@link IBuildInfo} tracked for this invocation.
+     */
+    public List<IBuildInfo> getBuildInfos();
+
+    /**
      * Return the list of serials of the device tracked in this invocation
      */
     public List<String> getSerials();
@@ -74,6 +81,12 @@ public interface IInvocationMetadata {
      * Return the {@link ITestDevice} associated with the device configuration name provided.
      */
     public ITestDevice getDevice(String deviceName);
+
+    /**
+     * Returns the {@link ITestDevice} associated with the serial provided.
+     * Refrain from using too much as it's not the fastest lookup.
+     */
+    public ITestDevice getDeviceBySerial(String serial);
 
     /**
      * Return the {@link IBuildInfo} associated with the device configuration name provided.
@@ -99,7 +112,22 @@ public interface IInvocationMetadata {
     public void addInvocationAttribute(String attributeName, String attributeValue);
 
     /**
-     * Return the map of invocation attributes.
+     * Returns the map of invocation attributes.
      */
     public MultiMap<String, String> getAttributes();
+
+    /**
+     * Returns the invocation test-tag.
+     */
+    public String getTestTag();
+
+    /**
+     * Sets the invocation test-tag.
+     */
+    public void setTestTag(String testTag);
+
+    /**
+     * Sets the {@link RecoveryMode} of all the devices part of the context
+     */
+    public void setRecoveryModeForAllDevices(RecoveryMode mode);
 }
