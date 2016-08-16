@@ -29,6 +29,7 @@ import org.easymock.EasyMock;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -847,6 +848,95 @@ public class NativeDeviceTest extends TestCase {
             if (f != null) {
                 f.cleanFile();
             }
+        }
+    }
+
+    /**
+     * Test that we can distinguish a newer file even with Timezone on the device.
+     * Magadan is GMT+11.
+     */
+    public void testIsNewer() throws Exception {
+        TestableAndroidNativeDevice testDevice = new TestableAndroidNativeDevice() {
+            @Override
+            public String getProperty(String name) throws DeviceNotAvailableException {
+                return "Asia/Magadan";
+            }
+            @Override
+            protected long getDeviceTimeOffset(Date date) throws DeviceNotAvailableException {
+                return 0;
+            }
+        };
+        File localFile = FileUtil.createTempFile("timezonetest", ".txt");
+        try {
+            localFile.setLastModified(1470904329000l); // Thu Aug 11 09:32:09 BST 2016
+            IFileEntry remoteFile = EasyMock.createMock(IFileEntry.class);
+            EasyMock.expect(remoteFile.getDate()).andReturn("2016-08-11");
+            EasyMock.expect(remoteFile.getTime()).andReturn("19:32");
+            EasyMock.replay(remoteFile);
+            assertTrue(testDevice.isNewer(localFile, remoteFile));
+            EasyMock.verify(remoteFile);
+        } finally {
+            FileUtil.deleteFile(localFile);
+        }
+    }
+
+    /**
+     * Test that we can distinguish a newer file even with Timezone on the device.
+     * Magadan is GMT+11. Clock on device is inaccurate and in advance of host.
+     */
+    public void testIsNewer_timeOffset() throws Exception {
+        TestableAndroidNativeDevice testDevice = new TestableAndroidNativeDevice() {
+            @Override
+            public String getProperty(String name) throws DeviceNotAvailableException {
+                return "Asia/Magadan";
+            }
+            @Override
+            protected long getDeviceTimeOffset(Date date) throws DeviceNotAvailableException {
+                return -15 * 60 * 1000; // Device in advance of 15min on host.
+            }
+        };
+        File localFile = FileUtil.createTempFile("timezonetest", ".txt");
+        try {
+            localFile.setLastModified(1470904329000l); // Thu Aug 11 09:32:09 BST 2016
+            IFileEntry remoteFile = EasyMock.createMock(IFileEntry.class);
+            EasyMock.expect(remoteFile.getDate()).andReturn("2016-08-11");
+            EasyMock.expect(remoteFile.getTime()).andReturn("19:47");
+            EasyMock.replay(remoteFile);
+            // Should sync because after time offset correction, file is older.
+            assertTrue(testDevice.isNewer(localFile, remoteFile));
+            EasyMock.verify(remoteFile);
+        } finally {
+            FileUtil.deleteFile(localFile);
+        }
+    }
+
+    /**
+     * Test that we can distinguish a newer file even with Timezone on the device.
+     * Magadan is GMT+11.
+     * Local file is set to 10min earlier than remoteFile.
+     */
+    public void testIsNewer_fails() throws Exception {
+        TestableAndroidNativeDevice testDevice = new TestableAndroidNativeDevice() {
+            @Override
+            public String getProperty(String name) throws DeviceNotAvailableException {
+                return "Asia/Magadan";
+            }
+            @Override
+            protected long getDeviceTimeOffset(Date date) throws DeviceNotAvailableException {
+                return 0;
+            }
+        };
+        File localFile = FileUtil.createTempFile("timezonetest", ".txt");
+        try {
+            localFile.setLastModified(1470903728000l); // Thu Aug 11 09:22:08 BST 2016
+            IFileEntry remoteFile = EasyMock.createMock(IFileEntry.class);
+            EasyMock.expect(remoteFile.getDate()).andReturn("2016-08-11");
+            EasyMock.expect(remoteFile.getTime()).andReturn("19:32");
+            EasyMock.replay(remoteFile);
+            assertFalse(testDevice.isNewer(localFile, remoteFile));
+            EasyMock.verify(remoteFile);
+        } finally {
+            FileUtil.deleteFile(localFile);
         }
     }
 }

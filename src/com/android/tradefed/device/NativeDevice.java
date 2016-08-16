@@ -54,12 +54,14 @@ import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Calendar;
 import java.util.Collection;
 import java.util.Date;
 import java.util.List;
 import java.util.Map;
 import java.util.Random;
 import java.util.Set;
+import java.util.TimeZone;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.ReentrantLock;
@@ -1354,19 +1356,52 @@ public class NativeDevice implements IManagedTestDevice {
     }
 
     /**
-     * Return <code>true</code> if local file is newer than remote file.
+     * helper to get the timezone from the device. Example: "Europe/London"
      */
-    private boolean isNewer(File localFile, IFileEntry entry) {
-        // remote times are in GMT timezone
-        final String entryTimeString = String.format("%s %s GMT", entry.getDate(), entry.getTime());
+    private String getDeviceTimezone() {
         try {
+            // This may not be set at first, default to GMT in this case.
+            String timezone = getProperty("persist.sys.timezone");
+            if (timezone != null) {
+                return timezone.trim();
+            }
+        } catch (DeviceNotAvailableException e) {
+            // Fall through on purpose
+        }
+        return "GMT";
+    }
+
+    /**
+     * Return <code>true</code> if local file is newer than remote file.
+     * Exposed for testing.
+     */
+    protected boolean isNewer(File localFile, IFileEntry entry) {
+        final String entryTimeString = String.format("%s %s", entry.getDate(), entry.getTime());
+        try {
+            String timezone = getDeviceTimezone();
             // expected format of a FileEntry's date and time
-            SimpleDateFormat format = new SimpleDateFormat("yyyy-MM-dd HH:mm zzz");
+            SimpleDateFormat format = new SimpleDateFormat("yyyy-MM-dd HH:mm");
+            format.setTimeZone(TimeZone.getTimeZone(timezone));
             Date remoteDate = format.parse(entryTimeString);
+            long daylight = 0;
+            if (Calendar.getInstance().getTimeZone().inDaylightTime(new Date())){
+                daylight = Calendar.getInstance().getTimeZone().getDSTSavings();
+                CLog.i("daylight saving detected adding %sms to local time.", daylight);
+            }
+
+            long offset = 0;
+            try {
+                offset = getDeviceTimeOffset(null);
+            } catch (DeviceNotAvailableException e) {
+                offset = 0;
+            }
+            CLog.i("Device offset time: %s", offset);
+
             // localFile.lastModified has granularity of ms, but remoteDate.getTime only has
             // granularity of minutes. Shift remoteDate.getTime() backward by one minute so newly
             // modified files get synced
-            return localFile.lastModified() > (remoteDate.getTime() - 60 * 1000);
+            return (localFile.lastModified() + daylight) >
+                    (remoteDate.getTime() - 60 * 1000 + offset);
         } catch (ParseException e) {
             CLog.e("Error converting remote time stamp %s for %s on device %s", entryTimeString,
                     entry.getFullPath(), getSerialNumber());
@@ -3075,7 +3110,11 @@ public class NativeDevice implements IManagedTestDevice {
         return new DeviceEventResponse(newState, stateChanged);
     }
 
-    private long getDeviceTimeOffset(Date date) throws DeviceNotAvailableException {
+    /**
+     * Helper to get the time difference between the device and the host. Use Epoch time.
+     * Exposed for testing.
+     */
+    protected long getDeviceTimeOffset(Date date) throws DeviceNotAvailableException {
         Long deviceTime = getDeviceDate();
         long offset = 0;
 
