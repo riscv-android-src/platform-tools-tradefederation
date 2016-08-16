@@ -90,6 +90,7 @@ import com.android.tradefed.targetprep.SdkAvdPreparerTest;
 import com.android.tradefed.targetprep.StopServicesSetupTest;
 import com.android.tradefed.targetprep.SystemUpdaterDeviceFlasherTest;
 import com.android.tradefed.testtype.AndroidJUnitTestTest;
+import com.android.tradefed.testtype.CodeCoverageTestBaseTest;
 import com.android.tradefed.testtype.DeviceBatteryLevelCheckerTest;
 import com.android.tradefed.testtype.DeviceTestCaseTest;
 import com.android.tradefed.testtype.DeviceTestSuiteTest;
@@ -105,6 +106,7 @@ import com.android.tradefed.testtype.InstalledInstrumentationsTestTest;
 import com.android.tradefed.testtype.InstrumentationFileTestTest;
 import com.android.tradefed.testtype.InstrumentationSerialTestTest;
 import com.android.tradefed.testtype.InstrumentationTestTest;
+import com.android.tradefed.testtype.JackCodeCoverageTestTest;
 import com.android.tradefed.testtype.NativeBenchmarkTestParserTest;
 import com.android.tradefed.testtype.NativeStressTestParserTest;
 import com.android.tradefed.testtype.NativeStressTestTest;
@@ -257,6 +259,7 @@ import org.junit.runners.Suite.SuiteClasses;
 
     // testtype
     AndroidJUnitTestTest.class,
+    CodeCoverageTestBaseTest.class,
     DeviceBatteryLevelCheckerTest.class,
     DeviceTestCaseTest.class,
     DeviceTestSuiteTest.class,
@@ -272,6 +275,7 @@ import org.junit.runners.Suite.SuiteClasses;
     InstrumentationSerialTestTest.class,
     InstrumentationFileTestTest.class,
     InstrumentationTestTest.class,
+    JackCodeCoverageTestTest.class,
     NativeBenchmarkTestParserTest.class,
     NativeStressTestParserTest.class,
     NativeStressTestTest.class,

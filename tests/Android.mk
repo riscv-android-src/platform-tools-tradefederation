@@ -25,7 +25,7 @@ LOCAL_JAVACFLAGS += -g -Xlint
 
 LOCAL_MODULE := tradefed-tests
 LOCAL_MODULE_TAGS := optional
-LOCAL_STATIC_JAVA_LIBRARIES := easymock
+LOCAL_STATIC_JAVA_LIBRARIES := easymock objenesis-host mockito-host
 LOCAL_JAVA_LIBRARIES := tradefed
 
 LOCAL_JAR_MANIFEST := MANIFEST.mf
