@@ -82,6 +82,10 @@ public class NativeDevice implements IManagedTestDevice {
      * It still should bail after that minute, if it will ever terminate on its own.
      */
     private static final int BUGREPORT_TIMEOUT = 2 * 60 * 1000;
+    /**
+     * Allow a little more time for bugreportz because there are extra steps.
+     */
+    private static final int BUGREPORTZ_TIMEOUT = 5 * 60 * 1000;
     private static final String BUGREPORT_CMD = "bugreport";
     private static final String BUGREPORTZ_CMD = "bugreportz";
 
@@ -1866,6 +1870,10 @@ public class NativeDevice implements IManagedTestDevice {
             File bugreportzFile = null;
             try {
                 bugreportzFile = getBugreportzInternal();
+                if (bugreportzFile == null) {
+                    CLog.w("Fail to collect the bugreportz.");
+                    return null;
+                }
                 zip = new ZipFile(bugreportzFile);
                 // We get the main_entry.txt that contains the bugreport name.
                 mainEntry = ZipUtil.extractFileFromZip(zip, "main_entry.txt");
@@ -1907,7 +1915,7 @@ public class NativeDevice implements IManagedTestDevice {
         // provide a timeout.
         try {
             executeShellCommand(BUGREPORTZ_CMD, receiver,
-                    BUGREPORT_TIMEOUT, TimeUnit.MILLISECONDS, 0 /* don't retry */);
+                    BUGREPORTZ_TIMEOUT, TimeUnit.MILLISECONDS, 0 /* don't retry */);
             String output = receiver.getOutput().trim();
             Matcher match = BUGREPORTZ_RESPONSE_PATTERN.matcher(output);
             if (!match.find()) {

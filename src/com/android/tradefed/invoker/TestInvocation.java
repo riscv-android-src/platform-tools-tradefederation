@@ -64,6 +64,7 @@ import com.android.tradefed.util.IRunUtil;
 import com.android.tradefed.util.QuotationAwareTokenizer;
 import com.android.tradefed.util.RunInterruptedException;
 import com.android.tradefed.util.RunUtil;
+import com.android.tradefed.util.StreamUtil;
 
 import junit.framework.Test;
 
@@ -849,10 +850,15 @@ public class TestInvocation implements ITestInvocation {
 
             InputStreamSource bugreport = device.getBugreport();
             try {
-                listener.testLog(String.format("%s_%s", bugreportName, device.getSerialNumber()),
-                        LogDataType.BUGREPORT, bugreport);
+                if (bugreport != null) {
+                    listener.testLog(String.format("%s_%s", bugreportName,
+                            device.getSerialNumber()), LogDataType.BUGREPORT, bugreport);
+                } else {
+                    CLog.w("Error when collecting bugreport for device '%s'",
+                            device.getSerialNumber());
+                }
             } finally {
-                bugreport.cancel();
+                StreamUtil.cancel(bugreport);
             }
         }
     }
