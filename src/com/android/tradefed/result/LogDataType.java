@@ -24,6 +24,7 @@ public enum LogDataType {
     XML("xml", false, true),
     HTML("html", true, true),
     PNG("png", true, false),
+    EAR("ear", true, false),
     ZIP("zip", true, false),
     JPEG("jpeg", true, false),
     GZIP("gz", true, false),

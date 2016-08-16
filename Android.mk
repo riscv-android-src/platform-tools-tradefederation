@@ -29,7 +29,7 @@ LOCAL_MODULE_TAGS := optional
 LOCAL_STATIC_JAVA_LIBRARIES := junit kxml2-2.3.0 jline-1.0 tf-remote-client
 # emmalib is only a runtime dependency if generating code coverage reporters,
 # not a compile time dependency
-LOCAL_JAVA_LIBRARIES := emmalib tools-common-prebuilt loganalysis
+LOCAL_JAVA_LIBRARIES := emmalib jack-jacoco-reporter tools-common-prebuilt loganalysis
 
 LOCAL_JAR_MANIFEST := MANIFEST.mf
 
@@ -41,8 +41,12 @@ DEST_JAR := $(HOST_OUT)/tradefed/$(LOCAL_MODULE).jar
 $(DEST_JAR): $(LOCAL_BUILT_MODULE)
 	$(copy-file-to-new-target)
 
+$(HOST_OUT)/tradefed/%.jar : $(HOST_OUT_JAVA_LIBRARIES)/%.jar
+	$(copy-file-to-new-target)
+
 # this dependency ensure the above rule will be executed if jar is built
 $(LOCAL_INSTALLED_MODULE) : $(DEST_JAR)
+$(LOCAL_INSTALLED_MODULE) : $(foreach m, $(LOCAL_JAVA_LIBRARIES), $(HOST_OUT)/tradefed/$(m).jar)
 
 #######################################################
 # intentionally skipping CLEAR_VARS
@@ -91,7 +95,7 @@ include $(call all-makefiles-under,$(LOCAL_PATH))
 # Zip up the built files and dist it as tradefed.zip
 ifneq (,$(filter tradefed tradefed-all, $(TARGET_BUILD_APPS)))
 
-tradefed_dist_host_jars := tradefed tradefed-tests tf-prod-tests emmalib loganalysis loganalysis-tests tf-remote-client
+tradefed_dist_host_jars := tradefed tradefed-tests tf-prod-tests emmalib jack-jacoco-reporter loganalysis loganalysis-tests tf-remote-client
 tradefed_dist_host_jar_files := $(foreach m, $(tradefed_dist_host_jars), $(HOST_OUT_JAVA_LIBRARIES)/$(m).jar)
 
 tradefed_dist_host_exes := tradefed.sh tradefed_win.bat script_help.sh verify.sh run_tf_cmd.sh
