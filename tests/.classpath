@@ -5,6 +5,7 @@
 	<classpathentry combineaccessrules="false" kind="src" path="/tradefederation"/>
 	<classpathentry kind="src" path="res"/>
 	<classpathentry exported="true" kind="var" path="TRADEFED_ROOT/out/host/common/obj/JAVA_LIBRARIES/easymock_intermediates/javalib.jar" sourcepath="/TRADEFED_ROOT/external/easymock/src"/>
+        <classpathentry exported="true" kind="var" path="TRADEFED_ROOT/out/host/common/obj/JAVA_LIBRARIES/mockito-host_intermediates/javalib.jar" sourcepath="/TRADEFED_ROOT/external/mockito/src"/>
 	<classpathentry combineaccessrules="false" kind="src" path="/ddmlib"/>
 	<classpathentry combineaccessrules="false" kind="src" path="/tf-remote-client"/>
 	<classpathentry kind="con" path="org.eclipse.jdt.junit.JUNIT_CONTAINER/4"/>
