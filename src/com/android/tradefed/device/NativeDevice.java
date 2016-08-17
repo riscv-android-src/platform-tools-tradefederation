@@ -95,6 +95,7 @@ public class NativeDevice implements IManagedTestDevice {
     private static final int BUGREPORTZ_TIMEOUT = 5 * 60 * 1000;
     private static final String BUGREPORT_CMD = "bugreport";
     private static final String BUGREPORTZ_CMD = "bugreportz";
+    private static final String BUGREPORTZ_TMP_PATH = "/data/bugreports/";
 
     /** the default number of command retry attempts to perform */
     protected static final int MAX_RETRY_ATTEMPTS = 2;
@@ -1912,7 +1913,7 @@ public class NativeDevice implements IManagedTestDevice {
                 bugreportzFile = getBugreportzInternal();
                 if (bugreportzFile == null) {
                     CLog.w("Fail to collect the bugreportz.");
-                    return null;
+                    return bugreportzFallback();
                 }
                 zip = new ZipFile(bugreportzFile);
                 // We get the main_entry.txt that contains the bugreport name.
@@ -1924,12 +1925,37 @@ public class NativeDevice implements IManagedTestDevice {
             } catch (IOException e) {
                 CLog.e("Error while unzipping bugreportz");
                 CLog.e(e);
-                return null;
+                return bugreportzFallback();
             } finally {
                 FileUtil.deleteFile(bugreportzFile);
                 FileUtil.deleteFile(mainEntry);
             }
         }
+    }
+
+    /**
+     * If first bugreportz collection was interrupted for any reasons, the temporary file where
+     * the dumpstate is redirected could exists if it started. We attempt to get it to have some
+     * partial data.
+     */
+    private InputStreamSource bugreportzFallback() {
+        try {
+            IFileEntry entries = getFileEntry(BUGREPORTZ_TMP_PATH);
+            if (entries != null) {
+                for (IFileEntry f : entries.getChildren(false)) {
+                    String name = f.getName();
+                    if (name.endsWith(".tmp")) {
+                        File tmpBugreport = pullFile(BUGREPORTZ_TMP_PATH + name);
+                        if (tmpBugreport != null) {
+                            return new FileInputStreamSource(tmpBugreport, true);
+                        }
+                    }
+                }
+            }
+        } catch (DeviceNotAvailableException e) {
+            CLog.e(e);
+        }
+        return null;
     }
 
     /**
@@ -2008,8 +2034,7 @@ public class NativeDevice implements IManagedTestDevice {
         checkApiLevelAgainst("getBugreportz", 24);
         File bugreportZip = getBugreportzInternal();
         if (bugreportZip != null) {
-            InputStreamSource isc = new FileInputStreamSource(bugreportZip, true);
-            return isc;
+            return new FileInputStreamSource(bugreportZip, true);
         }
         return null;
     }

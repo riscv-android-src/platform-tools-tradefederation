@@ -924,10 +924,56 @@ public class NativeDeviceTest extends TestCase {
             public int getApiLevel() throws DeviceNotAvailableException {
                 return 24;
             }
+            @Override
+            public IFileEntry getFileEntry(String path) throws DeviceNotAvailableException {
+                return null;
+            }
         };
         EasyMock.replay(mMockRecovery, mMockIDevice);
         assertNull(mTestDevice.getBugreport());
         EasyMock.verify(mMockRecovery, mMockIDevice);
+    }
+
+    public void testGetBugreport_deviceUnavail_fallback() throws Exception {
+        final IFileEntry fakeEntry = EasyMock.createMock(IFileEntry.class);
+        mTestDevice = new TestableAndroidNativeDevice() {
+            @Override
+            public void executeShellCommand(
+                    String command, IShellOutputReceiver receiver,
+                    long maxTimeToOutputShellResponse, TimeUnit timeUnit, int retryAttempts)
+                            throws DeviceNotAvailableException {
+                throw new DeviceNotAvailableException();
+            }
+            @Override
+            public int getApiLevel() throws DeviceNotAvailableException {
+                return 24;
+            }
+            @Override
+            public IFileEntry getFileEntry(String path) throws DeviceNotAvailableException {
+                return fakeEntry;
+            }
+            @Override
+            public File pullFile(String remoteFilePath) throws DeviceNotAvailableException {
+                try {
+                    return FileUtil.createTempFile("bugreport", ".txt");
+                } catch (IOException e) {
+                    return null;
+                }
+            }
+        };
+        List<IFileEntry> list = new ArrayList<>();
+        list.add(fakeEntry);
+        EasyMock.expect(fakeEntry.getChildren(false)).andReturn(list);
+        EasyMock.expect(fakeEntry.getName()).andReturn("bugreport-NYC-2016-08-17-10-17-00.tmp");
+        EasyMock.replay(fakeEntry, mMockRecovery, mMockIDevice);
+        InputStreamSource res = null;
+        try {
+            res = mTestDevice.getBugreport();
+            assertNotNull(res);
+            EasyMock.verify(fakeEntry, mMockRecovery, mMockIDevice);
+        } finally {
+            StreamUtil.cancel(res);
+        }
     }
 
     /**
