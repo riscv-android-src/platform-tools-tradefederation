@@ -149,7 +149,7 @@ public class JackCodeCoverageTest extends CodeCoverageTestBase {
         }
     }
 
-    /** Calls {@link RunUtil#runTimedCmd(long, string[])}. Exposed for unit testing. */
+    /** Calls {@link RunUtil#runTimedCmd(long, String[])}. Exposed for unit testing. */
     CommandResult runTimedCmd(long timeout, String[] command) {
         return RunUtil.getDefault().runTimedCmd(timeout, command);
     }

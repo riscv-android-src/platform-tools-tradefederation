@@ -15,53 +15,38 @@
  */
 package com.android.tradefed.testtype;
 
-import static org.mockito.AdditionalMatchers.gt;
 import static org.mockito.Matchers.any;
-import static org.mockito.Matchers.anyInt;
-import static org.mockito.Matchers.anyLong;
 import static org.mockito.Matchers.eq;
 import static org.mockito.Mockito.doAnswer;
-import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 
-import com.android.ddmlib.IDevice;
+import com.google.common.collect.ImmutableMap;
+import com.google.common.collect.Lists;
+import com.google.common.collect.Sets;
+
 import com.android.ddmlib.testrunner.IRemoteAndroidTestRunner;
 import com.android.ddmlib.testrunner.ITestRunListener;
 import com.android.ddmlib.testrunner.RemoteAndroidTestRunner;
 import com.android.ddmlib.testrunner.TestIdentifier;
-import com.android.ddmlib.testrunner.TestResult;
-import com.android.ddmlib.testrunner.TestResult.TestStatus;
 import com.android.ddmlib.testrunner.TestRunResult;
 import com.android.tradefed.build.BuildInfo;
 import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
-import com.android.tradefed.result.CollectingTestListener;
 import com.android.tradefed.result.ITestInvocationListener;
-import com.android.tradefed.testtype.CodeCoverageTest;
-import com.android.tradefed.util.CommandResult;
-import com.android.tradefed.util.CommandStatus;
 import com.android.tradefed.util.ICompressionStrategy;
-import com.android.tradefed.util.IRunUtil;
 import com.android.tradefed.util.ListInstrumentationParser;
 import com.android.tradefed.util.ListInstrumentationParser.InstrumentationTarget;
-import com.google.common.collect.ImmutableMap;
-import com.google.common.collect.Lists;
-import com.google.common.collect.Sets;
-
-import org.mockito.ArgumentCaptor;
-import org.mockito.Matchers;
-import org.mockito.Mockito;
-import org.mockito.stubbing.Answer;
-import org.mockito.invocation.InvocationOnMock;
 
 import junit.framework.TestCase;
 
+import org.mockito.Mockito;
+import org.mockito.invocation.InvocationOnMock;
+import org.mockito.stubbing.Answer;
+
 import java.io.File;
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -69,7 +54,6 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 
 /** Unit tests for {@link CodeCoverageTestBase}. */
 public class CodeCoverageTestBaseTest extends TestCase {
@@ -99,10 +83,6 @@ public class CodeCoverageTestBaseTest extends TestCase {
     private static final IBuildInfo BUILD_INFO =
             new BuildInfo("123456", "some-test-tag", "bullhead-userdebug");
 
-    private static final String COLOSSUS_PATH = "/cns/on-d/foo/test_logs/123456/tag/inv_99999";
-    private static final String REPORT_URL =
-            "https://cnsviewer.corp.google.com" + COLOSSUS_PATH + "/index.html";
-
     /**
      * A subclass of {@link CodeCoverageTest} with certain methods stubbed out for testing.
      */
@@ -128,7 +108,7 @@ public class CodeCoverageTestBaseTest extends TestCase {
         }
 
         public void addTests(InstrumentationTarget target, Collection<TestIdentifier> tests) {
-            mTests.putIfAbsent(target, new ArrayList<>());
+            mTests.putIfAbsent(target, new ArrayList<TestIdentifier>());
             mTests.get(target).addAll(tests);
         }
 
@@ -156,7 +136,8 @@ public class CodeCoverageTestBaseTest extends TestCase {
         IRemoteAndroidTestRunner internalCreateTestRunner(String packageName, String runnerName) {
             // Look up tests for this target
             InstrumentationTarget target = new InstrumentationTarget(packageName, runnerName, "");
-            List<TestIdentifier> tests = mTests.getOrDefault(target, new ArrayList<>());
+            List<TestIdentifier> tests = mTests.getOrDefault(target,
+                    new ArrayList<TestIdentifier>());
 
             // Return a fake AndroidTestRunner
             boolean shardingEnabled = mShardingEnabled.getOrDefault(runnerName, false);
@@ -175,7 +156,7 @@ public class CodeCoverageTestBaseTest extends TestCase {
         }
     }
 
-    public void testRun() throws DeviceNotAvailableException, IOException {
+    public void testRun() throws DeviceNotAvailableException {
         // Prepare some test data
         InstrumentationTarget target = new InstrumentationTarget(PACKAGE_NAME1, RUNNER_NAME1, "");
 
@@ -198,8 +179,7 @@ public class CodeCoverageTestBaseTest extends TestCase {
                 any(ITestInvocationListener.class));
     }
 
-    public void testRun_multipleInstrumentationTargets()
-            throws DeviceNotAvailableException, IOException {
+    public void testRun_multipleInstrumentationTargets() throws DeviceNotAvailableException {
         // Prepare some test data
         InstrumentationTarget target1 = new InstrumentationTarget(PACKAGE_NAME1, RUNNER_NAME1, "");
         InstrumentationTarget target2 = new InstrumentationTarget(PACKAGE_NAME2, RUNNER_NAME1, "");
@@ -227,7 +207,7 @@ public class CodeCoverageTestBaseTest extends TestCase {
         verify(coverageTest).runTest(eq(target3), eq(0), eq(1), any(ITestInvocationListener.class));
     }
 
-    public void testRun_multipleShards() throws DeviceNotAvailableException, IOException {
+    public void testRun_multipleShards() throws DeviceNotAvailableException {
         // Prepare some test data
         InstrumentationTarget target = new InstrumentationTarget(PACKAGE_NAME1, RUNNER_NAME1, "");
 
@@ -257,7 +237,7 @@ public class CodeCoverageTestBaseTest extends TestCase {
         }
     }
 
-    public void testRun_rerunIndividualTests() throws DeviceNotAvailableException, IOException {
+    public void testRun_rerunIndividualTests() throws DeviceNotAvailableException {
         // Prepare some test data
         InstrumentationTarget target = new InstrumentationTarget(PACKAGE_NAME1, RUNNER_NAME1, "");
 
@@ -707,12 +687,12 @@ public class CodeCoverageTestBaseTest extends TestCase {
                 }
                 // Finish test
                 for (ITestRunListener listener : listeners) {
-                    listener.testEnded(test, new HashMap<>());
+                    listener.testEnded(test, new HashMap<String, String>());
                 }
             }
             // End the test run
             for (ITestRunListener listener : listeners) {
-                listener.testRunEnded(1000, new HashMap<>());
+                listener.testRunEnded(1000, new HashMap<String, String>());
             }
         }
     }
