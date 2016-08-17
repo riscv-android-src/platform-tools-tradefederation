@@ -306,7 +306,8 @@ public class DeviceManager implements IDeviceManager {
         Runnable checkRunnable = new Runnable() {
             @Override
             public void run() {
-                CLog.d("checking new device %s responsiveness", testDevice.getSerialNumber());
+                CLog.d("checking new '%s' '%s' responsiveness", testDevice.getClass().getName(),
+                        testDevice.getSerialNumber());
                 if (testDevice.getMonitor().waitForDeviceShell(CHECK_WAIT_DEVICE_AVAIL_MS)) {
                     DeviceEventResponse r = mManagedDeviceList.handleDeviceEvent(testDevice,
                             DeviceEvent.AVAILABLE_CHECK_PASSED);

@@ -68,6 +68,8 @@ interface DeviceAllocationEventHandler {
      * <li>Checking_Availability -> AVAILABLE_CHECK_FAILED -> Unavailable</li>
      * <li>Checking_Availability -> AVAILABLE_CHECK_IGNORED -> Ignored</li>
      * <li>Checking_Availability -> FORCE_AVAILABLE -> Available</li>
+     * <li>Checking_Availability -> STATE_CHANGE_OFFLINE -> Unavailable</li>
+     * <li>Checking_Availability -> DISCONNECTED -> Unavailable</li>
      * </ul>
      */
     class CheckingAvailHandler implements DeviceAllocationEventHandler {
@@ -84,6 +86,10 @@ interface DeviceAllocationEventHandler {
                     return DeviceAllocationState.Ignored;
                 case FORCE_AVAILABLE:
                     return DeviceAllocationState.Available;
+                case STATE_CHANGE_OFFLINE:
+                    return DeviceAllocationState.Unavailable;
+                case DISCONNECTED:
+                    return DeviceAllocationState.Unavailable;
                 default:
                     return DeviceAllocationState.Checking_Availability;
             }

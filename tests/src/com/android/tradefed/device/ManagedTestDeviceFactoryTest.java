@@ -17,6 +17,7 @@ package com.android.tradefed.device;
 
 import com.android.ddmlib.IDevice;
 import com.android.ddmlib.IDevice.DeviceState;
+import com.android.tradefed.util.IRunUtil;
 
 import junit.framework.TestCase;
 
@@ -32,6 +33,7 @@ public class ManagedTestDeviceFactoryTest extends TestCase {
     ManagedTestDeviceFactory mFactory;
     IDeviceManager mMockDeviceManager;
     IDeviceMonitor mMockDeviceMonitor;
+    IRunUtil mMockRunUtil;
 
     @Override
     protected void setUp() throws Exception {
@@ -39,6 +41,7 @@ public class ManagedTestDeviceFactoryTest extends TestCase {
         mMockDeviceManager = EasyMock.createMock(IDeviceManager.class);
         mMockDeviceMonitor = EasyMock.createMock(IDeviceMonitor.class);
         mFactory = new ManagedTestDeviceFactory(true, mMockDeviceManager, mMockDeviceMonitor) ;
+        mMockRunUtil = EasyMock.createMock(IRunUtil.class);
     }
 
     public void testIsSerialTcpDevice() {
@@ -116,5 +119,38 @@ public class ManagedTestDeviceFactoryTest extends TestCase {
         EasyMock.replay(mMockDevice);
         assertFalse(mFactory.checkFrameworkSupport(mMockDevice));
         EasyMock.verify(mMockDevice);
+    }
+
+    /**
+     * Test that {@link ManagedTestDeviceFactory#checkFrameworkSupport(IDevice)} is retrying
+     * because device doesn't return a proper answer. It should return True for default value.
+     */
+    public void testCheckFramework_emptyReturns() throws Exception {
+        final CollectingOutputReceiver cor = new CollectingOutputReceiver();
+        mFactory = new ManagedTestDeviceFactory(true, mMockDeviceManager, mMockDeviceMonitor) {
+            @Override
+            protected CollectingOutputReceiver createOutputReceiver() {
+                String response = "";
+                cor.addOutput(response.getBytes(), 0, response.length());
+                return cor;
+            }
+            @Override
+            protected IRunUtil getRunUtil() {
+                return mMockRunUtil;
+            }
+        };
+        mMockRunUtil.sleep(500);
+        EasyMock.expectLastCall().times(ManagedTestDeviceFactory.FRAMEWORK_CHECK_MAX_RETRY);
+        IDevice mMockDevice = EasyMock.createMock(IDevice.class);
+        EasyMock.expect(mMockDevice.getSerialNumber()).andStubReturn("SERIAL");
+        EasyMock.expect(mMockDevice.getState()).andStubReturn(DeviceState.ONLINE);
+        String expectedCmd = String.format(ManagedTestDeviceFactory.CHECK_PM_CMD,
+                ManagedTestDeviceFactory.EXPECTED_RES);
+        mMockDevice.executeShellCommand(EasyMock.eq(expectedCmd), EasyMock.eq(cor),
+                EasyMock.anyLong(), EasyMock.eq(TimeUnit.MILLISECONDS));
+        EasyMock.expectLastCall().times(ManagedTestDeviceFactory.FRAMEWORK_CHECK_MAX_RETRY);
+        EasyMock.replay(mMockDevice, mMockRunUtil);
+        assertTrue(mFactory.checkFrameworkSupport(mMockDevice));
+        EasyMock.verify(mMockDevice, mMockRunUtil);
     }
 }

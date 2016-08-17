@@ -22,6 +22,8 @@ import com.android.ddmlib.ShellCommandUnresponsiveException;
 import com.android.ddmlib.TimeoutException;
 import com.android.tradefed.device.DeviceManager.FastbootDevice;
 import com.android.tradefed.log.LogUtil.CLog;
+import com.android.tradefed.util.IRunUtil;
+import com.android.tradefed.util.RunUtil;
 
 import java.io.IOException;
 import java.util.concurrent.TimeUnit;
@@ -44,6 +46,9 @@ public class ManagedTestDeviceFactory implements IManagedTestDeviceFactory {
     protected IDeviceMonitor mAllocationMonitor;
     protected static final String CHECK_PM_CMD = "ls %s";
     protected static final String EXPECTED_RES = "/system/bin/pm";
+    protected static final String EXPECTED_ERROR = "No such file or directory";
+    protected static final long FRAMEWORK_CHECK_SLEEP_MS = 500;
+    protected static final int FRAMEWORK_CHECK_MAX_RETRY = 3;
 
     public ManagedTestDeviceFactory(boolean fastbootEnabled, IDeviceManager deviceManager,
             IDeviceMonitor allocationMonitor) {
@@ -96,20 +101,32 @@ public class ManagedTestDeviceFactory implements IManagedTestDeviceFactory {
             return true;
         }
         final long timeout = 60 * 1000;
-        CollectingOutputReceiver receiver = createOutputReceiver();
         try {
-            if (!DeviceState.ONLINE.equals(idevice.getState())) {
-                // Device will be 'unavailable' and recreated in DeviceManager so no need to check.
-                CLog.w("Device state is not Online, assuming Framework support for now.");
-                return true;
+            for (int i = 0; i < FRAMEWORK_CHECK_MAX_RETRY; i++) {
+                CollectingOutputReceiver receiver = createOutputReceiver();
+                if (!DeviceState.ONLINE.equals(idevice.getState())) {
+                    // Device will be 'unavailable' and recreated in DeviceManager so no need to
+                    // check.
+                    CLog.w("Device state is not Online, assuming Framework support for now.");
+                    return true;
+                }
+                String cmd = String.format(CHECK_PM_CMD, EXPECTED_RES);
+                idevice.executeShellCommand(cmd, receiver, timeout, TimeUnit.MILLISECONDS);
+                String output = receiver.getOutput().trim();
+                // It can only be one of the expected output or an exception if device offline
+                // otherwise we retry
+                if (EXPECTED_RES.equals(output)) {
+                    return true;
+                }
+                if (output.contains(EXPECTED_ERROR)) {
+                    CLog.i("No support for Framework, creating a native device. "
+                            + "output: %s", receiver.getOutput());
+                    return false;
+                }
+                getRunUtil().sleep(FRAMEWORK_CHECK_SLEEP_MS);
             }
-            String cmd = String.format(CHECK_PM_CMD, EXPECTED_RES);
-            idevice.executeShellCommand(cmd, receiver, timeout, TimeUnit.MILLISECONDS);
-            if (!EXPECTED_RES.equals(receiver.getOutput().trim())) {
-                CLog.i("No support for Framework, creating a native device. "
-                        + "output: %s", receiver.getOutput());
-                return false;
-            }
+            CLog.w("Could not determine the framework support for '%s' after retries, assuming "
+                    + "framework support.", idevice.getSerialNumber());
         } catch (TimeoutException | AdbCommandRejectedException | ShellCommandUnresponsiveException
                 | IOException e) {
             CLog.w("Exception during checkFrameworkSupport, assuming True: '%s' with device: %s",
@@ -118,6 +135,14 @@ public class ManagedTestDeviceFactory implements IManagedTestDeviceFactory {
         }
         // We default to support for framework to get same behavior as before.
         return true;
+    }
+
+    /**
+     * Return the default {@link IRunUtil} instance.
+     * Exposed for testing.
+     */
+    protected IRunUtil getRunUtil() {
+        return RunUtil.getDefault();
     }
 
     /**
