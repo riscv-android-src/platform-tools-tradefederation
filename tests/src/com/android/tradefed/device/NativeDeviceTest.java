@@ -777,11 +777,28 @@ public class NativeDeviceTest extends TestCase {
         // FIXME: this isn't actually causing a DeviceNotAvailableException to be thrown
         mMockRecovery.recoverDevice(EasyMock.eq(mMockStateMonitor), EasyMock.eq(false));
         EasyMock.expectLastCall().andThrow(new DeviceNotAvailableException());
-
-        EasyMock.replay(mMockIDevice);
-        EasyMock.replay(mMockRecovery);
+        EasyMock.replay(mMockRecovery, mMockIDevice);
         assertEquals(expectedOutput, StreamUtil.getStringFromStream(
                 mTestDevice.getBugreport().createInputStream()));
+    }
+
+    public void testGetBugreport_compatibility_deviceUnavail() throws Exception {
+        mTestDevice = new TestableAndroidNativeDevice() {
+            @Override
+            public void executeShellCommand(
+                    String command, IShellOutputReceiver receiver,
+                    long maxTimeToOutputShellResponse, TimeUnit timeUnit, int retryAttempts)
+                            throws DeviceNotAvailableException {
+                throw new DeviceNotAvailableException();
+            }
+            @Override
+            public int getApiLevel() throws DeviceNotAvailableException {
+                return 24;
+            }
+        };
+        EasyMock.replay(mMockRecovery, mMockIDevice);
+        assertNull(mTestDevice.getBugreport());
+        EasyMock.verify(mMockRecovery, mMockIDevice);
     }
 
     /**
