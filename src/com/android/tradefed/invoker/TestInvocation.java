@@ -605,8 +605,9 @@ public class TestInvocation implements ITestInvocation {
                 // Clean up host.
                 doCleanUp(config, context, exception);
                 for (ITestDevice device : context.getDevices()) {
-                    reportLogs(device, listener, config.getLogOutput());
+                    reportLogs(device, listener);
                 }
+                reportHostLog(listener, config.getLogOutput());
                 elapsedTime = System.currentTimeMillis() - startTime;
                 if (!resumed) {
                     listener.invocationEnded(elapsedTime);
@@ -822,10 +823,8 @@ public class TestInvocation implements ITestInvocation {
         }
     }
 
-    private void reportLogs(ITestDevice device, ITestInvocationListener listener,
-            ILeveledLogOutput logger) {
+    private void reportLogs(ITestDevice device, ITestInvocationListener listener) {
         InputStreamSource logcatSource = null;
-        InputStreamSource globalLogSource = logger.getLog();
         InputStreamSource emulatorOutput = null;
         if (device != null) {
             logcatSource = device.getLogcat();
@@ -833,15 +832,12 @@ public class TestInvocation implements ITestInvocation {
                 emulatorOutput = device.getEmulatorOutput();
             }
         }
-
         if (logcatSource != null) {
             listener.testLog(DEVICE_LOG_NAME, LogDataType.LOGCAT, logcatSource);
         }
         if (emulatorOutput != null) {
             listener.testLog(EMULATOR_LOG_NAME, LogDataType.TEXT, emulatorOutput);
         }
-        listener.testLog(TRADEFED_LOG_NAME, LogDataType.TEXT, globalLogSource);
-
         // Clean up after our ISSen
         if (logcatSource != null) {
             logcatSource.cancel();
@@ -849,6 +845,12 @@ public class TestInvocation implements ITestInvocation {
         if (emulatorOutput != null) {
             emulatorOutput.cancel();
         }
+
+    }
+
+    private void reportHostLog(ITestInvocationListener listener, ILeveledLogOutput logger) {
+        InputStreamSource globalLogSource = logger.getLog();
+        listener.testLog(TRADEFED_LOG_NAME, LogDataType.TEXT, globalLogSource);
         globalLogSource.cancel();
     }
 
@@ -1028,8 +1030,9 @@ public class TestInvocation implements ITestInvocation {
             // don't want to use #reportFailure, since that will call buildNotTested
             listener.invocationFailed(e);
             for (ITestDevice device : context.getDevices()) {
-                reportLogs(device, listener, config.getLogOutput());
+                reportLogs(device, listener);
             }
+            reportHostLog(listener, config.getLogOutput());
             listener.invocationEnded(0);
             return;
         } catch (IOException e) {
