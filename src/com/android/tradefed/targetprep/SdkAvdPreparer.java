@@ -120,6 +120,7 @@ public class SdkAvdPreparer implements ITargetPreparer, IHostCleaner {
 
     private final IRunUtil mRunUtil;
     private IDeviceManager mDeviceManager;
+    private ITestDevice mTestDevice;
 
     private File mSdkHome = null;
 
@@ -149,6 +150,7 @@ public class SdkAvdPreparer implements ITargetPreparer, IHostCleaner {
             DeviceNotAvailableException, BuildError {
         Assert.assertTrue("Provided build is not a ISdkBuildInfo",
                 buildInfo instanceof ISdkBuildInfo);
+        mTestDevice = device;
         ISdkBuildInfo sdkBuildInfo = (ISdkBuildInfo)buildInfo;
         launchEmulatorForAvd(sdkBuildInfo, device, createAvd(sdkBuildInfo));
     }
@@ -187,7 +189,8 @@ public class SdkAvdPreparer implements ITargetPreparer, IHostCleaner {
             CLog.w("Emulator %s is already running, killing", device.getSerialNumber());
             getDeviceManager().killEmulator(device);
         } else if (!device.getIDevice().isEmulator()) {
-            throw new TargetSetupError("Invalid stub device, it is not of type emulator");
+            throw new TargetSetupError("Invalid stub device, it is not of type emulator",
+                    device.getDeviceDescriptor());
         }
 
         mRunUtil.setEnvVariable("ANDROID_SDK_ROOT", sdkBuild.getSdkDir().getAbsolutePath());
@@ -204,7 +207,8 @@ public class SdkAvdPreparer implements ITargetPreparer, IHostCleaner {
         if (port == null) {
             // Serial number is not in expected format <type>-<consolePort> as defined by ddmlib
             throw new TargetSetupError(String.format(
-                    "Failed to determine emulator port for %s", device.getSerialNumber()));
+                    "Failed to determine emulator port for %s", device.getSerialNumber()),
+                    device.getDeviceDescriptor());
         }
         emulatorArgs.add("-port");
         emulatorArgs.add(port.toString());
@@ -233,14 +237,14 @@ public class SdkAvdPreparer implements ITargetPreparer, IHostCleaner {
                 emulatorArgs.add(tokens[0]);
             } else if (tokens.length == 2) {
                 if (!tokens[0].startsWith("-")) {
-                    throw new TargetSetupError(String.format(
-                            "The emulator arg '%s' is invalid.", arg));
+                    throw new TargetSetupError(String.format("The emulator arg '%s' is invalid.",
+                            arg), device.getDeviceDescriptor());
                 }
                 emulatorArgs.add(tokens[0]);
                 emulatorArgs.add(tokens[1]);
             } else {
                 throw new TargetSetupError(String.format(
-                        "The emulator arg '%s' is invalid.", arg));
+                        "The emulator arg '%s' is invalid.", arg), device.getDeviceDescriptor());
             }
         }
 
@@ -259,7 +263,7 @@ public class SdkAvdPreparer implements ITargetPreparer, IHostCleaner {
             // the wrong emulator launched. Treat as a BuildError
             throw new BuildError(String.format(
                     "Emulator booted with incorrect avd name '%s'. Expected: '%s'.",
-                    device.getIDevice().getAvdName(), avd));
+                    device.getIDevice().getAvdName(), avd), device.getDeviceDescriptor());
         }
     }
 
@@ -306,12 +310,12 @@ public class SdkAvdPreparer implements ITargetPreparer, IHostCleaner {
             throw new TargetSetupError(String.format(
                     "Unable to get list of SDK targets using %s. Result %s. stdout: %s, err: %s",
                     sdkBuild.getAndroidToolPath(), result.getStatus(), result.getStdout(),
-                    result.getStderr()));
+                    result.getStderr()), mTestDevice.getDeviceDescriptor());
         }
         String[] targets = result.getStdout().split("\n");
         if (result.getStdout().trim().isEmpty() || targets.length == 0) {
             throw new TargetSetupError(String.format("No targets found in SDK %s.",
-                    sdkBuild.getSdkDir().getAbsolutePath()));
+                    sdkBuild.getSdkDir().getAbsolutePath()), mTestDevice.getDeviceDescriptor());
         }
         return targets;
     }
@@ -333,7 +337,8 @@ public class SdkAvdPreparer implements ITargetPreparer, IHostCleaner {
             // store avds etc in tmp location, and clean up on teardown
             mRunUtil.setEnvVariable("ANDROID_SDK_HOME", mSdkHome.getAbsolutePath());
         } catch (IOException e) {
-            throw new TargetSetupError("Failed to create sdk home");
+            throw new TargetSetupError("Failed to create sdk home",
+                    mTestDevice.getDeviceDescriptor());
         }
     }
 
@@ -355,7 +360,7 @@ public class SdkAvdPreparer implements ITargetPreparer, IHostCleaner {
                 }
             }
             throw new TargetSetupError(String.format("Could not find target %s in sdk",
-                    mTargetName));
+                    mTargetName), mTestDevice.getDeviceDescriptor());
         }
         // just return last target
         return targets[targets.length - 1];
@@ -401,7 +406,7 @@ public class SdkAvdPreparer implements ITargetPreparer, IHostCleaner {
             // treat as BuildError
             throw new BuildError(String.format(
                     "Unable to create avd for target '%s'. stderr: '%s'", target,
-                    result.getStderr()));
+                    result.getStderr()), mTestDevice.getDeviceDescriptor());
         }
 
         // Further customise hardware options after AVD was created
@@ -446,7 +451,8 @@ public class SdkAvdPreparer implements ITargetPreparer, IHostCleaner {
                         result.getStdout());
                 // treat as TargetSetupError
                 throw new TargetSetupError(String.format(
-                        "Unable to add hardware option to AVD. stderr: '%s'", result.getStderr()));
+                        "Unable to add hardware option to AVD. stderr: '%s'", result.getStderr()),
+                        mTestDevice.getDeviceDescriptor());
             }
         }
     }
@@ -489,7 +495,8 @@ public class SdkAvdPreparer implements ITargetPreparer, IHostCleaner {
             }
         }
         throw new DeviceFailedToBootError(
-                String.format("Emulator for avd '%s' failed to boot.", avd));
+                String.format("Emulator for avd '%s' failed to boot.", avd),
+                device.getDeviceDescriptor());
     }
 
     /**

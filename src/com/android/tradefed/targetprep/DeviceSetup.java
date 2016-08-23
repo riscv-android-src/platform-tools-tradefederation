@@ -372,11 +372,11 @@ public class DeviceSetup implements ITargetPreparer, ITargetCleaner {
 
         if (!device.enableAdbRoot()) {
             throw new TargetSetupError(String.format("Failed to enable adb root on %s",
-                    device.getSerialNumber()));
+                    device.getSerialNumber()), device.getDeviceDescriptor());
         }
 
         // Convert deprecated options into current options
-        processDeprecatedOptions();
+        processDeprecatedOptions(device);
         // Convert options into settings and run commands
         processOptions(device);
         // Change system props (will reboot device)
@@ -438,11 +438,11 @@ public class DeviceSetup implements ITargetPreparer, ITargetCleaner {
      * </p>
      * @throws TargetSetupError if there is a conflict
      */
-    public void processDeprecatedOptions() throws TargetSetupError {
+    public void processDeprecatedOptions(ITestDevice device) throws TargetSetupError {
         if (mDeprecatedMinExternalStoreSpace != DEFAULT_MIN_EXTERNAL_STORAGE_KB) {
             if (mMinExternalStorageKb != DEFAULT_MIN_EXTERNAL_STORAGE_KB) {
                 throw new TargetSetupError("Deprecated option min-external-store-space conflicts " +
-                        "with option min-external-storage-kb");
+                        "with option min-external-storage-kb", device.getDeviceDescriptor());
             }
             mMinExternalStorageKb = mDeprecatedMinExternalStoreSpace;
         }
@@ -450,7 +450,7 @@ public class DeviceSetup implements ITargetPreparer, ITargetCleaner {
         if (mDeprecatedSetAudioSilent != DEFAULT_DISABLE_AUDIO) {
             if (mDisableAudio != DEFAULT_DISABLE_AUDIO) {
                 throw new TargetSetupError("Deprecated option audio-silent conflicts with " +
-                        "option disable-audio");
+                        "option disable-audio", device.getDeviceDescriptor());
             }
             mDisableAudio = mDeprecatedSetAudioSilent;
         }
@@ -458,7 +458,7 @@ public class DeviceSetup implements ITargetPreparer, ITargetCleaner {
         if (!mDeprecatedSetProps.isEmpty()) {
             if (!mSetProps.isEmpty()) {
                 throw new TargetSetupError("Deprecated option setprop conflicts with option " +
-                        "set-property ");
+                        "set-property ", device.getDeviceDescriptor());
             }
             for (String prop : mDeprecatedSetProps) {
                 String[] parts = prop.split("=", 2);
@@ -502,7 +502,7 @@ public class DeviceSetup implements ITargetPreparer, ITargetCleaner {
 
         if (mScreenBrightness != null && BinaryState.ON.equals(mScreenAdaptiveBrightness)) {
             throw new TargetSetupError("Option screen-brightness cannot be set when " +
-                    "screen-adaptive-brightness is set to ON");
+                    "screen-adaptive-brightness is set to ON", device.getDeviceDescriptor());
         }
 
         setSettingForBinaryState(mScreenAdaptiveBrightness, mSystemSettings,
@@ -633,7 +633,7 @@ public class DeviceSetup implements ITargetPreparer, ITargetCleaner {
         boolean result = device.pushString(sb.toString(), "/data/local.prop");
         if (!result) {
             throw new TargetSetupError(String.format("Failed to push /data/local.prop to %s",
-                    device.getSerialNumber()));
+                    device.getSerialNumber()), device.getDeviceDescriptor());
         }
         // Set reasonable permissions for /data/local.prop
         device.executeShellCommand("chmod 644 /data/local.prop");
@@ -695,7 +695,7 @@ public class DeviceSetup implements ITargetPreparer, ITargetCleaner {
 
         if (device.getApiLevel() < 22) {
             throw new TargetSetupError(String.format("Changing setting not supported on %s, " +
-                    "must be API 22+", device.getSerialNumber()));
+                    "must be API 22+", device.getSerialNumber()), device.getDeviceDescriptor());
         }
 
         // Special case airplane mode since it needs to be set before other connectivity settings
@@ -780,7 +780,7 @@ public class DeviceSetup implements ITargetPreparer, ITargetCleaner {
             if (!device.connectToWifiNetwork(mWifiSsid, mWifiPsk)) {
                 throw new TargetSetupError(String.format(
                         "Failed to connect to wifi network %s on %s", mWifiSsid,
-                        device.getSerialNumber()));
+                        device.getSerialNumber()), device.getDeviceDescriptor());
             }
         }
     }
@@ -800,12 +800,14 @@ public class DeviceSetup implements ITargetPreparer, ITargetCleaner {
 
         if (!mLocalDataFile.exists() || !mLocalDataFile.isDirectory()) {
             throw new TargetSetupError(String.format(
-                    "local-data-path %s is not a directory", mLocalDataFile.getAbsolutePath()));
+                    "local-data-path %s is not a directory", mLocalDataFile.getAbsolutePath()),
+                    device.getDeviceDescriptor());
         }
         String fullRemotePath = device.getIDevice().getMountPoint(IDevice.MNT_EXTERNAL_STORAGE);
         if (fullRemotePath == null) {
             throw new TargetSetupError(String.format(
-                    "failed to get external storage path on device %s", device.getSerialNumber()));
+                    "failed to get external storage path on device %s", device.getSerialNumber()),
+                    device.getDeviceDescriptor());
         }
         if (mRemoteDataPath != null) {
             fullRemotePath = String.format("%s/%s", fullRemotePath, mRemoteDataPath);
@@ -815,7 +817,8 @@ public class DeviceSetup implements ITargetPreparer, ITargetCleaner {
             // TODO: get exact error code and respond accordingly
             throw new TargetSetupError(String.format(
                     "failed to sync test data from local-data-path %s to %s on device %s",
-                    mLocalDataFile.getAbsolutePath(), fullRemotePath, device.getSerialNumber()));
+                    mLocalDataFile.getAbsolutePath(), fullRemotePath, device.getSerialNumber()),
+                    device.getDeviceDescriptor());
         }
     }
 

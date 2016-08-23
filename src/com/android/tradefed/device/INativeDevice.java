@@ -20,6 +20,7 @@ import com.android.ddmlib.IShellOutputReceiver;
 import com.android.ddmlib.testrunner.IRemoteAndroidTestRunner;
 import com.android.ddmlib.testrunner.ITestRunListener;
 import com.android.tradefed.build.IBuildInfo;
+import com.android.tradefed.command.remote.DeviceDescriptor;
 import com.android.tradefed.device.ITestDevice.MountPointInfo;
 import com.android.tradefed.device.ITestDevice.RecoveryMode;
 import com.android.tradefed.log.ITestLogger;
@@ -1034,4 +1035,10 @@ public interface INativeDevice {
      * Return true if the device is headless (no screen), false otherwise.
      */
     public boolean isHeadless() throws DeviceNotAvailableException;
+
+    /**
+     * Return a {@link DeviceDescriptor} from the device information to get info on it without
+     * passing the actual device object.
+     */
+    public DeviceDescriptor getDeviceDescriptor();
 }

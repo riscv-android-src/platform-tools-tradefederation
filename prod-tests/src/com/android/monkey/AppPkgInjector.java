@@ -73,18 +73,19 @@ public class AppPkgInjector implements ITargetPreparer, IConfigurationReceiver {
             if (aapt == null) {
                 // throw a build error because typically aapt parse errors are issues with the apk
                 throw new BuildError(String.format("aapt parse of %s failed",
-                        apkFile.getFile().getAbsolutePath()));
+                        apkFile.getFile().getAbsolutePath()), device.getDeviceDescriptor());
             }
             String pkgName = aapt.getPackageName();
             if (pkgName == null) {
                 // this should never happen
                 throw new TargetSetupError(String.format("Failed to parse package name from %s",
-                        apkFile.getFile().getAbsolutePath()));
+                        apkFile.getFile().getAbsolutePath()), device.getDeviceDescriptor());
             }
             try {
                 mConfig.injectOptionValue("package", pkgName);
             } catch (ConfigurationException e) {
-                throw new TargetSetupError("Failed to inject --package option.", e);
+                throw new TargetSetupError("Failed to inject --package option.", e,
+                        device.getDeviceDescriptor());
             }
         }
     }

@@ -108,7 +108,7 @@ public class AppSetup implements ITargetPreparer, ITargetCleaner {
                     if (aaptParser == null) {
                         throw new TargetSetupError(
                                 String.format("Failed to extract info from '%s' using aapt",
-                                        apkFile.toString()));
+                                        apkFile.toString()), device.getDeviceDescriptor());
                     }
                     if (device.getApiLevel() < aaptParser.getSdkVersion()) {
                         CLog.w("Skipping installing apk %s on device %s because " +
@@ -126,10 +126,11 @@ public class AppSetup implements ITargetPreparer, ITargetCleaner {
                     // devicenotavail depending on error code
                     throw new BuildError(String.format(
                             "Failed to install %s on %s. Reason: %s",
-                            apkFile.getFile().getName(), device.getSerialNumber(), result));
+                            apkFile.getFile().getName(), device.getSerialNumber(), result),
+                            device.getDeviceDescriptor());
                 }
                 if (mUninstall && !mUninstallAll) {
-                    addPackageNameToUninstall(apkFile.getFile());
+                    addPackageNameToUninstall(apkFile.getFile(), device);
                 }
             }
         }
@@ -145,15 +146,17 @@ public class AppSetup implements ITargetPreparer, ITargetCleaner {
        }
     }
 
-    private void addPackageNameToUninstall(File apkFile) throws TargetSetupError {
+    private void addPackageNameToUninstall(File apkFile, ITestDevice device)
+            throws TargetSetupError {
         AaptParser aaptParser = AaptParser.parse(apkFile);
         if (aaptParser == null) {
             throw new TargetSetupError(String.format("Failed to extract info from '%s' using aapt",
-                    apkFile.getAbsolutePath()));
+                    apkFile.getAbsolutePath()), device.getDeviceDescriptor());
         }
         if (aaptParser.getPackageName() == null) {
             throw new TargetSetupError(String.format(
-                    "Failed to find package name for '%s' using aapt", apkFile.getAbsolutePath()));
+                    "Failed to find package name for '%s' using aapt", apkFile.getAbsolutePath()),
+                    device.getDeviceDescriptor());
         }
         mInstalledPkgs.add(aaptParser.getPackageName());
     }

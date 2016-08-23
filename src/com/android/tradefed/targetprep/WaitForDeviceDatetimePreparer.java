@@ -58,7 +58,8 @@ public class WaitForDeviceDatetimePreparer implements ITargetPreparer {
             BuildError, DeviceNotAvailableException {
         if (!waitForDeviceDatetime(device, mForceDatetime)) {
             if (mForceSetupError) {
-                throw new TargetSetupError("datetime on device is incorrect after wait timeout");
+                throw new TargetSetupError("datetime on device is incorrect after wait timeout",
+                        device.getDeviceDescriptor());
             } else {
                 CLog.w("datetime on device is incorrect after wait timeout.");
             }

@@ -16,6 +16,8 @@
 
 package com.android.monkey;
 
+import com.google.common.base.Throwables;
+
 import com.android.ddmlib.testrunner.TestIdentifier;
 import com.android.loganalysis.item.AnrItem;
 import com.android.loganalysis.item.BugreportItem;
@@ -31,7 +33,6 @@ import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.InputStreamSource;
 import com.android.tradefed.result.LogDataType;
 import com.android.tradefed.result.ResultForwarder;
-import com.google.common.base.Throwables;
 
 import junit.framework.Assert;
 
@@ -42,7 +43,7 @@ import java.util.HashMap;
 import java.util.Map;
 
 /**
- * A {@link ResultForwarded} that intercepts monkey and bug report logs, extracts relevant metrics
+ * A {@link ResultForwarder} that intercepts monkey and bug report logs, extracts relevant metrics
  * from them using brillopad, and forwards the results to the specified
  * {@link ITestInvocationListener}.
  */

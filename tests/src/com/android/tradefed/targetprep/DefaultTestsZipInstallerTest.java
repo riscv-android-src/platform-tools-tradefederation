@@ -54,7 +54,7 @@ public class DefaultTestsZipInstallerTest extends TestCase {
         ArrayList<String> skipThis = new ArrayList<String>(Arrays.asList(SKIP_THIS));
         mZipInstaller = new DefaultTestsZipInstaller(skipThis) {
             @Override
-            File[] getTestsZipDataFiles(File hostDir) {
+            File[] getTestsZipDataFiles(File hostDir, ITestDevice device) {
                 return new File[] { new File(TEST_STRING) };
             }
 
@@ -76,6 +76,7 @@ public class DefaultTestsZipInstallerTest extends TestCase {
         EasyMock.expect(mMockDevice.getSerialNumber()).andStubReturn(TEST_STRING);
         EasyMock.expect(mMockDevice.getProductType()).andStubReturn(TEST_STRING);
         EasyMock.expect(mMockDevice.getBuildId()).andStubReturn("1");
+        EasyMock.expect(mMockDevice.getDeviceDescriptor()).andStubReturn(null);
         mDeviceBuild = new DeviceBuildInfo("1", TEST_STRING, TEST_STRING);
     }
 

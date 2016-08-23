@@ -81,7 +81,7 @@ public class InstallApkSetup implements ITargetPreparer {
         for (File apk : mApkPaths) {
             if (!apk.exists()) {
                 throw new TargetSetupError(String.format("%s does not exist",
-                        apk.getAbsolutePath()));
+                        apk.getAbsolutePath()), device.getDeviceDescriptor());
             }
             Log.i(LOG_TAG, String.format("Installing %s on %s", apk.getName(),
                     device.getSerialNumber()));

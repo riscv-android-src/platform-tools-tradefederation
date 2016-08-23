@@ -21,6 +21,8 @@ import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.build.IDeviceBuildInfo;
 import com.android.tradefed.build.IKernelBuildInfo;
 import com.android.tradefed.build.KernelDeviceBuildInfo;
+import com.android.tradefed.command.remote.DeviceDescriptor;
+import com.android.tradefed.device.DeviceAllocationState;
 import com.android.tradefed.device.DeviceUnresponsiveException;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.util.CommandResult;
@@ -67,6 +69,7 @@ public class KernelFlashPreparerTest extends TestCase {
         mMockDevice = EasyMock.createMock(ITestDevice.class);
         EasyMock.expect(mMockDevice.getSerialNumber()).andStubReturn("serial");
         EasyMock.expect(mMockDevice.getBuildId()).andStubReturn("0");
+        EasyMock.expect(mMockDevice.getDeviceDescriptor()).andStubReturn(null);
 
         mMockDeviceBuildInfo = EasyMock.createMock(IDeviceBuildInfo.class);
         EasyMock.expect(mMockDeviceBuildInfo.getRamdiskFile()).andStubReturn(mRamdisk);
@@ -200,7 +203,9 @@ public class KernelFlashPreparerTest extends TestCase {
                 mBootImg.getAbsolutePath())).andReturn(new CommandResult());
         mMockDevice.reboot();
         EasyMock.expectLastCall().andThrow(new DeviceUnresponsiveException());
-
+        EasyMock.expect(mMockDevice.getDeviceDescriptor()).andReturn(new DeviceDescriptor("SERIAL",
+                false, DeviceAllocationState.Available, "unknown", "unknown", "unknown", "unknown",
+                "unknown"));
         EasyMock.replay(mMockDevice, mMockDeviceBuildInfo, mMockKernelBuildInfo);
         try {
             mFlashPreparer.setUp(mMockDevice, mBuildInfo);

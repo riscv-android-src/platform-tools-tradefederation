@@ -41,7 +41,8 @@ public class ConnectionChecker implements ITargetPreparer {
         long timeout = mTimeout * 1000;
         while (!device.checkConnectivity()) {
             if (System.currentTimeMillis() - startTime > timeout) {
-                throw new TargetSetupError("Device did not connect to the network");
+                throw new TargetSetupError("Device did not connect to the network",
+                        device.getDeviceDescriptor());
             }
             RunUtil.getDefault().sleep(mInterval * 1000);
         }

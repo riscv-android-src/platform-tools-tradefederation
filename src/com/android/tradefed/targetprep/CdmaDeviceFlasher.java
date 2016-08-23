@@ -165,7 +165,8 @@ public class CdmaDeviceFlasher extends FastbootDeviceFlasher {
                 flashNamedPartition(device, updateDir, "recovery");
                 flashNamedPartition(device, updateDir, "system");
             } catch (IOException e) {
-                throw new TargetSetupError(String.format("Got IOException: %s", e.getMessage()));
+                throw new TargetSetupError(String.format("Got IOException: %s", e.getMessage()),
+                        device.getDeviceDescriptor());
             } finally {
                 if (updateDir != null) {
                     FileUtil.recursiveDelete(updateDir);

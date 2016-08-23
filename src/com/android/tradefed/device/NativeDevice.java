@@ -31,6 +31,7 @@ import com.android.ddmlib.testrunner.IRemoteAndroidTestRunner;
 import com.android.ddmlib.testrunner.ITestRunListener;
 import com.android.ddmlib.testrunner.RemoteAndroidTestRunner;
 import com.android.tradefed.build.IBuildInfo;
+import com.android.tradefed.command.remote.DeviceDescriptor;
 import com.android.tradefed.log.ITestLogger;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.result.ByteArrayInputStreamSource;
@@ -3560,5 +3561,30 @@ public class NativeDevice implements IManagedTestDevice {
         } catch (DeviceNotAvailableException e) {
             throw new RuntimeException("Device became unavailable while checking API level", e);
         }
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public DeviceDescriptor getDeviceDescriptor() {
+        IDeviceSelection selector = new DeviceSelectionOptions();
+        IDevice idevice = getIDevice();
+        return new DeviceDescriptor(idevice.getSerialNumber(),
+                idevice instanceof StubDevice,
+                getAllocationState(),
+                getDisplayString(selector.getDeviceProductType(idevice)),
+                getDisplayString(selector.getDeviceProductVariant(idevice)),
+                getDisplayString(idevice.getProperty("ro.build.version.sdk")),
+                getDisplayString(idevice.getProperty("ro.build.id")),
+                getDisplayString(selector.getBatteryLevel(idevice)),
+                getDeviceClass());
+    }
+
+    /**
+     * Return the displayable string for given object
+     */
+    private String getDisplayString(Object o) {
+        return o == null ? "unknown" : o.toString();
     }
 }

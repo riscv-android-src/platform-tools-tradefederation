@@ -17,6 +17,7 @@
 package com.android.tradefed.targetprep;
 
 import com.android.tradefed.build.IDeviceBuildInfo;
+import com.android.tradefed.command.remote.DeviceDescriptor;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.log.LogUtil.CLog;
@@ -186,11 +187,12 @@ public class FastbootDeviceFlasher implements IDeviceFlasher  {
      */
     protected void downloadFlashingResources(ITestDevice device, IDeviceBuildInfo localBuild)
             throws TargetSetupError, DeviceNotAvailableException {
-        IFlashingResourcesParser resourceParser = createFlashingResourcesParser(localBuild);
+        IFlashingResourcesParser resourceParser = createFlashingResourcesParser(localBuild,
+                device.getDeviceDescriptor());
 
         if (resourceParser.getRequiredBoards() == null) {
             throw new TargetSetupError(String.format("Build %s is missing required board info.",
-                    localBuild.getDeviceBuildId()));
+                    localBuild.getDeviceBuildId()), device.getDeviceDescriptor());
         }
         String deviceProductType = device.getProductType();
         if (deviceProductType == null) {
@@ -234,7 +236,7 @@ public class FastbootDeviceFlasher implements IDeviceFlasher  {
         if (!resourceParser.getRequiredBoards().contains(deviceProductType)) {
             throw new TargetSetupError(String.format("Device %s is %s. Expected %s",
                     device.getSerialNumber(), deviceProductType,
-                    resourceParser.getRequiredBoards()));
+                    resourceParser.getRequiredBoards()), device.getDeviceDescriptor());
         }
     }
 
@@ -257,12 +259,18 @@ public class FastbootDeviceFlasher implements IDeviceFlasher  {
      * Exposed for unit testing.
      *
      * @param localBuild the {@link IDeviceBuildInfo} to parse
+     * @param descriptor the descriptor of the device being flashed.
      * @return a {@link IFlashingResourcesParser} created by the factory method.
      * @throws TargetSetupError
      */
-    protected IFlashingResourcesParser createFlashingResourcesParser(IDeviceBuildInfo localBuild)
-            throws TargetSetupError {
-        return new FlashingResourcesParser(localBuild.getDeviceImageFile());
+    protected IFlashingResourcesParser createFlashingResourcesParser(IDeviceBuildInfo localBuild,
+            DeviceDescriptor descriptor) throws TargetSetupError {
+        try {
+            return new FlashingResourcesParser(localBuild.getDeviceImageFile());
+        } catch (TargetSetupError e) {
+            // Rethrow with descriptor since FlashingResourceParser doesn't have it.
+            throw new TargetSetupError(e.getMessage(), e, descriptor);
+        }
     }
 
     /**
@@ -458,7 +466,8 @@ public class FastbootDeviceFlasher implements IDeviceFlasher  {
                 userdataImg = ZipUtil.extractFileFromZip(
                         new ZipFile(deviceBuild.getDeviceImageFile()), "userdata.img");
             } catch (IOException ioe) {
-                throw new TargetSetupError("failed to extract userdata.img from image file", ioe);
+                throw new TargetSetupError("failed to extract userdata.img from image file", ioe,
+                        device.getDeviceDescriptor());
             }
             CLog.i("Flashing %s with userdata %s", device.getSerialNumber(), userdataImg);
             flashPartition(device, userdataImg, "userdata");
@@ -572,7 +581,8 @@ public class FastbootDeviceFlasher implements IDeviceFlasher  {
             }
         }
         throw new TargetSetupError(String.format(
-                "Could not find version for '%s' after %d retry attempts", imageName, attempts));
+                "Could not find version for '%s' after %d retry attempts", imageName, attempts),
+                device.getDeviceDescriptor());
     }
 
     /**
@@ -638,7 +648,8 @@ public class FastbootDeviceFlasher implements IDeviceFlasher  {
         if (result.getStatus() != CommandStatus.SUCCESS || result.getStderr().contains("FAILED")) {
             throw new TargetSetupError(String.format(
                     "fastboot command %s failed in device %s. stdout: %s, stderr: %s", cmdArgs[0],
-                    device.getSerialNumber(), result.getStdout(), result.getStderr()));
+                    device.getSerialNumber(), result.getStdout(), result.getStderr()),
+                    device.getDeviceDescriptor());
         }
         if (result.getStderr().length() > 0) {
             return result.getStderr();

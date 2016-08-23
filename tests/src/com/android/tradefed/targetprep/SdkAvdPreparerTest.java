@@ -18,6 +18,8 @@ package com.android.tradefed.targetprep;
 import com.android.ddmlib.IDevice;
 import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.build.ISdkBuildInfo;
+import com.android.tradefed.command.remote.DeviceDescriptor;
+import com.android.tradefed.device.DeviceAllocationState;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.IDeviceManager;
 import com.android.tradefed.device.ITestDevice;
@@ -62,6 +64,7 @@ public class SdkAvdPreparerTest extends TestCase {
         EasyMock.expect(mMockBuildInfo.getSdkDir()).andStubReturn(new File("sdk"));
         EasyMock.expect(mMockDevice.getIDevice()).andStubReturn(mMockIDevice);
         EasyMock.expect(mMockDevice.getSerialNumber()).andStubReturn("serial");
+        EasyMock.expect(mMockDevice.getDeviceDescriptor()).andStubReturn(null);
     }
 
     /**
@@ -128,7 +131,9 @@ public class SdkAvdPreparerTest extends TestCase {
         EasyMock.expectLastCall().times(3);
         // expect an avd name == target name
         EasyMock.expect(mMockIDevice.getAvdName()).andReturn("").times(2);
-
+        EasyMock.expect(mMockDevice.getDeviceDescriptor()).andReturn(new DeviceDescriptor("SERIAL",
+                false, DeviceAllocationState.Available, "unknown", "unknown", "unknown", "unknown",
+                "unknown"));
         replayMocks();
         try {
             mPreparer.setUp(mMockDevice, mMockBuildInfo);
@@ -155,7 +160,9 @@ public class SdkAvdPreparerTest extends TestCase {
                 EasyMock.eq(mMockRunUtil), (List<String>)EasyMock.anyObject());
         EasyMock.expectLastCall().andThrow(new DeviceNotAvailableException());
         mMockDeviceManager.killEmulator(EasyMock.eq(mMockDevice));
-
+        EasyMock.expect(mMockDevice.getDeviceDescriptor()).andReturn(new DeviceDescriptor("SERIAL",
+                false, DeviceAllocationState.Available, "unknown", "unknown", "unknown", "unknown",
+                "unknown"));
         replayMocks();
         try {
             mPreparer.setUp(mMockDevice, mMockBuildInfo);
@@ -179,6 +186,9 @@ public class SdkAvdPreparerTest extends TestCase {
         result.setStdout("");
         result.setStderr("Error: avd cannot be created due to a mysterious error");
         setCreateAvdResponse(result);
+        EasyMock.expect(mMockDevice.getDeviceDescriptor()).andReturn(new DeviceDescriptor("SERIAL",
+                false, DeviceAllocationState.Available, "unknown", "unknown", "unknown", "unknown",
+                "unknown"));
         replayMocks();
         try {
             mPreparer.setUp(mMockDevice, mMockBuildInfo);

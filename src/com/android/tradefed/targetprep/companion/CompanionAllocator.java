@@ -44,7 +44,7 @@ public abstract class CompanionAllocator implements ITargetCleaner {
                 device, getCompanionDeviceSelectionOptions());
         if (companionDevice == null) {
             throw new TargetSetupError(String.format("failed to allocate companion device for %s",
-                    device.getSerialNumber()));
+                    device.getSerialNumber()), device.getDeviceDescriptor());
         }
     }
 

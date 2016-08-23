@@ -91,8 +91,8 @@ public class TestFilePushSetup implements ITargetPreparer {
      * @param fileName filename of artifacts to push
      * @return a {@link File} representing the physical file/path on host
      */
-    protected File getLocalPathForFilename(IBuildInfo buildInfo, String fileName)
-            throws TargetSetupError {
+    protected File getLocalPathForFilename(IBuildInfo buildInfo, String fileName,
+            ITestDevice device) throws TargetSetupError {
         List<File> dirs = new ArrayList<>();
         for (File dir : mAltDirs) {
             dirs.add(dir);
@@ -115,12 +115,13 @@ public class TestFilePushSetup implements ITargetPreparer {
         } else if (mAltDirBehavior == AltDirBehavior.OVERRIDE) {
             dirs.addAll(expandedTestDirs);
         } else {
-            throw new TargetSetupError("Missing handler for alt-dir-behavior: " + mAltDirBehavior);
+            throw new TargetSetupError("Missing handler for alt-dir-behavior: " + mAltDirBehavior,
+                    device.getDeviceDescriptor());
         }
         if (dirs.isEmpty()) {
             throw new TargetSetupError(
                     "Provided buildInfo does not contain a valid tests directory and no " +
-                    "alternative directories were provided");
+                    "alternative directories were provided", device.getDeviceDescriptor());
         }
 
         for (File dir : dirs) {
@@ -148,12 +149,12 @@ public class TestFilePushSetup implements ITargetPreparer {
         }
         int filePushed = 0;
         for (String fileName : mTestPaths) {
-            File localFile = getLocalPathForFilename(buildInfo, fileName);
+            File localFile = getLocalPathForFilename(buildInfo, fileName, device);
             if (localFile == null) {
                 if (mThrowIfNoFile) {
                     throw new TargetSetupError(String.format(
                             "Could not find test file %s directory in extracted tests.zip",
-                            fileName));
+                            fileName), device.getDeviceDescriptor());
                 } else {
                     continue;
                 }
@@ -170,7 +171,8 @@ public class TestFilePushSetup implements ITargetPreparer {
             filePushed++;
         }
         if (filePushed == 0) {
-            throw new TargetSetupError("No file is pushed from tests.zip");
+            throw new TargetSetupError("No file is pushed from tests.zip",
+                    device.getDeviceDescriptor());
         }
     }
 

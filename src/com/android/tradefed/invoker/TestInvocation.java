@@ -501,6 +501,7 @@ public class TestInvocation implements ITestInvocation {
         long elapsedTime = -1;
         Throwable exception = null;
         Throwable tearDownException = null;
+        ITestDevice badDevice = null;
 
         // TODO: Fix reporting on more than just first build info.
         IBuildInfo reportingBuildInfo = context.getBuildInfos().get(0);
@@ -511,11 +512,16 @@ public class TestInvocation implements ITestInvocation {
             prepareAndRun(config, context, listener);
         } catch (BuildError e) {
             exception = e;
-            // TODO: be specific on which build and device.
-            CLog.w("Build failed on device. Reason: %s", e.toString());
+            CLog.w("Build failed on device '%s'. Reason: %s", e.getDeviceDescriptor(),
+                    e.toString());
             bugreportName = BUILD_ERROR_BUGREPORT_NAME;
+            badDevice = context.getDeviceBySerial(e.getDeviceDescriptor().getSerial());
             if (e instanceof DeviceFailedToBootError) {
-                context.setRecoveryModeForAllDevices(RecoveryMode.NONE);
+                if (badDevice == null) {
+                    context.setRecoveryModeForAllDevices(RecoveryMode.NONE);
+                } else {
+                    badDevice.setRecoveryMode(RecoveryMode.NONE);
+                }
             }
             reportFailure(e, listener, config, context, rescheduler);
         } catch (TargetSetupError e) {
@@ -523,13 +529,14 @@ public class TestInvocation implements ITestInvocation {
             CLog.e("Caught exception while running invocation");
             CLog.e(e);
             bugreportName = TARGET_SETUP_ERROR_BUGREPORT_NAME;
+            badDevice = context.getDeviceBySerial(e.getDeviceDescriptor().getSerial());
             reportFailure(e, listener, config, context, rescheduler);
         } catch (DeviceNotAvailableException e) {
             exception = e;
             // log a warning here so its captured before reportLogs is called
             CLog.w("Invocation did not complete due to device %s becoming not available. " +
                     "Reason: %s", e.getSerial(), e.getMessage());
-            ITestDevice badDevice = context.getDeviceBySerial(e.getSerial());
+            badDevice = context.getDeviceBySerial(e.getSerial());
             if ((e instanceof DeviceUnresponsiveException) && badDevice != null
                     && TestDeviceState.ONLINE.equals(badDevice.getDeviceState())) {
                 // under certain cases it might still be possible to grab a bugreport
@@ -543,7 +550,9 @@ public class TestInvocation implements ITestInvocation {
             }
             // Upon reaching here after an exception, it is safe to assume that recovery
             // has already been attempted so we disable it to avoid re-entry during clean up.
-            badDevice.setRecoveryMode(RecoveryMode.NONE);
+            if (badDevice != null) {
+                badDevice.setRecoveryMode(RecoveryMode.NONE);
+            }
             throw e;
         } catch (RunInterruptedException e) {
             CLog.w("Invocation interrupted");
@@ -570,9 +579,14 @@ public class TestInvocation implements ITestInvocation {
                 }
             }
             if (bugreportName != null) {
-                // TODO: take bugreport only on the faulty device, or all in multi target preparer
-                // issues.
-                takeBugreport(context, listener, bugreportName);
+                if (badDevice == null) {
+                    for (ITestDevice device : context.getDevices()) {
+                        takeBugreport(device, listener, bugreportName);
+                    }
+                } else {
+                    // If we have identified a faulty device only take the bugreport on it.
+                    takeBugreport(badDevice, listener, bugreportName);
+                }
             }
             mStatus = "tearing down";
             try {
@@ -838,28 +852,25 @@ public class TestInvocation implements ITestInvocation {
         globalLogSource.cancel();
     }
 
-    private void takeBugreport(IInvocationContext context, ITestInvocationListener listener,
+    private void takeBugreport(ITestDevice device, ITestInvocationListener listener,
             String bugreportName) {
-        for (ITestDevice device : context.getDevices()) {
-            if (device == null) {
-                return;
+        if (device == null) {
+            return;
+        }
+        if (device.getIDevice() instanceof StubDevice) {
+            return;
+        }
+        InputStreamSource bugreport = device.getBugreport();
+        try {
+            if (bugreport != null) {
+                listener.testLog(String.format("%s_%s", bugreportName,
+                        device.getSerialNumber()), LogDataType.BUGREPORT, bugreport);
+            } else {
+                CLog.w("Error when collecting bugreport for device '%s'",
+                        device.getSerialNumber());
             }
-            if (device.getIDevice() instanceof StubDevice) {
-                return;
-            }
-
-            InputStreamSource bugreport = device.getBugreport();
-            try {
-                if (bugreport != null) {
-                    listener.testLog(String.format("%s_%s", bugreportName,
-                            device.getSerialNumber()), LogDataType.BUGREPORT, bugreport);
-                } else {
-                    CLog.w("Error when collecting bugreport for device '%s'",
-                            device.getSerialNumber());
-                }
-            } finally {
-                StreamUtil.cancel(bugreport);
-            }
+        } finally {
+            StreamUtil.cancel(bugreport);
         }
     }
 

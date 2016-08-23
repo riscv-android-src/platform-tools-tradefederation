@@ -18,12 +18,14 @@ package com.android.tradefed.targetprep;
 
 import static org.easymock.EasyMock.anyLong;
 import static org.easymock.EasyMock.anyObject;
+import static org.easymock.EasyMock.createMock;
 import static org.easymock.EasyMock.createNiceMock;
 import static org.easymock.EasyMock.expect;
 import static org.easymock.EasyMock.replay;
 
 import com.android.tradefed.build.BuildInfo;
 import com.android.tradefed.build.IBuildInfo;
+import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.util.CommandResult;
 import com.android.tradefed.util.CommandStatus;
 import com.android.tradefed.util.IRunUtil;
@@ -35,10 +37,13 @@ import java.io.File;
 public class PythonVirtualenvPreparerTest extends TestCase {
     private PythonVirtualenvPreparer mPreparer;
     private IRunUtil mMockRunUtil;
+    private ITestDevice mMockDevice;
 
     @Override
     public void setUp() throws Exception {
         mMockRunUtil = createNiceMock(IRunUtil.class);
+        mMockDevice = createMock(ITestDevice.class);
+        expect(mMockDevice.getSerialNumber()).andStubReturn("SERIAL");
         mPreparer = new PythonVirtualenvPreparer();
         mPreparer.mRunUtil = mMockRunUtil;
     }
@@ -50,7 +55,7 @@ public class PythonVirtualenvPreparerTest extends TestCase {
             .andReturn(new CommandResult(CommandStatus.SUCCESS));
         replay(mMockRunUtil);
         IBuildInfo buildInfo = new BuildInfo();
-        mPreparer.installDeps(buildInfo);
+        mPreparer.installDeps(buildInfo, mMockDevice);
         assertTrue(buildInfo.getFile("PYTHONPATH") != null);
     }
 
@@ -61,7 +66,7 @@ public class PythonVirtualenvPreparerTest extends TestCase {
                 new CommandResult(CommandStatus.SUCCESS));
         replay(mMockRunUtil);
         IBuildInfo buildInfo = new BuildInfo();
-        mPreparer.installDeps(buildInfo);
+        mPreparer.installDeps(buildInfo, mMockDevice);
         assertTrue(buildInfo.getFile("PYTHONPATH") != null);
     }
 
@@ -73,7 +78,7 @@ public class PythonVirtualenvPreparerTest extends TestCase {
         replay(mMockRunUtil);
         IBuildInfo buildInfo = new BuildInfo();
         try {
-            mPreparer.installDeps(buildInfo);
+            mPreparer.installDeps(buildInfo, mMockDevice);
             fail("installDeps succeeded despite a failed command");
         } catch (TargetSetupError e) {
             assertTrue(buildInfo.getFile("PYTHONPATH") == null);
@@ -88,7 +93,7 @@ public class PythonVirtualenvPreparerTest extends TestCase {
         replay(mMockRunUtil);
         IBuildInfo buildInfo = new BuildInfo();
         try {
-            mPreparer.installDeps(buildInfo);
+            mPreparer.installDeps(buildInfo, mMockDevice);
             fail("installDeps succeeded despite a failed command");
         } catch (TargetSetupError e) {
             assertTrue(buildInfo.getFile("PYTHONPATH") == null);
@@ -97,7 +102,7 @@ public class PythonVirtualenvPreparerTest extends TestCase {
 
     public void testInstallDeps_noDeps() throws Exception {
         BuildInfo buildInfo = new BuildInfo();
-        mPreparer.installDeps(buildInfo);
+        mPreparer.installDeps(buildInfo, mMockDevice);
         assertTrue(buildInfo.getFile("PYTHONPATH") == null);
     }
 }

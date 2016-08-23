@@ -43,7 +43,7 @@ public class CompanionTestAppInstallSetup extends TestAppInstallSetup {
         ITestDevice companion = CompanionDeviceTracker.getInstance().getCompanionDevice(device);
         if (companion == null) {
             throw new TargetSetupError(String.format("no companion device allocated for %s",
-                    device.getSerialNumber()));
+                    device.getSerialNumber()), device.getDeviceDescriptor());
         }
         super.setUp(companion, buildInfo);
     }
