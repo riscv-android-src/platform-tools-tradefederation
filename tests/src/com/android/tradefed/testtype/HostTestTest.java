@@ -415,6 +415,50 @@ public class HostTestTest extends TestCase {
     }
 
     /**
+     * Test for {@link HostTest#countTestCases()} with filtering on JUnit4 tests
+     */
+    public void testCountTestCasesJUnit4WithFiltering() throws Exception {
+        mHostTest.setClassName(Junit4Testclass.class.getName());
+        mHostTest.addIncludeFilter(
+                "com.android.tradefed.testtype.HostTestTest$Junit4Testclass#testPass5");
+        assertEquals("Incorrect test case count", 1, mHostTest.countTestCases());
+    }
+
+    /**
+     * Test for {@link HostTest#countTestCases()} with tests of varying JUnit versions
+     */
+    public void testCountTestCasesJUnitVersionMixed() throws Exception {
+        OptionSetter setter = new OptionSetter(mHostTest);
+        setter.setOptionValue("class", SuccessTestCase.class.getName()); // 2 tests
+        setter.setOptionValue("class", Junit4Testclass.class.getName()); // 2 tests
+        setter.setOptionValue("class", Junit4Suiteclass.class.getName()); // 4 tests
+        assertEquals("Incorrect test case count", 8, mHostTest.countTestCases());
+    }
+
+    /**
+     * Test for {@link HostTest#countTestCases()} with filtering on tests of varying JUnit versions
+     */
+    public void testCountTestCasesJUnitVersionMixedWithFiltering() throws Exception {
+        OptionSetter setter = new OptionSetter(mHostTest);
+        setter.setOptionValue("class", SuccessTestCase.class.getName()); // 2 tests
+        setter.setOptionValue("class", Junit4Testclass.class.getName()); // 2 tests
+        mHostTest.addIncludeFilter(
+                "com.android.tradefed.testtype.HostTestTest$SuccessTestCase#testPass");
+        mHostTest.addIncludeFilter(
+                "com.android.tradefed.testtype.HostTestTest$Junit4Testclass#testPass5");
+        assertEquals("Incorrect test case count", 2, mHostTest.countTestCases());
+    }
+
+    /**
+     * Test for {@link HostTest#countTestCases()} with annotation filtering
+     */
+    public void testCountTestCasesAnnotationFiltering() throws Exception {
+        mHostTest.setClassName(SuccessTestCase.class.getName());
+        mHostTest.addExcludeAnnotation("com.android.tradefed.testtype.HostTestTest$MyAnnotation2");
+        assertEquals("Incorrect test case count", 1, mHostTest.countTestCases());
+    }
+
+    /**
      * Test success case for {@link HostTest#run(ITestInvocationListener)}, where test to run is a
      * {@link TestCase} with annotation filtering.
      */

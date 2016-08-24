@@ -149,17 +149,24 @@ public class HostTest implements IDeviceTest, ITestFilterReceiver, ITestAnnotati
      * Return the number of test cases across all classes part of the tests
      */
     public int countTestCases() {
+        // Ensure filters are set in the helper
+        mFilterHelper.addAllIncludeAnnotation(mIncludeAnnotations);
+        mFilterHelper.addAllExcludeAnnotation(mExcludeAnnotations);
+
         int count = 0;
         for (Class<?> classObj : getClasses()) {
-            Object testObj = loadObject(classObj);
-            if (testObj instanceof Test) {
-                if (testObj instanceof TestCase
-                        && !(testObj instanceof DeviceTestCase)) {
-                    // wrap the test in a suite, because the JUnit TestCase.run implementation can
-                    // only run a single method
-                    count += new TestSuite(classObj).countTestCases();
-                } else {
-                    count += ((Test) testObj).countTestCases();
+            if (IRemoteTest.class.isAssignableFrom(classObj)
+                    || Test.class.isAssignableFrom(classObj)) {
+                TestSuite suite = collectTests(collectClasses(classObj));
+                count += suite.countTestCases();
+            } else if (hasJUnit4Annotation(classObj)) {
+                Request req = Request.aClass(classObj);
+                req = req.filterWith(new JUnit4TestFilter(mFilterHelper));
+                Runner checkRunner = req.getRunner();
+                // If no tests are remaining after filtering, checkRunner is ErrorReportingRunner.
+                // testCount() for ErrorReportingRunner returns 1, skip this classObj in this case.
+                if (!(checkRunner instanceof ErrorReportingRunner)) {
+                    count += checkRunner.testCount();
                 }
             } else {
                 count++;
