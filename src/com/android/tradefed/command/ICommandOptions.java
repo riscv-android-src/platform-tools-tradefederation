@@ -106,6 +106,12 @@ public interface ICommandOptions {
     public boolean takeBugreportOnInvocationEnded();
 
     /**
+     * Return true if a bugreportz should be taken instead of bugreport during the test invocation
+     * final bugreport.
+     */
+    public boolean takeBugreportzOnInvocationEnded();
+
+    /**
      * Return the invocation timeout specified. 0 if no timeout to be used.
      */
     public long getInvocationTimeout();

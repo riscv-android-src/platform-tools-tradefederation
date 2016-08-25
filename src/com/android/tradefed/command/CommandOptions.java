@@ -81,6 +81,10 @@ public class CommandOptions implements ICommandOptions {
             "take a bugreport when the test invocation has ended")
     private boolean mTakeBugreportOnInvocationEnded = false;
 
+    @Option(name = "bugreportz-on-invocation-ended", description = "Attempt to take a bugreportz "
+            + "instead of bugreport during the test invocation final bugreport.")
+    private boolean mTakeBugreportzOnInvocationEnded = false;
+
     @Option(name = "invocation-timeout", description =
             "the maximum time to wait for an invocation to terminate before attempting to force"
             + "stop it.", isTimeVal = true)
@@ -241,6 +245,14 @@ public class CommandOptions implements ICommandOptions {
     @Override
     public boolean takeBugreportOnInvocationEnded() {
         return mTakeBugreportOnInvocationEnded;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public boolean takeBugreportzOnInvocationEnded() {
+        return mTakeBugreportzOnInvocationEnded;
     }
 
     /**
