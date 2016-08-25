@@ -67,6 +67,7 @@ public class HermeticLaunchTest implements IRemoteTest, IDeviceTest {
     private static final String ACTIVITYSTART = "activityStart";
     private static final String LAYOUT = "layout";
     private static final String DRAW = "draw";
+    private static final String ONCREATE = "onCreate";
     private static final String TOTALLAUNCHTIME = "totalLaunchTime";
     private static final String LOGCAT_CMD = "logcat -v threadtime ActivityManager:* *:s";
     private static final String LAUNCH_PREFIX="^\\d*-\\d*\\s*\\d*:\\d*:\\d*.\\d*\\s*\\d*\\s*"
@@ -135,6 +136,7 @@ public class HermeticLaunchTest implements IRemoteTest, IDeviceTest {
             mSectionSet.add(ACTIVITYSTART);
             mSectionSet.add(LAYOUT);
             mSectionSet.add(DRAW);
+            mSectionSet.add(ONCREATE);
 
             //Remove if there is already existing atrace_logs folder
             mDevice.executeShellCommand("rm -rf ${EXTERNAL_STORAGE}/atrace_logs");
