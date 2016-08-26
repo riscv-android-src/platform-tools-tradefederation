@@ -87,6 +87,9 @@ public abstract class DeviceFlashPreparer implements ITargetCleaner {
             description = "the timeout for the command of wiping user data.", isTimeVal = true)
     private long mWipeTimeout = 4 * 60 * 1000;
 
+    @Option(name = "disable", description = "Disable the device flasher.")
+    private boolean mDisable = false;
+
     private static Semaphore sConcurrentFlashLock = null;
 
     /**
@@ -225,6 +228,10 @@ public abstract class DeviceFlashPreparer implements ITargetCleaner {
     @Override
     public void setUp(ITestDevice device, IBuildInfo buildInfo) throws TargetSetupError,
             DeviceNotAvailableException, BuildError {
+        if (mDisable) {
+            CLog.i("Skipping device flashing.");
+            return;
+        }
         CLog.i("Performing setup on %s", device.getSerialNumber());
         if (!(buildInfo instanceof IDeviceBuildInfo)) {
             throw new IllegalArgumentException("Provided buildInfo is not a IDeviceBuildInfo");
@@ -435,6 +442,10 @@ public abstract class DeviceFlashPreparer implements ITargetCleaner {
     @Override
     public void tearDown(ITestDevice device, IBuildInfo buildInfo, Throwable e)
             throws DeviceNotAvailableException {
+        if (mDisable) {
+            CLog.i("Skipping device flashing tearDown.");
+            return;
+        }
         if (mEncryptUserData == EncryptionOptions.ENCRYPT
                 && mUserDataFlashOption != UserDataFlashOption.RETAIN) {
             if (e instanceof DeviceNotAvailableException) {
