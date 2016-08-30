@@ -18,11 +18,13 @@ package com.android.tradefed.targetprep;
 
 import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.build.IDeviceBuildInfo;
+import com.android.tradefed.config.GlobalConfiguration;
 import com.android.tradefed.config.Option;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.DeviceUnresponsiveException;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.device.ITestDevice.RecoveryMode;
+import com.android.tradefed.host.IHostOptions;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.targetprep.IDeviceFlasher.UserDataFlashOption;
 import com.android.tradefed.util.IRunUtil;
@@ -70,11 +72,12 @@ public abstract class DeviceFlashPreparer implements ITargetCleaner {
 
     @Option(name = "wipe-skip-list", description =
         "list of /data subdirectories to NOT wipe when doing UserDataFlashOption.TESTS_ZIP")
-    private Collection<String> mDataWipeSkipList = new ArrayList<String>();
+    private Collection<String> mDataWipeSkipList = new ArrayList<>();
 
     @Option(name = "concurrent-flasher-limit", description =
-        "The maximum number of concurrent flashers (may be useful to avoid memory constraints)")
-    private Integer mConcurrentFlashLimit = null;
+        "The maximum number of concurrent flashers (may be useful to avoid memory constraints)" +
+        "This will be overriden if one is set in the host options.")
+    private Integer mConcurrentFlasherLimit = null;
 
     @Option(name = "skip-post-flashing-setup",
             description = "whether or not to skip post-flashing setup steps")
@@ -121,6 +124,15 @@ public abstract class DeviceFlashPreparer implements ITargetCleaner {
     }
 
     /**
+     * Gets the {@link IHostOptions} instance to use.
+     * <p/>
+     * Exposed for unit testing
+     */
+    IHostOptions getHostOptions() {
+        return GlobalConfiguration.getInstance().getHostOptions();
+    }
+
+    /**
      * Set the userdata-flash option
      *
      * @param flashOption
@@ -137,8 +149,8 @@ public abstract class DeviceFlashPreparer implements ITargetCleaner {
     void setConcurrentFlashSettings(Integer limit, Semaphore flashLock, boolean shouldCheck) {
         synchronized(sShouldCheckFlashLock) {
             // Make a minimal attempt to avoid having things get into an inconsistent state
-            if (sConcurrentFlashLock != null && mConcurrentFlashLimit != null) {
-                int curLimit = mConcurrentFlashLimit;
+            if (sConcurrentFlashLock != null && mConcurrentFlasherLimit != null) {
+                int curLimit = mConcurrentFlasherLimit;
                 int curAvail = sConcurrentFlashLock.availablePermits();
                 if (curLimit != curAvail) {
                     throw new IllegalStateException(String.format("setConcurrentFlashSettings may " +
@@ -147,7 +159,7 @@ public abstract class DeviceFlashPreparer implements ITargetCleaner {
                 }
             }
 
-            mConcurrentFlashLimit = limit;
+            mConcurrentFlasherLimit = limit;
             sConcurrentFlashLock = flashLock;
             sShouldCheckFlashLock = shouldCheck;
         }
@@ -174,13 +186,21 @@ public abstract class DeviceFlashPreparer implements ITargetCleaner {
                 // Check all state again, since another thread might have gotten here first
                 if (!sShouldCheckFlashLock) return;
 
-                if (mConcurrentFlashLimit == null) {
+                Integer concurrentFlasherLimit = mConcurrentFlasherLimit;
+                IHostOptions hostOptions = getHostOptions();
+                if (hostOptions.getConcurrentFlasherLimit() != null) {
+                    CLog.i("using host-wide concurrent flasher limit %d",
+                            hostOptions.getConcurrentFlasherLimit());
+                    concurrentFlasherLimit = hostOptions.getConcurrentFlasherLimit();
+                }
+
+                if (concurrentFlasherLimit == null) {
                     sShouldCheckFlashLock = false;
                     return;
                 }
 
                 if (sConcurrentFlashLock == null) {
-                    sConcurrentFlashLock = new Semaphore(mConcurrentFlashLimit, true /* fair */);
+                    sConcurrentFlashLock = new Semaphore(concurrentFlasherLimit, true /* fair */);
                 }
             }
         }
