@@ -571,7 +571,8 @@ public class TestInvocation implements ITestInvocation {
             throw t;
         } finally {
             getRunUtil().allowInterrupt(false);
-            if (config.getCommandOptions().takeBugreportOnInvocationEnded()) {
+            if (config.getCommandOptions().takeBugreportOnInvocationEnded() ||
+                    config.getCommandOptions().takeBugreportzOnInvocationEnded()) {
                 if (bugreportName != null) {
                     CLog.i("Bugreport to be taken for failure instead of invocation ended.");
                 } else {
@@ -581,11 +582,13 @@ public class TestInvocation implements ITestInvocation {
             if (bugreportName != null) {
                 if (badDevice == null) {
                     for (ITestDevice device : context.getDevices()) {
-                        takeBugreport(device, listener, bugreportName);
+                        takeBugreport(device, listener, bugreportName,
+                                config.getCommandOptions().takeBugreportzOnInvocationEnded());
                     }
                 } else {
                     // If we have identified a faulty device only take the bugreport on it.
-                    takeBugreport(badDevice, listener, bugreportName);
+                    takeBugreport(badDevice, listener, bugreportName,
+                            config.getCommandOptions().takeBugreportzOnInvocationEnded());
                 }
             }
             mStatus = "tearing down";
@@ -853,24 +856,30 @@ public class TestInvocation implements ITestInvocation {
     }
 
     private void takeBugreport(ITestDevice device, ITestInvocationListener listener,
-            String bugreportName) {
+            String bugreportName, boolean useBugreportz) {
         if (device == null) {
             return;
         }
         if (device.getIDevice() instanceof StubDevice) {
             return;
         }
-        InputStreamSource bugreport = device.getBugreport();
-        try {
-            if (bugreport != null) {
-                listener.testLog(String.format("%s_%s", bugreportName,
-                        device.getSerialNumber()), LogDataType.BUGREPORT, bugreport);
-            } else {
-                CLog.w("Error when collecting bugreport for device '%s'",
-                        device.getSerialNumber());
+        if (useBugreportz) {
+            // logBugreport will report a regular bugreport if bugreportz is not supported.
+            device.logBugreport(String.format("%s_%s", bugreportName, device.getSerialNumber()),
+                    listener);
+        } else {
+            InputStreamSource bugreport = device.getBugreport();
+            try {
+                if (bugreport != null) {
+                    listener.testLog(String.format("%s_%s", bugreportName,
+                            device.getSerialNumber()), LogDataType.BUGREPORT, bugreport);
+                } else {
+                    CLog.w("Error when collecting bugreport for device '%s'",
+                            device.getSerialNumber());
+                }
+            } finally {
+                StreamUtil.cancel(bugreport);
             }
-        } finally {
-            StreamUtil.cancel(bugreport);
         }
     }
 
