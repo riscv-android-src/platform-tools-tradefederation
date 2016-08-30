@@ -117,7 +117,8 @@ public class SideloadOtaStabilityTest implements IDeviceTest, IBuildReceiver,
     /** controls if this test should be resumed. Only used if mResumeMode is enabled */
     private boolean mResumable = true;
 
-    private String mExpectedBootloaderVersion, mExpectedBasebandVersion;
+    private String mExpectedBasebandVersion, mExpectedBootloaderVersion;
+    private long mUncryptDuration;
     private LogReceiver mKmsgReceiver;
 
     /**
@@ -246,6 +247,7 @@ public class SideloadOtaStabilityTest implements IDeviceTest, IBuildReceiver,
             metrics.put("iterations", Integer.toString(actualIterations));
             metrics.put("failed_iterations", Integer.toString(mIterations - actualIterations));
             metrics.put("update_time", Double.toString(updateTime));
+            metrics.put("uncrypt_time", Long.toString(mUncryptDuration));
             long endTime = System.currentTimeMillis() - startTime;
             listener.testRunEnded(endTime, metrics);
         }
@@ -307,7 +309,7 @@ public class SideloadOtaStabilityTest implements IDeviceTest, IBuildReceiver,
         // block.map should be empty since cache should be cleared
         mDevice.pushString(mPackageDataPath + "\n", UNCRYPT_FILE_PATH);
         try {
-            doUncrypt(SocketFactory.getInstance(), listener);
+            mUncryptDuration = doUncrypt(SocketFactory.getInstance(), listener);
             String installOtaCmd = String.format("--update_package=%s\n", BLOCK_MAP_PATH);
             mDevice.pushString(installOtaCmd, RECOVERY_COMMAND_PATH);
             CLog.i("Rebooting to install OTA");
@@ -425,7 +427,7 @@ public class SideloadOtaStabilityTest implements IDeviceTest, IBuildReceiver,
      * Uncrypt needs to attach to a socket before it will actually begin work, so we need to
      * attach a socket to it.
      */
-    public int doUncrypt(ISocketFactory sockets, ITestInvocationListener listener)
+    public long doUncrypt(ISocketFactory sockets, ITestInvocationListener listener)
             throws DeviceNotAvailableException {
         // init has to start uncrypt or the socket will not be allocated
         CLog.i("Starting uncrypt service");
@@ -444,6 +446,7 @@ public class SideloadOtaStabilityTest implements IDeviceTest, IBuildReceiver,
         Socket uncrypt = null;
         DataInputStream dis = null;
         DataOutputStream dos = null;
+        long start = System.currentTimeMillis();
         try {
             uncrypt = sockets.createClientSocket("localhost", port);
             int status = Integer.MIN_VALUE;
@@ -463,7 +466,7 @@ public class SideloadOtaStabilityTest implements IDeviceTest, IBuildReceiver,
                 }
             }
             CLog.i("Final uncrypt status: %d", status);
-            return status;
+            return System.currentTimeMillis() - start;
         } catch (IOException e) {
             throw new RuntimeException(e);
         } finally {
