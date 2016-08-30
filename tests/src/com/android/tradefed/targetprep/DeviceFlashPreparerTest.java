@@ -20,12 +20,15 @@ import com.android.tradefed.build.DeviceBuildInfo;
 import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.build.IDeviceBuildInfo;
 import com.android.tradefed.command.remote.DeviceDescriptor;
+import com.android.tradefed.config.GlobalConfiguration;
+import com.android.tradefed.config.IGlobalConfiguration;
 import com.android.tradefed.device.DeviceAllocationState;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.DeviceUnresponsiveException;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.device.ITestDevice.RecoveryMode;
 import com.android.tradefed.device.TestDeviceOptions;
+import com.android.tradefed.host.IHostOptions;
 import com.android.tradefed.targetprep.IDeviceFlasher.UserDataFlashOption;
 import com.android.tradefed.util.FileUtil;
 import com.android.tradefed.util.RunUtil;
@@ -47,6 +50,7 @@ public class DeviceFlashPreparerTest extends TestCase {
     private DeviceFlashPreparer mDeviceFlashPreparer;
     private ITestDevice mMockDevice;
     private IDeviceBuildInfo mMockBuildInfo;
+    private IHostOptions mMockHostOptions;
     private File mTmpDir;
 
     /**
@@ -62,6 +66,7 @@ public class DeviceFlashPreparerTest extends TestCase {
         mMockBuildInfo = new DeviceBuildInfo("0", "", "");
         mMockBuildInfo.setDeviceImageFile(new File("foo"), "0");
         mMockBuildInfo.setBuildFlavor("flavor");
+        mMockHostOptions = EasyMock.createMock(IHostOptions.class);
         mDeviceFlashPreparer = new DeviceFlashPreparer() {
             @Override
             protected IDeviceFlasher createFlasher(ITestDevice device) {
@@ -71,6 +76,11 @@ public class DeviceFlashPreparerTest extends TestCase {
             @Override
             int getDeviceBootPollTimeMs() {
                 return 100;
+            }
+
+            @Override
+            IHostOptions getHostOptions() {
+                return mMockHostOptions;
             }
         };
         mDeviceFlashPreparer.setDeviceBootTime(100);
@@ -200,6 +210,44 @@ public class DeviceFlashPreparerTest extends TestCase {
 
             waiter.join(1000);
             assertFalse("waiter thread has not returned", waiter.isAlive());
+        } finally {
+            // Attempt to reset concurrent flash settings to defaults
+            dfp.setConcurrentFlashSettings(null, null, true);
+        }
+    }
+
+    /**
+     * Ensure that the flasher limiting respects {@link IHostOptions}.
+     */
+    public void testFlashLimit_withHostOptions() throws Exception {
+        final DeviceFlashPreparer dfp = mDeviceFlashPreparer;
+        try {
+            Thread waiter = new Thread() {
+                @Override
+                public void run() {
+                    dfp.takeFlashingPermit();
+                    dfp.returnFlashingPermit();
+                }
+            };
+            EasyMock.expect(mMockHostOptions.getConcurrentFlasherLimit()).andReturn(1).anyTimes();
+            EasyMock.replay(mMockHostOptions);
+            // take the permit; the next attempt to take the permit should block
+            dfp.takeFlashingPermit();
+            assertFalse(dfp.getConcurrentFlashLock().hasQueuedThreads());
+
+            waiter.start();
+            RunUtil.getDefault().sleep(100);  // Thread start should take <100ms
+            assertTrue("Invalid state: waiter thread is not alive", waiter.isAlive());
+            assertTrue("No queued threads", dfp.getConcurrentFlashLock().hasQueuedThreads());
+
+            dfp.returnFlashingPermit();
+            RunUtil.getDefault().sleep(100);  // Thread start should take <100ms
+            assertFalse("Unexpected queued threads",
+                    dfp.getConcurrentFlashLock().hasQueuedThreads());
+
+            waiter.join(1000);
+            assertFalse("waiter thread has not returned", waiter.isAlive());
+            EasyMock.verify(mMockHostOptions);
         } finally {
             // Attempt to reset concurrent flash settings to defaults
             dfp.setConcurrentFlashSettings(null, null, true);

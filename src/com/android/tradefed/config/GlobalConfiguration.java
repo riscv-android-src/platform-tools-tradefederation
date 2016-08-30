@@ -24,6 +24,8 @@ import com.android.tradefed.device.IDeviceManager;
 import com.android.tradefed.device.IDeviceMonitor;
 import com.android.tradefed.device.IDeviceSelection;
 import com.android.tradefed.device.IMultiDeviceRecovery;
+import com.android.tradefed.host.HostOptions;
+import com.android.tradefed.host.IHostOptions;
 import com.android.tradefed.log.ITerribleFailureHandler;
 import com.android.tradefed.util.ArrayUtil;
 import com.android.tradefed.util.IHostMonitor;
@@ -198,6 +200,7 @@ public class GlobalConfiguration implements IGlobalConfiguration {
     private static synchronized Map<String, ObjTypeInfo> getObjTypeMap() {
         if (sObjTypeMap == null) {
             sObjTypeMap = new HashMap<String, ObjTypeInfo>();
+            sObjTypeMap.put(HOST_OPTIONS_TYPE_NAME, new ObjTypeInfo(IHostOptions.class, false));
             sObjTypeMap.put(DEVICE_MONITOR_TYPE_NAME, new ObjTypeInfo(IDeviceMonitor.class, true));
             sObjTypeMap.put(HOST_MONITOR_TYPE_NAME, new ObjTypeInfo(IHostMonitor.class, true));
             sObjTypeMap.put(DEVICE_MANAGER_TYPE_NAME, new ObjTypeInfo(IDeviceManager.class, false));
@@ -224,6 +227,7 @@ public class GlobalConfiguration implements IGlobalConfiguration {
         mDescription = description;
         mConfigMap = new LinkedHashMap<String, List<Object>>();
         mOptionMap = new MultiMap<String, String>();
+        setHostOptions(new HostOptions());
         setDeviceRequirements(new DeviceSelectionOptions());
         setDeviceManager(new DeviceManager());
         setCommandScheduler(new CommandScheduler());
@@ -242,6 +246,15 @@ public class GlobalConfiguration implements IGlobalConfiguration {
      */
     public String getDescription() {
         return mDescription;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    @SuppressWarnings("unchecked")
+    public IHostOptions getHostOptions() {
+        return (IHostOptions) getConfigurationObject(HOST_OPTIONS_TYPE_NAME);
     }
 
     /**
@@ -384,6 +397,14 @@ public class GlobalConfiguration implements IGlobalConfiguration {
     @Override
     public List<String> getOptionValues(String optionName) {
         return mOptionMap.get(optionName);
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void setHostOptions(IHostOptions hostOptions) {
+        setConfigurationObjectNoThrow(HOST_OPTIONS_TYPE_NAME, hostOptions);
     }
 
     /**

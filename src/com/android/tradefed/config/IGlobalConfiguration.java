@@ -22,6 +22,7 @@ import com.android.tradefed.device.IDeviceManager;
 import com.android.tradefed.device.IDeviceMonitor;
 import com.android.tradefed.device.IDeviceSelection;
 import com.android.tradefed.device.IMultiDeviceRecovery;
+import com.android.tradefed.host.IHostOptions;
 import com.android.tradefed.log.ITerribleFailureHandler;
 import com.android.tradefed.util.IHostMonitor;
 import com.android.tradefed.util.keystore.IKeyStoreFactory;
@@ -33,6 +34,13 @@ import java.util.List;
  * (encompassing any number of invocations of actual configurations).
  */
 public interface IGlobalConfiguration {
+    /**
+     * Gets the {@link IHostOptions} to use from the configuration.
+     *
+     * @return the {@link IDeviceManager} provided in the configuration.
+     */
+    public IHostOptions getHostOptions();
+
     /**
      * Gets the list of {@link IDeviceMonitor} from the global config.
      *
@@ -185,6 +193,13 @@ public interface IGlobalConfiguration {
      * @return the {@link IKeyStoreFactory} or null if no key store factory is set.
      */
     public IKeyStoreFactory getKeyStoreFactory();
+
+    /**
+     * Set the {@link IHostOptions}, replacing any existing values.
+     *
+     * @param options
+     */
+    public void setHostOptions(IHostOptions hostOptions);
 
     /**
      * Set the {@link IDeviceManager}, replacing any existing values. This sets the manager
