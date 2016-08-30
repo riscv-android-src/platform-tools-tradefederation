@@ -43,6 +43,8 @@ import java.util.concurrent.TimeUnit;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import org.junit.Assert;
+
 /**
  * A harness that test video playback and reports result.
  */
@@ -99,6 +101,13 @@ public class VideoMultimeterTest implements IDeviceTest, IRemoteTest {
     static final long CALIBRATION_TIMEOUT_MS = 30 * 1000;
     static final long COMMAND_TIMEOUT_MS = 5 * 1000;
     static final long GETDATA_TIMEOUT_MS = 10 * 60 * 1000;
+
+    // Regex for: "OK (time); (frame duration); (marker color); (total dropped frames)"
+    static final String VIDEO_FRAME_DATA_PATTERN = "OK\\s+\\d+;\\s*(-?\\d+);\\s*[a-z]+;\\s*(\\d+)";
+
+    // Regex for: "OK (time); (frame duration); (marker color); (total dropped frames); (lipsync)"
+    static final String LIPSYNC_DATA_PATTERN =
+        "OK\\s+\\d+;\\s*\\d+;\\s*[a-z]+;\\s*\\d+;\\s*(-?\\d+)";
 
     ITestDevice mDevice;
 
@@ -258,16 +267,42 @@ public class VideoMultimeterTest implements IDeviceTest, IRemoteTest {
         getRunUtil().sleep(5 * 1000);
         cr = getRunUtil().runTimedCmd(COMMAND_TIMEOUT_MS, mMeterUtilPath, CMD_GET_NUM_FRAMES);
         String frameNum = cr.getStdout();
+
+        CLog.i("== Video Multimeter Result '%s' ==", keyprefix);
         CLog.i("Number of results: " + frameNum);
 
-        // get all results and write to output file
+        String nrOfDataPointsStr = extractNumberOfCollectedDataPoints(frameNum);
+        metrics.put(keyprefix + "frame_captured", nrOfDataPointsStr);
+
+        long nrOfDataPoints = Long.parseLong(nrOfDataPointsStr);
+
+        Assert.assertTrue("Multimeter did not collect any data for " + keyprefix,
+                          nrOfDataPoints > 0);
+
+        CLog.i("Captured frames: " + nrOfDataPointsStr);
+
+        // get all results from multimeter and write to output file
         cr = getRunUtil().runTimedCmd(GETDATA_TIMEOUT_MS, mMeterUtilPath, CMD_GET_ALL_DATA);
         String allData = cr.getStdout();
         listener.testLog(keyprefix, LogDataType.TEXT, new SnapshotInputStreamSource(
                 new ByteArrayInputStream(allData.getBytes())));
 
         // parse results
-        return parseResult(metrics, frameNum, allData, keyprefix, fps, lipsync);
+        return parseResult(metrics, nrOfDataPoints, allData, keyprefix, fps, lipsync);
+    }
+
+    private String extractNumberOfCollectedDataPoints(String numFrames) {
+        // Create pattern that matches string like "OK 14132" capturing the
+        // number of data points.
+        Pattern p = Pattern.compile("OK\\s+(\\d+)$");
+        Matcher m = p.matcher(numFrames.trim());
+
+        String frameCapturedStr = "0";
+        if (m.matches()) {
+            frameCapturedStr = m.group(1);
+        }
+
+        return frameCapturedStr;
     }
 
     protected void runMultimeterTest(ITestInvocationListener listener,
@@ -314,34 +349,15 @@ public class VideoMultimeterTest implements IDeviceTest, IRemoteTest {
      * @return a {@link HashMap} that contains metrics keys and results
      */
     private Map<String, String> parseResult(Map<String, String> metrics,
-            String numFrames, String result, String keyprefix, float fps,
+            long frameCaptured, String result, String keyprefix, float fps,
             boolean lipsync) {
         final int MISSING_FRAME_CEILING = 5; //5+ frames missing count the same
         final double[] MISSING_FRAME_WEIGHT = {0.0, 1.0, 2.5, 5.0, 6.25, 8.0};
 
-        CLog.i("== Video Multimeter Result '%s' ==", keyprefix);
-        Pattern p = Pattern.compile("OK\\s+(\\d+)$");
-        Matcher m = p.matcher(numFrames.trim());
-        String frameCapturedStr = "0";
-        long frameCaptured = 0;
-        if (m.matches()) {
-            frameCapturedStr = m.group(1);
-            metrics.put(keyprefix + "frame_captured", frameCapturedStr);
-            CLog.i("Captured frames: " + frameCapturedStr);
-            frameCaptured = Long.parseLong(frameCapturedStr);
-            if (frameCaptured == 0) {
-                // no frame captured
-                CLog.w("No frame captured for " + keyprefix);
-                return metrics;
-            }
-        } else {
-            CLog.i("Cannot parse result for " + keyprefix);
-            return metrics;
-        }
-
         // Get total captured frames and calculate smoothness and freezing score
         // format: "OK (time); (frame duration); (marker color); (total dropped frames)"
-        p = Pattern.compile("OK\\s+\\d+;\\s*(-?\\d+);\\s*[a-z]+;\\s*(\\d+)");
+        Pattern p = Pattern.compile(VIDEO_FRAME_DATA_PATTERN);
+        Matcher m = null;
         String[] lines = result.split(System.getProperty("line.separator"));
         String totalDropFrame = "-1";
         String lastDropFrame = "0";
@@ -410,7 +426,7 @@ public class VideoMultimeterTest implements IDeviceTest, IRemoteTest {
 
         // parse lipsync results (the audio and video synchronization offset)
         // format: "OK (time); (frame duration); (marker color); (total dropped frames); (lipsync)"
-        p = Pattern.compile("OK\\s+\\d+;\\s*\\d+;\\s*[a-z]+;\\s*\\d+;\\s*(-?\\d+)");
+        p = Pattern.compile(LIPSYNC_DATA_PATTERN);
         if (lipsync) {
             ArrayList<Integer> lipsyncVals = new ArrayList<Integer>();
             StringBuilder lipsyncValsStr = new StringBuilder("[");
