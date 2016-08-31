@@ -369,7 +369,8 @@ public class DeviceSelectionOptions implements IDeviceSelection {
         if (nullDeviceRequested() != (device instanceof NullDevice)) {
             return false;
         }
-        if (tcpDeviceRequested() != (device instanceof TcpDevice)) {
+        if (tcpDeviceRequested() != (TcpDevice.class.equals(device.getClass()))) {
+            // We only match an exact TcpDevice here, no child class.
             return false;
         }
         if ((mMinSdk != null) || (mMaxSdk != null)) {
