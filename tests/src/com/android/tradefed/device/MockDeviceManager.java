@@ -48,6 +48,14 @@ public class MockDeviceManager implements IDeviceManager {
     }
 
     public void setNumDevices(int numDevices) {
+        setNumDevicesInternal(numDevices, true);
+    }
+
+    public void setNumDevicesUnresponsive(int numDevices) {
+        setNumDevicesInternal(numDevices, false);
+    }
+
+    private void setNumDevicesInternal(int numDevices, boolean responsive) {
         mAvailableDeviceQueue.clear();
         mTotalDevices = numDevices;
         for (int i = 0; i < numDevices; i++) {
@@ -58,6 +66,8 @@ public class MockDeviceManager implements IDeviceManager {
             EasyMock.expect(mockDevice.getIDevice()).andReturn(mockIDevice).anyTimes();
             EasyMock.expect(mockDevice.getDeviceState()).andReturn(
                     TestDeviceState.ONLINE).anyTimes();
+            EasyMock.expect(mockDevice.waitForDeviceShell(EasyMock.anyLong()))
+                    .andReturn(responsive).anyTimes();
             EasyMock.replay(mockDevice, mockIDevice);
             mAvailableDeviceQueue.add(mockDevice);
         }
@@ -75,7 +85,12 @@ public class MockDeviceManager implements IDeviceManager {
             IDeviceStateMonitor stateMonitor = EasyMock.createNiceMock(IDeviceStateMonitor.class);
             IDeviceMonitor allocationMonitor = EasyMock.createNiceMock(IDeviceMonitor.class);
             EasyMock.replay(mockIDevice);
-            ITestDevice mockDevice = new TestDevice(mockIDevice, stateMonitor, allocationMonitor);
+            ITestDevice mockDevice = new TestDevice(mockIDevice, stateMonitor, allocationMonitor) {
+                @Override
+                public boolean waitForDeviceShell(long waitTime) {
+                    return true;
+                }
+            };
             mockDevice.setRecoveryMode(RecoveryMode.NONE);
             mAvailableDeviceQueue.add(mockDevice);
         }
@@ -180,8 +195,8 @@ public class MockDeviceManager implements IDeviceManager {
     public void freeDevice(ITestDevice device, FreeDeviceState state) {
         if (!state.equals(FreeDeviceState.UNAVAILABLE)) {
             mAvailableDeviceQueue.add(device);
-            mDvcMon.notifyDeviceStateChange(device.getSerialNumber(), DeviceAllocationState.Allocated,
-                    DeviceAllocationState.Available);
+            mDvcMon.notifyDeviceStateChange(device.getSerialNumber(),
+                    DeviceAllocationState.Allocated, DeviceAllocationState.Available);
         }
     }
 
