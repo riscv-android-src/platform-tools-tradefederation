@@ -25,7 +25,9 @@ import junit.framework.Test;
 import junit.framework.TestCase;
 import junit.framework.TestSuite;
 
+import org.easymock.Capture;
 import org.easymock.EasyMock;
+import org.junit.Before;
 import org.junit.runner.RunWith;
 import org.junit.runners.Suite;
 import org.junit.runners.Suite.SuiteClasses;
@@ -109,6 +111,23 @@ public class HostTestTest extends TestCase {
         SuccessTestCase.class,
     })
     public class Junit4Suiteclass {
+    }
+
+    /**
+     * Malformed on purpose test class.
+     */
+    public static class Junit4MalformedTestclass {
+        public Junit4MalformedTestclass() {
+        }
+
+        @Before
+        protected void setUp() {
+            // @Before should be on a public method.
+        }
+
+        @org.junit.Test
+        public void testPass() {
+        }
     }
 
     /**
@@ -422,6 +441,28 @@ public class HostTestTest extends TestCase {
         mHostTest.addIncludeFilter(
                 "com.android.tradefed.testtype.HostTestTest$Junit4Testclass#testPass5");
         assertEquals("Incorrect test case count", 1, mHostTest.countTestCases());
+    }
+
+    /**
+     * Test for {@link HostTest#countTestCases()}, if JUnit4 test class is malformed it will
+     * count as 1 in the total number of tests.
+     */
+    public void testCountTestCasesJUnit4Malformed() throws Exception {
+        mHostTest.setClassName(Junit4MalformedTestclass.class.getName());
+        assertEquals("Incorrect test case count", 1, mHostTest.countTestCases());
+    }
+
+    /**
+     * Test for {@link HostTest#countTestCases()} with filtering on JUnit4 tests and no test
+     * remain.
+     */
+    public void testCountTestCasesJUnit4WithFiltering_no_more_tests() throws Exception {
+        mHostTest.setClassName(Junit4Testclass.class.getName());
+        mHostTest.addExcludeFilter(
+                "com.android.tradefed.testtype.HostTestTest$Junit4Testclass#testPass5");
+        mHostTest.addExcludeFilter(
+                "com.android.tradefed.testtype.HostTestTest$Junit4Testclass#testPass6");
+        assertEquals("Incorrect test case count", 0, mHostTest.countTestCases());
     }
 
     /**
@@ -743,6 +784,24 @@ public class HostTestTest extends TestCase {
     }
 
     /**
+     * Test that in case the class attempted to be ran is malformed we bubble up the test failure.
+     */
+    public void testRun_Junit4Test_malformed() throws Exception {
+        mHostTest.setClassName(Junit4MalformedTestclass.class.getName());
+        mListener.testRunStarted((String)EasyMock.anyObject(), EasyMock.eq(1));
+        Capture<TestIdentifier> captured = new Capture<>();
+        mListener.testStarted(EasyMock.capture(captured));
+        mListener.testFailed((TestIdentifier)EasyMock.anyObject(), (String)EasyMock.anyObject());
+        mListener.testEnded((TestIdentifier)EasyMock.anyObject(), EasyMock.anyObject());
+        mListener.testRunEnded(EasyMock.anyLong(), (Map<String, String>)EasyMock.anyObject());
+        EasyMock.replay(mListener);
+        mHostTest.run(mListener);
+        assertEquals(Junit4MalformedTestclass.class.getName(), captured.getValue().getClassName());
+        assertEquals("initializationError", captured.getValue().getTestName());
+        EasyMock.verify(mListener);
+    }
+
+    /**
      * Test for {@link HostTest#run(ITestInvocationListener)}, for a mix of test junit3 and 4 in
      * a Junit 4 suite class, and filtering is applied.
      */
@@ -766,8 +825,7 @@ public class HostTestTest extends TestCase {
     /**
      * Helper for test option variation and avoid repeating the same setup
      */
-    private void runMixJunitTestWithFilter(HostTest hostTest)
-            throws Exception {
+    private void runMixJunitTestWithFilter(HostTest hostTest) throws Exception {
         hostTest.addExcludeAnnotation("com.android.tradefed.testtype.HostTestTest$MyAnnotation2");
         TestIdentifier test1 = new TestIdentifier(SuccessTestCase.class.getName(), "testPass");
         TestIdentifier test4 = new TestIdentifier(Junit4Testclass.class.getName(), "testPass6");

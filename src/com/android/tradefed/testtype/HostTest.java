@@ -36,7 +36,9 @@ import org.junit.internal.runners.ErrorReportingRunner;
 import org.junit.runner.Description;
 import org.junit.runner.JUnitCore;
 import org.junit.runner.Request;
+import org.junit.runner.RunWith;
 import org.junit.runner.Runner;
+import org.junit.runner.notification.RunNotifier;
 import org.junit.runners.Suite.SuiteClasses;
 
 import java.lang.reflect.AnnotatedElement;
@@ -91,6 +93,8 @@ public class HostTest implements IDeviceTest, ITestFilterReceiver, ITestAnnotati
 
     private ITestDevice mDevice;
     private TestFilterHelper mFilterHelper;
+
+    private static final String EXCLUDE_NO_TEST_FAILURE = "org.junit.runner.manipulation.Filter";
 
     public HostTest() {
         mFilterHelper = new TestFilterHelper(new ArrayList<String>(), new ArrayList<String>(),
@@ -165,7 +169,15 @@ public class HostTest implements IDeviceTest, ITestFilterReceiver, ITestAnnotati
                 Runner checkRunner = req.getRunner();
                 // If no tests are remaining after filtering, checkRunner is ErrorReportingRunner.
                 // testCount() for ErrorReportingRunner returns 1, skip this classObj in this case.
-                if (!(checkRunner instanceof ErrorReportingRunner)) {
+                if (checkRunner instanceof ErrorReportingRunner) {
+                    if (!EXCLUDE_NO_TEST_FAILURE.equals(
+                            checkRunner.getDescription().getClassName())) {
+                        // If after filtering we have remaining tests that are malformed, we still
+                        // count them toward the total number of tests. (each malformed class will
+                        // count as 1 in the testCount()).
+                        count += checkRunner.testCount();
+                    }
+                } else {
                     count += checkRunner.testCount();
                 }
             } else {
@@ -311,9 +323,20 @@ public class HostTest implements IDeviceTest, ITestFilterReceiver, ITestAnnotati
                     listener.testRunEnded(System.currentTimeMillis() - startTime,
                             Collections.emptyMap());
                 } else {
-                    // Can't use testCount() in case of error because it returns 1.
-                    listener.testRunStarted(classObj.getName(), 0);
-                    listener.testRunEnded(0, Collections.emptyMap());
+                    // Special case where filtering leaves no tests to run, we report no failure
+                    // in this case.
+                    if (EXCLUDE_NO_TEST_FAILURE.equals(
+                            checkRunner.getDescription().getClassName())) {
+                        listener.testRunStarted(classObj.getName(), 0);
+                        listener.testRunEnded(0, Collections.emptyMap());
+                    } else {
+                        // Run the Error runner to get the failures from test classes.
+                        listener.testRunStarted(classObj.getName(), checkRunner.testCount());
+                        RunNotifier failureNotifier = new RunNotifier();
+                        failureNotifier.addListener(list);
+                        checkRunner.run(failureNotifier);
+                        listener.testRunEnded(0, Collections.emptyMap());
+                    }
                 }
             } else {
                 throw new IllegalArgumentException(
@@ -474,6 +497,9 @@ public class HostTest implements IDeviceTest, ITestFilterReceiver, ITestAnnotati
         if (classObj.isAnnotationPresent(SuiteClasses.class)) {
             return true;
         }
+        if (classObj.isAnnotationPresent(RunWith.class)) {
+            return true;
+        }
         for (Method m : classObj.getMethods()) {
             if (m.isAnnotationPresent(org.junit.Test.class)) {
                 return true;
@@ -481,5 +507,4 @@ public class HostTest implements IDeviceTest, ITestFilterReceiver, ITestAnnotati
         }
         return false;
     }
-
 }
