@@ -342,12 +342,15 @@ public class AppTransitionTests implements IRemoteTest, IDeviceTest {
         for (TransitionDelayItem delayItem : transitionDelayItems) {
             if (cmpNameAppMap.containsKey(delayItem.getComponentName())) {
                 String appName = cmpNameAppMap.get(delayItem.getComponentName());
-                if (appKeyTransitionDelayMap.containsKey(appName)) {
-                    appKeyTransitionDelayMap.get(appName).add(delayItem.getStartingWindowDelay());
-                } else {
-                    List<Long> delayTimeList = new ArrayList<Long>();
-                    delayTimeList.add(delayItem.getStartingWindowDelay());
-                    appKeyTransitionDelayMap.put(appName, delayTimeList);
+                if (delayItem.getStartingWindowDelay() != -1) {
+                    if (appKeyTransitionDelayMap.containsKey(appName)) {
+                        appKeyTransitionDelayMap.get(appName).add(
+                                delayItem.getStartingWindowDelay());
+                    } else {
+                        List<Long> delayTimeList = new ArrayList<Long>();
+                        delayTimeList.add(delayItem.getStartingWindowDelay());
+                        appKeyTransitionDelayMap.put(appName, delayTimeList);
+                    }
                 }
             }
         }
