@@ -1945,6 +1945,7 @@ public class NativeDevice implements IManagedTestDevice {
             if (entries != null) {
                 for (IFileEntry f : entries.getChildren(false)) {
                     String name = f.getName();
+                    CLog.d("bugreport entry: %s", name);
                     if (name.endsWith(".tmp")) {
                         File tmpBugreport = pullFile(BUGREPORTZ_TMP_PATH + name);
                         if (tmpBugreport != null) {
@@ -1952,6 +1953,9 @@ public class NativeDevice implements IManagedTestDevice {
                         }
                     }
                 }
+                CLog.w("Could not find a tmp bugreport file in the directory.");
+            } else {
+                CLog.w("Could not find the file entry: '%s' on the device.", BUGREPORTZ_TMP_PATH);
             }
         } catch (DeviceNotAvailableException e) {
             CLog.e(e);
