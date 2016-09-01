@@ -489,6 +489,11 @@ public class CommandScheduler extends Thread implements ICommandScheduler, IComm
     }
 
     private class InvocationThread extends Thread {
+        /**
+         * time to wait for device adb shell responsive connection before declaring it unavailable
+         * for the next iteration of testing.
+         */
+        private static final long CHECK_WAIT_DEVICE_AVAIL_MS = 30 * 1000;
         private final IScheduledInvocationListener[] mListeners;
         private final IInvocationContext mInvocationContext;
         private final ExecutableCommand mCmd;
@@ -576,6 +581,9 @@ public class CommandScheduler extends Thread implements ICommandScheduler, IComm
                     } else if (!TestDeviceState.ONLINE.equals(device.getDeviceState())) {
                         // If the device is offline at the end of the test
                         deviceStates.put(device, FreeDeviceState.UNAVAILABLE);
+                    } else if (!isDeviceResponsive(device)) {
+                        // If device cannot pass basic shell responsiveness test.
+                        deviceStates.put(device, FreeDeviceState.UNAVAILABLE);
                     }
                     // Reset the recovery mode at the end of the invocation.
                     device.setRecoveryMode(RecoveryMode.AVAILABLE);
@@ -585,6 +593,13 @@ public class CommandScheduler extends Thread implements ICommandScheduler, IComm
                 }
                 mCmd.commandFinished(elapsedTime);
             }
+        }
+
+        /**
+         * Basic responsiveness check at the end of an invocation.
+         */
+        private boolean isDeviceResponsive(ITestDevice device) {
+            return device.waitForDeviceShell(CHECK_WAIT_DEVICE_AVAIL_MS);
         }
 
         ITestInvocation getInvocation() {

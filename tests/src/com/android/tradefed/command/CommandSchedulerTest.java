@@ -291,6 +291,7 @@ public class CommandSchedulerTest extends TestCase {
                 .createMock(IScheduledInvocationListener.class);
         mockListener.invocationComplete((IInvocationContext)EasyMock.anyObject(),
                 (Map<ITestDevice, FreeDeviceState>)EasyMock.anyObject());
+        EasyMock.expect(mockDevice.waitForDeviceShell(EasyMock.anyLong())).andReturn(true);
         replayMocks(mockDevice, mockListener);
         mScheduler.start();
         mScheduler.execCommand(mockListener, mockDevice, args);
@@ -814,8 +815,28 @@ public class CommandSchedulerTest extends TestCase {
         mScheduler.shutdownOnEmpty();
         mScheduler.join();
         EasyMock.verify(mMockConfigFactory, mMockConfiguration, mMockInvocation);
-        assertTrue(mMockManager.getQueueOfAvailableDeviceSize() == 1);
+        assertEquals(1, mMockManager.getQueueOfAvailableDeviceSize());
         ITestDevice t = mMockManager.allocateDevice();
         assertTrue(t.getRecoveryMode().equals(RecoveryMode.AVAILABLE));
+    }
+
+    /**
+     * Test that a device that is unresponsive at the end of an invocation is made unavailable.
+     */
+    public void testDevice_unresponsive() throws Throwable {
+        String[] args = new String[] {};
+        mMockManager.setNumDevicesUnresponsive(1);
+        assert(mMockManager.getQueueOfAvailableDeviceSize() == 1);
+        setCreateConfigExpectations(args, 1);
+        setExpectedInvokeCalls(1);
+        mMockConfiguration.validateOptions();
+        replayMocks();
+        mScheduler.start();
+        mScheduler.addCommand(args);
+        mScheduler.shutdownOnEmpty();
+        mScheduler.join();
+        EasyMock.verify(mMockConfigFactory, mMockConfiguration, mMockInvocation);
+        // Device does not return to the list since it's unavailable.
+        assertEquals(0, mMockManager.getQueueOfAvailableDeviceSize());
     }
 }

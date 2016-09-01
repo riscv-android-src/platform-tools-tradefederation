@@ -197,7 +197,7 @@ public interface IGlobalConfiguration {
     /**
      * Set the {@link IHostOptions}, replacing any existing values.
      *
-     * @param options
+     * @param hostOptions
      */
     public void setHostOptions(IHostOptions hostOptions);
 
