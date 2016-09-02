@@ -98,6 +98,11 @@ public class NativeDevice implements IManagedTestDevice {
     private static final String BUGREPORTZ_CMD = "bugreportz";
     private static final String BUGREPORTZ_TMP_PATH = "/data/bugreports/";
 
+    /**
+     * Allow up to 2 minutes to receives the full logcat dump.
+     */
+    private static final int LOGCAT_DUMP_TIMEOUT = 2 * 60 * 1000;
+
     /** the default number of command retry attempts to perform */
     protected static final int MAX_RETRY_ATTEMPTS = 2;
 
@@ -1836,7 +1841,8 @@ public class NativeDevice implements IManagedTestDevice {
             // DeviceNotAvailableException for this method
             CollectingByteOutputReceiver receiver = new CollectingByteOutputReceiver();
             // add -d parameter to make this a non blocking call
-            getIDevice().executeShellCommand(LogcatReceiver.LOGCAT_CMD + " -d", receiver);
+            getIDevice().executeShellCommand(LogcatReceiver.LOGCAT_CMD + " -d", receiver,
+                    LOGCAT_DUMP_TIMEOUT, TimeUnit.MILLISECONDS);
             output = receiver.getOutput();
         } catch (IOException e) {
             CLog.w("Failed to get logcat dump from %s: ", getSerialNumber(), e.getMessage());
