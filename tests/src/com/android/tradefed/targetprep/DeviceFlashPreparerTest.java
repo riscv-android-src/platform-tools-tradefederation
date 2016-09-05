@@ -81,6 +81,8 @@ public class DeviceFlashPreparerTest extends TestCase {
                 return mMockHostOptions;
             }
         };
+        // Reset default settings
+        mDeviceFlashPreparer.setConcurrentFlashSettings(null, null, true);
         mDeviceFlashPreparer.setDeviceBootTime(100);
         // expect this call
         mMockFlasher.setUserDataFlashOption(UserDataFlashOption.FLASH);
