@@ -180,7 +180,7 @@ public class InvocationContext implements IInvocationContext {
                 return testDevice;
             }
         }
-        CLog.e("Device with serial '%s', not found in the metadata", serial);
+        CLog.d("Device with serial '%s', not found in the metadata", serial);
         return null;
     }
 
