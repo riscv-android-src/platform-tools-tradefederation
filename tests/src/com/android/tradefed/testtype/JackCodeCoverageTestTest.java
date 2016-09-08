@@ -9,6 +9,7 @@ import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.util.CommandResult;
 import com.android.tradefed.util.CommandStatus;
 import com.android.tradefed.util.FileUtil;
+import com.android.tradefed.util.ZipUtil;
 import com.google.common.collect.Iterables;
 import com.google.common.collect.Sets;
 
@@ -59,6 +60,7 @@ public class JackCodeCoverageTestTest extends TestCase {
         InputStream metadataZipStream = getClass().getResourceAsStream(EMMA_METADATA_RESOURCE_PATH);
         File metadataZipFile = FileUtil.createTempFile("emma_meta", ".zip");
         FileUtil.writeToFile(metadataZipStream, metadataZipFile);
+        File metadataFolder = ZipUtil.extractZipToTemp(metadataZipFile, "metadata");
 
         // Set up mocks
         IBuildInfo mockBuild = Mockito.mock(IBuildInfo.class);
@@ -70,10 +72,11 @@ public class JackCodeCoverageTestTest extends TestCase {
         // Get the metadata files
         Set<File> metadataFiles = null;
         try {
-            metadataFiles = coverageTest.getMetadataFiles();
+            metadataFiles = coverageTest.getMetadataFiles(metadataFolder);
         } finally {
             // Cleanup
             FileUtil.deleteFile(metadataZipFile);
+            FileUtil.recursiveDelete(metadataFolder);
         }
 
         // Verify that we got all of the metdata files
@@ -96,6 +99,7 @@ public class JackCodeCoverageTestTest extends TestCase {
         InputStream metadataZipStream = getClass().getResourceAsStream(EMMA_METADATA_RESOURCE_PATH);
         File metadataZipFile = FileUtil.createTempFile("emma_meta", ".zip");
         FileUtil.writeToFile(metadataZipStream, metadataZipFile);
+        File metadataFolder = ZipUtil.extractZipToTemp(metadataZipFile, "metadata");
 
         // Set up mocks
         IBuildInfo mockBuild = Mockito.mock(IBuildInfo.class);
@@ -109,10 +113,11 @@ public class JackCodeCoverageTestTest extends TestCase {
         // Get the metadata files
         Set<File> metadataFiles = null;
         try {
-            metadataFiles = coverageTest.getMetadataFiles();
+            metadataFiles = coverageTest.getMetadataFiles(metadataFolder);
         } finally {
             // Cleanup
             FileUtil.deleteFile(metadataZipFile);
+            FileUtil.recursiveDelete(metadataFolder);
         }
 
         // Verify that only the framework metadata file was returned
@@ -128,11 +133,18 @@ public class JackCodeCoverageTestTest extends TestCase {
         Set<File> metadataFiles = Sets.newHashSet(METADATA_FILE1, METADATA_FILE2, METADATA_FILE3);
         File dest = new File("/some/destination/directory");
         File fakeReportTool = new File("/the/path/to/the/jack-jacoco-reporter.jar");
+        InputStream metadataZipStream = getClass().getResourceAsStream(EMMA_METADATA_RESOURCE_PATH);
+        File metadataZipFile = FileUtil.createTempFile("emma_meta", ".zip");
+        FileUtil.writeToFile(metadataZipStream, metadataZipFile);
 
         // Set up mocks
         CommandResult success = new CommandResult(CommandStatus.SUCCESS);
+        IBuildInfo mockBuild = Mockito.mock(IBuildInfo.class);
+        doReturn(metadataZipFile).when(mockBuild).getFile(EMMA_METADATA_ARTIFACT_NAME);
         JackCodeCoverageTest coverageTest = Mockito.spy(new JackCodeCoverageTest());
-        doReturn(metadataFiles).when(coverageTest).getMetadataFiles();
+        doReturn(mockBuild).when(coverageTest).getBuild();
+        doReturn(EMMA_METADATA_ARTIFACT_NAME).when(coverageTest).getMetadataZipArtifact();
+        doReturn(metadataFiles).when(coverageTest).getMetadataFiles(any(File.class));
         doReturn(fakeReportTool).when(coverageTest).getCoverageReporter();
         doReturn(success).when(coverageTest).runTimedCmd(anyLong(), any(String[].class));
 
@@ -177,12 +189,19 @@ public class JackCodeCoverageTestTest extends TestCase {
         File dest = new File("/some/destination/directory");
         File fakeReportTool = new File("/the/path/to/the/jack-jacoco-reporter.jar");
         String stderr = "some error message";
+        InputStream metadataZipStream = getClass().getResourceAsStream(EMMA_METADATA_RESOURCE_PATH);
+        File metadataZipFile = FileUtil.createTempFile("emma_meta", ".zip");
+        FileUtil.writeToFile(metadataZipStream, metadataZipFile);
 
         // Set up mocks
         CommandResult failed = new CommandResult(CommandStatus.FAILED);
         failed.setStderr(stderr);
+        IBuildInfo mockBuild = Mockito.mock(IBuildInfo.class);
+        doReturn(metadataZipFile).when(mockBuild).getFile(EMMA_METADATA_ARTIFACT_NAME);
         JackCodeCoverageTest coverageTest = Mockito.spy(new JackCodeCoverageTest());
-        doReturn(metadataFiles).when(coverageTest).getMetadataFiles();
+        doReturn(mockBuild).when(coverageTest).getBuild();
+        doReturn(EMMA_METADATA_ARTIFACT_NAME).when(coverageTest).getMetadataZipArtifact();
+        doReturn(metadataFiles).when(coverageTest).getMetadataFiles(any(File.class));
         doReturn(fakeReportTool).when(coverageTest).getCoverageReporter();
         doReturn(failed).when(coverageTest).runTimedCmd(anyLong(), any(String[].class));
 

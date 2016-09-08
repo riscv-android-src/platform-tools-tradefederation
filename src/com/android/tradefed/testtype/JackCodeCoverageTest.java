@@ -20,6 +20,7 @@ import com.android.tradefed.config.OptionClass;
 import com.android.tradefed.testtype.IRemoteTest;
 import com.android.tradefed.util.CommandResult;
 import com.android.tradefed.util.CommandStatus;
+import com.android.tradefed.util.FileUtil;
 import com.android.tradefed.util.RunUtil;
 import com.android.tradefed.util.ZipUtil;
 import com.google.common.collect.Lists;
@@ -98,12 +99,13 @@ public class JackCodeCoverageTest extends CodeCoverageTestBase {
         return mCoverageReporter;
     }
 
-    /** Returns the set of coverage metadata files. */
-    protected Set<File> getMetadataFiles() throws IOException {
-        // Extract the metadata files from the zip
-        File metadataZip = getBuild().getFile(getMetadataZipArtifact());
-        File metadataFolder = ZipUtil.extractZipToTemp(metadataZip, "metadata");
-
+    /**
+     * Returns the set of metadata files that should be used to generate the coverage report.
+     *
+     * @param metadataFolder The folder containing all of the metadata files.
+     * @return The set of metadata files that match at least one of the metadata-files-filters.
+     */
+    protected Set<File> getMetadataFiles(File metadataFolder) throws IOException {
         // Convert the filter strings to PathMatchers
         FileSystem fs = FileSystems.getDefault();
         Set<PathMatcher> filters = getMetadataFilesFilter().stream()
@@ -124,28 +126,37 @@ public class JackCodeCoverageTest extends CodeCoverageTestBase {
     protected void generateCoverageReport(Collection<File> executionData, File dest)
             throws IOException {
 
-        // Collect the metadata files
-        Collection<File> metadataFiles = getMetadataFiles();
+        // Extract the metadata files from the zip artifact
+        File metadataZip = getBuild().getFile(getMetadataZipArtifact());
+        File metadataFolder = ZipUtil.extractZipToTemp(metadataZip, "metadata");
+        try {
+            // Collect the metadata files
+            Collection<File> metadataFiles = getMetadataFiles(metadataFolder);
 
-        // Construct a command line for running the report generation tool
-        File coverageReporter = getCoverageReporter();
-        List<String> cmd = Lists.newArrayList("java", "-jar", coverageReporter.getAbsolutePath());
-        for (File metadata : metadataFiles) {
-            cmd.add("--metadata-file");
-            cmd.add(metadata.getAbsolutePath());
-        }
-        for (File coverageFile : executionData) {
-            cmd.add("--coverage-file");
-            cmd.add(coverageFile.getAbsolutePath());
-        }
-        cmd.add("--report-dir");
-        cmd.add(dest.getAbsolutePath());
+            // Construct a command line for running the report generation tool
+            File coverageReporter = getCoverageReporter();
+            List<String> cmd = Lists.newArrayList("java", "-jar",
+                    coverageReporter.getAbsolutePath());
+            for (File metadata : metadataFiles) {
+                cmd.add("--metadata-file");
+                cmd.add(metadata.getAbsolutePath());
+            }
+            for (File coverageFile : executionData) {
+                cmd.add("--coverage-file");
+                cmd.add(coverageFile.getAbsolutePath());
+            }
+            cmd.add("--report-dir");
+            cmd.add(dest.getAbsolutePath());
 
-        // Run the command to generate the report
-        CommandResult result = runTimedCmd(getReportTimeout(), cmd.toArray(new String[cmd.size()]));
-        if (!CommandStatus.SUCCESS.equals(result.getStatus())) {
-            throw new IOException(String.format("Failed to generate code coverage report: %s",
-                      result.getStderr()));
+            // Run the command to generate the report
+            CommandResult result = runTimedCmd(getReportTimeout(), cmd.toArray(new String[0]));
+            if (!CommandStatus.SUCCESS.equals(result.getStatus())) {
+                throw new IOException(String.format("Failed to generate code coverage report: %s",
+                          result.getStderr()));
+            }
+        } finally {
+            // Cleanup metadata files
+            FileUtil.recursiveDelete(metadataFolder);
         }
     }
 
