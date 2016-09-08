@@ -381,9 +381,7 @@ public class SideloadOtaStabilityTest implements IDeviceTest, IBuildReceiver,
             CLog.w("Couldn't save update package due to exception %s", e);
             return;
         } finally {
-            if (pkgSource != null) {
-                pkgSource.cancel();
-            }
+            StreamUtil.cancel(pkgSource);
         }
     }
 
@@ -395,21 +393,24 @@ public class SideloadOtaStabilityTest implements IDeviceTest, IBuildReceiver,
         // last_log contains a timing metric in its last line, capture it here and return it
         // for the metrics map to report
         try {
-            String[] lastLogLines = StreamUtil.getStringFromSource(lastLog).split("\n");
-            String endLine = lastLogLines[lastLogLines.length-1];
-            elapsedTime = Double.parseDouble(
-                    endLine.substring(endLine.indexOf('[') + 1, endLine.indexOf(']')).trim());
-        } catch (IOException|NumberFormatException|NullPointerException e) {
-            CLog.w("Couldn't get elapsed time from last_log due to exception %s", e);
-            return 0;
+            try {
+                String[] lastLogLines = StreamUtil.getStringFromSource(lastLog).split("\n");
+                String endLine = lastLogLines[lastLogLines.length-1];
+                elapsedTime = Double.parseDouble(
+                        endLine.substring(endLine.indexOf('[') + 1, endLine.indexOf(']')).trim());
+            } catch (IOException|NumberFormatException|NullPointerException e) {
+                CLog.w("Couldn't get elapsed time from last_log due to exception %s", e);
+                return 0;
+            }
+            listener.testLog(this.mRunName + "_recovery_log", LogDataType.TEXT,
+                    lastLog);
+            listener.testLog(this.mRunName + "_recovery_kmsg", LogDataType.TEXT,
+                    lastKmsg);
+            return elapsedTime;
+        } finally {
+            StreamUtil.cancel(lastLog);
+            StreamUtil.cancel(lastKmsg);
         }
-        listener.testLog(this.mRunName + "_recovery_log", LogDataType.TEXT,
-                lastLog);
-        listener.testLog(this.mRunName + "_recovery_kmsg", LogDataType.TEXT,
-                lastKmsg);
-        lastLog.cancel();
-        lastKmsg.cancel();
-        return elapsedTime;
     }
 
     private void getBasebandBootloaderVersions(IDeviceBuildInfo otaBuild) {
