@@ -46,7 +46,7 @@ public class CodeCoverageTest extends InstrumentationTest {
                     "If unspecified, will use package name.")
     private String mCoverageFile = null;
 
-    private static final String COVERAGE_REMOTE_FILE_LABEL = "coverageFilePath";
+    public static final String COVERAGE_REMOTE_FILE_LABEL = "coverageFilePath";
 
     @Override
     public void run(final ITestInvocationListener listener) throws DeviceNotAvailableException {
