@@ -182,13 +182,18 @@ public abstract class CodeCoverageTestBase implements IDeviceTest, IRemoteTest, 
                     // Run the current shard
                     TestRunResult result = runTest(target, shardIndex, numShards, coverageListener);
 
-                    // If the shard did not run to completion, re-run the tests individually
-                    if (result.isRunFailure()) {
-                        // Re-run the tests one by one
-                        for (TestIdentifier identifier :
-                                collectTests(target, shardIndex, numShards)) {
-                            runTest(target, identifier, coverageListener);
-                        }
+                    // If the shard ran to completion and the coverage file was generated
+                    String coverageFile = result.getRunMetrics().get(
+                            CodeCoverageTest.COVERAGE_REMOTE_FILE_LABEL);
+                    if (!result.isRunFailure() && getDevice().doesFileExist(coverageFile)) {
+                        // Move on to the next shard
+                        continue;
+                    }
+
+                    // Something went wrong with this shard, so re-run the tests individually
+                    for (TestIdentifier identifier :
+                            collectTests(target, shardIndex, numShards)) {
+                        runTest(target, identifier, coverageListener);
                     }
                 }
             }

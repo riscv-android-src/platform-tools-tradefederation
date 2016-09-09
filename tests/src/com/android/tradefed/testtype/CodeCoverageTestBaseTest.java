@@ -16,6 +16,7 @@
 package com.android.tradefed.testtype;
 
 import static org.mockito.Matchers.any;
+import static org.mockito.Matchers.anyString;
 import static org.mockito.Matchers.eq;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.doReturn;
@@ -104,6 +105,7 @@ public class CodeCoverageTestBaseTest extends TestCase {
             ITestDevice device = mock(ITestDevice.class);
             doAnswer(CALL_RUNNER).when(device).runInstrumentationTests(
                     any(IRemoteAndroidTestRunner.class), any(ITestRunListener.class));
+            doReturn(true).when(device).doesFileExist(anyString());
             setDevice(device);
         }
 
@@ -237,7 +239,7 @@ public class CodeCoverageTestBaseTest extends TestCase {
         }
     }
 
-    public void testRun_rerunIndividualTests() throws DeviceNotAvailableException {
+    public void testRun_rerunIndividualTests_failedRun() throws DeviceNotAvailableException {
         // Prepare some test data
         InstrumentationTarget target = new InstrumentationTarget(PACKAGE_NAME1, RUNNER_NAME1, "");
 
@@ -259,6 +261,34 @@ public class CodeCoverageTestBaseTest extends TestCase {
                 any(ITestInvocationListener.class));
         doReturn(success).when(coverageTest).runTest(eq(target), eq(FOO_TEST3),
                 any(ITestInvocationListener.class));
+
+        // Run the test
+        coverageTest.run(mockListener);
+
+        // Verify that individual tests are rerun
+        verify(coverageTest).runTest(eq(target), eq(0), eq(1), any(ITestInvocationListener.class));
+        verify(coverageTest).runTest(eq(target), eq(FOO_TEST1), any(ITestInvocationListener.class));
+        verify(coverageTest).runTest(eq(target), eq(FOO_TEST2), any(ITestInvocationListener.class));
+        verify(coverageTest).runTest(eq(target), eq(FOO_TEST3), any(ITestInvocationListener.class));
+    }
+
+    public void testRun_rerunIndividualTests_missingCoverageFile()
+            throws DeviceNotAvailableException {
+        // Prepare some test data
+        InstrumentationTarget target = new InstrumentationTarget(PACKAGE_NAME1, RUNNER_NAME1, "");
+
+        TestRunResult success = Mockito.mock(TestRunResult.class);
+        doReturn(false).when(success).isRunFailure();
+
+        // Mocking boilerplate
+        ITestInvocationListener mockListener = Mockito.mock(ITestInvocationListener.class);
+        CodeCoverageTestStub coverageTest = Mockito.spy(new CodeCoverageTestStub());
+        coverageTest.addTests(target, FOO_TESTS);
+
+        doReturn(success).when(coverageTest).runTest(any(CodeCoverageTest.class),
+                any(ITestInvocationListener.class));
+        ITestDevice mockDevice = coverageTest.getDevice();
+        doReturn(false).doReturn(true).when(mockDevice).doesFileExist(anyString());
 
         // Run the test
         coverageTest.run(mockListener);
