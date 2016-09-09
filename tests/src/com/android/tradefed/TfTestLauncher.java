@@ -22,6 +22,7 @@ import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.result.FileInputStreamSource;
 import com.android.tradefed.result.ITestInvocationListener;
+import com.android.tradefed.result.InputStreamSource;
 import com.android.tradefed.result.LogDataType;
 import com.android.tradefed.testtype.IBuildReceiver;
 import com.android.tradefed.testtype.IRemoteTest;
@@ -39,6 +40,7 @@ import junit.framework.Assert;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -57,6 +59,14 @@ public class TfTestLauncher implements IRemoteTest, IBuildReceiver {
     @Option(name = "remote-debug", description =
             "start the TF java process in remote debug mode.")
     private boolean mRemoteDebug = false;
+
+    @Option(name = "jacoco-code-coverage", description = "Enable jacoco code coverage on the java "
+            + "sub process. Run will be slightly slower because of the overhead.")
+    private boolean mEnableCoverage = false;
+
+    @Option(name = "ant-config-res", description = "The name of the ant resource configuration to "
+            + "transform the results in readable format.")
+    private String mAntConfigResource = "/jacoco/ant-tf-coverage.xml";
 
     private IBuildInfo mBuildInfo;
 
@@ -90,6 +100,7 @@ public class TfTestLauncher implements IRemoteTest, IBuildReceiver {
     private String mGlobalConfig = null;
 
     private static final String TF_GLOBAL_CONFIG = "TF_GLOBAL_CONFIG";
+    private static final long COVERAGE_REPORT_TIMEOUT = 2 * 60 * 1000;
 
     /**
      * {@inheritDoc}
@@ -99,13 +110,28 @@ public class TfTestLauncher implements IRemoteTest, IBuildReceiver {
         Assert.assertNotNull(mBuildInfo);
         Assert.assertNotNull(mConfigName);
         IFolderBuildInfo tfBuild = (IFolderBuildInfo)mBuildInfo;
-        String jarClasspath = FileUtil.getPath(tfBuild.getRootDir().getAbsolutePath(), "*");
+        String rootDir = tfBuild.getRootDir().getAbsolutePath();
+        String jarClasspath = FileUtil.getPath(rootDir, "*");
+
         List<String> args = new ArrayList<String>();
         args.add("java");
+        File destCoverageFile = null;
+        File agent = null;
+        if (mEnableCoverage) {
+            try {
+                destCoverageFile = FileUtil.createTempFile("coverage", ".exec");
+                agent = extractJacocoAgent();
+                addCoverageArgs(agent, args, destCoverageFile);
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            }
+        }
+
         if (mRemoteDebug) {
             args.add("-agentlib:jdwp=transport=dt_socket,server=y,suspend=y,address=10088");
         }
         args.add("-cp");
+
         args.add(jarClasspath);
         args.add("com.android.tradefed.command.CommandRunner");
         args.add(mConfigName);
@@ -198,6 +224,22 @@ public class TfTestLauncher implements IRemoteTest, IBuildReceiver {
                 eventParser.parseFile(eventFile);
                 logAndCleanFile(eventFile, listener);
             }
+            FileUtil.deleteFile(agent);
+        }
+        if (mEnableCoverage) {
+            InputStreamSource coverage = null;
+            File csvResult = null;
+            try {
+                csvResult = processExecData(destCoverageFile, rootDir);
+                coverage = new FileInputStreamSource(csvResult);
+                listener.testLog("coverage_csv", LogDataType.TEXT, coverage);
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            } finally {
+                FileUtil.deleteFile(destCoverageFile);
+                StreamUtil.cancel(coverage);
+                FileUtil.deleteFile(csvResult);
+            }
         }
     }
 
@@ -216,5 +258,75 @@ public class TfTestLauncher implements IRemoteTest, IBuildReceiver {
     @Override
     public void setBuild(IBuildInfo buildInfo) {
         mBuildInfo = buildInfo;
+    }
+
+    /**
+     * Helper to add arguments required for code coverage collection.
+     *
+     * @param jacocoAgent the jacoco agent file to run the coverage.
+     * @param args list of arguments that will be run in the subprocess.
+     * @param destfile destination file where the report will be put.
+     */
+    private void addCoverageArgs(File jacocoAgent, List<String> args, File destfile) {
+        String javaagent = String.format("-javaagent:%s=destfile=%s,"
+                + "includes=com.android.tradefed*:com.google.android.tradefed*",
+                jacocoAgent.getAbsolutePath(),
+                destfile.getAbsolutePath());
+        args.add(javaagent);
+    }
+
+    /**
+     * Returns a {@link File} pointing to the jacoco agent jar file extracted from the resources.
+     */
+    private File extractJacocoAgent() throws IOException {
+        String jacocoAgentRes = "/jacoco/jacocoagent.jar";
+        InputStream jacocoAgentStream = getClass().getResourceAsStream(jacocoAgentRes);
+        if (jacocoAgentStream == null) {
+            throw new IOException("Could not find " + jacocoAgentRes);
+        }
+        File jacocoAgent = FileUtil.createTempFile("jacocoagent", ".jar");
+        FileUtil.writeToFile(jacocoAgentStream, jacocoAgent);
+        return jacocoAgent;
+    }
+
+    /**
+     * Helper to process the execution data into user readable format (csv) that can easily be
+     * parsed.
+     *
+     * @param executionData output files of the java agent jacoco.
+     * @param rootDir base directory of downloaded TF
+     * @return a {@link File} pointing to the human readable csv result file.
+     */
+    private File processExecData(File executionData, String rootDir) throws IOException {
+        File csvReport = FileUtil.createTempFile("coverage_csv", ".csv");
+        InputStream template = getClass().getResourceAsStream(mAntConfigResource);
+        if (template == null) {
+            throw new IOException("Could not find " + mAntConfigResource);
+        }
+        String jacocoAntRes = "/jacoco/jacocoant.jar";
+        InputStream jacocoAntStream = getClass().getResourceAsStream(jacocoAntRes);
+        if (jacocoAntStream == null) {
+            throw new IOException("Could not find " + jacocoAntRes);
+        }
+        File antConfig = FileUtil.createTempFile("ant-merge_", ".xml");
+        File jacocoAnt = FileUtil.createTempFile("jacocoant", ".jar");
+        try {
+            FileUtil.writeToFile(template, antConfig);
+            FileUtil.writeToFile(jacocoAntStream, jacocoAnt);
+            String[] cmd = {"ant", "-f", antConfig.getPath(),
+                    "-Djacocoant.path=" + jacocoAnt.getAbsolutePath(),
+                    "-Dexecution.files=" + executionData.getAbsolutePath(),
+                    "-Droot.dir=" + rootDir,
+                    "-Ddest.file=" + csvReport.getAbsolutePath()};
+            CommandResult result = RunUtil.getDefault().runTimedCmd(COVERAGE_REPORT_TIMEOUT, cmd);
+            CLog.d(result.getStdout());
+            if (!CommandStatus.SUCCESS.equals(result.getStatus())) {
+                throw new IOException(result.getStderr());
+            }
+            return csvReport;
+        } finally {
+            FileUtil.deleteFile(antConfig);
+            FileUtil.deleteFile(jacocoAnt);
+        }
     }
 }
