@@ -190,7 +190,12 @@ class ConfigurationXmlParser {
             } else if (CONFIG_TAG.equals(localName)) {
                 String description = attributes.getValue("description");
                 if (description != null) {
-                    mConfigDef.setDescription(description);
+                    // Ensure that we only set the description the first time and not when it is
+                    // loading the <include> configuration.
+                    if (mConfigDef.getDescription() == null ||
+                            mConfigDef.getDescription().isEmpty()) {
+                        mConfigDef.setDescription(description);
+                    }
                 }
             } else if (INCLUDE_TAG.equals(localName)) {
                 String includeName = attributes.getValue("name");

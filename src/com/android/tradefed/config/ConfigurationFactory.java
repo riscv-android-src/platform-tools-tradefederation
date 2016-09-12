@@ -531,10 +531,10 @@ public class ConfigurationFactory implements IConfigurationFactory {
      * Loads all configurations found in classpath.
      *
      * @param discardExceptions true if any ConfigurationException should be
-     *            ignored. Exposed for unit testing
+     *            ignored.
      * @throws ConfigurationException
      */
-    void loadAllConfigs(boolean discardExceptions) throws ConfigurationException {
+    public void loadAllConfigs(boolean discardExceptions) throws ConfigurationException {
         ByteArrayOutputStream baos = new ByteArrayOutputStream();
         PrintStream ps = new PrintStream(baos);
         boolean failed = false;
@@ -649,11 +649,12 @@ public class ConfigurationFactory implements IConfigurationFactory {
     /**
      * Utility method that checks that all configs can be loaded, parsed, and
      * all option values set.
-     * Only Used for internal validation of all configs. Should not be exposed in the console.
+     * Only exposed so that depending project can validate their configs.
+     * Should not be exposed in the console.
      *
      * @throws ConfigurationException if one or more configs failed to load
      */
-    void loadAndPrintAllConfigs() throws ConfigurationException {
+    public void loadAndPrintAllConfigs() throws ConfigurationException {
         loadAllConfigs(false);
         boolean failed = false;
         ByteArrayOutputStream baos = new ByteArrayOutputStream();

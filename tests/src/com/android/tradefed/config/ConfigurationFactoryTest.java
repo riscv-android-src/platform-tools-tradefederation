@@ -602,6 +602,19 @@ public class ConfigurationFactoryTest extends TestCase {
     }
 
     /**
+     * This unit test ensure that when a configuration use included configuration the top
+     * configuration description is kept.
+     */
+    public void testTopDescriptionIsPreserved() throws ConfigurationException {
+        final String configName = "top-config";
+        Map<String, String> fakeTemplate = new HashMap<>();
+        fakeTemplate.put("target", "included-config");
+        ConfigurationDef test = mFactory.new ConfigLoader(false)
+                .getConfigurationDef(configName, fakeTemplate);
+        assertEquals("top config description", test.getDescription());
+    }
+
+    /**
      * This unit test codifies the expectation that an inner {@code <template-include>} tag
      * that is inside an include tag will be correctly rejected if no arguments can match it and
      * no default value is present.
