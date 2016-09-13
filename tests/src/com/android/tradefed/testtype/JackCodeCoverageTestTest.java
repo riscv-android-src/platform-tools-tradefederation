@@ -148,38 +148,42 @@ public class JackCodeCoverageTestTest extends TestCase {
         doReturn(fakeReportTool).when(coverageTest).getCoverageReporter();
         doReturn(success).when(coverageTest).runTimedCmd(anyLong(), any(String[].class));
 
-        // Generate a coverage report
-        coverageTest.generateCoverageReport(coverageFiles, dest);
+        try {
+            // Generate a coverage report
+            coverageTest.generateCoverageReport(coverageFiles, dest);
 
-        // Verify that the command was called with the right arguments
-        ArgumentCaptor<String[]> cmdLineCaptor = ArgumentCaptor.forClass(String[].class);
-        Mockito.verify(coverageTest).runTimedCmd(anyLong(), cmdLineCaptor.capture());
-        List<String> cmdLine = Arrays.asList(cmdLineCaptor.getValue());
-        assertEquals("java", cmdLine.get(0));
-        assertEquals("-jar", cmdLine.get(1));
-        assertEquals(fakeReportTool.getAbsolutePath(), cmdLine.get(2));
-        assertTrue(cmdLine.contains("--report-dir"));
+            // Verify that the command was called with the right arguments
+            ArgumentCaptor<String[]> cmdLineCaptor = ArgumentCaptor.forClass(String[].class);
+            Mockito.verify(coverageTest).runTimedCmd(anyLong(), cmdLineCaptor.capture());
+            List<String> cmdLine = Arrays.asList(cmdLineCaptor.getValue());
+            assertEquals("java", cmdLine.get(0));
+            assertEquals("-jar", cmdLine.get(1));
+            assertEquals(fakeReportTool.getAbsolutePath(), cmdLine.get(2));
+            assertTrue(cmdLine.contains("--report-dir"));
 
-        // Verify the rest of the command line arguments
-        for (int i = 3; i < cmdLine.size() - 1; i++) {
-            switch (cmdLine.get(i)) {
-              case "--coverage-file":
-                  File coverageFile = new File(cmdLine.get(++i));
-                  assertTrue(String.format("Unexpected coverage file: %s", coverageFile),
-                          coverageFiles.remove(coverageFile));
-                  break;
-              case "--metadata-file":
-                  File metadataFile = new File(cmdLine.get(++i));
-                  assertTrue(String.format("Unexpected metadata file: %s", metadataFile),
-                          metadataFiles.remove(metadataFile));
-                  break;
-              case "--report-dir":
-                  assertEquals(dest.getAbsolutePath(), cmdLine.get(++i));
-                  break;
+            // Verify the rest of the command line arguments
+            for (int i = 3; i < cmdLine.size() - 1; i++) {
+                switch (cmdLine.get(i)) {
+                  case "--coverage-file":
+                      File coverageFile = new File(cmdLine.get(++i));
+                      assertTrue(String.format("Unexpected coverage file: %s", coverageFile),
+                              coverageFiles.remove(coverageFile));
+                      break;
+                  case "--metadata-file":
+                      File metadataFile = new File(cmdLine.get(++i));
+                      assertTrue(String.format("Unexpected metadata file: %s", metadataFile),
+                              metadataFiles.remove(metadataFile));
+                      break;
+                  case "--report-dir":
+                      assertEquals(dest.getAbsolutePath(), cmdLine.get(++i));
+                      break;
+                }
             }
+            assertTrue(coverageFiles.isEmpty());
+            assertTrue(metadataFiles.isEmpty());
+        } finally {
+            FileUtil.deleteFile(metadataZipFile);
         }
-        assertTrue(coverageFiles.isEmpty());
-        assertTrue(metadataFiles.isEmpty());
     }
 
     public void testGenerateCoverageReport_error() throws IOException {
@@ -211,6 +215,8 @@ public class JackCodeCoverageTestTest extends TestCase {
             fail("IOException not thrown");
         } catch (IOException e) {
             assertTrue(e.getMessage().contains(stderr));
+        } finally {
+            FileUtil.deleteFile(metadataZipFile);
         }
     }
 }
