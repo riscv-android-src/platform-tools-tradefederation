@@ -146,6 +146,7 @@ import com.android.tradefed.util.StreamUtilTest;
 import com.android.tradefed.util.StringEscapeUtilsTest;
 import com.android.tradefed.util.SubprocessTestResultsParserTest;
 import com.android.tradefed.util.TableFormatterTest;
+import com.android.tradefed.util.TarUtilTest;
 import com.android.tradefed.util.TestLoaderTest;
 import com.android.tradefed.util.TimeValTest;
 import com.android.tradefed.util.ZipUtilTest;
@@ -321,6 +322,7 @@ import org.junit.runners.Suite.SuiteClasses;
     StreamUtilTest.class,
     SubprocessTestResultsParserTest.class,
     TableFormatterTest.class,
+    TarUtilTest.class,
     TestLoaderTest.class,
     TimeValTest.class,
     SimpleStatsTest.class,
