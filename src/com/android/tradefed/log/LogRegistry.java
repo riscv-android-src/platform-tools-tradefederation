@@ -103,10 +103,12 @@ public class LogRegistry implements ILogRegistry {
      */
     @Override
     public void registerLogger(ILeveledLogOutput log) {
-        ILeveledLogOutput oldValue = mLogTable.put(getCurrentThreadGroup(), log);
-        if (oldValue != null) {
-            Log.e(LOG_TAG, "Registering a new logger when one already exists for this thread!");
-            oldValue.closeLog();
+        synchronized (mLogTable) {
+            ILeveledLogOutput oldValue = mLogTable.put(getCurrentThreadGroup(), log);
+            if (oldValue != null) {
+                Log.e(LOG_TAG, "Registering a new logger when one already exists for this thread!");
+                oldValue.closeLog();
+            }
         }
     }
 
@@ -117,10 +119,12 @@ public class LogRegistry implements ILogRegistry {
     public void unregisterLogger() {
         ThreadGroup currentThreadGroup = getCurrentThreadGroup();
         if (currentThreadGroup != null) {
-            mLogTable.remove(currentThreadGroup);
-        }
-        else {
-          printLog(LogLevel.ERROR, LOG_TAG, "Unregistering when thread has no logger registered.");
+            synchronized (mLogTable) {
+                mLogTable.remove(currentThreadGroup);
+            }
+        } else {
+            printLog(LogLevel.ERROR, LOG_TAG, "Unregistering when thread has no logger "
+                    + "registered.");
         }
     }
 
@@ -179,12 +183,14 @@ public class LogRegistry implements ILogRegistry {
      * @return the logger for this thread, or null if one has not been registered.
      */
     ILeveledLogOutput getLogger() {
-        ILeveledLogOutput log = mLogTable.get(getCurrentThreadGroup());
-        if (log == null) {
-            // If there's no logger set for this thread, use global logger
-            log = mGlobalLogger;
+        synchronized (mLogTable) {
+            ILeveledLogOutput log = mLogTable.get(getCurrentThreadGroup());
+            if (log == null) {
+                // If there's no logger set for this thread, use global logger
+                log = mGlobalLogger;
+            }
+            return log;
         }
-        return log;
     }
 
     /**
@@ -192,12 +198,14 @@ public class LogRegistry implements ILogRegistry {
      */
     @Override
     public void closeAndRemoveAllLogs() {
-        Collection<ILeveledLogOutput> allLogs = mLogTable.values();
-        Iterator<ILeveledLogOutput> iter = allLogs.iterator();
-        while (iter.hasNext()) {
-            ILeveledLogOutput log = iter.next();
-            log.closeLog();
-            iter.remove();
+        synchronized (mLogTable) {
+            Collection<ILeveledLogOutput> allLogs = mLogTable.values();
+            Iterator<ILeveledLogOutput> iter = allLogs.iterator();
+            while (iter.hasNext()) {
+                ILeveledLogOutput log = iter.next();
+                log.closeLog();
+                iter.remove();
+            }
         }
         saveGlobalLog();
         mGlobalLogger.closeLog();
@@ -252,12 +260,14 @@ public class LogRegistry implements ILogRegistry {
      * @param dir directory to save file, can be null, file will be saved in tmp directory.
      */
     public void dumpLogsToDir(File dir) {
-        for (Map.Entry<ThreadGroup, ILeveledLogOutput> logEntry : mLogTable.entrySet()) {
-            // use thread group name as file name - assume its descriptive
-            String filePrefix = String.format("%s_log_", logEntry.getKey().getName());
-            InputStreamSource logSource = logEntry.getValue().getLog();
-            saveLog(filePrefix, logSource, dir);
-            logSource.cancel();
+        synchronized (mLogTable) {
+            for (Map.Entry<ThreadGroup, ILeveledLogOutput> logEntry : mLogTable.entrySet()) {
+                // use thread group name as file name - assume its descriptive
+                String filePrefix = String.format("%s_log_", logEntry.getKey().getName());
+                InputStreamSource logSource = logEntry.getValue().getLog();
+                saveLog(filePrefix, logSource, dir);
+                logSource.cancel();
+            }
         }
         // save global log last
         saveGlobalLogToDir(dir);
