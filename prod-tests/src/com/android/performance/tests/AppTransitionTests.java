@@ -50,7 +50,7 @@ import java.util.Map;
 
 /**
  * Test that drives the transition delays during different user behavior like
- * cold launch from home, hot launch from recent etc.This class invokes
+ * cold launch from launcher, hot launch from recent etc.This class invokes
  * the instrumentation test apk that does the transition and captures the events logs
  * during the transition and parse them and report in the dashboard.
  */
@@ -58,8 +58,8 @@ public class AppTransitionTests implements IRemoteTest, IDeviceTest {
 
     private static final String PACKAGE_NAME = "com.android.apptransition.tests";
     private static final String CLASS_NAME = "com.android.apptransition.tests.AppTransitionTests";
-    private static final String TEST_COLD_LAUNCH = "testColdLaunchFromHome";
-    private static final String TEST_HOT_LAUNCH = "testHotLaunchFromHome";
+    private static final String TEST_COLD_LAUNCH = "testColdLaunchFromLauncher";
+    private static final String TEST_HOT_LAUNCH = "testHotLaunchFromLauncher";
     private static final String TEST_APP_TO_HOME = "testAppToHome";
     private static final String TEST_APP_TO_RECENT = "testAppToRecents";
     private static final String TEST_HOT_LAUNCH_FROM_RECENTS = "testHotLaunchFromRecents";
@@ -74,11 +74,11 @@ public class AppTransitionTests implements IRemoteTest, IDeviceTest {
     private static final long EVENTS_LOGCAT_SIZE = 80 * 1024 * 1024;
 
     @Option(name = "cold-apps", description = "Apps used for cold app launch"
-            + " transition delay testing from home screen.")
+            + " transition delay testing from launcher screen.")
     private String mColdLaunchApps = null;
 
     @Option(name = "hot-apps", description = "Apps used for hot app launch"
-            + " transition delay testing from home screen.")
+            + " transition delay testing from launcher screen.")
     private String mHotLaunchApps = null;
 
     @Option(name = "pre-launch-apps", description = "Apps used for populating the"
@@ -331,14 +331,14 @@ public class AppTransitionTests implements IRemoteTest, IDeviceTest {
     }
 
     /**
-     * Analyze and report the cold launch transition delay from home screen.
+     * Analyze and report the cold launch transition delay from launcher screen.
      *
      * @param transitionDelayItems
      */
     private void analyzeColdLaunchDelay(List<TransitionDelayItem> transitionDelayItems) {
         Map<String, String> cmpNameAppMap = reverseAppCmpInfoMap(getAppComponentInfoMap());
         Map<String, List<Long>> appKeyTransitionDelayMap = new HashMap<>();
-        //Handle home to cold app launch transition
+        //Handle launcher to cold app launch transition
         for (TransitionDelayItem delayItem : transitionDelayItems) {
             if (cmpNameAppMap.containsKey(delayItem.getComponentName())) {
                 String appName = cmpNameAppMap.get(delayItem.getComponentName());
@@ -358,8 +358,8 @@ public class AppTransitionTests implements IRemoteTest, IDeviceTest {
     }
 
     /**
-     * Analyze and report the hot launch transition delay and app
-     * to home transition delay. Keep track of home to app transition delay
+     * Analyze and report the hot launch transition delay from launcher and app
+     * to home transition delay. Keep track of launcher to app transition delay
      * which immediately followed by app to home transition. Skip the
      * intitial cold launch on the apps.
      *
@@ -386,7 +386,7 @@ public class AppTransitionTests implements IRemoteTest, IDeviceTest {
                 }
                 continue;
             }
-            // Handle home to hot app launch transition
+            // Handle launcher to hot app launch transition
             if (cmpNameAppMap.containsKey(delayItem.getComponentName())) {
                 // Not to consider the first cold launch for the app.
                 if (delayItem.getTransitionDelay() == -1) {
@@ -403,7 +403,10 @@ public class AppTransitionTests implements IRemoteTest, IDeviceTest {
                 prevAppName = appName;
             }
         }
+        // Remove the first hot launch info through intents
+        removeAdditionalLaunchInfo(appKeyTransitionDelayMap);
         computeAndUploadResults(TEST_HOT_LAUNCH, appKeyTransitionDelayMap);
+        removeAdditionalLaunchInfo(appToHomeKeyTransitionDelayMap);
         computeAndUploadResults(TEST_APP_TO_HOME, appToHomeKeyTransitionDelayMap);
     }
 
@@ -428,9 +431,11 @@ public class AppTransitionTests implements IRemoteTest, IDeviceTest {
                         appKeyTransitionDelayMap.get(prevAppName).add(
                                 delayItem.getTransitionDelay());
                     } else {
-                        List<Long> delayTimeList = new ArrayList<Long>();
-                        delayTimeList.add(delayItem.getTransitionDelay());
-                        appKeyTransitionDelayMap.put(prevAppName, delayTimeList);
+                        if (null != prevAppName) {
+                            List<Long> delayTimeList = new ArrayList<Long>();
+                            delayTimeList.add(delayItem.getTransitionDelay());
+                            appKeyTransitionDelayMap.put(prevAppName, delayTimeList);
+                        }
                     }
                 }
                 prevAppName = null;
@@ -565,3 +570,4 @@ public class AppTransitionTests implements IRemoteTest, IDeviceTest {
     }
 
 }
+
