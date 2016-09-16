@@ -252,7 +252,6 @@ public class GlobalConfiguration implements IGlobalConfiguration {
      * {@inheritDoc}
      */
     @Override
-    @SuppressWarnings("unchecked")
     public IHostOptions getHostOptions() {
         return (IHostOptions) getConfigurationObject(HOST_OPTIONS_TYPE_NAME);
     }
