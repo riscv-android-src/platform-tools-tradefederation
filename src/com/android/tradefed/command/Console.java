@@ -32,6 +32,7 @@ import com.android.tradefed.util.FileUtil;
 import com.android.tradefed.util.QuotationAwareTokenizer;
 import com.android.tradefed.util.RegexTrie;
 import com.android.tradefed.util.RunUtil;
+import com.android.tradefed.util.TimeUtil;
 import com.android.tradefed.util.VersionParser;
 import com.android.tradefed.util.ZipUtil;
 import com.android.tradefed.util.keystore.IKeyStoreFactory;
@@ -93,6 +94,7 @@ public class Console extends Thread {
     private RegexTrie<Runnable> mCommandTrie = new RegexTrie<Runnable>();
     private boolean mShouldExit = false;
     private List<String> mMainArgs = new ArrayList<String>(0);
+    private long mConsoleStartTime;
 
     /** A convenience type for <code>{@literal List<List<String>>}</code> */
     @SuppressWarnings("serial")
@@ -218,6 +220,7 @@ public class Console extends Thread {
      */
     Console(ConsoleReader reader) {
         super();
+        mConsoleStartTime = System.currentTimeMillis();
         mConsoleReader = reader;
         if (reader != null) {
             mConsoleReader.addCompletor(
@@ -451,7 +454,9 @@ public class Console extends Thread {
                 "\tcommands [pattern]  Dump all the config XML for the commands matching the " +
                 "pattern and waiting to be executed" + LINE_SEPARATOR +
                 "\te[nv]               Dump the environment variables available to test harness " +
-                "process" + LINE_SEPARATOR,
+                "process" + LINE_SEPARATOR +
+                "\tu[ptime]            Dump how long the TradeFed process has been running" +
+                LINE_SEPARATOR,
                 DUMP_PATTERN));
 
         commandHelp.put(RUN_PATTERN, String.format(
@@ -588,6 +593,12 @@ public class Console extends Thread {
                         dumpTfBugreport();
                     }
         }, DUMP_PATTERN, "b(?:ugreport?)?");
+        trie.put(new Runnable() {
+            @Override
+            public void run() {
+                printElapsedTime();
+            }
+        }, DUMP_PATTERN, "u(?:ptime?)?");
         ArgRunnable<CaptureList> dumpConfigRun = new ArgRunnable<CaptureList>() {
             @Override
             public void run(CaptureList args) {
@@ -786,6 +797,16 @@ public class Console extends Thread {
                         mScheduler.removeAllCommands();
                     }
                 }, REMOVE_PATTERN, "allCommands");
+    }
+
+    /**
+     * Print the uptime of the Tradefed process.
+     */
+    private void printElapsedTime() {
+        long elapsedTime = System.currentTimeMillis() - mConsoleStartTime;
+        String elapsed = String.format("TF has been running for %s",
+                TimeUtil.formatElapsedTime(elapsedTime));
+        printLine(elapsed);
     }
 
     /**
