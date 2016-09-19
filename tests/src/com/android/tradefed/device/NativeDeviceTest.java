@@ -1487,4 +1487,51 @@ public class NativeDeviceTest extends TestCase {
         assertTrue(mTestDevice.unlockDevice());
         EasyMock.verify(mMockIDevice, mMockStateMonitor, mMockDvcMonitor);
     }
+
+    /**
+     * Test {NativeDevice#parseFreeSpaceFromModernOutput(String)} with a regular df output and
+     * mount name of numbers.
+     */
+    public void testParseDfOutput_mountWithNumber() {
+        String dfOutput = "Filesystem     1K-blocks   Used Available Use% Mounted on\n" +
+                "/dev/fuse       31154688 100576  31054112   1% /storage/3134-3433";
+        Long res = mTestDevice.parseFreeSpaceFromModernOutput(dfOutput);
+        assertNotNull(res);
+        assertEquals(31054112L, res.longValue());
+    }
+
+    /**
+     * Test {NativeDevice#parseFreeSpaceFromModernOutput(String)} with a regular df output and
+     * mount name of mix of letters and numbers.
+     */
+    public void testParseDfOutput() {
+        String dfOutput = "Filesystem     1K-blocks   Used Available Use% Mounted on\n" +
+                "/dev/fuse       31154688 100576  31054112   1% /storage/sdcard58";
+        Long res = mTestDevice.parseFreeSpaceFromModernOutput(dfOutput);
+        assertNotNull(res);
+        assertEquals(31054112L, res.longValue());
+    }
+
+    /**
+     * Test {NativeDevice#parseFreeSpaceFromModernOutput(String)} with a regular df output and
+     * mount name with incorrect field.
+     */
+    public void testParseDfOutput_wrongMount() {
+        String dfOutput = "Filesystem     1K-blocks   Used Available Use% Mounted on\n" +
+                "/dev/fuse       31154688 100576  31054112   1% \test\\wrongpath";
+        Long res = mTestDevice.parseFreeSpaceFromModernOutput(dfOutput);
+        assertNull(res);
+    }
+
+    /**
+     * Test {NativeDevice#parseFreeSpaceFromModernOutput(String)} with a regular df output and
+     * a filesytem name with numbers in it.
+     */
+    public void testParseDfOutput_filesystemWithNumber() {
+        String dfOutput = "Filesystem     1K-blocks   Used Available Use% Mounted on\n" +
+                "/dev/dm-1       31154688 100576  31054112   1% /";
+        Long res = mTestDevice.parseFreeSpaceFromModernOutput(dfOutput);
+        assertNotNull(res);
+        assertEquals(31054112L, res.longValue());
+    }
 }
