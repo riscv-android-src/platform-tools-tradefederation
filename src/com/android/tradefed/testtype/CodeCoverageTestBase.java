@@ -23,6 +23,7 @@ import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.config.Option;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
+import com.android.tradefed.log.ITestLogger;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.result.CollectingTestListener;
 import com.android.tradefed.result.FileInputStreamSource;
@@ -56,10 +57,11 @@ import java.util.Set;
 /**
  * An abstract base class which runs installed instrumentation test(s) and collects execution data
  * from each test that was run. Subclasses should implement the
- * {@link generateCoverageReport(Collection<File>, File)} method to convert the execution data files
- * into a human readable report.
+ * {@link #logCoverageReport(Collection<File>, ITestLogger)} method to convert the execution data
+ * into a human readable report and log it.
  */
-public abstract class CodeCoverageTestBase implements IDeviceTest, IRemoteTest, IBuildReceiver {
+public abstract class CodeCoverageTestBase<T extends CodeCoverageReportFormat>
+        implements IDeviceTest, IRemoteTest, IBuildReceiver {
 
     private ITestDevice mDevice = null;
     private IBuildInfo mBuild = null;
@@ -153,6 +155,9 @@ public abstract class CodeCoverageTestBase implements IDeviceTest, IRemoteTest, 
         }
     }
 
+    /** Returns the list of output formats to use when generating the coverage report. */
+    protected abstract List<T> getReportFormat();
+
     /**
      * {@inheritDoc}
      */
@@ -198,15 +203,15 @@ public abstract class CodeCoverageTestBase implements IDeviceTest, IRemoteTest, 
                 }
             }
 
-            // Generate the coverage report
-            reportDir = FileUtil.createTempDir("coverage_report_");
-            generateCoverageReport(coverageListener.getCoverageFiles(), reportDir);
-
-            // Compress the coverage report so we can log it as a single file
-            ICompressionStrategy strategy = getCompressionStrategy();
-            reportArchive = strategy.compress(reportDir);
-            listener.testLog("coverage", strategy.getLogDataType(),
-                    new FileInputStreamSource(reportArchive));
+            // Generate the coverage report(s) and log it
+            for (T format : getReportFormat()) {
+                File report = generateCoverageReport(coverageListener.getCoverageFiles(), format);
+                try {
+                    doLogReport("coverage", format.getLogDataType(), report, listener);
+                } finally {
+                    FileUtil.recursiveDelete(report);
+                }
+            }
         } catch (IOException e) {
             // Rethrow
             throw new RuntimeException(e);
@@ -214,6 +219,7 @@ public abstract class CodeCoverageTestBase implements IDeviceTest, IRemoteTest, 
             // Cleanup
             FileUtil.recursiveDelete(reportDir);
             FileUtil.deleteFile(reportArchive);
+            cleanup();
         }
     }
 
@@ -222,10 +228,45 @@ public abstract class CodeCoverageTestBase implements IDeviceTest, IRemoteTest, 
      * called after all of the tests have finished running.
      *
      * @param executionData The execution data files collected while running the tests.
-     * @param dest The destination directory that the coverage report should be written to.
+     * @param format The output format of the generated coverage report.
      */
-    protected abstract void generateCoverageReport(Collection<File> executionData, File dest)
+    protected abstract File generateCoverageReport(Collection<File> executionData, T format)
             throws IOException;
+
+    /**
+     * Cleans up any resources allocated during a test run. Called at the end of the
+     * {@link #run(ITestInvocationListener)} after all coverage reports have been logged. This
+     * method is a stub, but can be overridden by subclasses as necessary.
+     */
+    protected void cleanup() { }
+
+    /**
+     * Logs the given data with the provided logger. The {@code data} can be a regular file, or a
+     * directory. If the data is a directory, it is compressed into a single archive file before
+     * being logged.
+     *
+     * @param dataName The name to use when logging the data.
+     * @param dataType The {@link LogDataType} of the data. Ignored if {@code data} is a directory.
+     * @param data The data to log. Can be a regular file, or a directory.
+     * @param logger The {@link ITestLogger} with which to log the data.
+     */
+    void doLogReport(String dataName, LogDataType dataType, File data, ITestLogger logger)
+            throws IOException {
+
+        // If the data is a directory, compress it first
+        InputStreamSource streamSource;
+        if (data.isDirectory()) {
+            ICompressionStrategy strategy = getCompressionStrategy();
+            dataType = strategy.getLogDataType();
+            streamSource = new FileInputStreamSource(strategy.compress(data), true);
+        } else {
+            streamSource = new FileInputStreamSource(data);
+        }
+
+        // Log the data
+        logger.testLog(dataName, dataType, streamSource);
+        streamSource.cancel();
+    }
 
     /** Returns a new {@link ListInstrumentationParser}. Exposed for unit testing. */
     ListInstrumentationParser internalCreateListInstrumentationParser() {

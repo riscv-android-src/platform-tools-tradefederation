@@ -15,6 +15,10 @@
  */
 package com.android.tradefed.testtype;
 
+import static com.android.tradefed.testtype.JackCodeCoverageReportFormat.CSV;
+import static com.android.tradefed.testtype.JackCodeCoverageReportFormat.HTML;
+import static com.android.tradefed.testtype.JackCodeCoverageReportFormat.XML;
+
 import com.android.tradefed.config.Option;
 import com.android.tradefed.config.OptionClass;
 import com.android.tradefed.testtype.IRemoteTest;
@@ -45,7 +49,7 @@ import java.util.stream.Collectors;
  * been instrumented by the Jack compiler.
  */
 @OptionClass(alias = "jack-coverage")
-public class JackCodeCoverageTest extends CodeCoverageTestBase {
+public class JackCodeCoverageTest extends CodeCoverageTestBase<JackCodeCoverageReportFormat> {
 
     /** Location of the report generation tool. */
     private File mCoverageReporter = null;
@@ -58,11 +62,23 @@ public class JackCodeCoverageTest extends CodeCoverageTestBase {
     @Option(name = "metadata-files-filter",
             description = "Glob pattern used to select the metadata files to use when " +
             "generating the coverage report. May be repeated.")
-    private List<String> mMetadataFilesFilter = new ArrayList<String>();
+    private List<String> mMetadataFilesFilter = new ArrayList<>();
 
     @Option(name = "report-timeout", isTimeVal = true,
             description = "Maximum time to wait for coverage report generation to complete in ms")
     private long mReportTimeout = 5 * 60 * 1000; // 5 Minutes
+
+    @Option(name = "report-format",
+            description = "Which output format(s) to use when generating the coverage report. " +
+            "May be repeated to output multiple formats. Defaults to HTML if unspecified.")
+    private List<JackCodeCoverageReportFormat> mReportFormat = new ArrayList<>();
+
+    /**
+     * {@inheritDoc}
+     */
+    protected List<JackCodeCoverageReportFormat> getReportFormat() {
+        return mReportFormat.isEmpty() ? Arrays.asList(HTML) : mReportFormat;
+    }
 
     /**
      * Returns the name of the build artifact that contains the coverage metadata.
@@ -99,13 +115,20 @@ public class JackCodeCoverageTest extends CodeCoverageTestBase {
         return mCoverageReporter;
     }
 
+    private File mMetadataCache = null;
+
     /**
      * Returns the set of metadata files that should be used to generate the coverage report.
      *
-     * @param metadataFolder The folder containing all of the metadata files.
      * @return The set of metadata files that match at least one of the metadata-files-filters.
      */
-    protected Set<File> getMetadataFiles(File metadataFolder) throws IOException {
+    protected Set<File> getMetadataFiles() throws IOException {
+        // Extract the metadata files if we haven't already
+        if (mMetadataCache == null) {
+            File metadataZip = getBuild().getFile(getMetadataZipArtifact());
+            mMetadataCache = ZipUtil.extractZipToTemp(metadataZip, "metadata");
+        }
+
         // Convert the filter strings to PathMatchers
         FileSystem fs = FileSystems.getDefault();
         Set<PathMatcher> filters = getMetadataFilesFilter().stream()
@@ -113,7 +136,7 @@ public class JackCodeCoverageTest extends CodeCoverageTestBase {
                 .collect(Collectors.toSet());
 
         // Find metadata files that match the specified filters
-        return Files.walk(metadataFolder.toPath())
+        return Files.walk(mMetadataCache.toPath())
                 .filter(p -> filters.stream().anyMatch(f -> f.matches(p)))
                 .map(p -> p.toFile())
                 .collect(Collectors.toSet());
@@ -122,42 +145,68 @@ public class JackCodeCoverageTest extends CodeCoverageTestBase {
     /**
      * {@inheritDoc}
      */
-    @Override
-    protected void generateCoverageReport(Collection<File> executionData, File dest)
-            throws IOException {
+    protected File generateCoverageReport(Collection<File> executionFiles,
+            JackCodeCoverageReportFormat format) throws IOException {
 
-        // Extract the metadata files from the zip artifact
-        File metadataZip = getBuild().getFile(getMetadataZipArtifact());
-        File metadataFolder = ZipUtil.extractZipToTemp(metadataZip, "metadata");
-        try {
-            // Collect the metadata files
-            Collection<File> metadataFiles = getMetadataFiles(metadataFolder);
-
-            // Construct a command line for running the report generation tool
-            File coverageReporter = getCoverageReporter();
-            List<String> cmd = Lists.newArrayList("java", "-jar",
-                    coverageReporter.getAbsolutePath());
-            for (File metadata : metadataFiles) {
-                cmd.add("--metadata-file");
-                cmd.add(metadata.getAbsolutePath());
-            }
-            for (File coverageFile : executionData) {
-                cmd.add("--coverage-file");
-                cmd.add(coverageFile.getAbsolutePath());
-            }
-            cmd.add("--report-dir");
-            cmd.add(dest.getAbsolutePath());
-
-            // Run the command to generate the report
-            CommandResult result = runTimedCmd(getReportTimeout(), cmd.toArray(new String[0]));
-            if (!CommandStatus.SUCCESS.equals(result.getStatus())) {
-                throw new IOException(String.format("Failed to generate code coverage report: %s",
-                          result.getStderr()));
-            }
-        } finally {
-            // Cleanup metadata files
-            FileUtil.recursiveDelete(metadataFolder);
+        // Construct a command line for running the report generation tool
+        File dest = FileUtil.createTempDir("coverage");
+        File coverageReporter = getCoverageReporter();
+        List<String> cmd = Lists.newArrayList("java", "-jar",
+                coverageReporter.getAbsolutePath());
+        for (File metadata : getMetadataFiles()) {
+            cmd.add("--metadata-file");
+            cmd.add(metadata.getAbsolutePath());
         }
+        for (File coverageFile : executionFiles) {
+            cmd.add("--coverage-file");
+            cmd.add(coverageFile.getAbsolutePath());
+        }
+        cmd.add("--report-dir");
+        cmd.add(dest.getAbsolutePath());
+        cmd.add("--report-type");
+        cmd.add(format.getReporterArg());
+
+        // Run the command
+        CommandResult result = runTimedCmd(getReportTimeout(), cmd.toArray(new String[0]));
+        if (!CommandStatus.SUCCESS.equals(result.getStatus())) {
+            FileUtil.recursiveDelete(dest);
+            throw new IOException(String.format(
+                    "Failed to generate code coverage report: %s", result.getStderr()));
+        }
+
+        // CSV reports (and XML) get put in dest/report.csv. Return the actual report file.
+        if (CSV.equals(format) || XML.equals(format)) {
+            try {
+                // Make a copy of the file, so we can clean up the dest directory
+                String ext = format.getLogDataType().getFileExt();
+                return copyFile(new File(dest, String.format("report.%s", ext)));
+            } finally {
+                FileUtil.recursiveDelete(dest);
+            }
+        } else {
+            return dest;
+        }
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    protected void cleanup() {
+        FileUtil.recursiveDelete(mMetadataCache);
+        mMetadataCache = null;
+    }
+
+    /** Returns a copy of the given {@code source} file. */
+    File copyFile(File source) throws IOException {
+        // Create a new file with the same prefix and extension as the source file
+        String filename = source.getPath();
+        int pos = filename.lastIndexOf(".");
+        File ret = FileUtil.createTempFile(filename.substring(0, pos), filename.substring(pos));
+
+        // Copy the contents of the source file to the new file and return it
+        FileUtil.copyFile(source, ret);
+        return ret;
     }
 
     /** Calls {@link RunUtil#runTimedCmd(long, String[])}. Exposed for unit testing. */

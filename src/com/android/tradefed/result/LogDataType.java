@@ -45,6 +45,8 @@ public enum LogDataType {
     SERVICES("txt", false, true),  // dumpsys activity services
     GFX_INFO("txt", false, true),  // dumpsys gfxinfo
     CPU_INFO("txt", false, true),  // dumpsys cpuinfo
+    JACOCO_CSV("csv", false, true), // JaCoCo coverage report in CSV format
+    JACOCO_XML("xml", false, true), // JaCoCo coverage report in XML format
     /* Unknown file type */
     UNKNOWN("dat", false, false);
 
