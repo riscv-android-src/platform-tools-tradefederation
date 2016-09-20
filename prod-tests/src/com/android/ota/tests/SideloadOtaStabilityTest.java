@@ -85,6 +85,8 @@ public class SideloadOtaStabilityTest implements IDeviceTest, IBuildReceiver,
 
     private static final String KMSG_CMD = "cat /proc/kmsg";
 
+    private static final long LONG_WAIT_UNCRYPT = 10 * 1000;
+
     private OtaDeviceBuildInfo mOtaDeviceBuild;
     private IConfiguration mConfiguration;
     private ITestDevice mDevice;
@@ -134,7 +136,7 @@ public class SideloadOtaStabilityTest implements IDeviceTest, IBuildReceiver,
      */
     @Override
     public void setBuild(IBuildInfo buildInfo) {
-        mOtaDeviceBuild = (OtaDeviceBuildInfo)buildInfo;
+        mOtaDeviceBuild = (OtaDeviceBuildInfo) buildInfo;
     }
 
     /**
@@ -257,11 +259,6 @@ public class SideloadOtaStabilityTest implements IDeviceTest, IBuildReceiver,
      * Flash the device back to baseline build.
      * <p/>
      * Currently does this by re-running {@link ITargetPreparer#setUp(ITestDevice, IBuildInfo)}
-     *
-     * @throws DeviceNotAvailableException
-     * @throws BuildError
-     * @throws TargetSetupError
-     * @throws ConfigurationException
      */
     private void flashDevice() throws TargetSetupError, BuildError, DeviceNotAvailableException,
             ConfigurationException {
@@ -308,6 +305,14 @@ public class SideloadOtaStabilityTest implements IDeviceTest, IBuildReceiver,
         // this file needs to be uncrypted, since /data isn't mounted in recovery
         // block.map should be empty since cache should be cleared
         mDevice.pushString(mPackageDataPath + "\n", UNCRYPT_FILE_PATH);
+        try {
+            // This is a workaround for known issue with f2fs system.
+            CLog.i("Sleeping %d for package to write to flash.", LONG_WAIT_UNCRYPT);
+            Thread.sleep(LONG_WAIT_UNCRYPT);
+        } catch (InterruptedException e) {
+            CLog.i("Got interrupted when waiting to uncrypt file.");
+        }
+
         try {
             mUncryptDuration = doUncrypt(SocketFactory.getInstance(), listener);
             String installOtaCmd = String.format("--update_package=%s\n", BLOCK_MAP_PATH);
@@ -395,10 +400,10 @@ public class SideloadOtaStabilityTest implements IDeviceTest, IBuildReceiver,
         try {
             try {
                 String[] lastLogLines = StreamUtil.getStringFromSource(lastLog).split("\n");
-                String endLine = lastLogLines[lastLogLines.length-1];
+                String endLine = lastLogLines[lastLogLines.length - 1];
                 elapsedTime = Double.parseDouble(
                         endLine.substring(endLine.indexOf('[') + 1, endLine.indexOf(']')).trim());
-            } catch (IOException|NumberFormatException|NullPointerException e) {
+            } catch (IOException | NumberFormatException | NullPointerException e) {
                 CLog.w("Couldn't get elapsed time from last_log due to exception %s", e);
                 return 0;
             }
@@ -499,7 +504,10 @@ public class SideloadOtaStabilityTest implements IDeviceTest, IBuildReceiver,
      */
     protected static class SocketFactory implements ISocketFactory {
         private static SocketFactory sInstance;
-        private SocketFactory() { }
+
+        private SocketFactory() {
+        }
+
         public static SocketFactory getInstance() {
             if (sInstance == null) {
                 sInstance = new SocketFactory();
