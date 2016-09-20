@@ -35,6 +35,8 @@ public class RunUtilTest extends TestCase {
     private RunUtil mRunUtil;
     private long mSleepTime = 0;
     private boolean success = false;
+    private static final long SHORT_TIMEOUT_MS = 200;
+    private static final long LONG_TIMEOUT_MS = 1000;
 
     @Override
     protected void setUp() throws Exception {
@@ -50,7 +52,8 @@ public class RunUtilTest extends TestCase {
                 IRunUtil.IRunnableResult.class);
         EasyMock.expect(mockRunnable.run()).andReturn(Boolean.TRUE);
         EasyMock.replay(mockRunnable);
-        assertEquals(CommandStatus.SUCCESS, mRunUtil.runTimed(100, mockRunnable, true));
+        assertEquals(CommandStatus.SUCCESS,
+                mRunUtil.runTimed(SHORT_TIMEOUT_MS, mockRunnable, true));
     }
 
     /**
@@ -61,7 +64,8 @@ public class RunUtilTest extends TestCase {
                 IRunUtil.IRunnableResult.class);
         EasyMock.expect(mockRunnable.run()).andReturn(Boolean.FALSE);
         EasyMock.replay(mockRunnable);
-        assertEquals(CommandStatus.FAILED, mRunUtil.runTimed(100, mockRunnable, true));
+        assertEquals(CommandStatus.FAILED,
+                mRunUtil.runTimed(SHORT_TIMEOUT_MS, mockRunnable, true));
     }
 
     /**
@@ -73,7 +77,8 @@ public class RunUtilTest extends TestCase {
         EasyMock.expect(mockRunnable.run()).andThrow(new RuntimeException());
         mockRunnable.cancel();
         EasyMock.replay(mockRunnable);
-        assertEquals(CommandStatus.EXCEPTION, mRunUtil.runTimed(100, mockRunnable, true));
+        assertEquals(CommandStatus.EXCEPTION,
+                mRunUtil.runTimed(SHORT_TIMEOUT_MS, mockRunnable, true));
     }
 
     /**
@@ -91,7 +96,7 @@ public class RunUtilTest extends TestCase {
      */
     public void testRunTimedCmd_timeout() {
         String[] command = {"sleep", "10000"};
-        CommandResult result = mRunUtil.runTimedCmd(200, command);
+        CommandResult result = mRunUtil.runTimedCmd(SHORT_TIMEOUT_MS, command);
         assertEquals(CommandStatus.TIMED_OUT, result.getStatus());
         assertEquals("", result.getStdout());
         assertEquals("", result.getStderr());
@@ -247,7 +252,8 @@ public class RunUtilTest extends TestCase {
             fail("Failed to create output files: " + e.getMessage());
         }
         String[] command = {"echo", "TEST"};
-        CommandResult result = mRunUtil.runTimedCmd(100, stdoutStream, stderrStream, command);
+        CommandResult result = mRunUtil.runTimedCmd(SHORT_TIMEOUT_MS, stdoutStream, stderrStream,
+                command);
         assertEquals(CommandStatus.SUCCESS, result.getStatus());
         assertEquals(result.getStdout(),
                 "redirected to " + stdoutStream.getClass().getSimpleName());
@@ -272,7 +278,7 @@ public class RunUtilTest extends TestCase {
      */
     public void testRuntimedCmd_regularOutput_fileNull() {
         String[] command = {"echo", "TEST"};
-        CommandResult result = mRunUtil.runTimedCmd(100, null, null, command);
+        CommandResult result = mRunUtil.runTimedCmd(SHORT_TIMEOUT_MS, null, null, command);
         assertEquals(CommandStatus.SUCCESS, result.getStatus());
         assertEquals(result.getStdout(), "TEST\n");
         assertEquals(result.getStderr(), "");
@@ -298,7 +304,8 @@ public class RunUtilTest extends TestCase {
             fail("Failed to create output files: " + e.getMessage());
         }
         String[] command = {"echo", "TEST"};
-        CommandResult result = mRunUtil.runTimedCmd(100, stdoutStream, stderrStream, command);
+        CommandResult result = mRunUtil.runTimedCmd(SHORT_TIMEOUT_MS, stdoutStream, stderrStream,
+                command);
         assertEquals(CommandStatus.SUCCESS, result.getStatus());
         assertEquals(result.getStdout(),
                 "redirected to " + stdoutStream.getClass().getSimpleName());
@@ -356,7 +363,7 @@ public class RunUtilTest extends TestCase {
     public void testSetInterruptibleInFuture_beforeTimeout() {
         mRunUtil.allowInterrupt(false);
         assertFalse(mRunUtil.isInterruptAllowed());
-        mRunUtil.setInterruptibleInFuture(Thread.currentThread(), 1000);
+        mRunUtil.setInterruptibleInFuture(Thread.currentThread(), LONG_TIMEOUT_MS);
         mRunUtil.sleep(10);
         // Should still be false
         assertFalse(mRunUtil.isInterruptAllowed());
@@ -372,7 +379,7 @@ public class RunUtilTest extends TestCase {
         testRunUtil.setEnvVariable(ENV_NAME, "initvalue");
         testRunUtil.unsetEnvVariable(ENV_NAME);
         CommandResult result =
-                testRunUtil.runTimedCmd(1000, "/bin/bash", "-c", "echo $" + ENV_NAME);
+                testRunUtil.runTimedCmd(LONG_TIMEOUT_MS, "/bin/bash", "-c", "echo $" + ENV_NAME);
         assertNotNull(result.getStdout());
         // Variable should be unset, some echo return empty line break.
         assertEquals("\n", result.getStdout());
@@ -389,7 +396,7 @@ public class RunUtilTest extends TestCase {
         testRunUtil.setEnvVariable(ENV_NAME, expected);
         testRunUtil.unsetEnvVariable(ENV_NAME);
         CommandResult result =
-                testRunUtil.runTimedCmd(1000, "/bin/bash", "-c", "echo $" + ENV_NAME);
+                testRunUtil.runTimedCmd(LONG_TIMEOUT_MS, "/bin/bash", "-c", "echo $" + ENV_NAME);
         assertNotNull(result.getStdout());
         // Variable should be set and returned.
         assertEquals(expected + "\n", result.getStdout());
