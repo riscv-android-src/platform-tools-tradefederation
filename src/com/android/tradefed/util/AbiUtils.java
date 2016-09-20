@@ -25,6 +25,22 @@ import java.util.Set;
  */
 public class AbiUtils {
 
+    // List of supported abi
+    public static final String ABI_ARM_V7A = "armeabi-v7a";
+    public static final String ABI_ARM_64_V8A = "arm64-v8a";
+    public static final String ABI_X86 = "x86";
+    public static final String ABI_X86_64 = "x86_64";
+    public static final String ABI_MIPS = "mips";
+    public static final String ABI_MIPS64 = "mips64";
+
+    // List of supported architectures
+    public static final String BASE_ARCH_ARM = "arm";
+    public static final String ARCH_ARM64 = BASE_ARCH_ARM + "64";
+    public static final String BASE_ARCH_X86 = "x86";
+    public static final String ARCH_X86_64 = BASE_ARCH_X86 + "_64";
+    public static final String BASE_ARCH_MIPS = "mips";
+    public static final String ARCH_MIPS64 = BASE_ARCH_MIPS + "64";
+
     /**
      * The set of 32Bit ABIs.
      */
@@ -63,40 +79,40 @@ public class AbiUtils {
     private static final Map<String, String> ABI_TO_ARCH = new HashMap<String, String>();
 
     static {
-        ABIS_32BIT.add("armeabi-v7a");
-        ABIS_32BIT.add("x86");
-        ABIS_32BIT.add("mips");
+        ABIS_32BIT.add(ABI_ARM_V7A);
+        ABIS_32BIT.add(ABI_X86);
+        ABIS_32BIT.add(ABI_MIPS);
 
-        ABIS_64BIT.add("arm64-v8a");
-        ABIS_64BIT.add("x86_64");
-        ABIS_64BIT.add("mips64");
+        ABIS_64BIT.add(ABI_ARM_64_V8A);
+        ABIS_64BIT.add(ABI_X86_64);
+        ABIS_64BIT.add(ABI_MIPS64);
 
-        ARM_ABIS.add("armeabi-v7a");
-        ARM_ABIS.add("arm64-v8a");
+        ARM_ABIS.add(ABI_ARM_V7A);
+        ARM_ABIS.add(ABI_ARM_64_V8A);
 
-        INTEL_ABIS.add("x86");
-        INTEL_ABIS.add("x86_64");
+        INTEL_ABIS.add(ABI_X86);
+        INTEL_ABIS.add(ABI_X86_64);
 
-        MIPS_ABIS.add("mips");
-        MIPS_ABIS.add("mips64");
+        MIPS_ABIS.add(ABI_MIPS);
+        MIPS_ABIS.add(ABI_MIPS64);
 
-        ARCH_TO_ABIS.put("arm", ARM_ABIS);
-        ARCH_TO_ABIS.put("arm64", ARM_ABIS);
-        ARCH_TO_ABIS.put("x86", INTEL_ABIS);
-        ARCH_TO_ABIS.put("x86_64", INTEL_ABIS);
-        ARCH_TO_ABIS.put("mips", MIPS_ABIS);
-        ARCH_TO_ABIS.put("mips64", MIPS_ABIS);
+        ARCH_TO_ABIS.put(BASE_ARCH_ARM, ARM_ABIS);
+        ARCH_TO_ABIS.put(ARCH_ARM64, ARM_ABIS);
+        ARCH_TO_ABIS.put(BASE_ARCH_X86, INTEL_ABIS);
+        ARCH_TO_ABIS.put(ARCH_X86_64, INTEL_ABIS);
+        ARCH_TO_ABIS.put(BASE_ARCH_MIPS, MIPS_ABIS);
+        ARCH_TO_ABIS.put(ARCH_MIPS64, MIPS_ABIS);
 
         ABIS_SUPPORTED_BY_COMPATIBILITY.addAll(ARM_ABIS);
         ABIS_SUPPORTED_BY_COMPATIBILITY.addAll(INTEL_ABIS);
         ABIS_SUPPORTED_BY_COMPATIBILITY.addAll(MIPS_ABIS);
 
-        ABI_TO_ARCH.put("armeabi-v7a", "arm");
-        ABI_TO_ARCH.put("arm64-v8a", "arm64");
-        ABI_TO_ARCH.put("x86", "x86");
-        ABI_TO_ARCH.put("x86_64", "x86_64");
-        ABI_TO_ARCH.put("mips", "mips");
-        ABI_TO_ARCH.put("mips64", "mips64");
+        ABI_TO_ARCH.put(ABI_ARM_V7A, BASE_ARCH_ARM);
+        ABI_TO_ARCH.put(ABI_ARM_64_V8A, ARCH_ARM64);
+        ABI_TO_ARCH.put(ABI_X86, BASE_ARCH_X86);
+        ABI_TO_ARCH.put(ABI_X86_64, ARCH_X86_64);
+        ABI_TO_ARCH.put(ABI_MIPS, BASE_ARCH_MIPS);
+        ABI_TO_ARCH.put(ABI_MIPS64, ARCH_MIPS64);
     }
 
     /**
