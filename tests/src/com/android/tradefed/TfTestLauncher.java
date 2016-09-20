@@ -190,6 +190,7 @@ public class TfTestLauncher implements IRemoteTest, IBuildReceiver {
             runUtil.setEnvVariablePriority(EnvPriority.SET);
             runUtil.setEnvVariable(TF_GLOBAL_CONFIG, mGlobalConfig);
         }
+        boolean exception = false;
         try {
             stdoutFile = FileUtil.createTempFile("stdout_subprocess_", ".log");
             stderrFile = FileUtil.createTempFile("stderr_subprocess_", ".log");
@@ -209,11 +210,13 @@ public class TfTestLauncher implements IRemoteTest, IBuildReceiver {
                         mBuildInfo.getBuildId(), result.getStatus());
                 CLog.v("TF tests output:\nstdout:\n%s\nstderror:\n%s",
                         result.getStdout(), result.getStderr());
+                exception = true;
                 throw new RuntimeException(
                         String.format("%s Tests subprocess failed due to: %s\n", mConfigName,
                                 result.getStatus()));
             }
         } catch (IOException e) {
+            exception = true;
             throw new RuntimeException(e);
         } finally {
             StreamUtil.close(stdout);
@@ -225,20 +228,27 @@ public class TfTestLauncher implements IRemoteTest, IBuildReceiver {
                 logAndCleanFile(eventFile, listener);
             }
             FileUtil.deleteFile(agent);
-        }
-        if (mEnableCoverage) {
-            InputStreamSource coverage = null;
-            File csvResult = null;
-            try {
-                csvResult = processExecData(destCoverageFile, rootDir);
-                coverage = new FileInputStreamSource(csvResult);
-                listener.testLog("coverage_csv", LogDataType.TEXT, coverage);
-            } catch (IOException e) {
-                throw new RuntimeException(e);
-            } finally {
-                FileUtil.deleteFile(destCoverageFile);
-                StreamUtil.cancel(coverage);
-                FileUtil.deleteFile(csvResult);
+            // Evaluate coverage from the subprocess
+            if (mEnableCoverage) {
+                InputStreamSource coverage = null;
+                File csvResult = null;
+                try {
+                    csvResult = processExecData(destCoverageFile, rootDir);
+                    coverage = new FileInputStreamSource(csvResult);
+                    listener.testLog("coverage_csv", LogDataType.TEXT, coverage);
+                } catch (IOException e) {
+                    if (exception) {
+                        // If exception was thrown above, we only log this one since it's most
+                        // likely related to it.
+                        CLog.e(e);
+                    } else {
+                        throw new RuntimeException(e);
+                    }
+                } finally {
+                    FileUtil.deleteFile(destCoverageFile);
+                    StreamUtil.cancel(coverage);
+                    FileUtil.deleteFile(csvResult);
+                }
             }
         }
     }
