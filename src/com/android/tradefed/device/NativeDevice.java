@@ -116,7 +116,7 @@ public class NativeDevice implements IManagedTestDevice {
     private static final Pattern KEYS_PATTERN = Pattern.compile("^.*-keys$");
     private static final Pattern DF_PATTERN = Pattern.compile(
             //Fs 1K-blks Used    Available Use%      Mounted on
-            "^[/a-z]+\\s+\\d+\\s+\\d+\\s+(\\d+)\\s+\\d+%\\s+[/a-z]+$", Pattern.MULTILINE);
+            "^/\\S+\\s+\\d+\\s+\\d+\\s+(\\d+)\\s+\\d+%\\s+/\\S*$", Pattern.MULTILINE);
     private static final Pattern BUGREPORTZ_RESPONSE_PATTERN = Pattern.compile("(OK:)(.*)");
 
     private static final long MAX_HOST_DEVICE_TIME_OFFSET = 5 * 1000;
