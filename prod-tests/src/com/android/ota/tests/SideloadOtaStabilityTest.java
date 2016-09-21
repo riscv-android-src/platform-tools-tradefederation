@@ -47,20 +47,20 @@ import com.android.tradefed.util.FileUtil;
 import com.android.tradefed.util.IRunUtil;
 import com.android.tradefed.util.RunUtil;
 import com.android.tradefed.util.StreamUtil;
-
-import junit.framework.Assert;
-import junit.framework.AssertionFailedError;
-
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.net.InetSocketAddress;
 import java.net.ServerSocket;
 import java.net.Socket;
+import java.net.SocketAddress;
 import java.util.HashMap;
 import java.util.Map;
+import junit.framework.Assert;
+import junit.framework.AssertionFailedError;
 
 /**
  * A test that will perform repeated flash + install OTA actions on a device.
@@ -78,12 +78,14 @@ public class SideloadOtaStabilityTest implements IDeviceTest, IBuildReceiver,
         IConfigurationReceiver, IResumableTest {
 
     private static final String UNCRYPT_FILE_PATH = "/cache/recovery/uncrypt_file";
+    private static final String UNCRYPT_STATUS_FILE = "/cache/recovery/uncrypt_status";
     private static final String BLOCK_MAP_PATH = "@/cache/recovery/block.map";
     private static final String RECOVERY_COMMAND_PATH = "/cache/recovery/command";
     private static final String LOG_RECOV = "/cache/recovery/last_log";
     private static final String LOG_KMSG = "/cache/recovery/last_kmsg";
-
     private static final String KMSG_CMD = "cat /proc/kmsg";
+    private static final long SOCKET_RETRY_CT = 30;
+    private static final long UNCRYPT_TIMEOUT = 15 * 60 * 1000;
 
     private static final long LONG_WAIT_UNCRYPT = 10 * 1000;
 
@@ -449,12 +451,14 @@ public class SideloadOtaStabilityTest implements IDeviceTest, IBuildReceiver,
         CLog.i("Connecting to uncrypt on port %d", port);
         mDevice.executeAdbCommand("forward", "tcp:" + port, "localreserved:uncrypt");
         // connect to uncrypt!
+        String hostname = "localhost";
         Socket uncrypt = null;
         DataInputStream dis = null;
         DataOutputStream dos = null;
         long start = System.currentTimeMillis();
         try {
-            uncrypt = sockets.createClientSocket("localhost", port);
+            uncrypt = sockets.createClientSocket(hostname, port);
+            connectSocket(uncrypt, hostname, port);
             int status = Integer.MIN_VALUE;
             dis = new DataInputStream(uncrypt.getInputStream());
             dos = new DataOutputStream(uncrypt.getOutputStream());
@@ -474,7 +478,39 @@ public class SideloadOtaStabilityTest implements IDeviceTest, IBuildReceiver,
             CLog.i("Final uncrypt status: %d", status);
             return System.currentTimeMillis() - start;
         } catch (IOException e) {
-            throw new RuntimeException(e);
+            CLog.e("Lost connection with uncrypt due to IOException", e);
+            CLog.i("Continuing to watch uncrypt progress for %d ms",
+                    UNCRYPT_TIMEOUT);
+            File statusFile = new File(UNCRYPT_STATUS_FILE);
+            long time = 0;
+            int lastStatus = -1;
+            boolean succeeded = false;
+            while ((time = System.currentTimeMillis() - start) < UNCRYPT_TIMEOUT) {
+                int status = readUncryptStatusFromFile(statusFile);
+                if (status != lastStatus) {
+                    lastStatus = status;
+                    CLog.d("uncrypt status: %d", status);
+                }
+                else if (status == 100) {
+                    CLog.i("Uncrypt finished succesfully");
+                    succeeded = true;
+                    break;
+                }
+                else if (status > 100 || status < 0) {
+                    CLog.w("Uncrypt sent error status %d", status);
+                    return Integer.MIN_VALUE;
+                }
+                try {
+                    Thread.sleep(1000);
+                } catch (InterruptedException unused) {
+                    // do nothing
+                }
+            }
+            if (!succeeded) {
+                CLog.e("Uncrypt didn't finish, last status was %d", lastStatus);
+                throw new RuntimeException("Uncrypt didn't succeed after timeout");
+            }
+            return time;
         } finally {
             try {
                 if (dos != null) dos.close();
@@ -489,6 +525,43 @@ public class SideloadOtaStabilityTest implements IDeviceTest, IBuildReceiver,
     protected int getFreePort() throws IOException {
         try (ServerSocket sock = new ServerSocket(0)) {
             return sock.getLocalPort();
+        }
+    }
+
+    protected int readUncryptStatusFromFile(File targetFile)
+            throws DeviceNotAvailableException {
+        try {
+            InputStreamSource status = pullLogFile(targetFile.getAbsolutePath());
+            String[] lastLogLines = StreamUtil.getStringFromSource(status).split("\n");
+            String endLine = lastLogLines[lastLogLines.length-1];
+            return Integer.parseInt(endLine);
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    protected void connectSocket(Socket s, String host, int port) {
+        SocketAddress address = new InetSocketAddress(host, port);
+        boolean connected = false;
+        for (int i=0; i<SOCKET_RETRY_CT; i++) {
+            try {
+                if (!s.isConnected()) {
+                    s.connect(address);
+                }
+                connected = true;
+                break;
+            } catch (IOException unused) {
+                try {
+                    Thread.sleep(1000);
+                    CLog.d("Uncrypt socket was not ready on iteration %d of %d, retrying", i,
+                            SOCKET_RETRY_CT);
+                } catch (InterruptedException e) {
+                    CLog.w("Interrupted while connecting uncrypt socket on iteration %d", i);
+                }
+            }
+        }
+        if (!connected) {
+            throw new RuntimeException("failed to connect uncrypt socket");
         }
     }
 
