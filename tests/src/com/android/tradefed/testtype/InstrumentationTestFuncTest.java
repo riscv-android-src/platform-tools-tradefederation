@@ -175,7 +175,7 @@ public class InstrumentationTestFuncTest extends DeviceTestCase {
             public void run() {
                 // wait for test run to begin
                 try {
-                    Thread.sleep(2000);
+                    Thread.sleep(1000);
                     getDevice().reboot();
                 } catch (InterruptedException e) {
                     Log.w(LOG_TAG, "interrupted");
@@ -194,19 +194,7 @@ public class InstrumentationTestFuncTest extends DeviceTestCase {
         RunUtil.getDefault().sleep(2000);
         // now run the ui tests and verify success
         // done to ensure keyguard is cleared after reboot
-        try {
-            InstrumentationTest uiTest = new InstrumentationTest();
-            uiTest.setPackageName(TestAppConstants.UITESTAPP_PACKAGE);
-            uiTest.setDevice(getDevice());
-            CollectingTestListener uilistener = new CollectingTestListener();
-            uiTest.run(uilistener);
-            assertFalse(uilistener.hasFailedTests());
-            assertEquals(TestAppConstants.UI_TOTAL_TESTS,
-                    uilistener.getNumTestsInState(TestStatus.PASSED));
-        } finally {
-            // In case it fails, make sure next test will have a device online.
-            getDevice().waitForDeviceAvailable();
-        }
+        assertTrue(runUITests());
     }
 
     /**
@@ -217,6 +205,17 @@ public class InstrumentationTestFuncTest extends DeviceTestCase {
     @SuppressWarnings("unchecked")
     public void testRun_deviceRuntimeReset() throws Exception {
         Log.i(LOG_TAG, "testRun_deviceRuntimeReset");
+        // Attempt to setup the device in known state
+        int retry = 5;
+        while (!runUITests()) {
+            getDevice().reboot();
+            getDevice().waitForDeviceAvailable();
+            RunUtil.getDefault().sleep(500);
+            if (retry == 0) {
+                fail("Fail to setup the device in a known state");
+            }
+            retry--;
+        }
 
         TestIdentifier expectedTest = new TestIdentifier(TestAppConstants.TESTAPP_CLASS,
                 TestAppConstants.TIMEOUT_TEST_METHOD);
@@ -258,21 +257,19 @@ public class InstrumentationTestFuncTest extends DeviceTestCase {
         RunUtil.getDefault().sleep(2000);
         getDevice().waitForDeviceAvailable();
         RunUtil.getDefault().sleep(2000);
-        try {
-            // now run the ui tests and verify success
-            // done to ensure keyguard is cleared after runtime reset
-            InstrumentationTest uiTest = new InstrumentationTest();
-            uiTest.setPackageName(TestAppConstants.UITESTAPP_PACKAGE);
-            uiTest.setDevice(getDevice());
-            CollectingTestListener uilistener = new CollectingTestListener();
-            uiTest.run(uilistener);
-            assertFalse(uilistener.hasFailedTests());
-            assertEquals(TestAppConstants.UI_TOTAL_TESTS,
-                    uilistener.getNumTestsInState(TestStatus.PASSED));
-        } finally {
-            // In case it fails, make sure next test will have a device online.
-            getDevice().waitForDeviceAvailable();
-        }
+        assertTrue(runUITests());
+    }
+
+    /**
+     * Run the test app UI tests and return true if they all pass.
+     */
+    private boolean runUITests() throws DeviceNotAvailableException {
+        InstrumentationTest uiTest = new InstrumentationTest();
+        uiTest.setPackageName(TestAppConstants.UITESTAPP_PACKAGE);
+        uiTest.setDevice(getDevice());
+        CollectingTestListener uilistener = new CollectingTestListener();
+        uiTest.run(uilistener);
+        return TestAppConstants.UI_TOTAL_TESTS == uilistener.getNumTestsInState(TestStatus.PASSED);
     }
 
     /**

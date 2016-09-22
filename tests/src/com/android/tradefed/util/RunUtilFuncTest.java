@@ -31,6 +31,8 @@ import java.io.Writer;
  */
 public class RunUtilFuncTest extends TestCase {
 
+    private static long SHORT_TIMEOUT_MS = 500;
+
     private abstract class MyRunnable implements IRunUtil.IRunnableResult {
         boolean mCanceled = false;
 
@@ -44,19 +46,18 @@ public class RunUtilFuncTest extends TestCase {
      * Test timeout case for {@link RunUtil#runTimed(long, IRunnableResult, boolean)}.
      */
     public void testRunTimed_timeout() {
-        final long timeout = 200;
         MyRunnable mockRunnable = new MyRunnable() {
             @Override
             public boolean run() {
                 try {
-                    Thread.sleep(timeout*5);
+                    Thread.sleep(SHORT_TIMEOUT_MS * 5);
                 } catch (InterruptedException e) {
                     // ignore
                 }
                 return true;
             }
         };
-        assertEquals(CommandStatus.TIMED_OUT, RunUtil.getDefault().runTimed(timeout,
+        assertEquals(CommandStatus.TIMED_OUT, RunUtil.getDefault().runTimed(SHORT_TIMEOUT_MS,
                 mockRunnable, true));
         assertTrue(mockRunnable.mCanceled);
     }
@@ -67,7 +68,6 @@ public class RunUtilFuncTest extends TestCase {
      */
     public void testRunTimedRetry() {
         final int maxAttempts = 5;
-        final long pollTime = 200;
         IRunUtil.IRunnableResult mockRunnable = new IRunUtil.IRunnableResult() {
             int attempts = 0;
             @Override
@@ -81,10 +81,11 @@ public class RunUtilFuncTest extends TestCase {
             }
         };
         final long startTime = System.currentTimeMillis();
-        assertTrue(RunUtil.getDefault().runTimedRetry(100, pollTime, maxAttempts, mockRunnable));
+        assertTrue(RunUtil.getDefault().runTimedRetry(100, SHORT_TIMEOUT_MS, maxAttempts,
+                mockRunnable));
         final long actualTime = System.currentTimeMillis() - startTime;
         // assert that time actually taken is at least, and no more than twice expected
-        final long expectedPollTime = pollTime * (maxAttempts-1);
+        final long expectedPollTime = SHORT_TIMEOUT_MS * (maxAttempts-1);
         assertTrue(String.format("Expected poll time %d, got %d", expectedPollTime, actualTime),
                 expectedPollTime <= actualTime && actualTime <= (2 * expectedPollTime));
     }
@@ -94,10 +95,11 @@ public class RunUtilFuncTest extends TestCase {
      * consistently get the right stdout for a fast running command.
      */
     public void testRunTimedCmd_repeatedOutput() {
-        for (int i=0; i < 1000; i++) {
-            final long timeOut = 200;
-            CommandResult result = RunUtil.getDefault().runTimedCmd(timeOut, "echo", "hello");
-            assertTrue(result.getStatus() == CommandStatus.SUCCESS);
+        for (int i = 0; i < 1000; i++) {
+            CommandResult result = RunUtil.getDefault().runTimedCmd(SHORT_TIMEOUT_MS, "echo",
+                    "hello");
+            assertTrue("Failed at iteration " + i,
+                    CommandStatus.SUCCESS.equals(result.getStatus()));
             CLog.d(result.getStdout());
             assertTrue(result.getStdout().trim().equals("hello"));
         }
@@ -137,19 +139,18 @@ public class RunUtilFuncTest extends TestCase {
      * Test case for {@link RunUtil#unsetEnvVariable(String key)}
      */
     public void testUnsetEnvVariable() {
-        long timeout = 200;
         RunUtil runUtil = new RunUtil();
         runUtil.setEnvVariable("bar", "foo");
         // FIXME: this test case is not ideal, as it will only work on platforms that support
         // printenv
-        CommandResult result = runUtil.runTimedCmd(timeout, "printenv", "bar");
+        CommandResult result = runUtil.runTimedCmd(SHORT_TIMEOUT_MS, "printenv", "bar");
         assertTrue(result.getStatus() == CommandStatus.SUCCESS);
         assertTrue("foo".equals(result.getStdout().trim()));
 
         // remove env variable
         runUtil.unsetEnvVariable("bar");
         // printenv with non-exist variable will fail
-        result = runUtil.runTimedCmd(timeout, "printenv", "bar");
+        result = runUtil.runTimedCmd(SHORT_TIMEOUT_MS, "printenv", "bar");
         assertTrue(result.getStatus() == CommandStatus.FAILED);
         assertTrue("".equals(result.getStdout().trim()));
     }

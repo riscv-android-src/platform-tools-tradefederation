@@ -595,14 +595,26 @@ public class TestDeviceFuncTest extends DeviceTestCase {
     public void testClearErrorDialogs_crash() throws DeviceNotAvailableException {
         Log.i(LOG_TAG, "testClearErrorDialogs_crash");
         // Ensure device is in a known state, we doing extra care here otherwise it may be flaky
-        getDevice().reboot();
-        mTestDevice.waitForDeviceAvailable();
+        int retry = 5;
         mTestDevice.disableKeyguard();
-        RunUtil.getDefault().sleep(2000);
+        while (!runUITests()) {
+            getDevice().reboot();
+            mTestDevice.waitForDeviceAvailable();
+            mTestDevice.disableKeyguard();
+            RunUtil.getDefault().sleep(2000);
+            if (retry == 0) {
+                fail("Fail to setup the device in a known state");
+            }
+            retry--;
+        }
         // now cause a crash dialog to appear
         getDevice().executeShellCommand("am start -n " + TestAppConstants.CRASH_ACTIVITY);
         RunUtil.getDefault().sleep(2000);
-        getDevice().clearErrorDialogs();
+        // Ensure the error dialogue is here
+        assertFalse(runUITests());
+        RunUtil.getDefault().sleep(2000);
+
+        assertTrue("Clear dialogs did not clear anything", getDevice().clearErrorDialogs());
         assertTrue(runUITests());
     }
 
@@ -617,6 +629,7 @@ public class TestDeviceFuncTest extends DeviceTestCase {
         Log.i(LOG_TAG, "testDisableKeyguard");
         getDevice().reboot();
         mTestDevice.waitForDeviceAvailable();
+        RunUtil.getDefault().sleep(500);
         assertTrue(runUITests());
     }
 

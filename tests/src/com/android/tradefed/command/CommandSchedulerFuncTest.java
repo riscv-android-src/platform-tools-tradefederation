@@ -347,7 +347,7 @@ public class CommandSchedulerFuncTest extends TestCase {
         Thread test = new Thread(new Runnable() {
             @Override
             public void run() {
-                RunUtil.getDefault().sleep(1000);
+                RunUtil.getDefault().sleep(500);
                 mCommandScheduler.shutdownHard();
             }
         });
