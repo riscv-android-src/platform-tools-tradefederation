@@ -27,6 +27,7 @@ public enum LogDataType {
     EAR("ear", true, false),
     ZIP("zip", true, false),
     JPEG("jpeg", true, false),
+    TAR_GZ("tar.gz", true, false),
     GZIP("gz", true, false),
     HPROF("hprof", true, false),
     COVERAGE("ec", false, false),  /* Emma coverage file */
