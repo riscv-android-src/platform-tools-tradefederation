@@ -101,10 +101,14 @@ public class TestDevice extends NativeDevice {
         DeviceAction installAction = new DeviceAction() {
             @Override
             public boolean run() throws InstallException {
-                String result = getIDevice().installPackage(packageFile.getAbsolutePath(),
-                        reinstall, extraArgs.toArray(new String[]{}));
-                response[0] = result;
-                return result == null;
+                try {
+                    getIDevice().installPackage(packageFile.getAbsolutePath(),
+                            reinstall, extraArgs.toArray(new String[]{}));
+                    response[0] = null;
+                } catch (InstallException e) {
+                    response[0] = e.getMessage();
+                }
+                return response[0] == null;
             }
         };
         performDeviceAction(String.format("install %s", packageFile.getAbsolutePath()),
@@ -195,8 +199,11 @@ public class TestDevice extends NativeDevice {
                 System.arraycopy(extraArgs, 0, newExtraArgs, 0, extraArgs.length);
                 newExtraArgs[newExtraArgs.length - 1] = String.format("\"%s\"", remotePackagePath);
                 try {
-                    response[0] = getIDevice().installRemotePackage(remoteCertPath, reinstall,
+                     getIDevice().installRemotePackage(remoteCertPath, reinstall,
                             newExtraArgs);
+                     response[0] = null;
+                } catch (InstallException e) {
+                    response[0] = e.getMessage();
                 } finally {
                     getIDevice().removeRemotePackage(remotePackagePath);
                     getIDevice().removeRemotePackage(remoteCertPath);

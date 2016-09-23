@@ -1084,9 +1084,9 @@ public class TestDeviceTest extends TestCase {
         EasyMock.expect(mMockIDevice.syncPackageToDevice(EasyMock.contains(apkFile))).andReturn(
                 apkFile);
         // expect apk path to be passed as extra arg
-        EasyMock.expect(
-                mMockIDevice.installRemotePackage(EasyMock.eq(certFile), EasyMock.eq(true),
-                        EasyMock.eq("-l"), EasyMock.contains(apkFile))).andReturn(null);
+        mMockIDevice.installRemotePackage(EasyMock.eq(certFile), EasyMock.eq(true),
+                EasyMock.eq("-l"), EasyMock.contains(apkFile));
+        EasyMock.expectLastCall();
         mMockIDevice.removeRemotePackage(certFile);
         mMockIDevice.removeRemotePackage(apkFile);
 
@@ -1178,8 +1178,8 @@ public class TestDeviceTest extends TestCase {
     public void testInstallPackage_default_runtimePermissionNotSupported() throws Exception {
         final String apkFile = "foo.apk";
         setMockIDeviceRuntimePermissionNotSupported();
-        EasyMock.expect(mMockIDevice.installPackage(
-                EasyMock.contains(apkFile), EasyMock.eq(true))).andReturn(null);
+        mMockIDevice.installPackage(EasyMock.contains(apkFile), EasyMock.eq(true));
+        EasyMock.expectLastCall();
         replayMocks();
         assertNull(mTestDevice.installPackage(new File(apkFile), true));
     }
@@ -1191,8 +1191,9 @@ public class TestDeviceTest extends TestCase {
     public void testInstallPackage_default_runtimePermissionSupported() throws Exception {
         final String apkFile = "foo.apk";
         setMockIDeviceRuntimePermissionSupported();
-        EasyMock.expect(mMockIDevice.installPackage(
-                EasyMock.contains(apkFile), EasyMock.eq(true), EasyMock.eq("-g"))).andReturn(null);
+        mMockIDevice.installPackage(EasyMock.contains(apkFile), EasyMock.eq(true),
+                EasyMock.eq("-g"));
+        EasyMock.expectLastCall();
         replayMocks();
         assertNull(mTestDevice.installPackage(new File(apkFile), true));
     }
@@ -1206,9 +1207,9 @@ public class TestDeviceTest extends TestCase {
         final String apkFile = "foo.apk";
         int uid = 123;
         setMockIDeviceRuntimePermissionNotSupported();
-        EasyMock.expect(mMockIDevice.installPackage(
-                EasyMock.contains(apkFile), EasyMock.eq(true),
-                EasyMock.eq("--user"), EasyMock.eq(Integer.toString(uid)))).andReturn(null);
+        mMockIDevice.installPackage(EasyMock.contains(apkFile), EasyMock.eq(true),
+                EasyMock.eq("--user"), EasyMock.eq(Integer.toString(uid)));
+        EasyMock.expectLastCall();
         replayMocks();
         assertNull(mTestDevice.installPackageForUser(new File(apkFile), true, uid));
     }
@@ -1222,9 +1223,9 @@ public class TestDeviceTest extends TestCase {
         final String apkFile = "foo.apk";
         int uid = 123;
         setMockIDeviceRuntimePermissionSupported();
-        EasyMock.expect(mMockIDevice.installPackage(
-                EasyMock.contains(apkFile), EasyMock.eq(true), EasyMock.eq("-g"),
-                EasyMock.eq("--user"), EasyMock.eq(Integer.toString(uid)))).andReturn(null);
+        mMockIDevice.installPackage(EasyMock.contains(apkFile), EasyMock.eq(true),
+                EasyMock.eq("-g"), EasyMock.eq("--user"), EasyMock.eq(Integer.toString(uid)));
+        EasyMock.expectLastCall();
         replayMocks();
         assertNull(mTestDevice.installPackageForUser(new File(apkFile), true, uid));
     }
@@ -1255,8 +1256,9 @@ public class TestDeviceTest extends TestCase {
     public void testInstallPackage_grant_runtimePermissionSupported() throws Exception {
         final String apkFile = "foo.apk";
         setMockIDeviceRuntimePermissionSupported();
-        EasyMock.expect(mMockIDevice.installPackage(
-                EasyMock.contains(apkFile), EasyMock.eq(true), EasyMock.eq("-g"))).andReturn(null);
+        mMockIDevice.installPackage(EasyMock.contains(apkFile), EasyMock.eq(true),
+                EasyMock.eq("-g"));
+        EasyMock.expectLastCall();
         replayMocks();
         assertNull(mTestDevice.installPackage(new File(apkFile), true, true));
     }
@@ -1269,8 +1271,8 @@ public class TestDeviceTest extends TestCase {
     public void testInstallPackage_noGrant_runtimePermissionSupported() throws Exception {
         final String apkFile = "foo.apk";
         setMockIDeviceRuntimePermissionSupported();
-        EasyMock.expect(mMockIDevice.installPackage(
-                EasyMock.contains(apkFile), EasyMock.eq(true))).andReturn(null);
+        mMockIDevice.installPackage(EasyMock.contains(apkFile), EasyMock.eq(true));
+        EasyMock.expectLastCall();
         replayMocks();
         assertNull(mTestDevice.installPackage(new File(apkFile), true, false));
     }
@@ -1302,9 +1304,9 @@ public class TestDeviceTest extends TestCase {
         final String apkFile = "foo.apk";
         int uid = 123;
         setMockIDeviceRuntimePermissionSupported();
-        EasyMock.expect(mMockIDevice.installPackage(
-                EasyMock.contains(apkFile), EasyMock.eq(true), EasyMock.eq("-g"),
-                EasyMock.eq("--user"), EasyMock.eq(Integer.toString(uid)))).andReturn(null);
+        mMockIDevice.installPackage(EasyMock.contains(apkFile), EasyMock.eq(true),
+                EasyMock.eq("-g"), EasyMock.eq("--user"), EasyMock.eq(Integer.toString(uid)));
+        EasyMock.expectLastCall();
         replayMocks();
         assertNull(mTestDevice.installPackageForUser(new File(apkFile), true, true, uid));
     }
@@ -1318,9 +1320,9 @@ public class TestDeviceTest extends TestCase {
         final String apkFile = "foo.apk";
         int uid = 123;
         setMockIDeviceRuntimePermissionSupported();
-        EasyMock.expect(mMockIDevice.installPackage(
-                EasyMock.contains(apkFile), EasyMock.eq(true),
-                EasyMock.eq("--user"), EasyMock.eq(Integer.toString(uid)))).andReturn(null);
+        mMockIDevice.installPackage(EasyMock.contains(apkFile), EasyMock.eq(true),
+                EasyMock.eq("--user"), EasyMock.eq(Integer.toString(uid)));
+        EasyMock.expectLastCall();
         replayMocks();
         assertNull(mTestDevice.installPackageForUser(new File(apkFile), true, false, uid));
     }

@@ -15,6 +15,8 @@
  */
 package com.android.tradefed.device;
 
+import com.google.common.util.concurrent.SettableFuture;
+
 import com.android.ddmlib.AdbCommandRejectedException;
 import com.android.ddmlib.Client;
 import com.android.ddmlib.FileListingService;
@@ -28,8 +30,9 @@ import com.android.ddmlib.SyncException;
 import com.android.ddmlib.SyncService;
 import com.android.ddmlib.TimeoutException;
 import com.android.ddmlib.log.LogReceiver;
-import com.google.common.util.concurrent.SettableFuture;
+import com.android.sdklib.AndroidVersion;
 
+import java.io.File;
 import java.io.IOException;
 import java.util.Collections;
 import java.util.List;
@@ -177,8 +180,7 @@ public class StubDevice implements IDevice {
      */
     @Override
     public RawImage getScreenshot(long timeout, TimeUnit unit)
-        throws TimeoutException, AdbCommandRejectedException, IOException {
-
+            throws TimeoutException, AdbCommandRejectedException, IOException {
         throw new IOException("stub");
     }
 
@@ -219,17 +221,17 @@ public class StubDevice implements IDevice {
      * {@inheritDoc}
      */
     @Override
-    public String installPackage(String packageFilePath, boolean reinstall, String... extraArgs)
+    public void installPackage(String packageFilePath, boolean reinstall, String... extraArgs)
             throws InstallException {
         throw new InstallException(new IOException("stub"));
     }
 
     /**
      * {@inheritDoc}
-     */
+     **/
     @Override
-    public void installPackages(List<String> apkFilePaths, int timeOutInMs, boolean reinstall,
-            String... extraArgs) throws InstallException {
+    public void installPackages(List<File> apkFilePaths, boolean reinstall, List<String> extraArgs,
+            long timeOutInMs, TimeUnit timeunit) throws InstallException {
         throw new InstallException(new IOException("stub"));
     }
 
@@ -237,7 +239,7 @@ public class StubDevice implements IDevice {
      * {@inheritDoc}
      */
     @Override
-    public String installRemotePackage(String remoteFilePath, boolean reinstall,
+    public void installRemotePackage(String remoteFilePath, boolean reinstall,
             String... extraArgs) throws InstallException {
         throw new InstallException(new IOException("stub"));
     }
@@ -530,8 +532,27 @@ public class StubDevice implements IDevice {
      * {@inheritDoc}
      */
     @Override
-    public int getApiLevel() {
-        // TODO Auto-generated method stub
-        return -1;
+    public AndroidVersion getVersion() {
+        return null;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public boolean isRoot()
+            throws TimeoutException, AdbCommandRejectedException, IOException,
+            ShellCommandUnresponsiveException {
+        throw new IOException("stub");
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public boolean root()
+            throws TimeoutException, AdbCommandRejectedException, IOException,
+            ShellCommandUnresponsiveException {
+        throw new IOException("stub");
     }
 }
