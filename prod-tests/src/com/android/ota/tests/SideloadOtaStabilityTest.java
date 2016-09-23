@@ -16,6 +16,10 @@
 
 package com.android.ota.tests;
 
+import static org.hamcrest.CoreMatchers.equalTo;
+import static org.hamcrest.CoreMatchers.not;
+import static org.junit.Assert.assertThat;
+
 import com.android.ddmlib.AdbCommandRejectedException;
 import com.android.ddmlib.TimeoutException;
 import com.android.tradefed.build.IBuildInfo;
@@ -47,6 +51,10 @@ import com.android.tradefed.util.FileUtil;
 import com.android.tradefed.util.IRunUtil;
 import com.android.tradefed.util.RunUtil;
 import com.android.tradefed.util.StreamUtil;
+
+import junit.framework.Assert;
+import junit.framework.AssertionFailedError;
+
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.File;
@@ -59,8 +67,6 @@ import java.net.Socket;
 import java.net.SocketAddress;
 import java.util.HashMap;
 import java.util.Map;
-import junit.framework.Assert;
-import junit.framework.AssertionFailedError;
 
 /**
  * A test that will perform repeated flash + install OTA actions on a device.
@@ -88,6 +94,7 @@ public class SideloadOtaStabilityTest implements IDeviceTest, IBuildReceiver,
     private static final long UNCRYPT_TIMEOUT = 15 * 60 * 1000;
 
     private static final long LONG_WAIT_UNCRYPT = 10 * 1000;
+    private static final long SHORT_WAIT_UNCRYPT = 3 * 1000;
 
     private OtaDeviceBuildInfo mOtaDeviceBuild;
     private IConfiguration mConfiguration;
@@ -361,15 +368,12 @@ public class SideloadOtaStabilityTest implements IDeviceTest, IBuildReceiver,
 
     private InputStreamSource pullLogFile(String location)
             throws DeviceNotAvailableException {
-        File destFile = null;
-        InputStreamSource destSource = null;
         try {
             // get recovery log
-            destFile = FileUtil.createTempFile("recovery", "log");
+            File destFile = FileUtil.createTempFile("recovery", "log");
             boolean gotFile = mDevice.pullFile(location, destFile);
             if (gotFile) {
-                destSource = new SnapshotInputStreamSource(new FileInputStream(destFile));
-                return destSource;
+                return new SnapshotInputStreamSource(new FileInputStream(destFile));
             }
         } catch (IOException e) {
             CLog.e("Failed to get recovery log from device %s", mDevice.getSerialNumber());
@@ -440,6 +444,14 @@ public class SideloadOtaStabilityTest implements IDeviceTest, IBuildReceiver,
         // init has to start uncrypt or the socket will not be allocated
         CLog.i("Starting uncrypt service");
         mDevice.executeShellCommand("setprop ctl.start uncrypt");
+        try {
+            // This is a workaround for known issue with f2fs system.
+            CLog.i("Sleeping %d for uncrypt to be ready for socket connection.",
+                    SHORT_WAIT_UNCRYPT);
+            Thread.sleep(SHORT_WAIT_UNCRYPT);
+        } catch (InterruptedException e) {
+            CLog.i("Got interrupted when waiting to uncrypt file.");
+        }
         int port;
         try {
             port = getFreePort();
@@ -452,53 +464,47 @@ public class SideloadOtaStabilityTest implements IDeviceTest, IBuildReceiver,
         mDevice.executeAdbCommand("forward", "tcp:" + port, "localreserved:uncrypt");
         // connect to uncrypt!
         String hostname = "localhost";
-        Socket uncrypt = null;
-        DataInputStream dis = null;
-        DataOutputStream dos = null;
         long start = System.currentTimeMillis();
-        try {
-            uncrypt = sockets.createClientSocket(hostname, port);
+        try (Socket uncrypt = sockets.createClientSocket(hostname, port)) {
             connectSocket(uncrypt, hostname, port);
-            int status = Integer.MIN_VALUE;
-            dis = new DataInputStream(uncrypt.getInputStream());
-            dos = new DataOutputStream(uncrypt.getOutputStream());
-            while (true) {
-                status = dis.readInt();
-                if (status == 100) {
-                    CLog.i("Uncrypt finished successfully");
-                    dos.writeInt(0);
-                    break;
-                } else if (status > 100 || status < 0) {
-                    // error, acknowledge it to let uncrypt finish
-                    CLog.w("Uncrypt sent error status %d", status);
-                    dos.writeInt(0);
-                    return Integer.MIN_VALUE;
+            try (DataInputStream dis = new DataInputStream(uncrypt.getInputStream());
+                 DataOutputStream dos = new DataOutputStream(uncrypt.getOutputStream())) {
+                int status = Integer.MIN_VALUE;
+                while (true) {
+                    status = dis.readInt();
+                    if (status == 100) {
+                        CLog.i("Uncrypt finished successfully");
+                        dos.writeInt(0);
+                        break;
+                    } else if (status > 100 || status < 0) {
+                        // error, acknowledge it to let uncrypt finish
+                        CLog.w("Uncrypt sent error status %d", status);
+                        dos.writeInt(0);
+                        assertThat(status, not(equalTo(100)));
+                    }
                 }
+                CLog.i("Final uncrypt status: %d", status);
+                return System.currentTimeMillis() - start;
             }
-            CLog.i("Final uncrypt status: %d", status);
-            return System.currentTimeMillis() - start;
         } catch (IOException e) {
             CLog.e("Lost connection with uncrypt due to IOException", e);
             CLog.i("Continuing to watch uncrypt progress for %d ms",
                     UNCRYPT_TIMEOUT);
-            File statusFile = new File(UNCRYPT_STATUS_FILE);
             long time = 0;
             int lastStatus = -1;
             boolean succeeded = false;
             while ((time = System.currentTimeMillis() - start) < UNCRYPT_TIMEOUT) {
-                int status = readUncryptStatusFromFile(statusFile);
+                int status = readUncryptStatusFromFile();
                 if (status != lastStatus) {
                     lastStatus = status;
                     CLog.d("uncrypt status: %d", status);
-                }
-                else if (status == 100) {
+                } else if (status == 100) {
                     CLog.i("Uncrypt finished succesfully");
                     succeeded = true;
                     break;
-                }
-                else if (status > 100 || status < 0) {
+                } else if (status > 100 || status < 0) {
                     CLog.w("Uncrypt sent error status %d", status);
-                    return Integer.MIN_VALUE;
+                    assertThat(status, not(equalTo(100)));
                 }
                 try {
                     Thread.sleep(1000);
@@ -511,14 +517,6 @@ public class SideloadOtaStabilityTest implements IDeviceTest, IBuildReceiver,
                 throw new RuntimeException("Uncrypt didn't succeed after timeout");
             }
             return time;
-        } finally {
-            try {
-                if (dos != null) dos.close();
-                if (dis != null) dis.close();
-                if (uncrypt != null) uncrypt.close();
-            } catch (IOException e) {
-                // ignore
-            }
         }
     }
 
@@ -528,12 +526,15 @@ public class SideloadOtaStabilityTest implements IDeviceTest, IBuildReceiver,
         }
     }
 
-    protected int readUncryptStatusFromFile(File targetFile)
+    protected int readUncryptStatusFromFile()
             throws DeviceNotAvailableException {
         try {
-            InputStreamSource status = pullLogFile(targetFile.getAbsolutePath());
+            InputStreamSource status = pullLogFile(UNCRYPT_STATUS_FILE);
+            if (status == null) {
+                return -1;
+            }
             String[] lastLogLines = StreamUtil.getStringFromSource(status).split("\n");
-            String endLine = lastLogLines[lastLogLines.length-1];
+            String endLine = lastLogLines[lastLogLines.length - 1];
             return Integer.parseInt(endLine);
         } catch (IOException e) {
             throw new RuntimeException(e);
@@ -543,7 +544,7 @@ public class SideloadOtaStabilityTest implements IDeviceTest, IBuildReceiver,
     protected void connectSocket(Socket s, String host, int port) {
         SocketAddress address = new InetSocketAddress(host, port);
         boolean connected = false;
-        for (int i=0; i<SOCKET_RETRY_CT; i++) {
+        for (int i = 0; i < SOCKET_RETRY_CT; i++) {
             try {
                 if (!s.isConnected()) {
                     s.connect(address);
