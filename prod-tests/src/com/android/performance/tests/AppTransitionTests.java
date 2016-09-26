@@ -19,6 +19,7 @@ package com.android.performance.tests;
 import com.android.ddmlib.testrunner.IRemoteAndroidTestRunner;
 import com.android.ddmlib.testrunner.RemoteAndroidTestRunner;
 import com.android.ddmlib.testrunner.TestResult;
+import com.android.loganalysis.item.LatencyItem;
 import com.android.loganalysis.item.TransitionDelayItem;
 import com.android.loganalysis.parser.EventsLogParser;
 import com.android.tradefed.config.Option;
@@ -62,6 +63,7 @@ public class AppTransitionTests implements IRemoteTest, IDeviceTest {
     private static final String TEST_HOT_LAUNCH = "testHotLaunchFromLauncher";
     private static final String TEST_APP_TO_HOME = "testAppToHome";
     private static final String TEST_APP_TO_RECENT = "testAppToRecents";
+    private static final String TEST_LATENCY = "testLatency";
     private static final String TEST_HOT_LAUNCH_FROM_RECENTS = "testHotLaunchFromRecents";
     private static final String DROP_CACHE_SCRIPT_FILE = "dropCache";
     private static final String SCRIPT_EXTENSION = ".sh";
@@ -111,6 +113,18 @@ public class AppTransitionTests implements IRemoteTest, IDeviceTest {
     @Option(name = "recents-activity", description = "Recents activity name")
     private String mRecentsActivity = ".recents.RecentsActivity";
 
+    @Option(name = "class",
+            description = "test class to run, may be repeated; multiple classess will be run"
+                    + " in the same order as provided in command line")
+    private List<String> mClasses = new ArrayList<String>();
+
+    @Option(name = "package",
+            description = "The manifest package name of the UI test package")
+    private String mPackage = "com.android.apptransition.tests";
+
+    @Option(name = "latency-iteration", description = "Iterations to be used in the latency tests.")
+    private int mLatencyIteration = 10;
+
     private ITestDevice mDevice = null;
     private IRemoteAndroidTestRunner mRunner = null;
     private CollectingTestListener mLaunchListener = null;
@@ -125,58 +139,89 @@ public class AppTransitionTests implements IRemoteTest, IDeviceTest {
         mListener = listener;
 
         if (null != mColdLaunchApps && !mColdLaunchApps.isEmpty()) {
-            mRunner = createRemoteAndroidTestRunner(TEST_COLD_LAUNCH, mColdLaunchApps, null);
-            mLaunchListener = new CollectingTestListener();
-            mLaunchEventsLogs = new LogcatReceiver(getDevice(), EVENTS_CMD, EVENTS_LOGCAT_SIZE, 0);
-            startEventsLogs(mLaunchEventsLogs, TEST_COLD_LAUNCH);
-            mDevice.runInstrumentationTests(mRunner, mLaunchListener);
-            analyzeColdLaunchDelay(parseTransitionDelayInfo());
-            stopEventsLogs(mLaunchEventsLogs, TEST_COLD_LAUNCH);
-            if (isTraceDirEnabled()) {
-                uploadTraceFiles(listener, TEST_COLD_LAUNCH);
+            try {
+                mRunner = createRemoteAndroidTestRunner(TEST_COLD_LAUNCH, mColdLaunchApps, null);
+                mLaunchListener = new CollectingTestListener();
+                mLaunchEventsLogs = new LogcatReceiver(getDevice(), EVENTS_CMD, EVENTS_LOGCAT_SIZE,
+                        0);
+                startEventsLogs(mLaunchEventsLogs, TEST_COLD_LAUNCH);
+                mDevice.runInstrumentationTests(mRunner, mLaunchListener);
+                analyzeColdLaunchDelay(parseTransitionDelayInfo());
+            } finally {
+                stopEventsLogs(mLaunchEventsLogs, TEST_COLD_LAUNCH);
+                if (isTraceDirEnabled()) {
+                    uploadTraceFiles(listener, TEST_COLD_LAUNCH);
+                }
             }
         }
 
         if (null != mHotLaunchApps && !mHotLaunchApps.isEmpty()) {
-            mRunner = createRemoteAndroidTestRunner(TEST_HOT_LAUNCH, mHotLaunchApps, null);
-            mLaunchListener = new CollectingTestListener();
-            mLaunchEventsLogs = new LogcatReceiver(getDevice(), EVENTS_CMD, EVENTS_LOGCAT_SIZE, 0);
-            startEventsLogs(mLaunchEventsLogs, TEST_HOT_LAUNCH);
-            mDevice.runInstrumentationTests(mRunner, mLaunchListener);
-            analyzeHotLaunchDelay(parseTransitionDelayInfo());
-            stopEventsLogs(mLaunchEventsLogs, TEST_HOT_LAUNCH);
-            if (isTraceDirEnabled()) {
-                uploadTraceFiles(listener, TEST_HOT_LAUNCH);
+            try {
+                mRunner = createRemoteAndroidTestRunner(TEST_HOT_LAUNCH, mHotLaunchApps, null);
+                mLaunchListener = new CollectingTestListener();
+                mLaunchEventsLogs = new LogcatReceiver(getDevice(), EVENTS_CMD, EVENTS_LOGCAT_SIZE,
+                        0);
+                startEventsLogs(mLaunchEventsLogs, TEST_HOT_LAUNCH);
+                mDevice.runInstrumentationTests(mRunner, mLaunchListener);
+                analyzeHotLaunchDelay(parseTransitionDelayInfo());
+            } finally {
+                stopEventsLogs(mLaunchEventsLogs, TEST_HOT_LAUNCH);
+                if (isTraceDirEnabled()) {
+                    uploadTraceFiles(listener, TEST_HOT_LAUNCH);
+                }
             }
         }
 
         if ((null != mAppToRecents && !mAppToRecents.isEmpty()) &&
                 (null != mPreLaunchApps && !mPreLaunchApps.isEmpty())) {
-            mRunner = createRemoteAndroidTestRunner(TEST_APP_TO_RECENT, mAppToRecents,
-                    mPreLaunchApps);
-            mLaunchListener = new CollectingTestListener();
-            mLaunchEventsLogs = new LogcatReceiver(getDevice(), EVENTS_CMD, EVENTS_LOGCAT_SIZE, 0);
-            startEventsLogs(mLaunchEventsLogs, TEST_APP_TO_RECENT);
-            mDevice.runInstrumentationTests(mRunner, mLaunchListener);
-            analyzeAppToRecentsDelay(parseTransitionDelayInfo());
-            stopEventsLogs(mLaunchEventsLogs, TEST_APP_TO_RECENT);
-            if (isTraceDirEnabled()) {
-                uploadTraceFiles(listener, TEST_APP_TO_RECENT);
+            try {
+                mRunner = createRemoteAndroidTestRunner(TEST_APP_TO_RECENT, mAppToRecents,
+                        mPreLaunchApps);
+                mLaunchListener = new CollectingTestListener();
+                mLaunchEventsLogs = new LogcatReceiver(getDevice(), EVENTS_CMD, EVENTS_LOGCAT_SIZE,
+                        0);
+                startEventsLogs(mLaunchEventsLogs, TEST_APP_TO_RECENT);
+                mDevice.runInstrumentationTests(mRunner, mLaunchListener);
+                analyzeAppToRecentsDelay(parseTransitionDelayInfo());
+            } finally {
+                stopEventsLogs(mLaunchEventsLogs, TEST_APP_TO_RECENT);
+                if (isTraceDirEnabled()) {
+                    uploadTraceFiles(listener, TEST_APP_TO_RECENT);
+                }
             }
         }
 
         if ((null != mRecentsToApp && !mRecentsToApp.isEmpty()) &&
                 (null != mPreLaunchApps && !mPreLaunchApps.isEmpty())) {
-            mRunner = createRemoteAndroidTestRunner(TEST_HOT_LAUNCH_FROM_RECENTS, mRecentsToApp,
-                    mPreLaunchApps);
-            mLaunchListener = new CollectingTestListener();
-            mLaunchEventsLogs = new LogcatReceiver(getDevice(), EVENTS_CMD, EVENTS_LOGCAT_SIZE, 0);
-            startEventsLogs(mLaunchEventsLogs, TEST_HOT_LAUNCH_FROM_RECENTS);
-            mDevice.runInstrumentationTests(mRunner, mLaunchListener);
-            analyzeRecentsToAppDelay(parseTransitionDelayInfo());
-            stopEventsLogs(mLaunchEventsLogs, TEST_HOT_LAUNCH_FROM_RECENTS);
-            if (isTraceDirEnabled()) {
-                uploadTraceFiles(listener, TEST_HOT_LAUNCH_FROM_RECENTS);
+            try {
+                mRunner = createRemoteAndroidTestRunner(TEST_HOT_LAUNCH_FROM_RECENTS,
+                        mRecentsToApp,
+                        mPreLaunchApps);
+                mLaunchListener = new CollectingTestListener();
+                mLaunchEventsLogs = new LogcatReceiver(getDevice(), EVENTS_CMD, EVENTS_LOGCAT_SIZE,
+                        0);
+                startEventsLogs(mLaunchEventsLogs, TEST_HOT_LAUNCH_FROM_RECENTS);
+                mDevice.runInstrumentationTests(mRunner, mLaunchListener);
+                analyzeRecentsToAppDelay(parseTransitionDelayInfo());
+            } finally {
+                stopEventsLogs(mLaunchEventsLogs, TEST_HOT_LAUNCH_FROM_RECENTS);
+                if (isTraceDirEnabled()) {
+                    uploadTraceFiles(listener, TEST_HOT_LAUNCH_FROM_RECENTS);
+                }
+            }
+        }
+
+        if (!mClasses.isEmpty()) {
+            try {
+                mRunner = createTestRunner();
+                mLaunchListener = new CollectingTestListener();
+                mLaunchEventsLogs = new LogcatReceiver(getDevice(), EVENTS_CMD, EVENTS_LOGCAT_SIZE,
+                        0);
+                startEventsLogs(mLaunchEventsLogs, TEST_LATENCY);
+                mDevice.runInstrumentationTests(mRunner, mLaunchListener);
+                analyzeLatencyInfo(parseLatencyInfo());
+            } finally {
+                stopEventsLogs(mLaunchEventsLogs, TEST_LATENCY);
             }
         }
 
@@ -197,6 +242,7 @@ public class AppTransitionTests implements IRemoteTest, IDeviceTest {
                     DEVICE_TEMPORARY_DIR_PATH, DROP_CACHE_SCRIPT_FILE));
         } catch (IOException ioe) {
             CLog.e("Unable to create the Script file");
+            CLog.e(ioe);
         }
         getDevice().executeShellCommand(String.format("chmod 755 %s%s.sh",
                 DEVICE_TEMPORARY_DIR_PATH, DROP_CACHE_SCRIPT_FILE));
@@ -225,6 +271,22 @@ public class AppTransitionTests implements IRemoteTest, IDeviceTest {
         }
         return runner;
     }
+
+    /**
+     * Method to create the runner with given runner name, package and list of classes.
+     * @return the {@link IRemoteAndroidTestRunner} to use.
+     * @throws DeviceNotAvailableException
+     */
+    IRemoteAndroidTestRunner createTestRunner() throws DeviceNotAvailableException {
+        IRemoteAndroidTestRunner runner = new RemoteAndroidTestRunner(mPackage, mRunnerName,
+                getDevice().getIDevice());
+        if (!mClasses.isEmpty()) {
+            runner.setClassNames(mClasses.toArray(new String[] {}));
+        }
+        runner.addInstrumentationArg("iteration_count", Integer.toString(mLatencyIteration));
+        return runner;
+    }
+
 
     /**
      * Start the events logcat
@@ -304,6 +366,7 @@ public class AppTransitionTests implements IRemoteTest, IDeviceTest {
             logTraceFiles(listener, mTraceDirectory, subFolderName);
         } catch (IOException ioe) {
             CLog.e("Problem in uploading the log files.");
+            CLog.e(ioe);
         }
         mDevice.executeShellCommand(String.format(REMOVE_CMD, mTraceDirectory,
                 subFolderName));
@@ -326,8 +389,24 @@ public class AppTransitionTests implements IRemoteTest, IDeviceTest {
                     new InputStreamReader(mLaunchEventsLogs.getLogcatData().createInputStream())));
         } catch (IOException e) {
             CLog.e("Problem in parsing the transition delay items from events log");
+            CLog.e(e);
         }
         return transitionDelayItems;
+    }
+
+    /**
+     * To parse the latency info from the events log.
+     */
+    private List<LatencyItem> parseLatencyInfo() {
+        List<LatencyItem> latencyItems = null;
+        try {
+            latencyItems = mEventsLogParser.parseLatencyInfo(new BufferedReader(
+                    new InputStreamReader(mLaunchEventsLogs.getLogcatData().createInputStream())));
+        } catch (IOException e) {
+            CLog.e("Problem in parsing the latency items from events log");
+            CLog.e(e);
+        }
+        return latencyItems;
     }
 
     /**
@@ -485,6 +564,27 @@ public class AppTransitionTests implements IRemoteTest, IDeviceTest {
             }
         }
         computeAndUploadResults(TEST_HOT_LAUNCH_FROM_RECENTS, appKeyTransitionDelayMap);
+    }
+
+
+    /**
+     * Analyze and report different latency delay items captured from the events log
+     * file while running the LatencyTests
+     * @param latencyItemsList
+     */
+    private void analyzeLatencyInfo(List<LatencyItem> latencyItemsList) {
+        Map<String, List<Long>> actionDelayListMap = new HashMap<>();
+        for (LatencyItem delayItem : latencyItemsList) {
+            if (actionDelayListMap.containsKey(Integer.toString(delayItem.getActionId()))) {
+                actionDelayListMap.get(Integer.toString(delayItem.getActionId())).add(
+                        delayItem.getDelay());
+            } else {
+                List<Long> delayList = new ArrayList<Long>();
+                delayList.add(delayItem.getDelay());
+                actionDelayListMap.put(Integer.toString(delayItem.getActionId()), delayList);
+            }
+        }
+        computeAndUploadResults(TEST_LATENCY, actionDelayListMap);
     }
 
 
