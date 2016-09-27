@@ -41,15 +41,12 @@ import com.android.tradefed.result.InputStreamSource;
 import com.android.tradefed.result.LogDataType;
 import com.android.tradefed.result.SnapshotInputStreamSource;
 import com.android.tradefed.targetprep.BuildError;
-import com.android.tradefed.targetprep.FlashingResourcesParser;
 import com.android.tradefed.targetprep.ITargetPreparer;
 import com.android.tradefed.targetprep.TargetSetupError;
 import com.android.tradefed.testtype.IBuildReceiver;
 import com.android.tradefed.testtype.IDeviceTest;
 import com.android.tradefed.testtype.IResumableTest;
 import com.android.tradefed.util.FileUtil;
-import com.android.tradefed.util.IRunUtil;
-import com.android.tradefed.util.RunUtil;
 import com.android.tradefed.util.StreamUtil;
 
 import junit.framework.Assert;
@@ -93,7 +90,6 @@ public class SideloadOtaStabilityTest implements IDeviceTest, IBuildReceiver,
     private static final long SOCKET_RETRY_CT = 30;
     private static final long UNCRYPT_TIMEOUT = 15 * 60 * 1000;
 
-    private static final long LONG_WAIT_UNCRYPT = 10 * 1000;
     private static final long SHORT_WAIT_UNCRYPT = 3 * 1000;
 
     private OtaDeviceBuildInfo mOtaDeviceBuild;
@@ -128,7 +124,6 @@ public class SideloadOtaStabilityTest implements IDeviceTest, IBuildReceiver,
     /** controls if this test should be resumed. Only used if mResumeMode is enabled */
     private boolean mResumable = true;
 
-    private String mExpectedBasebandVersion, mExpectedBootloaderVersion;
     private long mUncryptDuration;
     private LogReceiver mKmsgReceiver;
 
@@ -201,8 +196,6 @@ public class SideloadOtaStabilityTest implements IDeviceTest, IBuildReceiver,
                 mOtaDeviceBuild.getDeviceImageVersion(),
                 mOtaDeviceBuild.getOtaBuild().getOtaPackageVersion(), mIterations);
 
-        getBasebandBootloaderVersions(mOtaDeviceBuild.getOtaBuild());
-
         long startTime = System.currentTimeMillis();
         listener.testRunStarted(mRunName, 0);
         int actualIterations = 0;
@@ -219,18 +212,14 @@ public class SideloadOtaStabilityTest implements IDeviceTest, IBuildReceiver,
                         mOtaDeviceBuild.getOtaBuild().getOtaPackageVersion(),
                         actualIterations, mIterations);
             }
-        } catch (AssertionFailedError error) {
-            CLog.e(error);
+        } catch (AssertionFailedError | BuildError | ConfigurationException e) {
+            CLog.e(e);
         } catch (TargetSetupError e) {
             CLog.i("Encountered TargetSetupError, marking this test as resumable");
             mResumable = true;
             CLog.e(e);
             // throw up an exception so this test can be resumed
             Assert.fail(e.toString());
-        } catch (BuildError e) {
-            CLog.e(e);
-        } catch (ConfigurationException e) {
-            CLog.e(e);
         } finally {
             // if the device is down, we need to recover it so we can safely pull logs
             IManagedTestDevice managedDevice = (IManagedTestDevice) mDevice;
@@ -277,15 +266,6 @@ public class SideloadOtaStabilityTest implements IDeviceTest, IBuildReceiver,
         }
     }
 
-    /**
-     * Get the {@link IRunUtil} instance to use.
-     * <p/>
-     * Exposed so unit tests can mock.
-     */
-    IRunUtil getRunUtil() {
-        return RunUtil.getDefault();
-    }
-
     private void checkFields() {
         if (mDevice == null) {
             throw new IllegalArgumentException("missing device");
@@ -314,13 +294,8 @@ public class SideloadOtaStabilityTest implements IDeviceTest, IBuildReceiver,
         // this file needs to be uncrypted, since /data isn't mounted in recovery
         // block.map should be empty since cache should be cleared
         mDevice.pushString(mPackageDataPath + "\n", UNCRYPT_FILE_PATH);
-        try {
-            // This is a workaround for known issue with f2fs system.
-            CLog.i("Sleeping %d for package to write to flash.", LONG_WAIT_UNCRYPT);
-            Thread.sleep(LONG_WAIT_UNCRYPT);
-        } catch (InterruptedException e) {
-            CLog.i("Got interrupted when waiting to uncrypt file.");
-        }
+        // Flushing the file to flash.
+        mDevice.executeShellCommand("sync");
 
         try {
             mUncryptDuration = doUncrypt(SocketFactory.getInstance(), listener);
@@ -424,17 +399,6 @@ public class SideloadOtaStabilityTest implements IDeviceTest, IBuildReceiver,
         }
     }
 
-    private void getBasebandBootloaderVersions(IDeviceBuildInfo otaBuild) {
-        try {
-            FlashingResourcesParser parser = new FlashingResourcesParser(
-                    otaBuild.getDeviceImageFile());
-            mExpectedBootloaderVersion = parser.getRequiredBootloaderVersion();
-            mExpectedBasebandVersion = parser.getRequiredBasebandVersion();
-        } catch (TargetSetupError e) {
-            throw new RuntimeException("Error when trying to set up OTA version info");
-        }
-    }
-
     /*
      * Uncrypt needs to attach to a socket before it will actually begin work, so we need to
      * attach a socket to it.
@@ -451,6 +415,7 @@ public class SideloadOtaStabilityTest implements IDeviceTest, IBuildReceiver,
             Thread.sleep(SHORT_WAIT_UNCRYPT);
         } catch (InterruptedException e) {
             CLog.i("Got interrupted when waiting to uncrypt file.");
+            Thread.currentThread().interrupt();
         }
         int port;
         try {
@@ -472,15 +437,9 @@ public class SideloadOtaStabilityTest implements IDeviceTest, IBuildReceiver,
                 int status = Integer.MIN_VALUE;
                 while (true) {
                     status = dis.readInt();
-                    if (status == 100) {
-                        CLog.i("Uncrypt finished successfully");
+                    if (isUncryptSuccess(status)) {
                         dos.writeInt(0);
                         break;
-                    } else if (status > 100 || status < 0) {
-                        // error, acknowledge it to let uncrypt finish
-                        CLog.w("Uncrypt sent error status %d", status);
-                        dos.writeInt(0);
-                        assertThat(status, not(equalTo(100)));
                     }
                 }
                 CLog.i("Final uncrypt status: %d", status);
@@ -492,32 +451,35 @@ public class SideloadOtaStabilityTest implements IDeviceTest, IBuildReceiver,
                     UNCRYPT_TIMEOUT);
             long time = 0;
             int lastStatus = -1;
-            boolean succeeded = false;
             while ((time = System.currentTimeMillis() - start) < UNCRYPT_TIMEOUT) {
                 int status = readUncryptStatusFromFile();
+                if (isUncryptSuccess(status)) {
+                    return time;
+                }
                 if (status != lastStatus) {
                     lastStatus = status;
                     CLog.d("uncrypt status: %d", status);
-                } else if (status == 100) {
-                    CLog.i("Uncrypt finished succesfully");
-                    succeeded = true;
-                    break;
-                } else if (status > 100 || status < 0) {
-                    CLog.w("Uncrypt sent error status %d", status);
-                    assertThat(status, not(equalTo(100)));
                 }
                 try {
                     Thread.sleep(1000);
                 } catch (InterruptedException unused) {
-                    // do nothing
+                    Thread.currentThread().interrupt();
                 }
             }
-            if (!succeeded) {
-                CLog.e("Uncrypt didn't finish, last status was %d", lastStatus);
-                throw new RuntimeException("Uncrypt didn't succeed after timeout");
-            }
-            return time;
+            CLog.e("Uncrypt didn't finish, last status was %d", lastStatus);
+            throw new RuntimeException("Uncrypt didn't succeed after timeout");
         }
+    }
+
+    private boolean isUncryptSuccess(int status) {
+        if (status == 100) {
+            CLog.i("Uncrypt finished successfully");
+            return true;
+        } else if (status > 100 || status < 0) {
+            CLog.e("Uncrypt returned error status %d", status);
+            assertThat(status, not(equalTo(100)));
+        }
+        return false;
     }
 
     protected int getFreePort() throws IOException {
@@ -558,6 +520,7 @@ public class SideloadOtaStabilityTest implements IDeviceTest, IBuildReceiver,
                             SOCKET_RETRY_CT);
                 } catch (InterruptedException e) {
                     CLog.w("Interrupted while connecting uncrypt socket on iteration %d", i);
+                    Thread.currentThread().interrupt();
                 }
             }
         }
