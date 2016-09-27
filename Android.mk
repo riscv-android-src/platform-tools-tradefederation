@@ -29,7 +29,7 @@ LOCAL_MODULE_TAGS := optional
 LOCAL_STATIC_JAVA_LIBRARIES := junit kxml2-2.3.0 jline-1.0 tf-remote-client
 # emmalib is only a runtime dependency if generating code coverage reporters,
 # not a compile time dependency
-LOCAL_JAVA_LIBRARIES := commons-compress-prebuilt emmalib jack-jacoco-reporter loganalysis
+LOCAL_JAVA_LIBRARIES := commons-compress-prebuilt emmalib jack-jacoco-reporter loganalysis tools-common-prebuilt
 
 LOCAL_JAR_MANIFEST := MANIFEST.mf
 
