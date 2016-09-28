@@ -70,6 +70,13 @@ public abstract class DeviceFlashPreparer implements ITargetCleaner {
             "specify if system flavor should not be checked after flash")
     private boolean mSkipPostFlashFlavorCheck = false;
 
+    /*
+     * Used for update testing
+     */
+    @Option(name = "skip-post-flash-build-id-check", description =
+            "specify if build ID should not be checked after flash")
+    private boolean mSkipPostFlashBuildIdCheck = false;
+
     @Option(name = "wipe-skip-list", description =
         "list of /data subdirectories to NOT wipe when doing UserDataFlashOption.TESTS_ZIP")
     private Collection<String> mDataWipeSkipList = new ArrayList<>();
@@ -304,8 +311,10 @@ public abstract class DeviceFlashPreparer implements ITargetCleaner {
         // Need to use deviceBuild.getDeviceBuildId instead of getBuildId because the build info
         // could be an AppBuildInfo and return app build id. Need to be more explicit that we
         // check for the device build here.
-        checkBuildAttribute(deviceBuild.getDeviceBuildId(), device.getBuildId(),
-                device.getSerialNumber());
+        if (!mSkipPostFlashBuildIdCheck) {
+            checkBuildAttribute(deviceBuild.getDeviceBuildId(), device.getBuildId(),
+                    device.getSerialNumber());
+        }
         if (!mSkipPostFlashFlavorCheck) {
             checkBuildAttribute(deviceBuild.getDeviceBuildFlavor(), device.getBuildFlavor(),
                     device.getSerialNumber());
