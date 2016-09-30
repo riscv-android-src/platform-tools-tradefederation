@@ -36,7 +36,7 @@ public class OtaDeviceBuildInfo implements IDeviceBuildInfo {
 
     protected IDeviceBuildInfo mOtaBuild;
     protected IDeviceBuildInfo mBaselineBuild;
-    protected boolean mDowngrade = false;
+    protected boolean mReportTargetBuild = false;
 
     public void setOtaBuild(IDeviceBuildInfo otaBuild) {
         mOtaBuild = otaBuild;
@@ -55,7 +55,7 @@ public class OtaDeviceBuildInfo implements IDeviceBuildInfo {
      */
     @Override
     public String getBuildId() {
-        if (mDowngrade) {
+        if (mReportTargetBuild) {
             return mOtaBuild.getBuildId();
         }
         return mBaselineBuild.getBuildId();
@@ -202,7 +202,7 @@ public class OtaDeviceBuildInfo implements IDeviceBuildInfo {
      */
     @Override
     public File getDeviceImageFile() {
-        if (mDowngrade) {
+        if (mReportTargetBuild) {
             return mOtaBuild.getDeviceImageFile();
         }
         return mBaselineBuild.getDeviceImageFile();
@@ -213,7 +213,7 @@ public class OtaDeviceBuildInfo implements IDeviceBuildInfo {
      */
     @Override
     public String getDeviceImageVersion() {
-        if (mDowngrade) {
+        if (mReportTargetBuild) {
             return mOtaBuild.getDeviceImageVersion();
         }
         return mBaselineBuild.getDeviceImageVersion();
@@ -430,7 +430,7 @@ public class OtaDeviceBuildInfo implements IDeviceBuildInfo {
         return combinedFiles;
     }
 
-    public void setDowngrade(boolean downgrade) {
-        mDowngrade = downgrade;
+    public void setReportTargetBuild(boolean downgrade) {
+        mReportTargetBuild = downgrade;
     }
 }
