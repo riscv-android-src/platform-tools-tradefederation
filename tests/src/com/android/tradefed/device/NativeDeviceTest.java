@@ -1279,16 +1279,7 @@ public class NativeDeviceTest extends TestCase {
      */
     public void testDoAdbReboot_emulator() throws Exception {
         final String into = "bootloader";
-        EasyMock.expect(mMockIDevice.isEmulator()).andReturn(true);
-        mMockIDevice.executeShellCommand(EasyMock.eq("stop"),
-                (IShellOutputReceiver)EasyMock.anyObject(), EasyMock.anyLong(),
-                EasyMock.eq(TimeUnit.MILLISECONDS));
-        mMockIDevice.executeShellCommand(EasyMock.eq("setprop dev.bootcomplete 0"),
-                (IShellOutputReceiver)EasyMock.anyObject(), EasyMock.anyLong(),
-                EasyMock.eq(TimeUnit.MILLISECONDS));
-        mMockIDevice.executeShellCommand(EasyMock.eq("start"),
-                (IShellOutputReceiver)EasyMock.anyObject(), EasyMock.anyLong(),
-                EasyMock.eq(TimeUnit.MILLISECONDS));
+        mMockIDevice.reboot(into);
         EasyMock.expectLastCall();
         EasyMock.replay(mMockIDevice);
         mTestDevice.doAdbReboot(into);
@@ -1306,7 +1297,6 @@ public class NativeDeviceTest extends TestCase {
                 return TestDeviceState.ONLINE;
             }
         };
-        EasyMock.expect(mMockIDevice.isEmulator()).andReturn(false);
         mMockIDevice.reboot(null);
         EasyMock.expectLastCall();
         EasyMock.expect(mMockStateMonitor.waitForDeviceNotAvailable(EasyMock.anyLong()))

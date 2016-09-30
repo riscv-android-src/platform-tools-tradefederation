@@ -2513,15 +2513,6 @@ public class NativeDevice implements IManagedTestDevice {
      * @throws DeviceNotAvailableException
      */
     protected void doAdbReboot(final String into) throws DeviceNotAvailableException {
-        // emulator doesn't support reboot, try just resetting framework and hoping for the best
-        if (getIDevice().isEmulator()) {
-            CLog.i("since emulator, performing shell stop & start instead of reboot");
-            executeShellCommand("stop");
-            executeShellCommand(String.format("setprop %s 0",
-                    DeviceStateMonitor.BOOTCOMPLETE_PROP));
-            executeShellCommand("start");
-            return;
-        }
         DeviceAction rebootAction = new DeviceAction() {
             @Override
             public boolean run() throws TimeoutException, IOException,
