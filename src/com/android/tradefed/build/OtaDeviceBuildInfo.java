@@ -202,9 +202,6 @@ public class OtaDeviceBuildInfo implements IDeviceBuildInfo {
      */
     @Override
     public File getDeviceImageFile() {
-        if (mReportTargetBuild) {
-            return mOtaBuild.getDeviceImageFile();
-        }
         return mBaselineBuild.getDeviceImageFile();
     }
 
@@ -213,9 +210,6 @@ public class OtaDeviceBuildInfo implements IDeviceBuildInfo {
      */
     @Override
     public String getDeviceImageVersion() {
-        if (mReportTargetBuild) {
-            return mOtaBuild.getDeviceImageVersion();
-        }
         return mBaselineBuild.getDeviceImageVersion();
     }
 
