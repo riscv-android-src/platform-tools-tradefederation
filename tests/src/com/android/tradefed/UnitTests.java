@@ -164,6 +164,8 @@ import com.android.tradefed.util.keystore.JSONFileKeyStoreClientTest;
 import com.android.tradefed.util.net.HttpHelperTest;
 import com.android.tradefed.util.net.HttpMultipartPostTest;
 import com.android.tradefed.util.net.XmlRpcHelperTest;
+import com.android.tradefed.util.sl4a.Sl4aClientTest;
+import com.android.tradefed.util.sl4a.Sl4aEventDispatcherTest;
 import com.android.tradefed.util.xml.AndroidManifestWriterTest;
 
 import org.junit.runner.RunWith;
@@ -352,10 +354,11 @@ import org.junit.runners.Suite.SuiteClasses;
 
     // util subdirs
     AndroidManifestWriterTest.class,
+    Sl4aClientTest.class,
+    Sl4aEventDispatcherTest.class,
 
     // util/keystore
     JSONFileKeyStoreClientTest.class,
-
 })
 public class UnitTests {
     // empty of purpose

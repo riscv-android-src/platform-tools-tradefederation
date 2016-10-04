@@ -18,6 +18,7 @@ package com.android.tradefed.device;
 
 import com.android.ddmlib.IDevice;
 import com.android.tradefed.result.InputStreamSource;
+import com.android.tradefed.util.sl4a.Sl4aClient;
 
 import java.io.File;
 import java.util.ArrayList;
@@ -558,4 +559,12 @@ public interface ITestDevice extends INativeDevice {
      * @throws DeviceNotAvailableException
      */
     public Map<Integer, String> getAndroidIds() throws DeviceNotAvailableException;
+
+    /**
+     * Create and return the sl4a client associated with the ITestDevice.
+     * Use option "--sl4a-apk-path <path>" to specify a particular apk to use.
+     *
+     * @return a {@link Sl4aClient} that is successfully connected and running on the device.
+     */
+    public Sl4aClient startSL4A() throws DeviceNotAvailableException;
 }

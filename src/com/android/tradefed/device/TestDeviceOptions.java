@@ -17,6 +17,7 @@ package com.android.tradefed.device;
 
 import com.android.tradefed.config.Option;
 
+import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -106,6 +107,10 @@ public class TestDeviceOptions {
     @Option(name = "cutoff-battery", description =
             "the minimum battery level required to continue the invocation. Scale: 0-100")
     private Integer mCutoffBattery = null;
+
+    @Option(name = "sl4a-apk-path", description = "path to the sl4a.apk file to be used by the"
+            + "device, if null it will assume the apk is already installed on the device.")
+    private File mSl4aApkFile = null;
 
     /**
      * Check whether adb root should be enabled on boot for this device
@@ -342,5 +347,12 @@ public class TestDeviceOptions {
      */
     public boolean isWifiExpoRetryEnabled() {
         return mWifiExpoRetryEnabled;
+    }
+
+    /**
+     * @return a {@link File} pointing to the sl4a.apk file. Can be null, if apk already installed.
+     */
+    public File getSl4aApkFile() {
+        return mSl4aApkFile;
     }
 }

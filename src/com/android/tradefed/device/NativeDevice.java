@@ -53,6 +53,7 @@ import com.android.tradefed.util.RunUtil;
 import com.android.tradefed.util.SizeLimitedOutputStream;
 import com.android.tradefed.util.StreamUtil;
 import com.android.tradefed.util.ZipUtil;
+import com.android.tradefed.util.sl4a.Sl4aClient;
 
 import java.io.ByteArrayInputStream;
 import java.io.File;
@@ -3672,5 +3673,13 @@ public class NativeDevice implements IManagedTestDevice {
         }
         CLog.d("No valid MAC address queried from device %s", mIDevice.getSerialNumber());
         return null;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public Sl4aClient startSL4A() throws DeviceNotAvailableException {
+        throw new UnsupportedOperationException("Sl4a is not supported by native device.");
     }
 }

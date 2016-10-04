@@ -27,6 +27,7 @@ import com.android.tradefed.result.ByteArrayInputStreamSource;
 import com.android.tradefed.result.InputStreamSource;
 import com.android.tradefed.util.RunUtil;
 import com.android.tradefed.util.StreamUtil;
+import com.android.tradefed.util.sl4a.Sl4aClient;
 
 import com.google.common.annotations.VisibleForTesting;
 
@@ -35,6 +36,7 @@ import java.awt.image.BufferedImage;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.IOException;
+import java.net.ServerSocket;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -75,6 +77,8 @@ public class TestDevice extends NativeDevice {
     private static String USER_PATTERN = "(.*?\\{)(\\d+)(:)(.*)(:)(\\d+)(\\}.*)";
 
     private static final int API_LEVEL_GET_CURRENT_USER = 24;
+
+    private Sl4aClient mSl4aClient = null;
 
     /**
      * @param device
@@ -1075,5 +1079,50 @@ public class TestDevice extends NativeDevice {
             throw new IllegalArgumentException(String.format("%s not supported on %s. "
                     + "Must be API %d.", feature, getSerialNumber(), strictMinLevel));
         }
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void postInvocationTearDown() {
+        super.postInvocationTearDown();
+        if (mSl4aClient != null) {
+            mSl4aClient.close();
+        }
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public Sl4aClient startSL4A() throws DeviceNotAvailableException {
+        File sl4aApkFile = getOptions().getSl4aApkFile();
+        if (sl4aApkFile != null) {
+            if (!sl4aApkFile.exists()) {
+                throw new RuntimeException(String.format("Sl4A apk '%s' was not found.",
+                        sl4aApkFile.getAbsoluteFile()));
+            }
+            String res = installPackage(sl4aApkFile, true);
+            if (res != null) {
+                throw new RuntimeException(String.format("Error when installing the Sl4A apk: %s",
+                        res));
+            }
+        }
+        ServerSocket s = null;
+        int port = -1;
+        try {
+            s = new ServerSocket(0);
+            s.setReuseAddress(true);
+            port = s.getLocalPort();
+            s.close();
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+        // even after being closed, socket may remain in TIME_WAIT state
+        // reuse address allows to connect to it even in this state.
+        mSl4aClient = new Sl4aClient(this, port, 9998);
+        mSl4aClient.startSl4A();
+        return mSl4aClient;
     }
 }
