@@ -15,7 +15,7 @@
  */
 package com.android.tradefed.result;
 
-import com.android.tradefed.build.IBuildInfo;
+import com.android.tradefed.invoker.IInvocationContext;
 
 public class StubTestInvocationListener extends StubTestRunListener
         implements ITestInvocationListener {
@@ -24,7 +24,7 @@ public class StubTestInvocationListener extends StubTestRunListener
      * {@inheritDoc}
      */
     @Override
-    public void invocationStarted(IBuildInfo buildInfo) {
+    public void invocationStarted(IInvocationContext context) {
         // ignore
     }
 

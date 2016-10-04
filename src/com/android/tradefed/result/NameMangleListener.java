@@ -18,6 +18,7 @@ package com.android.tradefed.result;
 
 import com.android.ddmlib.testrunner.TestIdentifier;
 import com.android.tradefed.build.IBuildInfo;
+import com.android.tradefed.invoker.IInvocationContext;
 
 import java.util.Map;
 
@@ -165,6 +166,16 @@ public abstract class NameMangleListener implements ITestInvocationListener {
     public void invocationStarted(IBuildInfo buildInfo) {
         final IBuildInfo mangledBuildInfo = mangleBuildInfo(buildInfo);
         mListener.invocationStarted(mangledBuildInfo);
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void invocationStarted(IInvocationContext context) {
+        if (context != null) {
+            invocationStarted(context.getBuildInfos().get(0));
+        }
     }
 
     /**

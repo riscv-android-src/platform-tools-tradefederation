@@ -20,6 +20,7 @@ import com.android.ddmlib.testrunner.TestResult.TestStatus;
 import com.android.ddmlib.testrunner.TestRunResult;
 import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.config.Option;
+import com.android.tradefed.invoker.IInvocationContext;
 
 import java.util.Collection;
 import java.util.Collections;
@@ -68,6 +69,16 @@ public class CollectingTestListener implements ITestInvocationListener {
     @Override
     public void invocationStarted(IBuildInfo buildInfo) {
         mBuildInfo = buildInfo;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void invocationStarted(IInvocationContext context) {
+        if (context != null) {
+            invocationStarted(context.getBuildInfos().get(0));
+        }
     }
 
     /**

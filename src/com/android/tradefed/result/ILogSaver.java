@@ -16,6 +16,7 @@
 package com.android.tradefed.result;
 
 import com.android.tradefed.build.IBuildInfo;
+import com.android.tradefed.invoker.IInvocationContext;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -34,12 +35,23 @@ public interface ILogSaver {
      * Reports the start of the test invocation.
      * <p>
      * Will be automatically called by the TradeFederation framework before
-     * {@link ITestInvocationListener#invocationStarted(IBuildInfo)} is called.
+     * {@link ITestInvocationListener#invocationStarted(IInvocationContext)} is called.
      * </p>
      *
      * @param buildInfo information about the build being tested
      */
     public void invocationStarted(IBuildInfo buildInfo);
+
+    /**
+     * Reports the start of the test invocation.
+     * <p>
+     * Will be automatically called by the TradeFederation framework before
+     * {@link ITestInvocationListener#invocationStarted(IInvocationContext)} is called.
+     * </p>
+     *
+     * @param context information about the invocation.
+     */
+    public void invocationStarted(IInvocationContext context);
 
     /**
      * Reports that the invocation has terminated, whether successfully or due to some error

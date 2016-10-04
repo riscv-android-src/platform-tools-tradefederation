@@ -19,6 +19,7 @@ import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.command.FatalHostError;
 import com.android.tradefed.config.Option;
 import com.android.tradefed.config.OptionClass;
+import com.android.tradefed.invoker.IInvocationContext;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.util.FileUtil;
 import com.android.tradefed.util.StreamUtil;
@@ -71,6 +72,13 @@ public class FileSystemLogSaver implements ILogSaver {
     @Override
     public void invocationStarted(IBuildInfo buildInfo) {
         mLogReportDir = createLogReportDir(buildInfo, mRootReportDir, mLogRetentionDays);
+    }
+
+    @Override
+    public void invocationStarted(IInvocationContext context) {
+        // Create log directory on first build info
+        IBuildInfo info = context.getBuildInfos().get(0);
+        mLogReportDir = createLogReportDir(info, mRootReportDir, mLogRetentionDays);
     }
 
     /**

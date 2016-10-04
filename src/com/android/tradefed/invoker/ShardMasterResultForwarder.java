@@ -49,10 +49,19 @@ class ShardMasterResultForwarder extends LogSaverResultForwarder {
         mShardsRemaining = expectedShards;
     }
 
+    @Deprecated
     @Override
     public void invocationStarted(IBuildInfo buildInfo) {
         if (!mStartReported) {
             super.invocationStarted(buildInfo);
+            mStartReported = true;
+        }
+    }
+
+    @Override
+    public void invocationStarted(IInvocationContext context) {
+        if (!mStartReported) {
+            super.invocationStarted(context);
             mStartReported = true;
         }
     }

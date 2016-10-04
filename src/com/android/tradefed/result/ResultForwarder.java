@@ -17,6 +17,7 @@ package com.android.tradefed.result;
 
 import com.android.ddmlib.testrunner.TestIdentifier;
 import com.android.tradefed.build.IBuildInfo;
+import com.android.tradefed.invoker.IInvocationContext;
 import com.android.tradefed.log.LogUtil.CLog;
 
 import java.util.Arrays;
@@ -86,12 +87,30 @@ public class ResultForwarder implements ITestInvocationListener {
 
     /**
      * {@inheritDoc}
+     * @deprecated
      */
+    @Deprecated
     @Override
     public void invocationStarted(IBuildInfo buildInfo) {
         for (ITestInvocationListener listener : mListeners) {
             try {
                 listener.invocationStarted(buildInfo);
+            } catch (RuntimeException e) {
+                CLog.e("RuntimeException while invoking %s#invocationStarted",
+                        listener.getClass().getName());
+                CLog.e(e);
+            }
+        }
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void invocationStarted(IInvocationContext context) {
+        for (ITestInvocationListener listener : mListeners) {
+            try {
+                listener.invocationStarted(context);
             } catch (RuntimeException e) {
                 CLog.e("RuntimeException while invoking %s#invocationStarted",
                         listener.getClass().getName());
