@@ -223,4 +223,12 @@ public interface IDeviceManager {
      * Returns the path to the fastboot binary path to use.
      */
     public String getFastbootPath();
+
+    /**
+     * Wait until a first physical device is connected. If a device was connected before, it
+     * returns directly True. If no device was added, it returns false after timeout.
+     *
+     * @param timeout time to wait in millisecond before returning false.
+     */
+    public boolean waitForFirstDeviceAdded(long timeout);
 }

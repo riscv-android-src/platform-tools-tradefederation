@@ -130,6 +130,9 @@ public class CommandScheduler extends Thread implements ICommandScheduler, IComm
     /** maximum time to wait for handover initiation to complete */
     private static final long MAX_HANDOVER_INIT_TIME = 2 * 60 * 1000;
 
+    /** Maximum time to wait for adb to initialize and get the physical devices discovered */
+    private static final long ADB_INIT_TIME_MS = 500;
+
     /** used to assign unique ids to each CommandTracker created */
     private int mCurrentCommandId = 0;
 
@@ -780,6 +783,11 @@ public class CommandScheduler extends Thread implements ICommandScheduler, IComm
      */
     void initDeviceManager() {
         getDeviceManager().init();
+        if (getDeviceManager().waitForFirstDeviceAdded(ADB_INIT_TIME_MS)) {
+            // If a first device is added we wait a short extra time to allow more devices to be
+            // discovered.
+            RunUtil.getDefault().sleep(ADB_INIT_TIME_MS);
+        }
     }
 
     /**

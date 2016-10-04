@@ -53,6 +53,8 @@ import java.util.Comparator;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
 
 @OptionClass(alias = "dmgr", global_namespace = false)
 public class DeviceManager implements IDeviceManager {
@@ -121,6 +123,9 @@ public class DeviceManager implements IDeviceManager {
     private DeviceRecoverer mDeviceRecoverer;
 
     private List<IHostMonitor> mGlobalHostMonitors = null;
+
+    /** Counter to wait for the first physical connection before proceeding **/
+    private CountDownLatch mFirstDeviceAdded = new CountDownLatch(1);
 
     /**
      * The DeviceManager should be retrieved from the {@link GlobalConfiguration}
@@ -957,6 +962,7 @@ public class DeviceManager implements IDeviceManager {
                     DeviceState.UNAUTHORIZED.equals(idevice.getState())) {
                 mManagedDeviceList.handleDeviceEvent(testDevice, DeviceEvent.CONNECTED_OFFLINE);
             }
+            mFirstDeviceAdded.countDown();
         }
 
         /**
@@ -969,6 +975,18 @@ public class DeviceManager implements IDeviceManager {
                 mManagedDeviceList.handleDeviceEvent(d, DeviceEvent.DISCONNECTED);
                 d.setDeviceState(TestDeviceState.NOT_AVAILABLE);
             }
+        }
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public boolean waitForFirstDeviceAdded(long timeout) {
+        try {
+            return mFirstDeviceAdded.await(timeout, TimeUnit.MILLISECONDS);
+        } catch (InterruptedException e) {
+            throw new RuntimeException(e);
         }
     }
 
