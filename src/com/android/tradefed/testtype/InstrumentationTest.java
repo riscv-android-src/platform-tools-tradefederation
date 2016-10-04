@@ -62,7 +62,6 @@ public class InstrumentationTest implements IDeviceTest, IResumableTest, ITestCo
     /** instrumentation test runner argument key used for test execution using a file */
     private static final String TEST_FILE_INST_ARGS_KEY = "testFile";
 
-    static final String DELAY_MSEC_ARG = "delay_msec";
     /** instrumentation test runner argument key used for individual test timeout */
     static final String TEST_TIMEOUT_INST_ARGS_KEY = "timeout_msec";
 
@@ -119,10 +118,6 @@ public class InstrumentationTest implements IDeviceTest, IResumableTest, ITestCo
             description = "Schedule unexecuted tests for resumption on another device " +
             "if first device becomes unavailable.")
     private boolean mIsResumeMode = false;
-
-    @Option(name = "log-delay",
-            description="Delay in msec between each test when collecting test information.")
-    private int mTestDelay = 15;
 
     @Option(name = "install-file",
             description="Optional file path to apk file that contains the tests.")
@@ -421,13 +416,6 @@ public class InstrumentationTest implements IDeviceTest, IResumableTest, ITestCo
      */
     int getTestTimeout() {
         return mTestTimeout;
-    }
-
-    /**
-     * Get the delay in ms between each test when collecting test info.
-     */
-    long getTestDelay() {
-        return mTestDelay;
     }
 
     /**
