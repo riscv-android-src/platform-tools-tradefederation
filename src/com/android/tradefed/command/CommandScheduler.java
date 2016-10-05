@@ -2030,10 +2030,8 @@ public class CommandScheduler extends Thread implements ICommandScheduler, IComm
         return mLastInvocationExitCode;
     }
 
-    /**
-     * Helper method, when running inside a {@link CommandRunner} context, set an exit error code.
-     */
-    private void setLastInvocationExitCode(int errorcode) {
+    @Override
+    public void setLastInvocationExitCode(int errorcode) {
         mLastInvocationExitCode = errorcode;
     }
 }

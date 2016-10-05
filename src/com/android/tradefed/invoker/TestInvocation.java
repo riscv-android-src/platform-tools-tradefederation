@@ -24,6 +24,7 @@ import com.android.tradefed.build.IDeviceBuildProvider;
 import com.android.tradefed.config.ConfigurationDef;
 import com.android.tradefed.config.ConfigurationException;
 import com.android.tradefed.config.ConfigurationFactory;
+import com.android.tradefed.config.GlobalConfiguration;
 import com.android.tradefed.config.IConfiguration;
 import com.android.tradefed.config.IConfigurationFactory;
 import com.android.tradefed.config.IDeviceConfiguration;
@@ -1021,6 +1022,9 @@ public class TestInvocation implements ITestInvocation {
                     rescheduleTest(config, rescheduler);
                     // save current log contents to global log
                     getLogRegistry().dumpToGlobalLog(config.getLogOutput());
+                    // Set the exit code to error
+                    GlobalConfiguration.getInstance().getCommandScheduler()
+                            .setLastInvocationExitCode(1);
                     return;
                 }
                 // TODO: remove build update when reporting is done on context
