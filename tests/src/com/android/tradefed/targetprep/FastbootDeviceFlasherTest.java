@@ -232,6 +232,97 @@ public class FastbootDeviceFlasherTest extends TestCase {
     }
 
     /**
+     * Verify call sequence when wiping cache on devices with cache partition
+     * @throws DeviceNotAvailableException
+     * @throws TargetSetupError
+     */
+    public void testWipeCache_exists() throws DeviceNotAvailableException, TargetSetupError {
+        mFlasher.setUserDataFlashOption(UserDataFlashOption.WIPE);
+        CommandResult fastbootOutput = new CommandResult();
+        fastbootOutput.setStatus(CommandStatus.SUCCESS);
+        fastbootOutput.setStderr("(bootloader) slot-count: not found\n" +
+                "(bootloader) slot-suffixes: not found\n" +
+                "(bootloader) slot-suffixes: not found\n" +
+                "partition-type:cache: ext4\n" +
+                "finished. total time: 0.002s\n");
+        fastbootOutput.setStdout("");
+
+        EasyMock.expect(mMockDevice.executeFastbootCommand("getvar", "partition-type:cache")).
+                andReturn(fastbootOutput);
+        EasyMock.expect(mMockDevice.getUseFastbootErase()).andReturn(false);
+        fastbootOutput = new CommandResult();
+        fastbootOutput.setStatus(CommandStatus.SUCCESS);
+        fastbootOutput.setStderr("Creating filesystem with parameters:\n" +
+                "    Size: 104857600\n" +
+                "    Block size: 4096\n" +
+                "    Blocks per group: 32768\n" +
+                "    Inodes per group: 6400\n" +
+                "    Inode size: 256\n" +
+                "    Journal blocks: 1024\n" +
+                "    Label: \n" +
+                "    Blocks: 25600\n" +
+                "    Block groups: 1\n" +
+                "    Reserved block group size: 7\n" +
+                "Created filesystem with 11/6400 inodes and 1438/25600 blocks\n" +
+                "target reported max download size of 494927872 bytes\n" +
+                "erasing 'cache'...\n" +
+                "OKAY [  0.024s]\n" +
+                "sending 'cache' (5752 KB)...\n" +
+                "OKAY [  0.178s]\n" +
+                "writing 'cache'...\n" +
+                "OKAY [  0.107s]\n" +
+                "finished. total time: 0.309s\n");
+        EasyMock.expect(mMockDevice.fastbootWipePartition("cache")).andReturn(fastbootOutput);
+        EasyMock.replay(mMockDevice);
+        mFlasher.wipeCache(mMockDevice);
+        EasyMock.verify(mMockDevice);
+    }
+
+    /**
+     * Verify call sequence when wiping cache on devices without cache partition
+     * @throws DeviceNotAvailableException
+     * @throws TargetSetupError
+     */
+    public void testWipeCache_not_exists() throws DeviceNotAvailableException, TargetSetupError {
+        mFlasher.setUserDataFlashOption(UserDataFlashOption.WIPE);
+        CommandResult fastbootOutput = new CommandResult();
+        fastbootOutput.setStatus(CommandStatus.SUCCESS);
+        fastbootOutput.setStderr("(bootloader) slot-count: not found\n" +
+                "(bootloader) slot-suffixes: not found\n" +
+                "(bootloader) slot-suffixes: not found\n" +
+                "partition-type:cache: \n" +
+                "finished. total time: 0.002s\n");
+        fastbootOutput.setStdout("");
+
+        EasyMock.expect(mMockDevice.executeFastbootCommand("getvar", "partition-type:cache")).
+                andReturn(fastbootOutput);
+        EasyMock.replay(mMockDevice);
+        mFlasher.wipeCache(mMockDevice);
+        EasyMock.verify(mMockDevice);
+    }
+
+    /**
+     * Verify call sequence when wiping cache on devices without cache partition
+     * @throws DeviceNotAvailableException
+     * @throws TargetSetupError
+     */
+    public void testWipeCache_not_exists_error()
+            throws DeviceNotAvailableException, TargetSetupError {
+        mFlasher.setUserDataFlashOption(UserDataFlashOption.WIPE);
+        CommandResult fastbootOutput = new CommandResult();
+        fastbootOutput.setStatus(CommandStatus.SUCCESS);
+        fastbootOutput.setStderr("getvar:partition-type:cache FAILED (remote: unknown command)\n" +
+                "finished. total time: 0.051s\n");
+        fastbootOutput.setStdout("");
+
+        EasyMock.expect(mMockDevice.executeFastbootCommand("getvar", "partition-type:cache")).
+                andReturn(fastbootOutput);
+        EasyMock.replay(mMockDevice);
+        mFlasher.wipeCache(mMockDevice);
+        EasyMock.verify(mMockDevice);
+    }
+
+    /**
      * Convenience function to set expectations for `fastboot -w` and execute test
      * @throws DeviceNotAvailableException
      * @throws TargetSetupError

@@ -176,6 +176,25 @@ public class FastbootDeviceFlasher implements IDeviceFlasher  {
     }
 
     /**
+     * Checks with the bootloader if the specified partition exists or not
+     *
+     * @param device the {@link ITestDevice} to operate on
+     * @param partition the name of the partition to be checked
+     */
+    protected boolean hasPartition(ITestDevice device, String partition)
+            throws DeviceNotAvailableException {
+        String partitionType = String.format("partition-type:%s", partition);
+        CommandResult result = device.executeFastbootCommand("getvar", partitionType);
+        if (!CommandStatus.SUCCESS.equals(result.getStatus())
+                || result.getStderr().contains("FAILED")) {
+            return false;
+        }
+        Pattern regex = Pattern.compile(String.format("^%s:\\s*\\S+$", partitionType),
+                Pattern.MULTILINE);
+        return regex.matcher(result.getStderr()).find();
+    }
+
+    /**
      * Downloads extra flashing image files needed
      *
      * @param device the {@link ITestDevice} to download resources for
@@ -398,7 +417,10 @@ public class FastbootDeviceFlasher implements IDeviceFlasher  {
         // only wipe cache if user data is being wiped
         if (!mUserDataFlashOption.equals(UserDataFlashOption.RETAIN)) {
             CLog.i("Wiping cache on %s", device.getSerialNumber());
-            wipePartition(device, "cache");
+            String partition = "cache";
+            if (hasPartition(device, partition)) {
+                wipePartition(device, partition);
+            }
         } else {
             CLog.d("Skipping cache wipe on %s", device.getSerialNumber());
         }
