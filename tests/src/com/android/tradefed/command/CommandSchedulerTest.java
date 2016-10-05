@@ -39,6 +39,7 @@ import com.android.tradefed.device.TestDeviceState;
 import com.android.tradefed.invoker.IInvocationContext;
 import com.android.tradefed.invoker.IRescheduler;
 import com.android.tradefed.invoker.ITestInvocation;
+import com.android.tradefed.log.ILogRegistry.EventType;
 import com.android.tradefed.log.ITerribleFailureHandler;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.result.ITestInvocationListener;
@@ -47,6 +48,12 @@ import com.android.tradefed.util.RunUtil;
 import com.android.tradefed.util.keystore.IKeyStoreClient;
 
 import junit.framework.TestCase;
+
+import org.easymock.EasyMock;
+import org.easymock.IAnswer;
+import org.json.JSONArray;
+import org.json.JSONException;
+import org.junit.Assert;
 
 import java.io.ByteArrayOutputStream;
 import java.io.File;
@@ -58,12 +65,6 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
-
-import org.easymock.EasyMock;
-import org.easymock.IAnswer;
-import org.json.JSONArray;
-import org.json.JSONException;
-import org.junit.Assert;
 
 
 /**
@@ -123,6 +124,11 @@ public class CommandSchedulerTest extends TestCase {
 
                     @Override
                     protected void cleanUp() {
+                        // ignore
+                    }
+
+                    @Override
+                    void logEvent(EventType event, Map<String, String> args) {
                         // ignore
                     }
 

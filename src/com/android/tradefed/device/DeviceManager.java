@@ -29,6 +29,8 @@ import com.android.tradefed.config.Option;
 import com.android.tradefed.config.OptionClass;
 import com.android.tradefed.device.IDeviceMonitor.DeviceLister;
 import com.android.tradefed.device.IManagedTestDevice.DeviceEventResponse;
+import com.android.tradefed.log.ILogRegistry.EventType;
+import com.android.tradefed.log.LogRegistry;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.util.ArrayUtil;
 import com.android.tradefed.util.CommandResult;
@@ -50,8 +52,10 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
@@ -963,6 +967,7 @@ public class DeviceManager implements IDeviceManager {
                         DeviceAllocationState.Checking_Availability) {
                     checkAndAddAvailableDevice(testDevice);
                 }
+                logDeviceEvent(EventType.DEVICE_CONNECTED, testDevice.getSerialNumber());
             } else if (DeviceState.OFFLINE.equals(idevice.getState()) ||
                     DeviceState.UNAUTHORIZED.equals(idevice.getState())) {
                 mManagedDeviceList.handleDeviceEvent(testDevice, DeviceEvent.CONNECTED_OFFLINE);
@@ -979,13 +984,20 @@ public class DeviceManager implements IDeviceManager {
             if (d != null) {
                 mManagedDeviceList.handleDeviceEvent(d, DeviceEvent.DISCONNECTED);
                 d.setDeviceState(TestDeviceState.NOT_AVAILABLE);
+                logDeviceEvent(EventType.DEVICE_DISCONNECTED, disconnectedDevice.getSerialNumber());
             }
         }
     }
 
-    /**
-     * {@inheritDoc}
-     */
+    /** Helper to log the device events. */
+    @VisibleForTesting
+    void logDeviceEvent(EventType event, String serial) {
+        Map<String, String> args = new HashMap<>();
+        args.put("serial", serial);
+        LogRegistry.getLogRegistry().logEvent(LogLevel.DEBUG, event, args);
+    }
+
+    /** {@inheritDoc} */
     @Override
     public boolean waitForFirstDeviceAdded(long timeout) {
         try {

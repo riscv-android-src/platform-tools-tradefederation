@@ -32,6 +32,7 @@ import com.android.tradefed.invoker.TestInvocation;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.util.FileUtil;
 
+import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -55,6 +56,8 @@ public class CommandRunnerTest {
     private Throwable mThrowable = null;
     private String mStackTraceOutput = null;
 
+    private ICommandScheduler mOriginalScheduler = null;
+
     @Before
     public void setUp() {
         mThrowable = null;
@@ -70,6 +73,8 @@ public class CommandRunnerTest {
                         } catch (IllegalStateException e) {
                             // ignore re-init.
                         }
+                        mOriginalScheduler =
+                                GlobalConfiguration.getInstance().getCommandScheduler();
                         GlobalConfiguration.getInstance()
                                 .setCommandScheduler(
                                         new CommandScheduler() {
@@ -121,6 +126,11 @@ public class CommandRunnerTest {
                         mStackTraceOutput = out.toString();
                     }
                 };
+    }
+
+    @After
+    public void tearDown() {
+        GlobalConfiguration.getInstance().setCommandScheduler(mOriginalScheduler);
     }
 
     /**

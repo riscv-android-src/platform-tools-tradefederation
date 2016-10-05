@@ -20,12 +20,21 @@ import com.android.ddmlib.Log.ILogOutput;
 import com.android.ddmlib.Log.LogLevel;
 
 import java.util.Collection;
+import java.util.Map;
 
 /**
  * An interface for a {@link ILogOutput} singleton logger that multiplexes and manages different
  * loggers.
  */
 public interface ILogRegistry extends ILogOutput {
+
+    /** Events that are useful to be logged */
+    public enum EventType {
+        DEVICE_CONNECTED,
+        DEVICE_DISCONNECTED,
+        INVOCATION_START,
+        INVOCATION_END,
+    }
 
     /**
      * Set the log level display for the global log
@@ -71,14 +80,21 @@ public interface ILogRegistry extends ILogOutput {
      */
     public void closeAndRemoveAllLogs();
 
-    /**
-     * Saves global logger contents to a tmp file.
-     */
+    /** Saves all the global loggers contents to tmp files. */
     public void saveGlobalLog();
 
     /**
-     * Diagnosis method to dump all logs to files.
+     * Call this method to log an event from a type with the associated information in the map. Time
+     * of the event is automatically added.
+     *
+     * @param logLevel the {@link LogLevel} to be printed.
+     * @param event the {@link EventType} of the event to log.
+     * @param args the map of arguments to be added to the log entry to get more details on the
+     *     event.
      */
+    public void logEvent(LogLevel logLevel, EventType event, Map<String, String> args);
+
+    /** Diagnosis method to dump all logs to files. */
     public void dumpLogs();
 
 }

@@ -55,6 +55,7 @@ import com.android.tradefed.invoker.IRescheduler;
 import com.android.tradefed.invoker.ITestInvocation;
 import com.android.tradefed.invoker.InvocationContext;
 import com.android.tradefed.invoker.TestInvocation;
+import com.android.tradefed.log.ILogRegistry.EventType;
 import com.android.tradefed.log.LogRegistry;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.result.ITestInvocationListener;
@@ -65,11 +66,14 @@ import com.android.tradefed.util.IHostMonitor;
 import com.android.tradefed.util.QuotationAwareTokenizer;
 import com.android.tradefed.util.RunUtil;
 import com.android.tradefed.util.TableFormatter;
+import com.android.tradefed.util.TimeUtil;
 import com.android.tradefed.util.keystore.IKeyStoreClient;
 import com.android.tradefed.util.keystore.IKeyStoreFactory;
 import com.android.tradefed.util.keystore.KeyStoreException;
 
 import com.google.common.annotations.VisibleForTesting;
+
+import org.json.JSONException;
 
 import java.io.File;
 import java.io.IOException;
@@ -94,8 +98,6 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ScheduledThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import java.util.regex.Pattern;
-
-import org.json.JSONException;
 
 /**
  * A scheduler for running TradeFederation commands across all available devices.
@@ -604,12 +606,22 @@ public class CommandScheduler extends Thread implements ICommandScheduler, IComm
                     }
                 }
                 mCmd.commandFinished(elapsedTime);
+                logInvocationEndedEvent(
+                        mCmd.getCommandTracker().getId(), elapsedTime, mInvocationContext);
             }
         }
 
-        /**
-         * Basic responsiveness check at the end of an invocation.
-         */
+        /** Helper to log an invocation ended event. */
+        private void logInvocationEndedEvent(
+                int invocId, long elapsedTime, final IInvocationContext context) {
+            Map<String, String> args = new HashMap<>();
+            args.put("id", Integer.toString(invocId));
+            args.put("elapsed time", TimeUtil.formatElapsedTime(elapsedTime));
+            args.put("test-tag", context.getTestTag());
+            logEvent(EventType.INVOCATION_END, args);
+        }
+
+        /** Basic responsiveness check at the end of an invocation. */
         private boolean isDeviceResponsive(ITestDevice device) {
             return device.waitForDeviceShell(CHECK_WAIT_DEVICE_AVAIL_MS);
         }
@@ -1338,13 +1350,25 @@ public class CommandScheduler extends Thread implements ICommandScheduler, IComm
                 context.getSerials().get(0));
         InvocationThread invocationThread = new InvocationThread(invocationName, context, cmd,
                 listeners);
+        logInvocationStartedEvent(cmd.getCommandTracker(), context);
         invocationThread.start();
         addInvocationThread(invocationThread);
     }
 
-    /**
-     * Removes a {@link InvocationThread} from the active list.
-     */
+    /** Helper to log an invocation started event. */
+    private void logInvocationStartedEvent(CommandTracker tracker, IInvocationContext context) {
+        Map<String, String> args = new HashMap<>();
+        args.put("id", Integer.toString(tracker.getId()));
+        int i = 0;
+        for (String serial : context.getSerials()) {
+            args.put("serial" + i, serial);
+            i++;
+        }
+        args.put("args", ArrayUtil.join(" ", Arrays.asList(tracker.getArgs())));
+        logEvent(EventType.INVOCATION_START, args);
+    }
+
+    /** Removes a {@link InvocationThread} from the active list. */
     private synchronized void removeInvocationThread(InvocationThread invThread) {
         mInvocationThreadMap.remove(invThread.getInvocationContext());
     }
@@ -1607,9 +1631,13 @@ public class CommandScheduler extends Thread implements ICommandScheduler, IComm
         LogRegistry.getLogRegistry().closeAndRemoveAllLogs();
     }
 
-    /**
-     * {@inheritDoc}
-     */
+    /** log an event to the registry history logger. */
+    @VisibleForTesting
+    void logEvent(EventType event, Map<String, String> args) {
+        LogRegistry.getLogRegistry().logEvent(LogLevel.DEBUG, event, args);
+    }
+
+    /** {@inheritDoc} */
     @Override
     public void displayInvocationsInfo(PrintWriter printWriter) {
         assertStarted();
