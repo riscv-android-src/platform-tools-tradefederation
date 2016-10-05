@@ -188,14 +188,15 @@ public class ConfigurationDef {
         for (Map.Entry<String, List<String>> objClassEntry : mObjectClassMap.entrySet()) {
             List<Object> objectList = new ArrayList<Object>(objClassEntry.getValue().size());
             String entryName = objClassEntry.getKey();
-            Matcher matcher = pattern.matcher(entryName);
+            boolean shouldAddToFlatConfig = true;
             for (String className : objClassEntry.getValue()) {
                 Object configObject = createObject(objClassEntry.getKey(), className);
+                Matcher matcher = pattern.matcher(entryName);
                 if (mMultiDeviceMode && matcher.find()) {
                     // If we find the device namespace, fetch the matching device or create it if
                     // it doesn't exists.
                     IDeviceConfiguration multiDev = null;
-                    entryName = Configuration.DEVICE_NAME;
+                    shouldAddToFlatConfig = false;
                     for (IDeviceConfiguration iDevConfig : deviceObjectList) {
                         if (matcher.group(1).equals(iDevConfig.getDeviceName())) {
                             multiDev = iDevConfig;
@@ -217,7 +218,7 @@ public class ConfigurationDef {
                     }
                 }
             }
-            if (entryName != Configuration.DEVICE_NAME) {
+            if (shouldAddToFlatConfig) {
                 config.setConfigurationObjectList(entryName, objectList);
             }
         }

@@ -887,7 +887,7 @@ public class ConfigurationFactoryTest extends TestCase {
                 .getBuildProvider().getBuild().getBuildId());
         assertEquals("build-flavor3", config.getDeviceConfigByName("device3")
                 .getBuildProvider().getBuild().getBuildFlavor());
-        assertEquals(1, config.getDeviceConfigByName("device3")
+        assertEquals(2, config.getDeviceConfigByName("device3")
                 .getTargetPreparers().size());
         assertTrue(config.getDeviceConfigByName("device3")
                 .getTargetPreparers().get(0) instanceof StubTargetPreparer);
@@ -933,7 +933,7 @@ public class ConfigurationFactoryTest extends TestCase {
                 .getBuildProvider().getBuild().getBuildId());
         assertEquals("build-flavor3", config.getDeviceConfigByName("device3")
                 .getBuildProvider().getBuild().getBuildFlavor());
-        assertEquals(1, config.getDeviceConfigByName("device3")
+        assertEquals(2, config.getDeviceConfigByName("device3")
                 .getTargetPreparers().size());
         assertTrue(config.getDeviceConfigByName("device3")
                 .getTargetPreparers().get(0) instanceof StubTargetPreparer);
@@ -975,7 +975,7 @@ public class ConfigurationFactoryTest extends TestCase {
                 .getBuildProvider().getBuild().getBuildId());
         assertEquals("build-flavor3", config.getDeviceConfigByName("device3")
                 .getBuildProvider().getBuild().getBuildFlavor());
-        assertEquals(1, config.getDeviceConfigByName("device3")
+        assertEquals(2, config.getDeviceConfigByName("device3")
                 .getTargetPreparers().size());
         assertTrue(config.getDeviceConfigByName("device3")
                 .getTargetPreparers().get(0) instanceof StubTargetPreparer);
