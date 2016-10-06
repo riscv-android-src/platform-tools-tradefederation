@@ -23,6 +23,7 @@ import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.config.Option;
 import com.android.tradefed.config.Option.Importance;
 import com.android.tradefed.config.OptionClass;
+import com.android.tradefed.invoker.IInvocationContext;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.targetprep.BuildError;
 import com.android.tradefed.util.Email;
@@ -141,21 +142,25 @@ public class EmailResultReporter extends CollectingTestListener implements
      *         report
      */
     protected String generateEmailSubject() {
-        final IBuildInfo build = getBuildInfo();  // for convenience
+        final IInvocationContext context = getInvocationContext();
         final StringBuilder subj = new StringBuilder(mSubjectTag);
 
         subj.append(" result for ");
 
-        if (!appendUnlessNull(subj, build.getTestTag())) {
+        if (!appendUnlessNull(subj, context.getTestTag())) {
             subj.append("(unknown suite)");
         }
 
         subj.append(" on ");
-        appendUnlessNull(subj, build.getBuildFlavor());
-        appendUnlessNull(subj, build.getBuildBranch());
-        if (!appendUnlessNull(subj, build.getBuildAttributes().get("build_alias"))) {
-            subj.append("build ");
-            subj.append(build.getBuildId());
+        for (IBuildInfo build : context.getBuildInfos()) {
+            subj.append("{");
+            appendUnlessNull(subj, build.getBuildFlavor());
+            appendUnlessNull(subj, build.getBuildBranch());
+            if (!appendUnlessNull(subj, build.getBuildAttributes().get("build_alias"))) {
+                subj.append("build ");
+                subj.append(build.getBuildId());
+            }
+            subj.append("}");
         }
 
         subj.append(": ");
@@ -223,11 +228,14 @@ public class EmailResultReporter extends CollectingTestListener implements
     protected String generateEmailBody() {
         StringBuilder bodyBuilder = new StringBuilder();
 
-        for (Map.Entry<String, String> buildAttr : getBuildInfo().getBuildAttributes().entrySet()) {
-            bodyBuilder.append(buildAttr.getKey());
-            bodyBuilder.append(": ");
-            bodyBuilder.append(buildAttr.getValue());
-            bodyBuilder.append("\n");
+        for (IBuildInfo build : getInvocationContext().getBuildInfos()) {
+            bodyBuilder.append(String.format("Device %s:\n", build.getDeviceSerial()));
+            for (Map.Entry<String, String> buildAttr : build.getBuildAttributes().entrySet()) {
+                bodyBuilder.append(buildAttr.getKey());
+                bodyBuilder.append(": ");
+                bodyBuilder.append(buildAttr.getValue());
+                bodyBuilder.append("\n");
+            }
         }
         bodyBuilder.append("host: ");
         try {

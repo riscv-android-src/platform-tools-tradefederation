@@ -16,7 +16,6 @@
 package com.android.tradefed.result;
 
 import com.android.ddmlib.testrunner.TestIdentifier;
-import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.config.Option;
 import com.android.tradefed.invoker.IInvocationContext;
 import com.android.tradefed.log.LogUtil.CLog;
@@ -131,16 +130,6 @@ public class SubprocessResultsReporter implements ITestInvocationListener {
     public void testStarted(TestIdentifier testId) {
         BaseTestEventInfo info = new BaseTestEventInfo(testId.getClassName(), testId.getTestName());
         printEvent(SubprocessTestResultsParser.StatusKeys.TEST_STARTED, info);
-    }
-
-    /**
-     * {@inheritDoc}
-     * @deprecated
-     */
-    @Deprecated
-    @Override
-    public void invocationStarted(IBuildInfo buildInfo) {
-        // ignore
     }
 
     /**

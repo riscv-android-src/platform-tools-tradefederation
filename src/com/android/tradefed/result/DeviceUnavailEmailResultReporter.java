@@ -15,6 +15,7 @@
  */
 package com.android.tradefed.result;
 
+import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.config.OptionClass;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.log.LogUtil.CLog;
@@ -38,10 +39,16 @@ public class DeviceUnavailEmailResultReporter extends EmailResultReporter {
 
     @Override
     protected String generateEmailSubject() {
-        String buildAlias = getBuildInfo().getBuildAttributes().get("build_alias");
-        if (buildAlias == null){
-            //If build alias is null, use the build id instead.
-            buildAlias = getBuildInfo().getBuildId();
+        StringBuilder subj = new StringBuilder();
+        subj.append("Device unavailable ");
+        for (IBuildInfo build : getInvocationContext().getBuildInfos()) {
+            String buildAlias = build.getBuildAttributes().get("build_alias");
+            if (buildAlias == null){
+                //If build alias is null, use the build id instead.
+                buildAlias = build.getBuildId();
+            }
+            subj.append(String.format("{%s %s %s} ", build.getBuildFlavor(),
+                    buildAlias, build.getDeviceSerial()));
         }
 
         String hostName = null;
@@ -51,11 +58,10 @@ public class DeviceUnavailEmailResultReporter extends EmailResultReporter {
             hostName = "Unknown";
             CLog.e(e);
         }
+        subj.append(String.format("hostname %s", hostName));
 
         // Sample email subject: Device unavailable: mantaray-user JDQ39
         // 015d172c980c2208 atl-034.mtv.corp.google.com
-        return String.format("Device unavailable: %s %s %s %s",
-                getBuildInfo().getBuildFlavor(), buildAlias,
-                getBuildInfo().getDeviceSerial(), hostName);
+        return subj.toString();
     }
 }

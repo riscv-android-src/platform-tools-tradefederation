@@ -25,6 +25,7 @@ import com.android.tradefed.util.UniqueMultiMap;
 
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -47,8 +48,9 @@ public class InvocationContext implements IInvocationContext {
      */
     public InvocationContext() {
         mAllocatedDeviceAndBuildMap = new HashMap<ITestDevice, IBuildInfo>();
-        mNameAndDeviceMap = new HashMap<String, ITestDevice>();
-        mNameAndBuildinfoMap = new HashMap<String, IBuildInfo>();
+        // Use LinkedHashMap to ensure key ordering by insertion order
+        mNameAndDeviceMap = new LinkedHashMap<String, ITestDevice>();
+        mNameAndBuildinfoMap = new LinkedHashMap<String, IBuildInfo>();
     }
 
     /**
@@ -96,7 +98,7 @@ public class InvocationContext implements IInvocationContext {
      */
     @Override
     public List<IBuildInfo> getBuildInfos() {
-        return new ArrayList<IBuildInfo>(mAllocatedDeviceAndBuildMap.values());
+        return new ArrayList<IBuildInfo>(mNameAndBuildinfoMap.values());
     }
 
     /**
