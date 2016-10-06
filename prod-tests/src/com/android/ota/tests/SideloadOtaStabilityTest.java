@@ -399,9 +399,11 @@ public class SideloadOtaStabilityTest implements IDeviceTest, IBuildReceiver,
         }
     }
 
-    /*
+    /**
      * Uncrypt needs to attach to a socket before it will actually begin work, so we need to
      * attach a socket to it.
+     *
+     * @return Elapse time of uncrypt
      */
     public long doUncrypt(ISocketFactory sockets, ITestInvocationListener listener)
             throws DeviceNotAvailableException {
@@ -446,7 +448,8 @@ public class SideloadOtaStabilityTest implements IDeviceTest, IBuildReceiver,
                 return System.currentTimeMillis() - start;
             }
         } catch (IOException e) {
-            CLog.e("Lost connection with uncrypt due to IOException", e);
+            CLog.e("Lost connection with uncrypt due to IOException:");
+            CLog.e(e);
             CLog.i("Continuing to watch uncrypt progress for %d ms",
                     UNCRYPT_TIMEOUT);
             long time = 0;
@@ -488,6 +491,11 @@ public class SideloadOtaStabilityTest implements IDeviceTest, IBuildReceiver,
         }
     }
 
+    /**
+     * Read the error status from uncrypt_status on device.
+     *
+     * @return 0 if uncrypt succeed, -1 if file not exists, specific error code otherwise.
+     */
     protected int readUncryptStatusFromFile()
             throws DeviceNotAvailableException {
         try {
@@ -497,7 +505,12 @@ public class SideloadOtaStabilityTest implements IDeviceTest, IBuildReceiver,
             }
             String[] lastLogLines = StreamUtil.getStringFromSource(status).split("\n");
             String endLine = lastLogLines[lastLogLines.length - 1];
-            return Integer.parseInt(endLine);
+            if (endLine.toLowerCase().startsWith("uncrypt_error:")) {
+                String[] elements = endLine.split(":");
+                return Integer.parseInt(elements[1].trim());
+            }
+            // Only log error status.
+            return 0;
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
