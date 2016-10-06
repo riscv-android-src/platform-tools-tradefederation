@@ -278,4 +278,10 @@ public interface ICommandScheduler {
      * Return 0 (no error), if no invocation has ran yet.
      */
     public int getLastInvocationExitCode();
+
+    /**
+     * Helper method, when running inside a {@link CommandRunner} context, set an exit error code
+     * that can be returned.
+     */
+    public void setLastInvocationExitCode(int errorcode);
 }
