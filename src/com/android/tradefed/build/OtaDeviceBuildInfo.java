@@ -55,10 +55,7 @@ public class OtaDeviceBuildInfo implements IDeviceBuildInfo {
      */
     @Override
     public String getBuildId() {
-        if (mReportTargetBuild) {
-            return mOtaBuild.getBuildId();
-        }
-        return mBaselineBuild.getBuildId();
+        return getReportedBuild().getBuildId();
     }
 
     /**
@@ -90,7 +87,7 @@ public class OtaDeviceBuildInfo implements IDeviceBuildInfo {
      */
     @Override
     public String getBuildTargetName() {
-        return mBaselineBuild.getBuildTargetName();
+        return getReportedBuild().getBuildTargetName();
     }
 
     /**
@@ -98,7 +95,7 @@ public class OtaDeviceBuildInfo implements IDeviceBuildInfo {
      */
     @Override
     public String getBuildFlavor() {
-        return mBaselineBuild.getBuildFlavor();
+        return getReportedBuild().getBuildFlavor();
     }
 
     /**
@@ -122,7 +119,7 @@ public class OtaDeviceBuildInfo implements IDeviceBuildInfo {
      */
     @Override
     public String getBuildBranch() {
-        return mBaselineBuild.getBuildBranch();
+        return getReportedBuild().getBuildBranch();
     }
 
     /**
@@ -146,7 +143,7 @@ public class OtaDeviceBuildInfo implements IDeviceBuildInfo {
      */
     @Override
     public Map<String, String> getBuildAttributes() {
-        return mBaselineBuild.getBuildAttributes();
+        return getReportedBuild().getBuildAttributes();
     }
 
     /**
@@ -426,5 +423,9 @@ public class OtaDeviceBuildInfo implements IDeviceBuildInfo {
 
     public void setReportTargetBuild(boolean downgrade) {
         mReportTargetBuild = downgrade;
+    }
+
+    protected IDeviceBuildInfo getReportedBuild() {
+        return (mReportTargetBuild ? mOtaBuild : mBaselineBuild);
     }
 }
