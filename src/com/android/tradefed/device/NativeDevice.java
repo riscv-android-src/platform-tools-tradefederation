@@ -47,6 +47,8 @@ import com.android.tradefed.util.CommandResult;
 import com.android.tradefed.util.CommandStatus;
 import com.android.tradefed.util.FileUtil;
 import com.android.tradefed.util.IRunUtil;
+import com.android.tradefed.util.ProcessInfo;
+import com.android.tradefed.util.PsParser;
 import com.android.tradefed.util.RunUtil;
 import com.android.tradefed.util.SizeLimitedOutputStream;
 import com.android.tradefed.util.StreamUtil;
@@ -148,6 +150,7 @@ public class NativeDevice implements IManagedTestDevice {
     private static final String HEADLESS_PROP = "ro.build.headless";
     static final String BUILD_CODENAME_PROP = "ro.build.version.codename";
     static final String BUILD_TAGS = "ro.build.tags";
+    private static final String PS_COMMAND = "ps -A || ps";
 
 
     /** The network monitoring interval in ms. */
@@ -3596,5 +3599,27 @@ public class NativeDevice implements IManagedTestDevice {
      */
     private String getDisplayString(Object o) {
         return o == null ? "unknown" : o.toString();
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public List<ProcessInfo> getProcesses() throws DeviceNotAvailableException {
+        return PsParser.getProcesses(executeShellCommand(PS_COMMAND));
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public ProcessInfo getProcessByName(String processName) throws DeviceNotAvailableException {
+        List<ProcessInfo> processList = getProcesses();
+        for (ProcessInfo processInfo : processList) {
+            if (processName.equals(processInfo.getName())) {
+                return processInfo;
+            }
+        }
+        return null;
     }
 }

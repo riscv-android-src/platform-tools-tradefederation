@@ -28,6 +28,7 @@ import com.android.tradefed.result.InputStreamSource;
 import com.android.tradefed.targetprep.TargetSetupError;
 import com.android.tradefed.util.Bugreport;
 import com.android.tradefed.util.CommandResult;
+import com.android.tradefed.util.ProcessInfo;
 import com.android.tradefed.util.TimeUtil;
 
 import java.io.File;
@@ -1041,4 +1042,19 @@ public interface INativeDevice {
      * passing the actual device object.
      */
     public DeviceDescriptor getDeviceDescriptor();
+
+    /**
+     * Helper method runs the "ps" command and returns list of USER, PID and NAME of all the
+     * processes.
+     *
+     * @return List of ProcessInfo objects
+     */
+    public List<ProcessInfo> getProcesses() throws DeviceNotAvailableException;
+
+    /**
+     * Helper method runs the "ps" command and returns USER, PID and NAME of the given process name.
+     *
+     * @return ProcessInfo of given processName
+     */
+    public ProcessInfo getProcessByName(String processName) throws DeviceNotAvailableException;
 }
