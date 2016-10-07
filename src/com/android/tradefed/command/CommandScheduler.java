@@ -830,11 +830,13 @@ public class CommandScheduler extends Thread implements ICommandScheduler, IComm
                try {
                   return f.createKeyStoreClient();
                } catch (KeyStoreException e) {
-                   CLog.e("Failed to create key store client", e);
+                   CLog.e("Failed to create key store client");
+                   CLog.e(e);
                }
            }
        } catch (IllegalStateException e) {
-           CLog.w("Global configuration has not been created, failed to get keystore", e);
+           CLog.w("Global configuration has not been created, failed to get keystore");
+           CLog.e(e);
        }
        return null;
     }
