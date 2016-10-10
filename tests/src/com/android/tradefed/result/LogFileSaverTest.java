@@ -234,4 +234,25 @@ public class LogFileSaverTest extends TestCase {
             FileUtil.deleteFile(logFile);
         }
     }
+
+    public void testSaveLogDataRaw() throws Exception {
+        File logFile = null;
+        BufferedReader logFileReader = null;
+        try {
+            // TODO: would be nice to create a mock file output to make this test not use disk I/O
+            LogFileSaver saver = new LogFileSaver(new BuildInfo(), mRootDir);
+            final String testData = "Here's some test data, blah";
+            ByteArrayInputStream mockInput = new ByteArrayInputStream(testData.getBytes());
+            logFile = saver.saveLogDataRaw(
+                    "testSaveLogData", LogDataType.TEXT.getFileExt(), mockInput);
+
+            // Verify test data was written to file
+            logFileReader = new BufferedReader(new FileReader(logFile));
+            String actualLogString = logFileReader.readLine().trim();
+            assertEquals(actualLogString, testData);
+        } finally {
+            StreamUtil.close(logFileReader);
+            FileUtil.deleteFile(logFile);
+        }
+    }
 }
