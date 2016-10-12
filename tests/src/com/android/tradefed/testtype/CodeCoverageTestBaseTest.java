@@ -19,6 +19,7 @@ import static org.mockito.Matchers.any;
 import static org.mockito.Matchers.anyString;
 import static org.mockito.Matchers.eq;
 import static org.mockito.Mockito.doAnswer;
+import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
@@ -36,18 +37,22 @@ import com.android.tradefed.build.BuildInfo;
 import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
+import com.android.tradefed.log.ITestLogger;
 import com.android.tradefed.result.ITestInvocationListener;
+import com.android.tradefed.result.LogDataType;
 import com.android.tradefed.util.ICompressionStrategy;
 import com.android.tradefed.util.ListInstrumentationParser;
 import com.android.tradefed.util.ListInstrumentationParser.InstrumentationTarget;
 
 import junit.framework.TestCase;
 
+import org.mockito.Matchers;
 import org.mockito.Mockito;
 import org.mockito.invocation.InvocationOnMock;
 import org.mockito.stubbing.Answer;
 
 import java.io.File;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -81,13 +86,30 @@ public class CodeCoverageTestBaseTest extends TestCase {
     private static final TestIdentifier BAZ_TEST2 = new TestIdentifier(".BazTest", "test2");
     private static final List<TestIdentifier> BAZ_TESTS = Arrays.asList(BAZ_TEST1, BAZ_TEST2);
 
+    private static final File FAKE_COVERAGE_REPORT = new File("/some/fake/report/");
+
     private static final IBuildInfo BUILD_INFO =
             new BuildInfo("123456", "some-test-tag", "bullhead-userdebug");
+
+    static enum FakeReportFormat implements CodeCoverageReportFormat {
+        CSV(LogDataType.JACOCO_CSV),
+        XML(LogDataType.JACOCO_XML),
+        HTML(LogDataType.HTML);
+
+        private LogDataType mLogDataType;
+
+        private FakeReportFormat(LogDataType logDataType) {
+            mLogDataType = logDataType;
+        }
+
+        @Override
+        public LogDataType getLogDataType() { return mLogDataType; }
+    }
 
     /**
      * A subclass of {@link CodeCoverageTest} with certain methods stubbed out for testing.
      */
-    static class CodeCoverageTestStub extends CodeCoverageTestBase {
+    static class CodeCoverageTestStub extends CodeCoverageTestBase<FakeReportFormat> {
         private static Answer<Void> CALL_RUNNER = new Answer<Void>() {
                 @Override
                 public Void answer(InvocationOnMock invocation) throws Throwable {
@@ -127,7 +149,21 @@ public class CodeCoverageTestBaseTest extends TestCase {
         }
 
         @Override
-        protected void generateCoverageReport(Collection<File> executionDataFiles, File dest) {}
+        protected File generateCoverageReport(Collection<File> executionDataFiles,
+                FakeReportFormat format) {
+
+            return FAKE_COVERAGE_REPORT;
+        }
+
+        @Override
+        protected List<FakeReportFormat> getReportFormat() {
+            return Arrays.asList(FakeReportFormat.HTML);
+        }
+
+        @Override
+        void doLogReport(String dataName, LogDataType dataType, File data, ITestLogger logger) {
+            // Don't actually log anything
+        }
 
         @Override
         CodeCoverageTest internalCreateCoverageTest() {
@@ -158,7 +194,7 @@ public class CodeCoverageTestBaseTest extends TestCase {
         }
     }
 
-    public void testRun() throws DeviceNotAvailableException {
+    public void testRun() throws DeviceNotAvailableException, IOException {
         // Prepare some test data
         InstrumentationTarget target = new InstrumentationTarget(PACKAGE_NAME1, RUNNER_NAME1, "");
 
@@ -176,12 +212,18 @@ public class CodeCoverageTestBaseTest extends TestCase {
         // Run the test
         coverageTest.run(mockListener);
 
-        // Verify that the test was run
+        // Verify that the test was run, and that the report was logged
         verify(coverageTest).runTest(any(CodeCoverageTest.class),
                 any(ITestInvocationListener.class));
+        verify(coverageTest).generateCoverageReport(Matchers.<Collection<File>>any(),
+                eq(FakeReportFormat.HTML));
+        verify(coverageTest).doLogReport(anyString(), eq(FakeReportFormat.HTML.getLogDataType()),
+                eq(FAKE_COVERAGE_REPORT), any(ITestLogger.class));
     }
 
-    public void testRun_multipleInstrumentationTargets() throws DeviceNotAvailableException {
+    public void testRun_multipleInstrumentationTargets() throws DeviceNotAvailableException,
+            IOException {
+
         // Prepare some test data
         InstrumentationTarget target1 = new InstrumentationTarget(PACKAGE_NAME1, RUNNER_NAME1, "");
         InstrumentationTarget target2 = new InstrumentationTarget(PACKAGE_NAME2, RUNNER_NAME1, "");
@@ -209,7 +251,7 @@ public class CodeCoverageTestBaseTest extends TestCase {
         verify(coverageTest).runTest(eq(target3), eq(0), eq(1), any(ITestInvocationListener.class));
     }
 
-    public void testRun_multipleShards() throws DeviceNotAvailableException {
+    public void testRun_multipleShards() throws DeviceNotAvailableException, IOException {
         // Prepare some test data
         InstrumentationTarget target = new InstrumentationTarget(PACKAGE_NAME1, RUNNER_NAME1, "");
 
@@ -239,7 +281,9 @@ public class CodeCoverageTestBaseTest extends TestCase {
         }
     }
 
-    public void testRun_rerunIndividualTests_failedRun() throws DeviceNotAvailableException {
+    public void testRun_rerunIndividualTests_failedRun() throws DeviceNotAvailableException,
+              IOException {
+
         // Prepare some test data
         InstrumentationTarget target = new InstrumentationTarget(PACKAGE_NAME1, RUNNER_NAME1, "");
 
@@ -273,7 +317,7 @@ public class CodeCoverageTestBaseTest extends TestCase {
     }
 
     public void testRun_rerunIndividualTests_missingCoverageFile()
-            throws DeviceNotAvailableException {
+            throws DeviceNotAvailableException, IOException {
         // Prepare some test data
         InstrumentationTarget target = new InstrumentationTarget(PACKAGE_NAME1, RUNNER_NAME1, "");
 
@@ -298,6 +342,44 @@ public class CodeCoverageTestBaseTest extends TestCase {
         verify(coverageTest).runTest(eq(target), eq(FOO_TEST1), any(ITestInvocationListener.class));
         verify(coverageTest).runTest(eq(target), eq(FOO_TEST2), any(ITestInvocationListener.class));
         verify(coverageTest).runTest(eq(target), eq(FOO_TEST3), any(ITestInvocationListener.class));
+    }
+
+    public void testRun_multipleFormats() throws DeviceNotAvailableException, IOException {
+        // Prepare some test data
+        InstrumentationTarget target = new InstrumentationTarget(PACKAGE_NAME1, RUNNER_NAME1, "");
+        File fakeHtmlReport = FAKE_COVERAGE_REPORT;
+        File fakeXmlReport = new File("/some/fake/xml/report.xml");
+
+        TestRunResult success = Mockito.mock(TestRunResult.class);
+        doReturn(false).when(success).isRunFailure();
+
+        // Mocking boilerplate
+        ITestInvocationListener mockListener = Mockito.mock(ITestInvocationListener.class);
+        CodeCoverageTestStub coverageTest = Mockito.spy(new CodeCoverageTestStub());
+        coverageTest.addTests(target, FOO_TESTS);
+        doReturn(Arrays.asList(FakeReportFormat.XML, FakeReportFormat.HTML))
+                .when(coverageTest).getReportFormat();
+        doReturn(fakeHtmlReport).when(coverageTest).generateCoverageReport(
+                Matchers.<Collection<File>>any(), eq(FakeReportFormat.HTML));
+        doReturn(fakeXmlReport).when(coverageTest).generateCoverageReport(
+                Matchers.<Collection<File>>any(), eq(FakeReportFormat.XML));
+        doReturn(success).when(coverageTest).runTest(any(CodeCoverageTest.class),
+                any(ITestInvocationListener.class));
+
+        // Run the test
+        coverageTest.run(mockListener);
+
+        // Verify that the test was run, and that the reports were logged
+        verify(coverageTest).runTest(any(CodeCoverageTest.class),
+                any(ITestInvocationListener.class));
+        verify(coverageTest).generateCoverageReport(Matchers.<Collection<File>>any(),
+                eq(FakeReportFormat.HTML));
+        verify(coverageTest).doLogReport(anyString(), eq(FakeReportFormat.HTML.getLogDataType()),
+                eq(fakeHtmlReport), any(ITestLogger.class));
+        verify(coverageTest).generateCoverageReport(Matchers.<Collection<File>>any(),
+                eq(FakeReportFormat.XML));
+        verify(coverageTest).doLogReport(anyString(), eq(FakeReportFormat.XML.getLogDataType()),
+                eq(fakeXmlReport), any(ITestLogger.class));
     }
 
     public void testGetInstrumentationTargets() throws DeviceNotAvailableException {
