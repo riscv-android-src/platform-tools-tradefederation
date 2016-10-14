@@ -136,6 +136,7 @@ import com.android.tradefed.util.LogcatUpdaterEventParserTest;
 import com.android.tradefed.util.MultiMapTest;
 import com.android.tradefed.util.NullUtilTest;
 import com.android.tradefed.util.PairTest;
+import com.android.tradefed.util.PsParserTest;
 import com.android.tradefed.util.PropertyChangerTest;
 import com.android.tradefed.util.QuotationAwareTokenizerTest;
 import com.android.tradefed.util.RegexTrieTest;
@@ -315,6 +316,7 @@ import org.junit.runners.Suite.SuiteClasses;
     MultiMapTest.class,
     NullUtilTest.class,
     PairTest.class,
+    PsParserTest.class,
     QuotationAwareTokenizerTest.class,
     RegexTrieTest.class,
     RunUtilTest.class,

@@ -25,10 +25,13 @@ import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.LogDataType;
 import com.android.tradefed.testtype.IDeviceTest;
 import com.android.tradefed.testtype.IRemoteTest;
+import com.android.tradefed.util.ProcessInfo;
 import com.android.tradefed.util.RunUtil;
 import com.android.tradefed.util.StreamUtil;
+
 import java.util.HashMap;
 import java.util.Map;
+
 import junit.framework.Assert;
 
 /**
@@ -38,19 +41,18 @@ import junit.framework.Assert;
 public class HermeticMemoryTest implements IDeviceTest, IRemoteTest {
 
     private static final String AM_START = "am start -n %s";
-    private static final String PROC_GREP = "ps | grep -w %s";
     private static final String PROC_MEMINFO = "cat /proc/meminfo";
     private static final String DUMPSYS_MEMINFO = "dumpsys meminfo -a ";
-    private static final String MAPS_INFO = "cat /proc/%s/maps";
-    private static final String SMAPS_INFO = "cat /proc/%s/smaps";
-    private static final String STATUS_INFO = "cat /proc/%s/status";
+    private static final String MAPS_INFO = "cat /proc/%d/maps";
+    private static final String SMAPS_INFO = "cat /proc/%d/smaps";
+    private static final String STATUS_INFO = "cat /proc/%d/status";
     private static final String NATIVE_HEAP = "Native";
     private static final String DALVIK_HEAP = "Dalvik";
     private static final String HEAP = "Heap";
     private static final String MEMTOTAL = "MemTotal";
     private static final String MEMFREE = "MemFree";
     private static final String CACHED = "Cached";
-    private static final String NO_PROCESS_ID = "-1";
+    private static final int NO_PROCESS_ID = -1;
 
 
     @Option(name = "post-app-launch-delay",
@@ -98,9 +100,9 @@ public class HermeticMemoryTest implements IDeviceTest, IRemoteTest {
 
         RunUtil.getDefault().sleep(mPostAppLaunchDelay);
         String postMemInfo = mTestDevice.executeShellCommand(PROC_MEMINFO);
-        String processId = getProcessId();
+        int processId = getProcessId();
         String dumpsysMemInfo = mTestDevice.executeShellCommand(
-                String.format("%s %s", DUMPSYS_MEMINFO, processId));
+                String.format("%s %d", DUMPSYS_MEMINFO, processId));
         String mapsInfo = mTestDevice.executeShellCommand(
                 String.format(MAPS_INFO, processId));
         String sMapsInfo = mTestDevice.executeShellCommand(
@@ -115,7 +117,7 @@ public class HermeticMemoryTest implements IDeviceTest, IRemoteTest {
             CLog.e("Not able to collect the proc/meminfo after launching app");
         }
 
-        if (NO_PROCESS_ID.equals(processId)) {
+        if (NO_PROCESS_ID == processId) {
             CLog.e("Process Id not found for the activity launched");
         } else {
             if (!dumpsysMemInfo.isEmpty()) {
@@ -151,14 +153,12 @@ public class HermeticMemoryTest implements IDeviceTest, IRemoteTest {
      * @return processId of the activity launched
      * @throws DeviceNotAvailableException
      */
-    private String getProcessId() throws DeviceNotAvailableException {
+    private int getProcessId() throws DeviceNotAvailableException {
         String pkgActivitySplit[] = mComponentName.split("/");
         if (pkgActivitySplit[0] != null) {
-            String processData = mTestDevice.executeShellCommand(
-                    String.format(PROC_GREP, pkgActivitySplit[0]));
-            if (!processData.isEmpty()) {
-                String processDataSplit[] = processData.split(" +");
-                return processDataSplit[1];
+            ProcessInfo processData = mTestDevice.getProcessByName(pkgActivitySplit[0]);
+            if (null != processData) {
+                return processData.getPid();
             }
         }
         return NO_PROCESS_ID;
