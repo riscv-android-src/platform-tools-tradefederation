@@ -196,8 +196,6 @@ public class InstrumentationTest implements IDeviceTest, IResumableTest, ITestCo
 
     private String mTestFilePathOnDevice = null;
 
-    private boolean mForceBatchMode = false;
-
     /**
      * {@inheritDoc}
      */
@@ -284,13 +282,9 @@ public class InstrumentationTest implements IDeviceTest, IResumableTest, ITestCo
      * Set the collection of tests that should be executed by this InstrumentationTest.
      *
      * @param tests the tests to run
-     * @param forceBatchMode if true, the first attempt to run the tests will proceed as normal
-     * with the InstrumentationTest attempting to run all tests in the package. If false, the given
-     * tests will be run one by one with separate adb commands.
      */
-    public void setTestsToRun(Collection<TestIdentifier> tests, boolean forceBatchMode) {
+    public void setTestsToRun(Collection<TestIdentifier> tests) {
         mRemainingTests = tests;
-        mForceBatchMode = forceBatchMode;
     }
 
     /**
@@ -622,64 +616,83 @@ public class InstrumentationTest implements IDeviceTest, IResumableTest, ITestCo
     private void doTestRun(ITestInvocationListener listener)
             throws DeviceNotAvailableException {
 
-        if (mRemainingTests != null && !mForceBatchMode) {
+        if (mRemainingTests != null) {
             // have remaining tests! This must be a rerun - rerun them individually
             rerunTests(listener);
             return;
         }
-        ITestInvocationListener testCollectionListener = null;
+
+        // If this is a dry-run, just collect the tests and return
         if (mCollectTestsOnly) {
-            // if collecting test only, pass a non-null listener to collection method
-            testCollectionListener = listener;
+            // Use the actual listener to collect the tests, and print a error if this fails
+            Collection<TestIdentifier> collectedTests = collectTestsToRun(mRunner, listener);
+            if (collectedTests == null) {
+                CLog.e("Failed to collect tests for %s", mPackageName);
+            } else {
+                CLog.i("Collected %d tests for %s", collectedTests.size(), mPackageName);
+            }
+            return;
         }
-        if (mRemainingTests == null) {
-            mRemainingTests = collectTestsToRun(mRunner, testCollectionListener);
-        }
+
+        // Collect the tests to run, but don't notify the listener since it's not a real run
+        mRemainingTests = collectTestsToRun(mRunner, null);
+
         // only set debug flag after collecting tests
         if (mDebug) {
             mRunner.setDebug(true);
         }
+        listener = addBugreportListenerIfEnabled(listener);
+        listener = addScreenshotListenerIfEnabled(listener);
+        listener = addLogcatListenerIfEnabled(listener);
+
+        if (mRemainingTests == null) {
+            // Failed to collect the tests or collection is off. Just try to run them all.
+            mDevice.runInstrumentationTests(mRunner, listener);
+        } else if (!mRemainingTests.isEmpty()) {
+            runWithRerun(listener, mRemainingTests);
+        } else {
+            CLog.i("No tests expected for %s, skipping", mPackageName);
+        }
+    }
+
+    /**
+     * Returns a listener that will collect bugreports, or the original {@code listener} if this
+     * feature is disabled.
+     */
+    ITestInvocationListener addBugreportListenerIfEnabled(ITestInvocationListener listener) {
         if (mBugreportFrequency != null) {
             // Collect a bugreport after EACH/FIRST failed testcase
             BugreportCollector.Predicate pred = new BugreportCollector.Predicate(
                     BugreportCollector.Relation.AFTER,
                     mBugreportFrequency,
                     BugreportCollector.Noun.FAILED_TESTCASE);
-            BugreportCollector collector  = new BugreportCollector(listener, mDevice);
+            BugreportCollector collector = new BugreportCollector(listener, getDevice());
             collector.addPredicate(pred);
             listener = collector;
         }
+        return listener;
+    }
+
+    /**
+     * Returns a listener that will collect screenshots, or the original {@code listener} if this
+     * feature is disabled.
+     */
+    ITestInvocationListener addScreenshotListenerIfEnabled(ITestInvocationListener listener) {
         if (mScreenshotOnFailure) {
-            FailedTestScreenshotGenerator screenListener = new FailedTestScreenshotGenerator(
-                    listener, getDevice());
-            listener = screenListener;
+            listener = new FailedTestScreenshotGenerator(listener, getDevice());
         }
+        return listener;
+    }
+
+    /**
+     * Returns a listener that will collect logcat logs, or the original {@code listener} if this
+     * feature is disabled.
+     */
+    ITestInvocationListener addLogcatListenerIfEnabled(ITestInvocationListener listener) {
         if (mLogcatOnFailure) {
-            FailedTestLogcatGenerator logcatListener = new FailedTestLogcatGenerator(
-                    listener, getDevice(), mMaxLogcatBytes);
-            listener = logcatListener;
+            listener = new FailedTestLogcatGenerator(listener, getDevice(), mMaxLogcatBytes);
         }
-
-        if (mRemainingTests == null) {
-            if (mCollectTestsOnly) {
-                // print an error in collect test only mode and return
-                CLog.e("Failed to collect tests for %s", mPackageName);
-                return;
-            } else {
-                // failed to collect the tests or collection is off. Just try to
-                // run them all
-                mDevice.runInstrumentationTests(mRunner, listener);
-            }
-        } else if (!mRemainingTests.isEmpty()) {
-            if (mCollectTestsOnly) {
-                CLog.i("Collected %d tests for %s", mRemainingTests.size(), mPackageName);
-            } else {
-                runWithRerun(listener, mRemainingTests);
-            }
-
-        } else {
-            CLog.i("No tests expected for %s, skipping", mPackageName);
-        }
+        return listener;
     }
 
     /**
