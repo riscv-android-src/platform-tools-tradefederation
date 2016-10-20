@@ -1023,8 +1023,7 @@ public class TestInvocation implements ITestInvocation {
                     // save current log contents to global log
                     getLogRegistry().dumpToGlobalLog(config.getLogOutput());
                     // Set the exit code to error
-                    GlobalConfiguration.getInstance().getCommandScheduler()
-                            .setLastInvocationExitCode(1);
+                    setExitCode(1);
                     return;
                 }
                 // TODO: remove build update when reporting is done on context
@@ -1067,5 +1066,12 @@ public class TestInvocation implements ITestInvocation {
             getLogRegistry().unregisterLogger();
             config.getLogOutput().closeLog();
         }
+    }
+
+    /**
+     * Helper to set the exit code. Exposed for testing.
+     */
+    protected void setExitCode(int code) {
+        GlobalConfiguration.getInstance().getCommandScheduler().setLastInvocationExitCode(code);
     }
 }
