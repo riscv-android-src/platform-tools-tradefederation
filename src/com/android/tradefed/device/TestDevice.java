@@ -28,6 +28,8 @@ import com.android.tradefed.result.InputStreamSource;
 import com.android.tradefed.util.RunUtil;
 import com.android.tradefed.util.StreamUtil;
 
+import com.google.common.annotations.VisibleForTesting;
+
 import java.awt.Image;
 import java.awt.image.BufferedImage;
 import java.io.ByteArrayOutputStream;
@@ -276,7 +278,11 @@ public class TestDevice extends NativeDevice {
         }
     }
 
-    private byte[] compressRawImage(RawImage rawImage, String format) {
+    /**
+     * Helper to compress a rawImage obtained from the screen.
+     */
+    @VisibleForTesting
+    protected byte[] compressRawImage(RawImage rawImage, String format) {
         BufferedImage image = null;
 
         if ("JPEG".equalsIgnoreCase(format)) {

@@ -16,9 +16,13 @@
 
 package com.android.tradefed.util.keystore;
 
+import com.android.tradefed.util.FileUtil;
+
 import junit.framework.TestCase;
 
 import org.json.JSONObject;
+
+import java.io.File;
 
 /**
  * Unit tests for JSON File Key Store Client test.
@@ -38,6 +42,44 @@ public class JSONFileKeyStoreClientTest extends TestCase {
             fail("Key store should not be available for null file");
         } catch (KeyStoreException e) {
             // Expected.
+        }
+    }
+
+    public void testKeyStoreFetchUnreadableFile() throws Exception {
+        File test = FileUtil.createTempFile("keystore", "test");
+        test.setReadable(false);
+        try {
+            new JSONFileKeyStoreClient(test);
+            fail("Should have thrown an exception");
+        } catch(KeyStoreException expected) {
+            assertEquals(String.format("Unable to read the JSON key store file %s", test),
+                    expected.getMessage());
+        } finally {
+            FileUtil.deleteFile(test);
+        }
+    }
+
+    public void testKeyStoreFetchEmptyFile() throws Exception {
+        File test = FileUtil.createTempFile("keystore", "test");
+        try {
+            new JSONFileKeyStoreClient(test);
+            fail("Should have thrown an exception");
+        } catch(KeyStoreException expected) {
+            // expected
+        } finally {
+            FileUtil.deleteFile(test);
+        }
+    }
+
+    public void testKeyStoreFetchFile() throws Exception {
+        File test = FileUtil.createTempFile("keystore", "test");
+        try {
+            FileUtil.writeToFile(mJsonData, test);
+            JSONFileKeyStoreClient keystore = new JSONFileKeyStoreClient(test);
+            assertTrue(keystore.isAvailable());
+            assertEquals("value 1", keystore.fetchKey("key1"));
+        } finally {
+            FileUtil.deleteFile(test);
         }
     }
 

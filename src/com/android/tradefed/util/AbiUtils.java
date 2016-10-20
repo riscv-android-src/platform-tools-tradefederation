@@ -54,7 +54,7 @@ public class AbiUtils {
     /**
      * The set of ARM ABIs.
      */
-    private static final Set<String> ARM_ABIS = new HashSet<String>();
+    protected static final Set<String> ARM_ABIS = new HashSet<String>();
 
     /**
      * The set of Intel ABIs.
@@ -69,7 +69,7 @@ public class AbiUtils {
     /**
      * The set of ABI names which Compatibility supports.
      */
-    private static final Set<String> ABIS_SUPPORTED_BY_COMPATIBILITY = new HashSet<String>();
+    protected static final Set<String> ABIS_SUPPORTED_BY_COMPATIBILITY = new HashSet<String>();
 
     /**
      * The map of architecture to ABI.

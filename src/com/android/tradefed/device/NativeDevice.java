@@ -120,7 +120,7 @@ public class NativeDevice implements IManagedTestDevice {
             "^/\\S+\\s+\\d+\\s+\\d+\\s+(\\d+)\\s+\\d+%\\s+/\\S*$", Pattern.MULTILINE);
     private static final Pattern BUGREPORTZ_RESPONSE_PATTERN = Pattern.compile("(OK:)(.*)");
 
-    private static final long MAX_HOST_DEVICE_TIME_OFFSET = 5 * 1000;
+    protected static final long MAX_HOST_DEVICE_TIME_OFFSET = 5 * 1000;
 
     /** The password for encrypting and decrypting the device. */
     private static final String ENCRYPTION_PASSWORD = "android";
@@ -3251,7 +3251,7 @@ public class NativeDevice implements IManagedTestDevice {
         }
 
         offset = date.getTime() - deviceTime * 1000;
-        CLog.d("Time offset = " + offset);
+        CLog.d("Time offset = %d ms", offset);
         return offset;
     }
 
