@@ -583,7 +583,7 @@ public class BluetoothStressTest implements IDeviceTest, IRemoteTest {
                 parseOutputFile(testInfo, new FileInputStream(outputFile), listener);
             }
         } catch (IOException e) {
-            CLog.e("Got an IO Exception: %s", e);
+            CLog.e(e);
         } finally {
             if (outputFile != null) {
                 outputFile.delete();
