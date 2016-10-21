@@ -50,6 +50,7 @@ public class InstrumentationFileTestTest extends TestCase {
 
     private ITestDevice mMockTestDevice;
     private ITestInvocationListener mMockListener;
+    private InstrumentationTest mMockITest;
 
     private File mTestFile;
 
@@ -65,6 +66,16 @@ public class InstrumentationFileTestTest extends TestCase {
 
         EasyMock.expect(mMockTestDevice.getIDevice()).andStubReturn(mockIDevice);
         EasyMock.expect(mMockTestDevice.getSerialNumber()).andStubReturn("serial");
+
+        // mock out InstrumentationTest that will be used to create InstrumentationFileTest
+        mMockITest = new InstrumentationTest() {
+            @Override
+            protected String queryRunnerName() {
+                return "runner";
+            }
+        };
+        mMockITest.setDevice(mMockTestDevice);
+        mMockITest.setPackageName(TEST_PACKAGE_VALUE);
     }
 
     /**
@@ -90,16 +101,10 @@ public class InstrumentationFileTestTest extends TestCase {
             }
         };
         setRunTestExpectations(runTestResponse);
-
-        // mock out InstrumentationTest that will be used to create InstrumentationFileTest
-        final InstrumentationTest mockITest = new InstrumentationTest();
-        mockITest.setDevice(mMockTestDevice);
-        mockITest.setPackageName(TEST_PACKAGE_VALUE);
-
-        mInstrumentationFileTest = new InstrumentationFileTest(mockITest, testsList, true, -1) {
+        mInstrumentationFileTest = new InstrumentationFileTest(mMockITest, testsList, true, -1) {
             @Override
             InstrumentationTest createInstrumentationTest() {
-                return mockITest;
+                return mMockITest;
             }
             @Override
             boolean pushFileToTestDevice(File file, String destinationPath)
@@ -124,7 +129,7 @@ public class InstrumentationFileTestTest extends TestCase {
 
         EasyMock.replay(mMockListener, mMockTestDevice);
         mInstrumentationFileTest.run(mMockListener);
-        assertEquals(mMockTestDevice, mockITest.getDevice());
+        assertEquals(mMockTestDevice, mMockITest.getDevice());
     }
 
     /**
@@ -174,16 +179,10 @@ public class InstrumentationFileTestTest extends TestCase {
             }
         };
         setRunTestExpectations(secondRunAnswer);
-
-        // mock out InstrumentationTest that will be used to create InstrumentationFileTest
-        final InstrumentationTest mockITest = new InstrumentationTest();
-        mockITest.setDevice(mMockTestDevice);
-        mockITest.setPackageName(TEST_PACKAGE_VALUE);
-
-        mInstrumentationFileTest = new InstrumentationFileTest(mockITest, testsList, true, -1) {
+        mInstrumentationFileTest = new InstrumentationFileTest(mMockITest, testsList, true, -1) {
             @Override
             InstrumentationTest createInstrumentationTest() {
-                return mockITest;
+                return mMockITest;
             }
             @Override
             boolean pushFileToTestDevice(File file, String destinationPath)
@@ -221,7 +220,7 @@ public class InstrumentationFileTestTest extends TestCase {
 
         EasyMock.replay(mMockListener, mMockTestDevice);
         mInstrumentationFileTest.run(mMockListener);
-        assertEquals(mMockTestDevice, mockITest.getDevice());
+        assertEquals(mMockTestDevice, mMockITest.getDevice());
     }
 
     /**
@@ -279,15 +278,10 @@ public class InstrumentationFileTestTest extends TestCase {
         };
         setRunTestExpectations(secdondSerialRunAnswer);
 
-        // mock out InstrumentationTest that will be used to create InstrumentationFileTest
-        final InstrumentationTest mockITest = new InstrumentationTest();
-        mockITest.setDevice(mMockTestDevice);
-        mockITest.setPackageName(TEST_PACKAGE_VALUE);
-
-        mInstrumentationFileTest = new InstrumentationFileTest(mockITest, testsList, true, -1) {
+        mInstrumentationFileTest = new InstrumentationFileTest(mMockITest, testsList, true, -1) {
             @Override
             InstrumentationTest createInstrumentationTest() {
-                return mockITest;
+                return mMockITest;
             }
             @Override
             boolean pushFileToTestDevice(File file, String destinationPath)
@@ -324,9 +318,9 @@ public class InstrumentationFileTestTest extends TestCase {
 
         EasyMock.replay(mMockListener, mMockTestDevice);
         mInstrumentationFileTest.run(mMockListener);
-        assertEquals(mMockTestDevice, mockITest.getDevice());
+        assertEquals(mMockTestDevice, mMockITest.getDevice());
         // test file is expected to be null since we defaulted to serial test execution
-        assertEquals(null, mockITest.getTestFilePathOnDevice());
+        assertEquals(null, mMockITest.getTestFilePathOnDevice());
     }
 
     /**
@@ -356,15 +350,10 @@ public class InstrumentationFileTestTest extends TestCase {
         };
         setRunTestExpectations(firstRunAnswer);
 
-        // mock out InstrumentationTest that will be used to create InstrumentationFileTest
-        final InstrumentationTest mockITest = new InstrumentationTest();
-        mockITest.setDevice(mMockTestDevice);
-        mockITest.setPackageName(TEST_PACKAGE_VALUE);
-
-        mInstrumentationFileTest = new InstrumentationFileTest(mockITest, testsList, false, -1) {
+        mInstrumentationFileTest = new InstrumentationFileTest(mMockITest, testsList, false, -1) {
             @Override
             InstrumentationTest createInstrumentationTest() {
-                return mockITest;
+                return mMockITest;
             }
             @Override
             boolean pushFileToTestDevice(File file, String destinationPath)
@@ -387,7 +376,7 @@ public class InstrumentationFileTestTest extends TestCase {
 
         EasyMock.replay(mMockListener, mMockTestDevice);
         mInstrumentationFileTest.run(mMockListener);
-        assertEquals(mMockTestDevice, mockITest.getDevice());
+        assertEquals(mMockTestDevice, mMockITest.getDevice());
     }
 
     /**
@@ -467,15 +456,10 @@ public class InstrumentationFileTestTest extends TestCase {
         };
         setRunTestExpectations(thirdRunAnswer);
 
-        // mock out InstrumentationTest that will be used to create InstrumentationFileTest
-        final InstrumentationTest mockITest = new InstrumentationTest();
-        mockITest.setDevice(mMockTestDevice);
-        mockITest.setPackageName(TEST_PACKAGE_VALUE);
-
-        mInstrumentationFileTest = new InstrumentationFileTest(mockITest, testsList, false, 3) {
+        mInstrumentationFileTest = new InstrumentationFileTest(mMockITest, testsList, false, 3) {
             @Override
             InstrumentationTest createInstrumentationTest() {
-                return mockITest;
+                return mMockITest;
             }
             @Override
             boolean pushFileToTestDevice(File file, String destinationPath)
@@ -515,7 +499,7 @@ public class InstrumentationFileTestTest extends TestCase {
 
         EasyMock.replay(mMockListener, mMockTestDevice);
         mInstrumentationFileTest.run(mMockListener);
-        assertEquals(mMockTestDevice, mockITest.getDevice());
+        assertEquals(mMockTestDevice, mMockITest.getDevice());
     }
 
     /**
