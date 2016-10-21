@@ -386,7 +386,6 @@ public class SideloadOtaStabilityTest implements IDeviceTest, IBuildReceiver,
                         endLine.substring(endLine.indexOf('[') + 1, endLine.indexOf(']')).trim());
             } catch (IOException | NumberFormatException | NullPointerException e) {
                 CLog.w("Couldn't get elapsed time from last_log due to exception %s", e);
-                return 0;
             }
             listener.testLog(this.mRunName + "_recovery_log", LogDataType.TEXT,
                     lastLog);
