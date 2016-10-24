@@ -147,7 +147,6 @@ public class LogcatUpdaterEventParser {
         registerEventTrigger("dex2oat", "dex2oat took ",
                 UpdaterEventType.D2O_COMPLETE);
 
-        ;
         mStreamReader = new BufferedReader(new InputStreamReader(
                 mLogcatReceiver.getLogcatData().createInputStream()));
     }

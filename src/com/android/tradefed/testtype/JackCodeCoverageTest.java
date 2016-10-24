@@ -76,6 +76,7 @@ public class JackCodeCoverageTest extends CodeCoverageTestBase<JackCodeCoverageR
     /**
      * {@inheritDoc}
      */
+    @Override
     protected List<JackCodeCoverageReportFormat> getReportFormat() {
         return mReportFormat.isEmpty() ? Arrays.asList(HTML) : mReportFormat;
     }
@@ -145,6 +146,7 @@ public class JackCodeCoverageTest extends CodeCoverageTestBase<JackCodeCoverageR
     /**
      * {@inheritDoc}
      */
+    @Override
     protected File generateCoverageReport(Collection<File> executionFiles,
             JackCodeCoverageReportFormat format) throws IOException {
 

@@ -31,6 +31,8 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.io.PrintWriter;
+import java.net.Socket;
 import java.util.Map;
 import java.util.Vector;
 
@@ -96,12 +98,13 @@ public class SubprocessTestResultsParserTest extends TestCase {
         EasyMock.expectLastCall();
         EasyMock.replay(mockRunListener);
         File tmp = FileUtil.createTempFile("sub", "unit");
+        SubprocessTestResultsParser resultParser = null;
         try {
-            SubprocessTestResultsParser resultParser =
-                    new SubprocessTestResultsParser(mockRunListener);
+            resultParser = new SubprocessTestResultsParser(mockRunListener);
             resultParser.processNewLines(contents);
             EasyMock.verify(mockRunListener);
         } finally {
+            StreamUtil.close(resultParser);
             FileUtil.deleteFile(tmp);
         }
     }
@@ -132,12 +135,13 @@ public class SubprocessTestResultsParserTest extends TestCase {
         EasyMock.expectLastCall();
         EasyMock.replay(mockRunListener);
         File tmp = FileUtil.createTempFile("sub", "unit");
+        SubprocessTestResultsParser resultParser = null;
         try {
-            SubprocessTestResultsParser resultParser =
-                    new SubprocessTestResultsParser(mockRunListener);
+            resultParser = new SubprocessTestResultsParser(mockRunListener);
             resultParser.processNewLines(contents);
             EasyMock.verify(mockRunListener);
         } finally {
+            StreamUtil.close(resultParser);
             FileUtil.deleteFile(tmp);
         }
     }
@@ -156,9 +160,9 @@ public class SubprocessTestResultsParserTest extends TestCase {
         EasyMock.replay(mockRunListener);
         File tmp = FileUtil.createTempFile("sub", "unit");
         FileWriter fw = new FileWriter(tmp, true);
+        SubprocessTestResultsParser resultParser = null;
         try {
-            SubprocessTestResultsParser resultParser =
-                    new SubprocessTestResultsParser(mockRunListener);
+            resultParser = new SubprocessTestResultsParser(mockRunListener);
             String startRun = "TEST_RUN_STARTED {\"testCount\":4,\"runName\":\"arm64-v8a "
                     + "CtsGestureTestCases\"}\n";
             fw.append(startRun);
@@ -170,6 +174,7 @@ public class SubprocessTestResultsParserTest extends TestCase {
             resultParser.parseFile(tmp);
             EasyMock.verify(mockRunListener);
         } finally {
+            StreamUtil.close(resultParser);
             fw.close();
             FileUtil.deleteFile(tmp);
         }
@@ -187,9 +192,9 @@ public class SubprocessTestResultsParserTest extends TestCase {
         EasyMock.replay(mockRunListener);
         File tmp = FileUtil.createTempFile("sub", "unit");
         FileWriter fw = new FileWriter(tmp, true);
+        SubprocessTestResultsParser resultParser = null;
         try {
-            SubprocessTestResultsParser resultParser =
-                    new SubprocessTestResultsParser(mockRunListener);
+            resultParser = new SubprocessTestResultsParser(mockRunListener);
             String cause = "com.android.tradefed.targetprep."
                     + "TargetSetupError: Not all target preparation steps completed\n\tat "
                     + "com.android.compatibility.common.tradefed.targetprep."
@@ -206,8 +211,48 @@ public class SubprocessTestResultsParserTest extends TestCase {
             String expected = cap.getValue().getMessage();
             assertEquals(cause, expected);
         } finally {
+            StreamUtil.close(resultParser);
             fw.close();
             FileUtil.deleteFile(tmp);
+        }
+    }
+
+    /**
+     * Report results when received from socket.
+     */
+    @SuppressWarnings("unchecked")
+    public void testParser_receiveFromSocket() throws Exception {
+        ITestInvocationListener mockRunListener =
+                EasyMock.createMock(ITestInvocationListener.class);
+        mockRunListener.testRunStarted("arm64-v8a CtsGestureTestCases", 4);
+        mockRunListener.testEnded((TestIdentifier)EasyMock.anyObject(),
+                (Map<String, String>)EasyMock.anyObject());
+        EasyMock.expectLastCall().times(1);
+        EasyMock.replay(mockRunListener);
+        SubprocessTestResultsParser resultParser = null;
+        Socket socket = null;
+        try {
+            resultParser = new SubprocessTestResultsParser(mockRunListener, true);
+            socket = new Socket("localhost", resultParser.getSocketServerPort());
+            if (!socket.isConnected()) {
+                fail("socket did not connect");
+            }
+            PrintWriter out = new PrintWriter(socket.getOutputStream(), true);
+            String startRun = "TEST_RUN_STARTED {\"testCount\":4,\"runName\":\"arm64-v8a "
+                    + "CtsGestureTestCases\"}\n";
+            out.print(startRun);
+            out.flush();
+            String testEnded = "03-22 14:04:02 E/SubprocessResultsReporter: TEST_ENDED "
+                    + "{\"className\":\"android.gesture.cts.GestureLibraryTest\",\"testName\":"
+                    + "\"testGetGestures\",\"extra\":\"data\"}\n";
+            out.print(testEnded);
+            out.flush();
+            // Wait a little for processing
+            RunUtil.getDefault().sleep(250);
+            EasyMock.verify(mockRunListener);
+        } finally {
+            StreamUtil.close(resultParser);
+            StreamUtil.close(socket);
         }
     }
 }

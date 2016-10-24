@@ -30,11 +30,15 @@ import org.json.JSONException;
 import org.json.JSONObject;
 
 import java.io.BufferedReader;
+import java.io.Closeable;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.FileReader;
 import java.io.IOException;
+import java.io.InputStreamReader;
+import java.net.ServerSocket;
+import java.net.Socket;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
@@ -45,12 +49,13 @@ import java.util.regex.Pattern;
  * Extends {@link FileOutputStream} to parse the output before writing to the file so we can
  * generate the test events on the launcher side.
  */
-public class SubprocessTestResultsParser {
+public class SubprocessTestResultsParser implements Closeable {
 
     private ITestInvocationListener mListener;
     private TestIdentifier currentTest = null;
     private Pattern mPattern = null;
     private Map<String, EventHandler> mHandlerMap = null;
+    private EventReceiverThread mEventReceiver = null;
 
     /** Relevant test status keys. */
     public static class StatusKeys {
@@ -63,6 +68,84 @@ public class SubprocessTestResultsParser {
         public static final String TEST_RUN_ENDED = "TEST_RUN_ENDED";
         public static final String TEST_RUN_FAILED = "TEST_RUN_FAILED";
         public static final String TEST_RUN_STARTED = "TEST_RUN_STARTED";
+    }
+
+    /**
+     * Internal receiver thread class with a socket.
+     */
+    private class EventReceiverThread extends Thread {
+        private ServerSocket mSocket;
+        private boolean mCanceled = false;
+
+        public EventReceiverThread() throws IOException {
+            mSocket = new ServerSocket(0);
+        }
+
+        protected int getLocalPort() {
+            return mSocket.getLocalPort();
+        }
+
+        public void cancel() throws IOException {
+            mCanceled = true;
+            if (mSocket != null) {
+                mSocket.close();
+            }
+        }
+
+        @Override
+        public void run() {
+            Socket client = null;
+            BufferedReader in = null;
+            try {
+                client = mSocket.accept();
+                in = new BufferedReader(new InputStreamReader(client.getInputStream()));
+            } catch (IOException e1) {
+                return;
+            }
+            while (!mCanceled) {
+                try {
+                    String event = in.readLine();
+                    if (event != null) {
+                        CLog.i("received event: '%s'", event);
+                        parse(event);
+                    }
+                } catch (IOException | JSONException e) {
+                    CLog.e(e);
+                }
+            }
+        }
+    }
+
+    /**
+     * Returns the socket receiver that was open. -1 if none.
+     */
+    public int getSocketServerPort() {
+        if (mEventReceiver != null) {
+            return mEventReceiver.getLocalPort();
+        }
+        return -1;
+    }
+
+    @Override
+    public void close() throws IOException {
+        if (mEventReceiver != null) {
+            mEventReceiver.cancel();
+        }
+    }
+
+    /**
+     * Constructor for the result parser
+     *
+     * @param listener {@link ITestInvocationListener} where to report the results
+     * @param streaming if True, a socket receiver will be open to receive results.
+     */
+    public SubprocessTestResultsParser(ITestInvocationListener listener, boolean streaming)
+            throws IOException {
+        this(listener);
+        if (streaming) {
+            mEventReceiver = new EventReceiverThread();
+            mEventReceiver.start();
+        }
     }
 
     public SubprocessTestResultsParser(ITestInvocationListener listener) {

@@ -23,15 +23,17 @@ import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.util.SubprocessEventHelper.BaseTestEventInfo;
 import com.android.tradefed.util.SubprocessEventHelper.FailedTestEventInfo;
 import com.android.tradefed.util.SubprocessEventHelper.InvocationFailedEventInfo;
+import com.android.tradefed.util.SubprocessEventHelper.TestEndedEventInfo;
 import com.android.tradefed.util.SubprocessEventHelper.TestRunEndedEventInfo;
 import com.android.tradefed.util.SubprocessEventHelper.TestRunFailedEventInfo;
 import com.android.tradefed.util.SubprocessEventHelper.TestRunStartedEventInfo;
-import com.android.tradefed.util.SubprocessEventHelper.TestEndedEventInfo;
 import com.android.tradefed.util.SubprocessTestResultsParser;
 
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.io.PrintWriter;
+import java.net.Socket;
 import java.util.Map;
 
 /**
@@ -42,6 +44,12 @@ public class SubprocessResultsReporter implements ITestInvocationListener {
 
     @Option(name = "subprocess-report-file", description = "the file where to log the events.")
     private String mReportFile = null;
+
+    @Option(name = "subprocess-report-port", description = "the port where to connect to send the"
+            + "events.")
+    private Integer mReportPort = null;
+
+    private Socket mReportSocket = null;
 
     private boolean mPrintWarning = true;
 
@@ -190,18 +198,34 @@ public class SubprocessResultsReporter implements ITestInvocationListener {
                     fw.flush();
                     fw.close();
                 } catch (IOException e) {
-                    CLog.e(e);
                     throw new RuntimeException(e);
                 }
             } else {
                 throw new RuntimeException(
                         String.format("report file: %s is not writable", mReportFile));
             }
-        } else {
+        }
+        if(mReportPort != null) {
+            try {
+                if (mReportSocket == null) {
+                    mReportSocket = new Socket("localhost", mReportPort.intValue());
+                }
+                if (!mReportSocket.isConnected()) {
+                    throw new RuntimeException("Reporter Socket is not connected");
+                }
+                PrintWriter out = new PrintWriter(mReportSocket.getOutputStream(), true);
+                String eventLog = String.format("%s %s\n", key, event.toString());
+                out.print(eventLog);
+                out.flush();
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            }
+        }
+        if (mReportFile == null && mReportPort == null) {
             if (mPrintWarning) {
                 // Only print the warning the first time.
                 mPrintWarning = false;
-                CLog.w("No report file has been specified, skipping this reporter.");
+                CLog.w("No report file or socket has been configured, skipping this reporter.");
             }
         }
     }
