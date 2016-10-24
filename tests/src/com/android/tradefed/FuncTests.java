@@ -19,6 +19,7 @@ import com.android.tradefed.build.FileDownloadCacheFuncTest;
 import com.android.tradefed.command.CommandSchedulerFuncTest;
 import com.android.tradefed.command.remote.RemoteManagerFuncTest;
 import com.android.tradefed.device.TestDeviceFuncTest;
+import com.android.tradefed.targetprep.AppSetupFuncTest;
 import com.android.tradefed.targetprep.DeviceSetupFuncTest;
 import com.android.tradefed.testtype.DeviceTestSuite;
 import com.android.tradefed.testtype.InstrumentationTestFuncTest;
@@ -46,6 +47,7 @@ public class FuncTests extends DeviceTestSuite {
         // device
         this.addTestSuite(TestDeviceFuncTest.class);
         // targetprep
+        this.addTestSuite(AppSetupFuncTest.class);
         this.addTestSuite(DeviceSetupFuncTest.class);
         // testtype
         this.addTestSuite(InstrumentationTestFuncTest.class);

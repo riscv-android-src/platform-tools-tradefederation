@@ -181,17 +181,16 @@ public class TestFilePushSetup implements ITargetPreparer {
     }
 
     /**
-     * Set an alternate directory.
+     * Set an alternate directory. Exposed for testing.
      */
-    public void setAltDir(File altDir) {
+    protected void setAltDir(File altDir) {
         mAltDirs.add(altDir);
     }
 
     /**
-     * Set the alternative directory search beahvior
-     * @param behavior
+     * Set the alternative directory search behavior. Exposed for testing.
      */
-    public void setAltDirBehavior(AltDirBehavior behavior) {
+    protected void setAltDirBehavior(AltDirBehavior behavior) {
         mAltDirBehavior = behavior;
     }
 
