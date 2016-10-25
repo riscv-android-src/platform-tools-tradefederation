@@ -15,7 +15,11 @@
  */
 package com.android.tradefed.util;
 
+import com.android.tradefed.log.ITestLogger;
 import com.android.tradefed.log.LogUtil.CLog;
+import com.android.tradefed.result.FileInputStreamSource;
+import com.android.tradefed.result.InputStreamSource;
+import com.android.tradefed.result.LogDataType;
 
 import java.io.Closeable;
 import java.io.File;
@@ -44,6 +48,19 @@ public class Bugreport implements Closeable {
      */
     public boolean isZipped() {
         return mIsZipped;
+    }
+
+    /**
+     * Helper to log the Bugreport whether its zipped or not.
+     *
+     * @param dataName the name of the data once logged.
+     * @param logger a {@link ITestLogger} to receive the log.
+     */
+    public void log(String dataName, ITestLogger logger) {
+        LogDataType type = isZipped() ? LogDataType.BUGREPORTZ : LogDataType.BUGREPORT;
+        InputStreamSource source = new FileInputStreamSource(mBugreport);
+        logger.testLog(dataName, type, source);
+        source.cancel();
     }
 
     /**
