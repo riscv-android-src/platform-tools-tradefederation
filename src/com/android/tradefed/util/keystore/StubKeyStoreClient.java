@@ -22,7 +22,7 @@ public class StubKeyStoreClient implements IKeyStoreClient {
 
     @Override
     public boolean isAvailable() {
-        throw new UnsupportedOperationException("Not Implemented - Stub keystore being called.");
+        return false;
     }
 
     @Override

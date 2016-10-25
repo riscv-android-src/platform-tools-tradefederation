@@ -18,6 +18,7 @@ package com.android.tradefed.config;
 import com.android.ddmlib.Log;
 import com.android.tradefed.util.ArrayUtil;
 import com.android.tradefed.util.keystore.IKeyStoreClient;
+
 import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -526,8 +527,8 @@ public class ArgsOptionParser extends OptionSetter {
                 throw new ConfigurationException("Key store is null, but we tried to fetch a key");
             }
             if (!c.isAvailable()) {
-                throw new ConfigurationException(
-                        "Key store is unavailable, but we tried to fetch a key");
+                throw new ConfigurationException(String.format("Key store '%s' is unavailable, but "
+                        + "we tried to fetch a key", c.getClass()));
             }
             String key = m.group(1);
             String v = c.fetchKey(key);
