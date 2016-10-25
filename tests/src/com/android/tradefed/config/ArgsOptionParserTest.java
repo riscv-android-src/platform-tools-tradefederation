@@ -17,6 +17,7 @@ package com.android.tradefed.config;
 
 import com.android.tradefed.config.Option.Importance;
 import com.android.tradefed.util.keystore.IKeyStoreClient;
+import com.android.tradefed.util.keystore.StubKeyStoreClient;
 
 import junit.framework.TestCase;
 
@@ -1229,5 +1230,22 @@ public class ArgsOptionParserTest extends TestCase {
         EasyMock.verify(c);
     }
 
-
+    /**
+     * Test that when the default {@link StubKeyStoreClient} is used and a keystore option is
+     * requested, we throw a configuration exception and no crash.
+     */
+    public void testKeyStore_StubKeystore_optionRequested() throws Exception {
+        final String expectedValue = "";
+        OneOptionSource object = new OneOptionSource();
+        ArgsOptionParser parser = new ArgsOptionParser(object);
+        parser.setKeyStore(new StubKeyStoreClient());
+        // We try to fetch a key store value with unavailable key this should throw an exception
+        try {
+            parser.parse(new String[] {"--my_option", "USE_KEYSTORE@foo"});
+        } catch (ConfigurationException e) {
+            //expected
+            return;
+        }
+        fail("ConfiguationException not thrown for attempted use of unavailable keystore.");
+    }
 }
