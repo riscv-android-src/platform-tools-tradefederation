@@ -18,11 +18,13 @@ package com.android.tradefed.targetprep;
 
 import com.google.common.io.Files;
 
+import com.android.tradefed.build.BuildInfo;
 import com.android.tradefed.build.DeviceBuildInfo;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.util.FakeTestsZipFolder;
 import com.android.tradefed.util.FakeTestsZipFolder.ItemType;
+import com.android.tradefed.util.FileUtil;
 
 import junit.framework.TestCase;
 
@@ -38,7 +40,7 @@ import java.util.Map;
 /**
  * A test for {@link TestFilePushSetup}.
  */
-public class TestFilePushSetupFuncTest extends TestCase {
+public class TestFilePushSetupTest extends TestCase {
 
     private Map<String, ItemType> mFiles;
     private List<String> mDeviceLocationList;
@@ -70,6 +72,16 @@ public class TestFilePushSetupFuncTest extends TestCase {
         assertTrue("failed to create temp file", mAltDirFile2.createNewFile());
         mMockDevice = EasyMock.createMock(ITestDevice.class);
         EasyMock.expect(mMockDevice.getSerialNumber()).andStubReturn("SERIAL");
+    }
+
+    @Override
+    protected void tearDown() throws Exception {
+        mFakeTestsZipFolder.cleanUp();
+        File tmpDir = mAltDirFile1.getParentFile();
+        FileUtil.deleteFile(mAltDirFile1);
+        FileUtil.deleteFile(mAltDirFile2);
+        FileUtil.recursiveDelete(tmpDir);
+        super.tearDown();
     }
 
     public void testSetup() throws TargetSetupError, BuildError, DeviceNotAvailableException {
@@ -105,8 +117,22 @@ public class TestFilePushSetupFuncTest extends TestCase {
     }
 
     /**
+     * Test that setup throws an exception if provided with something else than DeviceBuildInfo
+     */
+    public void testSetup_notDeviceBuildInfo() throws Exception {
+        TestFilePushSetup testFilePushSetup = new TestFilePushSetup();
+        BuildInfo stubBuild = new BuildInfo("stub", "stub");
+        try {
+            testFilePushSetup.setUp(EasyMock.createMock(ITestDevice.class), stubBuild);
+            fail("should have thrown an exception");
+        } catch (IllegalArgumentException expected) {
+            assertEquals("Provided buildInfo is not a com.android.tradefed.build.IDeviceBuildInfo",
+                    expected.getMessage());
+        }
+    }
+
+    /**
      * Test that the artifact path resolution logic correctly uses alt dir as override
-     * @throws Exception
      */
     public void testAltDirOverride() throws Exception {
         TestFilePushSetup setup = new TestFilePushSetup();
@@ -119,8 +145,38 @@ public class TestFilePushSetupFuncTest extends TestCase {
     }
 
     /**
+     * Test that the artifact path resolution logic correctly throws if alt dir behavior is invalid
+     */
+    public void testAltDirOverride_null() throws Exception {
+        TestFilePushSetup setup = new TestFilePushSetup();
+        setup.setAltDirBehavior(null);
+        DeviceBuildInfo info = new DeviceBuildInfo();
+        try {
+            setup.getLocalPathForFilename(info, ALT_FILENAME1, mMockDevice);
+            fail("Should have thrown an exception");
+        } catch (TargetSetupError expected) {
+            assertEquals("Missing handler for alt-dir-behavior: null null", expected.getMessage());
+        }
+    }
+
+    /**
+     * Test that the artifact path resolution logic correctly throws if alt dir is empty.
+     */
+    public void testAltDirOverride_empty() throws Exception {
+        TestFilePushSetup setup = new TestFilePushSetup();
+        setup.setAltDirBehavior(AltDirBehavior.OVERRIDE);
+        DeviceBuildInfo info = new DeviceBuildInfo();
+        try {
+            setup.getLocalPathForFilename(info, ALT_FILENAME1, mMockDevice);
+            fail("Should have thrown an exception");
+        } catch (TargetSetupError expected) {
+            assertEquals("Provided buildInfo does not contain a valid tests directory and no "
+                    + "alternative directories were provided null", expected.getMessage());
+        }
+    }
+
+    /**
      * Test that the artifact path resolution logic correctly favors the one in test dir
-     * @throws Exception
      */
     public void testAltDirNoFallback() throws Exception {
         TestFilePushSetup setup = new TestFilePushSetup();
@@ -135,7 +191,6 @@ public class TestFilePushSetupFuncTest extends TestCase {
 
     /**
      * Test that the artifact path resolution logic correctly falls back to alt dir
-     * @throws Exception
      */
     public void testAltDirFallback() throws Exception {
         TestFilePushSetup setup = new TestFilePushSetup();
@@ -146,13 +201,4 @@ public class TestFilePushSetupFuncTest extends TestCase {
         assertEquals(mAltDirFile2.getAbsolutePath(), apk.getAbsolutePath());
     }
 
-    @Override
-    protected void tearDown() throws Exception {
-        mFakeTestsZipFolder.cleanUp();
-        File tmpDir = mAltDirFile1.getParentFile();
-        mAltDirFile1.delete();
-        mAltDirFile2.delete();
-        tmpDir.delete();
-        super.tearDown();
-    }
 }

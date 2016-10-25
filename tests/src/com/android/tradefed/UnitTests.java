@@ -89,6 +89,7 @@ import com.android.tradefed.targetprep.PythonVirtualenvPreparerTest;
 import com.android.tradefed.targetprep.SdkAvdPreparerTest;
 import com.android.tradefed.targetprep.StopServicesSetupTest;
 import com.android.tradefed.targetprep.SystemUpdaterDeviceFlasherTest;
+import com.android.tradefed.targetprep.TestFilePushSetupTest;
 import com.android.tradefed.testtype.AndroidJUnitTestTest;
 import com.android.tradefed.testtype.CodeCoverageTestBaseTest;
 import com.android.tradefed.testtype.DeviceBatteryLevelCheckerTest;
@@ -262,6 +263,7 @@ import org.junit.runners.Suite.SuiteClasses;
     SdkAvdPreparerTest.class,
     StopServicesSetupTest.class,
     SystemUpdaterDeviceFlasherTest.class,
+    TestFilePushSetupTest.class,
 
     // testtype
     AndroidJUnitTestTest.class,
