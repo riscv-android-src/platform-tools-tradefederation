@@ -33,7 +33,7 @@ import java.util.concurrent.TimeUnit;
 
 
 /**
- * Unit tests for {@link GTestTest}.
+ * Unit tests for {@link GTest}.
  */
 public class GTestTest extends TestCase {
     private static final String GTEST_FLAG_FILTER = "--gtest_filter";

@@ -17,14 +17,13 @@ package com.android.tradefed.util;
 
 import java.text.SimpleDateFormat;
 import java.util.Date;
+import java.util.TimeZone;
 import java.util.concurrent.TimeUnit;
 
 /**
  * Contains time related utility methods.
  */
 public class TimeUtil {
-
-    private final static SimpleDateFormat TIME_FORMAT = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
 
     // only static methods, don't allow construction
     private TimeUtil() {
@@ -62,6 +61,30 @@ public class TimeUtil {
      * @return a user readable string
      */
     public static String formatTimeStamp(long epochTime) {
-        return TIME_FORMAT.format(new Date(epochTime));
+        return formatTimeStamp(epochTime, null);
+    }
+
+    /**
+     * Internal helper to print a time with the given date format, or a default format if none
+     * is provided.
+     */
+    private static String formatTimeStamp(long epochTime, SimpleDateFormat format) {
+        if (format == null) {
+            format = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+        }
+        return format.format(new Date(epochTime));
+    }
+
+    /**
+     * Return a readable formatted version of the given epoch time in GMT time instead of the local
+     * timezone.
+     *
+     * @param epochTime the epoch time in milliseconds
+     * @return a user readable string
+     */
+    public static String formatTimeStampGMT(long epochTime) {
+        SimpleDateFormat timeFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+        timeFormat.setTimeZone(TimeZone.getTimeZone("GMT"));
+        return formatTimeStamp(epochTime, timeFormat);
     }
 }

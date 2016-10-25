@@ -26,6 +26,8 @@ import com.android.tradefed.device.IFileEntry;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.result.ITestInvocationListener;
 
+import com.google.common.annotations.VisibleForTesting;
+
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
@@ -146,7 +148,8 @@ public class NativeBenchmarkTest implements IDeviceTest, IRemoteTest {
      *
      * @return The path on the device where the native tests live.
      */
-    private String getTestPath() {
+    @VisibleForTesting
+    String getTestPath() {
         StringBuilder testPath = new StringBuilder(mDeviceTestPath);
         if (mTestModule != null) {
             testPath.append(FileListingService.FILE_SEPARATOR);
@@ -163,7 +166,8 @@ public class NativeBenchmarkTest implements IDeviceTest, IRemoteTest {
      * @param listener the run listener
      * @throws DeviceNotAvailableException
      */
-    private void doRunAllTestsInSubdirectory(IFileEntry rootEntry, ITestDevice testDevice,
+    @VisibleForTesting
+    void doRunAllTestsInSubdirectory(IFileEntry rootEntry, ITestDevice testDevice,
             ITestRunListener listener) throws DeviceNotAvailableException {
 
         if (rootEntry.isDirectory()) {

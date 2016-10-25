@@ -46,8 +46,8 @@ public class FastbootHelper {
         if (runUtil == null) {
             throw new IllegalArgumentException("runUtil cannot be null");
         }
-        if (fastbootPath == null) {
-            throw new IllegalArgumentException("fastboot cannot be null");
+        if (fastbootPath == null || fastbootPath.isEmpty()) {
+            throw new IllegalArgumentException("fastboot cannot be null or empty");
         }
         mRunUtil = runUtil;
         mFastbootPath = fastbootPath;

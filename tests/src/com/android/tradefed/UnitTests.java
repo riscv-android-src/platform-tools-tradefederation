@@ -110,6 +110,7 @@ import com.android.tradefed.testtype.InstrumentationSerialTestTest;
 import com.android.tradefed.testtype.InstrumentationTestTest;
 import com.android.tradefed.testtype.JackCodeCoverageTestTest;
 import com.android.tradefed.testtype.NativeBenchmarkTestParserTest;
+import com.android.tradefed.testtype.NativeBenchmarkTestTest;
 import com.android.tradefed.testtype.NativeStressTestParserTest;
 import com.android.tradefed.testtype.NativeStressTestTest;
 import com.android.tradefed.testtype.PythonUnitTestResultParserTest;
@@ -151,6 +152,7 @@ import com.android.tradefed.util.SubprocessTestResultsParserTest;
 import com.android.tradefed.util.TableFormatterTest;
 import com.android.tradefed.util.TarUtilTest;
 import com.android.tradefed.util.TestLoaderTest;
+import com.android.tradefed.util.TimeUtilTest;
 import com.android.tradefed.util.TimeValTest;
 import com.android.tradefed.util.ZipUtilTest;
 import com.android.tradefed.util.keystore.JSONFileKeyStoreClientTest;
@@ -287,6 +289,7 @@ import org.junit.runners.Suite.SuiteClasses;
     InstrumentationTestTest.class,
     JackCodeCoverageTestTest.class,
     NativeBenchmarkTestParserTest.class,
+    NativeBenchmarkTestTest.class,
     NativeStressTestParserTest.class,
     NativeStressTestTest.class,
     PythonUnitTestResultParserTest.class,
@@ -330,6 +333,7 @@ import org.junit.runners.Suite.SuiteClasses;
     TableFormatterTest.class,
     TarUtilTest.class,
     TestLoaderTest.class,
+    TimeUtilTest.class,
     TimeValTest.class,
     SimpleStatsTest.class,
     StringEscapeUtilsTest.class,
