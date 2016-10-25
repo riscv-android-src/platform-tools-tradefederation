@@ -905,7 +905,7 @@ public class FioBenchmarkTest implements IDeviceTest, IRemoteTest {
                 listener.testLog(localFileName, LogDataType.TEXT, outputSource);
             }
         } catch (IOException e) {
-            CLog.e("Got an IO Exception: %s", e);
+            CLog.e(e);
         } finally {
             if (outputSource != null) {
                 outputSource.cancel();
