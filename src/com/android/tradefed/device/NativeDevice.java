@@ -62,7 +62,6 @@ import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Calendar;
 import java.util.Collection;
 import java.util.Date;
 import java.util.List;
@@ -1402,11 +1401,6 @@ public class NativeDevice implements IManagedTestDevice {
             SimpleDateFormat format = new SimpleDateFormat("yyyy-MM-dd HH:mm");
             format.setTimeZone(TimeZone.getTimeZone(timezone));
             Date remoteDate = format.parse(entryTimeString);
-            long daylight = 0;
-            if (Calendar.getInstance().getTimeZone().inDaylightTime(new Date())){
-                daylight = Calendar.getInstance().getTimeZone().getDSTSavings();
-                CLog.i("daylight saving detected adding %sms to local time.", daylight);
-            }
 
             long offset = 0;
             try {
@@ -1419,8 +1413,7 @@ public class NativeDevice implements IManagedTestDevice {
             // localFile.lastModified has granularity of ms, but remoteDate.getTime only has
             // granularity of minutes. Shift remoteDate.getTime() backward by one minute so newly
             // modified files get synced
-            return (localFile.lastModified() + daylight) >
-                    (remoteDate.getTime() - 60 * 1000 + offset);
+            return (localFile.lastModified()) > (remoteDate.getTime() - 60 * 1000 + offset);
         } catch (ParseException e) {
             CLog.e("Error converting remote time stamp %s for %s on device %s", entryTimeString,
                     entry.getFullPath(), getSerialNumber());
