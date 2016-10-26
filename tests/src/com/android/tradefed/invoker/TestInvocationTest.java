@@ -187,6 +187,10 @@ public class TestInvocationTest extends TestCase {
             protected IConfigurationFactory getConfigFactory() {
                 return mMockConfigFactory;
             }
+            @Override
+            protected void setExitCode(int code) {
+                // empty on purpose
+            }
         };
     }
 
