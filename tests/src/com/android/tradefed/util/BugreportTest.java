@@ -15,6 +15,10 @@
  */
 package com.android.tradefed.util;
 
+import com.android.tradefed.log.ITestLogger;
+import com.android.tradefed.result.LogDataType;
+
+import org.easymock.EasyMock;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
@@ -170,6 +174,44 @@ public class BugreportTest {
         } finally {
             FileUtil.recursiveDelete(tempDir);
             FileUtil.deleteFile(zipFile);
+            mBugreport.close();
+        }
+    }
+
+    /**
+     * Test that logging a zip bugreport use the proper type.
+     */
+    @Test
+    public void testLogBugreport() throws Exception {
+        final String dataName = "TEST";
+        try {
+            mBugreport = new Bugreport(mZipFile, true);
+            ITestLogger logger = EasyMock.createMock(ITestLogger.class);
+            logger.testLog(EasyMock.eq(dataName), EasyMock.eq(LogDataType.BUGREPORTZ),
+                    EasyMock.anyObject());
+            EasyMock.replay(logger);
+            mBugreport.log(dataName, logger);
+            EasyMock.verify(logger);
+        } finally {
+            mBugreport.close();
+        }
+    }
+
+    /**
+     * Test that logging a flat bugreport use the proper type.
+     */
+    @Test
+    public void testLogBugreportFlat() throws Exception {
+        final String dataName = "TEST";
+        try {
+            mBugreport = new Bugreport(mRegularFile, false);
+            ITestLogger logger = EasyMock.createMock(ITestLogger.class);
+            logger.testLog(EasyMock.eq(dataName), EasyMock.eq(LogDataType.BUGREPORT),
+                    EasyMock.anyObject());
+            EasyMock.replay(logger);
+            mBugreport.log(dataName, logger);
+            EasyMock.verify(logger);
+        } finally {
             mBugreport.close();
         }
     }
