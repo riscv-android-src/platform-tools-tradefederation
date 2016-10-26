@@ -16,10 +16,13 @@
 package com.android.tradefed.result;
 
 import com.android.ddmlib.testrunner.ITestRunListener;
+import com.android.ddmlib.testrunner.TestIdentifier;
 import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.command.ICommandScheduler;
 import com.android.tradefed.invoker.IInvocationContext;
 import com.android.tradefed.log.ITestLogger;
+
+import java.util.Map;
 
 /**
  * Listener for test results from the test invocation.
@@ -84,7 +87,7 @@ public interface ITestInvocationListener extends ITestRunListener, ITestLogger {
      *
      * @param elapsedTime the elapsed time of the invocation in ms
      */
-    public void invocationEnded(long elapsedTime);
+    default public void invocationEnded(long elapsedTime) { }
 
     /**
      * Reports an incomplete invocation due to some error condition.
@@ -93,14 +96,14 @@ public interface ITestInvocationListener extends ITestRunListener, ITestLogger {
      *
      * @param cause the {@link Throwable} cause of the failure
      */
-    public void invocationFailed(Throwable cause);
+    default public void invocationFailed(Throwable cause) { }
 
     /**
      * Allows the InvocationListener to return a summary.
      *
      * @return A {@link TestSummary} summarizing the run, or null
      */
-    public TestSummary getSummary();
+    default public TestSummary getSummary() { return null; }
 
     /**
      * Called on {@link ICommandScheduler#shutdown()}, gives the invocation the opportunity to do
@@ -109,4 +112,58 @@ public interface ITestInvocationListener extends ITestRunListener, ITestLogger {
     default public void invocationInterrupted() {
         // do nothing in default implementation.
     }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    default public void testEnded(TestIdentifier test, Map<String, String> testMetrics) { }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    default public void testFailed(TestIdentifier test, String trace) { }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    default public void testAssumptionFailure(TestIdentifier test, String trace) { }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    default public void testIgnored(TestIdentifier test) { }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    default public void testRunEnded(long elapsedTime, Map<String, String> runMetrics) { }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    default public void testRunFailed(String errorMessage) { }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    default public void testRunStarted(String runName, int testCount) { }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    default public void testRunStopped(long elapsedTime) { }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    default public void testStarted(TestIdentifier test) { }
 }

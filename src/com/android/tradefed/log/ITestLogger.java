@@ -43,6 +43,7 @@ public interface ITestLogger {
      *        InputStream when complete. Callers should ensure the source of the data remains
      *        present and accessible until the testLog method completes.
      */
-    public void testLog(String dataName, LogDataType dataType, InputStreamSource dataStream);
+    default public void testLog(String dataName, LogDataType dataType,
+            InputStreamSource dataStream) { }
 
 }
