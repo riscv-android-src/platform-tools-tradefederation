@@ -357,4 +357,9 @@ public class MockDeviceManager implements IDeviceManager {
     public String getFastbootPath() {
         return "fastboot";
     }
+
+    @Override
+    public boolean waitForFirstDeviceAdded(long timeout) {
+        return false;
+    }
 }

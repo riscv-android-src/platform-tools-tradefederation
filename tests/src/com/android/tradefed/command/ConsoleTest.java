@@ -105,7 +105,8 @@ public class ConsoleTest extends TestCase {
         mMockScheduler.start();
         mMockScheduler.await();
         EasyMock.expectLastCall().anyTimes();
-        mMockScheduler.shutdown();  // after we run the initial command and then immediately quit.
+        // after we run the initial command and then immediately quit.
+        mMockScheduler.shutdown();
 
         EasyMock.replay(mMockScheduler);
 
