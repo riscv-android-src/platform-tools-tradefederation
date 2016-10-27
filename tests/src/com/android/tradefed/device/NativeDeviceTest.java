@@ -1061,10 +1061,10 @@ public class NativeDeviceTest extends TestCase {
         };
         File localFile = FileUtil.createTempFile("timezonetest", ".txt");
         try {
-            localFile.setLastModified(1470904329000l); // Thu Aug 11 09:32:09 BST 2016
+            localFile.setLastModified(1470906000000l); // Thu Aug 11 10:00:00 BST 2016
             IFileEntry remoteFile = EasyMock.createMock(IFileEntry.class);
             EasyMock.expect(remoteFile.getDate()).andReturn("2016-08-11");
-            EasyMock.expect(remoteFile.getTime()).andReturn("19:32");
+            EasyMock.expect(remoteFile.getTime()).andReturn("19:00");
             EasyMock.replay(remoteFile);
             assertTrue(testDevice.isNewer(localFile, remoteFile));
             EasyMock.verify(remoteFile);
@@ -1090,10 +1090,10 @@ public class NativeDeviceTest extends TestCase {
         };
         File localFile = FileUtil.createTempFile("timezonetest", ".txt");
         try {
-            localFile.setLastModified(1470904329000l); // Thu Aug 11 09:32:09 BST 2016
+            localFile.setLastModified(1470906000000l); // Thu Aug 11 10:00:00 BST 2016
             IFileEntry remoteFile = EasyMock.createMock(IFileEntry.class);
             EasyMock.expect(remoteFile.getDate()).andReturn("2016-08-11");
-            EasyMock.expect(remoteFile.getTime()).andReturn("19:47");
+            EasyMock.expect(remoteFile.getTime()).andReturn("19:15");
             EasyMock.replay(remoteFile);
             // Should sync because after time offset correction, file is older.
             assertTrue(testDevice.isNewer(localFile, remoteFile));
@@ -1121,10 +1121,10 @@ public class NativeDeviceTest extends TestCase {
         };
         File localFile = FileUtil.createTempFile("timezonetest", ".txt");
         try {
-            localFile.setLastModified(1470903728000l); // Thu Aug 11 09:22:08 BST 2016
+            localFile.setLastModified(1470906000000l); // Thu Aug 11 10:00:00 BST 2016
             IFileEntry remoteFile = EasyMock.createMock(IFileEntry.class);
             EasyMock.expect(remoteFile.getDate()).andReturn("2016-08-11");
-            EasyMock.expect(remoteFile.getTime()).andReturn("19:32");
+            EasyMock.expect(remoteFile.getTime()).andReturn("19:10");
             EasyMock.replay(remoteFile);
             assertFalse(testDevice.isNewer(localFile, remoteFile));
             EasyMock.verify(remoteFile);
