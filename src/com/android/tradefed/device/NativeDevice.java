@@ -1413,7 +1413,7 @@ public class NativeDevice implements IManagedTestDevice {
             // localFile.lastModified has granularity of ms, but remoteDate.getTime only has
             // granularity of minutes. Shift remoteDate.getTime() backward by one minute so newly
             // modified files get synced
-            return (localFile.lastModified()) > (remoteDate.getTime() - 60 * 1000 + offset);
+            return localFile.lastModified() > (remoteDate.getTime() - 60 * 1000 + offset);
         } catch (ParseException e) {
             CLog.e("Error converting remote time stamp %s for %s on device %s", entryTimeString,
                     entry.getFullPath(), getSerialNumber());
