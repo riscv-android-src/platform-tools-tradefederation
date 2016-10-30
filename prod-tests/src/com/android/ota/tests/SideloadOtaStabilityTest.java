@@ -378,6 +378,11 @@ public class SideloadOtaStabilityTest implements IDeviceTest, IBuildReceiver,
         double elapsedTime = 0;
         // last_log contains a timing metric in its last line, capture it here and return it
         // for the metrics map to report
+        if (lastLog == null || lastKmsg == null) {
+            CLog.w("Could not find last_log at directory %s, "
+                    + "or last_kmsg at directory %s", LOG_RECOV, LOG_KMSG);
+            return elapsedTime;
+        }
         try {
             try {
                 String[] lastLogLines = StreamUtil.getStringFromSource(lastLog).split("\n");
