@@ -23,15 +23,13 @@ import com.android.tradefed.device.FreeDeviceState;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.invoker.IInvocationContext;
 import com.android.tradefed.invoker.InvocationContext;
-import com.android.tradefed.result.StubTestInvocationListener;
 
 import java.io.ByteArrayOutputStream;
 import java.io.PrintStream;
 import java.util.HashMap;
 import java.util.Map;
 
-class ExecCommandTracker extends StubTestInvocationListener implements
-        IScheduledInvocationListener {
+class ExecCommandTracker implements IScheduledInvocationListener {
 
     private CommandResult.Status mStatus = CommandResult.Status.EXECUTING;
     private String mErrorDetails = null;

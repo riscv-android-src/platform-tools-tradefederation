@@ -15,8 +15,6 @@
  */
 package com.android.tradefed.result;
 
-import com.android.tradefed.invoker.IInvocationContext;
-
 /**
  * This class used to provide stub implementations for each {@link ITestInvocationListener} method.
  * With the arrival of default methods for interface definitions in Java 8, this class is no longer

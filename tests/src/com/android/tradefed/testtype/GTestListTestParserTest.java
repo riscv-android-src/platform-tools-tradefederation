@@ -17,7 +17,6 @@ package com.android.tradefed.testtype;
 
 import com.android.ddmlib.testrunner.ITestRunListener;
 import com.android.ddmlib.testrunner.TestIdentifier;
-import com.android.tradefed.result.StubTestInvocationListener;
 
 import org.easymock.EasyMock;
 
@@ -76,13 +75,14 @@ public class GTestListTestParserTest extends GTestParserTestBase {
         EasyMock.verify(mockRunListener);
         verifyTestIdentifiers(parser.mTests, 29);
     }
+
     /**
      * Tests the parser against a malformed list of tests.
      */
     public void testParseMalformedList() throws Exception {
         String[] contents =  readInFile(GTEST_LIST_FILE_3);
-        GTestListTestParser parser = new GTestListTestParser(TEST_MODULE_NAME,
-                new StubTestInvocationListener());
+        ITestRunListener mockRunListener = EasyMock.createMock(ITestRunListener.class);
+        GTestListTestParser parser = new GTestListTestParser(TEST_MODULE_NAME, mockRunListener);
         try {
             parser.processNewLines(contents);
             parser.flush();
