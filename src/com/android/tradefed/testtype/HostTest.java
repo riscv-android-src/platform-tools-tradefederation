@@ -21,6 +21,7 @@ import com.android.tradefed.config.ConfigurationException;
 import com.android.tradefed.config.Option;
 import com.android.tradefed.config.Option.Importance;
 import com.android.tradefed.config.OptionClass;
+import com.android.tradefed.config.OptionCopier;
 import com.android.tradefed.config.OptionSetter;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
@@ -46,9 +47,11 @@ import java.lang.reflect.AnnotatedElement;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.Enumeration;
 import java.util.HashSet;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -59,12 +62,13 @@ import java.util.Set;
  */
 @OptionClass(alias = "host")
 public class HostTest implements IDeviceTest, ITestFilterReceiver, ITestAnnotationFilterReceiver,
-        IRemoteTest, ITestCollector, IBuildReceiver, IAbiReceiver {
+        IRemoteTest, ITestCollector, IBuildReceiver, IAbiReceiver,
+        IShardableTest, IStrictShardableTest {
 
     @Option(name = "class", description = "The JUnit test classes to run, in the format "
             + "<package>.<class>. eg. \"com.android.foo.Bar\". This field can be repeated.",
             importance = Importance.IF_UNSET)
-    private Set<String> mClasses = new HashSet<>();
+    private Set<String> mClasses = new LinkedHashSet<>();
 
     @Option(name = "method", description = "The name of the method in the JUnit TestCase to run. "
             + "eg. \"testFooBar\"",
@@ -79,12 +83,12 @@ public class HostTest implements IDeviceTest, ITestFilterReceiver, ITestAnnotati
 
     @Option(name = "include-annotation",
             description = "The set of annotations a test must have to be run.")
-    private Set<String> mIncludeAnnotations = new HashSet<String>();
+    private Set<String> mIncludeAnnotations = new HashSet<>();
 
     @Option(name = "exclude-annotation",
             description = "The set of annotations to exclude tests from running. A test must have "
                     + "none of the annotations in this list to run.")
-    private Set<String> mExcludeAnnotations = new HashSet<String>();
+    private Set<String> mExcludeAnnotations = new HashSet<>();
 
     @Option(name = "collect-tests-only",
             description = "Only invoke the instrumentation to collect list of applicable test "
@@ -98,6 +102,7 @@ public class HostTest implements IDeviceTest, ITestFilterReceiver, ITestAnnotati
     private TestFilterHelper mFilterHelper;
 
     private static final String EXCLUDE_NO_TEST_FAILURE = "org.junit.runner.manipulation.Filter";
+    private static final String TEST_FULL_NAME_FORMAT = "%s#%s";
 
     public HostTest() {
         mFilterHelper = new TestFilterHelper(new ArrayList<String>(), new ArrayList<String>(),
@@ -301,24 +306,7 @@ public class HostTest implements IDeviceTest, ITestFilterReceiver, ITestAnnotati
         for (Class<?> classObj : classes) {
             if (IRemoteTest.class.isAssignableFrom(classObj)) {
                 IRemoteTest test = (IRemoteTest) loadObject(classObj);
-                Set<String> includes = mFilterHelper.getIncludeFilters();
-                if (mMethodName != null) {
-                    includes.add(String.format("%s#%s", classObj.getName(), mMethodName));
-                }
-                Set<String> excludes = mFilterHelper.getExcludeFilters();
-                if (test instanceof ITestFilterReceiver) {
-                    ((ITestFilterReceiver) test).addAllIncludeFilters(includes);
-                    ((ITestFilterReceiver) test).addAllExcludeFilters(excludes);
-                } else if (!includes.isEmpty() || !excludes.isEmpty()) {
-                    throw new IllegalArgumentException(String.format(
-                            "%s does not implement ITestFilterReceiver", classObj.getName()));
-                }
-                if (test instanceof ITestAnnotationFilterReceiver) {
-                    ((ITestAnnotationFilterReceiver) test).addAllIncludeAnnotation(
-                            mIncludeAnnotations);
-                    ((ITestAnnotationFilterReceiver) test).addAllExcludeAnnotation(
-                            mExcludeAnnotations);
-                }
+                applyFilters(classObj, test);
                 if (mFilterHelper.shouldTestRun(test.getClass())) {
                     if (mCollectTestsOnly) {
                         // Collect only mode is propagated to the test.
@@ -359,6 +347,13 @@ public class HostTest implements IDeviceTest, ITestFilterReceiver, ITestAnnotati
                 JUnit4ResultForwarder list = new JUnit4ResultForwarder(listener);
                 runnerCore.addListener(list);
                 Request req = Request.aClass(classObj);
+                // Include the method name filtering
+                Set<String> includes = mFilterHelper.getIncludeFilters();
+                if (mMethodName != null) {
+                    includes.add(String.format(TEST_FULL_NAME_FORMAT, classObj.getName(),
+                            mMethodName));
+                }
+
                 req = req.filterWith(new JUnit4TestFilter(mFilterHelper));
                 // If no tests are remaining after filtering, it returns an Error Runner.
                 Runner checkRunner = req.getRunner();
@@ -555,4 +550,98 @@ public class HostTest implements IDeviceTest, ITestFilterReceiver, ITestAnnotati
         return false;
     }
 
+    /**
+     * Helper method to apply all the filters to an IRemoteTest.
+     */
+    private void applyFilters(Class<?> classObj, IRemoteTest test) {
+        Set<String> includes = mFilterHelper.getIncludeFilters();
+        if (mMethodName != null) {
+            includes.add(String.format(TEST_FULL_NAME_FORMAT, classObj.getName(), mMethodName));
+        }
+        Set<String> excludes = mFilterHelper.getExcludeFilters();
+        if (test instanceof ITestFilterReceiver) {
+            ((ITestFilterReceiver) test).addAllIncludeFilters(includes);
+            ((ITestFilterReceiver) test).addAllExcludeFilters(excludes);
+        } else if (!includes.isEmpty() || !excludes.isEmpty()) {
+            throw new IllegalArgumentException(String.format(
+                    "%s does not implement ITestFilterReceiver", classObj.getName()));
+        }
+        if (test instanceof ITestAnnotationFilterReceiver) {
+            ((ITestAnnotationFilterReceiver) test).addAllIncludeAnnotation(
+                    mIncludeAnnotations);
+            ((ITestAnnotationFilterReceiver) test).addAllExcludeAnnotation(
+                    mExcludeAnnotations);
+        }
+    }
+
+    /**
+     * We split by --class, and if each individual IRemoteTest is splitable we split them too.
+     */
+    @Override
+    public Collection<IRemoteTest> split() {
+        List<IRemoteTest> listTests = new ArrayList<>();
+        List<Class<?>> classes = getClasses();
+        if (classes.isEmpty()) {
+            throw new IllegalArgumentException("Missing Test class name");
+        }
+        if (mMethodName != null && classes.size() > 1) {
+            throw new IllegalArgumentException("Method name given with multiple test classes");
+        }
+        if (classes.size() == 1) {
+            // Cannot shard if only no class or one class specified
+            // TODO: Consider doing class sharding too if its a suite.
+            return null;
+        }
+        for (Class<?> classObj : classes) {
+            HostTest test = createHostTest(classObj);
+            listTests.add(test);
+        }
+        return listTests;
+    }
+
+    /**
+     * Add a class to be ran by HostTest.
+     */
+    private void addClassName(String className) {
+        mClasses.add(className);
+    }
+
+    /**
+     * Helper to create a HostTest instance when sharding. Override to return any child from
+     * HostTest.
+     */
+    protected HostTest createHostTest(Class<?> classObj) {
+        HostTest test = new HostTest();
+        OptionCopier.copyOptionsNoThrow(this, test);
+        test.setClassName(classObj.getName());
+        return test;
+    }
+
+    @Override
+    public IRemoteTest getTestShard(int shardCount, int shardIndex) {
+        IRemoteTest test = null;
+        List<Class<?>> classes = getClasses();
+        if (classes.isEmpty()) {
+            throw new IllegalArgumentException("Missing Test class name");
+        }
+        if (mMethodName != null && classes.size() > 1) {
+            throw new IllegalArgumentException("Method name given with multiple test classes");
+        }
+        int i = 0;
+        for (Class<?> classObj : classes) {
+            if (i % shardCount == shardIndex) {
+                if (test == null) {
+                    test = createHostTest(classObj);
+                } else {
+                    ((HostTest)test).addClassName(classObj.getName());
+                }
+            }
+            i++;
+        }
+        // In case we don't have enough classes to shard, we return a Stub.
+        if (test == null) {
+            test = new StubTest();
+        }
+        return test;
+    }
 }

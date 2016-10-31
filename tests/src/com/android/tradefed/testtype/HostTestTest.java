@@ -26,16 +26,18 @@ import junit.framework.Test;
 import junit.framework.TestCase;
 import junit.framework.TestSuite;
 
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
+import java.lang.reflect.AnnotatedElement;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+
 import org.easymock.Capture;
 import org.easymock.EasyMock;
 import org.junit.Before;
 import org.junit.runner.RunWith;
 import org.junit.runners.Suite.SuiteClasses;
-
-import java.lang.annotation.Retention;
-import java.lang.annotation.RetentionPolicy;
-import java.lang.reflect.AnnotatedElement;
-import java.util.Map;
 
 /**
  * Unit tests for {@link HostTest}.
@@ -92,11 +94,10 @@ public class HostTestTest extends TestCase {
      * Test class, we have to annotate with full org.junit.Test to avoid name collision in import.
      */
     @RunWith(DeviceJUnit4ClassRunner.class)
-    public static class Junit4Testclass implements IDeviceTest {
+    public static class Junit4TestClass implements IDeviceTest {
         private ITestDevice mDevice;
 
-        public Junit4Testclass() {
-        }
+        public Junit4TestClass() {}
 
         @MyAnnotation
         @MyAnnotation2
@@ -122,17 +123,17 @@ public class HostTestTest extends TestCase {
 
     @RunWith(DeviceSuite.class)
     @SuiteClasses({
-        Junit4Testclass.class,
+        Junit4TestClass.class,
         SuccessTestCase.class,
     })
-    public class Junit4Suiteclass {
+    public class Junit4SuiteClass {
     }
 
     /**
      * Malformed on purpose test class.
      */
-    public static class Junit4MalformedTestclass {
-        public Junit4MalformedTestclass() {
+    public static class Junit4MalformedTestClass {
+        public Junit4MalformedTestClass() {
         }
 
         @Before
@@ -457,9 +458,9 @@ public class HostTestTest extends TestCase {
      * Test for {@link HostTest#countTestCases()} with filtering on JUnit4 tests
      */
     public void testCountTestCasesJUnit4WithFiltering() throws Exception {
-        mHostTest.setClassName(Junit4Testclass.class.getName());
+        mHostTest.setClassName(Junit4TestClass.class.getName());
         mHostTest.addIncludeFilter(
-                "com.android.tradefed.testtype.HostTestTest$Junit4Testclass#testPass5");
+                "com.android.tradefed.testtype.HostTestTest$Junit4TestClass#testPass5");
         assertEquals("Incorrect test case count", 1, mHostTest.countTestCases());
     }
 
@@ -468,7 +469,7 @@ public class HostTestTest extends TestCase {
      * count as 1 in the total number of tests.
      */
     public void testCountTestCasesJUnit4Malformed() throws Exception {
-        mHostTest.setClassName(Junit4MalformedTestclass.class.getName());
+        mHostTest.setClassName(Junit4MalformedTestClass.class.getName());
         assertEquals("Incorrect test case count", 1, mHostTest.countTestCases());
     }
 
@@ -477,11 +478,11 @@ public class HostTestTest extends TestCase {
      * remain.
      */
     public void testCountTestCasesJUnit4WithFiltering_no_more_tests() throws Exception {
-        mHostTest.setClassName(Junit4Testclass.class.getName());
+        mHostTest.setClassName(Junit4TestClass.class.getName());
         mHostTest.addExcludeFilter(
-                "com.android.tradefed.testtype.HostTestTest$Junit4Testclass#testPass5");
+                "com.android.tradefed.testtype.HostTestTest$Junit4TestClass#testPass5");
         mHostTest.addExcludeFilter(
-                "com.android.tradefed.testtype.HostTestTest$Junit4Testclass#testPass6");
+                "com.android.tradefed.testtype.HostTestTest$Junit4TestClass#testPass6");
         assertEquals("Incorrect test case count", 0, mHostTest.countTestCases());
     }
 
@@ -491,8 +492,8 @@ public class HostTestTest extends TestCase {
     public void testCountTestCasesJUnitVersionMixed() throws Exception {
         OptionSetter setter = new OptionSetter(mHostTest);
         setter.setOptionValue("class", SuccessTestCase.class.getName()); // 2 tests
-        setter.setOptionValue("class", Junit4Testclass.class.getName()); // 2 tests
-        setter.setOptionValue("class", Junit4Suiteclass.class.getName()); // 4 tests
+        setter.setOptionValue("class", Junit4TestClass.class.getName()); // 2 tests
+        setter.setOptionValue("class", Junit4SuiteClass.class.getName()); // 4 tests
         assertEquals("Incorrect test case count", 8, mHostTest.countTestCases());
     }
 
@@ -502,11 +503,11 @@ public class HostTestTest extends TestCase {
     public void testCountTestCasesJUnitVersionMixedWithFiltering() throws Exception {
         OptionSetter setter = new OptionSetter(mHostTest);
         setter.setOptionValue("class", SuccessTestCase.class.getName()); // 2 tests
-        setter.setOptionValue("class", Junit4Testclass.class.getName()); // 2 tests
+        setter.setOptionValue("class", Junit4TestClass.class.getName()); // 2 tests
         mHostTest.addIncludeFilter(
                 "com.android.tradefed.testtype.HostTestTest$SuccessTestCase#testPass");
         mHostTest.addIncludeFilter(
-                "com.android.tradefed.testtype.HostTestTest$Junit4Testclass#testPass5");
+                "com.android.tradefed.testtype.HostTestTest$Junit4TestClass#testPass5");
         assertEquals("Incorrect test case count", 2, mHostTest.countTestCases());
     }
 
@@ -688,12 +689,29 @@ public class HostTestTest extends TestCase {
      * Test for {@link HostTest#run(ITestInvocationListener)}, for test with Junit4 style.
      */
     public void testRun_junit4style() throws Exception {
-        mHostTest.setClassName(Junit4Testclass.class.getName());
-        TestIdentifier test1 = new TestIdentifier(Junit4Testclass.class.getName(), "testPass5");
-        TestIdentifier test2 = new TestIdentifier(Junit4Testclass.class.getName(), "testPass6");
+        mHostTest.setClassName(Junit4TestClass.class.getName());
+        TestIdentifier test1 = new TestIdentifier(Junit4TestClass.class.getName(), "testPass5");
+        TestIdentifier test2 = new TestIdentifier(Junit4TestClass.class.getName(), "testPass6");
         mListener.testRunStarted((String)EasyMock.anyObject(), EasyMock.eq(2));
         mListener.testStarted(EasyMock.eq(test1));
         mListener.testEnded(EasyMock.eq(test1), (Map<String, String>)EasyMock.anyObject());
+        mListener.testStarted(EasyMock.eq(test2));
+        mListener.testEnded(EasyMock.eq(test2), (Map<String, String>)EasyMock.anyObject());
+        mListener.testRunEnded(EasyMock.anyLong(), (Map<String, String>)EasyMock.anyObject());
+        EasyMock.replay(mListener);
+        mHostTest.run(mListener);
+        EasyMock.verify(mListener);
+    }
+
+    /**
+     * Test for {@link HostTest#run(ITestInvocationListener)}, for test with Junit4 style and with
+     * method filtering. Only run the expected method.
+     */
+    public void testRun_junit4_withMethodFilter() throws Exception {
+        mHostTest.setClassName(Junit4TestClass.class.getName());
+        TestIdentifier test2 = new TestIdentifier(Junit4TestClass.class.getName(), "testPass6");
+        mHostTest.setMethodName("testPass6");
+        mListener.testRunStarted((String)EasyMock.anyObject(), EasyMock.eq(1));
         mListener.testStarted(EasyMock.eq(test2));
         mListener.testEnded(EasyMock.eq(test2), (Map<String, String>)EasyMock.anyObject());
         mListener.testRunEnded(EasyMock.anyLong(), (Map<String, String>)EasyMock.anyObject());
@@ -708,7 +726,7 @@ public class HostTestTest extends TestCase {
     public void testRun_junit_version_mix() throws Exception {
         OptionSetter setter = new OptionSetter(mHostTest);
         setter.setOptionValue("class", SuccessTestCase.class.getName());
-        setter.setOptionValue("class", Junit4Testclass.class.getName());
+        setter.setOptionValue("class", Junit4TestClass.class.getName());
         runMixJunitTest(mHostTest, 2, 2);
     }
 
@@ -719,7 +737,7 @@ public class HostTestTest extends TestCase {
     public void testRun_junit_version_mix_collect() throws Exception {
         OptionSetter setter = new OptionSetter(mHostTest);
         setter.setOptionValue("class", SuccessTestCase.class.getName());
-        setter.setOptionValue("class", Junit4Testclass.class.getName());
+        setter.setOptionValue("class", Junit4TestClass.class.getName());
         setter.setOptionValue("collect-tests-only", "true");
         runMixJunitTest(mHostTest, 2, 2);
     }
@@ -730,7 +748,7 @@ public class HostTestTest extends TestCase {
      */
     public void testRun_junit_suite_mix() throws Exception {
         OptionSetter setter = new OptionSetter(mHostTest);
-        setter.setOptionValue("class", Junit4Suiteclass.class.getName());
+        setter.setOptionValue("class", Junit4SuiteClass.class.getName());
         runMixJunitTest(mHostTest, 4, 1);
     }
 
@@ -740,7 +758,7 @@ public class HostTestTest extends TestCase {
      */
     public void testRun_junit_suite_mix_collect() throws Exception {
         OptionSetter setter = new OptionSetter(mHostTest);
-        setter.setOptionValue("class", Junit4Suiteclass.class.getName());
+        setter.setOptionValue("class", Junit4SuiteClass.class.getName());
         setter.setOptionValue("collect-tests-only", "true");
         runMixJunitTest(mHostTest, 4, 1);
     }
@@ -752,8 +770,8 @@ public class HostTestTest extends TestCase {
             throws Exception {
         TestIdentifier test1 = new TestIdentifier(SuccessTestCase.class.getName(), "testPass");
         TestIdentifier test2 = new TestIdentifier(SuccessTestCase.class.getName(), "testPass2");
-        TestIdentifier test3 = new TestIdentifier(Junit4Testclass.class.getName(), "testPass5");
-        TestIdentifier test4 = new TestIdentifier(Junit4Testclass.class.getName(), "testPass6");
+        TestIdentifier test3 = new TestIdentifier(Junit4TestClass.class.getName(), "testPass5");
+        TestIdentifier test4 = new TestIdentifier(Junit4TestClass.class.getName(), "testPass6");
         mListener.testRunStarted((String)EasyMock.anyObject(), EasyMock.eq(expectedTest));
         EasyMock.expectLastCall().times(expectedRun);
         mListener.testStarted(EasyMock.eq(test1));
@@ -776,9 +794,9 @@ public class HostTestTest extends TestCase {
      * junit 4 handling.
      */
     public void testRun_testcase_Junit4TestNotAnnotationFiltering() throws Exception {
-        mHostTest.setClassName(Junit4Testclass.class.getName());
+        mHostTest.setClassName(Junit4TestClass.class.getName());
         mHostTest.addExcludeAnnotation("com.android.tradefed.testtype.HostTestTest$MyAnnotation2");
-        TestIdentifier test1 = new TestIdentifier(Junit4Testclass.class.getName(), "testPass6");
+        TestIdentifier test1 = new TestIdentifier(Junit4TestClass.class.getName(), "testPass6");
         // Only test1 will run, test2 should be filtered out.
         mListener.testRunStarted((String)EasyMock.anyObject(), EasyMock.eq(1));
         mListener.testStarted(EasyMock.eq(test1));
@@ -794,7 +812,7 @@ public class HostTestTest extends TestCase {
      * applied and results in 0 tests to run.
      */
     public void testRun_testcase_Junit4Test_filtering_no_more_tests() throws Exception {
-        mHostTest.setClassName(Junit4Testclass.class.getName());
+        mHostTest.setClassName(Junit4TestClass.class.getName());
         mHostTest.addExcludeAnnotation("com.android.tradefed.testtype.HostTestTest$MyAnnotation");
         mListener.testRunStarted((String)EasyMock.anyObject(), EasyMock.eq(0));
         mListener.testRunEnded(EasyMock.anyLong(), (Map<String, String>)EasyMock.anyObject());
@@ -807,7 +825,7 @@ public class HostTestTest extends TestCase {
      * Test that in case the class attempted to be ran is malformed we bubble up the test failure.
      */
     public void testRun_Junit4Test_malformed() throws Exception {
-        mHostTest.setClassName(Junit4MalformedTestclass.class.getName());
+        mHostTest.setClassName(Junit4MalformedTestClass.class.getName());
         mListener.testRunStarted((String)EasyMock.anyObject(), EasyMock.eq(1));
         Capture<TestIdentifier> captured = new Capture<>();
         mListener.testStarted(EasyMock.capture(captured));
@@ -816,7 +834,7 @@ public class HostTestTest extends TestCase {
         mListener.testRunEnded(EasyMock.anyLong(), (Map<String, String>)EasyMock.anyObject());
         EasyMock.replay(mListener);
         mHostTest.run(mListener);
-        assertEquals(Junit4MalformedTestclass.class.getName(), captured.getValue().getClassName());
+        assertEquals(Junit4MalformedTestClass.class.getName(), captured.getValue().getClassName());
         assertEquals("initializationError", captured.getValue().getTestName());
         EasyMock.verify(mListener);
     }
@@ -827,7 +845,7 @@ public class HostTestTest extends TestCase {
      */
     public void testRun_junit_suite_mix_filtering() throws Exception {
         OptionSetter setter = new OptionSetter(mHostTest);
-        setter.setOptionValue("class", Junit4Suiteclass.class.getName());
+        setter.setOptionValue("class", Junit4SuiteClass.class.getName());
         runMixJunitTestWithFilter(mHostTest);
     }
 
@@ -837,7 +855,7 @@ public class HostTestTest extends TestCase {
      */
     public void testRun_junit_suite_mix_filtering_collect() throws Exception {
         OptionSetter setter = new OptionSetter(mHostTest);
-        setter.setOptionValue("class", Junit4Suiteclass.class.getName());
+        setter.setOptionValue("class", Junit4SuiteClass.class.getName());
         setter.setOptionValue("collect-tests-only", "true");
         runMixJunitTestWithFilter(mHostTest);
     }
@@ -848,7 +866,7 @@ public class HostTestTest extends TestCase {
     private void runMixJunitTestWithFilter(HostTest hostTest) throws Exception {
         hostTest.addExcludeAnnotation("com.android.tradefed.testtype.HostTestTest$MyAnnotation2");
         TestIdentifier test1 = new TestIdentifier(SuccessTestCase.class.getName(), "testPass");
-        TestIdentifier test4 = new TestIdentifier(Junit4Testclass.class.getName(), "testPass6");
+        TestIdentifier test4 = new TestIdentifier(Junit4TestClass.class.getName(), "testPass6");
         mListener.testRunStarted((String)EasyMock.anyObject(), EasyMock.eq(2));
         EasyMock.expectLastCall().times(1);
         mListener.testStarted(EasyMock.eq(test1));
@@ -860,5 +878,179 @@ public class HostTestTest extends TestCase {
         EasyMock.replay(mListener);
         hostTest.run(mListener);
         EasyMock.verify(mListener);
+    }
+
+    /**
+     * Test for {@link HostTest#split()} making sure each test type is properly handled and added
+     * with a container or directly.
+     */
+    public void testRun_junit_suite_split() throws Exception {
+        OptionSetter setter = new OptionSetter(mHostTest);
+        mHostTest.setDevice(mMockDevice);
+        mHostTest.setBuild(mMockBuildInfo);
+        setter.setOptionValue("class", Junit4SuiteClass.class.getName());
+        setter.setOptionValue("class", SuccessTestSuite.class.getName());
+        setter.setOptionValue("class", TestRemoteNotCollector.class.getName());
+        List<IRemoteTest> list = (ArrayList<IRemoteTest>) mHostTest.split();
+        assertEquals(3, list.size());
+        assertEquals("com.android.tradefed.testtype.HostTest",
+                list.get(0).getClass().getName());
+        assertEquals("com.android.tradefed.testtype.HostTest",
+                list.get(1).getClass().getName());
+        assertEquals("com.android.tradefed.testtype.HostTest",
+                list.get(2).getClass().getName());
+
+        // We expect all the test from the JUnit4 suite to run under the original suite classname
+        // not under the container class name.
+        mListener.testRunStarted(
+                EasyMock.eq("com.android.tradefed.testtype.HostTestTest$Junit4SuiteClass"),
+                EasyMock.eq(4));
+        TestIdentifier test1 = new TestIdentifier(Junit4TestClass.class.getName(), "testPass5");
+        TestIdentifier test2 = new TestIdentifier(SuccessTestCase.class.getName(), "testPass");
+        TestIdentifier test3 = new TestIdentifier(SuccessTestCase.class.getName(), "testPass2");
+        TestIdentifier test4 = new TestIdentifier(Junit4TestClass.class.getName(), "testPass6");
+        mListener.testStarted(test1);
+        mListener.testEnded(EasyMock.eq(test1), (Map<String, String>)EasyMock.anyObject());
+        mListener.testStarted(EasyMock.eq(test2));
+        mListener.testEnded(EasyMock.eq(test2), (Map<String, String>)EasyMock.anyObject());
+        mListener.testStarted(EasyMock.eq(test3));
+        mListener.testEnded(EasyMock.eq(test3), (Map<String, String>)EasyMock.anyObject());
+        mListener.testStarted(EasyMock.eq(test4));
+        mListener.testEnded(EasyMock.eq(test4), (Map<String, String>)EasyMock.anyObject());
+        mListener.testRunEnded(EasyMock.anyLong(), (Map<String, String>)EasyMock.anyObject());
+        EasyMock.replay(mListener);
+        // Run the JUnit4 Container
+        ((IBuildReceiver)list.get(0)).setBuild(mMockBuildInfo);
+        ((IDeviceTest)list.get(0)).setDevice(mMockDevice);
+        list.get(0).run(mListener);
+        EasyMock.verify(mListener);
+    }
+
+    /**
+     * Test for {@link HostTest#split()} when no class is specified throws an exception
+     */
+    public void testSplit_noClass() throws Exception {
+        try {
+            mHostTest.split();
+            fail("Should have thrown an exception");
+        } catch (IllegalArgumentException e) {
+            assertEquals("Missing Test class name", e.getMessage());
+        }
+    }
+
+    /**
+     * Test for {@link HostTest#split()} when multiple classes are specified with a method option
+     * too throws an exception
+     */
+    public void testSplit_methodAndMultipleClass() throws Exception {
+        OptionSetter setter = new OptionSetter(mHostTest);
+        setter.setOptionValue("class", Junit4SuiteClass.class.getName());
+        setter.setOptionValue("class", SuccessTestSuite.class.getName());
+        mHostTest.setMethodName("testPass2");
+        try {
+            mHostTest.split();
+            fail("Should have thrown an exception");
+        } catch (IllegalArgumentException e) {
+            assertEquals("Method name given with multiple test classes", e.getMessage());
+        }
+    }
+
+    /**
+     * Test for {@link HostTest#split()} when a single class is specified, no splitting can occur
+     * and it returns null.
+     */
+    public void testSplit_singleClass() throws Exception {
+        OptionSetter setter = new OptionSetter(mHostTest);
+        setter.setOptionValue("class", SuccessTestSuite.class.getName());
+        mHostTest.setMethodName("testPass2");
+        assertNull(mHostTest.split());
+    }
+
+    /**
+     * Test for {@link HostTest#getTestShard(int, int)} with one shard per classes.
+     */
+    public void testGetTestStrictShardable() throws Exception {
+        OptionSetter setter = new OptionSetter(mHostTest);
+        setter.setOptionValue("class", Junit4SuiteClass.class.getName());
+        setter.setOptionValue("class", SuccessTestSuite.class.getName());
+        setter.setOptionValue("class", TestRemoteNotCollector.class.getName());
+        IRemoteTest shard0 = mHostTest.getTestShard(3, 0);
+        assertTrue(shard0 instanceof HostTest);
+        assertEquals(1, ((HostTest)shard0).getClasses().size());
+        assertEquals("com.android.tradefed.testtype.HostTestTest$Junit4SuiteClass",
+                ((HostTest)shard0).getClasses().get(0).getName());
+
+        IRemoteTest shard1 = mHostTest.getTestShard(3, 1);
+        assertTrue(shard1 instanceof HostTest);
+        assertEquals(1, ((HostTest)shard1).getClasses().size());
+        assertEquals("com.android.tradefed.testtype.HostTestTest$SuccessTestSuite",
+                ((HostTest)shard1).getClasses().get(0).getName());
+
+        IRemoteTest shard2 = mHostTest.getTestShard(3, 2);
+        assertTrue(shard2 instanceof HostTest);
+        assertEquals(1, ((HostTest)shard2).getClasses().size());
+        assertEquals("com.android.tradefed.testtype.HostTestTest$TestRemoteNotCollector",
+                ((HostTest)shard2).getClasses().get(0).getName());
+    }
+
+    /**
+     * Test for {@link HostTest#getTestShard(int, int)} when more shard than classes are requested,
+     * the empty shard will have no test (StubTest).
+     */
+    public void testGetTestStrictShardable_tooManyShards() throws Exception {
+        OptionSetter setter = new OptionSetter(mHostTest);
+        setter.setOptionValue("class", Junit4SuiteClass.class.getName());
+        setter.setOptionValue("class", SuccessTestSuite.class.getName());
+        IRemoteTest shard0 = mHostTest.getTestShard(4, 0);
+        assertTrue(shard0 instanceof HostTest);
+        assertEquals(1, ((HostTest)shard0).getClasses().size());
+        assertEquals("com.android.tradefed.testtype.HostTestTest$Junit4SuiteClass",
+                ((HostTest)shard0).getClasses().get(0).getName());
+
+        IRemoteTest shard1 = mHostTest.getTestShard(4, 1);
+        assertTrue(shard1 instanceof HostTest);
+        assertEquals(1, ((HostTest)shard1).getClasses().size());
+        assertEquals("com.android.tradefed.testtype.HostTestTest$SuccessTestSuite",
+                ((HostTest)shard1).getClasses().get(0).getName());
+
+        IRemoteTest shard2 = mHostTest.getTestShard(4, 2);
+        assertTrue(shard2 instanceof StubTest);
+        IRemoteTest shard3 = mHostTest.getTestShard(4, 3);
+        assertTrue(shard3 instanceof StubTest);
+    }
+
+    /**
+     * Test for {@link HostTest#getTestShard(int, int)} with one shard per classes.
+     */
+    public void testGetTestStrictShardable_wrapping() throws Exception {
+        final ITestDevice device = EasyMock.createMock(ITestDevice.class);
+        mHostTest.setDevice(device);
+        OptionSetter setter = new OptionSetter(mHostTest);
+        setter.setOptionValue("class", Junit4SuiteClass.class.getName());
+        setter.setOptionValue("class", SuccessTestSuite.class.getName());
+        setter.setOptionValue("class", TestRemoteNotCollector.class.getName());
+        setter.setOptionValue("class", SuccessHierarchySuite.class.getName());
+        setter.setOptionValue("class", SuccessDeviceTest.class.getName());
+        IRemoteTest shard0 = mHostTest.getTestShard(3, 0);
+        assertTrue(shard0 instanceof HostTest);
+        assertEquals(2, ((HostTest)shard0).getClasses().size());
+        assertEquals("com.android.tradefed.testtype.HostTestTest$Junit4SuiteClass",
+                ((HostTest)shard0).getClasses().get(0).getName());
+        assertEquals("com.android.tradefed.testtype.HostTestTest$SuccessHierarchySuite",
+                ((HostTest)shard0).getClasses().get(1).getName());
+
+        IRemoteTest shard1 = mHostTest.getTestShard(3, 1);
+        assertTrue(shard1 instanceof HostTest);
+        assertEquals(2, ((HostTest)shard1).getClasses().size());
+        assertEquals("com.android.tradefed.testtype.HostTestTest$SuccessTestSuite",
+                ((HostTest)shard1).getClasses().get(0).getName());
+        assertEquals("com.android.tradefed.testtype.HostTestTest$SuccessDeviceTest",
+                ((HostTest)shard1).getClasses().get(1).getName());
+
+        IRemoteTest shard2 = mHostTest.getTestShard(3, 2);
+        assertTrue(shard2 instanceof HostTest);
+        assertEquals(1, ((HostTest)shard2).getClasses().size());
+        assertEquals("com.android.tradefed.testtype.HostTestTest$TestRemoteNotCollector",
+                ((HostTest)shard2).getClasses().get(0).getName());
     }
 }
