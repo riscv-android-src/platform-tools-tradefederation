@@ -15,12 +15,9 @@
  */
 package com.android.tradefed.targetprep.multi;
 
-import com.android.tradefed.build.IBuildInfo;
-import com.android.tradefed.device.ITestDevice;
+import com.android.tradefed.invoker.IInvocationContext;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.targetprep.TargetSetupError;
-
-import java.util.Map;
 
 /**
  * Placeholder empty implementation of a {@link IMultiTargetPreparer}.
@@ -31,7 +28,7 @@ public class StubMultiTargetPreparer implements IMultiTargetPreparer {
      * {@inheritDoc}
      */
     @Override
-    public void setUp(Map<ITestDevice, IBuildInfo> deviceBuildInfo) throws TargetSetupError {
+    public void setUp(IInvocationContext context) throws TargetSetupError {
         CLog.d("skipping target prepare step");
     }
 }
