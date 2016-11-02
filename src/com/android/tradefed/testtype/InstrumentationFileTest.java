@@ -201,8 +201,8 @@ class InstrumentationFileTest implements IRemoteTest {
         runner.setTestFilePathOnDevice(null);
         // enforce serial re-run
         runner.setReRunUsingTestFile(false);
-        // Set tests to run and set forceBatchMode to false
-        runner.setTestsToRun(mTests, false);
+        // Set tests to run
+        runner.setTestsToRun(mTests);
         runner.run(listener);
     }
 
