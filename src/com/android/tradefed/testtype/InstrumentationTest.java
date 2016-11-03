@@ -454,7 +454,7 @@ public class InstrumentationTest implements IDeviceTest, IResumableTest, ITestCo
     }
 
     /**
-     * Add an argument to provide when running the instrumentation tests
+     * Add an argument to provide when running the instrumentation tests.
      *
      * @param key the argument name
      * @param value the argument value
@@ -463,6 +463,20 @@ public class InstrumentationTest implements IDeviceTest, IResumableTest, ITestCo
         mInstrArgMap.put(key, value);
     }
 
+    /**
+     * Retrieve the value of an argument to provide when running the instrumentation tests.
+     *
+     * @param key the argument name
+     * @param value the argument value
+     * <p/>
+     * Exposed for testing
+     */
+    String getInstrumentationArg(String key) {
+        if (mInstrArgMap.containsKey(key)) {
+            return mInstrArgMap.get(key);
+        }
+        return null;
+    }
 
     /**
      * Sets force-abi option.

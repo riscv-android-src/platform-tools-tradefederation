@@ -190,6 +190,24 @@ public class InstalledInstrumentationsTest
     }
 
     /**
+     * Sets the number of total shards this test should be split into.
+     * <p/>
+     * Exposed for unit testing.
+     */
+    void setTotalShards(int totalShards) {
+        mTotalShards = totalShards;
+    }
+
+    /**
+     * Sets the shard index number of this test.
+     * <p/>
+     * Exposed for unit testing.
+     */
+    void setShardIndex(int shardIndex) {
+        mShardIndex = shardIndex;
+    }
+
+    /**
      * {@inheritDoc}
      */
     @Override
@@ -218,9 +236,19 @@ public class InstalledInstrumentationsTest
                         getDevice().getSerialNumber()));
             }
 
+            int numUnshardedTests = 0;
             mTests = new LinkedList<InstrumentationTest>();
             for (InstrumentationTarget target : parser.getInstrumentationTargets()) {
                 if (mRunner == null || mRunner.equals(target.runnerName)) {
+                    // Some older instrumentations are not shardable. As a result, we should try to
+                    // shard these instrumentations by APKs, rather than by test methods.
+                    if (mTotalShards > 0 && !target.isShardable()) {
+                        numUnshardedTests += 1;
+                        if ((numUnshardedTests - 1) % mTotalShards != mShardIndex) {
+                            continue;
+                        }
+                    }
+
                     InstrumentationTest t = createInstrumentationTest();
                     try {
                         // Copies all current argument values to the new runner that will be
@@ -233,7 +261,7 @@ public class InstalledInstrumentationsTest
                     t.setPackageName(target.packageName);
                     t.setRunnerName(target.runnerName);
                     t.setCoverageTarget(target.targetName);
-                    if (mTotalShards > 0) {
+                    if (mTotalShards > 0 && target.isShardable()) {
                         t.addInstrumentationArg("shardIndex", Integer.toString(mShardIndex));
                         t.addInstrumentationArg("numShards", Integer.toString(mTotalShards));
                     }
@@ -322,16 +350,7 @@ public class InstalledInstrumentationsTest
         if (mShards > 1) {
             Collection<IRemoteTest> shards = new ArrayList<>(mShards);
             for (int index = 0; index < mShards; index++) {
-                InstalledInstrumentationsTest shard = new InstalledInstrumentationsTest();
-                try {
-                    OptionCopier.copyOptions(this, shard);
-                } catch (ConfigurationException e) {
-                    CLog.e("failed to copy instrumentation options: %s", e.getMessage());
-                }
-                shard.mShards = 0;
-                shard.mShardIndex = index;
-                shard.mTotalShards = mShards;
-                shards.add(shard);
+                shards.add(getTestShard(mShards, index));
             }
             return shards;
         }
