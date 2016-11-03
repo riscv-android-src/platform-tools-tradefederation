@@ -22,14 +22,17 @@ import com.android.ddmlib.testrunner.TestIdentifier;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.result.ITestInvocationListener;
+import com.android.tradefed.util.ListInstrumentationParser;
 
 import junit.framework.TestCase;
 
 import org.easymock.EasyMock;
 import org.easymock.IAnswer;
 
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
@@ -55,6 +58,7 @@ public class InstrumentationTestTest extends TestCase {
     private ITestDevice mMockTestDevice;
     private IRemoteAndroidTestRunner mMockRemoteRunner;
     private ITestInvocationListener mMockListener;
+    private ListInstrumentationParser mMockListInstrumentationParser;
 
     /**
      * Helper class for providing an EasyMock {@link IAnswer} to a
@@ -99,6 +103,19 @@ public class InstrumentationTestTest extends TestCase {
         EasyMock.expect(mMockTestDevice.getSerialNumber()).andStubReturn("serial");
         mMockRemoteRunner = EasyMock.createMock(IRemoteAndroidTestRunner.class);
         mMockListener = EasyMock.createMock(ITestInvocationListener.class);
+        mMockListInstrumentationParser = new ListInstrumentationParser() {
+            @Override
+            public List<InstrumentationTarget> getInstrumentationTargets() {
+                InstrumentationTarget target1 = new InstrumentationTarget(
+                        TEST_PACKAGE_VALUE, "runner1", "target1");
+                InstrumentationTarget target2 = new InstrumentationTarget(
+                        "package2", "runner2", "target2");
+                List<InstrumentationTarget> targets = new ArrayList<>(2);
+                targets.add(target1);
+                targets.add(target2);
+                return targets;
+            }
+        };
 
         mInstrumentationTest = new InstrumentationTest() {
             @Override
@@ -110,6 +127,7 @@ public class InstrumentationTestTest extends TestCase {
         mInstrumentationTest.setPackageName(TEST_PACKAGE_VALUE);
         mInstrumentationTest.setRunnerName(TEST_RUNNER_VALUE);
         mInstrumentationTest.setDevice(mMockTestDevice);
+        mInstrumentationTest.setListInstrumentationParser(mMockListInstrumentationParser);
         // default to no rerun, for simplicity
         mInstrumentationTest.setRerunMode(false);
         // default to no timeout for simplicity
@@ -451,6 +469,29 @@ public class InstrumentationTestTest extends TestCase {
         } catch (IllegalArgumentException e) {
             // expected
         }
+    }
+
+    public void testQueryRunnerName() throws Exception {
+        String queriedRunner = mInstrumentationTest.queryRunnerName();
+        assertEquals("runner1", queriedRunner);
+    }
+
+    public void testQueryRunnerName_noMatch() throws Exception {
+        mInstrumentationTest.setPackageName("noMatchPackage");
+        String queriedRunner = mInstrumentationTest.queryRunnerName();
+        assertNull(queriedRunner);
+    }
+
+    public void testRun_noMatchingRunner() throws Exception {
+        mInstrumentationTest.setPackageName("noMatchPackage");
+        mInstrumentationTest.setRunnerName(null);
+        try {
+            mInstrumentationTest.run(mMockListener);
+        } catch (IllegalArgumentException e) {
+            // expected
+            return;
+        }
+        fail("Should have thrown an exception.");
     }
 
     private void setCollectTestsExpectations(CollectTestAnswer collectTestAnswer)

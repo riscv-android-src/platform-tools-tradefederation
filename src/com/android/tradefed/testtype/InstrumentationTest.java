@@ -37,7 +37,10 @@ import com.android.tradefed.result.InputStreamSource;
 import com.android.tradefed.result.LogDataType;
 import com.android.tradefed.result.ResultForwarder;
 import com.android.tradefed.util.AbiFormatter;
+import com.android.tradefed.util.ListInstrumentationParser;
+import com.android.tradefed.util.ListInstrumentationParser.InstrumentationTarget;
 import com.android.tradefed.util.StringEscapeUtils;
+import com.google.common.annotations.VisibleForTesting;
 
 import junit.framework.Assert;
 
@@ -71,8 +74,9 @@ public class InstrumentationTest implements IDeviceTest, IResumableTest, ITestCo
     private String mPackageName = null;
 
     @Option(name = "runner",
-            description="The instrumentation test runner class name to use.")
-    private String mRunnerName = "android.test.InstrumentationTestRunner";
+            description="The instrumentation test runner class name to use. Will try to determine "
+                    + "automatically if it is not specified.")
+    private String mRunnerName = null;
 
     @Option(name = "class", shortName = 'c',
             description="The test class name to run.")
@@ -195,6 +199,8 @@ public class InstrumentationTest implements IDeviceTest, IResumableTest, ITestCo
     private String mCoverageTarget = null;
 
     private String mTestFilePathOnDevice = null;
+
+    private ListInstrumentationParser mListInstrumentationParser = null;
 
     /**
      * {@inheritDoc}
@@ -548,6 +554,43 @@ public class InstrumentationTest implements IDeviceTest, IResumableTest, ITestCo
     }
 
     /**
+     * Set the {@link ListInstrumentationParser}.
+     */
+    @VisibleForTesting
+    void setListInstrumentationParser(ListInstrumentationParser listInstrumentationParser) {
+        mListInstrumentationParser = listInstrumentationParser;
+    }
+
+    /**
+     * Get the {@link ListInstrumentationParser} used to parse 'pm list instrumentation' queries.
+     */
+    protected ListInstrumentationParser getListInstrumentationParser() {
+        if (mListInstrumentationParser == null) {
+            mListInstrumentationParser = new ListInstrumentationParser();
+        }
+        return mListInstrumentationParser;
+    }
+
+    /**
+     * Query the device for a test runner to use.
+     *
+     * @return the first test runner name that matches the package or null if we don't find any.
+     * @throws DeviceNotAvailableException
+     */
+    protected String queryRunnerName() throws DeviceNotAvailableException {
+        ListInstrumentationParser parser = getListInstrumentationParser();
+        getDevice().executeShellCommand("pm list instrumentation", parser);
+
+        for (InstrumentationTarget target : parser.getInstrumentationTargets()) {
+            if (mPackageName.equals(target.packageName)) {
+                return target.runnerName;
+            }
+        }
+        CLog.w("Unable to determine runner name for package: %s", mPackageName);
+        return null;
+    }
+
+    /**
      * {@inheritDoc}
      */
     @Override
@@ -559,8 +602,17 @@ public class InstrumentationTest implements IDeviceTest, IResumableTest, ITestCo
             throw new IllegalArgumentException("Device has not been set");
         }
 
-        mRunner = createRemoteAndroidTestRunner(mPackageName, mRunnerName,
-                mDevice.getIDevice());
+        if (mRunnerName == null) {
+            String runnerName = queryRunnerName();
+            if (runnerName == null) {
+                throw new IllegalArgumentException(
+                        "runner name has not been set and no matching instrumentations were found");
+            }
+            setRunnerName(runnerName);
+            CLog.i("No runner name specified. Using: %s", mRunnerName);
+        }
+
+        mRunner = createRemoteAndroidTestRunner(mPackageName, mRunnerName, mDevice.getIDevice());
         setRunnerArgs(mRunner);
         if (mInstallFile != null) {
             Assert.assertNull(mDevice.installPackage(mInstallFile, true,
