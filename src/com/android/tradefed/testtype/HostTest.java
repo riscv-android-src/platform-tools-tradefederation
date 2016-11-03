@@ -16,6 +16,7 @@
 package com.android.tradefed.testtype;
 
 import com.android.ddmlib.testrunner.TestIdentifier;
+import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.config.ConfigurationException;
 import com.android.tradefed.config.Option;
 import com.android.tradefed.config.Option.Importance;
@@ -58,7 +59,7 @@ import java.util.Set;
  */
 @OptionClass(alias = "host")
 public class HostTest implements IDeviceTest, ITestFilterReceiver, ITestAnnotationFilterReceiver,
-        IRemoteTest, ITestCollector {
+        IRemoteTest, ITestCollector, IBuildReceiver, IAbiReceiver {
 
     @Option(name = "class", description = "The JUnit test classes to run, in the format "
             + "<package>.<class>. eg. \"com.android.foo.Bar\". This field can be repeated.",
@@ -92,6 +93,8 @@ public class HostTest implements IDeviceTest, ITestFilterReceiver, ITestAnnotati
     private boolean mCollectTestsOnly = false;
 
     private ITestDevice mDevice;
+    private IBuildInfo mBuildInfo;
+    private IAbi mAbi;
     private TestFilterHelper mFilterHelper;
 
     private static final String EXCLUDE_NO_TEST_FAILURE = "org.junit.runner.manipulation.Filter";
@@ -115,6 +118,22 @@ public class HostTest implements IDeviceTest, ITestFilterReceiver, ITestAnnotati
     @Override
     public void setDevice(ITestDevice device) {
         mDevice = device;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void setAbi(IAbi abi) {
+        mAbi = abi;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void setBuild(IBuildInfo buildInfo) {
+        mBuildInfo = buildInfo;
     }
 
     /**
@@ -233,6 +252,28 @@ public class HostTest implements IDeviceTest, ITestFilterReceiver, ITestAnnotati
     }
 
     /**
+     * Helper to set the information of an object based on some of its type.
+     */
+    private void setTestObjectInformation(Object testObj) {
+        if (testObj instanceof IBuildReceiver) {
+            if (mBuildInfo == null) {
+                throw new IllegalArgumentException("Missing build information");
+            }
+            ((IBuildReceiver)testObj).setBuild(mBuildInfo);
+        }
+        if (testObj instanceof IDeviceTest) {
+            if (mDevice == null) {
+                throw new IllegalArgumentException("Missing device");
+            }
+            ((IDeviceTest)testObj).setDevice(mDevice);
+        }
+        // We are more flexible about abi info since not always available.
+        if (testObj instanceof IAbiReceiver) {
+            ((IAbiReceiver)testObj).setAbi(mAbi);
+        }
+    }
+
+    /**
      * {@inheritDoc}
      */
     @Override
@@ -318,7 +359,8 @@ public class HostTest implements IDeviceTest, ITestFilterReceiver, ITestAnnotati
                     if (mCollectTestsOnly) {
                         fakeDescriptionExecution(checkRunner.getDescription(), list);
                     } else {
-                        runnerCore.run(req);
+                        setTestObjectInformation(checkRunner);
+                        runnerCore.run(checkRunner);
                     }
                     listener.testRunEnded(System.currentTimeMillis() - startTime,
                             Collections.emptyMap());
@@ -457,12 +499,8 @@ public class HostTest implements IDeviceTest, ITestFilterReceiver, ITestAnnotati
                     throw new RuntimeException("error passing options down to test class", ce);
                 }
             }
-            if (testObj instanceof IDeviceTest) {
-                if (mDevice == null) {
-                    throw new IllegalArgumentException("Missing device");
-                }
-                ((IDeviceTest)testObj).setDevice(mDevice);
-            }
+            // Set the test information if needed.
+            setTestObjectInformation(testObj);
             return testObj;
         } catch (InstantiationException e) {
             throw new IllegalArgumentException(String.format("Could not load Test class %s",
@@ -507,4 +545,5 @@ public class HostTest implements IDeviceTest, ITestFilterReceiver, ITestAnnotati
         }
         return false;
     }
+
 }
