@@ -38,6 +38,9 @@ import com.android.tradefed.device.ITestDevice.RecoveryMode;
 import com.android.tradefed.device.TestDeviceOptions;
 import com.android.tradefed.log.ILeveledLogOutput;
 import com.android.tradefed.log.ILogRegistry;
+import com.android.tradefed.profiler.IAggregatingTestProfiler;
+import com.android.tradefed.profiler.ITestProfiler;
+import com.android.tradefed.profiler.MetricOutputData;
 import com.android.tradefed.result.ByteArrayInputStreamSource;
 import com.android.tradefed.result.ILogSaver;
 import com.android.tradefed.result.ILogSaverListener;
@@ -62,15 +65,15 @@ import com.android.tradefed.testtype.IStrictShardableTest;
 import junit.framework.Test;
 import junit.framework.TestCase;
 
+import org.easymock.Capture;
+import org.easymock.EasyMock;
+
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
-
-import org.easymock.Capture;
-import org.easymock.EasyMock;
 
 /**
  * Unit tests for {@link TestInvocation}.
@@ -1029,6 +1032,28 @@ public class TestInvocationTest extends TestCase {
         verifyMocks(mockProvider);
     }
 
+    /**
+     * Test that a config with an {@link ITestProfiler} attempts to setup and teardown the
+     * profiler.
+     */
+    public void testInvoke_profiler() throws Throwable {
+        IAggregatingTestProfiler mockProfiler = EasyMock.createMock(IAggregatingTestProfiler.class);
+        mStubConfiguration.setProfiler(mockProfiler);
+        setupInvoke();
+        EasyMock.expect(mMockBuildProvider.getBuild()).andReturn(mMockBuildInfo);
+        mMockPreparer.setUp(mMockDevice, mMockBuildInfo);
+        setupInvokeWithBuild();
+        setupMockSuccessListeners();
+        EasyMock.expectLastCall();
+        mockProfiler.setUp((IInvocationContext)EasyMock.anyObject());
+        EasyMock.expectLastCall();
+        EasyMock.expect(mockProfiler.getMetricOutputUtil()).andReturn(new MetricOutputData());
+        mockProfiler.reportAllMetrics(((ITestInvocationListener)EasyMock.anyObject()));
+        EasyMock.expectLastCall();
+        replayMocks(mockProfiler);
+        mTestInvocation.invoke(mStubInvocationMetadata, mStubConfiguration, mockRescheduler);
+        verifyMocks(mockProfiler);
+    }
     /**
      * Set up expected conditions for normal run up to the part where tests are run.
      *

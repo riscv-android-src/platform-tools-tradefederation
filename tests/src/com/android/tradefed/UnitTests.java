@@ -63,6 +63,9 @@ import com.android.tradefed.invoker.TestInvocationTest;
 import com.android.tradefed.log.FileLoggerTest;
 import com.android.tradefed.log.LogRegistryTest;
 import com.android.tradefed.log.TerribleFailureEmailHandlerTest;
+import com.android.tradefed.profiler.AggregatingProfilerTest;
+import com.android.tradefed.profiler.MetricOutputDataTest;
+import com.android.tradefed.result.AggregatingProfilerListenerTest;
 import com.android.tradefed.result.BugreportCollectorTest;
 import com.android.tradefed.result.CollectingTestListenerTest;
 import com.android.tradefed.result.ConsoleResultReporterTest;
@@ -126,14 +129,14 @@ import com.android.tradefed.testtype.NativeStressTestParserTest;
 import com.android.tradefed.testtype.NativeStressTestTest;
 import com.android.tradefed.testtype.PythonUnitTestResultParserTest;
 import com.android.tradefed.testtype.PythonUnitTestRunnerTest;
+import com.android.tradefed.testtype.TfTestLauncherTest;
+import com.android.tradefed.testtype.VersionedTfLauncherTest;
 import com.android.tradefed.testtype.suite.ITestSuiteTest;
 import com.android.tradefed.testtype.suite.ModuleDefinitionTest;
 import com.android.tradefed.testtype.suite.TestFailureListenerTest;
 import com.android.tradefed.testtype.suite.TfSuiteRunnerTest;
 import com.android.tradefed.testtype.testdefs.XmlDefsParserTest;
 import com.android.tradefed.testtype.testdefs.XmlDefsTestTest;
-import com.android.tradefed.testtype.TfTestLauncherTest;
-import com.android.tradefed.testtype.VersionedTfLauncherTest;
 import com.android.tradefed.util.AaptParserTest;
 import com.android.tradefed.util.AbiFormatterTest;
 import com.android.tradefed.util.AbiUtilsTest;
@@ -260,7 +263,12 @@ import org.junit.runners.Suite.SuiteClasses;
     LogRegistryTest.class,
     TerribleFailureEmailHandlerTest.class,
 
+    // profiler subdirs
+    AggregatingProfilerTest.class,
+    MetricOutputDataTest.class,
+
     // result
+    AggregatingProfilerListenerTest.class,
     BugreportCollectorTest.class,
     ConsoleResultReporterTest.class,
     CollectingTestListenerTest.class,

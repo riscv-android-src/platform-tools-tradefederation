@@ -26,6 +26,8 @@ import com.android.tradefed.device.IDeviceSelection;
 import com.android.tradefed.device.TestDeviceOptions;
 import com.android.tradefed.log.ILeveledLogOutput;
 import com.android.tradefed.log.StdoutLogger;
+import com.android.tradefed.profiler.ITestProfiler;
+import com.android.tradefed.profiler.StubTestProfiler;
 import com.android.tradefed.result.FileSystemLogSaver;
 import com.android.tradefed.result.ILogSaver;
 import com.android.tradefed.result.ITestInvocationListener;
@@ -84,6 +86,7 @@ public class Configuration implements IConfiguration {
     public static final String SYSTEM_STATUS_CHECKER_TYPE_NAME = "system_checker";
     public static final String CONFIGURATION_DESCRIPTION_TYPE_NAME = "config_desc";
     public static final String DEVICE_NAME = "device";
+    public static final String TEST_PROFILER_TYPE_NAME = "test_profiler";
 
     // additional element names used for emitting the configuration XML.
     private static final String CONFIGURATION_NAME = "configuration";
@@ -164,6 +167,7 @@ public class Configuration implements IConfiguration {
             sObjTypeMap.put(
                     CONFIGURATION_DESCRIPTION_TYPE_NAME,
                     new ObjTypeInfo(ConfigurationDescriptor.class, false));
+            sObjTypeMap.put(TEST_PROFILER_TYPE_NAME, new ObjTypeInfo(ITestProfiler.class, false));
         }
         return sObjTypeMap;
     }
@@ -213,6 +217,7 @@ public class Configuration implements IConfiguration {
         setMultiTargetPreparer(new StubMultiTargetPreparer());
         setSystemStatusCheckers(new ArrayList<ISystemStatusChecker>());
         setConfigurationDescriptor(new ConfigurationDescriptor());
+        setProfiler(new StubTestProfiler());
     }
 
     /**
@@ -352,9 +357,14 @@ public class Configuration implements IConfiguration {
                 RESULT_REPORTER_TYPE_NAME);
     }
 
-    /**
-     * {@inheritDoc}
-     */
+    /** {@inheritDoc} */
+    @SuppressWarnings("unchecked")
+    @Override
+    public ITestProfiler getProfiler() {
+        return (ITestProfiler) getConfigurationObject(TEST_PROFILER_TYPE_NAME);
+    }
+
+    /** {@inheritDoc} */
     @Override
     public ICommandOptions getCommandOptions() {
         return (ICommandOptions) getConfigurationObject(CMD_OPTIONS_TYPE_NAME);
@@ -710,17 +720,19 @@ public class Configuration implements IConfiguration {
         setConfigurationObjectNoThrow(SYSTEM_STATUS_CHECKER_TYPE_NAME, systemChecker);
     }
 
-    /**
-     * {@inheritDoc}
-     */
+    /** {@inheritDoc} */
+    @Override
+    public void setProfiler(ITestProfiler profiler) {
+        setConfigurationObjectNoThrow(TEST_PROFILER_TYPE_NAME, profiler);
+    }
+
+    /** {@inheritDoc} */
     @Override
     public void setLogOutput(ILeveledLogOutput logger) {
         setConfigurationObjectNoThrow(LOGGER_TYPE_NAME, logger);
     }
 
-    /**
-     * {@inheritDoc}
-     */
+    /** {@inheritDoc} */
     @Override
     public void setLogSaver(ILogSaver logSaver) {
         setConfigurationObjectNoThrow(LOG_SAVER_TYPE_NAME, logSaver);
@@ -1181,14 +1193,13 @@ public class Configuration implements IConfiguration {
         dumpClassToXml(serializer, CMD_OPTIONS_TYPE_NAME, getCommandOptions());
         dumpClassToXml(serializer, DEVICE_REQUIREMENTS_TYPE_NAME, getDeviceRequirements());
         dumpClassToXml(serializer, DEVICE_OPTIONS_TYPE_NAME, getDeviceOptions());
+        dumpClassToXml(serializer, TEST_PROFILER_TYPE_NAME, getProfiler());
 
         serializer.endTag(null, CONFIGURATION_NAME);
         serializer.endDocument();
     }
 
-    /**
-     * Add a class to the command XML dump.
-     */
+    /** Add a class to the command XML dump. */
     private void dumpClassToXml(KXmlSerializer serializer, String classTypeName, Object obj)
             throws IOException {
         serializer.startTag(null, classTypeName);

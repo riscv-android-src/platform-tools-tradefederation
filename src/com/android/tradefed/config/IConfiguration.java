@@ -23,6 +23,7 @@ import com.android.tradefed.device.IDeviceRecovery;
 import com.android.tradefed.device.IDeviceSelection;
 import com.android.tradefed.device.TestDeviceOptions;
 import com.android.tradefed.log.ILeveledLogOutput;
+import com.android.tradefed.profiler.ITestProfiler;
 import com.android.tradefed.result.ILogSaver;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.suite.checker.ISystemStatusChecker;
@@ -30,6 +31,7 @@ import com.android.tradefed.targetprep.ITargetPreparer;
 import com.android.tradefed.targetprep.multi.IMultiTargetPreparer;
 import com.android.tradefed.testtype.IRemoteTest;
 import com.android.tradefed.util.keystore.IKeyStoreClient;
+
 import org.json.JSONArray;
 import org.json.JSONException;
 
@@ -116,6 +118,13 @@ public interface IConfiguration {
      * @return the {@link ISystemStatusChecker}s provided in order in the configuration
      */
     public List<ISystemStatusChecker> getSystemStatusCheckers();
+
+    /**
+     * Gets the {@link ITestProfiler} from the configuration.
+     *
+     * @return the {@link ITestProfiler} provided in the configuration.
+     */
+    public ITestProfiler getProfiler();
 
     /**
      * Gets the {@link ICommandOptions} to use from the configuration.
@@ -333,6 +342,13 @@ public interface IConfiguration {
      * @param listener
      */
     public void setTestInvocationListener(ITestInvocationListener listener);
+
+    /**
+     * Set the {@link ITestProfiler}, replacing any existing values
+     *
+     * @param profiler
+     */
+    public void setProfiler(ITestProfiler profiler);
 
     /**
      * Set the {@link ICommandOptions}, replacing any existing values
