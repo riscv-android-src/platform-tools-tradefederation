@@ -19,13 +19,14 @@ package com.android.monkey;
 import com.android.tradefed.log.ITestLogger;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.result.ByteArrayInputStreamSource;
+import com.android.tradefed.result.FileInputStreamSource;
 import com.android.tradefed.result.InputStreamSource;
 import com.android.tradefed.result.LogDataType;
 import com.android.tradefed.util.CommandResult;
+import com.android.tradefed.util.CommandStatus;
 import com.android.tradefed.util.FileUtil;
 import com.android.tradefed.util.RunUtil;
 import com.android.tradefed.util.StreamUtil;
-
 import java.io.File;
 import java.io.IOException;
 
@@ -154,26 +155,18 @@ public class AnrReportGenerator {
         };
         CommandResult cr = RunUtil.getDefault().runTimedCmdSilently(REPORT_GENERATION_TIMEOUT,
                 command);
-        CLog.v("Report generation result: %s\nstdout:\n%s\nstderr:%s\n", cr.getStatus().toString(),
-                cr.getStdout(), cr.getStderr());
-        if (!htmlReport.exists()) {
-            CLog.w("Report was not generated at: %s", htmlReportPath);
+        if (cr.getStatus() == CommandStatus.SUCCESS) {
+            // Test log the generated HTML report
+            InputStreamSource source = new FileInputStreamSource(htmlReport);
+            logger.testLog("monkey-anr-report", LogDataType.HTML, source);
+            // Clean up and declare success!
+            source.cancel();
+            FileUtil.deleteFile(htmlReport);
+            return true;
+        } else {
+            CLog.w(cr.getStderr());
             return false;
         }
-        CLog.v("Report generated at: %s", htmlReportPath);
-        // do some string manipulation and save the URL
-        if (htmlReportPath.startsWith(mReportBasePath)) {
-            String url = String.format("%s%s", mReportUrlPrefix,
-                    htmlReportPath.substring(mReportBasePath.length()));
-            CLog.d("Report URL: %s", url);
-            InputStreamSource iss = new ByteArrayInputStreamSource(url.getBytes());
-            logger.testLog("anr-report-url", LogDataType.TEXT, iss);
-            StreamUtil.cancel(iss);
-            return true;
-        }
-        CLog.w("HTML report path is: %s, which did not start with: %s, not sure how to "
-                + "perform URL path transformation.", htmlReport, mReportBasePath);
-        return false;
     }
 
     public void cleanTempFiles() {
