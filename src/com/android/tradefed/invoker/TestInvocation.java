@@ -683,7 +683,7 @@ public class TestInvocation implements ITestInvocation {
                 ((ITestLoggerReceiver) multipreparer).setTestLogger(listener);
             }
             CLog.d("Starting multi target preparer '%s'", multipreparer);
-            multipreparer.setUp(context.getDeviceBuildMap());
+            multipreparer.setUp(context);
             CLog.d("done with multi target preparer '%s'", multipreparer);
         }
     }
@@ -698,7 +698,7 @@ public class TestInvocation implements ITestInvocation {
         while (iterator.hasPrevious()) {
             IMultiTargetPreparer multipreparer = iterator.previous();
             CLog.d("Starting multi target tearDown '%s'", multipreparer);
-            multipreparer.tearDown(context.getDeviceBuildMap(), throwable);
+            multipreparer.tearDown(context, throwable);
             CLog.d("Done with multi target tearDown '%s'", multipreparer);
         }
 

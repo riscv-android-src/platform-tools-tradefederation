@@ -15,14 +15,11 @@
  */
 package com.android.tradefed.targetprep.multi;
 
-import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.device.DeviceNotAvailableException;
-import com.android.tradefed.device.ITestDevice;
+import com.android.tradefed.invoker.IInvocationContext;
 import com.android.tradefed.targetprep.BuildError;
 import com.android.tradefed.targetprep.ITargetPreparer;
 import com.android.tradefed.targetprep.TargetSetupError;
-
-import java.util.Map;
 
 /**
  * Prepares the test environment for several devices together. Only use for a setup that requires
@@ -37,22 +34,23 @@ public interface IMultiTargetPreparer {
     /**
      * Perform the targets setup for testing.
      *
-     * @param deviceBuildInfo the map of {@link ITestDevice} and {@link IBuildInfo}
+     * @param context the {@link IInvocationContext} describing the invocation, devices, builds.
      * @throws TargetSetupError if fatal error occurred setting up environment
      * @throws DeviceNotAvailableException if device became unresponsive
      */
-    public void setUp(Map<ITestDevice, IBuildInfo> deviceBuildInfo) throws TargetSetupError,
+    public void setUp(IInvocationContext context) throws TargetSetupError,
             BuildError, DeviceNotAvailableException;
+
 
     /**
      * Perform the targets cleanup/teardown after testing.
      *
-     * @param deviceBuildInfo the map of {@link ITestDevice} and {@link IBuildInfo}
+     * @param context the {@link IInvocationContext} describing the invocation, devices, builds.
      * @param e if the invocation ended with an exception, this will be the exception that was
      *        caught at the Invocation level.  Otherwise, will be <code>null</code>.
      * @throws DeviceNotAvailableException if device became unresponsive
      */
-    public default void tearDown(Map<ITestDevice, IBuildInfo> deviceBuildInfo, Throwable e)
+    public default void tearDown(IInvocationContext context, Throwable e)
             throws DeviceNotAvailableException {
         // default do nothing.
     }
