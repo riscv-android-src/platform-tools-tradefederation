@@ -27,7 +27,7 @@ public interface ITestDeviceMutator {
 
 
    /**
-    * Changes the {@IDevice device} held by {@link ITestDevice}
+    * Changes the {@link IDevice} held by {@link ITestDevice}
     * @param testDevice
     * @param device
     */

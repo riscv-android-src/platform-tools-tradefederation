@@ -551,9 +551,8 @@ public class GlobalConfiguration implements IGlobalConfiguration {
      * Outputs a command line usage help text for this configuration to given printStream.
      *
      * @param out the {@link PrintStream} to use.
-     * @throw {@link ConfigurationException}
+     * @throws ConfigurationException
      */
-//    @Override
     public void printCommandUsage(boolean importantOnly, PrintStream out)
             throws ConfigurationException {
         out.println(String.format("'%s' configuration: %s", getName(), getDescription()));

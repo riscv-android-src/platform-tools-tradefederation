@@ -36,7 +36,7 @@ import java.util.regex.Pattern;
  * "out.txt" in "-f out.txt"), or a non-option positional argument.
  * <p/>
  * Each option argument must map to one or more {@link Option} fields. A long option maps to the
- * {@link Option#name}, and a short option maps to {@link Option#shortName}. Each
+ * {@link Option#name()}, and a short option maps to {@link Option#shortName()}. Each
  * {@link Option#name()} and {@link Option#shortName()} must be unique with respect to all other
  * {@link Option} fields within the same object.
  * <p/>

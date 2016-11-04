@@ -61,6 +61,9 @@ public class XmlDefsTest implements IDeviceTest, IResumableTest,
 
     private ITestDevice mDevice;
 
+    /**
+     * @deprecated use shell-timeout or test-timeout instead.
+     */
     @Deprecated
     @Option(name = "timeout",
             description="Deprecated - Use \"shell-timeout\" or \"test-timeout\" instead.")

@@ -120,6 +120,10 @@ public class TestInvocation implements ITestInvocation {
             mCurrentElapsedTime = currentElapsedTime;
         }
 
+        /**
+         * {@inheritDoc}
+         * @deprecated use {@link #invocationStarted(IInvocationContext)} instead.
+         */
         @Deprecated
         @Override
         public void invocationStarted(IBuildInfo buildInfo) {
@@ -139,6 +143,8 @@ public class TestInvocation implements ITestInvocation {
 
     /**
      * {@inheritDoc}
+     * @deprecated use {@link #invoke(IInvocationContext, IConfiguration, IRescheduler,
+            ITestInvocationListener[])} instead.
      */
     @Override
     @Deprecated

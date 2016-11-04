@@ -339,17 +339,26 @@ public class DeviceSetup implements ITargetPreparer, ITargetCleaner {
     protected String mRemoteDataPath = null;
 
     // Deprecated options follow
+    /**
+     * @deprecated use min-external-storage-kb instead.
+     */
     @Option(name = "min-external-store-space",
             description = "deprecated, use option min-external-storage-kb. The minimum amount of " +
             "free space in KB that must be present on device's external storage.")
     @Deprecated
     private long mDeprecatedMinExternalStoreSpace = DEFAULT_MIN_EXTERNAL_STORAGE_KB;
 
+    /**
+     * @deprecated use option disable-audio instead.
+     */
     @Option(name = "audio-silent",
             description = "deprecated, use option disable-audio. set ro.audio.silent on boot.")
     @Deprecated
     private boolean mDeprecatedSetAudioSilent = DEFAULT_DISABLE_AUDIO;
 
+    /**
+     * @deprecated use option set-property instead.
+     */
     @Option(name = "setprop",
             description = "deprecated, use option set-property. set the specified property on " +
             "boot. Format: --setprop key=value. May be repeated.")
@@ -1162,6 +1171,7 @@ public class DeviceSetup implements ITargetPreparer, ITargetCleaner {
 
     /**
      * Exposed for unit testing
+     * @deprecated use {@link #setMinExternalStorageKb(long)} instead.
      */
     @Deprecated
     protected void setDeprecatedMinExternalStoreSpace(long storeSpace) {
@@ -1170,6 +1180,7 @@ public class DeviceSetup implements ITargetPreparer, ITargetCleaner {
 
     /**
      * Exposed for unit testing
+     * @deprecated use {@link #setDisableAudio(boolean)} instead.
      */
     @Deprecated
     protected void setDeprecatedAudioSilent(boolean silent) {
@@ -1178,6 +1189,7 @@ public class DeviceSetup implements ITargetPreparer, ITargetCleaner {
 
     /**
      * Exposed for unit testing
+     * @deprecated use {@link #setProperty(String, String)} instead.
      */
     @Deprecated
     protected void setDeprecatedSetProp(String prop) {

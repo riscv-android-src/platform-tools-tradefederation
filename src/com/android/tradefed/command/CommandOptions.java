@@ -195,6 +195,7 @@ public class CommandOptions implements ICommandOptions {
 
     /**
      * {@inheritDoc}
+     * @deprecated use {@link #getLoopTime()} instead
      */
     @Deprecated
     @Override

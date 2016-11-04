@@ -1603,7 +1603,7 @@ public class NativeDevice implements IManagedTestDevice {
      * @param action the action to be performed
      * @param retryAttempts the retry attempts to make for action if it fails but
      *            recovery succeeds
-     * @returns <code>true</code> if action was performed successfully
+     * @return <code>true</code> if action was performed successfully
      * @throws DeviceNotAvailableException if recovery attempt fails or max attempts done without
      *             success
      */

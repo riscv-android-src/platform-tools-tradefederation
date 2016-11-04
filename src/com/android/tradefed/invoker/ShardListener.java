@@ -52,6 +52,7 @@ class ShardListener extends CollectingTestListener {
 
     /**
      * {@inheritDoc}
+     * @deprecated use {@link #invocationStarted(IInvocationContext)} instead.
      */
     @Deprecated
     @Override

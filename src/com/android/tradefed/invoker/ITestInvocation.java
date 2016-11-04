@@ -38,7 +38,7 @@ public interface ITestInvocation {
      *        <var>config</var>
      * @throws DeviceNotAvailableException if communication with device was lost
      * @throws Throwable
-     * @Deprecated Use {@link #invoke(IInvocationContext, IConfiguration, IRescheduler,
+     * @deprecated Use {@link #invoke(IInvocationContext, IConfiguration, IRescheduler,
      *        ITestInvocationListener...)} instead.
      */
     @Deprecated

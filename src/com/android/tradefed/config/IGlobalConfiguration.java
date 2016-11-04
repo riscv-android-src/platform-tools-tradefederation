@@ -122,7 +122,7 @@ public interface IGlobalConfiguration {
      * Get a list of option's values.
      *
      * @param optionName the map option name
-     * @returns a list of the given option's values. <code>null</code> if the option name does not
+     * @return a list of the given option's values. <code>null</code> if the option name does not
      *          exist.
      */
     public List<String> getOptionValues(String optionName);
