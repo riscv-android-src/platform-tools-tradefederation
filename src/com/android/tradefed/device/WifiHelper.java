@@ -200,7 +200,17 @@ public class WifiHelper implements IWifiHelper {
      */
     @Override
     public boolean addOpenNetwork(String ssid) throws DeviceNotAvailableException {
-        int id = asInt(runWifiUtil("addOpenNetwork", "ssid", ssid));
+        return addOpenNetwork(ssid, false);
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public boolean addOpenNetwork(String ssid, boolean scanSsid)
+            throws DeviceNotAvailableException {
+        int id = asInt(runWifiUtil("addOpenNetwork", "ssid", ssid, "scanSsid",
+                Boolean.toString(scanSsid)));
         if (id < 0) {
             return false;
         }
@@ -218,7 +228,17 @@ public class WifiHelper implements IWifiHelper {
      */
     @Override
     public boolean addWpaPskNetwork(String ssid, String psk) throws DeviceNotAvailableException {
-        int id = asInt(runWifiUtil("addWpaPskNetwork", "ssid", ssid, "psk", psk));
+        return addWpaPskNetwork(ssid, psk, false);
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public boolean addWpaPskNetwork(String ssid, String psk, boolean scanSsid)
+            throws DeviceNotAvailableException {
+        int id = asInt(runWifiUtil("addWpaPskNetwork", "ssid", ssid, "psk", psk, "scan_ssid",
+                Boolean.toString(scanSsid)));
         if (id < 0) {
             return false;
         }
@@ -382,8 +402,17 @@ public class WifiHelper implements IWifiHelper {
     @Override
     public boolean connectToNetwork(String ssid, String psk, String urlToCheck)
             throws DeviceNotAvailableException {
+        return connectToNetwork(ssid, psk, urlToCheck, false);
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public boolean connectToNetwork(String ssid, String psk, String urlToCheck,
+            boolean scanSsid) throws DeviceNotAvailableException {
         return asBool(runWifiUtil("connectToNetwork", "ssid", ssid, "psk", psk, "urlToCheck",
-                urlToCheck));
+                urlToCheck, "scan_ssid", Boolean.toString(scanSsid)));
     }
 
     /**

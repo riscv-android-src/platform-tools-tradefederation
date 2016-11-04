@@ -2124,6 +2124,15 @@ public class NativeDevice implements IManagedTestDevice {
     @Override
     public boolean connectToWifiNetwork(String wifiSsid, String wifiPsk)
             throws DeviceNotAvailableException {
+        return connectToWifiNetwork(wifiSsid, wifiPsk, false);
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public boolean connectToWifiNetwork(String wifiSsid, String wifiPsk, boolean scanSsid)
+            throws DeviceNotAvailableException {
         // Clears the last connected wifi network.
         mLastConnectedWifiSsid = null;
         mLastConnectedWifiPsk = null;
@@ -2137,7 +2146,7 @@ public class NativeDevice implements IManagedTestDevice {
         for (int i = 1; i <= mOptions.getWifiAttempts(); i++) {
             CLog.i("Connecting to wifi network %s on %s", wifiSsid, getSerialNumber());
             boolean success = wifi.connectToNetwork(wifiSsid, wifiPsk,
-                    mOptions.getConnCheckUrl());
+                    mOptions.getConnCheckUrl(), scanSsid);
             final Map<String, String> wifiInfo = wifi.getWifiInfo();
             if (success) {
                 CLog.i("Successfully connected to wifi network %s(%s) on %s",
@@ -2180,8 +2189,17 @@ public class NativeDevice implements IManagedTestDevice {
     @Override
     public boolean connectToWifiNetworkIfNeeded(String wifiSsid, String wifiPsk)
             throws DeviceNotAvailableException {
+        return connectToWifiNetworkIfNeeded(wifiSsid, wifiPsk, false);
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public boolean connectToWifiNetworkIfNeeded(String wifiSsid, String wifiPsk, boolean scanSsid)
+            throws DeviceNotAvailableException {
         if (!checkConnectivity())  {
-            return connectToWifiNetwork(wifiSsid, wifiPsk);
+            return connectToWifiNetwork(wifiSsid, wifiPsk, scanSsid);
         }
         return true;
     }

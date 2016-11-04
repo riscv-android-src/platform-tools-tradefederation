@@ -206,6 +206,25 @@ public interface ITestDevice extends INativeDevice {
             throws DeviceNotAvailableException;
 
     /**
+     * Connects to a wifi network.
+     * <p/>
+     * Turns on wifi and blocks until a successful connection is made to the specified wifi network.
+     * Once a connection is made, the instance will try to restore the connection after every reboot
+     * until {@link ITestDevice#disconnectFromWifi()} or
+     * {@link ITestDevice#clearLastConnectedWifiNetwork()} is called.
+     *
+     * @param wifiSsid the wifi ssid to connect to
+     * @param wifiPsk PSK passphrase or null if unencrypted
+     * @param scanSsid whether to scan for hidden SSID for this network.
+     * @return <code>true</code> if connected to wifi network successfully. <code>false</code>
+     *         otherwise
+     * @throws DeviceNotAvailableException if connection with device is lost and cannot be
+     *             recovered.
+     */
+    public boolean connectToWifiNetwork(String wifiSsid, String wifiPsk, boolean scanSsid)
+            throws DeviceNotAvailableException;
+
+    /**
      * A variant of {@link #connectToWifiNetwork(String, String)} that only connects if device
      * currently does not have network connectivity.
      *
@@ -216,6 +235,20 @@ public interface ITestDevice extends INativeDevice {
      * @throws DeviceNotAvailableException
      */
     public boolean connectToWifiNetworkIfNeeded(String wifiSsid, String wifiPsk)
+            throws DeviceNotAvailableException;
+
+    /**
+     * A variant of {@link #connectToWifiNetwork(String, String)} that only connects if device
+     * currently does not have network connectivity.
+     *
+     * @param wifiSsid
+     * @param wifiPsk
+     * @param scanSsid whether to scan for hidden SSID for this network
+     * @return <code>true</code> if connected to wifi network successfully. <code>false</code>
+     *         otherwise
+     * @throws DeviceNotAvailableException
+     */
+    public boolean connectToWifiNetworkIfNeeded(String wifiSsid, String wifiPsk, boolean scanSsid)
             throws DeviceNotAvailableException;
 
     /**

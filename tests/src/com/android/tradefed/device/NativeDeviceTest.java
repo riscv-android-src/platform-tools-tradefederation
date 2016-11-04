@@ -568,7 +568,7 @@ public class NativeDeviceTest extends TestCase {
      */
     public void testConnectToWifiNetwork_success() throws DeviceNotAvailableException {
         EasyMock.expect(mMockWifi.connectToNetwork(FAKE_NETWORK_SSID, FAKE_NETWORK_PASSWORD,
-                mTestDevice.getOptions().getConnCheckUrl())).andReturn(true);
+                mTestDevice.getOptions().getConnCheckUrl(), false)).andReturn(true);
         Map<String, String> fakeWifiInfo = new HashMap<String, String>();
         fakeWifiInfo.put("bssid", FAKE_NETWORK_SSID);
         EasyMock.expect(mMockWifi.getWifiInfo()).andReturn(fakeWifiInfo);
@@ -584,7 +584,7 @@ public class NativeDeviceTest extends TestCase {
      */
     public void testConnectToWifiNetwork_failure() throws DeviceNotAvailableException {
         EasyMock.expect(mMockWifi.connectToNetwork(FAKE_NETWORK_SSID, FAKE_NETWORK_PASSWORD,
-                mTestDevice.getOptions().getConnCheckUrl())).andReturn(false)
+                mTestDevice.getOptions().getConnCheckUrl(), false)).andReturn(false)
                 .times(mTestDevice.getOptions().getWifiAttempts());
         Map<String, String> fakeWifiInfo = new HashMap<String, String>();
         fakeWifiInfo.put("bssid", FAKE_NETWORK_SSID);
@@ -598,6 +598,20 @@ public class NativeDeviceTest extends TestCase {
         EasyMock.verify(mMockWifi, mMockIDevice, mMockRunUtil);
     }
 
+    /**
+     * Unit test for {@link NativeDevice#connectToWifiNetwork(String, String, boolean)}.
+     */
+    public void testConnectToWifiNetwork_scanSsid() throws DeviceNotAvailableException {
+        EasyMock.expect(mMockWifi.connectToNetwork(FAKE_NETWORK_SSID, FAKE_NETWORK_PASSWORD,
+                mTestDevice.getOptions().getConnCheckUrl(), true)).andReturn(true);
+        Map<String, String> fakeWifiInfo = new HashMap<String, String>();
+        fakeWifiInfo.put("bssid", FAKE_NETWORK_SSID);
+        EasyMock.expect(mMockWifi.getWifiInfo()).andReturn(fakeWifiInfo);
+        EasyMock.replay(mMockWifi, mMockIDevice);
+        assertTrue(mTestDevice.connectToWifiNetwork(FAKE_NETWORK_SSID,
+                FAKE_NETWORK_PASSWORD, true));
+        EasyMock.verify(mMockWifi, mMockIDevice);
+    }
     /**
      * Unit test for {@link NativeDevice#checkWifiConnection(String)}.
      */

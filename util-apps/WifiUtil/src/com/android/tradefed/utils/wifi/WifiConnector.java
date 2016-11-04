@@ -121,7 +121,8 @@ public class WifiConnector {
      * @return the network ID of a new network configuration
      * @throws WifiException if the operation fails
      */
-    public int addNetwork(final String ssid, final String psk) throws WifiException {
+    public int addNetwork(final String ssid, final String psk, final boolean scanSsid)
+            throws WifiException {
         // Skip adding network if it's already added in the device
         // TODO: Fix the permission issue for the APK to add/update already added network
         int networkId = getNetworkId(ssid);
@@ -131,6 +132,10 @@ public class WifiConnector {
         final WifiConfiguration config = new WifiConfiguration();
         // A string SSID _must_ be enclosed in double-quotation marks
         config.SSID = quote(ssid);
+
+        if (scanSsid) {
+            config.hiddenSSID = true;
+        }
 
         if (psk == null) {
             // KeyMgmt should be NONE only
@@ -206,16 +211,17 @@ public class WifiConnector {
      * @param urlToCheck URL to use when checking connectivity
      * @param connectTimeout duration in seconds to wait for connecting to the network or
               {@code DEFAULT_TIMEOUT} millis if -1 is passed.
+     * @param scanSsid whether to scan for hidden SSID for this network
      * @throws WifiException if the operation fails
      */
     public void connectToNetwork(final String ssid, final String psk, final String urlToCheck,
-            long connectTimeout)
+            long connectTimeout, final boolean scanSsid)
             throws WifiException {
         if (!mWifiManager.setWifiEnabled(true)) {
             throw new WifiException("failed to enable wifi");
         }
 
-        updateLastNetwork(ssid, psk);
+        updateLastNetwork(ssid, psk, scanSsid);
 
         connectTimeout = connectTimeout == -1 ? DEFAULT_TIMEOUT : (connectTimeout * 1000);
         long timeSpent;
@@ -237,7 +243,7 @@ public class WifiConnector {
 
         removeAllNetworks(false);
 
-        final int networkId = addNetwork(ssid, psk);
+        final int networkId = addNetwork(ssid, psk, scanSsid);
         if (!mWifiManager.enableNetwork(networkId, true)) {
             throw new WifiException(String.format("failed to enable network %s", ssid));
         }
@@ -270,6 +276,22 @@ public class WifiConnector {
                     return checkConnectivity(urlToCheck);
                 }
             }, String.format("request to %s (ssid: %s)", urlToCheck, ssid), connectTimeout);
+    }
+
+    /**
+     * Connects a device to a given Wi-Fi network and check connectivity using
+     *
+     * @param ssid SSID of a Wi-Fi network
+     * @param psk PSK of a Wi-Fi network
+     * @param urlToCheck URL to use when checking connectivity
+     * @param connectTimeout duration in seconds to wait for connecting to the network or
+              {@code DEFAULT_TIMEOUT} millis if -1 is passed.
+     * @throws WifiException if the operation fails
+     */
+    public void connectToNetwork(final String ssid, final String psk, final String urlToCheck,
+            long connectTimeout)
+            throws WifiException {
+        connectToNetwork(ssid, psk, urlToCheck, -1, false);
     }
 
     /**
@@ -319,6 +341,7 @@ public class WifiConnector {
             final WifiInfo info = mWifiManager.getConnectionInfo();
             json.put("ssid", info.getSSID());
             json.put("bssid", info.getBSSID());
+            json.put("hiddenSsid", info.getHiddenSSID());
             final int addr = info.getIpAddress();
             // IP address is stored with the first octet in the lowest byte
             final int a = (addr >> 0) & 0xff;
@@ -346,17 +369,19 @@ public class WifiConnector {
         final SharedPreferences prefs = mContext.getSharedPreferences(TAG, 0);
         final String ssid = prefs.getString("ssid", null);
         final String psk = prefs.getString("psk", null);
+        final boolean scanSsid = prefs.getBoolean("scan_ssid", false);
         if (ssid == null) {
             throw new WifiException("No last connected network.");
         }
-        connectToNetwork(ssid, psk, urlToCheck);
+        connectToNetwork(ssid, psk, urlToCheck, -1, scanSsid);
     }
 
-    private void updateLastNetwork(final String ssid, final String psk) {
+    private void updateLastNetwork(final String ssid, final String psk, final boolean scanSsid) {
         final SharedPreferences prefs = mContext.getSharedPreferences(TAG, 0);
         final SharedPreferences.Editor editor = prefs.edit();
         editor.putString("ssid", ssid);
         editor.putString("psk", psk);
+        editor.putBoolean("scan_ssid", scanSsid);
         editor.commit();
     }
 
