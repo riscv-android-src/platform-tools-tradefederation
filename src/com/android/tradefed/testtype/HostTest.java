@@ -493,7 +493,7 @@ public class HostTest implements IDeviceTest, ITestFilterReceiver, ITestAnnotati
     /**
      * Helper to determine if we are dealing with a Test class with Junit4 annotations.
      */
-    private boolean hasJUnit4Annotation(Class<?> classObj) {
+    protected boolean hasJUnit4Annotation(Class<?> classObj) {
         if (classObj.isAnnotationPresent(SuiteClasses.class)) {
             return true;
         }
