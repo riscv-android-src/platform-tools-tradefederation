@@ -39,6 +39,10 @@ import java.util.zip.ZipOutputStream;
  */
 public class ZipUtil {
 
+    private static final String DEFAULT_DIRNAME = "dir";
+    private static final String DEFAULT_FILENAME = "files";
+    private static final String ZIP_EXTENSION = ".zip";
+
     /**
      * Utility method to verify that a zip file is not corrupt.
      *
@@ -125,7 +129,7 @@ public class ZipUtil {
      * @throws IOException if failed to create zip file
      */
     public static File createZip(File dir) throws IOException {
-        return createZip(dir, "dir");
+        return createZip(dir, DEFAULT_DIRNAME);
     }
 
     /**
@@ -138,7 +142,7 @@ public class ZipUtil {
      * @throws IOException if failed to create zip file
      */
     public static File createZip(File dir, String name) throws IOException {
-        File zipFile = FileUtil.createTempFile(name, ".zip");
+        File zipFile = FileUtil.createTempFile(name, ZIP_EXTENSION);
         createZip(dir, zipFile);
         return zipFile;
     }
@@ -161,6 +165,54 @@ public class ZipUtil {
             zipFile.delete();
             throw e;
         } catch (RuntimeException e) {
+            zipFile.delete();
+            throw e;
+        } finally {
+            StreamUtil.close(out);
+        }
+    }
+
+    /**
+     * Utility method to create a temporary zip file containing the given files
+     *
+     * @param files list of files to zip
+     * @return a temporary zip {@link File} containing directory contents
+     * @throws IOException if failed to create zip file
+     */
+    public static File createZip(List<File> files) throws IOException {
+        return createZip(files, DEFAULT_FILENAME);
+    }
+
+    /**
+     * Utility method to create a temporary zip file containing the given files.
+     *
+     * @param files list of files to zip
+     * @param name the base name of the zip file created without the extension.
+     * @return a temporary zip {@link File} containing directory contents
+     * @throws IOException if failed to create zip file
+     */
+    public static File createZip(List<File> files, String name) throws IOException {
+        File zipFile = FileUtil.createTempFile(name, ZIP_EXTENSION);
+        createZip(files, zipFile);
+        return zipFile;
+    }
+
+    /**
+     * Utility method to create a zip file containing the given files
+     *
+     * @param files list of files to zip
+     * @param zipFile the zip file to create - it should not already exist
+     * @throws IOException if failed to create zip file
+     */
+    public static void createZip(List<File> files, File zipFile) throws IOException {
+        ZipOutputStream out = null;
+        try {
+            FileOutputStream fileStream = new FileOutputStream(zipFile);
+            out = new ZipOutputStream(new BufferedOutputStream(fileStream));
+            for (File file : files) {
+                addToZip(out, file, new LinkedList<String>());
+            }
+        } catch (IOException|RuntimeException e) {
             zipFile.delete();
             throw e;
         } finally {

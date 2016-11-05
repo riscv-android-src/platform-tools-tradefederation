@@ -20,6 +20,7 @@ import junit.framework.TestCase;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
+import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Set;
 import java.util.zip.ZipFile;
@@ -78,7 +79,7 @@ public class ZipUtilTest extends TestCase {
     }
 
     /**
-     * Test creating then extracting a zip file
+     * Test creating then extracting a zip file from a directory
      *
      * @throws IOException
      */
@@ -103,11 +104,39 @@ public class ZipUtilTest extends TestCase {
             assertTrue(extractedSubFile.exists());
             assertTrue(FileUtil.compareFileContents(subFile, extractedSubFile));
         } finally {
-            if (zipFile != null) {
-                zipFile.delete();
-            }
+            FileUtil.deleteFile(zipFile);
         }
     }
+
+    /**
+     * Test creating then extracting a zip file from a list of files
+     *
+     * @throws IOException
+     */
+    public void testCreateAndExtractZip_fromFiles() throws IOException {
+        File tmpParentDir = createTempDir("foo");
+        File zipFile = null;
+        File extractedDir = createTempDir("extract-foo");
+        try {
+            File file1 = new File(tmpParentDir, "foo.txt");
+            File file2 = new File(tmpParentDir, "bar.txt");
+            FileUtil.writeToFile("contents1", file1);
+            FileUtil.writeToFile("contents2", file2);
+            zipFile = ZipUtil.createZip(Arrays.asList(file1, file2));
+            ZipUtil.extractZip(new ZipFile(zipFile), extractedDir);
+
+            // assert all contents of original zipped dir are extracted
+            File extractedFile1 = new File(extractedDir, file1.getName());
+            File extractedFile2 = new File(extractedDir, file2.getName());
+            assertTrue(extractedFile1.exists());
+            assertTrue(extractedFile2.exists());
+            assertTrue(FileUtil.compareFileContents(file1, extractedFile1));
+            assertTrue(FileUtil.compareFileContents(file2, extractedFile2));
+        } finally {
+            FileUtil.deleteFile(zipFile);
+        }
+    }
+
 
     /**
      * Test that isZipFileValid returns false if calling with a file that does not exist.
