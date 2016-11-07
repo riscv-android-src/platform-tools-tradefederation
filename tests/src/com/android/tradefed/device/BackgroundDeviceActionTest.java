@@ -26,11 +26,14 @@ import org.easymock.EasyMock;
 import java.io.IOException;
 import java.util.concurrent.TimeUnit;
 
+/**
+ * Unit Tests for {@link BackgroundDeviceAction}.
+ */
 public class BackgroundDeviceActionTest extends TestCase {
 
     private static final String MOCK_DEVICE_SERIAL = "serial";
-    private static final int SHORT_WAIT_TIME_MS = 50;
-    private static final int LONG_WAIT_TIME_MS = 150;
+    private static final int SHORT_WAIT_TIME_MS = 100;
+    private static final int LONG_WAIT_TIME_MS = 200;
 
     private IShellOutputReceiver mMockReceiver;
     private IDevice mMockIDevice;
@@ -84,10 +87,10 @@ public class BackgroundDeviceActionTest extends TestCase {
      */
     public void testBackgroundAction_shellException() throws Exception {
         String action = "";
-        EasyMock.expect(mMockTestDevice.getDeviceState()).andReturn(mDeviceState);
+        EasyMock.expect(mMockTestDevice.getDeviceState()).andStubReturn(mDeviceState);
         mMockIDevice.executeShellCommand(EasyMock.eq(action), EasyMock.same(mMockReceiver),
                 EasyMock.anyLong(), EasyMock.eq(TimeUnit.MILLISECONDS));
-        EasyMock.expectLastCall().andThrow(new IOException());
+        EasyMock.expectLastCall().andThrow(new IOException()).anyTimes();
         EasyMock.replay(mMockTestDevice, mMockIDevice, mMockReceiver);
         mBackgroundAction =
                 new BackgroundDeviceAction(action, "desc", mMockTestDevice, mMockReceiver, 0) {
@@ -97,7 +100,6 @@ public class BackgroundDeviceActionTest extends TestCase {
             }
             @Override
             public synchronized boolean isCancelled() {
-                RunUtil.getDefault().sleep(SHORT_WAIT_TIME_MS);
                 return super.isCancelled();
             }
         };

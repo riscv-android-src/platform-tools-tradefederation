@@ -252,7 +252,7 @@ public class RunUtilTest extends TestCase {
             fail("Failed to create output files: " + e.getMessage());
         }
         String[] command = {"echo", "TEST"};
-        CommandResult result = mRunUtil.runTimedCmd(SHORT_TIMEOUT_MS, stdoutStream, stderrStream,
+        CommandResult result = mRunUtil.runTimedCmd(LONG_TIMEOUT_MS, stdoutStream, stderrStream,
                 command);
         assertEquals(CommandStatus.SUCCESS, result.getStatus());
         assertEquals(result.getStdout(),

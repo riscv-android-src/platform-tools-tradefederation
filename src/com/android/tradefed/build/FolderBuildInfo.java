@@ -74,6 +74,7 @@ public class FolderBuildInfo extends BuildInfo implements IFolderBuildInfo {
             FileUtil.recursiveDelete(mRootDir);
         }
         mRootDir = null;
+        super.cleanUp();
     }
 
     @Override
