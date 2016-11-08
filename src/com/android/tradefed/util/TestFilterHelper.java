@@ -183,7 +183,7 @@ public class TestFilterHelper {
      *
      * @param packageName name of the method's package
      * @param className name of the method's class
-     * @method test method
+     * @param method test method
      * @return true if the test method should run, false otherwise
      */
     public boolean shouldRun(String packageName, String className, Method method) {

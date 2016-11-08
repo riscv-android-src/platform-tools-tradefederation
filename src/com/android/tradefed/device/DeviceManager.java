@@ -449,7 +449,7 @@ public class DeviceManager implements IDeviceManager {
      * Creates the {@link IAndroidDebugBridge} to use.
      * <p/>
      * Exposed so tests can mock this.
-     * @returns the {@link IAndroidDebugBridge}
+     * @return the {@link IAndroidDebugBridge}
      */
     synchronized IAndroidDebugBridge createAdbBridge() {
         return new AndroidDebugBridgeWrapper();

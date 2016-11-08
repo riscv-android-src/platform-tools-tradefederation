@@ -346,7 +346,7 @@ public class CommandFileParser {
      * Parses the commands contained in {@code file}, doing macro expansions as necessary
      *
      * @param file the {@link File} to parse
-     * @returns the list of parsed commands
+     * @return the list of parsed commands
      * @throws IOException if failed to read file
      * @throws ConfigurationException if content of file could not be parsed
      */

@@ -91,6 +91,9 @@ public class InstrumentationTest implements IDeviceTest, IResumableTest, ITestCo
             "Will be ignored if --class is set.")
     private String mTestPackageName = null;
 
+    /**
+     * @deprecated use shell-timeout or test-timeout option instead.
+     */
     @Deprecated
     @Option(name = "timeout",
             description="Deprecated - Use \"shell-timeout\" or \"test-timeout\" instead.")
@@ -473,7 +476,6 @@ public class InstrumentationTest implements IDeviceTest, IResumableTest, ITestCo
      * Retrieve the value of an argument to provide when running the instrumentation tests.
      *
      * @param key the argument name
-     * @param value the argument value
      * <p/>
      * Exposed for testing
      */

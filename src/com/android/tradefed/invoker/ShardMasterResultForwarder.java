@@ -49,6 +49,10 @@ class ShardMasterResultForwarder extends LogSaverResultForwarder {
         mShardsRemaining = expectedShards;
     }
 
+    /**
+     * {@inheritDoc}
+     * @deprecated use {@link #invocationStarted(IInvocationContext)} instead.
+     */
     @Deprecated
     @Override
     public void invocationStarted(IBuildInfo buildInfo) {
@@ -58,6 +62,9 @@ class ShardMasterResultForwarder extends LogSaverResultForwarder {
         }
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public void invocationStarted(IInvocationContext context) {
         if (!mStartReported) {
@@ -76,6 +83,9 @@ class ShardMasterResultForwarder extends LogSaverResultForwarder {
         super.invocationFailed(cause);
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public void invocationEnded(long elapsedTime) {
         mTotalElapsed += elapsedTime;

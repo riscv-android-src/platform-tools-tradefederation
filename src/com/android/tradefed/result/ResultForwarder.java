@@ -87,7 +87,7 @@ public class ResultForwarder implements ITestInvocationListener {
 
     /**
      * {@inheritDoc}
-     * @deprecated
+     * @deprecated use {@link #invocationStarted(IInvocationContext)} instead.
      */
     @Deprecated
     @Override

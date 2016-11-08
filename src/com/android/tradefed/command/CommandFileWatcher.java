@@ -111,7 +111,7 @@ class CommandFileWatcher extends Thread {
     }
 
     /**
-     * @{inheritDoc}
+     * {@inheritDoc}
      */
     @Override
     public void run() {

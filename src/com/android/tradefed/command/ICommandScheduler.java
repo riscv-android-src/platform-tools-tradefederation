@@ -217,7 +217,7 @@ public interface ICommandScheduler {
      * Stop a running invocation.
      *
      * @return true if the invocation was stopped, false otherwise
-     * @throw {@link UnsupportedOperationException} if the implementation doesn't support this
+     * @throws UnsupportedOperationException if the implementation doesn't support this
      */
     public boolean stopInvocation(ITestInvocation invocation) throws UnsupportedOperationException;
 
@@ -225,7 +225,7 @@ public interface ICommandScheduler {
      * Stop a running invocation by specifying it's id.
      *
      * @return true if the invocation was stopped, false otherwise
-     * @throw {@link UnsupportedOperationException} if the implementation doesn't support this
+     * @throws UnsupportedOperationException if the implementation doesn't support this
      */
     public boolean stopInvocation(int invocationId) throws UnsupportedOperationException;
 

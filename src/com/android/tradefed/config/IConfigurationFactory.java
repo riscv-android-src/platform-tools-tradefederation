@@ -49,7 +49,7 @@ public interface IConfigurationFactory {
      *
      * @return the loaded {@link IConfiguration}. The delegate object {@link Option} fields have
      *         been populated with values in args.
-     * @throw {@link ConfigurationException} if configuration could not be loaded
+     * @throws ConfigurationException if configuration could not be loaded
      */
     public IConfiguration createConfigurationFromArgs(String[] args, List<String> unconsumedArgs)
             throws ConfigurationException;
@@ -86,7 +86,7 @@ public interface IConfigurationFactory {
      *                      processed as global arguments
      * @return the loaded {@link IGlobalConfiguration}. The delegate object {@link Option} fields
      *         have been populated with values in args.
-     * @throw {@link ConfigurationException} if configuration could not be loaded
+     * @throws ConfigurationException if configuration could not be loaded
      */
     public IGlobalConfiguration createGlobalConfigurationFromArgs(String[] args,
             List<String> nonGlobalArgs) throws ConfigurationException;

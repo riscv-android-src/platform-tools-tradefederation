@@ -83,6 +83,7 @@ public class StubDevice implements IDevice {
 
     /**
      * {@inheritDoc}
+     * @deprecated use {@link #executeShellCommand(String, IShellOutputReceiver, long, TimeUnit)}.
      */
     @Deprecated
     @Override
@@ -357,6 +358,7 @@ public class StubDevice implements IDevice {
 
     /**
      * {@inheritDoc}
+     * @deprecated use {@link #getProperty(String)} instead.
      */
     @Override
     @Deprecated
@@ -375,6 +377,7 @@ public class StubDevice implements IDevice {
 
     /**
      * {@inheritDoc}
+     * @deprecated use {@link #getProperty(String)} instead.
      */
     @Override
     @Deprecated
@@ -385,6 +388,7 @@ public class StubDevice implements IDevice {
 
     /**
      * {@inheritDoc}
+     * @deprecated use {@link #getBattery()} instead.
      */
     @Override
     @Deprecated
@@ -395,6 +399,7 @@ public class StubDevice implements IDevice {
 
     /**
      * {@inheritDoc}
+     * @deprecated use {@link #getBattery(long, TimeUnit)} instead.
      */
     @Override
     @Deprecated
