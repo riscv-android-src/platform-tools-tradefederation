@@ -2038,10 +2038,15 @@ public class NativeDevice implements IManagedTestDevice {
      */
     @Override
     public InputStreamSource getBugreportz() {
-        checkApiLevelAgainst("getBugreportz", 24);
-        File bugreportZip = getBugreportzInternal();
-        if (bugreportZip != null) {
-            return new FileInputStreamSource(bugreportZip, true);
+        try {
+            checkApiLevelAgainst("getBugreportz", 24);
+            File bugreportZip = getBugreportzInternal();
+            if (bugreportZip != null) {
+                return new FileInputStreamSource(bugreportZip, true);
+            }
+        } catch (IllegalArgumentException e) {
+            CLog.e("API level error when checking bugreportz support.");
+            CLog.e(e);
         }
         return null;
     }
