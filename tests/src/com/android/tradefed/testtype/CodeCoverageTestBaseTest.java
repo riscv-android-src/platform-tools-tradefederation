@@ -19,7 +19,6 @@ import static org.mockito.Matchers.any;
 import static org.mockito.Matchers.anyString;
 import static org.mockito.Matchers.eq;
 import static org.mockito.Mockito.doAnswer;
-import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
@@ -52,7 +51,6 @@ import org.mockito.invocation.InvocationOnMock;
 import org.mockito.stubbing.Answer;
 
 import java.io.File;
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -194,7 +192,7 @@ public class CodeCoverageTestBaseTest extends TestCase {
         }
     }
 
-    public void testRun() throws DeviceNotAvailableException, IOException {
+    public void testRun() throws DeviceNotAvailableException {
         // Prepare some test data
         InstrumentationTarget target = new InstrumentationTarget(PACKAGE_NAME1, RUNNER_NAME1, "");
 
@@ -221,9 +219,7 @@ public class CodeCoverageTestBaseTest extends TestCase {
                 eq(FAKE_COVERAGE_REPORT), any(ITestLogger.class));
     }
 
-    public void testRun_multipleInstrumentationTargets() throws DeviceNotAvailableException,
-            IOException {
-
+    public void testRun_multipleInstrumentationTargets() throws DeviceNotAvailableException {
         // Prepare some test data
         InstrumentationTarget target1 = new InstrumentationTarget(PACKAGE_NAME1, RUNNER_NAME1, "");
         InstrumentationTarget target2 = new InstrumentationTarget(PACKAGE_NAME2, RUNNER_NAME1, "");
@@ -251,7 +247,7 @@ public class CodeCoverageTestBaseTest extends TestCase {
         verify(coverageTest).runTest(eq(target3), eq(0), eq(1), any(ITestInvocationListener.class));
     }
 
-    public void testRun_multipleShards() throws DeviceNotAvailableException, IOException {
+    public void testRun_multipleShards() throws DeviceNotAvailableException {
         // Prepare some test data
         InstrumentationTarget target = new InstrumentationTarget(PACKAGE_NAME1, RUNNER_NAME1, "");
 
@@ -281,9 +277,7 @@ public class CodeCoverageTestBaseTest extends TestCase {
         }
     }
 
-    public void testRun_rerunIndividualTests_failedRun() throws DeviceNotAvailableException,
-              IOException {
-
+    public void testRun_rerunIndividualTests_failedRun() throws DeviceNotAvailableException {
         // Prepare some test data
         InstrumentationTarget target = new InstrumentationTarget(PACKAGE_NAME1, RUNNER_NAME1, "");
 
@@ -317,7 +311,7 @@ public class CodeCoverageTestBaseTest extends TestCase {
     }
 
     public void testRun_rerunIndividualTests_missingCoverageFile()
-            throws DeviceNotAvailableException, IOException {
+            throws DeviceNotAvailableException {
         // Prepare some test data
         InstrumentationTarget target = new InstrumentationTarget(PACKAGE_NAME1, RUNNER_NAME1, "");
 
@@ -344,7 +338,7 @@ public class CodeCoverageTestBaseTest extends TestCase {
         verify(coverageTest).runTest(eq(target), eq(FOO_TEST3), any(ITestInvocationListener.class));
     }
 
-    public void testRun_multipleFormats() throws DeviceNotAvailableException, IOException {
+    public void testRun_multipleFormats() throws DeviceNotAvailableException {
         // Prepare some test data
         InstrumentationTarget target = new InstrumentationTarget(PACKAGE_NAME1, RUNNER_NAME1, "");
         File fakeHtmlReport = FAKE_COVERAGE_REPORT;

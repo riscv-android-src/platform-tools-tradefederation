@@ -99,6 +99,10 @@ public class TfTestLauncher implements IRemoteTest, IBuildReceiver {
             + "parent process.")
     private String mGlobalConfig = null;
 
+    @Option(name = "use-event-streaming", description = "Use a socket to receive results as they"
+            + "arrived instead of using a temporary file and parsing at the end.")
+    private boolean mEventStreaming = true;
+
     private static final String TF_GLOBAL_CONFIG = "TF_GLOBAL_CONFIG";
     private static final long COVERAGE_REPORT_TIMEOUT = 2 * 60 * 1000;
 
@@ -178,7 +182,7 @@ public class TfTestLauncher implements IRemoteTest, IBuildReceiver {
         File stdoutFile = null;
         File stderrFile = null;
         File eventFile = null;
-        SubprocessTestResultsParser eventParser = new SubprocessTestResultsParser(listener);
+        SubprocessTestResultsParser eventParser = null;
         FileOutputStream stdout = null;
         FileOutputStream stderr = null;
 
@@ -194,12 +198,18 @@ public class TfTestLauncher implements IRemoteTest, IBuildReceiver {
         try {
             stdoutFile = FileUtil.createTempFile("stdout_subprocess_", ".log");
             stderrFile = FileUtil.createTempFile("stderr_subprocess_", ".log");
-            eventFile = FileUtil.createTempFile("event_subprocess_", ".log");
-            stdout = new FileOutputStream(stdoutFile);
             stderr = new FileOutputStream(stderrFile);
-
-            args.add("--subprocess-report-file");
-            args.add(eventFile.getAbsolutePath());
+            stdout = new FileOutputStream(stdoutFile);
+            if (mEventStreaming) {
+                eventParser = new SubprocessTestResultsParser(listener, true);
+                args.add("--subprocess-report-port");
+                args.add(Integer.toString(eventParser.getSocketServerPort()));
+            } else {
+                eventFile = FileUtil.createTempFile("event_subprocess_", ".log");
+                eventParser = new SubprocessTestResultsParser(listener);
+                args.add("--subprocess-report-file");
+                args.add(eventFile.getAbsolutePath());
+            }
 
             CommandResult result = runUtil.runTimedCmd(mMaxTfRunTimeMin * 60 * 1000, stdout, stderr,
                     args.toArray(new String[0]));
@@ -227,6 +237,7 @@ public class TfTestLauncher implements IRemoteTest, IBuildReceiver {
                 eventParser.parseFile(eventFile);
                 logAndCleanFile(eventFile, listener);
             }
+            StreamUtil.close(eventParser);
             FileUtil.deleteFile(agent);
             // Evaluate coverage from the subprocess
             if (mEnableCoverage) {

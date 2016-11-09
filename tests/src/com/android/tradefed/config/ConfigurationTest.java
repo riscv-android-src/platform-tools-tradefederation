@@ -16,7 +16,6 @@
 package com.android.tradefed.config;
 
 import com.android.ddmlib.Log.LogLevel;
-import com.android.tradefed.build.BuildInfo;
 import com.android.tradefed.build.BuildRetrievalError;
 import com.android.tradefed.build.IBuildProvider;
 import com.android.tradefed.command.ICommandOptions;
@@ -24,6 +23,7 @@ import com.android.tradefed.config.ConfigurationDef.OptionDef;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.IDeviceRecovery;
 import com.android.tradefed.device.IDeviceSelection;
+import com.android.tradefed.invoker.InvocationContext;
 import com.android.tradefed.log.ILeveledLogOutput;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.TextResultReporter;
@@ -257,7 +257,7 @@ public class ConfigurationTest extends TestCase {
     public void testGetTestInvocationListeners() throws ConfigurationException {
         // check that the default listener is present and doesn't blow up
         ITestInvocationListener defaultListener = mConfig.getTestInvocationListeners().get(0);
-        defaultListener.invocationStarted(new BuildInfo());
+        defaultListener.invocationStarted(new InvocationContext());
         defaultListener.invocationEnded(1);
 
         final ITestInvocationListener listener1 = EasyMock.createMock(

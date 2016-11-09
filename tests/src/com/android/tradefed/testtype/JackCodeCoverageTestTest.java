@@ -6,28 +6,23 @@ import static com.android.tradefed.testtype.JackCodeCoverageReportFormat.HTML;
 import static com.android.tradefed.testtype.JackCodeCoverageReportFormat.XML;
 import static org.mockito.Matchers.any;
 import static org.mockito.Matchers.anyLong;
-import static org.mockito.Matchers.eq;
 import static org.mockito.Mockito.doReturn;
 
-import com.android.tradefed.build.IBuildInfo;
-import com.android.tradefed.log.ITestLogger;
-import com.android.tradefed.result.LogDataType;
-import com.android.tradefed.util.CommandResult;
-import com.android.tradefed.util.CommandStatus;
-import com.android.tradefed.util.FileUtil;
-import com.android.tradefed.util.ZipUtil;
 import com.google.common.collect.Iterables;
 import com.google.common.collect.Sets;
 import com.google.common.io.Files;
 
+import com.android.tradefed.build.IBuildInfo;
+import com.android.tradefed.util.CommandResult;
+import com.android.tradefed.util.CommandStatus;
+import com.android.tradefed.util.FileUtil;
+
 import junit.framework.TestCase;
 
 import org.mockito.ArgumentCaptor;
-import org.mockito.Matchers;
 import org.mockito.Mockito;
 
 import java.io.File;
-import java.io.InputStream;
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.Collection;

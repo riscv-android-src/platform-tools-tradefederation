@@ -15,7 +15,6 @@
  */
 package com.android.tradefed.command.remote;
 
-import com.android.tradefed.build.BuildInfo;
 import com.android.tradefed.command.ICommandScheduler;
 import com.android.tradefed.command.ICommandScheduler.IScheduledInvocationListener;
 import com.android.tradefed.device.DeviceAllocationState;
@@ -478,11 +477,11 @@ public class RemoteManagerFuncTest extends TestCase {
             public Void answer() throws Throwable {
                 IScheduledInvocationListener listener =
                         (IScheduledInvocationListener)EasyMock.getCurrentArguments()[0];
-                listener.invocationStarted(new BuildInfo());
-                listener.invocationFailed(new DeviceNotAvailableException());
-                listener.invocationEnded(1);
                 IInvocationContext nullMeta = new InvocationContext();
                 nullMeta.addAllocatedDevice("device", device);
+                listener.invocationStarted(nullMeta);
+                listener.invocationFailed(new DeviceNotAvailableException());
+                listener.invocationEnded(1);
                 Map<ITestDevice, FreeDeviceState> state = new HashMap<>();
                 state.put(device, FreeDeviceState.UNAVAILABLE);
                 listener.invocationComplete(nullMeta, state);
