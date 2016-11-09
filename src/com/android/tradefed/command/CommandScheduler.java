@@ -542,7 +542,6 @@ public class CommandScheduler extends Thread implements ICommandScheduler, IComm
                 }
                 instance.invoke(mInvocationContext, config,
                         new Rescheduler(mCmd.getCommandTracker()), mListeners);
-                setLastInvocationExitCode(0);
             } catch (DeviceUnresponsiveException e) {
                 CLog.w("Device %s is unresponsive. Reason: %s", e.getSerial(), e.getMessage());
                 ITestDevice badDevice = mInvocationContext.getDeviceBySerial(e.getSerial());
