@@ -72,6 +72,20 @@ interface IWifiHelper {
     boolean addOpenNetwork(String ssid) throws DeviceNotAvailableException;
 
     /**
+     * Adds the open security network identified by ssid.
+     * <p/>
+     * To connect to any wifi network, a network profile must be created in wpa_supplicant
+     * configuration first. This will call wpa_cli to add the open security network identified by
+     * ssid.
+     *
+     * @param ssid the ssid of network to add.
+     * @param scanSsid whether to scan for hidden SSID for this network.
+     * @return <code>true</code> if network was added successfully, <code>false</code> otherwise.
+     * @throws DeviceNotAvailableException
+     */
+    boolean addOpenNetwork(String ssid, boolean scanSsid) throws DeviceNotAvailableException;
+
+    /**
      * Adds the WPA-PSK security network identified by ssid.
      *
      * @param ssid the ssid of network to add.
@@ -80,6 +94,17 @@ interface IWifiHelper {
      * @throws DeviceNotAvailableException
      */
     boolean addWpaPskNetwork(String ssid, String psk) throws DeviceNotAvailableException;
+
+    /**
+     * Adds the WPA-PSK security network identified by ssid.
+     *
+     * @param ssid the ssid of network to add.
+     * @param psk the WPA-PSK passphrase to use
+     * @param scanSsid whether to scan for hidden SSID for this network.
+     * @return <code>true</code> if network was added successfully, <code>false</code> otherwise.
+     * @throws DeviceNotAvailableException
+     */
+    boolean addWpaPskNetwork(String ssid, String psk, boolean scanSsid) throws DeviceNotAvailableException;
 
     /**
      * Wait until an ip address is assigned to wifi adapter.
@@ -197,6 +222,19 @@ interface IWifiHelper {
      * @throws DeviceNotAvailableException
      */
     boolean connectToNetwork(String ssid, String psk, String urlToCheck)
+            throws DeviceNotAvailableException;
+
+    /**
+     * Connects to a wifi network and check connectivity.
+     *
+     * @param ssid the ssid of network to connect
+     * @param psk the WPA-PSK passphrase to use. This can be null.
+     * @param urlToCheck a destination url for a HTTP request check
+     * @param scanSsid whether to scan for hidden SSID for this network
+     * @return <code>true</code> if the device pass connectivity check.
+     * @throws DeviceNotAvailableException
+     */
+    boolean connectToNetwork(String ssid, String psk, String urlToCheck, boolean scanSsid)
             throws DeviceNotAvailableException;
 
     /**
