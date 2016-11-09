@@ -68,7 +68,7 @@ import com.android.tradefed.util.keystore.IKeyStoreClient;
 import com.android.tradefed.util.keystore.IKeyStoreFactory;
 import com.android.tradefed.util.keystore.KeyStoreException;
 
-import org.json.JSONException;
+import com.google.common.annotations.VisibleForTesting;
 
 import java.io.File;
 import java.io.IOException;
@@ -92,6 +92,8 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ScheduledThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import java.util.regex.Pattern;
+
+import org.json.JSONException;
 
 /**
  * A scheduler for running TradeFederation commands across all available devices.
@@ -2000,10 +2002,9 @@ public class CommandScheduler extends Thread implements ICommandScheduler, IComm
     }
 
     /**
-     * Set the command file reloading flag
-     *
-     * @VisibleForTesting
+     * Set the command file reloading flag.
      */
+    @VisibleForTesting
     void setCommandFileReload(boolean b) {
         mReloadCmdfiles = b;
     }

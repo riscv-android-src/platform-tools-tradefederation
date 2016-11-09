@@ -23,6 +23,8 @@ import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.util.ArrayUtil;
 
+import com.google.common.annotations.VisibleForTesting;
+
 import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
@@ -292,8 +294,9 @@ public class AndroidJUnitTest extends InstrumentationTest implements IRuntimeHin
     }
 
     /**
-     * @VisibleForTesting
+     * Return if a string is the name of a Class or a Method.
      */
+    @VisibleForTesting
     public boolean isClassOrMethod(String filter) {
         if (filter.contains("#")) {
             return true;

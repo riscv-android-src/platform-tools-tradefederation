@@ -15,14 +15,14 @@
  */
 package com.android.tradefed.command.remote;
 
-import com.google.common.collect.ImmutableMap;
-
 import com.android.tradefed.command.ICommandScheduler.IScheduledInvocationListener;
 import com.android.tradefed.config.Configuration;
 import com.android.tradefed.device.FreeDeviceState;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.invoker.IInvocationContext;
 import com.android.tradefed.invoker.InvocationContext;
+
+import com.google.common.collect.ImmutableMap;
 
 import java.io.ByteArrayOutputStream;
 import java.io.PrintStream;
@@ -45,6 +45,10 @@ class ExecCommandTracker implements IScheduledInvocationListener {
         mErrorDetails = outputStream.toString();
     }
 
+    /**
+     * {@inheritDoc}
+     * @deprecated use {@link #invocationComplete(IInvocationContext, Map)} instead.
+     */
     @Deprecated
     @Override
     public void invocationComplete(ITestDevice device, FreeDeviceState deviceState) {

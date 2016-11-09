@@ -19,6 +19,8 @@ import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.util.IRunUtil;
 import com.android.tradefed.util.RunUtil;
 
+import com.google.common.annotations.VisibleForTesting;
+
 import java.io.File;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -124,9 +126,8 @@ class CommandFileWatcher extends Thread {
     /**
      * Same as {@link #addCmdFile(File, List, Collection)} but accepts a list of {@link File}s
      * as dependencies
-     *
-     * @VisibleForTesting
      */
+    @VisibleForTesting
     void addCmdFile(File cmdFile, List<String> extraArgs, List<File> dependencies) {
         CommandFile f = new CommandFile(cmdFile, extraArgs, dependencies);
         mCmdFileMap.put(cmdFile.getAbsolutePath(), f);

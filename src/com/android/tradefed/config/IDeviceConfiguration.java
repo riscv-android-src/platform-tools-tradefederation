@@ -77,7 +77,7 @@ public interface IDeviceConfiguration {
     public IDeviceSelection getDeviceRequirements();
 
     /**
-     * Return a shallow copy of this {@IDeviceConfig} object.
+     * Return a shallow copy of this {@link IDeviceConfiguration} object.
      */
     public IDeviceConfiguration clone();
 }

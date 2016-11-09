@@ -46,7 +46,7 @@ import java.util.zip.ZipFile;
  * is in same filesystem location as ddmlib jar.
  */
 @OptionClass(alias = "code-coverage-reporter")
-public class CodeCoverageReporter extends StubTestInvocationListener {
+public class CodeCoverageReporter implements ITestInvocationListener {
     @Option(name = "coverage-metadata-file-path", description =
             "The path of the Emma coverage meta data file used to generate the report.")
     private String mCoverageMetaFilePath = null;

@@ -16,8 +16,6 @@
 
 package com.android.tradefed.device;
 
-import com.google.common.annotations.VisibleForTesting;
-
 import com.android.ddmlib.AndroidDebugBridge.IDeviceChangeListener;
 import com.android.ddmlib.DdmPreferences;
 import com.android.ddmlib.EmulatorConsole;
@@ -41,6 +39,8 @@ import com.android.tradefed.util.RunUtil;
 import com.android.tradefed.util.SizeLimitedOutputStream;
 import com.android.tradefed.util.StreamUtil;
 import com.android.tradefed.util.TableFormatter;
+
+import com.google.common.annotations.VisibleForTesting;
 
 import java.io.IOException;
 import java.io.PrintWriter;
@@ -841,10 +841,9 @@ public class DeviceManager implements IDeviceManager {
     }
 
     /**
-     * Sorts list by state, then by serial
-     *
-     * @VisibleForTesting
+     * Sorts list by state, then by serial.
      */
+    @VisibleForTesting
     static List<DeviceDescriptor> sortDeviceList(List<DeviceDescriptor> deviceList) {
 
         Comparator<DeviceDescriptor> c = new Comparator<DeviceDescriptor>() {

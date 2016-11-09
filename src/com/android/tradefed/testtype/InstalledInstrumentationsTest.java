@@ -50,6 +50,9 @@ public class InstalledInstrumentationsTest
 
     private ITestDevice mDevice;
 
+    /**
+     * @deprecated use --shell-timeout or --test-timeout option instead.
+     */
     @Deprecated
     @Option(name = "timeout",
             description="Deprecated - Use \"shell-timeout\" or \"test-timeout\" instead.")
