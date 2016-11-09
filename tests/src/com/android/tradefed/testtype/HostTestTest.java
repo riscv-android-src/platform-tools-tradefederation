@@ -16,6 +16,7 @@
 package com.android.tradefed.testtype;
 
 import com.android.ddmlib.testrunner.TestIdentifier;
+import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.config.OptionSetter;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
@@ -29,7 +30,6 @@ import org.easymock.Capture;
 import org.easymock.EasyMock;
 import org.junit.Before;
 import org.junit.runner.RunWith;
-import org.junit.runners.Suite;
 import org.junit.runners.Suite.SuiteClasses;
 
 import java.lang.annotation.Retention;
@@ -45,6 +45,8 @@ public class HostTestTest extends TestCase {
 
     private HostTest mHostTest;
     private ITestInvocationListener mListener;
+    private ITestDevice mMockDevice;
+    private IBuildInfo mMockBuildInfo;
 
     @MyAnnotation
     public static class SuccessTestCase extends TestCase {
@@ -89,7 +91,10 @@ public class HostTestTest extends TestCase {
     /**
      * Test class, we have to annotate with full org.junit.Test to avoid name collision in import.
      */
-    public static class Junit4Testclass {
+    @RunWith(DeviceJUnit4ClassRunner.class)
+    public static class Junit4Testclass implements IDeviceTest {
+        private ITestDevice mDevice;
+
         public Junit4Testclass() {
         }
 
@@ -103,9 +108,19 @@ public class HostTestTest extends TestCase {
         @org.junit.Test
         public void testPass6() {
         }
+
+        @Override
+        public void setDevice(ITestDevice device) {
+            mDevice = device;
+        }
+
+        @Override
+        public ITestDevice getDevice() {
+            return mDevice;
+        }
     }
 
-    @RunWith(Suite.class)
+    @RunWith(DeviceSuite.class)
     @SuiteClasses({
         Junit4Testclass.class,
         SuccessTestCase.class,
@@ -205,6 +220,10 @@ public class HostTestTest extends TestCase {
         super.setUp();
         mHostTest = new HostTest();
         mListener = EasyMock.createMock(ITestInvocationListener.class);
+        mMockDevice = EasyMock.createMock(ITestDevice.class);
+        mMockBuildInfo = EasyMock.createMock(IBuildInfo.class);
+        mHostTest.setDevice(mMockDevice);
+        mHostTest.setBuild(mMockBuildInfo);
     }
 
     /**
@@ -417,6 +436,7 @@ public class HostTestTest extends TestCase {
      */
     public void testRun_missingDevice() throws Exception {
         mHostTest.setClassName(SuccessDeviceTest.class.getName());
+        mHostTest.setDevice(null);
         try {
             mHostTest.run(mListener);
             fail("expected IllegalArgumentException not thrown");

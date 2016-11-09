@@ -93,6 +93,7 @@ import com.android.tradefed.targetprep.TestFilePushSetupTest;
 import com.android.tradefed.testtype.AndroidJUnitTestTest;
 import com.android.tradefed.testtype.CodeCoverageTestBaseTest;
 import com.android.tradefed.testtype.DeviceBatteryLevelCheckerTest;
+import com.android.tradefed.testtype.DeviceSuiteTest;
 import com.android.tradefed.testtype.DeviceTestCaseTest;
 import com.android.tradefed.testtype.DeviceTestSuiteTest;
 import com.android.tradefed.testtype.FakeTestTest;
@@ -137,8 +138,8 @@ import com.android.tradefed.util.LogcatUpdaterEventParserTest;
 import com.android.tradefed.util.MultiMapTest;
 import com.android.tradefed.util.NullUtilTest;
 import com.android.tradefed.util.PairTest;
-import com.android.tradefed.util.PsParserTest;
 import com.android.tradefed.util.PropertyChangerTest;
+import com.android.tradefed.util.PsParserTest;
 import com.android.tradefed.util.QuotationAwareTokenizerTest;
 import com.android.tradefed.util.RegexTrieTest;
 import com.android.tradefed.util.RunUtilTest;
@@ -269,6 +270,7 @@ import org.junit.runners.Suite.SuiteClasses;
     AndroidJUnitTestTest.class,
     CodeCoverageTestBaseTest.class,
     DeviceBatteryLevelCheckerTest.class,
+    DeviceSuiteTest.class,
     DeviceTestCaseTest.class,
     DeviceTestSuiteTest.class,
     FakeTestTest.class,
