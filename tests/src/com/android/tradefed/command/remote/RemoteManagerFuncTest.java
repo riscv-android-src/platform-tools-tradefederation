@@ -15,6 +15,7 @@
  */
 package com.android.tradefed.command.remote;
 
+import com.android.tradefed.build.BuildInfo;
 import com.android.tradefed.command.ICommandScheduler;
 import com.android.tradefed.command.ICommandScheduler.IScheduledInvocationListener;
 import com.android.tradefed.device.DeviceAllocationState;
@@ -27,14 +28,14 @@ import com.android.tradefed.invoker.InvocationContext;
 
 import junit.framework.TestCase;
 
-import org.easymock.EasyMock;
-import org.easymock.IAnswer;
-
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+
+import org.easymock.EasyMock;
+import org.easymock.IAnswer;
 
 /**
  * Unit tests for {@link RemoteManager}.
@@ -479,6 +480,7 @@ public class RemoteManagerFuncTest extends TestCase {
                         (IScheduledInvocationListener)EasyMock.getCurrentArguments()[0];
                 IInvocationContext nullMeta = new InvocationContext();
                 nullMeta.addAllocatedDevice("device", device);
+                nullMeta.addDeviceBuildInfo("device", new BuildInfo());
                 listener.invocationStarted(nullMeta);
                 listener.invocationFailed(new DeviceNotAvailableException());
                 listener.invocationEnded(1);
