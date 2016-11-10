@@ -137,6 +137,15 @@ public class HostTest implements IDeviceTest, ITestFilterReceiver, ITestAnnotati
     }
 
     /**
+     * Get the build info received by HostTest.
+     *
+     * @return the {@link IBuildInfo}
+     */
+    protected IBuildInfo getBuild() {
+        return mBuildInfo;
+    }
+
+    /**
      * {@inheritDoc}
      */
     @Override
