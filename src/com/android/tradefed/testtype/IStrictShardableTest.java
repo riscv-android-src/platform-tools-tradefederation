@@ -16,12 +16,15 @@
 package com.android.tradefed.testtype;
 
 /**
- * A {@link IRemoteTest} that can be sharded into separately executable sub-tests.
+ * A {@link IRemoteTest} that can be sharded into separately executable sub-tests. The splitting
+ * into sub-tests is expected to be deterministic and each sub-test should be independent in order
+ * to allow for execution of different shards on different hosts.
  */
 public interface IStrictShardableTest extends IRemoteTest {
 
     /**
-     * Returns a {@link IRemoteTest} for a single shard.
+     * Returns a {@link IRemoteTest} for a single shard. This must be deterministic and always
+     * return the same {@link IRemoteTest} for the same input.
      *
      * @param shardCount the number of total shards
      * @param shardIndex the index of a test shard to return. The value is in range [0, shardCount).
