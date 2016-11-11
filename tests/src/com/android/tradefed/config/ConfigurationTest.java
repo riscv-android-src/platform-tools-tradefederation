@@ -330,6 +330,57 @@ public class ConfigurationTest extends TestCase {
     }
 
     /**
+     * Test {@link Configuration#injectOptionValue(String, String)} is throwing an exception
+     * for map options without no map key provided in the option value
+     */
+    public void testInjectParsedMapOptionValueNoKey() throws ConfigurationException {
+        TestConfigObject testConfigObject = new TestConfigObject();
+        mConfig.setConfigurationObject(CONFIG_OBJECT_TYPE_NAME, testConfigObject);
+        assertEquals(0, testConfigObject.getMap().size());
+
+        try {
+            mConfig.injectOptionValue(ALT_OPTION_NAME, "wrong_value");
+            fail("ConfigurationException is not thrown for a map option without retrievable key");
+        } catch (ConfigurationException ignore) {
+            // expected
+        }
+    }
+
+    /**
+     * Test {@link Configuration#injectOptionValue(String, String)} is throwing an exception
+     * for map options with ambiguous map key provided in the option value (multiple equal signs)
+     */
+    public void testInjectParsedMapOptionValueAmbiguousKey() throws ConfigurationException {
+        TestConfigObject testConfigObject = new TestConfigObject();
+        mConfig.setConfigurationObject(CONFIG_OBJECT_TYPE_NAME, testConfigObject);
+        assertEquals(0, testConfigObject.getMap().size());
+
+        try {
+            mConfig.injectOptionValue(ALT_OPTION_NAME, "a=b=c");
+            fail("ConfigurationException is not thrown for a map option with ambiguous key");
+        } catch (ConfigurationException ignore) {
+            // expected
+        }
+    }
+
+    /**
+     * Test {@link Configuration#injectOptionValue(String, String)} is correctly parsing map options
+     */
+    public void testInjectParsedMapOptionValue() throws ConfigurationException {
+        final String key = "hello\\=key";
+
+        TestConfigObject testConfigObject = new TestConfigObject();
+        mConfig.setConfigurationObject(CONFIG_OBJECT_TYPE_NAME, testConfigObject);
+        assertEquals(0, testConfigObject.getMap().size());
+        mConfig.injectOptionValue(ALT_OPTION_NAME, key + "=" + Boolean.toString(true));
+
+        Map<String, Boolean> map = testConfigObject.getMap();
+        assertEquals(1, map.size());
+        assertNotNull(map.get(key));
+        assertTrue(map.get(key));
+    }
+
+    /**
      * Test {@link Configuration#injectOptionValues(List)}
      */
     public void testInjectOptionValues() throws ConfigurationException {

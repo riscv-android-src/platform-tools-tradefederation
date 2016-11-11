@@ -61,6 +61,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
+import java.util.regex.Pattern;
 
 /**
  * A concrete {@link IConfiguration} implementation that stores the loaded config objects in a map.
@@ -91,6 +92,9 @@ public class Configuration implements IConfiguration {
 
     private static Map<String, ObjTypeInfo> sObjTypeMap = null;
     private static Set<String> sMultiDeviceSupportedTag = null;
+
+    // regexp pattern used to parse map option values
+    private static final Pattern OPTION_KEY_VALUE_PATTERN = Pattern.compile("(?<!\\\\)=");
 
     /** Mapping of config object type name to config objects. */
     private Map<String, List<Object>> mConfigMap;
@@ -430,6 +434,20 @@ public class Configuration implements IConfiguration {
         return new OptionSetter(getAllConfigurationObjects());
     }
 
+    /**
+     * Injects an option value into the set of configuration objects.
+     *
+     * Uses provided arguments as is and fails if arguments have invalid format or
+     * provided ambiguously, e.g. {@code optionKey} argument is provided for non-map option,
+     * or the value for an option of integer type cannot be parsed as an integer number.
+     *
+     * @param optionSetter setter to use for the injection
+     * @param optionName name of the option
+     * @param optionKey map key, if the option is of map type
+     * @param optionValue value of the option or map value, if the option is of map type
+     * @param source source of the option
+     * @throws ConfigurationException if option value cannot be injected
+     */
     private void internalInjectOptionValue(OptionSetter optionSetter, String optionName,
             String optionKey, String optionValue, String source) throws ConfigurationException {
         if (optionSetter == null) {
@@ -454,12 +472,50 @@ public class Configuration implements IConfiguration {
     }
 
     /**
+     * Injects an option value into the set of configuration objects.
+     *
+     * If the option to be set is of map type, an attempt to parse {@code optionValue} argument
+     * into key-value pair is made. In this case {@code optionValue} must have an equal sign
+     * separating a key and a value (e.g. my_key=my_value).
+     * In case a key or a value themselves contain an equal sign, this equal sign in them
+     * must be escaped using a backslash (e.g. a\=b=y\=z).
+     *
+     * @param optionSetter setter to use for the injection
+     * @param optionName name of the option
+     * @param optionValue value of the option
+     * @throws ConfigurationException if option value cannot be injected
+     */
+    private void internalInjectOptionValue(OptionSetter optionSetter, String optionName,
+            String optionValue) throws ConfigurationException {
+        // Cannot continue without optionSetter
+        if (optionSetter == null) {
+            throw new IllegalArgumentException("optionSetter cannot be null");
+        }
+
+        // If the option is not a map, then the key is null...
+        if (!optionSetter.isMapOption(optionName)) {
+            internalInjectOptionValue(optionSetter, optionName, null, optionValue, null);
+            return;
+        }
+
+        // ..., otherwise try to parse the value to retrieve the key
+        String[] parts = OPTION_KEY_VALUE_PATTERN.split(optionValue);
+        if (parts.length != 2) {
+            throw new ConfigurationException(String.format(
+                    "option '%s' has an invalid format for value %s:w",
+                    optionName, optionValue));
+        }
+        internalInjectOptionValue(optionSetter, optionName,
+                parts[0].replace("\\\\=", "="), parts[1].replace("\\\\=", "="), null);
+    }
+
+    /**
      * {@inheritDoc}
      */
     @Override
     public void injectOptionValue(String optionName, String optionValue)
             throws ConfigurationException {
-        internalInjectOptionValue(createOptionSetter(), optionName, null, optionValue, null);
+        internalInjectOptionValue(createOptionSetter(), optionName, optionValue);
     }
 
     /**
