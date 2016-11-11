@@ -42,6 +42,8 @@ import java.net.Socket;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -75,18 +77,22 @@ public class SubprocessTestResultsParser implements Closeable {
      */
     private class EventReceiverThread extends Thread {
         private ServerSocket mSocket;
-        private boolean mCanceled = false;
+        private CountDownLatch mCountDown;
 
         public EventReceiverThread() throws IOException {
             mSocket = new ServerSocket(0);
+            mCountDown = new CountDownLatch(1);
         }
 
         protected int getLocalPort() {
             return mSocket.getLocalPort();
         }
 
+        protected CountDownLatch getCountDown() {
+            return mCountDown;
+        }
+
         public void cancel() throws IOException {
-            mCanceled = true;
             if (mSocket != null) {
                 mSocket.close();
             }
@@ -99,19 +105,40 @@ public class SubprocessTestResultsParser implements Closeable {
             try {
                 client = mSocket.accept();
                 in = new BufferedReader(new InputStreamReader(client.getInputStream()));
-            } catch (IOException e1) {
-                return;
-            }
-            while (!mCanceled) {
-                try {
-                    String event = in.readLine();
-                    if (event != null) {
+                String event = null;
+                while ((event = in.readLine()) != null) {
+                    try {
                         CLog.i("received event: '%s'", event);
                         parse(event);
+                    } catch (JSONException e) {
+                        CLog.e(e);
                     }
-                } catch (IOException | JSONException e) {
-                    CLog.e(e);
                 }
+            } catch (IOException e) {
+                CLog.e(e);
+            } finally {
+                StreamUtil.close(in);
+                mCountDown.countDown();
+            }
+            CLog.d("EventReceiverThread done.");
+        }
+    }
+
+    /**
+     * If the event receiver is being used, ensure that we wait for it to terminate.
+     * @param millis timeout in milliseconds.
+     */
+    public void joinReceiver(long millis) {
+        if (mEventReceiver != null) {
+            try {
+                CLog.i("Waiting for events to finish being processed.");
+                if (!mEventReceiver.getCountDown().await(millis, TimeUnit.MILLISECONDS)) {
+                    throw new RuntimeException("Event receiver thread did not complete. Some "
+                            + "events may be missing.");
+                }
+            } catch (InterruptedException e) {
+                CLog.e(e);
+                throw new RuntimeException(e);
             }
         }
     }
