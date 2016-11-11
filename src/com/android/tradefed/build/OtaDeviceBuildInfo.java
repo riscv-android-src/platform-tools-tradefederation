@@ -16,6 +16,8 @@
 
 package com.android.tradefed.build;
 
+import com.android.tradefed.device.ITestDevice;
+
 import java.io.File;
 import java.util.Collection;
 import java.util.LinkedList;
@@ -23,7 +25,7 @@ import java.util.Map;
 
 /**
  * A {@link IDeviceBuildInfo} used for over-the-air update testing. It is composed of two device
- * builds:
+ * builds for {@link ITestDevice}:
  * <ul>
  * <li>a baseline build image (the build to OTA from).</li>
  * <li>a OTA build (a build to OTA to). Should contain necessary build attributes and associated

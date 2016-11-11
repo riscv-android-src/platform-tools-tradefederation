@@ -143,6 +143,7 @@ public class StubDevice implements IDevice {
 
     /**
      * {@inheritDoc}
+     * @deprecated use {@link #getSystemProperty(String)} instead.
      */
     @Override
     @Deprecated
@@ -160,6 +161,7 @@ public class StubDevice implements IDevice {
 
     /**
      * {@inheritDoc}
+     * @deprecated deprecated in ddmlib with "implementation detail" as reason.
      */
     @Override
     @Deprecated

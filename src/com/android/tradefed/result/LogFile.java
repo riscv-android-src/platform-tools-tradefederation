@@ -29,6 +29,7 @@ public class LogFile {
      *
      * @param path The absolute path to the saved file.
      * @param url The URL where the saved file can be accessed.
+     * @deprecated use {@link #LogFile(String, String, boolean, boolean)} instead.
      */
     @Deprecated
     public LogFile(String path, String url) {

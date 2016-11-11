@@ -58,6 +58,9 @@ public class DeviceCleaner implements ITargetCleaner {
             + "NONE, REBOOT or FORMAT; defaults to NONE")
     private CleanupAction mCleanupAction = CleanupAction.NONE;
 
+    /**
+     * @deprecated use --post-cleanup SCREEN_OFF option instead.
+     */
     @Deprecated
     @Option(name = "screen-off", description = "After cleanup action, "
             + "if screen should be turned off; defaults to false; "

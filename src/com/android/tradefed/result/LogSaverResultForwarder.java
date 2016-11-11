@@ -43,6 +43,7 @@ public class LogSaverResultForwarder extends ResultForwarder {
 
     /**
      * {@inheritDoc}
+     * @deprecated use {@link #invocationStarted(IInvocationContext)} instead.
      */
     @Override
     @Deprecated

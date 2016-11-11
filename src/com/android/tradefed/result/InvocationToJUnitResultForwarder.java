@@ -17,7 +17,6 @@ package com.android.tradefed.result;
 
 import com.android.ddmlib.Log;
 import com.android.ddmlib.testrunner.TestIdentifier;
-import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.invoker.IInvocationContext;
 
 import junit.framework.AssertionFailedError;
@@ -25,9 +24,9 @@ import junit.framework.Test;
 import junit.framework.TestListener;
 import junit.framework.TestResult;
 
-import org.junit.internal.AssumptionViolatedException;
-
 import java.util.Map;
+
+import org.junit.internal.AssumptionViolatedException;
 
 /**
  * A class that listens to {@link ITestInvocationListener} events and forwards them to a
@@ -196,16 +195,6 @@ import java.util.Map;
     public TestSummary getSummary() {
         // ignore
         return null;
-    }
-
-    /**
-     * {@inheritDoc}
-     * @deprecated
-     */
-    @Deprecated
-    @Override
-    public void invocationStarted(IBuildInfo buildInfo) {
-        // ignore
     }
 
     /**

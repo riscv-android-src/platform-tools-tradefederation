@@ -15,10 +15,12 @@
  */
 package com.android.tradefed.build;
 
+import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.util.FileUtil;
 import com.android.tradefed.util.MultiMap;
 import com.android.tradefed.util.UniqueMultiMap;
+
 import com.google.common.base.Objects;
 
 import java.io.File;
@@ -28,7 +30,8 @@ import java.util.Hashtable;
 import java.util.Map;
 
 /**
- * Generic implementation of a {@link IBuildInfo}.
+ * Generic implementation of a {@link IBuildInfo} that should be associated
+ * with a {@link ITestDevice}.
  */
 public class BuildInfo implements IBuildInfo {
     private String mBuildId = UNKNOWN_BUILD_ID;

@@ -30,7 +30,6 @@ import com.android.tradefed.result.FileInputStreamSource;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.InputStreamSource;
 import com.android.tradefed.result.LogDataType;
-import com.android.tradefed.result.StubTestInvocationListener;
 import com.android.tradefed.util.FileUtil;
 import com.android.tradefed.util.IRunUtil;
 import com.android.tradefed.util.RunUtil;
@@ -356,7 +355,7 @@ public class UiAutomatorTest implements IRemoteTest, IDeviceTest {
      */
     // TODO replace this once we have a generic event triggered reporter like
     // BugReportCollector
-    private class LoggingWrapper extends StubTestInvocationListener {
+    private class LoggingWrapper implements ITestInvocationListener {
 
         ITestInvocationListener mListener;
         private boolean mLoggedTestFailure = false;

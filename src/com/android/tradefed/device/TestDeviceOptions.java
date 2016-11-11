@@ -77,11 +77,6 @@ public class TestDeviceOptions {
             + "to be available aka fully boot.")
     private long mAvailableTimeout = 6 * 60 * 1000;
 
-    @Deprecated
-    @Option(name = "ping-ip-or-host", description = "default ip or host to ping during "
-            + "connectivity checks; [deprecated] use --ping-url instead.")
-    private String mPingIpOrHost = "www.google.com";
-
     @Option(name = "conn-check-url",
             description = "default URL to be used for connectivity checks.")
     private String mConnCheckUrl = "http://www.google.com";
@@ -257,17 +252,6 @@ public class TestDeviceOptions {
      */
     public long getAvailableTimeout() {
         return mAvailableTimeout;
-    }
-
-    /**
-     * @return the default ip or hostname to ping during connectivity tests.
-     */
-    public String getPingIpOrHost() {
-        return mPingIpOrHost;
-    }
-
-    public void setPingIpOrHost(String ipOrHost) {
-      mPingIpOrHost = ipOrHost;
     }
 
     /**

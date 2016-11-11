@@ -261,6 +261,7 @@ public class UiAutomatorRunner implements IRemoteAndroidTestRunner {
 
     /**
      * {@inheritDoc}
+     * @deprecated use {@link #setMaxTimeToOutputResponse(long, TimeUnit)} instead.
      */
     @Deprecated
     @Override
