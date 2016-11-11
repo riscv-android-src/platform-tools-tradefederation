@@ -29,7 +29,11 @@ import junit.framework.TestCase;
 import org.easymock.EasyMock;
 
 import java.io.File;
+import java.util.Arrays;
+import java.util.Collection;
 import java.util.concurrent.TimeUnit;
+import java.util.HashSet;
+import java.util.Set;
 
 
 /**
@@ -446,5 +450,16 @@ public class GTestTest extends TestCase {
         EasyMock.expect(mMockITestDevice.executeShellCommand("cat \"" + expectedFilterFile + "\""))
                 .andReturn(fakeContent);
         doTestFilter("");
+    }
+
+    /**
+     * Test GTest command line string for sharded tests.
+     */
+    public void testGetGTestCmdLine_testShard() {
+        mGTest.setShardIndex(1);
+        mGTest.setShardCount(3);
+
+        String cmd_line = mGTest.getGTestCmdLine("test_path", "flags");
+        assertEquals("GTEST_SHARD_INDEX=1 GTEST_TOTAL_SHARDS=3 test_path flags", cmd_line);
     }
 }

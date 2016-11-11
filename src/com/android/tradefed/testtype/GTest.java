@@ -19,8 +19,10 @@ package com.android.tradefed.testtype;
 import com.android.ddmlib.FileListingService;
 import com.android.ddmlib.IShellOutputReceiver;
 import com.android.ddmlib.testrunner.ITestRunListener;
+import com.android.tradefed.config.ConfigurationException;
 import com.android.tradefed.config.Option;
 import com.android.tradefed.config.OptionClass;
+import com.android.tradefed.config.OptionCopier;
 import com.android.tradefed.device.CollectingOutputReceiver;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
@@ -28,6 +30,7 @@ import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.util.ArrayUtil;
 import com.android.tradefed.util.FileUtil;
+import com.google.common.annotations.VisibleForTesting;
 
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -35,6 +38,7 @@ import org.json.JSONObject;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -45,7 +49,7 @@ import java.util.concurrent.TimeUnit;
  */
 @OptionClass(alias = "gtest")
 public class GTest implements IDeviceTest, IRemoteTest, ITestFilterReceiver, IRuntimeHintProvider,
-    ITestCollector {
+        ITestCollector, IStrictShardableTest {
 
     static final String DEFAULT_NATIVETEST_PATH = "/data/nativetest";
 
@@ -123,7 +127,8 @@ public class GTest implements IDeviceTest, IRemoteTest, ITestFilterReceiver, IRu
     @Option(name = "collect-tests-only",
             description = "Only invoke the test binary to collect list of applicable test cases. "
                     + "All test run callbacks will be triggered, but test execution will "
-                    + "not be actually carried out.")
+                    + "not be actually carried out. This option ignores sharding parameters, so "
+                    + "each shard will end up collecting all tests.")
     private boolean mCollectTestsOnly = false;
 
     @Option(name = "test-filter-key",
@@ -131,6 +136,9 @@ public class GTest implements IDeviceTest, IRemoteTest, ITestFilterReceiver, IRu
                     + "the json filter file associated with the binary, the filter file will have "
                     + "the same name as the binary with the .json extension.")
     private String mTestFilterKey = null;
+
+    private int mShardCount = 0;
+    private int mShardIndex = 0;
 
     /** coverage target value. Just report all gtests as 'native' for now */
     private static final String COVERAGE_TARGET = "Native";
@@ -201,22 +209,52 @@ public class GTest implements IDeviceTest, IRemoteTest, ITestFilterReceiver, IRu
 
     /**
      * Set the max time in ms for a gtest to run.
-     * <p/>
-     * Exposed for unit testing
      */
+    @VisibleForTesting
     void setMaxTestTimeMs(int timeout) {
         mMaxTestTimeMs = timeout;
     }
 
     /**
      * Adds an exclusion file filter regex.
-     * <p/>
-     * Exposed for unit testing
      *
      * @param regex to exclude file.
      */
+    @VisibleForTesting
     void addFileExclusionFilterRegex(String regex) {
         mFileExclusionFilterRegex.add(regex);
+    }
+
+    /**
+     * Sets the shard index of this test.
+     */
+    @VisibleForTesting
+    void setShardIndex(int shardIndex) {
+        mShardIndex = shardIndex;
+    }
+
+    /**
+     * Gets the shard index of this test.
+     */
+    @VisibleForTesting
+    int getShardIndex() {
+        return mShardIndex;
+    }
+
+    /**
+     * Sets the shard count of this test.
+     */
+    @VisibleForTesting
+    void setShardCount(int shardCount) {
+        mShardCount = shardCount;
+    }
+
+    /**
+     * Sets the shard count of this test.
+     */
+    @VisibleForTesting
+    int getShardCount() {
+        return mShardCount;
     }
 
     /**
@@ -378,14 +416,13 @@ public class GTest implements IDeviceTest, IRemoteTest, ITestFilterReceiver, IRu
 
     /**
      * Executes all native tests in a folder as well as in all subfolders recursively.
-     * <p/>
-     * Exposed for unit testing.
      *
      * @param root The root folder to begin searching for native tests
      * @param testDevice The device to run tests on
      * @param listener the {@link ITestRunListener}
      * @throws DeviceNotAvailableException
      */
+    @VisibleForTesting
     void doRunAllTestsInSubdirectory(String root, ITestDevice testDevice,
             ITestRunListener listener) throws DeviceNotAvailableException {
         if (testDevice.isDirectory(root)) {
@@ -558,6 +595,7 @@ public class GTest implements IDeviceTest, IRemoteTest, ITestFilterReceiver, IRu
      * @param listener
      * @return a {@link GTestXmlResultParser}
      */
+    @VisibleForTesting
     GTestXmlResultParser createXmlParser(String testRunName, ITestRunListener listener) {
         return new GTestXmlResultParser(testRunName, listener);
     }
@@ -574,20 +612,39 @@ public class GTest implements IDeviceTest, IRemoteTest, ITestFilterReceiver, IRu
         if (mLdLibraryPath != null) {
             gTestCmdLine.append(String.format("LD_LIBRARY_PATH=%s ", mLdLibraryPath));
         }
+        if (mShardCount > 0) {
+            if (mCollectTestsOnly) {
+                CLog.w("--collect-tests-only option ignores sharding parameters, and will cause "
+                        + "each shard to collect all tests.");
+            }
+            gTestCmdLine.append(String.format("GTEST_SHARD_INDEX=%s ", mShardIndex));
+            gTestCmdLine.append(String.format("GTEST_TOTAL_SHARDS=%s ", mShardCount));
+        }
         gTestCmdLine.append(String.format("%s %s", fullPath, flags));
         return gTestCmdLine.toString();
     }
 
     /**
+     * {@inheritDoc}
+     */
+    @Override
+    public IRemoteTest getTestShard(int shardCount, int shardIndex) {
+        GTest shard = new GTest();
+        OptionCopier.copyOptionsNoThrow(this, shard);
+        shard.mShardIndex = shardIndex;
+        shard.mShardCount = shardCount;
+        return shard;
+    }
+
+    /**
      * Factory method for creating a {@link IShellOutputReceiver} that parses test output and
      * forwards results to the result listener.
-     * <p/>
-     * Exposed so unit tests can mock
      *
      * @param listener
      * @param runName
      * @return a {@link IShellOutputReceiver}
      */
+    @VisibleForTesting
     IShellOutputReceiver createResultParser(String runName, ITestRunListener listener) {
         IShellOutputReceiver receiver = null;
         if (mCollectTestsOnly) {
