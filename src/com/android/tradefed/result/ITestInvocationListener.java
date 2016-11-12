@@ -141,7 +141,7 @@ public interface ITestInvocationListener extends ITestRunListener, ITestLogger {
      * {@inheritDoc}
      */
     @Override
-    default public void testRunEnded(long elapsedTime, Map<String, String> runMetrics) { }
+    default public void testRunEnded(long elapsedTimeMillis, Map<String, String> runMetrics) { }
 
     /**
      * {@inheritDoc}
