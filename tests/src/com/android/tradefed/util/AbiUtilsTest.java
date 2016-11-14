@@ -18,7 +18,11 @@ package com.android.tradefed.util;
 
 import static org.junit.Assert.assertEquals;
 
+import org.junit.Assert;
 import org.junit.Test;
+
+import java.util.HashSet;
+import java.util.Set;
 
 /**
  * Unit tests for {@link AbiUtils}
@@ -37,6 +41,13 @@ public class AbiUtilsTest {
     }
 
     @Test
+    public void testCreateAbiFlag_invalid() {
+        assertEquals("", AbiUtils.createAbiFlag(null));
+        assertEquals("", AbiUtils.createAbiFlag(""));
+        assertEquals("", AbiUtils.createAbiFlag("NOT SUPPORTED"));
+    }
+
+    @Test
     public void testCreateId() {
         String id = AbiUtils.createId(ABI_NAME, MODULE_NAME);
         assertEquals("Incorrect id created", ABI_ID, id);
@@ -51,6 +62,18 @@ public class AbiUtilsTest {
     }
 
     @Test
+    public void testParseId_invalid() {
+        String[] parts = AbiUtils.parseId(null);
+        assertEquals(2, parts.length);
+        assertEquals("", parts[0]);
+        assertEquals("", parts[1]);
+        parts = AbiUtils.parseId("");
+        assertEquals(2, parts.length);
+        assertEquals("", parts[0]);
+        assertEquals("", parts[1]);
+    }
+
+    @Test
     public void testParseName() {
         String name = AbiUtils.parseTestName(ABI_ID);
         assertEquals("Incorrect module name", MODULE_NAME, name);
@@ -60,5 +83,71 @@ public class AbiUtilsTest {
     public void testParseAbi() {
         String abi = AbiUtils.parseAbi(ABI_ID);
         assertEquals("Incorrect abi name", ABI_NAME, abi);
+    }
+
+    @Test
+    public void getAbiForArch() {
+        assertEquals(AbiUtils.ARM_ABIS, AbiUtils.getAbisForArch(AbiUtils.BASE_ARCH_ARM));
+        assertEquals(AbiUtils.ARM_ABIS, AbiUtils.getAbisForArch(AbiUtils.ARCH_ARM64));
+    }
+
+    @Test
+    public void getAbiForArch_nullArch() {
+        assertEquals(AbiUtils.ABIS_SUPPORTED_BY_COMPATIBILITY, AbiUtils.getAbisForArch(null));
+        assertEquals(AbiUtils.ABIS_SUPPORTED_BY_COMPATIBILITY, AbiUtils.getAbisForArch(""));
+        assertEquals(AbiUtils.ABIS_SUPPORTED_BY_COMPATIBILITY,
+                AbiUtils.getAbisForArch("NOT EXIST"));
+    }
+
+    @Test
+    public void getArchForAbi_emptyNull() {
+        try {
+            AbiUtils.getArchForAbi(null);
+            Assert.fail("Should have thrown an exception");
+        } catch (IllegalArgumentException expected) {
+            Assert.assertEquals("Abi cannot be null or empty", expected.getMessage());
+        }
+        try {
+            AbiUtils.getArchForAbi("");
+            Assert.fail("Should have thrown an exception");
+        } catch (IllegalArgumentException expected) {
+            Assert.assertEquals("Abi cannot be null or empty", expected.getMessage());
+        }
+    }
+
+    @Test
+    public void getArchForAbi() {
+        assertEquals(AbiUtils.BASE_ARCH_ARM, AbiUtils.getArchForAbi(AbiUtils.ABI_ARM_V7A));
+        assertEquals(AbiUtils.ARCH_ARM64, AbiUtils.getArchForAbi(AbiUtils.ABI_ARM_64_V8A));
+    }
+
+    @Test
+    public void testParseFromProperty() {
+        Set<String> abiSet = new HashSet<>();
+        abiSet.add("arm64-v8a");
+        abiSet.add("armeabi-v7a");
+        // armeabi will not appear as it is not supported by compatibility.
+        assertEquals(abiSet, AbiUtils.parseAbiListFromProperty("arm64-v8a,armeabi-v7a,armeabi"));
+    }
+
+    @Test
+    public void testGetBitness() {
+        assertEquals("32", AbiUtils.getBitness(AbiUtils.ABI_ARM_V7A));
+        assertEquals("64", AbiUtils.getBitness(AbiUtils.ABI_ARM_64_V8A));
+    }
+
+    @Test
+    public void testParseAbiList() {
+        Set<String> abiSet = new HashSet<>();
+        abiSet.add("arm64-v8a");
+        abiSet.add("armeabi-v7a");
+        // armeabi will not appear as it is not supported by compatibility.
+        assertEquals(abiSet, AbiUtils.parseAbiList("list1:arm64-v8a,armeabi-v7a,armeabi"));
+    }
+
+    @Test
+    public void testParseAbiList_invalidArg() {
+        Set<String> abiSet = new HashSet<>();
+        assertEquals(abiSet, AbiUtils.parseAbiList("BAD FORMAT"));
     }
 }

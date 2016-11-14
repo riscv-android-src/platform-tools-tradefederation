@@ -20,6 +20,7 @@ import com.google.common.util.concurrent.SettableFuture;
 import com.android.ddmlib.AdbCommandRejectedException;
 import com.android.ddmlib.IDevice;
 import com.android.ddmlib.IShellOutputReceiver;
+import com.android.ddmlib.RawImage;
 import com.android.ddmlib.ShellCommandUnresponsiveException;
 import com.android.ddmlib.TimeoutException;
 import com.android.ddmlib.testrunner.IRemoteAndroidTestRunner;
@@ -28,12 +29,17 @@ import com.android.ddmlib.testrunner.RemoteAndroidTestRunner;
 import com.android.tradefed.device.ITestDevice.MountPointInfo;
 import com.android.tradefed.device.ITestDevice.RecoveryMode;
 import com.android.tradefed.log.LogUtil.CLog;
+import com.android.tradefed.result.ByteArrayInputStreamSource;
+import com.android.tradefed.result.InputStreamSource;
 import com.android.tradefed.util.ArrayUtil;
 import com.android.tradefed.util.CommandResult;
 import com.android.tradefed.util.CommandStatus;
+import com.android.tradefed.util.FileUtil;
 import com.android.tradefed.util.IRunUtil;
 import com.android.tradefed.util.RunUtil;
+import com.android.tradefed.util.ZipUtil;
 
+import junit.framework.Assert;
 import junit.framework.TestCase;
 
 import org.easymock.EasyMock;
@@ -42,6 +48,7 @@ import org.easymock.IExpectationSetters;
 
 import java.io.File;
 import java.io.IOException;
+import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -61,6 +68,7 @@ public class TestDeviceTest extends TestCase {
     // For getCurrentUser, the min api should be 24. We make the stub return 23, the logic should
     // increment it by one.
     private static final int MIN_API_LEVEL_GET_CURRENT_USER = 23;
+    private static final String RAWIMAGE_RESOURCE = "/testdata/rawImage.zip";
     private IDevice mMockIDevice;
     private IShellOutputReceiver mMockReceiver;
     private TestDevice mTestDevice;
@@ -2701,5 +2709,104 @@ public class TestDeviceTest extends TestCase {
         expected.put(0, null);
         expected.put(1, null);
         assertEquals(expected, mTestDevice.getAndroidIds());
+    }
+
+    /**
+     * Test for {@link TestDevice#getScreenshot()} when action failed.
+     */
+    public void testGetScreenshot_failure() throws Exception {
+        mTestDevice = new TestableTestDevice() {
+            @Override
+            protected boolean performDeviceAction(
+                    String actionDescription, DeviceAction action, int retryAttempts)
+                    throws DeviceNotAvailableException {
+                return false;
+            }
+        };
+        assertNull(mTestDevice.getScreenshot());
+    }
+
+    /**
+     * Test for {@link TestDevice#getScreenshot()} when action succeed.
+     */
+    public void testGetScreenshot() throws Exception {
+        mTestDevice = new TestableTestDevice() {
+            @Override
+            protected boolean performDeviceAction(
+                    String actionDescription, DeviceAction action, int retryAttempts)
+                    throws DeviceNotAvailableException {
+                return true;
+            }
+            @Override
+            public byte[] compressRawImage(RawImage rawImage, String format) {
+                return "image".getBytes();
+            }
+        };
+        InputStreamSource data = mTestDevice.getScreenshot();
+        assertNotNull(data);
+        assertTrue(data instanceof ByteArrayInputStreamSource);
+    }
+
+    /**
+     * Helper to retrieve the test file
+     */
+    private File getTestImageResource() throws Exception {
+        InputStream imageZip = getClass().getResourceAsStream(RAWIMAGE_RESOURCE);
+        File imageZipFile = FileUtil.createTempFile("rawImage", ".zip");
+        try {
+            FileUtil.writeToFile(imageZip, imageZipFile);
+            File dir = ZipUtil.extractZipToTemp(imageZipFile, "test-raw-image");
+            return new File(dir, "rawImageScreenshot.raw");
+        } finally {
+            FileUtil.deleteFile(imageZipFile);
+        }
+    }
+
+    /**
+     * Helper to create the rawImage to test.
+     */
+    private RawImage prepareRawImage(File rawImageFile) throws Exception {
+        RawImage sRawImage = null;
+        String data = FileUtil.readStringFromFile(rawImageFile);
+        sRawImage = new RawImage();
+        sRawImage.alpha_length = 8;
+        sRawImage.alpha_offset = 24;
+        sRawImage.blue_length = 8;
+        sRawImage.blue_offset = 16;
+        sRawImage.bpp = 32;
+        sRawImage.green_length = 8;
+        sRawImage.green_offset = 8;
+        sRawImage.height = 1920;
+        sRawImage.red_length = 8;
+        sRawImage.red_offset = 0;
+        sRawImage.size = 8294400;
+        sRawImage.version = 1;
+        sRawImage.width = 1080;
+        sRawImage.data = data.getBytes();
+        return sRawImage;
+    }
+
+    /**
+     * Test for {@link TestDevice#compressRawImage(RawImage, String)} properly reduce the image
+     * size with different encoding.
+     */
+    public void testCompressScreenshot() throws Exception {
+        File testImageFile = getTestImageResource();
+        RawImage testImage = prepareRawImage(testImageFile);
+        try {
+            // Size of the raw test data
+            Assert.assertEquals(12441600, testImage.data.length);
+            byte[] result = mTestDevice.compressRawImage(testImage, "PNG");
+            // Size after compressing
+            Assert.assertEquals(4082, result.length);
+
+            // Do it again with JPEG encoding
+            Assert.assertEquals(12441600, testImage.data.length);
+            result = mTestDevice.compressRawImage(testImage, "JPEG");
+            // Size after compressing as JPEG
+            Assert.assertEquals(119998, result.length);
+        } finally {
+            FileUtil.recursiveDelete(testImageFile.getParentFile());
+        }
     }
 }

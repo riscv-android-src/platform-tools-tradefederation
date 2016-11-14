@@ -18,7 +18,9 @@ package com.android.tradefed.device;
 import com.android.ddmlib.IDevice;
 import com.android.ddmlib.IShellOutputReceiver;
 import com.android.tradefed.build.IBuildInfo;
+import com.android.tradefed.command.remote.DeviceDescriptor;
 import com.android.tradefed.log.ITestLogger;
+import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.result.ByteArrayInputStreamSource;
 import com.android.tradefed.result.FileInputStreamSource;
 import com.android.tradefed.result.InputStreamSource;
@@ -1537,5 +1539,125 @@ public class NativeDeviceTest extends TestCase {
         Long res = mTestDevice.parseFreeSpaceFromModernOutput(dfOutput);
         assertNotNull(res);
         assertEquals(31054112L, res.longValue());
+    }
+
+    /**
+     * Test that {@link NativeDevice#getDeviceTimeOffset(Date)} returns the proper offset forward
+     */
+    public void testGetDeviceTimeOffset() throws DeviceNotAvailableException {
+        mTestDevice = new TestableAndroidNativeDevice() {
+            @Override
+            public long getDeviceDate() throws DeviceNotAvailableException {
+                return 1476958881L;
+            }
+        };
+        Date date = new Date(1476958891000L);
+        assertEquals(10000L, mTestDevice.getDeviceTimeOffset(date));
+    }
+
+    /**
+     * Test that {@link NativeDevice#getDeviceTimeOffset(Date)}} returns the proper offset when
+     * there is delay.
+     */
+    public void testGetDeviceTimeOffset_delay() throws DeviceNotAvailableException {
+        mTestDevice = new TestableAndroidNativeDevice() {
+            @Override
+            public long getDeviceDate() throws DeviceNotAvailableException {
+                // DeviceDate is in second
+                return 1476958891L;
+            }
+        };
+        // Date takes millisecond since Epoch
+        Date date = new Date(1476958881000L);
+        assertEquals(-10000L, mTestDevice.getDeviceTimeOffset(date));
+    }
+
+    /**
+     * Test that {@link NativeDevice#setDate(Date)} returns the proper offset when
+     * there is delay with api level above 24, posix format is used.
+     */
+    public void testSetDate() throws DeviceNotAvailableException {
+        Date date = new Date(1476958881000L);
+        mTestDevice = new TestableAndroidNativeDevice() {
+            @Override
+            public int getApiLevel() throws DeviceNotAvailableException {
+                return 24;
+            }
+            @Override
+            protected long getDeviceTimeOffset(Date date) throws DeviceNotAvailableException {
+                // right above set threshold
+                return NativeDevice.MAX_HOST_DEVICE_TIME_OFFSET + 1;
+            }
+            @Override
+            public String executeShellCommand(String command) throws DeviceNotAvailableException {
+                CLog.e("%s", command);
+                assertEquals("date -u 102010212016.21", command);
+                return command;
+            }
+        };
+        mTestDevice.setDate(date);
+    }
+
+    /**
+     * Test that {@link NativeDevice#setDate(Date)} returns the proper offset when
+     * there is delay with api level below 23, regular second format is used.
+     */
+    public void testSetDate_lowApi() throws DeviceNotAvailableException {
+        Date date = new Date(1476958881000L);
+        mTestDevice = new TestableAndroidNativeDevice() {
+            @Override
+            public int getApiLevel() throws DeviceNotAvailableException {
+                return 22;
+            }
+            @Override
+            protected long getDeviceTimeOffset(Date date) throws DeviceNotAvailableException {
+                // right above set threshold
+                return NativeDevice.MAX_HOST_DEVICE_TIME_OFFSET + 1;
+            }
+            @Override
+            public String executeShellCommand(String command) throws DeviceNotAvailableException {
+                CLog.e("%s", command);
+                assertEquals("date -u 1476958881", command);
+                return command;
+            }
+        };
+        mTestDevice.setDate(date);
+    }
+
+    /**
+     * Test that {@link NativeDevice#setDate(Date)} does not attemp to set if bellow threshold.
+     */
+    public void testSetDate_NoAction() throws DeviceNotAvailableException {
+        Date date = new Date(1476958881000L);
+        mTestDevice = new TestableAndroidNativeDevice() {
+            @Override
+            protected long getDeviceTimeOffset(Date date) throws DeviceNotAvailableException {
+                // right below set threshold
+                return NativeDevice.MAX_HOST_DEVICE_TIME_OFFSET - 1;
+            }
+            @Override
+            public String executeShellCommand(String command) throws DeviceNotAvailableException {
+                fail("Should not be called");
+                return command;
+            }
+        };
+        mTestDevice.setDate(date);
+    }
+
+    /**
+     * Test that {@link NativeDevice#getDeviceDescriptor()} returns the proper information.
+     */
+    public void testGetDeviceDescriptor() {
+        final String serial = "Test";
+        mTestDevice = new TestableAndroidNativeDevice() {
+            @Override
+            public IDevice getIDevice() {
+                return new StubDevice(serial);
+            }
+        };
+        DeviceDescriptor desc = mTestDevice.getDeviceDescriptor();
+        assertTrue(desc.isStubDevice());
+        assertEquals(serial, desc.getSerial());
+        assertEquals("StubDevice", desc.getDeviceClass());
     }
 }

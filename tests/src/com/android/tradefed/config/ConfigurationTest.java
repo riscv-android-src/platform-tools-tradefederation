@@ -18,6 +18,7 @@ package com.android.tradefed.config;
 import com.android.ddmlib.Log.LogLevel;
 import com.android.tradefed.build.BuildRetrievalError;
 import com.android.tradefed.build.IBuildProvider;
+import com.android.tradefed.command.CommandOptions;
 import com.android.tradefed.command.ICommandOptions;
 import com.android.tradefed.config.ConfigurationDef.OptionDef;
 import com.android.tradefed.device.DeviceNotAvailableException;
@@ -29,6 +30,7 @@ import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.TextResultReporter;
 import com.android.tradefed.targetprep.ITargetPreparer;
 import com.android.tradefed.testtype.IRemoteTest;
+import com.android.tradefed.util.FileUtil;
 import com.android.tradefed.util.MultiMap;
 
 import junit.framework.TestCase;
@@ -39,7 +41,10 @@ import org.json.JSONException;
 import org.json.JSONObject;
 
 import java.io.ByteArrayOutputStream;
+import java.io.File;
+import java.io.IOException;
 import java.io.PrintStream;
+import java.io.PrintWriter;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -548,5 +553,92 @@ public class ConfigurationTest extends TestCase {
         JSONObject jsonMapValue = jsonMapOption.getJSONObject("value");
         assertEquals(mapOption.get("foo"), jsonMapValue.get("foo"));
         assertEquals(mapOption.get("bar"), jsonMapValue.get("bar"));
+    }
+
+    /**
+     * Test that {@link Configuration#validateOptions()} doesn't throw when all mandatory fields
+     * are set.
+     */
+    public void testValidateOptions() throws ConfigurationException {
+        mConfig.validateOptions();
+    }
+
+    /**
+     * Test that {@link Configuration#validateOptions()} throws a config exception when shard
+     * count is negative number.
+     */
+    public void testValidateOptionsShardException() throws ConfigurationException {
+        ICommandOptions option = new CommandOptions() {
+            @Override
+            public Integer getShardCount() {return -1;}
+        };
+        mConfig.setConfigurationObject(Configuration.CMD_OPTIONS_TYPE_NAME, option);
+        try {
+            mConfig.validateOptions();
+            fail("Should have thrown an exception.");
+        } catch(ConfigurationException expected) {
+            assertEquals("a shard count must be a positive number", expected.getMessage());
+        }
+    }
+
+    /**
+     * Test that {@link Configuration#validateOptions()} throws a config exception when shard
+     * index is not valid.
+     */
+    public void testValidateOptionsShardIndexException() throws ConfigurationException {
+        ICommandOptions option = new CommandOptions() {
+            @Override
+            public Integer getShardIndex() {
+                return -1;
+            }
+        };
+        mConfig.setConfigurationObject(Configuration.CMD_OPTIONS_TYPE_NAME, option);
+        try {
+            mConfig.validateOptions();
+            fail("Should have thrown an exception.");
+        } catch(ConfigurationException expected) {
+            assertEquals("a shard index must be in range [0, shard count)", expected.getMessage());
+        }
+    }
+
+    /**
+     * Test that {@link Configuration#validateOptions()} throws a config exception when shard
+     * index is above the shard count.
+     */
+    public void testValidateOptionsShardIndexAboveShardCount() throws ConfigurationException {
+        ICommandOptions option = new CommandOptions() {
+            @Override
+            public Integer getShardIndex() {
+                return 3;
+            }
+            @Override
+            public Integer getShardCount() {
+                return 2;
+            }
+        };
+        mConfig.setConfigurationObject(Configuration.CMD_OPTIONS_TYPE_NAME, option);
+        try {
+            mConfig.validateOptions();
+            fail("Should have thrown an exception.");
+        } catch(ConfigurationException expected) {
+            assertEquals("a shard index must be in range [0, shard count)", expected.getMessage());
+        }
+    }
+
+    /**
+     * Test that {@link Configuration#dumpXml(PrintWriter)} produce the xml output.
+     */
+    public void testDumpXml() throws IOException {
+        File test = FileUtil.createTempFile("dumpxml", "xml");
+        try {
+            PrintWriter out = new PrintWriter(test);
+            mConfig.dumpXml(out);
+            out.flush();
+            String content = FileUtil.readStringFromFile(test);
+            assertTrue(content.length() > 100);
+            assertTrue(content.contains("<configuration>"));
+        } finally {
+            FileUtil.deleteFile(test);
+        }
     }
 }
