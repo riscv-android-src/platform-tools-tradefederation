@@ -15,6 +15,8 @@
  */
 package com.android.tradefed.result;
 
+import com.google.common.annotations.VisibleForTesting;
+
 import com.android.ddmlib.testrunner.TestIdentifier;
 import com.android.ddmlib.testrunner.TestResult.TestStatus;
 import com.android.ddmlib.testrunner.TestRunResult;
@@ -53,6 +55,7 @@ public class CollectingTestListener implements ITestInvocationListener {
     private boolean mIsAggregateMetrics = false;
 
     private IBuildInfo mBuildInfo;
+    private IInvocationContext mContext;
 
     /**
      * Toggle the 'aggregate metrics' option
@@ -65,7 +68,9 @@ public class CollectingTestListener implements ITestInvocationListener {
 
     /**
      * {@inheritDoc}
+     * @deprecated
      */
+    @Deprecated
     @Override
     public void invocationStarted(IBuildInfo buildInfo) {
         mBuildInfo = buildInfo;
@@ -76,6 +81,8 @@ public class CollectingTestListener implements ITestInvocationListener {
      */
     @Override
     public void invocationStarted(IInvocationContext context) {
+        mContext = context;
+        // TODO: Remove once migration is complete.
         if (context != null) {
             invocationStarted(context.getBuildInfos().get(0));
         }
@@ -89,8 +96,17 @@ public class CollectingTestListener implements ITestInvocationListener {
     }
 
     /**
-     * Set the build info.
+     * Return the invocation context that was reported via
+     * {@link #invocationStarted(IInvocationContext)}
      */
+    public IInvocationContext getInvocationContext() {
+        return mContext;
+    }
+
+    /**
+     * Set the build info. Should only be used for testing.
+     */
+    @VisibleForTesting
     public void setBuildInfo(IBuildInfo buildInfo) {
         mBuildInfo = buildInfo;
     }

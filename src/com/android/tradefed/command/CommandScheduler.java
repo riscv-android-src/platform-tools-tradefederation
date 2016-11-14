@@ -80,6 +80,7 @@ import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
+import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.LinkedList;
 import java.util.List;
@@ -921,7 +922,7 @@ public class CommandScheduler extends Thread implements ICommandScheduler, IComm
                 ExecutableCommand cmd = cmdIter.next();
                 IConfiguration config = cmd.getConfiguration();
                 IInvocationContext context = new InvocationContext();
-                Map<String, ITestDevice> devices = new HashMap<String, ITestDevice>();
+                Map<String, ITestDevice> devices = new LinkedHashMap<String, ITestDevice>();
 
                 if (!config.getDeviceConfig().isEmpty()) {
                     for (IDeviceConfiguration deviceConfig : config.getDeviceConfig()) {

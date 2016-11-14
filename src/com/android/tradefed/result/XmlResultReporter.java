@@ -22,7 +22,6 @@ import com.android.ddmlib.testrunner.TestIdentifier;
 import com.android.ddmlib.testrunner.TestResult;
 import com.android.ddmlib.testrunner.TestResult.TestStatus;
 import com.android.ddmlib.testrunner.TestRunResult;
-import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.config.OptionClass;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.util.StreamUtil;
@@ -78,7 +77,6 @@ public class XmlResultReporter extends CollectingTestListener implements ILogSav
     private static final String ns = null;
 
     private ILogSaver mLogSaver;
-    private IBuildInfo mBuildInfo;
 
     /**
      * {@inheritDoc}
@@ -87,16 +85,6 @@ public class XmlResultReporter extends CollectingTestListener implements ILogSav
     public void invocationEnded(long elapsedTime) {
         super.invocationEnded(elapsedTime);
         generateSummary(elapsedTime);
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public void invocationStarted(IBuildInfo buildInfo) {
-        super.invocationStarted(buildInfo);
-
-        mBuildInfo = buildInfo;
     }
 
     @Override
@@ -163,7 +151,7 @@ public class XmlResultReporter extends CollectingTestListener implements ILogSav
     void printTestResults(KXmlSerializer serializer, String timestamp, long elapsedTime)
             throws IOException {
         serializer.startTag(ns, TESTSUITE);
-        serializer.attribute(ns, ATTR_NAME, mBuildInfo.getTestTag());
+        serializer.attribute(ns, ATTR_NAME, getInvocationContext().getTestTag());
         serializer.attribute(ns, ATTR_TESTS, Integer.toString(getNumTotalTests()));
         serializer.attribute(ns, ATTR_FAILURES,
                 Integer.toString(getNumTestsInState(TestStatus.FAILURE)));

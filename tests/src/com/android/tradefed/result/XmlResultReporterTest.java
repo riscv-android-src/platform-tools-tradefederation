@@ -19,6 +19,7 @@ import com.android.ddmlib.testrunner.TestIdentifier;
 import com.android.tradefed.build.BuildInfo;
 import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.invoker.IInvocationContext;
+import com.android.tradefed.invoker.InvocationContext;
 
 import junit.framework.TestCase;
 
@@ -109,7 +110,10 @@ public class XmlResultReporterTest extends TestCase {
             "timestamp=\"ignore\" hostname=\"localhost\"> " +
             "<properties />" +
             "</testsuite>";
-        mResultReporter.invocationStarted(new BuildInfo("1", "test", "test"));
+        IInvocationContext context = new InvocationContext();
+        context.addDeviceBuildInfo("fakeDevice", new BuildInfo("1", "test"));
+        context.setTestTag("test");
+        mResultReporter.invocationStarted(context);
         mResultReporter.invocationEnded(1);
         assertEquals(expectedOutput, getOutput());
     }
@@ -120,7 +124,10 @@ public class XmlResultReporterTest extends TestCase {
     public void testSinglePass() {
         Map<String, String> emptyMap = Collections.emptyMap();
         final TestIdentifier testId = new TestIdentifier("FooTest", "testFoo");
-        mResultReporter.invocationStarted(new BuildInfo());
+        IInvocationContext context = new InvocationContext();
+        context.addDeviceBuildInfo("fakeDevice", new BuildInfo());
+        context.setTestTag("stub");
+        mResultReporter.invocationStarted(context);
         mResultReporter.testRunStarted("run", 1);
         mResultReporter.testStarted(testId);
         mResultReporter.testEnded(testId, emptyMap);
@@ -141,7 +148,10 @@ public class XmlResultReporterTest extends TestCase {
         Map<String, String> emptyMap = Collections.emptyMap();
         final TestIdentifier testId = new TestIdentifier("FooTest", "testFoo");
         final String trace = "this is a trace";
-        mResultReporter.invocationStarted(new BuildInfo());
+        IInvocationContext context = new InvocationContext();
+        context.addDeviceBuildInfo("fakeDevice", new BuildInfo());
+        context.setTestTag("stub");
+        mResultReporter.invocationStarted(context);
         mResultReporter.testRunStarted("run", 1);
         mResultReporter.testStarted(testId);
         mResultReporter.testFailed(testId, trace);

@@ -20,7 +20,6 @@ import com.android.ddmlib.testrunner.TestIdentifier;
 import com.android.ddmlib.testrunner.TestResult;
 import com.android.ddmlib.testrunner.TestResult.TestStatus;
 import com.android.ddmlib.testrunner.TestRunResult;
-import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.result.CollectingTestListener;
 import com.android.tradefed.result.ITestInvocationListener;
@@ -53,18 +52,6 @@ class ShardListener extends CollectingTestListener {
     /**
      * {@inheritDoc}
      * @deprecated use {@link #invocationStarted(IInvocationContext)} instead.
-     */
-    @Deprecated
-    @Override
-    public void invocationStarted(IBuildInfo buildInfo) {
-        super.invocationStarted(buildInfo);
-        synchronized (mMasterListener) {
-            mMasterListener.invocationStarted(buildInfo);
-        }
-    }
-
-    /**
-     * {@inheritDoc}
      */
     @Override
     public void invocationStarted(IInvocationContext context) {

@@ -513,18 +513,7 @@ public class BugreportCollector implements ITestInvocationListener {
         check(Relation.AT_START_OF, Noun.TESTCASE, test);
     }
 
-
     // Methods from the {@link ITestInvocationListener} interface
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public void invocationStarted(IBuildInfo buildInfo) {
-        mListener.invocationStarted(buildInfo);
-        mCollector.invocationStarted(buildInfo);
-        check(Relation.AT_START_OF, Noun.INVOCATION);
-    }
-
     /**
      * {@inheritDoc}
      */
