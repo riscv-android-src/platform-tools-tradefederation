@@ -82,6 +82,7 @@ import com.android.tradefed.targetprep.DeviceFlashPreparerTest;
 import com.android.tradefed.targetprep.DeviceSetupTest;
 import com.android.tradefed.targetprep.FastbootDeviceFlasherTest;
 import com.android.tradefed.targetprep.FlashingResourcesParserTest;
+import com.android.tradefed.targetprep.InstallApkSetupTest;
 import com.android.tradefed.targetprep.InstrumentationPreparerTest;
 import com.android.tradefed.targetprep.KernelFlashPreparerTest;
 import com.android.tradefed.targetprep.PushFilePreparerTest;
@@ -259,6 +260,7 @@ import org.junit.runners.Suite.SuiteClasses;
     DeviceSetupTest.class,
     FastbootDeviceFlasherTest.class,
     FlashingResourcesParserTest.class,
+    InstallApkSetupTest.class,
     InstrumentationPreparerTest.class,
     KernelFlashPreparerTest.class,
     PushFilePreparerTest.class,
