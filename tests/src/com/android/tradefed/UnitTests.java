@@ -64,6 +64,7 @@ import com.android.tradefed.result.BugreportCollectorTest;
 import com.android.tradefed.result.CollectingTestListenerTest;
 import com.android.tradefed.result.ConsoleResultReporterTest;
 import com.android.tradefed.result.DeviceFileReporterTest;
+import com.android.tradefed.result.DeviceUnavailEmailResultReporterTest;
 import com.android.tradefed.result.EmailResultReporterTest;
 import com.android.tradefed.result.FailureEmailResultReporterTest;
 import com.android.tradefed.result.FileSystemLogSaverTest;
@@ -238,6 +239,7 @@ import org.junit.runners.Suite.SuiteClasses;
     ConsoleResultReporterTest.class,
     CollectingTestListenerTest.class,
     DeviceFileReporterTest.class,
+    DeviceUnavailEmailResultReporterTest.class,
     EmailResultReporterTest.class,
     EmmaXmlReporterParserTest.class,
     FailureEmailResultReporterTest.class,

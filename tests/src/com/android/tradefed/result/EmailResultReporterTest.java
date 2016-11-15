@@ -57,7 +57,7 @@ public class EmailResultReporterTest extends TestCase {
         mEmailReporter.invocationEnded(0);
         EasyMock.verify(mMockMailer);
 
-        assertEquals("Tradefed result for mytest  on {build 888}: SUCCESS",
+        assertEquals("Tradefed result for mytest  on BuildInfo{bid=888, target=mybuild}: SUCCESS",
                 mEmailReporter.generateEmailSubject());
     }
 
@@ -79,7 +79,8 @@ public class EmailResultReporterTest extends TestCase {
         mEmailReporter.invocationEnded(0);
         EasyMock.verify(mMockMailer);
 
-        assertEquals("Tradefed result for mytest  on {build 888}{build 999}: SUCCESS",
+        assertEquals("Tradefed result for mytest  on BuildInfo{bid=888, target=mybuild}"
+                + "BuildInfo{bid=999, target=mybuild2}: SUCCESS",
                 mEmailReporter.generateEmailSubject());
     }
 
@@ -97,7 +98,7 @@ public class EmailResultReporterTest extends TestCase {
 
         EasyMock.verify(mMockMailer);
 
-        assertEquals("Tradefed result for (unknown suite) on {build 888}: SUCCESS",
+        assertEquals("Tradefed result for (unknown suite) on BuildInfo{bid=888}: SUCCESS",
                 mEmailReporter.generateEmailSubject());
     }
 }
