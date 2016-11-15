@@ -27,6 +27,7 @@ import com.android.tradefed.build.SdkBuildInfoTest;
 import com.android.tradefed.command.CommandFileParserTest;
 import com.android.tradefed.command.CommandFileWatcherTest;
 import com.android.tradefed.command.CommandOptionsTest;
+import com.android.tradefed.command.CommandRunnerTest;
 import com.android.tradefed.command.CommandSchedulerTest;
 import com.android.tradefed.command.ConsoleTest;
 import com.android.tradefed.command.VerifyTest;
@@ -192,8 +193,9 @@ import org.junit.runners.Suite.SuiteClasses;
     // command
     CommandFileParserTest.class,
     CommandFileWatcherTest.class,
-    CommandSchedulerTest.class,
     CommandOptionsTest.class,
+    CommandRunnerTest.class,
+    CommandSchedulerTest.class,
     ConsoleTest.class,
     VerifyTest.class,
 

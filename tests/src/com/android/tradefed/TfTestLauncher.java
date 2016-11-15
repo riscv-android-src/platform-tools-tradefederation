@@ -229,7 +229,10 @@ public class TfTestLauncher implements IRemoteTest, IBuildReceiver {
             CommandResult result = runUtil.runTimedCmd(mMaxTfRunTimeMin * 60 * 1000, stdout, stderr,
                     args.toArray(new String[0]));
             // We possibly allow for a little more time if the thread is still processing events.
-            eventParser.joinReceiver(EVENT_THREAD_JOIN_TIMEOUT_MS);
+            if (!eventParser.joinReceiver(EVENT_THREAD_JOIN_TIMEOUT_MS)) {
+                throw new RuntimeException(String.format("Event receiver thread did not complete:"
+                        + "\n%s", FileUtil.readStringFromFile(stderrFile)));
+            }
             if (result.getStatus().equals(CommandStatus.SUCCESS)) {
                 CLog.d("Successfully ran TF tests for build %s", mBuildInfo.getBuildId());
             } else {
@@ -239,8 +242,8 @@ public class TfTestLauncher implements IRemoteTest, IBuildReceiver {
                         result.getStdout(), result.getStderr());
                 exception = true;
                 throw new RuntimeException(
-                        String.format("%s Tests subprocess failed due to: %s\n", mConfigName,
-                                result.getStatus()));
+                        String.format("%s Tests subprocess failed due to:\n %s\n", mConfigName,
+                                FileUtil.readStringFromFile(stderrFile)));
             }
         } catch (IOException e) {
             exception = true;

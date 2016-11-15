@@ -248,7 +248,7 @@ public class SubprocessTestResultsParserTest extends TestCase {
             out.print(testEnded);
             out.flush();
             StreamUtil.close(socket);
-            resultParser.joinReceiver(500);
+            assertTrue(resultParser.joinReceiver(500));
             EasyMock.verify(mockRunListener);
         } finally {
             StreamUtil.close(resultParser);
@@ -267,13 +267,7 @@ public class SubprocessTestResultsParserTest extends TestCase {
         SubprocessTestResultsParser resultParser = null;
         try {
             resultParser = new SubprocessTestResultsParser(mockRunListener, true);
-            try {
-                resultParser.joinReceiver(50);
-                fail("Should have thrown an exception.");
-            } catch (RuntimeException expected) {
-                assertEquals("Event receiver thread did not complete. Some events may be missing.",
-                        expected.getMessage());
-            }
+            assertFalse(resultParser.joinReceiver(50));
             EasyMock.verify(mockRunListener);
         } finally {
             StreamUtil.close(resultParser);

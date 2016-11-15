@@ -22,6 +22,7 @@ import com.android.tradefed.build.ExistingBuildProvider;
 import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.build.IBuildProvider;
 import com.android.tradefed.build.IDeviceBuildProvider;
+import com.android.tradefed.command.CommandRunner.ExitCode;
 import com.android.tradefed.config.ConfigurationDef;
 import com.android.tradefed.config.ConfigurationException;
 import com.android.tradefed.config.ConfigurationFactory;
@@ -1038,7 +1039,8 @@ public class TestInvocation implements ITestInvocation {
                     // save current log contents to global log
                     getLogRegistry().dumpToGlobalLog(config.getLogOutput());
                     // Set the exit code to error
-                    setExitCode(1);
+                    setExitCode(ExitCode.NO_BUILD,
+                            new BuildRetrievalError("No build found to test."));
                     return;
                 }
                 // TODO: remove build update when reporting is done on context
@@ -1053,6 +1055,7 @@ public class TestInvocation implements ITestInvocation {
                     CLog.e("No tests to run");
                 } else {
                     performInvocation(config, context, rescheduler, listener);
+                    setExitCode(ExitCode.NO_ERROR, null);
                 }
             }
         } catch (BuildRetrievalError e) {
@@ -1085,7 +1088,8 @@ public class TestInvocation implements ITestInvocation {
     /**
      * Helper to set the exit code. Exposed for testing.
      */
-    protected void setExitCode(int code) {
-        GlobalConfiguration.getInstance().getCommandScheduler().setLastInvocationExitCode(code);
+    protected void setExitCode(ExitCode code, Throwable stack) {
+        GlobalConfiguration.getInstance().getCommandScheduler()
+                .setLastInvocationExitCode(code, stack);
     }
 }
