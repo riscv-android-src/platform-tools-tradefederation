@@ -22,6 +22,7 @@ import com.android.ddmlib.testrunner.TestResult.TestStatus;
 import com.android.ddmlib.testrunner.TestRunResult;
 import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.config.OptionClass;
+import com.android.tradefed.invoker.IInvocationContext;
 import com.android.tradefed.result.TestFailureEmailResultReporter;
 import com.android.tradefed.util.Email;
 import com.android.tradefed.util.IEmail;
@@ -41,9 +42,9 @@ public class SmokeTestFailureReporter extends TestFailureEmailResultReporter {
     }
 
     /**
-     * Create a {@link SmokeTestFailureEmailReporter} with a custom {@link IEmail} instance to use.
-     * <p/>
-     * Exposed for unit testing.
+     * Create a {@link SmokeTestFailureReporter} with a custom {@link IEmail} instance to use.
+     *
+     * <p>Exposed for unit testing.
      *
      * @param mailer the {@link IEmail} instance to use.
      */
@@ -56,9 +57,14 @@ public class SmokeTestFailureReporter extends TestFailureEmailResultReporter {
      */
     @Override
     protected String generateEmailSubject() {
-        final IBuildInfo build = getBuildInfo();
-        return String.format("%s SmokeFAST failed on %s @%s",
-            build.getBuildBranch(), build.getBuildFlavor(), build.getBuildId());
+        final IInvocationContext context = getInvocationContext();
+        StringBuilder sb = new StringBuilder();
+        sb.append(context.getTestTag());
+        sb.append(" SmokeFAST failed on: ");
+        for (IBuildInfo build : context.getBuildInfos()) {
+            sb.append(build.toString());
+        }
+        return sb.toString();
     }
 
     /**

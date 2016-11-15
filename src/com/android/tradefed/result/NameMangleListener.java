@@ -17,7 +17,6 @@
 package com.android.tradefed.result;
 
 import com.android.ddmlib.testrunner.TestIdentifier;
-import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.invoker.IInvocationContext;
 
 import java.util.Map;
@@ -62,21 +61,6 @@ public abstract class NameMangleListener implements ITestInvocationListener {
     protected String mangleTestRunName(String name) {
         return name;
     }
-
-    /**
-     * This method is run on all {@link IBuildInfo}s that are passed to the
-     * {@link #invocationStarted(IBuildInfo)} callback.  The method should return a
-     * possibly-different {@link IBuildInfo} that will be passed to the downstream
-     * {@link ITestInvocationListener} that was specified during construction.
-     * <p />
-     * The implementation should be careful to not modify the original {@link IBuildInfo}.
-     * <p />
-     * The default implementation passes the incoming IBuildInfo through unmodified.
-     */
-    protected IBuildInfo mangleBuildInfo(IBuildInfo buildInfo) {
-        return buildInfo;
-    }
-
 
     // ITestRunListener methods
     /**
@@ -163,19 +147,8 @@ public abstract class NameMangleListener implements ITestInvocationListener {
      * {@inheritDoc}
      */
     @Override
-    public void invocationStarted(IBuildInfo buildInfo) {
-        final IBuildInfo mangledBuildInfo = mangleBuildInfo(buildInfo);
-        mListener.invocationStarted(mangledBuildInfo);
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
     public void invocationStarted(IInvocationContext context) {
-        if (context != null) {
-            invocationStarted(context.getBuildInfos().get(0));
-        }
+        mListener.invocationStarted(context);
     }
 
     /**

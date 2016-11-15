@@ -128,11 +128,10 @@ public class CodeCoverageReporter implements ITestInvocationListener {
         return new File(mReportOutputPath, "index.html");
     }
 
-    /**
-     * {@inheritDoc}
-     */
+    /** {@inheritDoc} */
     @Override
     public void invocationStarted(IBuildInfo buildInfo) {
+        // Only report on the primary build info.
         mBuildInfo = buildInfo;
 
         // Append build and branch information to output directory.

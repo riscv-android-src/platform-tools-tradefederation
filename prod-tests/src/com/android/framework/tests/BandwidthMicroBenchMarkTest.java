@@ -324,6 +324,7 @@ public class BandwidthMicroBenchMarkTest implements IDeviceTest, IRemoteTest {
      *
      * @param key {@link String} to search for in the log
      * @param log obtained from adb logcat -b events
+     * @param listener the {@link ITestInvocationListener} where to report results.
      */
     private boolean evaluateStats(String key, String log, ITestInvocationListener listener) {
         File filteredEventLog = null;

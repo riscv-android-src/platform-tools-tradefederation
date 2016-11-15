@@ -26,18 +26,22 @@ import com.android.tradefed.result.BugreportCollector.SubPredicate;
 
 import junit.framework.TestCase;
 
-import org.easymock.EasyMock;
-
 import java.io.ByteArrayInputStream;
 import java.io.InputStream;
 import java.util.HashMap;
 import java.util.Map;
 
+import org.easymock.Capture;
+import org.easymock.EasyMock;
+
+/** Unit tests for {@link BugreportCollector} */
 public class BugreportCollectorTest extends TestCase {
     private BugreportCollector mCollector = null;
     private ITestDevice mMockDevice = null;
     private ITestInvocationListener mMockListener = null;
     private InputStreamSource mBugreportISS = null;
+    private Capture<Map<String, String>> mTestCapture = new Capture<>();
+    private Capture<Map<String, String>> mRunCapture = new Capture<>();
 
     private static final String TEST_KEY = "key";
     private static final String RUN_KEY = "key2";
@@ -71,6 +75,9 @@ public class BugreportCollectorTest extends TestCase {
 
         EasyMock.expect(mMockDevice.getBugreport()).andStubReturn(mBugreportISS);
         mCollector = new BugreportCollector(mMockListener, mMockDevice);
+
+        mTestCapture = new Capture<>();
+        mRunCapture = new Capture<>();
     }
 
     public void testCreatePredicate() throws Exception {
@@ -147,10 +154,12 @@ public class BugreportCollectorTest extends TestCase {
      * Make sure that BugreportCollector passes events through to its child listener
      */
     public void testPassThrough() throws Exception {
-        setListenerTestRunExpectations(mMockListener, "runName", "testName", "value");
+        setListenerTestRunExpectations(mMockListener, "runName", "testName");
         replayMocks();
         injectTestRun("runName", "testName", "value");
         verifyMocks();
+        assertEquals("value", mTestCapture.getValue().get("key"));
+        assertEquals("value", mRunCapture.getValue().get("key2"));
     }
 
     public void testTestFailed() throws Exception {
@@ -158,18 +167,18 @@ public class BugreportCollectorTest extends TestCase {
         mCollector.addPredicate(pred);
         mMockDevice.waitForDeviceOnline(EasyMock.anyLong());
         EasyMock.expectLastCall().times(2);
-        setListenerTestRunExpectations(mMockListener, "runName1", "testName1", "value",
-                true /*failed*/);
+        setListenerTestRunExpectations(mMockListener, "runName1", "testName1", true /*failed*/);
         mMockListener.testLog(EasyMock.contains("bug-FAILED-FooTest__testName1."),
                 EasyMock.eq(LogDataType.BUGREPORT), EasyMock.eq(mBugreportISS));
-        setListenerTestRunExpectations(mMockListener, "runName2", "testName2", "value",
-                true /*failed*/);
+        setListenerTestRunExpectations(mMockListener, "runName2", "testName2", true /*failed*/);
         mMockListener.testLog(EasyMock.contains("bug-FAILED-FooTest__testName2."),
                 EasyMock.eq(LogDataType.BUGREPORT), EasyMock.eq(mBugreportISS));
         replayMocks();
         injectTestRun("runName1", "testName1", "value", true /*failed*/);
         injectTestRun("runName2", "testName2", "value", true /*failed*/);
         verifyMocks();
+        assertEquals("value", mTestCapture.getValue().get("key"));
+        assertEquals("value", mRunCapture.getValue().get("key2"));
     }
 
     public void testTestEnded() throws Exception {
@@ -177,16 +186,18 @@ public class BugreportCollectorTest extends TestCase {
         mCollector.addPredicate(pred);
         mMockDevice.waitForDeviceOnline(EasyMock.anyLong());
         EasyMock.expectLastCall().times(2);
-        setListenerTestRunExpectations(mMockListener, "runName1", "testName1", "value");
+        setListenerTestRunExpectations(mMockListener, "runName1", "testName1");
         mMockListener.testLog(EasyMock.contains("bug-FooTest__testName1."),
                 EasyMock.eq(LogDataType.BUGREPORT), EasyMock.eq(mBugreportISS));
-        setListenerTestRunExpectations(mMockListener, "runName2", "testName2", "value");
+        setListenerTestRunExpectations(mMockListener, "runName2", "testName2");
         mMockListener.testLog(EasyMock.contains("bug-FooTest__testName2."),
                 EasyMock.eq(LogDataType.BUGREPORT), EasyMock.eq(mBugreportISS));
         replayMocks();
         injectTestRun("runName1", "testName1", "value");
         injectTestRun("runName2", "testName2", "value");
         verifyMocks();
+        assertEquals("value", mTestCapture.getValue().get("key"));
+        assertEquals("value", mRunCapture.getValue().get("key2"));
     }
 
     public void testWaitForDevice() throws Exception {
@@ -196,16 +207,18 @@ public class BugreportCollectorTest extends TestCase {
 
         mMockDevice.waitForDeviceOnline(1000);
         EasyMock.expectLastCall().times(2);  // Once per ending test method
-        setListenerTestRunExpectations(mMockListener, "runName1", "testName1", "value");
+        setListenerTestRunExpectations(mMockListener, "runName1", "testName1");
         mMockListener.testLog(EasyMock.contains("bug-FooTest__testName1."),
                 EasyMock.eq(LogDataType.BUGREPORT), EasyMock.eq(mBugreportISS));
-        setListenerTestRunExpectations(mMockListener, "runName2", "testName2", "value");
+        setListenerTestRunExpectations(mMockListener, "runName2", "testName2");
         mMockListener.testLog(EasyMock.contains("bug-FooTest__testName2."),
                 EasyMock.eq(LogDataType.BUGREPORT), EasyMock.eq(mBugreportISS));
         replayMocks();
         injectTestRun("runName1", "testName1", "value");
         injectTestRun("runName2", "testName2", "value");
         verifyMocks();
+        assertEquals("value", mTestCapture.getValue().get("key"));
+        assertEquals("value", mRunCapture.getValue().get("key2"));
     }
 
     public void testTestEnded_firstCase() throws Exception {
@@ -213,16 +226,18 @@ public class BugreportCollectorTest extends TestCase {
         mCollector.addPredicate(pred);
         mMockDevice.waitForDeviceOnline(EasyMock.anyLong());
         EasyMock.expectLastCall().times(2);
-        setListenerTestRunExpectations(mMockListener, "runName1", "testName1", "value");
+        setListenerTestRunExpectations(mMockListener, "runName1", "testName1");
         mMockListener.testLog(EasyMock.contains("bug-FooTest__testName1."),
                 EasyMock.eq(LogDataType.BUGREPORT), EasyMock.eq(mBugreportISS));
-        setListenerTestRunExpectations(mMockListener, "runName2", "testName2", "value");
+        setListenerTestRunExpectations(mMockListener, "runName2", "testName2");
         mMockListener.testLog(EasyMock.contains("bug-FooTest__testName2."),
                 EasyMock.eq(LogDataType.BUGREPORT), EasyMock.eq(mBugreportISS));
         replayMocks();
         injectTestRun("runName1", "testName1", "value");
         injectTestRun("runName2", "testName2", "value");
         verifyMocks();
+        assertEquals("value", mTestCapture.getValue().get("key"));
+        assertEquals("value", mRunCapture.getValue().get("key2"));
     }
 
     public void testTestEnded_firstRun() throws Exception {
@@ -230,26 +245,30 @@ public class BugreportCollectorTest extends TestCase {
         mCollector.addPredicate(pred);
         mMockDevice.waitForDeviceOnline(EasyMock.anyLong());
         // Note: only one testLog
-        setListenerTestRunExpectations(mMockListener, "runName", "testName", "value");
+        setListenerTestRunExpectations(mMockListener, "runName", "testName");
         mMockListener.testLog(EasyMock.contains(pred.toString()),
                 EasyMock.eq(LogDataType.BUGREPORT), EasyMock.eq(mBugreportISS));
-        setListenerTestRunExpectations(mMockListener, "runName2", "testName2", "value");
+        setListenerTestRunExpectations(mMockListener, "runName2", "testName2");
         replayMocks();
         injectTestRun("runName", "testName", "value");
         injectTestRun("runName2", "testName2", "value");
         verifyMocks();
+        assertEquals("value", mTestCapture.getValue().get("key"));
+        assertEquals("value", mRunCapture.getValue().get("key2"));
     }
 
     public void testTestRunEnded() throws Exception {
         Predicate pred = new Predicate(Relation.AFTER, Freq.EACH, Noun.TESTRUN);
         mCollector.addPredicate(pred);
         mMockDevice.waitForDeviceOnline(EasyMock.anyLong());
-        setListenerTestRunExpectations(mMockListener, "runName", "testName", "value");
+        setListenerTestRunExpectations(mMockListener, "runName", "testName");
         mMockListener.testLog(EasyMock.contains(pred.toString()),
                 EasyMock.eq(LogDataType.BUGREPORT), EasyMock.eq(mBugreportISS));
         replayMocks();
         injectTestRun("runName", "testName", "value");
         verifyMocks();
+        assertEquals("value", mTestCapture.getValue().get("key"));
+        assertEquals("value", mRunCapture.getValue().get("key2"));
     }
 
     public void testDescriptiveName() throws Exception {
@@ -300,23 +319,22 @@ public class BugreportCollectorTest extends TestCase {
         return test;
     }
 
-    private void setListenerTestRunExpectations(ITestInvocationListener listener, String runName,
-            String testName, String metricValue) {
-        setListenerTestRunExpectations(listener, runName, testName, metricValue, false);
+    private void setListenerTestRunExpectations(
+            ITestInvocationListener listener, String runName, String testName) {
+        setListenerTestRunExpectations(listener, runName, testName, false);
     }
 
     @SuppressWarnings("unchecked")
-    private void setListenerTestRunExpectations(ITestInvocationListener listener, String runName,
-            String testName, String metricValue, boolean shouldFail) {
-        // FIXME: verify metrics
+    private void setListenerTestRunExpectations(
+            ITestInvocationListener listener, String runName, String testName, boolean shouldFail) {
         listener.testRunStarted(EasyMock.eq(runName), EasyMock.eq(1));
         final TestIdentifier test = new TestIdentifier("FooTest", testName);
         listener.testStarted(EasyMock.eq(test));
         if (shouldFail) {
             listener.testFailed(EasyMock.eq(test), EasyMock.eq(STACK_TRACE));
         }
-        listener.testEnded(EasyMock.eq(test), (Map<String, String>)EasyMock.anyObject());
-        listener.testRunEnded(EasyMock.anyInt(), (Map<String, String>)EasyMock.anyObject());
+        listener.testEnded(EasyMock.eq(test), EasyMock.capture(mTestCapture));
+        listener.testRunEnded(EasyMock.anyInt(), EasyMock.capture(mRunCapture));
     }
 
     /**
