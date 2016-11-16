@@ -42,23 +42,27 @@ import com.android.tradefed.invoker.ITestInvocation;
 import com.android.tradefed.log.ITerribleFailureHandler;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.result.ITestInvocationListener;
+import com.android.tradefed.util.FileUtil;
 import com.android.tradefed.util.keystore.IKeyStoreClient;
 
 import junit.framework.TestCase;
 
-import org.easymock.EasyMock;
-import org.easymock.IAnswer;
-import org.json.JSONArray;
-import org.json.JSONException;
-import org.junit.Assert;
-
+import java.io.ByteArrayOutputStream;
 import java.io.File;
+import java.io.OutputStream;
+import java.io.PrintWriter;
 import java.lang.Thread.UncaughtExceptionHandler;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+
+import org.easymock.EasyMock;
+import org.easymock.IAnswer;
+import org.json.JSONArray;
+import org.json.JSONException;
+import org.junit.Assert;
 
 
 /**
@@ -838,5 +842,89 @@ public class CommandSchedulerTest extends TestCase {
         EasyMock.verify(mMockConfigFactory, mMockConfiguration, mMockInvocation);
         // Device does not return to the list since it's unavailable.
         assertEquals(0, mMockManager.getQueueOfAvailableDeviceSize());
+    }
+
+    /**
+     * Test that {@link CommandScheduler#displayCommandQueue(PrintWriter)} is properly printing
+     * the state of a command.
+     */
+    public void testDisplayCommandQueue() throws Throwable {
+        String[] args = new String[] {"empty"};
+        setCreateConfigExpectations(args, 1);
+        mMockConfiguration.validateOptions();
+        replayMocks();
+        mScheduler.start();
+        mScheduler.addCommand(args);
+        OutputStream res = new ByteArrayOutputStream();
+        PrintWriter pw = new PrintWriter(res);
+        mScheduler.displayCommandQueue(pw);
+        verifyMocks();
+        pw.flush();
+        assertEquals("Id  Config  Created  Exec time  State            Sleep time  Rescheduled  "
+                + "Loop   \n1   empty   0m:00    0m:00      Wait_for_device  N/A         false  "
+                + "      false  \n", res.toString());
+        mScheduler.shutdown();
+    }
+
+    /**
+     * Test that {@link CommandScheduler#dumpCommandsXml(PrintWriter, String)} is properly printing
+     * the xml of a command.
+     */
+    public void testDumpCommandXml() throws Throwable {
+        String[] args = new String[] {"empty"};
+        OutputStream res = new ByteArrayOutputStream();
+        PrintWriter pw = new PrintWriter(res);
+        setCreateConfigExpectations(args, 1);
+        mMockConfiguration.validateOptions();
+        mMockConfiguration.dumpXml(EasyMock.anyObject());
+        replayMocks();
+        mScheduler.start();
+        mScheduler.addCommand(args);
+        mScheduler.dumpCommandsXml(pw, null);
+        verifyMocks();
+        pw.flush();
+        String filename = res.toString().replace("Saved command dump to ", "").trim();
+        File test = new File(filename);
+        try {
+            assertTrue(test.exists());
+            mScheduler.shutdown();
+        } finally {
+            FileUtil.deleteFile(test);
+        }
+    }
+
+    /**
+     * Test that {@link CommandScheduler#displayCommandsInfo(PrintWriter, String)} is properly
+     * printing the command.
+     */
+    public void testDisplayCommandsInfo() throws Throwable {
+        String[] args = new String[] {"empty"};
+        setCreateConfigExpectations(args, 1);
+        mMockConfiguration.validateOptions();
+        replayMocks();
+        mScheduler.start();
+        mScheduler.addCommand(args);
+        OutputStream res = new ByteArrayOutputStream();
+        PrintWriter pw = new PrintWriter(res);
+        mScheduler.displayCommandsInfo(pw, null);
+        verifyMocks();
+        pw.flush();
+        assertEquals("Command 1: [0m:00] empty\n", res.toString());
+        mScheduler.shutdown();
+    }
+
+    /**
+     * Test that {@link CommandScheduler#getInvocationInfo(int)} is properly returning null if
+     * no invocation matching the id.
+     */
+    public void testGetInvocationInfo_null() throws Throwable {
+        String[] args = new String[] {"empty", "test"};
+        setCreateConfigExpectations(args, 1);
+        mMockConfiguration.validateOptions();
+        replayMocks();
+        mScheduler.start();
+        mScheduler.addCommand(args);
+        assertNull(mScheduler.getInvocationInfo(999));
+        mScheduler.shutdown();
     }
 }

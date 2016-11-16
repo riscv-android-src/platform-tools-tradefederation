@@ -27,15 +27,19 @@ import com.android.tradefed.util.CommandResult;
 import com.android.tradefed.util.CommandStatus;
 import com.android.tradefed.util.IRunUtil;
 
+import com.google.common.util.concurrent.SettableFuture;
+
 import junit.framework.TestCase;
+
+import java.io.ByteArrayOutputStream;
+import java.io.InputStream;
+import java.io.OutputStream;
+import java.io.PrintWriter;
+import java.util.List;
 
 import org.easymock.Capture;
 import org.easymock.EasyMock;
 import org.easymock.IAnswer;
-
-import java.io.InputStream;
-import java.io.OutputStream;
-import java.util.List;
 
 /**
  * Unit tests for {@link DeviceManager}.
@@ -874,5 +878,55 @@ public class DeviceManagerTest extends TestCase {
         assertNotNull(tcp);
         assertTrue(tcp.getDeviceState() == TestDeviceState.NOT_AVAILABLE);
         verifyMocks();
+    }
+
+    /**
+     * Helper to set the expectation when a {@link DeviceDescriptor} is expected.
+     */
+    private void setDeviceDescriptorExpectation() {
+        EasyMock.expect(mMockIDevice.getState()).andReturn(DeviceState.ONLINE);
+        EasyMock.expect(mMockTestDevice.getAllocationState())
+                .andReturn(DeviceAllocationState.Available);
+        EasyMock.expect(mMockIDevice.getProperty("ro.hardware")).andReturn("hardware_test");
+        EasyMock.expect(mMockIDevice.getProperty("ro.product.device")).andReturn("product_test");
+        EasyMock.expect(mMockIDevice.getProperty("ro.build.version.sdk")).andReturn("sdk");
+        EasyMock.expect(mMockIDevice.getProperty("ro.build.id")).andReturn("bid_test");
+        SettableFuture<Integer> future = SettableFuture.create();
+        future.set(50);
+        EasyMock.expect(mMockIDevice.getBattery()).andReturn(future);
+        EasyMock.expect(mMockTestDevice.getDeviceClass()).andReturn("class");
+    }
+
+    /**
+     * Test that {@link DeviceManager#listAllDevices()} returns a list with all devices.
+     */
+    public void testListAllDevices() throws Exception {
+        setCheckAvailableDeviceExpectations();
+        setDeviceDescriptorExpectation();
+        replayMocks();
+        DeviceManager manager = createDeviceManager(null, mMockIDevice);
+        List<DeviceDescriptor> res = manager.listAllDevices();
+        assertEquals(1, res.size());
+        assertEquals("[serial hardware_test:product_test bid_test]", res.get(0).toString());
+        verifyMocks();
+    }
+
+    /**
+     * Test that {@link DeviceManager#displayDevicesInfo(PrintWriter)} properly print out the
+     * device info.
+     */
+    public void testDisplayDevicesInfo() throws Exception {
+        setCheckAvailableDeviceExpectations();
+        setDeviceDescriptorExpectation();
+        replayMocks();
+        DeviceManager manager = createDeviceManager(null, mMockIDevice);
+        ByteArrayOutputStream out = new ByteArrayOutputStream();
+        PrintWriter pw = new PrintWriter(out);
+        manager.displayDevicesInfo(pw);
+        pw.flush();
+        verifyMocks();
+        assertEquals("Serial  State   Allocation  Product        Variant       Build     Battery  "
+                + "\nserial  ONLINE  Available   hardware_test  product_test  bid_test  50       "
+                + "\n", out.toString());
     }
 }
