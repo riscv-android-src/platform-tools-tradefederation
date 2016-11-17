@@ -105,6 +105,8 @@ public class TfTestLauncher implements IRemoteTest, IBuildReceiver {
 
     private static final String TF_GLOBAL_CONFIG = "TF_GLOBAL_CONFIG";
     private static final long COVERAGE_REPORT_TIMEOUT = 2 * 60 * 1000;
+    /** Timeout to wait for the events received from subprocess to finish being processed.*/
+    private static final long EVENT_THREAD_JOIN_TIMEOUT_MS = 30 * 1000;
 
     /**
      * {@inheritDoc}
@@ -213,6 +215,8 @@ public class TfTestLauncher implements IRemoteTest, IBuildReceiver {
 
             CommandResult result = runUtil.runTimedCmd(mMaxTfRunTimeMin * 60 * 1000, stdout, stderr,
                     args.toArray(new String[0]));
+            // We possibly allow for a little more time if the thread is still processing events.
+            eventParser.joinReceiver(EVENT_THREAD_JOIN_TIMEOUT_MS);
             if (result.getStatus().equals(CommandStatus.SUCCESS)) {
                 CLog.d("Successfully ran TF tests for build %s", mBuildInfo.getBuildId());
             } else {

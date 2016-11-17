@@ -247,12 +247,36 @@ public class SubprocessTestResultsParserTest extends TestCase {
                     + "\"testGetGestures\",\"extra\":\"data\"}\n";
             out.print(testEnded);
             out.flush();
-            // Wait a little for processing
-            RunUtil.getDefault().sleep(250);
+            StreamUtil.close(socket);
+            resultParser.joinReceiver(500);
             EasyMock.verify(mockRunListener);
         } finally {
             StreamUtil.close(resultParser);
             StreamUtil.close(socket);
+        }
+    }
+
+    /**
+     * When the receiver thread fails to join then an exception is thrown.
+     */
+    @SuppressWarnings("unchecked")
+    public void testParser_failToJoin() throws Exception {
+        ITestInvocationListener mockRunListener =
+                EasyMock.createMock(ITestInvocationListener.class);
+        EasyMock.replay(mockRunListener);
+        SubprocessTestResultsParser resultParser = null;
+        try {
+            resultParser = new SubprocessTestResultsParser(mockRunListener, true);
+            try {
+                resultParser.joinReceiver(50);
+                fail("Should have thrown an exception.");
+            } catch (RuntimeException expected) {
+                assertEquals("Event receiver thread did not complete. Some events may be missing.",
+                        expected.getMessage());
+            }
+            EasyMock.verify(mockRunListener);
+        } finally {
+            StreamUtil.close(resultParser);
         }
     }
 }
