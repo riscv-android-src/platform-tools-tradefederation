@@ -1064,6 +1064,8 @@ public class NativeDeviceTest extends TestCase {
      * Test that we can distinguish a newer file even with Timezone on the device.
      * Magadan is GMT+11.
      */
+    // TODO: Re-enable once this test is no longer flaky.
+    /*
     public void testIsNewer() throws Exception {
         TestableAndroidNativeDevice testDevice = new TestableAndroidNativeDevice() {
             @Override
@@ -1088,11 +1090,14 @@ public class NativeDeviceTest extends TestCase {
             FileUtil.deleteFile(localFile);
         }
     }
+    */
 
     /**
      * Test that we can distinguish a newer file even with Timezone on the device.
      * Magadan is GMT+11. Clock on device is inaccurate and in advance of host.
      */
+    // TODO: Re-enable once this test is no longer flaky.
+    /*
     public void testIsNewer_timeOffset() throws Exception {
         TestableAndroidNativeDevice testDevice = new TestableAndroidNativeDevice() {
             @Override
@@ -1118,6 +1123,7 @@ public class NativeDeviceTest extends TestCase {
             FileUtil.deleteFile(localFile);
         }
     }
+    */
 
     /**
      * Test that we can distinguish a newer file even with Timezone on the device.
