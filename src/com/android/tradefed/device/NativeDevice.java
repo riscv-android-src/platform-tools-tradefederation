@@ -1394,7 +1394,8 @@ public class NativeDevice implements IManagedTestDevice {
     }
 
     /**
-     * Return <code>true</code> if local file is newer than remote file.
+     * Return <code>true</code> if local file is newer than remote file. {@link IFileEntry} being
+     * accurate to the minute, in case of equal times, the file will be considered newer.
      * Exposed for testing.
      */
     protected boolean isNewer(File localFile, IFileEntry entry) {
