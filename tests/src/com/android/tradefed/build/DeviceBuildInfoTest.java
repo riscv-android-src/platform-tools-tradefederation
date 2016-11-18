@@ -33,7 +33,7 @@ public class DeviceBuildInfoTest extends TestCase {
     @Override
     protected void setUp() throws Exception {
         super.setUp();
-        mBuildInfo = new DeviceBuildInfo("2", "build", "target");
+        mBuildInfo = new DeviceBuildInfo("2", "target");
         mImageFile = FileUtil.createTempFile("image", "tmp");
         FileUtil.writeToFile("filedata", mImageFile);
         mBuildInfo.setBasebandImage(mImageFile, VERSION);

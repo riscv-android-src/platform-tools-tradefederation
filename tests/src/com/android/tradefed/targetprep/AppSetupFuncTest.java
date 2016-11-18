@@ -41,7 +41,7 @@ public class AppSetupFuncTest extends DeviceTestCase {
         getDevice().uninstallPackage(WifiHelper.INSTRUMENTATION_PKG);
         File wifiapk = WifiHelper.extractWifiUtilApk();
         try {
-            AppBuildInfo appBuild = new AppBuildInfo("0", "stub", "stub");
+            AppBuildInfo appBuild = new AppBuildInfo("0", "stub");
             appBuild.addAppPackageFile(wifiapk, "0");
             AppSetup appSetup = new AppSetup();
             // turn off reboot to reduce test execution time

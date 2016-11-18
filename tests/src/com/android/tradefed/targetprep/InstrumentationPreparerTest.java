@@ -46,7 +46,7 @@ public class InstrumentationPreparerTest extends TestCase {
         super.setUp();
         mMockDevice = EasyMock.createMock(ITestDevice.class);
         EasyMock.expect(mMockDevice.getSerialNumber()).andReturn("foo").anyTimes();
-        mMockBuildInfo = new DeviceBuildInfo("0", "", "");
+        mMockBuildInfo = new DeviceBuildInfo("0","");
     }
 
     @Override

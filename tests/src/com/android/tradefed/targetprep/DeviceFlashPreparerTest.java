@@ -61,7 +61,7 @@ public class DeviceFlashPreparerTest extends TestCase {
         mMockDevice = EasyMock.createMock(ITestDevice.class);
         EasyMock.expect(mMockDevice.getSerialNumber()).andReturn("foo").anyTimes();
         EasyMock.expect(mMockDevice.getOptions()).andReturn(new TestDeviceOptions()).anyTimes();
-        mMockBuildInfo = new DeviceBuildInfo("0", "", "");
+        mMockBuildInfo = new DeviceBuildInfo("0", "");
         mMockBuildInfo.setDeviceImageFile(new File("foo"), "0");
         mMockBuildInfo.setBuildFlavor("flavor");
         mMockHostOptions = EasyMock.createMock(IHostOptions.class);

@@ -76,8 +76,9 @@ public class DefaultTestsZipInstallerTest extends TestCase {
         EasyMock.expect(mMockDevice.getSerialNumber()).andStubReturn(TEST_STRING);
         EasyMock.expect(mMockDevice.getProductType()).andStubReturn(TEST_STRING);
         EasyMock.expect(mMockDevice.getBuildId()).andStubReturn("1");
+
         EasyMock.expect(mMockDevice.getDeviceDescriptor()).andStubReturn(null);
-        mDeviceBuild = new DeviceBuildInfo("1", TEST_STRING, TEST_STRING);
+        mDeviceBuild = new DeviceBuildInfo("1", TEST_STRING);
     }
 
     public void testSkipWipeFileSetup() throws Exception {
