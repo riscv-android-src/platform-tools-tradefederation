@@ -15,8 +15,6 @@
  */
 package com.android.tradefed.device;
 
-import com.google.common.util.concurrent.SettableFuture;
-
 import com.android.ddmlib.AdbCommandRejectedException;
 import com.android.ddmlib.IDevice;
 import com.android.ddmlib.IShellOutputReceiver;
@@ -39,12 +37,10 @@ import com.android.tradefed.util.IRunUtil;
 import com.android.tradefed.util.RunUtil;
 import com.android.tradefed.util.ZipUtil;
 
+import com.google.common.util.concurrent.SettableFuture;
+
 import junit.framework.Assert;
 import junit.framework.TestCase;
-
-import org.easymock.EasyMock;
-import org.easymock.IAnswer;
-import org.easymock.IExpectationSetters;
 
 import java.io.File;
 import java.io.IOException;
@@ -58,6 +54,10 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
+
+import org.easymock.EasyMock;
+import org.easymock.IAnswer;
+import org.easymock.IExpectationSetters;
 
 /**
  * Unit tests for {@link TestDevice}.
@@ -2344,12 +2344,19 @@ public class TestDeviceTest extends TestCase {
     }
 
     /**
-     * Unit test for {@link TestDevice#stopUser(int)}, for a success stop
+     * Unit test for {@link TestDevice#stopUser(int, boolean, boolean)}, for a success stop
      */
     public void testStopUser_success() throws Exception {
         mTestDevice = new TestableTestDevice() {
             @Override
             public String executeShellCommand(String command) throws DeviceNotAvailableException {
+                if (command.contains("am")) {
+                    assertEquals("am stop-user -w -f 0", command);
+                } else if (command.contains("pm")) {
+                    assertEquals("pm list users", command);
+                } else {
+                    fail("Unexpected command");
+                }
                 return "Users:\n\tUserInfo{0:Test:13}";
             }
             @Override
@@ -2375,6 +2382,13 @@ public class TestDeviceTest extends TestCase {
         mTestDevice = new TestableTestDevice() {
             @Override
             public String executeShellCommand(String command) throws DeviceNotAvailableException {
+                if (command.contains("am")) {
+                    assertEquals("am stop-user 0", command);
+                } else if (command.contains("pm")) {
+                    assertEquals("pm list users", command);
+                } else {
+                    fail("Unexpected command");
+                }
                 return "Users:\n\tUserInfo{0:Test:13} running";
             }
             @Override
