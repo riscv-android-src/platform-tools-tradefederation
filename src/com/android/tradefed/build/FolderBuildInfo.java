@@ -29,13 +29,6 @@ public class FolderBuildInfo extends BuildInfo implements IFolderBuildInfo {
     private File mRootDir;
 
     /**
-     * @see BuildInfo#BuildInfo(String, String, String)
-     */
-    public FolderBuildInfo(String buildId, String testTarget, String buildName) {
-        super(buildId, testTarget, buildName);
-    }
-
-    /**
      * @see BuildInfo#BuildInfo(String, String)
      */
     public FolderBuildInfo(String buildId, String buildName) {
@@ -79,7 +72,7 @@ public class FolderBuildInfo extends BuildInfo implements IFolderBuildInfo {
 
     @Override
     public IBuildInfo clone() {
-        FolderBuildInfo copy = new FolderBuildInfo(getBuildId(), getTestTag(), getBuildTargetName());
+        FolderBuildInfo copy = new FolderBuildInfo(getBuildId(), getBuildTargetName());
         copy.addAllBuildAttributes(this);
         try {
             File copyDir = FileUtil.createTempDir("foldercopy");

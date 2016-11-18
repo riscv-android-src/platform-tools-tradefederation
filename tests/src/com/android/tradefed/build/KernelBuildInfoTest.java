@@ -32,7 +32,7 @@ public class KernelBuildInfoTest extends TestCase {
     @Override
     protected void setUp() throws Exception {
         super.setUp();
-        mBuildInfo = new KernelBuildInfo("kernel", "ker", 1, "build", "target");
+        mBuildInfo = new KernelBuildInfo("kernel", "ker", 1, "build");
         mKernelFile = FileUtil.createTempFile("kernel", null);
         FileUtil.writeToFile("filedata", mKernelFile);
         mBuildInfo.setKernelFile(mKernelFile, "1");

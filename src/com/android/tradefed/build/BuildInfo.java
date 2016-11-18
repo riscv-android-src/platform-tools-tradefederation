@@ -72,7 +72,10 @@ public class BuildInfo implements IBuildInfo {
      * @param buildId the build id
      * @param testTag the test tag name
      * @param buildTargetName the build target name
+     * @deprecated use {@link #BuildInfo(String, String)} instead. test-tag should not be mandatory
+     * when instantiating the build info.
      */
+    @Deprecated
     public BuildInfo(String buildId, String testTag, String buildTargetName) {
         mBuildId = buildId;
         mTestTag = testTag;
@@ -86,7 +89,7 @@ public class BuildInfo implements IBuildInfo {
      * @param buildToCopy
      */
     BuildInfo(BuildInfo buildToCopy) {
-        this(buildToCopy.getBuildId(), buildToCopy.getTestTag(), buildToCopy.getBuildTargetName());
+        this(buildToCopy.getBuildId(), buildToCopy.getBuildTargetName());
         addAllBuildAttributes(buildToCopy);
         try {
             addAllFiles(buildToCopy);
@@ -166,6 +169,7 @@ public class BuildInfo implements IBuildInfo {
         mBuildAttributes.putAll(build.getAttributesMultiMap());
         setBuildFlavor(build.getBuildFlavor());
         setBuildBranch(build.getBuildBranch());
+        setTestTag(build.getTestTag());
     }
 
     protected MultiMap<String, String> getAttributesMultiMap() {
@@ -264,7 +268,7 @@ public class BuildInfo implements IBuildInfo {
      */
     @Override
     public IBuildInfo clone() {
-        BuildInfo copy = new BuildInfo(mBuildId, mTestTag, mBuildTargetName);
+        BuildInfo copy = new BuildInfo(mBuildId, mBuildTargetName);
         copy.addAllBuildAttributes(this);
         try {
             copy.addAllFiles(this);

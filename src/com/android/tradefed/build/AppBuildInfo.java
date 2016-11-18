@@ -34,17 +34,6 @@ public class AppBuildInfo extends BuildInfo implements IAppBuildInfo {
      * Creates a {@link AppBuildInfo}.
      *
      * @param buildId the unique build id
-     * @param testTarget the test target name
-     * @param buildName the build name
-     */
-    public AppBuildInfo(String buildId, String testTarget, String buildName) {
-        super(buildId, testTarget, buildName);
-    }
-
-    /**
-     * Creates a {@link AppBuildInfo}.
-     *
-     * @param buildId the unique build id
      * @param buildName the build name
      */
     public AppBuildInfo(String buildId, String buildName) {
@@ -92,7 +81,7 @@ public class AppBuildInfo extends BuildInfo implements IAppBuildInfo {
      */
     @Override
     public IBuildInfo clone() {
-        AppBuildInfo copy = new AppBuildInfo(getBuildId(), getTestTag(), getBuildTargetName());
+        AppBuildInfo copy = new AppBuildInfo(getBuildId(), getBuildTargetName());
         copy.addAllBuildAttributes(this);
         try {
             for (VersionedFile origVerFile : mAppPackageFiles) {

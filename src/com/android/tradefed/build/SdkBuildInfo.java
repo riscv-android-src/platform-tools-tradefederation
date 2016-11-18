@@ -48,11 +48,10 @@ public class SdkBuildInfo extends BuildInfo implements ISdkBuildInfo {
      * Creates a {@link SdkBuildInfo}
      *
      * @param buildId the build id
-     * @param testTarget the test target name
      * @param buildName the build name
      */
-    public SdkBuildInfo(String buildId, String testTarget, String buildName) {
-        super(buildId, testTarget, buildName);
+    public SdkBuildInfo(String buildId, String buildName) {
+        super(buildId, buildName);
     }
 
     /**
@@ -114,7 +113,7 @@ public class SdkBuildInfo extends BuildInfo implements ISdkBuildInfo {
 
     @Override
     public IBuildInfo clone() {
-        SdkBuildInfo cloneBuild = new SdkBuildInfo(getBuildId(), getTestTag(), getBuildTargetName());
+        SdkBuildInfo cloneBuild = new SdkBuildInfo(getBuildId(), getBuildTargetName());
         cloneBuild.addAllBuildAttributes(this);
         try {
             File cloneTestDir = null;

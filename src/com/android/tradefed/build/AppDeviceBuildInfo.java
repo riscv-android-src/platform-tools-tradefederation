@@ -33,9 +33,9 @@ public class AppDeviceBuildInfo extends BuildInfo implements IDeviceBuildInfo, I
     /**
      * @see DeviceBuildInfo#DeviceBuildInfo(String, String, String)
      */
-    public AppDeviceBuildInfo(String buildId, String testTarget, String buildName) {
+    /*public AppDeviceBuildInfo(String buildId, String testTarget, String buildName) {
         super(buildId, testTarget, buildName);
-    }
+    }*/
 
     /**
      * @see DeviceBuildInfo#DeviceBuildInfo(String, String)
@@ -350,14 +350,12 @@ public class AppDeviceBuildInfo extends BuildInfo implements IDeviceBuildInfo, I
         }
     }
 
-
     /**
      * {@inheritDoc}
      */
     @Override
     public IBuildInfo clone() {
-        AppDeviceBuildInfo copy = new AppDeviceBuildInfo(getBuildId(), getTestTag(),
-                getBuildTargetName());
+        AppDeviceBuildInfo copy = new AppDeviceBuildInfo(getBuildId(), getBuildTargetName());
         copy.addAllBuildAttributes(this);
         IDeviceBuildInfo deviceBuildClone = (IDeviceBuildInfo) mDeviceBuild.clone();
         copy.setDeviceBuild(deviceBuildClone);

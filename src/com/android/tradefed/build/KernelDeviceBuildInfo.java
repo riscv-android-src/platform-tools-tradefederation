@@ -36,11 +36,10 @@ public class KernelDeviceBuildInfo extends BuildInfo implements IDeviceBuildInfo
      * Creates a {@link KernelBuildInfo}.
      *
      * @param buildId the build id as a combination of the kernel build id and the device build id
-     * @param testTarget the test target
      * @param buildName the build name
      */
-    public KernelDeviceBuildInfo(String buildId, String testTarget, String buildName) {
-        super(buildId, testTarget, buildName);
+    public KernelDeviceBuildInfo(String buildId, String buildName) {
+        super(buildId, buildName);
     }
 
     /**
@@ -351,8 +350,7 @@ public class KernelDeviceBuildInfo extends BuildInfo implements IDeviceBuildInfo
      */
     @Override
     public IBuildInfo clone() {
-        KernelDeviceBuildInfo copy = new KernelDeviceBuildInfo(getBuildId(), getTestTag(),
-                getBuildTargetName());
+        KernelDeviceBuildInfo copy = new KernelDeviceBuildInfo(getBuildId(), getBuildTargetName());
         copy.addAllBuildAttributes(this);
         IDeviceBuildInfo deviceBuildClone = (IDeviceBuildInfo) mDeviceBuild.clone();
         copy.setDeviceBuild(deviceBuildClone);

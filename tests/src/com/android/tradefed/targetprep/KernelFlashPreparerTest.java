@@ -79,7 +79,7 @@ public class KernelFlashPreparerTest extends TestCase {
         EasyMock.expect(mMockKernelBuildInfo.getKernelFile()).andStubReturn(mKernel);
         EasyMock.expect(mMockKernelBuildInfo.getSha1()).andStubReturn("sha1");
 
-        mBuildInfo = new KernelDeviceBuildInfo("0", "test", "build");
+        mBuildInfo = new KernelDeviceBuildInfo("0", "build");
         mBuildInfo.setDeviceBuild(mMockDeviceBuildInfo);
         mBuildInfo.setKernelBuild(mMockKernelBuildInfo);
 
