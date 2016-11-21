@@ -495,7 +495,8 @@ public class DeviceManager implements IDeviceManager {
     }
 
     /**
-     * Helper method to convert from a {@link FreeDeviceState} to a {@link DeviceEvent}
+     * Helper method to convert from a {@link com.android.tradefed.device.FreeDeviceState} to a
+     * {@link com.android.tradefed.device.DeviceEvent}
      * @param managedDevice
      */
     static DeviceEvent getEventFromFree(IManagedTestDevice managedDevice, FreeDeviceState deviceState) {

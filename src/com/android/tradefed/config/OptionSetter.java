@@ -417,7 +417,7 @@ public class OptionSetter {
     /**
      * Sets the given {@link Option} field's value.
      *
-     * @param optionName the {@link Option#name()}
+     * @param optionName the name specified in {@link Option}
      * @param optionSource the {@link Object} to set
      * @param field the {@link Field}
      * @param key the key to an entry in a {@link Map} or {@link MultiMap} field or null.
@@ -527,7 +527,7 @@ public class OptionSetter {
     /**
      * Sets the given {@link Option} fields value.
      *
-     * @param optionName the {@link Option#name()}
+     * @param optionName the name specified in {@link Option}
      * @param optionSource the {@link Object} to set
      * @param field the {@link Field}
      * @param value the value to set

@@ -68,7 +68,7 @@ public class CollectingTestListener implements ITestInvocationListener {
 
     /**
      * {@inheritDoc}
-     * @deprecated
+     * @deprecated use {@link #invocationStarted(IInvocationContext)} instead.
      */
     @Deprecated
     @Override

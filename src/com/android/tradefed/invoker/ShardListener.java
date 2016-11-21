@@ -54,6 +54,7 @@ class ShardListener extends CollectingTestListener {
      * @deprecated use {@link #invocationStarted(IInvocationContext)} instead.
      */
     @Override
+    @Deprecated
     public void invocationStarted(IInvocationContext context) {
         super.invocationStarted(context);
         synchronized (mMasterListener) {

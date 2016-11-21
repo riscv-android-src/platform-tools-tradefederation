@@ -40,7 +40,7 @@ import java.net.SocketException;
 import java.net.SocketTimeoutException;
 
 /**
- * Class that receives {@link RemoteOperation}s via a socket.
+ * Class that receives {@link com.android.tradefed.command.remote.RemoteOperation}s via a socket.
  * <p/>
  * Currently accepts only one remote connection at one time, and processes incoming commands
  * serially.

@@ -83,8 +83,8 @@ public interface IDeviceManager {
      * Attempts to return a device that hasn't been previously allocated will be ignored.
      *
      * @param device the {@link ITestDevice} to free
-     * @param state the {@link FreeDeviceState}. Used to control if device is
-     *            returned to available device pool.
+     * @param state the {@link com.android.tradefed.device.FreeDeviceState}. Used to control if
+     *        device is returned to available device pool.
      */
     public void freeDevice(ITestDevice device, FreeDeviceState state);
 
@@ -148,7 +148,7 @@ public interface IDeviceManager {
      * @return the newly allocated {@link ITestDevice} in tcp mode or <code>null</code> if a tcp
      *         connection could not be formed
      * @throws DeviceNotAvailableException if the connection with <var>usbDevice</var> was lost and
-     *             could not be recovered
+     *         could not be recovered
      */
     public ITestDevice reconnectDeviceToTcp(ITestDevice usbDevice)
             throws DeviceNotAvailableException;
@@ -169,7 +169,8 @@ public interface IDeviceManager {
 
     /**
      * Returns a map of all known devices and their state
-     * @return a list of device serials and their {@link DeviceAllocationState}
+     * @return a list of device serials and their
+     *         {@link com.android.tradefed.device.DeviceAllocationState}
      */
     public List<DeviceDescriptor> listAllDevices();
 

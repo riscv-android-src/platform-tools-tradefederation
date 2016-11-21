@@ -212,12 +212,13 @@ public interface INativeDevice {
      * @param receiver the {@link IShellOutputReceiver} to direct shell output to.
      * @param maxTimeToOutputShellResponse the maximum amount of time during which the command is
      *            allowed to not output any response; unit as specified in <code>timeUnit</code>
-     * @param timeUnit unit for <code>maxTimeToOutputShellResponse</code>, see {@link TimeUtil}
+     * @param timeUnit unit for <code>maxTimeToOutputShellResponse</code>
      * @param retryAttempts the maximum number of times to retry command if it fails due to a
      *            exception. DeviceNotResponsiveException will be thrown if <var>retryAttempts</var>
      *            are performed without success.
      * @throws DeviceNotAvailableException if connection with device is lost and cannot be
      *             recovered.
+     * @see TimeUtil
      */
     public void executeShellCommand(String command, IShellOutputReceiver receiver,
             long maxTimeToOutputShellResponse, TimeUnit timeUnit, int retryAttempts)

@@ -106,7 +106,7 @@ public interface ICommandScheduler {
     /**
      * Directly allocates a device and executes a command without adding it to the command queue.
      *
-     * @param listener the {@link IScheduledInvocationListener} to be informed
+     * @param listener the {@link ICommandScheduler.IScheduledInvocationListener} to be informed
      * @param args the command arguments
      *
      * @throws ConfigurationException if command was invalid
@@ -118,7 +118,7 @@ public interface ICommandScheduler {
     /**
      * Directly execute command on already allocated device.
      *
-     * @param listener the {@link IScheduledInvocationListener} to be informed
+     * @param listener the {@link ICommandScheduler.IScheduledInvocationListener} to be informed
      * @param device the {@link ITestDevice} to use
      * @param args the command arguments
      *
