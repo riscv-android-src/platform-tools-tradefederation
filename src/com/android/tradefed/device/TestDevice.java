@@ -769,15 +769,17 @@ public class TestDevice extends NativeDevice {
             CLog.d("Cannot stop current user.");
             return false;
         }
-        String cmd = String.format("am stop-user %s", userId);
+        StringBuilder cmd = new StringBuilder("am stop-user ");
         if (waitFlag) {
-            cmd = cmd + " -w";
+            cmd.append("-w ");
         }
         if (forceFlag) {
-            cmd = cmd + " -f";
+            cmd.append("-f ");
         }
-        CLog.d("stopping user with command: %s", cmd);
-        final String output = executeShellCommand(cmd);
+        cmd.append(userId);
+
+        CLog.d("stopping user with command: %s", cmd.toString());
+        final String output = executeShellCommand(cmd.toString());
         if (output.contains("Error: Can't stop system user")) {
             CLog.e("Cannot stop System user.");
             return false;
