@@ -32,6 +32,7 @@ import com.android.tradefed.result.FileSystemLogSaver;
 import com.android.tradefed.result.ILogSaver;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.TextResultReporter;
+import com.android.tradefed.suite.checker.ISystemStatusChecker;
 import com.android.tradefed.targetprep.ITargetPreparer;
 import com.android.tradefed.targetprep.multi.IMultiTargetPreparer;
 import com.android.tradefed.targetprep.multi.StubMultiTargetPreparer;
@@ -80,6 +81,7 @@ public class Configuration implements IConfiguration {
     public static final String CMD_OPTIONS_TYPE_NAME = "cmd_options";
     public static final String DEVICE_REQUIREMENTS_TYPE_NAME = "device_requirements";
     public static final String DEVICE_OPTIONS_TYPE_NAME = "device_options";
+    public static final String SYSTEM_STATUS_CHECKER_TYPE_NAME = "system_checker";
     public static final String DEVICE_NAME = "device";
 
     // additional element names used for emitting the configuration XML.
@@ -154,6 +156,8 @@ public class Configuration implements IConfiguration {
             sObjTypeMap.put(DEVICE_OPTIONS_TYPE_NAME, new ObjTypeInfo(TestDeviceOptions.class,
                     false));
             sObjTypeMap.put(DEVICE_NAME, new ObjTypeInfo(IDeviceConfiguration.class, true));
+            sObjTypeMap.put(SYSTEM_STATUS_CHECKER_TYPE_NAME,
+                    new ObjTypeInfo(ISystemStatusChecker.class, true));
         }
         return sObjTypeMap;
     }
@@ -201,6 +205,7 @@ public class Configuration implements IConfiguration {
         setLogSaver(new FileSystemLogSaver()); // FileSystemLogSaver saves to tmp by default.
         setTestInvocationListener(new TextResultReporter());
         setMultiTargetPreparer(new StubMultiTargetPreparer());
+        setSystemStatusCheckers(new ArrayList<ISystemStatusChecker>());
     }
 
     /**
@@ -318,6 +323,16 @@ public class Configuration implements IConfiguration {
     @Override
     public List<IMultiTargetPreparer> getMultiTargetPreparers() {
         return (List<IMultiTargetPreparer>) getConfigurationObjectList(MULTI_PREPARER_TYPE_NAME);
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @SuppressWarnings("unchecked")
+    @Override
+    public List<ISystemStatusChecker> getSystemStatusCheckers() {
+        return (List<ISystemStatusChecker>)
+                getConfigurationObjectList(SYSTEM_STATUS_CHECKER_TYPE_NAME);
     }
 
     /**
@@ -650,6 +665,22 @@ public class Configuration implements IConfiguration {
     @Override
     public void setMultiTargetPreparer(IMultiTargetPreparer multiTargPrep) {
         setConfigurationObjectNoThrow(MULTI_PREPARER_TYPE_NAME, multiTargPrep);
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void setSystemStatusCheckers(List<ISystemStatusChecker> systemCheckers) {
+        setConfigurationObjectListNoThrow(SYSTEM_STATUS_CHECKER_TYPE_NAME, systemCheckers);
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void setSystemStatusChecker(ISystemStatusChecker systemChecker) {
+        setConfigurationObjectNoThrow(SYSTEM_STATUS_CHECKER_TYPE_NAME, systemChecker);
     }
 
     /**
@@ -1074,6 +1105,9 @@ public class Configuration implements IConfiguration {
 
         for (IMultiTargetPreparer multipreparer : getMultiTargetPreparers()) {
             dumpClassToXml(serializer, MULTI_PREPARER_TYPE_NAME, multipreparer);
+        }
+        for (ISystemStatusChecker checker : getSystemStatusCheckers()) {
+            dumpClassToXml(serializer, SYSTEM_STATUS_CHECKER_TYPE_NAME, checker);
         }
         // TODO: fix device specific config object for multi device
         dumpClassToXml(serializer, BUILD_PROVIDER_TYPE_NAME, getBuildProvider());

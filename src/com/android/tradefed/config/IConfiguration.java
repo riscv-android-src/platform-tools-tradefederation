@@ -25,6 +25,7 @@ import com.android.tradefed.device.TestDeviceOptions;
 import com.android.tradefed.log.ILeveledLogOutput;
 import com.android.tradefed.result.ILogSaver;
 import com.android.tradefed.result.ITestInvocationListener;
+import com.android.tradefed.suite.checker.ISystemStatusChecker;
 import com.android.tradefed.targetprep.ITargetPreparer;
 import com.android.tradefed.targetprep.multi.IMultiTargetPreparer;
 import com.android.tradefed.testtype.IRemoteTest;
@@ -108,6 +109,13 @@ public interface IConfiguration {
      * @return the {@link IMultiTargetPreparer}s provided in order in the configuration
      */
     public List<IMultiTargetPreparer> getMultiTargetPreparers();
+
+    /**
+     * Gets the {@link ISystemStatusChecker}s from the configuration.
+     *
+     * @return the {@link ISystemStatusChecker}s provided in order in the configuration
+     */
+    public List<ISystemStatusChecker> getSystemStatusCheckers();
 
     /**
      * Gets the {@link ICommandOptions} to use from the configuration.
@@ -292,6 +300,22 @@ public interface IConfiguration {
      * @param multiTargPrep
      */
     public void setMultiTargetPreparer(IMultiTargetPreparer multiTargPrep);
+
+    /**
+     * Set the list of {@link ISystemStatusChecker}s in this configuration, replacing any
+     * existing values
+     *
+     * @param systemCheckers
+     */
+    public void setSystemStatusCheckers(List<ISystemStatusChecker> systemCheckers);
+
+    /**
+     * Convenience method to set a single {@link ISystemStatusChecker} in this configuration,
+     * replacing any existing values
+     *
+     * @param systemChecker
+     */
+    public void setSystemStatusChecker(ISystemStatusChecker systemChecker);
 
     /**
      * Set the list of {@link ITestInvocationListener}s, replacing any existing values

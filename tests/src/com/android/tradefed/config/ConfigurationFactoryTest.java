@@ -352,6 +352,23 @@ public class ConfigurationFactoryTest extends TestCase {
     }
 
     /**
+     * Test {@link ConfigurationFactory#getConfigList(String)} where we list the config in a sub
+     * path only
+     */
+    public void testListSubConfig() {
+        final String subDir = "suite/";
+        List<String> listConfigs = mFactory.getConfigList(subDir);
+        assertTrue(listConfigs.size() != 0);
+        // Check that our basic configs are always here
+        assertTrue(listConfigs.contains("suite/stub1"));
+        assertTrue(listConfigs.contains("suite/stub2"));
+        // Validate that all listed config are indeed from the subdir.
+        for (String config : listConfigs) {
+            assertTrue(config.startsWith(subDir));
+        }
+    }
+
+    /**
      * Test loading a config that includes another config.
      */
     public void testCreateConfigurationFromArgs_includeConfig() throws Exception {

@@ -129,6 +129,16 @@ public class ConfigurationFactory implements IConfigurationFactory {
      */
     private class ConfigClasspathFilter implements IClassPathFilter {
 
+        private String mPrefix = null;
+
+        public ConfigClasspathFilter(String prefix) {
+            mPrefix = CONFIG_PREFIX;
+            if (prefix != null) {
+                mPrefix += prefix;
+            }
+            CLog.d("Searching the '%s' config path", mPrefix);
+        }
+
         /**
          * {@inheritDoc}
          */
@@ -136,7 +146,7 @@ public class ConfigurationFactory implements IConfigurationFactory {
         public boolean accept(String pathName) {
             // only accept entries that match the pattern, and that we don't already know about
             final ConfigId pathId = new ConfigId(pathName);
-            return pathName.startsWith(CONFIG_PREFIX) && pathName.endsWith(CONFIG_SUFFIX) &&
+            return pathName.startsWith(mPrefix) && pathName.endsWith(CONFIG_SUFFIX) &&
                     !mConfigDefMap.containsKey(pathId);
         }
 
@@ -512,7 +522,15 @@ public class ConfigurationFactory implements IConfigurationFactory {
      */
     @Override
     public List<String> getConfigList() {
-        Set<String> configNames = getConfigSetFromClasspath();
+        return getConfigList(null);
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public List<String> getConfigList(String subPath) {
+        Set<String> configNames = getConfigSetFromClasspath(subPath);
         // sort the configs by name before adding to list
         SortedSet<String> configDefs = new TreeSet<String>();
         configDefs.addAll(configNames);
@@ -524,9 +542,9 @@ public class ConfigurationFactory implements IConfigurationFactory {
     /**
      * Private helper to get the full set of configurations.
      */
-    private Set<String> getConfigSetFromClasspath() {
+    private Set<String> getConfigSetFromClasspath(String subPath) {
         ClassPathScanner cpScanner = new ClassPathScanner();
-        return cpScanner.getClassPathEntries(new ConfigClasspathFilter());
+        return cpScanner.getClassPathEntries(new ConfigClasspathFilter(subPath));
     }
 
     /**
@@ -540,7 +558,7 @@ public class ConfigurationFactory implements IConfigurationFactory {
         ByteArrayOutputStream baos = new ByteArrayOutputStream();
         PrintStream ps = new PrintStream(baos);
         boolean failed = false;
-        Set<String> configNames = getConfigSetFromClasspath();
+        Set<String> configNames = getConfigSetFromClasspath(null);
         for (String configName : configNames) {
             final ConfigId configId = new ConfigId(configName);
             try {

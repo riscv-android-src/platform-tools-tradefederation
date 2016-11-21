@@ -46,6 +46,7 @@ import com.android.tradefed.result.InputStreamSource;
 import com.android.tradefed.result.LogDataType;
 import com.android.tradefed.result.LogSaverResultForwarder;
 import com.android.tradefed.result.ResultForwarder;
+import com.android.tradefed.suite.checker.ISystemStatusCheckerReceiver;
 import com.android.tradefed.targetprep.BuildError;
 import com.android.tradefed.targetprep.DeviceFailedToBootError;
 import com.android.tradefed.targetprep.IHostCleaner;
@@ -937,6 +938,10 @@ public class TestInvocation implements ITestInvocation {
             if (test instanceof IBuildReceiver) {
                 ((IBuildReceiver)test).setBuild(context.getBuildInfo(
                         context.getDevices().get(0)));
+            }
+            if (test instanceof ISystemStatusCheckerReceiver) {
+                ((ISystemStatusCheckerReceiver) test).setSystemStatusChecker(
+                        config.getSystemStatusCheckers());
             }
 
             // TODO: consider adding receivers for only the list of ITestDevice and IBuildInfo.

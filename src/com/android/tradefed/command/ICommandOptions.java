@@ -16,6 +16,8 @@
 
 package com.android.tradefed.command;
 
+import java.util.List;
+
 /**
  *  Container for execution options for commands.
  */
@@ -140,4 +142,14 @@ public interface ICommandOptions {
      * Sets the shard index for the command.
      */
     public void setShardIndex(Integer shardIndex);
+
+    /**
+     * Returns the list of suite tags the test is part of.
+     */
+    public List<String> getSuiteTags();
+
+    /**
+     * Sets the list of suite tags the test is part of.
+     */
+    public void setSuiteTags(List<String> suiteTags);
 }
