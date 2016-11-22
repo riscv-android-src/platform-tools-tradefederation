@@ -78,7 +78,7 @@ class ExecCommandTracker implements IScheduledInvocationListener {
     }
 
     /**
-     * Returns the current state as a {@link CommandResult}.
+     * Returns the current state as a {@link com.android.tradefed.command.remote.CommandResult}.
      */
     CommandResult getCommandResult() {
         return new CommandResult(mStatus, mErrorDetails, mState,

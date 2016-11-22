@@ -105,8 +105,8 @@ public interface IManagedTestDevice extends ITestDevice {
     public DeviceAllocationState getAllocationState();
 
     /**
-     * Process the given {@link DeviceEvent}. May transition device to new state.
-     * Will inform the {@link IDeviceMonitor} of any state transitions.
+     * Process the given {@link com.android.tradefed.device.DeviceEvent}. May transition device
+     * to new state. Will inform the {@link IDeviceMonitor} of any state transitions.
      */
     public DeviceEventResponse handleAllocationEvent(DeviceEvent event);
 

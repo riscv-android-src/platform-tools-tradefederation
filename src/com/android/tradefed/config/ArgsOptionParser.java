@@ -36,14 +36,14 @@ import java.util.regex.Pattern;
  * "out.txt" in "-f out.txt"), or a non-option positional argument.
  * <p/>
  * Each option argument must map to one or more {@link Option} fields. A long option maps to the
- * {@link Option#name()}, and a short option maps to {@link Option#shortName()}. Each
- * {@link Option#name()} and {@link Option#shortName()} must be unique with respect to all other
+ * {@link Option} name, and a short option maps to {@link Option} short name. Each option name and
+ * option short name must be unique with respect to all other
  * {@link Option} fields within the same object.
  * <p/>
  * A single option argument can get mapped to multiple {@link Option} fields with the same name
  * across multiple objects. {@link Option} arguments can be namespaced to uniquely refer to an
  * {@link Option} field within a single object using that object's full class name or its
- * {@link OptionClass#alias()} value separated by ':'. ie
+ * {@link OptionClass} alias value separated by ':'. ie
  *
  * <pre>
  * --classname:optionname optionvalue or
@@ -246,7 +246,7 @@ public class ArgsOptionParser extends OptionSetter {
     }
 
     /**
-     * Validates that all fields marked as {@link Option#mandatory()} have been set.
+     * Validates that all fields marked as mandatory have been set.
      * @throws ConfigurationException
      */
     public void validateMandatoryOptions() throws ConfigurationException {

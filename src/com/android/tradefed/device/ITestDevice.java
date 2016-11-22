@@ -459,12 +459,11 @@ public interface ITestDevice extends INativeDevice {
 
     /**
      * Find and return the flags of a given user.
-     * Flags are defined in {@link android.content.pm.UserInfo} in Android Open Source Project.
+     * Flags are defined in "android.content.pm.UserInfo" class in Android Open Source Project.
      *
      * @return the flags associated with the userId provided if found, -10000 in any other cases.
      * @throws DeviceNotAvailableException
      */
-    @SuppressWarnings("javadoc")
     public int getUserFlags(int userId) throws DeviceNotAvailableException;
 
     /**
