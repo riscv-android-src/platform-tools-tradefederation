@@ -15,6 +15,7 @@
  */
 package com.android.tradefed;
 
+import com.android.ddmlib.testrunner.TestIdentifier;
 import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.build.IFolderBuildInfo;
 import com.android.tradefed.config.Option;
@@ -42,6 +43,8 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 
 /**
@@ -121,6 +124,16 @@ public class TfTestLauncher implements IRemoteTest, IBuildReceiver {
 
         List<String> args = new ArrayList<String>();
         args.add("java");
+
+        File tmpDir = null;
+        try {
+            tmpDir = FileUtil.createTempDir("subprocess-" + tfBuild.getBuildId());
+            args.add(String.format("-Djava.io.tmpdir=%s", tmpDir.getAbsolutePath()));
+        } catch (IOException e) {
+            CLog.e(e);
+            throw new RuntimeException(e);
+        }
+
         File destCoverageFile = null;
         File agent = null;
         if (mEnableCoverage) {
@@ -243,6 +256,11 @@ public class TfTestLauncher implements IRemoteTest, IBuildReceiver {
             }
             StreamUtil.close(eventParser);
             FileUtil.deleteFile(agent);
+
+            if (tmpDir != null) {
+                testTmpDirClean(tmpDir, listener);
+            }
+
             // Evaluate coverage from the subprocess
             if (mEnableCoverage) {
                 InputStreamSource coverage = null;
@@ -353,5 +371,26 @@ public class TfTestLauncher implements IRemoteTest, IBuildReceiver {
             FileUtil.deleteFile(antConfig);
             FileUtil.deleteFile(jacocoAnt);
         }
+    }
+
+    /**
+     * Extra test to ensure no files are created by the unit tests in the subprocess and not
+     * cleaned.
+     *
+     * @param tmpDir the temporary dir of the subprocess.
+     * @param listener the {@link ITestInvocationListener} where to report the test.
+     */
+    private void testTmpDirClean(File tmpDir, ITestInvocationListener listener) {
+        TestIdentifier tid = new TestIdentifier("temporary-files", "testIfClean");
+        listener.testStarted(tid);
+        String[] listFiles = tmpDir.list();
+        if (listFiles.length > 4) {
+            String trace = String.format("Found '%d' temporary files: %s\n, only 4 are expected: "
+                    + "lc_cache, SDK_homes, inv_*, tradefed_global_log_*", listFiles.length,
+                    Arrays.asList(listFiles));
+            listener.testFailed(tid, trace);
+        }
+        listener.testEnded(tid, Collections.emptyMap());
+        FileUtil.recursiveDelete(tmpDir);
     }
 }
