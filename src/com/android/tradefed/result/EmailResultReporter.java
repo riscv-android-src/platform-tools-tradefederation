@@ -153,14 +153,7 @@ public class EmailResultReporter extends CollectingTestListener implements
 
         subj.append(" on ");
         for (IBuildInfo build : context.getBuildInfos()) {
-            subj.append("{");
-            appendUnlessNull(subj, build.getBuildFlavor());
-            appendUnlessNull(subj, build.getBuildBranch());
-            if (!appendUnlessNull(subj, build.getBuildAttributes().get("build_alias"))) {
-                subj.append("build ");
-                subj.append(build.getBuildId());
-            }
-            subj.append("}");
+            subj.append(build.toString());
         }
 
         subj.append(": ");

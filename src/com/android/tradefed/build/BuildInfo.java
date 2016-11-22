@@ -21,6 +21,7 @@ import com.android.tradefed.util.FileUtil;
 import com.android.tradefed.util.MultiMap;
 import com.android.tradefed.util.UniqueMultiMap;
 
+import com.google.common.base.MoreObjects;
 import com.google.common.base.Objects;
 
 import java.io.File;
@@ -34,6 +35,8 @@ import java.util.Map;
  * with a {@link ITestDevice}.
  */
 public class BuildInfo implements IBuildInfo {
+    private static final String BUILD_ALIAS_KEY = "build_alias";
+
     private String mBuildId = UNKNOWN_BUILD_ID;
     private String mTestTag = "stub";
     private String mBuildTargetName = "stub";
@@ -345,5 +348,21 @@ public class BuildInfo implements IBuildInfo {
                 Objects.equal(mBuildTargetName, other.mBuildTargetName) &&
                 Objects.equal(mTestTag, other.mTestTag) &&
                 Objects.equal(mDeviceSerial, other.mDeviceSerial);
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public String toString() {
+        return MoreObjects.toStringHelper(this.getClass())
+                .omitNullValues()
+                .add("build_alias", getBuildAttributes().get(BUILD_ALIAS_KEY))
+                .add("bid", mBuildId)
+                .add("target", mBuildTargetName)
+                .add("build_flavor", mBuildFlavor)
+                .add("branch", mBuildBranch)
+                .add("serial", mDeviceSerial)
+                .toString();
     }
 }

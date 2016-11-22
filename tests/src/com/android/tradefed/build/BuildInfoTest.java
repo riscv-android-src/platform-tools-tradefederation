@@ -76,4 +76,29 @@ public class BuildInfoTest extends TestCase {
         assertNull(mBuildInfo.getFile(FILE_KEY));
         assertFalse(mFile.exists());
     }
+
+    /**
+     * Test for {@link BuildInfo#toString()}.
+     */
+    public void testToString() {
+        mBuildInfo.setBuildFlavor("testFlavor");
+        mBuildInfo.setBuildBranch("testBranch");
+        mBuildInfo.setDeviceSerial("fakeSerial");
+        String expected = "BuildInfo{bid=1, target=target, build_flavor=testFlavor, "
+                + "branch=testBranch, serial=fakeSerial}";
+        assertEquals(expected, mBuildInfo.toString());
+    }
+
+    /**
+     * Test for {@link BuildInfo#toString()} when a build alias is present.
+     */
+    public void testToString_withBuildAlias() {
+        mBuildInfo.addBuildAttribute("build_alias", "NMR12");
+        mBuildInfo.setBuildFlavor("testFlavor");
+        mBuildInfo.setBuildBranch("testBranch");
+        mBuildInfo.setDeviceSerial("fakeSerial");
+        String expected = "BuildInfo{build_alias=NMR12, bid=1, target=target, "
+                + "build_flavor=testFlavor, branch=testBranch, serial=fakeSerial}";
+        assertEquals(expected, mBuildInfo.toString());
+    }
 }
