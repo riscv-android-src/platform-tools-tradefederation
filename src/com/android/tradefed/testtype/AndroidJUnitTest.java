@@ -17,16 +17,21 @@
 package com.android.tradefed.testtype;
 
 import com.android.ddmlib.testrunner.IRemoteAndroidTestRunner;
+import com.android.tradefed.config.ConfigurationException;
 import com.android.tradefed.config.Option;
+import com.android.tradefed.config.OptionCopier;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
+import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.util.ArrayUtil;
+import com.android.tradefed.util.ListInstrumentationParser;
 
 import com.google.common.annotations.VisibleForTesting;
 
 import java.io.File;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
 import java.util.Set;
 
@@ -35,9 +40,10 @@ import java.util.Set;
  * android.support.test.runner.AndroidJUnitRunner.
  */
 public class AndroidJUnitTest extends InstrumentationTest implements IRuntimeHintProvider,
-        ITestFileFilterReceiver, ITestFilterReceiver, ITestAnnotationFilterReceiver {
+        ITestFileFilterReceiver, ITestFilterReceiver, ITestAnnotationFilterReceiver,
+        IShardableTest, IStrictShardableTest {
 
-    private static final String AJUR = "android.support.test.runner.AndroidJUnitRunner";
+    protected static final String AJUR = "android.support.test.runner.AndroidJUnitRunner";
 
     /** instrumentation test runner argument key used for including a class/test */
     private static final String INCLUDE_CLASS_INST_ARGS_KEY = "class";
@@ -55,6 +61,10 @@ public class AndroidJUnitTest extends InstrumentationTest implements IRuntimeHin
     private static final String TEST_FILE_INST_ARGS_KEY = "testFile";
     /** instrumentation test runner argument used for adding notTestFile filter */
     private static final String NOT_TEST_FILE_INST_ARGS_KEY = "notTestFile";
+    /** instrumentation test runner argument used to specify the shardIndex of the test */
+    private static final String SHARD_INDEX_INST_ARGS_KEY = "shardIndex";
+    /** instrumentation test runner argument used to specify the total number of shards */
+    private static final String NUM_SHARD_INST_ARGS_KEY = "numShards";
 
     private static final String INCLUDE_FILE = "includes.txt";
     private static final String EXCLUDE_FILE = "excludes.txt";
@@ -94,8 +104,14 @@ public class AndroidJUnitTest extends InstrumentationTest implements IRuntimeHin
             description="The device directory path to which the test filtering files are pushed")
     private String mTestFilterDir = "/data/local/tmp/ajur";
 
+    @Option(name = "shards", description =
+            "Split test run into this many parallel shards")
+    private int mShards = 0;
+
     private String mDeviceIncludeFile = null;
     private String mDeviceExcludeFile = null;
+    private int mTotalShards = 0;
+    private int mShardIndex = 0;
 
     public AndroidJUnitTest() {
         super();
@@ -210,6 +226,11 @@ public class AndroidJUnitTest extends InstrumentationTest implements IRuntimeHin
             mDeviceExcludeFile = mTestFilterDir.replaceAll("/$", "") + "/" + EXCLUDE_FILE;
             pushTestFile(mExcludeTestFile, mDeviceExcludeFile);
         }
+        if (mTotalShards > 0 && !isShardable() && mShardIndex != 0) {
+            // If not shardable, only first shard can run.
+            CLog.i("%s is not shardable.", getRunnerName());
+            return;
+        }
         super.run(listener);
     }
 
@@ -273,6 +294,10 @@ public class AndroidJUnitTest extends InstrumentationTest implements IRuntimeHin
             runner.addInstrumentationArg(NOT_ANNOTATION_INST_ARGS_KEY,
                     ArrayUtil.join(",", mExcludeAnnotation));
         }
+        if (mTotalShards > 0 && isShardable()) {
+            runner.addInstrumentationArg(SHARD_INDEX_INST_ARGS_KEY, Integer.toString(mShardIndex));
+            runner.addInstrumentationArg(NUM_SHARD_INST_ARGS_KEY, Integer.toString(mTotalShards));
+        }
     }
 
     /*
@@ -310,5 +335,49 @@ public class AndroidJUnitTest extends InstrumentationTest implements IRuntimeHin
             return Character.isUpperCase(parts[parts.length - 1].charAt(0));
         }
         return false;
+    }
+
+    /**
+     * Helper to return if the runner is one that support sharding.
+     */
+    private boolean isShardable() {
+        return ListInstrumentationParser.SHARDABLE_RUNNERS.contains(getRunnerName());
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public Collection<IRemoteTest> split() {
+        if (!isShardable()) {
+            return null;
+        }
+        if (mShards > 1) {
+            Collection<IRemoteTest> shards = new ArrayList<>(mShards);
+            for (int index = 0; index < mShards; index++) {
+                shards.add(getTestShard(mShards, index));
+            }
+            return shards;
+        }
+        return null;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public IRemoteTest getTestShard(int shardCount, int shardIndex) {
+        AndroidJUnitTest shard = new AndroidJUnitTest();
+        try {
+            OptionCopier.copyOptions(this, shard);
+        } catch (ConfigurationException e) {
+            CLog.e("Failed to copy instrumentation options: %s", e.getMessage());
+        }
+        shard.mShards = 0;
+        shard.mShardIndex = shardIndex;
+        shard.mTotalShards = shardCount;
+        // We approximate the runtime of each shard to be equal since we can't know.
+        shard.mRuntimeHint = mRuntimeHint / shardCount;
+        return shard;
     }
 }

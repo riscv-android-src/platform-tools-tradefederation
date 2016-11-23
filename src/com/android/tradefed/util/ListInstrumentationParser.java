@@ -44,7 +44,7 @@ public class ListInstrumentationParser extends MultiLineReceiver {
     // Instrumentation is shardable. A workaround is to have a list of shardable instrumentation
     // runners, and check if a target uses that particular runner, although this means that any
     // subclasses or other custom runner classes won't be acknowledged as shardable.
-    private static final Set<String> SHARDABLE_RUNNERS = new HashSet<String>(Arrays.asList(
+    public static final Set<String> SHARDABLE_RUNNERS = new HashSet<>(Arrays.asList(
                 "android.support.test.runner.AndroidJUnitRunner"));
 
     private List<InstrumentationTarget> mInstrumentationTargets = new ArrayList<>();

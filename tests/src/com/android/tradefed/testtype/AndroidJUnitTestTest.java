@@ -28,6 +28,7 @@ import com.android.tradefed.util.FileUtil;
 import junit.framework.TestCase;
 
 import java.io.File;
+import java.util.List;
 import java.util.concurrent.TimeUnit;
 
 import org.easymock.EasyMock;
@@ -298,5 +299,38 @@ public class AndroidJUnitTestTest extends TestCase {
         assertFalse("String was just package", mAndroidJUnitTest.isClassOrMethod("android.test"));
         assertTrue("String was class", mAndroidJUnitTest.isClassOrMethod("android.test.Foo"));
         assertTrue("String was method", mAndroidJUnitTest.isClassOrMethod("android.test.Foo#bar"));
+    }
+
+    /**
+     * Test that {@link AndroidJUnitTest#split()} returns null if the runner is not shardable.
+     */
+    public void testSplit_notShardable() {
+        mAndroidJUnitTest.setRunnerName("fake.runner.not.shardable");
+        assertNull(mAndroidJUnitTest.split());
+    }
+
+    /**
+     * Test that {@link AndroidJUnitTest#split()} returns null if no shards have been requested.
+     */
+    public void testSplit_noShardRequested() {
+        assertEquals(AndroidJUnitTest.AJUR, mAndroidJUnitTest.getRunnerName());
+        assertNull(mAndroidJUnitTest.split());
+    }
+
+    /**
+     * Test that {@link AndroidJUnitTest#split()} returns 3 shards when requested to do so.
+     */
+    public void testSplit_threeShards() throws Exception {
+        assertEquals(AndroidJUnitTest.AJUR, mAndroidJUnitTest.getRunnerName());
+        OptionSetter setter = new OptionSetter(mAndroidJUnitTest);
+        setter.setOptionValue("shards", "3");
+        setter.setOptionValue("runtime-hint", "60s");
+        List<IRemoteTest> res = (List<IRemoteTest>) mAndroidJUnitTest.split();
+        assertNotNull(res);
+        assertEquals(3, res.size());
+        // Third of the execution time on each shard.
+        assertEquals(20000L, ((AndroidJUnitTest)res.get(0)).getRuntimeHint());
+        assertEquals(20000L, ((AndroidJUnitTest)res.get(1)).getRuntimeHint());
+        assertEquals(20000L, ((AndroidJUnitTest)res.get(2)).getRuntimeHint());
     }
 }
