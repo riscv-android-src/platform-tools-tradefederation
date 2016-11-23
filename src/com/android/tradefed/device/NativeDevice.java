@@ -97,7 +97,7 @@ public class NativeDevice implements IManagedTestDevice {
     private static final int BUGREPORTZ_TIMEOUT = 5 * 60 * 1000;
     private static final String BUGREPORT_CMD = "bugreport";
     private static final String BUGREPORTZ_CMD = "bugreportz";
-    private static final String BUGREPORTZ_TMP_PATH = "/data/bugreports/";
+    private static final String BUGREPORTZ_TMP_PATH = "/bugreports/";
 
     /**
      * Allow up to 2 minutes to receives the full logcat dump.
