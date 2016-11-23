@@ -108,17 +108,21 @@ public class LocalDeviceBuildProviderTest {
     @Test
     public void testCreateBuildImageZip() throws Exception {
         File buildImageZip = mLocalDeviceBuildProvider.createBuildImageZip();
-        assertNotNull(buildImageZip);
-        ZipUtil.extractZip(new ZipFile(buildImageZip), mTmpDir);
-        File extractedFile1 = new File(mTmpDir, mAndroidInfo.getName());
-        File extractedFile2 = new File(mTmpDir, mBootImg.getName());
-        File extractedFile3 = new File(mTmpDir, mSystemImg.getName());
-        assertTrue(extractedFile1.exists());
-        assertTrue(extractedFile2.exists());
-        assertTrue(extractedFile3.exists());
-        assertTrue(FileUtil.compareFileContents(mAndroidInfo, extractedFile1));
-        assertTrue(FileUtil.compareFileContents(mBootImg, extractedFile2));
-        assertTrue(FileUtil.compareFileContents(mSystemImg, extractedFile3));
+        try {
+            assertNotNull(buildImageZip);
+            ZipUtil.extractZip(new ZipFile(buildImageZip), mTmpDir);
+            File extractedFile1 = new File(mTmpDir, mAndroidInfo.getName());
+            File extractedFile2 = new File(mTmpDir, mBootImg.getName());
+            File extractedFile3 = new File(mTmpDir, mSystemImg.getName());
+            assertTrue(extractedFile1.exists());
+            assertTrue(extractedFile2.exists());
+            assertTrue(extractedFile3.exists());
+            assertTrue(FileUtil.compareFileContents(mAndroidInfo, extractedFile1));
+            assertTrue(FileUtil.compareFileContents(mBootImg, extractedFile2));
+            assertTrue(FileUtil.compareFileContents(mSystemImg, extractedFile3));
+        } finally {
+            FileUtil.deleteFile(buildImageZip);
+        }
     }
 
     @Test
