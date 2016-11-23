@@ -30,6 +30,8 @@ import com.android.tradefed.result.JUnit4ResultForwarder;
 import com.android.tradefed.util.JUnit4TestFilter;
 import com.android.tradefed.util.TestFilterHelper;
 
+import com.google.common.annotations.VisibleForTesting;
+
 import junit.framework.Test;
 import junit.framework.TestCase;
 import junit.framework.TestSuite;
@@ -220,9 +222,17 @@ public class HostTest implements IDeviceTest, ITestFilterReceiver, ITestAnnotati
         return count;
     }
 
-    void setClassName(String className) {
+    /**
+     * Clear then set a class name to be run.
+     */
+    protected void setClassName(String className) {
         mClasses.clear();
         mClasses.add(className);
+    }
+
+    @VisibleForTesting
+    public Set<String> getClassNames() {
+        return mClasses;
     }
 
     void setMethodName(String methodName) {
