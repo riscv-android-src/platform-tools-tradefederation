@@ -20,6 +20,7 @@ import com.android.ddmlib.Log.LogLevel;
 import com.android.tradefed.build.BuildRetrievalError;
 import com.android.tradefed.build.ExistingBuildProvider;
 import com.android.tradefed.build.IBuildInfo;
+import com.android.tradefed.build.IBuildProvider;
 import com.android.tradefed.build.IDeviceBuildProvider;
 import com.android.tradefed.config.ConfigurationDef;
 import com.android.tradefed.config.ConfigurationException;
@@ -368,12 +369,7 @@ public class TestInvocation implements ITestInvocation {
         // providers.
         // When CommandOption is set, it overrides any test-tag from build_providers
         if (!"stub".equals(config.getCommandOptions().getTestTag())) {
-            String testTag = config.getCommandOptions().getTestTag();
-            if (config.getCommandOptions().getTestTagSuffix() != null) {
-                testTag = String.format("%s-%s", testTag,
-                        config.getCommandOptions().getTestTagSuffix());
-            }
-            info.setTestTag(testTag);
+            info.setTestTag(getTestTag(config));
         } else if (info.getTestTag() == null || info.getTestTag().isEmpty()) {
             // We ensure that that a default test-tag is always available.
             info.setTestTag("stub");
@@ -403,12 +399,19 @@ public class TestInvocation implements ITestInvocation {
             context.addInvocationAttribute("shard_index",
                     config.getCommandOptions().getShardIndex().toString());
         }
+        context.setTestTag(getTestTag(config));
+    }
+
+    /**
+     * Helper to create the test tag from the configuration.
+     */
+    private String getTestTag(IConfiguration config) {
         String testTag = config.getCommandOptions().getTestTag();
         if (config.getCommandOptions().getTestTagSuffix() != null) {
             testTag = String.format("%s-%s", testTag,
                     config.getCommandOptions().getTestTagSuffix());
         }
-        context.setTestTag(testTag);
+        return testTag;
     }
 
     /**
@@ -1006,17 +1009,23 @@ public class TestInvocation implements ITestInvocation {
             if (cmdLineArgs != null) {
                 CLog.i("Invocation was started with cmd: %s", cmdLineArgs);
             }
+            updateInvocationContext(context, config);
             // TODO: evaluate fetching build in parallel
             for (String deviceName : context.getDeviceConfigNames()) {
                 currentDeviceName = deviceName;
                 IBuildInfo info = null;
                 ITestDevice device = context.getDevice(deviceName);
                 IDeviceConfiguration deviceConfig = config.getDeviceConfigByName(deviceName);
-
-                if (deviceConfig.getBuildProvider() instanceof IDeviceBuildProvider) {
-                    info = ((IDeviceBuildProvider)deviceConfig.getBuildProvider()).getBuild(device);
+                IBuildProvider provider = deviceConfig.getBuildProvider();
+                // Set the provider test tag
+                if (provider instanceof IInvocationContextReceiver) {
+                    ((IInvocationContextReceiver)provider).setInvocationContext(context);
+                }
+                // Get the build
+                if (provider instanceof IDeviceBuildProvider) {
+                    info = ((IDeviceBuildProvider)provider).getBuild(device);
                 } else {
-                    info = deviceConfig.getBuildProvider().getBuild();
+                    info = provider.getBuild();
                 }
                 if (info != null) {
                     info.setDeviceSerial(device.getSerialNumber());
@@ -1035,7 +1044,6 @@ public class TestInvocation implements ITestInvocation {
                 // TODO: remove build update when reporting is done on context
                 updateBuild(info, config);
             }
-            updateInvocationContext(context, config);
             if (shardConfig(config, context, rescheduler)) {
                 CLog.i("Invocation for %s has been sharded, rescheduling",
                         context.getSerials().toString());
