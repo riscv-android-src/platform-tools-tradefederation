@@ -1059,6 +1059,7 @@ public class TestInvocation implements ITestInvocation {
             CLog.e(e);
             if (currentDeviceName != null) {
                 context.addDeviceBuildInfo(currentDeviceName, e.getBuildInfo());
+                updateInvocationContext(context, config);
             }
             // report an empty invocation, so this error is sent to listeners
             startInvocation(config, context, listener);
