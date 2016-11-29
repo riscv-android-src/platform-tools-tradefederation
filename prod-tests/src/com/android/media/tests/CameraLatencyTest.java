@@ -212,7 +212,8 @@ public class CameraLatencyTest implements IDeviceTest, IRemoteTest {
             // Parse the output file to upload aggregated metrics
             parseOutputFile(test, new FileInputStream(outputFile), listener);
         } catch (IOException e) {
-            CLog.e("IOException while reading or parsing output file: %s", e);
+            CLog.e("IOException while reading or parsing output file");
+            CLog.e(e);
         } finally {
             if (outputFile != null) {
                 outputFile.delete();
@@ -235,7 +236,8 @@ public class CameraLatencyTest implements IDeviceTest, IRemoteTest {
         try {
             contents = StreamUtil.getStringFromStream(dataStream);
         } catch (IOException e) {
-            CLog.e("Got IOException during %s test processing: %s", test.mTestName, e);
+            CLog.e("Got IOException during %s test processing", test.mTestName);
+            CLog.e(e);
             return;
         }
 

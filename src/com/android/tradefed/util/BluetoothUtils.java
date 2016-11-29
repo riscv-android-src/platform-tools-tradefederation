@@ -255,7 +255,8 @@ public class BluetoothUtils {
                         LogDataType.UNKNOWN, logSource);
             }
         } catch (IOException e) {
-            CLog.e("Got an IO Exception: %s", e);
+            CLog.e("IOException while uploading the log files");
+            CLog.e(e);
         } finally {
             if (logFile != null) {
                 logFile.delete();

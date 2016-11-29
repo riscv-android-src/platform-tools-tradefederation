@@ -117,7 +117,8 @@ public class MediaStressTest implements IDeviceTest, IRemoteTest {
             listener.testLog(OUTPUT_PATH, LogDataType.TEXT, outputSource);
             parseOutputFile(outputFile, listener);
         } catch (IOException e) {
-            CLog.e("IOException while reading or parsing output file: %s", e);
+            CLog.e("IOException while reading or parsing output file");
+            CLog.e(e);
         } finally {
             FileUtil.deleteFile(outputFile);
             StreamUtil.cancel(outputSource);
@@ -141,7 +142,8 @@ public class MediaStressTest implements IDeviceTest, IRemoteTest {
             InputStream dataStream = new FileInputStream(outputFile);
             contents = StreamUtil.getStringFromStream(dataStream);
         } catch (IOException e) {
-            CLog.e("Got IOException: %s", e);
+            CLog.e("IOException while parsing the output file:");
+            CLog.e(e);
             return;
         }
 

@@ -361,7 +361,8 @@ public class WifiStressTest implements IRemoteTest, IDeviceTest {
                 reportMetrics("wifi_stress", listener, runScanMetrics);
             }
         } catch (IOException e) {
-            CLog.e("IOException while reading from data stream: %s", e);
+            CLog.e("IOException while reading from data stream");
+            CLog.e(e);
             return;
         } finally {
             StreamUtil.close(br);

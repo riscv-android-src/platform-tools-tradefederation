@@ -2331,6 +2331,7 @@ public class NativeDevice implements IManagedTestDevice {
      * Create a {@link WifiHelper} to use
      * <p/>
      * Exposed so unit tests can mock
+     * @throws DeviceNotAvailableException
      */
     IWifiHelper createWifiHelper() throws DeviceNotAvailableException {
         // current wifi helper won't work on AndroidNativeDevice
@@ -2627,6 +2628,7 @@ public class NativeDevice implements IManagedTestDevice {
      * device is back online.
      * Default implementation doesn't include any addition actions.
      * adb root is not guaranteed to be enabled at this stage.
+     * @throws DeviceNotAvailableException
      */
     public void postAdbRootAction() throws DeviceNotAvailableException {
         // Empty on purpose.
@@ -2637,6 +2639,7 @@ public class NativeDevice implements IManagedTestDevice {
      * the device is back online.
      * Default implementation doesn't include any additional actions.
      * adb root is not guaranteed to be disabled at this stage.
+     * @throws DeviceNotAvailableException
      */
     public void postAdbUnrootAction() throws DeviceNotAvailableException {
         // Empty on purpose.

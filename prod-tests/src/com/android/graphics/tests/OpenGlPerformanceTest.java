@@ -209,7 +209,7 @@ public class OpenGlPerformanceTest implements IDeviceTest, IRemoteTest {
                             outputSource);
 
                     // Parse the results file and report results to dash board
-                    parseOutputFile(new FileInputStream(resFile), i, listener);
+                    parseOutputFile(new FileInputStream(resFile), i);
                 } else {
                     CLog.v("File %s doesn't exist or pulling the file failed", outputFileName);
                 }
@@ -253,8 +253,7 @@ public class OpenGlPerformanceTest implements IDeviceTest, IRemoteTest {
     }
 
     // Parse one result file and save test name and fps value
-    private void parseOutputFile(InputStream dataInputStream, int iterationId,
-            ITestInvocationListener listener) {
+    private void parseOutputFile(InputStream dataInputStream, int iterationId) {
         try {
             BufferedReader br= new BufferedReader(new InputStreamReader(dataInputStream));
             String line = null;
@@ -281,7 +280,8 @@ public class OpenGlPerformanceTest implements IDeviceTest, IRemoteTest {
                 }
             }
         } catch (IOException e) {
-            CLog.e("IOException while reading from data stream: %s", e);
+            CLog.e("IOException while reading from data stream");
+            CLog.e(e);
             return;
         }
     }
@@ -399,7 +399,7 @@ public class OpenGlPerformanceTest implements IDeviceTest, IRemoteTest {
                     "UI test with live wallpaper, 38.197098,");
 
             InputStream inputStream = new ByteArrayInputStream(output.getBytes());
-            mTestInstance.parseOutputFile(inputStream, 0, null);
+            mTestInstance.parseOutputFile(inputStream, 0);
             assertNotNull(mTestInstance.mTestResults);
 
             // 3 tests, RenderScript Text Rendering
@@ -492,10 +492,10 @@ public class OpenGlPerformanceTest implements IDeviceTest, IRemoteTest {
                     "UI test with live wallpaper, 38.05175,");
 
             InputStream inputStream = new ByteArrayInputStream(output1.getBytes());
-            mTestInstance.parseOutputFile(inputStream, 0, null);
+            mTestInstance.parseOutputFile(inputStream, 0);
             //mTestInstance.printTestResults();
             inputStream = new ByteArrayInputStream(output2.getBytes());
-            mTestInstance.parseOutputFile(inputStream, 1, null);
+            mTestInstance.parseOutputFile(inputStream, 1);
             assertNotNull(mTestInstance.mTestResults);
 
             assertEquals("97.65624", mTestInstance.mTestResults.get("text1")[0].toString());

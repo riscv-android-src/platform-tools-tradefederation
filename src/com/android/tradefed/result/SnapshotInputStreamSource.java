@@ -33,7 +33,7 @@ public class SnapshotInputStreamSource implements InputStreamSource {
     private boolean mIsCancelled = false;
 
     /**
-     * FIXME
+     * Constructor for a file-backed {@link InputStreamSource}
      */
     public SnapshotInputStreamSource(InputStream stream) {
         if (stream == null) {
@@ -44,7 +44,8 @@ public class SnapshotInputStreamSource implements InputStreamSource {
             mBackingFile = createBackingFile(stream);
         } catch (IOException e) {
             // Log an error and invalidate ourself
-            CLog.e("Received IOException while trying to wrap a stream: %s", e);
+            CLog.e("Received IOException while trying to wrap a stream");
+            CLog.e(e);
             cancel();
         }
     }
