@@ -43,6 +43,10 @@ public class LogRegistryTest extends TestCase {
             ThreadGroup getCurrentThreadGroup() {
                 return mStubThreadGroup;
             }
+            @Override
+            public void saveGlobalLog() {
+                // empty on purpose, avoid leaving logs that we can't clean.
+            }
         };
     }
 
