@@ -43,6 +43,14 @@ public class JUnit4ResultForwarder extends RunListener {
     }
 
     @Override
+    public void testAssumptionFailure(Failure failure) {
+        Description description = failure.getDescription();
+        TestIdentifier testid = new TestIdentifier(description.getClassName(),
+                description.getMethodName());
+        mListener.testAssumptionFailure(testid, failure.getTrace());
+    }
+
+    @Override
     public void testStarted(Description description) {
         TestIdentifier testid = new TestIdentifier(description.getClassName(),
                 description.getMethodName());
