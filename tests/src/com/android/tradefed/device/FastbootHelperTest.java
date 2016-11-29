@@ -58,6 +58,16 @@ public class FastbootHelperTest extends TestCase {
     }
 
     /**
+     * Verify 'fastboot devices' parsing with hyphenated serial number.
+     */
+    public void testParseDevicesOnFastboot_hyphen() {
+        Collection<String> deviceSerials = mFastbootHelper.parseDevices(
+                "Foo-Bar123    fastboot");
+        assertEquals(1, deviceSerials.size());
+        assertTrue(deviceSerials.contains("Foo-Bar123"));
+    }
+
+    /**
      * Verify the 'fastboot devices' output parsing when empty
      */
     public void testParseDevicesOnFastboot_empty() {
