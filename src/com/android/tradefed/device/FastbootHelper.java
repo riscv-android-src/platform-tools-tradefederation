@@ -103,7 +103,7 @@ public class FastbootHelper {
      */
     Set<String> parseDevices(String fastbootOutput) {
         Set<String> serials = new HashSet<String>();
-        Pattern fastbootPattern = Pattern.compile("([\\w\\d]+)\\s+fastboot\\s*");
+        Pattern fastbootPattern = Pattern.compile("([\\w\\d-]+)\\s+fastboot\\s*");
         Matcher fastbootMatcher = fastbootPattern.matcher(fastbootOutput);
         while (fastbootMatcher.find()) {
             serials.add(fastbootMatcher.group(1));
