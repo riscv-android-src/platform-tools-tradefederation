@@ -1,0 +1,19 @@
+// Should be kept in sync with internal version.
+syntax = "proto2";
+
+package posting_service_rpc;
+
+option java_package = "com.google.wireless.android.testtools.metrics.proto";
+option java_outer_classname = "FileMetadataProto";
+
+message LogFile {
+  // The type of the log file
+  required string type = 1;
+  // The name of the log file
+  required string name = 2;
+}
+
+message FileMetadata {
+  // The included, parseable log files
+  repeated LogFile log_files = 1;
+}

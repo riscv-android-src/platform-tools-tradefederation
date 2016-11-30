@@ -17,7 +17,7 @@ LOCAL_PATH := $(call my-dir)
 include $(CLEAR_VARS)
 
 # Only compile source java files in this lib.
-LOCAL_SRC_FILES := $(call all-java-files-under, src)
+LOCAL_SRC_FILES := $(call all-java-files-under, src) $(call all-proto-files-under, proto)
 
 LOCAL_JAVA_RESOURCE_DIRS := res
 
@@ -29,7 +29,7 @@ LOCAL_MODULE_TAGS := optional
 LOCAL_STATIC_JAVA_LIBRARIES := junit-host kxml2-2.3.0 jline-1.0 tf-remote-client
 # emmalib is only a runtime dependency if generating code coverage reporters,
 # not a compile time dependency
-LOCAL_JAVA_LIBRARIES := commons-compress-prebuilt emmalib jack-jacoco-reporter loganalysis tools-common-prebuilt
+LOCAL_JAVA_LIBRARIES := commons-compress-prebuilt emmalib jack-jacoco-reporter loganalysis tools-common-prebuilt host-libprotobuf-java-full
 
 LOCAL_JAR_MANIFEST := MANIFEST.mf
 
