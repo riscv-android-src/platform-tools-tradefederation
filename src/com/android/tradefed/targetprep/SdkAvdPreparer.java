@@ -33,6 +33,8 @@ import com.android.tradefed.util.FileUtil;
 import com.android.tradefed.util.IRunUtil;
 import com.android.tradefed.util.RunUtil;
 
+import com.google.common.annotations.VisibleForTesting;
+
 import junit.framework.Assert;
 
 import java.io.File;
@@ -331,7 +333,7 @@ public class SdkAvdPreparer implements ITargetPreparer, IHostCleaner {
     private void setAndroidSdkHome() throws TargetSetupError {
         try {
             // if necessary, create a dir to group the tmp sdk homes
-            File tmpParent = FileUtil.createNamedTempDir("SDK_homes");
+            File tmpParent = createParentSdkHome();
             // create a temp dir inside the grouping folder
             mSdkHome = FileUtil.createTempDir("SDK_home", tmpParent);
             // store avds etc in tmp location, and clean up on teardown
@@ -340,6 +342,14 @@ public class SdkAvdPreparer implements ITargetPreparer, IHostCleaner {
             throw new TargetSetupError("Failed to create sdk home",
                     mTestDevice.getDeviceDescriptor());
         }
+    }
+
+    /**
+     * Create the parent directory where SDK_home will be stored.
+     */
+    @VisibleForTesting
+    File createParentSdkHome() throws IOException {
+        return FileUtil.createNamedTempDir("SDK_homes");
     }
 
     /**

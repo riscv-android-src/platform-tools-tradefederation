@@ -122,10 +122,13 @@ public class TestDeviceFuncTest extends DeviceTestCase {
      */
     public void testInstallUninstall() throws IOException, DeviceNotAvailableException {
         Log.i(LOG_TAG, "testInstallUninstall");
-
         // use the wifi util apk
         File tmpFile = WifiHelper.extractWifiUtilApk();
-        assertWifiApkInstall(tmpFile);
+        try {
+            assertWifiApkInstall(tmpFile);
+        } finally {
+            FileUtil.deleteFile(tmpFile);
+        }
     }
 
     /**
