@@ -463,15 +463,9 @@ public class TestInvocation implements ITestInvocation {
         msg.append(context.getTestTag());
         msg.append("' with ");
         for (Entry<ITestDevice, IBuildInfo> entry : context.getDeviceBuildMap().entrySet()) {
-            buildInfos.append("[").append(getBuildDescription(entry.getValue())).append("]");
-            if (!IBuildInfo.UNKNOWN_BUILD_ID.equals(entry.getValue().getBuildId())) {
-                msg.append("[build ");
-                msg.append(getBuildDescription(entry.getValue()));
-            }
-            for (String buildAttr : entry.getValue().getBuildAttributes().values()) {
-                msg.append(" ");
-                msg.append(buildAttr);
-            }
+            msg.append("'[ ");
+            msg.append(entry.getValue().toString());
+            buildInfos.append(entry.getValue().toString());
             msg.append(" on device '");
             msg.append(entry.getKey().getSerialNumber());
             msg.append("'] ");
@@ -480,30 +474,6 @@ public class TestInvocation implements ITestInvocation {
         CLog.logAndDisplay(LogLevel.INFO, msg.toString());
         mStatus = String.format("running %s on build(s) '%s'", context.getTestTag(),
                 buildInfos.toString()) + shardSuffix;
-    }
-
-    /**
-     * Returns a user-friendly description of the build
-     */
-    private String getBuildDescription(IBuildInfo info) {
-        return String.format("'%s'", buildSpacedString(info.getBuildBranch(),
-                info.getBuildFlavor(), info.getBuildId()));
-    }
-
-    /**
-     * Helper method for adding space delimited sequence of strings. Will ignore null segments
-     */
-    private String buildSpacedString(String... segments) {
-        StringBuilder sb = new StringBuilder();
-        for (String s : segments) {
-            if (s != null) {
-                if (sb.length() > 0) {
-                    sb.append(' ');
-                }
-                sb.append(s);
-            }
-        }
-        return sb.toString();
     }
 
     /**

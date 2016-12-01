@@ -38,6 +38,8 @@ import com.android.tradefed.util.ZipUtil;
 import com.android.tradefed.util.keystore.IKeyStoreFactory;
 import com.android.tradefed.util.keystore.KeyStoreException;
 
+import com.google.common.annotations.VisibleForTesting;
+
 import jline.ConsoleReader;
 
 import java.io.File;
@@ -274,7 +276,6 @@ public class Console extends Thread {
     void generateHelpListings(RegexTrie<Runnable> trie, List<String> genericHelp,
             Map<String, String> commandHelp) {
         final String genHelpString = getGenericHelpString(genericHelp);
-        final String helpPattern = "\\?|h|help";
 
         final ArgRunnable<CaptureList> genericHelpRunnable = new ArgRunnable<CaptureList>() {
             @Override
@@ -282,7 +283,7 @@ public class Console extends Thread {
                 printLine(genHelpString);
             }
         };
-        trie.put(genericHelpRunnable, helpPattern);
+        trie.put(genericHelpRunnable, HELP_PATTERN);
 
         StringBuilder allHelpBuilder = new StringBuilder();
 
@@ -296,7 +297,7 @@ public class Console extends Thread {
                     public void run() {
                         printLine(helpText);
                     }
-                }, helpPattern, key);
+                }, HELP_PATTERN, key);
 
             allHelpBuilder.append(helpText);
             allHelpBuilder.append(LINE_SEPARATOR);
@@ -308,7 +309,7 @@ public class Console extends Thread {
                 public void run() {
                     printLine(allHelpText);
                 }
-            }, helpPattern, "all");
+            }, HELP_PATTERN, "all");
 
         // Add a generic "not found" help message for everything else
         trie.put(new ArgRunnable<CaptureList>() {
@@ -321,7 +322,7 @@ public class Console extends Thread {
                                 args.get(1).get(0)));
                         genericHelpRunnable.run(args);
                     }
-                }, helpPattern, null);
+                }, HELP_PATTERN, null);
 
         // Add a fallback input handler
         trie.put(new ArgRunnable<CaptureList>() {
@@ -964,6 +965,10 @@ public class Console extends Thread {
                         mConsoleReader.getHistory().addToHistory(cmd);
                     }
                     tokens = arrrgs.toArray(new String[0]);
+                    if (arrrgs.get(0).matches(HELP_PATTERN)) {
+                        // if started from command line for help, return to shell
+                        mShouldExit = true;
+                    }
                     arrrgs = Collections.emptyList();
                 }
 
@@ -986,6 +991,14 @@ public class Console extends Thread {
             System.err.flush();
             System.out.flush();
         }
+    }
+
+    /**
+     * set the flag to exit the console.
+     */
+    @VisibleForTesting
+    void exitConsole() {
+        mShouldExit = true;
     }
 
     void awaitScheduler() throws InterruptedException {

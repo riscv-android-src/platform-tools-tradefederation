@@ -97,6 +97,72 @@ public class ConsoleTest extends TestCase {
     }
 
     /**
+     * Test that an interactive console does return and doesn't not stay up when started with
+     * 'help'.
+     */
+    public void testRun_withConsoleInteractiveHelp() throws Throwable {
+        mConsole = new Console() {
+            @Override
+            boolean isConsoleFunctional() {
+                return mIsConsoleFunctional;
+            }
+        };
+        mConsole.setCommandScheduler(mMockScheduler);
+        mProxyExceptionHandler = new ProxyExceptionHandler();
+        mConsole.setUncaughtExceptionHandler(mProxyExceptionHandler);
+        mIsConsoleFunctional = true;
+
+        mMockScheduler.start();
+        mMockScheduler.await();
+        EasyMock.expectLastCall().anyTimes();
+        mMockScheduler.shutdown();  // after we discover that it was started with help
+        EasyMock.replay(mMockScheduler);
+
+        mConsole.setArgs(Arrays.asList("help"));
+        mConsole.start();
+        // join has a timeout otherwise it may hang forever.
+        mConsole.join(200);
+        assertFalse(mConsole.isAlive());
+        mProxyExceptionHandler.verify();
+        EasyMock.verify(mMockScheduler);
+    }
+
+    /**
+     * Test that an interactive console stays up when started without 'help' and scheduler
+     * does not shutdown.
+     */
+    public void testRun_withConsoleInteractive_noHelp() throws Throwable {
+        mConsole = new Console() {
+            @Override
+            boolean isConsoleFunctional() {
+                return mIsConsoleFunctional;
+            }
+        };
+        mConsole.setCommandScheduler(mMockScheduler);
+        mProxyExceptionHandler = new ProxyExceptionHandler();
+        mConsole.setUncaughtExceptionHandler(mProxyExceptionHandler);
+        mIsConsoleFunctional = true;
+
+        mMockScheduler.start();
+        mMockScheduler.await();
+        EasyMock.expectLastCall().anyTimes();
+        // No scheduler shutdown is expected.
+        EasyMock.replay(mMockScheduler);
+        try {
+            mConsole.setArgs(Arrays.asList(""));
+            mConsole.start();
+            // join has a timeout otherwise it hangs forever.
+            mConsole.join(100);
+            assertTrue(mConsole.isAlive());
+            mProxyExceptionHandler.verify();
+            EasyMock.verify(mMockScheduler);
+        } finally {
+            mConsole.exitConsole();
+            mConsole.join(500);
+        }
+    }
+
+    /**
      * Test normal Console run when system console is _not_ available
      */
     public void testRun_noConsole() throws Throwable {
