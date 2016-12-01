@@ -15,8 +15,14 @@
  */
 package com.android.tradefed.device;
 
+import static org.mockito.Mockito.doThrow;
+
 import com.android.ddmlib.IDevice;
 import com.android.ddmlib.IShellOutputReceiver;
+import com.android.ddmlib.SyncException;
+import com.android.ddmlib.SyncException.SyncError;
+import com.android.ddmlib.SyncService;
+import com.android.ddmlib.SyncService.ISyncProgressMonitor;
 import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.command.remote.DeviceDescriptor;
 import com.android.tradefed.log.ITestLogger;
@@ -33,8 +39,6 @@ import com.android.tradefed.util.StreamUtil;
 
 import junit.framework.TestCase;
 
-import org.easymock.EasyMock;
-
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
@@ -45,6 +49,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
+
+import org.easymock.EasyMock;
+import org.mockito.Mockito;
 
 /**
  * Unit tests for {@link NativeDevice}.
@@ -1665,5 +1672,145 @@ public class NativeDeviceTest extends TestCase {
         assertTrue(desc.isStubDevice());
         assertEquals(serial, desc.getSerial());
         assertEquals("StubDevice", desc.getDeviceClass());
+    }
+
+    /**
+     * Test that {@link NativeDevice#pullFile(String, File)} returns true when the pull is
+     * successful.
+     */
+    public void testPullFile() throws Exception {
+        final String fakeRemotePath = "/test/";
+        SyncService s = Mockito.mock(SyncService.class);
+        EasyMock.expect(mMockIDevice.getSyncService()).andReturn(s);
+        EasyMock.replay(mMockIDevice);
+        File tmpFile = FileUtil.createTempFile("pull", ".test");
+        try {
+            boolean res = mTestDevice.pullFile(fakeRemotePath, tmpFile);
+            EasyMock.verify(mMockIDevice);
+            Mockito.verify(s).pullFile(Mockito.eq(fakeRemotePath),
+                    Mockito.eq(tmpFile.getAbsolutePath()),
+                    (ISyncProgressMonitor)Mockito.anyObject());
+            Mockito.verify(s).close();
+            assertTrue(res);
+        } finally {
+            FileUtil.deleteFile(tmpFile);
+        }
+    }
+
+    /**
+     * Test that {@link NativeDevice#pullFile(String, File)} returns false when it fails to
+     * pull the file.
+     */
+    public void testPullFile_fails() throws Exception {
+        final String fakeRemotePath = "/test/";
+        SyncService s = Mockito.mock(SyncService.class);
+        EasyMock.expect(mMockIDevice.getSyncService()).andReturn(s);
+        EasyMock.replay(mMockIDevice);
+        File tmpFile = FileUtil.createTempFile("pull", ".test");
+        doThrow(new SyncException(SyncError.CANCELED)).when(s).pullFile(Mockito.eq(fakeRemotePath),
+                Mockito.eq(tmpFile.getAbsolutePath()),
+                (ISyncProgressMonitor)Mockito.anyObject());
+        try {
+            boolean res = mTestDevice.pullFile(fakeRemotePath, tmpFile);
+            EasyMock.verify(mMockIDevice);
+            Mockito.verify(s).pullFile(Mockito.eq(fakeRemotePath),
+                    Mockito.eq(tmpFile.getAbsolutePath()),
+                    (ISyncProgressMonitor)Mockito.anyObject());
+            Mockito.verify(s).close();
+            assertFalse(res);
+        } finally {
+            FileUtil.deleteFile(tmpFile);
+        }
+    }
+
+    /**
+     * Test that {@link NativeDevice#pullFile(String)} returns a file when succeed pulling the
+     * file.
+     */
+    public void testPullFile_returnFileSuccess() throws Exception {
+        final String fakeRemotePath = "/test/";
+        mTestDevice = new TestableAndroidNativeDevice() {
+            @Override
+            public boolean pullFile(String remoteFilePath, File localFile)
+                    throws DeviceNotAvailableException {
+                return true;
+            }
+        };
+        File res = mTestDevice.pullFile(fakeRemotePath);
+        try {
+            assertNotNull(res);
+        } finally {
+            FileUtil.deleteFile(res);
+        }
+    }
+
+    /**
+     * Test that {@link NativeDevice#pullFile(String)} returns null when failed to pull the file.
+     */
+    public void testPullFile_returnNull() throws Exception {
+        final String fakeRemotePath = "/test/";
+        mTestDevice = new TestableAndroidNativeDevice() {
+            @Override
+            public boolean pullFile(String remoteFilePath, File localFile)
+                    throws DeviceNotAvailableException {
+                return false;
+            }
+        };
+        File res = mTestDevice.pullFile(fakeRemotePath);
+        try {
+            assertNull(res);
+        } finally {
+            FileUtil.deleteFile(res);
+        }
+    }
+
+    /**
+     * Test that {@link NativeDevice#pushFile(File, String)} returns true when the push is
+     * successful.
+     */
+    public void testPushFile() throws Exception {
+        final String fakeRemotePath = "/test/";
+        SyncService s = Mockito.mock(SyncService.class);
+        EasyMock.expect(mMockIDevice.getSyncService()).andReturn(s);
+        EasyMock.replay(mMockIDevice);
+        File tmpFile = FileUtil.createTempFile("push", ".test");
+        try {
+            boolean res = mTestDevice.pushFile(tmpFile, fakeRemotePath);
+            EasyMock.verify(mMockIDevice);
+            Mockito.verify(s).pushFile(Mockito.eq(tmpFile.getAbsolutePath()),
+                    Mockito.eq(fakeRemotePath),
+                    (ISyncProgressMonitor)Mockito.anyObject());
+            Mockito.verify(s).close();
+            assertTrue(res);
+        } finally {
+            FileUtil.deleteFile(tmpFile);
+        }
+    }
+
+    /**
+     * Test that {@link NativeDevice#pushFile(File, String)} returns false when the push is
+     * unsuccessful.
+     */
+    public void testPushFile_fails() throws Exception {
+        final String fakeRemotePath = "/test/";
+        SyncService s = Mockito.mock(SyncService.class);
+        EasyMock.expect(mMockIDevice.getSyncService()).andReturn(s);
+        EasyMock.replay(mMockIDevice);
+        File tmpFile = FileUtil.createTempFile("push", ".test");
+        doThrow(new SyncException(SyncError.CANCELED)).when(s).pushFile(
+                Mockito.eq(tmpFile.getAbsolutePath()),
+                Mockito.eq(fakeRemotePath),
+                (ISyncProgressMonitor)Mockito.anyObject());
+        try {
+            boolean res = mTestDevice.pushFile(tmpFile, fakeRemotePath);
+            EasyMock.verify(mMockIDevice);
+            Mockito.verify(s).pushFile(Mockito.eq(tmpFile.getAbsolutePath()),
+                    Mockito.eq(fakeRemotePath),
+                    (ISyncProgressMonitor)Mockito.anyObject());
+            Mockito.verify(s).close();
+            assertFalse(res);
+        } finally {
+            FileUtil.deleteFile(tmpFile);
+        }
     }
 }

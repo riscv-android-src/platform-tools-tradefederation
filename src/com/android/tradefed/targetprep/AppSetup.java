@@ -26,6 +26,8 @@ import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.util.AaptParser;
 
+import com.google.common.annotations.VisibleForTesting;
+
 import java.io.File;
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -104,11 +106,11 @@ public class AppSetup implements ITargetPreparer, ITargetCleaner {
         if (mInstall) {
             for (VersionedFile apkFile : appBuild.getAppPackageFiles()) {
                 if (mCheckMinSdk) {
-                    AaptParser aaptParser = AaptParser.parse(apkFile.getFile());
+                    AaptParser aaptParser = doAaptParse(apkFile.getFile());
                     if (aaptParser == null) {
                         throw new TargetSetupError(
                                 String.format("Failed to extract info from '%s' using aapt",
-                                        apkFile.toString()), device.getDeviceDescriptor());
+                                        apkFile.getFile().getName()), device.getDeviceDescriptor());
                     }
                     if (device.getApiLevel() < aaptParser.getSdkVersion()) {
                         CLog.w("Skipping installing apk %s on device %s because " +
@@ -135,7 +137,7 @@ public class AppSetup implements ITargetPreparer, ITargetCleaner {
             }
         }
 
-       if (mPostInstallCmds != null && !mPostInstallCmds.isEmpty()){
+       if (!mPostInstallCmds.isEmpty()){
            for (String cmd : mPostInstallCmds) {
                // If the command had any output, the executeShellCommand method will log it at the
                // VERBOSE level; so no need to do any logging from here.
@@ -146,9 +148,17 @@ public class AppSetup implements ITargetPreparer, ITargetCleaner {
        }
     }
 
+    /**
+     * Helper to parse an apk file with aapt.
+     */
+    @VisibleForTesting
+    AaptParser doAaptParse(File apkFile) {
+        return AaptParser.parse(apkFile);
+    }
+
     private void addPackageNameToUninstall(File apkFile, ITestDevice device)
             throws TargetSetupError {
-        AaptParser aaptParser = AaptParser.parse(apkFile);
+        AaptParser aaptParser = doAaptParse(apkFile);
         if (aaptParser == null) {
             throw new TargetSetupError(String.format("Failed to extract info from '%s' using aapt",
                     apkFile.getAbsolutePath()), device.getDeviceDescriptor());

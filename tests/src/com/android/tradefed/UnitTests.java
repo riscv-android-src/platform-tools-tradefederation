@@ -78,6 +78,7 @@ import com.android.tradefed.result.TestFailureEmailResultReporterTest;
 import com.android.tradefed.result.TestSummaryTest;
 import com.android.tradefed.result.XmlResultReporterTest;
 import com.android.tradefed.targetprep.AllTestAppsInstallSetupTest;
+import com.android.tradefed.targetprep.AppSetupTest;
 import com.android.tradefed.targetprep.BuildInfoAttributePreparerTest;
 import com.android.tradefed.targetprep.DefaultTestsZipInstallerTest;
 import com.android.tradefed.targetprep.DeviceFlashPreparerTest;
@@ -258,6 +259,7 @@ import org.junit.runners.Suite.SuiteClasses;
 
     // targetprep
     AllTestAppsInstallSetupTest.class,
+    AppSetupTest.class,
     BuildInfoAttributePreparerTest.class,
     DefaultTestsZipInstallerTest.class,
     DeviceFlashPreparerTest.class,
