@@ -18,7 +18,10 @@ package com.android.tradefed.invoker;
 import com.android.tradefed.build.BuildRetrievalError;
 import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.build.IBuildProvider;
+import com.android.tradefed.build.IDeviceBuildProvider;
+import com.android.tradefed.command.CommandOptions;
 import com.android.tradefed.command.FatalHostError;
+import com.android.tradefed.command.ICommandOptions;
 import com.android.tradefed.command.remote.DeviceDescriptor;
 import com.android.tradefed.config.Configuration;
 import com.android.tradefed.config.ConfigurationDef;
@@ -48,6 +51,7 @@ import com.android.tradefed.targetprep.BuildError;
 import com.android.tradefed.targetprep.ITargetCleaner;
 import com.android.tradefed.targetprep.ITargetPreparer;
 import com.android.tradefed.testtype.IDeviceTest;
+import com.android.tradefed.testtype.IInvocationContextReceiver;
 import com.android.tradefed.testtype.IRemoteTest;
 import com.android.tradefed.testtype.IResumableTest;
 import com.android.tradefed.testtype.IRetriableTest;
@@ -885,6 +889,46 @@ public class TestInvocationTest extends TestCase {
         mTestInvocation.invoke(mStubInvocationMetadata, mStubConfiguration, mockRescheduler);
         verifyMocks();
     }
+
+    /**
+     * Helper tests class to expose all the interfaces needed for the tests.
+     */
+    private interface IFakeBuildProvider extends IDeviceBuildProvider, IInvocationContextReceiver {
+    }
+
+    /**
+     * Test the injection of test-tag from TestInvocation to the build provider via the
+     * {@link IInvocationContextReceiver}.
+     */
+    public void testInvoke_buildProviderNeedTestTag() throws Throwable {
+        final String testTag = "THISISTHETAG";
+        String[] commandLine = {"run", "empty"};
+        mStubConfiguration.setCommandLine(commandLine);
+        ICommandOptions commandOption = new CommandOptions();
+        commandOption.setTestTag(testTag);
+        IFakeBuildProvider mockProvider = EasyMock.createMock(IFakeBuildProvider.class);
+        mStubConfiguration.setBuildProvider(mockProvider);
+        mStubConfiguration.setCommandOptions(commandOption);
+        setupInvoke();
+        EasyMock.expect(mMockDevice.getLogcat())
+                .andReturn(new ByteArrayInputStreamSource(new byte[0])).times(2);
+        EasyMock.expect(mMockLogger.getLog())
+                .andReturn(new ByteArrayInputStreamSource(new byte[0]));
+        mMockBuildInfo.setDeviceSerial(SERIAL);
+        setupMockSuccessListeners();
+        mMockBuildInfo.addBuildAttribute("command_line_args", "run empty");
+        mMockPreparer.setUp(mMockDevice, mMockBuildInfo);
+        EasyMock.expect(mMockBuildInfo.getTestTag()).andStubReturn(null);
+        // Validate proper tag is set on the build.
+        mMockBuildInfo.setTestTag(EasyMock.eq(testTag));
+        mockProvider.setInvocationContext((IInvocationContext)EasyMock.anyObject());
+        EasyMock.expect(mockProvider.getBuild(mMockDevice)).andReturn(mMockBuildInfo);
+        mockProvider.cleanUp(mMockBuildInfo);
+        replayMocks(mockProvider);
+        mTestInvocation.invoke(mStubInvocationMetadata, mStubConfiguration, mockRescheduler);
+        verifyMocks(mockProvider);
+    }
+
     /**
      * Set up expected conditions for normal run up to the part where tests are run.
      *
