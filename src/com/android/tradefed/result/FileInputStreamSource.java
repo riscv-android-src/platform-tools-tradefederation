@@ -17,6 +17,7 @@ package com.android.tradefed.result;
 
 import com.android.tradefed.util.FileUtil;
 
+import java.io.Closeable;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
@@ -27,7 +28,7 @@ import java.io.InputStream;
  * <p/>
  * Caller is responsible for deleting the file
  */
-public class FileInputStreamSource implements InputStreamSource {
+public class FileInputStreamSource implements Closeable, InputStreamSource {
 
     private final File mFile;
     private boolean mIsCancelled = false;
@@ -88,6 +89,11 @@ public class FileInputStreamSource implements InputStreamSource {
      */
     public void cleanFile() {
         FileUtil.deleteFile(mFile);
+    }
+
+    @Override
+    public void close() {
+        cancel();
     }
 }
 
