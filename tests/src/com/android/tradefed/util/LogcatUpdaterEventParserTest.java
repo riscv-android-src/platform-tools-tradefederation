@@ -33,22 +33,24 @@ import java.io.PipedOutputStream;
  */
 public class LogcatUpdaterEventParserTest extends TestCase {
 
-    private static ILogcatReceiver sMockReceiver = null;
-    private static LogcatUpdaterEventParser sParser = null;
-    private static PipedOutputStream sMockPipe = null;
+    private static final long SHORT_WAIT_MS = 100L;
+
+    private ILogcatReceiver mMockReceiver = null;
+    private LogcatUpdaterEventParser mParser = null;
+    private PipedOutputStream mMockPipe = null;
 
     @Override
     public void setUp() {
-        sMockReceiver = EasyMock.createMock(ILogcatReceiver.class);
-        sMockPipe = new PipedOutputStream();
+        mMockReceiver = EasyMock.createMock(ILogcatReceiver.class);
+        mMockPipe = new PipedOutputStream();
         final PipedInputStream p = new PipedInputStream();
         try {
-            sMockPipe.connect(p);
+            mMockPipe.connect(p);
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
 
-        EasyMock.expect(sMockReceiver.getLogcatData()).andReturn(new InputStreamSource() {
+        EasyMock.expect(mMockReceiver.getLogcatData()).andReturn(new InputStreamSource() {
             @Override
             public InputStream createInputStream() {
                 return p;
@@ -63,8 +65,8 @@ public class LogcatUpdaterEventParserTest extends TestCase {
             }
         });
 
-        EasyMock.replay(sMockReceiver);
-        sParser = new LogcatUpdaterEventParser(sMockReceiver);
+        EasyMock.replay(mMockReceiver);
+        mParser = new LogcatUpdaterEventParser(mMockReceiver);
     }
 
     /**
@@ -74,7 +76,7 @@ public class LogcatUpdaterEventParserTest extends TestCase {
     public void testParseEventType_mappedEventPartialLine() {
         String mappedLogLine = "11-11 00:00:00.001  123 321 I update_engine:" +
                 " Update successfully applied";
-        assertEquals(UpdaterEventType.UPDATE_COMPLETE, sParser.parseEventType(mappedLogLine));
+        assertEquals(UpdaterEventType.UPDATE_COMPLETE, mParser.parseEventType(mappedLogLine));
     }
 
     /**
@@ -83,7 +85,7 @@ public class LogcatUpdaterEventParserTest extends TestCase {
      */
     public void testParseEventType_mappedEventPartialTrigger() {
         String mappedLogLine = "11-11 00:00:00.001  123 321 I dex2oat: dex2oat took 12345 seconds";
-        assertEquals(sParser.parseEventType(mappedLogLine), UpdaterEventType.D2O_COMPLETE);
+        assertEquals(mParser.parseEventType(mappedLogLine), UpdaterEventType.D2O_COMPLETE);
     }
 
     /**
@@ -93,7 +95,7 @@ public class LogcatUpdaterEventParserTest extends TestCase {
     public void testParseEventType_mappedEventFull() {
         String mappedLogLine =
                 "11-11 00:00:00.001  123 321 I update_verifier: Leaving update_verifier.";
-        assertEquals(sParser.parseEventType(mappedLogLine),
+        assertEquals(mParser.parseEventType(mappedLogLine),
                 UpdaterEventType.UPDATE_VERIFIER_COMPLETE);
     }
 
@@ -102,11 +104,11 @@ public class LogcatUpdaterEventParserTest extends TestCase {
      */
     public void testParseEventType_unmappedEvent() {
         String unmappedLogLine = "11-11 00:00:00.001  123 321 I update_engine: foo bar baz";
-        assertEquals(sParser.parseEventType(unmappedLogLine), null);
+        assertEquals(mParser.parseEventType(unmappedLogLine), null);
         unmappedLogLine = "11-11 00:00:00.001  123 321 I foobar_engine: Update succeeded";
-        assertEquals(sParser.parseEventType(unmappedLogLine), null);
+        assertEquals(mParser.parseEventType(unmappedLogLine), null);
         unmappedLogLine = "11-11 00:00:00.001  123 321 I foobar_engine: foo bar baz";
-        assertEquals(sParser.parseEventType(unmappedLogLine), null);
+        assertEquals(mParser.parseEventType(unmappedLogLine), null);
     }
 
     /**
@@ -116,7 +118,7 @@ public class LogcatUpdaterEventParserTest extends TestCase {
         Thread waitThread = new Thread(new Runnable() {
             @Override
             public void run() {
-                sParser.waitForEvent();
+                mParser.waitForEvent();
             }
         });
         String[] logLines = {
@@ -136,7 +138,7 @@ public class LogcatUpdaterEventParserTest extends TestCase {
         Thread waitThread = new Thread(new Runnable() {
             @Override
             public void run() {
-                sParser.waitForEvent(UpdaterEventType.UPDATE_COMPLETE);
+                mParser.waitForEvent(UpdaterEventType.UPDATE_COMPLETE);
             }
         });
         String[] logLines = {
@@ -153,14 +155,14 @@ public class LogcatUpdaterEventParserTest extends TestCase {
         waitThread.start();
         for (String line : logLines) {
             try {
-                sMockPipe.write(line.getBytes());
+                mMockPipe.write(line.getBytes());
             } catch (IOException e) {
                 fail(e.getLocalizedMessage());
             }
         }
         // Allow short time for thread to switch state.
-        RunUtil.getDefault().sleep(50);
-        assertEquals(waitThread.getState(), Thread.State.TERMINATED);
+        RunUtil.getDefault().sleep(SHORT_WAIT_MS);
+        assertEquals(Thread.State.TERMINATED, waitThread.getState());
     }
 }
 

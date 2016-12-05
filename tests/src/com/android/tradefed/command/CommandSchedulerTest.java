@@ -43,6 +43,7 @@ import com.android.tradefed.log.ITerribleFailureHandler;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.util.FileUtil;
+import com.android.tradefed.util.RunUtil;
 import com.android.tradefed.util.keystore.IKeyStoreClient;
 
 import junit.framework.TestCase;
@@ -69,6 +70,8 @@ import org.junit.Assert;
  * Unit tests for {@link CommandScheduler}.
  */
 public class CommandSchedulerTest extends TestCase {
+
+    private static final long SHORT_WAIT_MS = 100L;
 
     private CommandScheduler mScheduler;
     private ITestInvocation mMockInvocation;
@@ -372,6 +375,8 @@ public class CommandSchedulerTest extends TestCase {
             }
             mScheduler.shutdown();
             mScheduler.join();
+            // Wait a little for device to be released.
+            RunUtil.getDefault().sleep(SHORT_WAIT_MS);
             verifyMocks();
             assertNull("exception occurred on background thread!", tracker.mThrowable);
         } finally {

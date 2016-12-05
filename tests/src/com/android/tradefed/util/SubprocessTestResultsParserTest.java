@@ -37,7 +37,7 @@ import java.util.Map;
 import java.util.Vector;
 
 /**
- * Unit Tests for {@link SubprocessTestResultsParserTest}
+ * Unit Tests for {@link SubprocessTestResultsParser}
  */
 public class SubprocessTestResultsParserTest extends TestCase {
 
