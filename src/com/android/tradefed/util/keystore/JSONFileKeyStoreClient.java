@@ -90,7 +90,8 @@ public class JSONFileKeyStoreClient implements IKeyStoreClient {
         try {
             return mJsonKeyStore.getString(key);
         } catch (JSONException e) {
-            CLog.e("failed to fetch key from json key store:", e);
+            CLog.e("failed to fetch key from json key store");
+            CLog.e(e);
             return null;
         }
     }

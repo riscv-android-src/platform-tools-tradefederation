@@ -26,6 +26,7 @@ import com.android.tradefed.device.IDeviceManager;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.util.ArrayUtil;
+import com.android.tradefed.util.StreamUtil;
 
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -172,8 +173,8 @@ public class RemoteManager extends Thread {
             mServerSocket.setSoTimeout(mSocketTimeout);
             processClientConnections(mServerSocket);
         } catch (SocketException e) {
-            // TODO Auto-generated catch block
-            CLog.e("Error when setting socket timeout :%s", e);
+            CLog.e("Error when setting socket timeout");
+            CLog.e(e);
         } finally {
             freeAllDevices();
             closeSocket(mServerSocket);
@@ -214,7 +215,8 @@ public class RemoteManager extends Thread {
             } catch (SocketTimeoutException e) {
                 // ignore.
             } catch (IOException e) {
-                CLog.e("Failed to accept connection: %s", e);
+                CLog.e("Failed to accept connection");
+                CLog.e(e);
             } finally {
                 closeReader(in);
                 closeWriter(out);
@@ -477,40 +479,19 @@ public class RemoteManager extends Thread {
     }
 
     private void closeSocket(ServerSocket serverSocket) {
-        if (serverSocket != null) {
-            try {
-                serverSocket.close();
-            } catch (IOException e) {
-                CLog.e("Failed to close socket: %s", e);
-            }
-        }
+        StreamUtil.close(serverSocket);
     }
 
     private void closeSocket(Socket clientSocket) {
-        if (clientSocket != null) {
-            try {
-                clientSocket.close();
-            } catch (IOException e) {
-                // ignore
-                e.printStackTrace();
-            }
-        }
+        StreamUtil.close(clientSocket);
     }
 
     private void closeReader(BufferedReader in) {
-        if (in != null) {
-            try {
-                in.close();
-            } catch (IOException e) {
-                // ignore
-            }
-        }
+        StreamUtil.close(in);
     }
 
     private void closeWriter(PrintWriter out) {
-        if (out != null) {
-            out.close();
-        }
+        StreamUtil.close(out);
     }
 
     /**

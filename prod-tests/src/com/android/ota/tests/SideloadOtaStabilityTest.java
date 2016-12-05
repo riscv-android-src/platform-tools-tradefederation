@@ -25,7 +25,6 @@ import com.android.ddmlib.TimeoutException;
 import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.build.IDeviceBuildInfo;
 import com.android.tradefed.build.OtaDeviceBuildInfo;
-import com.android.tradefed.config.ConfigurationException;
 import com.android.tradefed.config.IConfiguration;
 import com.android.tradefed.config.IConfigurationReceiver;
 import com.android.tradefed.config.Option;
@@ -212,7 +211,7 @@ public class SideloadOtaStabilityTest implements IDeviceTest, IBuildReceiver,
                         mOtaDeviceBuild.getOtaBuild().getOtaPackageVersion(),
                         actualIterations, mIterations);
             }
-        } catch (AssertionFailedError | BuildError | ConfigurationException e) {
+        } catch (AssertionFailedError | BuildError e) {
             CLog.e(e);
         } catch (TargetSetupError e) {
             CLog.i("Encountered TargetSetupError, marking this test as resumable");
@@ -237,7 +236,8 @@ public class SideloadOtaStabilityTest implements IDeviceTest, IBuildReceiver,
                         managedDevice.waitForDeviceAvailable(mMaxRebootTimeSec * 1000);
                         managedDevice.postBootSetup();
                     } catch (TimeoutException | AdbCommandRejectedException | IOException e) {
-                        CLog.e("Failed to reboot due to %s, trying last-ditch recovery", e);
+                        CLog.e("Failed to reboot, trying last-ditch recovery");
+                        CLog.e(e);
                         managedDevice.recoverDevice();
                     }
                 }
@@ -258,8 +258,7 @@ public class SideloadOtaStabilityTest implements IDeviceTest, IBuildReceiver,
      * <p/>
      * Currently does this by re-running {@link ITargetPreparer#setUp(ITestDevice, IBuildInfo)}
      */
-    private void flashDevice() throws TargetSetupError, BuildError, DeviceNotAvailableException,
-            ConfigurationException {
+    private void flashDevice() throws TargetSetupError, BuildError, DeviceNotAvailableException {
         // assume the target preparers will flash the device back to device build
         for (ITargetPreparer preparer : mConfiguration.getTargetPreparers()) {
             preparer.setUp(mDevice, mOtaDeviceBuild);

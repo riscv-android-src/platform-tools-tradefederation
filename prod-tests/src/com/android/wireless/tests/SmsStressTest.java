@@ -176,7 +176,8 @@ public class SmsStressTest implements IRemoteTest, IDeviceTest {
             metrics.put(ITEM_KEY, Integer.toString(iterations == null ? 0 : iterations + 1));
             reportMetrics(METRICS_NAME, listener, metrics);
         } catch (IOException e) {
-            CLog.e("IOException parsing output file: %s", e);
+            CLog.e("IOException parsing output file");
+            CLog.e(e);
             Assert.fail("IOException parsing output file");
         } finally {
             FileUtil.deleteFile(outputFile);

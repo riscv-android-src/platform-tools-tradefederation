@@ -605,7 +605,8 @@ public class BluetoothStressTest implements IDeviceTest, IRemoteTest {
             dataStream = new BufferedInputStream(dataStream);
             contents = StreamUtil.getStringFromStream(dataStream);
         } catch (IOException e) {
-            CLog.e("Got IOException: %s", e);
+            CLog.e("IOException while parsing the output file:");
+            CLog.e(e);
             return;
         }
 
