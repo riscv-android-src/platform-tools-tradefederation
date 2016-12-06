@@ -25,7 +25,6 @@ import com.android.ddmlib.TimeoutException;
 import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.build.IDeviceBuildInfo;
 import com.android.tradefed.build.OtaDeviceBuildInfo;
-import com.android.tradefed.config.ConfigurationException;
 import com.android.tradefed.config.IConfiguration;
 import com.android.tradefed.config.IConfigurationReceiver;
 import com.android.tradefed.config.Option;
@@ -212,7 +211,7 @@ public class SideloadOtaStabilityTest implements IDeviceTest, IBuildReceiver,
                         mOtaDeviceBuild.getOtaBuild().getOtaPackageVersion(),
                         actualIterations, mIterations);
             }
-        } catch (AssertionFailedError | BuildError | ConfigurationException e) {
+        } catch (AssertionFailedError | BuildError e) {
             CLog.e(e);
         } catch (TargetSetupError e) {
             CLog.i("Encountered TargetSetupError, marking this test as resumable");
@@ -258,8 +257,7 @@ public class SideloadOtaStabilityTest implements IDeviceTest, IBuildReceiver,
      * <p/>
      * Currently does this by re-running {@link ITargetPreparer#setUp(ITestDevice, IBuildInfo)}
      */
-    private void flashDevice() throws TargetSetupError, BuildError, DeviceNotAvailableException,
-            ConfigurationException {
+    private void flashDevice() throws TargetSetupError, BuildError, DeviceNotAvailableException {
         // assume the target preparers will flash the device back to device build
         for (ITargetPreparer preparer : mConfiguration.getTargetPreparers()) {
             preparer.setUp(mDevice, mOtaDeviceBuild);
@@ -325,7 +323,7 @@ public class SideloadOtaStabilityTest implements IDeviceTest, IBuildReceiver,
         } catch (DeviceNotAvailableException e) {
             CLog.e("Device %s did not come back online after recovery", mDevice.getSerialNumber());
             listener.testRunFailed("Device did not come back online after recovery");
-            sendUpdatePackage(listener);
+            sendUpdatePackage(listener, otaBuild);
             throw new AssertionError("Device did not come back online after recovery");
         }
 
@@ -335,7 +333,7 @@ public class SideloadOtaStabilityTest implements IDeviceTest, IBuildReceiver,
             CLog.e("Device %s did not boot up successfully after installing OTA",
                     mDevice.getSerialNumber());
             listener.testRunFailed("Device failed to boot after OTA");
-            sendUpdatePackage(listener);
+            sendUpdatePackage(listener, otaBuild);
             throw new AssertionError("Device failed to boot after OTA");
         }
 
@@ -357,13 +355,13 @@ public class SideloadOtaStabilityTest implements IDeviceTest, IBuildReceiver,
         return null;
     }
 
-    protected void sendUpdatePackage(ITestInvocationListener listener) {
+    protected void sendUpdatePackage(ITestInvocationListener listener, IDeviceBuildInfo otaBuild) {
         InputStreamSource pkgSource = null;
         try {
             pkgSource = new SnapshotInputStreamSource(
-                    new FileInputStream(mOtaDeviceBuild.getOtaPackageFile()));
+                    new FileInputStream(otaBuild.getOtaPackageFile()));
             listener.testLog(mRunName + "_package", LogDataType.ZIP, pkgSource);
-        } catch (FileNotFoundException e) {
+        } catch (FileNotFoundException | NullPointerException e) {
             CLog.w("Couldn't save update package due to exception %s", e);
             return;
         } finally {
