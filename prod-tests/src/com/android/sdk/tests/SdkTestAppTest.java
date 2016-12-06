@@ -169,7 +169,6 @@ public class SdkTestAppTest implements IRemoteTest, IBuildReceiver {
      * @param listener the {@link ITestInvocationListener}
      * @param testAppDir the {@link File} pointing to test app's root directory
      */
-    @SuppressWarnings("unchecked")
     private void buildTestApp(String target, ITestInvocationListener listener, File testAppDir,
             boolean isLibrary) {
         CLog.i("Building %s test-app for target %s", testAppDir.getName(), target);
@@ -179,14 +178,12 @@ public class SdkTestAppTest implements IRemoteTest, IBuildReceiver {
         listener.testStarted(testId);
         try {
             runTestAppTest(target, testAppDir, isLibrary);
-        } catch (AssertionError e) {
-            CLog.w("%s failed. %s", testId, e);
-            listener.testFailed(testId, getThrowableTraceAsString(e));
         } catch (Throwable t) {
-            CLog.w("%s failed. %s", testId, t);
+            CLog.w("%s failed.", testId);
+            CLog.e(t);
             listener.testFailed(testId, getThrowableTraceAsString(t));
         }
-        listener.testEnded(testId, Collections.EMPTY_MAP);
+        listener.testEnded(testId, Collections.emptyMap());
     }
 
     private void runTestAppTest(String target, File testAppDir, boolean isLibrary) {

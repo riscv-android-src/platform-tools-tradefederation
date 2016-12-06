@@ -290,9 +290,7 @@ public class UiAutomatorTest implements IRemoteTest, IDeviceTest {
             } catch (DeviceNotAvailableException e) {
                 CLog.e(e);
             } finally {
-                if (screenshot != null) {
-                    screenshot.cancel();
-                }
+                StreamUtil.cancel(screenshot);
             }
         }
         // get bugreport
@@ -301,9 +299,7 @@ public class UiAutomatorTest implements IRemoteTest, IDeviceTest {
             InputStreamSource data = null;
             data = device.getBugreport();
             listener.testLog(prefix + "_bugreport", LogDataType.BUGREPORT, data);
-            if (data != null) {
-                data.cancel();
-            }
+            StreamUtil.cancel(data);
         }
     }
 

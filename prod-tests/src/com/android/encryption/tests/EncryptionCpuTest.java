@@ -84,6 +84,7 @@ public class EncryptionCpuTest implements IDeviceTest, IRemoteTest {
         /**
          * Run the test.
          *
+         * @param listener an {@link ITestInvocationListener} where to report results
          * @throws DeviceNotAvailableException If the device is not available.
          */
         public void run(ITestInvocationListener listener) throws DeviceNotAvailableException {
@@ -214,9 +215,10 @@ public class EncryptionCpuTest implements IDeviceTest, IRemoteTest {
                     listener.testLog(String.format("stats_%s", mKey), LogDataType.TEXT,
                             new SnapshotInputStreamSource(new FileInputStream(mLogFile)));
                 } catch (FileNotFoundException e) {
-                    CLog.e("Error saving log file: %s", e.getMessage());
+                    CLog.e("Error saving log file:");
+                    CLog.e(e);
                 }
-                mLogFile.delete();
+                FileUtil.deleteFile(mLogFile);
                 mLogFile = null;
             }
             InputStreamSource bugreport = mTestDevice.getBugreport();
@@ -250,9 +252,7 @@ public class EncryptionCpuTest implements IDeviceTest, IRemoteTest {
                 createFileHost(hostFile.getAbsolutePath(), mPushFileSize);
             } catch (IOException e) {
                 CLog.e("Error creating file on host, skipping test.");
-                if (hostFile != null) {
-                    hostFile.delete();
-                }
+                FileUtil.deleteFile(hostFile);
                 return;
             }
 
@@ -270,7 +270,7 @@ public class EncryptionCpuTest implements IDeviceTest, IRemoteTest {
                         new Double(1000.0 * mPushFileSize / elapsedTime).toString());
             } finally {
                 stopLogging(listener);
-                hostFile.delete();
+                FileUtil.deleteFile(hostFile);
                 mTestDevice.executeShellCommand(String.format("rm %s", mDeviceFilePath));
             }
         }
@@ -312,9 +312,7 @@ public class EncryptionCpuTest implements IDeviceTest, IRemoteTest {
                         new Double(1000.0 * mPullFileSize / elapsedTime).toString());
             } finally {
                 stopLogging(listener);
-                if (hostFile != null) {
-                    hostFile.delete();
-                }
+                FileUtil.deleteFile(hostFile);
                 mTestDevice.executeShellCommand(String.format("rm %s", mDeviceFilePath));
             }
         }

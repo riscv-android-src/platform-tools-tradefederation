@@ -19,6 +19,7 @@ import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.util.FileUtil;
+import com.android.tradefed.util.StreamUtil;
 
 import java.io.BufferedInputStream;
 import java.io.File;
@@ -184,12 +185,11 @@ public class DeviceFileReporter {
                     filenames.add(filename);
                     mReportedFiles.add(filename);
                 } catch (IOException e) {
-                    CLog.w("Failed to log file %s: %s", filename, e.getMessage());
+                    CLog.w("Failed to log file %s: %s", filename);
+                    CLog.e(e);
                 } finally {
-                    if (iss != null) {
-                        iss.cancel();
-                        iss = null;
-                    }
+                    StreamUtil.cancel(iss);
+                    iss = null;
                     FileUtil.deleteFile(file);
                 }
             }

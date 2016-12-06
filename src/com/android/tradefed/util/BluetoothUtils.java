@@ -193,10 +193,11 @@ public class BluetoothUtils {
             CLog.d("System remount complete");
             return device.pushString(newConf.toString(), BTSNOOP_CONF_FILE);
         } catch (IOException e) {
+            CLog.e(e);
             return false;
         } finally {
             // Delete host's copy of configuration file
-            confFile.delete();
+            FileUtil.deleteFile(confFile);
             StreamUtil.close(confReader);
             device.reboot();
         }
@@ -231,7 +232,7 @@ public class BluetoothUtils {
             return false;
         } finally {
             // Delete host's copy of configuration file
-            confFile.delete();
+            FileUtil.deleteFile(confFile);
             StreamUtil.close(confReader);
             // Delete BT snoop log
             cleanLogFile(device);
@@ -258,12 +259,8 @@ public class BluetoothUtils {
             CLog.e("IOException while uploading the log files");
             CLog.e(e);
         } finally {
-            if (logFile != null) {
-                logFile.delete();
-            }
-            if (logSource != null) {
-                logSource.cancel();
-            }
+            FileUtil.deleteFile(logFile);
+            StreamUtil.cancel(logSource);
         }
     }
 

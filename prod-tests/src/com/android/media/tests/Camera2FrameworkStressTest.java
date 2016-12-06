@@ -148,11 +148,14 @@ public class Camera2FrameworkStressTest extends CameraTestBase {
                     postMetrics.put(keyName, resultMap.get(KEY_ITERATION));
                 }
             } catch (IOException e) {
-                CLog.w("Couldn't parse the output log file: ", e);
+                CLog.w("Couldn't parse the output log file");
+                CLog.e(e);
             } catch (DeviceNotAvailableException e) {
-                CLog.w("Could not pull file: %s, error: %s", RESULT_DIR, e);
+                CLog.w("Could not pull file: %s, error:", RESULT_DIR);
+                CLog.e(e);
             } catch (NumberFormatException e) {
-                CLog.w("Could not find the key in file: %s, error: %s", KEY_NUM_ATTEMPTS, e);
+                CLog.w("Could not find the key in file: %s, error:", KEY_NUM_ATTEMPTS);
+                CLog.e(e);
             }
             return postMetrics;
         }

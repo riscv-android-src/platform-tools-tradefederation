@@ -172,14 +172,13 @@ public class NativeDeviceStateMonitor implements IDeviceStateMonitor {
                 if (output.contains("/system/bin/adb")) {
                     return true;
                 }
-            } catch (IOException e) {
-                CLog.i("%s failed: %s", cmd, e.getMessage());
+            } catch (IOException | AdbCommandRejectedException |
+                    ShellCommandUnresponsiveException e) {
+                CLog.i("%s failed:", cmd);
+                CLog.e(e);
             } catch (TimeoutException e) {
                 CLog.i("%s failed: timeout", cmd);
-            } catch (AdbCommandRejectedException e) {
-                CLog.i("%s failed: %s", cmd, e.getMessage());
-            } catch (ShellCommandUnresponsiveException e) {
-                CLog.i("%s failed: %s", cmd, e.getMessage());
+                CLog.e(e);
             }
             getRunUtil().sleep(Math.min(getCheckPollTime() * counter, MAX_CHECK_POLL_TIME));
             counter++;
@@ -312,14 +311,13 @@ public class NativeDeviceStateMonitor implements IDeviceStateMonitor {
                                 + "issue with mounting.", getSerialNumber());
                         return false;
                     }
-                } catch (IOException e) {
-                    CLog.i("%s on device %s failed: %s", cmd, getSerialNumber(), e.getMessage());
+                } catch (IOException | AdbCommandRejectedException |
+                        ShellCommandUnresponsiveException e) {
+                    CLog.i("%s on device %s failed:", cmd, getSerialNumber());
+                    CLog.e(e);
                 } catch (TimeoutException e) {
                     CLog.i("%s on device %s failed: timeout", cmd, getSerialNumber());
-                } catch (AdbCommandRejectedException e) {
-                    CLog.i("%s on device %s failed: %s", cmd, getSerialNumber(), e.getMessage());
-                } catch (ShellCommandUnresponsiveException e) {
-                    CLog.i("%s on device %s failed: %s", cmd, getSerialNumber(), e.getMessage());
+                    CLog.e(e);
                 }
             } else {
                 CLog.w("Failed to get external store mount point for %s", getSerialNumber());

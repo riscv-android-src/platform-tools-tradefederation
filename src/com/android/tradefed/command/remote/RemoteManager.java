@@ -150,7 +150,8 @@ public class RemoteManager extends Thread {
         try {
             return new ServerSocket(port);
         } catch (IOException e) {
-            CLog.w("Failed to open server socket: %s", e);
+            CLog.e("Failed to open server socket:");
+            CLog.e(e);
             return null;
         }
     }

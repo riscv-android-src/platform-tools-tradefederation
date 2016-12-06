@@ -897,9 +897,7 @@ public class NativeDevice implements IManagedTestDevice {
             CLog.e(e);
             return false;
         } finally {
-            if (tmpFile != null) {
-                tmpFile.delete();
-            }
+            FileUtil.deleteFile(tmpFile);
         }
     }
 

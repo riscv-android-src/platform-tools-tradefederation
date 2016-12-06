@@ -18,6 +18,7 @@ package com.android.tradefed.log;
 import com.android.ddmlib.Log.LogLevel;
 import com.android.tradefed.config.ConfigurationException;
 import com.android.tradefed.result.InputStreamSource;
+import com.android.tradefed.util.StreamUtil;
 
 import junit.framework.TestCase;
 
@@ -48,7 +49,6 @@ public class FileLoggerTest extends TestCase {
         InputStreamSource logSource = null;
 
         try {
-
             logger.init();
             // Write 3 lines of text to the log...
             logger.printLog(LogLevel.INFO, LOG_TAG, Text1);
@@ -59,29 +59,23 @@ public class FileLoggerTest extends TestCase {
             logger.printLog(LogLevel.ASSERT, LOG_TAG, Text3);
             String expectedText3 =
                     LogUtil.getLogFormatString(LogLevel.ASSERT, LOG_TAG, Text3).trim();
-
             // Verify the 3 lines we logged
             logSource = logger.getLog();
             logFileReader = new BufferedReader(new InputStreamReader(
                     logSource.createInputStream()));
 
             String actualLogString = logFileReader.readLine().trim();
-            assertTrue(actualLogString.equals(expectedText1));
+            assertEquals(expectedText1, actualLogString);
 
             actualLogString = logFileReader.readLine().trim();
-            assertTrue(actualLogString.equals(expectedText2));
+            assertEquals(expectedText2, actualLogString);
 
             actualLogString = logFileReader.readLine().trim();
-            assertTrue(actualLogString.equals(expectedText3));
-
+            assertEquals(expectedText3, actualLogString);
         }
         finally {
-            if (logFileReader != null) {
-                logFileReader.close();
-            }
-            if (logSource != null) {
-                logSource.cancel();
-            }
+            StreamUtil.close(logFileReader);
+            StreamUtil.cancel(logSource);
             logger.closeLog();
         }
     }
