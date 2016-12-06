@@ -55,6 +55,7 @@ import com.android.tradefed.testtype.IInvocationContextReceiver;
 import com.android.tradefed.testtype.IRemoteTest;
 import com.android.tradefed.testtype.IResumableTest;
 import com.android.tradefed.testtype.IRetriableTest;
+import com.android.tradefed.testtype.IShardableTest;
 import com.android.tradefed.testtype.IStrictShardableTest;
 
 import junit.framework.Test;
@@ -1048,6 +1049,56 @@ public class TestInvocationTest extends TestCase {
         mMockSummaryListener.putSummary(EasyMock.capture(mUriCapture));
         mMockSummaryListener.invocationEnded(EasyMock.anyLong());
         mMockLogSaver.invocationEnded(EasyMock.anyLong());
+    }
+
+    /**
+     * Test the {@link TestInvocation#invoke(IInvocationContext, IConfiguration, IRescheduler,
+     * ITestInvocationListener[])} scenario with {@link IShardableTest}.
+     */
+    public void testInvoke_shardableTest_legacy() throws Throwable {
+        String[] commandLine = {"config", "arg"};
+        int shardCount = 2;
+        IShardableTest test = EasyMock.createMock(IShardableTest.class);
+        List<IRemoteTest> shards = new ArrayList<>();
+        IRemoteTest shard1 = EasyMock.createMock(IRemoteTest.class);
+        IRemoteTest shard2 = EasyMock.createMock(IRemoteTest.class);
+        shards.add(shard1);
+        shards.add(shard2);
+        EasyMock.expect(test.split()).andReturn(shards);
+        mStubConfiguration.setTest(test);
+        mStubConfiguration.setCommandLine(commandLine);
+
+        setupInvoke();
+        setupNShardInvocation(shardCount);
+
+        replayMocks(test, mockRescheduler, shard1, shard2);
+        mTestInvocation.invoke(mStubInvocationMetadata, mStubConfiguration, mockRescheduler);
+        verifyMocks(test, mockRescheduler, shard1, shard2);
+    }
+
+    /**
+     * Helper to set the expectation for N number of shards.
+     */
+    private void setupNShardInvocation(int numShard) throws Exception {
+        mMockBuildInfo.setTestTag(EasyMock.eq("stub"));
+        EasyMock.expectLastCall();
+        EasyMock.expect(mMockBuildProvider.getBuild()).andReturn(mMockBuildInfo);
+        EasyMock.expect(mMockBuildInfo.getTestTag()).andStubReturn("");
+        mMockBuildInfo.addBuildAttribute("command_line_args", "config arg");
+        mMockLogSaver.invocationStarted((IInvocationContext)EasyMock.anyObject());
+        EasyMock.expectLastCall();
+        mMockTestListener.invocationStarted((IInvocationContext)EasyMock.anyObject());
+        EasyMock.expectLastCall();
+        mMockSummaryListener.invocationStarted((IInvocationContext)EasyMock.anyObject());
+        EasyMock.expectLastCall();
+        EasyMock.expect(mMockLogger.clone()).andReturn(mMockLogger).times(numShard);
+        EasyMock.expect(mMockBuildInfo.clone()).andReturn(mMockBuildInfo).times(numShard);
+        EasyMock.expect(mockRescheduler.scheduleConfig(EasyMock.anyObject()))
+                .andReturn(true).times(numShard);
+        mMockBuildInfo.setDeviceSerial(SERIAL);
+        EasyMock.expectLastCall();
+        mMockBuildProvider.cleanUp(EasyMock.anyObject());
+        EasyMock.expectLastCall();
     }
 
     private void setupMockSuccessListeners() throws IOException {
