@@ -1948,7 +1948,7 @@ public class NativeDevice implements IManagedTestDevice {
                 for (IFileEntry f : entries.getChildren(false)) {
                     String name = f.getName();
                     CLog.d("bugreport entry: %s", name);
-                    if (name.endsWith(".tmp")) {
+                    if (name.endsWith(".tmp") || name.endsWith(".zip")) {
                         File tmpBugreport = pullFile(BUGREPORTZ_TMP_PATH + name);
                         if (tmpBugreport != null) {
                             return new FileInputStreamSource(tmpBugreport, true);
@@ -1962,7 +1962,7 @@ public class NativeDevice implements IManagedTestDevice {
         } catch (DeviceNotAvailableException e) {
             CLog.e(e);
         }
-        return null;
+        return new ByteArrayInputStreamSource(new byte[] {});
     }
 
     /**
