@@ -42,6 +42,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.SortedSet;
 import java.util.TreeSet;
+import java.util.regex.Pattern;
 
 /**
  * Factory for creating {@link IConfiguration}.
@@ -53,6 +54,7 @@ public class ConfigurationFactory implements IConfigurationFactory {
     private static final String CONFIG_SUFFIX = ".xml";
     private static final String CONFIG_PREFIX = "config/";
     private static final String DRY_RUN_TEMPLATE_CONFIG = "empty";
+    private static final String CONFIG_ERROR_PATTERN = "(Could not find option with name )(.*)";
 
     private Map<ConfigId, ConfigurationDef> mConfigDefMap;
 
@@ -659,6 +661,7 @@ public class ConfigurationFactory implements IConfigurationFactory {
         boolean failed = false;
         ByteArrayOutputStream baos = new ByteArrayOutputStream();
         PrintStream ps = new PrintStream(baos);
+
         for (ConfigurationDef def : mConfigDefMap.values()) {
             try {
                 def.createConfiguration().printCommandUsage(false,
@@ -676,11 +679,16 @@ public class ConfigurationFactory implements IConfigurationFactory {
                                 + "packages.", def.getName(), e.getMessage());
                         continue;
                     }
-                } else if (e.getMessage().contains("Could not find option with name")) {
-                    // We cannot confirm if an option is indeed missing since a template of option
-                    // only is possible to avoid repetition in configuration with the same base.
-                    CLog.w("Could not confirm %s: %s", def.getName(), e.getMessage());
-                    continue;
+                } else if (Pattern.matches(CONFIG_ERROR_PATTERN, e.getMessage())) {
+                    // If options are inside configuration object tag we are able to validate them
+                    if (!e.getMessage().contains("com.android.") &&
+                            !e.getMessage().contains("com.google.android.")) {
+                        // We cannot confirm if an option is indeed missing since a template of
+                        // option only is possible to avoid repetition in configuration with the
+                        // same base.
+                        CLog.w("Could not confirm %s: %s", def.getName(), e.getMessage());
+                        continue;
+                    }
                 }
                 ps.printf("Failed to print %s: %s", def.getName(), e.getMessage());
                 ps.println();
