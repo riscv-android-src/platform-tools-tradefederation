@@ -324,7 +324,7 @@ public class SideloadOtaStabilityTest implements IDeviceTest, IBuildReceiver,
         } catch (DeviceNotAvailableException e) {
             CLog.e("Device %s did not come back online after recovery", mDevice.getSerialNumber());
             listener.testRunFailed("Device did not come back online after recovery");
-            sendUpdatePackage(listener);
+            sendUpdatePackage(listener, otaBuild);
             throw new AssertionError("Device did not come back online after recovery");
         }
 
@@ -334,7 +334,7 @@ public class SideloadOtaStabilityTest implements IDeviceTest, IBuildReceiver,
             CLog.e("Device %s did not boot up successfully after installing OTA",
                     mDevice.getSerialNumber());
             listener.testRunFailed("Device failed to boot after OTA");
-            sendUpdatePackage(listener);
+            sendUpdatePackage(listener, otaBuild);
             throw new AssertionError("Device failed to boot after OTA");
         }
 
@@ -356,13 +356,13 @@ public class SideloadOtaStabilityTest implements IDeviceTest, IBuildReceiver,
         return null;
     }
 
-    protected void sendUpdatePackage(ITestInvocationListener listener) {
+    protected void sendUpdatePackage(ITestInvocationListener listener, IDeviceBuildInfo otaBuild) {
         InputStreamSource pkgSource = null;
         try {
             pkgSource = new SnapshotInputStreamSource(
-                    new FileInputStream(mOtaDeviceBuild.getOtaPackageFile()));
+                    new FileInputStream(otaBuild.getOtaPackageFile()));
             listener.testLog(mRunName + "_package", LogDataType.ZIP, pkgSource);
-        } catch (FileNotFoundException e) {
+        } catch (FileNotFoundException | NullPointerException e) {
             CLog.w("Couldn't save update package due to exception %s", e);
             return;
         } finally {
