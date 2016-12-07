@@ -954,7 +954,7 @@ public class NativeDeviceTest extends TestCase {
             }
         };
         EasyMock.replay(mMockRecovery, mMockIDevice);
-        assertNull(mTestDevice.getBugreport());
+        assertEquals(0, mTestDevice.getBugreport().size());
         EasyMock.verify(mMockRecovery, mMockIDevice);
     }
 
