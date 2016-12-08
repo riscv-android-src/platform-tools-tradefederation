@@ -114,4 +114,9 @@ public interface IManagedTestDevice extends ITestDevice {
      * Return the {@link IDeviceStateMonitor} associated with device.
      */
     public IDeviceStateMonitor getMonitor();
+
+    /**
+     * Returns the MAC address of the device, null if it fails to query from the device.
+     */
+    public String getMacAddress();
 }

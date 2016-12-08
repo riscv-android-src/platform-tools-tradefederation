@@ -825,7 +825,8 @@ public class DeviceManager implements IDeviceManager {
                     getDisplay(idevice.getProperty("ro.build.version.sdk")),
                     getDisplay(idevice.getProperty("ro.build.id")),
                     getDisplay(selector.getBatteryLevel(idevice)),
-                    d.getDeviceClass()));
+                    d.getDeviceClass(),
+                    getDisplay(d.getMacAddress())));
         }
         return serialStates;
     }

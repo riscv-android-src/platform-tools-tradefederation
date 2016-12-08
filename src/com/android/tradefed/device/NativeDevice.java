@@ -151,6 +151,9 @@ public class NativeDevice implements IManagedTestDevice {
     static final String BUILD_TAGS = "ro.build.tags";
     private static final String PS_COMMAND = "ps -A || ps";
 
+    static final String MAC_ADDRESS_PATTERN = "([0-9a-fA-F]{2}:){5}[0-9a-fA-F]{2}";
+    static final String MAC_ADDRESS_COMMAND = "cat /sys/class/net/wlan0/address";
+
 
     /** The network monitoring interval in ms. */
     private static final int NETWORK_MONITOR_INTERVAL = 10 * 1000;
@@ -3601,7 +3604,8 @@ public class NativeDevice implements IManagedTestDevice {
                 getDisplayString(idevice.getProperty("ro.build.version.sdk")),
                 getDisplayString(idevice.getProperty("ro.build.id")),
                 getDisplayString(selector.getBatteryLevel(idevice)),
-                getDeviceClass());
+                getDeviceClass(),
+                getDisplayString(getMacAddress()));
     }
 
     /**
@@ -3630,6 +3634,43 @@ public class NativeDevice implements IManagedTestDevice {
                 return processInfo;
             }
         }
+        return null;
+    }
+
+    /**
+     * Validates that the given input is a valid MAC address
+     *
+     * @param address input to validate
+     * @return true if the input is a valid MAC address
+     */
+    boolean isMacAddress(String address) {
+        Pattern macPattern = Pattern.compile(MAC_ADDRESS_PATTERN);
+        Matcher macMatcher = macPattern.matcher(address);
+        return macMatcher.find();
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public String getMacAddress() {
+        if (mIDevice instanceof StubDevice) {
+            // Do not query MAC addresses from stub devices.
+            return null;
+        }
+        CollectingOutputReceiver receiver = new CollectingOutputReceiver();
+        try {
+            mIDevice.executeShellCommand(MAC_ADDRESS_COMMAND, receiver);
+        } catch (IOException | TimeoutException | AdbCommandRejectedException |
+                ShellCommandUnresponsiveException e) {
+            CLog.w("Failed to query MAC address for %s", mIDevice.getSerialNumber());
+            CLog.e(e);
+        }
+        String output = receiver.getOutput().trim();
+        if (isMacAddress(output)) {
+            return output;
+        }
+        CLog.d("No valid MAC address queried from device %s", mIDevice.getSerialNumber());
         return null;
     }
 }

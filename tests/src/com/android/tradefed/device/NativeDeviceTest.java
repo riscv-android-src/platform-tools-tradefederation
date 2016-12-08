@@ -17,12 +17,15 @@ package com.android.tradefed.device;
 
 import static org.mockito.Mockito.doThrow;
 
+import com.android.ddmlib.AdbCommandRejectedException;
 import com.android.ddmlib.IDevice;
 import com.android.ddmlib.IShellOutputReceiver;
+import com.android.ddmlib.ShellCommandUnresponsiveException;
 import com.android.ddmlib.SyncException;
 import com.android.ddmlib.SyncException.SyncError;
 import com.android.ddmlib.SyncService;
 import com.android.ddmlib.SyncService.ISyncProgressMonitor;
+import com.android.ddmlib.TimeoutException;
 import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.command.remote.DeviceDescriptor;
 import com.android.tradefed.log.ITestLogger;
@@ -1812,5 +1815,79 @@ public class NativeDeviceTest extends TestCase {
         } finally {
             FileUtil.deleteFile(tmpFile);
         }
+    }
+
+    /**
+     * Test validating valid MAC addresses
+     */
+    public void testIsMacAddress() {
+        assertTrue(mTestDevice.isMacAddress("00:00:00:00:00:00"));
+        assertTrue(mTestDevice.isMacAddress("00:15:E9:2B:99:3C"));
+        assertTrue(mTestDevice.isMacAddress("FF:FF:FF:FF:FF:FF"));
+        assertTrue(mTestDevice.isMacAddress("58:a2:b5:7d:49:24"));
+    }
+
+    /**
+     * Test validating invalid MAC addresses
+     */
+    public void testIsMacAddress_invalidInput() {
+        assertFalse(mTestDevice.isMacAddress(""));
+        assertFalse(mTestDevice.isMacAddress("00-15-E9-2B-99-3C")); // Invalid delimiter
+    }
+
+    /**
+     * Test querying a device MAC address
+     */
+    public void testGetMacAddress() throws Exception {
+        String address = "58:a2:b5:7d:49:24";
+        IDevice device = new StubDevice(MOCK_DEVICE_SERIAL) {
+            @Override
+            public void executeShellCommand(String command, IShellOutputReceiver receiver)
+                    throws TimeoutException, AdbCommandRejectedException,
+                    ShellCommandUnresponsiveException, IOException {
+                receiver.addOutput(address.getBytes(), 0, address.length());
+            }
+        };
+        mMockIDevice.executeShellCommand(EasyMock.anyObject(), EasyMock.anyObject());
+        EasyMock.expectLastCall().andDelegateTo(device).anyTimes();
+        EasyMock.replay(mMockIDevice);
+        assertEquals(address, mTestDevice.getMacAddress());
+        EasyMock.verify(mMockIDevice);
+    }
+
+    /**
+     * Test querying a device MAC address but failing to do so
+     */
+    public void testGetMacAddress_failure() throws Exception {
+        IDevice device = new StubDevice(MOCK_DEVICE_SERIAL) {
+            @Override
+            public void executeShellCommand(String command, IShellOutputReceiver receiver)
+                    throws TimeoutException, AdbCommandRejectedException,
+                    ShellCommandUnresponsiveException, IOException {
+                throw new IOException();
+            }
+        };
+        mMockIDevice.executeShellCommand(EasyMock.anyObject(), EasyMock.anyObject());
+        EasyMock.expectLastCall().andDelegateTo(device).anyTimes();
+        EasyMock.replay(mMockIDevice);
+        assertNull(mTestDevice.getMacAddress());
+        EasyMock.verify(mMockIDevice);
+    }
+
+    /**
+     * Test querying a device MAC address for a stub device
+     */
+    public void testGetMacAddress_stubDevice() throws Exception {
+        String address = "58:a2:b5:7d:49:24";
+        IDevice device = new StubDevice(MOCK_DEVICE_SERIAL) {
+            @Override
+            public void executeShellCommand(String command, IShellOutputReceiver receiver)
+                    throws TimeoutException, AdbCommandRejectedException,
+                    ShellCommandUnresponsiveException, IOException {
+                receiver.addOutput(address.getBytes(), 0, address.length());
+            }
+        };
+        mTestDevice.setIDevice(device);
+        assertNull(mTestDevice.getMacAddress());
     }
 }

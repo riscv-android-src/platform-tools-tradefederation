@@ -34,24 +34,25 @@ public class DeviceDescriptor {
     private final String mBuildId;
     private final String mBatteryLevel;
     private final String mDeviceClass;
+    private final String mMacAddress;
 
     public DeviceDescriptor(String serial, boolean isStubDevice, DeviceAllocationState state,
             String product, String productVariant, String sdkVersion, String buildId,
             String batteryLevel) {
         this(serial, isStubDevice, state, product, productVariant, sdkVersion, buildId,
-                batteryLevel, "");
+                batteryLevel, "", "");
     }
 
     public DeviceDescriptor(String serial, boolean isStubDevice, DeviceAllocationState state,
             String product, String productVariant, String sdkVersion, String buildId,
-            String batteryLevel, String deviceClass) {
+            String batteryLevel, String deviceClass, String macAddress) {
         this(serial, isStubDevice, null, state, product, productVariant, sdkVersion, buildId,
-                batteryLevel, deviceClass);
+                batteryLevel, deviceClass, macAddress);
     }
 
     public DeviceDescriptor(String serial, boolean isStubDevice, DeviceState deviceState,
             DeviceAllocationState state, String product, String productVariant, String sdkVersion,
-            String buildId, String batteryLevel, String deviceClass) {
+            String buildId, String batteryLevel, String deviceClass, String macAddress) {
         mSerial = serial;
         mIsStubDevice = isStubDevice;
         mDeviceState = deviceState;
@@ -62,6 +63,7 @@ public class DeviceDescriptor {
         mBuildId = buildId;
         mBatteryLevel = batteryLevel;
         mDeviceClass = deviceClass;
+        mMacAddress = macAddress;
     }
 
     public String getSerial() {
@@ -105,6 +107,10 @@ public class DeviceDescriptor {
 
     public String getBatteryLevel() {
         return mBatteryLevel;
+    }
+
+    public String getMacAddress() {
+        return mMacAddress;
     }
 
     /**

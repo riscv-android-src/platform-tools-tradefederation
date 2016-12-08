@@ -47,6 +47,7 @@ import org.easymock.IAnswer;
 public class DeviceManagerTest extends TestCase {
 
     private static final String DEVICE_SERIAL = "serial";
+    private static final String MAC_ADDRESS = "FF:FF:FF:FF:FF:FF";
 
     private IAndroidDebugBridge mMockAdbBridge;
     private IDevice mMockIDevice;
@@ -174,6 +175,7 @@ public class DeviceManagerTest extends TestCase {
         EasyMock.expect(mMockIDevice.getSerialNumber()).andStubReturn(DEVICE_SERIAL);
         EasyMock.expect(mMockStateMonitor.getSerialNumber()).andStubReturn(DEVICE_SERIAL);
         EasyMock.expect(mMockIDevice.isEmulator()).andStubReturn(Boolean.FALSE);
+        EasyMock.expect(mMockTestDevice.getMacAddress()).andStubReturn(MAC_ADDRESS);
         final Capture<IDevice> capturedIDevice = new Capture<>();
         mMockTestDevice.setIDevice(EasyMock.capture(capturedIDevice));
         EasyMock.expectLastCall().anyTimes();
