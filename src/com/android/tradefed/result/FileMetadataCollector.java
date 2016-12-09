@@ -15,12 +15,12 @@
  */
 package com.android.tradefed.result;
 
+import com.android.test.metrics.proto.FileMetadataProto.FileMetadata;
+import com.android.test.metrics.proto.FileMetadataProto.LogFile;
 import com.android.tradefed.config.Option;
 import com.android.tradefed.config.OptionClass;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.google.common.annotations.VisibleForTesting;
-import com.google.wireless.android.testtools.metrics.proto.FileMetadataProto.FileMetadata;
-import com.google.wireless.android.testtools.metrics.proto.FileMetadataProto.LogFile;
 import java.io.IOException;
 
 /** A listener that collects and uploads metadata about saved log files. */
