@@ -265,18 +265,24 @@ public class TestInvocationTest extends TestCase {
     public void testInvoke_buildFailed() throws Throwable  {
         BuildRetrievalError exception = new BuildRetrievalError("error", null, mMockBuildInfo);
         EasyMock.expect(mMockBuildProvider.getBuild()).andThrow(exception);
-        EasyMock.expect(mMockBuildInfo.getTestTag()).andStubReturn("");
+        EasyMock.expect(mMockBuildInfo.getTestTag()).andStubReturn(null);
         setupMockFailureListeners(exception);
         setupInvoke();
         IRemoteTest test = EasyMock.createMock(IRemoteTest.class);
+        CommandOptions cmdOptions = new CommandOptions();
+        final String expectedTestTag = "TEST_TAG";
+        cmdOptions.setTestTag(expectedTestTag);
+        mStubConfiguration.setCommandOptions(cmdOptions);
         mStubConfiguration.setTest(test);
         EasyMock.expect(mMockLogger.getLog())
-        .andReturn(new ByteArrayInputStreamSource(new byte[0]));
+                .andReturn(new ByteArrayInputStreamSource(new byte[0]));
         EasyMock.expect(mMockDevice.getLogcat())
-        .andReturn(new ByteArrayInputStreamSource(new byte[0])).times(2);
+                .andReturn(new ByteArrayInputStreamSource(new byte[0])).times(2);
         replayMocks(test, mockRescheduler);
         mTestInvocation.invoke(mStubInvocationMetadata, mStubConfiguration, mockRescheduler);
         verifyMocks(test, mockRescheduler);
+        // invocation test tag was updated.
+        assertEquals(expectedTestTag, mStubInvocationMetadata.getTestTag());
     }
 
     /**
