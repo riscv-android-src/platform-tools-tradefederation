@@ -16,8 +16,8 @@
 
 package com.android.tradefed.result;
 
-import com.google.wireless.android.testtools.metrics.proto.FileMetadataProto.LogFile;
-import com.google.wireless.android.testtools.metrics.proto.FileMetadataProto.FileMetadata;
+import com.android.test.metrics.proto.FileMetadataProto.FileMetadata;
+import com.android.test.metrics.proto.FileMetadataProto.LogFile;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
