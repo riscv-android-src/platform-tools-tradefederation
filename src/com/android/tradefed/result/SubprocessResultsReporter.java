@@ -141,12 +141,22 @@ public class SubprocessResultsReporter implements ITestInvocationListener, AutoC
         // ignore
     }
 
-    /**
-     * {@inheritDoc}
-     */
+    /** {@inheritDoc} */
     @Override
     public void testLog(String dataName, LogDataType dataType, InputStreamSource dataStream) {
-        // TODO
+        // TODO: enable this once launcher side is deployed
+        /*if (dataStream != null && dataStream.size() != 0) {
+            File tmpFile = null;
+            try {
+                tmpFile = FileUtil.createTempFile(dataName, dataType.getFileExt());
+                FileUtil.writeToFile(dataStream.createInputStream(), tmpFile);
+                TestLogEventInfo info = new TestLogEventInfo(dataName, dataType, tmpFile);
+                printEvent(SubprocessTestResultsParser.StatusKeys.TEST_LOG, info);
+            } catch (IOException e) {
+                CLog.e(e);
+                FileUtil.deleteFile(tmpFile);
+            }
+        }*/
     }
 
     /**

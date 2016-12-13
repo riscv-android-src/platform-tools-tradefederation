@@ -17,6 +17,8 @@ package com.android.tradefed.util;
 
 import com.android.tradefed.result.InputStreamSource;
 
+import com.google.common.io.ByteStreams;
+
 import java.io.BufferedInputStream;
 import java.io.BufferedReader;
 import java.io.ByteArrayOutputStream;
@@ -282,19 +284,9 @@ public class StreamUtil {
 
     /**
      * Create a {@link OutputStream} that discards all writes.
-     *
-     * TODO: replace with guava's ByteStreams.nullOutputStream() when guava is updated.
      */
     public static OutputStream nullOutputStream() {
-        return new OutputStream() {
-            /** Discards the specified byte. */
-            @Override public void write(int b) {
-            }
-
-            /** Discards the specified byte array. */
-            @Override public void write(byte[] b, int off, int len) {
-            }
-        };
+        return ByteStreams.nullOutputStream();
     }
 
     /**

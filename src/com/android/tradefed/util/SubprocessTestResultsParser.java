@@ -17,11 +17,14 @@ package com.android.tradefed.util;
 
 import com.android.ddmlib.testrunner.TestIdentifier;
 import com.android.tradefed.log.LogUtil.CLog;
+import com.android.tradefed.result.FileInputStreamSource;
 import com.android.tradefed.result.ITestInvocationListener;
+import com.android.tradefed.result.InputStreamSource;
 import com.android.tradefed.util.SubprocessEventHelper.BaseTestEventInfo;
 import com.android.tradefed.util.SubprocessEventHelper.FailedTestEventInfo;
 import com.android.tradefed.util.SubprocessEventHelper.InvocationFailedEventInfo;
 import com.android.tradefed.util.SubprocessEventHelper.TestEndedEventInfo;
+import com.android.tradefed.util.SubprocessEventHelper.TestLogEventInfo;
 import com.android.tradefed.util.SubprocessEventHelper.TestRunEndedEventInfo;
 import com.android.tradefed.util.SubprocessEventHelper.TestRunFailedEventInfo;
 import com.android.tradefed.util.SubprocessEventHelper.TestRunStartedEventInfo;
@@ -70,6 +73,7 @@ public class SubprocessTestResultsParser implements Closeable {
         public static final String TEST_RUN_ENDED = "TEST_RUN_ENDED";
         public static final String TEST_RUN_FAILED = "TEST_RUN_FAILED";
         public static final String TEST_RUN_STARTED = "TEST_RUN_STARTED";
+        public static final String TEST_LOG = "TEST_LOG";
     }
 
     /**
@@ -188,7 +192,8 @@ public class SubprocessTestResultsParser implements Closeable {
         sb.append(StatusKeys.TEST_STARTED).append("|");
         sb.append(StatusKeys.TEST_RUN_ENDED).append("|");
         sb.append(StatusKeys.TEST_RUN_FAILED).append("|");
-        sb.append(StatusKeys.TEST_RUN_STARTED);
+        sb.append(StatusKeys.TEST_RUN_STARTED).append("|");
+        sb.append(StatusKeys.TEST_LOG);
         String patt = String.format("(.*)(%s)( )(.*)", sb.toString());
         mPattern = Pattern.compile(patt);
 
@@ -204,6 +209,7 @@ public class SubprocessTestResultsParser implements Closeable {
         mHandlerMap.put(StatusKeys.TEST_RUN_ENDED, new TestRunEndedEventHandler());
         mHandlerMap.put(StatusKeys.TEST_RUN_FAILED, new TestRunFailedEventHandler());
         mHandlerMap.put(StatusKeys.TEST_RUN_STARTED, new TestRunStartedEventHandler());
+        mHandlerMap.put(StatusKeys.TEST_LOG, new TestLogEventHandler());
     }
 
     public void parseFile(File file) {
@@ -356,6 +362,17 @@ public class SubprocessTestResultsParser implements Closeable {
                     new FailedTestEventInfo(new JSONObject(eventJson));
             checkCurrentTestId(FailedAssumption.mClassName, FailedAssumption.mTestName);
             mListener.testAssumptionFailure(currentTest, FailedAssumption.mTrace);
+        }
+    }
+
+    private class TestLogEventHandler implements EventHandler {
+        @Override
+        public void handleEvent(String eventJson) throws JSONException {
+            TestLogEventInfo logInfo = new TestLogEventInfo(new JSONObject(eventJson));
+            String name = String.format("subprocess-%s", logInfo.mDataName);
+            InputStreamSource data = new FileInputStreamSource(logInfo.mDataFile);
+            mListener.testLog(name, logInfo.mLogType, data);
+            FileUtil.deleteFile(logInfo.mDataFile);
         }
     }
 }
