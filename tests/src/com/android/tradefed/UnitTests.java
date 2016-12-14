@@ -130,6 +130,8 @@ import com.android.tradefed.testtype.suite.TestFailureListenerTest;
 import com.android.tradefed.testtype.suite.TfSuiteRunnerTest;
 import com.android.tradefed.testtype.testdefs.XmlDefsParserTest;
 import com.android.tradefed.testtype.testdefs.XmlDefsTestTest;
+import com.android.tradefed.testtype.TfTestLauncherTest;
+import com.android.tradefed.testtype.VersionedTfLauncherTest;
 import com.android.tradefed.util.AaptParserTest;
 import com.android.tradefed.util.AbiFormatterTest;
 import com.android.tradefed.util.AbiUtilsTest;
@@ -322,6 +324,8 @@ import org.junit.runners.Suite.SuiteClasses;
     NativeStressTestTest.class,
     PythonUnitTestResultParserTest.class,
     PythonUnitTestRunnerTest.class,
+    TfTestLauncherTest.class,
+    VersionedTfLauncherTest.class,
 
     // testtype/suite
     TestFailureListenerTest.class,
