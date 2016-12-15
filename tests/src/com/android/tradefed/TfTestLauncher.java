@@ -384,9 +384,9 @@ public class TfTestLauncher implements IRemoteTest, IBuildReceiver {
         TestIdentifier tid = new TestIdentifier("temporary-files", "testIfClean");
         listener.testStarted(tid);
         String[] listFiles = tmpDir.list();
-        if (listFiles.length > 4) {
-            String trace = String.format("Found '%d' temporary files: %s\n, only 4 are expected: "
-                    + "lc_cache, SDK_homes, inv_*, tradefed_global_log_*", listFiles.length,
+        if (listFiles.length > 2) {
+            String trace = String.format("Found '%d' temporary files: %s\n, only 2 are expected: "
+                    + "inv_*, tradefed_global_log_*", listFiles.length,
                     Arrays.asList(listFiles));
             listener.testFailed(tid, trace);
         }

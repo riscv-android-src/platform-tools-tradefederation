@@ -26,6 +26,7 @@ import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.device.TestDeviceState;
 import com.android.tradefed.util.CommandResult;
 import com.android.tradefed.util.CommandStatus;
+import com.android.tradefed.util.FileUtil;
 import com.android.tradefed.util.IRunUtil;
 
 import junit.framework.TestCase;
@@ -48,12 +49,22 @@ public class SdkAvdPreparerTest extends TestCase {
     private ISdkBuildInfo mMockBuildInfo;
     private ITestDevice mMockDevice;
     private IDevice mMockIDevice;
+    private File mParentFolder;
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     protected void setUp() throws Exception {
         mMockRunUtil = EasyMock.createMock(IRunUtil.class);
         mMockDeviceManager = EasyMock.createMock(IDeviceManager.class);
-        mPreparer = new SdkAvdPreparer(mMockRunUtil, mMockDeviceManager);
+        mParentFolder = FileUtil.createTempDir("sdk-avd-preparer");
+        mPreparer = new SdkAvdPreparer(mMockRunUtil, mMockDeviceManager) {
+            @Override
+            File createParentSdkHome() throws java.io.IOException {
+                return mParentFolder;
+            }
+        };
         mMockBuildInfo = EasyMock.createMock(ISdkBuildInfo.class);
         mMockDevice = EasyMock.createMock(ITestDevice.class);
         mMockIDevice = EasyMock.createMock(IDevice.class);
@@ -65,6 +76,15 @@ public class SdkAvdPreparerTest extends TestCase {
         EasyMock.expect(mMockDevice.getIDevice()).andStubReturn(mMockIDevice);
         EasyMock.expect(mMockDevice.getSerialNumber()).andStubReturn("serial");
         EasyMock.expect(mMockDevice.getDeviceDescriptor()).andStubReturn(null);
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    protected void tearDown() throws Exception {
+        FileUtil.recursiveDelete(mParentFolder);
+        super.tearDown();
     }
 
     /**
