@@ -203,4 +203,12 @@ public class RemoteAndroidDevice extends TestDevice {
         // devices since fastboot cannot be use remotely
         return false;
     }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public String getMacAddress() {
+        return null;
+    }
 }

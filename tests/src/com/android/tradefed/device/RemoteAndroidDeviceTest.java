@@ -166,4 +166,8 @@ public class RemoteAndroidDeviceTest extends TestCase {
         }
         fail("Wrong Serial should throw a RuntimeException");
     }
+
+    public void testGetMacAddress() {
+        assertNull(mTestDevice.getMacAddress());
+    }
 }
