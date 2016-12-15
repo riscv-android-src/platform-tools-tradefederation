@@ -124,6 +124,9 @@ public interface IConfiguration {
      */
     public ICommandOptions getCommandOptions();
 
+    /** Returns the {@link ConfigurationDescriptor} provided in the configuration. */
+    public ConfigurationDescriptor getConfigurationDescription();
+
     /**
      * Gets the {@link IDeviceSelection} to use from the configuration.
      *

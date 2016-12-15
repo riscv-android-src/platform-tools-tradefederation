@@ -16,8 +16,6 @@
 
 package com.android.tradefed.config;
 
-import com.google.common.base.Joiner;
-
 import com.android.tradefed.build.IBuildProvider;
 import com.android.tradefed.command.CommandOptions;
 import com.android.tradefed.command.ICommandOptions;
@@ -41,6 +39,8 @@ import com.android.tradefed.testtype.StubTest;
 import com.android.tradefed.util.MultiMap;
 import com.android.tradefed.util.QuotationAwareTokenizer;
 import com.android.tradefed.util.keystore.IKeyStoreClient;
+
+import com.google.common.base.Joiner;
 
 import org.json.JSONArray;
 import org.json.JSONException;
@@ -82,6 +82,7 @@ public class Configuration implements IConfiguration {
     public static final String DEVICE_REQUIREMENTS_TYPE_NAME = "device_requirements";
     public static final String DEVICE_OPTIONS_TYPE_NAME = "device_options";
     public static final String SYSTEM_STATUS_CHECKER_TYPE_NAME = "system_checker";
+    public static final String CONFIGURATION_DESCRIPTION_TYPE_NAME = "config_desc";
     public static final String DEVICE_NAME = "device";
 
     // additional element names used for emitting the configuration XML.
@@ -97,6 +98,8 @@ public class Configuration implements IConfiguration {
 
     // regexp pattern used to parse map option values
     private static final Pattern OPTION_KEY_VALUE_PATTERN = Pattern.compile("(?<!\\\\)=");
+
+    private static final String CONFIG_EXCEPTION_PATTERN = "Could not find option with name ";
 
     /** Mapping of config object type name to config objects. */
     private Map<String, List<Object>> mConfigMap;
@@ -158,6 +161,9 @@ public class Configuration implements IConfiguration {
             sObjTypeMap.put(DEVICE_NAME, new ObjTypeInfo(IDeviceConfiguration.class, true));
             sObjTypeMap.put(SYSTEM_STATUS_CHECKER_TYPE_NAME,
                     new ObjTypeInfo(ISystemStatusChecker.class, true));
+            sObjTypeMap.put(
+                    CONFIGURATION_DESCRIPTION_TYPE_NAME,
+                    new ObjTypeInfo(ConfigurationDescriptor.class, false));
         }
         return sObjTypeMap;
     }
@@ -206,6 +212,7 @@ public class Configuration implements IConfiguration {
         setTestInvocationListener(new TextResultReporter());
         setMultiTargetPreparer(new StubMultiTargetPreparer());
         setSystemStatusCheckers(new ArrayList<ISystemStatusChecker>());
+        setConfigurationDescriptor(new ConfigurationDescriptor());
     }
 
     /**
@@ -353,9 +360,14 @@ public class Configuration implements IConfiguration {
         return (ICommandOptions) getConfigurationObject(CMD_OPTIONS_TYPE_NAME);
     }
 
-    /**
-     * {@inheritDoc}
-     */
+    /** {@inheritDoc} */
+    @Override
+    public ConfigurationDescriptor getConfigurationDescription() {
+        return (ConfigurationDescriptor)
+                getConfigurationObject(CONFIGURATION_DESCRIPTION_TYPE_NAME);
+    }
+
+    /** {@inheritDoc} */
     @SuppressWarnings("unchecked")
     @Override
     public IDeviceSelection getDeviceRequirements() {
@@ -434,9 +446,24 @@ public class Configuration implements IConfiguration {
      * Return a copy of all config objects
      */
     private Collection<Object> getAllConfigurationObjects() {
+        return getAllConfigurationObjects(null);
+    }
+
+    /**
+     * Return a copy of all config objects, minus the object configuration of the type specified.
+     * Returns all the config objects if param is null.
+     */
+    private Collection<Object> getAllConfigurationObjects(String excludedConfigName) {
         Collection<Object> objectsCopy = new ArrayList<Object>();
-        for (List<Object> objectList : mConfigMap.values()) {
-            objectsCopy.addAll(objectList);
+        for (Entry<String, List<Object>> entryList : mConfigMap.entrySet()) {
+            if (excludedConfigName != null) {
+                // Only add if not a descriptor config object type.
+                if (!excludedConfigName.equals(entryList.getKey())) {
+                    objectsCopy.addAll(entryList.getValue());
+                }
+            } else {
+                objectsCopy.addAll(entryList.getValue());
+            }
         }
         return objectsCopy;
     }
@@ -699,9 +726,12 @@ public class Configuration implements IConfiguration {
         setConfigurationObjectNoThrow(LOG_SAVER_TYPE_NAME, logSaver);
     }
 
-    /**
-     * {@inheritDoc}
-     */
+    /** Sets the {@link ConfigurationDescriptor} to be used in the configuration. */
+    private void setConfigurationDescriptor(ConfigurationDescriptor configDescriptor) {
+        setConfigurationObjectNoThrow(CONFIGURATION_DESCRIPTION_TYPE_NAME, configDescriptor);
+    }
+
+    /** {@inheritDoc} */
     @Override
     public void setDeviceRecovery(IDeviceRecovery recovery) {
         notAllowedInMultiMode("setDeviceRecovery");
@@ -858,11 +888,33 @@ public class Configuration implements IConfiguration {
     public List<String> setOptionsFromCommandLineArgs(List<String> listArgs,
             IKeyStoreClient keyStoreClient)
             throws ConfigurationException {
-        ArgsOptionParser parser = new ArgsOptionParser(getAllConfigurationObjects());
+        // We get all the objects except the one describing the Configuration itself which does not
+        // allow passing its option via command line.
+        ArgsOptionParser parser =
+                new ArgsOptionParser(
+                        getAllConfigurationObjects(CONFIGURATION_DESCRIPTION_TYPE_NAME));
         if (keyStoreClient != null) {
             parser.setKeyStore(keyStoreClient);
         }
-        return parser.parse(listArgs);
+        try {
+            return parser.parse(listArgs);
+        } catch (ConfigurationException e) {
+            String optionName = e.getMessage().split(CONFIG_EXCEPTION_PATTERN)[1];
+            try {
+                // In case the option exists in the config descriptor, we change the error message
+                // to be more specific about why the option is rejected.
+                OptionSetter setter = new OptionSetter(getConfigurationDescription());
+                setter.getTypeForOption(optionName);
+            } catch (ConfigurationException stillThrowing) {
+                // Throw the original exception since it cannot be found at all.
+                throw e;
+            }
+            throw new OptionNotAllowedException(
+                    String.format(
+                            "Option %s cannot be specified via "
+                                    + "command line. Only in the configuration xml.",
+                            optionName));
+        }
     }
 
     /**

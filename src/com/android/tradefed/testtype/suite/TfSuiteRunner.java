@@ -50,7 +50,7 @@ public class TfSuiteRunner extends ITestSuite {
             try {
                 IConfiguration testConfig =
                         configFactory.createConfigurationFromArgs(new String[]{configName});
-                if (testConfig.getCommandOptions().getSuiteTags().contains(mSuiteTag)) {
+                if (testConfig.getConfigurationDescription().getSuiteTags().contains(mSuiteTag)) {
                     configMap.put(configName, testConfig);
                 }
             } catch (ConfigurationException e) {

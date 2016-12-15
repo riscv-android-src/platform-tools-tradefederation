@@ -34,6 +34,7 @@ import com.android.tradefed.command.VerifyTest;
 import com.android.tradefed.command.remote.RemoteOperationTest;
 import com.android.tradefed.config.ArgsOptionParserTest;
 import com.android.tradefed.config.ConfigurationDefTest;
+import com.android.tradefed.config.ConfigurationDescriptorTest;
 import com.android.tradefed.config.ConfigurationFactoryTest;
 import com.android.tradefed.config.ConfigurationTest;
 import com.android.tradefed.config.ConfigurationXmlParserTest;
@@ -218,6 +219,7 @@ import org.junit.runners.Suite.SuiteClasses;
     // config
     ArgsOptionParserTest.class,
     ConfigurationDefTest.class,
+    ConfigurationDescriptorTest.class,
     ConfigurationFactoryTest.class,
     ConfigurationTest.class,
     ConfigurationXmlParserTest.class,
