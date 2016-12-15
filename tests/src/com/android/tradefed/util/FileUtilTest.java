@@ -19,6 +19,7 @@ import com.android.tradefed.log.LogUtil.CLog;
 
 import junit.framework.TestCase;
 
+import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.io.IOException;
 
@@ -156,6 +157,132 @@ public class FileUtilTest extends TestCase {
                     + "Rect(0_0-0_0)_Config_mSpanCount=3_ mOrientat";
             testFile = FileUtil.createTempFile(prefix, suffix);
             assertTrue(testFile.getName().length() <= FileUtil.FILESYSTEM_FILENAME_MAX_LENGTH);
+        } finally {
+            FileUtil.deleteFile(testFile);
+        }
+    }
+
+    /**
+     * Test {@link FileUtil#writeToFile(InputStream, File, boolean)} succeeds overwriting an
+     * existent file.
+     */
+    public void testWriteToFile_overwrites_exists() throws IOException {
+        File testFile = null;
+        try {
+            testFile = File.createTempFile("doesnotmatter", ".txt");
+            FileUtil.writeToFile(new ByteArrayInputStream("write1".getBytes()), testFile, false);
+            assertEquals(FileUtil.readStringFromFile(testFile), "write1");
+            FileUtil.writeToFile(new ByteArrayInputStream("write2".getBytes()), testFile, false);
+            assertEquals(FileUtil.readStringFromFile(testFile), "write2");
+        } finally {
+            FileUtil.deleteFile(testFile);
+        }
+    }
+
+    /**
+     * Test {@link FileUtil#writeToFile(InputStream, File, boolean)} succeeds appending to an
+     * existent file.
+     */
+    public void testWriteToFile_appends_exists() throws IOException {
+        File testFile = null;
+        try {
+            testFile = File.createTempFile("doesnotmatter", ".txt");
+            FileUtil.writeToFile(new ByteArrayInputStream("write1".getBytes()), testFile, true);
+            FileUtil.writeToFile(new ByteArrayInputStream("write2".getBytes()), testFile, true);
+            assertEquals(FileUtil.readStringFromFile(testFile), "write1write2");
+        } finally {
+            FileUtil.deleteFile(testFile);
+        }
+    }
+
+    /**
+     * Test {@link FileUtil#writeToFile(InputStream, File, boolean)} succeeds writing to an
+     * uncreated file.
+     */
+    public void testWriteToFile_overwrites_doesNotExist() throws IOException {
+        File testFile = null;
+        try {
+            testFile = new File("nonexistant");
+            FileUtil.writeToFile(new ByteArrayInputStream("write1".getBytes()), testFile, false);
+            assertEquals(FileUtil.readStringFromFile(testFile), "write1");
+        } finally {
+            FileUtil.deleteFile(testFile);
+        }
+    }
+
+    /**
+     * Test {@link FileUtil#writeToFile(InputStream, File, boolean)} succeeds appending to an
+     * uncreated file.
+     */
+    public void testWriteToFile_appends_doesNotExist() throws IOException {
+        File testFile = null;
+        try {
+            testFile = new File("nonexistant");
+            FileUtil.writeToFile(new ByteArrayInputStream("write1".getBytes()), testFile, true);
+            assertEquals(FileUtil.readStringFromFile(testFile), "write1");
+        } finally {
+            FileUtil.deleteFile(testFile);
+        }
+    }
+
+    /**
+     * Test {@link FileUtil#writeToFile(InputStream, File)} succeeds overwriting to a file.
+     */
+    public void testWriteToFile_stream_overwrites() throws IOException {
+        File testFile = null;
+        try {
+            testFile = File.createTempFile("doesnotmatter", ".txt");
+            FileUtil.writeToFile(new ByteArrayInputStream("write1".getBytes()), testFile);
+            assertEquals(FileUtil.readStringFromFile(testFile), "write1");
+            FileUtil.writeToFile(new ByteArrayInputStream("write2".getBytes()), testFile);
+            assertEquals(FileUtil.readStringFromFile(testFile), "write2");
+        } finally {
+            FileUtil.deleteFile(testFile);
+        }
+    }
+
+    /**
+     * Test {@link FileUtil#writeToFile(String, File, boolean)} succeeds overwriting to a file.
+     */
+    public void testWriteToFile_string_overwrites() throws IOException {
+        File testFile = null;
+        try {
+            testFile = File.createTempFile("doesnotmatter", ".txt");
+            FileUtil.writeToFile("write1", testFile, false);
+            assertEquals(FileUtil.readStringFromFile(testFile), "write1");
+            FileUtil.writeToFile("write2", testFile, false);
+            assertEquals(FileUtil.readStringFromFile(testFile), "write2");
+        } finally {
+            FileUtil.deleteFile(testFile);
+        }
+    }
+
+    /**
+     * Test {@link FileUtil#writeToFile(String, File, boolean)} succeeds appending to a file.
+     */
+    public void testWriteToFile_string_appends() throws IOException {
+        File testFile = null;
+        try {
+            testFile = File.createTempFile("doesnotmatter", ".txt");
+            FileUtil.writeToFile("write1", testFile, true);
+            FileUtil.writeToFile("write2", testFile, true);
+            assertEquals(FileUtil.readStringFromFile(testFile), "write1write2");
+        } finally {
+            FileUtil.deleteFile(testFile);
+        }
+    }
+
+    /**
+     * Test {@link FileUtil#writeToFile(String, File)} succeeds overwriting to a file.
+     */
+    public void testWriteToFile_string_defaultOverwrites() throws IOException {
+        File testFile = null;
+        try {
+            testFile = File.createTempFile("doesnotmatter", ".txt");
+            FileUtil.writeToFile("write1", testFile);
+            assertEquals(FileUtil.readStringFromFile(testFile), "write1");
+            FileUtil.writeToFile("write2", testFile);
+            assertEquals(FileUtil.readStringFromFile(testFile), "write2");
         } finally {
             FileUtil.deleteFile(testFile);
         }

@@ -22,12 +22,14 @@ import com.android.tradefed.log.LogUtil.CLog;
 
 import java.io.BufferedInputStream;
 import java.io.BufferedOutputStream;
+import java.io.BufferedWriter;
 import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.FilenameFilter;
+import java.io.FileWriter;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -476,24 +478,48 @@ public class FileUtil {
      * A helper method for writing string data to file
      *
      * @param inputString the input {@link String}
-     * @param destFile the dest file to write to
+     * @param destFile the destination file to write to
      */
     public static void writeToFile(String inputString, File destFile) throws IOException {
-        writeToFile(new ByteArrayInputStream(inputString.getBytes()), destFile);
+        writeToFile(inputString, destFile, false);
+    }
+
+    /**
+     * A helper method for writing or appending string data to file
+     *
+     * @param inputString the input {@link String}
+     * @param destFile the destination file to write or append to
+     * @param append append to end of file if true, overwrite otherwise
+     */
+    public static void writeToFile(String inputString, File destFile, boolean append)
+            throws IOException {
+        writeToFile(new ByteArrayInputStream(inputString.getBytes()), destFile, append);
     }
 
     /**
      * A helper method for writing stream data to file
      *
      * @param input the unbuffered input stream
-     * @param destFile the dest file to write to
+     * @param destFile the destination file to write to
      */
     public static void writeToFile(InputStream input, File destFile) throws IOException {
+        writeToFile(input, destFile, false);
+    }
+
+    /**
+     * A helper method for writing stream data to file
+     *
+     * @param input the unbuffered input stream
+     * @param out the destination file to write or append to
+     * @param append append to end of file if true, overwrite otherwise
+     */
+    public static void writeToFile(
+            InputStream input, File destFile, boolean append) throws IOException {
         InputStream origStream = null;
         OutputStream destStream = null;
         try {
             origStream = new BufferedInputStream(input);
-            destStream = new BufferedOutputStream(new FileOutputStream(destFile));
+            destStream = new BufferedOutputStream(new FileOutputStream(destFile, append));
             StreamUtil.copyStreams(origStream, destStream);
         } finally {
             StreamUtil.close(origStream);
