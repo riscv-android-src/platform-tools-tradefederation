@@ -90,8 +90,10 @@ public class Sl4aBluetoothDiscovery implements IRemoteTest, IMultiDeviceTest {
 
     @Override
     public void run(ITestInvocationListener listener) throws DeviceNotAvailableException {
-        Sl4aClient clientDUT = mDut.startSL4A();
-        Sl4aClient clientDiscoverer = mDiscoverer.startSL4A();
+        // We provide null path for the apk to assume it's already installed.
+        Sl4aClient dutClient = Sl4aClient.startSL4A(mDut, null);
+        Sl4aClient discovererClient = Sl4aClient.startSL4A(mDiscoverer, null);
+
         TestIdentifier testId = new TestIdentifier(this.getClass().getCanonicalName(),
                 "bluetooth_discovery");
 
@@ -100,17 +102,17 @@ public class Sl4aBluetoothDiscovery implements IRemoteTest, IMultiDeviceTest {
         listener.testStarted(testId);
 
         try {
-            setup(clientDUT, clientDiscoverer);
-            clientDUT.rpcCall("bluetoothMakeDiscoverable");
-            Object rep = clientDUT.rpcCall("bluetoothGetScanMode");
+            setup(dutClient, discovererClient);
+            dutClient.rpcCall("bluetoothMakeDiscoverable");
+            Object rep = dutClient.rpcCall("bluetoothGetScanMode");
             // 3 signifies CONNECTABLE and DISCOVERABLE
             Assert.assertEquals(3, rep);
 
-            clientDiscoverer.getEventDispatcher().clearAllEvents();
-            clientDiscoverer.rpcCall("bluetoothStartDiscovery");
-            clientDiscoverer.getEventDispatcher()
+            discovererClient.getEventDispatcher().clearAllEvents();
+            discovererClient.rpcCall("bluetoothStartDiscovery");
+            discovererClient.getEventDispatcher()
                     .popEvent("BluetoothDiscoveryFinished", 60000);
-            Object listDiscovered = clientDiscoverer.rpcCall("bluetoothGetDiscoveredDevices");
+            Object listDiscovered = discovererClient.rpcCall("bluetoothGetDiscoveredDevices");
             JSONArray response = (JSONArray) listDiscovered;
             boolean found = false;
             for (int i = 0; i < response.length(); i++) {
@@ -129,6 +131,8 @@ public class Sl4aBluetoothDiscovery implements IRemoteTest, IMultiDeviceTest {
         } finally {
             listener.testEnded(testId, Collections.emptyMap());
             listener.testRunEnded(System.currentTimeMillis() - startTime, Collections.emptyMap());
+            dutClient.close();
+            discovererClient.close();
         }
     }
 }
