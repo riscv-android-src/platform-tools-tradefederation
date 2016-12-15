@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package com.android.framework;
+package com.android.framework.tests;
 
 import com.android.ddmlib.testrunner.IRemoteAndroidTestRunner;
 import com.android.ddmlib.testrunner.RemoteAndroidTestRunner;

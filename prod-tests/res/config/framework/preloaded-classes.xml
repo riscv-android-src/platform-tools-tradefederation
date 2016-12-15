@@ -28,5 +28,5 @@
     <target_preparer class="com.android.tradefed.targetprep.TestAppInstallSetup" />
     <!-- Preload test configuration -->
     <option name="test-tag" value="preloaded-classes" />
-    <test class="com.android.framework.PreloadedClassesTest" />
+    <test class="com.android.framework.tests.PreloadedClassesTest" />
 </configuration>
