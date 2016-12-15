@@ -374,6 +374,7 @@ public class SideloadOtaStabilityTest implements IDeviceTest, IBuildReceiver,
             throws DeviceNotAvailableException {
         InputStreamSource lastLog = pullLogFile(LOG_RECOV);
         InputStreamSource lastKmsg = pullLogFile(LOG_KMSG);
+        InputStreamSource blockMap = pullLogFile(BLOCK_MAP_PATH.substring(1));
         double elapsedTime = 0;
         // last_log contains a timing metric in its last line, capture it here and return it
         // for the metrics map to report
@@ -395,10 +396,17 @@ public class SideloadOtaStabilityTest implements IDeviceTest, IBuildReceiver,
                     lastLog);
             listener.testLog(this.mRunName + "_recovery_kmsg", LogDataType.TEXT,
                     lastKmsg);
+            if (blockMap == null) {
+                CLog.w("Could not find block.map");
+            } else {
+                listener.testLog(this.mRunName + "_block_map", LogDataType.TEXT,
+                    blockMap);
+            }
             return elapsedTime;
         } finally {
             StreamUtil.cancel(lastLog);
             StreamUtil.cancel(lastKmsg);
+            StreamUtil.cancel(blockMap);
         }
     }
 
