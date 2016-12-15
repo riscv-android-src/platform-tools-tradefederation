@@ -3659,6 +3659,10 @@ public class NativeDevice implements IManagedTestDevice {
             // Do not query MAC addresses from stub devices.
             return null;
         }
+        if (!TestDeviceState.ONLINE.equals(mState)) {
+            // Only query MAC addresses from online devices.
+            return null;
+        }
         CollectingOutputReceiver receiver = new CollectingOutputReceiver();
         try {
             mIDevice.executeShellCommand(MAC_ADDRESS_COMMAND, receiver);

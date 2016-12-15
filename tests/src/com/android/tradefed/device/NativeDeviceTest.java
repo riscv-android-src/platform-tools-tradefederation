@@ -1856,6 +1856,15 @@ public class NativeDeviceTest extends TestCase {
     }
 
     /**
+     * Test querying a device MAC address when the device is in fastboot
+     */
+    public void testGetMacAddress_fastboot() throws Exception {
+        mTestDevice.setDeviceState(TestDeviceState.FASTBOOT);
+        // Will fail if executeShellCommand is called. Which it should not.
+        assertNull(mTestDevice.getMacAddress());
+    }
+
+    /**
      * Test querying a device MAC address but failing to do so
      */
     public void testGetMacAddress_failure() throws Exception {
