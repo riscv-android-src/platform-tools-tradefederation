@@ -22,6 +22,9 @@ import com.android.tradefed.config.OptionCopier;
 import com.android.tradefed.config.OptionUpdateRule;
 import com.android.tradefed.log.LogUtil.CLog;
 
+import java.util.ArrayList;
+import java.util.List;
+
 /**
  * Implementation of {@link ICommandOptions}.
  */
@@ -100,6 +103,9 @@ public class CommandOptions implements ICommandOptions {
             "the index of shard to run. Only set if shard-count > 1 and the value is in range " +
             "[0, shard-count)")
     private Integer mShardIndex;
+
+    @Option(name = "test-suite-tag", description = "A membership tag to suite. Can be repeated.")
+    private List<String> mSuiteTags = new ArrayList<>();
 
     /**
      * Set the help mode for the config.
@@ -326,5 +332,21 @@ public class CommandOptions implements ICommandOptions {
     @Override
     public String getTestTagSuffix() {
         return mTestTagSuffix;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public List<String> getSuiteTags() {
+        return mSuiteTags;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void setSuiteTags(List<String> suiteTags) {
+        mSuiteTags = suiteTags;
     }
 }

@@ -128,8 +128,18 @@ public interface IConfigurationFactory {
     public void dumpConfig(String configName, PrintStream out);
 
     /**
-     * Return the list of names of all the configs found. Does not attempt to load any of the
-     * configs, so it is possible to have non working config in this list.
+     * Return the list of names of all the configs found in the JARs on the classpath.
+     * Does not attempt to load any of the configs, so it is possible to have non working config
+     * in this list.
      */
     public List<String> getConfigList();
+
+    /**
+     * Variation of {@link #getConfigList()} where we want to reduce the listing to only a
+     * subdirectory of the configuration path (res/config/).
+     *
+     * @param subPath name of the sub-directories to look in for configuration. If null, will have
+     *        the same behavior as {@link #getConfigList()}.
+     */
+    public List<String> getConfigList(String subPath);
 }
