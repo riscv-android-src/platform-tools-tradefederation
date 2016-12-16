@@ -66,6 +66,26 @@ public class StreamUtil {
     }
 
     /**
+     * Count number of lines in an {@link InputStreamSource}
+     * @param source the {@link InputStreamSource}
+     * @return number of lines
+     * @throws IOException if failure occurred reading the stream
+     */
+    public static int countLinesFromSource(InputStreamSource source) throws IOException {
+        BufferedReader br = null;
+        int lineCount = 0;
+        try {
+            br = new BufferedReader(new InputStreamReader(source.createInputStream()));
+            while (br.readLine() != null) {
+                lineCount++;
+            }
+        } finally {
+            close(br);
+        }
+        return lineCount;
+    }
+
+    /**
      * Retrieves a {@link ByteArrayList} from an {@link InputStreamSource}.
      *
      * @param source the {@link InputStreamSource}

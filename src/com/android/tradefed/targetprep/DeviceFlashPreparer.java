@@ -266,6 +266,8 @@ public abstract class DeviceFlashPreparer implements ITargetCleaner {
             } finally {
                 returnFlashingPermit();
             }
+            // only want logcat captured for current build, delete any accumulated log data
+            device.clearLogcat();
             if (mSkipPostFlashingSetup) {
                 return;
             }
@@ -283,8 +285,6 @@ public abstract class DeviceFlashPreparer implements ITargetCleaner {
             postEncryptDevice(device, flasher);
             // Once critical operation is done, we re-enable interruptable
             getRunUtil().allowInterrupt(true);
-            // only want logcat captured for current build, delete any accumulated log data
-            device.clearLogcat();
             try {
                 device.setRecoveryMode(RecoveryMode.AVAILABLE);
                 device.waitForDeviceAvailable(mDeviceBootTime);
