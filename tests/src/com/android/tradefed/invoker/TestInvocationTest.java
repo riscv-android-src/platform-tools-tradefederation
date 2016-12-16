@@ -20,6 +20,7 @@ import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.build.IBuildProvider;
 import com.android.tradefed.build.IDeviceBuildProvider;
 import com.android.tradefed.command.CommandOptions;
+import com.android.tradefed.command.CommandRunner.ExitCode;
 import com.android.tradefed.command.FatalHostError;
 import com.android.tradefed.command.ICommandOptions;
 import com.android.tradefed.command.remote.DeviceDescriptor;
@@ -60,15 +61,15 @@ import com.android.tradefed.testtype.IStrictShardableTest;
 import junit.framework.Test;
 import junit.framework.TestCase;
 
-import org.easymock.Capture;
-import org.easymock.EasyMock;
-
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+
+import org.easymock.Capture;
+import org.easymock.EasyMock;
 
 /**
  * Unit tests for {@link TestInvocation}.
@@ -192,7 +193,7 @@ public class TestInvocationTest extends TestCase {
                 return mMockConfigFactory;
             }
             @Override
-            protected void setExitCode(int code) {
+            protected void setExitCode(ExitCode code, Throwable stack) {
                 // empty on purpose
             }
         };

@@ -19,6 +19,8 @@ package com.android.tradefed.command;
 import com.android.tradefed.config.ConfigurationException;
 import com.android.tradefed.config.GlobalConfiguration;
 
+import com.google.common.annotations.VisibleForTesting;
+
 /**
  * An alternate TradeFederation entry point that will run command specified in command
  * line arguments and then quit.
@@ -29,10 +31,30 @@ import com.android.tradefed.config.GlobalConfiguration;
  */
 public class CommandRunner {
     private ICommandScheduler mScheduler;
-    private static int mErrorCode = 0;
+    private ExitCode mErrorCode = ExitCode.NO_ERROR;
 
     CommandRunner() {
 
+    }
+
+    public ExitCode getErrorCode() {
+        return mErrorCode;
+    }
+
+    /**
+     * Initialize the required global configuration.
+     */
+    @VisibleForTesting
+    void initGlobalConfig(String[] args) throws ConfigurationException {
+        GlobalConfiguration.createGlobalConfiguration(args);
+    }
+
+    /**
+     * Prints the exception stack to stderr.
+     */
+    @VisibleForTesting
+    void printStackTrace(Throwable e) {
+        e.printStackTrace();
     }
 
     /**
@@ -42,31 +64,59 @@ public class CommandRunner {
      */
     public void run(String[] args) {
         try {
-            GlobalConfiguration.createGlobalConfiguration(args);
+            initGlobalConfig(args);
             mScheduler = GlobalConfiguration.getInstance().getCommandScheduler();
             mScheduler.start();
             mScheduler.addCommand(args);
         } catch (ConfigurationException e) {
-            e.printStackTrace();
-            mErrorCode = 1;
+            printStackTrace(e);
+            mErrorCode = ExitCode.CONFIG_EXCEPTION;
         } finally {
             mScheduler.shutdownOnEmpty();
         }
         try {
             mScheduler.join();
             // If no error code has been raised yet, we checked the invocation error code.
-            if (mErrorCode == 0) {
+            if (ExitCode.NO_ERROR.equals(mErrorCode)) {
                 mErrorCode = mScheduler.getLastInvocationExitCode();
             }
         } catch (InterruptedException e) {
             e.printStackTrace();
-            mErrorCode = 1;
+            mErrorCode = ExitCode.THROWABLE_EXCEPTION;
+        }
+        if (!ExitCode.NO_ERROR.equals(mErrorCode)
+                && mScheduler.getLastInvocationThrowable() != null) {
+            // Print error to the stderr so that it can be recovered.
+            printStackTrace(mScheduler.getLastInvocationThrowable());
         }
     }
 
     public static void main(final String[] mainArgs) {
         CommandRunner console = new CommandRunner();
         console.run(mainArgs);
-        System.exit(mErrorCode);
+        System.exit(console.getErrorCode().getCodeValue());
+    }
+
+    /**
+     * Error codes that are possible to exit with.
+     */
+    public static enum ExitCode {
+        NO_ERROR(0),
+        CONFIG_EXCEPTION(1),
+        NO_BUILD(2),
+        DEVICE_UNRESPONSIVE(3),
+        DEVICE_UNAVAILABLE(4),
+        FATAL_HOST_ERROR(5),
+        THROWABLE_EXCEPTION(6);
+
+        private int mCodeValue;
+
+        ExitCode(int codeValue) {
+            mCodeValue = codeValue;
+        }
+
+        public int getCodeValue() {
+            return mCodeValue;
+        }
     }
 }

@@ -22,6 +22,7 @@ import com.android.ddmlib.Log;
 import com.android.ddmlib.Log.LogLevel;
 import com.android.tradefed.command.CommandFileParser.CommandLine;
 import com.android.tradefed.command.CommandFileWatcher.ICommandFileListener;
+import com.android.tradefed.command.CommandRunner.ExitCode;
 import com.android.tradefed.command.remote.DeviceDescriptor;
 import com.android.tradefed.command.remote.IRemoteClient;
 import com.android.tradefed.command.remote.RemoteClient;
@@ -151,8 +152,9 @@ public class CommandScheduler extends Thread implements ICommandScheduler, IComm
 
     private WaitObj mCommandProcessWait = new WaitObj();
 
-    /** The last {@link InvocationThread} that ran error code */
-    private int mLastInvocationExitCode = 0;
+    /** The last {@link InvocationThread} that ran error code and error stack*/
+    private ExitCode mLastInvocationExitCode = ExitCode.NO_ERROR;
+    private Throwable mLastInvocationThrowable = null;
 
     @Option(name = "reload-cmdfiles", description =
             "Whether to enable the command file autoreload mechanism")
@@ -551,21 +553,21 @@ public class CommandScheduler extends Thread implements ICommandScheduler, IComm
                 if (badDevice != null) {
                     deviceStates.put(badDevice, FreeDeviceState.UNRESPONSIVE);
                 }
-                setLastInvocationExitCode(1);
+                setLastInvocationExitCode(ExitCode.DEVICE_UNRESPONSIVE, e);
             } catch (DeviceNotAvailableException e) {
                 CLog.w("Device %s is not available. Reason: %s", e.getSerial(), e.getMessage());
                 ITestDevice badDevice = mInvocationContext.getDeviceBySerial(e.getSerial());
                 if (badDevice != null) {
                     deviceStates.put(badDevice, FreeDeviceState.UNAVAILABLE);
                 }
-                setLastInvocationExitCode(1);
+                setLastInvocationExitCode(ExitCode.DEVICE_UNAVAILABLE, e);
             } catch (FatalHostError e) {
                 CLog.wtf(String.format("Fatal error occurred: %s, shutting down", e.getMessage()),
                         e);
-                setLastInvocationExitCode(1);
+                setLastInvocationExitCode(ExitCode.FATAL_HOST_ERROR, e);
                 shutdown();
             } catch (Throwable e) {
-                setLastInvocationExitCode(1);
+                setLastInvocationExitCode(ExitCode.THROWABLE_EXCEPTION, e);
                 CLog.e(e);
             } finally {
                 mExecutionTimer.cancel();
@@ -2037,12 +2039,18 @@ public class CommandScheduler extends Thread implements ICommandScheduler, IComm
     }
 
     @Override
-    public int getLastInvocationExitCode() {
+    public ExitCode getLastInvocationExitCode() {
         return mLastInvocationExitCode;
     }
 
     @Override
-    public void setLastInvocationExitCode(int errorcode) {
-        mLastInvocationExitCode = errorcode;
+    public Throwable getLastInvocationThrowable() {
+        return mLastInvocationThrowable;
+    }
+
+    @Override
+    public void setLastInvocationExitCode(ExitCode code, Throwable throwable) {
+        mLastInvocationExitCode = code;
+        mLastInvocationThrowable = throwable;
     }
 }

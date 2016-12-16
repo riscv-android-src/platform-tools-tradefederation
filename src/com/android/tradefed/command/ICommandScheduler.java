@@ -16,6 +16,7 @@
 
 package com.android.tradefed.command;
 
+import com.android.tradefed.command.CommandRunner.ExitCode;
 import com.android.tradefed.config.ConfigurationException;
 import com.android.tradefed.config.IConfigurationFactory;
 import com.android.tradefed.device.FreeDeviceState;
@@ -277,11 +278,17 @@ public interface ICommandScheduler {
      * Return the error code of the last invocation that ran.
      * Return 0 (no error), if no invocation has ran yet.
      */
-    public int getLastInvocationExitCode();
+    public ExitCode getLastInvocationExitCode();
+
+    /**
+     * Return the {@link Throwable} from the last invocation that ran.
+     * Return null, if no throwable is available.
+     */
+    public Throwable getLastInvocationThrowable();
 
     /**
      * Helper method, when running inside a {@link CommandRunner} context, set an exit error code
-     * that can be returned.
+     * and a stack trace that can be returned.
      */
-    public void setLastInvocationExitCode(int errorcode);
+    public void setLastInvocationExitCode(ExitCode code, Throwable stack);
 }
