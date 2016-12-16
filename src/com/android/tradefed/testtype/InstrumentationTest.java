@@ -709,8 +709,8 @@ public class InstrumentationTest implements IDeviceTest, IResumableTest, ITestCo
         if (mDebug) {
             mRunner.setDebug(true);
         }
-        listener = addBugreportListenerIfEnabled(listener);
         listener = addScreenshotListenerIfEnabled(listener);
+        listener = addBugreportListenerIfEnabled(listener);
         listener = addLogcatListenerIfEnabled(listener);
 
         if (mRemainingTests == null) {
