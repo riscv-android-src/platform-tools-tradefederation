@@ -185,7 +185,7 @@ public class HttpHelper implements IHttpHelper {
      */
     @Override
     public HttpURLConnection createJsonConnection(URL url, String method) throws IOException {
-        return createConnection(url, method, "text/json");
+        return createConnection(url, method, "application/json");
     }
 
     /**
