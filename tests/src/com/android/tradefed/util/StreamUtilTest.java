@@ -78,6 +78,15 @@ public class StreamUtilTest extends TestCase {
     }
 
     /**
+     * Verify that {@link StreamUtil#countLinesFromSource} works as expected.
+     */
+    public void testCountLinesFromSource() throws Exception {
+        final String contents = "foo\nbar\n\foo\n";
+        final InputStreamSource source = new ByteArrayInputStreamSource(contents.getBytes());
+        assertEquals(3, StreamUtil.countLinesFromSource(source));
+    }
+
+    /**
      * Verify that {@link StreamUtil#getStringFromStream} works as expected.
      */
     public void testGetStringFromStream() throws Exception {
