@@ -41,6 +41,11 @@ public class DeviceBuildInfo extends BuildInfo implements IDeviceBuildInfo {
         super(buildId, buildTargetName);
     }
 
+    /**
+     * @deprecated use the constructor without test-tag instead. test-tag is no longer a mandatory
+     * option for build info.
+     */
+    @Deprecated
     public DeviceBuildInfo(String buildId, String testTag, String buildTargetName) {
         super(buildId, testTag, buildTargetName);
     }
@@ -268,8 +273,7 @@ public class DeviceBuildInfo extends BuildInfo implements IDeviceBuildInfo {
      */
     @Override
     public IBuildInfo clone() {
-        DeviceBuildInfo copy = new DeviceBuildInfo(getBuildId(), getTestTag(),
-                getBuildTargetName());
+        DeviceBuildInfo copy = new DeviceBuildInfo(getBuildId(), getBuildTargetName());
         copy.addAllBuildAttributes(this);
         try {
             copy.addAllFiles(this);

@@ -36,9 +36,9 @@ public class KernelDeviceBuildInfoTest extends TestCase {
     public void setUp() throws Exception {
         super.setUp();
 
-        mBuildInfo = new KernelDeviceBuildInfo("kernel_device", "build", "target");
+        mBuildInfo = new KernelDeviceBuildInfo("kernel_device", "build");
         mBuildInfo.setDeviceBuild(new DeviceBuildInfo("device", "target"));
-        mBuildInfo.setKernelBuild(new KernelBuildInfo("kernel", "ker", 0, "build", "target"));
+        mBuildInfo.setKernelBuild(new KernelBuildInfo("kernel", "ker", 0, "build"));
 
         mDeviceFile = FileUtil.createTempFile("device", "tmp");
         FileUtil.writeToFile("device", mDeviceFile);

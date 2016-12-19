@@ -41,23 +41,6 @@ public class KernelBuildInfo extends BuildInfo implements IKernelBuildInfo {
      * @param sha1 the git sha1, used as the build id
      * @param shortSha1 the git short sha1
      * @param commitTime the git commit time
-     * @param testTarget the test target
-     * @param buildName the build name
-     */
-    protected KernelBuildInfo(String sha1, String shortSha1, long commitTime, String testTarget,
-            String buildName) {
-        super(sha1, testTarget, buildName);
-        mSha1 = sha1;
-        mShortSha1 = shortSha1;
-        mCommitTime = commitTime;
-    }
-
-    /**
-     * Creates a {@link KernelBuildInfo}.
-     *
-     * @param sha1 the git sha1, used as the build id
-     * @param shortSha1 the git short sha1
-     * @param commitTime the git commit time
      * @param buildName the build name
      */
     public KernelBuildInfo(String sha1, String shortSha1, long commitTime, String buildName) {
@@ -145,7 +128,7 @@ public class KernelBuildInfo extends BuildInfo implements IKernelBuildInfo {
     @Override
     public IBuildInfo clone() {
         KernelBuildInfo copy = new KernelBuildInfo(getSha1(), getShortSha1(),
-                getCommitTime(), getTestTag(), getBuildTargetName());
+                getCommitTime(), getBuildTargetName());
         copy.addAllBuildAttributes(this);
         try {
             copy.addAllFiles(this);

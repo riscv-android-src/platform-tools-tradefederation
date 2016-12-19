@@ -28,10 +28,6 @@ public class SdkFolderBuildInfo extends BuildInfo implements ISdkBuildInfo, IFol
     private ISdkBuildInfo mSdkBuild;
     private IFolderBuildInfo mFolderBuild;
 
-    public SdkFolderBuildInfo(String buildId, String testTarget, String buildName) {
-        super(buildId, testTarget, buildName);
-    }
-
     public SdkFolderBuildInfo(String buildId, String buildName) {
         super(buildId, buildName);
     }
@@ -152,8 +148,7 @@ public class SdkFolderBuildInfo extends BuildInfo implements ISdkBuildInfo, IFol
             CLog.w("Invalid SdkFolderBuildInfo to clone.");
             return null;
         }
-        SdkFolderBuildInfo copy = new SdkFolderBuildInfo(getBuildId(), getTestTag(),
-                getBuildTargetName());
+        SdkFolderBuildInfo copy = new SdkFolderBuildInfo(getBuildId(), getBuildTargetName());
         copy.addAllBuildAttributes(this);
         ISdkBuildInfo sdkBuildClone = (ISdkBuildInfo)mSdkBuild.clone();
         sdkBuildClone.makeToolsExecutable();

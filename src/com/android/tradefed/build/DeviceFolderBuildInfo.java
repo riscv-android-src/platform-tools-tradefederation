@@ -27,10 +27,10 @@ public class DeviceFolderBuildInfo extends BuildInfo implements IDeviceBuildInfo
     private IFolderBuildInfo mFolderBuild;
 
     /**
-     * @see DeviceBuildInfo#DeviceBuildInfo(String, String, String)
+     * @see DeviceBuildInfo#DeviceBuildInfo(String, String)
      */
-    public DeviceFolderBuildInfo(String buildId, String testTarget, String buildName) {
-        super(buildId, testTarget, buildName);
+    public DeviceFolderBuildInfo(String buildId, String buildName) {
+        super(buildId, buildName);
     }
 
     /**
@@ -294,8 +294,7 @@ public class DeviceFolderBuildInfo extends BuildInfo implements IDeviceBuildInfo
      */
     @Override
     public IBuildInfo clone() {
-        DeviceFolderBuildInfo copy = new DeviceFolderBuildInfo(getBuildId(), getTestTag(),
-                getBuildTargetName());
+        DeviceFolderBuildInfo copy = new DeviceFolderBuildInfo(getBuildId(), getBuildTargetName());
         copy.addAllBuildAttributes(this);
         IDeviceBuildInfo deviceBuildClone = (IDeviceBuildInfo)mDeviceBuild.clone();
         copy.setDeviceBuild(deviceBuildClone);

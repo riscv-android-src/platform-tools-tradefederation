@@ -35,7 +35,7 @@ public class BuildInfoTest extends TestCase {
     @Override
     protected void setUp() throws Exception {
         super.setUp();
-        mBuildInfo = new BuildInfo("1", "build", "target");
+        mBuildInfo = new BuildInfo("1", "target");
         mBuildInfo.addBuildAttribute(ATTRIBUTE_KEY, "value");
         mFile = FileUtil.createTempFile("image", "tmp");
         FileUtil.writeToFile("filedata", mFile);
