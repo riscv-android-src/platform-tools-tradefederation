@@ -28,11 +28,8 @@ import org.easymock.EasyMock;
 import org.easymock.IAnswer;
 
 import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 
 /**
  * Unit tests for {@link InstalledInstrumentationsTestTest}.
@@ -105,11 +102,6 @@ public class InstalledInstrumentationsTestTest extends TestCase {
         final String nonshardableTestPkg1 = "com.example.nonshardabletest1";
         final String nonshardableTestPkg2 = "com.example.nonshardabletest2";
 
-        Set<String> nonshardableTestPkgs = new HashSet<String>(Arrays.asList(
-                nonshardableTestPkg1,
-                nonshardableTestPkg2));
-        Set<String> testShards = new HashSet<String>(Arrays.asList("0", "1"));
-
         // Instrumentations to be reported by the test device
         mListInstrResponseBuilder
                 .addInstrumentation(shardableTestPkg, shardableRunner, TEST_COVERAGE_TARGET)
@@ -163,6 +155,7 @@ public class InstalledInstrumentationsTestTest extends TestCase {
             return this;
         }
 
+        @Override
         public String toString() {
             return mResponseBuilder.toString();
         }

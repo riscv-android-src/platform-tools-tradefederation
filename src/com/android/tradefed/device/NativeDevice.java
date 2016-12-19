@@ -814,7 +814,8 @@ public class NativeDevice implements IManagedTestDevice {
                 return localFile;
             }
         } catch (IOException e) {
-            CLog.w("Encountered IOException while trying to pull '%s': %s", remoteFilePath, e);
+            CLog.w("Encountered IOException while trying to pull '%s':", remoteFilePath);
+            CLog.e(e);
         } finally {
             if (!success) {
                 FileUtil.deleteFile(localFile);

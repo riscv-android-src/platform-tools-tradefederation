@@ -86,8 +86,7 @@ public class CodeCoverageTestBaseTest extends TestCase {
 
     private static final File FAKE_COVERAGE_REPORT = new File("/some/fake/report/");
 
-    private static final IBuildInfo BUILD_INFO =
-            new BuildInfo("123456", "some-test-tag", "bullhead-userdebug");
+    private static final IBuildInfo BUILD_INFO = new BuildInfo("123456", "bullhead-userdebug");
 
     static enum FakeReportFormat implements CodeCoverageReportFormat {
         CSV(LogDataType.JACOCO_CSV),

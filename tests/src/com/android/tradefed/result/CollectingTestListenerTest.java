@@ -19,6 +19,8 @@ import com.android.ddmlib.testrunner.TestIdentifier;
 import com.android.ddmlib.testrunner.TestResult.TestStatus;
 import com.android.ddmlib.testrunner.TestRunResult;
 import com.android.tradefed.build.BuildInfo;
+import com.android.tradefed.invoker.IInvocationContext;
+import com.android.tradefed.invoker.InvocationContext;
 
 import junit.framework.TestCase;
 
@@ -47,7 +49,9 @@ public class CollectingTestListenerTest extends TestCase {
     protected void setUp() throws Exception {
         super.setUp();
         mCollectingTestListener = new CollectingTestListener();
-        mCollectingTestListener.invocationStarted(new BuildInfo());
+        IInvocationContext context = new InvocationContext();
+        context.addDeviceBuildInfo("fakeDevice", new BuildInfo());
+        mCollectingTestListener.invocationStarted(context);
     }
 
     /**

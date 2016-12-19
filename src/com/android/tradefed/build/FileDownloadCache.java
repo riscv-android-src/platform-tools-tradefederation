@@ -241,7 +241,7 @@ public class FileDownloadCache {
             downloader.downloadFile(remotePath, cachedFile);
         } catch (BuildRetrievalError e) {
             // cached file is likely incomplete, delete it
-            cachedFile.delete();
+            FileUtil.deleteFile(cachedFile);
             throw e;
         }
     }
@@ -257,11 +257,9 @@ public class FileDownloadCache {
             FileUtil.hardlinkFile(cachedFile, hardlinkFile);
             return hardlinkFile;
         } catch (IOException e) {
-            if (hardlinkFile != null) {
-                hardlinkFile.delete();
-            }
+            FileUtil.deleteFile(hardlinkFile);
             // cached file might be corrupt or incomplete, delete it
-            cachedFile.delete();
+            FileUtil.deleteFile(cachedFile);
             throw new BuildRetrievalError(String.format("Failed to copy cached file %s",
                     cachedFile), e);
         }

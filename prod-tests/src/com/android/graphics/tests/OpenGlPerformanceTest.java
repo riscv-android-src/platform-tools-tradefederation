@@ -30,9 +30,11 @@ import com.android.tradefed.result.LogDataType;
 import com.android.tradefed.result.SnapshotInputStreamSource;
 import com.android.tradefed.testtype.IDeviceTest;
 import com.android.tradefed.testtype.IRemoteTest;
+import com.android.tradefed.util.FileUtil;
 import com.android.tradefed.util.RegexTrie;
 import com.android.tradefed.util.RunUtil;
 import com.android.tradefed.util.SimpleStats;
+import com.android.tradefed.util.StreamUtil;
 
 import junit.framework.Assert;
 import junit.framework.TestCase;
@@ -216,12 +218,8 @@ public class OpenGlPerformanceTest implements IDeviceTest, IRemoteTest {
             } catch (IOException e) {
                 CLog.e("IOException while reading outputfile %s", outputFileName);
             } finally {
-                if (resFile != null) {
-                    resFile.delete();
-                }
-                if (outputSource != null) {
-                    outputSource.cancel();
-                }
+                FileUtil.deleteFile(resFile);
+                StreamUtil.cancel(outputSource);
             }
         }
 

@@ -29,6 +29,8 @@ import com.android.tradefed.result.LogDataType;
 import com.android.tradefed.result.SnapshotInputStreamSource;
 import com.android.tradefed.testtype.IDeviceTest;
 import com.android.tradefed.testtype.IRemoteTest;
+import com.android.tradefed.util.FileUtil;
+import com.android.tradefed.util.StreamUtil;
 
 import junit.framework.Assert;
 import junit.framework.TestCase;
@@ -898,7 +900,7 @@ public class FioBenchmarkTest implements IDeviceTest, IRemoteTest {
         File outputFile = null;
         InputStreamSource outputSource = null;
         try {
-            outputFile = mTestDevice.pullFile(remoteFileName);
+            outputFile = testDevice.pullFile(remoteFileName);
             if (outputFile != null) {
                 CLog.d("Sending %d byte file %s to logosphere!", outputFile.length(), outputFile);
                 outputSource = new SnapshotInputStreamSource(new FileInputStream(outputFile));
@@ -907,12 +909,8 @@ public class FioBenchmarkTest implements IDeviceTest, IRemoteTest {
         } catch (IOException e) {
             CLog.e(e);
         } finally {
-            if (outputSource != null) {
-                outputSource.cancel();
-            }
-            if (outputFile != null) {
-                outputFile.delete();
-            }
+            FileUtil.deleteFile(outputFile);
+            StreamUtil.cancel(outputSource);
         }
     }
 

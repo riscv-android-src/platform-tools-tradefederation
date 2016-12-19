@@ -70,12 +70,8 @@ public abstract class PropertyChanger {
                 bw.write(String.format("%s=%s\n", entry.getKey(), entry.getValue()));
             }
         } finally {
-            if (br != null) {
-                br.close();
-            }
-            if (bw != null) {
-                bw.close();
-            }
+            StreamUtil.close(br);
+            StreamUtil.close(bw);
         }
         return ret;
     }
