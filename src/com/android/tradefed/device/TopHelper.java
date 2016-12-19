@@ -97,7 +97,8 @@ public class TopHelper extends Thread {
                 mLogFile = logFile;
                 mLogWriter = new BufferedWriter(new FileWriter(mLogFile));
             } catch (IOException e) {
-                CLog.e("Error creating file: %s", e.getMessage());
+                CLog.e("Error creating fileWriter:");
+                CLog.e(e);
                 mLogWriter = null;
             }
         }
@@ -117,7 +118,8 @@ public class TopHelper extends Thread {
                             mLogWriter.write(line + "\n");
                         }
                     } catch (IOException e) {
-                        CLog.e("Error writing to file: %s", e.getMessage());
+                        CLog.e("Error writing to file:");
+                        CLog.e(e);
                     }
                 }
             }
@@ -154,7 +156,8 @@ public class TopHelper extends Thread {
                     mLogWriter.flush();
                     mLogWriter.close();
                 } catch (IOException e) {
-                    CLog.e("Error closing writer %s", e.getMessage());
+                    CLog.e("Error closing writer:");
+                    CLog.e(e);
                 } finally {
                     mLogWriter = null;
                 }
@@ -234,8 +237,8 @@ public class TopHelper extends Thread {
         try {
             mTestDevice.executeShellCommand(String.format(TOP_CMD, mDelay), mReceiver);
         } catch (DeviceNotAvailableException e) {
-            CLog.e("Device %s not available: %s", mTestDevice.getSerialNumber(),
-                    e.getMessage());
+            CLog.e("Device %s not available:", mTestDevice.getSerialNumber());
+            CLog.e(e);
         }
     }
 

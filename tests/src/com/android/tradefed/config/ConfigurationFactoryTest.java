@@ -199,7 +199,7 @@ public class ConfigurationFactoryTest extends TestCase {
             // check reading it again - should grab the cached version
             assertConfigValid(tmpFile.getAbsolutePath());
         } finally {
-            tmpFile.delete();
+            FileUtil.deleteFile(tmpFile);
         }
     }
 
@@ -224,7 +224,7 @@ public class ConfigurationFactoryTest extends TestCase {
             // check reading it again - should grab the cached version
             assertGlobalConfigValid(tmpFile.getAbsolutePath());
         } finally {
-            tmpFile.delete();
+            FileUtil.deleteFile(tmpFile);
         }
     }
 
@@ -528,7 +528,7 @@ public class ConfigurationFactoryTest extends TestCase {
             assertEquals("valueFromTestConfig", fromTestConfig.mOption);
             assertEquals("valueFromIncludeConfig", fromIncludeConfig.mOption);
         } finally {
-            tmpConfig.delete();
+            FileUtil.deleteFile(tmpConfig);
         }
     }
 
@@ -778,7 +778,7 @@ public class ConfigurationFactoryTest extends TestCase {
             test = (StubOptionTest)config.getTests().get(0);
             assertEquals("valueFromUpdatedConfig", test.mOption);
         } finally {
-            localConfigFile.delete();
+            FileUtil.deleteFile(localConfigFile);
         }
     }
 

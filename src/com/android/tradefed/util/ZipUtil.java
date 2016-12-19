@@ -71,8 +71,9 @@ public class ZipUtil {
                 }
             }
         } catch (ZipException e) {
-            // File is likely corrupt
-            CLog.d("Detected corrupt zip file %s: %s", zipFile.getCanonicalPath(), e.getMessage());
+            // File is likely corrupted
+            CLog.d("Detected corrupt zip file %s:", zipFile.getCanonicalPath());
+            CLog.e(e);
             return false;
         }
 

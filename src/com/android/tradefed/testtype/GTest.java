@@ -577,15 +577,13 @@ public class GTest implements IDeviceTest, IRemoteTest, ITestFilterReceiver, IRu
         } catch (DeviceNotAvailableException | RuntimeException e) {
             throw e;
         } catch (IOException e) {
-            throw new RuntimeException(e.getMessage());
+            throw new RuntimeException(e);
         } finally {
             outputCollector.flush();
             for (String cmd : mAfterTestCmd) {
                 testDevice.executeShellCommand(cmd);
             }
-            if (tmpOutput != null && tmpOutput.exists()) {
-                FileUtil.deleteFile(tmpOutput);
-            }
+            FileUtil.deleteFile(tmpOutput);
         }
     }
 

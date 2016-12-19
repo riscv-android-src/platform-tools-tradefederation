@@ -830,13 +830,8 @@ public class TestInvocation implements ITestInvocation {
             listener.testLog(EMULATOR_LOG_NAME, LogDataType.TEXT, emulatorOutput);
         }
         // Clean up after our ISSen
-        if (logcatSource != null) {
-            logcatSource.cancel();
-        }
-        if (emulatorOutput != null) {
-            emulatorOutput.cancel();
-        }
-
+        StreamUtil.cancel(logcatSource);
+        StreamUtil.cancel(emulatorOutput);
     }
 
     private void reportHostLog(ITestInvocationListener listener, ILeveledLogOutput logger) {

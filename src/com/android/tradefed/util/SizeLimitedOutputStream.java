@@ -17,7 +17,6 @@
 
 package com.android.tradefed.util;
 
-import com.android.tradefed.log.LogUtil.CLog;
 import com.google.common.io.CountingOutputStream;
 
 import java.io.BufferedOutputStream;
@@ -147,16 +146,8 @@ public class SizeLimitedOutputStream extends OutputStream {
      */
     @Override
     public synchronized void close() {
-        try {
-            if (mCurrentOutputStream != null) {
-                mCurrentOutputStream.flush();
-                mCurrentOutputStream.close();
-                mCurrentOutputStream = null;
-            }
-
-        } catch (IOException e) {
-            CLog.w("failed to close %s stream", e);
-        }
+        StreamUtil.flushAndCloseStream(mCurrentOutputStream);
+        mCurrentOutputStream = null;
     }
 
     /**

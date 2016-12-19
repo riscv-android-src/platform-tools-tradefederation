@@ -818,7 +818,7 @@ public class OptionSetterTest extends TestCase {
             assertSetOptionValue(optionSource, "file", tmpFile.getAbsolutePath());
             assertEquals(tmpFile.getAbsolutePath(), optionSource.mFile.getAbsolutePath());
         } finally {
-            tmpFile.delete();
+            FileUtil.deleteFile(tmpFile);
         }
     }
 

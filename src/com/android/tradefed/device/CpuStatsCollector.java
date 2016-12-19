@@ -217,7 +217,8 @@ public class CpuStatsCollector extends Thread {
                 mLogFile = logFile;
                 mLogWriter = new BufferedWriter(new FileWriter(mLogFile));
             } catch (IOException e) {
-                CLog.e("Error creating file: %s", e.getMessage());
+                CLog.e("IOException when creating a fileWriter:");
+                CLog.e(e);
                 mLogWriter = null;
             }
         }
@@ -237,7 +238,8 @@ public class CpuStatsCollector extends Thread {
                             mLogWriter.write(line + "\n");
                         }
                     } catch (IOException e) {
-                        CLog.e("Error writing to file: %s", e.getMessage());
+                        CLog.e("Error writing to file");
+                        CLog.e(e);
                     }
                 }
             }
@@ -287,7 +289,8 @@ public class CpuStatsCollector extends Thread {
                     mLogWriter.flush();
                     mLogWriter.close();
                 } catch (IOException e) {
-                    CLog.e("Error closing writer %s", e.getMessage());
+                    CLog.e("Error closing writer");
+                    CLog.e(e);
                 } finally {
                     mLogWriter = null;
                 }
@@ -370,8 +373,8 @@ public class CpuStatsCollector extends Thread {
         try {
             mTestDevice.executeShellCommand(String.format(CPU_STATS_CMD, mDelay), mReceiver);
         } catch (DeviceNotAvailableException e) {
-            CLog.e("Device %s not available: %s", mTestDevice.getSerialNumber(),
-                    e.getMessage());
+            CLog.e("Device %s not available:", mTestDevice.getSerialNumber());
+            CLog.e(e);
         }
     }
 

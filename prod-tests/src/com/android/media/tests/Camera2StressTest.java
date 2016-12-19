@@ -170,11 +170,14 @@ public class Camera2StressTest extends CameraTestBase {
                 // Post the number of iterations only with the test name as key.
                 testMetrics.put(testName, resultMap.get(KEY_ITERATION));
             } catch (IOException e) {
-                CLog.w("Couldn't parse the output log file: ", e);
+                CLog.w("Couldn't parse the output log file:");
+                CLog.e(e);
             } catch (DeviceNotAvailableException e) {
-                CLog.w("Could not pull file: %s, error: %s", RESULT_FILE, e);
+                CLog.w("Could not pull file: %s, error:", RESULT_FILE);
+                CLog.e(e);
             } catch (NumberFormatException e) {
-                CLog.w("Could not find the key in file: %s, error: %s", KEY_NUM_ATTEMPTS, e);
+                CLog.w("Could not find the key in file: %s, error:", KEY_NUM_ATTEMPTS);
+                CLog.e(e);
             }
         }
     }

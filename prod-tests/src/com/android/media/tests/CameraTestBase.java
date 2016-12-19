@@ -36,6 +36,7 @@ import com.android.tradefed.testtype.InstrumentationTest;
 import com.android.tradefed.util.FileUtil;
 import com.android.tradefed.util.IRunUtil;
 import com.android.tradefed.util.RunUtil;
+import com.android.tradefed.util.StreamUtil;
 
 import junit.framework.Assert;
 
@@ -360,11 +361,10 @@ public class CameraTestBase implements IDeviceTest, IRemoteTest, IConfigurationR
                     mListener.testLog(logName, LogDataType.TEXT, outputSource);
                     outputFile.delete();
                 } catch (FileNotFoundException e) {
-                    CLog.w("Failed to read meminfo log %s: %s", outputFile, e);
+                    CLog.e("Failed to read meminfo log %s:", outputFile);
+                    CLog.e(e);
                 } finally {
-                    if (outputSource != null) {
-                        outputSource.cancel();
-                    }
+                    StreamUtil.cancel(outputSource);
                 }
             }
             if (shouldDumpThreadCount()) {
@@ -376,11 +376,10 @@ public class CameraTestBase implements IDeviceTest, IRemoteTest, IConfigurationR
                     mListener.testLog(logName, LogDataType.TEXT, outputSource);
                     outputFile.delete();
                 } catch (FileNotFoundException e) {
-                    CLog.w("Failed to read thread count log %s: %s", outputFile, e);
+                    CLog.e("Failed to read thread count log %s", outputFile);
+                    CLog.e(e);
                 } finally {
-                    if (outputSource != null) {
-                        outputSource.cancel();
-                    }
+                    StreamUtil.cancel(outputSource);
                 }
             }
         }
@@ -512,7 +511,8 @@ public class CameraTestBase implements IDeviceTest, IRemoteTest, IConfigurationR
                 writer.flush();
                 writer.close();
             } catch (IOException e) {
-                CLog.w("Failed to create meminfo log file %s: %s", mOutputFile.getAbsolutePath(), e);
+                CLog.w("Failed to create meminfo log file %s:", mOutputFile.getAbsolutePath());
+                CLog.e(e);
                 return null;
             }
             return mOutputFile;
@@ -527,7 +527,8 @@ public class CameraTestBase implements IDeviceTest, IRemoteTest, IConfigurationR
                     SHELL_TIMEOUT_MS, TimeUnit.MILLISECONDS, SHELL_MAX_ATTEMPTS);
             printMeminfo(outputFile, receiver.getOutput());
         } catch (DeviceNotAvailableException e) {
-            CLog.w("Failed to dump meminfo: %s", e);
+            CLog.w("Failed to dump meminfo:");
+            CLog.e(e);
         }
     }
 
@@ -578,15 +579,10 @@ public class CameraTestBase implements IDeviceTest, IRemoteTest, IConfigurationR
             writer.newLine();
             writer.flush();
         } catch (IOException e) {
-            CLog.w("Failed to print meminfo to %s: %s", outputFile.getAbsolutePath(), e);
+            CLog.w("Failed to print meminfo to %s:", outputFile.getAbsolutePath());
+            CLog.e(e);
         } finally {
-            if (writer != null) {
-                try {
-                    writer.close();
-                } catch (IOException e) {
-                    CLog.w("Failed to close %s: %s", outputFile.getAbsolutePath(), e);
-                }
-            }
+            StreamUtil.close(writer);
         }
     }
 
@@ -659,8 +655,9 @@ public class CameraTestBase implements IDeviceTest, IRemoteTest, IConfigurationR
                         String.format("ps_%s", test.getTestName()), "txt");
                 new BufferedWriter(new FileWriter(mOutputFile, false)).close();
             } catch (IOException e) {
-                CLog.w("Failed to create processes and threads file %s: %s",
-                        mOutputFile.getAbsolutePath(), e);
+                CLog.w("Failed to create processes and threads file %s:",
+                        mOutputFile.getAbsolutePath());
+                CLog.e(e);
                 return null;
             }
             return mOutputFile;
@@ -672,7 +669,8 @@ public class CameraTestBase implements IDeviceTest, IRemoteTest, IConfigurationR
                 result = getDevice().executeShellCommand(String.format(PGREP_COMMAND_FORMAT,
                         processName));
             } catch (DeviceNotAvailableException e) {
-                CLog.w("Failed to get pid %s: %s", processName, e);
+                CLog.w("Failed to get pid %s:", processName);
+                CLog.e(e);
             }
             return result;
         }
@@ -706,10 +704,9 @@ public class CameraTestBase implements IDeviceTest, IRemoteTest, IConfigurationR
                 writer.newLine();
                 writer.flush();
                 writer.close();
-            } catch (DeviceNotAvailableException e) {
-                CLog.w("Failed to dump thread count: %s", e);
-            } catch (IOException e) {
-                CLog.w("Failed to dump thread count: %s", e);
+            } catch (DeviceNotAvailableException | IOException e) {
+                CLog.w("Failed to dump thread count:");
+                CLog.e(e);
             }
         }
     }
@@ -728,7 +725,8 @@ public class CameraTestBase implements IDeviceTest, IRemoteTest, IConfigurationR
                         new ByteArrayInputStreamSource(result.getBytes()));
             }
         } catch (DeviceNotAvailableException e) {
-            CLog.w("Failed to dump ION heaps: %s", e);
+            CLog.w("Failed to dump ION heaps:");
+            CLog.e(e);
         }
     }
 

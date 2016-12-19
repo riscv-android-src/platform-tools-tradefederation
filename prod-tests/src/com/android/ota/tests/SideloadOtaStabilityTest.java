@@ -363,7 +363,8 @@ public class SideloadOtaStabilityTest implements IDeviceTest, IBuildReceiver,
                     new FileInputStream(otaBuild.getOtaPackageFile()));
             listener.testLog(mRunName + "_package", LogDataType.ZIP, pkgSource);
         } catch (FileNotFoundException | NullPointerException e) {
-            CLog.w("Couldn't save update package due to exception %s", e);
+            CLog.w("Couldn't save update package due to exception");
+            CLog.e(e);
             return;
         } finally {
             StreamUtil.cancel(pkgSource);
@@ -390,7 +391,8 @@ public class SideloadOtaStabilityTest implements IDeviceTest, IBuildReceiver,
                 elapsedTime = Double.parseDouble(
                         endLine.substring(endLine.indexOf('[') + 1, endLine.indexOf(']')).trim());
             } catch (IOException | NumberFormatException | NullPointerException e) {
-                CLog.w("Couldn't get elapsed time from last_log due to exception %s", e);
+                CLog.w("Couldn't get elapsed time from last_log due to exception");
+                CLog.e(e);
             }
             listener.testLog(this.mRunName + "_recovery_log", LogDataType.TEXT,
                     lastLog);

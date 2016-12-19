@@ -54,7 +54,7 @@ public class OtaToolsDeviceBuildInfo extends OtaDeviceBuildInfo {
 
     @Override
     public void cleanUp() {
-        if (mOtaToolsDir != null) mOtaToolsDir.delete();
+        FileUtil.recursiveDelete(mOtaToolsDir);
         super.cleanUp();
     }
 

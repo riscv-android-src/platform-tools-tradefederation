@@ -83,10 +83,8 @@ public class SnapshotInputStreamSource implements InputStreamSource {
     @Override
     public synchronized void cancel() {
         mIsCancelled = true;
-        if (mBackingFile != null) {
-            mBackingFile.delete();
-            mBackingFile = null;
-        }
+        FileUtil.deleteFile(mBackingFile);
+        mBackingFile = null;
     }
 
     /**
