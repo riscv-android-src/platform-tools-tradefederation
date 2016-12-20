@@ -154,6 +154,8 @@ import com.android.tradefed.util.PsParserTest;
 import com.android.tradefed.util.QuotationAwareTokenizerTest;
 import com.android.tradefed.util.RegexTrieTest;
 import com.android.tradefed.util.RunUtilTest;
+import com.android.tradefed.util.SimplePerfStatResultParserTest;
+import com.android.tradefed.util.SimplePerfUtilTest;
 import com.android.tradefed.util.SimpleStatsTest;
 import com.android.tradefed.util.SizeLimitedOutputStreamTest;
 import com.android.tradefed.util.StreamUtilTest;
@@ -351,16 +353,18 @@ import org.junit.runners.Suite.SuiteClasses;
     QuotationAwareTokenizerTest.class,
     RegexTrieTest.class,
     RunUtilTest.class,
+    SimplePerfStatResultParserTest.class,
+    SimplePerfUtilTest.class,
+    SimpleStatsTest.class,
     SizeLimitedOutputStreamTest.class,
     StreamUtilTest.class,
+    StringEscapeUtilsTest.class,
     SubprocessTestResultsParserTest.class,
     TableFormatterTest.class,
     TarUtilTest.class,
     TestLoaderTest.class,
     TimeUtilTest.class,
     TimeValTest.class,
-    SimpleStatsTest.class,
-    StringEscapeUtilsTest.class,
     XmlRpcHelperTest.class,
     ZipUtilTest.class,
 
