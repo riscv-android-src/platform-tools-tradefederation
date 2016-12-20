@@ -148,6 +148,11 @@ public class InstalledInstrumentationsTest
             "Split test run into this many parallel shards")
     private int mShards = 0;
 
+    @Option(name = "disable", description =
+            "Disable the test by setting this flag to true.")
+    private boolean mDisable = false;
+
+
     private int mTotalShards = 0;
     private int mShardIndex = 0;
 
@@ -217,6 +222,10 @@ public class InstalledInstrumentationsTest
     public void run(ITestInvocationListener listener) throws DeviceNotAvailableException {
         if (getDevice() == null) {
             throw new IllegalArgumentException("Device has not been set");
+        }
+
+        if (mDisable) {
+            return;
         }
         buildTests();
         doRun(listener);
