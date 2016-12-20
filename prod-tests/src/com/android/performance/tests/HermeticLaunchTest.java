@@ -34,6 +34,7 @@ import com.android.tradefed.result.LogDataType;
 import com.android.tradefed.testtype.IDeviceTest;
 import com.android.tradefed.testtype.IRemoteTest;
 import com.android.tradefed.util.FileUtil;
+import com.android.tradefed.util.StreamUtil;
 
 import junit.framework.Assert;
 
@@ -76,6 +77,7 @@ public class HermeticLaunchTest implements IRemoteTest, IDeviceTest {
             this.name = s;
         }
 
+        @Override
         public String toString() {
             return name;
         }
@@ -503,7 +505,7 @@ public class HermeticLaunchTest implements IRemoteTest, IDeviceTest {
             }
 
         }
-        br.close();
+        StreamUtil.close(br);
         return sectionInfo;
     }
 

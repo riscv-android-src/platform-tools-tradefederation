@@ -196,31 +196,19 @@ public class FileLogger implements ILeveledLogOutput {
      */
     @Override
     public void closeLog() {
-        try {
-            doCloseLog();
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
+        doCloseLog();
     }
 
     /**
      * Flushes stream and closes log file.
      * <p/>
      * Exposed for unit testing.
-     *
-     * @throws IOException
      */
-    void doCloseLog() throws IOException {
+    void doCloseLog() {
         SizeLimitedOutputStream stream = mLogStream;
         mLogStream = null;
-        if (stream != null) {
-            try {
-                stream.flush();
-                stream.close();
-            } finally {
-                stream.delete();
-            }
-        }
+        StreamUtil.flushAndCloseStream(stream);
+        stream.delete();
     }
 
     /**

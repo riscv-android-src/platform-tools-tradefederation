@@ -29,11 +29,7 @@ import junit.framework.TestCase;
 import org.easymock.EasyMock;
 
 import java.io.File;
-import java.util.Arrays;
-import java.util.Collection;
 import java.util.concurrent.TimeUnit;
-import java.util.HashSet;
-import java.util.Set;
 
 
 /**

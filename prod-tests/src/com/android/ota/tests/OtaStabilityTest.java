@@ -41,6 +41,7 @@ import com.android.tradefed.testtype.IShardableTest;
 import com.android.tradefed.util.FileUtil;
 import com.android.tradefed.util.IRunUtil;
 import com.android.tradefed.util.RunUtil;
+import com.android.tradefed.util.StreamUtil;
 
 import junit.framework.Assert;
 import junit.framework.AssertionFailedError;
@@ -57,7 +58,7 @@ import java.util.Map;
  * A test that will flash a build on a device, wait for the device to be OTA-ed to another build,
  * and then repeat N times.
  * <p/>
- * Note: this test assumes that the {@link ITargetPreparers} included in this test's
+ * Note: this test assumes that the {@link ITargetPreparer}s included in this test's
  * {@link IConfiguration} will flash the device back to a baseline build, and prepare the device
  * to receive the OTA to a new build.
  */
@@ -331,12 +332,8 @@ public class OtaStabilityTest implements IDeviceTest, IBuildReceiver, IConfigura
                     mDevice.getSerialNumber()));
             Log.e(LOG_TAG, e);
         } finally {
-            if (destFile != null) {
-                destFile.delete();
-            }
-            if (destSource != null) {
-                destSource.cancel();
-            }
+            FileUtil.deleteFile(destFile);
+            StreamUtil.cancel(destSource);
         }
     }
 

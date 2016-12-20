@@ -67,7 +67,7 @@ public class InstallApkSetupTest {
     }
 
     /**
-     * Test {@link InstallApkSetupTest#setup()} by successfully installing 2 Apk files
+     * Test {@link InstallApkSetupTest#setUp()} by successfully installing 2 Apk files
      */
     @Test
     public void testSetup() throws DeviceNotAvailableException, BuildError, TargetSetupError {
@@ -82,7 +82,7 @@ public class InstallApkSetupTest {
     }
 
     /**
-     * Test {@link InstallApkSetupTest#setup()} by installing a non-existing Apk
+     * Test {@link InstallApkSetupTest#setUp()} by installing a non-existing Apk
      */
     @Test
     public void testNonExistingApk() throws DeviceNotAvailableException, BuildError {
@@ -101,7 +101,7 @@ public class InstallApkSetupTest {
     }
 
     /**
-     * Test {@link InstallApkSetupTest#setup()} by having an installation failure
+     * Test {@link InstallApkSetupTest#setUp()} by having an installation failure
      * but not throwing any exception
      */
     @Test
@@ -119,7 +119,7 @@ public class InstallApkSetupTest {
     }
 
     /**
-     * Test {@link InstallApkSetupTest#setup()} by having an installation failure
+     * Test {@link InstallApkSetupTest#setUp()} by having an installation failure
      * and throwing an exception
      */
     @Test

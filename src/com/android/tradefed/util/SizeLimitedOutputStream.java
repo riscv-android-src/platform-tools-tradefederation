@@ -163,9 +163,7 @@ public class SizeLimitedOutputStream extends OutputStream {
         // close current stream
         close();
         mCurrentFilePos = getNextIndex(mCurrentFilePos);
-        if (mFiles[mCurrentFilePos] != null) {
-            mFiles[mCurrentFilePos].delete();
-        }
+        FileUtil.deleteFile(mFiles[mCurrentFilePos]);
         mFiles[mCurrentFilePos] = FileUtil.createTempFile(mTempFilePrefix, mTempFileSuffix);
         mCurrentOutputStream = new CountingOutputStream(new BufferedOutputStream(
                 new FileOutputStream(mFiles[mCurrentFilePos]), BUFF_SIZE));

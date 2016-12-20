@@ -33,6 +33,7 @@ import com.android.tradefed.result.LogDataType;
 import com.android.tradefed.result.SnapshotInputStreamSource;
 import com.android.tradefed.testtype.IDeviceTest;
 import com.android.tradefed.testtype.IRemoteTest;
+import com.android.tradefed.util.FileUtil;
 import com.android.tradefed.util.StreamUtil;
 
 import junit.framework.Assert;
@@ -172,12 +173,8 @@ public class MediaMemoryTest implements IDeviceTest, IRemoteTest {
                 CLog.e("IOException while reading or parsing output file: %s",
                         e.getMessage());
             } finally {
-                if (outputFile != null) {
-                    outputFile.delete();
-                }
-                if (outputSource != null) {
-                    outputSource.cancel();
-                }
+                FileUtil.deleteFile(outputFile);
+                StreamUtil.cancel(outputSource);
             }
         }
     }
@@ -215,12 +212,8 @@ public class MediaMemoryTest implements IDeviceTest, IRemoteTest {
                 CLog.e("IOException while reading or parsing output file: %s",
                        e.getMessage());
             } finally {
-                if (outputFile != null) {
-                    outputFile.delete();
-                }
-                if (outputSource != null) {
-                    outputSource.cancel();
-                }
+                FileUtil.deleteFile(outputFile);
+                StreamUtil.cancel(outputSource);
             }
         }
     }
