@@ -19,7 +19,9 @@ import com.android.tradefed.config.Option;
 import com.android.tradefed.config.Option.Importance;
 import com.android.tradefed.config.OptionClass;
 import com.android.tradefed.log.LogUtil.CLog;
-import com.android.tradefed.util.FileUtil;
+import com.android.tradefed.targetprep.FlashingResourcesParser;
+import com.android.tradefed.targetprep.IFlashingResourcesParser;
+import com.android.tradefed.targetprep.TargetSetupError;
 import com.android.tradefed.util.ZipUtil;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.io.PatternFilenameFilter;
@@ -29,8 +31,6 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 /**
  * A {@link IBuildProvider} that constructs a {@link IDeviceBuildInfo} based on a provided
@@ -43,9 +43,6 @@ public class LocalDeviceBuildProvider extends StubBuildProvider {
 
     private static final String BUILD_INFO_FILE = "android-info.txt";
     private static final String BUILD_DIR_OPTION_NAME = "build-dir";
-
-    private static final String BOOTLOADER_VERSION_PATTERN = "(?<=version-bootloader=)(\\S+)";
-    private static final String RADIO_VERSION_PATTERN = "(?<=version-baseband=)(\\S+)";
 
     private String mBootloaderVersion = null;
     private String mRadioVersion = null;
@@ -95,9 +92,9 @@ public class LocalDeviceBuildProvider extends StubBuildProvider {
         DeviceBuildInfo buildInfo = new DeviceBuildInfo(stubBuild.getBuildId(),
                 stubBuild.getBuildTargetName());
         buildInfo.addAllBuildAttributes(stubBuild);
-        parseBootloaderAndRadioVersions();
 
         setDeviceImageFile(buildInfo);
+        parseBootloaderAndRadioVersions(buildInfo);
         setTestsDir(buildInfo);
         setBootloaderImage(buildInfo);
         setRadioImage(buildInfo);
@@ -108,29 +105,17 @@ public class LocalDeviceBuildProvider extends StubBuildProvider {
     /**
      * Parse bootloader and radio versions from the android build info file.
      *
+     * @param buildInfo a {@link DeviceBuildInfo}
      * @throws BuildRetrievalError
      */
-    void parseBootloaderAndRadioVersions() throws BuildRetrievalError {
-        File info = findFileInDir(BUILD_INFO_FILE);
-        if (info == null){
-            CLog.i("No build info file [%s] found. Nothing to parse", BUILD_INFO_FILE);
-            return;
-        }
-        Pattern bootPattern = Pattern.compile(BOOTLOADER_VERSION_PATTERN);
-        Pattern radioPattern = Pattern.compile(RADIO_VERSION_PATTERN);
+    void parseBootloaderAndRadioVersions(DeviceBuildInfo buildInfo) throws BuildRetrievalError {
         try {
-            String infoContents = FileUtil.readStringFromFile(info);
-            Matcher bootMatch = bootPattern.matcher(infoContents);
-            if (bootMatch.find()) {
-                mBootloaderVersion = bootMatch.group();
-                CLog.i("Required bootloader version: %s", mBootloaderVersion);
-            }
-            Matcher radioMatch = radioPattern.matcher(infoContents);
-            if (radioMatch.find()) {
-                mRadioVersion = radioMatch.group();
-                CLog.i("Required radio baseband version: %s", mRadioVersion);
-            }
-        } catch (IOException e) {
+            IFlashingResourcesParser flashingResourcesParser;
+            flashingResourcesParser = new FlashingResourcesParser(
+                    buildInfo.getDeviceImageFile());
+            mBootloaderVersion = flashingResourcesParser.getRequiredBootloaderVersion();
+            mRadioVersion = flashingResourcesParser.getRequiredBasebandVersion();
+        } catch (TargetSetupError e) {
             throw new BuildRetrievalError("Unable parse bootloader and radio versions", e);
         }
     }
@@ -181,25 +166,15 @@ public class LocalDeviceBuildProvider extends StubBuildProvider {
 
     void setRadioImage(DeviceBuildInfo buildInfo) throws BuildRetrievalError {
         File radioImgFile = findFileInDir(mRadioPattern);
-        String radioVersion = mRadioVersion;
-        if (radioVersion == null) {
-            // Default to the build Id if we don't have a radio version.
-            radioVersion = buildInfo.getBuildId();
-        }
         if (radioImgFile != null) {
-            buildInfo.setBasebandImage(radioImgFile, radioVersion);
+            buildInfo.setBasebandImage(radioImgFile, mRadioVersion);
         }
     }
 
     void setBootloaderImage(DeviceBuildInfo buildInfo) throws BuildRetrievalError {
         File bootloaderImgFile = findFileInDir(mBootloaderPattern);
-        String bootloaderVersion = mBootloaderVersion;
-        if (bootloaderVersion == null) {
-            // Default to the build Id if we don't have a bootloader version.
-            bootloaderVersion = buildInfo.getBuildId();
-        }
         if (bootloaderImgFile != null) {
-            buildInfo.setBootloaderImageFile(bootloaderImgFile, bootloaderVersion);
+            buildInfo.setBootloaderImageFile(bootloaderImgFile, mBootloaderVersion);
         }
     }
 

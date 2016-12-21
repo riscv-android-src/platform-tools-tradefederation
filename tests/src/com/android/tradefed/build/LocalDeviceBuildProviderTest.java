@@ -85,6 +85,10 @@ public class LocalDeviceBuildProviderTest {
             void setDeviceImageFile(DeviceBuildInfo buildInfo) {
                 buildInfo.setDeviceImageFile(imgFile, buildInfo.getBuildId());
             }
+            @Override
+            void parseBootloaderAndRadioVersions(DeviceBuildInfo buildInfo) {
+                // do nothing
+            }
         };
         mLocalDeviceBuildProvider.setBuildDir(mBuildDir);
         DeviceBuildInfo info = (DeviceBuildInfo)mLocalDeviceBuildProvider.getBuild();
@@ -98,6 +102,10 @@ public class LocalDeviceBuildProviderTest {
             @Override
             File createBuildImageZip() throws BuildRetrievalError {
                 return buildImageZip;
+            }
+            @Override
+            void parseBootloaderAndRadioVersions(DeviceBuildInfo buildInfo) {
+                // do nothing
             }
         };
         mLocalDeviceBuildProvider.setBuildDir(mBuildDir);
@@ -123,30 +131,6 @@ public class LocalDeviceBuildProviderTest {
         } finally {
             FileUtil.deleteFile(buildImageZip);
         }
-    }
-
-    @Test
-    public void testBootloaderAndRadioParseVersions() throws Exception {
-        mLocalDeviceBuildProvider.parseBootloaderAndRadioVersions();
-        assertEquals("BHZ11h", mLocalDeviceBuildProvider.getBootloaderVersion());
-        assertEquals("M8994F-2.6.36.2.20", mLocalDeviceBuildProvider.getRadioVersion());
-    }
-
-    @Test
-    public void testBootloaderAndRadioParseVersions_noInfoFile() throws Exception {
-        FileUtil.deleteFile(mAndroidInfo);
-        mLocalDeviceBuildProvider.parseBootloaderAndRadioVersions();
-        assertNull(mLocalDeviceBuildProvider.getBootloaderVersion());
-        assertNull(mLocalDeviceBuildProvider.getRadioVersion());
-    }
-
-    @Test
-    public void testBootloaderAndRadioParseVersions_missingVersion() throws Exception {
-        FileUtil.deleteFile(mAndroidInfo);
-        FileUtil.writeToFile("require version-bootloader=BHZ11h", mAndroidInfo);
-        mLocalDeviceBuildProvider.parseBootloaderAndRadioVersions();
-        assertEquals("BHZ11h", mLocalDeviceBuildProvider.getBootloaderVersion());
-        assertNull(mLocalDeviceBuildProvider.getRadioVersion());
     }
 
     @Test
