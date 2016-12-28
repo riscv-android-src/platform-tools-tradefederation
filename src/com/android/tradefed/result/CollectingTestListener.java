@@ -235,8 +235,9 @@ public class CollectingTestListener implements ITestInvocationListener {
      */
     public int getNumTestsInState(TestStatus status) {
         if (mIsCountDirty) {
-            for (TestRunResult result : mRunResultsMap.values()) {
-                for (TestStatus s : TestStatus.values()) {
+            for (TestStatus s : TestStatus.values()) {
+                mStatusCounts[s.ordinal()] = 0;
+                for (TestRunResult result : mRunResultsMap.values()) {
                     mStatusCounts[s.ordinal()] += result.getNumTestsInState(s);
                 }
             }

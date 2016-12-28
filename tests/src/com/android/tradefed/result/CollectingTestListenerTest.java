@@ -212,6 +212,26 @@ public class CollectingTestListenerTest extends TestCase {
                 RUN_KEY));
     }
 
+    public void testGetNumTestsInState() {
+        injectTestRun("run", "testFoo1", "1");
+        injectTestRun("run", "testFoo2", "1");
+        int testsPassed = mCollectingTestListener.getNumTestsInState(TestStatus.PASSED);
+        assertEquals(2, testsPassed);
+        injectTestRun("run", "testFoo3", "1");
+        testsPassed = mCollectingTestListener.getNumTestsInState(TestStatus.PASSED);
+        assertEquals(3, testsPassed);
+    }
+
+    public void testGetNumTotalTests() {
+        injectTestRun("run", "testFoo1", "1");
+        injectTestRun("run", "testFoo2", "1");
+        int total = mCollectingTestListener.getNumTotalTests();
+        assertEquals(2, total);
+        injectTestRun("run", "testFoo3", "1", true);
+        total = mCollectingTestListener.getNumTotalTests();
+        assertEquals(3, total);
+    }
+
     /**
      * Injects a single test run with 1 passed test into the {@link CollectingTestListener} under
      * test
