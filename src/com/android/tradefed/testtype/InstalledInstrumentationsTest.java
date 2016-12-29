@@ -47,6 +47,8 @@ public class InstalledInstrumentationsTest
     /** the metric key name for the test coverage target value */
     // TODO: move this to a more generic location
     public static final String COVERAGE_TARGET_KEY = XmlDefsTest.COVERAGE_TARGET_KEY;
+    private static final String PM_LIST_CMD = "pm list instrumentation";
+    private static final String LINE_SEPARATOR = "\\r?\\n";
 
     private ITestDevice mDevice;
 
@@ -234,18 +236,20 @@ public class InstalledInstrumentationsTest
     /**
      * Build the list of tests to run from the device, if not done already. Note: Can be called
      * multiple times in case of resumed runs.
-
      * @throws DeviceNotAvailableException
      */
     private void buildTests() throws DeviceNotAvailableException {
         if (mTests == null) {
+
             ListInstrumentationParser parser = new ListInstrumentationParser();
-            getDevice().executeShellCommand("pm list instrumentation", parser);
+            String pmListOutput = getDevice().executeShellCommand(PM_LIST_CMD);
+            String pmListLines[] = pmListOutput.split(LINE_SEPARATOR);
+            parser.processNewLines(pmListLines);
 
             if (parser.getInstrumentationTargets().isEmpty()) {
                 throw new IllegalArgumentException(String.format(
-                        "No instrumentations were found on device %s",
-                        getDevice().getSerialNumber()));
+                        "No instrumentations were found on device %s - <%s>", getDevice()
+                                .getSerialNumber(), pmListOutput));
             }
 
             int numUnshardedTests = 0;

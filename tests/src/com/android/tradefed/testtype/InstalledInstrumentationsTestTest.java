@@ -15,21 +15,20 @@
  */
 package com.android.tradefed.testtype;
 
-import com.android.ddmlib.IShellOutputReceiver;
 import com.android.tradefed.config.ArgsOptionParser;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.result.ITestInvocationListener;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
 
 import junit.framework.TestCase;
 
 import org.easymock.Capture;
 import org.easymock.EasyMock;
 import org.easymock.IAnswer;
-
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
 
 /**
  * Unit tests for {@link InstalledInstrumentationsTestTest}.
@@ -40,11 +39,13 @@ public class InstalledInstrumentationsTestTest extends TestCase {
     private static final String TEST_COVERAGE_TARGET = "com.example";
     private static final String TEST_RUNNER = "android.support.runner.AndroidJUnitRunner";
     private static final String ABI = "forceMyAbiSettingPlease";
+    private static final String INSTR_OUTPUT_FORMAT = "instrumentation:%s/%s (target=%s)\r\n";
+    private static final String PM_LIST_ERROR_OUTPUT = "Error: Could not access the Package "
+            + "Manager.  Is the system running?";
     private ITestDevice mMockTestDevice;
     private ITestInvocationListener mMockListener;
     private List<MockInstrumentationTest> mMockInstrumentationTests;
     private InstalledInstrumentationsTest mInstalledInstrTest;
-    private ListInstrResponseBuilder mListInstrResponseBuilder;
 
     /**
      * {@inheritDoc}
@@ -59,16 +60,14 @@ public class InstalledInstrumentationsTestTest extends TestCase {
         mMockInstrumentationTests = new ArrayList<MockInstrumentationTest>();
         mInstalledInstrTest = createInstalledInstrumentationsTest();
         mInstalledInstrTest.setDevice(mMockTestDevice);
-        mListInstrResponseBuilder = new ListInstrResponseBuilder();
     }
 
     /**
      * Test the run normal case. Simple verification that expected data is passed along, etc.
      */
     public void testRun() throws Exception {
-        mListInstrResponseBuilder
-                .addInstrumentation(TEST_PKG, TEST_RUNNER, TEST_COVERAGE_TARGET)
-                .injectListInstrResponse();
+        injectShellResponse(String.format(INSTR_OUTPUT_FORMAT, TEST_PKG, TEST_RUNNER,
+                TEST_COVERAGE_TARGET), 1);
 
         mMockListener.testRunStarted(TEST_PKG, 0);
         Capture<Map<String, String>> captureMetrics = new Capture<Map<String, String>>();
@@ -102,12 +101,15 @@ public class InstalledInstrumentationsTestTest extends TestCase {
         final String nonshardableTestPkg1 = "com.example.nonshardabletest1";
         final String nonshardableTestPkg2 = "com.example.nonshardabletest2";
 
-        // Instrumentations to be reported by the test device
-        mListInstrResponseBuilder
-                .addInstrumentation(shardableTestPkg, shardableRunner, TEST_COVERAGE_TARGET)
-                .addInstrumentation(nonshardableTestPkg1, nonshardableRunner, TEST_COVERAGE_TARGET)
-                .addInstrumentation(nonshardableTestPkg2, nonshardableRunner, TEST_COVERAGE_TARGET)
-                .injectListInstrResponse(2);
+        String shardableInstr = String.format(INSTR_OUTPUT_FORMAT, shardableTestPkg,
+                shardableRunner, TEST_COVERAGE_TARGET);
+        String nonshardableInstr1 = String.format(INSTR_OUTPUT_FORMAT, nonshardableTestPkg1,
+                nonshardableRunner, TEST_COVERAGE_TARGET);
+        String nonshardableInstr2 = String.format(INSTR_OUTPUT_FORMAT, nonshardableTestPkg2,
+                nonshardableRunner, TEST_COVERAGE_TARGET);
+
+        injectShellResponse(String.format("%s%s%s", shardableInstr,
+                nonshardableInstr1, nonshardableInstr2), 2);
 
         // Instantiate InstalledInstrumentationTest shards
         EasyMock.replay(mMockTestDevice, mMockListener);
@@ -142,49 +144,23 @@ public class InstalledInstrumentationsTestTest extends TestCase {
         EasyMock.verify(mMockListener, mMockTestDevice);
     }
 
-    /** A utility class for building the output of the list instrumentation response. */
-    private class ListInstrResponseBuilder {
 
-        private static final String INSTR_RESPONSE_FORMAT = "instrumentation:%s/%s (target=%s)\r\n";
-        private StringBuilder mResponseBuilder = new StringBuilder();
-
-        public ListInstrResponseBuilder addInstrumentation(
-                String test_package, String test_runner, String test_target) {
-            mResponseBuilder.append(
-                    String.format(INSTR_RESPONSE_FORMAT, test_package, test_runner, test_target));
-            return this;
-        }
-
-        @Override
-        public String toString() {
-            return mResponseBuilder.toString();
-        }
-
-        public void injectListInstrResponse() throws DeviceNotAvailableException {
-            injectListInstrResponse(1);
-        }
-
-        public void injectListInstrResponse(int numCalls) throws DeviceNotAvailableException {
-            injectShellResponse(mListInstrResponseBuilder.toString(), numCalls);
-        }
-    }
-
-    @SuppressWarnings("unchecked")
+    /**
+     * Method to mock the executeShellCommand response
+     *
+     * @param shellResponse value to be returned by executeShellCommand
+     * @param numExpectedCalls number of invocation expected
+     * @throws DeviceNotAvailableException
+     */
     private void injectShellResponse(final String shellResponse, int numExpectedCalls)
             throws DeviceNotAvailableException {
         IAnswer<Object> shellAnswer = new IAnswer<Object>() {
             @Override
-            public Object answer() throws Throwable {
-                IShellOutputReceiver receiver =
-                        (IShellOutputReceiver)EasyMock.getCurrentArguments()[1];
-                byte[] bytes = shellResponse.getBytes();
-                receiver.addOutput(bytes, 0, bytes.length);
-                receiver.flush();
-                return null;
+            public String answer() throws Throwable {
+                return shellResponse;
             }
         };
-        mMockTestDevice.executeShellCommand(EasyMock.<String>anyObject(),
-                EasyMock.<IShellOutputReceiver>anyObject());
+        mMockTestDevice.executeShellCommand(EasyMock.<String> anyObject());
         EasyMock.expectLastCall().andAnswer(shellAnswer).times(numExpectedCalls);
     }
 
@@ -210,7 +186,6 @@ public class InstalledInstrumentationsTestTest extends TestCase {
      * Test that IllegalArgumentException is thrown when attempting run without setting device.
      */
     public void testRun_noDevice() throws Exception {
-        mListInstrResponseBuilder.injectListInstrResponse();
         mInstalledInstrTest.setDevice(null);
         try {
             mInstalledInstrTest.run(mMockListener);
@@ -225,7 +200,8 @@ public class InstalledInstrumentationsTestTest extends TestCase {
      * are present.
      */
     public void testRun_noInstr() throws Exception {
-        mListInstrResponseBuilder.injectListInstrResponse();
+        injectShellResponse(PM_LIST_ERROR_OUTPUT, 1);
+        EasyMock.replay(mMockTestDevice, mMockListener);
         try {
             mInstalledInstrTest.run(mMockListener);
             fail("IllegalArgumentException not thrown");
