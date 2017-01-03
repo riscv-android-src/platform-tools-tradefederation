@@ -65,6 +65,9 @@ import com.android.tradefed.log.LogRegistryTest;
 import com.android.tradefed.log.TerribleFailureEmailHandlerTest;
 import com.android.tradefed.profiler.AggregatingProfilerTest;
 import com.android.tradefed.profiler.MetricOutputDataTest;
+import com.android.tradefed.profiler.recorder.TraceMetricTest;
+import com.android.tradefed.profiler.recorder.TraceMetricsRecorderTest;
+import com.android.tradefed.profiler.recorder.TraceParserTest;
 import com.android.tradefed.result.AggregatingProfilerListenerTest;
 import com.android.tradefed.result.BugreportCollectorTest;
 import com.android.tradefed.result.CollectingTestListenerTest;
@@ -266,6 +269,9 @@ import org.junit.runners.Suite.SuiteClasses;
     // profiler subdirs
     AggregatingProfilerTest.class,
     MetricOutputDataTest.class,
+    TraceMetricsRecorderTest.class,
+    TraceMetricTest.class,
+    TraceParserTest.class,
 
     // result
     AggregatingProfilerListenerTest.class,
