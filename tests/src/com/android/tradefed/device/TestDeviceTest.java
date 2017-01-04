@@ -35,12 +35,16 @@ import com.android.tradefed.util.CommandStatus;
 import com.android.tradefed.util.FileUtil;
 import com.android.tradefed.util.IRunUtil;
 import com.android.tradefed.util.RunUtil;
-import com.android.tradefed.util.ZipUtil;
+import com.android.tradefed.util.ZipUtil2;
 
 import com.google.common.util.concurrent.SettableFuture;
 
 import junit.framework.Assert;
 import junit.framework.TestCase;
+
+import org.easymock.EasyMock;
+import org.easymock.IAnswer;
+import org.easymock.IExpectationSetters;
 
 import java.io.File;
 import java.io.IOException;
@@ -54,10 +58,6 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
-
-import org.easymock.EasyMock;
-import org.easymock.IAnswer;
-import org.easymock.IExpectationSetters;
 
 /**
  * Unit tests for {@link TestDevice}.
@@ -2769,7 +2769,7 @@ public class TestDeviceTest extends TestCase {
         File imageZipFile = FileUtil.createTempFile("rawImage", ".zip");
         try {
             FileUtil.writeToFile(imageZip, imageZipFile);
-            File dir = ZipUtil.extractZipToTemp(imageZipFile, "test-raw-image");
+            File dir = ZipUtil2.extractZipToTemp(imageZipFile, "test-raw-image");
             return new File(dir, "rawImageScreenshot.raw");
         } finally {
             FileUtil.deleteFile(imageZipFile);

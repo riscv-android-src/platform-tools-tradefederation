@@ -15,17 +15,20 @@
  */
 package com.android.tradefed.build;
 
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertTrue;
 
 import com.android.tradefed.util.FileUtil;
-import com.android.tradefed.util.ZipUtil;
+import com.android.tradefed.util.ZipUtil2;
 
+import org.apache.commons.compress.archivers.zip.ZipFile;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
 import java.io.File;
-import java.util.zip.ZipFile;
 
 
 /**
@@ -118,7 +121,7 @@ public class LocalDeviceBuildProviderTest {
         File buildImageZip = mLocalDeviceBuildProvider.createBuildImageZip();
         try {
             assertNotNull(buildImageZip);
-            ZipUtil.extractZip(new ZipFile(buildImageZip), mTmpDir);
+            ZipUtil2.extractZip(new ZipFile(buildImageZip), mTmpDir);
             File extractedFile1 = new File(mTmpDir, mAndroidInfo.getName());
             File extractedFile2 = new File(mTmpDir, mBootImg.getName());
             File extractedFile3 = new File(mTmpDir, mSystemImg.getName());

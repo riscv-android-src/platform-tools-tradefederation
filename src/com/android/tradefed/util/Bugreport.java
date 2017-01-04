@@ -21,14 +21,15 @@ import com.android.tradefed.result.FileInputStreamSource;
 import com.android.tradefed.result.InputStreamSource;
 import com.android.tradefed.result.LogDataType;
 
+import org.apache.commons.compress.archivers.zip.ZipArchiveEntry;
+import org.apache.commons.compress.archivers.zip.ZipFile;
+
 import java.io.Closeable;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
-import java.util.zip.ZipEntry;
-import java.util.zip.ZipFile;
 
 /**
  * Object holding the bugreport files references, compatible of flat bugreport and zipped bugreport
@@ -80,14 +81,14 @@ public class Bugreport implements Closeable {
             try {
                 zip = new ZipFile(mBugreport);
                 // We get the main_entry.txt that contains the bugreport name.
-                mainEntry = ZipUtil.extractFileFromZip(zip, "main_entry.txt");
+                mainEntry = ZipUtil2.extractFileFromZip(zip, "main_entry.txt");
                 if (mainEntry == null) {
                     CLog.w("main_entry.txt was not found inside the bugreport");
                     return null;
                 }
                 String bugreportName = FileUtil.readStringFromFile(mainEntry).trim();
                 CLog.d("bugreport name: '%s'", bugreportName);
-                return ZipUtil.extractFileFromZip(zip, bugreportName);
+                return ZipUtil2.extractFileFromZip(zip, bugreportName);
             } catch (IOException e) {
                 CLog.e("Error while unzipping bugreportz");
                 CLog.e(e);
@@ -113,14 +114,14 @@ public class Bugreport implements Closeable {
         ZipFile zipBugreport = null;
         try {
             zipBugreport = new ZipFile(mBugreport);
-            for (ZipEntry entry : Collections.list(zipBugreport.entries())) {
+            for (ZipArchiveEntry entry : Collections.list(zipBugreport.getEntries())) {
                 list.add(entry.getName());
             }
         } catch (IOException e) {
             CLog.e("Error reading the list of files in the bugreport");
             CLog.e(e);
         } finally {
-            ZipUtil.closeZip(zipBugreport);
+            ZipUtil2.closeZip(zipBugreport);
         }
         return list;
     }
@@ -148,7 +149,7 @@ public class Bugreport implements Closeable {
         File bugreport = null;
         try {
             zip = new ZipFile(mBugreport);
-            bugreport = ZipUtil.extractFileFromZip(zip, name);
+            bugreport = ZipUtil2.extractFileFromZip(zip, name);
             return bugreport;
         } catch (IOException e) {
             CLog.e("Error while unzipping bugreportz");

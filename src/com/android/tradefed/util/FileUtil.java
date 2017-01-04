@@ -31,10 +31,14 @@ import java.io.FilenameFilter;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.nio.file.attribute.PosixFilePermission;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.EnumSet;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.zip.ZipFile;
 
@@ -59,6 +63,20 @@ public class FileUtil {
     };
 
     private static String CHMOD = "chmod";
+
+    /** A map of {@link PosixFilePermission} to its corresponding Unix file mode */
+    private static final Map<PosixFilePermission, Integer> PERM_MODE_MAP = new HashMap<>();
+    static {
+        PERM_MODE_MAP.put(PosixFilePermission.OWNER_READ,     0b100000000);
+        PERM_MODE_MAP.put(PosixFilePermission.OWNER_WRITE,    0b010000000);
+        PERM_MODE_MAP.put(PosixFilePermission.OWNER_EXECUTE,  0b001000000);
+        PERM_MODE_MAP.put(PosixFilePermission.GROUP_READ,     0b000100000);
+        PERM_MODE_MAP.put(PosixFilePermission.GROUP_WRITE,    0b000010000);
+        PERM_MODE_MAP.put(PosixFilePermission.GROUP_EXECUTE,  0b000001000);
+        PERM_MODE_MAP.put(PosixFilePermission.OTHERS_READ,    0b000000100);
+        PERM_MODE_MAP.put(PosixFilePermission.OTHERS_WRITE,   0b000000010);
+        PERM_MODE_MAP.put(PosixFilePermission.OTHERS_EXECUTE, 0b000000001);
+    }
 
     public static int FILESYSTEM_FILENAME_MAX_LENGTH = 255;
 
@@ -911,5 +929,21 @@ public class FileUtil {
     public static String calculateMd5(File file) throws IOException {
         FileInputStream inputSource = new FileInputStream(file);
         return StreamUtil.calculateMd5(inputSource);
+    }
+
+    /**
+     * Converts an integer representing unix mode to a set of {@link PosixFilePermission}s
+     * @param mode
+     * @return
+     */
+    public static Set<PosixFilePermission> unixModeToPosix(int mode) {
+        Set<PosixFilePermission> result = EnumSet.noneOf(PosixFilePermission.class);
+        for (PosixFilePermission pfp : EnumSet.allOf(PosixFilePermission.class)) {
+            int m = PERM_MODE_MAP.get(pfp);
+            if ((m & mode) == m) {
+                result.add(pfp);
+            }
+        }
+        return result;
     }
 }

@@ -23,6 +23,8 @@ import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
+import java.nio.file.attribute.PosixFilePermission;
+import java.util.Set;
 
 /**
  * Unit tests for {@link FileUtil}
@@ -287,5 +289,42 @@ public class FileUtilTest extends TestCase {
         } finally {
             FileUtil.deleteFile(testFile);
         }
+    }
+
+    /**
+     * Test {@link FileUtil#unixModeToPosix(int)} returns expected results;
+     */
+    public void testUnixModeToPosix() {
+        Set<PosixFilePermission> perms = null;
+        // can't test all 8 * 8 * 8, so just a select few
+        perms = FileUtil.unixModeToPosix(0777);
+        assertTrue("failed unix mode conversion: 0777",
+                perms.remove(PosixFilePermission.OWNER_READ) &&
+                perms.remove(PosixFilePermission.OWNER_WRITE) &&
+                perms.remove(PosixFilePermission.OWNER_EXECUTE) &&
+                perms.remove(PosixFilePermission.GROUP_READ) &&
+                perms.remove(PosixFilePermission.GROUP_WRITE) &&
+                perms.remove(PosixFilePermission.GROUP_EXECUTE) &&
+                perms.remove(PosixFilePermission.OTHERS_READ) &&
+                perms.remove(PosixFilePermission.OTHERS_WRITE) &&
+                perms.remove(PosixFilePermission.OTHERS_EXECUTE) &&
+                perms.isEmpty());
+        perms = FileUtil.unixModeToPosix(0644);
+        assertTrue("failed unix mode conversion: 0644",
+                perms.remove(PosixFilePermission.OWNER_READ) &&
+                perms.remove(PosixFilePermission.OWNER_WRITE) &&
+                perms.remove(PosixFilePermission.GROUP_READ) &&
+                perms.remove(PosixFilePermission.OTHERS_READ) &&
+                perms.isEmpty());
+        perms = FileUtil.unixModeToPosix(0755);
+        assertTrue("failed unix mode conversion: 0755",
+                perms.remove(PosixFilePermission.OWNER_READ) &&
+                perms.remove(PosixFilePermission.OWNER_WRITE) &&
+                perms.remove(PosixFilePermission.OWNER_EXECUTE) &&
+                perms.remove(PosixFilePermission.GROUP_READ) &&
+                perms.remove(PosixFilePermission.GROUP_EXECUTE) &&
+                perms.remove(PosixFilePermission.OTHERS_READ) &&
+                perms.remove(PosixFilePermission.OTHERS_EXECUTE) &&
+                perms.isEmpty());
     }
 }

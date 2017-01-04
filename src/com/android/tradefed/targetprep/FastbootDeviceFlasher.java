@@ -26,7 +26,9 @@ import com.android.tradefed.util.CommandStatus;
 import com.android.tradefed.util.FileUtil;
 import com.android.tradefed.util.IRunUtil;
 import com.android.tradefed.util.RunUtil;
-import com.android.tradefed.util.ZipUtil;
+import com.android.tradefed.util.ZipUtil2;
+
+import org.apache.commons.compress.archivers.zip.ZipFile;
 
 import java.io.File;
 import java.io.IOException;
@@ -35,7 +37,6 @@ import java.util.Collection;
 import java.util.Random;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-import java.util.zip.ZipFile;
 
 /**
  * A class that relies on fastboot to flash an image on physical Android hardware.
@@ -485,7 +486,7 @@ public class FastbootDeviceFlasher implements IDeviceFlasher  {
         File userdataImg = null;
         try {
             try {
-                userdataImg = ZipUtil.extractFileFromZip(
+                userdataImg = ZipUtil2.extractFileFromZip(
                         new ZipFile(deviceBuild.getDeviceImageFile()), "userdata.img");
             } catch (IOException ioe) {
                 throw new TargetSetupError("failed to extract userdata.img from image file", ioe,

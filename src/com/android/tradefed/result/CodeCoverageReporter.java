@@ -27,17 +27,18 @@ import com.android.tradefed.util.CommandStatus;
 import com.android.tradefed.util.FileUtil;
 import com.android.tradefed.util.IRunUtil;
 import com.android.tradefed.util.RunUtil;
-import com.android.tradefed.util.ZipUtil;
+import com.android.tradefed.util.ZipUtil2;
 
 import junit.framework.Assert;
 import junit.framework.AssertionFailedError;
+
+import org.apache.commons.compress.archivers.zip.ZipFile;
 
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
-import java.util.zip.ZipFile;
 
 /**
  * A {@link ITestInvocationListener} that will generate code coverage reports.
@@ -193,7 +194,7 @@ public class CodeCoverageReporter implements ITestInvocationListener {
         try {
             mLocalTmpDir = FileUtil.createTempDir("emma-meta");
             ZipFile zipFile = new ZipFile(coverageZipFile);
-            ZipUtil.extractZip(zipFile, mLocalTmpDir);
+            ZipUtil2.extractZip(zipFile, mLocalTmpDir);
             File coverageMetaFile;
             if (mCoverageMetaFilePath == null) {
                 coverageMetaFile = FileUtil.findFile(mLocalTmpDir, "coverage.em");

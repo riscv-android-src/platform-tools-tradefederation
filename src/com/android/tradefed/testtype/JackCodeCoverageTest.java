@@ -21,19 +21,19 @@ import static com.android.tradefed.testtype.JackCodeCoverageReportFormat.XML;
 
 import com.android.tradefed.config.Option;
 import com.android.tradefed.config.OptionClass;
-import com.android.tradefed.testtype.IRemoteTest;
 import com.android.tradefed.util.CommandResult;
 import com.android.tradefed.util.CommandStatus;
 import com.android.tradefed.util.FileUtil;
 import com.android.tradefed.util.RunUtil;
-import com.android.tradefed.util.ZipUtil;
+import com.android.tradefed.util.ZipUtil2;
+
 import com.google.common.collect.Lists;
 
 import java.io.File;
 import java.io.IOException;
-import java.nio.file.Files;
 import java.nio.file.FileSystem;
 import java.nio.file.FileSystems;
+import java.nio.file.Files;
 import java.nio.file.PathMatcher;
 import java.security.CodeSource;
 import java.util.ArrayList;
@@ -127,7 +127,7 @@ public class JackCodeCoverageTest extends CodeCoverageTestBase<JackCodeCoverageR
         // Extract the metadata files if we haven't already
         if (mMetadataCache == null) {
             File metadataZip = getBuild().getFile(getMetadataZipArtifact());
-            mMetadataCache = ZipUtil.extractZipToTemp(metadataZip, "metadata");
+            mMetadataCache = ZipUtil2.extractZipToTemp(metadataZip, "metadata");
         }
 
         // Convert the filter strings to PathMatchers

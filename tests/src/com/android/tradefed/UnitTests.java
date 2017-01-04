@@ -168,6 +168,7 @@ import com.android.tradefed.util.TarUtilTest;
 import com.android.tradefed.util.TestLoaderTest;
 import com.android.tradefed.util.TimeUtilTest;
 import com.android.tradefed.util.TimeValTest;
+import com.android.tradefed.util.ZipUtil2Test;
 import com.android.tradefed.util.ZipUtilTest;
 import com.android.tradefed.util.keystore.JSONFileKeyStoreClientTest;
 import com.android.tradefed.util.net.HttpHelperTest;
@@ -371,6 +372,7 @@ import org.junit.runners.Suite.SuiteClasses;
     TimeValTest.class,
     XmlRpcHelperTest.class,
     ZipUtilTest.class,
+    ZipUtil2Test.class,
 
     // util subdirs
     AndroidManifestWriterTest.class,

@@ -52,8 +52,10 @@ import com.android.tradefed.util.PsParser;
 import com.android.tradefed.util.RunUtil;
 import com.android.tradefed.util.SizeLimitedOutputStream;
 import com.android.tradefed.util.StreamUtil;
-import com.android.tradefed.util.ZipUtil;
+import com.android.tradefed.util.ZipUtil2;
 import com.android.tradefed.util.sl4a.Sl4aClient;
+
+import org.apache.commons.compress.archivers.zip.ZipFile;
 
 import java.io.ByteArrayInputStream;
 import java.io.File;
@@ -75,7 +77,6 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-import java.util.zip.ZipFile;
 
 import javax.annotation.concurrent.GuardedBy;
 
@@ -1924,10 +1925,10 @@ public class NativeDevice implements IManagedTestDevice {
                 }
                 zip = new ZipFile(bugreportzFile);
                 // We get the main_entry.txt that contains the bugreport name.
-                mainEntry = ZipUtil.extractFileFromZip(zip, "main_entry.txt");
+                mainEntry = ZipUtil2.extractFileFromZip(zip, "main_entry.txt");
                 String bugreportName = FileUtil.readStringFromFile(mainEntry).trim();
                 CLog.d("bugreport name: '%s'", bugreportName);
-                File bugreport = ZipUtil.extractFileFromZip(zip, bugreportName);
+                File bugreport = ZipUtil2.extractFileFromZip(zip, bugreportName);
                 return new FileInputStreamSource(bugreport, true);
             } catch (IOException e) {
                 CLog.e("Error while unzipping bugreportz");
