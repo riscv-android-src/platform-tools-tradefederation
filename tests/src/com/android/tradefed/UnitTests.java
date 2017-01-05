@@ -93,6 +93,7 @@ import com.android.tradefed.targetprep.InstrumentationPreparerTest;
 import com.android.tradefed.targetprep.KernelFlashPreparerTest;
 import com.android.tradefed.targetprep.PushFilePreparerTest;
 import com.android.tradefed.targetprep.PythonVirtualenvPreparerTest;
+import com.android.tradefed.targetprep.RunCommandTargetPreparerTest;
 import com.android.tradefed.targetprep.SdkAvdPreparerTest;
 import com.android.tradefed.targetprep.StopServicesSetupTest;
 import com.android.tradefed.targetprep.SystemUpdaterDeviceFlasherTest;
@@ -184,8 +185,9 @@ import org.junit.runners.Suite.SuiteClasses;
 
 /**
  * A test suite for all Trade Federation unit tests running under Junit4.
- * <p/>
- * All tests listed here should be self-contained, and should not require any external dependencies.
+ *
+ * <p>All tests listed here should be self-contained, and should not require any external
+ * dependencies.
  */
 @RunWith(Suite.class)
 @SuiteClasses({
@@ -287,6 +289,7 @@ import org.junit.runners.Suite.SuiteClasses;
     KernelFlashPreparerTest.class,
     PushFilePreparerTest.class,
     PythonVirtualenvPreparerTest.class,
+    RunCommandTargetPreparerTest.class,
     SdkAvdPreparerTest.class,
     StopServicesSetupTest.class,
     SystemUpdaterDeviceFlasherTest.class,
@@ -385,4 +388,3 @@ import org.junit.runners.Suite.SuiteClasses;
 public class UnitTests {
     // empty of purpose
 }
-
