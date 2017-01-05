@@ -19,6 +19,7 @@ import com.android.ddmlib.testrunner.TestIdentifier;
 import com.android.tradefed.config.Option;
 import com.android.tradefed.invoker.IInvocationContext;
 import com.android.tradefed.log.LogUtil.CLog;
+import com.android.tradefed.util.StreamUtil;
 import com.android.tradefed.util.SubprocessEventHelper.BaseTestEventInfo;
 import com.android.tradefed.util.SubprocessEventHelper.FailedTestEventInfo;
 import com.android.tradefed.util.SubprocessEventHelper.InvocationFailedEventInfo;
@@ -39,10 +40,10 @@ import java.util.Map;
  * Implements {@link ITestInvocationListener} to be specified as a result_reporter and forward
  * from the subprocess the results of tests, test runs, test invocations.
  */
-public class SubprocessResultsReporter implements ITestInvocationListener {
+public class SubprocessResultsReporter implements ITestInvocationListener, AutoCloseable {
 
     @Option(name = "subprocess-report-file", description = "the file where to log the events.")
-    private String mReportFile = null;
+    private File mReportFile = null;
 
     @Option(name = "subprocess-report-port", description = "the port where to connect to send the"
             + "events.")
@@ -178,20 +179,20 @@ public class SubprocessResultsReporter implements ITestInvocationListener {
      */
     public void printEvent(String key, Object event) {
         if (mReportFile != null) {
-            File eventFile = new File(mReportFile);
-            if (eventFile.canWrite()) {
+            if (mReportFile.canWrite()) {
                 try {
-                    FileWriter fw = new FileWriter(eventFile, true);
-                    String eventLog = String.format("%s %s\n", key, event.toString());
-                    fw.append(eventLog);
-                    fw.flush();
-                    fw.close();
+                    try (FileWriter fw = new FileWriter(mReportFile, true)) {
+                        String eventLog = String.format("%s %s\n", key, event.toString());
+                        fw.append(eventLog);
+                        fw.flush();
+                    }
                 } catch (IOException e) {
                     throw new RuntimeException(e);
                 }
             } else {
                 throw new RuntimeException(
-                        String.format("report file: %s is not writable", mReportFile));
+                        String.format("report file: %s is not writable",
+                                mReportFile.getAbsolutePath()));
             }
         }
         if(mReportPort != null) {
@@ -217,5 +218,13 @@ public class SubprocessResultsReporter implements ITestInvocationListener {
                 CLog.w("No report file or socket has been configured, skipping this reporter.");
             }
         }
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void close() throws Exception {
+        StreamUtil.close(mReportSocket);
     }
 }

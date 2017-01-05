@@ -139,6 +139,8 @@ class ShardListener extends CollectingTestListener {
                 case IGNORED:
                     mMasterListener.testIgnored(testEntry.getKey());
                     break;
+                default:
+                    break;
             }
             if (!testEntry.getValue().getStatus().equals(TestStatus.INCOMPLETE)) {
                 mMasterListener.testEnded(testEntry.getKey(), testEntry.getValue().getMetrics());
