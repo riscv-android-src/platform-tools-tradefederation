@@ -150,7 +150,7 @@ public class LogUtil {
          * A variation of {@link Log#w(String, String)}, where the stack trace of provided
          * {@link Throwable} is formatted and logged.
          *
-         * @param message The {@code String} to log
+         * @param t The {@link Throwable} to log
          */
         public static void w(Throwable t) {
             // frame 2: skip frames 0 (#getClassName) and 1 (this method)

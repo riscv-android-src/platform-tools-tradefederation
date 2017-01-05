@@ -26,7 +26,7 @@ import java.util.concurrent.TimeUnit;
 
 /**
  * Utility class to dispatch simple command and collect results
- * @see <a * href="https://android.googlesource.com/platform/system/extras/+/master/simpleperf/">
+ * @see <a href="https://android.googlesource.com/platform/system/extras/+/master/simpleperf/">
  * Introduction of simpleperf</a>
  */
 public class SimplePerfUtil {
