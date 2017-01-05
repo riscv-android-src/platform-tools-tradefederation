@@ -22,14 +22,12 @@ import com.android.tradefed.log.LogUtil.CLog;
 
 import java.io.BufferedInputStream;
 import java.io.BufferedOutputStream;
-import java.io.BufferedWriter;
 import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.FilenameFilter;
-import java.io.FileWriter;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -510,7 +508,7 @@ public class FileUtil {
      * A helper method for writing stream data to file
      *
      * @param input the unbuffered input stream
-     * @param out the destination file to write or append to
+     * @param destFile the destination file to write or append to
      * @param append append to end of file if true, overwrite otherwise
      */
     public static void writeToFile(

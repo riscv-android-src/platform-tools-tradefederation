@@ -22,6 +22,7 @@ import junit.framework.TestCase;
 import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.io.IOException;
+import java.io.InputStream;
 
 /**
  * Unit tests for {@link FileUtil}

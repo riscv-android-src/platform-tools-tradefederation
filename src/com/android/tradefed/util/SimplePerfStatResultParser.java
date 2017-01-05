@@ -27,7 +27,7 @@ import java.util.regex.Pattern;
  * <p/>
  * Should be useful when implementing test result receiver
  *
- * @see <a * href="https://android.googlesource.com/platform/system/extras/+/master/simpleperf/">
+ * @see <a href="https://android.googlesource.com/platform/system/extras/+/master/simpleperf/">
  * Introduction of simpleperf</a>
  */
 public final class SimplePerfStatResultParser {
