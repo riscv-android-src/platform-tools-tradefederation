@@ -22,6 +22,7 @@ import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.build.IDeviceBuildInfo;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
+import com.android.tradefed.device.TestDeviceOptions;
 import com.android.tradefed.util.BinaryState;
 import com.android.tradefed.util.FileUtil;
 
@@ -947,18 +948,41 @@ public class DeviceSetupTest extends TestCase {
         EasyMock.verify(mMockDevice);
     }
 
+    public void testSetup_rootDisabled() throws Exception {
+        doSetupExpectations(true /* screenOn */, false /* root enabled */,
+                false /* root response */, DEFAULT_API_LEVEL, new Capture<>());
+        doCheckExternalStoreSpaceExpectations();
+        EasyMock.replay(mMockDevice);
+        mDeviceSetup.setUp(mMockDevice, mMockBuildInfo);
+        EasyMock.verify(mMockDevice);
+    }
+
+    public void testSetup_rootFailed() throws Exception {
+        doSetupExpectations(true /* screenOn */, true /* root enabled */,
+                false /* root response */, DEFAULT_API_LEVEL, new Capture<>());
+        EasyMock.replay(mMockDevice);
+        try {
+            mDeviceSetup.setUp(mMockDevice, mMockBuildInfo);
+            fail("TargetSetupError expected");
+        } catch (TargetSetupError e) {
+            // Expected
+        }
+    }
+
     /**
      * Set EasyMock expectations for a normal setup call
      */
     private void doSetupExpectations() throws DeviceNotAvailableException {
-        doSetupExpectations(true, DEFAULT_API_LEVEL, new Capture<String>());
+        doSetupExpectations(true /* screen on */, true /* root enabled */, true /* root response */,
+                DEFAULT_API_LEVEL, new Capture<String>());
     }
 
     /**
      * Set EasyMock expectations for a normal setup call
      */
     private void doSetupExpectations(int apiLevel) throws DeviceNotAvailableException {
-        doSetupExpectations(true, apiLevel, new Capture<String>());
+        doSetupExpectations(true /* screen on */, true /* root enabled */, true /* root response */,
+                apiLevel, new Capture<String>());
     }
 
     /**
@@ -966,15 +990,22 @@ public class DeviceSetupTest extends TestCase {
      */
     private void doSetupExpectations(boolean screenOn, Capture<String> setPropCapture)
             throws DeviceNotAvailableException {
-        doSetupExpectations(screenOn, DEFAULT_API_LEVEL, setPropCapture);
+        doSetupExpectations(screenOn, true /* root enabled */, true /* root response */,
+                DEFAULT_API_LEVEL, setPropCapture);
     }
 
     /**
      * Set EasyMock expectations for a normal setup call
      */
-    private void doSetupExpectations(boolean screenOn, int apiLevel,
+    private void doSetupExpectations(boolean screenOn, boolean adbRootEnabled,
+            boolean adbRootResponse, int apiLevel,
             Capture<String> setPropCapture) throws DeviceNotAvailableException {
-        EasyMock.expect(mMockDevice.enableAdbRoot()).andReturn(Boolean.TRUE);
+        TestDeviceOptions options = new TestDeviceOptions();
+        options.setEnableAdbRoot(adbRootEnabled);
+        EasyMock.expect(mMockDevice.getOptions()).andReturn(options).once();
+        if (adbRootEnabled) {
+            EasyMock.expect(mMockDevice.enableAdbRoot()).andReturn(adbRootResponse);
+        }
         EasyMock.expect(mMockDevice.clearErrorDialogs()).andReturn(Boolean.TRUE);
         EasyMock.expect(mMockDevice.getApiLevel()).andReturn(apiLevel);
         // expect push of local.prop file to change system properties
