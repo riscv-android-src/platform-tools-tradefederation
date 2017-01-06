@@ -31,6 +31,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.util.Map;
 
+/** Unit tests for {@link GTestXmlResultParser} */
 public class GTestXmlResultParserTest extends TestCase {
     private static final String TEST_TYPE_DIR = "testtype";
     private static final String TEST_MODULE_NAME = "module";

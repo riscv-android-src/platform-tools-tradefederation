@@ -485,9 +485,8 @@ public class FastbootDeviceFlasher implements IDeviceFlasher  {
             IDeviceBuildInfo deviceBuild) throws DeviceNotAvailableException, TargetSetupError {
         File userdataImg = null;
         try {
-            try {
-                userdataImg = ZipUtil2.extractFileFromZip(
-                        new ZipFile(deviceBuild.getDeviceImageFile()), "userdata.img");
+            try (ZipFile zip = new ZipFile(deviceBuild.getDeviceImageFile())) {
+                userdataImg = ZipUtil2.extractFileFromZip(zip, "userdata.img");
             } catch (IOException ioe) {
                 throw new TargetSetupError("failed to extract userdata.img from image file", ioe,
                         device.getDeviceDescriptor());

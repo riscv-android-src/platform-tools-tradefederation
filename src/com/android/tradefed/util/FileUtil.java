@@ -933,8 +933,6 @@ public class FileUtil {
 
     /**
      * Converts an integer representing unix mode to a set of {@link PosixFilePermission}s
-     * @param mode
-     * @return
      */
     public static Set<PosixFilePermission> unixModeToPosix(int mode) {
         Set<PosixFilePermission> result = EnumSet.noneOf(PosixFilePermission.class);

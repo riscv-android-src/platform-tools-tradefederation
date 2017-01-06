@@ -76,19 +76,19 @@ public class Bugreport implements Closeable {
         if (!mIsZipped) {
             return mBugreport;
         } else {
-            ZipFile zip;
             File mainEntry = null;
             try {
-                zip = new ZipFile(mBugreport);
-                // We get the main_entry.txt that contains the bugreport name.
-                mainEntry = ZipUtil2.extractFileFromZip(zip, "main_entry.txt");
-                if (mainEntry == null) {
-                    CLog.w("main_entry.txt was not found inside the bugreport");
-                    return null;
+                try (ZipFile zip = new ZipFile(mBugreport)) {
+                    // We get the main_entry.txt that contains the bugreport name.
+                    mainEntry = ZipUtil2.extractFileFromZip(zip, "main_entry.txt");
+                    if (mainEntry == null) {
+                        CLog.w("main_entry.txt was not found inside the bugreport");
+                        return null;
+                    }
+                    String bugreportName = FileUtil.readStringFromFile(mainEntry).trim();
+                    CLog.d("bugreport name: '%s'", bugreportName);
+                    return ZipUtil2.extractFileFromZip(zip, bugreportName);
                 }
-                String bugreportName = FileUtil.readStringFromFile(mainEntry).trim();
-                CLog.d("bugreport name: '%s'", bugreportName);
-                return ZipUtil2.extractFileFromZip(zip, bugreportName);
             } catch (IOException e) {
                 CLog.e("Error while unzipping bugreportz");
                 CLog.e(e);
@@ -111,17 +111,13 @@ public class Bugreport implements Closeable {
         if (!mIsZipped) {
             return null;
         }
-        ZipFile zipBugreport = null;
-        try {
-            zipBugreport = new ZipFile(mBugreport);
+        try (ZipFile zipBugreport = new ZipFile(mBugreport)) {
             for (ZipArchiveEntry entry : Collections.list(zipBugreport.getEntries())) {
                 list.add(entry.getName());
             }
         } catch (IOException e) {
             CLog.e("Error reading the list of files in the bugreport");
             CLog.e(e);
-        } finally {
-            ZipUtil2.closeZip(zipBugreport);
         }
         return list;
     }
@@ -145,10 +141,8 @@ public class Bugreport implements Closeable {
      * Helper to extract and return a file from the zipped bugreport.
      */
     private File extractFileBugreport(String name) {
-        ZipFile zip;
         File bugreport = null;
-        try {
-            zip = new ZipFile(mBugreport);
+        try (ZipFile zip = new ZipFile(mBugreport)) {
             bugreport = ZipUtil2.extractFileFromZip(zip, name);
             return bugreport;
         } catch (IOException e) {
