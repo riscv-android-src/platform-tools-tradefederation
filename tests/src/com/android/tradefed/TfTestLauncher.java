@@ -35,6 +35,7 @@ import com.android.tradefed.util.IRunUtil.EnvPriority;
 import com.android.tradefed.util.RunUtil;
 import com.android.tradefed.util.StreamUtil;
 import com.android.tradefed.util.SubprocessTestResultsParser;
+import com.android.tradefed.util.TimeUtil;
 
 import junit.framework.Assert;
 
@@ -241,9 +242,16 @@ public class TfTestLauncher implements IRemoteTest, IBuildReceiver {
                 CLog.v("TF tests output:\nstdout:\n%s\nstderror:\n%s",
                         result.getStdout(), result.getStderr());
                 exception = true;
+                String errMessage = null;
+                if (result.getStatus().equals(CommandStatus.TIMED_OUT)) {
+                    errMessage = String.format("Timeout after %s",
+                            TimeUtil.formatElapsedTime(mMaxTfRunTimeMin * 60 * 1000));
+                } else {
+                    errMessage = FileUtil.readStringFromFile(stderrFile);
+                }
                 throw new RuntimeException(
                         String.format("%s Tests subprocess failed due to:\n %s\n", mConfigName,
-                                FileUtil.readStringFromFile(stderrFile)));
+                                errMessage));
             }
         } catch (IOException e) {
             exception = true;
