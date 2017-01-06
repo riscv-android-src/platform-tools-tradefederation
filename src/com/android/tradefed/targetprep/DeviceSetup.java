@@ -379,7 +379,7 @@ public class DeviceSetup implements ITargetPreparer, ITargetCleaner {
 
         CLog.i("Performing setup on %s", device.getSerialNumber());
 
-        if (!device.enableAdbRoot()) {
+        if (device.getOptions().isEnableAdbRoot() && !device.enableAdbRoot()) {
             throw new TargetSetupError(String.format("Failed to enable adb root on %s",
                     device.getSerialNumber()), device.getDeviceDescriptor());
         }
