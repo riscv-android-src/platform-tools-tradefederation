@@ -102,6 +102,7 @@ public class HostTest implements IDeviceTest, ITestFilterReceiver, ITestAnnotati
     private IBuildInfo mBuildInfo;
     private IAbi mAbi;
     private TestFilterHelper mFilterHelper;
+    private boolean mSkipTestClassCheck = false;
 
     private static final String EXCLUDE_NO_TEST_FAILURE = "org.junit.runner.manipulation.Filter";
     private static final String TEST_FULL_NAME_FORMAT = "%s#%s";
@@ -307,8 +308,10 @@ public class HostTest implements IDeviceTest, ITestFilterReceiver, ITestAnnotati
         mFilterHelper.addAllExcludeAnnotation(mExcludeAnnotations);
 
         List<Class<?>> classes = getClasses();
-        if (classes.isEmpty()) {
-            throw new IllegalArgumentException("Missing Test class name");
+        if (!mSkipTestClassCheck) {
+            if (classes.isEmpty()) {
+                throw new IllegalArgumentException("Missing Test class name");
+            }
         }
         if (mMethodName != null && classes.size() > 1) {
             throw new IllegalArgumentException("Method name given with multiple test classes");
@@ -621,9 +624,16 @@ public class HostTest implements IDeviceTest, ITestFilterReceiver, ITestAnnotati
      * HostTest.
      */
     protected HostTest createHostTest(Class<?> classObj) {
-        HostTest test = new HostTest();
+        HostTest test;
+        try {
+            test = this.getClass().newInstance();
+        } catch (InstantiationException | IllegalAccessException e) {
+            throw new RuntimeException(e);
+        }
         OptionCopier.copyOptionsNoThrow(this, test);
-        test.setClassName(classObj.getName());
+        if (classObj != null) {
+            test.setClassName(classObj.getName());
+        }
         return test;
     }
 
@@ -650,7 +660,9 @@ public class HostTest implements IDeviceTest, ITestFilterReceiver, ITestAnnotati
         }
         // In case we don't have enough classes to shard, we return a Stub.
         if (test == null) {
-            test = new StubTest();
+            test = createHostTest(null);
+            ((HostTest)test).mSkipTestClassCheck = true;
+            ((HostTest)test).mClasses.clear();
         }
         return test;
     }

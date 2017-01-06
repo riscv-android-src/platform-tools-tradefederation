@@ -1014,9 +1014,16 @@ public class HostTestTest extends TestCase {
                 ((HostTest)shard1).getClasses().get(0).getName());
 
         IRemoteTest shard2 = mHostTest.getTestShard(4, 2);
-        assertTrue(shard2 instanceof StubTest);
+        assertTrue(shard2 instanceof HostTest);
+        assertEquals(0, ((HostTest)shard2).getClasses().size());
         IRemoteTest shard3 = mHostTest.getTestShard(4, 3);
-        assertTrue(shard3 instanceof StubTest);
+        assertTrue(shard3 instanceof HostTest);
+        assertEquals(0, ((HostTest)shard3).getClasses().size());
+        // empty shard that can run and be skipped without reporting anything
+        ITestInvocationListener mockListener = EasyMock.createMock(ITestInvocationListener.class);
+        EasyMock.replay(mockListener);
+        shard3.run(mockListener);
+        EasyMock.verify(mockListener);
     }
 
     /**
