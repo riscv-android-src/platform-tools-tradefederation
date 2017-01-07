@@ -119,17 +119,21 @@ public class GTestTest extends TestCase {
         final String nativeTestPath = GTest.DEFAULT_NATIVETEST_PATH;
         final String test1 = "test1";
         final String test2 = "test2";
+        final String testPath1 = String.format("%s/%s", nativeTestPath, test1);
+        final String testPath2 = String.format("%s/%s", nativeTestPath, test2);
 
         MockFileUtil.setMockDirContents(mMockITestDevice, nativeTestPath, test1, test2);
         EasyMock.expect(mMockITestDevice.doesFileExist(nativeTestPath)).andReturn(true);
         EasyMock.expect(mMockITestDevice.isDirectory(nativeTestPath)).andReturn(true);
         EasyMock.expect(mMockITestDevice.isDirectory(nativeTestPath + "/test1")).andReturn(false);
+        // report the file as executable
+        EasyMock.expect(mMockITestDevice.executeShellCommand("ls -l " + testPath1))
+                .andReturn("-rwxr-xr-x 1 root shell 1000 2009-01-01 00:00 " + testPath1);
         EasyMock.expect(mMockITestDevice.isDirectory(nativeTestPath + "/test2")).andReturn(false);
+        EasyMock.expect(mMockITestDevice.executeShellCommand("ls -l " + testPath2))
+                .andReturn("-rwxr-xr-x 1 root shell 1000 2009-01-01 00:00 " + testPath2);
         String[] files = new String[] {"test1", "test2"};
         EasyMock.expect(mMockITestDevice.getChildren(nativeTestPath)).andReturn(files);
-        EasyMock.expect(mMockITestDevice.executeShellCommand(EasyMock.contains("chmod")))
-                .andReturn("")
-                .times(2);
         mMockITestDevice.executeShellCommand(EasyMock.contains(test1),
                 EasyMock.same(mMockReceiver), EasyMock.anyLong(),
                 (TimeUnit)EasyMock.anyObject(), EasyMock.anyInt());
@@ -156,12 +160,12 @@ public class GTestTest extends TestCase {
 
         EasyMock.expect(mMockITestDevice.doesFileExist(modulePath)).andReturn(true);
         EasyMock.expect(mMockITestDevice.isDirectory(modulePath)).andReturn(false);
-        // expect test1 to be executed
-        EasyMock.expect(mMockITestDevice.executeShellCommand(EasyMock.contains("chmod")))
-                .andReturn("");
         mMockITestDevice.executeShellCommand(EasyMock.contains(modulePath),
                 EasyMock.same(mMockReceiver),
                 EasyMock.anyLong(), (TimeUnit)EasyMock.anyObject(), EasyMock.anyInt());
+        // report the file as executable
+        EasyMock.expect(mMockITestDevice.executeShellCommand("ls -l " + modulePath))
+                .andReturn("-rwxr-xr-x 1 root shell 1000 2009-01-01 00:00 " + modulePath);
 
         replayMocks();
 
@@ -186,13 +190,14 @@ public class GTestTest extends TestCase {
         EasyMock.expect(mMockITestDevice.isDirectory(nativeTestPath + "/" + subFolderName))
                 .andReturn(true);
         EasyMock.expect(mMockITestDevice.isDirectory(test1Path)).andReturn(false);
+        // report the file as executable
+        EasyMock.expect(mMockITestDevice.executeShellCommand("ls -l " + test1Path))
+                .andReturn("-rwxr-xr-x 1 root shell 1000 2009-01-01 00:00 " + test1Path);
         String[] files = new String[] {subFolderName};
         EasyMock.expect(mMockITestDevice.getChildren(nativeTestPath)).andReturn(files);
         String[] files2 = new String[] {"test1"};
         EasyMock.expect(mMockITestDevice.getChildren(nativeTestPath + "/" + subFolderName))
                 .andReturn(files2);
-        EasyMock.expect(mMockITestDevice.executeShellCommand(EasyMock.contains("chmod")))
-                .andReturn("");
         mMockITestDevice.executeShellCommand(EasyMock.contains(test1Path),
                 EasyMock.same(mMockReceiver),
                 EasyMock.anyLong(), (TimeUnit)EasyMock.anyObject(), EasyMock.anyInt());
@@ -211,15 +216,17 @@ public class GTestTest extends TestCase {
      */
     private void doTestFilter(String filterString) throws DeviceNotAvailableException {
         String nativeTestPath = GTest.DEFAULT_NATIVETEST_PATH;
+        String testPath = nativeTestPath + "/test1";
         // configure the mock file system to have a single test
         MockFileUtil.setMockDirContents(mMockITestDevice, nativeTestPath, "test1");
         EasyMock.expect(mMockITestDevice.doesFileExist(nativeTestPath)).andReturn(true);
         EasyMock.expect(mMockITestDevice.isDirectory(nativeTestPath)).andReturn(true);
-        EasyMock.expect(mMockITestDevice.isDirectory(nativeTestPath + "/test1")).andReturn(false);
+        EasyMock.expect(mMockITestDevice.isDirectory(testPath)).andReturn(false);
+        // report the file as executable
+        EasyMock.expect(mMockITestDevice.executeShellCommand("ls -l " + testPath))
+                .andReturn("-rwxr-xr-x 1 root shell 1000 2009-01-01 00:00 " + testPath);
         String[] files = new String[] {"test1"};
         EasyMock.expect(mMockITestDevice.getChildren(nativeTestPath)).andReturn(files);
-        EasyMock.expect(mMockITestDevice.executeShellCommand(EasyMock.contains("chmod")))
-                .andReturn("");
         mMockITestDevice.executeShellCommand(EasyMock.contains(filterString),
                 EasyMock.same(mMockReceiver), EasyMock.anyLong(), (TimeUnit)EasyMock.anyObject(),
                 EasyMock.anyInt());
@@ -286,19 +293,24 @@ public class GTestTest extends TestCase {
         // filter string will be longer than GTest.GTEST_CMD_CHAR_LIMIT
 
         String nativeTestPath = GTest.DEFAULT_NATIVETEST_PATH;
+        String testPath = nativeTestPath + "/test1";
         // configure the mock file system to have a single test
         MockFileUtil.setMockDirContents(mMockITestDevice, nativeTestPath, "test1");
         EasyMock.expect(mMockITestDevice.doesFileExist(nativeTestPath)).andReturn(true);
         EasyMock.expect(mMockITestDevice.isDirectory(nativeTestPath)).andReturn(true);
-        EasyMock.expect(mMockITestDevice.isDirectory(nativeTestPath + "/test1")).andReturn(false);
+        EasyMock.expect(mMockITestDevice.isDirectory(testPath)).andReturn(false);
+        // report the file as executable
+        EasyMock.expect(mMockITestDevice.executeShellCommand("ls -l " + testPath))
+                .andReturn("-rwxr-xr-x 1 root shell 1000 2009-01-01 00:00 " + testPath);
         String[] files = new String[] {"test1"};
         EasyMock.expect(mMockITestDevice.getChildren(nativeTestPath)).andReturn(files);
         // Expect push of script file
         EasyMock.expect(mMockITestDevice.pushString(EasyMock.<String>anyObject(),
                 EasyMock.eq(deviceScriptPath))).andReturn(Boolean.TRUE);
-        // chmod 755 for both the gtest executable and the shell script
+        // chmod 755 for the shell script
         EasyMock.expect(mMockITestDevice.executeShellCommand(EasyMock.contains("chmod")))
-                .andReturn("").times(2);
+                .andReturn("")
+                .times(1);
         // Expect command to run shell script, rather than direct adb command
         mMockITestDevice.executeShellCommand(EasyMock.eq(String.format("sh %s", deviceScriptPath)),
                 EasyMock.same(mMockReceiver), EasyMock.anyLong(), (TimeUnit)EasyMock.anyObject(),
@@ -312,43 +324,64 @@ public class GTestTest extends TestCase {
         verifyMocks();
     }
 
-    /**
-     * Empty file exclusion regex filter should not skip any files
-     */
-    public void testFileExclusionRegexFilter_emptyfilters() {
-        assertFalse(mGTest.shouldSkipFile("test_file"));
+    /** Empty file exclusion regex filter should not skip any files */
+    public void testFileExclusionRegexFilter_emptyfilters() throws Exception {
+        // report /test_file as executable
+        ITestDevice mockDevice = EasyMock.createMock(ITestDevice.class);
+        EasyMock.expect(mockDevice.executeShellCommand("ls -l /test_file"))
+                .andReturn("-rwxr-xr-x 1 root shell 7 2009-01-01 00:00 /test_file");
+        EasyMock.replay(mockDevice);
+        mGTest.setDevice(mockDevice);
+        assertFalse(mGTest.shouldSkipFile("/test_file"));
+        EasyMock.verify(mockDevice);
     }
 
-    /**
-     * File exclusion regex filter should skip invalid filepath.
-     */
-    public void testFileExclusionRegexFilter_invalidInputString() {
+    /** File exclusion regex filter should skip invalid filepath. */
+    public void testFileExclusionRegexFilter_invalidInputString() throws Exception {
         assertTrue(mGTest.shouldSkipFile(null));
         assertTrue(mGTest.shouldSkipFile(""));
     }
 
-    /**
-     * File exclusion regex filter should skip matched filepaths.
-     */
-    public void testFileExclusionRegexFilter_skipMatched() {
-        // Skip files ending in .txt
-        mGTest.addFileExclusionFilterRegex(".*\\.txt");
-        assertFalse(mGTest.shouldSkipFile("/some/path/file/binary"));
-        assertFalse(mGTest.shouldSkipFile("/some/path/file/random.dat"));
-        assertTrue(mGTest.shouldSkipFile("/some/path/file/test.txt"));
+    /** File exclusion regex filter should skip matched filepaths. */
+    public void testFileExclusionRegexFilter_skipMatched() throws Exception {
+        // report all files as executable
+        ITestDevice mockDevice = EasyMock.createMock(ITestDevice.class);
+        EasyMock.expect(mockDevice.executeShellCommand("ls -l /some/path/file/run_me"))
+                .andReturn("-rwxr-xr-x 1 root shell 7 2009-01-01 00:00 /some/path/file/run_me");
+        EasyMock.expect(mockDevice.executeShellCommand("ls -l /some/path/file/run_me2"))
+                .andReturn("-rwxr-xr-x 1 root shell 7 2009-01-01 00:00 /some/path/file/run_me2");
+        EasyMock.expect(mockDevice.executeShellCommand("ls -l /some/path/file/run_me.not"))
+                .andReturn("-rwxr-xr-x 1 root shell 7 2009-01-01 00:00 /some/path/file/run_me.not");
+        EasyMock.replay(mockDevice);
+        mGTest.setDevice(mockDevice);
+        // Skip files ending in .not
+        mGTest.addFileExclusionFilterRegex(".*\\.not");
+        assertFalse(mGTest.shouldSkipFile("/some/path/file/run_me"));
+        assertFalse(mGTest.shouldSkipFile("/some/path/file/run_me2"));
+        assertTrue(mGTest.shouldSkipFile("/some/path/file/run_me.not"));
+        EasyMock.verify(mockDevice);
     }
 
-    /**
-     * File exclusion regex filter for multi filters.
-     */
-    public void testFileExclusionRegexFilter_skipMultiMatched() {
-        // Skip files ending in .txt
-        mGTest.addFileExclusionFilterRegex(".*\\.txt");
-        // Also skip files ending in .dat
-        mGTest.addFileExclusionFilterRegex(".*\\.dat");
-        assertFalse(mGTest.shouldSkipFile("/some/path/file/binary"));
-        assertTrue(mGTest.shouldSkipFile("/some/path/file/random.dat"));
-        assertTrue(mGTest.shouldSkipFile("/some/path/file/test.txt"));
+    /** File exclusion regex filter for multi filters. */
+    public void testFileExclusionRegexFilter_skipMultiMatched() throws Exception {
+        // report all files as executable
+        ITestDevice mockDevice = EasyMock.createMock(ITestDevice.class);
+        EasyMock.expect(mockDevice.executeShellCommand("ls -l /some/path/file/run_me"))
+                .andReturn("-rwxr-xr-x 1 root shell 7 2009-01-01 00:00 /some/path/file/run_me");
+        EasyMock.expect(mockDevice.executeShellCommand("ls -l /some/path/file/run_me.not"))
+                .andReturn("-rwxr-xr-x 1 root shell 7 2009-01-01 00:00 /some/path/file/run_me.not");
+        EasyMock.expect(mockDevice.executeShellCommand("ls -l /some/path/file/run_me.not2"))
+                .andReturn(
+                        "-rwxr-xr-x 1 root shell 7 2009-01-01 00:00 /some/path/file/run_me.not2");
+        EasyMock.replay(mockDevice);
+        mGTest.setDevice(mockDevice);
+        // Skip files ending in .not
+        mGTest.addFileExclusionFilterRegex(".*\\.not");
+        // Also skip files ending in .not2
+        mGTest.addFileExclusionFilterRegex(".*\\.not2");
+        assertFalse(mGTest.shouldSkipFile("/some/path/file/run_me"));
+        assertTrue(mGTest.shouldSkipFile("/some/path/file/run_me.not"));
+        assertTrue(mGTest.shouldSkipFile("/some/path/file/run_me.not2"));
     }
 
     /**
@@ -360,17 +393,20 @@ public class GTestTest extends TestCase {
         final String nativeTestPath = GTest.DEFAULT_NATIVETEST_PATH;
         final String test1 = "test1";
         final String test2 = "test2";
+        final String testPath1 = String.format("%s/%s", nativeTestPath, test1);
+        final String testPath2 = String.format("%s/%s", nativeTestPath, test2);
 
         MockFileUtil.setMockDirContents(mMockITestDevice, nativeTestPath, test1, test2);
         EasyMock.expect(mMockITestDevice.doesFileExist(nativeTestPath)).andReturn(true);
         EasyMock.expect(mMockITestDevice.isDirectory(nativeTestPath)).andReturn(true);
-        EasyMock.expect(mMockITestDevice.isDirectory(nativeTestPath + "/test1")).andReturn(false);
-        EasyMock.expect(mMockITestDevice.isDirectory(nativeTestPath + "/test2")).andReturn(false);
+        EasyMock.expect(mMockITestDevice.isDirectory(testPath1)).andReturn(false);
+        EasyMock.expect(mMockITestDevice.executeShellCommand("ls -l " + testPath1))
+                .andReturn("-rwxr-xr-x 1 root shell 7 2009-01-01 00:00 " + testPath1);
+        EasyMock.expect(mMockITestDevice.isDirectory(testPath2)).andReturn(false);
+        EasyMock.expect(mMockITestDevice.executeShellCommand("ls -l " + testPath2))
+                .andReturn("-rwxr-xr-x 1 root shell 7 2009-01-01 00:00 " + testPath2);
         String[] files = new String[] {"test1", "test2"};
         EasyMock.expect(mMockITestDevice.getChildren(nativeTestPath)).andReturn(files);
-        EasyMock.expect(mMockITestDevice.executeShellCommand(EasyMock.contains("chmod")))
-                .andReturn("")
-                .times(2);
         EasyMock.expect(mMockITestDevice.executeShellCommand(EasyMock.contains("rm")))
                 .andReturn("")
                 .times(2);
@@ -457,5 +493,83 @@ public class GTestTest extends TestCase {
 
         String cmd_line = mGTest.getGTestCmdLine("test_path", "flags");
         assertEquals("GTEST_SHARD_INDEX=1 GTEST_TOTAL_SHARDS=3 test_path flags", cmd_line);
+    }
+
+    /**
+     * Verifies that {@link GTest#isDeviceFileExecutable(String)} recognizes regular executable file
+     *
+     * @throws Exception
+     */
+    public void testIsDeviceFileExecutable_executable_rwx() throws Exception {
+        ITestDevice mockDevice = EasyMock.createMock(ITestDevice.class);
+        EasyMock.expect(mockDevice.executeShellCommand("ls -l /system/bin/ping"))
+                .andReturn("-rwxr-xr-x 1 root shell 42824 2009-01-01 00:00 /system/bin/ping");
+        EasyMock.replay(mockDevice);
+        mGTest.setDevice(mockDevice);
+        assertTrue(mGTest.isDeviceFileExecutable("/system/bin/ping"));
+        EasyMock.verify(mockDevice);
+    }
+
+    /**
+     * Verifies that {@link GTest#isDeviceFileExecutable(String)} recognizes symlink'd executable
+     * file
+     *
+     * @throws Exception
+     */
+    public void testIsDeviceFileExecutable_executable_lrwx() throws Exception {
+        ITestDevice mockDevice = EasyMock.createMock(ITestDevice.class);
+        EasyMock.expect(mockDevice.executeShellCommand("ls -l /system/bin/start"))
+                .andReturn(
+                        "lrwxr-xr-x 1 root shell 7 2009-01-01 00:00 /system/bin/start -> toolbox");
+        EasyMock.replay(mockDevice);
+        mGTest.setDevice(mockDevice);
+        assertTrue(mGTest.isDeviceFileExecutable("/system/bin/start"));
+        EasyMock.verify(mockDevice);
+    }
+
+    /**
+     * Verifies that {@link GTest#isDeviceFileExecutable(String)} recognizes non-executable file
+     *
+     * @throws Exception
+     */
+    public void testIsDeviceFileExecutable_notExecutable() throws Exception {
+        ITestDevice mockDevice = EasyMock.createMock(ITestDevice.class);
+        EasyMock.expect(mockDevice.executeShellCommand("ls -l /system/build.prop"))
+                .andReturn("-rw-r--r-- 1 root root 5020 2009-01-01 00:00 /system/build.prop");
+        EasyMock.replay(mockDevice);
+        mGTest.setDevice(mockDevice);
+        assertFalse(mGTest.isDeviceFileExecutable("/system/build.prop"));
+        EasyMock.verify(mockDevice);
+    }
+
+    /**
+     * Verifies that {@link GTest#isDeviceFileExecutable(String)} recognizes a directory listing
+     *
+     * @throws Exception
+     */
+    public void testIsDeviceFileExecutable_directory() throws Exception {
+        ITestDevice mockDevice = EasyMock.createMock(ITestDevice.class);
+        EasyMock.expect(mockDevice.executeShellCommand("ls -l /system"))
+                .andReturn(
+                        "total 416\n"
+                                + "drwxr-xr-x 74 root root    4096 2009-01-01 00:00 app\n"
+                                + "drwxr-xr-x  3 root shell   8192 2009-01-01 00:00 bin\n"
+                                + "-rw-r--r--  1 root root    5020 2009-01-01 00:00 build.prop\n"
+                                + "drwxr-xr-x 15 root root    4096 2009-01-01 00:00 etc\n"
+                                + "drwxr-xr-x  2 root root    4096 2009-01-01 00:00 fake-libs\n"
+                                + "drwxr-xr-x  2 root root    8192 2009-01-01 00:00 fonts\n"
+                                + "drwxr-xr-x  4 root root    4096 2009-01-01 00:00 framework\n"
+                                + "drwxr-xr-x  6 root root    8192 2009-01-01 00:00 lib\n"
+                                + "drwx------  2 root root    4096 1970-01-01 00:00 lost+found\n"
+                                + "drwxr-xr-x  3 root root    4096 2009-01-01 00:00 media\n"
+                                + "drwxr-xr-x 68 root root    4096 2009-01-01 00:00 priv-app\n"
+                                + "-rw-r--r--  1 root root  137093 2009-01-01 00:00 recovery-from-boot.p\n"
+                                + "drwxr-xr-x  9 root root    4096 2009-01-01 00:00 usr\n"
+                                + "drwxr-xr-x  8 root shell   4096 2009-01-01 00:00 vendor\n"
+                                + "drwxr-xr-x  2 root shell   4096 2009-01-01 00:00 xbin\n");
+        EasyMock.replay(mockDevice);
+        mGTest.setDevice(mockDevice);
+        assertFalse(mGTest.isDeviceFileExecutable("/system"));
+        EasyMock.verify(mockDevice);
     }
 }

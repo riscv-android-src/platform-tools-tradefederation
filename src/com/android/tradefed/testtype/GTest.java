@@ -42,6 +42,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
+import java.util.regex.Pattern;
 
 /**
  * A Test that runs a native test package on given device.
@@ -51,6 +52,7 @@ public class GTest implements IDeviceTest, IRemoteTest, ITestFilterReceiver, IRu
         ITestCollector, IStrictShardableTest {
 
     static final String DEFAULT_NATIVETEST_PATH = "/data/nativetest";
+    private static final Pattern EXE_FILE = Pattern.compile("^[-l]r.x.+");
 
     private ITestDevice mDevice = null;
     private boolean mRunDisabledTests = false;
@@ -437,8 +439,6 @@ public class GTest implements IDeviceTest, IRemoteTest, ITestFilterReceiver, IRu
             }
             String flags = getAllGTestFlags(root);
             CLog.i("Running gtest %s %s on %s", root, flags, testDevice.getSerialNumber());
-            // force file to be executable
-            testDevice.executeShellCommand(String.format("chmod 755 %s", root));
             if (mEnableXmlOutput) {
                 runTestXml(testDevice, root, flags, listener);
             } else {
@@ -459,13 +459,26 @@ public class GTest implements IDeviceTest, IRemoteTest, ITestFilterReceiver, IRu
         return fileName;
     }
 
+    protected boolean isDeviceFileExecutable(String fullPath) throws DeviceNotAvailableException {
+        String fileMode = mDevice.executeShellCommand(String.format("ls -l %s", fullPath));
+        if (fileMode != null) {
+            return EXE_FILE.matcher(fileMode).find();
+        }
+        return false;
+    }
+
     /**
      * Helper method to determine if we should skip the execution of a given file.
+     *
      * @param fullPath the full path of the file in question
      * @return true if we should skip the said file.
      */
-    protected boolean shouldSkipFile(String fullPath) {
+    protected boolean shouldSkipFile(String fullPath) throws DeviceNotAvailableException {
         if (fullPath == null || fullPath.isEmpty()) {
+            return true;
+        }
+        // skip any file that's not executable
+        if (!isDeviceFileExecutable(fullPath)) {
             return true;
         }
         if (mFileExclusionFilterRegex == null || mFileExclusionFilterRegex.isEmpty()) {
