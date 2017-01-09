@@ -166,9 +166,11 @@ public class TfTestLauncher implements IRemoteTest, IBuildReceiver {
         }
         args.add("--test-tag");
         args.add(mBuildInfo.getTestTag());
+        args.add("--build-id");
         if (mSubBuildId != null) {
-            args.add("--build-id");
             args.add(mSubBuildId);
+        } else {
+            args.add(mBuildInfo.getBuildId());
         }
         args.add("--branch");
         if (mSubBranch != null) {
