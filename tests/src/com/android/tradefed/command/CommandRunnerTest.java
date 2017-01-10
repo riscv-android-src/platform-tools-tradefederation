@@ -42,7 +42,8 @@ import java.io.File;
 import java.io.PrintWriter;
 
 /**
- * Unit tests for {@link CommandRunner}.
+ * Unit tests for {@link CommandRunner}. Always attempt to run on null-device (-n) to avoid hanging
+ * if no physical device are available.
  */
 @RunWith(JUnit4.class)
 public class CommandRunnerTest {
@@ -123,7 +124,7 @@ public class CommandRunnerTest {
     public void testRun_noError() throws Exception {
         File logDir = FileUtil.createTempDir("command-runner-unit-test");
         try {
-            String[] args = {EMPTY_CONFIG, "--log-file-path", logDir.getAbsolutePath()};
+            String[] args = {EMPTY_CONFIG, "-n", "--log-file-path", logDir.getAbsolutePath()};
             mRunner.run(args);
             assertEquals(0, mRunner.getErrorCode().getCodeValue());
             assertNull(mStackTraceOutput);
@@ -137,7 +138,7 @@ public class CommandRunnerTest {
      */
     @Test
     public void testRun_deviceUnresponsive() {
-        String[] args = {EMPTY_CONFIG};
+        String[] args = {EMPTY_CONFIG, "-n"};
         mThrowable = new DeviceUnresponsiveException("injected", "serial");
         mRunner.run(args);
         assertEquals(ExitCode.DEVICE_UNRESPONSIVE, mRunner.getErrorCode());
@@ -150,7 +151,7 @@ public class CommandRunnerTest {
      */
     @Test
     public void testRun_deviceUnavailable() {
-        String[] args = {EMPTY_CONFIG};
+        String[] args = {EMPTY_CONFIG, "-n"};
         mThrowable = new DeviceNotAvailableException("injected", "serial");
         mRunner.run(args);
         assertEquals(ExitCode.DEVICE_UNAVAILABLE, mRunner.getErrorCode());
@@ -163,7 +164,7 @@ public class CommandRunnerTest {
      */
     @Test
     public void testRun_throwable() {
-        String[] args = {EMPTY_CONFIG};
+        String[] args = {EMPTY_CONFIG, "-n"};
         mThrowable = new RuntimeException("injecting runtime");
         mRunner.run(args);
         assertEquals(ExitCode.THROWABLE_EXCEPTION, mRunner.getErrorCode());
