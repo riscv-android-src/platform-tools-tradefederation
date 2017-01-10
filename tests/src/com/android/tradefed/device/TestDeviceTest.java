@@ -39,12 +39,12 @@ import com.android.tradefed.util.ZipUtil2;
 
 import com.google.common.util.concurrent.SettableFuture;
 
-import junit.framework.Assert;
 import junit.framework.TestCase;
 
 import org.easymock.EasyMock;
 import org.easymock.IAnswer;
 import org.easymock.IExpectationSetters;
+import org.junit.Assert;
 
 import java.io.File;
 import java.io.IOException;

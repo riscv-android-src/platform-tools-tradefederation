@@ -19,7 +19,7 @@ import com.android.ddmlib.IShellOutputReceiver;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
 
-import junit.framework.Assert;
+import org.junit.Assert;
 
 import java.util.List;
 import java.util.concurrent.TimeUnit;

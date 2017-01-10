@@ -28,7 +28,7 @@ import com.android.tradefed.targetprep.ITargetPreparer;
 import com.android.tradefed.util.IRunUtil;
 import com.android.tradefed.util.RunUtil;
 
-import junit.framework.Assert;
+import org.junit.Assert;
 
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;

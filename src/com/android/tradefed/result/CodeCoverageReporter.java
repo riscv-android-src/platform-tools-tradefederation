@@ -29,10 +29,8 @@ import com.android.tradefed.util.IRunUtil;
 import com.android.tradefed.util.RunUtil;
 import com.android.tradefed.util.ZipUtil2;
 
-import junit.framework.Assert;
-import junit.framework.AssertionFailedError;
-
 import org.apache.commons.compress.archivers.zip.ZipFile;
+import org.junit.Assert;
 
 import java.io.File;
 import java.io.IOException;
@@ -259,7 +257,7 @@ public class CodeCoverageReporter implements ITestInvocationListener {
      * Tries to find emma.jar in same location as ddmlib.jar.
      *
      * @return full path to emma jar file
-     * @throws AssertionFailedError if could not find emma jar
+     * @throws AssertionError if could not find emma jar
      */
     String findEmmaJarPath() {
         String ddmlibPath = IDevice.class.getProtectionDomain()

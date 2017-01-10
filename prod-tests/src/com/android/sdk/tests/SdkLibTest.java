@@ -26,8 +26,9 @@ import com.android.tradefed.testtype.JUnitRunUtil;
 import com.android.tradefed.util.FileUtil;
 import com.android.tradefed.util.TestLoader;
 
-import junit.framework.Assert;
 import junit.framework.Test;
+
+import org.junit.Assert;
 
 import java.io.File;
 import java.util.Collection;

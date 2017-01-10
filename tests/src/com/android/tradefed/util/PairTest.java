@@ -16,8 +16,9 @@
 
 package com.android.tradefed.util;
 
-import junit.framework.Assert;
 import junit.framework.TestCase;
+
+import org.junit.Assert;
 
 public class PairTest extends TestCase {
 
