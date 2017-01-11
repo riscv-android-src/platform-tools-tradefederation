@@ -163,6 +163,7 @@ public class TestDeviceFuncTest extends DeviceTestCase {
             FileUtil.copyFile(tmpFile, tmpFileSpaces);
             assertWifiApkInstall(tmpFileSpaces);
         } finally {
+            FileUtil.deleteFile(tmpFile);
             FileUtil.deleteFile(tmpFileSpaces);
         }
     }
