@@ -139,15 +139,24 @@ public class CommandSchedulerFuncTest extends TestCase {
         };
     }
 
+    /** {@inheritDoc} */
+    @Override
+    protected void tearDown() throws Exception {
+        super.tearDown();
+        if (mCommandScheduler != null) {
+            mCommandScheduler.shutdownOnEmpty();
+        }
+    }
+
     /**
      * Test config priority scheduling. Verifies that configs are prioritized according to their
      * total run time.
-     * <p/>
-     * This test continually executes two configs in loop mode. One config executes quickly (ie
+     *
+     * <p>This test continually executes two configs in loop mode. One config executes quickly (ie
      * "fast config"). The other config (ie "slow config") takes ~ 2 * fast config time to execute.
-     * <p/>
-     * The run is stopped after the slow config is executed 20 times. At the end of the test, it is
-     * expected that "fast config" has executed roughly twice as much as the "slow config".
+     *
+     * <p>The run is stopped after the slow config is executed 20 times. At the end of the test, it
+     * is expected that "fast config" has executed roughly twice as much as the "slow config".
      */
     public void testRun_scheduling() throws Exception {
         String[] fastConfigArgs = new String[] {"fastConfig"};

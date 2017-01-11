@@ -499,6 +499,8 @@ public class InstrumentationTestTest extends TestCase {
         EasyMock.expect(
                 mMockTestDevice.runInstrumentationTests(EasyMock.eq(mMockRemoteRunner),
                         (ITestRunListener)EasyMock.anyObject())).andAnswer(collectTestAnswer);
+        mMockRemoteRunner.setMaxTimeToOutputResponse(
+                InstrumentationTest.TEST_COLLECTION_TIMEOUT_MS, TimeUnit.MILLISECONDS);
     }
 
     private void setRunTestExpectations(RunTestAnswer secondRunAnswer)

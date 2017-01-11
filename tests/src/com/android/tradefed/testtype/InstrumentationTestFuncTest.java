@@ -20,6 +20,7 @@ import com.android.ddmlib.Log;
 import com.android.ddmlib.testrunner.TestIdentifier;
 import com.android.ddmlib.testrunner.TestResult.TestStatus;
 import com.android.tradefed.TestAppConstants;
+import com.android.tradefed.config.OptionSetter;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.result.CollectingTestListener;
 import com.android.tradefed.result.ITestInvocationListener;
@@ -219,6 +220,8 @@ public class InstrumentationTestFuncTest extends DeviceTestCase {
 
         TestIdentifier expectedTest = new TestIdentifier(TestAppConstants.TESTAPP_CLASS,
                 TestAppConstants.TIMEOUT_TEST_METHOD);
+        mInstrumentationTest.setShellTimeout(SHELL_TIMEOUT);
+        mInstrumentationTest.setTestTimeout(TEST_TIMEOUT);
         mInstrumentationTest.setClassName(TestAppConstants.TESTAPP_CLASS);
         mInstrumentationTest.setMethodName(TestAppConstants.TIMEOUT_TEST_METHOD);
         mMockListener.testRunStarted(TestAppConstants.TESTAPP_PACKAGE, 1);
@@ -321,6 +324,8 @@ public class InstrumentationTestFuncTest extends DeviceTestCase {
      */
     public void testRun_rerunHang() throws Exception {
         Log.i(LOG_TAG, "testRun_rerunHang");
+        OptionSetter setter = new OptionSetter(mInstrumentationTest);
+        setter.setOptionValue("collect-tests-timeout", Long.toString(SHELL_TIMEOUT));
 
         mInstrumentationTest.setClassName(TestAppConstants.HANG_ON_INIT_TEST_CLASS);
         mInstrumentationTest.setRerunMode(true);
