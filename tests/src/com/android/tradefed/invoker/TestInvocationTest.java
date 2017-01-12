@@ -82,7 +82,16 @@ public class TestInvocationTest extends TestCase {
     private static final String PATH = "path";
     private static final String URL = "url";
     private static final TestSummary mSummary = new TestSummary("http://www.url.com/report.txt");
-
+    private static final InputStreamSource EMPTY_STREAM_SOURCE =
+            new ByteArrayInputStreamSource(new byte[0]);
+    private static final String LOGCAT_NAME_ERROR =
+            TestInvocation.DEVICE_LOG_NAME_PREFIX + TestInvocation.Stage.ERROR.getName();
+    private static final String LOGCAT_NAME_SETUP =
+            TestInvocation.DEVICE_LOG_NAME_PREFIX + TestInvocation.Stage.SETUP.getName();
+    private static final String LOGCAT_NAME_TEST =
+            TestInvocation.DEVICE_LOG_NAME_PREFIX + TestInvocation.Stage.TEST.getName();
+    private static final String LOGCAT_NAME_TEARDOWN =
+            TestInvocation.DEVICE_LOG_NAME_PREFIX + TestInvocation.Stage.TEARDOWN.getName();
     /** The {@link TestInvocation} under test, with all dependencies mocked out */
     private TestInvocation mTestInvocation;
 
@@ -276,10 +285,10 @@ public class TestInvocationTest extends TestCase {
         cmdOptions.setTestTag(expectedTestTag);
         mStubConfiguration.setCommandOptions(cmdOptions);
         mStubConfiguration.setTest(test);
-        EasyMock.expect(mMockLogger.getLog())
-                .andReturn(new ByteArrayInputStreamSource(new byte[0]));
-        EasyMock.expect(mMockDevice.getLogcat())
-                .andReturn(new ByteArrayInputStreamSource(new byte[0])).times(2);
+        EasyMock.expect(mMockLogger.getLog()).andReturn(EMPTY_STREAM_SOURCE);
+        EasyMock.expect(mMockDevice.getLogcat()).andReturn(EMPTY_STREAM_SOURCE).times(2);
+        mMockDevice.clearLogcat();
+        EasyMock.expectLastCall().times(2);
         replayMocks(test, mockRescheduler);
         mTestInvocation.invoke(mStubInvocationMetadata, mStubConfiguration, mockRescheduler);
         verifyMocks(test, mockRescheduler);
@@ -429,8 +438,7 @@ public class TestInvocationTest extends TestCase {
         mMockPreparer.setUp(mMockDevice, mMockBuildInfo);
         EasyMock.expectLastCall().andThrow(exception);
         setupMockFailureListeners(exception);
-        EasyMock.expect(mMockDevice.getBugreport())
-            .andReturn(new ByteArrayInputStreamSource(new byte[0]));
+        EasyMock.expect(mMockDevice.getBugreport()).andReturn(EMPTY_STREAM_SOURCE);
         setupInvokeWithBuild();
         replayMocks(test);
         EasyMock.replay(mockRescheduler);
@@ -460,23 +468,51 @@ public class TestInvocationTest extends TestCase {
         mMockDevice.startLogcat();
         mMockPreparer.setUp(mMockDevice, mMockBuildInfo);
 
-        resumableTest.run((ITestInvocationListener)EasyMock.anyObject());
+        resumableTest.run((ITestInvocationListener) EasyMock.anyObject());
         EasyMock.expectLastCall().andThrow(new DeviceNotAvailableException("ERROR", SERIAL));
         EasyMock.expect(resumableTest.isResumable()).andReturn(Boolean.TRUE);
         mMockDevice.setRecoveryMode(RecoveryMode.NONE);
         EasyMock.expectLastCall();
-        EasyMock.expect(mMockDevice.getLogcat())
-                .andReturn(new ByteArrayInputStreamSource(new byte[0]));
-        EasyMock.expect(mMockLogger.getLog())
-                .andReturn(new ByteArrayInputStreamSource(new byte[0]));
-        EasyMock.expect(mMockLogSaver.saveLogData(EasyMock.eq(TestInvocation.DEVICE_LOG_NAME),
-                EasyMock.eq(LogDataType.LOGCAT), (InputStream)EasyMock.anyObject())
-                ).andReturn(new LogFile(PATH, URL, false /* compressed */, true /* text */));
-        EasyMock.expect(mMockLogSaver.saveLogData(EasyMock.eq(TestInvocation.TRADEFED_LOG_NAME),
-                EasyMock.eq(LogDataType.TEXT), (InputStream)EasyMock.anyObject())
-                ).andReturn(new LogFile(PATH, URL, false /* compressed */, true /* text */));
-        resumeListener.testLog(EasyMock.eq(TestInvocation.DEVICE_LOG_NAME),
-                EasyMock.eq(LogDataType.LOGCAT), (InputStreamSource)EasyMock.anyObject());
+        EasyMock.expect(mMockDevice.getLogcat()).andReturn(EMPTY_STREAM_SOURCE).times(3);
+        mMockDevice.clearLogcat();
+        EasyMock.expectLastCall().times(3);
+        EasyMock.expect(mMockLogger.getLog()).andReturn(EMPTY_STREAM_SOURCE);
+        EasyMock.expect(
+                        mMockLogSaver.saveLogData(
+                                EasyMock.eq(LOGCAT_NAME_SETUP),
+                                EasyMock.eq(LogDataType.LOGCAT),
+                                (InputStream) EasyMock.anyObject()))
+                .andReturn(new LogFile(PATH, URL, false /* compressed */, true /* text */));
+        EasyMock.expect(
+                        mMockLogSaver.saveLogData(
+                                EasyMock.eq(LOGCAT_NAME_TEST),
+                                EasyMock.eq(LogDataType.LOGCAT),
+                                (InputStream) EasyMock.anyObject()))
+                .andReturn(new LogFile(PATH, URL, false /* compressed */, true /* text */));
+        EasyMock.expect(
+                        mMockLogSaver.saveLogData(
+                                EasyMock.eq(LOGCAT_NAME_TEARDOWN),
+                                EasyMock.eq(LogDataType.LOGCAT),
+                                (InputStream) EasyMock.anyObject()))
+                .andReturn(new LogFile(PATH, URL, false /* compressed */, true /* text */));
+        EasyMock.expect(
+                        mMockLogSaver.saveLogData(
+                                EasyMock.eq(TestInvocation.TRADEFED_LOG_NAME),
+                                EasyMock.eq(LogDataType.TEXT),
+                                (InputStream) EasyMock.anyObject()))
+                .andReturn(new LogFile(PATH, URL, false /* compressed */, true /* text */));
+        resumeListener.testLog(
+                EasyMock.eq(LOGCAT_NAME_SETUP),
+                EasyMock.eq(LogDataType.LOGCAT),
+                (InputStreamSource) EasyMock.anyObject());
+        resumeListener.testLog(
+                EasyMock.eq(LOGCAT_NAME_TEST),
+                EasyMock.eq(LogDataType.LOGCAT),
+                (InputStreamSource) EasyMock.anyObject());
+        resumeListener.testLog(
+                EasyMock.eq(LOGCAT_NAME_TEARDOWN),
+                EasyMock.eq(LogDataType.LOGCAT),
+                (InputStreamSource) EasyMock.anyObject());
         resumeListener.testLog(EasyMock.eq(TestInvocation.TRADEFED_LOG_NAME),
                 EasyMock.eq(LogDataType.TEXT), (InputStreamSource)EasyMock.anyObject());
 
@@ -504,20 +540,50 @@ public class TestInvocationTest extends TestCase {
         mMockLogSaver.invocationStarted(mStubInvocationMetadata);
         mMockDevice.setRecovery(mMockRecovery);
         resumableTest.run((ITestInvocationListener)EasyMock.anyObject());
-        EasyMock.expect(mMockDevice.getLogcat())
-                .andReturn(new ByteArrayInputStreamSource(new byte[0]));
-        EasyMock.expect(mMockLogger.getLog())
-                .andReturn(new ByteArrayInputStreamSource(new byte[0]));
-        EasyMock.expect(mMockLogSaver.saveLogData(EasyMock.eq(TestInvocation.DEVICE_LOG_NAME),
-                EasyMock.eq(LogDataType.LOGCAT), (InputStream)EasyMock.anyObject())
-                ).andReturn(new LogFile(PATH, URL, false /* compressed */, true /* text */));
-        EasyMock.expect(mMockLogSaver.saveLogData(EasyMock.eq(TestInvocation.TRADEFED_LOG_NAME),
-                EasyMock.eq(LogDataType.TEXT), (InputStream)EasyMock.anyObject())
-                ).andReturn(new LogFile(PATH, URL, false /* compressed */, true /* text */));
-        resumeListener.testLog(EasyMock.eq(TestInvocation.DEVICE_LOG_NAME),
-                EasyMock.eq(LogDataType.LOGCAT), (InputStreamSource)EasyMock.anyObject());
-        resumeListener.testLog(EasyMock.eq(TestInvocation.TRADEFED_LOG_NAME),
-                EasyMock.eq(LogDataType.TEXT), (InputStreamSource)EasyMock.anyObject());
+        EasyMock.expect(mMockDevice.getLogcat()).andReturn(EMPTY_STREAM_SOURCE).times(3);
+        mMockDevice.clearLogcat();
+        EasyMock.expectLastCall().times(3);
+        EasyMock.expect(mMockLogger.getLog()).andReturn(EMPTY_STREAM_SOURCE);
+        EasyMock.expect(
+                        mMockLogSaver.saveLogData(
+                                EasyMock.eq(LOGCAT_NAME_SETUP),
+                                EasyMock.eq(LogDataType.LOGCAT),
+                                (InputStream) EasyMock.anyObject()))
+                .andReturn(new LogFile(PATH, URL, false /* compressed */, true /* text */));
+        EasyMock.expect(
+                        mMockLogSaver.saveLogData(
+                                EasyMock.eq(LOGCAT_NAME_TEST),
+                                EasyMock.eq(LogDataType.LOGCAT),
+                                (InputStream) EasyMock.anyObject()))
+                .andReturn(new LogFile(PATH, URL, false /* compressed */, true /* text */));
+        EasyMock.expect(
+                        mMockLogSaver.saveLogData(
+                                EasyMock.eq(LOGCAT_NAME_TEARDOWN),
+                                EasyMock.eq(LogDataType.LOGCAT),
+                                (InputStream) EasyMock.anyObject()))
+                .andReturn(new LogFile(PATH, URL, false /* compressed */, true /* text */));
+        EasyMock.expect(
+                        mMockLogSaver.saveLogData(
+                                EasyMock.eq(TestInvocation.TRADEFED_LOG_NAME),
+                                EasyMock.eq(LogDataType.TEXT),
+                                (InputStream) EasyMock.anyObject()))
+                .andReturn(new LogFile(PATH, URL, false /* compressed */, true /* text */));
+        resumeListener.testLog(
+                EasyMock.eq(LOGCAT_NAME_SETUP),
+                EasyMock.eq(LogDataType.LOGCAT),
+                (InputStreamSource) EasyMock.anyObject());
+        resumeListener.testLog(
+                EasyMock.eq(LOGCAT_NAME_TEST),
+                EasyMock.eq(LogDataType.LOGCAT),
+                (InputStreamSource) EasyMock.anyObject());
+        resumeListener.testLog(
+                EasyMock.eq(LOGCAT_NAME_TEARDOWN),
+                EasyMock.eq(LogDataType.LOGCAT),
+                (InputStreamSource) EasyMock.anyObject());
+        resumeListener.testLog(
+                EasyMock.eq(TestInvocation.TRADEFED_LOG_NAME),
+                EasyMock.eq(LogDataType.TEXT),
+                (InputStreamSource) EasyMock.anyObject());
         resumeListener.invocationEnded(EasyMock.anyLong());
         mMockLogSaver.invocationEnded(EasyMock.anyLong());
         EasyMock.expect(resumeListener.getSummary()).andReturn(null);
@@ -662,16 +728,42 @@ public class TestInvocationTest extends TestCase {
 
         logSaverListener.setLogSaver(mMockLogSaver);
         logSaverListener.invocationStarted(mStubInvocationMetadata);
-        logSaverListener.testLog(EasyMock.eq(TestInvocation.DEVICE_LOG_NAME),
-                EasyMock.eq(LogDataType.LOGCAT), (InputStreamSource)EasyMock.anyObject());
-        logSaverListener.testLogSaved(EasyMock.eq(TestInvocation.DEVICE_LOG_NAME),
-                EasyMock.eq(LogDataType.LOGCAT), (InputStreamSource)EasyMock.anyObject(),
-                (LogFile)EasyMock.anyObject());
-        logSaverListener.testLog(EasyMock.eq(TestInvocation.TRADEFED_LOG_NAME),
-                EasyMock.eq(LogDataType.TEXT), (InputStreamSource)EasyMock.anyObject());
-        logSaverListener.testLogSaved(EasyMock.eq(TestInvocation.TRADEFED_LOG_NAME),
-                EasyMock.eq(LogDataType.TEXT), (InputStreamSource)EasyMock.anyObject(),
-                (LogFile)EasyMock.anyObject());
+        logSaverListener.testLog(
+                EasyMock.eq(LOGCAT_NAME_SETUP),
+                EasyMock.eq(LogDataType.LOGCAT),
+                (InputStreamSource) EasyMock.anyObject());
+        logSaverListener.testLogSaved(
+                EasyMock.eq(LOGCAT_NAME_SETUP),
+                EasyMock.eq(LogDataType.LOGCAT),
+                (InputStreamSource) EasyMock.anyObject(),
+                (LogFile) EasyMock.anyObject());
+        logSaverListener.testLog(
+                EasyMock.eq(LOGCAT_NAME_TEST),
+                EasyMock.eq(LogDataType.LOGCAT),
+                (InputStreamSource) EasyMock.anyObject());
+        logSaverListener.testLogSaved(
+                EasyMock.eq(LOGCAT_NAME_TEST),
+                EasyMock.eq(LogDataType.LOGCAT),
+                (InputStreamSource) EasyMock.anyObject(),
+                (LogFile) EasyMock.anyObject());
+        logSaverListener.testLog(
+                EasyMock.eq(LOGCAT_NAME_TEARDOWN),
+                EasyMock.eq(LogDataType.LOGCAT),
+                (InputStreamSource) EasyMock.anyObject());
+        logSaverListener.testLogSaved(
+                EasyMock.eq(LOGCAT_NAME_TEARDOWN),
+                EasyMock.eq(LogDataType.LOGCAT),
+                (InputStreamSource) EasyMock.anyObject(),
+                (LogFile) EasyMock.anyObject());
+        logSaverListener.testLog(
+                EasyMock.eq(TestInvocation.TRADEFED_LOG_NAME),
+                EasyMock.eq(LogDataType.TEXT),
+                (InputStreamSource) EasyMock.anyObject());
+        logSaverListener.testLogSaved(
+                EasyMock.eq(TestInvocation.TRADEFED_LOG_NAME),
+                EasyMock.eq(LogDataType.TEXT),
+                (InputStreamSource) EasyMock.anyObject(),
+                (LogFile) EasyMock.anyObject());
         logSaverListener.invocationEnded(EasyMock.anyLong());
         EasyMock.expect(logSaverListener.getSummary()).andReturn(mSummary);
 
@@ -828,10 +920,10 @@ public class TestInvocationTest extends TestCase {
         mStubConfiguration.getCommandOptions().setTestTag("not-default");
 
         setupInvoke();
-        EasyMock.expect(mMockDevice.getLogcat())
-                .andReturn(new ByteArrayInputStreamSource(new byte[0])).times(2);
-        EasyMock.expect(mMockLogger.getLog())
-                .andReturn(new ByteArrayInputStreamSource(new byte[0]));
+        EasyMock.expect(mMockDevice.getLogcat()).andReturn(EMPTY_STREAM_SOURCE).times(3);
+        mMockDevice.clearLogcat();
+        EasyMock.expectLastCall().times(3);
+        EasyMock.expect(mMockLogger.getLog()).andReturn(EMPTY_STREAM_SOURCE);
         mMockBuildInfo.setDeviceSerial(SERIAL);
         mMockBuildProvider.cleanUp(mMockBuildInfo);
         setupMockSuccessListeners();
@@ -855,10 +947,10 @@ public class TestInvocationTest extends TestCase {
         String[] commandLine = {"run", "empty"};
         mStubConfiguration.setCommandLine(commandLine);
         setupInvoke();
-        EasyMock.expect(mMockDevice.getLogcat())
-                .andReturn(new ByteArrayInputStreamSource(new byte[0])).times(2);
-        EasyMock.expect(mMockLogger.getLog())
-                .andReturn(new ByteArrayInputStreamSource(new byte[0]));
+        EasyMock.expect(mMockDevice.getLogcat()).andReturn(EMPTY_STREAM_SOURCE).times(3);
+        mMockDevice.clearLogcat();
+        EasyMock.expectLastCall().times(3);
+        EasyMock.expect(mMockLogger.getLog()).andReturn(EMPTY_STREAM_SOURCE);
         mMockBuildInfo.setDeviceSerial(SERIAL);
         mMockBuildProvider.cleanUp(mMockBuildInfo);
         setupMockSuccessListeners();
@@ -880,10 +972,10 @@ public class TestInvocationTest extends TestCase {
         String[] commandLine = {"run", "empty"};
         mStubConfiguration.setCommandLine(commandLine);
         setupInvoke();
-        EasyMock.expect(mMockDevice.getLogcat())
-                .andReturn(new ByteArrayInputStreamSource(new byte[0])).times(2);
-        EasyMock.expect(mMockLogger.getLog())
-                .andReturn(new ByteArrayInputStreamSource(new byte[0]));
+        EasyMock.expect(mMockDevice.getLogcat()).andReturn(EMPTY_STREAM_SOURCE).times(3);
+        mMockDevice.clearLogcat();
+        EasyMock.expectLastCall().times(3);
+        EasyMock.expect(mMockLogger.getLog()).andReturn(EMPTY_STREAM_SOURCE);
         mMockBuildInfo.setDeviceSerial(SERIAL);
         mMockBuildProvider.cleanUp(mMockBuildInfo);
         setupMockSuccessListeners();
@@ -918,10 +1010,10 @@ public class TestInvocationTest extends TestCase {
         mStubConfiguration.setBuildProvider(mockProvider);
         mStubConfiguration.setCommandOptions(commandOption);
         setupInvoke();
-        EasyMock.expect(mMockDevice.getLogcat())
-                .andReturn(new ByteArrayInputStreamSource(new byte[0])).times(2);
-        EasyMock.expect(mMockLogger.getLog())
-                .andReturn(new ByteArrayInputStreamSource(new byte[0]));
+        EasyMock.expect(mMockDevice.getLogcat()).andReturn(EMPTY_STREAM_SOURCE).times(3);
+        mMockDevice.clearLogcat();
+        EasyMock.expectLastCall().times(3);
+        EasyMock.expect(mMockLogger.getLog()).andReturn(EMPTY_STREAM_SOURCE);
         mMockBuildInfo.setDeviceSerial(SERIAL);
         setupMockSuccessListeners();
         mMockBuildInfo.addBuildAttribute("command_line_args", "run empty");
@@ -969,11 +1061,11 @@ public class TestInvocationTest extends TestCase {
      */
     private void setupInvokeWithBuild() {
         setupInvoke();
-        EasyMock.expect(mMockDevice.getLogcat())
-                .andReturn(new ByteArrayInputStreamSource(new byte[0])).times(2);
+        EasyMock.expect(mMockDevice.getLogcat()).andReturn(EMPTY_STREAM_SOURCE).times(3);
+        mMockDevice.clearLogcat();
+        EasyMock.expectLastCall().times(3);
 
-        EasyMock.expect(mMockLogger.getLog())
-                .andReturn(new ByteArrayInputStreamSource(new byte[0]));
+        EasyMock.expect(mMockLogger.getLog()).andReturn(EMPTY_STREAM_SOURCE);
         mMockBuildInfo.setDeviceSerial(SERIAL);
         mMockBuildProvider.cleanUp(mMockBuildInfo);
         mMockBuildInfo.setTestTag(EasyMock.eq("stub"));
@@ -983,17 +1075,23 @@ public class TestInvocationTest extends TestCase {
 
     /**
      * Set up expected conditions for the test InvocationListener and SummaryListener
-     * <p/>
-     * The order of calls for a single listener should be:
+     *
+     * <p>The order of calls for a single listener should be:
+     *
      * <ol>
-     *   <li>invocationStarted</li>
-     *   <li>invocationFailed (if run failed)</li>
-     *   <li>testLog(DEVICE_LOG_NAME, ...)</li>
-     *   <li>testLog(TRADEFED_LOG_NAME, ...)</li>
-     *   <li>putSummary (for an ITestSummaryListener)</li>
-     *   <li>invocationEnded</li>
-     *   <li>getSummary (for an ITestInvocationListener)</li>
+     *   <li>invocationStarted
+     *   <li>testLog(LOGCAT_NAME_SETUP, ...) (if no build or retrieval error)
+     *   <li>invocationFailed (if run failed)
+     *   <li>testLog(LOGCAT_NAME_ERROR, ...) (if build retrieval error)
+     *   <li>testLog(LOGCAT_NAME_TEST, ...) (otherwise)
+     *   <li>testLog(build error bugreport, ...) (otherwise and if build error)
+     *   <li>testLog(LOGCAT_NAME_TEARDOWN, ...) (otherwise)
+     *   <li>testLog(TRADEFED_LOG_NAME, ...)
+     *   <li>putSummary (for an ITestSummaryListener)
+     *   <li>invocationEnded
+     *   <li>getSummary (for an ITestInvocationListener)
      * </ol>
+     *
      * However note that, across all listeners, any getSummary call will precede all putSummary
      * calls.
      */
@@ -1004,39 +1102,104 @@ public class TestInvocationTest extends TestCase {
         mMockTestListener.invocationStarted(mStubInvocationMetadata);
         mMockSummaryListener.invocationStarted(mStubInvocationMetadata);
 
+        if (!(throwable instanceof BuildRetrievalError || throwable instanceof BuildError)) {
+            EasyMock.expect(
+                            mMockLogSaver.saveLogData(
+                                    EasyMock.eq(LOGCAT_NAME_SETUP),
+                                    EasyMock.eq(LogDataType.LOGCAT),
+                                    (InputStream) EasyMock.anyObject()))
+                    .andReturn(new LogFile(PATH, URL, false /* compressed */, true /* text */));
+            mMockTestListener.testLog(
+                    EasyMock.eq(LOGCAT_NAME_SETUP),
+                    EasyMock.eq(LogDataType.LOGCAT),
+                    (InputStreamSource) EasyMock.anyObject());
+            mMockSummaryListener.testLog(
+                    EasyMock.eq(LOGCAT_NAME_SETUP),
+                    EasyMock.eq(LogDataType.LOGCAT),
+                    (InputStreamSource) EasyMock.anyObject());
+        }
+
         // invocationFailed
         if (!status.equals(InvocationStatus.SUCCESS)) {
             mMockTestListener.invocationFailed(EasyMock.eq(throwable));
             mMockSummaryListener.invocationFailed(EasyMock.eq(throwable));
         }
 
-        if (throwable instanceof BuildError) {
-            EasyMock.expect(mMockLogSaver.saveLogData(
-                    EasyMock.eq(TestInvocation.BUILD_ERROR_BUGREPORT_NAME + "_" + SERIAL),
-                    EasyMock.eq(LogDataType.BUGREPORT), (InputStream)EasyMock.anyObject()))
+        if (throwable instanceof BuildRetrievalError) {
+            // Handle logcat error listeners
+            EasyMock.expect(
+                            mMockLogSaver.saveLogData(
+                                    EasyMock.eq(LOGCAT_NAME_ERROR),
+                                    EasyMock.eq(LogDataType.LOGCAT),
+                                    (InputStream) EasyMock.anyObject()))
                     .andReturn(new LogFile(PATH, URL, false /* compressed */, true /* text */));
             mMockTestListener.testLog(
-                    EasyMock.eq(TestInvocation.BUILD_ERROR_BUGREPORT_NAME + "_" + SERIAL),
-                    EasyMock.eq(LogDataType.BUGREPORT), (InputStreamSource)EasyMock.anyObject());
+                    EasyMock.eq(LOGCAT_NAME_ERROR),
+                    EasyMock.eq(LogDataType.LOGCAT),
+                    (InputStreamSource) EasyMock.anyObject());
             mMockSummaryListener.testLog(
-                    EasyMock.eq(TestInvocation.BUILD_ERROR_BUGREPORT_NAME + "_" + SERIAL),
-                    EasyMock.eq(LogDataType.BUGREPORT), (InputStreamSource)EasyMock.anyObject());
+                    EasyMock.eq(LOGCAT_NAME_ERROR),
+                    EasyMock.eq(LogDataType.LOGCAT),
+                    (InputStreamSource) EasyMock.anyObject());
+        } else {
+            // Handle test logcat listeners
+            EasyMock.expect(
+                            mMockLogSaver.saveLogData(
+                                    EasyMock.eq(LOGCAT_NAME_TEST),
+                                    EasyMock.eq(LogDataType.LOGCAT),
+                                    (InputStream) EasyMock.anyObject()))
+                    .andReturn(new LogFile(PATH, URL, false /* compressed */, true /* text */));
+            mMockTestListener.testLog(
+                    EasyMock.eq(LOGCAT_NAME_TEST),
+                    EasyMock.eq(LogDataType.LOGCAT),
+                    (InputStreamSource) EasyMock.anyObject());
+            mMockSummaryListener.testLog(
+                    EasyMock.eq(LOGCAT_NAME_TEST),
+                    EasyMock.eq(LogDataType.LOGCAT),
+                    (InputStreamSource) EasyMock.anyObject());
+            // Handle build error bugreport listeners
+            if (throwable instanceof BuildError) {
+                EasyMock.expect(
+                                mMockLogSaver.saveLogData(
+                                        EasyMock.eq(
+                                                TestInvocation.BUILD_ERROR_BUGREPORT_NAME
+                                                        + "_"
+                                                        + SERIAL),
+                                        EasyMock.eq(LogDataType.BUGREPORT),
+                                        (InputStream) EasyMock.anyObject()))
+                        .andReturn(new LogFile(PATH, URL, false /* compressed */, true /* text */));
+                mMockTestListener.testLog(
+                        EasyMock.eq(TestInvocation.BUILD_ERROR_BUGREPORT_NAME + "_" + SERIAL),
+                        EasyMock.eq(LogDataType.BUGREPORT),
+                        (InputStreamSource) EasyMock.anyObject());
+                mMockSummaryListener.testLog(
+                        EasyMock.eq(TestInvocation.BUILD_ERROR_BUGREPORT_NAME + "_" + SERIAL),
+                        EasyMock.eq(LogDataType.BUGREPORT),
+                        (InputStreamSource) EasyMock.anyObject());
+            }
+            // Handle teardown logcat listeners
+            EasyMock.expect(
+                            mMockLogSaver.saveLogData(
+                                    EasyMock.eq(LOGCAT_NAME_TEARDOWN),
+                                    EasyMock.eq(LogDataType.LOGCAT),
+                                    (InputStream) EasyMock.anyObject()))
+                    .andReturn(new LogFile(PATH, URL, false /* compressed */, true /* text */));
+            mMockTestListener.testLog(
+                    EasyMock.eq(LOGCAT_NAME_TEARDOWN),
+                    EasyMock.eq(LogDataType.LOGCAT),
+                    (InputStreamSource) EasyMock.anyObject());
+            mMockSummaryListener.testLog(
+                    EasyMock.eq(LOGCAT_NAME_TEARDOWN),
+                    EasyMock.eq(LogDataType.LOGCAT),
+                    (InputStreamSource) EasyMock.anyObject());
         }
 
-        // saveAndZipLogData (mMockLogFileSaver)
-        EasyMock.expect(mMockLogSaver.saveLogData( EasyMock.eq(TestInvocation.DEVICE_LOG_NAME),
-                EasyMock.eq(LogDataType.LOGCAT), (InputStream)EasyMock.anyObject())
-                ).andReturn(new LogFile(PATH, URL, false /* compressed */, true /* text */));
-        // testLog (mMockTestListener)
-        mMockTestListener.testLog(EasyMock.eq(TestInvocation.DEVICE_LOG_NAME),
-                EasyMock.eq(LogDataType.LOGCAT), (InputStreamSource)EasyMock.anyObject());
-        // testLog (mMockSummaryListener)
-        mMockSummaryListener.testLog(EasyMock.eq(TestInvocation.DEVICE_LOG_NAME),
-                EasyMock.eq(LogDataType.LOGCAT), (InputStreamSource)EasyMock.anyObject());
-
-        EasyMock.expect(mMockLogSaver.saveLogData(EasyMock.eq(TestInvocation.TRADEFED_LOG_NAME),
-                EasyMock.eq(LogDataType.TEXT), (InputStream)EasyMock.anyObject())
-                ).andReturn(new LogFile(PATH, URL, false /* compressed */, true /* text */));
+        EasyMock.expect(
+                        mMockLogSaver.saveLogData(
+                                EasyMock.eq(TestInvocation.TRADEFED_LOG_NAME),
+                                EasyMock.eq(LogDataType.TEXT),
+                                (InputStream) EasyMock.anyObject()))
+                .andReturn(new LogFile(PATH, URL, false /* compressed */, true /* text */));
         mMockTestListener.testLog(EasyMock.eq(TestInvocation.TRADEFED_LOG_NAME),
                 EasyMock.eq(LogDataType.TEXT), (InputStreamSource)EasyMock.anyObject());
         mMockSummaryListener.testLog(EasyMock.eq(TestInvocation.TRADEFED_LOG_NAME),
