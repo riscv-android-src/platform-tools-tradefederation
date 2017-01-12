@@ -22,6 +22,7 @@ import org.w3c.dom.Document;
 import org.w3c.dom.Element;
 import org.w3c.dom.NodeList;
 import org.xml.sax.SAXException;
+import org.xml.sax.helpers.DefaultHandler;
 
 import java.io.File;
 import java.io.IOException;
@@ -118,6 +119,7 @@ public class AndroidManifestWriter {
             DocumentBuilderFactory docFactory = DocumentBuilderFactory.newInstance();
             docFactory.setNamespaceAware(true);
             DocumentBuilder docBuilder = docFactory.newDocumentBuilder();
+            docBuilder.setErrorHandler(new DefaultHandler());
             Document doc = docBuilder.parse(osManifestFilePath);
             return new AndroidManifestWriter(doc, osManifestFilePath);
         } catch (ParserConfigurationException e) {

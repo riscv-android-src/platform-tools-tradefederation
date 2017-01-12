@@ -58,9 +58,7 @@ public class ZipUtil {
             return false;
         }
 
-        try {
-            final ZipFile z = new ZipFile(zipFile);
-
+        try (ZipFile z = new ZipFile(zipFile)) {
             if (thorough) {
                 // Reading the entire file is the only way to detect CRC errors within the archive
                 final File extractDir = FileUtil.createTempDir("extract-" + zipFile.getName());
@@ -340,7 +338,9 @@ public class ZipUtil {
     public static File extractZipToTemp(File zipFile, String nameHint)
             throws IOException, ZipException {
         File localRootDir = FileUtil.createTempDir(nameHint);
-        extractZip(new ZipFile(zipFile), localRootDir);
-        return localRootDir;
+        try (ZipFile zip = new ZipFile(zipFile)) {
+            extractZip(zip, localRootDir);
+            return localRootDir;
+        }
     }
 }

@@ -119,9 +119,9 @@ public class LocalDeviceBuildProviderTest {
     @Test
     public void testCreateBuildImageZip() throws Exception {
         File buildImageZip = mLocalDeviceBuildProvider.createBuildImageZip();
-        try {
+        try (ZipFile zip = new ZipFile(buildImageZip)) {
             assertNotNull(buildImageZip);
-            ZipUtil2.extractZip(new ZipFile(buildImageZip), mTmpDir);
+            ZipUtil2.extractZip(zip, mTmpDir);
             File extractedFile1 = new File(mTmpDir, mAndroidInfo.getName());
             File extractedFile2 = new File(mTmpDir, mBootImg.getName());
             File extractedFile3 = new File(mTmpDir, mSystemImg.getName());

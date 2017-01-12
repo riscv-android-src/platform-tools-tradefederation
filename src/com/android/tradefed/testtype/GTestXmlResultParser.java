@@ -24,6 +24,7 @@ import org.w3c.dom.Document;
 import org.w3c.dom.Element;
 import org.w3c.dom.NodeList;
 import org.xml.sax.SAXException;
+import org.xml.sax.helpers.DefaultHandler;
 
 import java.io.File;
 import java.io.IOException;
@@ -89,6 +90,7 @@ public class GTestXmlResultParser {
         Document result = null;
         try {
             DocumentBuilder db = dbf.newDocumentBuilder();
+            db.setErrorHandler(new DefaultHandler());
             result = db.parse(f);
         } catch (SAXException | IOException | ParserConfigurationException e) {
             reportTestRunStarted();

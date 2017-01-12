@@ -1914,7 +1914,6 @@ public class NativeDevice implements IManagedTestDevice {
             return new ByteArrayInputStreamSource(receiver.getOutput());
         } else {
             CLog.d("Api level above 24, using bugreportz instead.");
-            ZipFile zip;
             File mainEntry = null;
             File bugreportzFile = null;
             try {
@@ -1923,13 +1922,14 @@ public class NativeDevice implements IManagedTestDevice {
                     CLog.w("Fail to collect the bugreportz.");
                     return bugreportzFallback();
                 }
-                zip = new ZipFile(bugreportzFile);
-                // We get the main_entry.txt that contains the bugreport name.
-                mainEntry = ZipUtil2.extractFileFromZip(zip, "main_entry.txt");
-                String bugreportName = FileUtil.readStringFromFile(mainEntry).trim();
-                CLog.d("bugreport name: '%s'", bugreportName);
-                File bugreport = ZipUtil2.extractFileFromZip(zip, bugreportName);
-                return new FileInputStreamSource(bugreport, true);
+                try (ZipFile zip = new ZipFile(bugreportzFile)) {
+                    // We get the main_entry.txt that contains the bugreport name.
+                    mainEntry = ZipUtil2.extractFileFromZip(zip, "main_entry.txt");
+                    String bugreportName = FileUtil.readStringFromFile(mainEntry).trim();
+                    CLog.d("bugreport name: '%s'", bugreportName);
+                    File bugreport = ZipUtil2.extractFileFromZip(zip, bugreportName);
+                    return new FileInputStreamSource(bugreport, true);
+                }
             } catch (IOException e) {
                 CLog.e("Error while unzipping bugreportz");
                 CLog.e(e);

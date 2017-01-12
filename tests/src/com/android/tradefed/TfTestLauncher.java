@@ -238,6 +238,7 @@ public class TfTestLauncher implements IRemoteTest, IBuildReceiver {
             }
             if (result.getStatus().equals(CommandStatus.SUCCESS)) {
                 CLog.d("Successfully ran TF tests for build %s", mBuildInfo.getBuildId());
+                testCleanStdErr(stderrFile, listener);
             } else {
                 CLog.w("Failed ran TF tests for build %s, status %s",
                         mBuildInfo.getBuildId(), result.getStatus());
@@ -405,5 +406,25 @@ public class TfTestLauncher implements IRemoteTest, IBuildReceiver {
         }
         listener.testEnded(tid, Collections.emptyMap());
         FileUtil.recursiveDelete(tmpDir);
+    }
+
+    /**
+     * Extra test to ensure no abnormal logging is made to stderr when all the tests pass.
+     *
+     * @param stdErrFile the stderr log file of the subprocess.
+     * @param listener the {@link ITestInvocationListener} where to report the test.
+     */
+    private void testCleanStdErr(File stdErrFile, ITestInvocationListener listener)
+            throws IOException {
+        TestIdentifier tid = new TestIdentifier("stderr-test", "checkIsEmpty");
+        listener.testStarted(tid);
+        if (!FileUtil.readStringFromFile(stdErrFile).isEmpty()) {
+            String trace =
+                    String.format(
+                            "Found some output in stderr:\n%s",
+                            FileUtil.readStringFromFile(stdErrFile));
+            listener.testFailed(tid, trace);
+        }
+        listener.testEnded(tid, Collections.emptyMap());
     }
 }
