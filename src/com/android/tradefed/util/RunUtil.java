@@ -565,6 +565,9 @@ public class RunUtil implements IRunUtil {
             mProcessBuilder = processBuilder;
             mInput = input;
             mCommandResult = result;
+            // Ensure the outputs are never null
+            mCommandResult.setStdout("");
+            mCommandResult.setStderr("");
             mCountDown = new CountDownLatch(1);
             // Redirect IO, so that the outputstream for the spawn process does not fill up
             // and cause deadlock.
