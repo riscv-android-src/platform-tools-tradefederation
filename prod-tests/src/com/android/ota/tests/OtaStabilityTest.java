@@ -43,8 +43,7 @@ import com.android.tradefed.util.IRunUtil;
 import com.android.tradefed.util.RunUtil;
 import com.android.tradefed.util.StreamUtil;
 
-import junit.framework.Assert;
-import junit.framework.AssertionFailedError;
+import org.junit.Assert;
 
 import java.io.File;
 import java.io.FileInputStream;
@@ -222,7 +221,7 @@ public class OtaStabilityTest implements IDeviceTest, IBuildReceiver, IConfigura
                         String.format("Device %s successfully OTA-ed to build %s. Iteration: %d",
                                 mDevice.getSerialNumber(), buildId, actualIterations));
             }
-        } catch (AssertionFailedError error) {
+        } catch (AssertionError error) {
             Log.e(LOG_TAG, error);
         } catch (TargetSetupError e) {
             CLog.i("Encountered TargetSetupError, marking this test as resumable");
@@ -276,10 +275,10 @@ public class OtaStabilityTest implements IDeviceTest, IBuildReceiver, IConfigura
      * @param listener the {@link ITestInvocationListener}
      * @return the build id the device ota-ed to
      * @throws DeviceNotAvailableException
-     * @throws AssertionFailedError
+     * @throws AssertionError
      */
     private String waitForOta(ITestInvocationListener listener)
-            throws DeviceNotAvailableException, AssertionFailedError {
+            throws DeviceNotAvailableException, AssertionError {
         String currentBuildId = mDevice.getBuildId();
         Assert.assertEquals(String.format("device %s does not have expected build id on boot.",
                 mDevice.getSerialNumber()), currentBuildId, mDeviceBuild.getBuildId());

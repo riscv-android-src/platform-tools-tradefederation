@@ -24,7 +24,7 @@ import com.android.tradefed.targetprep.BuildError;
 import com.android.tradefed.targetprep.ITargetPreparer;
 import com.android.tradefed.targetprep.TargetSetupError;
 
-import junit.framework.Assert;
+import org.junit.Assert;
 
 /**
  * Sends and SMS message to the emulator

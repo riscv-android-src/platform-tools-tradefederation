@@ -15,8 +15,9 @@
  */
 package com.android.tradefed.util;
 
-import junit.framework.Assert;
 import junit.framework.TestCase;
+
+import org.junit.Assert;
 
 import java.io.File;
 import java.io.IOException;

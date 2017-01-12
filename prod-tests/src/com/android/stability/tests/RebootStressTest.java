@@ -31,7 +31,7 @@ import com.android.tradefed.util.CommandResult;
 import com.android.tradefed.util.CommandStatus;
 import com.android.tradefed.util.RunUtil;
 
-import junit.framework.Assert;
+import org.junit.Assert;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -199,7 +199,7 @@ public class RebootStressTest implements IRemoteTest, IDeviceTest, IShardableTes
                     getDevice().reboot();
                 }
                 getDevice().waitForDeviceAvailable();
-                doWaitAndCheck(listener);
+                doWaitAndCheck();
                 CLog.logAndDisplay(LogLevel.INFO, "Device %s completed %d of %d iterations",
                         getDevice().getSerialNumber(), actualIterations+1, mIterations);
             }
@@ -236,12 +236,11 @@ public class RebootStressTest implements IRemoteTest, IDeviceTest, IShardableTes
     }
 
     /**
-     * Perform wait between reboots. Perform periodic checks on device to ensure is still
-     * available.
+     * Perform wait between reboots. Perform periodic checks on device to ensure is still available.
      *
      * @throws DeviceNotAvailableException
      */
-    private void doWaitAndCheck(ITestInvocationListener listener) throws DeviceNotAvailableException {
+    private void doWaitAndCheck() throws DeviceNotAvailableException {
         long waitTimeMs = mWaitTime * 1000;
         long elapsedTime = 0;
 
@@ -249,7 +248,7 @@ public class RebootStressTest implements IRemoteTest, IDeviceTest, IShardableTes
             long startTime = System.currentTimeMillis();
             // ensure device is still up
             getDevice().waitForDeviceAvailable(DEVICE_AVAIL_TIME);
-            checkForUserDataFailure(listener);
+            checkForUserDataFailure();
             RunUtil.getDefault().sleep(mPollSleepTime * 1000);
             elapsedTime += System.currentTimeMillis() - startTime;
         }
@@ -260,8 +259,7 @@ public class RebootStressTest implements IRemoteTest, IDeviceTest, IShardableTes
      *
      * @throws DeviceNotAvailableException
      */
-    private void checkForUserDataFailure(ITestInvocationListener listener)
-            throws DeviceNotAvailableException {
+    private void checkForUserDataFailure() throws DeviceNotAvailableException {
         for (String path : LAST_KMSG_PATHS) {
             if (getDevice().doesFileExist(path)) {
                 mLastKmsg = getDevice().executeShellCommand("cat " + path);

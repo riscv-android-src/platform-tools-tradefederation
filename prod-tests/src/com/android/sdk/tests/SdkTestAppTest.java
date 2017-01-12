@@ -30,8 +30,7 @@ import com.android.tradefed.util.IRunUtil;
 import com.android.tradefed.util.RunUtil;
 import com.android.tradefed.util.xml.AndroidManifestWriter;
 
-import junit.framework.Assert;
-import junit.framework.AssertionFailedError;
+import org.junit.Assert;
 
 import java.io.BufferedInputStream;
 import java.io.ByteArrayOutputStream;
@@ -231,7 +230,7 @@ public class SdkTestAppTest implements IRemoteTest, IBuildReceiver {
      * @param target the sdk target
      * @param testAppDir the test app directory
      * @param isLibrary <code>true</code> if app is a library project
-     * @throws AssertionFailedError if update project failed
+     * @throws AssertionError if update project failed
      * @return a {@link File} representing the app's build.xml
      */
     private File updateProject(String target, File testAppDir, boolean isLibrary) {

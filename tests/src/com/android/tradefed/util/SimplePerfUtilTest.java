@@ -19,10 +19,10 @@ import com.android.tradefed.device.ITestDevice;
 
 import com.android.tradefed.util.SimplePerfUtil.SimplePerfType;
 
-import junit.framework.Assert;
 import junit.framework.TestCase;
 
 import org.easymock.EasyMock;
+import org.junit.Assert;
 
 import java.util.ArrayList;
 import java.util.List;

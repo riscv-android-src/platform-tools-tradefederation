@@ -40,9 +40,10 @@ import com.android.tradefed.util.AbiFormatter;
 import com.android.tradefed.util.ListInstrumentationParser;
 import com.android.tradefed.util.ListInstrumentationParser.InstrumentationTarget;
 import com.android.tradefed.util.StringEscapeUtils;
+
 import com.google.common.annotations.VisibleForTesting;
 
-import junit.framework.Assert;
+import org.junit.Assert;
 
 import java.io.File;
 import java.util.ArrayList;

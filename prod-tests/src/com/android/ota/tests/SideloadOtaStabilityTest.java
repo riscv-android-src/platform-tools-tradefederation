@@ -48,8 +48,7 @@ import com.android.tradefed.testtype.IResumableTest;
 import com.android.tradefed.util.FileUtil;
 import com.android.tradefed.util.StreamUtil;
 
-import junit.framework.Assert;
-import junit.framework.AssertionFailedError;
+import org.junit.Assert;
 
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
@@ -211,7 +210,7 @@ public class SideloadOtaStabilityTest implements IDeviceTest, IBuildReceiver,
                         mOtaDeviceBuild.getOtaBuild().getOtaPackageVersion(),
                         actualIterations, mIterations);
             }
-        } catch (AssertionFailedError | BuildError e) {
+        } catch (AssertionError | BuildError e) {
             CLog.e(e);
         } catch (TargetSetupError e) {
             CLog.i("Encountered TargetSetupError, marking this test as resumable");
