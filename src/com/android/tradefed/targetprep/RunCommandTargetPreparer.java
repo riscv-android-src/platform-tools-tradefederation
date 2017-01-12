@@ -48,7 +48,6 @@ public class RunCommandTargetPreparer implements ITargetCleaner {
             isTimeVal = true)
     private long mRunCmdTimeout = 0;
 
-
     /**
      * {@inheritDoc}
      */
@@ -58,15 +57,14 @@ public class RunCommandTargetPreparer implements ITargetCleaner {
         if (mDisable)
             return;
         for (String cmd : mCommands) {
-            // If the command had any output, the executeShellCommand method will log it at the
-            // VERBOSE level; so no need to do any logging from here.
             CLog.d("About to run setup command on device %s: %s", device.getSerialNumber(), cmd);
             if (mRunCmdTimeout > 0) {
                 CollectingOutputReceiver receiver = new CollectingOutputReceiver();
                 device.executeShellCommand(cmd, receiver, mRunCmdTimeout, TimeUnit.MILLISECONDS, 0);
-                CLog.v("%s returned %s", cmd, receiver.getOutput());
+                CLog.v("cmd: '%s', returned:\n%s", cmd, receiver.getOutput());
             } else {
-                device.executeShellCommand(cmd);
+                String output = device.executeShellCommand(cmd);
+                CLog.v("cmd: '%s', returned:\n%s", cmd, output);
             }
         }
 
@@ -82,10 +80,9 @@ public class RunCommandTargetPreparer implements ITargetCleaner {
             throws DeviceNotAvailableException {
         if (mDisable) return;
         for (String cmd : mTeardownCommands) {
-            // If the command had any output, the executeShellCommand method will log it at the
-            // VERBOSE level; so no need to do any logging from here.
             CLog.d("About to run tearDown command on device %s: %s", device.getSerialNumber(), cmd);
-            device.executeShellCommand(cmd);
+            String output = device.executeShellCommand(cmd);
+            CLog.v("tearDown cmd: '%s', returned:\n%s", cmd, output);
         }
     }
 }
