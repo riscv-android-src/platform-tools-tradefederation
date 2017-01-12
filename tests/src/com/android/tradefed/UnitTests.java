@@ -147,6 +147,7 @@ import com.android.tradefed.util.FakeTestsZipFolderTest;
 import com.android.tradefed.util.FileUtilTest;
 import com.android.tradefed.util.FixedByteArrayOutputStreamTest;
 import com.android.tradefed.util.JUnitXmlParserTest;
+import com.android.tradefed.util.KeyguardControllerStateTest;
 import com.android.tradefed.util.ListInstrumentationParserTest;
 import com.android.tradefed.util.LogcatUpdaterEventParserTest;
 import com.android.tradefed.util.MultiMapTest;
@@ -352,6 +353,7 @@ import org.junit.runners.Suite.SuiteClasses;
     HttpHelperTest.class,
     HttpMultipartPostTest.class,
     JUnitXmlParserTest.class,
+    KeyguardControllerStateTest.class,
     ListInstrumentationParserTest.class,
     LogcatUpdaterEventParserTest.class,
     MultiMapTest.class,

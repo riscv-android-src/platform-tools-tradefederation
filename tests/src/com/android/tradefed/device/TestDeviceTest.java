@@ -34,6 +34,7 @@ import com.android.tradefed.util.CommandResult;
 import com.android.tradefed.util.CommandStatus;
 import com.android.tradefed.util.FileUtil;
 import com.android.tradefed.util.IRunUtil;
+import com.android.tradefed.util.KeyguardControllerState;
 import com.android.tradefed.util.RunUtil;
 import com.android.tradefed.util.ZipUtil2;
 
@@ -2822,5 +2823,23 @@ public class TestDeviceTest extends TestCase {
         } finally {
             FileUtil.recursiveDelete(testImageFile.getParentFile());
         }
+    }
+
+    /** Test for {@link TestDevice#getKeyguardState()} produces the proper output. */
+    public void testGetKeyguardState() throws Exception {
+        mTestDevice =
+                new TestableTestDevice() {
+                    @Override
+                    public String executeShellCommand(String command)
+                            throws DeviceNotAvailableException {
+                        return "KeyguardController:\n"
+                                + "  mKeyguardShowing=true\n"
+                                + "  mKeyguardGoingAway=false\n"
+                                + "  mOccluded=false\n";
+                    }
+                };
+        KeyguardControllerState state = mTestDevice.getKeyguardState();
+        Assert.assertTrue(state.isKeyguardShowing());
+        Assert.assertFalse(state.isKeyguardOccluded());
     }
 }

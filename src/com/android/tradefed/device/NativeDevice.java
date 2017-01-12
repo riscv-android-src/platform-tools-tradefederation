@@ -47,6 +47,7 @@ import com.android.tradefed.util.CommandResult;
 import com.android.tradefed.util.CommandStatus;
 import com.android.tradefed.util.FileUtil;
 import com.android.tradefed.util.IRunUtil;
+import com.android.tradefed.util.KeyguardControllerState;
 import com.android.tradefed.util.ProcessInfo;
 import com.android.tradefed.util.PsParser;
 import com.android.tradefed.util.RunUtil;
@@ -2350,6 +2351,12 @@ public class NativeDevice implements IManagedTestDevice {
     @Override
     public boolean clearErrorDialogs() throws DeviceNotAvailableException {
         throw new UnsupportedOperationException("No support for Screen's features");
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public KeyguardControllerState getKeyguardState() throws DeviceNotAvailableException {
+        throw new UnsupportedOperationException("No support for keyguard querying.");
     }
 
     IDeviceStateMonitor getDeviceStateMonitor() {
