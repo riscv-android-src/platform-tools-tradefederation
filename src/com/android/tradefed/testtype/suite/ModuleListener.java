@@ -23,6 +23,8 @@ import com.android.tradefed.result.InputStreamSource;
 import com.android.tradefed.result.LogDataType;
 import com.android.tradefed.result.TestSummary;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -34,6 +36,8 @@ public class ModuleListener implements ITestInvocationListener {
 
     private String mModuleId;
     private ITestInvocationListener mListener;
+    private List<TestIdentifier> mListTests = new ArrayList<>();
+    private int mExpectedTests = 0;
 
     /**
      * Constructor
@@ -63,6 +67,7 @@ public class ModuleListener implements ITestInvocationListener {
         CLog.d("ModuleListener.testRunStarted(%s, %d)", name, numTests);
         // Override the start name by the module id
         mListener.testRunStarted(mModuleId, numTests);
+        mExpectedTests += numTests;
     }
 
     /**
@@ -72,6 +77,7 @@ public class ModuleListener implements ITestInvocationListener {
     public void testStarted(TestIdentifier test) {
         CLog.d("ModuleListener.testStarted(%s)", test.toString());
         mListener.testStarted(test);
+        mListTests.add(test);
     }
 
     /**
@@ -173,4 +179,13 @@ public class ModuleListener implements ITestInvocationListener {
         mListener.testLog(name, type, stream);
     }
 
+    /** Returns the list of tests that was seen as started by the module. */
+    protected List<TestIdentifier> getListTestsRan() {
+        return mListTests;
+    }
+
+    /** Returns the number of tests that was expected to be run as part of the module. */
+    protected int getNumExpectedTests() {
+        return mExpectedTests;
+    }
 }

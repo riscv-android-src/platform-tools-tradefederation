@@ -15,8 +15,10 @@
  */
 package com.android.tradefed.testtype.suite;
 
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 
+import com.android.ddmlib.testrunner.TestIdentifier;
 import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.config.ConfigurationException;
 import com.android.tradefed.config.ConfigurationFactory;
@@ -32,8 +34,6 @@ import com.android.tradefed.result.InputStreamSource;
 import com.android.tradefed.result.LogDataType;
 import com.android.tradefed.suite.checker.ISystemStatusChecker;
 import com.android.tradefed.testtype.IRemoteTest;
-import com.android.tradefed.testtype.suite.ITestSuite;
-import com.android.tradefed.testtype.suite.ModuleDefinition;
 
 import org.easymock.EasyMock;
 import org.junit.Before;
@@ -42,6 +42,7 @@ import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.List;
 
@@ -68,13 +69,38 @@ public class ITestSuiteTest {
         public LinkedHashMap<String, IConfiguration> loadTests() {
             LinkedHashMap<String, IConfiguration> testConfig = new LinkedHashMap<>();
             try {
-                testConfig.put(TEST_CONFIG_NAME, ConfigurationFactory.getInstance()
-                        .createConfigurationFromArgs(new String[] {EMPTY_CONFIG}));
+                IConfiguration config =
+                        ConfigurationFactory.getInstance()
+                                .createConfigurationFromArgs(new String[] {EMPTY_CONFIG});
+                config.setTest(new StubCollectingTest());
+                testConfig.put(TEST_CONFIG_NAME, config);
             } catch (ConfigurationException e) {
                 CLog.e(e);
                 throw new RuntimeException(e);
             }
             return testConfig;
+        }
+    }
+
+    public static class StubCollectingTest implements IRemoteTest {
+        private DeviceNotAvailableException mException;
+
+        public StubCollectingTest() {}
+
+        public StubCollectingTest(DeviceNotAvailableException e) {
+            mException = e;
+        }
+
+        @Override
+        public void run(ITestInvocationListener listener) throws DeviceNotAvailableException {
+            listener.testRunStarted(TEST_CONFIG_NAME, 1);
+            if (mException != null) {
+                throw mException;
+            }
+            TestIdentifier test = new TestIdentifier(EMPTY_CONFIG, EMPTY_CONFIG);
+            listener.testStarted(test);
+            listener.testEnded(test, Collections.emptyMap());
+            listener.testRunEnded(0, Collections.emptyMap());
         }
     }
 
@@ -103,9 +129,16 @@ public class ITestSuiteTest {
         EasyMock.verify(mMockListener, mMockDevice, mMockBuildInfo, mMockSysChecker);
     }
 
-    /**
-     * Test for {@link ITestSuite#run(ITestInvocationListener)}.
-     */
+    /** Helper to expect the test run callback. */
+    private void expectTestRun(ITestInvocationListener listener) {
+        listener.testRunStarted(TEST_CONFIG_NAME, 1);
+        TestIdentifier test = new TestIdentifier(EMPTY_CONFIG, EMPTY_CONFIG);
+        listener.testStarted(test);
+        listener.testEnded(test, Collections.emptyMap());
+        listener.testRunEnded(0, Collections.emptyMap());
+    }
+
+    /** Test for {@link ITestSuite#run(ITestInvocationListener)}. */
     @Test
     public void testRun() throws Exception {
         List<ISystemStatusChecker> sysChecker = new ArrayList<ISystemStatusChecker>();
@@ -115,6 +148,7 @@ public class ITestSuiteTest {
                 .andReturn(true);
         EasyMock.expect(mMockSysChecker.postExecutionCheck(EasyMock.eq(mMockDevice)))
                 .andReturn(true);
+        expectTestRun(mMockListener);
         replayMocks();
         mTestSuite.run(mMockListener);
         verifyMocks();
@@ -139,6 +173,7 @@ public class ITestSuiteTest {
         EasyMock.expectLastCall().times(2);
         EasyMock.expect(mMockSysChecker.postExecutionCheck(EasyMock.eq(mMockDevice)))
                 .andReturn(false);
+        expectTestRun(mMockListener);
         replayMocks();
         mTestSuite.run(mMockListener);
         verifyMocks();
@@ -155,6 +190,7 @@ public class ITestSuiteTest {
         setter.setOptionValue("reboot-per-module", "true");
         EasyMock.expect(mMockDevice.getProperty("ro.build.type")).andReturn("userdebug");
         mMockDevice.reboot();
+        expectTestRun(mMockListener);
         replayMocks();
         mTestSuite.run(mMockListener);
         verifyMocks();
@@ -167,35 +203,35 @@ public class ITestSuiteTest {
      */
     @Test
     public void testRun_unresponsiveDevice() throws Exception {
-        mTestSuite = new TestSuiteImpl() {
-            @Override
-            public LinkedHashMap<String, IConfiguration> loadTests() {
-                LinkedHashMap<String, IConfiguration> testConfig = new LinkedHashMap<>();
-                try {
-                    IConfiguration fake = ConfigurationFactory.getInstance()
-                            .createConfigurationFromArgs(new String[] {EMPTY_CONFIG});
-                    fake.setTest(new IRemoteTest() {
-                        @Override
-                        public void run(ITestInvocationListener listener)
-                                throws DeviceNotAvailableException {
-                            // We inject a test to throw the unresponsive exception.
-                            throw new DeviceUnresponsiveException();
+        mTestSuite =
+                new TestSuiteImpl() {
+                    @Override
+                    public LinkedHashMap<String, IConfiguration> loadTests() {
+                        LinkedHashMap<String, IConfiguration> testConfig = new LinkedHashMap<>();
+                        try {
+                            IConfiguration fake =
+                                    ConfigurationFactory.getInstance()
+                                            .createConfigurationFromArgs(
+                                                    new String[] {EMPTY_CONFIG});
+                            fake.setTest(new StubCollectingTest(new DeviceUnresponsiveException()));
+                            testConfig.put(TEST_CONFIG_NAME, fake);
+                        } catch (ConfigurationException e) {
+                            CLog.e(e);
+                            throw new RuntimeException(e);
                         }
-                    });
-                    testConfig.put(TEST_CONFIG_NAME, fake);
-                } catch (ConfigurationException e) {
-                    CLog.e(e);
-                    throw new RuntimeException(e);
-                }
-                return testConfig;
-            }
-        };
+                        return testConfig;
+                    }
+                };
         mTestSuite.setDevice(mMockDevice);
         mTestSuite.setBuild(mMockBuildInfo);
         OptionSetter setter = new OptionSetter(mTestSuite);
         setter.setOptionValue("skip-all-system-status-check", "true");
         setter.setOptionValue("reboot-per-module", "true");
         EasyMock.expect(mMockDevice.getProperty("ro.build.type")).andReturn("user");
+        mMockListener.testRunStarted(TEST_CONFIG_NAME, 1);
+        EasyMock.expectLastCall().times(2);
+        mMockListener.testRunFailed(ITestSuite.MODULE_INCOMPLETE_MSG);
+        mMockListener.testRunEnded(0, Collections.emptyMap());
         replayMocks();
         mTestSuite.run(mMockListener);
         verifyMocks();
