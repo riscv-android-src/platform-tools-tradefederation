@@ -26,9 +26,11 @@ import org.json.JSONException;
 import org.json.JSONObject;
 
 import java.io.BufferedReader;
+import java.io.File;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.PrintWriter;
+import java.net.ServerSocket;
 import java.net.Socket;
 import java.util.HashMap;
 import java.util.Map;
@@ -36,16 +38,16 @@ import java.util.Map;
 /**
  * Sl4A client to interact via RPC with SL4A scripting layer.
  */
-public class Sl4aClient {
+public class Sl4aClient implements AutoCloseable {
 
-    public static final String INIT = "initiate";
-    public static final String CONTINUE = "continue";
+    private static final String INIT = "initiate";
     public static final String IS_SL4A_RUNNING_CMD =
             "ps -e | grep \"S com.googlecode.android_scripting\"";
     public static final String SL4A_LAUNCH_CMD =
             "am start -a com.googlecode.android_scripting.action.LAUNCH_SERVER " +
             "--ei com.googlecode.android_scripting.extra.USE_SERVICE_PORT %s " +
             "com.googlecode.android_scripting/.activity.ScriptingLayerServiceLauncher";
+    public static final String STOP_SL4A_CMD = "am force-stop com.googlecode.android_scripting";
 
     private static final int UNKNOWN_ID = -1;
 
@@ -69,6 +71,44 @@ public class Sl4aClient {
         mDevice = device;
         mHostPort = hostPort;
         mDeviceSidePort = devicePort;
+    }
+
+    /**
+     * Convenience method to create and start a client ready to use.
+     *
+     * @param device the {ITestDevice} that the client will be for.
+     * @param sl4aApkFile file path to hte sl4a apk to install, or null if already installed.
+     * @return an {@link Sl4aClient} instance that has been started.
+     * @throws DeviceNotAvailableException
+     */
+    public static Sl4aClient startSL4A(ITestDevice device, File sl4aApkFile)
+            throws DeviceNotAvailableException {
+        if (sl4aApkFile != null) {
+            if (!sl4aApkFile.exists()) {
+                throw new RuntimeException(String.format("Sl4A apk '%s' was not found.",
+                        sl4aApkFile.getAbsoluteFile()));
+            }
+            String res = device.installPackage(sl4aApkFile, true);
+            if (res != null) {
+                throw new RuntimeException(String.format("Error when installing the Sl4A apk: %s",
+                        res));
+            }
+        }
+        ServerSocket s = null;
+        int port = -1;
+        try {
+            s = new ServerSocket(0);
+            s.setReuseAddress(true);
+            port = s.getLocalPort();
+            s.close();
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+        // even after being closed, socket may remain in TIME_WAIT state
+        // reuse address allows to connect to it even in this state.
+        Sl4aClient sl4aClient = new Sl4aClient(device, port, 9998);
+        sl4aClient.startSl4A();
+        return sl4aClient;
     }
 
     /**
@@ -189,8 +229,10 @@ public class Sl4aClient {
     }
 
     /**
-     * Close the sl4a connection to device side.
+     * Close the sl4a connection to device side and Kills any running instance of sl4a.
+     * If no instance is running then nothing is done.
      */
+    @Override
     public void close() {
         try {
             if (mEventDispatcher != null) {
@@ -199,6 +241,7 @@ public class Sl4aClient {
             if (mSocket != null) {
                 mSocket.close();
             }
+            mDevice.executeShellCommand(STOP_SL4A_CMD);
             mDevice.executeAdbCommand("forward", "--remove", "tcp:" + mHostPort);
         } catch (IOException | DeviceNotAvailableException e) {
             CLog.e(e);

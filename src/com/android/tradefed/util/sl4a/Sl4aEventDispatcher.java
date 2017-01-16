@@ -68,7 +68,6 @@ public class Sl4aEventDispatcher extends Thread {
         try {
             Object response = mClient.rpcCall("eventWait", mTimeout);
             if (response == null) {
-                CLog.e("response is null");
                 return true;
             }
             EventSl4aObject event = new EventSl4aObject(new JSONObject(response.toString()));

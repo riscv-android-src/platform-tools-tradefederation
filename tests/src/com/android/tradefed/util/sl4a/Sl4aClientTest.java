@@ -15,6 +15,8 @@
  */
 package com.android.tradefed.util.sl4a;
 
+import static org.junit.Assert.*;
+
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.util.IRunUtil;
@@ -26,6 +28,7 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
+import java.io.File;
 import java.io.IOException;
 
 /**
@@ -121,6 +124,7 @@ public class Sl4aClientTest {
                 + "com.googlecode.android_scripting");
         mMockRunUtil.sleep(EasyMock.anyLong());
         EasyMock.expectLastCall();
+        EasyMock.expect(mMockDevice.executeShellCommand(Sl4aClient.STOP_SL4A_CMD)).andReturn("");
         EasyMock.expect(mMockDevice.executeAdbCommand("forward", "tcp:" + mDeviceServer.getPort(),
                 "tcp:" + mDeviceServer.getPort())).andReturn("");
         EasyMock.expect(mMockDevice.executeAdbCommand("forward", "--list")).andReturn("");
@@ -161,5 +165,23 @@ public class Sl4aClientTest {
             mClient.close();
         }
         EasyMock.verify(mMockDevice, mMockRunUtil);
+    }
+
+    /**
+     * Test for {@link Sl4aClient#startSL4A(ITestDevice, File)} throws an exception if sl4a apk
+     * provided does not exist.
+     */
+    @Test
+    public void testCreateSl4aClient() throws Exception {
+        final String fakePath = "/fake/random/path";
+        EasyMock.replay(mMockDevice);
+        try {
+            Sl4aClient.startSL4A(mMockDevice, new File(fakePath));
+            fail("Should have thrown an exception");
+        } catch (RuntimeException expected) {
+            assertEquals(String.format("Sl4A apk '%s' was not found.", fakePath),
+                    expected.getMessage());
+        }
+        EasyMock.verify(mMockDevice);
     }
 }
