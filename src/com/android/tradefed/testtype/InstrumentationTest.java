@@ -710,9 +710,9 @@ public class InstrumentationTest implements IDeviceTest, IResumableTest, ITestCo
         if (mDebug) {
             mRunner.setDebug(true);
         }
-        listener = addScreenshotListenerIfEnabled(listener);
         listener = addBugreportListenerIfEnabled(listener);
         listener = addLogcatListenerIfEnabled(listener);
+        listener = addScreenshotListenerIfEnabled(listener);
 
         if (mRemainingTests == null) {
             // Failed to collect the tests or collection is off. Just try to run them all.
@@ -953,8 +953,6 @@ public class InstrumentationTest implements IDeviceTest, IResumableTest, ITestCo
 
         @Override
         public void testFailed(TestIdentifier test, String trace) {
-            super.testFailed(test, trace);
-
             try {
                 InputStreamSource screenSource = mDevice.getScreenshot();
                 super.testLog(String.format("screenshot-%s_%s", test.getClassName(),
@@ -965,6 +963,8 @@ public class InstrumentationTest implements IDeviceTest, IResumableTest, ITestCo
                 CLog.e("Device %s became unavailable while capturing screenshot, %s",
                         mDevice.getSerialNumber(), e.toString());
             }
+
+            super.testFailed(test, trace);
         }
     }
 
