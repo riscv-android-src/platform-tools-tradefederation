@@ -523,6 +523,33 @@ public class TestDeviceTest extends TestCase {
      * Verify that command is re-tried.
      */
     public void testExecuteShellCommand_recoveryRetry() throws Exception {
+        mTestDevice =
+                new TestDevice(mMockIDevice, mMockStateMonitor, mMockDvcMonitor) {
+                    @Override
+                    IWifiHelper createWifiHelper() {
+                        return mMockWifi;
+                    }
+
+                    @Override
+                    public boolean isEncryptionSupported() throws DeviceNotAvailableException {
+                        return false;
+                    }
+
+                    @Override
+                    public boolean isAdbRoot() throws DeviceNotAvailableException {
+                        return true;
+                    }
+
+                    @Override
+                    protected IRunUtil getRunUtil() {
+                        return mMockRunUtil;
+                    }
+
+                    @Override
+                    void doReboot()
+                            throws DeviceNotAvailableException, UnsupportedOperationException {}
+                };
+        mTestDevice.setRecovery(mMockRecovery);
         final String testCommand = "simple command";
         // expect shell command to be called
         mMockIDevice.executeShellCommand(EasyMock.eq(testCommand), EasyMock.eq(mMockReceiver),
@@ -531,8 +558,10 @@ public class TestDeviceTest extends TestCase {
         assertRecoverySuccess();
         mMockIDevice.executeShellCommand(EasyMock.eq(testCommand), EasyMock.eq(mMockReceiver),
                 EasyMock.anyLong(), (TimeUnit)EasyMock.anyObject());
+        injectSystemProperty("ro.build.version.sdk", "23");
         replayMocks();
         mTestDevice.executeShellCommand(testCommand, mMockReceiver);
+        verifyMocks();
     }
 
     /** Set expectations for a successful recovery operation
@@ -540,10 +569,17 @@ public class TestDeviceTest extends TestCase {
     private void assertRecoverySuccess() throws DeviceNotAvailableException, IOException,
             TimeoutException, AdbCommandRejectedException, ShellCommandUnresponsiveException {
         mMockRecovery.recoverDevice(EasyMock.eq(mMockStateMonitor), EasyMock.eq(false));
+        mMockIDevice.executeShellCommand(
+                EasyMock.eq("dumpsys input"),
+                EasyMock.anyObject(),
+                EasyMock.anyLong(),
+                EasyMock.eq(TimeUnit.MILLISECONDS));
         // expect post boot up steps
-        mMockIDevice.executeShellCommand(EasyMock.eq(mTestDevice.getDisableKeyguardCmd()),
-                (IShellOutputReceiver)EasyMock.anyObject(),
-                EasyMock.anyLong(), (TimeUnit)EasyMock.anyObject());
+        mMockIDevice.executeShellCommand(
+                EasyMock.eq(TestDevice.DISMISS_KEYGUARD_WM_CMD),
+                (IShellOutputReceiver) EasyMock.anyObject(),
+                EasyMock.anyLong(),
+                (TimeUnit) EasyMock.anyObject());
     }
 
     /**
@@ -553,6 +589,33 @@ public class TestDeviceTest extends TestCase {
      * Verify that command is re-tried.
      */
     public void testExecuteShellCommand_recoveryTimeoutRetry() throws Exception {
+        mTestDevice =
+                new TestDevice(mMockIDevice, mMockStateMonitor, mMockDvcMonitor) {
+                    @Override
+                    IWifiHelper createWifiHelper() {
+                        return mMockWifi;
+                    }
+
+                    @Override
+                    public boolean isEncryptionSupported() throws DeviceNotAvailableException {
+                        return false;
+                    }
+
+                    @Override
+                    public boolean isAdbRoot() throws DeviceNotAvailableException {
+                        return true;
+                    }
+
+                    @Override
+                    protected IRunUtil getRunUtil() {
+                        return mMockRunUtil;
+                    }
+
+                    @Override
+                    void doReboot()
+                            throws DeviceNotAvailableException, UnsupportedOperationException {}
+                };
+        mTestDevice.setRecovery(mMockRecovery);
         final String testCommand = "simple command";
         // expect shell command to be called - and never return from that call
         mMockIDevice.executeShellCommand(EasyMock.eq(testCommand), EasyMock.eq(mMockReceiver),
@@ -562,8 +625,10 @@ public class TestDeviceTest extends TestCase {
         // now expect shellCommand to be executed again, and succeed
         mMockIDevice.executeShellCommand(EasyMock.eq(testCommand), EasyMock.eq(mMockReceiver),
                 EasyMock.anyLong(), (TimeUnit)EasyMock.anyObject());
+        injectSystemProperty("ro.build.version.sdk", "23");
         replayMocks();
         mTestDevice.executeShellCommand(testCommand, mMockReceiver);
+        verifyMocks();
     }
 
     /**
@@ -573,6 +638,33 @@ public class TestDeviceTest extends TestCase {
      * Verify that DeviceNotAvailableException is thrown.
      */
     public void testExecuteShellCommand_recoveryAttempts() throws Exception {
+        mTestDevice =
+                new TestDevice(mMockIDevice, mMockStateMonitor, mMockDvcMonitor) {
+                    @Override
+                    IWifiHelper createWifiHelper() {
+                        return mMockWifi;
+                    }
+
+                    @Override
+                    public boolean isEncryptionSupported() throws DeviceNotAvailableException {
+                        return false;
+                    }
+
+                    @Override
+                    public boolean isAdbRoot() throws DeviceNotAvailableException {
+                        return true;
+                    }
+
+                    @Override
+                    protected IRunUtil getRunUtil() {
+                        return mMockRunUtil;
+                    }
+
+                    @Override
+                    void doReboot()
+                            throws DeviceNotAvailableException, UnsupportedOperationException {}
+                };
+        mTestDevice.setRecovery(mMockRecovery);
         final String testCommand = "simple command";
         // expect shell command to be called
         mMockIDevice.executeShellCommand(EasyMock.eq(testCommand), EasyMock.eq(mMockReceiver),
@@ -582,6 +674,7 @@ public class TestDeviceTest extends TestCase {
         for (int i=0; i <= TestDevice.MAX_RETRY_ATTEMPTS; i++) {
             assertRecoverySuccess();
         }
+        injectSystemProperty("ro.build.version.sdk", "23").times(3);
         replayMocks();
         try {
             mTestDevice.executeShellCommand(testCommand, mMockReceiver);
@@ -589,6 +682,7 @@ public class TestDeviceTest extends TestCase {
         } catch (DeviceUnresponsiveException e) {
             // expected
         }
+        verifyMocks();
     }
 
     /**
@@ -964,26 +1058,35 @@ public class TestDeviceTest extends TestCase {
      * Unit test for {@link TestDevice#unencryptDevice()} with fastboot erase.
      */
     public void testUnencryptDevice_erase() throws Exception {
-        mTestDevice = new TestableTestDevice() {
-            @Override
-            public boolean isDeviceEncrypted() throws DeviceNotAvailableException {
-                return true;
-            }
-            @Override
-            public void rebootIntoBootloader()
-                    throws DeviceNotAvailableException, UnsupportedOperationException {
-                // do nothing.
-            }
-            @Override
-            public void rebootUntilOnline() throws DeviceNotAvailableException {
-                // do nothing.
-            }
-            @Override
-            public CommandResult fastbootWipePartition(String partition)
-                    throws DeviceNotAvailableException {
-                return null;
-            }
-        };
+        mTestDevice =
+                new TestableTestDevice() {
+                    @Override
+                    public boolean isDeviceEncrypted() throws DeviceNotAvailableException {
+                        return true;
+                    }
+
+                    @Override
+                    public void rebootIntoBootloader()
+                            throws DeviceNotAvailableException, UnsupportedOperationException {
+                        // do nothing.
+                    }
+
+                    @Override
+                    public void rebootUntilOnline() throws DeviceNotAvailableException {
+                        // do nothing.
+                    }
+
+                    @Override
+                    public CommandResult fastbootWipePartition(String partition)
+                            throws DeviceNotAvailableException {
+                        return null;
+                    }
+
+                    @Override
+                    public void postBootSetup() {
+                        super.postBootSetup();
+                    }
+                };
         setEncryptedSupported();
         EasyMock.expect(mMockStateMonitor.waitForDeviceAvailable(EasyMock.anyLong()))
                 .andReturn(mMockIDevice);

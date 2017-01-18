@@ -81,6 +81,7 @@ import com.android.tradefed.result.SubprocessResultsReporterTest;
 import com.android.tradefed.result.TestFailureEmailResultReporterTest;
 import com.android.tradefed.result.TestSummaryTest;
 import com.android.tradefed.result.XmlResultReporterTest;
+import com.android.tradefed.suite.checker.KeyguardStatusCheckerTest;
 import com.android.tradefed.targetprep.AllTestAppsInstallSetupTest;
 import com.android.tradefed.targetprep.AppSetupTest;
 import com.android.tradefed.targetprep.BuildInfoAttributePreparerTest;
@@ -300,6 +301,9 @@ import org.junit.runners.Suite.SuiteClasses;
     SystemUpdaterDeviceFlasherTest.class,
     TestFilePushSetupTest.class,
 
+    // suite/checker
+    KeyguardStatusCheckerTest.class,
+
     // testtype
     AndroidJUnitTestTest.class,
     CodeCoverageTestBaseTest.class,
@@ -331,9 +335,9 @@ import org.junit.runners.Suite.SuiteClasses;
     VersionedTfLauncherTest.class,
 
     // testtype/suite
-    TestFailureListenerTest.class,
     ITestSuiteTest.class,
     ModuleDefinitionTest.class,
+    TestFailureListenerTest.class,
     TfSuiteRunnerTest.class,
 
     // testtype/testdefs

@@ -57,6 +57,15 @@ public class TestDevice extends NativeDevice {
     private static final int NUM_CLEAR_ATTEMPTS = 5;
     /** the command used to dismiss a error dialog. Currently sends a DPAD_CENTER key event */
     static final String DISMISS_DIALOG_CMD = "input keyevent 23";
+    /** Commands that can be used to dismiss the keyguard. */
+    static final String DISMISS_KEYGUARD_CMD = "input keyevent 82";
+
+    /**
+     * Alternative command to dismiss the keyguard by requesting the Window Manager service to do
+     * it. Api 23 and after.
+     */
+    static final String DISMISS_KEYGUARD_WM_CMD = "wm dismiss-keyguard";
+
     /** Timeout to wait for input dispatch to become ready **/
     private static final long INPUT_DISPATCH_READY_TIMEOUT = 5 * 1000;
     /** command to test input dispatch readiness **/
@@ -394,22 +403,12 @@ public class TestDevice extends NativeDevice {
     }
 
     /**
-     * Gets the adb shell command to disable the keyguard for this device.
-     * <p/>
-     * Exposed for unit testing.
-     */
-    String getDisableKeyguardCmd() {
-        return mOptions.getDisableKeyguardCmd();
-    }
-
-    /**
      * Attempts to disable the keyguard.
      * <p>
      * First wait for the input dispatch to become ready, this happens around the same time when the
      * device reports BOOT_COMPLETE, apparently asynchronously, because current framework
      * implementation has occasional race condition. Then command is sent to dismiss keyguard (works
      * on non-secure ones only)
-     * @throws DeviceNotAvailableException
      */
     void disableKeyguard() throws DeviceNotAvailableException {
         long start = System.currentTimeMillis();
@@ -432,9 +431,17 @@ public class TestDevice extends NativeDevice {
                 getRunUtil().sleep(1000);
             }
         }
-        CLog.i("Attempting to disable keyguard on %s using %s", getSerialNumber(),
-                getDisableKeyguardCmd());
-        executeShellCommand(getDisableKeyguardCmd());
+        if (getApiLevel() >= 23) {
+            CLog.i(
+                    "Attempting to disable keyguard on %s using %s",
+                    getSerialNumber(), DISMISS_KEYGUARD_WM_CMD);
+            String output = executeShellCommand(DISMISS_KEYGUARD_WM_CMD);
+            CLog.i("output of %s: %s", DISMISS_KEYGUARD_WM_CMD, output);
+        } else {
+            CLog.i("Command: %s, is not supported, falling back to %s", DISMISS_KEYGUARD_CMD);
+            executeShellCommand(DISMISS_KEYGUARD_CMD);
+        }
+        // TODO: check that keyguard was actually dismissed.
     }
 
     /** {@inheritDoc} */
