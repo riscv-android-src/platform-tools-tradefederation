@@ -16,16 +16,17 @@
 package com.android.tradefed.util;
 
 import com.android.tradefed.log.LogUtil.CLog;
+import com.android.tradefed.result.LogDataType;
 
 import org.json.JSONException;
 import org.json.JSONObject;
 
+import java.io.File;
+import java.io.PrintWriter;
+import java.io.StringWriter;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
-
-import java.io.PrintWriter;
-import java.io.StringWriter;
 
 /**
  * Helper to serialize/deserialize the events to be passed to the log.
@@ -39,6 +40,10 @@ public class SubprocessEventHelper {
     private static final String TESTCOUNT_KEY = "testCount";
     private static final String TIME_KEY = "time";
     private static final String REASON_KEY = "reason";
+
+    private static final String DATA_NAME_KEY = "dataName";
+    private static final String DATA_TYPE_KEY = "dataType";
+    private static final String DATA_FILE_KEY = "dataFile";
 
     /**
      * Helper for testRunStarted information
@@ -277,6 +282,47 @@ public class SubprocessEventHelper {
             } else {
                 return new JSONObject();
             }
+        }
+    }
+
+    /** Helper for testLog information. */
+    public static class TestLogEventInfo {
+        public String mDataName = null;
+        public LogDataType mLogType = null;
+        public File mDataFile = null;
+
+        public TestLogEventInfo(String dataName, LogDataType dataType, File dataFile) {
+            mDataName = dataName;
+            mLogType = dataType;
+            mDataFile = dataFile;
+        }
+
+        public TestLogEventInfo(JSONObject jsonObject) throws JSONException {
+            mDataName = jsonObject.getString(DATA_NAME_KEY);
+            jsonObject.remove(DATA_NAME_KEY);
+            mLogType = LogDataType.valueOf(jsonObject.getString(DATA_TYPE_KEY));
+            jsonObject.remove(DATA_TYPE_KEY);
+            mDataFile = new File(jsonObject.getString(DATA_FILE_KEY));
+        }
+
+        @Override
+        public String toString() {
+            JSONObject tags = null;
+            try {
+                tags = new JSONObject();
+                if (mDataName != null) {
+                    tags.put(DATA_NAME_KEY, mDataName);
+                }
+                if (mLogType != null) {
+                    tags.put(DATA_TYPE_KEY, mLogType.toString());
+                }
+                if (mDataFile != null) {
+                    tags.put(DATA_FILE_KEY, mDataFile.getAbsolutePath());
+                }
+            } catch (JSONException e) {
+                CLog.e(e);
+            }
+            return tags.toString();
         }
     }
 }
