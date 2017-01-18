@@ -69,6 +69,9 @@ public class InstrumentationTest implements IDeviceTest, IResumableTest, ITestCo
     /** instrumentation test runner argument key used for individual test timeout */
     static final String TEST_TIMEOUT_INST_ARGS_KEY = "timeout_msec";
 
+    /** default timeout for tests collection */
+    static final long TEST_COLLECTION_TIMEOUT_MS = 2 * 60 * 1000;
+
     @Option(name = "package", shortName = 'p',
             description="The manifest package name of the Android test application to run.",
             importance = Importance.IF_UNSET)
@@ -185,6 +188,13 @@ public class InstrumentationTest implements IDeviceTest, IResumableTest, ITestCo
                     + "cases. All test run callbacks will be triggered, but test execution will "
                     + "not be actually carried out.")
     private boolean mCollectTestsOnly = false;
+
+    @Option(
+        name = "collect-tests-timeout",
+        description = "Timeout for the tests collection operation.",
+        isTimeVal = true
+    )
+    private long mCollectTestTimeout = TEST_COLLECTION_TIMEOUT_MS;
 
     @Option(name = "debug", description = "Wait for debugger before instrumentation starts. Note "
             + "that this should only be used for local debugging, not suitable for automated runs.")
@@ -899,6 +909,8 @@ public class InstrumentationTest implements IDeviceTest, IResumableTest, ITestCo
         for (int i=0; i < COLLECT_TESTS_ATTEMPTS; i++) {
             CollectingTestListener collector = new CollectingTestListener();
             boolean instrResult = false;
+            // We allow to override the ddmlib default timeout for collection of tests.
+            runner.setMaxTimeToOutputResponse(mCollectTestTimeout, TimeUnit.MILLISECONDS);
             if (listener == null) {
                 instrResult = mDevice.runInstrumentationTests(runner, collector);
             } else {
