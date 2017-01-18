@@ -25,6 +25,7 @@ import com.android.ddmlib.TimeoutException;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.result.ByteArrayInputStreamSource;
 import com.android.tradefed.result.InputStreamSource;
+import com.android.tradefed.util.KeyguardControllerState;
 import com.android.tradefed.util.RunUtil;
 import com.android.tradefed.util.StreamUtil;
 
@@ -436,8 +437,17 @@ public class TestDevice extends NativeDevice {
         executeShellCommand(getDisableKeyguardCmd());
     }
 
+    /** {@inheritDoc} */
+    @Override
+    public KeyguardControllerState getKeyguardState() throws DeviceNotAvailableException {
+        String output =
+                executeShellCommand("dumpsys activity activities | grep -A3 KeyguardController:");
+        return KeyguardControllerState.create(Arrays.asList(output.split("\n")));
+    }
+
     /**
      * Tests the device to see if input dispatcher is ready
+     *
      * @return <code>null</code> if not supported by platform, or the actual readiness state
      * @throws DeviceNotAvailableException
      */

@@ -18,6 +18,7 @@ package com.android.tradefed.device;
 
 import com.android.ddmlib.IDevice;
 import com.android.tradefed.result.InputStreamSource;
+import com.android.tradefed.util.KeyguardControllerState;
 
 import java.io.File;
 import java.util.ArrayList;
@@ -323,6 +324,15 @@ public interface ITestDevice extends INativeDevice {
      *             recovered.
      */
     public boolean clearErrorDialogs() throws DeviceNotAvailableException;
+
+    /**
+     * Return an object to get the current state of the keyguard.
+     *
+     * @return a {@link KeyguardControllerState} containing a snapshot of the state of the keyguard.
+     * @throws DeviceNotAvailableException if connection with device is lost and cannot be
+     *     recovered.
+     */
+    public KeyguardControllerState getKeyguardState() throws DeviceNotAvailableException;
 
     /**
      * Fetch the test options for the device.
