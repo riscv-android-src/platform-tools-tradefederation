@@ -38,7 +38,9 @@ import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.regex.Pattern;
 
 /**
@@ -95,6 +97,8 @@ public class TfTestLauncher extends SubprocessTfLauncher {
     private File mDestCoverageFile = null;
     // A {@link File} pointing to the jacoco args jar file extracted from the resources
     private File mAgent = null;
+    // we track the elapsed time of the invocation to report it.
+    private long mStartTime = 0l;
 
     protected static final String TF_GLOBAL_CONFIG = "TF_GLOBAL_CONFIG";
 
@@ -103,67 +107,71 @@ public class TfTestLauncher extends SubprocessTfLauncher {
      */
     @Override
     protected void preRun() {
-      super.preRun();
+        super.preRun();
 
-      if (mEnableCoverage) {
-          try {
-              mDestCoverageFile = FileUtil.createTempFile("coverage", ".exec");
-              mAgent = extractJacocoAgent();
-              addCoverageArgs(mAgent, mCmdArgs, mDestCoverageFile);
-          } catch (IOException e) {
-              throw new RuntimeException(e);
-          }
-      }
+        if (mEnableCoverage) {
+            try {
+                mDestCoverageFile = FileUtil.createTempFile("coverage", ".exec");
+                mAgent = extractJacocoAgent();
+                addCoverageArgs(mAgent, mCmdArgs, mDestCoverageFile);
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            }
+        }
 
-      if (!mUseVirtualDevice) {
-          mCmdArgs.add("-n");
-      } else {
-          // if it needs a device we also enable more logs
-          mCmdArgs.add("--log-level");
-          mCmdArgs.add("VERBOSE");
-          mCmdArgs.add("--log-level-display");
-          mCmdArgs.add("VERBOSE");
-      }
-      mCmdArgs.add("--test-tag");
-      mCmdArgs.add(mBuildInfo.getTestTag());
-      mCmdArgs.add("--build-id");
-      if (mSubBuildId != null) {
-          mCmdArgs.add(mSubBuildId);
-      } else {
-          mCmdArgs.add(mBuildInfo.getBuildId());
-      }
-      mCmdArgs.add("--branch");
-      if (mSubBranch != null) {
-          mCmdArgs.add(mSubBranch);
-      } else if (mBuildInfo.getBuildBranch() != null) {
-          mCmdArgs.add(mBuildInfo.getBuildBranch());
-      } else {
-          throw new RuntimeException("Branch option is required for the sub invocation.");
-      }
-      mCmdArgs.add("--build-flavor");
-      if (mSubBuildFlavor != null) {
-          mCmdArgs.add(mSubBuildFlavor);
-      } else if (mBuildInfo.getBuildFlavor() != null) {
-          mCmdArgs.add(mBuildInfo.getBuildFlavor());
-      } else {
-          throw new RuntimeException("Build flavor option is required for the sub invocation.");
-      }
+        if (!mUseVirtualDevice) {
+            mCmdArgs.add("-n");
+        } else {
+            // if it needs a device we also enable more logs
+            mCmdArgs.add("--log-level");
+            mCmdArgs.add("VERBOSE");
+            mCmdArgs.add("--log-level-display");
+            mCmdArgs.add("VERBOSE");
+        }
+        mCmdArgs.add("--test-tag");
+        mCmdArgs.add(mBuildInfo.getTestTag());
+        mCmdArgs.add("--build-id");
+        if (mSubBuildId != null) {
+            mCmdArgs.add(mSubBuildId);
+        } else {
+            mCmdArgs.add(mBuildInfo.getBuildId());
+        }
+        mCmdArgs.add("--branch");
+        if (mSubBranch != null) {
+            mCmdArgs.add(mSubBranch);
+        } else if (mBuildInfo.getBuildBranch() != null) {
+            mCmdArgs.add(mBuildInfo.getBuildBranch());
+        } else {
+            throw new RuntimeException("Branch option is required for the sub invocation.");
+        }
+        mCmdArgs.add("--build-flavor");
+        if (mSubBuildFlavor != null) {
+            mCmdArgs.add(mSubBuildFlavor);
+        } else if (mBuildInfo.getBuildFlavor() != null) {
+            mCmdArgs.add(mBuildInfo.getBuildFlavor());
+        } else {
+            throw new RuntimeException("Build flavor option is required for the sub invocation.");
+        }
 
-      for (String apk : mSubApkPath) {
-          mCmdArgs.add("--apk-path");
-          String apkPath = String.format("%s%s%s",
-                  ((IFolderBuildInfo)mBuildInfo).getRootDir().getAbsolutePath(),
-                  File.separator, apk);
-          mCmdArgs.add(apkPath);
-      }
+        for (String apk : mSubApkPath) {
+            mCmdArgs.add("--apk-path");
+            String apkPath =
+                    String.format(
+                            "%s%s%s",
+                            ((IFolderBuildInfo) mBuildInfo).getRootDir().getAbsolutePath(),
+                            File.separator,
+                            apk);
+            mCmdArgs.add(apkPath);
+        }
 
-      // clear the TF_GLOBAL_CONFIG env, so another tradefed will not reuse the global config file
-      mRunUtil.unsetEnvVariable(TF_GLOBAL_CONFIG);
-      if (mGlobalConfig != null) {
-          // We allow overriding this global config and then set it for the subprocess.
-          mRunUtil.setEnvVariablePriority(EnvPriority.SET);
-          mRunUtil.setEnvVariable(TF_GLOBAL_CONFIG, mGlobalConfig);
-      }
+        // clear the TF_GLOBAL_CONFIG env, so another tradefed will not reuse the global config file
+        mRunUtil.unsetEnvVariable(TF_GLOBAL_CONFIG);
+        if (mGlobalConfig != null) {
+            // We allow overriding this global config and then set it for the subprocess.
+            mRunUtil.setEnvVariablePriority(EnvPriority.SET);
+            mRunUtil.setEnvVariable(TF_GLOBAL_CONFIG, mGlobalConfig);
+        }
+        mStartTime = System.currentTimeMillis();
     }
 
     /**
@@ -172,7 +180,7 @@ public class TfTestLauncher extends SubprocessTfLauncher {
     @Override
     protected void postRun(ITestInvocationListener listener, boolean exception) {
         super.postRun(listener, exception);
-
+        reportMetrics(System.currentTimeMillis() - mStartTime, listener);
         FileUtil.deleteFile(mAgent);
 
         // Evaluate coverage from the subprocess
@@ -272,6 +280,19 @@ public class TfTestLauncher extends SubprocessTfLauncher {
             FileUtil.deleteFile(antConfig);
             FileUtil.deleteFile(jacocoAnt);
         }
+    }
+
+    /**
+     * Report an elapsed-time metric to keep track of it.
+     *
+     * @param elapsedTime time it took the subprocess to run.
+     * @param listener the {@link ITestInvocationListener} where to report the metric.
+     */
+    private void reportMetrics(long elapsedTime, ITestInvocationListener listener) {
+        listener.testRunStarted("elapsed-time", 0);
+        Map<String, String> runMetrics = new HashMap<>();
+        runMetrics.put("elapsed-time", Long.toString(elapsedTime));
+        listener.testRunEnded(elapsedTime, runMetrics);
     }
 
     /**

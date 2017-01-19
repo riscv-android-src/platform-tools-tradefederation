@@ -128,7 +128,7 @@ public class GlobalConfiguration implements IGlobalConfiguration {
                     ArrayUtil.buildArray(new String[] {globalConfigPath}, args), nonGlobalArgs);
             if (!DEFAULT_EMPTY_CONFIG_NAME.equals(globalConfigPath)) {
                 // Only print when using different from default
-                System.err.format("Success!  Using global config \"%s\"\n", globalConfigPath);
+                System.out.format("Success!  Using global config \"%s\"\n", globalConfigPath);
             }
 
             // Validate that madatory options have been set
@@ -155,7 +155,8 @@ public class GlobalConfiguration implements IGlobalConfiguration {
             // don't actually check for accessibility here, since the variable might be specifying
             // a java resource rather than a filename.  Even so, this can help the user figure out
             // which global config (if any) was picked up by TF.
-            System.err.format("Attempting to use global config \"%s\" from variable $%s.\n",
+            System.out.format(
+                    "Attempting to use global config \"%s\" from variable $%s.\n",
                     path, GLOBAL_CONFIG_VARIABLE);
             return path;
         }
@@ -163,7 +164,7 @@ public class GlobalConfiguration implements IGlobalConfiguration {
         File file = new File(GLOBAL_CONFIG_FILENAME);
         if (file.exists()) {
             path = file.getPath();
-            System.err.format("Attempting to use autodetected global config \"%s\".\n", path);
+            System.out.format("Attempting to use autodetected global config \"%s\".\n", path);
             return path;
         }
 
