@@ -19,11 +19,13 @@ import com.android.ddmlib.testrunner.TestIdentifier;
 import com.android.tradefed.config.Option;
 import com.android.tradefed.invoker.IInvocationContext;
 import com.android.tradefed.log.LogUtil.CLog;
+import com.android.tradefed.util.FileUtil;
 import com.android.tradefed.util.StreamUtil;
 import com.android.tradefed.util.SubprocessEventHelper.BaseTestEventInfo;
 import com.android.tradefed.util.SubprocessEventHelper.FailedTestEventInfo;
 import com.android.tradefed.util.SubprocessEventHelper.InvocationFailedEventInfo;
 import com.android.tradefed.util.SubprocessEventHelper.TestEndedEventInfo;
+import com.android.tradefed.util.SubprocessEventHelper.TestLogEventInfo;
 import com.android.tradefed.util.SubprocessEventHelper.TestRunEndedEventInfo;
 import com.android.tradefed.util.SubprocessEventHelper.TestRunFailedEventInfo;
 import com.android.tradefed.util.SubprocessEventHelper.TestRunStartedEventInfo;
@@ -144,8 +146,7 @@ public class SubprocessResultsReporter implements ITestInvocationListener, AutoC
     /** {@inheritDoc} */
     @Override
     public void testLog(String dataName, LogDataType dataType, InputStreamSource dataStream) {
-        // TODO: enable this once launcher side is deployed
-        /*if (dataStream != null && dataStream.size() != 0) {
+        if (dataStream != null && dataStream.size() != 0) {
             File tmpFile = null;
             try {
                 tmpFile = FileUtil.createTempFile(dataName, dataType.getFileExt());
@@ -156,7 +157,7 @@ public class SubprocessResultsReporter implements ITestInvocationListener, AutoC
                 CLog.e(e);
                 FileUtil.deleteFile(tmpFile);
             }
-        }*/
+        }
     }
 
     /**
