@@ -102,22 +102,25 @@ public class TfTestLauncher extends SubprocessTfLauncher {
 
     protected static final String TF_GLOBAL_CONFIG = "TF_GLOBAL_CONFIG";
 
-    /**
-     * {@inheritDoc}
-     */
+    /** {@inheritDoc} */
     @Override
-    protected void preRun() {
-        super.preRun();
-
+    protected void addJavaArguments(List<String> args) {
+        super.addJavaArguments(args);
         if (mEnableCoverage) {
             try {
                 mDestCoverageFile = FileUtil.createTempFile("coverage", ".exec");
                 mAgent = extractJacocoAgent();
-                addCoverageArgs(mAgent, mCmdArgs, mDestCoverageFile);
+                addCoverageArgs(mAgent, args, mDestCoverageFile);
             } catch (IOException e) {
                 throw new RuntimeException(e);
             }
         }
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    protected void preRun() {
+        super.preRun();
 
         if (!mUseVirtualDevice) {
             mCmdArgs.add("-n");
@@ -209,6 +212,13 @@ public class TfTestLauncher extends SubprocessTfLauncher {
         if (mTmpDir != null) {
             testTmpDirClean(mTmpDir, listener);
         }
+        cleanTmpFile();
+    }
+
+    @VisibleForTesting
+    void cleanTmpFile() {
+        FileUtil.deleteFile(mDestCoverageFile);
+        FileUtil.deleteFile(mAgent);
     }
 
     /**

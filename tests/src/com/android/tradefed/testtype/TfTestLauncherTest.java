@@ -15,23 +15,27 @@
  */
 package com.android.tradefed.testtype;
 
+import static org.junit.Assert.assertTrue;
+
 import com.android.ddmlib.testrunner.TestIdentifier;
 import com.android.tradefed.build.IFolderBuildInfo;
+import com.android.tradefed.config.OptionSetter;
 import com.android.tradefed.result.FileInputStreamSource;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.LogDataType;
 import com.android.tradefed.util.CommandResult;
 import com.android.tradefed.util.CommandStatus;
+import com.android.tradefed.util.FileUtil;
 import com.android.tradefed.util.IRunUtil;
+
+import org.easymock.EasyMock;
+import org.junit.Before;
+import org.junit.Test;
+import org.mockito.Mockito;
 
 import java.io.File;
 import java.io.FileOutputStream;
 import java.util.Collections;
-
-import org.easymock.EasyMock;
-import org.mockito.Mockito;
-import org.junit.Before;
-import org.junit.Test;
 
 /**
  * Unit tests for {@link TfTestLauncher}
@@ -164,5 +168,27 @@ public class TfTestLauncherTest {
         EasyMock.replay(mMockListener);
         mTfTestLauncher.testTmpDirClean(tmpDir, mMockListener);
         EasyMock.verify(mMockListener);
+    }
+
+    /** Test that when code coverage option is on, we add the javaagent to the java arguments. */
+    @Test
+    public void testRunCoverage() throws Exception {
+        OptionSetter setter = new OptionSetter(mTfTestLauncher);
+        setter.setOptionValue("jacoco-code-coverage", "true");
+        EasyMock.expect(mMockBuildInfo.getRootDir()).andReturn(new File(""));
+        EasyMock.expect(mMockBuildInfo.getTestTag()).andReturn(TEST_TAG);
+        EasyMock.expect(mMockBuildInfo.getBuildBranch()).andReturn(BUILD_BRANCH).times(2);
+        EasyMock.expect(mMockBuildInfo.getBuildFlavor()).andReturn(BUILD_FLAVOR).times(2);
+        EasyMock.expect(mMockBuildInfo.getBuildId()).andReturn(BUILD_ID).times(2);
+        mMockRunUtil.unsetEnvVariable(TfTestLauncher.TF_GLOBAL_CONFIG);
+        EasyMock.replay(mMockBuildInfo, mMockRunUtil, mMockListener);
+        try {
+            mTfTestLauncher.preRun();
+            EasyMock.verify(mMockBuildInfo, mMockRunUtil, mMockListener);
+            assertTrue(mTfTestLauncher.mCmdArgs.get(2).startsWith("-javaagent:"));
+        } finally {
+            FileUtil.recursiveDelete(mTfTestLauncher.mTmpDir);
+            mTfTestLauncher.cleanTmpFile();
+        }
     }
 }
