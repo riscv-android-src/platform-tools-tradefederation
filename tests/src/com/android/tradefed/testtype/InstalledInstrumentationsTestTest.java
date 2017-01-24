@@ -20,15 +20,15 @@ import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.result.ITestInvocationListener;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-
 import junit.framework.TestCase;
 
 import org.easymock.Capture;
 import org.easymock.EasyMock;
 import org.easymock.IAnswer;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
 
 /**
  * Unit tests for {@link InstalledInstrumentationsTestTest}.
@@ -101,6 +101,7 @@ public class InstalledInstrumentationsTestTest extends TestCase {
         final String nonshardableTestPkg1 = "com.example.nonshardabletest1";
         final String nonshardableTestPkg2 = "com.example.nonshardabletest2";
 
+
         String shardableInstr = String.format(INSTR_OUTPUT_FORMAT, shardableTestPkg,
                 shardableRunner, TEST_COVERAGE_TARGET);
         String nonshardableInstr1 = String.format(INSTR_OUTPUT_FORMAT, nonshardableTestPkg1,
@@ -143,7 +144,6 @@ public class InstalledInstrumentationsTestTest extends TestCase {
 
         EasyMock.verify(mMockListener, mMockTestDevice);
     }
-
 
     /**
      * Method to mock the executeShellCommand response

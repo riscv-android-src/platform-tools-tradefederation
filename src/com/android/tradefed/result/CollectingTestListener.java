@@ -68,31 +68,22 @@ public class CollectingTestListener implements ITestInvocationListener {
 
     /**
      * {@inheritDoc}
-     * @deprecated use {@link #invocationStarted(IInvocationContext)} instead.
-     */
-    @Deprecated
-    @Override
-    public void invocationStarted(IBuildInfo buildInfo) {
-        mBuildInfo = buildInfo;
-    }
-
-    /**
-     * {@inheritDoc}
      */
     @Override
     public void invocationStarted(IInvocationContext context) {
         mContext = context;
-        // TODO: Remove once migration is complete.
         if (context != null) {
-            invocationStarted(context.getBuildInfos().get(0));
+            mBuildInfo = context.getBuildInfos().get(0);
         }
     }
 
     /**
-     * Return the build info that was reported via {@link #invocationStarted(IBuildInfo)}
+     * Return the primary build info that was reported via {@link
+     * #invocationStarted(IInvocationContext)}. Primary build is the build returned by the first
+     * build provider of the running configuration.
      */
-    public IBuildInfo getBuildInfo() {
-        return mBuildInfo;
+    public IBuildInfo getPrimaryBuildInfo() {
+        return mContext.getBuildInfos().get(0);
     }
 
     /**
@@ -104,9 +95,22 @@ public class CollectingTestListener implements ITestInvocationListener {
     }
 
     /**
+     * Returns the build info.
+     *
+     * @deprecated rely on the {@link IBuildInfo} from {@link #getInvocationContext()}.
+     */
+    @Deprecated
+    public IBuildInfo getBuildInfo() {
+        return mBuildInfo;
+    }
+
+    /**
      * Set the build info. Should only be used for testing.
+     *
+     * @deprecated Not necessary for testing anymore.
      */
     @VisibleForTesting
+    @Deprecated
     public void setBuildInfo(IBuildInfo buildInfo) {
         mBuildInfo = buildInfo;
     }
