@@ -16,6 +16,8 @@
 package com.android.tradefed.result;
 
 import com.android.tradefed.build.IBuildInfo;
+import com.android.tradefed.invoker.IInvocationContext;
+import com.android.tradefed.invoker.InvocationContext;
 import com.android.tradefed.util.FileUtil;
 import com.android.tradefed.util.StreamUtil;
 
@@ -49,6 +51,7 @@ public class FileSystemLogSaverTest extends TestCase {
 
     private File mReportDir;
     private IBuildInfo mMockBuild;
+    private IInvocationContext mContext;
 
     @Override
     protected void setUp() throws Exception {
@@ -60,6 +63,9 @@ public class FileSystemLogSaverTest extends TestCase {
         EasyMock.expect(mMockBuild.getBuildId()).andReturn(BUILD_ID).anyTimes();
         EasyMock.expect(mMockBuild.getTestTag()).andReturn(TEST_TAG).anyTimes();
         EasyMock.replay(mMockBuild);
+        mContext = new InvocationContext();
+        mContext.addDeviceBuildInfo("fakeDevice", mMockBuild);
+        mContext.setTestTag(TEST_TAG);
     }
 
     @Override
@@ -74,7 +80,7 @@ public class FileSystemLogSaverTest extends TestCase {
     public void testGetFileDir() {
         FileSystemLogSaver saver = new FileSystemLogSaver();
         saver.setReportDir(mReportDir);
-        saver.invocationStarted(mMockBuild);
+        saver.invocationStarted(mContext);
 
         File generatedDir = new File(saver.getLogReportDir().getPath());
         File tagDir = generatedDir.getParentFile();
@@ -92,7 +98,7 @@ public class FileSystemLogSaverTest extends TestCase {
         // now create a new log saver,
         FileSystemLogSaver newSaver = new FileSystemLogSaver();
         newSaver.setReportDir(mReportDir);
-        newSaver.invocationStarted(mMockBuild);
+        newSaver.invocationStarted(mContext);
 
         File newGeneratedDir = new File(newSaver.getLogReportDir().getPath());
         // ensure a new dir is created
@@ -111,9 +117,11 @@ public class FileSystemLogSaverTest extends TestCase {
         EasyMock.expect(mockBuild.getBuildId()).andReturn(BUILD_ID).anyTimes();
         EasyMock.expect(mockBuild.getTestTag()).andReturn(TEST_TAG).anyTimes();
         EasyMock.replay(mockBuild);
+        IInvocationContext context = new InvocationContext();
+        context.addDeviceBuildInfo("fakeDevice", mockBuild);
         FileSystemLogSaver saver = new FileSystemLogSaver();
         saver.setReportDir(mReportDir);
-        saver.invocationStarted(mockBuild);
+        saver.invocationStarted(context);
 
         File generatedDir = new File(saver.getLogReportDir().getPath());
         File tagDir = generatedDir.getParentFile();
@@ -134,7 +142,7 @@ public class FileSystemLogSaverTest extends TestCase {
         FileSystemLogSaver saver = new FileSystemLogSaver();
         saver.setReportDir(mReportDir);
         saver.setLogRetentionDays(1);
-        saver.invocationStarted(mMockBuild);
+        saver.invocationStarted(mContext);
 
         File retentionFile = new File(new File(saver.getLogReportDir().getPath()),
                 RetentionFileSaver.RETENTION_FILE_NAME);
@@ -159,7 +167,7 @@ public class FileSystemLogSaverTest extends TestCase {
             // TODO: would be nice to create a mock file output to make this test not use disk I/O
             FileSystemLogSaver saver = new FileSystemLogSaver();
             saver.setReportDir(mReportDir);
-            saver.invocationStarted(mMockBuild);
+            saver.invocationStarted(mContext);
 
             final String testData = "Here's some test data, blah";
             ByteArrayInputStream mockInput = new ByteArrayInputStream(testData.getBytes());
@@ -192,7 +200,7 @@ public class FileSystemLogSaverTest extends TestCase {
             // TODO: would be nice to create a mock file output to make this test not use disk I/O
             FileSystemLogSaver saver = new FileSystemLogSaver();
             saver.setReportDir(mReportDir);
-            saver.invocationStarted(mMockBuild);
+            saver.invocationStarted(mContext);
 
             final String testData = "Here's some test data, blah";
             ByteArrayInputStream mockInput = new ByteArrayInputStream(testData.getBytes());
@@ -219,7 +227,7 @@ public class FileSystemLogSaverTest extends TestCase {
             // TODO: would be nice to create a mock file output to make this test not use disk I/O
             FileSystemLogSaver saver = new FileSystemLogSaver();
             saver.setReportDir(mReportDir);
-            saver.invocationStarted(mMockBuild);
+            saver.invocationStarted(mContext);
 
             final String testData = "Here's some test data, blah";
             ByteArrayInputStream mockInput = new ByteArrayInputStream(testData.getBytes());

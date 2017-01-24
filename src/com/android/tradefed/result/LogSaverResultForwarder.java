@@ -16,7 +16,6 @@
 
 package com.android.tradefed.result;
 
-import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.invoker.IInvocationContext;
 import com.android.tradefed.log.LogUtil.CLog;
 
@@ -37,26 +36,6 @@ public class LogSaverResultForwarder extends ResultForwarder {
         for (ITestInvocationListener listener : listeners) {
             if (listener instanceof ILogSaverListener) {
                 ((ILogSaverListener) listener).setLogSaver(mLogSaver);
-            }
-        }
-    }
-
-    /**
-     * {@inheritDoc}
-     * @deprecated use {@link #invocationStarted(IInvocationContext)} instead.
-     */
-    @Override
-    @Deprecated
-    public void invocationStarted(IBuildInfo buildInfo) {
-        // Intentionally call invocationStarted for the log saver first.
-        mLogSaver.invocationStarted(buildInfo);
-        for (ITestInvocationListener listener : getListeners()) {
-            try {
-                listener.invocationStarted(buildInfo);
-            } catch (RuntimeException e) {
-                // don't let the listener leave the invocation in a bad state
-                CLog.e("Caught runtime exception from ITestInvocationListener");
-                CLog.e(e);
             }
         }
     }
