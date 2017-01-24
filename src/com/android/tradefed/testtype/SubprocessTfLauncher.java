@@ -125,6 +125,8 @@ public abstract class SubprocessTfLauncher implements IRemoteTest, IBuildReceive
             throw new RuntimeException(e);
         }
 
+        addJavaArguments(mCmdArgs);
+
         if (mRemoteDebug) {
             mCmdArgs.add("-agentlib:jdwp=transport=dt_socket,server=y,suspend=y,address=10088");
         }
@@ -136,13 +138,19 @@ public abstract class SubprocessTfLauncher implements IRemoteTest, IBuildReceive
     }
 
     /**
+     * Allow to add extra java parameters to the subprocess invocation.
+     *
+     * @param args the current list of arguments to which we need to add the extra ones.
+     */
+    protected void addJavaArguments(List<String> args) {}
+
+    /**
      * Actions to take after the TF test is finished.
      *
      * @param listener the original {@link ITestInvocationListener} where to report results.
      * @param exception True if exception was raised inside the test.
      */
-    protected void postRun(ITestInvocationListener listener, boolean exception) {
-    }
+    protected void postRun(ITestInvocationListener listener, boolean exception) {}
 
     /**
      * {@inheritDoc}
