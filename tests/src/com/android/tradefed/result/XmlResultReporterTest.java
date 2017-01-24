@@ -17,7 +17,6 @@ package com.android.tradefed.result;
 
 import com.android.ddmlib.testrunner.TestIdentifier;
 import com.android.tradefed.build.BuildInfo;
-import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.invoker.IInvocationContext;
 import com.android.tradefed.invoker.InvocationContext;
 
@@ -54,11 +53,6 @@ public class XmlResultReporterTest extends TestCase {
         @Override
         public LogFile getLogReportDir() {
             return new LogFile(PATH, URL, false, false);
-        }
-
-        @Override
-        public void invocationStarted(IBuildInfo info) {
-            // Ignore
         }
 
         @Override

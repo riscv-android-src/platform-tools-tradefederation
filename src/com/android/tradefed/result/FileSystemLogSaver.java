@@ -70,11 +70,6 @@ public class FileSystemLogSaver implements ILogSaver {
      * </p>
      */
     @Override
-    public void invocationStarted(IBuildInfo buildInfo) {
-        mLogReportDir = createLogReportDir(buildInfo, mRootReportDir, mLogRetentionDays);
-    }
-
-    @Override
     public void invocationStarted(IInvocationContext context) {
         // Create log directory on first build info
         IBuildInfo info = context.getBuildInfos().get(0);
