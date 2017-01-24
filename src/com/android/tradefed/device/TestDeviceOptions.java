@@ -32,9 +32,6 @@ public class TestDeviceOptions {
             description = "attempt to disable keyguard once boot is complete.")
     private boolean mDisableKeyguard = true;
 
-    @Option(name = "disable-keyguard-cmd", description = "shell command to disable keyguard.")
-    private String mDisableKeyguardCmd = "input keyevent 82";
-
     @Option(name = "enable-logcat", description =
             "Enable background logcat capture when invocation is running.")
     private boolean mEnableLogcat = true;
@@ -133,20 +130,6 @@ public class TestDeviceOptions {
      */
     public void setDisableKeyguard(boolean disableKeyguard) {
         mDisableKeyguard = disableKeyguard;
-    }
-
-    /**
-     * Fetch the command to disable the keyguard
-     */
-    public String getDisableKeyguardCmd() {
-        return mDisableKeyguardCmd;
-    }
-
-    /**
-     * Set the command to be used to disable the keyguard
-     */
-    public void setDisableKeyguardCmd(String disableKeyguardCmd) {
-        mDisableKeyguardCmd = disableKeyguardCmd;
     }
 
     /**
