@@ -449,7 +449,8 @@ public class TestDevice extends NativeDevice {
     public KeyguardControllerState getKeyguardState() throws DeviceNotAvailableException {
         String output =
                 executeShellCommand("dumpsys activity activities | grep -A3 KeyguardController:");
-        return KeyguardControllerState.create(Arrays.asList(output.split("\n")));
+        CLog.d("Output from KeyguardController: %s", output);
+        return KeyguardControllerState.create(Arrays.asList(output.trim().split("\n")));
     }
 
     /**
