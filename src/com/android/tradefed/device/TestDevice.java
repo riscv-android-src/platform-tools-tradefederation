@@ -438,7 +438,8 @@ public class TestDevice extends NativeDevice {
             String output = executeShellCommand(DISMISS_KEYGUARD_WM_CMD);
             CLog.i("output of %s: %s", DISMISS_KEYGUARD_WM_CMD, output);
         } else {
-            CLog.i("Command: %s, is not supported, falling back to %s", DISMISS_KEYGUARD_CMD);
+            CLog.i("Command: %s, is not supported, falling back to %s", DISMISS_KEYGUARD_WM_CMD,
+                    DISMISS_KEYGUARD_CMD);
             executeShellCommand(DISMISS_KEYGUARD_CMD);
         }
         // TODO: check that keyguard was actually dismissed.
