@@ -94,13 +94,30 @@ import java.util.concurrent.TimeUnit;
 public class TestInvocation implements ITestInvocation {
 
     static final String TRADEFED_LOG_NAME = "host_log";
-    static final String DEVICE_LOG_NAME = "device_logcat";
-    static final String EMULATOR_LOG_NAME = "emulator_log";
+    static final String DEVICE_LOG_NAME_PREFIX = "device_logcat_";
+    static final String EMULATOR_LOG_NAME_PREFIX = "emulator_log_";
     static final String BUILD_ERROR_BUGREPORT_NAME = "build_error_bugreport";
     static final String DEVICE_UNRESPONSIVE_BUGREPORT_NAME = "device_unresponsive_bugreport";
     static final String INVOCATION_ENDED_BUGREPORT_NAME = "invocation_ended_bugreport";
     static final String TARGET_SETUP_ERROR_BUGREPORT_NAME = "target_setup_error_bugreport";
     static final String BATT_TAG = "[battery level]";
+
+    public enum Stage {
+        ERROR("error"),
+        SETUP("setup"),
+        TEST("test"),
+        TEARDOWN("teardown");
+
+        private final String mName;
+
+        Stage(String name) {
+            mName = name;
+        }
+
+        public String getName() {
+            return mName;
+        }
+    }
 
     private String mStatus = "(not invoked)";
 
@@ -559,6 +576,9 @@ public class TestInvocation implements ITestInvocation {
             reportFailure(t, listener, config, context, rescheduler);
             throw t;
         } finally {
+            for (ITestDevice device : context.getDevices()) {
+                reportLogs(device, listener, Stage.TEST);
+            }
             getRunUtil().allowInterrupt(false);
             if (config.getCommandOptions().takeBugreportOnInvocationEnded() ||
                     config.getCommandOptions().takeBugreportzOnInvocationEnded()) {
@@ -597,7 +617,7 @@ public class TestInvocation implements ITestInvocation {
                 // Clean up host.
                 doCleanUp(config, context, exception);
                 for (ITestDevice device : context.getDevices()) {
-                    reportLogs(device, listener);
+                    reportLogs(device, listener, Stage.TEARDOWN);
                 }
                 reportHostLog(listener, config.getLogOutput());
                 elapsedTime = System.currentTimeMillis() - startTime;
@@ -619,11 +639,10 @@ public class TestInvocation implements ITestInvocation {
         }
     }
 
-    /**
-     * Do setup, run the tests, then call tearDown
-     */
-    private void prepareAndRun(IConfiguration config, IInvocationContext context,
-            ITestInvocationListener listener) throws Throwable {
+    /** Do setup and run the tests */
+    private void prepareAndRun(
+            IConfiguration config, IInvocationContext context, ITestInvocationListener listener)
+            throws Throwable {
         getRunUtil().allowInterrupt(true);
         logDeviceBatteryLevel(context, "initial -> setup");
         doSetup(config, context, listener);
@@ -650,11 +669,13 @@ public class TestInvocation implements ITestInvocation {
                 if (preparer instanceof ITestLoggerReceiver) {
                     ((ITestLoggerReceiver) preparer).setTestLogger(listener);
                 }
-                CLog.d("starting preparer '%s' on device: '%s'", preparer,
-                        device.getSerialNumber());
+                CLog.d(
+                        "starting preparer '%s' on device: '%s'",
+                        preparer, device.getSerialNumber());
                 preparer.setUp(device, context.getBuildInfo(deviceName));
-                CLog.d("done with preparer '%s' on device: '%s'", preparer,
-                        device.getSerialNumber());
+                CLog.d(
+                        "done with preparer '%s' on device: '%s'",
+                        preparer, device.getSerialNumber());
             }
             CLog.d("Done with setup of device: '%s'", device.getSerialNumber());
         }
@@ -666,6 +687,10 @@ public class TestInvocation implements ITestInvocation {
             CLog.d("Starting multi target preparer '%s'", multipreparer);
             multipreparer.setUp(context);
             CLog.d("done with multi target preparer '%s'", multipreparer);
+        }
+        // Upload setup logcat after setup is complete
+        for (String deviceName : context.getDeviceConfigNames()) {
+            reportLogs(context.getDevice(deviceName), listener, Stage.SETUP);
         }
     }
 
@@ -797,7 +822,8 @@ public class TestInvocation implements ITestInvocation {
         listener.invocationFailed(exception);
         if (!(exception instanceof BuildError) && !(exception.getCause() instanceof BuildError)) {
             for (String deviceName : context.getDeviceConfigNames()) {
-                config.getDeviceConfigByName(deviceName).getBuildProvider()
+                config.getDeviceConfigByName(deviceName)
+                        .getBuildProvider()
                         .buildNotTested(context.getBuildInfo(deviceName));
             }
             rescheduleTest(config, rescheduler);
@@ -814,20 +840,24 @@ public class TestInvocation implements ITestInvocation {
         }
     }
 
-    private void reportLogs(ITestDevice device, ITestInvocationListener listener) {
+    private void reportLogs(ITestDevice device, ITestInvocationListener listener, Stage stage) {
         InputStreamSource logcatSource = null;
         InputStreamSource emulatorOutput = null;
         if (device != null) {
             logcatSource = device.getLogcat();
+            device.clearLogcat();
             if (device.getIDevice() != null && device.getIDevice().isEmulator()) {
                 emulatorOutput = device.getEmulatorOutput();
+                // TODO: Clear the emulator log
             }
         }
         if (logcatSource != null) {
-            listener.testLog(DEVICE_LOG_NAME, LogDataType.LOGCAT, logcatSource);
+            String name = DEVICE_LOG_NAME_PREFIX + stage.getName();
+            listener.testLog(name, LogDataType.LOGCAT, logcatSource);
         }
         if (emulatorOutput != null) {
-            listener.testLog(EMULATOR_LOG_NAME, LogDataType.TEXT, emulatorOutput);
+            String name = EMULATOR_LOG_NAME_PREFIX + stage.getName();
+            listener.testLog(name, LogDataType.TEXT, emulatorOutput);
         }
         // Clean up after our ISSen
         StreamUtil.cancel(logcatSource);
@@ -1039,7 +1069,7 @@ public class TestInvocation implements ITestInvocation {
             // don't want to use #reportFailure, since that will call buildNotTested
             listener.invocationFailed(e);
             for (ITestDevice device : context.getDevices()) {
-                reportLogs(device, listener);
+                reportLogs(device, listener, Stage.ERROR);
             }
             reportHostLog(listener, config.getLogOutput());
             listener.invocationEnded(0);
