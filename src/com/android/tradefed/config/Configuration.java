@@ -899,6 +899,9 @@ public class Configuration implements IConfiguration {
         try {
             return parser.parse(listArgs);
         } catch (ConfigurationException e) {
+            if (!e.getMessage().contains(CONFIG_EXCEPTION_PATTERN)) {
+                throw e;
+            }
             String optionName = e.getMessage().split(CONFIG_EXCEPTION_PATTERN)[1];
             try {
                 // In case the option exists in the config descriptor, we change the error message
