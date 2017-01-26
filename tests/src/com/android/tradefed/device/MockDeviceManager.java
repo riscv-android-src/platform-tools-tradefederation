@@ -225,9 +225,13 @@ public class MockDeviceManager implements IDeviceManager {
         // ignore
     }
 
-    /**
-     * {@inheritDoc}
-     */
+    /** {@inheritDoc} */
+    @Override
+    public void terminateDeviceRecovery() {
+        // ignore
+    }
+
+    /** {@inheritDoc} */
     @Override
     public ITestDevice allocateDevice(IDeviceSelection options) {
         if (mTcpDeviceRequested) {
