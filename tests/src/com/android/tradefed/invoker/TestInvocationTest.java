@@ -85,13 +85,13 @@ public class TestInvocationTest extends TestCase {
     private static final InputStreamSource EMPTY_STREAM_SOURCE =
             new ByteArrayInputStreamSource(new byte[0]);
     private static final String LOGCAT_NAME_ERROR =
-            TestInvocation.DEVICE_LOG_NAME_PREFIX + TestInvocation.Stage.ERROR.getName();
+            TestInvocation.getDeviceLogName(TestInvocation.Stage.ERROR);
     private static final String LOGCAT_NAME_SETUP =
-            TestInvocation.DEVICE_LOG_NAME_PREFIX + TestInvocation.Stage.SETUP.getName();
+            TestInvocation.getDeviceLogName(TestInvocation.Stage.SETUP);
     private static final String LOGCAT_NAME_TEST =
-            TestInvocation.DEVICE_LOG_NAME_PREFIX + TestInvocation.Stage.TEST.getName();
+            TestInvocation.getDeviceLogName(TestInvocation.Stage.TEST);
     private static final String LOGCAT_NAME_TEARDOWN =
-            TestInvocation.DEVICE_LOG_NAME_PREFIX + TestInvocation.Stage.TEARDOWN.getName();
+            TestInvocation.getDeviceLogName(TestInvocation.Stage.TEARDOWN);
     /** The {@link TestInvocation} under test, with all dependencies mocked out */
     private TestInvocation mTestInvocation;
 

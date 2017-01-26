@@ -852,11 +852,11 @@ public class TestInvocation implements ITestInvocation {
             }
         }
         if (logcatSource != null) {
-            String name = DEVICE_LOG_NAME_PREFIX + stage.getName();
+            String name = getDeviceLogName(stage);
             listener.testLog(name, LogDataType.LOGCAT, logcatSource);
         }
         if (emulatorOutput != null) {
-            String name = EMULATOR_LOG_NAME_PREFIX + stage.getName();
+            String name = getEmulatorLogName(stage);
             listener.testLog(name, LogDataType.TEXT, emulatorOutput);
         }
         // Clean up after our ISSen
@@ -1092,5 +1092,13 @@ public class TestInvocation implements ITestInvocation {
     protected void setExitCode(ExitCode code, Throwable stack) {
         GlobalConfiguration.getInstance().getCommandScheduler()
                 .setLastInvocationExitCode(code, stack);
+    }
+
+    public static String getDeviceLogName(Stage stage) {
+        return DEVICE_LOG_NAME_PREFIX + stage.getName();
+    }
+
+    public static String getEmulatorLogName(Stage stage) {
+        return EMULATOR_LOG_NAME_PREFIX + stage.getName();
     }
 }
