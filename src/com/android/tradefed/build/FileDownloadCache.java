@@ -20,6 +20,8 @@ import com.android.tradefed.command.FatalHostError;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.util.FileUtil;
 
+import com.google.common.annotations.VisibleForTesting;
+
 import java.io.File;
 import java.io.IOException;
 import java.util.Collection;
@@ -194,7 +196,7 @@ public class FileDownloadCache {
         File copyFile = null;
         try {
             File cachedFile = mCacheMap.remove(remotePath);
-            if (cachedFile == null) {
+            if (cachedFile == null || !cachedFile.exists()) {
                 // create a local File that maps to remotePath
                 // convert remotePath to a local path if necessary
                 String localRelativePath = convertPath(remotePath);
@@ -216,11 +218,9 @@ public class FileDownloadCache {
                     }
                     copyFile = copyFile(remotePath, cachedFile);
                 }
-            } catch (BuildRetrievalError e) {
-                // remove entry from cache outside of cachedFile lock, to prevent deadlock
-                mCacheMapLock.lock();
-                mCacheMap.remove(remotePath);
-                mCacheMapLock.unlock();
+            } catch (BuildRetrievalError | RuntimeException e) {
+                // cached file is likely incomplete, delete it.
+                deleteCacheEntry(remotePath);
                 throw e;
             }
             if (download) {
@@ -234,19 +234,15 @@ public class FileDownloadCache {
         return copyFile;
     }
 
+    /** Do the actual file download, clean up on exception is done by the caller. */
     private void downloadFile(IFileDownloader downloader, String remotePath, File cachedFile)
             throws BuildRetrievalError {
-        try {
-            Log.d(LOG_TAG, String.format("Downloading %s to cache", remotePath));
-            downloader.downloadFile(remotePath, cachedFile);
-        } catch (BuildRetrievalError e) {
-            // cached file is likely incomplete, delete it
-            FileUtil.deleteFile(cachedFile);
-            throw e;
-        }
+        Log.d(LOG_TAG, String.format("Downloading %s to cache", remotePath));
+        downloader.downloadFile(remotePath, cachedFile);
     }
 
-    private File copyFile(String remotePath, File cachedFile) throws BuildRetrievalError {
+    @VisibleForTesting
+    File copyFile(String remotePath, File cachedFile) throws BuildRetrievalError {
         // attempt to create a local copy of cached file with sane name
         File hardlinkFile = null;
         try {
