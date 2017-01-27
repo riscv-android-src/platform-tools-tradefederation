@@ -326,9 +326,10 @@ public interface ITestDevice extends INativeDevice {
     public boolean clearErrorDialogs() throws DeviceNotAvailableException;
 
     /**
-     * Return an object to get the current state of the keyguard.
+     * Return an object to get the current state of the keyguard or null if not supported.
      *
-     * @return a {@link KeyguardControllerState} containing a snapshot of the state of the keyguard.
+     * @return a {@link KeyguardControllerState} containing a snapshot of the state of the keyguard
+     *     and returns Null if the Keyguard query is not supported.
      * @throws DeviceNotAvailableException if connection with device is lost and cannot be
      *     recovered.
      */

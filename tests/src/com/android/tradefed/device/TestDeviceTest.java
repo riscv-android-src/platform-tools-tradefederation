@@ -2945,4 +2945,17 @@ public class TestDeviceTest extends TestCase {
         Assert.assertTrue(state.isKeyguardShowing());
         Assert.assertFalse(state.isKeyguardOccluded());
     }
+
+    /** Test for {@link TestDevice#getKeyguardState()} when the device does not support it. */
+    public void testGetKeyguardState_unsupported() throws Exception {
+        mTestDevice =
+                new TestableTestDevice() {
+                    @Override
+                    public String executeShellCommand(String command)
+                            throws DeviceNotAvailableException {
+                        return "\n";
+                    }
+                };
+        assertNull(mTestDevice.getKeyguardState());
+    }
 }

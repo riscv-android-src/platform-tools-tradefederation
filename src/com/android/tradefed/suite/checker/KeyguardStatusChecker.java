@@ -21,7 +21,7 @@ import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.util.KeyguardControllerState;
 
-/** Checks the keyguard status before and after module execution. */
+/** Checks the keyguard status after module execution. */
 public class KeyguardStatusChecker implements ISystemStatusChecker {
 
     private boolean mIsKeyguardShowing;
@@ -32,6 +32,14 @@ public class KeyguardStatusChecker implements ISystemStatusChecker {
     public boolean postExecutionCheck(ITestDevice device) throws DeviceNotAvailableException {
         // We assume keyguard was dismissed before the module.
         KeyguardControllerState ksc = device.getKeyguardState();
+        if (ksc == null) {
+            // for compatibility
+            CLog.logAndDisplay(
+                    LogLevel.DEBUG,
+                    "KeyguardControllerState is not supported by the "
+                            + "device. Skipping System Checker.");
+            return true;
+        }
         mIsKeyguardShowing = ksc.isKeyguardShowing();
         mIsKeyguardOccluded = ksc.isKeyguardOccluded();
         if (mIsKeyguardShowing || mIsKeyguardOccluded) {

@@ -68,6 +68,18 @@ public class KeyguardStatusCheckerTest {
         EasyMock.verify(mMockDevice);
     }
 
+    /**
+     * Test that {@link KeyguardStatusChecker#postExecutionCheck(ITestDevice)} is skipping when the
+     * keyguard controller is not supported.
+     */
+    @Test
+    public void testPostExecutionCheck_notSupported() throws DeviceNotAvailableException {
+        EasyMock.expect(mMockDevice.getKeyguardState()).andReturn(null);
+        EasyMock.replay(mMockDevice);
+        assertTrue(mKsc.postExecutionCheck(mMockDevice));
+        EasyMock.verify(mMockDevice);
+    }
+
     /** helper to create a response keyguard state from a fake device. */
     private KeyguardControllerState createKeyguardState(boolean showing, boolean occluded) {
         List<String> testOutput = new ArrayList<String>();
