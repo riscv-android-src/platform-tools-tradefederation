@@ -451,7 +451,9 @@ public class TestDevice extends NativeDevice {
         String output =
                 executeShellCommand("dumpsys activity activities | grep -A3 KeyguardController:");
         CLog.d("Output from KeyguardController: %s", output);
-        return KeyguardControllerState.create(Arrays.asList(output.trim().split("\n")));
+        KeyguardControllerState state =
+                KeyguardControllerState.create(Arrays.asList(output.trim().split("\n")));
+        return state;
     }
 
     /**
