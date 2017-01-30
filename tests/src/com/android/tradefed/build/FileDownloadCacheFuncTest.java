@@ -80,7 +80,7 @@ public class FileDownloadCacheFuncTest extends TestCase {
         };
         mMockDownloader.downloadFile(EasyMock.eq(REMOTE_PATH),
                 EasyMock.<File>anyObject());
-        EasyMock.expectLastCall().andAnswer(slowDownloadAnswer);
+        EasyMock.expectLastCall().andAnswer(slowDownloadAnswer).times(2);
         EasyMock.replay(mMockDownloader);
         Thread downloadThread1 = new Thread() {
           @Override
