@@ -15,7 +15,6 @@
  */
 package com.android.tradefed.invoker;
 
-import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.result.ILogSaver;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.LogSaverResultForwarder;
@@ -47,19 +46,6 @@ class ShardMasterResultForwarder extends LogSaverResultForwarder {
             List<ITestInvocationListener> listeners, int expectedShards) {
         super(logSaver, listeners);
         mShardsRemaining = expectedShards;
-    }
-
-    /**
-     * {@inheritDoc}
-     * @deprecated use {@link #invocationStarted(IInvocationContext)} instead.
-     */
-    @Deprecated
-    @Override
-    public void invocationStarted(IBuildInfo buildInfo) {
-        if (!mStartReported) {
-            super.invocationStarted(buildInfo);
-            mStartReported = true;
-        }
     }
 
     /**

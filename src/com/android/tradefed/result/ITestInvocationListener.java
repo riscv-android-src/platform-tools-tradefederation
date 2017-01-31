@@ -17,7 +17,6 @@ package com.android.tradefed.result;
 
 import com.android.ddmlib.testrunner.ITestRunListener;
 import com.android.ddmlib.testrunner.TestIdentifier;
-import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.command.ICommandScheduler;
 import com.android.tradefed.invoker.IInvocationContext;
 import com.android.tradefed.log.ITestLogger;
@@ -53,31 +52,13 @@ public interface ITestInvocationListener extends ITestRunListener, ITestLogger {
 
     /**
      * Reports the start of the test invocation.
-     * <p/>
-     * Will be automatically called by the TradeFederation framework.
      *
-     * @param buildInfo information about the build being tested
-     * @deprecated use {@link #invocationStarted(IInvocationContext)} instead.
-     */
-    @Deprecated
-    default public void invocationStarted(IBuildInfo buildInfo) {
-        // empty in order to allow people to only invoke the new interface.
-    }
-
-    /**
-     * Reports the start of the test invocation.
-     * <p/>
-     * Will be automatically called by the TradeFederation framework.
-     * Reporters need to override this method to support multiple devices reporting.
+     * <p>Will be automatically called by the TradeFederation framework. Reporters need to override
+     * this method to support multiple devices reporting.
      *
      * @param context information about the invocation
      */
-    default public void invocationStarted(IInvocationContext context) {
-        // TODO: we temporarily keep a default implementation here for compatibility. To be removed.
-        if (context != null) {
-            invocationStarted(context.getBuildInfos().get(0));
-        }
-    }
+    public default void invocationStarted(IInvocationContext context) {}
 
     /**
      * Reports that the invocation has terminated, whether successfully or due to some error
