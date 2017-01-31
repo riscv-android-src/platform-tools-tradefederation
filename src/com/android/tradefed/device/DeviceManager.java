@@ -742,9 +742,7 @@ public class DeviceManager implements IDeviceManager {
         checkInit();
         if (!mIsTerminated) {
             mIsTerminated = true;
-            if (mDeviceRecoverer != null) {
-                mDeviceRecoverer.terminate();
-            }
+            terminateDeviceRecovery();
             mAdbBridge.removeDeviceChangeListener(mManagedDeviceListener);
             mAdbBridge.terminate();
             // We are not terminating mFastbootMonitor here since it is a daemon thread.
@@ -758,9 +756,15 @@ public class DeviceManager implements IDeviceManager {
         }
     }
 
-    /**
-     * {@inheritDoc}
-     */
+    /** {@inheritDoc} */
+    @Override
+    public synchronized void terminateDeviceRecovery() {
+        if (mDeviceRecoverer != null) {
+            mDeviceRecoverer.terminate();
+        }
+    }
+
+    /** {@inheritDoc} */
     @Override
     public synchronized void terminateHard() {
         checkInit();
@@ -1082,6 +1086,10 @@ public class DeviceManager implements IDeviceManager {
         public void run() {
             while (!mQuit) {
                 getRunUtil().sleep(mDeviceRecoveryInterval);
+                if (mQuit) {
+                    // After the sleep time, we check if we should run or not.
+                    return;
+                }
                 if (mMultiDeviceRecoverers != null && !mMultiDeviceRecoverers.isEmpty()) {
                     for (IMultiDeviceRecovery m : mMultiDeviceRecoverers) {
                         m.recoverDevices(getDeviceList());

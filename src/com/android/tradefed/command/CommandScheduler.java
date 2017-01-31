@@ -877,6 +877,9 @@ public class CommandScheduler extends Thread implements ICommandScheduler, IComm
                 processReadyCommands(manager);
             }
             mCommandTimer.shutdown();
+            // We signal the device manager to stop device recovery threads because it could
+            // potentially create more invocations.
+            manager.terminateDeviceRecovery();
             CLog.i("Waiting for invocation threads to complete");
             List<InvocationThread> threadListCopy;
             synchronized (this) {
