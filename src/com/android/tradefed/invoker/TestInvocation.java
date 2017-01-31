@@ -843,7 +843,8 @@ public class TestInvocation implements ITestInvocation {
     private void reportLogs(ITestDevice device, ITestInvocationListener listener, Stage stage) {
         InputStreamSource logcatSource = null;
         InputStreamSource emulatorOutput = null;
-        if (device != null) {
+        // only get logcat if we have an actual device available to avoid empty logs.
+        if (device != null && !(device.getIDevice() instanceof StubDevice)) {
             logcatSource = device.getLogcat();
             device.clearLogcat();
             if (device.getIDevice() != null && device.getIDevice().isEmulator()) {
@@ -1002,7 +1003,9 @@ public class TestInvocation implements ITestInvocation {
                         config.getDeviceConfigByName(deviceName).getDeviceOptions());
                 if (config.getDeviceConfigByName(deviceName).getDeviceOptions()
                         .isLogcatCaptureEnabled()) {
-                    context.getDevice(deviceName).startLogcat();
+                    if (!(context.getDevice(deviceName).getIDevice() instanceof StubDevice)) {
+                        context.getDevice(deviceName).startLogcat();
+                    }
                 }
             }
 
@@ -1079,7 +1082,9 @@ public class TestInvocation implements ITestInvocation {
         } finally {
             // ensure we always deregister the logger
             for (String deviceName : context.getDeviceConfigNames()) {
-                context.getDevice(deviceName).stopLogcat();
+                if (!(context.getDevice(deviceName).getIDevice() instanceof StubDevice)) {
+                    context.getDevice(deviceName).stopLogcat();
+                }
             }
             getLogRegistry().unregisterLogger();
             config.getLogOutput().closeLog();

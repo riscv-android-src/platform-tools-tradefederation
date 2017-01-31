@@ -294,7 +294,7 @@ public class NativeDevice implements IManagedTestDevice {
      *
      * @param delay the delay in ms
      */
-    void setLogStartDelay(int delay) {
+    protected void setLogStartDelay(int delay) {
         mLogStartDelay = delay;
     }
 
