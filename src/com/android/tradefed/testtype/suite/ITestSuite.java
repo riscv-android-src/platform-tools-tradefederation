@@ -33,25 +33,40 @@ import com.android.tradefed.testtype.IBuildReceiver;
 import com.android.tradefed.testtype.IDeviceTest;
 import com.android.tradefed.testtype.IRemoteTest;
 import com.android.tradefed.testtype.IStrictShardableTest;
+import com.android.tradefed.testtype.ITestCollector;
 import com.android.tradefed.util.StreamUtil;
 
 import java.io.ByteArrayOutputStream;
 import java.io.PrintWriter;
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map.Entry;
+import java.util.Set;
 
 /**
  * Abstract class used to run Test Suite. This class provide the base of how the Suite will be run.
  * Each implementation can define the list of tests via the {@link #loadTests()} method.
  */
-public abstract class ITestSuite implements IRemoteTest, IDeviceTest, IBuildReceiver,
-        ISystemStatusCheckerReceiver, IStrictShardableTest {
+public abstract class ITestSuite
+        implements IRemoteTest,
+                IDeviceTest,
+                IBuildReceiver,
+                ISystemStatusCheckerReceiver,
+                IStrictShardableTest,
+                ITestCollector {
 
-    @Option(name = "bugreport-on-failure",
-            description = "Take a bugreport on every test failure. Warning: This may require a lot"
-                    + "of storage space of the machine running the tests.")
+    protected static final String MODULE_INCOMPLETE_MSG = "Module did not run all its tests.";
+
+    // Options for test failure case
+    @Option(
+        name = "bugreport-on-failure",
+        description =
+                "Take a bugreport on every test failure. Warning: This may require a lot"
+                        + "of storage space of the machine running the tests."
+    )
     private boolean mBugReportOnFailure = false;
 
     @Option(name = "logcat-on-failure",
@@ -71,13 +86,22 @@ public abstract class ITestSuite implements IRemoteTest, IDeviceTest, IBuildRece
             description = "Reboot the device after every test failure.")
     private boolean mRebootOnFailure = false;
 
-    @Option(name = "reboot-per-module",
-            description = "Reboot the device before every module run.")
+    // Options for suite runner behavior
+    @Option(name = "reboot-per-module", description = "Reboot the device before every module run.")
     private boolean mRebootPerModule = false;
 
     @Option(name = "skip-all-system-status-check",
             description = "Whether all system status check between modules should be skipped")
     private boolean mSkipAllSystemStatusCheck = false;
+
+    @Option(
+        name = "collect-tests-only",
+        description =
+                "Only invoke the suite to collect list of applicable test cases. All "
+                        + "test run callbacks will be triggered, but test execution will not be "
+                        + "actually carried out."
+    )
+    private boolean mCollectTestsOnly = false;
 
     private ITestDevice mDevice;
     private IBuildInfo mBuildInfo;
@@ -145,8 +169,6 @@ public abstract class ITestSuite implements IRemoteTest, IDeviceTest, IBuildRece
         // expected to run, etc.
         List<ModuleDefinition> runModules = new ArrayList<>();
         for (Entry<String, IConfiguration> config : runConfig.entrySet()) {
-            // TODO: Create on ModuleDefinition per IRemoteTest for easier sharding, but that
-            // requires, copying the target_prep to have different instances.
             ModuleDefinition module = new ModuleDefinition(config.getKey(),
                     config.getValue().getTests(), config.getValue().getTargetPreparers());
             module.setDevice(mDevice);
@@ -166,6 +188,8 @@ public abstract class ITestSuite implements IRemoteTest, IDeviceTest, IBuildRece
         listener = new TestFailureListener(listener, getDevice(), mBugReportOnFailure,
                 mLogcatOnFailure, mScreenshotOnFailure, mRebootOnFailure, mMaxLogcatBytes);
 
+        Set<ModuleDefinition> moduleTracker = new HashSet<>();
+        moduleTracker.addAll(runModules);
         // run all modules
         for (ModuleDefinition module : runModules) {
             if (mRebootPerModule) {
@@ -182,6 +206,9 @@ public abstract class ITestSuite implements IRemoteTest, IDeviceTest, IBuildRece
                 runPreModuleCheck(module.getId(), mSystemStatusCheckers, mDevice, listener);
             }
             try {
+                if (mCollectTestsOnly) {
+                    module.setCollectTestsOnly(mCollectTestsOnly);
+                }
                 module.run(listener);
             } catch (DeviceUnresponsiveException due) {
                 // being able to catch a DeviceUnresponsiveException here implies that recovery
@@ -195,8 +222,26 @@ public abstract class ITestSuite implements IRemoteTest, IDeviceTest, IBuildRece
                 CLog.w("This may be due to incorrect timeout setting on module %s",
                         module.getId());
             }
+            // Once a module have fully run without exception we stop tracking it.
+            if (module.getNumExpectedTests() <= module.getTestsRan().size()) {
+                moduleTracker.remove(module);
+            } else {
+                CLog.d(
+                        "Module %s only ran %d out of %d expected tests.",
+                        module.getId(), module.getTestsRan().size(), module.getNumExpectedTests());
+            }
             if (!mSkipAllSystemStatusCheck) {
                 runPostModuleCheck(module.getId(), mSystemStatusCheckers, mDevice, listener);
+            }
+        }
+
+        // In case of exception or early termination of the above, we mark the modules that failed
+        // to run completely as failed.
+        if (!mCollectTestsOnly) {
+            for (ModuleDefinition def : moduleTracker) {
+                listener.testRunStarted(def.getId(), def.getNumExpectedTests());
+                listener.testRunFailed(MODULE_INCOMPLETE_MSG);
+                listener.testRunEnded(0, Collections.emptyMap());
             }
         }
     }
@@ -300,5 +345,14 @@ public abstract class ITestSuite implements IRemoteTest, IDeviceTest, IBuildRece
     @Override
     public void setSystemStatusChecker(List<ISystemStatusChecker> systemCheckers) {
         mSystemStatusCheckers = systemCheckers;
+    }
+
+    /**
+     * Run the test suite in collector only mode, this requires all the sub-tests to implements this
+     * interface too.
+     */
+    @Override
+    public void setCollectTestsOnly(boolean shouldCollectTest) {
+        mCollectTestsOnly = shouldCollectTest;
     }
 }

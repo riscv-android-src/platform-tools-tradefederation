@@ -28,6 +28,7 @@ import com.android.tradefed.targetprep.TargetSetupError;
 import com.android.tradefed.testtype.IBuildReceiver;
 import com.android.tradefed.testtype.IDeviceTest;
 import com.android.tradefed.testtype.IRemoteTest;
+import com.android.tradefed.testtype.ITestCollector;
 
 import java.io.PrintWriter;
 import java.io.StringWriter;
@@ -38,7 +39,7 @@ import java.util.List;
 /**
  * Container for the test run configuration. This class is an helper to prepare and run the tests.
  */
-public class ModuleDefinition implements Comparable<ModuleDefinition> {
+public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestCollector {
 
     private final String mId;
     private List<IRemoteTest> mTests = null;
@@ -46,6 +47,9 @@ public class ModuleDefinition implements Comparable<ModuleDefinition> {
     private List<ITargetCleaner> mCleaners = new ArrayList<>();
     private IBuildInfo mBuild;
     private ITestDevice mDevice;
+
+    private List<TestIdentifier> mTestsRan = new ArrayList<>();
+    private int mExpectedTests = 0;
 
     /**
      * Constructor
@@ -117,6 +121,7 @@ public class ModuleDefinition implements Comparable<ModuleDefinition> {
         }
         // Run the tests
         try {
+            mTestsRan.clear();
             for (IRemoteTest test : mTests) {
                 CLog.d("Test: %s", test.getClass().getSimpleName());
                 if (test instanceof IBuildReceiver) {
@@ -148,6 +153,9 @@ public class ModuleDefinition implements Comparable<ModuleDefinition> {
                 CLog.d("Cleaner: %s", cleaner.getClass().getSimpleName());
                 cleaner.tearDown(mDevice, mBuild, null);
             }
+            // we keep track of all the tests that ran in this module.
+            mTestsRan.addAll(moduleListener.getListTestsRan());
+            mExpectedTests = moduleListener.getNumExpectedTests();
         }
     }
 
@@ -165,5 +173,22 @@ public class ModuleDefinition implements Comparable<ModuleDefinition> {
             CLog.e(e);
             return e;
         }
+    }
+
+    @Override
+    public void setCollectTestsOnly(boolean collectTestsOnly) {
+        for (IRemoteTest test : mTests) {
+            ((ITestCollector) test).setCollectTestsOnly(collectTestsOnly);
+        }
+    }
+
+    /** Returns a list of tests that ran in this module. */
+    List<TestIdentifier> getTestsRan() {
+        return mTestsRan;
+    }
+
+    /** Returns the number of tests that was expected to be run */
+    int getNumExpectedTests() {
+        return mExpectedTests;
     }
 }
