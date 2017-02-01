@@ -30,6 +30,7 @@ import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -49,7 +50,6 @@ public class GTestXmlResultParser {
     private final String mTestRunName;
     private int mNumTestsRun = 0;
     private int mNumTestsExpected = 0;
-    private int mTotalNumberOfTestFailed = 0;
     private long mTotalRunTime = 0;
     private final Collection<ITestRunListener> mTestListeners;
 
@@ -62,7 +62,7 @@ public class GTestXmlResultParser {
      */
     public GTestXmlResultParser(String testRunName, Collection<ITestRunListener> listeners) {
         mTestRunName = testRunName;
-        mTestListeners = new ArrayList<ITestRunListener>(listeners);
+        mTestListeners = new ArrayList<>(listeners);
     }
 
     /**
@@ -74,7 +74,7 @@ public class GTestXmlResultParser {
      */
     public GTestXmlResultParser(String testRunName, ITestRunListener listener) {
         mTestRunName = testRunName;
-        mTestListeners = new ArrayList<ITestRunListener>();
+        mTestListeners = new ArrayList<>();
         if (listener != null) {
             mTestListeners.add(listener);
         }
@@ -102,7 +102,7 @@ public class GTestXmlResultParser {
                     CLog.e(errorMessage);
                 }
                 listener.testRunFailed(errorMessage);
-                listener.testRunEnded(mTotalRunTime, getRunMetrics());
+                listener.testRunEnded(mTotalRunTime, Collections.emptyMap());
             }
             return;
         }
@@ -133,26 +133,12 @@ public class GTestXmlResultParser {
             }
         }
         for (ITestRunListener listener : mTestListeners) {
-            listener.testRunEnded(mTotalRunTime, getRunMetrics());
+            listener.testRunEnded(mTotalRunTime, Collections.emptyMap());
         }
-    }
-
-    /**
-     * Create the run metrics {@link Map} to report.
-     *
-     * @return a {@link Map} of run metrics data
-     */
-    private Map<String, String> getRunMetrics() {
-        Map<String, String> metricsMap = new HashMap<String, String>();
-        //Parse the test result to report metrics.
-        metricsMap.put("Pass", Integer.toString(mNumTestsRun - mTotalNumberOfTestFailed));
-        metricsMap.put("Fail", Integer.toString(mTotalNumberOfTestFailed));
-        return metricsMap;
     }
 
     private void getTestSuitesInfo(Element rootNode) {
         mNumTestsExpected = Integer.parseInt(rootNode.getAttribute("tests"));
-        mTotalNumberOfTestFailed = Integer.parseInt(rootNode.getAttribute("failures"));
         mTotalRunTime = (long) (Double.parseDouble(rootNode.getAttribute("time")) * 1000d);
     }
 
@@ -197,7 +183,7 @@ public class GTestXmlResultParser {
             }
         }
 
-        Map <String, String> map = new HashMap<String,String>();
+        Map<String, String> map = new HashMap<>();
         map.put("runtime", parsedResults.mTestRunTime);
         for (ITestRunListener listener : mTestListeners) {
             listener.testEnded(testId, map);

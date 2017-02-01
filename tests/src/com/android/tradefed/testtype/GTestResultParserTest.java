@@ -82,9 +82,7 @@ public class GTestResultParserTest extends GTestParserTestBase {
      */
     public void testParseNoTests() throws Exception {
         String[] contents =  readInFile(GTEST_OUTPUT_FILE_3);
-        Map<String, String> expected = new HashMap<String, String>();
-        expected.put("Pass", "0");
-        expected.put("Fail", "0");
+        Map<String, String> expected = new HashMap<>();
         ITestRunListener mockRunListener = EasyMock.createMock(ITestRunListener.class);
         mockRunListener.testRunStarted(TEST_MODULE_NAME, 0);
         mockRunListener.testRunEnded(EasyMock.anyLong(), EasyMock.eq(expected));

@@ -16,7 +16,6 @@
 package com.android.tradefed.testtype;
 
 import com.android.ddmlib.IShellOutputReceiver;
-import com.android.ddmlib.Log;
 import com.android.ddmlib.MultiLineReceiver;
 import com.android.ddmlib.testrunner.ITestRunListener;
 import com.android.ddmlib.testrunner.TestIdentifier;
@@ -88,13 +87,10 @@ import java.util.regex.Pattern;
  * All other lines are ignored.
  */
 public class GTestResultParser extends MultiLineReceiver {
-    private static final String LOG_TAG = "GTestResultParser";
-
     // Variables to keep track of state
     private TestResult mCurrentTestResult = null;
     private int mNumTestsRun = 0;
     private int mNumTestsExpected = 0;
-    private int mTotalNumberOfTestFailed = 0;
     private long mTotalRunTime = 0;
     private boolean mTestInProgress = false;
     private boolean mTestRunInProgress = false;
@@ -158,7 +154,7 @@ public class GTestResultParser extends MultiLineReceiver {
             if (hasStackTrace()) {
                 return mStackTrace.toString();
             } else {
-                Log.e(LOG_TAG, "Could not find stack trace for failed test");
+                CLog.e("Could not find stack trace for failed test");
                 return new Throwable("Unknown failure").toString();
             }
         }
@@ -218,7 +214,7 @@ public class GTestResultParser extends MultiLineReceiver {
      */
     public GTestResultParser(String testRunName, Collection<ITestRunListener> listeners) {
         mTestRunName = testRunName;
-        mTestListeners = new ArrayList<ITestRunListener>(listeners);
+        mTestListeners = new ArrayList<>(listeners);
     }
 
     /**
@@ -230,7 +226,7 @@ public class GTestResultParser extends MultiLineReceiver {
      */
     public GTestResultParser(String testRunName, ITestRunListener listener) {
         mTestRunName = testRunName;
-        mTestListeners = new ArrayList<ITestRunListener>(1);
+        mTestListeners = new ArrayList<>(1);
         mTestListeners.add(listener);
     }
 
@@ -262,7 +258,7 @@ public class GTestResultParser extends MultiLineReceiver {
         for (String line : lines) {
             parse(line);
             // in verbose mode, dump all adb output to log
-            Log.v(LOG_TAG, line);
+            CLog.v(line);
         }
     }
 
@@ -424,13 +420,10 @@ public class GTestResultParser extends MultiLineReceiver {
      * @return a {@link Map} of run metrics data
      */
     private Map<String, String> getRunMetrics() {
-        Map<String, String> metricsMap = new HashMap<String, String>();
+        Map<String, String> metricsMap = new HashMap<>();
         if (mCoverageTarget != null) {
             metricsMap.put(XmlDefsTest.COVERAGE_TARGET_KEY, mCoverageTarget);
         }
-        //Parse the test result to report metrics.
-        metricsMap.put("Pass", Integer.toString(mNumTestsRun - mTotalNumberOfTestFailed));
-        metricsMap.put("Fail", Integer.toString(mTotalNumberOfTestFailed));
         return metricsMap;
     }
 
@@ -463,8 +456,7 @@ public class GTestResultParser extends MultiLineReceiver {
 
         String[] testId = identifier.split("\\.");
         if (testId.length < 2) {
-            Log.e(LOG_TAG, "Could not detect the test class and test name, received: " +
-                    identifier);
+            CLog.e("Could not detect the test class and test name, received: %s", identifier);
         }
         else {
             returnInfo.mTestClassName = testId[0];
@@ -489,7 +481,8 @@ public class GTestResultParser extends MultiLineReceiver {
                 mNumTestsExpected = Integer.parseInt(numTests.group(1));
             }
             catch (NumberFormatException e) {
-                Log.e(LOG_TAG, "Unable to determine number of tests expected, received: " +
+                CLog.e(
+                        "Unable to determine number of tests expected, received: %s",
                         numTests.group(1));
             }
         }
@@ -517,8 +510,7 @@ public class GTestResultParser extends MultiLineReceiver {
                 mTotalRunTime = Long.parseLong(time.group(1));
             }
             catch (NumberFormatException e) {
-                Log.e(LOG_TAG, "Unable to determine the total running time, received: " +
-                        time.group(1));
+                CLog.e("Unable to determine the total running time, received: %s", time.group(1));
             }
         }
         reportTestRunEnded();
@@ -584,7 +576,7 @@ public class GTestResultParser extends MultiLineReceiver {
 
         // Error - trying to end a test when one isn't in progress
         if (!testInProgress()) {
-            Log.e(LOG_TAG, "Test currently not in progress when trying to end test: " + identifier);
+            CLog.e("Test currently not in progress when trying to end test: %s", identifier);
             return;
         }
 
@@ -594,27 +586,28 @@ public class GTestResultParser extends MultiLineReceiver {
                 testResult.mRunTime = new Long(parsedResults.mTestRunTime);
             }
             catch (NumberFormatException e) {
-                Log.e(LOG_TAG, "Test run time value is invalid, received: " +
-                        parsedResults.mTestRunTime);
+                CLog.e("Test run time value is invalid, received: %s", parsedResults.mTestRunTime);
             }
         }
 
         // Check that the test result is for the same test/class we're expecting it to be for
         boolean encounteredUnexpectedTest = false;
         if (!testResult.isComplete()) {
-            Log.e(LOG_TAG, "No test/class name is currently recorded as running!");
+            CLog.e("No test/class name is currently recorded as running!");
         }
         else {
             if (testResult.mTestClass.compareTo(parsedResults.mTestClassName) != 0) {
-                Log.e(LOG_TAG, "Name for current test class does not match class we started " +
-                        "with, expected: " + testResult.mTestClass + " but got: " +
-                        parsedResults.mTestClassName);
+                CLog.e(
+                        "Name for current test class does not match class we started with, "
+                                + "expected: %s but got:%s ",
+                        testResult.mTestClass, parsedResults.mTestClassName);
                 encounteredUnexpectedTest = true;
             }
             if (testResult.mTestName.compareTo(parsedResults.mTestName) != 0) {
-                Log.e(LOG_TAG, "Name for current test does not match test we started with," +
-                        "expected: " + testResult.mTestName + " bug got: " +
-                        parsedResults.mTestName);
+                CLog.e(
+                        "Name for current test does not match test we started with, expected: %s "
+                                + " but got: %s",
+                        testResult.mTestName, parsedResults.mTestName);
                 encounteredUnexpectedTest = true;
             }
         }
@@ -625,15 +618,11 @@ public class GTestResultParser extends MultiLineReceiver {
             for (ITestRunListener listener : mTestListeners) {
                 listener.testFailed(testId, mCurrentTestResult.getTrace());
             }
-            // Report error as failure.
-            ++mTotalNumberOfTestFailed;
         }
         else if (!testPassed) {  // test failed
             for (ITestRunListener listener : mTestListeners) {
                 listener.testFailed(testId, mCurrentTestResult.getTrace());
             }
-
-            ++mTotalNumberOfTestFailed;
         }
         // For all cases (pass or fail), we ultimately need to report test has ended
         Map <String, String> emptyMap = Collections.emptyMap();
@@ -689,7 +678,7 @@ public class GTestResultParser extends MultiLineReceiver {
      */
     private void handleTestRunFailed(String errorMsg) {
         errorMsg = (errorMsg == null ? "Unknown error" : errorMsg);
-        Log.i(LOG_TAG, String.format("Test run failed: %s", errorMsg));
+        CLog.i("Test run failed: %s", errorMsg);
         String testRunStackTrace = "";
 
         // Report that the last known test failed
