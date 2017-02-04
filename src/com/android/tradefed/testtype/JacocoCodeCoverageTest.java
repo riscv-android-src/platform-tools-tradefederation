@@ -18,6 +18,7 @@ package com.android.tradefed.testtype;
 
 import static com.android.tradefed.testtype.JacocoCodeCoverageReportFormat.HTML;
 
+import com.android.tradefed.build.VersionedFile;
 import com.android.tradefed.config.Option;
 import com.android.tradefed.config.Option.Importance;
 import com.android.tradefed.config.OptionClass;
@@ -37,6 +38,8 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 /**
  * An {@link IRemoteTest} that generates a code coverage report by generating build.xml on the fly
@@ -60,9 +63,9 @@ public class JacocoCodeCoverageTest extends CodeCoverageTestBase<JacocoCodeCover
     private long mReportTimeout = 10 * 60 * 1000; // 10 Minutes
 
     @Option(name = "report-classes", mandatory = true, importance = Importance.ALWAYS,
-            description = "The build artifact jar that contains the instrumented class files "
+            description = "Regex pattern used to select the instrumented class files "
                     + "that should be used to generate the report. May be repeated.")
-    private List<String> mClassFiles = new ArrayList<>();
+    private List<String> mClassFilesFilter = new ArrayList<>();
 
     @Option(name = "jacocoant", mandatory = true, importance = Importance.ALWAYS,
             description = "The build artifact name for the specific jacoco ant jar "
@@ -77,8 +80,12 @@ public class JacocoCodeCoverageTest extends CodeCoverageTestBase<JacocoCodeCover
         mReportFormat = reportFormat;
     }
 
-    void setClassFile(List<String> classFiles) {
-        mClassFiles = classFiles;
+    void setClassFilesFilters(List<String> classFiles) {
+        mClassFilesFilter = classFiles;
+    }
+
+    List<String> getClassFilesFilters() {
+        return mClassFilesFilter;
     }
 
     void setJacocoAnt(String jacocoAnt) {
@@ -98,8 +105,6 @@ public class JacocoCodeCoverageTest extends CodeCoverageTestBase<JacocoCodeCover
     protected File generateCoverageReport(Collection<File> executionFiles,
             JacocoCodeCoverageReportFormat format) throws IOException {
 
-        List<File> classFiles = new ArrayList<>();
-
         if (executionFiles == null || executionFiles.isEmpty()) {
             throw new IllegalArgumentException("Could not find any exec file");
         }
@@ -112,14 +117,15 @@ public class JacocoCodeCoverageTest extends CodeCoverageTestBase<JacocoCodeCover
                     + "and that your build provider is configured to download it.");
         }
 
-        for (String classFile : mClassFiles) {
-            File classFileJarFromBuild = getBuild().getFile(classFile);
-            if (classFileJarFromBuild == null) {
-                throw new IOException("Couldn't find " + classFile
-                        + ". Make sure the file is published as a build artifact, "
-                        + "and that your build provider is configured to download it.");
-            }
-            classFiles.add(classFileJarFromBuild);
+        Collection<VersionedFile> buildFiles = getBuild().getFiles();
+
+        Stream<File> buildFilesStream = buildFiles.stream().map(VersionedFile::getFile);
+
+        List<File> classFiles = buildFilesStream.filter(buildFile -> isClassFile(buildFile))
+                .collect(Collectors.toList());
+
+        if (classFiles == null || classFiles.isEmpty()) {
+            throw new IOException("No class files found");
         }
 
         File reportDest = format.equals(HTML) ? FileUtil.createTempDir("report")
@@ -180,6 +186,15 @@ public class JacocoCodeCoverageTest extends CodeCoverageTestBase<JacocoCodeCover
             fileset.append("<file file=\"" + file.getAbsolutePath() + "\" />\n");
         }
         return fileset.toString();
+    }
+
+    /**
+     * Test if build file matches any of the regex patterns provided to get classfile jars
+     */
+    @VisibleForTesting
+    boolean isClassFile(File buildFile) {
+        return getClassFilesFilters().stream()
+                .anyMatch(classFileFilter -> Pattern.matches(classFileFilter, buildFile.getPath()));
     }
 
     /**
