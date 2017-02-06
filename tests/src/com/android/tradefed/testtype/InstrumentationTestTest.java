@@ -18,6 +18,7 @@ package com.android.tradefed.testtype;
 import com.android.ddmlib.IDevice;
 import com.android.ddmlib.testrunner.IRemoteAndroidTestRunner;
 import com.android.ddmlib.testrunner.ITestRunListener;
+import com.android.ddmlib.testrunner.InstrumentationResultParser;
 import com.android.ddmlib.testrunner.TestIdentifier;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
@@ -492,6 +493,34 @@ public class InstrumentationTestTest extends TestCase {
             return;
         }
         fail("Should have thrown an exception.");
+    }
+
+    /**
+     * Test for {@link InstrumentationTest#collectTestsAndRetry(IRemoteAndroidTestRunner,
+     * ITestInvocationListener)} when the collection fails.
+     */
+    public void testCollectTestsAndRetry_Failure() throws Exception {
+        mMockRemoteRunner = EasyMock.createMock(IRemoteAndroidTestRunner.class);
+        CollectTestAnswer collectTestAnswer =
+                new CollectTestAnswer() {
+                    @Override
+                    public Boolean answer(
+                            IRemoteAndroidTestRunner runner, ITestRunListener listener) {
+                        listener.testRunStarted("fakeName", 0);
+                        listener.testRunFailed(InstrumentationResultParser.INVALID_OUTPUT_ERR_MSG);
+                        listener.testRunEnded(0, Collections.emptyMap());
+                        return true;
+                    }
+                };
+        setCollectTestsExpectations(collectTestAnswer);
+        EasyMock.replay(mMockRemoteRunner, mMockListener, mMockTestDevice);
+        try {
+            mInstrumentationTest.collectTestsAndRetry(mMockRemoteRunner, null);
+            fail("Should have thrown an exception");
+        } catch (RuntimeException expected) {
+            // expected.
+        }
+        EasyMock.verify(mMockRemoteRunner, mMockListener, mMockTestDevice);
     }
 
     private void setCollectTestsExpectations(CollectTestAnswer collectTestAnswer)
