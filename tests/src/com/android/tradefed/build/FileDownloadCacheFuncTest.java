@@ -78,9 +78,10 @@ public class FileDownloadCacheFuncTest extends TestCase {
                 return null;
             }
         };
-        mMockDownloader.downloadFile(EasyMock.eq(REMOTE_PATH),
-                EasyMock.<File>anyObject());
-        EasyMock.expectLastCall().andAnswer(slowDownloadAnswer).times(2);
+        // Download is only called once, second thread will wait on synchronized until the download
+        // is done, then link the downloaded file.
+        mMockDownloader.downloadFile(EasyMock.eq(REMOTE_PATH), EasyMock.<File>anyObject());
+        EasyMock.expectLastCall().andAnswer(slowDownloadAnswer);
         EasyMock.replay(mMockDownloader);
         Thread downloadThread1 = new Thread() {
           @Override
