@@ -484,13 +484,19 @@ public class HostTest implements IDeviceTest, ITestFilterReceiver, ITestAnnotati
         List<Class<?>> classes = new ArrayList<>();
         for (String className : mClasses) {
             try {
-                classes.add(Class.forName(className));
+                classes.add(Class.forName(className, true, getClassLoader()));
             } catch (ClassNotFoundException e) {
                 throw new IllegalArgumentException(String.format("Could not load Test class %s",
                         className), e);
             }
         }
         return classes;
+    }
+
+    /** Returns the default classloader. */
+    @VisibleForTesting
+    protected ClassLoader getClassLoader() {
+        return this.getClass().getClassLoader();
     }
 
     protected Object loadObject(Class<?> classObj) throws IllegalArgumentException {
