@@ -20,6 +20,7 @@ import com.android.ddmlib.IDevice;
 import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.config.Option;
 import com.android.tradefed.config.OptionClass;
+import com.android.tradefed.invoker.IInvocationContext;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.testtype.CodeCoverageTest;
 import com.android.tradefed.util.CommandResult;
@@ -130,9 +131,9 @@ public class CodeCoverageReporter implements ITestInvocationListener {
 
     /** {@inheritDoc} */
     @Override
-    public void invocationStarted(IBuildInfo buildInfo) {
-        // Only report on the primary build info.
-        mBuildInfo = buildInfo;
+    public void invocationStarted(IInvocationContext context) {
+        // FIXME: do code coverage reporting for each different build info (for multi-device case)
+        mBuildInfo = context.getBuildInfos().get(0);
 
         // Append build and branch information to output directory.
         mReportOutputPath = generateReportLocation(mReportRootPath);
