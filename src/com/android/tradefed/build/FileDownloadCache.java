@@ -196,21 +196,26 @@ public class FileDownloadCache {
         File copyFile = null;
         try {
             File cachedFile = mCacheMap.remove(remotePath);
-            if (cachedFile == null || !cachedFile.exists()) {
+            if (cachedFile == null) {
                 // create a local File that maps to remotePath
                 // convert remotePath to a local path if necessary
                 String localRelativePath = convertPath(remotePath);
                 cachedFile = new File(mCacheRoot, localRelativePath);
                 cachedFile.getParentFile().mkdirs();
                 download = true;
+            } else if (!cachedFile.exists()) {
+                // We just potentially re-download, the synchronized below will fail otherwise due
+                // to the cachedFile being a new object.
+                download = true;
             }
-            // lock on the file, so no other thread attempts to delete it or access it before its
+            // lock on the file, so no other thread attempts to delete it or access it before it's
             // downloaded
             try {
                 synchronized (cachedFile) {
                     mCacheMap.put(remotePath, cachedFile);
                     mCacheMapLock.unlock();
-                    if (download) {
+                    // If at that time cachedFile still doesn't exists we download.
+                    if (download && !cachedFile.exists()) {
                         downloadFile(downloader, remotePath, cachedFile);
                     } else {
                         Log.d(LOG_TAG, String.format("Retrieved remote file %s from cached file %s",
