@@ -27,6 +27,7 @@ import com.android.tradefed.util.CommandResult;
 import com.android.tradefed.util.CommandStatus;
 import com.android.tradefed.util.FileUtil;
 import com.android.tradefed.util.IRunUtil;
+import com.android.tradefed.util.IRunUtil.EnvPriority;
 import com.android.tradefed.util.RunUtil;
 import com.android.tradefed.util.StreamUtil;
 import com.android.tradefed.util.SubprocessTestResultsParser;
@@ -64,8 +65,15 @@ public abstract class SubprocessTfLauncher implements IRemoteTest, IBuildReceive
             + "arrived instead of using a temporary file and parsing at the end.")
     private boolean mEventStreaming = true;
 
+    @Option(name = "sub-global-config", description = "The global config name to pass to the"
+            + "sub process, can be local or from jar resources. Be careful of conflicts with "
+            + "parent process.")
+    private String mGlobalConfig = null;
+
     /** Timeout to wait for the events received from subprocess to finish being processed.*/
     private static final long EVENT_THREAD_JOIN_TIMEOUT_MS = 30 * 1000;
+
+    protected static final String TF_GLOBAL_CONFIG = "TF_GLOBAL_CONFIG";
 
     protected IRunUtil mRunUtil =  new RunUtil();
 
@@ -76,15 +84,6 @@ public abstract class SubprocessTfLauncher implements IRemoteTest, IBuildReceive
     protected List<String> mCmdArgs = null;
     // The absolute path to the build's root directory.
     protected String mRootDir = null;
-
-    /**
-     * Set test config name.
-     *
-     * Exposed for unit testing.
-     */
-    protected void setConfigName(String configName) {
-        mConfigName = configName;
-    }
 
     /**
      * Set use-event-streaming.
@@ -135,6 +134,14 @@ public abstract class SubprocessTfLauncher implements IRemoteTest, IBuildReceive
         mCmdArgs.add(jarClasspath);
         mCmdArgs.add("com.android.tradefed.command.CommandRunner");
         mCmdArgs.add(mConfigName);
+
+        // clear the TF_GLOBAL_CONFIG env, so another tradefed will not reuse the global config file
+        mRunUtil.unsetEnvVariable(TF_GLOBAL_CONFIG);
+        if (mGlobalConfig != null) {
+            // We allow overriding this global config and then set it for the subprocess.
+            mRunUtil.setEnvVariablePriority(EnvPriority.SET);
+            mRunUtil.setEnvVariable(TF_GLOBAL_CONFIG, mGlobalConfig);
+        }
     }
 
     /**

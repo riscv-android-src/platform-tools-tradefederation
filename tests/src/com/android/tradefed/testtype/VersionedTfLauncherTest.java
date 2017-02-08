@@ -17,6 +17,7 @@ package com.android.tradefed.testtype;
 
 import com.android.ddmlib.IDevice;
 import com.android.ddmlib.testrunner.TestIdentifier;
+import com.android.tradefed.config.OptionSetter;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.device.NullDevice;
 import com.android.tradefed.build.IBuildInfo;
@@ -62,9 +63,11 @@ public class VersionedTfLauncherTest {
 
         mVersionedTfLauncher = new VersionedTfLauncher();
         mVersionedTfLauncher.setRunUtil(mMockRunUtil);
-        mVersionedTfLauncher.setConfigName(CONFIG_NAME);
         mVersionedTfLauncher.setBuild(mMockBuildInfo);
         mVersionedTfLauncher.setEventStreaming(false);
+
+        OptionSetter setter = new OptionSetter(mVersionedTfLauncher);
+        setter.setOptionValue("config-name", CONFIG_NAME);
     }
 
     /**
@@ -75,6 +78,8 @@ public class VersionedTfLauncherTest {
         mMockIDevice = EasyMock.createMock(IDevice.class);
 
         CommandResult cr = new CommandResult(CommandStatus.SUCCESS);
+        mMockRunUtil.unsetEnvVariable(SubprocessTfLauncher.TF_GLOBAL_CONFIG);
+
         EasyMock.expect(mMockRunUtil.runTimedCmd(EasyMock.anyLong(),
                 (FileOutputStream)EasyMock.anyObject(), (FileOutputStream)EasyMock.anyObject(),
                 EasyMock.eq("java"), (String)EasyMock.anyObject(), EasyMock.eq("-cp"),
@@ -112,6 +117,8 @@ public class VersionedTfLauncherTest {
         mMockIDevice = new NullDevice("null-device-1");
 
         CommandResult cr = new CommandResult(CommandStatus.SUCCESS);
+        mMockRunUtil.unsetEnvVariable(SubprocessTfLauncher.TF_GLOBAL_CONFIG);
+
         EasyMock.expect(mMockRunUtil.runTimedCmd(EasyMock.anyLong(),
                 (FileOutputStream)EasyMock.anyObject(), (FileOutputStream)EasyMock.anyObject(),
                 EasyMock.eq("java"), (String)EasyMock.anyObject(), EasyMock.eq("-cp"),

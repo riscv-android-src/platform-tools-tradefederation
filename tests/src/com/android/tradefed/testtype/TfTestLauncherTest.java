@@ -27,6 +27,7 @@ import com.android.tradefed.util.CommandResult;
 import com.android.tradefed.util.CommandStatus;
 import com.android.tradefed.util.FileUtil;
 import com.android.tradefed.util.IRunUtil;
+import com.android.tradefed.util.IRunUtil.EnvPriority;
 
 import org.easymock.EasyMock;
 import org.junit.Before;
@@ -47,6 +48,7 @@ public class TfTestLauncherTest {
     private static final String BUILD_BRANCH = "FAKE_BRANCH";
     private static final String BUILD_ID = "FAKE_BUILD_ID";
     private static final String BUILD_FLAVOR = "FAKE_FLAVOR";
+    private static final String SUB_GLOBAL_CONFIG = "FAKE_GLOBAL_CONFIG";
 
     private TfTestLauncher mTfTestLauncher;
     private ITestInvocationListener mMockListener;
@@ -61,9 +63,12 @@ public class TfTestLauncherTest {
 
         mTfTestLauncher = new TfTestLauncher();
         mTfTestLauncher.setRunUtil(mMockRunUtil);
-        mTfTestLauncher.setConfigName(CONFIG_NAME);
         mTfTestLauncher.setBuild(mMockBuildInfo);
         mTfTestLauncher.setEventStreaming(false);
+
+        OptionSetter setter = new OptionSetter(mTfTestLauncher);
+        setter.setOptionValue("config-name", CONFIG_NAME);
+        setter.setOptionValue("sub-global-config", SUB_GLOBAL_CONFIG);
     }
 
     /**
@@ -84,7 +89,10 @@ public class TfTestLauncherTest {
                 EasyMock.eq("--subprocess-report-file"),
                 (String)EasyMock.anyObject())).andReturn(cr);
 
-        mMockRunUtil.unsetEnvVariable(TfTestLauncher.TF_GLOBAL_CONFIG);
+        mMockRunUtil.unsetEnvVariable(SubprocessTfLauncher.TF_GLOBAL_CONFIG);
+        mMockRunUtil.setEnvVariablePriority(EnvPriority.SET);
+        mMockRunUtil.setEnvVariable(SubprocessTfLauncher.TF_GLOBAL_CONFIG, SUB_GLOBAL_CONFIG);
+
         EasyMock.expect(mMockBuildInfo.getTestTag()).andReturn(TEST_TAG);
         EasyMock.expect(mMockBuildInfo.getBuildBranch()).andReturn(BUILD_BRANCH).times(2);
         EasyMock.expect(mMockBuildInfo.getBuildFlavor()).andReturn(BUILD_FLAVOR).times(2);
@@ -181,6 +189,8 @@ public class TfTestLauncherTest {
         EasyMock.expect(mMockBuildInfo.getBuildFlavor()).andReturn(BUILD_FLAVOR).times(2);
         EasyMock.expect(mMockBuildInfo.getBuildId()).andReturn(BUILD_ID).times(2);
         mMockRunUtil.unsetEnvVariable(TfTestLauncher.TF_GLOBAL_CONFIG);
+        mMockRunUtil.setEnvVariablePriority(EnvPriority.SET);
+        mMockRunUtil.setEnvVariable(SubprocessTfLauncher.TF_GLOBAL_CONFIG, SUB_GLOBAL_CONFIG);
         EasyMock.replay(mMockBuildInfo, mMockRunUtil, mMockListener);
         try {
             mTfTestLauncher.preRun();

@@ -26,7 +26,6 @@ import com.android.tradefed.result.LogDataType;
 import com.android.tradefed.util.CommandResult;
 import com.android.tradefed.util.CommandStatus;
 import com.android.tradefed.util.FileUtil;
-import com.android.tradefed.util.IRunUtil.EnvPriority;
 import com.android.tradefed.util.RunUtil;
 import com.android.tradefed.util.StreamUtil;
 
@@ -82,11 +81,6 @@ public class TfTestLauncher extends SubprocessTfLauncher {
             + "Can be repeated.")
     private List<String> mSubApkPath = new ArrayList<String>();
 
-    @Option(name = "sub-global-config", description = "The global config name to pass to the"
-            + "sub process, can be local or from jar resources. Be careful of conflicts with "
-            + "parent process.")
-    private String mGlobalConfig = null;
-
     // The regex pattern of temp files to be found in the temporary dir of the subprocess.
     // Any file not matching the patterns, or multiple files in the temporary dir match the same
     // pattern, is considered as test failure.
@@ -99,8 +93,6 @@ public class TfTestLauncher extends SubprocessTfLauncher {
     private File mAgent = null;
     // we track the elapsed time of the invocation to report it.
     private long mStartTime = 0l;
-
-    protected static final String TF_GLOBAL_CONFIG = "TF_GLOBAL_CONFIG";
 
     /** {@inheritDoc} */
     @Override
@@ -167,13 +159,6 @@ public class TfTestLauncher extends SubprocessTfLauncher {
             mCmdArgs.add(apkPath);
         }
 
-        // clear the TF_GLOBAL_CONFIG env, so another tradefed will not reuse the global config file
-        mRunUtil.unsetEnvVariable(TF_GLOBAL_CONFIG);
-        if (mGlobalConfig != null) {
-            // We allow overriding this global config and then set it for the subprocess.
-            mRunUtil.setEnvVariablePriority(EnvPriority.SET);
-            mRunUtil.setEnvVariable(TF_GLOBAL_CONFIG, mGlobalConfig);
-        }
         mStartTime = System.currentTimeMillis();
     }
 
