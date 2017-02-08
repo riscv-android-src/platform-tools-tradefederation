@@ -285,7 +285,8 @@ public class OtaStabilityTest implements IDeviceTest, IBuildReceiver, IConfigura
         // give some time for device to settle
         getRunUtil().sleep(5*1000);
         // force a checkin so device downloads OTA immediately
-        mDevice.executeShellCommand("am broadcast -a android.server.checkin.CHECKIN");
+        mDevice.executeShellCommand(
+                "am broadcast -a android.server.checkin.CHECKIN com.google.android.gms");
         Assert.assertTrue(String.format(
                 "Device %s did not enter recovery after %d min.",
                 mDevice.getSerialNumber(), mWaitRecoveryTime),
