@@ -24,6 +24,8 @@ import com.android.tradefed.util.DirectedGraph;
 import com.android.tradefed.util.StreamUtil;
 import com.android.tradefed.util.keystore.IKeyStoreClient;
 
+import com.google.common.annotations.VisibleForTesting;
+
 import java.io.BufferedInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
@@ -724,5 +726,11 @@ public class ConfigurationFactory implements IConfigurationFactory {
     protected Map<ConfigId, ConfigurationDef> getMapConfig() {
         // We return a copy to ensure it is not modified outside
         return new HashMap<ConfigId, ConfigurationDef>(mConfigDefMap);
+    }
+
+    /** In some particular case, we need to clear the map. */
+    @VisibleForTesting
+    public void clearMapConfig() {
+        mConfigDefMap.clear();
     }
 }
