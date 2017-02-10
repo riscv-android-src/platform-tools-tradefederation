@@ -40,6 +40,7 @@ import com.android.tradefed.log.ILeveledLogOutput;
 import com.android.tradefed.log.ILogRegistry;
 import com.android.tradefed.log.LogRegistry;
 import com.android.tradefed.log.LogUtil.CLog;
+import com.android.tradefed.result.AggregatingProfilerListener;
 import com.android.tradefed.result.IShardableListener;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.ITestLoggerReceiver;
@@ -606,6 +607,9 @@ public class TestInvocation implements ITestInvocation {
             try {
                 // Clean up host.
                 doCleanUp(config, context, exception);
+                if (config.getProfiler() != null) {
+                    config.getProfiler().reportAllMetrics(listener);
+                }
                 for (ITestDevice device : context.getDevices()) {
                     reportLogs(device, listener, Stage.TEARDOWN);
                 }
@@ -677,6 +681,9 @@ public class TestInvocation implements ITestInvocation {
             CLog.d("Starting multi target preparer '%s'", multipreparer);
             multipreparer.setUp(context);
             CLog.d("done with multi target preparer '%s'", multipreparer);
+        }
+        if (config.getProfiler() != null) {
+            config.getProfiler().setUp(context);
         }
         // Upload setup logcat after setup is complete
         for (String deviceName : context.getDeviceConfigNames()) {
@@ -980,6 +987,9 @@ public class TestInvocation implements ITestInvocation {
                 config.getTestInvocationListeners().size() + extraListeners.length);
         allListeners.addAll(config.getTestInvocationListeners());
         allListeners.addAll(Arrays.asList(extraListeners));
+        if (config.getProfiler() != null) {
+            allListeners.add(new AggregatingProfilerListener(config.getProfiler()));
+        }
         ITestInvocationListener listener = new LogSaverResultForwarder(config.getLogSaver(),
                 allListeners);
         String currentDeviceName = null;

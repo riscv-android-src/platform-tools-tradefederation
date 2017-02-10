@@ -18,7 +18,6 @@ package com.android.tradefed.result;
 import com.android.ddmlib.testrunner.TestIdentifier;
 import com.android.tradefed.invoker.IInvocationContext;
 import com.android.tradefed.log.LogUtil.CLog;
-
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
