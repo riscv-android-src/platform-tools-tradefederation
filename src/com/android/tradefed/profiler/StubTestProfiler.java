@@ -54,4 +54,9 @@ public class StubTestProfiler extends AggregatingProfiler {
     public String getDescription() {
         return "stub";
     }
+
+    @Override
+    public MetricOutputData getMetricOutputUtil() {
+        return new MetricOutputData();
+    }
 }
