@@ -516,10 +516,12 @@ public class HermeticLaunchTest implements IRemoteTest, IDeviceTest {
      */
     public void averageAtraceData(String activityName,
             List<Map<String, List<SectionPeriod>>> mutipleLaunchTraceInfo) {
-        if (!verifyAtraceMapInfo(mutipleLaunchTraceInfo)) {
-            activityErrMsg.put(activityName, "Not all the section info captured for the activity :"
-                    + activityName);
-            return;
+        String verificationResult = verifyAtraceMapInfo(mutipleLaunchTraceInfo);
+        if (verificationResult != null) {
+            CLog.w(
+                    "Not all the section info captured for the activity :%s. Missing: %s. "
+                            + "Please go to atrace file to look for detail.",
+                    activityName, verificationResult);
         }
         Map<String, Double> launchSum = new HashMap<>();
         for (String sectionName : mSectionSet) {
@@ -560,17 +562,20 @@ public class HermeticLaunchTest implements IRemoteTest, IDeviceTest {
 
     /**
      * To check if all the section info caught for all the app launches
+     *
      * @param multipleLaunchTraceInfo
-     * @return
+     * @return String: the missing section name, null if no section info missing.
      */
-    public boolean verifyAtraceMapInfo(
+    public String verifyAtraceMapInfo(
             List<Map<String, List<SectionPeriod>>> multipleLaunchTraceInfo) {
         for (Map<String, List<SectionPeriod>> singleLaunchInfo : multipleLaunchTraceInfo) {
-            if (singleLaunchInfo.size() != mSectionSet.size()) {
-                return false;
+            Set<String> testSet = new HashSet<>(mSectionSet);
+            testSet.removeAll(singleLaunchInfo.keySet());
+            if (testSet.size() != 0) {
+                return testSet.toString();
             }
         }
-        return true;
+        return null;
     }
 
 
