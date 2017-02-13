@@ -108,6 +108,8 @@ public class NativeDeviceTest extends TestCase {
         mMockDvcMonitor = EasyMock.createMock(IDeviceMonitor.class);
         mMockRunUtil = EasyMock.createMock(IRunUtil.class);
         mMockWifi = EasyMock.createMock(IWifiHelper.class);
+        mMockWifi.cleanUp();
+        EasyMock.expectLastCall().anyTimes();
 
         // A TestDevice with a no-op recoverDevice() implementation
         mTestDevice = new TestableAndroidNativeDevice() {

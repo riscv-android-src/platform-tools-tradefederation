@@ -1164,6 +1164,7 @@ public class TestDeviceTest extends TestCase {
      * Test for {@link TestDevice#switchToAdbTcp()} when device has no ip address
      */
     public void testSwitchToAdbTcp_noIp() throws Exception {
+        mMockWifi.cleanUp();
         EasyMock.expect(mMockWifi.getIpAddress()).andReturn(null);
         replayMocks();
         assertNull(mTestDevice.switchToAdbTcp());
@@ -1174,6 +1175,7 @@ public class TestDeviceTest extends TestCase {
      * Test normal success case for {@link TestDevice#switchToAdbTcp()}.
      */
     public void testSwitchToAdbTcp() throws Exception {
+        mMockWifi.cleanUp();
         EasyMock.expect(mMockWifi.getIpAddress()).andReturn("ip");
         EasyMock.expect(mMockRunUtil.runTimedCmd(EasyMock.anyLong(), EasyMock.eq("adb"),
                 EasyMock.eq("-s"), EasyMock.eq("serial"), EasyMock.eq("tcpip"),

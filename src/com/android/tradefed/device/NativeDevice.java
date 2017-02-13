@@ -2153,33 +2153,43 @@ public class NativeDevice implements IManagedTestDevice {
         int backoffSlotCount = 2;
         int waitTime = mOptions.getWifiRetryWaitTime();
         IWifiHelper wifi = createWifiHelper();
-        for (int i = 1; i <= mOptions.getWifiAttempts(); i++) {
-            CLog.i("Connecting to wifi network %s on %s", wifiSsid, getSerialNumber());
-            boolean success = wifi.connectToNetwork(wifiSsid, wifiPsk,
-                    mOptions.getConnCheckUrl(), scanSsid);
-            final Map<String, String> wifiInfo = wifi.getWifiInfo();
-            if (success) {
-                CLog.i("Successfully connected to wifi network %s(%s) on %s",
-                        wifiSsid, wifiInfo.get("bssid"), getSerialNumber());
+        try {
+            for (int i = 1; i <= mOptions.getWifiAttempts(); i++) {
+                CLog.i("Connecting to wifi network %s on %s", wifiSsid, getSerialNumber());
+                boolean success =
+                        wifi.connectToNetwork(
+                                wifiSsid, wifiPsk, mOptions.getConnCheckUrl(), scanSsid);
+                final Map<String, String> wifiInfo = wifi.getWifiInfo();
+                if (success) {
+                    CLog.i(
+                            "Successfully connected to wifi network %s(%s) on %s",
+                            wifiSsid, wifiInfo.get("bssid"), getSerialNumber());
 
-                mLastConnectedWifiSsid = wifiSsid;
-                mLastConnectedWifiPsk = wifiPsk;
+                    mLastConnectedWifiSsid = wifiSsid;
+                    mLastConnectedWifiPsk = wifiPsk;
 
-                return true;
-            } else {
-                CLog.w("Failed to connect to wifi network %s(%s) on %s on attempt %d of %d",
-                        wifiSsid, wifiInfo.get("bssid"), getSerialNumber(), i,
-                        mOptions.getWifiAttempts());
-            }
-            if (i < mOptions.getWifiAttempts()) {
-                if (mOptions.isWifiExpoRetryEnabled()) {
-                    // use binary exponential back-offs when retrying.
-                    waitTime *= rnd.nextInt(backoffSlotCount) ;
-                    backoffSlotCount *= 2;
+                    return true;
+                } else {
+                    CLog.w(
+                            "Failed to connect to wifi network %s(%s) on %s on attempt %d of %d",
+                            wifiSsid,
+                            wifiInfo.get("bssid"),
+                            getSerialNumber(),
+                            i,
+                            mOptions.getWifiAttempts());
                 }
-                CLog.e("Waiting for %d ms before reconnecting to %s...", waitTime, wifiSsid);
-                getRunUtil().sleep(waitTime);
+                if (i < mOptions.getWifiAttempts()) {
+                    if (mOptions.isWifiExpoRetryEnabled()) {
+                        // use binary exponential back-offs when retrying.
+                        waitTime *= rnd.nextInt(backoffSlotCount);
+                        backoffSlotCount *= 2;
+                    }
+                    CLog.e("Waiting for %d ms before reconnecting to %s...", waitTime, wifiSsid);
+                    getRunUtil().sleep(waitTime);
+                }
             }
+        } finally {
+            wifi.cleanUp();
         }
         return false;
     }
@@ -2219,12 +2229,14 @@ public class NativeDevice implements IManagedTestDevice {
      */
     @Override
     public boolean isWifiEnabled() throws DeviceNotAvailableException {
+        final IWifiHelper wifi = createWifiHelper();
         try {
-            final IWifiHelper wifi = createWifiHelper();
             return wifi.isWifiEnabled();
         } catch (RuntimeException e) {
             CLog.w("Failed to create WifiHelper: %s", e.getMessage());
             return false;
+        } finally {
+            wifi.cleanUp();
         }
     }
 
@@ -2239,27 +2251,32 @@ public class NativeDevice implements IManagedTestDevice {
     boolean checkWifiConnection(String wifiSSID) throws DeviceNotAvailableException {
         CLog.i("Checking connection with wifi network %s on %s", wifiSSID, getSerialNumber());
         final IWifiHelper wifi = createWifiHelper();
-        // getSSID returns SSID as "SSID"
-        final String quotedSSID = String.format("\"%s\"", wifiSSID);
+        try {
+            // getSSID returns SSID as "SSID"
+            final String quotedSSID = String.format("\"%s\"", wifiSSID);
 
-        boolean test = wifi.isWifiEnabled();
-        CLog.v("%s: wifi enabled? %b", getSerialNumber(), test);
+            boolean test = wifi.isWifiEnabled();
+            CLog.v("%s: wifi enabled? %b", getSerialNumber(), test);
 
-        if (test) {
-            final String actualSSID = wifi.getSSID();
-            test = quotedSSID.equals(actualSSID);
-            CLog.v("%s: SSID match (%s, %s, %b)", getSerialNumber(),
-                    quotedSSID, actualSSID, test);
+            if (test) {
+                final String actualSSID = wifi.getSSID();
+                test = quotedSSID.equals(actualSSID);
+                CLog.v(
+                        "%s: SSID match (%s, %s, %b)",
+                        getSerialNumber(), quotedSSID, actualSSID, test);
+            }
+            if (test) {
+                test = wifi.hasValidIp();
+                CLog.v("%s: validIP? %b", getSerialNumber(), test);
+            }
+            if (test) {
+                test = checkConnectivity();
+                CLog.v("%s: checkConnectivity returned %b", getSerialNumber(), test);
+            }
+            return test;
+        } finally {
+            wifi.cleanUp();
         }
-        if (test) {
-            test = wifi.hasValidIp();
-            CLog.v("%s: validIP? %b", getSerialNumber(), test);
-        }
-        if (test) {
-            test = checkConnectivity();
-            CLog.v("%s: checkConnectivity returned %b", getSerialNumber(), test);
-        }
-        return test;
     }
 
     /**
@@ -2273,7 +2290,11 @@ public class NativeDevice implements IManagedTestDevice {
         mLastConnectedWifiPsk = null;
 
         IWifiHelper wifi = createWifiHelper();
-        return wifi.disconnectFromNetwork();
+        try {
+            return wifi.disconnectFromNetwork();
+        } finally {
+            wifi.cleanUp();
+        }
     }
 
     /**
@@ -2282,7 +2303,11 @@ public class NativeDevice implements IManagedTestDevice {
     @Override
     public String getIpAddress() throws DeviceNotAvailableException {
         IWifiHelper wifi = createWifiHelper();
-        return wifi.getIpAddress();
+        try {
+            return wifi.getIpAddress();
+        } finally {
+            wifi.cleanUp();
+        }
     }
 
     /**
@@ -2293,10 +2318,14 @@ public class NativeDevice implements IManagedTestDevice {
         mNetworkMonitorEnabled = false;
 
         IWifiHelper wifi = createWifiHelper();
-        wifi.stopMonitor();
-        if (wifi.startMonitor(NETWORK_MONITOR_INTERVAL, mOptions.getConnCheckUrl())) {
-            mNetworkMonitorEnabled = true;
-            return true;
+        try {
+            wifi.stopMonitor();
+            if (wifi.startMonitor(NETWORK_MONITOR_INTERVAL, mOptions.getConnCheckUrl())) {
+                mNetworkMonitorEnabled = true;
+                return true;
+            }
+        } finally {
+            wifi.cleanUp();
         }
         return false;
     }

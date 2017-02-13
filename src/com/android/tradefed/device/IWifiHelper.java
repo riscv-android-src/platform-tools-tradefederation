@@ -265,4 +265,11 @@ interface IWifiHelper {
      * @throws DeviceNotAvailableException
      */
     List<Long> stopMonitor() throws DeviceNotAvailableException;
+
+    /**
+     * Clean up the resources and the wifi helper packaged install.
+     *
+     * @throws DeviceNotAvailableException
+     */
+    void cleanUp() throws DeviceNotAvailableException;
 }

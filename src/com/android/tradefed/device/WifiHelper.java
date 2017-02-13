@@ -598,5 +598,15 @@ public class WifiHelper implements IWifiHelper {
         }
     }
 
+    /** {@inheritDoc} */
+    @Override
+    public void cleanUp() throws DeviceNotAvailableException {
+        String output = mDevice.uninstallPackage(INSTRUMENTATION_PKG);
+        if (output != null) {
+            CLog.w("Error '%s' occurred when uninstalling %s", output, INSTRUMENTATION_PKG);
+        } else {
+            CLog.d("Successfully clean up WifiHelper.");
+        }
+    }
 }
 
