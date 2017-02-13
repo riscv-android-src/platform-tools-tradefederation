@@ -52,6 +52,10 @@ public class OtaDeviceBuildInfo implements IDeviceBuildInfo {
         return mOtaBuild;
     }
 
+    public IDeviceBuildInfo getBaselineBuild() {
+        return mBaselineBuild;
+    }
+
     /**
      * {@inheritDoc}
      */
