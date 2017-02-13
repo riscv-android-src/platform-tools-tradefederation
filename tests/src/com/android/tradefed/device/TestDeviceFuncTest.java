@@ -686,7 +686,7 @@ public class TestDeviceFuncTest extends DeviceTestCase {
         }
         // sleep a small amount of time to ensure last log message makes it into capture
         RunUtil.getDefault().sleep(500);
-        InputStreamSource source = getDevice().getLogcat(100 * 1024);
+        InputStreamSource source = getDevice().getLogcatDump();
         assertNotNull(source);
         File tmpTxtFile = FileUtil.createTempFile("logcat", ".txt");
         try {
