@@ -22,6 +22,7 @@ import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.build.IDeviceBuildInfo;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
+import com.android.tradefed.device.TcpDevice;
 import com.android.tradefed.device.TestDeviceOptions;
 import com.android.tradefed.util.BinaryState;
 import com.android.tradefed.util.FileUtil;
@@ -56,6 +57,7 @@ public class DeviceSetupTest extends TestCase {
         mMockIDevice = EasyMock.createMock(IDevice.class);
         EasyMock.expect(mMockDevice.getSerialNumber()).andReturn("foo").anyTimes();
         EasyMock.expect(mMockDevice.getDeviceDescriptor()).andStubReturn(null);
+        EasyMock.expect(mMockDevice.getIDevice()).andStubReturn(mMockIDevice);
         mMockBuildInfo = new DeviceBuildInfo("0", "");
         mDeviceSetup = new DeviceSetup();
         mTmpDir = FileUtil.createTempDir("tmp");
@@ -943,6 +945,14 @@ public class DeviceSetupTest extends TestCase {
         EasyMock.expect(mMockDevice.isWifiEnabled()).andReturn(Boolean.TRUE);
         EasyMock.expect(mMockDevice.disconnectFromWifi()).andReturn(Boolean.TRUE);
         mDeviceSetup.setWifiNetwork("wifi_network");
+        EasyMock.replay(mMockDevice);
+        mDeviceSetup.tearDown(mMockDevice, mMockBuildInfo, null);
+        EasyMock.verify(mMockDevice);
+    }
+
+    /** Test that tearDown is inop when using a stub device instance. */
+    public void testTearDown_tcpDevice() throws Exception {
+        EasyMock.expect(mMockDevice.getIDevice()).andReturn(new TcpDevice("tcp-device-0"));
         EasyMock.replay(mMockDevice);
         mDeviceSetup.tearDown(mMockDevice, mMockBuildInfo, null);
         EasyMock.verify(mMockDevice);

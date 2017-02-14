@@ -22,6 +22,7 @@ import com.android.tradefed.config.Option;
 import com.android.tradefed.config.OptionClass;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
+import com.android.tradefed.device.StubDevice;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.util.BinaryState;
 import com.android.tradefed.util.MultiMap;
@@ -414,7 +415,8 @@ public class DeviceSetup implements ITargetPreparer, ITargetCleaner {
     @Override
     public void tearDown(ITestDevice device, IBuildInfo buildInfo, Throwable e)
             throws DeviceNotAvailableException {
-        if (mDisable) {
+        // ignore tearDown if it's a stub device, since there is no real device to clean.
+        if (mDisable || device.getIDevice() instanceof StubDevice) {
             return;
         }
 
