@@ -130,7 +130,8 @@ public class TfTestLauncherTest {
                 EasyMock.eq(Collections.<String, String>emptyMap()));
         mMockListener.testRunEnded(0, Collections.emptyMap());
         File tmpDir = Mockito.mock(File.class);
-        Mockito.when(tmpDir.list()).thenReturn(new String[] {"inv_123", "tradefed_global_log_123"});
+        Mockito.when(tmpDir.list())
+                .thenReturn(new String[] {"inv_123", "tradefed_global_log_123", "lc_cache"});
         EasyMock.replay(mMockListener);
         mTfTestLauncher.testTmpDirClean(tmpDir, mMockListener);
         EasyMock.verify(mMockListener);

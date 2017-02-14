@@ -85,7 +85,8 @@ public class TfTestLauncher extends SubprocessTfLauncher {
     // Any file not matching the patterns, or multiple files in the temporary dir match the same
     // pattern, is considered as test failure.
     private static final String[] EXPECTED_TMP_FILE_PATTERNS = {
-            "inv_.*", "tradefed_global_log_.*"};
+        "inv_.*", "tradefed_global_log_.*", "lc_cache"
+    };
 
     // A destination file where the report will be put.
     private File mDestCoverageFile = null;
