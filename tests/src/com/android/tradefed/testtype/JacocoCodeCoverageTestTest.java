@@ -31,6 +31,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.android.tradefed.build.IBuildInfo;
+import com.android.tradefed.build.VersionedFile;
 import com.android.tradefed.util.CommandResult;
 import com.android.tradefed.util.CommandStatus;
 import com.android.tradefed.util.FileUtil;
@@ -56,11 +57,10 @@ public class JacocoCodeCoverageTestTest {
 
         when(mockBuildInfo.getFile("jacocoant.jar")).thenReturn(new File("jacocoant.jar"));
 
-        when(mockBuildInfo.getFile("hello-allclasses.jar"))
-                .thenReturn(new File("hello-allclasses.jar"));
-
-        when(mockBuildInfo.getFile("hi-allclasses.jar"))
-                .thenReturn(new File("hi-allclasses.jar"));
+        when(mockBuildInfo.getFiles())
+                .thenReturn(Arrays.asList(
+                new VersionedFile(new File("hello-allclasses.jar"), "1.0"),
+                new VersionedFile(new File("hi-allclasses.jar"), "1.0")));
 
         return mockBuildInfo;
     }
@@ -98,12 +98,11 @@ public class JacocoCodeCoverageTestTest {
         File tempBuildXml = FileUtil.createTempFile("build", ".xml");
 
         JacocoCodeCoverageTest jacocoCodeCoverageTest = spy(new JacocoCodeCoverageTest());
-        jacocoCodeCoverageTest.setClassFile(Arrays.asList("hello-allclasses.jar"));
+        jacocoCodeCoverageTest.setClassFilesFilters(Arrays.asList(".*hello-allclasses.*\\.jar"));
         jacocoCodeCoverageTest.setReportFormat(Arrays.asList(JacocoCodeCoverageReportFormat.HTML));
         jacocoCodeCoverageTest.setJacocoAnt("jacocoant.jar");
 
         CommandResult result = new CommandResult(CommandStatus.SUCCESS);
-        result.setStdout("ant   1.9.3-2build1");
 
         doReturn(result)
                 .when(jacocoCodeCoverageTest)
@@ -149,16 +148,17 @@ public class JacocoCodeCoverageTestTest {
     }
 
     @Test
-    public void testGenerateCoverageReport_missingClassFiles() {
+    public void testGenerateCoverageReport_missingClassFiles() throws IOException {
         IBuildInfo mockBuildInfo = mockBuildInfo();
 
         JacocoCodeCoverageTest jacocoCodeCoverageTest = spy(new JacocoCodeCoverageTest());
         jacocoCodeCoverageTest.setJacocoAnt("jacocoant.jar");
-        jacocoCodeCoverageTest.setClassFile(Arrays.asList("hello1-allclasses.jar"));
+        jacocoCodeCoverageTest.setClassFilesFilters(Arrays.asList(".*new-allclasses.*\\.jar"));
+        jacocoCodeCoverageTest.setReportFormat(Arrays.asList(JacocoCodeCoverageReportFormat.HTML));
 
         doReturn(mockBuildInfo).when(jacocoCodeCoverageTest).getBuild();
 
-        String expectedStderr = "Couldn't find hello1-allclasses.jar";
+        String expectedStderr = "No class files found";
 
         try {
 
@@ -180,7 +180,7 @@ public class JacocoCodeCoverageTestTest {
 
         JacocoCodeCoverageTest jacocoCodeCoverageTest = spy(JacocoCodeCoverageTest.class);
 
-        jacocoCodeCoverageTest.setClassFile(Arrays.asList("hello-allclasses.jar"));
+        jacocoCodeCoverageTest.setClassFilesFilters(Arrays.asList(".*hello-allclasses.*\\.jar"));
         jacocoCodeCoverageTest.setJacocoAnt("jacocoant.jar");
 
         String stderr = "something went wrong";
@@ -274,6 +274,26 @@ public class JacocoCodeCoverageTestTest {
         expectedContent.append("</project>\n");
         assertEquals(expectedContent.toString(), actualContent);
         FileUtil.deleteFile(buildXml);
+    }
+
+    @Test
+    public void testIsClassFile_success() {
+        JacocoCodeCoverageTest jacocoCodeCoverageTest = new JacocoCodeCoverageTest();
+        jacocoCodeCoverageTest.setClassFilesFilters(
+                Arrays.asList(".*hello-allclasses.*\\.jar", ".*hi-allclasses.*\\.jar"));
+        boolean flag = jacocoCodeCoverageTest.isClassFile(
+                new File("foo/hello-allclasses_2456789.jar"));
+        assertEquals(true, flag);
+    }
+
+    @Test
+    public void testIsClassFile_fail() {
+        JacocoCodeCoverageTest jacocoCodeCoverageTest = new JacocoCodeCoverageTest();
+        jacocoCodeCoverageTest.setClassFilesFilters(
+                Arrays.asList(".*hello-allclasses.*\\.jar", ".*hi-allclasses.*\\.jar"));
+        boolean flag = jacocoCodeCoverageTest.isClassFile(
+                new File("foo/nomatch-allclasses_2456789.jar"));
+        assertEquals(false, flag);
     }
 
 }
