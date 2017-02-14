@@ -20,6 +20,7 @@ import com.android.ddmlib.IDevice;
 import com.android.ddmlib.Log;
 import com.android.ddmlib.testrunner.IRemoteAndroidTestRunner;
 import com.android.ddmlib.testrunner.IRemoteAndroidTestRunner.TestSize;
+import com.android.ddmlib.testrunner.InstrumentationResultParser;
 import com.android.ddmlib.testrunner.RemoteAndroidTestRunner;
 import com.android.ddmlib.testrunner.TestIdentifier;
 import com.android.ddmlib.testrunner.TestRunResult;
@@ -199,6 +200,12 @@ public class InstrumentationTest implements IDeviceTest, IResumableTest, ITestCo
     @Option(name = "debug", description = "Wait for debugger before instrumentation starts. Note "
             + "that this should only be used for local debugging, not suitable for automated runs.")
     private boolean mDebug = false;
+
+    @Option(
+        name = "enforce-ajur-format",
+        description = "Whether or not enforcing the AJUR instrumentation output format"
+    )
+    private boolean mShouldEnforceFormat = true;
 
     private IAbi mAbi = null;
 
@@ -899,12 +906,17 @@ public class InstrumentationTest implements IDeviceTest, IResumableTest, ITestCo
 
     /**
      * Performs the actual work of collecting tests, making multiple attempts if necessary
-     * @param runner
+     *
+     * @param runner the {@link IRemoteAndroidTestRunner} that will be used for the instrumentation
+     * @param listener the {ITestInvocationListener} where to report results, can be null if we are
+     *     not reporting the results to the main invocation and simply collecting tests.
      * @return the collection of tests, or <code>null</code> if tests could not be collected
      * @throws DeviceNotAvailableException if communication with the device was lost
      */
-    private Collection<TestIdentifier> collectTestsAndRetry(final IRemoteAndroidTestRunner runner,
-            final ITestInvocationListener listener) throws DeviceNotAvailableException {
+    @VisibleForTesting
+    Collection<TestIdentifier> collectTestsAndRetry(
+            final IRemoteAndroidTestRunner runner, final ITestInvocationListener listener)
+            throws DeviceNotAvailableException {
         boolean communicationFailure = false;
         for (int i=0; i < COLLECT_TESTS_ATTEMPTS; i++) {
             CollectingTestListener collector = new CollectingTestListener();
@@ -929,6 +941,11 @@ public class InstrumentationTest implements IDeviceTest, IResumableTest, ITestCo
                 CLog.w("Run failure %s when collecting tests to run for %s on device %s.",
                         runResults.getRunFailureMessage(), mPackageName,
                         mDevice.getSerialNumber());
+                if (mShouldEnforceFormat
+                        && InstrumentationResultParser.INVALID_OUTPUT_ERR_MSG.equals(
+                                runResults.getRunFailureMessage())) {
+                    throw new RuntimeException(InstrumentationResultParser.INVALID_OUTPUT_ERR_MSG);
+                }
                 return null;
             } else {
                 // success!
@@ -1050,5 +1067,10 @@ public class InstrumentationTest implements IDeviceTest, IResumableTest, ITestCo
     @Override
     public void setAbi(IAbi abi) {
         mAbi = abi;
+    }
+
+    /** Set True if we enforce the AJUR output format of instrumentation. */
+    public void setEnforceFormat(boolean enforce) {
+        mShouldEnforceFormat = enforce;
     }
 }

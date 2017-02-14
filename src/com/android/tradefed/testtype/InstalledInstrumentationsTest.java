@@ -342,7 +342,11 @@ public class InstalledInstrumentationsTest
      * Creates the {@link InstrumentationTest} to use. Exposed for unit testing.
      */
     InstrumentationTest createInstrumentationTest() {
-        return new InstrumentationTest();
+        // We do not know what kind of instrumentation we will find, so we don't enforce the ddmlib
+        // format for AndroidJUnitRunner.
+        InstrumentationTest test = new InstrumentationTest();
+        test.setEnforceFormat(false);
+        return test;
     }
 
     /**
