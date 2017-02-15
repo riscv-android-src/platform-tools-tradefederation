@@ -28,6 +28,7 @@ import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.PrintStream;
+import java.util.Arrays;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -1036,4 +1037,109 @@ public class ConfigurationFactoryTest extends TestCase {
         assertEquals(serials, config.getDeviceConfigByName(ConfigurationDef.DEFAULT_DEVICE_NAME)
                 .getDeviceRequirements().getSerials());
     }
+
+    /** Test that {@link ConfigurationFactory#reorderArgs(String[])} is properly reordering args. */
+    public void testReorderArgs_check_ordering() throws Throwable {
+        String[] args =
+                new String[] {
+                    "config",
+                    "--option1",
+                    "o1",
+                    "--template:map",
+                    "tm=tm1",
+                    "--option2",
+                    "--option3",
+                    "o3",
+                    "--template:map",
+                    "tm",
+                    "tm2"
+                };
+        String[] wantArgs =
+                new String[] {
+                    "config",
+                    "--template:map",
+                    "tm=tm1",
+                    "--template:map",
+                    "tm",
+                    "tm2",
+                    "--option1",
+                    "o1",
+                    "--option2",
+                    "--option3",
+                    "o3"
+                };
+
+        assertEquals(Arrays.toString(wantArgs), Arrays.toString(mFactory.reorderArgs(args)));
+    }
+
+    /**
+     * Test that {@link ConfigurationFactory#reorderArgs(String[])} properly handles a short arg
+     * after a template arg.
+     */
+    public void testReorderArgs_template_with_short_arg() throws Throwable {
+        String[] args =
+                new String[] {
+                    "config",
+                    "--option1",
+                    "o1",
+                    "--template:map",
+                    "tm=tm1",
+                    "-option2",
+                    "--option3",
+                    "o3",
+                    "--template:map",
+                    "tm",
+                    "tm2"
+                };
+        String[] wantArgs =
+                new String[] {
+                    "config",
+                    "--template:map",
+                    "tm=tm1",
+                    "--template:map",
+                    "tm",
+                    "tm2",
+                    "--option1",
+                    "o1",
+                    "-option2",
+                    "--option3",
+                    "o3"
+                };
+
+        assertEquals(Arrays.toString(wantArgs), Arrays.toString(mFactory.reorderArgs(args)));
+    }
+
+    /**
+     * Test that {@link ConfigurationFactory#reorderArgs(String[])} properly handles a incomplete
+     * template arg.
+     */
+    public void testReorderArgs_incomplete_template_arg() throws Throwable {
+        String[] args =
+                new String[] {
+                    "config",
+                    "--option1",
+                    "o1",
+                    "--template:map",
+                    "tm=tm1",
+                    "-option2",
+                    "--option3",
+                    "o3",
+                    "--template:map",
+                };
+        String[] wantArgs =
+                new String[] {
+                    "config",
+                    "--template:map",
+                    "tm=tm1",
+                    "--template:map",
+                    "--option1",
+                    "o1",
+                    "-option2",
+                    "--option3",
+                    "o3"
+                };
+
+        assertEquals(Arrays.toString(wantArgs), Arrays.toString(mFactory.reorderArgs(args)));
+    }
+
 }

@@ -393,8 +393,10 @@ public class ConfigurationFactory implements IConfigurationFactory {
             List<String> unconsumedArgs, IKeyStoreClient keyStoreClient)
             throws ConfigurationException {
         List<String> listArgs = new ArrayList<String>(arrayArgs.length);
-        IConfiguration config = internalCreateConfigurationFromArgs(
-                arrayArgs, listArgs, keyStoreClient);
+        // FIXME: Update parsing to not care about arg order.
+        String[] reorderedArrayArgs = reorderArgs(arrayArgs);
+        IConfiguration config =
+                internalCreateConfigurationFromArgs(reorderedArrayArgs, listArgs, keyStoreClient);
         config.setCommandLine(arrayArgs);
         final List<String> tmpUnconsumedArgs = config.setOptionsFromCommandLineArgs(
                 listArgs, keyStoreClient);
@@ -732,5 +734,43 @@ public class ConfigurationFactory implements IConfigurationFactory {
     @VisibleForTesting
     public void clearMapConfig() {
         mConfigDefMap.clear();
+    }
+
+    /** Reorder the args so that template:map args are all moved to the front. */
+    @VisibleForTesting
+    protected String[] reorderArgs(String[] args) {
+        List<String> nonTemplateArgs = new ArrayList<String>();
+        List<String> reorderedArgs = new ArrayList<String>();
+        String[] reorderedArgsArray = new String[args.length];
+        String arg;
+
+        // First arg is the config.
+        if (args.length > 0) {
+            reorderedArgs.add(args[0]);
+        }
+
+        // Split out the template and non-template args so we can add
+        // non-template args at the end while maintaining their order.
+        for (int i = 1; i < args.length; i++) {
+            arg = args[i];
+            if (arg.equals("--template:map")) {
+                // We need to account for these two types of template:map args.
+                // --template:map tm=tm1
+                // --template:map tm tm1
+                reorderedArgs.add(arg);
+                for (int j = i + 1; j < args.length; j++) {
+                    if (args[j].startsWith("-")) {
+                        break;
+                    } else {
+                        reorderedArgs.add(args[j]);
+                        i++;
+                    }
+                }
+            } else {
+                nonTemplateArgs.add(arg);
+            }
+        }
+        reorderedArgs.addAll(nonTemplateArgs);
+        return reorderedArgs.toArray(reorderedArgsArray);
     }
 }
