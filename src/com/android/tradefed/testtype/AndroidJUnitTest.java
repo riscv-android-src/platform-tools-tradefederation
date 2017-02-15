@@ -117,6 +117,7 @@ public class AndroidJUnitTest extends InstrumentationTest implements IRuntimeHin
         super();
         // Set the runner to AJUR, this can still be overwritten by the optionsetter/optioncopier
         setRunnerName(AJUR);
+        setEnforceFormat(true);
     }
 
     /**
