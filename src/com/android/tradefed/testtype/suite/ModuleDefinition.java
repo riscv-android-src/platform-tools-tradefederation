@@ -17,14 +17,15 @@ package com.android.tradefed.testtype.suite;
 
 import com.android.ddmlib.testrunner.TestIdentifier;
 import com.android.ddmlib.testrunner.TestResult;
-import com.android.ddmlib.testrunner.TestRunResult;
 import com.android.ddmlib.testrunner.TestResult.TestStatus;
+import com.android.ddmlib.testrunner.TestRunResult;
 import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.DeviceUnresponsiveException;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.result.ITestInvocationListener;
+import com.android.tradefed.result.ResultForwarder;
 import com.android.tradefed.targetprep.BuildError;
 import com.android.tradefed.targetprep.ITargetCleaner;
 import com.android.tradefed.targetprep.ITargetPreparer;
@@ -119,6 +120,19 @@ public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestColl
      * @throws DeviceNotAvailableException in case of device going offline.
      */
     public void run(ITestInvocationListener listener) throws DeviceNotAvailableException {
+        run(listener, null);
+    }
+
+    /**
+     * Run all the {@link IRemoteTest} contained in the module and use all the preparers before and
+     * after to setup and clean the device.
+     *
+     * @param listener the {@link ITestInvocationListener} where to report results.
+     * @param failureListener a particular listener to collect logs on testFail. Can be null.
+     * @throws DeviceNotAvailableException in case of device going offline.
+     */
+    public void run(ITestInvocationListener listener, TestFailureListener failureListener)
+            throws DeviceNotAvailableException {
         CLog.d("Running module %s", getId());
         Exception preparationException = null;
         // Setup
@@ -158,8 +172,14 @@ public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestColl
                 // Run the test, only in case of DeviceNotAvailable we exit the module
                 // execution in order to execute as much as possible.
                 ModuleListener moduleListener = new ModuleListener(listener);
+                List<ITestInvocationListener> currentTestListener = new ArrayList<>();
+                if (failureListener != null) {
+                    currentTestListener.add(failureListener);
+                }
+                currentTestListener.add(moduleListener);
+
                 try {
-                    test.run(moduleListener);
+                    test.run(new ResultForwarder(currentTestListener));
                 } catch (RuntimeException re) {
                     CLog.e("Module '%s' - test '%s' threw exception:", getId(), test.getClass());
                     CLog.e(re);

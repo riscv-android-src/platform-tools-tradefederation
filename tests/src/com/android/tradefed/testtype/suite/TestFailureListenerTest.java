@@ -63,9 +63,6 @@ public class TestFailureListenerTest {
         final long startDate = 1479917040l; // Wed Nov 23 16:04:00 GMT 2016
         final byte[] fakeData = "fakeData".getBytes();
         InputStreamSource fakeSource = new ByteArrayInputStreamSource(fakeData);
-        mMockListener.testStarted(EasyMock.eq(testId));
-        mMockListener.testFailed(EasyMock.eq(testId), EasyMock.eq(trace));
-        mMockListener.testEnded(EasyMock.eq(testId), EasyMock.eq(Collections.emptyMap()));
         EasyMock.expect(mMockDevice.getDeviceDate()).andReturn(startDate);
         // Screenshot routine
         EasyMock.expect(mMockDevice.getScreenshot()).andReturn(fakeSource);
@@ -108,9 +105,6 @@ public class TestFailureListenerTest {
         final byte[] fakeData = "fakeData".getBytes();
         InputStreamSource fakeSource = new ByteArrayInputStreamSource(fakeData);
         DeviceNotAvailableException dnae = new DeviceNotAvailableException();
-        mMockListener.testStarted(EasyMock.eq(testId));
-        mMockListener.testFailed(EasyMock.eq(testId), EasyMock.eq(trace));
-        mMockListener.testEnded(EasyMock.eq(testId), EasyMock.eq(Collections.emptyMap()));
         EasyMock.expect(mMockDevice.getDeviceDate()).andThrow(dnae);
         // Screenshot routine
         EasyMock.expect(mMockDevice.getScreenshot()).andThrow(dnae);
@@ -139,9 +133,6 @@ public class TestFailureListenerTest {
                 false, false, false, true, -1);
         final String trace = "oups it failed";
         TestIdentifier testId = new TestIdentifier("com.fake", "methodfake");
-        mMockListener.testStarted(EasyMock.eq(testId));
-        mMockListener.testFailed(EasyMock.eq(testId), EasyMock.eq(trace));
-        mMockListener.testEnded(EasyMock.eq(testId), EasyMock.eq(Collections.emptyMap()));
         EasyMock.expect(mMockDevice.getProperty(EasyMock.eq("ro.build.type"))).andReturn("user");
         EasyMock.replay(mMockListener, mMockDevice);
         mFailureListener.testStarted(testId);
