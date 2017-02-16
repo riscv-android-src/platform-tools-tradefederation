@@ -15,6 +15,7 @@
  */
 package com.android.tradefed.testtype.suite;
 
+import com.android.ddmlib.testrunner.TestIdentifier;
 import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.command.remote.DeviceDescriptor;
 import com.android.tradefed.device.DeviceNotAvailableException;
@@ -27,7 +28,6 @@ import com.android.tradefed.targetprep.TargetSetupError;
 import com.android.tradefed.testtype.IBuildReceiver;
 import com.android.tradefed.testtype.IDeviceTest;
 import com.android.tradefed.testtype.IRemoteTest;
-import com.android.tradefed.testtype.suite.ModuleDefinition;
 
 import org.easymock.EasyMock;
 import org.junit.Before;
@@ -36,11 +36,10 @@ import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
-/**
- * Unit tests for {@link ModuleDefinition}
- */
+/** Unit tests for {@link ModuleDefinition} */
 @RunWith(JUnit4.class)
 public class ModuleDefinitionTest {
 
@@ -56,6 +55,45 @@ public class ModuleDefinitionTest {
     private ITestDevice mMockDevice;
 
     private interface ITestInterface extends IRemoteTest, IBuildReceiver, IDeviceTest {}
+
+    /** Test implementation that allows us to exercise different use cases * */
+    private class TestObject implements ITestInterface {
+
+        private ITestDevice mDevice;
+        private String mRunName;
+        private int mNumTest;
+
+        public TestObject(String runName, int numTest) {
+            mRunName = runName;
+            mNumTest = numTest;
+        }
+
+        @Override
+        public void run(ITestInvocationListener listener) throws DeviceNotAvailableException {
+            listener.testRunStarted(mRunName, mNumTest);
+            for (int i = 0; i < mNumTest; i++) {
+                TestIdentifier test = new TestIdentifier(mRunName + "class", "test" + i);
+                listener.testStarted(test);
+                listener.testEnded(test, Collections.emptyMap());
+            }
+            listener.testRunEnded(0, Collections.emptyMap());
+        }
+
+        @Override
+        public void setBuild(IBuildInfo buildInfo) {
+            // ignore
+        }
+
+        @Override
+        public void setDevice(ITestDevice device) {
+            mDevice = device;
+        }
+
+        @Override
+        public ITestDevice getDevice() {
+            return mDevice;
+        }
+    }
 
     @Before
     public void setUp() {
@@ -108,8 +146,8 @@ public class ModuleDefinitionTest {
     }
 
     /**
-     * Test that {@link ModuleDefinition#run(ITestInvocationListener)} is properly going through
-     * the execution flow.
+     * Test that {@link ModuleDefinition#run(ITestInvocationListener)} is properly going through the
+     * execution flow.
      */
     @Test
     public void testRun() throws Exception {
@@ -122,6 +160,8 @@ public class ModuleDefinitionTest {
         mMockTest.run((ITestInvocationListener)EasyMock.anyObject());
         mMockCleaner.tearDown(EasyMock.eq(mMockDevice), EasyMock.eq(mMockBuildInfo),
                 EasyMock.isNull());
+        mMockListener.testRunStarted(MODULE_NAME, 0);
+        mMockListener.testRunEnded(0, Collections.emptyMap());
         replayMocks();
         mModule.run(mMockListener);
         verifyMocks();
@@ -143,10 +183,6 @@ public class ModuleDefinitionTest {
             }
         });
         mModule = new ModuleDefinition(MODULE_NAME, mTestList, mTargetPrepList);
-        mModule.setBuild(mMockBuildInfo);
-        mModule.setDevice(mMockDevice);
-        mMockTest.setBuild(EasyMock.eq(mMockBuildInfo));
-        mMockTest.setDevice(EasyMock.eq(mMockDevice));
         mMockCleaner.tearDown(EasyMock.eq(mMockDevice), EasyMock.eq(mMockBuildInfo),
                 EasyMock.isNull());
         mMockListener.testRunStarted(EasyMock.eq(MODULE_NAME), EasyMock.eq(1));
@@ -155,6 +191,33 @@ public class ModuleDefinitionTest {
         mMockListener.testEnded(EasyMock.anyObject(), EasyMock.anyObject());
         mMockListener.testRunFailed(EasyMock.contains(exceptionMessage));
         mMockListener.testRunEnded(EasyMock.anyLong(), EasyMock.anyObject());
+        replayMocks();
+        mModule.run(mMockListener);
+        verifyMocks();
+    }
+
+    /**
+     * Test that {@link ModuleDefinition#run(ITestInvocationListener)} is properly going through the
+     * execution flow with actual test callbacks.
+     */
+    @Test
+    public void testRun_fullPass() throws Exception {
+        final int testCount = 5;
+        List<IRemoteTest> testList = new ArrayList<>();
+        testList.add(new TestObject("run1", testCount));
+        mModule = new ModuleDefinition(MODULE_NAME, testList, mTargetPrepList);
+        mModule.setBuild(mMockBuildInfo);
+        mModule.setDevice(mMockDevice);
+        mMockPrep.setUp(EasyMock.eq(mMockDevice), EasyMock.eq(mMockBuildInfo));
+        mMockCleaner.setUp(EasyMock.eq(mMockDevice), EasyMock.eq(mMockBuildInfo));
+        mMockCleaner.tearDown(
+                EasyMock.eq(mMockDevice), EasyMock.eq(mMockBuildInfo), EasyMock.isNull());
+        mMockListener.testRunStarted(MODULE_NAME, testCount);
+        for (int i = 0; i < testCount; i++) {
+            mMockListener.testStarted(EasyMock.anyObject());
+            mMockListener.testEnded(EasyMock.anyObject(), EasyMock.anyObject());
+        }
+        mMockListener.testRunEnded(0, Collections.emptyMap());
         replayMocks();
         mModule.run(mMockListener);
         verifyMocks();

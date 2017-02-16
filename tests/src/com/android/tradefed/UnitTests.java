@@ -136,6 +136,7 @@ import com.android.tradefed.testtype.TfTestLauncherTest;
 import com.android.tradefed.testtype.VersionedTfLauncherTest;
 import com.android.tradefed.testtype.suite.ITestSuiteTest;
 import com.android.tradefed.testtype.suite.ModuleDefinitionTest;
+import com.android.tradefed.testtype.suite.ModuleListenerTest;
 import com.android.tradefed.testtype.suite.TestFailureListenerTest;
 import com.android.tradefed.testtype.suite.TfSuiteRunnerTest;
 import com.android.tradefed.testtype.testdefs.XmlDefsParserTest;
@@ -351,6 +352,7 @@ import org.junit.runners.Suite.SuiteClasses;
     // testtype/suite
     ITestSuiteTest.class,
     ModuleDefinitionTest.class,
+    ModuleListenerTest.class,
     TestFailureListenerTest.class,
     TfSuiteRunnerTest.class,
 

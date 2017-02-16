@@ -20,7 +20,6 @@ import com.android.tradefed.config.IConfiguration;
 import com.android.tradefed.config.Option;
 import com.android.tradefed.config.OptionCopier;
 import com.android.tradefed.device.DeviceNotAvailableException;
-import com.android.tradefed.device.DeviceUnresponsiveException;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.log.ITestLogger;
 import com.android.tradefed.log.LogUtil.CLog;
@@ -34,17 +33,11 @@ import com.android.tradefed.testtype.IDeviceTest;
 import com.android.tradefed.testtype.IRemoteTest;
 import com.android.tradefed.testtype.IStrictShardableTest;
 import com.android.tradefed.testtype.ITestCollector;
-import com.android.tradefed.util.StreamUtil;
 
-import java.io.ByteArrayOutputStream;
-import java.io.PrintWriter;
 import java.util.ArrayList;
-import java.util.Collections;
-import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map.Entry;
-import java.util.Set;
 
 /**
  * Abstract class used to run Test Suite. This class provide the base of how the Suite will be run.
@@ -57,8 +50,6 @@ public abstract class ITestSuite
                 ISystemStatusCheckerReceiver,
                 IStrictShardableTest,
                 ITestCollector {
-
-    protected static final String MODULE_INCOMPLETE_MSG = "Module did not run all its tests.";
 
     // Options for test failure case
     @Option(
@@ -188,61 +179,43 @@ public abstract class ITestSuite
         listener = new TestFailureListener(listener, getDevice(), mBugReportOnFailure,
                 mLogcatOnFailure, mScreenshotOnFailure, mRebootOnFailure, mMaxLogcatBytes);
 
-        Set<ModuleDefinition> moduleTracker = new HashSet<>();
-        moduleTracker.addAll(runModules);
-        // run all modules
+        /** Run all the module */
         for (ModuleDefinition module : runModules) {
-            if (mRebootPerModule) {
-                if ("user".equals(mDevice.getProperty("ro.build.type"))) {
-                    CLog.e("reboot-per-module should only be used during development, "
-                            + "this is a\" user\" build device");
-                } else {
-                    CLog.d("Rebooting device before starting next module");
-                    mDevice.reboot();
-                }
-            }
+            runSingleModule(module, listener);
+        }
+    }
 
-            if (!mSkipAllSystemStatusCheck) {
-                runPreModuleCheck(module.getId(), mSystemStatusCheckers, mDevice, listener);
-            }
-            try {
-                if (mCollectTestsOnly) {
-                    module.setCollectTestsOnly(mCollectTestsOnly);
-                }
-                module.run(listener);
-            } catch (DeviceUnresponsiveException due) {
-                // being able to catch a DeviceUnresponsiveException here implies that recovery
-                // was successful, and test execution should proceed to next module
-                ByteArrayOutputStream stack = new ByteArrayOutputStream();
-                due.printStackTrace(new PrintWriter(stack, true));
-                StreamUtil.close(stack);
-                CLog.w("Ignored DeviceUnresponsiveException because recovery was successful, "
-                        + "proceeding with next module. Stack trace: %s",
-                        stack.toString());
-                CLog.w("This may be due to incorrect timeout setting on module %s",
-                        module.getId());
-            }
-            // Once a module have fully run without exception we stop tracking it.
-            if (module.getNumExpectedTests() <= module.getTestsRan().size()) {
-                moduleTracker.remove(module);
+    /**
+     * Helper method that handle running a single module logic.
+     *
+     * @param module The {@link ModuleDefinition} to be ran.
+     * @param listener The {@link ITestInvocationListener} where to report results
+     * @throws DeviceNotAvailableException
+     */
+    private void runSingleModule(ModuleDefinition module, ITestInvocationListener listener)
+            throws DeviceNotAvailableException {
+        if (mRebootPerModule) {
+            if ("user".equals(mDevice.getProperty("ro.build.type"))) {
+                CLog.e(
+                        "reboot-per-module should only be used during development, "
+                                + "this is a\" user\" build device");
             } else {
-                CLog.d(
-                        "Module %s only ran %d out of %d expected tests.",
-                        module.getId(), module.getTestsRan().size(), module.getNumExpectedTests());
-            }
-            if (!mSkipAllSystemStatusCheck) {
-                runPostModuleCheck(module.getId(), mSystemStatusCheckers, mDevice, listener);
+                CLog.d("Rebooting device before starting next module");
+                mDevice.reboot();
             }
         }
 
-        // In case of exception or early termination of the above, we mark the modules that failed
-        // to run completely as failed.
-        if (!mCollectTestsOnly) {
-            for (ModuleDefinition def : moduleTracker) {
-                listener.testRunStarted(def.getId(), def.getNumExpectedTests());
-                listener.testRunFailed(MODULE_INCOMPLETE_MSG);
-                listener.testRunEnded(0, Collections.emptyMap());
-            }
+        if (!mSkipAllSystemStatusCheck) {
+            runPreModuleCheck(module.getId(), mSystemStatusCheckers, mDevice, listener);
+        }
+        if (mCollectTestsOnly) {
+            module.setCollectTestsOnly(mCollectTestsOnly);
+        }
+        // Actually run the module
+        module.run(listener);
+
+        if (!mSkipAllSystemStatusCheck) {
+            runPostModuleCheck(module.getId(), mSystemStatusCheckers, mDevice, listener);
         }
     }
 

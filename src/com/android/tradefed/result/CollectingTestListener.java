@@ -221,9 +221,12 @@ public class CollectingTestListener implements ITestInvocationListener {
         return mRunResultsMap.values();
     }
 
-    /**
-     * Gets the total number of complete tests for all runs.
-     */
+    /** Returns True if the result map already has an entry for the run name. */
+    public boolean hasResultFor(String runName) {
+        return mRunResultsMap.containsKey(runName);
+    }
+
+    /** Gets the total number of complete tests for all runs. */
     public int getNumTotalTests() {
         int total = 0;
         // force test count

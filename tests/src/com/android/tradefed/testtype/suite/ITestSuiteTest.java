@@ -84,6 +84,7 @@ public class ITestSuiteTest {
 
     public static class StubCollectingTest implements IRemoteTest {
         private DeviceNotAvailableException mException;
+        private RuntimeException mRunException;
 
         public StubCollectingTest() {}
 
@@ -91,16 +92,26 @@ public class ITestSuiteTest {
             mException = e;
         }
 
+        public StubCollectingTest(RuntimeException e) {
+            mRunException = e;
+        }
+
         @Override
         public void run(ITestInvocationListener listener) throws DeviceNotAvailableException {
             listener.testRunStarted(TEST_CONFIG_NAME, 1);
+            try {
             if (mException != null) {
                 throw mException;
             }
-            TestIdentifier test = new TestIdentifier(EMPTY_CONFIG, EMPTY_CONFIG);
-            listener.testStarted(test);
-            listener.testEnded(test, Collections.emptyMap());
-            listener.testRunEnded(0, Collections.emptyMap());
+                if (mRunException != null) {
+                    throw mRunException;
+                }
+                TestIdentifier test = new TestIdentifier(EMPTY_CONFIG, EMPTY_CONFIG);
+                listener.testStarted(test);
+                listener.testEnded(test, Collections.emptyMap());
+            } finally {
+                listener.testRunEnded(0, Collections.emptyMap());
+            }
         }
     }
 
@@ -229,9 +240,51 @@ public class ITestSuiteTest {
         setter.setOptionValue("reboot-per-module", "true");
         EasyMock.expect(mMockDevice.getProperty("ro.build.type")).andReturn("user");
         mMockListener.testRunStarted(TEST_CONFIG_NAME, 1);
-        EasyMock.expectLastCall().times(2);
-        mMockListener.testRunFailed(ITestSuite.MODULE_INCOMPLETE_MSG);
+        EasyMock.expectLastCall().times(1);
+        mMockListener.testRunFailed(ModuleDefinition.MODULE_INCOMPLETE_MSG);
         mMockListener.testRunEnded(0, Collections.emptyMap());
+        EasyMock.expectLastCall().times(1);
+        replayMocks();
+        mTestSuite.run(mMockListener);
+        verifyMocks();
+    }
+
+    /**
+     * Test for {@link ITestSuite#run(ITestInvocationListener)} when the test throw a runtime
+     * exception. The run can continue in this case.
+     */
+    @Test
+    public void testRun_runtimeException() throws Exception {
+        mTestSuite =
+                new TestSuiteImpl() {
+                    @Override
+                    public LinkedHashMap<String, IConfiguration> loadTests() {
+                        LinkedHashMap<String, IConfiguration> testConfig = new LinkedHashMap<>();
+                        try {
+                            IConfiguration fake =
+                                    ConfigurationFactory.getInstance()
+                                            .createConfigurationFromArgs(
+                                                    new String[] {EMPTY_CONFIG});
+                            fake.setTest(new StubCollectingTest(new RuntimeException()));
+                            testConfig.put(TEST_CONFIG_NAME, fake);
+                        } catch (ConfigurationException e) {
+                            CLog.e(e);
+                            throw new RuntimeException(e);
+                        }
+                        return testConfig;
+                    }
+                };
+        mTestSuite.setDevice(mMockDevice);
+        mTestSuite.setBuild(mMockBuildInfo);
+        OptionSetter setter = new OptionSetter(mTestSuite);
+        setter.setOptionValue("skip-all-system-status-check", "true");
+        setter.setOptionValue("reboot-per-module", "true");
+        EasyMock.expect(mMockDevice.getProperty("ro.build.type")).andReturn("user");
+        mMockListener.testRunStarted(TEST_CONFIG_NAME, 1);
+        EasyMock.expectLastCall().times(1);
+        mMockListener.testRunFailed(ModuleDefinition.MODULE_INCOMPLETE_MSG);
+        mMockListener.testRunEnded(0, Collections.emptyMap());
+        EasyMock.expectLastCall().times(1);
         replayMocks();
         mTestSuite.run(mMockListener);
         verifyMocks();
