@@ -305,4 +305,10 @@ public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestColl
     public boolean hasModuleFailed() {
         return mIsFailedModule;
     }
+
+    /** {@inheritDoc} */
+    @Override
+    public String toString() {
+        return getId();
+    }
 }

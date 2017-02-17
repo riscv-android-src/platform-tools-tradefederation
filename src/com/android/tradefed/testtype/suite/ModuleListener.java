@@ -15,6 +15,7 @@
  */
 package com.android.tradefed.testtype.suite;
 
+import com.android.ddmlib.testrunner.TestIdentifier;
 import com.android.ddmlib.testrunner.TestRunResult;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.result.CollectingTestListener;
@@ -60,6 +61,20 @@ public class ModuleListener extends CollectingTestListener {
             }
         }
         super.testRunStarted(name, numTests);
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public void testStarted(TestIdentifier test) {
+        CLog.d("ModuleListener.testStarted(%s)", test.toString());
+        super.testStarted(test);
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public void testFailed(TestIdentifier test, String trace) {
+        CLog.d("ModuleListener.testFailed(%s, %s)", test.toString(), trace);
+        super.testFailed(test, trace);
     }
 
     /** {@inheritDoc} */

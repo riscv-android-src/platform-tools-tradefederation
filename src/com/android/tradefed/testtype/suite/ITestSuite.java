@@ -15,6 +15,7 @@
  */
 package com.android.tradefed.testtype.suite;
 
+import com.android.ddmlib.Log.LogLevel;
 import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.config.IConfiguration;
 import com.android.tradefed.config.Option;
@@ -184,6 +185,12 @@ public abstract class ITestSuite
                         mRebootOnFailure,
                         mMaxLogcatBytes);
 
+        CLog.logAndDisplay(
+                LogLevel.INFO,
+                "%s running %s modules: %s",
+                mDevice.getSerialNumber(),
+                runModules.size(),
+                runModules);
         /** Run all the module */
         for (ModuleDefinition module : runModules) {
             runSingleModule(module, listener, failureListener);
