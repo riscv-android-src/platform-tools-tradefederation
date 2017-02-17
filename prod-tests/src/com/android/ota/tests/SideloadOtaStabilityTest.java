@@ -197,13 +197,14 @@ public class SideloadOtaStabilityTest implements IDeviceTest, IBuildReceiver,
         long startTime = System.currentTimeMillis();
         listener.testRunStarted(mRunName, 0);
         int actualIterations = 0;
+        BootTimeInfo lastBootTime = null;
         try {
             while (actualIterations < mIterations) {
                 if (actualIterations != 0) {
                     // don't need to flash device on first iteration
                     flashDevice();
                 }
-                installOta(listener, mOtaDeviceBuild.getOtaBuild());
+                lastBootTime = installOta(listener, mOtaDeviceBuild.getOtaBuild());
                 actualIterations++;
                 CLog.i("Device %s successfully OTA-ed to build %s. Iteration: %d of %d",
                         mDevice.getSerialNumber(),
@@ -247,6 +248,10 @@ public class SideloadOtaStabilityTest implements IDeviceTest, IBuildReceiver,
             metrics.put("failed_iterations", Integer.toString(mIterations - actualIterations));
             metrics.put("update_time", Double.toString(updateTime));
             metrics.put("uncrypt_time", Long.toString(mUncryptDuration));
+            if (lastBootTime != null) {
+                metrics.put("boot_time_online", Double.toString(lastBootTime.mOnlineTime));
+                metrics.put("boot_time_available", Double.toString(lastBootTime.mAvailTime));
+            }
             long endTime = System.currentTimeMillis() - startTime;
             listener.testRunEnded(endTime, metrics);
         }
@@ -284,7 +289,14 @@ public class SideloadOtaStabilityTest implements IDeviceTest, IBuildReceiver,
         return mResumeMode && mResumable;
     }
 
-    private void installOta(ITestInvocationListener listener, IDeviceBuildInfo otaBuild)
+    /**
+     * Actually install the OTA.
+     * @param listener
+     * @param otaBuild
+     * @return the amount of time in ms that the device took to boot after installing.
+     * @throws DeviceNotAvailableException
+     */
+    private BootTimeInfo installOta(ITestInvocationListener listener, IDeviceBuildInfo otaBuild)
             throws DeviceNotAvailableException {
         mKmsgReceiver.start();
         CLog.i("Pushing OTA package %s", otaBuild.getOtaPackageFile().getAbsolutePath());
@@ -318,6 +330,9 @@ public class SideloadOtaStabilityTest implements IDeviceTest, IBuildReceiver,
             CLog.i("Didn't go to recovery, went straight to update");
         }
 
+        mDevice.waitForDeviceNotAvailable(mMaxInstallOnlineTimeSec * 1000);
+        long start = System.currentTimeMillis();
+
         try {
             mDevice.waitForDeviceOnline(mMaxInstallOnlineTimeSec * 1000);
         } catch (DeviceNotAvailableException e) {
@@ -326,7 +341,7 @@ public class SideloadOtaStabilityTest implements IDeviceTest, IBuildReceiver,
             sendUpdatePackage(listener, otaBuild);
             throw new AssertionError("Device did not come back online after recovery");
         }
-
+        double onlineTime = (System.currentTimeMillis() - start) / 1000.0;
         try {
             mDevice.waitForDeviceAvailable();
         } catch (DeviceNotAvailableException e) {
@@ -336,6 +351,8 @@ public class SideloadOtaStabilityTest implements IDeviceTest, IBuildReceiver,
             sendUpdatePackage(listener, otaBuild);
             throw new AssertionError("Device failed to boot after OTA");
         }
+        double availTime = (System.currentTimeMillis() - start) / 1000.0;
+        return new BootTimeInfo(availTime, onlineTime);
 
     }
 
@@ -580,6 +597,22 @@ public class SideloadOtaStabilityTest implements IDeviceTest, IBuildReceiver,
         @Override
         public Socket createClientSocket(String host, int port) throws IOException {
             return new Socket(host, port);
+        }
+    }
+
+    private static class BootTimeInfo {
+        /**
+         * Time (s) until device is completely available
+         */
+        public double mAvailTime;
+        /**
+         * Time (s) until device is in "ONLINE" state
+         */
+        public double mOnlineTime;
+
+        public BootTimeInfo(double avail, double online) {
+            mAvailTime = avail;
+            mOnlineTime = online;
         }
     }
 }
