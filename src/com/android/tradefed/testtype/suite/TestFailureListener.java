@@ -22,7 +22,6 @@ import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.InputStreamSource;
 import com.android.tradefed.result.LogDataType;
-import com.android.tradefed.result.ResultForwarder;
 import com.android.tradefed.util.IRunUtil;
 import com.android.tradefed.util.RunUtil;
 
@@ -32,10 +31,10 @@ import java.util.HashMap;
 import java.util.Map;
 
 /**
- * Listener used to take action such as screenshot, bugreport, logcat collection
- * upon a test failure when requested.
+ * Listener used to take action such as screenshot, bugreport, logcat collection upon a test failure
+ * when requested.
  */
-public class TestFailureListener extends ResultForwarder {
+public class TestFailureListener implements ITestInvocationListener {
 
     private static final int DEFAULT_MAX_LOGCAT_BYTES = 500 * 1024; // 500K
     /* Arbitrary upper limit for mMaxLogcatBytes to avoid un-reasonably high limit */
@@ -43,6 +42,7 @@ public class TestFailureListener extends ResultForwarder {
     private static final String LOGCAT_ON_FAILURE_SIZE_OPTION = "logcat-on-failure-size";
 
     private ITestDevice mDevice;
+    private ITestInvocationListener mListener;
     private boolean mBugReportOnFailure;
     private boolean mLogcatOnFailure;
     private boolean mScreenshotOnFailure;
@@ -53,7 +53,7 @@ public class TestFailureListener extends ResultForwarder {
     public TestFailureListener(ITestInvocationListener listener, ITestDevice device,
             boolean bugReportOnFailure, boolean logcatOnFailure, boolean screenshotOnFailure,
             boolean rebootOnFailure, int maxLogcatBytes) {
-        super(listener);
+        mListener = listener;
         mDevice = device;
         mBugReportOnFailure = bugReportOnFailure;
         mLogcatOnFailure = logcatOnFailure;
@@ -78,7 +78,6 @@ public class TestFailureListener extends ResultForwarder {
      */
     @Override
     public void testStarted(TestIdentifier test) {
-        super.testStarted(test);
         if (mLogcatOnFailure) {
             try {
                 mTrackStartTime.put(test, mDevice.getDeviceDate());
@@ -95,7 +94,6 @@ public class TestFailureListener extends ResultForwarder {
      */
     @Override
     public void testEnded(TestIdentifier test, Map<String, String> testMetrics) {
-        super.testEnded(test, testMetrics);
         if (mLogcatOnFailure) {
             mTrackStartTime.remove(test);
         }
@@ -106,14 +104,15 @@ public class TestFailureListener extends ResultForwarder {
      */
     @Override
     public void testFailed(TestIdentifier test, String trace) {
-        super.testFailed(test, trace);
         CLog.i("FailureListener.testFailed %s %b %b %b", test.toString(), mBugReportOnFailure,
                 mLogcatOnFailure, mScreenshotOnFailure);
         if (mScreenshotOnFailure) {
             try {
                 InputStreamSource screenSource = mDevice.getScreenshot();
-                super.testLog(String.format("%s-screenshot", test.toString()), LogDataType.PNG,
-                    screenSource);
+                testLog(
+                        String.format("%s-screenshot", test.toString()),
+                        LogDataType.PNG,
+                        screenSource);
                 screenSource.cancel();
             } catch (DeviceNotAvailableException e) {
                 CLog.e(e);
@@ -123,8 +122,10 @@ public class TestFailureListener extends ResultForwarder {
         }
         if (mBugReportOnFailure) {
            InputStreamSource bugSource = mDevice.getBugreport();
-           super.testLog(String.format("%s-bugreport", test.toString()), LogDataType.BUGREPORT,
-                   bugSource);
+            testLog(
+                    String.format("%s-bugreport", test.toString()),
+                    LogDataType.BUGREPORT,
+                    bugSource);
            bugSource.cancel();
         }
         if (mLogcatOnFailure) {
@@ -137,8 +138,7 @@ public class TestFailureListener extends ResultForwarder {
                 getRunUtil().sleep(2 * 1000);
                 logSource = mDevice.getLogcat(mMaxLogcatBytes);
             }
-            super.testLog(String.format("%s-logcat", test.toString()), LogDataType.LOGCAT,
-                    logSource);
+            testLog(String.format("%s-logcat", test.toString()), LogDataType.LOGCAT, logSource);
             logSource.cancel();
         }
         if (mRebootOnFailure) {
@@ -157,6 +157,11 @@ public class TestFailureListener extends ResultForwarder {
                         mDevice.getSerialNumber());
             }
         }
+    }
+
+    @Override
+    public void testLog(String dataName, LogDataType dataType, InputStreamSource dataStream) {
+        mListener.testLog(dataName, dataType, dataStream);
     }
 
     /**

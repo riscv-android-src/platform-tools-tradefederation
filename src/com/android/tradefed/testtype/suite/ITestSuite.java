@@ -173,15 +173,20 @@ public abstract class ITestSuite
             return;
         }
 
-        /**
-         * Setup a special result forwarded to take actions on test failures.
-         */
-        listener = new TestFailureListener(listener, getDevice(), mBugReportOnFailure,
-                mLogcatOnFailure, mScreenshotOnFailure, mRebootOnFailure, mMaxLogcatBytes);
+        /** Setup a special listener to take actions on test failures. */
+        TestFailureListener failureListener =
+                new TestFailureListener(
+                        listener,
+                        getDevice(),
+                        mBugReportOnFailure,
+                        mLogcatOnFailure,
+                        mScreenshotOnFailure,
+                        mRebootOnFailure,
+                        mMaxLogcatBytes);
 
         /** Run all the module */
         for (ModuleDefinition module : runModules) {
-            runSingleModule(module, listener);
+            runSingleModule(module, listener, failureListener);
         }
     }
 
@@ -192,7 +197,10 @@ public abstract class ITestSuite
      * @param listener The {@link ITestInvocationListener} where to report results
      * @throws DeviceNotAvailableException
      */
-    private void runSingleModule(ModuleDefinition module, ITestInvocationListener listener)
+    private void runSingleModule(
+            ModuleDefinition module,
+            ITestInvocationListener listener,
+            TestFailureListener failureListener)
             throws DeviceNotAvailableException {
         if (mRebootPerModule) {
             if ("user".equals(mDevice.getProperty("ro.build.type"))) {
@@ -212,7 +220,7 @@ public abstract class ITestSuite
             module.setCollectTestsOnly(mCollectTestsOnly);
         }
         // Actually run the module
-        module.run(listener);
+        module.run(listener, failureListener);
 
         if (!mSkipAllSystemStatusCheck) {
             runPostModuleCheck(module.getId(), mSystemStatusCheckers, mDevice, listener);
