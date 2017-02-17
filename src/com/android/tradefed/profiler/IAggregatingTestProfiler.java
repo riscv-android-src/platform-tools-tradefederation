@@ -7,8 +7,8 @@ import java.util.Map;
 
 /**
  * An {@link ITestProfiler} which handles aggregating metrics across multiple devices and test runs.
- * This interface should be used for any profiler which sends different metrics for
- * {@link #stopMetrics} and {@link #getAggregateMetrics}.
+ * This interface should be used for any profiler which sends different metrics for {@link
+ * #getAggregateMetrics}.
  */
 public interface IAggregatingTestProfiler extends ITestProfiler {
     /**

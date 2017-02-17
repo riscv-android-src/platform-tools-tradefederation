@@ -24,6 +24,7 @@ import com.android.tradefed.config.OptionSetter;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.result.CollectingTestListener;
 import com.android.tradefed.result.ITestInvocationListener;
+import com.android.tradefed.util.KeyguardControllerState;
 import com.android.tradefed.util.RunUtil;
 
 import org.easymock.EasyMock;
@@ -193,9 +194,9 @@ public class InstrumentationTestFuncTest extends DeviceTestCase {
         getDevice().waitForDeviceAvailable();
         // Give some time after device available so that keyguard disabled is picked up.
         RunUtil.getDefault().sleep(2000);
-        // now run the ui tests and verify success
-        // done to ensure keyguard is cleared after reboot
-        assertTrue(runUITests());
+        // now we check that the keyguard is dismissed.
+        KeyguardControllerState kcs = getDevice().getKeyguardState();
+        assertFalse("Keyguard is showing when it should not.", kcs.isKeyguardShowing());
     }
 
     /**
@@ -260,7 +261,9 @@ public class InstrumentationTestFuncTest extends DeviceTestCase {
         RunUtil.getDefault().sleep(2000);
         getDevice().waitForDeviceAvailable();
         RunUtil.getDefault().sleep(2000);
-        assertTrue(runUITests());
+        // now we check that the keyguard is dismissed.
+        KeyguardControllerState kcs = getDevice().getKeyguardState();
+        assertFalse("Keyguard is showing when it should not.", kcs.isKeyguardShowing());
     }
 
     /**

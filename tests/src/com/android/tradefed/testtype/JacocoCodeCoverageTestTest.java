@@ -148,7 +148,7 @@ public class JacocoCodeCoverageTestTest {
     }
 
     @Test
-    public void testGenerateCoverageReport_missingClassFiles() throws IOException {
+    public void testGenerateCoverageReport_missingClassFiles() {
         IBuildInfo mockBuildInfo = mockBuildInfo();
 
         JacocoCodeCoverageTest jacocoCodeCoverageTest = spy(new JacocoCodeCoverageTest());

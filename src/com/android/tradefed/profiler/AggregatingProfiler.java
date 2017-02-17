@@ -34,7 +34,7 @@ import java.util.Map;
 /**
  * An {@link ITestProfiler} which handles aggregating metrics across multiple devices and test runs.
  * This class should be used as a base class for any profiler which sends different metrics for
- * {@link #stopMetrics} and {@link #getAggregateMetrics}.
+ * {@link #getAggregateMetrics}.
  */
 public class AggregatingProfiler implements IAggregatingTestProfiler {
 
