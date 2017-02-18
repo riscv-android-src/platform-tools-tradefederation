@@ -22,7 +22,9 @@ import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.util.ClassPathScanner;
 import com.android.tradefed.util.ClassPathScanner.IClassPathFilter;
 import com.android.tradefed.util.DirectedGraph;
+import com.android.tradefed.util.FileUtil;
 import com.android.tradefed.util.StreamUtil;
+import com.android.tradefed.util.SystemUtil;
 import com.android.tradefed.util.keystore.DryRunKeyStore;
 import com.android.tradefed.util.keystore.IKeyStoreClient;
 
@@ -40,6 +42,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Comparator;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Hashtable;
 import java.util.List;
 import java.util.Map;
@@ -183,9 +186,51 @@ public class ConfigurationFactory implements IConfigurationFactory {
     }
 
     /**
-     * Implementation of {@link IConfigDefLoader} that tracks the included
-     * configurations from one root config, and throws an exception on circular
-     * includes.
+     * Get a list of {@link File} of the test cases directories
+     *
+     * <p>The wrapper function is for unit test to mock the system calls.
+     *
+     * @return a list of {@link File} of directories of the test cases folder of build output, based
+     *     on the value of environment variables.
+     */
+    @VisibleForTesting
+    List<File> getTestCasesDirs() {
+        return SystemUtil.getTestCasesDirs();
+    }
+
+    /**
+     * Get the path to the config file for a test case.
+     *
+     * <p>The given name in a test config can be the name of a test case located in an out directory
+     * defined in the following environment variables:
+     *
+     * <p>ANDROID_TARGET_OUT_TESTCASES
+     *
+     * <p>ANDROID_HOST_OUT_TESTCASES
+     *
+     * <p>This method tries to locate the test config name in these directories. If no config is
+     * found, return null.
+     *
+     * @param name Name of a config file.
+     * @return A File object of the config file for the given test case.
+     */
+    @VisibleForTesting
+    File getTestCaseConfigPath(String name) {
+        String[] possibleConfigFileNames = {name + ".xml", name + ".config", name + ".dynamic"};
+        for (File testCasesDir : getTestCasesDirs()) {
+            for (String configFileName : possibleConfigFileNames) {
+                File config = FileUtil.findFile(testCasesDir, configFileName);
+                if (config != null) {
+                    return config;
+                }
+            }
+        }
+        return null;
+    }
+
+    /**
+     * Implementation of {@link IConfigDefLoader} that tracks the included configurations from one
+     * root config, and throws an exception on circular includes.
      */
     class ConfigLoader implements IConfigDefLoader {
 
@@ -207,6 +252,15 @@ public class ConfigurationFactory implements IConfigurationFactory {
             String configName = name;
             if (!isBundledConfig(name)) {
                 configName = getAbsolutePath(null, name);
+                // If the config file does not exist in the default location, try to locate it from
+                // test cases directories defined by environment variables.
+                File configFile = new File(configName);
+                if (!configFile.exists()) {
+                    configFile = getTestCaseConfigPath(name);
+                    if (configFile != null) {
+                        configName = configFile.getAbsolutePath();
+                    }
+                }
             }
 
             final ConfigId configId = new ConfigId(name, templateMap);
@@ -281,6 +335,9 @@ public class ConfigurationFactory implements IConfigurationFactory {
                         // check that 'name' maps to a local file that exists
                         File localConfig = new File(name);
                         if (!localConfig.exists()) {
+                            localConfig = getTestCaseConfigPath(name);
+                        }
+                        if (localConfig == null) {
                             throw new ConfigurationException(String.format(
                                     "Bundled config '%s' is including a config '%s' that's neither "
                                             + "local nor bundled.",
@@ -558,11 +615,29 @@ public class ConfigurationFactory implements IConfigurationFactory {
         return cpScanner.getClassPathEntries(new ConfigClasspathFilter(subPath));
     }
 
+    /** Helper to get the test config files from test cases directories from build output. */
+    @VisibleForTesting
+    Set<String> getConfigNamesFromTestCases() {
+
+        Set<String> configNames = new HashSet<String>();
+        for (File testCasesDir : getTestCasesDirs()) {
+            try {
+                configNames.addAll(FileUtil.findFiles(testCasesDir, ".*.config"));
+                configNames.addAll(FileUtil.findFiles(testCasesDir, ".*.xml"));
+                configNames.addAll(FileUtil.findFiles(testCasesDir, ".*.dynamic"));
+            } catch (IOException e) {
+                CLog.w(
+                        "Failed to get test config files from directory %s",
+                        testCasesDir.getAbsolutePath());
+            }
+        }
+        return configNames;
+    }
+
     /**
-     * Loads all configurations found in classpath.
+     * Loads all configurations found in classpath and test cases directories.
      *
-     * @param discardExceptions true if any ConfigurationException should be
-     *            ignored.
+     * @param discardExceptions true if any ConfigurationException should be ignored.
      * @throws ConfigurationException
      */
     public void loadAllConfigs(boolean discardExceptions) throws ConfigurationException {
@@ -570,6 +645,9 @@ public class ConfigurationFactory implements IConfigurationFactory {
         PrintStream ps = new PrintStream(baos);
         boolean failed = false;
         Set<String> configNames = getConfigSetFromClasspath(null);
+        // TODO: split the the configs into two lists, one from the jar packages and one from test
+        // cases directories.
+        configNames.addAll(getConfigNamesFromTestCases());
         for (String configName : configNames) {
             final ConfigId configId = new ConfigId(configName);
             try {

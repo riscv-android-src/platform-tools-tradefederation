@@ -32,6 +32,8 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.file.attribute.PosixFilePermission;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.EnumSet;
@@ -943,5 +945,20 @@ public class FileUtil {
             }
         }
         return result;
+    }
+
+    /*
+     * Get all file paths of files in the given directory with name matching the given filter
+     *
+     * @param dir {@link File} object of the directory to search for files recursively
+     * @param filter {@link String} of the regex to match file names
+     * @return a set of {@link String} of the file paths
+     */
+    public static Set<String> findFiles(File dir, String filter) throws IOException {
+        Set<String> files = new HashSet<String>();
+        Files.walk(Paths.get(dir.getAbsolutePath()))
+                .filter(path -> new File(path.toString()).getName().matches(filter))
+                .forEach(path -> files.add(path.toString()));
+        return files;
     }
 }

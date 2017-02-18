@@ -61,6 +61,8 @@ public class BuildTestsZipUtils {
                 dirs.add(FileUtil.getFileForPath(dir, "DATA", "priv-app", apkBase));
                 // Files in out dir will be in data/app/apk_name
                 dirs.add(FileUtil.getFileForPath(dir, "data", "app", apkBase));
+                // Files in testcases directory will be in //apkBase
+                dirs.add(FileUtil.getFileForPath(dir, apkBase));
             }
         }
         // reverse the order so ones provided via command line last can be searched first

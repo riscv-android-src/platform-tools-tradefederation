@@ -24,6 +24,8 @@ import com.android.tradefed.util.FileUtil;
 
 import junit.framework.TestCase;
 
+import org.mockito.Mockito;
+
 import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.IOException;
@@ -32,6 +34,7 @@ import java.io.PrintStream;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 
@@ -68,18 +71,26 @@ public class ConfigurationFactoryTest extends TestCase {
      * Sanity test to ensure all config names on classpath are loadable
      */
     public void testLoadAllConfigs() throws ConfigurationException {
+        ConfigurationFactory spyFactory = Mockito.spy(mRealFactory);
+        Mockito.doReturn(new HashSet<String>()).when(spyFactory).getConfigNamesFromTestCases();
+
         // we dry-run the templates otherwise it will always fail.
-        mRealFactory.loadAllConfigs(false);
-        assertTrue(mRealFactory.getMapConfig().size() > 0);
+        spyFactory.loadAllConfigs(false);
+        assertTrue(spyFactory.getMapConfig().size() > 0);
+        Mockito.verify(spyFactory, Mockito.times(1)).getConfigNamesFromTestCases();
     }
 
     /**
      * Sanity test to ensure all configs on classpath can be fully loaded and parsed
      */
     public void testLoadAndPrintAllConfigs() throws ConfigurationException {
+        ConfigurationFactory spyFactory = Mockito.spy(mRealFactory);
+        Mockito.doReturn(new HashSet<String>()).when(spyFactory).getConfigNamesFromTestCases();
+
         // Printing the help involves more checks since it tries to resolve the config objects.
-        mRealFactory.loadAndPrintAllConfigs();
-        assertTrue(mRealFactory.getMapConfig().size() > 0);
+        spyFactory.loadAndPrintAllConfigs();
+        assertTrue(spyFactory.getMapConfig().size() > 0);
+        Mockito.verify(spyFactory, Mockito.times(1)).getConfigNamesFromTestCases();
     }
 
     /**
@@ -1250,5 +1261,40 @@ public class ConfigurationFactoryTest extends TestCase {
                         });
         // Check that mandatory option was properly set, otherwise it will throw.
         res.validateOptions();
+    }
+
+    /**
+     * This unit test ensures that the code will search for missing test configs in directories
+     * specified in certain environment variables.
+     */
+    public void testSearchConfigFromEnvVar() throws ConfigurationException, IOException {
+        File externalConfig = FileUtil.createTempFile("external-config", ".config");
+        String configName = FileUtil.getBaseName(externalConfig.getName());
+        File tmpDir = externalConfig.getParentFile();
+
+        ConfigurationFactory spyFactory = Mockito.spy(mFactory);
+        Mockito.doReturn(Arrays.asList(tmpDir)).when(spyFactory).getTestCasesDirs();
+
+        try {
+            File config = spyFactory.getTestCaseConfigPath(configName);
+            assertEquals(config.getAbsolutePath(), externalConfig.getAbsolutePath());
+        } finally {
+            FileUtil.deleteFile(externalConfig);
+        }
+    }
+
+    /**
+     * This unit test ensures that the code will search for missing test configs in directories
+     * specified in certain environment variables, and fail as the test config still can't be found.
+     */
+    public void testSearchConfigFromEnvVarFailed() throws ConfigurationException, IOException {
+        File tmpDir = new File(System.getProperty("java.io.tmpdir"));
+
+        ConfigurationFactory spyFactory = Mockito.spy(mFactory);
+        Mockito.doReturn(Arrays.asList(tmpDir)).when(spyFactory).getTestCasesDirs();
+
+        File config = spyFactory.getTestCaseConfigPath("non-exist");
+        assertNull(config);
+        Mockito.verify(spyFactory, Mockito.times(1)).getTestCasesDirs();
     }
 }
