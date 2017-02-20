@@ -35,6 +35,7 @@ public class RunUtilTest extends TestCase {
     private RunUtil mRunUtil;
     private long mSleepTime = 0;
     private boolean success = false;
+    private static final long VERY_SHORT_TIMEOUT_MS = 10;
     private static final long SHORT_TIMEOUT_MS = 200;
     private static final long LONG_TIMEOUT_MS = 1000;
 
@@ -87,8 +88,8 @@ public class RunUtilTest extends TestCase {
     public void testRunTimedCmd_failed() {
         CommandResult result = mRunUtil.runTimedCmd(1000, "blahggggwarggg");
         assertEquals(CommandStatus.EXCEPTION, result.getStatus());
-        assertNull(result.getStdout());
-        assertNull(result.getStderr());
+        assertEquals("", result.getStdout());
+        assertEquals("", result.getStderr());
     }
 
     /**
@@ -96,7 +97,7 @@ public class RunUtilTest extends TestCase {
      */
     public void testRunTimedCmd_timeout() {
         String[] command = {"sleep", "10000"};
-        CommandResult result = mRunUtil.runTimedCmd(SHORT_TIMEOUT_MS, command);
+        CommandResult result = mRunUtil.runTimedCmd(VERY_SHORT_TIMEOUT_MS, command);
         assertEquals(CommandStatus.TIMED_OUT, result.getStatus());
         assertEquals("", result.getStdout());
         assertEquals("", result.getStderr());
