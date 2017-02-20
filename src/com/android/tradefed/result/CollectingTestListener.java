@@ -15,14 +15,14 @@
  */
 package com.android.tradefed.result;
 
-import com.google.common.annotations.VisibleForTesting;
-
 import com.android.ddmlib.testrunner.TestIdentifier;
 import com.android.ddmlib.testrunner.TestResult.TestStatus;
 import com.android.ddmlib.testrunner.TestRunResult;
 import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.config.Option;
 import com.android.tradefed.invoker.IInvocationContext;
+
+import com.google.common.annotations.VisibleForTesting;
 
 import java.util.Collection;
 import java.util.Collections;
@@ -80,10 +80,15 @@ public class CollectingTestListener implements ITestInvocationListener {
     /**
      * Return the primary build info that was reported via {@link
      * #invocationStarted(IInvocationContext)}. Primary build is the build returned by the first
-     * build provider of the running configuration.
+     * build provider of the running configuration. Returns null if there is no context (no build to
+     * test case).
      */
     public IBuildInfo getPrimaryBuildInfo() {
-        return mContext.getBuildInfos().get(0);
+        if (mContext == null) {
+            return null;
+        } else {
+            return mContext.getBuildInfos().get(0);
+        }
     }
 
     /**

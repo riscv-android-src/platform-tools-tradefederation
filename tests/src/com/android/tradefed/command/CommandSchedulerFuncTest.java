@@ -107,36 +107,37 @@ public class CommandSchedulerFuncTest extends TestCase {
         EasyMock.expect(mFastConfig.getDeviceConfig()).andStubReturn(mMockDeviceConfig);
         EasyMock.expect(mFastConfig.getCommandLine()).andStubReturn("");
 
-        mCommandScheduler = new CommandScheduler() {
-            @Override
-            ITestInvocation createRunInstance() {
-                return mMockTestInvoker;
-            }
+        mCommandScheduler =
+                new CommandScheduler() {
+                    @Override
+                    ITestInvocation createRunInstance() {
+                        return mMockTestInvoker;
+                    }
 
-            @Override
-            IDeviceManager getDeviceManager() {
-                return mMockDeviceManager;
-            }
+                    @Override
+                    protected IDeviceManager getDeviceManager() {
+                        return mMockDeviceManager;
+                    }
 
-            @Override
-            protected IConfigurationFactory getConfigFactory() {
-                if (mInterruptible) {
-                    // simulate the invocation becoming interruptible
-                    RunUtil.getDefault().allowInterrupt(true);
-                }
-                return mMockConfigFactory;
-            }
+                    @Override
+                    protected IConfigurationFactory getConfigFactory() {
+                        if (mInterruptible) {
+                            // simulate the invocation becoming interruptible
+                            RunUtil.getDefault().allowInterrupt(true);
+                        }
+                        return mMockConfigFactory;
+                    }
 
-            @Override
-            void initLogging() {
-                // ignore
-            }
+                    @Override
+                    protected void initLogging() {
+                        // ignore
+                    }
 
-            @Override
-            void cleanUp() {
-                // ignore
-            }
-        };
+                    @Override
+                    protected void cleanUp() {
+                        // ignore
+                    }
+                };
     }
 
     /** {@inheritDoc} */
@@ -378,41 +379,42 @@ public class CommandSchedulerFuncTest extends TestCase {
     public void testShutdown_notInterruptible() throws Throwable {
         final LongInvocation li = new LongInvocation(5);
         mCommandOptions.setLoopMode(false);
-        mCommandScheduler = new CommandScheduler() {
-            @Override
-            ITestInvocation createRunInstance() {
-                return li;
-            }
+        mCommandScheduler =
+                new CommandScheduler() {
+                    @Override
+                    ITestInvocation createRunInstance() {
+                        return li;
+                    }
 
-            @Override
-            IDeviceManager getDeviceManager() {
-                return mMockDeviceManager;
-            }
+                    @Override
+                    protected IDeviceManager getDeviceManager() {
+                        return mMockDeviceManager;
+                    }
 
-            @Override
-            protected IConfigurationFactory getConfigFactory() {
-                if (mInterruptible) {
-                    // simulate the invocation becoming interruptible
-                    RunUtil.getDefault().allowInterrupt(true);
-                }
-                return mMockConfigFactory;
-            }
+                    @Override
+                    protected IConfigurationFactory getConfigFactory() {
+                        if (mInterruptible) {
+                            // simulate the invocation becoming interruptible
+                            RunUtil.getDefault().allowInterrupt(true);
+                        }
+                        return mMockConfigFactory;
+                    }
 
-            @Override
-            void initLogging() {
-                // ignore
-            }
+                    @Override
+                    protected void initLogging() {
+                        // ignore
+                    }
 
-            @Override
-            void cleanUp() {
-                // ignore
-            }
+                    @Override
+                    protected void cleanUp() {
+                        // ignore
+                    }
 
-            @Override
-            public long getShutdownTimeout() {
-                return 30000;
-            }
-        };
+                    @Override
+                    public long getShutdownTimeout() {
+                        return 30000;
+                    }
+                };
         String[] slowConfigArgs = new String[] {"slowConfig"};
         List<String> nullArg = null;
         EasyMock.expect(
@@ -494,36 +496,42 @@ public class CommandSchedulerFuncTest extends TestCase {
     public void testShutdown_notInterruptible_timeout() throws Throwable {
         final LongInvocation li = new LongInvocation(15);
         mCommandOptions.setLoopMode(false);
-        mCommandScheduler = new CommandScheduler() {
-            @Override
-            ITestInvocation createRunInstance() {
-                return li;
-            }
-            @Override
-            IDeviceManager getDeviceManager() {
-                return mMockDeviceManager;
-            }
-            @Override
-            protected IConfigurationFactory getConfigFactory() {
-                if (mInterruptible) {
-                    // simulate the invocation becoming interruptible
-                    RunUtil.getDefault().allowInterrupt(true);
-                }
-                return mMockConfigFactory;
-            }
-            @Override
-            void initLogging() {
-                // ignore
-            }
-            @Override
-            void cleanUp() {
-                // ignore
-            }
-            @Override
-            public long getShutdownTimeout() {
-                return 5000;
-            }
-        };
+        mCommandScheduler =
+                new CommandScheduler() {
+                    @Override
+                    ITestInvocation createRunInstance() {
+                        return li;
+                    }
+
+                    @Override
+                    protected IDeviceManager getDeviceManager() {
+                        return mMockDeviceManager;
+                    }
+
+                    @Override
+                    protected IConfigurationFactory getConfigFactory() {
+                        if (mInterruptible) {
+                            // simulate the invocation becoming interruptible
+                            RunUtil.getDefault().allowInterrupt(true);
+                        }
+                        return mMockConfigFactory;
+                    }
+
+                    @Override
+                    protected void initLogging() {
+                        // ignore
+                    }
+
+                    @Override
+                    protected void cleanUp() {
+                        // ignore
+                    }
+
+                    @Override
+                    public long getShutdownTimeout() {
+                        return 5000;
+                    }
+                };
         String[] slowConfigArgs = new String[] {"slowConfig"};
         List<String> nullArg = null;
         EasyMock.expect(
@@ -561,28 +569,33 @@ public class CommandSchedulerFuncTest extends TestCase {
         final LongInvocation li = new LongInvocation(2);
         mCommandOptions.setLoopMode(false);
         mCommandOptions.setInvocationTimeout(500l);
-        mCommandScheduler = new CommandScheduler() {
-            @Override
-            ITestInvocation createRunInstance() {
-                return li;
-            }
-            @Override
-            IDeviceManager getDeviceManager() {
-                return mMockDeviceManager;
-            }
-            @Override
-            protected IConfigurationFactory getConfigFactory() {
-                return mMockConfigFactory;
-            }
-            @Override
-            void initLogging() {
-                // ignore
-            }
-            @Override
-            void cleanUp() {
-                // ignore
-            }
-        };
+        mCommandScheduler =
+                new CommandScheduler() {
+                    @Override
+                    ITestInvocation createRunInstance() {
+                        return li;
+                    }
+
+                    @Override
+                    protected IDeviceManager getDeviceManager() {
+                        return mMockDeviceManager;
+                    }
+
+                    @Override
+                    protected IConfigurationFactory getConfigFactory() {
+                        return mMockConfigFactory;
+                    }
+
+                    @Override
+                    protected void initLogging() {
+                        // ignore
+                    }
+
+                    @Override
+                    protected void cleanUp() {
+                        // ignore
+                    }
+                };
         String[] slowConfigArgs = new String[] {"slowConfig"};
         List<String> nullArg = null;
         EasyMock.expect(

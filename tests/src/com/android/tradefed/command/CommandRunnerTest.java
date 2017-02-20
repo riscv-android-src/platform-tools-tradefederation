@@ -59,62 +59,68 @@ public class CommandRunnerTest {
     public void setUp() {
         mThrowable = null;
         mStackTraceOutput = null;
-        mRunner = new CommandRunner() {
-            @Override
-            public void initGlobalConfig(String[] args) throws ConfigurationException {
-                // We have some global state that cannot be re-entered so we ensure they do not
-                // throw.
-                try {
-                    GlobalConfiguration.createGlobalConfiguration(args);
-                } catch (IllegalStateException e) {
-                    // ignore re-init.
-                }
-                GlobalConfiguration.getInstance().setCommandScheduler(new CommandScheduler() {
+        mRunner =
+                new CommandRunner() {
                     @Override
-                    void initDeviceManager() {
+                    public void initGlobalConfig(String[] args) throws ConfigurationException {
+                        // We have some global state that cannot be re-entered so we ensure they do
+                        // not throw.
                         try {
-                            super.initDeviceManager();
+                            GlobalConfiguration.createGlobalConfiguration(args);
                         } catch (IllegalStateException e) {
-                            // ignore re-init
+                            // ignore re-init.
                         }
+                        GlobalConfiguration.getInstance()
+                                .setCommandScheduler(
+                                        new CommandScheduler() {
+                                            @Override
+                                            void initDeviceManager() {
+                                                try {
+                                                    super.initDeviceManager();
+                                                } catch (IllegalStateException e) {
+                                                    // ignore re-init
+                                                }
+                                            }
+
+                                            @Override
+                                            ITestInvocation createRunInstance() {
+                                                if (mThrowable == null) {
+                                                    return super.createRunInstance();
+                                                } else {
+                                                    return new TestInvocation() {
+                                                        @Override
+                                                        public void invoke(
+                                                                IInvocationContext context,
+                                                                IConfiguration config,
+                                                                IRescheduler rescheduler,
+                                                                ITestInvocationListener...
+                                                                        extraListeners)
+                                                                throws DeviceNotAvailableException,
+                                                                        Throwable {
+                                                            throw mThrowable;
+                                                        }
+                                                    };
+                                                }
+                                            }
+                                            // Prevent the logging dumping extra logs.
+                                            @Override
+                                            protected void initLogging() {}
+
+                                            @Override
+                                            protected void cleanUp() {}
+                                        });
                     }
 
+                    /** We capture the stack trace if any. */
                     @Override
-                    ITestInvocation createRunInstance() {
-                        if (mThrowable == null) {
-                            return super.createRunInstance();
-                        } else {
-                            return new TestInvocation() {
-                                @Override
-                                public void invoke(IInvocationContext context,
-                                        IConfiguration config, IRescheduler rescheduler,
-                                        ITestInvocationListener... extraListeners)
-                                        throws DeviceNotAvailableException ,Throwable {
-                                    throw mThrowable;
-                                }
-                            };
-                        }
+                    void printStackTrace(Throwable e) {
+                        ByteArrayOutputStream out = new ByteArrayOutputStream();
+                        PrintWriter pw = new PrintWriter(out);
+                        e.printStackTrace(pw);
+                        pw.flush();
+                        mStackTraceOutput = out.toString();
                     }
-                    // Prevent the logging from starting, dumping extra logs.
-                    @Override
-                    void initLogging() {}
-                    @Override
-                    void cleanUp() {}
-                });
-            }
-
-            /**
-             * We capture the stack trace if any.
-             */
-            @Override
-            void printStackTrace(Throwable e) {
-                ByteArrayOutputStream out = new ByteArrayOutputStream();
-                PrintWriter pw = new PrintWriter(out);
-                e.printStackTrace(pw);
-                pw.flush();
-                mStackTraceOutput = out.toString();
-            }
-        };
+                };
     }
 
     /**

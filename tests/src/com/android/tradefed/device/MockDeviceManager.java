@@ -26,6 +26,7 @@ import org.easymock.EasyMock;
 import org.junit.Assert;
 
 import java.io.PrintWriter;
+import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -334,7 +335,7 @@ public class MockDeviceManager implements IDeviceManager {
      */
     @Override
     public List<DeviceDescriptor> listAllDevices() {
-        return null;
+        return new ArrayList<DeviceDescriptor>();
     }
 
     @Override
