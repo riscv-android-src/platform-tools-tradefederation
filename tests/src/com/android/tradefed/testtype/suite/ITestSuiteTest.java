@@ -120,6 +120,7 @@ public class ITestSuiteTest {
         mTestSuite = new TestSuiteImpl();
         mMockListener = EasyMock.createMock(ITestInvocationListener.class);
         mMockDevice = EasyMock.createMock(ITestDevice.class);
+        EasyMock.expect(mMockDevice.getSerialNumber()).andStubReturn("SERIAL");
         mMockBuildInfo = EasyMock.createMock(IBuildInfo.class);
         mMockSysChecker = EasyMock.createMock(ISystemStatusChecker.class);
         mTestSuite.setDevice(mMockDevice);
