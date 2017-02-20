@@ -31,7 +31,7 @@ import com.android.tradefed.util.SimplePerfUtil;
 import com.android.tradefed.util.SimplePerfUtil.SimplePerfType;
 import com.android.tradefed.util.SimpleStats;
 
-import junit.framework.Assert;
+import org.junit.Assert;
 
 import java.text.NumberFormat;
 import java.text.ParseException;

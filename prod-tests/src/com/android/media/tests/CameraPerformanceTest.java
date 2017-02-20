@@ -45,8 +45,6 @@ import java.util.regex.Pattern;
 @OptionClass(alias = "camera-framework")
 public class CameraPerformanceTest extends CameraTestBase {
 
-    private static final String LOG_TAG = CameraPerformanceTest.class.getSimpleName();
-
     public CameraPerformanceTest() {
         // Set up the default test info. But this is subject to be overwritten by options passed
         // from commands.

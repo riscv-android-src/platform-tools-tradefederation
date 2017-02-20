@@ -29,10 +29,10 @@ import com.android.tradefed.util.ProcessInfo;
 import com.android.tradefed.util.RunUtil;
 import com.android.tradefed.util.StreamUtil;
 
+import org.junit.Assert;
+
 import java.util.HashMap;
 import java.util.Map;
-
-import junit.framework.Assert;
 
 /**
  * Test to gather post launch memory details after launching app

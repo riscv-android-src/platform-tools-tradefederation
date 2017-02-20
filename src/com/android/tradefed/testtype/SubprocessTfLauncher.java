@@ -33,7 +33,7 @@ import com.android.tradefed.util.StreamUtil;
 import com.android.tradefed.util.SubprocessTestResultsParser;
 import com.android.tradefed.util.TimeUtil;
 
-import junit.framework.Assert;
+import org.junit.Assert;
 
 import java.io.File;
 import java.io.FileOutputStream;

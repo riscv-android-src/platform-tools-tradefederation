@@ -36,8 +36,9 @@ import com.android.tradefed.util.RunUtil;
 import com.android.tradefed.util.SimpleStats;
 import com.android.tradefed.util.StreamUtil;
 
-import junit.framework.Assert;
 import junit.framework.TestCase;
+
+import org.junit.Assert;
 
 import java.io.BufferedReader;
 import java.io.ByteArrayInputStream;

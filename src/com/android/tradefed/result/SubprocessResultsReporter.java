@@ -231,11 +231,9 @@ public class SubprocessResultsReporter implements ITestInvocationListener, AutoC
         }
     }
 
-    /**
-     * {@inheritDoc}
-     */
+    /** {@inheritDoc} */
     @Override
-    public void close() throws Exception {
+    public void close() {
         StreamUtil.close(mReportSocket);
     }
 }

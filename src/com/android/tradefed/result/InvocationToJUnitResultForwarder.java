@@ -24,9 +24,9 @@ import junit.framework.Test;
 import junit.framework.TestListener;
 import junit.framework.TestResult;
 
-import java.util.Map;
+import org.junit.AssumptionViolatedException;
 
-import org.junit.internal.AssumptionViolatedException;
+import java.util.Map;
 
 /**
  * A class that listens to {@link ITestInvocationListener} events and forwards them to a

@@ -34,8 +34,9 @@ import com.android.tradefed.util.FileUtil;
 import com.android.tradefed.util.RegexTrie;
 import com.android.tradefed.util.StreamUtil;
 
-import junit.framework.Assert;
 import junit.framework.TestCase;
+
+import org.junit.Assert;
 
 import java.io.ByteArrayInputStream;
 import java.io.File;
