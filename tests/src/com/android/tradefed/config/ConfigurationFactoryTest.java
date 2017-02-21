@@ -28,8 +28,8 @@ import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.PrintStream;
-import java.util.Arrays;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -1142,4 +1142,50 @@ public class ConfigurationFactoryTest extends TestCase {
         assertEquals(Arrays.toString(wantArgs), Arrays.toString(mFactory.reorderArgs(args)));
     }
 
+    /**
+     * Test that when doing a dry-run with keystore arguments, we skip the keystore validation. We
+     * accept the argument, as long as the key exists.
+     */
+    public void testCreateConfigurationFromArgs_dryRun_keystore() throws Exception {
+        IConfiguration res =
+                mFactory.createConfigurationFromArgs(
+                        new String[] {
+                            "test-config",
+                            "--build-id",
+                            "USE_KEYSTORE@test_string",
+                            "--dry-run",
+                            "--online-wait-time=USE_KEYSTORE@test_long",
+                            "--min-battery-after-recovery",
+                            "USE_KEYSTORE@test_int",
+                            "--disable-unresponsive-reboot=USE_KEYSTORE@test_boolean",
+                        });
+        res.validateOptions();
+        // we still throw exception if the option itself doesn't exists.
+        try {
+            mFactory.createConfigurationFromArgs(
+                    new String[] {
+                        "test-config", "--does-not-exists", "USE_KEYSTORE@test_string", "--dry-run"
+                    });
+            fail("Should have thrown an exception.");
+        } catch (ConfigurationException expected) {
+            // expected
+        }
+    }
+
+    /**
+     * Test that when mandatory option are set with a keystore during a dry-run, they can still be
+     * validated.
+     */
+    public void testCreateConfigurationFromArgs_dryRun_keystore_required_arg() throws Exception {
+        IConfiguration res =
+                mFactory.createConfigurationFromArgs(
+                        new String[] {
+                            "mandatory-config",
+                            "--build-dir",
+                            "USE_KEYSTORE@test_string",
+                            "--dry-run",
+                        });
+        // Check that mandatory option was properly set, otherwise it will throw.
+        res.validateOptions();
+    }
 }

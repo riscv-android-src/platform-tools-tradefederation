@@ -17,11 +17,13 @@
 package com.android.tradefed.config;
 
 import com.android.ddmlib.Log;
+import com.android.tradefed.command.CommandOptions;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.util.ClassPathScanner;
 import com.android.tradefed.util.ClassPathScanner.IClassPathFilter;
 import com.android.tradefed.util.DirectedGraph;
 import com.android.tradefed.util.StreamUtil;
+import com.android.tradefed.util.keystore.DryRunKeyStore;
 import com.android.tradefed.util.keystore.IKeyStoreClient;
 
 import com.google.common.annotations.VisibleForTesting;
@@ -398,6 +400,11 @@ public class ConfigurationFactory implements IConfigurationFactory {
         IConfiguration config =
                 internalCreateConfigurationFromArgs(reorderedArrayArgs, listArgs, keyStoreClient);
         config.setCommandLine(arrayArgs);
+        if (listArgs.contains("--" + CommandOptions.DRY_RUN_OPTION)) {
+            // In case of dry-run, we replace the KeyStore by a dry-run one.
+            CLog.w("dry-run detected, we are using a dryrun keystore");
+            keyStoreClient = new DryRunKeyStore();
+        }
         final List<String> tmpUnconsumedArgs = config.setOptionsFromCommandLineArgs(
                 listArgs, keyStoreClient);
 

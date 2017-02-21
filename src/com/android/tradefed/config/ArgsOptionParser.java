@@ -17,6 +17,7 @@ package com.android.tradefed.config;
 
 import com.android.ddmlib.Log;
 import com.android.tradefed.util.ArrayUtil;
+import com.android.tradefed.util.keystore.DryRunKeyStore;
 import com.android.tradefed.util.keystore.IKeyStoreClient;
 
 import java.lang.reflect.Field;
@@ -297,7 +298,6 @@ public class ArgsOptionParser extends OptionSetter {
         final int equalsIndex = name.indexOf('=');
         if (equalsIndex != -1) {
             value = name.substring(equalsIndex + 1);
-            value = getKeyStoreValueIfNeeded(value);
             name = name.substring(0, equalsIndex);
         }
 
@@ -327,7 +327,8 @@ public class ArgsOptionParser extends OptionSetter {
                 value = grabNextValue(args, name);
             }
         }
-        value = getKeyStoreValueIfNeeded(value);
+
+        value = getKeyStoreValueIfNeeded(value, getTypeForOption(name));
         setOptionValue(name, key, value);
     }
 
@@ -354,7 +355,7 @@ public class ArgsOptionParser extends OptionSetter {
                     value = grabNextValue(args, name);
                 }
             }
-            value = getKeyStoreValueIfNeeded(value);
+            value = getKeyStoreValueIfNeeded(value, getTypeForOption(name));
             setOptionValue(name, value);
         }
     }
@@ -515,11 +516,12 @@ public class ArgsOptionParser extends OptionSetter {
      * Replaces value with key store value if needed
      *
      * @param valueText the value
+     * @param optionType the type of the value expected in the option.
      * @return the value or the translated key store value.
-     *
      * @throws ConfigurationException
      */
-    private String getKeyStoreValueIfNeeded(String valueText) throws ConfigurationException {
+    private String getKeyStoreValueIfNeeded(String valueText, String optionType)
+            throws ConfigurationException {
         Matcher m = USE_KEYSTORE_REGEX.matcher(valueText);
         if (m.matches() && m.groupCount() > 0) {
             IKeyStoreClient c = getKeyStore();
@@ -531,7 +533,13 @@ public class ArgsOptionParser extends OptionSetter {
                         + "we tried to fetch a key", c.getClass()));
             }
             String key = m.group(1);
-            String v = c.fetchKey(key);
+            String v = null;
+            // if it's the special dry-run keystore, we use a special handling and don't throw.
+            if (c instanceof DryRunKeyStore) {
+                v = ((DryRunKeyStore) c).fetchKey(key, optionType);
+            } else {
+                v = c.fetchKey(key);
+            }
             if (v == null) {
                 throw new ConfigurationException(String.format(
                         "Failed to fetch key %s in keystore", key));
