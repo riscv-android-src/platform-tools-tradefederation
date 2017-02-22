@@ -643,6 +643,8 @@ public class GTest implements IDeviceTest, IRemoteTest, ITestFilterReceiver, IRu
         OptionCopier.copyOptionsNoThrow(this, shard);
         shard.mShardIndex = shardIndex;
         shard.mShardCount = shardCount;
+        // We approximate the runtime of each shard to be equal since we can't know.
+        shard.mRuntimeHint = mRuntimeHint / shardCount;
         return shard;
     }
 

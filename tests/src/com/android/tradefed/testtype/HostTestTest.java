@@ -26,18 +26,18 @@ import junit.framework.Test;
 import junit.framework.TestCase;
 import junit.framework.TestSuite;
 
+import org.easymock.Capture;
+import org.easymock.EasyMock;
+import org.junit.Before;
+import org.junit.runner.RunWith;
+import org.junit.runners.Suite.SuiteClasses;
+
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.reflect.AnnotatedElement;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-
-import org.easymock.Capture;
-import org.easymock.EasyMock;
-import org.junit.Before;
-import org.junit.runner.RunWith;
-import org.junit.runners.Suite.SuiteClasses;
 
 /**
  * Unit tests for {@link HostTest}.
@@ -967,30 +967,38 @@ public class HostTestTest extends TestCase {
     }
 
     /**
-     * Test for {@link HostTest#getTestShard(int, int)} with one shard per classes.
+     * Test for {@link HostTest#getTestShard(int, int)} with one shard per classes, the runtime hint
+     * is also split across tests based on number of tests.
      */
     public void testGetTestStrictShardable() throws Exception {
         OptionSetter setter = new OptionSetter(mHostTest);
         setter.setOptionValue("class", Junit4SuiteClass.class.getName());
         setter.setOptionValue("class", SuccessTestSuite.class.getName());
         setter.setOptionValue("class", TestRemoteNotCollector.class.getName());
+        setter.setOptionValue("runtime-hint", "2m");
         IRemoteTest shard0 = mHostTest.getTestShard(3, 0);
         assertTrue(shard0 instanceof HostTest);
         assertEquals(1, ((HostTest)shard0).getClasses().size());
         assertEquals("com.android.tradefed.testtype.HostTestTest$Junit4SuiteClass",
                 ((HostTest)shard0).getClasses().get(0).getName());
+        // This shard contains 4 out of 7 tests: (4/7) * 2 minutes
+        assertEquals(68571, ((HostTest) shard0).getRuntimeHint());
 
         IRemoteTest shard1 = mHostTest.getTestShard(3, 1);
         assertTrue(shard1 instanceof HostTest);
         assertEquals(1, ((HostTest)shard1).getClasses().size());
         assertEquals("com.android.tradefed.testtype.HostTestTest$SuccessTestSuite",
                 ((HostTest)shard1).getClasses().get(0).getName());
+        // This shard contains 2 out of 7 tests: (2/7) * 2 minutes
+        assertEquals(34285, ((HostTest) shard1).getRuntimeHint());
 
         IRemoteTest shard2 = mHostTest.getTestShard(3, 2);
         assertTrue(shard2 instanceof HostTest);
         assertEquals(1, ((HostTest)shard2).getClasses().size());
         assertEquals("com.android.tradefed.testtype.HostTestTest$TestRemoteNotCollector",
                 ((HostTest)shard2).getClasses().get(0).getName());
+        // This shard contains 1 out of 7 tests: (1/7) * 2 minutes
+        assertEquals(17142, ((HostTest) shard2).getRuntimeHint());
     }
 
     /**
