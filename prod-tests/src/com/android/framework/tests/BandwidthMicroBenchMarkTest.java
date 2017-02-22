@@ -32,8 +32,8 @@ import com.android.tradefed.result.InputStreamSource;
 import com.android.tradefed.result.LogDataType;
 import com.android.tradefed.testtype.IDeviceTest;
 import com.android.tradefed.testtype.IRemoteTest;
-import com.android.tradefed.util.IRunUtil.IRunnableResult;
 import com.android.tradefed.util.FileUtil;
+import com.android.tradefed.util.IRunUtil.IRunnableResult;
 import com.android.tradefed.util.MultiMap;
 import com.android.tradefed.util.RunUtil;
 import com.android.tradefed.util.StreamUtil;
@@ -41,7 +41,7 @@ import com.android.tradefed.util.net.HttpHelper;
 import com.android.tradefed.util.net.IHttpHelper;
 import com.android.tradefed.util.net.IHttpHelper.DataSizeException;
 
-import junit.framework.Assert;
+import org.junit.Assert;
 
 import java.io.BufferedWriter;
 import java.io.File;

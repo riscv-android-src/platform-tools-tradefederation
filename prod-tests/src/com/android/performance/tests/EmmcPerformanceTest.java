@@ -25,10 +25,12 @@ import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.testtype.IDeviceTest;
 import com.android.tradefed.testtype.IRemoteTest;
 import com.android.tradefed.util.AbiFormatter;
-import com.android.tradefed.util.SimpleStats;
 import com.android.tradefed.util.SimplePerfResult;
 import com.android.tradefed.util.SimplePerfUtil;
 import com.android.tradefed.util.SimplePerfUtil.SimplePerfType;
+import com.android.tradefed.util.SimpleStats;
+
+import org.junit.Assert;
 
 import java.text.NumberFormat;
 import java.text.ParseException;
@@ -40,8 +42,6 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-
-import junit.framework.Assert;
 
 /**
  * This test is targeting eMMC performance on read/ write.

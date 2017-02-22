@@ -24,9 +24,8 @@ import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.InputStreamSource;
 import com.android.tradefed.result.LogDataType;
 
-import junit.framework.Assert;
-
 import org.easymock.EasyMock;
+import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -131,9 +130,9 @@ public class AggregatingProfilerTest {
         EasyMock.verify(mRecorder1, mRecorder2);
         Assert.assertEquals(m, mProfiler.getAggregateMetrics());
         Assert.assertTrue(mProfiler.getAggregateMetrics().containsKey("generic"));
-        Assert.assertEquals(12.0, mProfiler.getAggregateMetrics().get("generic"));
+        Assert.assertEquals(12.0d, mProfiler.getAggregateMetrics().get("generic"), 0.001);
         Assert.assertTrue(m.containsKey("generic"));
-        Assert.assertEquals(12.0, m.get("generic"));
+        Assert.assertEquals(12.0d, m.get("generic"), 0.001);
 
         EasyMock.reset(mRecorder1, mRecorder2);
         EasyMock.expect(mRecorder1.stopMetrics((ITestDevice) EasyMock.anyObject()))
@@ -152,9 +151,9 @@ public class AggregatingProfilerTest {
 
         Map<String, Double> m2 = mProfiler.stopRecordingMetrics(id);
         Assert.assertTrue(mProfiler.getAggregateMetrics().containsKey("generic"));
-        Assert.assertEquals(24.0, mProfiler.getAggregateMetrics().get("generic"));
+        Assert.assertEquals(24.0d, mProfiler.getAggregateMetrics().get("generic"), 0.001);
         Assert.assertTrue(m2.containsKey("generic"));
-        Assert.assertEquals(12.0, m2.get("generic"));
+        Assert.assertEquals(12.0d, m2.get("generic"), 0.001);
     }
 
     @Test

@@ -16,8 +16,6 @@
 
 package com.android.monkey;
 
-import com.google.common.base.Throwables;
-
 import com.android.ddmlib.testrunner.TestIdentifier;
 import com.android.loganalysis.item.AnrItem;
 import com.android.loganalysis.item.BugreportItem;
@@ -34,7 +32,9 @@ import com.android.tradefed.result.InputStreamSource;
 import com.android.tradefed.result.LogDataType;
 import com.android.tradefed.result.ResultForwarder;
 
-import junit.framework.Assert;
+import com.google.common.base.Throwables;
+
+import org.junit.Assert;
 
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -66,10 +66,7 @@ public class MonkeyBrillopadForwarder extends ResultForwarder {
             mDescription = desc;
         }
 
-        /**
-         * A User friendly description of the status
-         * @return
-         */
+        /** Returns a User friendly description of the status. */
         String getDescription() {
             return mDescription;
         }

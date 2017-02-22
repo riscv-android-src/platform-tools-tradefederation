@@ -26,11 +26,10 @@ import com.android.tradefed.testtype.IRemoteTest;
 import com.android.tradefed.util.sl4a.Sl4aClient;
 import com.android.tradefed.util.sl4a.Sl4aEventDispatcher.EventSl4aObject;
 
-import junit.framework.Assert;
-
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
+import org.junit.Assert;
 
 import java.io.IOException;
 import java.util.ArrayList;

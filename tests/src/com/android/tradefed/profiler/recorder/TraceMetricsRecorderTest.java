@@ -17,17 +17,19 @@
 package com.android.tradefed.profiler.recorder;
 
 import com.android.tradefed.device.ITestDevice;
+
+import org.easymock.EasyMock;
+import org.junit.Assert;
+import org.junit.Before;
+import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.junit.runners.JUnit4;
+
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.StringReader;
 import java.util.Arrays;
 import java.util.Map;
-import junit.framework.Assert;
-import org.easymock.EasyMock;
-import org.junit.Before;
-import org.junit.Test;
-import org.junit.runner.RunWith;
-import org.junit.runners.JUnit4;
 
 @RunWith(JUnit4.class)
 public class TraceMetricsRecorderTest {
@@ -96,7 +98,7 @@ public class TraceMetricsRecorderTest {
         mRecorder.setUp(mDevice, Arrays.asList("mmc:mmc_cmd_rw_end:int_status:COUNT"));
         Map<String, Double> metrics = mRecorder.stopMetrics(mDevice);
         EasyMock.verify(mDevice);
-        Assert.assertEquals(metrics.get("mmc:mmc_cmd_rw_end:int_status:COUNT"), 1.0);
+        Assert.assertEquals(metrics.get("mmc:mmc_cmd_rw_end:int_status:COUNT"), 1.0, 0.001);
     }
 
     @Test
@@ -116,6 +118,6 @@ public class TraceMetricsRecorderTest {
         mRecorder.setUp(mDevice, Arrays.asList("mmc:mmc_cmd_rw_end:int_status:COUNT"));
         Map<String, Double> metrics = mRecorder.stopMetrics(mDevice);
         EasyMock.verify(mDevice);
-        Assert.assertEquals(metrics.get("mmc:mmc_cmd_rw_end:int_status:COUNT"), 3.0);
+        Assert.assertEquals(metrics.get("mmc:mmc_cmd_rw_end:int_status:COUNT"), 3.0, 0.001);
     }
 }

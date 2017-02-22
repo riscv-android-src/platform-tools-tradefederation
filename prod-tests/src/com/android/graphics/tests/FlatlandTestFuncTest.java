@@ -18,8 +18,9 @@ package com.android.graphics.tests;
 
 import com.android.tradefed.log.LogUtil.CLog;
 
-import junit.framework.Assert;
 import junit.framework.TestCase;
+
+import org.junit.Assert;
 
 import java.util.Map;
 

@@ -20,6 +20,7 @@ package com.android.tradefed.config;
  * line.
  */
 public class OptionNotAllowedException extends ConfigurationException {
+    private static final long serialVersionUID = 7742154448568011969L;
 
     public OptionNotAllowedException(String msg) {
         super(msg);

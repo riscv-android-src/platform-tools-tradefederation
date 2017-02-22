@@ -28,7 +28,7 @@ import com.android.tradefed.targetprep.TargetSetupError;
 import com.android.tradefed.targetprep.TemperatureThrottlingWaiter;
 import com.android.tradefed.util.MultiMap;
 
-import junit.framework.Assert;
+import org.junit.Assert;
 
 import java.util.Collections;
 import java.util.HashMap;

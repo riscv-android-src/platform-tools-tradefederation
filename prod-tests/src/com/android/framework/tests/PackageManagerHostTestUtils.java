@@ -24,7 +24,7 @@ import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.result.CollectingTestListener;
 
-import junit.framework.Assert;
+import org.junit.Assert;
 
 import java.io.File;
 import java.util.Map;

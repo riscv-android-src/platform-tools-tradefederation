@@ -29,7 +29,7 @@ import com.android.tradefed.targetprep.ITargetPreparer;
 import com.android.tradefed.targetprep.TargetSetupError;
 import com.android.tradefed.util.AaptParser;
 
-import junit.framework.Assert;
+import org.junit.Assert;
 
 /**
  * A {@link ITargetPreparer} for {@link IAppBuildInfo}, that dynamically determines the app

@@ -22,7 +22,7 @@ import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.testtype.IDeviceTest;
 import com.android.tradefed.testtype.IRemoteTest;
 
-import junit.framework.Assert;
+import org.junit.Assert;
 
 import java.util.HashMap;
 import java.util.Map;

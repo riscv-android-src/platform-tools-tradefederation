@@ -20,8 +20,7 @@ import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.log.LogUtil.CLog;
 
-import junit.framework.Assert;
-
+import org.junit.Assert;
 import org.w3c.dom.Document;
 import org.w3c.dom.Node;
 

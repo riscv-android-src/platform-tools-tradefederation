@@ -34,7 +34,7 @@ import com.android.tradefed.testtype.IDeviceTest;
 import com.android.tradefed.testtype.IRemoteTest;
 import com.android.tradefed.util.FileUtil;
 
-import junit.framework.Assert;
+import org.junit.Assert;
 
 import java.io.File;
 import java.io.FileInputStream;
