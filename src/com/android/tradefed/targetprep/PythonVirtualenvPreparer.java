@@ -54,12 +54,19 @@ public class PythonVirtualenvPreparer implements ITargetPreparer {
     @Option(name = "dep-module", description = "modules which need to be installed by pip")
     private List<String> mDepModules = new ArrayList<>();
 
+    @Option(name = "disable", description = "disable this preparer")
+    private boolean mDisable = false;
+
     IRunUtil mRunUtil = new RunUtil();
     String mPip = PIP;
 
     @Override
     public void setUp(ITestDevice device, IBuildInfo buildInfo)
             throws TargetSetupError, BuildError, DeviceNotAvailableException {
+        if (mDisable) {
+            CLog.i("Skipping PythonVirtualenvPreparer");
+            return;
+        }
         startVirtualenv(buildInfo, device);
         installDeps(buildInfo, device);
     }
