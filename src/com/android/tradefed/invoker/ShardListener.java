@@ -33,19 +33,19 @@ import java.util.Map;
  * invocation split to run on multiple resources in parallel), and forwards them to another
  * listener.
  */
-class ShardListener extends CollectingTestListener {
+public class ShardListener extends CollectingTestListener {
 
     private ITestInvocationListener mMasterListener;
 
     /**
      * Create a {@link ShardListener}.
      *
-     * @param master the {@link ITestInvocationListener} the results should be forwarded. To
-     *            prevent collisions with other {@link ShardListener}s, this object will synchronize
-     *            on <var>master</var> when forwarding results. And results will only be sent once
-     *            the invocation shard completes.
+     * @param master the {@link ITestInvocationListener} the results should be forwarded. To prevent
+     *     collisions with other {@link ShardListener}s, this object will synchronize on
+     *     <var>master</var> when forwarding results. And results will only be sent once the
+     *     invocation shard completes.
      */
-    ShardListener(ITestInvocationListener master) {
+    public ShardListener(ITestInvocationListener master) {
         mMasterListener = master;
     }
 
