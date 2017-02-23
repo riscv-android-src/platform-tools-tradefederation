@@ -98,43 +98,44 @@ public class CommandSchedulerTest extends TestCase {
         mDeviceOptions = new DeviceSelectionOptions();
         mMockDeviceConfig = new ArrayList<IDeviceConfiguration>();
 
-        mScheduler = new CommandScheduler() {
+        mScheduler =
+                new CommandScheduler() {
 
-            @Override
-            ITestInvocation createRunInstance() {
-                return mMockInvocation;
-            }
+                    @Override
+                    ITestInvocation createRunInstance() {
+                        return mMockInvocation;
+                    }
 
-            @Override
-            IDeviceManager getDeviceManager() {
-                return mMockManager;
-            }
+                    @Override
+                    protected IDeviceManager getDeviceManager() {
+                        return mMockManager;
+                    }
 
-            @Override
-            protected IConfigurationFactory getConfigFactory() {
-                return mMockConfigFactory;
-            }
+                    @Override
+                    protected IConfigurationFactory getConfigFactory() {
+                        return mMockConfigFactory;
+                    }
 
-            @Override
-            void initLogging() {
-                // ignore
-            }
+                    @Override
+                    protected void initLogging() {
+                        // ignore
+                    }
 
-            @Override
-            void cleanUp() {
-                // ignore
-            }
+                    @Override
+                    protected void cleanUp() {
+                        // ignore
+                    }
 
-            @Override
-            void checkInvocations() {
-                // ignore
-            }
+                    @Override
+                    void checkInvocations() {
+                        // ignore
+                    }
 
-            @Override
-            CommandFileParser createCommandFileParser() {
-                return mMockCmdFileParser;
-            }
-        };
+                    @Override
+                    CommandFileParser createCommandFileParser() {
+                        return mMockCmdFileParser;
+                    }
+                };
         // not starting the CommandScheduler yet because test methods need to setup mocks first
     }
 

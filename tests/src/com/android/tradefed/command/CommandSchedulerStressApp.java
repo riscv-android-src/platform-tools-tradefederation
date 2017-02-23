@@ -51,17 +51,18 @@ public class CommandSchedulerStressApp extends TestCase {
         EasyMock.expect(mMockConfig.getDeviceRequirements()).andStubReturn(
                 new DeviceSelectionOptions());
 
-        mCommandScheduler = new CommandScheduler() {
-            @Override
-            IDeviceManager getDeviceManager() {
-                return mMockDeviceManager;
-            }
+        mCommandScheduler =
+                new CommandScheduler() {
+                    @Override
+                    protected IDeviceManager getDeviceManager() {
+                        return mMockDeviceManager;
+                    }
 
-            @Override
-            protected IConfigurationFactory getConfigFactory() {
-                return mMockConfigFactory;
-            }
-        };
+                    @Override
+                    protected IConfigurationFactory getConfigFactory() {
+                        return mMockConfigFactory;
+                    }
+                };
     }
 
     /**

@@ -596,7 +596,12 @@ public class CommandScheduler extends Thread implements ICommandScheduler, IComm
                     device.setRecoveryMode(RecoveryMode.AVAILABLE);
                 }
                 for (final IScheduledInvocationListener listener : mListeners) {
-                    listener.invocationComplete(mInvocationContext, deviceStates);
+                    try {
+                        listener.invocationComplete(mInvocationContext, deviceStates);
+                    } catch (Throwable anyException) {
+                        CLog.e("Exception caught while calling invocationComplete:");
+                        CLog.e(anyException);
+                    }
                 }
                 mCmd.commandFinished(elapsedTime);
             }
@@ -808,7 +813,7 @@ public class CommandScheduler extends Thread implements ICommandScheduler, IComm
      *
      * @return the {@link IDeviceManager} to use
      */
-    IDeviceManager getDeviceManager() {
+    protected IDeviceManager getDeviceManager() {
         return GlobalConfiguration.getDeviceManagerInstance();
     }
 
@@ -1584,21 +1589,21 @@ public class CommandScheduler extends Thread implements ICommandScheduler, IComm
 
     /**
      * Initializes the ddmlib log.
-     * <p />
-     * Exposed so unit tests can mock.
+     *
+     * <p>Exposed so unit tests can mock.
      */
     @SuppressWarnings("deprecation")
-    void initLogging() {
+    protected void initLogging() {
         DdmPreferences.setLogLevel(LogLevel.VERBOSE.getStringValue());
         Log.setLogOutput(LogRegistry.getLogRegistry());
     }
 
     /**
      * Closes the logs and does any other necessary cleanup before we quit.
-     * <p />
-     * Exposed so unit tests can mock.
+     *
+     * <p>Exposed so unit tests can mock.
      */
-    void cleanUp() {
+    protected void cleanUp() {
         LogRegistry.getLogRegistry().closeAndRemoveAllLogs();
     }
 
