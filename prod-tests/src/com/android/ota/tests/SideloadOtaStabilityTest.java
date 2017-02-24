@@ -20,8 +20,6 @@ import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.CoreMatchers.not;
 import static org.junit.Assert.assertThat;
 
-import com.android.ddmlib.AdbCommandRejectedException;
-import com.android.ddmlib.TimeoutException;
 import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.build.IDeviceBuildInfo;
 import com.android.tradefed.build.OtaDeviceBuildInfo;
@@ -46,6 +44,7 @@ import com.android.tradefed.testtype.IBuildReceiver;
 import com.android.tradefed.testtype.IDeviceTest;
 import com.android.tradefed.testtype.IResumableTest;
 import com.android.tradefed.util.FileUtil;
+import com.android.tradefed.util.DeviceRecoveryModeUtil;
 import com.android.tradefed.util.StreamUtil;
 
 import org.junit.Assert;
@@ -227,20 +226,8 @@ public class SideloadOtaStabilityTest implements IDeviceTest, IBuildReceiver,
                 // so we should just reboot in that case since we no longer need to be in
                 // recovery
                 CLog.i("Device is not online, attempting to recover before capturing logs");
-                if (managedDevice.getDeviceState().equals(TestDeviceState.RECOVERY)) {
-                    CLog.i("Rebooting to exit recovery");
-                    try {
-                        // we don't want to enable root until the reboot is fully finished and
-                        // the device is available, or it may get stuck in recovery and time out
-                        managedDevice.getIDevice().reboot(null);
-                        managedDevice.waitForDeviceAvailable(mMaxRebootTimeSec * 1000);
-                        managedDevice.postBootSetup();
-                    } catch (TimeoutException | AdbCommandRejectedException | IOException e) {
-                        CLog.e("Failed to reboot, trying last-ditch recovery");
-                        CLog.e(e);
-                        managedDevice.recoverDevice();
-                    }
-                }
+                DeviceRecoveryModeUtil.bootOutOfRecovery((IManagedTestDevice) mDevice,
+                        mMaxInstallOnlineTimeSec * 1000);
             }
             double updateTime = sendRecoveryLog(listener);
             Map<String, String> metrics = new HashMap<String, String>(1);
