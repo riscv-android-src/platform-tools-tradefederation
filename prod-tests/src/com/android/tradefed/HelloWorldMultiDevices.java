@@ -25,6 +25,8 @@ import com.android.tradefed.testtype.IInvocationContextReceiver;
 import com.android.tradefed.testtype.IMultiDeviceTest;
 import com.android.tradefed.testtype.IRemoteTest;
 
+import org.junit.Assert;
+
 import java.util.Map;
 import java.util.Map.Entry;
 
@@ -68,5 +70,18 @@ public class HelloWorldMultiDevices implements IRemoteTest, IMultiDeviceTest,
             CLog.i("Hello World!  device '%s' from context with build '%s'",
                     device.getSerialNumber(), mContext.getBuildInfo(device));
         }
+
+        // We can do a look up by the device name in the configuration using the IInvocationContext
+        for (String deviceName : mContext.getDeviceConfigNames()) {
+            CLog.i(
+                    "device '%s' has the name '%s' in the config.",
+                    mContext.getDevice(deviceName).getSerialNumber(), deviceName);
+        }
+
+        // if the device name is known, doing a direct look up is possible.
+        Assert.assertNotNull(mContext.getDevice("device1"));
+        CLog.i(
+                "device named device1 direct look up is '%s'",
+                mContext.getDevice("device1").getSerialNumber());
     }
 }

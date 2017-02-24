@@ -965,10 +965,68 @@ public class ConfigurationFactoryTest extends TestCase {
     }
 
     /**
-     * Parse a config with 3 different device configuration specified.
-     * And apply a command line to override all attributes.
+     * Parse a config with 3 different device configuration specified. And apply a command line to
+     * override some attributes.
      */
-    public void testCreateConfigurationFromArgs_multidevice_applyCommandLineGlobal() throws Exception {
+    public void testCreateConfigurationFromArgs_multidevice_singletag() throws Exception {
+        IConfiguration config =
+                mFactory.createConfigurationFromArgs(
+                        new String[] {
+                            "multi-device-empty",
+                            "--{device2}build-id",
+                            "20",
+                            "--{device1}null-device",
+                            "--{device3}com.android.tradefed.build.StubBuildProvider:build-id",
+                            "30"
+                        });
+        assertEquals(1, config.getTests().size());
+        assertTrue(config.getTests().get(0) instanceof StubOptionTest);
+        // Verify that all attributes are in the right place:
+        assertNotNull(config.getDeviceConfigByName("device1"));
+        assertEquals(
+                "0",
+                config.getDeviceConfigByName("device1").getBuildProvider().getBuild().getBuildId());
+        assertEquals(
+                "stub",
+                config.getDeviceConfigByName("device1").getBuildProvider().getBuild().getTestTag());
+        assertEquals(0, config.getDeviceConfigByName("device1").getTargetPreparers().size());
+        assertTrue(
+                config.getDeviceConfigByName("device1")
+                        .getDeviceRequirements()
+                        .nullDeviceRequested());
+
+        assertNotNull(config.getDeviceConfigByName("device2"));
+        // Device2 build provider is modified independently
+        assertEquals(
+                "20",
+                config.getDeviceConfigByName("device2").getBuildProvider().getBuild().getBuildId());
+        assertEquals(
+                "stub",
+                config.getDeviceConfigByName("device2").getBuildProvider().getBuild().getTestTag());
+        assertEquals(0, config.getDeviceConfigByName("device2").getTargetPreparers().size());
+        assertFalse(
+                config.getDeviceConfigByName("device2")
+                        .getDeviceRequirements()
+                        .nullDeviceRequested());
+
+        // Device3 build provider is modified independently
+        assertNotNull(config.getDeviceConfigByName("device3"));
+        assertEquals(
+                "30",
+                config.getDeviceConfigByName("device3").getBuildProvider().getBuild().getBuildId());
+        assertEquals(0, config.getDeviceConfigByName("device3").getTargetPreparers().size());
+        assertFalse(
+                config.getDeviceConfigByName("device3")
+                        .getDeviceRequirements()
+                        .nullDeviceRequested());
+    }
+
+    /**
+     * Parse a config with 3 different device configuration specified. And apply a command line to
+     * override all attributes.
+     */
+    public void testCreateConfigurationFromArgs_multidevice_applyCommandLineGlobal()
+            throws Exception {
         IConfiguration config = mFactory.createConfigurationFromArgs(
                 new String[]{"multi-device", "--build-id","20"});
         assertEquals(1, config.getTests().size());

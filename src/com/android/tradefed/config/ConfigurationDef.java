@@ -19,9 +19,11 @@ package com.android.tradefed.config;
 import java.io.File;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -64,6 +66,7 @@ public class ConfigurationDef {
     }
 
     private boolean mMultiDeviceMode = false;
+    private Set<String> mExpectedDevices = new HashSet<>();
     private static final String MULTI_PATTERN = "(.*)(:)(.*)";
     public static final String DEFAULT_DEVICE_NAME = "DEFAULT_DEVICE";
 
@@ -182,6 +185,10 @@ public class ConfigurationDef {
             // We still populate a default device config to avoid special logic in the rest of the
             // harness.
             deviceObjectList.add(defaultDeviceConfig);
+        } else {
+            for (String name : mExpectedDevices) {
+                deviceObjectList.add(new DeviceConfigurationHolder(name));
+            }
         }
         Pattern pattern = Pattern.compile(MULTI_PATTERN);
 
@@ -265,6 +272,10 @@ public class ConfigurationDef {
 
     public void setMultiDeviceMode(boolean multiDeviceMode) {
         mMultiDeviceMode = multiDeviceMode;
+    }
+
+    public void addExpectedDevice(String deviceName) {
+        mExpectedDevices.add(deviceName);
     }
 
     /**

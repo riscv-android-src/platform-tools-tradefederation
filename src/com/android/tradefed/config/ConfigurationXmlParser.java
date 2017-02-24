@@ -270,6 +270,7 @@ class ConfigurationXmlParser {
                     mListDevice.add(deviceName);
                     mConfigDef.addConfigObjectDef(objectTypeName,
                             DeviceConfigurationHolder.class.getCanonicalName());
+                    mConfigDef.addExpectedDevice(deviceName);
                 }
             } else {
                 String className = attributes.getValue("class");
