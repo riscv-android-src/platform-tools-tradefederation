@@ -344,4 +344,9 @@ public class UiAutomatorRunner implements IRemoteAndroidTestRunner {
             mParser.cancel();
         }
     }
+
+    @Override
+    public void setEnforceTimeStamp(boolean arg0) {
+        // ignore, UiAutomator runner does not need this.
+    }
 }

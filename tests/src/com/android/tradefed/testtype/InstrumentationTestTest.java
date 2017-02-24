@@ -512,6 +512,7 @@ public class InstrumentationTestTest extends TestCase {
                         return true;
                     }
                 };
+        mInstrumentationTest.setEnforceFormat(true);
         setCollectTestsExpectations(collectTestAnswer);
         EasyMock.replay(mMockRemoteRunner, mMockListener, mMockTestDevice);
         try {
