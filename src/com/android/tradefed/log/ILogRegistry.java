@@ -89,7 +89,7 @@ public interface ILogRegistry extends ILogOutput {
      * of the event is automatically added.
      *
      * @param logLevel the {@link LogLevel} to be printed.
-     * @param event the {@link EventType} of the event to log.
+     * @param event the {@link ILogRegistry.EventType} of the event to log.
      * @param args the map of arguments to be added to the log entry to get more details on the
      *     event.
      */

@@ -61,9 +61,11 @@ $(LOCAL_INSTALLED_MODULE) : $(foreach m, $(LOCAL_JAVA_LIBRARIES), $(HOST_OUT)/tr
 
 #######################################################
 # intentionally skipping CLEAR_VARS
-
 # Enable the build process to generate javadoc
 # We need to reference symbols in the jar built above.
+
+# ==== docs for legacy sac app engine
+#LOCAL_MODULE = tradefed-sac-deprecated
 LOCAL_JAVA_LIBRARIES += tradefed
 LOCAL_IS_HOST_MODULE:=true
 LOCAL_MODULE_CLASS := JAVA_LIBRARIES
@@ -78,6 +80,27 @@ LOCAL_DROIDDOC_OPTIONS:= \
         -showAnnotationOverridesVisibility \
         -showAnnotation com.android.tradefed.config.OptionClass \
         -showAnnotation com.android.tradefed.config.Option \
+
+include $(BUILD_DROIDDOC)
+
+# ==== docs for the web (on the devsite app engine server)
+LOCAL_MODULE = tradefed-ds
+LOCAL_JAVA_LIBRARIES += tradefed
+LOCAL_IS_HOST_MODULE := true
+LOCAL_MODULE_CLASS := JAVA_LIBRARIES
+LOCAL_ADDITIONAL_DEPENDENCIES := tradefed libcore/Docs.mk
+LOCAL_DROIDDOC_CUSTOM_TEMPLATE_DIR := external/doclava/res/assets/templates-sdk
+LOCAL_DROIDDOC_OPTIONS := \
+        -hdf sac true \
+        -hdf devices true \
+        -hdf android.whichdoc online \
+        -hdf css.path /reference/assets/css/doclava-devsite.css \
+        -hdf book.root toc \
+        -yaml _toc.yaml \
+        -apidocsdir reference/tradefed/ \
+        -werror \
+        -package \
+        -devsite \
 
 include $(BUILD_DROIDDOC)
 
