@@ -103,6 +103,7 @@ import com.android.tradefed.targetprep.FlashingResourcesParserTest;
 import com.android.tradefed.targetprep.InstallApkSetupTest;
 import com.android.tradefed.targetprep.InstrumentationPreparerTest;
 import com.android.tradefed.targetprep.KernelFlashPreparerTest;
+import com.android.tradefed.targetprep.PreloadedClassesPreparerTest;
 import com.android.tradefed.targetprep.PushFilePreparerTest;
 import com.android.tradefed.targetprep.PythonVirtualenvPreparerTest;
 import com.android.tradefed.targetprep.RunCommandTargetPreparerTest;
@@ -317,6 +318,7 @@ import org.junit.runners.Suite.SuiteClasses;
     InstallApkSetupTest.class,
     InstrumentationPreparerTest.class,
     KernelFlashPreparerTest.class,
+    PreloadedClassesPreparerTest.class,
     PushFilePreparerTest.class,
     PythonVirtualenvPreparerTest.class,
     RunCommandTargetPreparerTest.class,

@@ -65,9 +65,8 @@ public class PreloadedClassesTest implements IRemoteTest, IDeviceTest, IBuildRec
             mandatory = true)
     private List<String> mTestCases = new ArrayList<>();
 
-    @Option(name = "preload-jar",
-            description = "Overridden location of the preload JAR file.")
-    private String mPreloadJarPath = null;
+    @Option(name = "preload-tool", description = "Overridden location of the preload JAR file.")
+    private String mPreloadToolJarPath = null;
 
     @Option(name = "threshold",
             description = "List of thresholds for computing preloaded classes.",
@@ -89,15 +88,15 @@ public class PreloadedClassesTest implements IRemoteTest, IDeviceTest, IBuildRec
     @Override
     public void run(ITestInvocationListener listener) throws DeviceNotAvailableException {
         // Download preload tool, if not supplied
-        if (mPreloadJarPath == null) {
+        if (mPreloadToolJarPath == null) {
             File preload = mBuildInfo.getFile("preload2.jar");
             if (preload != null && preload.exists()) {
-                mPreloadJarPath = preload.getAbsolutePath();
+                mPreloadToolJarPath = preload.getAbsolutePath();
             } else {
                 CLog.e("Unable to find the preload tool.");
             }
         } else {
-            CLog.v("Using alternative preload tool path, %s", mPreloadJarPath);
+            CLog.v("Using alternative preload tool path, %s", mPreloadToolJarPath);
         }
 
         IRemoteAndroidTestRunner runner =
@@ -228,8 +227,8 @@ public class PreloadedClassesTest implements IRemoteTest, IDeviceTest, IBuildRec
     }
 
     private String[] constructPreloadCommand(String command) {
-        return String.format(
-                TOOL_CMD, mPreloadJarPath, getDevice().getSerialNumber(), command).split(" ");
+        return String.format(TOOL_CMD, mPreloadToolJarPath, getDevice().getSerialNumber(), command)
+                .split(" ");
     }
 
     @Override
