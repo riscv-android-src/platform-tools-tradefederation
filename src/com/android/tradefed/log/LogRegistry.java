@@ -24,7 +24,9 @@ import com.android.tradefed.util.StreamUtil;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
+import java.text.SimpleDateFormat;
 import java.util.Collection;
+import java.util.Date;
 import java.util.Hashtable;
 import java.util.Iterator;
 import java.util.Map;
@@ -40,10 +42,13 @@ import java.util.Map;
  */
 public class LogRegistry implements ILogRegistry {
     private static final String LOG_TAG = "LogRegistry";
+    private static final String GLOBAL_LOG_PREFIX = "tradefed_global_log_";
+    private static final String HISTORY_LOG_PREFIX = "tradefed_history_log_";
     private static LogRegistry mLogRegistry = null;
     private Map<ThreadGroup, ILeveledLogOutput> mLogTable =
             new Hashtable<ThreadGroup, ILeveledLogOutput>();
     private FileLogger mGlobalLogger;
+    private HistoryLogger mHistoryLogger;
 
     /**
      * Package-private constructor; callers should use {@link #getLogRegistry} to get an instance of
@@ -57,7 +62,13 @@ public class LogRegistry implements ILogRegistry {
             System.err.println("Failed to create global logger");
             throw new IllegalStateException(e);
         }
-
+        try {
+            mHistoryLogger = new HistoryLogger();
+            mHistoryLogger.init();
+        } catch (IOException e) {
+            System.err.println("Failed to create history logger");
+            throw new IllegalStateException(e);
+        }
     }
 
     /**
@@ -80,6 +91,7 @@ public class LogRegistry implements ILogRegistry {
     @Override
     public void setGlobalLogDisplayLevel(LogLevel logLevel) {
         mGlobalLogger.setLogLevelDisplay(logLevel);
+        mHistoryLogger.setLogLevel(logLevel);
     }
 
     /**
@@ -88,6 +100,7 @@ public class LogRegistry implements ILogRegistry {
     @Override
     public void setGlobalLogTagDisplay(Collection<String> logTagsDisplay) {
         mGlobalLogger.addLogTagsDisplay(logTagsDisplay);
+        mHistoryLogger.addLogTagsDisplay(logTagsDisplay);
     }
 
     /**
@@ -209,6 +222,9 @@ public class LogRegistry implements ILogRegistry {
         }
         saveGlobalLog();
         mGlobalLogger.closeLog();
+        // TODO: enable saving the history log when TF close
+        // saveHistoryToDirLog();
+        mHistoryLogger.closeLog();
     }
 
     /**
@@ -219,6 +235,15 @@ public class LogRegistry implements ILogRegistry {
         saveGlobalLogToDir(null);
     }
 
+    /** {@inheritDoc} */
+    @Override
+    public void logEvent(LogLevel logLevel, EventType event, Map<String, String> args) {
+        // We always add the time of the event
+        SimpleDateFormat sdfDate = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSS Z");
+        args.put("time", sdfDate.format(new Date()));
+        mHistoryLogger.logEvent(logLevel, event, args);
+    }
+
     /**
      * Save the global log data to a file in the specified directory.
      *
@@ -226,7 +251,18 @@ public class LogRegistry implements ILogRegistry {
      */
     private void saveGlobalLogToDir(File dir) {
         InputStreamSource globalLog = mGlobalLogger.getLog();
-        saveLog("tradefed_global_log_", globalLog, dir);
+        saveLog(GLOBAL_LOG_PREFIX, globalLog, dir);
+        globalLog.cancel();
+    }
+
+    /**
+     * Save the history log data to a file in the specified directory.
+     *
+     * @param dir directory to save file, can be null, file will be saved in tmp directory.
+     */
+    private void saveHistoryLogToDir(File dir) {
+        InputStreamSource globalLog = mHistoryLogger.getLog();
+        saveLog(HISTORY_LOG_PREFIX, globalLog, dir);
         globalLog.cancel();
     }
 
@@ -269,6 +305,8 @@ public class LogRegistry implements ILogRegistry {
                 logSource.cancel();
             }
         }
+        // save history log
+        saveHistoryLogToDir(dir);
         // save global log last
         saveGlobalLogToDir(dir);
     }

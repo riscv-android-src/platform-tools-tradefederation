@@ -22,6 +22,7 @@ import com.android.ddmlib.IDevice.DeviceState;
 import com.android.tradefed.command.remote.DeviceDescriptor;
 import com.android.tradefed.config.IGlobalConfiguration;
 import com.android.tradefed.device.IManagedTestDevice.DeviceEventResponse;
+import com.android.tradefed.log.ILogRegistry.EventType;
 import com.android.tradefed.util.ArrayUtil;
 import com.android.tradefed.util.CommandResult;
 import com.android.tradefed.util.CommandStatus;
@@ -31,15 +32,15 @@ import com.google.common.util.concurrent.SettableFuture;
 
 import junit.framework.TestCase;
 
+import org.easymock.Capture;
+import org.easymock.EasyMock;
+import org.easymock.IAnswer;
+
 import java.io.ByteArrayOutputStream;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.io.PrintWriter;
 import java.util.List;
-
-import org.easymock.Capture;
-import org.easymock.EasyMock;
-import org.easymock.IAnswer;
 
 /**
  * Unit tests for {@link DeviceManager}.
@@ -215,35 +216,37 @@ public class DeviceManagerTest extends TestCase {
 
     private DeviceManager createDeviceManagerNoInit() {
 
-        DeviceManager mgr = new DeviceManager() {
-            @Override
-            IAndroidDebugBridge createAdbBridge() {
-                return mMockAdbBridge;
-            }
+        DeviceManager mgr =
+                new DeviceManager() {
+                    @Override
+                    IAndroidDebugBridge createAdbBridge() {
+                        return mMockAdbBridge;
+                    }
 
-            @Override
-            void startFastbootMonitor() {
-            }
+                    @Override
+                    void startFastbootMonitor() {}
 
-            @Override
-            void startDeviceRecoverer() {
-            }
+                    @Override
+                    void startDeviceRecoverer() {}
 
-            @Override
-            IDeviceStateMonitor createStateMonitor(IDevice device) {
-                return mMockStateMonitor;
-            }
+                    @Override
+                    void logDeviceEvent(EventType event, String serial) {}
 
-            @Override
-            IGlobalConfiguration getGlobalConfig() {
-                return mMockGlobalConfig;
-            }
+                    @Override
+                    IDeviceStateMonitor createStateMonitor(IDevice device) {
+                        return mMockStateMonitor;
+                    }
 
-            @Override
-            IRunUtil getRunUtil() {
-                return mMockRunUtil;
-            }
-        };
+                    @Override
+                    IGlobalConfiguration getGlobalConfig() {
+                        return mMockGlobalConfig;
+                    }
+
+                    @Override
+                    IRunUtil getRunUtil() {
+                        return mMockRunUtil;
+                    }
+                };
         mgr.setSynchronousMode(true);
         mgr.setMaxEmulators(0);
         mgr.setMaxNullDevices(0);

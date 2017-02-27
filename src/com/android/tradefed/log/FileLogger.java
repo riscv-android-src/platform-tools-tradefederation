@@ -63,6 +63,11 @@ public class FileLogger implements ILeveledLogOutput {
         mLogTagsDisplay.addAll(tags);
     }
 
+    /** Returns the collection of tags to always display on stdout. */
+    Collection<String> getLogTagsDisplay() {
+        return mLogTagsDisplay;
+    }
+
     public FileLogger() {
     }
 
@@ -71,8 +76,18 @@ public class FileLogger implements ILeveledLogOutput {
      */
     @Override
     public void init() throws IOException {
-        mLogStream = new SizeLimitedOutputStream(mMaxLogSizeMbytes * 1024 * 1024,
-                TEMP_FILE_PREFIX, TEMP_FILE_SUFFIX);
+        init(TEMP_FILE_PREFIX, TEMP_FILE_SUFFIX);
+    }
+
+    /**
+     * Alternative to {@link #init()} where we can specify the file name and suffix.
+     *
+     * @param logPrefix the file name where to log without extension.
+     * @param fileSuffix the extension of the file where to log.
+     */
+    protected void init(String logPrefix, String fileSuffix) {
+        mLogStream =
+                new SizeLimitedOutputStream(mMaxLogSizeMbytes * 1024 * 1024, logPrefix, fileSuffix);
     }
 
     /**

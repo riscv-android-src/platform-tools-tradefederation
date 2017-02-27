@@ -36,18 +36,20 @@ public class LogRegistryTest extends TestCase {
     protected void setUp() throws Exception {
         super.setUp();
         mStubThreadGroup = new ThreadGroup("LogRegistryTest");
-        mLogRegistry = new LogRegistry() {
-            // override thread group to avoid conflict with the "real" LogRegistry and the logger
-            // in use for this test run
-            @Override
-            ThreadGroup getCurrentThreadGroup() {
-                return mStubThreadGroup;
-            }
-            @Override
-            public void saveGlobalLog() {
-                // empty on purpose, avoid leaving logs that we can't clean.
-            }
-        };
+        mLogRegistry =
+                new LogRegistry() {
+                    // override thread group to avoid conflict with the "real" LogRegistry and the
+                    // logger in use for this test run
+                    @Override
+                    ThreadGroup getCurrentThreadGroup() {
+                        return mStubThreadGroup;
+                    }
+
+                    @Override
+                    public void saveGlobalLog() {
+                        // empty on purpose, avoid leaving logs that we can't clean.
+                    }
+                };
     }
 
     @Override

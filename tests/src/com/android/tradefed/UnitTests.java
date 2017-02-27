@@ -61,6 +61,7 @@ import com.android.tradefed.device.WaitDeviceRecoveryTest;
 import com.android.tradefed.device.WifiHelperTest;
 import com.android.tradefed.invoker.TestInvocationTest;
 import com.android.tradefed.log.FileLoggerTest;
+import com.android.tradefed.log.HistoryLoggerTest;
 import com.android.tradefed.log.LogRegistryTest;
 import com.android.tradefed.log.TerribleFailureEmailHandlerTest;
 import com.android.tradefed.profiler.AggregatingProfilerTest;
@@ -266,6 +267,7 @@ import org.junit.runners.Suite.SuiteClasses;
 
     // log
     FileLoggerTest.class,
+    HistoryLoggerTest.class,
     LogRegistryTest.class,
     TerribleFailureEmailHandlerTest.class,
 
