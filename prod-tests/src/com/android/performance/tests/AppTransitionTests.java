@@ -317,14 +317,14 @@ public class AppTransitionTests implements IRemoteTest, IDeviceTest {
      * Pull the trace files if exist under destDirectory and log it.
      *
      * @param listener test result listener
-     * @param SrcDirectory source directory in the device where the files are copied to the local
-     *            tmp directory
+     * @param srcDirectory source directory in the device where the files are copied to the local
+     *     tmp directory
      * @param subFolderName to store the files corresponding to the test
      * @throws DeviceNotAvailableException
      * @throws IOException
      */
-    private void logTraceFiles(ITestInvocationListener listener, String srcDirectory,
-            String subFolderName)
+    private void logTraceFiles(
+            ITestInvocationListener listener, String srcDirectory, String subFolderName)
             throws DeviceNotAvailableException, IOException {
         File tmpDestDir = null;
         FileInputStreamSource streamSource = null;

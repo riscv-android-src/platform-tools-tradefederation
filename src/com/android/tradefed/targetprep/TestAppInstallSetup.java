@@ -221,7 +221,7 @@ public class TestAppInstallSetup implements ITargetCleaner, IAbiReceiver {
 
     /** Get the package name from the test app. */
     protected String parsePackageName(File testAppFile, DeviceDescriptor deviceDescriptor)
-            throws DeviceNotAvailableException, TargetSetupError {
+            throws TargetSetupError {
         AaptParser parser = AaptParser.parse(testAppFile);
         if (parser == null) {
             throw new TargetSetupError("apk installed but AaptParser failed", deviceDescriptor);

@@ -21,6 +21,7 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
 
+/** Unit Tests for {@link TraceMetric}. */
 @RunWith(JUnit4.class)
 public class TraceMetricTest {
 
@@ -59,6 +60,6 @@ public class TraceMetricTest {
     @Test(expected = IllegalArgumentException.class)
     public void testParse_badFmt() {
         String line = "mmc:mmcfoobar:zz;fjdkls";
-        TraceMetric m = TraceMetric.parse(line);
+        TraceMetric.parse(line);
     }
 }
