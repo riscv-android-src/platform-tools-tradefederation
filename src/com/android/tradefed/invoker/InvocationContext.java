@@ -186,9 +186,21 @@ public class InvocationContext implements IInvocationContext {
         return null;
     }
 
-    /**
-     * {@inheritDoc}
-     */
+    /** {@inheritDoc} */
+    @Override
+    public String getDeviceName(ITestDevice device) {
+        for (String name : mNameAndDeviceMap.keySet()) {
+            if (device.equals(getDevice(name))) {
+                return name;
+            }
+        }
+        CLog.d(
+                "Device with serial '%s' doesn't match a name in the metadata",
+                device.getSerialNumber());
+        return null;
+    }
+
+    /** {@inheritDoc} */
     @Override
     public String getTestTag() {
         return mTestTag;
