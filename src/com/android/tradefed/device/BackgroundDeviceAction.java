@@ -140,7 +140,9 @@ public class BackgroundDeviceAction extends Thread {
     private void blockUntilOnlineNoThrow() {
         CLog.d("Waiting for device %s online before starting.", mTestDevice.getSerialNumber());
         while (!isCancelled()) {
-            if (!TestDeviceState.ONLINE.equals(mTestDevice.getDeviceState())) {
+            // For stub device we wait no matter what to avoid flooding with logs.
+            if ((mTestDevice.getIDevice() instanceof StubDevice)
+                    || !TestDeviceState.ONLINE.equals(mTestDevice.getDeviceState())) {
                 getRunUtil().sleep(ONLINE_POLL_INTERVAL_MS);
             } else {
                 CLog.d("Device %s now online.", mTestDevice.getSerialNumber());
