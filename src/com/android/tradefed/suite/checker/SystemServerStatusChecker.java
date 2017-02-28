@@ -36,7 +36,8 @@ public class SystemServerStatusChecker implements ISystemStatusChecker {
             CLog.w("Failed to get system_server pid.");
             return false;
         }
-        if (!checkValidPid(mSystemServerPid.trim())) {
+        mSystemServerPid = mSystemServerPid.trim();
+        if (!checkValidPid(mSystemServerPid)) {
             CLog.w(
                     "Invalid pid response found: '%s'. Skipping the system checker.",
                     mSystemServerPid);
@@ -53,7 +54,10 @@ public class SystemServerStatusChecker implements ISystemStatusChecker {
             CLog.d("No valid known value of system_server pid, skipping system checker.");
             return true;
         }
-        String tmpSystemServerPid = device.executeShellCommand("pidof system_server").trim();
+        String tmpSystemServerPid = device.executeShellCommand("pidof system_server");
+        if (tmpSystemServerPid != null) {
+            tmpSystemServerPid = tmpSystemServerPid.trim();
+        }
         if (mSystemServerPid.equals(tmpSystemServerPid)) {
             return true;
         }
