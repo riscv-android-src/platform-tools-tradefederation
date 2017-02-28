@@ -196,7 +196,11 @@ public class InstrumentationTestFuncTest extends DeviceTestCase {
         RunUtil.getDefault().sleep(2000);
         // now we check that the keyguard is dismissed.
         KeyguardControllerState kcs = getDevice().getKeyguardState();
-        assertFalse("Keyguard is showing when it should not.", kcs.isKeyguardShowing());
+        if (kcs != null) {
+            assertFalse("Keyguard is showing when it should not.", kcs.isKeyguardShowing());
+        } else {
+            assertTrue(runUITests());
+        }
     }
 
     /**
@@ -235,26 +239,31 @@ public class InstrumentationTestFuncTest extends DeviceTestCase {
         mMockListener.testRunEnded(EasyMock.anyLong(), (Map<String, String>)EasyMock.anyObject());
         EasyMock.replay(mMockListener);
         // fork off a thread to do the runtime reset
-        Thread resetThread = new Thread() {
-            @Override
-            public void run() {
-                // wait for test run to begin
-                try {
-                    Thread.sleep(2000);
-                    Runtime.getRuntime().exec(
-                            String.format("adb -s %s shell stop", getDevice().getIDevice()
-                                    .getSerialNumber()));
-                    Thread.sleep(500);
-                    Runtime.getRuntime().exec(
-                            String.format("adb -s %s shell start", getDevice().getIDevice()
-                                    .getSerialNumber()));
-                } catch (InterruptedException e) {
-                    Log.w(LOG_TAG, "interrupted");
-                } catch (IOException e) {
-                    Log.w(LOG_TAG, "IOException when rebooting");
-                }
-            }
-        };
+        Thread resetThread =
+                new Thread() {
+                    @Override
+                    public void run() {
+                        // wait for test run to begin
+                        try {
+                            Thread.sleep(1000);
+                            Runtime.getRuntime()
+                                    .exec(
+                                            String.format(
+                                                    "adb -s %s shell stop",
+                                                    getDevice().getIDevice().getSerialNumber()));
+                            Thread.sleep(200);
+                            Runtime.getRuntime()
+                                    .exec(
+                                            String.format(
+                                                    "adb -s %s shell start",
+                                                    getDevice().getIDevice().getSerialNumber()));
+                        } catch (InterruptedException e) {
+                            Log.w(LOG_TAG, "interrupted");
+                        } catch (IOException e) {
+                            Log.w(LOG_TAG, "IOException when rebooting");
+                        }
+                    }
+                };
         resetThread.start();
         mInstrumentationTest.run(mMockListener);
         EasyMock.verify(mMockListener);
@@ -263,7 +272,11 @@ public class InstrumentationTestFuncTest extends DeviceTestCase {
         RunUtil.getDefault().sleep(2000);
         // now we check that the keyguard is dismissed.
         KeyguardControllerState kcs = getDevice().getKeyguardState();
-        assertFalse("Keyguard is showing when it should not.", kcs.isKeyguardShowing());
+        if (kcs != null) {
+            assertFalse("Keyguard is showing when it should not.", kcs.isKeyguardShowing());
+        } else {
+            assertTrue(runUITests());
+        }
     }
 
     /**
