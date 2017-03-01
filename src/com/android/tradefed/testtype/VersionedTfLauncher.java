@@ -16,7 +16,9 @@
 package com.android.tradefed.testtype;
 
 import com.android.tradefed.build.IBuildInfo;
+import com.android.tradefed.config.ConfigurationException;
 import com.android.tradefed.config.Option;
+import com.android.tradefed.config.OptionCopier;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.device.NullDevice;
 import com.android.tradefed.util.QuotationAwareTokenizer;
@@ -26,17 +28,32 @@ import java.util.Map;
 
 /**
  * A {@link IRemoteTest} for running tests against a separate TF installation.
- * <p/>
- * Launches an external java process to run the tests. Used for running the TF unit or
- * functional tests continuously.
+ *
+ * <p>Launches an external java process to run the tests. Used for running the TF unit or functional
+ * tests continuously.
  */
-public class VersionedTfLauncher extends SubprocessTfLauncher implements IMultiDeviceTest {
+public class VersionedTfLauncher extends SubprocessTfLauncher
+        implements IMultiDeviceTest, IStrictShardableTest {
 
     @Option(name = "tf-command-line", description = "The string of original command line "
             + "arguments.")
     private String mTfCommandline = null;
 
     private Map<ITestDevice, IBuildInfo> mDeviceInfos = null;
+
+    private int mShardCount = -1;
+
+    private int mShardIndex = -1;
+
+    public VersionedTfLauncher() {
+        super();
+    }
+
+    private VersionedTfLauncher(int shardCount, int shardIndex) {
+        this();
+        mShardCount = shardCount;
+        mShardIndex = shardIndex;
+    }
 
     /**
      * {@inheritDoc}
@@ -69,6 +86,13 @@ public class VersionedTfLauncher extends SubprocessTfLauncher implements IMultiD
                 mCmdArgs.add(serial);
             }
         }
+
+        if (0 <= mShardCount && 0 <= mShardIndex) {
+            mCmdArgs.add("--shard-count");
+            mCmdArgs.add(Integer.toString(mShardCount));
+            mCmdArgs.add("--shard-index");
+            mCmdArgs.add(Integer.toString(mShardIndex));
+        }
     }
 
     /**
@@ -77,5 +101,18 @@ public class VersionedTfLauncher extends SubprocessTfLauncher implements IMultiD
     @Override
     public void setDeviceInfos(Map<ITestDevice, IBuildInfo> deviceInfos) {
         mDeviceInfos = deviceInfos;
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public IRemoteTest getTestShard(int shardCount, int shardIndex) {
+        IRemoteTest shard = new VersionedTfLauncher(shardCount, shardIndex);
+        try {
+            OptionCopier.copyOptions(this, shard);
+        } catch (ConfigurationException e) {
+            // Bail out rather than run tests with unexpected options
+            throw new RuntimeException("failed to copy options", e);
+        }
+        return shard;
     }
 }

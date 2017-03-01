@@ -15,8 +15,11 @@
  */
 package com.android.tradefed.testtype;
 
+import static org.junit.Assert.assertTrue;
+
 import com.android.ddmlib.IDevice;
 import com.android.ddmlib.testrunner.TestIdentifier;
+import com.android.tradefed.config.ConfigurationException;
 import com.android.tradefed.config.OptionSetter;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.device.NullDevice;
@@ -46,6 +49,10 @@ public class VersionedTfLauncherTest {
 
     private static final String FAKE_SERIAL = "FAKE_SERIAL";
     private static final String CONFIG_NAME = "FAKE_CONFIG";
+    private static final String TF_COMMAND_LINE_TEMPLATE = "--template:map";
+    private static final String TF_COMMAND_LINE_TEST = "test=tf/fake";
+    private static final String TF_COMMAND_LINE =
+            (TF_COMMAND_LINE_TEMPLATE + " " + TF_COMMAND_LINE_TEST);
 
     private VersionedTfLauncher mVersionedTfLauncher;
     private ITestInvocationListener mMockListener;
@@ -68,6 +75,7 @@ public class VersionedTfLauncherTest {
 
         OptionSetter setter = new OptionSetter(mVersionedTfLauncher);
         setter.setOptionValue("config-name", CONFIG_NAME);
+        setter.setOptionValue("tf-command-line", TF_COMMAND_LINE);
     }
 
     /**
@@ -80,14 +88,24 @@ public class VersionedTfLauncherTest {
         CommandResult cr = new CommandResult(CommandStatus.SUCCESS);
         mMockRunUtil.unsetEnvVariable(SubprocessTfLauncher.TF_GLOBAL_CONFIG);
 
-        EasyMock.expect(mMockRunUtil.runTimedCmd(EasyMock.anyLong(),
-                (FileOutputStream)EasyMock.anyObject(), (FileOutputStream)EasyMock.anyObject(),
-                EasyMock.eq("java"), (String)EasyMock.anyObject(), EasyMock.eq("-cp"),
-                (String)EasyMock.anyObject(),
-                EasyMock.eq("com.android.tradefed.command.CommandRunner"),
-                EasyMock.eq(CONFIG_NAME), EasyMock.eq("--serial"), EasyMock.eq(FAKE_SERIAL),
-                EasyMock.eq("--subprocess-report-file"),
-                (String)EasyMock.anyObject())).andReturn(cr);
+        EasyMock.expect(
+                        mMockRunUtil.runTimedCmd(
+                                EasyMock.anyLong(),
+                                (FileOutputStream) EasyMock.anyObject(),
+                                (FileOutputStream) EasyMock.anyObject(),
+                                EasyMock.eq("java"),
+                                (String) EasyMock.anyObject(),
+                                EasyMock.eq("-cp"),
+                                (String) EasyMock.anyObject(),
+                                EasyMock.eq("com.android.tradefed.command.CommandRunner"),
+                                EasyMock.eq(CONFIG_NAME),
+                                EasyMock.eq(TF_COMMAND_LINE_TEMPLATE),
+                                EasyMock.eq(TF_COMMAND_LINE_TEST),
+                                EasyMock.eq("--serial"),
+                                EasyMock.eq(FAKE_SERIAL),
+                                EasyMock.eq("--subprocess-report-file"),
+                                (String) EasyMock.anyObject()))
+                .andReturn(cr);
         Map<ITestDevice, IBuildInfo> deviceInfos = new HashMap<ITestDevice, IBuildInfo>();
         deviceInfos.put(mMockTestDevice, null);
         mVersionedTfLauncher.setDeviceInfos(deviceInfos);
@@ -119,14 +137,23 @@ public class VersionedTfLauncherTest {
         CommandResult cr = new CommandResult(CommandStatus.SUCCESS);
         mMockRunUtil.unsetEnvVariable(SubprocessTfLauncher.TF_GLOBAL_CONFIG);
 
-        EasyMock.expect(mMockRunUtil.runTimedCmd(EasyMock.anyLong(),
-                (FileOutputStream)EasyMock.anyObject(), (FileOutputStream)EasyMock.anyObject(),
-                EasyMock.eq("java"), (String)EasyMock.anyObject(), EasyMock.eq("-cp"),
-                (String)EasyMock.anyObject(),
-                EasyMock.eq("com.android.tradefed.command.CommandRunner"),
-                EasyMock.eq(CONFIG_NAME), EasyMock.eq("--null-device"),
-                EasyMock.eq("--subprocess-report-file"),
-                (String)EasyMock.anyObject())).andReturn(cr);
+        EasyMock.expect(
+                        mMockRunUtil.runTimedCmd(
+                                EasyMock.anyLong(),
+                                (FileOutputStream) EasyMock.anyObject(),
+                                (FileOutputStream) EasyMock.anyObject(),
+                                EasyMock.eq("java"),
+                                (String) EasyMock.anyObject(),
+                                EasyMock.eq("-cp"),
+                                (String) EasyMock.anyObject(),
+                                EasyMock.eq("com.android.tradefed.command.CommandRunner"),
+                                EasyMock.eq(CONFIG_NAME),
+                                EasyMock.eq(TF_COMMAND_LINE_TEMPLATE),
+                                EasyMock.eq(TF_COMMAND_LINE_TEST),
+                                EasyMock.eq("--null-device"),
+                                EasyMock.eq("--subprocess-report-file"),
+                                (String) EasyMock.anyObject()))
+                .andReturn(cr);
         Map<ITestDevice, IBuildInfo> deviceInfos = new HashMap<ITestDevice, IBuildInfo>();
         deviceInfos.put(mMockTestDevice, null);
         mVersionedTfLauncher.setDeviceInfos(deviceInfos);
@@ -144,6 +171,72 @@ public class VersionedTfLauncherTest {
 
         EasyMock.replay(mMockTestDevice, mMockBuildInfo, mMockRunUtil, mMockListener);
         mVersionedTfLauncher.run(mMockListener);
+        EasyMock.verify(mMockTestDevice, mMockBuildInfo, mMockRunUtil, mMockListener);
+    }
+
+    /**
+     * Test that when a test is sharded, the instance of the implementation is used and options are
+     * passed to the shard test.
+     */
+    @Test
+    public void testGetTestShard() throws ConfigurationException {
+        IRemoteTest test = mVersionedTfLauncher.getTestShard(2, 1);
+        assertTrue(test instanceof VersionedTfLauncher);
+
+        VersionedTfLauncher shardedTest = (VersionedTfLauncher) test;
+
+        shardedTest.setRunUtil(mMockRunUtil);
+        shardedTest.setBuild(mMockBuildInfo);
+        shardedTest.setEventStreaming(false);
+
+        mMockIDevice = EasyMock.createMock(IDevice.class);
+
+        CommandResult cr = new CommandResult(CommandStatus.SUCCESS);
+        mMockRunUtil.unsetEnvVariable(SubprocessTfLauncher.TF_GLOBAL_CONFIG);
+
+        EasyMock.expect(
+                        mMockRunUtil.runTimedCmd(
+                                EasyMock.anyLong(),
+                                (FileOutputStream) EasyMock.anyObject(),
+                                (FileOutputStream) EasyMock.anyObject(),
+                                EasyMock.eq("java"),
+                                (String) EasyMock.anyObject(),
+                                EasyMock.eq("-cp"),
+                                (String) EasyMock.anyObject(),
+                                EasyMock.eq("com.android.tradefed.command.CommandRunner"),
+                                EasyMock.eq(CONFIG_NAME),
+                                EasyMock.eq(TF_COMMAND_LINE_TEMPLATE),
+                                EasyMock.eq(TF_COMMAND_LINE_TEST),
+                                EasyMock.eq("--serial"),
+                                EasyMock.eq(FAKE_SERIAL),
+                                EasyMock.eq("--shard-count"),
+                                EasyMock.eq("2"),
+                                EasyMock.eq("--shard-index"),
+                                EasyMock.eq("1"),
+                                EasyMock.eq("--subprocess-report-file"),
+                                (String) EasyMock.anyObject()))
+                .andReturn(cr);
+        Map<ITestDevice, IBuildInfo> deviceInfos = new HashMap<ITestDevice, IBuildInfo>();
+        deviceInfos.put(mMockTestDevice, null);
+        shardedTest.setDeviceInfos(deviceInfos);
+        EasyMock.expect(mMockBuildInfo.getRootDir()).andReturn(new File(""));
+        EasyMock.expect(mMockBuildInfo.getBuildId()).andReturn("FAKEID").times(2);
+        EasyMock.expect(mMockTestDevice.getIDevice()).andReturn(mMockIDevice).times(1);
+        EasyMock.expect(mMockTestDevice.getSerialNumber()).andReturn(FAKE_SERIAL).times(1);
+        mMockListener.testLog(
+                (String) EasyMock.anyObject(),
+                (LogDataType) EasyMock.anyObject(),
+                (FileInputStreamSource) EasyMock.anyObject());
+        EasyMock.expectLastCall().times(3);
+        mMockListener.testRunStarted("StdErr", 1);
+        mMockListener.testStarted((TestIdentifier) EasyMock.anyObject());
+        mMockListener.testEnded(
+                (TestIdentifier) EasyMock.anyObject(),
+                EasyMock.eq(Collections.<String, String>emptyMap()));
+        mMockListener.testRunEnded(0, Collections.emptyMap());
+
+        EasyMock.replay(mMockTestDevice, mMockBuildInfo, mMockRunUtil, mMockListener);
+        shardedTest.run(mMockListener);
         EasyMock.verify(mMockTestDevice, mMockBuildInfo, mMockRunUtil, mMockListener);
     }
 }
