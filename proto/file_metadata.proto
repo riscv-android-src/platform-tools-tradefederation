@@ -14,6 +14,9 @@ message LogFile {
 }
 
 message FileMetadata {
+  // The directory containing all of the LogFiles
+  optional string directory = 2;
+
   // The included, parseable log files
   repeated LogFile log_files = 1;
 }
