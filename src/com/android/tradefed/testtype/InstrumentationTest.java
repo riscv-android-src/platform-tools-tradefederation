@@ -205,7 +205,7 @@ public class InstrumentationTest implements IDeviceTest, IResumableTest, ITestCo
         name = "enforce-ajur-format",
         description = "Whether or not enforcing the AJUR instrumentation output format"
     )
-    private boolean mShouldEnforceFormat = true;
+    private boolean mShouldEnforceFormat = false;
 
     private IAbi mAbi = null;
 
@@ -553,6 +553,7 @@ public class InstrumentationTest implements IDeviceTest, IResumableTest, ITestCo
             mInstallArgs.add(String.format("--abi %s", abiName));
             runner.setRunOptions(String.format("--abi %s", abiName));
         }
+        runner.setEnforceTimeStamp(mShouldEnforceFormat);
         return runner;
     }
 
