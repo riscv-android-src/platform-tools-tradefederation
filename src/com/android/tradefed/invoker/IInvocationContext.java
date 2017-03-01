@@ -89,8 +89,12 @@ public interface IInvocationContext {
     public ITestDevice getDeviceBySerial(String serial);
 
     /**
-     * Return the {@link IBuildInfo} associated with the device configuration name provided.
+     * Returns the name of the device set in the xml configuration from the {@link ITestDevice}.
+     * Returns null, if ITestDevice cannot be matched.
      */
+    public String getDeviceName(ITestDevice device);
+
+    /** Return the {@link IBuildInfo} associated with the device configuration name provided. */
     public IBuildInfo getBuildInfo(String deviceName);
 
     /**

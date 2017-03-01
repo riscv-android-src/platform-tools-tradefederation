@@ -59,6 +59,7 @@ import com.android.tradefed.device.TestDeviceTest;
 import com.android.tradefed.device.TopHelperTest;
 import com.android.tradefed.device.WaitDeviceRecoveryTest;
 import com.android.tradefed.device.WifiHelperTest;
+import com.android.tradefed.invoker.InvocationContextTest;
 import com.android.tradefed.invoker.TestInvocationTest;
 import com.android.tradefed.log.FileLoggerTest;
 import com.android.tradefed.log.HistoryLoggerTest;
@@ -263,6 +264,7 @@ import org.junit.runners.Suite.SuiteClasses;
     WifiHelperTest.class,
 
     // invoker
+    InvocationContextTest.class,
     TestInvocationTest.class,
 
     // log
