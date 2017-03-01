@@ -63,9 +63,17 @@ import java.util.Set;
  * this runner will pass a reference to the device.
  */
 @OptionClass(alias = "host")
-public class HostTest implements IDeviceTest, ITestFilterReceiver, ITestAnnotationFilterReceiver,
-        IRemoteTest, ITestCollector, IBuildReceiver, IAbiReceiver,
-        IShardableTest, IStrictShardableTest {
+public class HostTest
+        implements IDeviceTest,
+                ITestFilterReceiver,
+                ITestAnnotationFilterReceiver,
+                IRemoteTest,
+                ITestCollector,
+                IBuildReceiver,
+                IAbiReceiver,
+                IShardableTest,
+                IStrictShardableTest,
+                IRuntimeHintProvider {
 
     @Option(name = "class", description = "The JUnit test classes to run, in the format "
             + "<package>.<class>. eg. \"com.android.foo.Bar\". This field can be repeated.",
@@ -98,6 +106,13 @@ public class HostTest implements IDeviceTest, ITestFilterReceiver, ITestAnnotati
                     + "not be actually carried out.")
     private boolean mCollectTestsOnly = false;
 
+    @Option(
+        name = "runtime-hint",
+        isTimeVal = true,
+        description = "The hint about the test's runtime."
+    )
+    private long mRuntimeHint = 60000; // 1 minute
+
     private ITestDevice mDevice;
     private IBuildInfo mBuildInfo;
     private IAbi mAbi;
@@ -128,9 +143,13 @@ public class HostTest implements IDeviceTest, ITestFilterReceiver, ITestAnnotati
         mDevice = device;
     }
 
-    /**
-     * {@inheritDoc}
-     */
+    /** {@inheritDoc} */
+    @Override
+    public long getRuntimeHint() {
+        return mRuntimeHint;
+    }
+
+    /** {@inheritDoc} */
     @Override
     public void setAbi(IAbi abi) {
         mAbi = abi;
@@ -198,7 +217,13 @@ public class HostTest implements IDeviceTest, ITestFilterReceiver, ITestAnnotati
             if (IRemoteTest.class.isAssignableFrom(classObj)
                     || Test.class.isAssignableFrom(classObj)) {
                 TestSuite suite = collectTests(collectClasses(classObj));
-                count += suite.countTestCases();
+                int suiteCount = suite.countTestCases();
+                if (suiteCount == 0 && IRemoteTest.class.isAssignableFrom(classObj)) {
+                    // If it's a pure IRemoteTest we count the run() as one test.
+                    count++;
+                } else {
+                    count += suiteCount;
+                }
             } else if (hasJUnit4Annotation(classObj)) {
                 Request req = Request.aClass(classObj);
                 req = req.filterWith(new JUnit4TestFilter(mFilterHelper));
@@ -470,7 +495,7 @@ public class HostTest implements IDeviceTest, ITestFilterReceiver, ITestAnnotati
                         || !mFilterHelper.shouldRun(packageName, className, method)) {
                     continue;
                 }
-                Test testObj = (Test) loadObject(classObj);
+                Test testObj = (Test) loadObject(classObj, false);
                 if (testObj instanceof TestCase) {
                     ((TestCase)testObj).setName(method.getName());
                 }
@@ -499,7 +524,19 @@ public class HostTest implements IDeviceTest, ITestFilterReceiver, ITestAnnotati
         return this.getClass().getClassLoader();
     }
 
-    protected Object loadObject(Class<?> classObj) throws IllegalArgumentException {
+    /** load the class object and set the test info (device, build). */
+    protected Object loadObject(Class<?> classObj) {
+        return loadObject(classObj, true);
+    }
+
+    /**
+     * Load the class object and set the test info if requested.
+     *
+     * @param classObj the class object to be loaded.
+     * @param setInfo True the the test infos need to be set.
+     * @return The loaded object from the class.
+     */
+    private Object loadObject(Class<?> classObj, boolean setInfo) throws IllegalArgumentException {
         final String className = classObj.getName();
         try {
             Object testObj = classObj.newInstance();
@@ -523,7 +560,9 @@ public class HostTest implements IDeviceTest, ITestFilterReceiver, ITestAnnotati
                 }
             }
             // Set the test information if needed.
-            setTestObjectInformation(testObj);
+            if (setInfo) {
+                setTestObjectInformation(testObj);
+            }
             return testObj;
         } catch (InstantiationException e) {
             throw new IllegalArgumentException(String.format("Could not load Test class %s",
@@ -613,6 +652,7 @@ public class HostTest implements IDeviceTest, ITestFilterReceiver, ITestAnnotati
         }
         for (Class<?> classObj : classes) {
             HostTest test = createHostTest(classObj);
+            test.mRuntimeHint = mRuntimeHint / classes.size();
             listTests.add(test);
         }
         return listTests;
@@ -653,6 +693,7 @@ public class HostTest implements IDeviceTest, ITestFilterReceiver, ITestAnnotati
         if (mMethodName != null && classes.size() > 1) {
             throw new IllegalArgumentException("Method name given with multiple test classes");
         }
+        int numTotalTestCases = countTestCases();
         int i = 0;
         for (Class<?> classObj : classes) {
             if (i % shardCount == shardIndex) {
@@ -669,6 +710,11 @@ public class HostTest implements IDeviceTest, ITestFilterReceiver, ITestAnnotati
             test = createHostTest(null);
             ((HostTest)test).mSkipTestClassCheck = true;
             ((HostTest)test).mClasses.clear();
+            ((HostTest) test).mRuntimeHint = 0l;
+        } else {
+            // update the runtime hint on pro-rate of number of tests.
+            int newCount = ((HostTest) test).countTestCases();
+            ((HostTest) test).mRuntimeHint = (mRuntimeHint * newCount) / numTotalTestCases;
         }
         return test;
     }
