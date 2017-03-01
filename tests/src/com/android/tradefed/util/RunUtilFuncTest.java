@@ -31,7 +31,7 @@ import java.io.Writer;
  */
 public class RunUtilFuncTest extends TestCase {
 
-    private static long SHORT_TIMEOUT_MS = 500;
+    private static final long SHORT_TIMEOUT_MS = 500;
 
     private abstract class MyRunnable implements IRunUtil.IRunnableResult {
         boolean mCanceled = false;

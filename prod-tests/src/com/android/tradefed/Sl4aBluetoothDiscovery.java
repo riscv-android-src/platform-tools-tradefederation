@@ -46,7 +46,7 @@ public class Sl4aBluetoothDiscovery implements IRemoteTest, IMultiDeviceTest {
     private ITestDevice mDiscoverer;
     private Map<ITestDevice, IBuildInfo> mDevicesInfos;
 
-    private final String BLUETOOTH_NAME = "TEST_NAME";
+    private static final String BLUETOOTH_NAME = "TEST_NAME";
 
     @Override
     public void setDeviceInfos(Map<ITestDevice, IBuildInfo> deviceInfos) {

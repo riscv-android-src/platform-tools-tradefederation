@@ -102,6 +102,7 @@ public class AllTestAppsInstallSetupTest extends TestCase {
         EasyMock.replay(mMockBuildInfo, mMockTestDevice);
         try {
             mPrep.installApk(new File("TEST"), mMockTestDevice);
+            fail("Should have thrown an exception");
         } catch (TargetSetupError e) {
             String expected = String.format("Failed to install %s on %s. Reason: '%s' "
                     + "null", file, SERIAL, failure);

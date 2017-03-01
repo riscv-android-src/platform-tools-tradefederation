@@ -31,7 +31,7 @@ import java.io.InputStreamReader;
  */
 public class FileLoggerTest extends TestCase {
 
-    private static String LOG_TAG = "FileLoggerTest";
+    private static final String LOG_TAG = "FileLoggerTest";
 
     /**
      * Test logging to a logger.

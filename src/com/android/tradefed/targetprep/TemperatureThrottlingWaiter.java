@@ -111,14 +111,15 @@ public class TemperatureThrottlingWaiter implements ITargetPreparer {
             throw new TargetSetupError(String.format("File %s doesn't exist", fileName),
                     device.getDeviceDescriptor());
         } else if (!result.toLowerCase().startsWith("result:")) {
-            throw new TargetSetupError(String.format("file content is not as expected. Content : ",
-                    result), device.getDeviceDescriptor());
+            throw new TargetSetupError(
+                    String.format("file content is not as expected. Content : %s", result),
+                    device.getDeviceDescriptor());
         }
 
         try {
             deviceTemp = Integer.parseInt(result.split(" ")[0].split(":")[1].trim());
         } catch (NumberFormatException numEx) {
-            CLog.e(String.format("Temperature is not of right format + ", numEx.getMessage()));
+            CLog.e(String.format("Temperature is not of right format %s", numEx.getMessage()));
             throw numEx;
         }
 

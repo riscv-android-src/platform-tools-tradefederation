@@ -65,8 +65,8 @@ public class EmmcPerformanceTest implements IDeviceTest, IRemoteTest {
 
     private static final Pattern EMMC_RANDOM_PATTERN = Pattern.compile(
             "(\\d+) (\\d+)byte iops/sec");
-    private static int BLOCK_SIZE = 1048576;
-    private static int SEQ_COUNT = 200;
+    private static final int BLOCK_SIZE = 1048576;
+    private static final int SEQ_COUNT = 200;
 
     @Option(name = "cpufreq", description = "The path to the cpufreq directory on the DUT.")
     private String mCpufreq = "/sys/devices/system/cpu/cpu0/cpufreq";

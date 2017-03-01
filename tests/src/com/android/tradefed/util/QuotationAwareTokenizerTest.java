@@ -34,8 +34,12 @@ public class QuotationAwareTokenizerTest extends TestCase {
         }
 
         for (int i = 0; i < expected.length; ++i) {
-            assertEquals(String.format("Array compare failed at element %d:", i, expected[i],
-                    observed[i]), expected[i], observed[i]);
+            assertEquals(
+                    String.format(
+                            "Array compare failed at element %d: %s vs %s",
+                            i, expected[i], observed[i]),
+                    expected[i],
+                    observed[i]);
         }
     }
 

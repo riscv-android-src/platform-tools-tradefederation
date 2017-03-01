@@ -33,8 +33,9 @@ public class SdkBuildInfo extends BuildInfo implements ISdkBuildInfo {
     private File mTestDir = null;
     private File mSdkDir = null;
     private boolean mDeleteSdkDirParent;
-    private static final boolean isWindows = System.getProperty("os.name") != null
-          && System.getProperty("os.name").startsWith("Windows");
+    private static final boolean IS_WINDOWS =
+            System.getProperty("os.name") != null
+                    && System.getProperty("os.name").startsWith("Windows");
 
     private static final int ANDROID_TIMEOUT_MS = 15*1000;
 
@@ -213,7 +214,7 @@ public class SdkBuildInfo extends BuildInfo implements ISdkBuildInfo {
      * filename based on current OS.
      */
     private String getAndroidExecutableName() {
-        if (isWindows) {
+        if (IS_WINDOWS) {
             return "android.bat";
         }
         return "android";
@@ -224,7 +225,7 @@ public class SdkBuildInfo extends BuildInfo implements ISdkBuildInfo {
      * filename based on current OS.
      */
     private String getEmulatorExecutableName() {
-        if (isWindows) {
+        if (IS_WINDOWS) {
             return "emulator.exe";
         }
         return "emulator";

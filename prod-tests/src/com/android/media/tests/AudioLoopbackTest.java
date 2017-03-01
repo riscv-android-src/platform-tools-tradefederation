@@ -80,24 +80,26 @@ public class AudioLoopbackTest implements IDeviceTest, IRemoteTest {
     @Option(name = "key-prefix", description = "Key Prefix for reporting")
     private String mKeyPrefix = "48000_Mic3_";
 
-    private final String DEVICE_TEMP_DIR_PATH = "/sdcard/";
-    private final String OUTPUT_FILENAME = "output_" + System.currentTimeMillis();
-    private final String OUTPUT_RESULT_TXT_PATH = DEVICE_TEMP_DIR_PATH + OUTPUT_FILENAME + ".txt";
-    private final String OUTPUT_PNG_PATH = DEVICE_TEMP_DIR_PATH + OUTPUT_FILENAME + ".png";
-    private final String OUTPUT_WAV_PATH = DEVICE_TEMP_DIR_PATH + OUTPUT_FILENAME + ".wav";
-    private final String OUTPUT_PLAYER_BUFFER_PATH =
+    private static final String DEVICE_TEMP_DIR_PATH = "/sdcard/";
+    private static final String OUTPUT_FILENAME = "output_" + System.currentTimeMillis();
+    private static final String OUTPUT_RESULT_TXT_PATH =
+            DEVICE_TEMP_DIR_PATH + OUTPUT_FILENAME + ".txt";
+    private static final String OUTPUT_PNG_PATH = DEVICE_TEMP_DIR_PATH + OUTPUT_FILENAME + ".png";
+    private static final String OUTPUT_WAV_PATH = DEVICE_TEMP_DIR_PATH + OUTPUT_FILENAME + ".wav";
+    private static final String OUTPUT_PLAYER_BUFFER_PATH =
             DEVICE_TEMP_DIR_PATH + OUTPUT_FILENAME + "_playerBufferPeriod.txt";
-    private final String OUTPUT_PLAYER_BUFFER_PNG_PATH =
+    private static final String OUTPUT_PLAYER_BUFFER_PNG_PATH =
             DEVICE_TEMP_DIR_PATH + OUTPUT_FILENAME + "_playerBufferPeriod.png";
-    private final String OUTPUT_RECORDER_BUFFER_PATH =
+    private static final String OUTPUT_RECORDER_BUFFER_PATH =
             DEVICE_TEMP_DIR_PATH + OUTPUT_FILENAME + "_recorderBufferPeriod.txt";
-    private final String OUTPUT_RECORDER_BUFFER_PNG_PATH =
+    private static final String OUTPUT_RECORDER_BUFFER_PNG_PATH =
             DEVICE_TEMP_DIR_PATH + OUTPUT_FILENAME + "_recorderBufferPeriod.png";
-    private final String OUTPUT_GLITCH_PATH =
+    private static final String OUTPUT_GLITCH_PATH =
             DEVICE_TEMP_DIR_PATH + OUTPUT_FILENAME + "_glitchMillis.txt";
-    private final String AM_CMD = "am start -n org.drrickorang.loopback/.LoopbackActivity" +
-            " --ei SF %s --es FileName %s --ei MicSource %s --ei AudioThread %s" +
-            " --ei AudioLevel %s --ei TestType %s --ei BufferTestDuration %s";
+    private static final String AM_CMD =
+            "am start -n org.drrickorang.loopback/.LoopbackActivity"
+                    + " --ei SF %s --es FileName %s --ei MicSource %s --ei AudioThread %s"
+                    + " --ei AudioLevel %s --ei TestType %s --ei BufferTestDuration %s";
 
     private static Map<String, String> createMetricsKeyMap() {
         Map<String, String> result = new HashMap<String, String>();

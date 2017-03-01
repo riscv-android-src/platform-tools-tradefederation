@@ -52,7 +52,7 @@ public class TestDeviceFuncTest extends DeviceTestCase {
     private TestDevice mTestDevice;
     private IDeviceStateMonitor mMonitor;
     /** Expect bugreports to be at least a meg. */
-    private static final int mMinBugreportBytes = 1024 * 1024;
+    private static final int MIN_BUGREPORT_BYTES = 1024 * 1024;
 
     @Override
     protected void setUp() throws Exception {
@@ -69,8 +69,11 @@ public class TestDeviceFuncTest extends DeviceTestCase {
     public void testBugreport() throws Exception {
         String data = StreamUtil.getStringFromStream(
                 mTestDevice.getBugreport().createInputStream());
-        assertTrue(String.format("Expected at least %d characters; only saw %d", mMinBugreportBytes,
-                data.length()), data.length() >= mMinBugreportBytes);
+        assertTrue(
+                String.format(
+                        "Expected at least %d characters; only saw %d",
+                        MIN_BUGREPORT_BYTES, data.length()),
+                data.length() >= MIN_BUGREPORT_BYTES);
     }
 
     /**
@@ -86,9 +89,11 @@ public class TestDeviceFuncTest extends DeviceTestCase {
             f = (FileInputStreamSource) mTestDevice.getBugreportz();
             assertNotNull(f);
             FileInputStream contents = (FileInputStream) f.createInputStream();
-            assertTrue(String.format("Expected at least %d characters; only saw %d",
-                    mMinBugreportBytes, contents.available()),
-                    contents.available() >= mMinBugreportBytes);
+            assertTrue(
+                    String.format(
+                            "Expected at least %d characters; only saw %d",
+                            MIN_BUGREPORT_BYTES, contents.available()),
+                    contents.available() >= MIN_BUGREPORT_BYTES);
         } finally {
             StreamUtil.cancel(f);
             if (f != null) {

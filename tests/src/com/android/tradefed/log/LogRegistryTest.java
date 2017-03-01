@@ -27,7 +27,7 @@ import org.easymock.EasyMock;
  */
 public class LogRegistryTest extends TestCase {
 
-    private static String LOG_TAG = "LogRegistryTest";
+    private static final String LOG_TAG = "LogRegistryTest";
 
     private LogRegistry mLogRegistry;
     private ThreadGroup mStubThreadGroup;

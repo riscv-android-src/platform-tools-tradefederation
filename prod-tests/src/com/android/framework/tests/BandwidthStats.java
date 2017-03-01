@@ -145,7 +145,8 @@ public class BandwidthStats {
      */
     public static class ComparisonRecord {
         private String mStatName;
-        private long mFirst, mSecond;
+        private long mFirst;
+        private long mSecond;
         private float mDifference;
 
         public ComparisonRecord(String statName, long first, long second, float difference) {

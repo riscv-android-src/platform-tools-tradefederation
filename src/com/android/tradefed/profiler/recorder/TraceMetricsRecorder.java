@@ -106,7 +106,7 @@ public class TraceMetricsRecorder extends NumericMetricsRecorder {
                     }
                     metrics.merge(
                             matchedMetric.toString(),
-                            new Double(
+                            Double.valueOf(
                                     descriptor.getFunctionParams().get(matchedMetric.getParam())),
                             mMergeFunctions.get(matchedMetric));
                 }

@@ -64,9 +64,9 @@ public class CodeCoverageReporter implements ITestInvocationListener {
             "The number of days to keep generated coverage files")
     private Integer mLogRetentionDays = null;
 
-    static private int REPORT_GENERATION_TIMEOUT_MS = 3 * 60 * 1000;
+    private static final int REPORT_GENERATION_TIMEOUT_MS = 3 * 60 * 1000;
 
-    static public String XML_REPORT_NAME = "report.xml";
+    public static final String XML_REPORT_NAME = "report.xml";
 
     private IBuildInfo mBuildInfo;
     private LogFileSaver mLogFileSaver;

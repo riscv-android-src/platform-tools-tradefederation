@@ -116,7 +116,7 @@ public class TraceMetric {
             String[] paramSplit = parts[2].split("=");
             Double exVal;
             if (paramSplit[1].contains("x")) {
-                exVal = new Double(Integer.parseInt(paramSplit[1].substring(2), 16));
+                exVal = Double.valueOf(Integer.parseInt(paramSplit[1].substring(2), 16));
             } else {
                 exVal = Double.parseDouble(paramSplit[1]);
             }

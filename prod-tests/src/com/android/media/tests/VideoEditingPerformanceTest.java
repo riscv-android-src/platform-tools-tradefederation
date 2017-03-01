@@ -73,7 +73,7 @@ public class VideoEditingPerformanceTest implements IDeviceTest, IRemoteTest {
     private static final String TEST_PACKAGE_NAME = "com.android.mediaframeworktest";
     private static final String TEST_RUNNER_NAME = ".MediaFrameworkPerfTestRunner";
 
-    private static final String mOutputPath = "VideoEditorPerformance.txt";
+    private static final String OUTPUT_PATH = "VideoEditorPerformance.txt";
 
     private final RegexTrie<String> mPatternMap = new RegexTrie<String>();
 
@@ -157,8 +157,7 @@ public class VideoEditingPerformanceTest implements IDeviceTest, IRemoteTest {
     private void cleanResultFile() throws DeviceNotAvailableException {
         String extStore =
             mTestDevice.getMountPoint(IDevice.MNT_EXTERNAL_STORAGE);
-        mTestDevice.executeShellCommand(String.format("rm %s/%s", extStore,
-                mOutputPath));
+        mTestDevice.executeShellCommand(String.format("rm %s/%s", extStore, OUTPUT_PATH));
     }
 
     /**
@@ -170,7 +169,7 @@ public class VideoEditingPerformanceTest implements IDeviceTest, IRemoteTest {
         File outputFile = null;
         InputStreamSource outputSource = null;
         try {
-            outputFile = mTestDevice.pullFileFromExternal(mOutputPath);
+            outputFile = mTestDevice.pullFileFromExternal(OUTPUT_PATH);
 
             if (outputFile == null) {
                 return;
@@ -182,7 +181,7 @@ public class VideoEditingPerformanceTest implements IDeviceTest, IRemoteTest {
                     outputFile.length(), outputFile));
             outputSource = new SnapshotInputStreamSource(new FileInputStream(
                     outputFile));
-            listener.testLog(mOutputPath, LogDataType.TEXT, outputSource);
+            listener.testLog(OUTPUT_PATH, LogDataType.TEXT, outputSource);
 
             // Parse the output file to upload aggregated metrics
             parseOutputFile(new FileInputStream(outputFile), listener);

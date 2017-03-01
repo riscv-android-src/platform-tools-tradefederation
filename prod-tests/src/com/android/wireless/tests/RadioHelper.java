@@ -25,13 +25,14 @@ import com.android.tradefed.util.RunUtil;
  * Helper class to get device radio settings
  */
 public class RadioHelper {
-    private final static String[] PING_SERVER_LIST = {"www.google.com", "www.facebook.com",
-        "www.bing.com", "www.ask.com", "www.yahoo.com"};
-    private final int RETRY_ATTEMPTS = 3;
-    private final int ACTIVATION_WAITING_TIME =  5 * 60 * 1000; // 5 minutes;
-    private final String WIFI_ONLY = "wifi-only";
+    private static final String[] PING_SERVER_LIST = {
+        "www.google.com", "www.facebook.com", "www.bing.com", "www.ask.com", "www.yahoo.com"
+    };
+    private static final int RETRY_ATTEMPTS = 3;
+    private static final int ACTIVATION_WAITING_TIME = 5 * 60 * 1000; // 5 minutes;
+    private static final String WIFI_ONLY = "wifi-only";
     /* Maximum time to wait for device to connect to data network */
-    public static int MAX_DATA_SETUP_TIME = 3 * 60 * 1000; // 3 minutes
+    public static final int MAX_DATA_SETUP_TIME = 3 * 60 * 1000; // 3 minutes
     private ITestDevice mDevice;
 
     RadioHelper(ITestDevice device) {

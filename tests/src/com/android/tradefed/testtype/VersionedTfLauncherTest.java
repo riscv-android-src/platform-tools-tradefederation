@@ -19,12 +19,11 @@ import static org.junit.Assert.assertTrue;
 
 import com.android.ddmlib.IDevice;
 import com.android.ddmlib.testrunner.TestIdentifier;
-import com.android.tradefed.config.ConfigurationException;
+import com.android.tradefed.build.IBuildInfo;
+import com.android.tradefed.build.IFolderBuildInfo;
 import com.android.tradefed.config.OptionSetter;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.device.NullDevice;
-import com.android.tradefed.build.IBuildInfo;
-import com.android.tradefed.build.IFolderBuildInfo;
 import com.android.tradefed.result.FileInputStreamSource;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.LogDataType;
@@ -32,15 +31,15 @@ import com.android.tradefed.util.CommandResult;
 import com.android.tradefed.util.CommandStatus;
 import com.android.tradefed.util.IRunUtil;
 
+import org.easymock.EasyMock;
+import org.junit.Before;
+import org.junit.Test;
+
 import java.io.File;
 import java.io.FileOutputStream;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
-
-import org.easymock.EasyMock;
-import org.junit.Before;
-import org.junit.Test;
 
 /**
  * Unit tests for {@link VersionedTfLauncher}
@@ -179,7 +178,7 @@ public class VersionedTfLauncherTest {
      * passed to the shard test.
      */
     @Test
-    public void testGetTestShard() throws ConfigurationException {
+    public void testGetTestShard() {
         IRemoteTest test = mVersionedTfLauncher.getTestShard(2, 1);
         assertTrue(test instanceof VersionedTfLauncher);
 

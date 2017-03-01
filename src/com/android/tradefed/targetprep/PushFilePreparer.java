@@ -26,6 +26,7 @@ import com.android.tradefed.device.ITestDevice;
 
 import java.io.File;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 
 /**
@@ -126,7 +127,7 @@ public class PushFilePreparer implements ITargetCleaner {
         for (String pushspec : mPushSpecs) {
             String[] pair = pushspec.split("->");
             if (pair.length != 2) {
-                fail(String.format("Invalid pushspec: '%s'"), device);
+                fail(String.format("Invalid pushspec: '%s'", Arrays.asList(pair)), device);
                 continue;
             }
             Log.d(LOG_TAG, String.format("Trying to push local '%s' to remote '%s'", pair[0],

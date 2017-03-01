@@ -40,10 +40,10 @@ public class GTestListTestParser extends MultiLineReceiver {
 
     // test class name should start without leading spaces, and end with a "."
     // example: <line start>RecordingCanvas.<line end>
-    private static Pattern TEST_CLASS = Pattern.compile("^([a-zA-Z]+.*)\\.$");
+    private static final Pattern TEST_CLASS = Pattern.compile("^([a-zA-Z]+.*)\\.$");
     // test method name should start with leading spaces, named as however valid as a C function
     // example: <line start>  emptyPlayback<line end>
-    private static Pattern TEST_METHOD = Pattern.compile("\\s+(\\w+)$");
+    private static final Pattern TEST_METHOD = Pattern.compile("\\s+(\\w+)$");
 
     // exposed for unit testing
     protected List<TestIdentifier> mTests = new ArrayList<>();

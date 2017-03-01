@@ -20,6 +20,7 @@ include $(CLEAR_VARS)
 LOCAL_SRC_FILES := $(call all-java-files-under, src)
 
 LOCAL_JAVACFLAGS += -g -Xlint
+include tools/tradefederation/error_prone_rules.mk
 
 LOCAL_MODULE := tf-remote-client
 

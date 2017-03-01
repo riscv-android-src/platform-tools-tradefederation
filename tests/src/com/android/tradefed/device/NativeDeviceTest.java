@@ -710,9 +710,9 @@ public class NativeDeviceTest extends TestCase {
      */
     public void testDisableNetworkMonitor() throws DeviceNotAvailableException {
         List<Long> samples = new ArrayList<Long>();
-        samples.add(new Long(42));
-        samples.add(new Long(256));
-        samples.add(new Long(-1)); // failure to connect
+        samples.add(Long.valueOf(42));
+        samples.add(Long.valueOf(256));
+        samples.add(Long.valueOf(-1)); // failure to connect
         EasyMock.expect(mMockWifi.stopMonitor()).andReturn(samples);
         EasyMock.replay(mMockWifi, mMockIDevice);
         assertTrue(mTestDevice.disableNetworkMonitor());
