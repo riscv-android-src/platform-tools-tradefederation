@@ -695,8 +695,7 @@ public class ConfigurationFactory implements IConfigurationFactory {
                     String className = cnfe.getLocalizedMessage();
                     // Some Cts configs are shipped with Trade Federation, we exclude those from
                     // the failure since these packages are not available for loading.
-                    if (className != null && (className.startsWith("com.android.cts.") ||
-                                    className.startsWith("com.android.xts."))) {
+                    if (className != null && className.startsWith("com.android.cts.")) {
                         CLog.w("Could not confirm %s: %s because not part of Trade Federation "
                                 + "packages.", def.getName(), e.getMessage());
                         continue;
