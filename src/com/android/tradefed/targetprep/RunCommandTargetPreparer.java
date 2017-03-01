@@ -43,6 +43,9 @@ public class RunCommandTargetPreparer implements ITargetCleaner {
             + " in the background.")
     private List<String> mBgCommands = new ArrayList<String>();
 
+    @Option(name = "hide-bg-output", description = "if true, don't log background command output")
+    private boolean mHideBgOutput = false;
+
     @Option(name = "teardown-command", description = "adb shell command to run at teardown time")
     private List<String> mTeardownCommands = new ArrayList<String>();
 
@@ -104,8 +107,10 @@ public class RunCommandTargetPreparer implements ITargetCleaner {
             return;
 
         for (Map.Entry<BackgroundDeviceAction, CollectingOutputReceiver> bgAction :
-            mBgDeviceActionsMap.entrySet()) {
-            CLog.d("Background command output : %s", bgAction.getValue().getOutput());
+                mBgDeviceActionsMap.entrySet()) {
+            if (!mHideBgOutput) {
+                CLog.d("Background command output : %s", bgAction.getValue().getOutput());
+            }
             bgAction.getKey().cancel();
         }
 

@@ -21,6 +21,7 @@ import com.android.tradefed.config.Option;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.invoker.IInvocationContext;
+import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.profiler.recorder.IMetricsRecorder;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.LogDataType;
@@ -53,13 +54,17 @@ public class AggregatingProfiler implements IAggregatingTestProfiler {
     private MetricOutputData mOutputUtil;
     private Map<String, Double> mAggregateMetrics;
 
+    public AggregatingProfiler() {
+        // some data needs to be accessible before setUp is invoked
+        mRecorders = new ArrayList<>();
+        mAggregateMetrics = new HashMap<String, Double>();
+        mOutputUtil = new MetricOutputData();
+    }
+
     /** {@inheritDoc} */
     @Override
     public void setUp(IInvocationContext context) throws DeviceNotAvailableException {
         mContext = context;
-        mRecorders = new ArrayList<>();
-        mAggregateMetrics = new HashMap<String, Double>();
-        mOutputUtil = new MetricOutputData();
         for (String clazz : mRecorderClassNames) {
             try {
                 mRecorders.add((IMetricsRecorder) Class.forName(clazz).newInstance());
@@ -97,6 +102,7 @@ public class AggregatingProfiler implements IAggregatingTestProfiler {
                     mAggregateMetrics.merge(key, entry.getValue(), recorder.getMergeFunction(key));
                     // this map aggregates metrics just across devices
                     allMetrics.merge(key, entry.getValue(), recorder.getMergeFunction(key));
+                    CLog.v("allMetrics is %s", allMetrics);
                 }
             }
         }

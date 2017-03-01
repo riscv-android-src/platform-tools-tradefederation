@@ -20,6 +20,7 @@ import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.CoreMatchers.not;
 import static org.junit.Assert.assertThat;
 
+import com.android.ddmlib.testrunner.TestIdentifier;
 import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.build.IDeviceBuildInfo;
 import com.android.tradefed.build.OtaDeviceBuildInfo;
@@ -117,6 +118,9 @@ public class SideloadOtaStabilityTest implements IDeviceTest, IBuildReceiver,
     @Option(name = "max-reboot-time", description =
             "The maximum time to wait for a device to reboot out of recovery if it fails")
     private long mMaxRebootTimeSec = 5 * 60;
+
+    @Option(name = "uncrypt-only", description = "if true, only uncrypt then exit")
+    private boolean mUncryptOnly = false;
 
     /** controls if this test should be resumed. Only used if mResumeMode is enabled */
     private boolean mResumable = true;
@@ -285,62 +289,75 @@ public class SideloadOtaStabilityTest implements IDeviceTest, IBuildReceiver,
      */
     private BootTimeInfo installOta(ITestInvocationListener listener, IDeviceBuildInfo otaBuild)
             throws DeviceNotAvailableException {
-        mKmsgReceiver.start();
-        CLog.i("Pushing OTA package %s", otaBuild.getOtaPackageFile().getAbsolutePath());
-        Assert.assertTrue(mDevice.pushFile(otaBuild.getOtaPackageFile(), mPackageDataPath));
-        // this file needs to be uncrypted, since /data isn't mounted in recovery
-        // block.map should be empty since cache should be cleared
-        mDevice.pushString(mPackageDataPath + "\n", UNCRYPT_FILE_PATH);
-        // Flushing the file to flash.
-        mDevice.executeShellCommand("sync");
-
+        TestIdentifier test = new TestIdentifier(getClass().getName(), "apply_ota");
+        Map<String, String> metrics = new HashMap<String, String>();
+        listener.testStarted(test);
         try {
-            mUncryptDuration = doUncrypt(SocketFactory.getInstance(), listener);
-            String installOtaCmd = String.format("--update_package=%s\n", BLOCK_MAP_PATH);
-            mDevice.pushString(installOtaCmd, RECOVERY_COMMAND_PATH);
-            CLog.i("Rebooting to install OTA");
+            mKmsgReceiver.start();
+            CLog.i("Pushing OTA package %s", otaBuild.getOtaPackageFile().getAbsolutePath());
+            Assert.assertTrue(mDevice.pushFile(otaBuild.getOtaPackageFile(), mPackageDataPath));
+            // this file needs to be uncrypted, since /data isn't mounted in recovery
+            // block.map should be empty since cache should be cleared
+            mDevice.pushString(mPackageDataPath + "\n", UNCRYPT_FILE_PATH);
+            // Flushing the file to flash.
+            mDevice.executeShellCommand("sync");
+
+            try {
+                mUncryptDuration = doUncrypt(SocketFactory.getInstance(), listener);
+                metrics.put("uncrypt_duration", Long.toString(mUncryptDuration));
+                String installOtaCmd = String.format("--update_package=%s\n", BLOCK_MAP_PATH);
+                mDevice.pushString(installOtaCmd, RECOVERY_COMMAND_PATH);
+                CLog.i("Rebooting to install OTA");
+            } finally {
+                // Kmsg contents during the OTA will be capture in last_kmsg, so we can turn off the
+                // kmsg receiver now
+                mKmsgReceiver.postLog(listener);
+                mKmsgReceiver.stop();
+            }
+            // uncrypt is complete
+            if (mUncryptOnly) {
+                return new BootTimeInfo(-1, -1);
+            }
+            try {
+                mDevice.rebootIntoRecovery();
+            } catch (DeviceNotAvailableException e) {
+                // The device will only enter the RECOVERY state if it hits the recovery menu.
+                // Since we added a command to /cache/recovery/command, recovery mode executes the
+                // command rather than booting into the menu. While applying the update as a result
+                // of the installed command, the device reports its state as NOT_AVAILABLE. If the
+                // device *actually* becomes unavailable, we will catch the resulting DNAE in the
+                // next call to waitForDeviceOnline.
+                CLog.i("Didn't go to recovery, went straight to update");
+            }
+
+            mDevice.waitForDeviceNotAvailable(mMaxInstallOnlineTimeSec * 1000);
+            long start = System.currentTimeMillis();
+
+            try {
+                mDevice.waitForDeviceOnline(mMaxInstallOnlineTimeSec * 1000);
+            } catch (DeviceNotAvailableException e) {
+                CLog.e("Device %s did not come back online after recovery", mDevice.getSerialNumber());
+                listener.testFailed(test, e.getLocalizedMessage());
+                listener.testRunFailed("Device did not come back online after recovery");
+                sendUpdatePackage(listener, otaBuild);
+                throw new AssertionError("Device did not come back online after recovery");
+            }
+            double onlineTime = (System.currentTimeMillis() - start) / 1000.0;
+            try {
+                mDevice.waitForDeviceAvailable();
+            } catch (DeviceNotAvailableException e) {
+                CLog.e("Device %s did not boot up successfully after installing OTA",
+                        mDevice.getSerialNumber());
+                listener.testFailed(test, e.getLocalizedMessage());
+                listener.testRunFailed("Device failed to boot after OTA");
+                sendUpdatePackage(listener, otaBuild);
+                throw new AssertionError("Device failed to boot after OTA");
+            }
+            double availTime = (System.currentTimeMillis() - start) / 1000.0;
+            return new BootTimeInfo(availTime, onlineTime);
         } finally {
-            // Kmsg contents during the OTA will be capture in last_kmsg, so we can turn off the
-            // kmsg receiver now
-            mKmsgReceiver.postLog(listener);
-            mKmsgReceiver.stop();
+            listener.testEnded(test, metrics);
         }
-        try {
-            mDevice.rebootIntoRecovery();
-        } catch (DeviceNotAvailableException e) {
-            // The device will only enter the RECOVERY state if it hits the recovery menu.
-            // Since we added a command to /cache/recovery/command, recovery mode executes the
-            // command rather than booting into the menu. While applying the update as a result
-            // of the installed command, the device reports its state as NOT_AVAILABLE. If the
-            // device *actually* becomes unavailable, we will catch the resulting DNAE in the
-            // next call to waitForDeviceOnline.
-            CLog.i("Didn't go to recovery, went straight to update");
-        }
-
-        mDevice.waitForDeviceNotAvailable(mMaxInstallOnlineTimeSec * 1000);
-        long start = System.currentTimeMillis();
-
-        try {
-            mDevice.waitForDeviceOnline(mMaxInstallOnlineTimeSec * 1000);
-        } catch (DeviceNotAvailableException e) {
-            CLog.e("Device %s did not come back online after recovery", mDevice.getSerialNumber());
-            listener.testRunFailed("Device did not come back online after recovery");
-            sendUpdatePackage(listener, otaBuild);
-            throw new AssertionError("Device did not come back online after recovery");
-        }
-        double onlineTime = (System.currentTimeMillis() - start) / 1000.0;
-        try {
-            mDevice.waitForDeviceAvailable();
-        } catch (DeviceNotAvailableException e) {
-            CLog.e("Device %s did not boot up successfully after installing OTA",
-                    mDevice.getSerialNumber());
-            listener.testRunFailed("Device failed to boot after OTA");
-            sendUpdatePackage(listener, otaBuild);
-            throw new AssertionError("Device failed to boot after OTA");
-        }
-        double availTime = (System.currentTimeMillis() - start) / 1000.0;
-        return new BootTimeInfo(availTime, onlineTime);
-
     }
 
     private InputStreamSource pullLogFile(String location)
