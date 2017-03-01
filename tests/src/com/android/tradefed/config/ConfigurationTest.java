@@ -641,4 +641,27 @@ public class ConfigurationTest extends TestCase {
             FileUtil.deleteFile(test);
         }
     }
+
+    /**
+     * Test that {@link Configuration#dumpXml(PrintWriter)} produce the xml output even for a multi
+     * device situation.
+     */
+    public void testDumpXml_multi_device() throws Exception {
+        List<IDeviceConfiguration> deviceObjectList = new ArrayList<IDeviceConfiguration>();
+        deviceObjectList.add(new DeviceConfigurationHolder("device1"));
+        deviceObjectList.add(new DeviceConfigurationHolder("device2"));
+        mConfig.setConfigurationObjectList(Configuration.DEVICE_NAME, deviceObjectList);
+        File test = FileUtil.createTempFile("dumpxml", "xml");
+        try {
+            PrintWriter out = new PrintWriter(test);
+            mConfig.dumpXml(out);
+            out.flush();
+            String content = FileUtil.readStringFromFile(test);
+            assertTrue(content.length() > 100);
+            assertTrue(content.contains("<device name=\"device1\">"));
+            assertTrue(content.contains("<device name=\"device2\">"));
+        } finally {
+            FileUtil.deleteFile(test);
+        }
+    }
 }
