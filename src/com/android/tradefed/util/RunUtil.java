@@ -18,6 +18,8 @@ package com.android.tradefed.util;
 
 import com.android.tradefed.log.LogUtil.CLog;
 
+import com.google.common.annotations.VisibleForTesting;
+
 import java.io.BufferedOutputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
@@ -684,9 +686,16 @@ public class RunUtil implements IRunUtil {
         return t;
     }
 
-    /**
-     * Timer that will execute a interrupt on the Thread registered.
-     */
+    /** Allow to stop the Timer Thread for the run util instance if started. */
+    @VisibleForTesting
+    void terminateTimer() {
+        if (mWatchdogInterrupt.get() != null) {
+            mWatchdogInterrupt.get().purge();
+            mWatchdogInterrupt.get().cancel();
+        }
+    }
+
+    /** Timer that will execute a interrupt on the Thread registered. */
     private class InterruptTask extends TimerTask {
 
         private Thread mToInterrupt = null;

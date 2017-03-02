@@ -35,12 +35,12 @@ import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.util.ArrayUtil;
 import com.android.tradefed.util.CommandResult;
 import com.android.tradefed.util.CommandStatus;
-import com.android.tradefed.util.IHostMonitor;
 import com.android.tradefed.util.IRunUtil;
 import com.android.tradefed.util.RunUtil;
 import com.android.tradefed.util.SizeLimitedOutputStream;
 import com.android.tradefed.util.StreamUtil;
 import com.android.tradefed.util.TableFormatter;
+import com.android.tradefed.util.hostmetric.IHostMonitor;
 
 import com.google.common.annotations.VisibleForTesting;
 
@@ -172,7 +172,7 @@ public class DeviceManager implements IDeviceManager {
         }
 
         mGlobalHostMonitors = getGlobalConfig().getHostMonitors();
-        if (mGlobalHostMonitors != null ) {
+        if (mGlobalHostMonitors != null) {
             for (IHostMonitor hm : mGlobalHostMonitors) {
                 hm.start();
             }
