@@ -13,13 +13,15 @@
 # limitations under the License.
 
 # Set of error prone rules to ensure code quality
+# PackageLocation check requires the androidCompatible=false otherwise it does not do anything.
 LOCAL_ERROR_PRONE_FLAGS:= -Xep:FormatString:ERROR \
                           -Xep:ArrayToString:ERROR \
-			  -Xep:ReturnValueIgnored:ERROR \
-			  -Xep:BoxedPrimitiveConstructor:ERROR \
-			  -Xep:MissingFail:ERROR \
-			  -Xep:SelfEquals:ERROR \
-			  -Xep:Overrides:ERROR \
-			  -Xep:RemoveUnusedImports:ERROR \
-			  -Xep:ConstantField:ERROR \
-			  -Xep:PackageLocation:ERROR
+                          -Xep:ReturnValueIgnored:ERROR \
+                          -Xep:BoxedPrimitiveConstructor:ERROR \
+                          -Xep:MissingFail:ERROR \
+                          -Xep:SelfEquals:ERROR \
+                          -Xep:Overrides:ERROR \
+                          -Xep:RemoveUnusedImports:ERROR \
+                          -Xep:ConstantField:ERROR \
+                          -Xep:PackageLocation:ERROR \
+                          -XDandroidCompatible=false
