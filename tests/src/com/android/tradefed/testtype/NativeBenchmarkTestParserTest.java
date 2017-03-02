@@ -66,7 +66,7 @@ public class NativeBenchmarkTestParserTest extends TestCase {
         mParser.done();
         verifyAvgTime(0.000059);
         System.out.printf("%12f\n", 0.00000059);
-        System.out.printf("%s\n", new Double(0.00000059).toString());
+        System.out.printf("%s\n", Double.valueOf(0.00000059).toString());
     }
 
     /**

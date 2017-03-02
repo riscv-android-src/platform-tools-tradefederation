@@ -60,9 +60,12 @@ public class PythonUnitTestRunner implements IRemoteTest, IBuildReceiver {
     @Option(name = "python-binary", description = "python binary to use (optional)")
     private String mPythonBin;
 
-    @Option(name = "test-timeout", description = "maximum amount of time tests are allowed to run",
-            isTimeVal = true)
-    private long TEST_TIMEOUT = 1000 * 60 * 5;
+    @Option(
+        name = "test-timeout",
+        description = "maximum amount of time tests are allowed to run",
+        isTimeVal = true
+    )
+    private long mTestTimeout = 1000 * 60 * 5;
 
     private String mPythonPath;
     private IBuildInfo mBuildInfo;
@@ -160,7 +163,7 @@ public class PythonUnitTestRunner implements IRemoteTest, IBuildReceiver {
         } else {
             cmd = ArrayUtil.buildArray(baseOpts, testModule);
         }
-        CommandResult c = runUtil.runTimedCmd(TEST_TIMEOUT, cmd);
+        CommandResult c = runUtil.runTimedCmd(mTestTimeout, cmd);
 
         if (c.getStatus() != CommandStatus.SUCCESS) {
             CLog.e("Python process failed");

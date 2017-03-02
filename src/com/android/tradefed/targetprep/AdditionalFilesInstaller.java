@@ -31,7 +31,7 @@ import java.io.File;
 public class AdditionalFilesInstaller implements ITargetPreparer, ITargetCleaner {
 
     // TODO: make this an option
-    private final String DEST_PATH = "/data/local/tmp/";
+    private static final String DEST_PATH = "/data/local/tmp/";
 
     @Option(name = "uninstall", description = "remove all contents after test completes.")
     private boolean mUninstall = true;

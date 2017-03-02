@@ -82,7 +82,7 @@ public class FileDownloadCache {
     private static class FileTimeComparator implements Comparator<FilePair> {
         @Override
         public int compare(FilePair o1, FilePair o2) {
-            Long timestamp1 = new Long(o1.mFile.lastModified());
+            Long timestamp1 = Long.valueOf(o1.mFile.lastModified());
             Long timestamp2 = o2.mFile.lastModified();
             return timestamp1.compareTo(timestamp2);
         }

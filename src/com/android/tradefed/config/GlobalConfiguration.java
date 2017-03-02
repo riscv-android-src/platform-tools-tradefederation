@@ -343,9 +343,11 @@ public class GlobalConfiguration implements IGlobalConfiguration {
         }
         ObjTypeInfo typeInfo = getObjTypeMap().get(typeName);
         if (typeInfo != null && typeInfo.mIsListSupported) {
-            throw new IllegalStateException(String.format("Wrong method call. " +
-                    "Used getConfigurationObject() for a config object that is stored as a list",
-                        typeName));
+            throw new IllegalStateException(
+                    String.format(
+                            "Wrong method call for type %s. Used getConfigurationObject() for a "
+                                    + "config object that is stored as a list",
+                            typeName));
         }
         if (configObjects.size() != 1) {
             throw new IllegalStateException(String.format(

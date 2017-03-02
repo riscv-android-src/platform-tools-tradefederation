@@ -55,7 +55,7 @@ import java.util.regex.Pattern;
  */
 public class WifiStressTest implements IRemoteTest, IDeviceTest {
     private ITestDevice mTestDevice = null;
-    private static long START_TIMER = 5 * 60 * 1000; //5 minutes
+    private static final long START_TIMER = 5 * 60 * 1000; //5 minutes
     // Define instrumentation test package and runner.
     private static final String TEST_PACKAGE_NAME = "com.android.connectivitymanagertest";
     private static final String TEST_RUNNER_NAME = ".ConnectivityManagerStressTestRunner";

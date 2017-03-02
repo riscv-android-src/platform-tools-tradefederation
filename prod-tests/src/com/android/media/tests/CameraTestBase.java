@@ -442,15 +442,16 @@ public class CameraTestBase implements IDeviceTest, IRemoteTest, IConfigurationR
     // TODO: Leverage AUPT to collect system logs (meminfo, ION allocations and processes/threads)
     private class MeminfoTimer {
 
-        private final String LOG_HEADER =
+        private static final String LOG_HEADER =
                 "uptime,pssCameraDaemon,pssCameraApp,ramTotal,ramFree,ramUsed";
-        private final String DUMPSYS_MEMINFO_COMMAND = "dumpsys meminfo -c | grep -w -e ^ram " +
-                "-e ^time";
-        private final String[] DUMPSYS_MEMINFO_PROC = {
-                PROCESS_CAMERA_DAEMON, PROCESS_CAMERA_APP, PROCESS_MEDIASERVER };
-        private final int STATE_STOPPED = 0;
-        private final int STATE_SCHEDULED = 1;
-        private final int STATE_RUNNING = 2;
+        private static final String DUMPSYS_MEMINFO_COMMAND =
+                "dumpsys meminfo -c | grep -w -e " + "^ram -e ^time";
+        private String[] mDumpsysMemInfoProc = {
+            PROCESS_CAMERA_DAEMON, PROCESS_CAMERA_APP, PROCESS_MEDIASERVER
+        };
+        private static final int STATE_STOPPED = 0;
+        private static final int STATE_SCHEDULED = 1;
+        private static final int STATE_RUNNING = 2;
 
         private int mState = STATE_STOPPED;
         private Timer mTimer = new Timer(true); // run as a daemon thread
@@ -463,7 +464,7 @@ public class CameraTestBase implements IDeviceTest, IRemoteTest, IConfigurationR
             mDelayMs = delayMs;
             mPeriodMs = periodMs;
             mCommand = DUMPSYS_MEMINFO_COMMAND;
-            for (String process : DUMPSYS_MEMINFO_PROC) {
+            for (String process : mDumpsysMemInfoProc) {
                 mCommand += " -e " + process;
             }
         }
@@ -599,11 +600,11 @@ public class CameraTestBase implements IDeviceTest, IRemoteTest, IConfigurationR
         //    1 pool-6-thread-1
         // FIXME: Resolve the error "sh: syntax error: '|' unexpected" using the command below
         // $ /system/bin/ps -t -p %s | tr -s ' ' | cut -d' ' -f13- | sort | uniq -c | sort -nr"
-        private final String PS_COMMAND_FORMAT = "/system/bin/ps -t -p %s";
-        private final String PGREP_COMMAND_FORMAT = "pgrep %s";
-        private final int STATE_STOPPED = 0;
-        private final int STATE_SCHEDULED = 1;
-        private final int STATE_RUNNING = 2;
+        private static final String PS_COMMAND_FORMAT = "/system/bin/ps -t -p %s";
+        private static final String PGREP_COMMAND_FORMAT = "pgrep %s";
+        private static final int STATE_STOPPED = 0;
+        private static final int STATE_SCHEDULED = 1;
+        private static final int STATE_RUNNING = 2;
 
         private int mState = STATE_STOPPED;
         private Timer mTimer = new Timer(true); // run as a daemon thread

@@ -1296,7 +1296,8 @@ public class CommandScheduler extends Thread implements ICommandScheduler, IComm
             }
             device = manager.allocateDevice(config.getDeviceRequirements());
             if (device == null) {
-                throw new NoDeviceException("no device is available for command: " + args);
+                throw new NoDeviceException(
+                        "no device is available for command: " + Arrays.asList(args));
             }
             context.addAllocatedDevice(config.getDeviceConfig().get(0).getDeviceName(), device);
             CLog.i("Executing '%s' on '%s'", cmdTracker.getArgs()[0], device.getSerialNumber());

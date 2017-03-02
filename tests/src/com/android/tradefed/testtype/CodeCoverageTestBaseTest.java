@@ -107,14 +107,15 @@ public class CodeCoverageTestBaseTest extends TestCase {
      * A subclass of {@link CodeCoverageTest} with certain methods stubbed out for testing.
      */
     static class CodeCoverageTestStub extends CodeCoverageTestBase<FakeReportFormat> {
-        private static Answer<Void> CALL_RUNNER = new Answer<Void>() {
-                @Override
-                public Void answer(InvocationOnMock invocation) throws Throwable {
-                    Object[] args = invocation.getArguments();
-                    ((IRemoteAndroidTestRunner)args[0]).run((ITestRunListener)args[1]);
-                    return null;
-                }
-        };
+        private static final Answer<Void> CALL_RUNNER =
+                new Answer<Void>() {
+                    @Override
+                    public Void answer(InvocationOnMock invocation) throws Throwable {
+                        Object[] args = invocation.getArguments();
+                        ((IRemoteAndroidTestRunner) args[0]).run((ITestRunListener) args[1]);
+                        return null;
+                    }
+                };
 
         private Map<InstrumentationTarget, List<TestIdentifier>> mTests = new HashMap<>();
         private Map<String, Boolean> mShardingEnabled = new HashMap<>();

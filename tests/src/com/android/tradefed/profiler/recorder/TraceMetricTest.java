@@ -42,7 +42,7 @@ public class TraceMetricTest {
         Assert.assertEquals("mmc", m.getPrefix());
         Assert.assertEquals("mmc_cmd_rw_start", m.getFuncName());
         Assert.assertEquals("response", m.getParam());
-        Assert.assertEquals(new Double(144), m.getExpectedVal());
+        Assert.assertEquals(Double.valueOf(144), m.getExpectedVal());
         Assert.assertEquals(MetricType.COUNT, m.getMetricType());
     }
 
@@ -53,7 +53,7 @@ public class TraceMetricTest {
         Assert.assertEquals("mmc", m.getPrefix());
         Assert.assertEquals("mmc_cmd_rw_start", m.getFuncName());
         Assert.assertEquals("response", m.getParam());
-        Assert.assertEquals(new Double(90), m.getExpectedVal());
+        Assert.assertEquals(Double.valueOf(90), m.getExpectedVal());
         Assert.assertEquals(MetricType.COUNT, m.getMetricType());
     }
 

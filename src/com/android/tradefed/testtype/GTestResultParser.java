@@ -583,9 +583,8 @@ public class GTestResultParser extends MultiLineReceiver {
         // Save the run time for this test if one exists
         if (parsedResults.mTestRunTime != null) {
             try {
-                testResult.mRunTime = new Long(parsedResults.mTestRunTime);
-            }
-            catch (NumberFormatException e) {
+                testResult.mRunTime = Long.valueOf(parsedResults.mTestRunTime);
+            } catch (NumberFormatException e) {
                 CLog.e("Test run time value is invalid, received: %s", parsedResults.mTestRunTime);
             }
         }

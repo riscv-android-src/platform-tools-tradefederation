@@ -18,6 +18,7 @@ package com.android.tradefed.config;
 import com.android.ddmlib.Log.LogLevel;
 import com.android.tradefed.config.ConfigurationFactory.ConfigId;
 import com.android.tradefed.log.ILeveledLogOutput;
+import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.targetprep.StubTargetPreparer;
 import com.android.tradefed.util.FileUtil;
 
@@ -479,9 +480,13 @@ public class ConfigurationFactoryTest extends TestCase {
             assertTrue(String.format("Error message should help user to resolve the " +
                     "template-include.  msg was: %s", msg),
                     msg.contains(String.format("--template:map %s", "target")));
-            assertTrue(String.format("Error message should mention the ability to specify a " +
-                    "default resolution.  msg was: %s", msg),
-                    msg.contains(String.format("'default'", configName)));
+            CLog.e(msg);
+            assertTrue(
+                    String.format(
+                            "Error message should mention the ability to specify a "
+                                    + "default resolution.  msg was: %s",
+                            msg),
+                    msg.contains("'default'"));
         }
     }
 

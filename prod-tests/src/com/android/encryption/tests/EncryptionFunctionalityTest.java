@@ -46,12 +46,14 @@ public class EncryptionFunctionalityTest implements IDeviceTest, IRemoteTest {
 
     ITestDevice mTestDevice = null;
 
-    final String[] STAGE_NAME = {
-            "encryption", "online", "bootcomplete", "decryption",
-            "bootcomplete", "pwchanged", "bootcomplete", "nopassword"};
+    static final String[] STAGE_NAME = {
+        "encryption", "online", "bootcomplete", "decryption",
+        "bootcomplete", "pwchanged", "bootcomplete", "nopassword"
+    };
     Map<String, String> metrics = new HashMap<String, String>();
     int stage = 0;
-    long stageEndTime, stageStartTime;
+    long stageEndTime;
+    long stageStartTime;
 
     /**
      * {@inheritDoc}

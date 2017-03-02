@@ -266,8 +266,9 @@ public class EncryptionCpuTest implements IDeviceTest, IRemoteTest {
 
                 CLog.d("Pushing %dkB file to device %s took %d ms", mPushFileSize,
                         mTestDevice.getSerialNumber(), elapsedTime);
-                addMetric("push_bw" + getKeySuffix(),
-                        new Double(1000.0 * mPushFileSize / elapsedTime).toString());
+                addMetric(
+                        "push_bw" + getKeySuffix(),
+                        Double.valueOf(1000.0 * mPushFileSize / elapsedTime).toString());
             } finally {
                 stopLogging(listener);
                 FileUtil.deleteFile(hostFile);
@@ -308,8 +309,9 @@ public class EncryptionCpuTest implements IDeviceTest, IRemoteTest {
 
                 CLog.d("pulling %dkB file from device %s took %d ms", mPullFileSize,
                         mTestDevice.getSerialNumber(), elapsedTime);
-                addMetric("pull_bw" + getKeySuffix(),
-                        new Double(1000.0 * mPullFileSize / elapsedTime).toString());
+                addMetric(
+                        "pull_bw" + getKeySuffix(),
+                        Double.valueOf(1000.0 * mPullFileSize / elapsedTime).toString());
             } finally {
                 stopLogging(listener);
                 FileUtil.deleteFile(hostFile);

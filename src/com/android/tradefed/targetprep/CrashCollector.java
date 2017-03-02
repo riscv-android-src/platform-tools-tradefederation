@@ -40,7 +40,7 @@ import com.android.tradefed.util.StreamUtil;
 public class CrashCollector extends TestFilePushSetup
         implements ITestLoggerReceiver, ITargetCleaner {
 
-    private static String LOG_NAME = "crash-collector-log";
+    private static final String LOG_NAME = "crash-collector-log";
     private ITestLogger mTestLogger;
     private BackgroundDeviceAction mCrashCollector;
     private LargeOutputReceiver mCrashReceiver;

@@ -64,8 +64,8 @@ public class ConfigurationDef {
     }
 
     private boolean mMultiDeviceMode = false;
-    private static String MULTI_PATTERN = "(.*)(:)(.*)";
-    public static String DEFAULT_DEVICE_NAME = "DEFAULT_DEVICE";
+    private static final String MULTI_PATTERN = "(.*)(:)(.*)";
+    public static final String DEFAULT_DEVICE_NAME = "DEFAULT_DEVICE";
 
     /** the unique name of the configuration definition */
     private final String mName;

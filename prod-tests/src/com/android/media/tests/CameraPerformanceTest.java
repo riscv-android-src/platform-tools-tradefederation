@@ -208,16 +208,16 @@ public class CameraPerformanceTest extends CameraTestBase {
      */
     public abstract class CtsResultParserBase {
         // KPIs to be reported. The key is test methods and the value is KPIs in the method.
-        private final ImmutableMultimap<String, String> REPORTING_KPIS =
+        private ImmutableMultimap<String, String> mReportingKpis =
                 new ImmutableMultimap.Builder<String, String>()
-                    .put("testCameraLaunch", "Camera launch time")
-                    .put("testCameraLaunch", "Camera start preview time")
-                    .put("testSingleCapture", "Camera capture result latency")
-                    .put("testReprocessingLatency", "YUV reprocessing shot to shot latency")
-                    .put("testReprocessingLatency", "opaque reprocessing shot to shot latency")
-                    .put("testReprocessingThroughput", "YUV reprocessing capture latency")
-                    .put("testReprocessingThroughput", "opaque reprocessing capture latency")
-                    .build();
+                        .put("testCameraLaunch", "Camera launch time")
+                        .put("testCameraLaunch", "Camera start preview time")
+                        .put("testSingleCapture", "Camera capture result latency")
+                        .put("testReprocessingLatency", "YUV reprocessing shot to shot latency")
+                        .put("testReprocessingLatency", "opaque reprocessing shot to shot latency")
+                        .put("testReprocessingThroughput", "YUV reprocessing capture latency")
+                        .put("testReprocessingThroughput", "opaque reprocessing capture latency")
+                        .build();
 
         protected CtsMetric mSummary;
         protected List<CtsMetric> mDetails = new ArrayList<>();
@@ -234,7 +234,7 @@ public class CameraPerformanceTest extends CameraTestBase {
         protected Map<String, String> filter(List<CtsMetric> metrics, String testMethod) {
             Map<String, String> filtered = new HashMap<String, String>();
             for (CtsMetric metric : metrics) {
-                for (String kpiName : REPORTING_KPIS.get(testMethod)) {
+                for (String kpiName : mReportingKpis.get(testMethod)) {
                     // Post the data only when it matches with the given methods and KPI names.
                     if (metric.matches(testMethod, kpiName)) {
                         filtered.put(metric.schemaKey, metric.value);
@@ -297,11 +297,13 @@ public class CameraPerformanceTest extends CameraTestBase {
     public class CtsDelimitedResultParser extends CtsResultParserBase {
         private static final String LOG_SEPARATOR = "\\+\\+\\+";
         private static final String SUMMARY_SEPARATOR = "\\+\\+\\+\\+";
-        private final Pattern SUMMARY_REGEX = Pattern.compile(
-                "^(?<message>[^|]+)\\| \\|(?<type>[^|]+)\\|(?<unit>[^|]+)\\|(?<value>[0-9 .]+)");
-        private final Pattern DETAIL_REGEX = Pattern.compile(
-                "^(?<source>[^|]+)\\|(?<message>[^|]+)\\|(?<type>[^|]+)\\|(?<unit>[^|]+)\\|"
-                + "(?<values>[0-9 .]+)");
+        private Pattern mSummaryRegex =
+                Pattern.compile(
+                        "^(?<message>[^|]+)\\| \\|(?<type>[^|]+)\\|(?<unit>[^|]+)\\|(?<value>[0-9 .]+)");
+        private Pattern mDetailRegex =
+                Pattern.compile(
+                        "^(?<source>[^|]+)\\|(?<message>[^|]+)\\|(?<type>[^|]+)\\|(?<unit>[^|]+)\\|"
+                                + "(?<values>[0-9 .]+)");
 
         @Override
         public Map<String, String> parse(String result, String testMethod) {
@@ -315,7 +317,7 @@ public class CameraPerformanceTest extends CameraTestBase {
             if (output.length != 2) {
                 throw new RuntimeException("Value not in the correct format");
             }
-            Matcher summaryMatcher = SUMMARY_REGEX.matcher(output[0].trim());
+            Matcher summaryMatcher = mSummaryRegex.matcher(output[0].trim());
 
             // Parse summary.
             // Example: "Camera launch average time for Camera 1| |lower_better|ms|586.6++++"
@@ -335,7 +337,7 @@ public class CameraPerformanceTest extends CameraTestBase {
             // Example: "android.hardware.camera2.cts.PerformanceTest#testCameraLaunch:171|Camera 0: Camera open time|lower_better|ms|74.0 100.0 70.0 67.0 82.0 +++"
             String[] details = output[1].split(LOG_SEPARATOR);
             for (String detail : details) {
-                Matcher detailMatcher = DETAIL_REGEX.matcher(detail.trim());
+                Matcher detailMatcher = mDetailRegex.matcher(detail.trim());
                 if (detailMatcher.matches()) {
                     // get average of kpi values
                     List<Double> values = new ArrayList<>();

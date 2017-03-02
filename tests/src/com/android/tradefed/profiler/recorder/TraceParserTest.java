@@ -86,9 +86,9 @@ public class TraceParserTest {
         Assert.assertTrue(params.containsKey("cmd"));
         Assert.assertTrue(params.containsKey("int_status"));
         Assert.assertTrue(params.containsKey("response"));
-        Assert.assertEquals(new Long(25), params.get("cmd"));
-        Assert.assertEquals(new Long(1), params.get("int_status"));
-        Assert.assertEquals(new Long(16), params.get("response"));
+        Assert.assertEquals(Long.valueOf(25), params.get("cmd"));
+        Assert.assertEquals(Long.valueOf(1), params.get("int_status"));
+        Assert.assertEquals(Long.valueOf(16), params.get("response"));
     }
 
     @Test

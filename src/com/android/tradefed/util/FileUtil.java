@@ -62,7 +62,7 @@ public class FileUtil {
             ' ', 'K', 'M', 'G', 'T'
     };
 
-    private static String CHMOD = "chmod";
+    private static String sChmod = "chmod";
 
     /** A map of {@link PosixFilePermission} to its corresponding Unix file mode */
     private static final Map<PosixFilePermission, Integer> PERM_MODE_MAP = new HashMap<>();
@@ -78,14 +78,14 @@ public class FileUtil {
         PERM_MODE_MAP.put(PosixFilePermission.OTHERS_EXECUTE, 0b000000001);
     }
 
-    public static int FILESYSTEM_FILENAME_MAX_LENGTH = 255;
+    public static final int FILESYSTEM_FILENAME_MAX_LENGTH = 255;
 
     /**
      * Exposed for testing. Allows to modify the chmod binary name we look for, in order to tests
      * system with no chmod support.
      */
     protected static void setChmodBinary(String chmodName) {
-        CHMOD = chmodName;
+        sChmod = chmodName;
     }
 
     /**
@@ -167,8 +167,8 @@ public class FileUtil {
     public static boolean chmod(File file, String perms) {
         Log.d(LOG_TAG, String.format("Attempting to chmod %s to %s",
                 file.getAbsolutePath(), perms));
-        CommandResult result = RunUtil.getDefault().runTimedCmd(10 * 1000, CHMOD, perms,
-                file.getAbsolutePath());
+        CommandResult result =
+                RunUtil.getDefault().runTimedCmd(10 * 1000, sChmod, perms, file.getAbsolutePath());
         return result.getStatus().equals(CommandStatus.SUCCESS);
     }
 
@@ -231,7 +231,7 @@ public class FileUtil {
      * Internal helper to determine if 'chmod' is available on the system OS.
      */
     protected static boolean chmodExists() {
-        CommandResult result = RunUtil.getDefault().runTimedCmd(10 * 1000, CHMOD);
+        CommandResult result = RunUtil.getDefault().runTimedCmd(10 * 1000, sChmod);
         // We expect a status fail because 'chmod' requires arguments.
         if (CommandStatus.FAILED.equals(result.getStatus()) &&
                 result.getStderr().contains("chmod: missing operand")) {
@@ -774,8 +774,8 @@ public class FileUtil {
             }
             size /= 1024f;
         }
-        throw new IllegalArgumentException(String.format(
-                "Passed a file size of %d, I cannot count that high", size));
+        throw new IllegalArgumentException(
+                String.format("Passed a file size of %.2f, I cannot count that high", size));
     }
 
     /**

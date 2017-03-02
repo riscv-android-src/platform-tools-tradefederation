@@ -322,8 +322,7 @@ public class HermeticLaunchTest implements IRemoteTest, IDeviceTest {
             for (Integer launchTime : amLaunchTimes.get(activityName)) {
                 totalTime += launchTime;
             }
-            Double averageTime = new Double(totalTime
-                    / amLaunchTimes.get(activityName).size());
+            Double averageTime = Double.valueOf(totalTime / amLaunchTimes.get(activityName).size());
             if (mActivityTimeResultMap.containsKey(activityName)) {
                 mActivityTimeResultMap.get(activityName).put(TOTALLAUNCHTIME,
                         String.format("%.2f", averageTime));

@@ -49,7 +49,7 @@ public class ConditionPriorityBlockingQueueTest extends TestCase {
      * Test {@link ConditionPriorityBlockingQueue#take()} when a single object is in queue.
      */
     public void testTake() throws InterruptedException {
-        Integer one = new Integer(1);
+        Integer one = Integer.valueOf(1);
         mQueue.add(one);
         assertEquals(one, mQueue.take());
         assertNull(mQueue.poll());
@@ -60,8 +60,8 @@ public class ConditionPriorityBlockingQueueTest extends TestCase {
      * verify objects are returned in expected order.
      */
     public void testTake_priority() throws InterruptedException {
-        Integer one = new Integer(1);
-        Integer two = new Integer(2);
+        Integer one = Integer.valueOf(1);
+        Integer two = Integer.valueOf(2);
         mQueue.add(two);
         mQueue.add(one);
         assertEquals(one, mQueue.take());
@@ -75,8 +75,8 @@ public class ConditionPriorityBlockingQueueTest extends TestCase {
     public void testTake_fifo() throws InterruptedException {
         ConditionPriorityBlockingQueue<Integer> fifoQueue =
             new ConditionPriorityBlockingQueue<Integer>();
-        Integer one = new Integer(1);
-        Integer two = new Integer(2);
+        Integer one = Integer.valueOf(1);
+        Integer two = Integer.valueOf(2);
         fifoQueue.add(two);
         fifoQueue.add(one);
         assertEquals(two, fifoQueue.take());
@@ -89,8 +89,8 @@ public class ConditionPriorityBlockingQueueTest extends TestCase {
      * objects in inverse order.
      */
     public void testTake_priorityReverse() throws InterruptedException {
-        Integer one = new Integer(1);
-        Integer two = new Integer(2);
+        Integer one = Integer.valueOf(1);
+        Integer two = Integer.valueOf(2);
         mQueue.add(one);
         mQueue.add(two);
         assertEquals(one, mQueue.take());
@@ -102,7 +102,7 @@ public class ConditionPriorityBlockingQueueTest extends TestCase {
      * Test {@link ConditionPriorityBlockingQueue#take()} when object is not initially present.
      */
     public void testTake_delayedAdd() throws InterruptedException {
-        final Integer one = new Integer(1);
+        final Integer one = Integer.valueOf(1);
         Thread delayedAdd = new Thread() {
             @Override
             public void run() {
@@ -123,8 +123,8 @@ public class ConditionPriorityBlockingQueueTest extends TestCase {
      * initially present.
      */
     public void testTake_matcher_delayedAdd() throws InterruptedException {
-        final Integer one = new Integer(1);
-        final Integer two = new Integer(2);
+        final Integer one = Integer.valueOf(1);
+        final Integer two = Integer.valueOf(2);
         mQueue.add(two);
         Thread delayedAdd = new Thread() {
             @Override
@@ -146,8 +146,8 @@ public class ConditionPriorityBlockingQueueTest extends TestCase {
      * Test {@link ConditionPriorityBlockingQueue#take(IMatcher)} when multiple threads are waiting
      */
     public void testTake_multiple_matchers() throws InterruptedException {
-        final Integer one = new Integer(1);
-        final Integer second_one = new Integer(1);
+        final Integer one = Integer.valueOf(1);
+        final Integer second_one = Integer.valueOf(1);
 
         Thread waiter = new Thread() {
             @Override
@@ -221,8 +221,8 @@ public class ConditionPriorityBlockingQueueTest extends TestCase {
      * doesn't.
      */
     public void testPoll_condition() {
-        Integer one = new Integer(1);
-        Integer two = new Integer(2);
+        Integer one = Integer.valueOf(1);
+        Integer two = Integer.valueOf(2);
         mQueue.add(one);
         mQueue.add(two);
         assertEquals(one, mQueue.poll(new OneMatcher()));
@@ -234,8 +234,8 @@ public class ConditionPriorityBlockingQueueTest extends TestCase {
      * matches, and one doesn't.
      */
     public void testPoll_time_condition() throws InterruptedException {
-        Integer one = new Integer(1);
-        Integer two = new Integer(2);
+        Integer one = Integer.valueOf(1);
+        Integer two = Integer.valueOf(2);
         mQueue.add(one);
         mQueue.add(two);
         assertEquals(one, mQueue.poll(100, TimeUnit.MILLISECONDS, new OneMatcher()));
@@ -249,8 +249,8 @@ public class ConditionPriorityBlockingQueueTest extends TestCase {
     public void testPoll_fifo_condition() {
         ConditionPriorityBlockingQueue<Integer> fifoQueue =
             new ConditionPriorityBlockingQueue<Integer>();
-        Integer one = new Integer(1);
-        Integer two = new Integer(2);
+        Integer one = Integer.valueOf(1);
+        Integer two = Integer.valueOf(2);
         fifoQueue.add(two);
         fifoQueue.add(one);
         assertEquals(one, fifoQueue.poll(new OneMatcher()));
@@ -262,8 +262,8 @@ public class ConditionPriorityBlockingQueueTest extends TestCase {
      * added in inverse order.
      */
     public void testPoll_condition_reverse() {
-        Integer one = new Integer(1);
-        Integer two = new Integer(2);
+        Integer one = Integer.valueOf(1);
+        Integer two = Integer.valueOf(2);
         mQueue.add(two);
         mQueue.add(one);
         assertEquals(one, mQueue.poll(new OneMatcher()));

@@ -25,12 +25,12 @@ import java.io.InputStream;
  * Unit tests for the {@link SnapshotInputStreamSource} class
  */
 public class SnapshotInputStreamSourceTest extends TestCase {
-    private static final String mFileContents = "These are file contents!";
+    private static final String FILE_CONTENTS = "These are file contents!";
     private InputStream mInputStream = null;
 
     @Override
     public void setUp() throws Exception {
-        mInputStream = new ByteArrayInputStream(mFileContents.getBytes());
+        mInputStream = new ByteArrayInputStream(FILE_CONTENTS.getBytes());
     }
 
     /**

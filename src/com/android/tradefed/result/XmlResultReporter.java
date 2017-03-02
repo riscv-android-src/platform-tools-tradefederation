@@ -74,7 +74,7 @@ public class XmlResultReporter extends CollectingTestListener implements ILogSav
     private static final String HOSTNAME = "hostname";
 
     /** the XML namespace */
-    private static final String ns = null;
+    private static final String NS = null;
 
     private ILogSaver mLogSaver;
 
@@ -150,17 +150,17 @@ public class XmlResultReporter extends CollectingTestListener implements ILogSav
 
     void printTestResults(KXmlSerializer serializer, String timestamp, long elapsedTime)
             throws IOException {
-        serializer.startTag(ns, TESTSUITE);
-        serializer.attribute(ns, ATTR_NAME, getInvocationContext().getTestTag());
-        serializer.attribute(ns, ATTR_TESTS, Integer.toString(getNumTotalTests()));
-        serializer.attribute(ns, ATTR_FAILURES,
-                Integer.toString(getNumTestsInState(TestStatus.FAILURE)));
-        serializer.attribute(ns, ATTR_ERRORS, "0");
-        serializer.attribute(ns, ATTR_TIME, Long.toString(elapsedTime));
-        serializer.attribute(ns, TIMESTAMP, timestamp);
-        serializer.attribute(ns, HOSTNAME, "localhost");
-        serializer.startTag(ns, PROPERTIES);
-        serializer.endTag(ns, PROPERTIES);
+        serializer.startTag(NS, TESTSUITE);
+        serializer.attribute(NS, ATTR_NAME, getInvocationContext().getTestTag());
+        serializer.attribute(NS, ATTR_TESTS, Integer.toString(getNumTotalTests()));
+        serializer.attribute(
+                NS, ATTR_FAILURES, Integer.toString(getNumTestsInState(TestStatus.FAILURE)));
+        serializer.attribute(NS, ATTR_ERRORS, "0");
+        serializer.attribute(NS, ATTR_TIME, Long.toString(elapsedTime));
+        serializer.attribute(NS, TIMESTAMP, timestamp);
+        serializer.attribute(NS, HOSTNAME, "localhost");
+        serializer.startTag(NS, PROPERTIES);
+        serializer.endTag(NS, PROPERTIES);
 
         for (TestRunResult runResult : getRunResults()) {
             // TODO: add test run summaries as TESTSUITES ?
@@ -170,20 +170,20 @@ public class XmlResultReporter extends CollectingTestListener implements ILogSav
             }
         }
 
-        serializer.endTag(ns, TESTSUITE);
+        serializer.endTag(NS, TESTSUITE);
     }
 
     void print(KXmlSerializer serializer, TestIdentifier testId, TestResult testResult)
             throws IOException {
 
-        serializer.startTag(ns, TESTCASE);
-        serializer.attribute(ns, ATTR_NAME, testId.getTestName());
-        serializer.attribute(ns, ATTR_CLASSNAME, testId.getClassName());
-        serializer.attribute(ns, ATTR_TIME, "0");
+        serializer.startTag(NS, TESTCASE);
+        serializer.attribute(NS, ATTR_NAME, testId.getTestName());
+        serializer.attribute(NS, ATTR_CLASSNAME, testId.getClassName());
+        serializer.attribute(NS, ATTR_TIME, "0");
 
         if (!TestStatus.PASSED.equals(testResult.getStatus())) {
             String result = testResult.getStatus().equals(TestStatus.FAILURE) ? FAILURE : ERROR;
-            serializer.startTag(ns, result);
+            serializer.startTag(NS, result);
             // TODO: get message of stack trace ?
 //            String msg = testResult.getStackTrace();
 //            if (msg != null && msg.length() > 0) {
@@ -193,10 +193,10 @@ public class XmlResultReporter extends CollectingTestListener implements ILogSav
             //serializer.attribute(ns, ATTR_TYPE, testId.getClassName());
             String stackText = sanitize(testResult.getStackTrace());
             serializer.text(stackText);
-            serializer.endTag(ns, result);
+            serializer.endTag(NS, result);
         }
 
-        serializer.endTag(ns, TESTCASE);
+        serializer.endTag(NS, TESTCASE);
      }
 
     /**

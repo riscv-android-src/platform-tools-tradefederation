@@ -58,8 +58,8 @@ public class UiPerformanceTest implements IDeviceTest, IRemoteTest {
     //       different configurations.
     private static final String TEST_RUNNER_NAME =
             "com.android.testing.uiautomation.UiAutomationTestRunner";
-    private static String OUTPUT_FILE_NAME = "UiPerfTestsOutput.txt"; // output file
-    private static String RAW_DATA_DIRECTORY = "UiPerformanceRawData"; // raw data directory
+    private static final String OUTPUT_FILE_NAME = "UiPerfTestsOutput.txt"; // output file
+    private static final String RAW_DATA_DIRECTORY = "UiPerformanceRawData"; // raw data directory
 
     private static final String TEST_CASE_PREFIX = "test";
     private static final long START_TIMER = 2 * 60 * 1000; // 2 minutes
@@ -70,9 +70,10 @@ public class UiPerformanceTest implements IDeviceTest, IRemoteTest {
             Pattern.compile("^median of frame latency: (\\d+)");
     private static final Pattern FRAME_RATE_PATTERN =
             Pattern.compile("^average frame rate: (\\d+\\.\\d+)");
-    private static Pattern[] mPatterns = {JANKINESS_PATTERN, FRAME_RATE_PATTERN,
-            MEDIAN_FRAME_LATENCY_PATTERN};
-    private static String[] ITEM_KEYS = {"number_jankiness", "frame_rate", "frame_latency"};
+    private static final Pattern[] mPatterns = {
+        JANKINESS_PATTERN, FRAME_RATE_PATTERN, MEDIAN_FRAME_LATENCY_PATTERN
+    };
+    private static final String[] ITEM_KEYS = {"number_jankiness", "frame_rate", "frame_latency"};
 
     @Override
     public void setDevice(ITestDevice testDevice) {
