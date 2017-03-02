@@ -39,10 +39,15 @@ public class CommandOptions implements ICommandOptions {
     @Option(name = "json-help", description = "display the full help in json format.")
     private boolean mJsonHelpMode = false;
 
-    @Option(name = "dry-run",
-            description = "build but don't actually run the command.  Intended as a quick check " +
-                    "to ensure that a command is runnable.",
-            importance = Importance.ALWAYS)
+    public static final String DRY_RUN_OPTION = "dry-run";
+
+    @Option(
+        name = DRY_RUN_OPTION,
+        description =
+                "build but don't actually run the command.  Intended as a quick check "
+                        + "to ensure that a command is runnable.",
+        importance = Importance.ALWAYS
+    )
     private boolean mDryRunMode = false;
 
     @Option(name = "noisy-dry-run",
