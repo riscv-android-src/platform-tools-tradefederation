@@ -299,10 +299,10 @@ public class CollectingTestListener implements ITestInvocationListener {
     }
 
     /**
-     * Return total number of tests in a failure state (failed, assumption failure)
+     * Return total number of tests in a failure state (only failed, assumption failures do not
+     * count toward it).
      */
     public int getNumAllFailedTests() {
-        return getNumTestsInState(TestStatus.FAILURE) +
-                getNumTestsInState(TestStatus.ASSUMPTION_FAILURE);
+        return getNumTestsInState(TestStatus.FAILURE);
     }
 }
