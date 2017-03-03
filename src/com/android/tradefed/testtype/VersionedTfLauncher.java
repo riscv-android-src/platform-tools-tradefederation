@@ -21,9 +21,10 @@ import com.android.tradefed.config.Option;
 import com.android.tradefed.config.OptionCopier;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.device.NullDevice;
-import com.android.tradefed.util.QuotationAwareTokenizer;
+import com.android.tradefed.util.StringEscapeUtils;
 
-import java.util.Arrays;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -35,9 +36,9 @@ import java.util.Map;
 public class VersionedTfLauncher extends SubprocessTfLauncher
         implements IMultiDeviceTest, IStrictShardableTest {
 
-    @Option(name = "tf-command-line", description = "The string of original command line "
+    @Option(name = "tf-command-line", description = "The list string of original command line "
             + "arguments.")
-    private String mTfCommandline = null;
+    private List<String> mTfCommandline = new ArrayList<>();
 
     private Map<ITestDevice, IBuildInfo> mDeviceInfos = null;
 
@@ -67,8 +68,8 @@ public class VersionedTfLauncher extends SubprocessTfLauncher
     protected void preRun() {
         super.preRun();
 
-        if (mTfCommandline != null) {
-            mCmdArgs.addAll(Arrays.asList(QuotationAwareTokenizer.tokenizeLine(mTfCommandline)));
+        if (!mTfCommandline.isEmpty()) {
+            mCmdArgs.addAll(StringEscapeUtils.paramsToArgs(mTfCommandline));
         }
 
         // TODO: support multiple device test.
