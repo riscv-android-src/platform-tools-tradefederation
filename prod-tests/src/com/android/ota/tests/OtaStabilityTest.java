@@ -310,8 +310,12 @@ public class OtaStabilityTest implements IDeviceTest, IBuildReceiver, IConfigura
         }
         currentBuildId = mDevice.getBuildId();
         // TODO: should exact expected build id be checked?
-        Assert.assertTrue(String.format("Device %s build id did not change after leaving recovery",
-                mDevice.getSerialNumber()), currentBuildId !=  mDeviceBuild.getBuildId());
+        Assert.assertNotEquals(
+                String.format(
+                        "Device %s build id did not change after leaving recovery",
+                        mDevice.getSerialNumber()),
+                currentBuildId,
+                mDeviceBuild.getBuildId());
         return currentBuildId;
     }
 

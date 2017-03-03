@@ -258,7 +258,7 @@ public class WifiStressTest implements IRemoteTest, IDeviceTest {
 
         for (TestInfo testCase : mTestList) {
             // for Wi-Fi reconnection test,
-            if (testCase.mTestName == "WifiReconnectionStress") {
+            if ("WifiReconnectionStress".equals(testCase.mTestName)) {
                 setScreenProperty(false);
             } else {
                 setScreenProperty(true);
@@ -310,7 +310,7 @@ public class WifiStressTest implements IRemoteTest, IDeviceTest {
             ITestInvocationListener listener) {
         Map<String, String> runMetrics = new HashMap<String, String>();
         Map<String, String> runScanMetrics = null;
-        boolean isScanningTest = (test.mTestName == "WifiScanning");
+        boolean isScanningTest = "WifiScanning".equals(test.mTestName);
         Integer iteration = null;
         BufferedReader br = null;
         try {
@@ -323,7 +323,7 @@ public class WifiStressTest implements IRemoteTest, IDeviceTest {
                     CLog.d("In output file of test case %s: retrieve key: %s, " +
                             "catpure: %s", test.mTestName, key, capture.toString());
                     //Save results in the metrics
-                    if (key == "scan_quality") {
+                    if ("scan_quality".equals(key)) {
                         // For scanning test, calculate the scan quality
                         int count = Integer.parseInt(capture.get(0).get(0));
                         int total = Integer.parseInt(capture.get(0).get(1));

@@ -248,7 +248,7 @@ public class WifiConnector {
             throw new WifiException(String.format("failed to enable network %s", ssid));
         }
         if (!mWifiManager.saveConfiguration()) {
-            throw new WifiException(String.format("failed to save configuration", ssid));
+            throw new WifiException(String.format("failed to save configuration %s", ssid));
         }
         connectTimeout = calculateTimeLeft(connectTimeout, timeSpent);
         timeSpent = waitForCallable(new Callable<Boolean>() {

@@ -182,7 +182,7 @@ public class CommandScheduler extends Thread implements ICommandScheduler, IComm
         EXECUTING("Executing"),
         SLEEPING("Sleeping");
 
-        private String mDisplayName;
+        private final String mDisplayName;
 
         CommandState(String displayName) {
             mDisplayName = displayName;

@@ -14,14 +14,16 @@
 
 # Set of error prone rules to ensure code quality
 # PackageLocation check requires the androidCompatible=false otherwise it does not do anything.
-LOCAL_ERROR_PRONE_FLAGS:= -Xep:FormatString:ERROR \
+LOCAL_ERROR_PRONE_FLAGS:= -XDandroidCompatible=false \
                           -Xep:ArrayToString:ERROR \
-                          -Xep:ReturnValueIgnored:ERROR \
                           -Xep:BoxedPrimitiveConstructor:ERROR \
-                          -Xep:MissingFail:ERROR \
-                          -Xep:SelfEquals:ERROR \
-                          -Xep:Overrides:ERROR \
-                          -Xep:RemoveUnusedImports:ERROR \
                           -Xep:ConstantField:ERROR \
+                          -Xep:FormatString:ERROR \
+                          -Xep:MissingFail:ERROR \
+                          -Xep:Overrides:ERROR \
                           -Xep:PackageLocation:ERROR \
-                          -XDandroidCompatible=false
+                          -Xep:ReferenceEquality:ERROR \
+                          -Xep:RemoveUnusedImports:ERROR \
+                          -Xep:ReturnValueIgnored:ERROR \
+                          -Xep:SelfEquals:ERROR
+

@@ -151,7 +151,7 @@ public class CameraSettingsTest implements IDeviceTest, IRemoteTest {
             reader = new BufferedReader(new FileReader(outputFile));
 
             while ((line = reader.readLine()) != null) {
-                if (line != "") {
+                if (!line.isEmpty()) {
                     lines.add(line);
                 }
             }
