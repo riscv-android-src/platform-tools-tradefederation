@@ -15,17 +15,77 @@
  */
 package com.android.tradefed.util;
 
-import junit.framework.TestCase;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertArrayEquals;
+
+import org.junit.runner.RunWith;
+import org.junit.runners.JUnit4;
+import org.junit.Test;
+
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * Unit tests for {@link StringEscapeUtils}
  */
-public class StringEscapeUtilsTest extends TestCase {
+@RunWith(JUnit4.class)
+public class StringEscapeUtilsTest {
     /**
      * Simple test that {@link StringEscapeUtils#escapeShell(String)} escapes the dollar sign.
      */
+    @Test
     public void testEscapesDollarSigns() {
         String escaped_str = StringEscapeUtils.escapeShell("$money$signs");
         assertEquals("\\$money\\$signs", escaped_str);
+    }
+
+    /**
+     * Test {@link StringEscapeUtils#paramsToArgs(List) returns proper result with no quoting
+     * or spaces
+     */
+    @Test
+    public void testParams_noQuotesNoSpaces() {
+        List<String> expected = new ArrayList<>();
+        expected.add("foo");
+        expected.add("bar");
+        assertArrayEquals(expected.toArray(),
+                StringEscapeUtils.paramsToArgs(expected).toArray());
+    }
+
+    /**
+     * Test {@link StringEscapeUtils#paramsToArgs(List) returns proper result with no quoting
+     * but with spaces
+     */
+    @Test
+    public void testParams_noQuotesWithSpaces() {
+        List<String> expected = new ArrayList<>();
+        expected.add("foo");
+        expected.add("bar bar");
+        assertArrayEquals(new String[]{"foo", "bar", "bar"},
+                StringEscapeUtils.paramsToArgs(expected).toArray());
+    }
+
+    /**
+     * Test {@link StringEscapeUtils#paramsToArgs(List) returns proper result with plain quoting
+     */
+    @Test
+    public void testParams_plainQuotes() {
+        List<String> expected = new ArrayList<>();
+        expected.add("foo");
+        expected.add("\"bar bar\"");
+        assertArrayEquals(new String[]{"foo", "bar bar"},
+                StringEscapeUtils.paramsToArgs(expected).toArray());
+    }
+
+    /**
+     * Test {@link StringEscapeUtils#paramsToArgs(List) returns proper result with escaped quoting
+     */
+    @Test
+    public void testParams_escapedQuotes() {
+        List<String> expected = new ArrayList<>();
+        expected.add("foo");
+        expected.add("\\\"bar bar\\\"");
+        assertArrayEquals(new String[]{"foo", "bar bar"},
+                StringEscapeUtils.paramsToArgs(expected).toArray());
     }
 }

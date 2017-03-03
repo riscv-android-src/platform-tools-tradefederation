@@ -50,8 +50,14 @@ public class VersionedTfLauncherTest {
     private static final String CONFIG_NAME = "FAKE_CONFIG";
     private static final String TF_COMMAND_LINE_TEMPLATE = "--template:map";
     private static final String TF_COMMAND_LINE_TEST = "test=tf/fake";
+    // Test option value with empty spaces should be parsed correctly.
+    private static final String TF_COMMAND_LINE_OPTION = "--option";
+    private static final String TF_COMMAND_LINE_OPTION_VALUE = "value1 value2";
+    private static final String TF_COMMAND_LINE_OPTION_VALUE_QUOTED =
+            ("\\\"" + TF_COMMAND_LINE_OPTION_VALUE + "\\\"");
     private static final String TF_COMMAND_LINE =
-            (TF_COMMAND_LINE_TEMPLATE + " " + TF_COMMAND_LINE_TEST);
+            (TF_COMMAND_LINE_TEMPLATE + " " + TF_COMMAND_LINE_TEST + " " + TF_COMMAND_LINE_OPTION +
+             " " + TF_COMMAND_LINE_OPTION_VALUE_QUOTED);
 
     private VersionedTfLauncher mVersionedTfLauncher;
     private ITestInvocationListener mMockListener;
@@ -100,6 +106,8 @@ public class VersionedTfLauncherTest {
                                 EasyMock.eq(CONFIG_NAME),
                                 EasyMock.eq(TF_COMMAND_LINE_TEMPLATE),
                                 EasyMock.eq(TF_COMMAND_LINE_TEST),
+                                EasyMock.eq(TF_COMMAND_LINE_OPTION),
+                                EasyMock.eq(TF_COMMAND_LINE_OPTION_VALUE),
                                 EasyMock.eq("--serial"),
                                 EasyMock.eq(FAKE_SERIAL),
                                 EasyMock.eq("--subprocess-report-file"),
@@ -149,6 +157,8 @@ public class VersionedTfLauncherTest {
                                 EasyMock.eq(CONFIG_NAME),
                                 EasyMock.eq(TF_COMMAND_LINE_TEMPLATE),
                                 EasyMock.eq(TF_COMMAND_LINE_TEST),
+                                EasyMock.eq(TF_COMMAND_LINE_OPTION),
+                                EasyMock.eq(TF_COMMAND_LINE_OPTION_VALUE),
                                 EasyMock.eq("--null-device"),
                                 EasyMock.eq("--subprocess-report-file"),
                                 (String) EasyMock.anyObject()))
@@ -206,6 +216,8 @@ public class VersionedTfLauncherTest {
                                 EasyMock.eq(CONFIG_NAME),
                                 EasyMock.eq(TF_COMMAND_LINE_TEMPLATE),
                                 EasyMock.eq(TF_COMMAND_LINE_TEST),
+                                EasyMock.eq(TF_COMMAND_LINE_OPTION),
+                                EasyMock.eq(TF_COMMAND_LINE_OPTION_VALUE),
                                 EasyMock.eq("--serial"),
                                 EasyMock.eq(FAKE_SERIAL),
                                 EasyMock.eq("--shard-count"),
