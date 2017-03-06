@@ -40,8 +40,8 @@ public class StringEscapeUtilsTest {
     }
 
     /**
-     * Test {@link StringEscapeUtils#paramsToArgs(List) returns proper result with no quoting
-     * or spaces
+     * Test {@link StringEscapeUtils#paramsToArgs(List)} returns proper result with no quoting or
+     * spaces
      */
     @Test
     public void testParams_noQuotesNoSpaces() {
@@ -53,8 +53,8 @@ public class StringEscapeUtilsTest {
     }
 
     /**
-     * Test {@link StringEscapeUtils#paramsToArgs(List) returns proper result with no quoting
-     * but with spaces
+     * Test {@link StringEscapeUtils#paramsToArgs(List)} returns proper result with no quoting but
+     * with spaces
      */
     @Test
     public void testParams_noQuotesWithSpaces() {
@@ -66,7 +66,7 @@ public class StringEscapeUtilsTest {
     }
 
     /**
-     * Test {@link StringEscapeUtils#paramsToArgs(List) returns proper result with plain quoting
+     * Test {@link StringEscapeUtils#paramsToArgs(List)} returns proper result with plain quoting
      */
     @Test
     public void testParams_plainQuotes() {
@@ -78,7 +78,7 @@ public class StringEscapeUtilsTest {
     }
 
     /**
-     * Test {@link StringEscapeUtils#paramsToArgs(List) returns proper result with escaped quoting
+     * Test {@link StringEscapeUtils#paramsToArgs(List)} returns proper result with escaped quoting
      */
     @Test
     public void testParams_escapedQuotes() {
