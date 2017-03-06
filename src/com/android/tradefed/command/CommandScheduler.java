@@ -67,6 +67,8 @@ import com.android.tradefed.util.RunUtil;
 import com.android.tradefed.util.TableFormatter;
 import com.android.tradefed.util.TimeUtil;
 import com.android.tradefed.util.hostmetric.IHostMonitor;
+import com.android.tradefed.util.hostmetric.IHostMonitor.HostDataPoint;
+import com.android.tradefed.util.hostmetric.IHostMonitor.HostMetricType;
 import com.android.tradefed.util.keystore.IKeyStoreClient;
 import com.android.tradefed.util.keystore.IKeyStoreFactory;
 import com.android.tradefed.util.keystore.KeyStoreException;
@@ -504,6 +506,7 @@ public class CommandScheduler extends Thread implements ICommandScheduler, IComm
          * for the next iteration of testing.
          */
         private static final long CHECK_WAIT_DEVICE_AVAIL_MS = 30 * 1000;
+        private static final int EXPECTED_THREAD_COUNT = 1;
 
         private final IScheduledInvocationListener[] mListeners;
         private final IInvocationContext mInvocationContext;
@@ -599,6 +602,8 @@ public class CommandScheduler extends Thread implements ICommandScheduler, IComm
                     device.setRecoveryMode(RecoveryMode.AVAILABLE);
                 }
 
+                checkStrayThreads();
+
                 for (final IScheduledInvocationListener listener : mListeners) {
                     try {
                         listener.invocationComplete(mInvocationContext, deviceStates);
@@ -611,6 +616,30 @@ public class CommandScheduler extends Thread implements ICommandScheduler, IComm
                 logInvocationEndedEvent(
                         mCmd.getCommandTracker().getId(), elapsedTime, mInvocationContext);
             }
+        }
+
+        /** Check the number of thread in the ThreadGroup, only one should exists (itself). */
+        private void checkStrayThreads() {
+            int numThread = this.getThreadGroup().activeCount();
+            if (numThread == EXPECTED_THREAD_COUNT) {
+                // No stray thread detected at the end of invocation
+                return;
+            }
+            List<String> cmd = Arrays.asList(mCmd.getCommandTracker().getArgs());
+            CLog.e(
+                    "Stray thread detected for command %d, %s. %d threads instead of %d",
+                    mCmd.getCommandTracker().getId(), cmd, numThread, EXPECTED_THREAD_COUNT);
+            // This is the best we have for debug, it prints to std out.
+            this.getThreadGroup().list();
+            List<IHostMonitor> hostMonitors = GlobalConfiguration.getHostMonitorInstances();
+            if (hostMonitors != null) {
+                for (IHostMonitor hm : hostMonitors) {
+                    HostDataPoint data = new HostDataPoint("numThread", numThread, cmd.toString());
+                    hm.addHostEvent(HostMetricType.INVOCATION_STRAY_THREAD, data);
+                }
+            }
+            // printing to stderr will help to catch them.
+            System.err.println(String.format("We have %s threads instead of 1", numThread));
         }
 
         /** Helper to log an invocation ended event. */
@@ -1410,7 +1439,7 @@ public class CommandScheduler extends Thread implements ICommandScheduler, IComm
         if (!isShuttingDown()) {
             CLog.d("initiating shutdown");
             removeAllCommands();
-            if (mReloadCmdfiles) {
+            if (mCommandFileWatcher != null) {
                 mCommandFileWatcher.cancel();
             }
             if (mCommandTimer != null) {

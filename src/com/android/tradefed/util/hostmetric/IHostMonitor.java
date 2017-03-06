@@ -31,27 +31,25 @@ public interface IHostMonitor {
     public void start();
 
     /** A method that will be called to add a special event to be sent. */
-    public void addHostEvent(HostMetricType tag, DataPoint event);
+    public void addHostEvent(HostMetricType tag, HostDataPoint event);
 
     /**
      * A method that will be called to stop the Host Monitor.
      */
     public void terminate();
 
-    /**
-     * Generic class for data to be reported.
-     */
-    static class DataPoint {
+    /** Generic class for data to be reported. */
+    public static class HostDataPoint {
         public String name;
         public int value;
         public String additionalInfo = null;
 
-        public DataPoint(String name, int value) {
+        public HostDataPoint(String name, int value) {
             this.name = name;
             this.value = value;
         }
 
-        public DataPoint(String name, int value, String additionalInfo) {
+        public HostDataPoint(String name, int value, String additionalInfo) {
             this.name = name;
             this.value = value;
             this.additionalInfo = additionalInfo;

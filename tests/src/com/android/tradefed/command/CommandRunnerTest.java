@@ -33,7 +33,9 @@ import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.util.FileUtil;
 
 import org.junit.After;
+import org.junit.AfterClass;
 import org.junit.Before;
+import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
@@ -56,7 +58,23 @@ public class CommandRunnerTest {
     private Throwable mThrowable = null;
     private String mStackTraceOutput = null;
 
-    private ICommandScheduler mOriginalScheduler = null;
+    private static ICommandScheduler sOriginalScheduler = null;
+
+    @BeforeClass
+    public static void beforeClass() throws Exception {
+        // We have some global state that cannot be re-entered so we ensure they do not throw.
+        try {
+            GlobalConfiguration.createGlobalConfiguration(new String[] {});
+        } catch (IllegalStateException e) {
+            // ignore re-init.
+        }
+        sOriginalScheduler = GlobalConfiguration.getInstance().getCommandScheduler();
+    }
+
+    @AfterClass
+    public static void afterClass() {
+        GlobalConfiguration.getInstance().setCommandScheduler(sOriginalScheduler);
+    }
 
     @Before
     public void setUp() {
@@ -66,15 +84,6 @@ public class CommandRunnerTest {
                 new CommandRunner() {
                     @Override
                     public void initGlobalConfig(String[] args) throws ConfigurationException {
-                        // We have some global state that cannot be re-entered so we ensure they do
-                        // not throw.
-                        try {
-                            GlobalConfiguration.createGlobalConfiguration(args);
-                        } catch (IllegalStateException e) {
-                            // ignore re-init.
-                        }
-                        mOriginalScheduler =
-                                GlobalConfiguration.getInstance().getCommandScheduler();
                         GlobalConfiguration.getInstance()
                                 .setCommandScheduler(
                                         new CommandScheduler() {
@@ -130,7 +139,9 @@ public class CommandRunnerTest {
 
     @After
     public void tearDown() {
-        GlobalConfiguration.getInstance().setCommandScheduler(mOriginalScheduler);
+        GlobalConfiguration.getInstance()
+                .getCommandScheduler()
+                .setLastInvocationExitCode(ExitCode.NO_ERROR, null);
     }
 
     /**

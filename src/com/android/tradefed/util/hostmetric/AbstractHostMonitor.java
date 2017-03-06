@@ -45,7 +45,7 @@ public abstract class AbstractHostMonitor extends Thread implements IHostMonitor
     @Option(name = "event-tag", description = "Event Tag that will be accepted by the Monitor.")
     private HostMetricType mTag = HostMetricType.NONE;
 
-    protected Queue<DataPoint> mHostEvents = new LinkedBlockingQueue<DataPoint>();
+    protected Queue<HostDataPoint> mHostEvents = new LinkedBlockingQueue<HostDataPoint>();
 
     protected Map<String, String> mHostData = new HashMap<>();
 
@@ -83,7 +83,7 @@ public abstract class AbstractHostMonitor extends Thread implements IHostMonitor
 
     /** {@inheritDoc} */
     @Override
-    public synchronized void addHostEvent(HostMetricType tag, DataPoint event) {
+    public synchronized void addHostEvent(HostMetricType tag, HostDataPoint event) {
         if (getTag().equals(tag)) {
             mHostEvents.add(event);
         }

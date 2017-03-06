@@ -145,6 +145,7 @@ class CommandFileWatcher extends Thread {
      */
     public void cancel() {
         mCancelled = true;
+        interrupt();
     }
 
     /**

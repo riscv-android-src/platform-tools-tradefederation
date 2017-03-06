@@ -15,6 +15,7 @@
  */
 package com.android.tradefed.util.hostmetric;
 
+import com.android.tradefed.util.hostmetric.IHostMonitor.HostDataPoint;
 import com.android.tradefed.util.hostmetric.IHostMonitor.HostMetricType;
 
 import junit.framework.TestCase;
@@ -38,12 +39,12 @@ public class AbstractHostMonitorTest extends TestCase {
     }
 
     /**
-     * Test {@link AbstractHostMonitor#addHostEvent(HostMetricType, IHostMonitor.DataPoint)} when
-     * the event is properly added.
+     * Test {@link AbstractHostMonitor#addHostEvent(HostMetricType, HostDataPoint)} when the event
+     * is properly added.
      */
     public void testaddHostEvent() {
         assertTrue(mHostMonitor.getQueueSize() == 0);
-        IHostMonitor.DataPoint fakeDataPoint = new IHostMonitor.DataPoint("test", 5);
+        HostDataPoint fakeDataPoint = new HostDataPoint("test", 5);
         mHostMonitor.addHostEvent(mHostMonitor.getTag(), fakeDataPoint);
         assertTrue(mHostMonitor.getQueueSize() == 1);
         mHostMonitor.addHostEvent(mHostMonitor.getTag(), fakeDataPoint);
@@ -51,12 +52,12 @@ public class AbstractHostMonitorTest extends TestCase {
     }
 
     /**
-     * Test {@link AbstractHostMonitor#addHostEvent(HostMetricType, IHostMonitor.DataPoint)} when
-     * the event has a different tag than the Monitor, it should not be added.
+     * Test {@link AbstractHostMonitor#addHostEvent(HostMetricType, HostDataPoint)} when the event
+     * has a different tag than the Monitor, it should not be added.
      */
     public void testaddHostEvent_differentTag() {
         assertTrue(mHostMonitor.getQueueSize() == 0);
-        IHostMonitor.DataPoint fakeDataPoint = new IHostMonitor.DataPoint("test", 5);
+        HostDataPoint fakeDataPoint = new HostDataPoint("test", 5);
         // expected NONE key for hostmonitor
         mHostMonitor.addHostEvent(HostMetricType.INVOCATION_STRAY_THREAD, fakeDataPoint);
         assertTrue(mHostMonitor.getQueueSize() == 0);
