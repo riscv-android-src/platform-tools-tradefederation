@@ -1178,23 +1178,48 @@ public class Configuration implements IConfiguration {
         for (ISystemStatusChecker checker : getSystemStatusCheckers()) {
             dumpClassToXml(serializer, SYSTEM_STATUS_CHECKER_TYPE_NAME, checker);
         }
-        // TODO: fix device specific config object for multi device
-        dumpClassToXml(serializer, BUILD_PROVIDER_TYPE_NAME, getBuildProvider());
-        for (ITargetPreparer preparer : getTargetPreparers()) {
-            dumpClassToXml(serializer, TARGET_PREPARER_TYPE_NAME, preparer);
+
+        if (getDeviceConfig().size() > 1) {
+            // Handle multi device.
+            for (IDeviceConfiguration deviceConfig : getDeviceConfig()) {
+                serializer.startTag(null, Configuration.DEVICE_NAME);
+                serializer.attribute(null, "name", deviceConfig.getDeviceName());
+                dumpClassToXml(
+                        serializer, BUILD_PROVIDER_TYPE_NAME, deviceConfig.getBuildProvider());
+                for (ITargetPreparer preparer : deviceConfig.getTargetPreparers()) {
+                    dumpClassToXml(serializer, TARGET_PREPARER_TYPE_NAME, preparer);
+                }
+                dumpClassToXml(
+                        serializer, DEVICE_RECOVERY_TYPE_NAME, deviceConfig.getDeviceRecovery());
+                dumpClassToXml(
+                        serializer,
+                        DEVICE_REQUIREMENTS_TYPE_NAME,
+                        deviceConfig.getDeviceRequirements());
+                dumpClassToXml(
+                        serializer, DEVICE_OPTIONS_TYPE_NAME, deviceConfig.getDeviceOptions());
+                serializer.endTag(null, Configuration.DEVICE_NAME);
+            }
+        } else {
+            // Put single device tags
+            dumpClassToXml(serializer, BUILD_PROVIDER_TYPE_NAME, getBuildProvider());
+            for (ITargetPreparer preparer : getTargetPreparers()) {
+                dumpClassToXml(serializer, TARGET_PREPARER_TYPE_NAME, preparer);
+            }
+            dumpClassToXml(serializer, DEVICE_RECOVERY_TYPE_NAME, getDeviceRecovery());
+            dumpClassToXml(serializer, DEVICE_REQUIREMENTS_TYPE_NAME, getDeviceRequirements());
+            dumpClassToXml(serializer, DEVICE_OPTIONS_TYPE_NAME, getDeviceOptions());
         }
         for (IRemoteTest test : getTests()) {
             dumpClassToXml(serializer, TEST_TYPE_NAME, test);
         }
-        dumpClassToXml(serializer, DEVICE_RECOVERY_TYPE_NAME, getDeviceRecovery());
+
         dumpClassToXml(serializer, LOGGER_TYPE_NAME, getLogOutput());
         dumpClassToXml(serializer, LOG_SAVER_TYPE_NAME, getLogSaver());
         for (ITestInvocationListener listener : getTestInvocationListeners()) {
             dumpClassToXml(serializer, RESULT_REPORTER_TYPE_NAME, listener);
         }
         dumpClassToXml(serializer, CMD_OPTIONS_TYPE_NAME, getCommandOptions());
-        dumpClassToXml(serializer, DEVICE_REQUIREMENTS_TYPE_NAME, getDeviceRequirements());
-        dumpClassToXml(serializer, DEVICE_OPTIONS_TYPE_NAME, getDeviceOptions());
+
         dumpClassToXml(serializer, TEST_PROFILER_TYPE_NAME, getProfiler());
 
         serializer.endTag(null, CONFIGURATION_NAME);
