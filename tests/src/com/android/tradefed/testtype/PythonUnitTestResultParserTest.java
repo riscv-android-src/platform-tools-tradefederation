@@ -234,7 +234,7 @@ public class PythonUnitTestResultParserTest extends TestCase {
                 mMockListener.testFailed(eq(ids[i]), (String)anyObject());
                 expectLastCall().times(1);
                 mMockListener.testEnded(ids[i], Collections.<String, String>emptyMap());
-                expectLastCall().andThrow(new AssertionFailedError()).anyTimes();
+                expectLastCall().times(1);
             }
         }
     }
