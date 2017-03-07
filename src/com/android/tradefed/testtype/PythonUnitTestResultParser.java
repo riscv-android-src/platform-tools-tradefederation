@@ -277,11 +277,10 @@ public class PythonUnitTestResultParser extends MultiLineReceiver {
             // mark each test passed or failed
             for (Entry<TestIdentifier, String> test : mTestResultCache.entrySet()) {
                 listener.testStarted(test.getKey());
-                if (test.getValue() == null) {
-                    listener.testEnded(test.getKey(), Collections.<String, String>emptyMap());
-                } else {
+                if (test.getValue() != null) {
                     listener.testFailed(test.getKey(), test.getValue());
                 }
+                listener.testEnded(test.getKey(), Collections.<String, String>emptyMap());
             }
 
             // mark the whole run as passed or failed
