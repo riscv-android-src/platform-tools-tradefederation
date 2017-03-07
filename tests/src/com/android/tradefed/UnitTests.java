@@ -90,6 +90,7 @@ import com.android.tradefed.result.TestFailureEmailResultReporterTest;
 import com.android.tradefed.result.TestSummaryTest;
 import com.android.tradefed.result.XmlResultReporterTest;
 import com.android.tradefed.suite.checker.KeyguardStatusCheckerTest;
+import com.android.tradefed.suite.checker.SystemServerFileDescriptorCheckerTest;
 import com.android.tradefed.suite.checker.SystemServerStatusCheckerTest;
 import com.android.tradefed.targetprep.AllTestAppsInstallSetupTest;
 import com.android.tradefed.targetprep.AppSetupTest;
@@ -326,6 +327,7 @@ import org.junit.runners.Suite.SuiteClasses;
 
     // suite/checker
     KeyguardStatusCheckerTest.class,
+    SystemServerFileDescriptorCheckerTest.class,
     SystemServerStatusCheckerTest.class,
 
     // testtype
