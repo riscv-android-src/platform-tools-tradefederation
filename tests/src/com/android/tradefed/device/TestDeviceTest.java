@@ -47,6 +47,7 @@ import org.easymock.IAnswer;
 import org.easymock.IExpectationSetters;
 import org.junit.Assert;
 
+import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
@@ -2850,18 +2851,20 @@ public class TestDeviceTest extends TestCase {
      * Test for {@link TestDevice#getScreenshot()} when action succeed.
      */
     public void testGetScreenshot() throws Exception {
-        mTestDevice = new TestableTestDevice() {
-            @Override
-            protected boolean performDeviceAction(
-                    String actionDescription, DeviceAction action, int retryAttempts)
-                    throws DeviceNotAvailableException {
-                return true;
-            }
-            @Override
-            public byte[] compressRawImage(RawImage rawImage, String format) {
-                return "image".getBytes();
-            }
-        };
+        mTestDevice =
+                new TestableTestDevice() {
+                    @Override
+                    protected boolean performDeviceAction(
+                            String actionDescription, DeviceAction action, int retryAttempts)
+                            throws DeviceNotAvailableException {
+                        return true;
+                    }
+
+                    @Override
+                    byte[] compressRawImage(RawImage rawImage, String format, boolean rescale) {
+                        return "image".getBytes();
+                    }
+                };
         InputStreamSource data = mTestDevice.getScreenshot();
         assertNotNull(data);
         assertTrue(data instanceof ByteArrayInputStreamSource);
@@ -2916,15 +2919,87 @@ public class TestDeviceTest extends TestCase {
         try {
             // Size of the raw test data
             Assert.assertEquals(12441600, testImage.data.length);
-            byte[] result = mTestDevice.compressRawImage(testImage, "PNG");
+            byte[] result = mTestDevice.compressRawImage(testImage, "PNG", true);
             // Size after compressing
             Assert.assertEquals(4082, result.length);
 
             // Do it again with JPEG encoding
             Assert.assertEquals(12441600, testImage.data.length);
-            result = mTestDevice.compressRawImage(testImage, "JPEG");
+            result = mTestDevice.compressRawImage(testImage, "JPEG", true);
             // Size after compressing as JPEG
             Assert.assertEquals(119998, result.length);
+        } finally {
+            FileUtil.recursiveDelete(testImageFile.getParentFile());
+        }
+    }
+
+    /**
+     * Test for {@link TestDevice#rawImageToBufferedImage(RawImage, String)}.
+     *
+     * @throws Exception
+     */
+    public void testRawImageToBufferedImage() throws Exception {
+        File testImageFile = getTestImageResource();
+
+        try {
+            RawImage testImage = prepareRawImage(testImageFile);
+
+            // Test PNG format
+            BufferedImage bufferedImage = mTestDevice.rawImageToBufferedImage(testImage, "PNG");
+            assertEquals(testImage.width, bufferedImage.getWidth());
+            assertEquals(testImage.height, bufferedImage.getHeight());
+            assertEquals(BufferedImage.TYPE_INT_ARGB, bufferedImage.getType());
+
+            // Test JPEG format
+            bufferedImage = mTestDevice.rawImageToBufferedImage(testImage, "JPEG");
+            assertEquals(testImage.width, bufferedImage.getWidth());
+            assertEquals(testImage.height, bufferedImage.getHeight());
+            assertEquals(BufferedImage.TYPE_3BYTE_BGR, bufferedImage.getType());
+        } finally {
+            FileUtil.recursiveDelete(testImageFile.getParentFile());
+        }
+    }
+
+    /**
+     * Test for {@link TestDevice#rescaleImage(BufferedImage)}.
+     *
+     * @throws Exception
+     */
+    public void testRescaleImage() throws Exception {
+        File testImageFile = getTestImageResource();
+
+        try {
+            RawImage testImage = prepareRawImage(testImageFile);
+            BufferedImage bufferedImage = mTestDevice.rawImageToBufferedImage(testImage, "PNG");
+
+            BufferedImage scaledImage = mTestDevice.rescaleImage(bufferedImage);
+            assertEquals(bufferedImage.getWidth() / 2, scaledImage.getWidth());
+            assertEquals(bufferedImage.getHeight() / 2, scaledImage.getHeight());
+        } finally {
+            FileUtil.recursiveDelete(testImageFile.getParentFile());
+        }
+    }
+
+    /**
+     * Test for {@link TestDevice#compressRawImage(RawImage, String, boolean)} does not rescale
+     * image if specified.
+     */
+    public void testCompressScreenshotNoRescale() throws Exception {
+        File testImageFile = getTestImageResource();
+        final RawImage testImage = prepareRawImage(testImageFile);
+
+        mTestDevice =
+                new TestableTestDevice() {
+                    @Override
+                    byte[] getImageData(BufferedImage image, String format) {
+                        assertEquals(testImage.width, image.getWidth());
+                        assertEquals(testImage.height, image.getHeight());
+                        return super.getImageData(image, format);
+                    }
+                };
+        try {
+            byte[] result = mTestDevice.compressRawImage(testImage, "PNG", false);
+            assertNotNull(result);
         } finally {
             FileUtil.recursiveDelete(testImageFile.getParentFile());
         }

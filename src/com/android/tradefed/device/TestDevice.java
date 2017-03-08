@@ -249,6 +249,7 @@ public class TestDevice extends NativeDevice {
         return response[0];
     }
 
+    /** {@inheritDoc} */
     @Override
     public InputStreamSource getScreenshot() throws DeviceNotAvailableException {
         return getScreenshot("PNG");
@@ -259,13 +260,21 @@ public class TestDevice extends NativeDevice {
      */
     @Override
     public InputStreamSource getScreenshot(String format) throws DeviceNotAvailableException {
+        return getScreenshot(format, true);
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public InputStreamSource getScreenshot(String format, boolean rescale)
+            throws DeviceNotAvailableException {
         if (!format.equalsIgnoreCase("PNG") && !format.equalsIgnoreCase("JPEG")){
             CLog.e("Screenshot: Format %s is not supported, defaulting to PNG.", format);
             format = "PNG";
         }
         ScreenshotAction action = new ScreenshotAction();
         if (performDeviceAction("screenshot", action, MAX_RETRY_ATTEMPTS)) {
-            byte[] imageData = compressRawImage(action.mRawScreenshot, format.toUpperCase());
+            byte[] imageData =
+                    compressRawImage(action.mRawScreenshot, format.toUpperCase(), rescale);
             if (imageData != null) {
                 return new ByteArrayInputStreamSource(imageData);
             }
@@ -290,19 +299,45 @@ public class TestDevice extends NativeDevice {
 
     /**
      * Helper to compress a rawImage obtained from the screen.
+     *
+     * @param rawImage {@link RawImage} to compress.
+     * @param format resulting format of compressed image. PNG and JPEG are supported.
+     * @param rescale if rescaling should be done to further reduce size of compressed image.
+     * @return compressed image.
      */
     @VisibleForTesting
-    protected byte[] compressRawImage(RawImage rawImage, String format) {
+    byte[] compressRawImage(RawImage rawImage, String format, boolean rescale) {
+        BufferedImage image = rawImageToBufferedImage(rawImage, format);
+
+        // Rescale to reduce size if needed
+        // Screenshot default format is 1080 x 1920, 8-bit/color RGBA
+        // By cutting in half we can easily keep good quality and smaller size
+        if (rescale) {
+            image = rescaleImage(image);
+        }
+
+        return getImageData(image, format);
+    }
+
+    /**
+     * Converts {@link RawImage} to {@link BufferedImage} in specified format.
+     *
+     * @param rawImage {@link RawImage} to convert.
+     * @param format resulting format of image. PNG and JPEG are supported.
+     * @return converted image.
+     */
+    @VisibleForTesting
+    BufferedImage rawImageToBufferedImage(RawImage rawImage, String format) {
         BufferedImage image = null;
 
         if ("JPEG".equalsIgnoreCase(format)) {
             //JPEG does not support ARGB without a special encoder
-            image = new BufferedImage(rawImage.width, rawImage.height,
-                    BufferedImage.TYPE_3BYTE_BGR);
+            image =
+                    new BufferedImage(
+                            rawImage.width, rawImage.height, BufferedImage.TYPE_3BYTE_BGR);
         }
         else {
-            image = new BufferedImage(rawImage.width, rawImage.height,
-                    BufferedImage.TYPE_INT_ARGB);
+            image = new BufferedImage(rawImage.width, rawImage.height, BufferedImage.TYPE_INT_ARGB);
         }
 
         // borrowed conversion logic from platform/sdk/screenshot/.../Screenshot.java
@@ -316,18 +351,39 @@ public class TestDevice extends NativeDevice {
             }
         }
 
-        // Rescale to reduce size if needed
-        // Screenshot default format is 1080 x 1920, 8-bit/color RGBA
-        // By cutting in half we can easily keep good quality and smaller size
+        return image;
+    }
+
+    /**
+     * Rescales image cutting it in half.
+     *
+     * @param image source {@link BufferedImage}.
+     * @return resulting scaled image.
+     */
+    @VisibleForTesting
+    BufferedImage rescaleImage(BufferedImage image) {
         int shortEdge = Math.min(image.getHeight(), image.getWidth());
         if (shortEdge > 720) {
-            Image resized = image.getScaledInstance(image.getWidth() / 2, image.getHeight() / 2,
-                    Image.SCALE_SMOOTH);
-            image = new BufferedImage(image.getWidth() / 2, image.getHeight() / 2,
-                    Image.SCALE_REPLICATE);
+            Image resized =
+                    image.getScaledInstance(
+                            image.getWidth() / 2, image.getHeight() / 2, Image.SCALE_SMOOTH);
+            image =
+                    new BufferedImage(
+                            image.getWidth() / 2, image.getHeight() / 2, Image.SCALE_REPLICATE);
             image.getGraphics().drawImage(resized, 0, 0, null);
         }
+        return image;
+    }
 
+    /**
+     * Gets byte array representation of {@link BufferedImage}.
+     *
+     * @param image source {@link BufferedImage}.
+     * @param format resulting format of image. PNG and JPEG are supported.
+     * @return byte array representation of the image.
+     */
+    @VisibleForTesting
+    byte[] getImageData(BufferedImage image, String format) {
         // store compressed image in memory, and let callers write to persistent storage
         // use initial buffer size of 128K
         byte[] imageData = null;

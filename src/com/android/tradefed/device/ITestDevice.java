@@ -183,6 +183,19 @@ public interface ITestDevice extends INativeDevice {
     public InputStreamSource getScreenshot(String format) throws DeviceNotAvailableException;
 
     /**
+     * Grabs a screenshot from the device. Recommended to use {@link #getScreenshot(String)} instead
+     * with JPEG encoding for smaller size.
+     *
+     * @param format supported PNG, JPEG
+     * @param rescale if screenshot should be rescaled to reduce the size of resulting image
+     * @return a {@link InputStreamSource} of the screenshot in format, or <code>null</code> if the
+     *     screenshot was not successful.
+     * @throws DeviceNotAvailableException
+     */
+    public InputStreamSource getScreenshot(String format, boolean rescale)
+            throws DeviceNotAvailableException;
+
+    /**
      * Clears the last connected wifi network. This should be called when starting a new invocation
      * to avoid connecting to the wifi network used in the previous test after device reboots.
      */
