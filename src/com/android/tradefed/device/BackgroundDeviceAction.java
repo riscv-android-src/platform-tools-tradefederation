@@ -60,6 +60,7 @@ public class BackgroundDeviceAction extends Thread {
      */
     public BackgroundDeviceAction(String command, String descriptor, ITestDevice device,
             IShellOutputReceiver receiver, int startDelay) {
+        super("BackgroundDeviceAction-" + command);
         mCommand = command;
         mDescriptor = descriptor;
         mTestDevice = device;

@@ -52,7 +52,7 @@ public abstract class AbstractHostMonitor extends Thread implements IHostMonitor
     private boolean mIsCanceled = false;
 
     public AbstractHostMonitor() {
-        super();
+        super("AbstractHostMonitor");
         this.setDaemon(true);
     }
 

@@ -44,6 +44,7 @@ public class Sl4aEventDispatcher extends Thread {
     private boolean mCanceled = false;
 
     public Sl4aEventDispatcher(Sl4aClient client, long timeout) {
+        this.setName(getClass().getCanonicalName());
         this.setDaemon(true);
         mClient = client;
         mTimeout = timeout;

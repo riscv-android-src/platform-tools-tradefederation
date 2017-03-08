@@ -32,6 +32,7 @@ public class FakeSocketServerHelper extends Thread {
     private boolean mCanceled = false;
 
     public FakeSocketServerHelper() throws IOException {
+        setName(getClass().getCanonicalName());
         mSocket = new ServerSocket(0);
     }
 

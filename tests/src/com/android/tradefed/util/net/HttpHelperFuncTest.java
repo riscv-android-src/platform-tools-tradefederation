@@ -122,6 +122,7 @@ public class HttpHelperFuncTest extends TestCase {
         private final CyclicBarrier mBarrier;
 
         public Backend(int delay, int timeout, CyclicBarrier barrier) {
+            super("HttpHelperFuncTest.Backend");
             mDelay = delay;
             mTimeout = timeout;
             mBarrier = barrier;

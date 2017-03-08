@@ -49,7 +49,6 @@ public class RemoteManagerFuncTest extends TestCase {
 
     @Override
     protected void setUp() throws Exception {
-
         super.setUp();
         mMockDeviceManager = EasyMock.createMock(IDeviceManager.class);
         mMockScheduler = EasyMock.createMock(ICommandScheduler.class);

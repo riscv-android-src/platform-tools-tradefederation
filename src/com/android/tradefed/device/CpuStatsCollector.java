@@ -336,6 +336,7 @@ public class CpuStatsCollector extends Thread {
      * @param delay The delay time in seconds
      */
     public CpuStatsCollector(ITestDevice testDevice, int delay) {
+        super("CpuStatsCollector");
         mTestDevice = testDevice;
         mDelay = delay;
     }

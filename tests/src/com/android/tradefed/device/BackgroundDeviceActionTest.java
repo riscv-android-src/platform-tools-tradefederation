@@ -129,6 +129,7 @@ public class BackgroundDeviceActionTest extends TestCase {
                 mBackgroundAction.waitForDeviceRecovery("IOException");
             }
         });
+        test.setName(getClass().getCanonicalName() + "#testwaitForDeviceRecovery_online");
         test.start();
         // Specify a timeout for join, not to be stuck if broken.
         test.join(LONG_WAIT_TIME_MS);
@@ -153,6 +154,7 @@ public class BackgroundDeviceActionTest extends TestCase {
                 mBackgroundAction.waitForDeviceRecovery("IOException");
             }
         });
+        test.setName(getClass().getCanonicalName() + "#testwaitForDeviceRecovery_blockOffline");
         test.start();
         // Specify a timeout for join, not to be stuck.
         test.join(LONG_WAIT_TIME_MS);

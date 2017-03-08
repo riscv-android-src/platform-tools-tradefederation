@@ -429,8 +429,11 @@ public class CommandSchedulerTest extends TestCase {
             mScheduler.start();
             mScheduler.addCommand(args);
             // no need to call shutdown explicitly - scheduler should shutdown by itself
-            mScheduler.join(2*1000);
-            verifyMocks(mockGc, mockWtf);
+            mScheduler.join(2 * 1000);
+            // We don't verify the mockManager for this test since after failure, the device might
+            // not have time to go back to list before shutdown on scheduler.
+            EasyMock.verify(
+                    mMockConfigFactory, mMockConfiguration, mMockInvocation, mockGc, mockWtf);
         } finally {
             // reset global config to null, which means 'not overloaded/use default'
             CLog.setGlobalConfigInstance(null);
