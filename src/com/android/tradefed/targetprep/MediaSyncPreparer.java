@@ -16,6 +16,7 @@
 
 package com.android.tradefed.targetprep;
 
+import com.android.ddmlib.IDevice;
 import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.config.Option;
 import com.android.tradefed.device.CollectingOutputReceiver;
@@ -30,8 +31,9 @@ public class MediaSyncPreparer implements ITargetPreparer {
     private int mCommandTimeout = 2 * 60 * 1000;
 
     private static final int MAX_RETRY_ATTEMPTS = 2;
-    private static final String MEDIA_RESCAN_INTENT =
-            "am broadcast -a android.intent.action.MEDIA_MOUNTED -d file://sdcard";
+    private static final String MEDIA_SCAN_INTENT =
+            "am broadcast -a android.intent.action.MEDIA_MOUNTED -d file://%s "
+                    + "--receiver-include-background";
 
     /**
      * {@inheritDoc}
@@ -39,14 +41,16 @@ public class MediaSyncPreparer implements ITargetPreparer {
     @Override
     public void setUp(ITestDevice device, IBuildInfo buildInfo) throws TargetSetupError,
             DeviceNotAvailableException {
-
         // trigger media rescan
         CLog.d("About to broadcast media rescan intent on device %s", device.getSerialNumber());
         CollectingOutputReceiver receiver = new CollectingOutputReceiver();
-        device.executeShellCommand(MEDIA_RESCAN_INTENT, receiver,
-                mCommandTimeout, TimeUnit.MILLISECONDS, MAX_RETRY_ATTEMPTS);
+        String mountPoint = device.getMountPoint(IDevice.MNT_EXTERNAL_STORAGE);
+        String command = String.format(MEDIA_SCAN_INTENT, mountPoint);
+        device.executeShellCommand(
+                command, receiver, mCommandTimeout, TimeUnit.MILLISECONDS, MAX_RETRY_ATTEMPTS);
         String output = receiver.getOutput();
-        CLog.v("Media rescan intent on %s returned %s", MEDIA_RESCAN_INTENT,
-                device.getSerialNumber(), output);
+        CLog.v(
+                "Media rescan intent <%s> on %s returned %s",
+                command, device.getSerialNumber(), output);
     }
 }
