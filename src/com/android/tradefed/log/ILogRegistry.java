@@ -34,6 +34,7 @@ public interface ILogRegistry extends ILogOutput {
         DEVICE_DISCONNECTED,
         INVOCATION_START,
         INVOCATION_END,
+        HEAP_MEMORY,
     }
 
     /**
