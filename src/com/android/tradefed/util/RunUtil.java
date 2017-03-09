@@ -502,6 +502,7 @@ public class RunUtil implements IRunUtil {
         RunnableNotifier(IRunUtil.IRunnableResult runnable, boolean logErrors) {
             // Set this thread to be a daemon so that it does not prevent
             // TF from shutting down.
+            setName("RunnableNotifier");
             setDaemon(true);
             mRunnable = runnable;
             mLogErrors = logErrors;
@@ -682,6 +683,7 @@ public class RunUtil implements IRunUtil {
                 }
             }
         });
+        t.setName("inheritIO-runUtil-thread");
         t.start();
         return t;
     }

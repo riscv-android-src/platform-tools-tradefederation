@@ -221,7 +221,7 @@ public class Console extends Thread {
      * Exposed for unit testing
      */
     Console(ConsoleReader reader) {
-        super();
+        super("TfConsole");
         mConsoleStartTime = System.currentTimeMillis();
         mConsoleReader = reader;
         if (reader != null) {
@@ -813,10 +813,11 @@ public class Console extends Thread {
     /**
      * Get input from the console
      *
-     * @return A {@link String} containing the input to parse and run.  Will return {@code null} if
-     *         console is not available or user entered EOF ({@code ^D}).
+     * @return A {@link String} containing the input to parse and run. Will return {@code null} if
+     *     console is not available or user entered EOF ({@code ^D}).
      */
-    private String getConsoleInput() throws IOException {
+    @VisibleForTesting
+    String getConsoleInput() throws IOException {
         if (mConsoleReader != null) {
             if (sConsoleStream != null) {
                 // While we're reading the console, the only tasks which will print to the console
@@ -979,7 +980,6 @@ public class Console extends Thread {
                     printLine(String.format(
                             "Unable to handle command '%s'.  Enter 'help' for help.", tokens[0]));
                 }
-
                 RunUtil.getDefault().sleep(100);
             } while (!mShouldExit);
         } catch (Exception e) {

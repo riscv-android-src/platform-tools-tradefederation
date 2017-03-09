@@ -113,6 +113,7 @@ public class ConditionPriorityBlockingQueueTest extends TestCase {
                 mQueue.add(one);
             }
         };
+        delayedAdd.setName(getClass().getCanonicalName());
         delayedAdd.start();
         assertEquals(one, mQueue.take());
         assertNull(mQueue.poll());
@@ -136,6 +137,7 @@ public class ConditionPriorityBlockingQueueTest extends TestCase {
                 mQueue.add(one);
             }
         };
+        delayedAdd.setName(getClass().getCanonicalName());
         delayedAdd.start();
         assertEquals(one, mQueue.take(new OneMatcher()));
         assertNull(mQueue.poll(new OneMatcher()));
@@ -159,6 +161,7 @@ public class ConditionPriorityBlockingQueueTest extends TestCase {
                 }
             }
         };
+        waiter.setName(getClass().getCanonicalName() + "#testTake_multiple_matchers");
         waiter.start();
         Thread waiter2 = new Thread() {
             @Override
@@ -169,6 +172,7 @@ public class ConditionPriorityBlockingQueueTest extends TestCase {
                 }
             }
         };
+        waiter2.setName(getClass().getCanonicalName() + "#testTake_multiple_matchers");
         waiter2.start();
 
         Thread delayedAdd = new Thread() {
@@ -181,6 +185,7 @@ public class ConditionPriorityBlockingQueueTest extends TestCase {
                 mQueue.add(one);
             }
         };
+        delayedAdd.setName(getClass().getCanonicalName() + "#testTake_multiple_matchers");
         delayedAdd.start();
         Thread delayedAdd2 = new Thread() {
             @Override
@@ -192,6 +197,7 @@ public class ConditionPriorityBlockingQueueTest extends TestCase {
                 mQueue.add(second_one);
             }
         };
+        delayedAdd2.setName(getClass().getCanonicalName() + "#testTake_multiple_matchers");
         delayedAdd2.start();
 
         // wait for blocked threads to die. This test will deadlock if failed
@@ -293,6 +299,7 @@ public class ConditionPriorityBlockingQueueTest extends TestCase {
                 }
             }
         };
+        iterator.setName(getClass().getCanonicalName() + "#testModificationOnIterating");
         iterator.start();
         for (int i = 0; i < 10 && throwables[0] == null; i++) {
             queue.add(i);

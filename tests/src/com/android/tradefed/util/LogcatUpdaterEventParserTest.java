@@ -121,6 +121,7 @@ public class LogcatUpdaterEventParserTest extends TestCase {
                 mParser.waitForEvent();
             }
         });
+        waitThread.setName(getClass().getCanonicalName());
         String[] logLines = {
                 "11-11 00:00:00.001  123 321 I update_engine: foo bar baz\n",
                 "11-11 00:00:00.001  123 321 I update_engine: foo bar baz\n",
@@ -141,6 +142,7 @@ public class LogcatUpdaterEventParserTest extends TestCase {
                 mParser.waitForEvent(UpdaterEventType.UPDATE_COMPLETE);
             }
         });
+        waitThread.setName(getClass().getCanonicalName());
         String[] logLines = {
                 "11-11 00:00:00.001  123 321 I update_engine: foo bar baz\n",
                 "11-11 00:00:00.001  123 321 I update_engine: foo bar baz\n",

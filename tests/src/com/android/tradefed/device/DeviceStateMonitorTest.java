@@ -67,13 +67,16 @@ public class DeviceStateMonitorTest extends TestCase {
      */
     public void testWaitForDeviceOnline() {
         mMonitor.setState(TestDeviceState.NOT_AVAILABLE);
-        new Thread() {
-            @Override
-            public void run() {
-                RunUtil.getDefault().sleep(WAIT_STATE_CHANGE_MS);
-                mMonitor.setState(TestDeviceState.ONLINE);
-            }
-        }.start();
+        Thread test =
+                new Thread() {
+                    @Override
+                    public void run() {
+                        RunUtil.getDefault().sleep(WAIT_STATE_CHANGE_MS);
+                        mMonitor.setState(TestDeviceState.ONLINE);
+                    }
+                };
+        test.setName(getClass().getCanonicalName() + "#testWaitForDeviceOnline");
+        test.start();
         assertEquals(mMockDevice, mMonitor.waitForDeviceOnline());
     }
 
@@ -126,13 +129,16 @@ public class DeviceStateMonitorTest extends TestCase {
      */
     public void testWaitForDeviceOffline() {
         mMonitor.setState(TestDeviceState.ONLINE);
-        new Thread() {
-            @Override
-            public void run() {
-                RunUtil.getDefault().sleep(WAIT_STATE_CHANGE_MS);
-                mMonitor.setState(TestDeviceState.NOT_AVAILABLE);
-            }
-        }.start();
+        Thread test =
+                new Thread() {
+                    @Override
+                    public void run() {
+                        RunUtil.getDefault().sleep(WAIT_STATE_CHANGE_MS);
+                        mMonitor.setState(TestDeviceState.NOT_AVAILABLE);
+                    }
+                };
+        test.setName(getClass().getCanonicalName() + "#testWaitForDeviceOffline");
+        test.start();
         boolean res = mMonitor.waitForDeviceNotAvailable(WAIT_TIMEOUT_NOT_REACHED_MS);
         assertTrue(res);
     }
@@ -201,13 +207,16 @@ public class DeviceStateMonitorTest extends TestCase {
                 return POLL_TIME_MS;
             }
         };
-        new Thread() {
-            @Override
-            public void run() {
-                RunUtil.getDefault().sleep(WAIT_STATE_CHANGE_MS);
-                mStubValue = "/system/bin/adb";
-            }
-        }.start();
+        Thread test =
+                new Thread() {
+                    @Override
+                    public void run() {
+                        RunUtil.getDefault().sleep(WAIT_STATE_CHANGE_MS);
+                        mStubValue = "/system/bin/adb";
+                    }
+                };
+        test.setName(getClass().getCanonicalName() + "#testWaitForShell_becomeAvailable");
+        test.start();
         boolean res = mMonitor.waitForDeviceShell(WAIT_TIMEOUT_NOT_REACHED_MS);
         assertTrue(res);
     }
@@ -279,13 +288,16 @@ public class DeviceStateMonitorTest extends TestCase {
                 return POLL_TIME_MS;
             }
         };
-        new Thread() {
-            @Override
-            public void run() {
-                RunUtil.getDefault().sleep(WAIT_STATE_CHANGE_MS);
-                mStubValue = "1";
-            }
-        }.start();
+        Thread test =
+                new Thread() {
+                    @Override
+                    public void run() {
+                        RunUtil.getDefault().sleep(WAIT_STATE_CHANGE_MS);
+                        mStubValue = "1";
+                    }
+                };
+        test.setName(getClass().getCanonicalName() + "#testWaitForBoot_becomeComplete");
+        test.start();
         boolean res = mMonitor.waitForBootComplete(WAIT_TIMEOUT_NOT_REACHED_MS);
         assertTrue(res);
     }
@@ -369,13 +381,16 @@ public class DeviceStateMonitorTest extends TestCase {
                 return POLL_TIME_MS;
             }
         };
-        new Thread() {
-            @Override
-            public void run() {
-                RunUtil.getDefault().sleep(WAIT_STATE_CHANGE_MS);
-                mStubValue = "package:com.android.awesomeclass";
-            }
-        }.start();
+        Thread test =
+                new Thread() {
+                    @Override
+                    public void run() {
+                        RunUtil.getDefault().sleep(WAIT_STATE_CHANGE_MS);
+                        mStubValue = "package:com.android.awesomeclass";
+                    }
+                };
+        test.setName(getClass().getCanonicalName() + "#testWaitForPm_becomeResponsive");
+        test.start();
         boolean res = mMonitor.waitForPmResponsive(WAIT_TIMEOUT_NOT_REACHED_MS);
         assertTrue(res);
     }
@@ -561,13 +576,16 @@ public class DeviceStateMonitorTest extends TestCase {
                 return mStubValue;
             }
         };
-        new Thread() {
-            @Override
-            public void run() {
-                RunUtil.getDefault().sleep(WAIT_STATE_CHANGE_MS);
-                mStubValue = "NOT NULL";
-            }
-        }.start();
+        Thread test =
+                new Thread() {
+                    @Override
+                    public void run() {
+                        RunUtil.getDefault().sleep(WAIT_STATE_CHANGE_MS);
+                        mStubValue = "NOT NULL";
+                    }
+                };
+        test.setName(getClass().getCanonicalName() + "#testWaitForStoreMount_becomeAvailable");
+        test.start();
         boolean res = mMonitor.waitForStoreMount(WAIT_TIMEOUT_NOT_REACHED_MS);
         assertTrue(res);
     }
@@ -609,13 +627,16 @@ public class DeviceStateMonitorTest extends TestCase {
                 return "NOT NULL";
             }
         };
-        new Thread() {
-            @Override
-            public void run() {
-                RunUtil.getDefault().sleep(WAIT_STATE_CHANGE_MS);
-                mStubValue = "number 10 one";
-            }
-        }.start();
+        Thread test =
+                new Thread() {
+                    @Override
+                    public void run() {
+                        RunUtil.getDefault().sleep(WAIT_STATE_CHANGE_MS);
+                        mStubValue = "number 10 one";
+                    }
+                };
+        test.setName(getClass().getCanonicalName() + "#testWaitForStoreMount_outputBecomeValid");
+        test.start();
         boolean res = mMonitor.waitForStoreMount(WAIT_TIMEOUT_NOT_REACHED_MS);
         assertTrue(res);
     }

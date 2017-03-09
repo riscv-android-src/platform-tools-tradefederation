@@ -191,6 +191,7 @@ public class TopHelper extends Thread {
      * @param delay The delay time interval for the top command in seconds.
      */
     public TopHelper(ITestDevice testDevice, int delay) {
+        super("TopHelper");
         mTestDevice = testDevice;
         mDelay = delay;
     }

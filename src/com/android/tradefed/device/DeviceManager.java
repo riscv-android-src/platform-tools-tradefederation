@@ -343,6 +343,7 @@ public class DeviceManager implements IDeviceManager {
         } else {
             Thread checkThread = new Thread(checkRunnable, threadName);
             // Device checking threads shouldn't hold the JVM open
+            checkThread.setName("DeviceManager-checkRunnable");
             checkThread.setDaemon(true);
             checkThread.start();
         }

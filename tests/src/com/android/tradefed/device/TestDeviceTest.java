@@ -938,6 +938,7 @@ public class TestDeviceTest extends TestCase {
                 }
             }
         };
+        fastbootThread.setName(getClass().getCanonicalName() + "#testExecuteFastbootCommand_state");
         fastbootThread.start();
         try {
             synchronized (blockResult) {
@@ -2331,41 +2332,53 @@ public class TestDeviceTest extends TestCase {
      * Unit test for {@link TestDevice#switchUser(int)} when user switch with a short delay.
      */
     public void testSwitchUser_delay() throws Exception {
-        mTestDevice = new TestableTestDevice() {
-            int ret = 0;
-            @Override
-            public int getCurrentUser() throws DeviceNotAvailableException {
-                return ret;
-            }
-            @Override
-            public String executeShellCommand(String command) throws DeviceNotAvailableException {
-                test.start();
-                return "";
-            }
-            @Override
-            public int getApiLevel() throws DeviceNotAvailableException {
-                return MIN_API_LEVEL_GET_CURRENT_USER;
-            }
-            @Override
-            public String getProperty(String name) throws DeviceNotAvailableException {
-                return "N\n";
-            }
-            @Override
-            public void prePostBootSetup() {
-                // skip for this test
-            }
-            @Override
-            protected long getCheckNewUserSleep() {
-                return 100;
-            }
-            Thread test = new Thread(new Runnable() {
-                @Override
-                public void run() {
-                    RunUtil.getDefault().sleep(100);
-                    ret = 10;
-                }
-            });
-        };
+        mTestDevice =
+                new TestableTestDevice() {
+                    int ret = 0;
+
+                    @Override
+                    public int getCurrentUser() throws DeviceNotAvailableException {
+                        return ret;
+                    }
+
+                    @Override
+                    public String executeShellCommand(String command)
+                            throws DeviceNotAvailableException {
+                        test.setName(getClass().getCanonicalName() + "#testSwitchUser_delay");
+                        test.start();
+                        return "";
+                    }
+
+                    @Override
+                    public int getApiLevel() throws DeviceNotAvailableException {
+                        return MIN_API_LEVEL_GET_CURRENT_USER;
+                    }
+
+                    @Override
+                    public String getProperty(String name) throws DeviceNotAvailableException {
+                        return "N\n";
+                    }
+
+                    @Override
+                    public void prePostBootSetup() {
+                        // skip for this test
+                    }
+
+                    @Override
+                    protected long getCheckNewUserSleep() {
+                        return 100;
+                    }
+
+                    Thread test =
+                            new Thread(
+                                    new Runnable() {
+                                        @Override
+                                        public void run() {
+                                            RunUtil.getDefault().sleep(100);
+                                            ret = 10;
+                                        }
+                                    });
+                };
         assertTrue(mTestDevice.switchUser(10));
     }
 

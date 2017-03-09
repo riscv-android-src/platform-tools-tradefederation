@@ -84,6 +84,7 @@ public class SubprocessTestResultsParser implements Closeable {
         private CountDownLatch mCountDown;
 
         public EventReceiverThread() throws IOException {
+            super("EventReceiverThread");
             mSocket = new ServerSocket(0);
             mCountDown = new CountDownLatch(1);
         }

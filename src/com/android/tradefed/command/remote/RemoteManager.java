@@ -101,6 +101,7 @@ public class RemoteManager extends Thread {
     }
 
     public RemoteManager() {
+        super("RemoteManager");
         mDeviceManager = null;
         mScheduler = null;
     }
@@ -112,6 +113,7 @@ public class RemoteManager extends Thread {
      * @param scheduler the {@link ICommandScheduler} to use to schedule commands.
      */
     public RemoteManager(IDeviceManager manager, ICommandScheduler scheduler) {
+        super("RemoteManager");
         mDeviceManager = manager;
         mScheduler = scheduler;
     }

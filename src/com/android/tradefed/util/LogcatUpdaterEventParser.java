@@ -233,6 +233,7 @@ public class LogcatUpdaterEventParser {
                 }
             }
         });
+        waitThread.setName(getClass().getCanonicalName());
         waitThread.start();
         return event;
     }

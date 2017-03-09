@@ -639,7 +639,10 @@ public class CommandScheduler extends Thread implements ICommandScheduler, IComm
                 }
             }
             // printing to stderr will help to catch them.
-            System.err.println(String.format("We have %s threads instead of 1", numThread));
+            System.err.println(
+                    String.format(
+                            "We have %s threads instead of 1. Check the logs for list of threads.",
+                            numThread));
         }
 
         /** Helper to log an invocation ended event. */

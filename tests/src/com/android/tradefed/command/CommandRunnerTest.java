@@ -29,6 +29,7 @@ import com.android.tradefed.invoker.IInvocationContext;
 import com.android.tradefed.invoker.IRescheduler;
 import com.android.tradefed.invoker.ITestInvocation;
 import com.android.tradefed.invoker.TestInvocation;
+import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.util.FileUtil;
 
@@ -53,8 +54,6 @@ public class CommandRunnerTest {
 
     private static final String EMPTY_CONFIG = "empty";
     private static final String FAKE_CONFIG = "doesnotexit";
-
-    private CommandRunner mRunner;
     private Throwable mThrowable = null;
     private String mStackTraceOutput = null;
 
@@ -80,61 +79,111 @@ public class CommandRunnerTest {
     public void setUp() {
         mThrowable = null;
         mStackTraceOutput = null;
-        mRunner =
-                new CommandRunner() {
-                    @Override
-                    public void initGlobalConfig(String[] args) throws ConfigurationException {
-                        GlobalConfiguration.getInstance()
-                                .setCommandScheduler(
-                                        new CommandScheduler() {
+    }
+
+    private CommandRunner createRunner(final Throwable t) {
+        return new CommandRunner() {
+            @Override
+            public void initGlobalConfig(String[] args) throws ConfigurationException {
+                GlobalConfiguration.getInstance()
+                        .setCommandScheduler(
+                                new CommandScheduler() {
+                                    @Override
+                                    void initDeviceManager() {
+                                        try {
+                                            super.initDeviceManager();
+                                        } catch (IllegalStateException e) {
+                                            // ignore re-init
+                                        }
+                                    }
+
+                                    @Override
+                                    ITestInvocation createRunInstance() {
+                                        return new TestInvocation() {
                                             @Override
-                                            void initDeviceManager() {
-                                                try {
-                                                    super.initDeviceManager();
-                                                } catch (IllegalStateException e) {
-                                                    // ignore re-init
-                                                }
+                                            public void invoke(
+                                                    IInvocationContext context,
+                                                    IConfiguration config,
+                                                    IRescheduler rescheduler,
+                                                    ITestInvocationListener... extraListeners)
+                                                    throws DeviceNotAvailableException, Throwable {
+                                                CLog.e("==About to throw %s", t);
+                                                throw t;
                                             }
+                                        };
+                                    }
+                                    // Prevent the logging dumping extra logs.
+                                    @Override
+                                    protected void initLogging() {}
 
+                                    @Override
+                                    protected void cleanUp() {}
+                                });
+            }
+
+            /** We capture the stack trace if any. */
+            @Override
+            void printStackTrace(Throwable e) {
+                ByteArrayOutputStream out = new ByteArrayOutputStream();
+                PrintWriter pw = new PrintWriter(out);
+                e.printStackTrace(pw);
+                pw.flush();
+                mStackTraceOutput = out.toString();
+            }
+        };
+    }
+
+    private CommandRunner createNormalRunner() {
+        return new CommandRunner() {
+            @Override
+            public void initGlobalConfig(String[] args) throws ConfigurationException {
+                GlobalConfiguration.getInstance()
+                        .setCommandScheduler(
+                                new CommandScheduler() {
+                                    @Override
+                                    void initDeviceManager() {
+                                        try {
+                                            super.initDeviceManager();
+                                        } catch (IllegalStateException e) {
+                                            // ignore re-init
+                                        }
+                                    }
+
+                                    @Override
+                                    ITestInvocation createRunInstance() {
+                                        return new TestInvocation() {
                                             @Override
-                                            ITestInvocation createRunInstance() {
-                                                if (mThrowable == null) {
-                                                    return super.createRunInstance();
-                                                } else {
-                                                    return new TestInvocation() {
-                                                        @Override
-                                                        public void invoke(
-                                                                IInvocationContext context,
-                                                                IConfiguration config,
-                                                                IRescheduler rescheduler,
-                                                                ITestInvocationListener...
-                                                                        extraListeners)
-                                                                throws DeviceNotAvailableException,
-                                                                        Throwable {
-                                                            throw mThrowable;
-                                                        }
-                                                    };
-                                                }
+                                            public void invoke(
+                                                    IInvocationContext context,
+                                                    IConfiguration config,
+                                                    IRescheduler rescheduler,
+                                                    ITestInvocationListener... extraListeners)
+                                                    throws DeviceNotAvailableException, Throwable {
+                                                CLog.e("==About to return directly");
+                                                return;
                                             }
-                                            // Prevent the logging dumping extra logs.
-                                            @Override
-                                            protected void initLogging() {}
+                                        };
+                                    }
 
-                                            @Override
-                                            protected void cleanUp() {}
-                                        });
-                    }
+                                    // Prevent the logging dumping extra logs.
+                                    @Override
+                                    protected void initLogging() {}
 
-                    /** We capture the stack trace if any. */
-                    @Override
-                    void printStackTrace(Throwable e) {
-                        ByteArrayOutputStream out = new ByteArrayOutputStream();
-                        PrintWriter pw = new PrintWriter(out);
-                        e.printStackTrace(pw);
-                        pw.flush();
-                        mStackTraceOutput = out.toString();
-                    }
-                };
+                                    @Override
+                                    protected void cleanUp() {}
+                                });
+            }
+
+            /** We capture the stack trace if any. */
+            @Override
+            void printStackTrace(Throwable e) {
+                ByteArrayOutputStream out = new ByteArrayOutputStream();
+                PrintWriter pw = new PrintWriter(out);
+                e.printStackTrace(pw);
+                pw.flush();
+                mStackTraceOutput = out.toString();
+            }
+        };
     }
 
     @After
@@ -149,9 +198,19 @@ public class CommandRunnerTest {
      */
     @Test
     public void testRun_noError() throws Exception {
+        mThrowable = null;
+        mStackTraceOutput = null;
+        CommandRunner mRunner = createNormalRunner();
         File logDir = FileUtil.createTempDir("command-runner-unit-test");
         try {
-            String[] args = {EMPTY_CONFIG, "-n", "--log-file-path", logDir.getAbsolutePath()};
+            String[] args = {
+                EMPTY_CONFIG,
+                "-n",
+                "--no-return-null",
+                "--no-throw-build-error",
+                "--log-file-path",
+                logDir.getAbsolutePath()
+            };
             mRunner.run(args);
             assertEquals(0, mRunner.getErrorCode().getCodeValue());
             assertNull(mStackTraceOutput);
@@ -165,8 +224,9 @@ public class CommandRunnerTest {
      */
     @Test
     public void testRun_deviceUnresponsive() {
-        String[] args = {EMPTY_CONFIG, "-n"};
         mThrowable = new DeviceUnresponsiveException("injected", "serial");
+        CommandRunner mRunner = createRunner(mThrowable);
+        String[] args = {EMPTY_CONFIG, "-n"};
         mRunner.run(args);
         assertEquals(ExitCode.DEVICE_UNRESPONSIVE, mRunner.getErrorCode());
         assertTrue(mStackTraceOutput
@@ -178,8 +238,9 @@ public class CommandRunnerTest {
      */
     @Test
     public void testRun_deviceUnavailable() {
-        String[] args = {EMPTY_CONFIG, "-n"};
         mThrowable = new DeviceNotAvailableException("injected", "serial");
+        CommandRunner mRunner = createRunner(mThrowable);
+        String[] args = {EMPTY_CONFIG, "-n"};
         mRunner.run(args);
         assertEquals(ExitCode.DEVICE_UNAVAILABLE, mRunner.getErrorCode());
         assertTrue(mStackTraceOutput
@@ -191,8 +252,9 @@ public class CommandRunnerTest {
      */
     @Test
     public void testRun_throwable() {
-        String[] args = {EMPTY_CONFIG, "-n"};
         mThrowable = new RuntimeException("injecting runtime");
+        CommandRunner mRunner = createRunner(mThrowable);
+        String[] args = {EMPTY_CONFIG, "-n"};
         mRunner.run(args);
         assertEquals(ExitCode.THROWABLE_EXCEPTION, mRunner.getErrorCode());
         assertTrue(String.format("%s does not contains the expected output", mStackTraceOutput),
@@ -205,6 +267,7 @@ public class CommandRunnerTest {
     @Test
     public void testRun_ConfigError() {
         String[] args = {FAKE_CONFIG};
+        CommandRunner mRunner = createNormalRunner();
         mRunner.run(args);
         assertEquals(ExitCode.CONFIG_EXCEPTION, mRunner.getErrorCode());
         assertTrue(mStackTraceOutput.contains(FAKE_CONFIG));
