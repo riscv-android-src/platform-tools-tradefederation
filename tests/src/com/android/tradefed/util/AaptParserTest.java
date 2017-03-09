@@ -18,9 +18,7 @@ package com.android.tradefed.util;
 
 import junit.framework.TestCase;
 
-/**
- * Tests for AaptParser.
- */
+/** Tests for {@link AaptParser}. */
 public class AaptParserTest extends TestCase {
 
     public void testParseInvalidInput() {
@@ -92,5 +90,53 @@ public class AaptParserTest extends TestCase {
                 "uses-permission: name='android.permission.INTERNET'\n" +
                 "uses-permission: name='android.permission.ACCESS_NETWORK_STATE'\n");
         assertEquals(-1, p.getSdkVersion());
+    }
+
+    public void testParseNativeCode() {
+        AaptParser p = new AaptParser();
+        p.parse(
+                "package: name='com.android.foo' versionCode='217173' versionName='1.7173' "
+                        + "platformBuildVersionName=''\n"
+                        + "install-location:'preferExternal'\n"
+                        + "sdkVersion:'notavalidsdk'\n"
+                        + "targetSdkVersion:'21'\n"
+                        + "uses-permission: name='android.permission.INTERNET'\n"
+                        + "uses-permission: name='android.permission.ACCESS_NETWORK_STATE'\n"
+                        + "densities: '160'"
+                        + "native-code: 'arm64-v8a'");
+        assertEquals("arm64-v8a", p.getNativeCode().get(0));
+    }
+
+    public void testParseNativeCode_multi() {
+        AaptParser p = new AaptParser();
+        p.parse(
+                "package: name='com.android.foo' versionCode='217173' versionName='1.7173' "
+                        + "platformBuildVersionName=''\n"
+                        + "install-location:'preferExternal'\n"
+                        + "sdkVersion:'notavalidsdk'\n"
+                        + "targetSdkVersion:'21'\n"
+                        + "uses-permission: name='android.permission.INTERNET'\n"
+                        + "uses-permission: name='android.permission.ACCESS_NETWORK_STATE'\n"
+                        + "densities: '160'"
+                        + "native-code: 'arm64-v8a' 'armeabi-v7a'");
+        assertEquals("arm64-v8a", p.getNativeCode().get(0));
+        assertEquals("armeabi-v7a", p.getNativeCode().get(1));
+    }
+
+    public void testParseNativeCode_alt() {
+        AaptParser p = new AaptParser();
+        p.parse(
+                "package: name='com.android.foo' versionCode='217173' versionName='1.7173' "
+                        + "platformBuildVersionName=''\n"
+                        + "install-location:'preferExternal'\n"
+                        + "sdkVersion:'notavalidsdk'\n"
+                        + "targetSdkVersion:'21'\n"
+                        + "uses-permission: name='android.permission.INTERNET'\n"
+                        + "uses-permission: name='android.permission.ACCESS_NETWORK_STATE'\n"
+                        + "densities: '160'\n"
+                        + "native-code: 'arm64-v8a'\n"
+                        + "alt-native-code: 'armeabi-v7a'");
+        assertEquals("arm64-v8a", p.getNativeCode().get(0));
+        assertEquals("armeabi-v7a", p.getNativeCode().get(1));
     }
 }

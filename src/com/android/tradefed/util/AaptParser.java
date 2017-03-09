@@ -18,6 +18,8 @@ package com.android.tradefed.util;
 import com.android.tradefed.log.LogUtil.CLog;
 
 import java.io.File;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -35,12 +37,19 @@ public class AaptParser {
             Pattern.MULTILINE);
     private static final Pattern SDK_PATTERN = Pattern.compile(
             "^sdkVersion:'(\\d+)'", Pattern.MULTILINE);
+    /** Patterns for native code are not always present, so the list may stay empty. */
+    private static final Pattern NATIVE_CODE_PATTERN =
+            Pattern.compile("native-code: '(.*?)'( '.*?')*");
+
+    private static final Pattern ALT_NATIVE_CODE_PATTERN =
+            Pattern.compile("alt-native-code: '(.*)'");
     private static final int AAPT_TIMEOUT_MS = 60000;
     private static final int INVALID_SDK = -1;
 
     private String mPackageName;
     private String mVersionCode;
     private String mVersionName;
+    private List<String> mNativeCode = new ArrayList<>();
     private String mLabel;
     private int mSdkVersion = INVALID_SDK;
 
@@ -49,6 +58,7 @@ public class AaptParser {
     }
 
     boolean parse(String aaptOut) {
+        //CLog.e(aaptOut);
         Matcher m = PKG_PATTERN.matcher(aaptOut);
         if (m.find()) {
             mPackageName = m.group(1);
@@ -62,6 +72,22 @@ public class AaptParser {
             m = SDK_PATTERN.matcher(aaptOut);
             if (m.find()) {
                 mSdkVersion = Integer.parseInt(m.group(1));
+            }
+            m = NATIVE_CODE_PATTERN.matcher(aaptOut);
+            if (m.find()) {
+                for (int i = 1; i <= m.groupCount(); i++) {
+                    if (m.group(i) != null) {
+                        mNativeCode.add(m.group(i).replace("'", "").trim());
+                    }
+                }
+            }
+            m = ALT_NATIVE_CODE_PATTERN.matcher(aaptOut);
+            if (m.find()) {
+                for (int i = 1; i <= m.groupCount(); i++) {
+                    if (m.group(i) != null) {
+                        mNativeCode.add(m.group(i).replace("'", ""));
+                    }
+                }
             }
             return true;
         }
@@ -105,6 +131,10 @@ public class AaptParser {
 
     public String getVersionName() {
         return mVersionName;
+    }
+
+    public List<String> getNativeCode() {
+        return mNativeCode;
     }
 
     public String getLabel() {
