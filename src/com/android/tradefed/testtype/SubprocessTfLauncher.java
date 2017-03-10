@@ -51,8 +51,8 @@ import java.util.List;
 public abstract class SubprocessTfLauncher implements IRemoteTest, IBuildReceiver {
 
     @Option(name = "max-run-time", description =
-            "The maximum time in minutes to allow for a TF test run.", isTimeVal = true)
-    private long mMaxTfRunTimeMin = 20;
+            "The maximum time to allow for a TF test run.", isTimeVal = true)
+    private long mMaxTfRunTime = 20 * 60 * 1000;
 
     @Option(name = "remote-debug", description =
             "Start the TF java process in remote debug mode.")
@@ -191,7 +191,7 @@ public abstract class SubprocessTfLauncher implements IRemoteTest, IBuildReceive
                 mCmdArgs.add(eventFile.getAbsolutePath());
             }
 
-            CommandResult result = mRunUtil.runTimedCmd(mMaxTfRunTimeMin * 60 * 1000, stdout,
+            CommandResult result = mRunUtil.runTimedCmd(mMaxTfRunTime, stdout,
                     stderr, mCmdArgs.toArray(new String[0]));
             // We possibly allow for a little more time if the thread is still processing events.
             if (!eventParser.joinReceiver(EVENT_THREAD_JOIN_TIMEOUT_MS)) {
@@ -210,7 +210,7 @@ public abstract class SubprocessTfLauncher implements IRemoteTest, IBuildReceive
                 String errMessage = null;
                 if (result.getStatus().equals(CommandStatus.TIMED_OUT)) {
                     errMessage = String.format("Timeout after %s",
-                            TimeUtil.formatElapsedTime(mMaxTfRunTimeMin * 60 * 1000));
+                            TimeUtil.formatElapsedTime(mMaxTfRunTime));
                 } else {
                     errMessage = FileUtil.readStringFromFile(stderrFile);
                 }
