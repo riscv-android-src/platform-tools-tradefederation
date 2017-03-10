@@ -354,8 +354,10 @@ public class BugreportCollector implements ITestInvocationListener {
                             applicableFreqs.add(Freq.FIRST);
                         }
                         break;
+                    default:
+                        break;
                 }
-                break;  // case AFTER
+                break; // case AFTER
 
             case AT_START_OF:
                 switch (noun) {
@@ -370,8 +372,10 @@ public class BugreportCollector implements ITestInvocationListener {
                             applicableFreqs.add(Freq.FIRST);
                         }
                         break;
+                    default:
+                        break;
                 }
-                break;  // case AT_START_OF
+                break; // case AT_START_OF
         }
 
         Predicate storedP = search(relation, applicableFreqs, noun);
@@ -394,6 +398,9 @@ public class BugreportCollector implements ITestInvocationListener {
                     case FAILED_TESTCASE:
                         // bug-FAILED-FooBarTest#testMethodName
                         desc = String.format("FAILED-%s", testName);
+                        break;
+
+                    default:
                         break;
                 }
             }
