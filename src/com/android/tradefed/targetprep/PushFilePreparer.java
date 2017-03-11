@@ -38,6 +38,9 @@ import java.util.Collection;
 @OptionClass(alias = "push-file")
 public class PushFilePreparer implements ITargetCleaner {
     private static final String LOG_TAG = "PushFilePreparer";
+    private static final String MEDIA_SCAN_INTENT =
+            "am broadcast -a android.intent.action.MEDIA_MOUNTED -d file://%s "
+                    + "--receiver-include-background";
 
     @Option(name="push", description=
             "A push-spec, formatted as '/path/to/srcfile.txt->/path/to/destfile.txt' or " +
@@ -165,10 +168,8 @@ public class PushFilePreparer implements ITargetCleaner {
         }
 
         if (mTriggerMediaScan) {
-            // send a MEDIA_MOUNTED broadcast
-            device.executeShellCommand(String.format(
-                    "am broadcast -a android.intent.action.MEDIA_MOUNTED -d file://%s",
-                    device.getMountPoint(IDevice.MNT_EXTERNAL_STORAGE)));
+            String mountPoint = device.getMountPoint(IDevice.MNT_EXTERNAL_STORAGE);
+            device.executeShellCommand(String.format(MEDIA_SCAN_INTENT, mountPoint));
         }
     }
 

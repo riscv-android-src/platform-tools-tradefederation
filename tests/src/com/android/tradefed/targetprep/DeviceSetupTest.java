@@ -478,8 +478,9 @@ public class DeviceSetupTest extends TestCase {
             TargetSetupError {
         doSetupExpectations();
         doCheckExternalStoreSpaceExpectations();
-        doCommandsExpectations("am broadcast -a android.intent.action.MEDIA_MOUNTED " +
-                "-d file://${EXTERNAL_STORAGE}");
+        doCommandsExpectations(
+                "am broadcast -a android.intent.action.MEDIA_MOUNTED "
+                        + "-d file://${EXTERNAL_STORAGE} --receiver-include-background");
         EasyMock.replay(mMockDevice);
 
         mDeviceSetup.setTriggerMediaMounted(true);

@@ -161,10 +161,10 @@ public class DeviceSetup implements ITargetPreparer, ITargetCleaner {
             description = "Trigger a MEDIA_MOUNTED broadcast")
     protected boolean mTriggerMediaMounted = false;
     // am broadcast -a android.intent.action.MEDIA_MOUNTED -d file://${EXTERNAL_STORAGE}
+    // --receiver-include-background
 
     // Location
-    @Option(name = "location-gps",
-            description = "Turn the GPS location on or off")
+    @Option(name = "location-gps", description = "Turn the GPS location on or off")
     protected BinaryState mLocationGps = BinaryState.IGNORE;
     // ON:  settings put secure location_providers_allowed +gps
     // OFF: settings put secure location_providers_allowed -gps
@@ -540,8 +540,9 @@ public class DeviceSetup implements ITargetPreparer, ITargetCleaner {
                 "install_non_market_apps", "1", "0");
 
         if (mTriggerMediaMounted) {
-            mRunCommandAfterSettings.add("am broadcast -a android.intent.action.MEDIA_MOUNTED -d " +
-                    "file://${EXTERNAL_STORAGE}");
+            mRunCommandAfterSettings.add(
+                    "am broadcast -a android.intent.action.MEDIA_MOUNTED -d "
+                            + "file://${EXTERNAL_STORAGE} --receiver-include-background");
         }
 
         setSettingForBinaryState(mLocationGps, mSecureSettings,
