@@ -15,9 +15,19 @@
 LOCAL_PATH := $(call my-dir)
 
 include $(CLEAR_VARS)
+# Module to compile protos for tradefed
+LOCAL_MODULE := tradefed-protos
+LOCAL_SRC_FILES := $(call all-proto-files-under, proto)
+LOCAL_JAVA_LIBRARIES := host-libprotobuf-java-full
+LOCAL_SOURCE_FILES_ALL_GENERATED := true
+LOCAL_MODULE_TAGS := optional
+
+include $(BUILD_HOST_JAVA_LIBRARY)
+
+include $(CLEAR_VARS)
 
 # Only compile source java files in this lib.
-LOCAL_SRC_FILES := $(call all-java-files-under, src) $(call all-proto-files-under, proto)
+LOCAL_SRC_FILES := $(call all-java-files-under, src)
 
 LOCAL_JAVA_RESOURCE_DIRS := res
 
@@ -27,7 +37,7 @@ include tools/tradefederation/error_prone_rules.mk
 LOCAL_MODULE := tradefed
 
 LOCAL_MODULE_TAGS := optional
-LOCAL_STATIC_JAVA_LIBRARIES := junit-host kxml2-2.3.0 jline-1.0 tf-remote-client commons-compress-prebuilt
+LOCAL_STATIC_JAVA_LIBRARIES := junit-host kxml2-2.3.0 jline-1.0 tf-remote-client commons-compress-prebuilt tradefed-protos
 # emmalib is only a runtime dependency if generating code coverage reporters,
 # not a compile time dependency
 LOCAL_JAVA_LIBRARIES := emmalib jack-jacoco-reporter loganalysis tools-common-prebuilt host-libprotobuf-java-full

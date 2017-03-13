@@ -109,7 +109,7 @@ public class CommandRunner {
         FATAL_HOST_ERROR(5),
         THROWABLE_EXCEPTION(6);
 
-        private int mCodeValue;
+        private final int mCodeValue;
 
         ExitCode(int codeValue) {
             mCodeValue = codeValue;

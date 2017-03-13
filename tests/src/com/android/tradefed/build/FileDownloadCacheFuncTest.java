@@ -114,7 +114,7 @@ public class FileDownloadCacheFuncTest extends TestCase {
         assertNotNull(mCache.getCachedFile(REMOTE_PATH));
         assertEquals(2, mReturnedFiles.size());
         // returned files should be identical in content, but be different files
-        assertTrue(mReturnedFiles.get(0) != mReturnedFiles.get(1));
+        assertTrue(!mReturnedFiles.get(0).equals(mReturnedFiles.get(1)));
         assertEquals(DOWNLOADED_CONTENTS, StreamUtil.getStringFromStream(new FileInputStream(
                 mReturnedFiles.get(0))));
         assertEquals(DOWNLOADED_CONTENTS, StreamUtil.getStringFromStream(new FileInputStream(
