@@ -3710,7 +3710,7 @@ public class NativeDevice implements IManagedTestDevice {
         } catch (IOException | TimeoutException | AdbCommandRejectedException |
                 ShellCommandUnresponsiveException e) {
             CLog.w("Failed to query MAC address for %s", mIDevice.getSerialNumber());
-            CLog.e(e);
+            CLog.w(e);
         }
         String output = receiver.getOutput().trim();
         if (isMacAddress(output)) {
