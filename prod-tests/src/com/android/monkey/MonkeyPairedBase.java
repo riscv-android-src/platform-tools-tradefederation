@@ -16,21 +16,24 @@
 
 package com.android.monkey;
 
+import com.android.clockwork.ClockworkUtils;
+import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.config.Option;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.result.ITestInvocationListener;
-import com.android.tradefed.targetprep.companion.CompanionDeviceTracker;
+import com.android.tradefed.testtype.IMultiDeviceTest;
 
+import java.util.ArrayList;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
+import java.util.List;
+import java.util.Map;
 
-/**
- * Runner for paired stress tests which use the monkey command.
- */
-public class MonkeyPairedBase extends MonkeyBase {
+/** Runner for paired stress tests which use the monkey command. */
+public class MonkeyPairedBase extends MonkeyBase implements IMultiDeviceTest {
 
     @Option(name = "companion-recurring-command", description = "recurring shell command "
             + "on companion")
@@ -40,26 +43,20 @@ public class MonkeyPairedBase extends MonkeyBase {
             + "command in seconds")
     private int mCompanionRecurringInterval = 25;
 
-    private ITestDevice mCompanionDevice;
+    private ITestDevice mCompanion;
+    private List<ITestDevice> mDeviceList = new ArrayList<>();
+    private Map<ITestDevice, IBuildInfo> mInfoMap = null;
     private Object mCompanionLock = new Object();
     private ScheduledExecutorService mScheduler;
 
     /**
      * Fetches the companion device allocated for the primary device
+     *
      * @return the allocated companion device
      * @throws RuntimeException if no companion device has been allocated
      */
     protected ITestDevice getCompanion() {
-        synchronized(mCompanionLock) {
-            if (mCompanionDevice == null) {
-                mCompanionDevice = CompanionDeviceTracker.getInstance().getCompanionDevice(getDevice());
-                if (mCompanionDevice == null) {
-                    throw new RuntimeException("no companion device allocated, "
-                            + "use appropriate ITargetPreparer");
-                }
-            }
-        }
-        return mCompanionDevice;
+        return mCompanion;
     }
 
     /**
@@ -100,5 +97,13 @@ public class MonkeyPairedBase extends MonkeyBase {
             CLog.e("Could not terminate recurring command on %s (%s)",
                     getCompanion().getSerialNumber(), mCompanionRecurringCommand);
         }
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public void setDeviceInfos(Map<ITestDevice, IBuildInfo> deviceInfos) {
+        ClockworkUtils cwUtils = new ClockworkUtils();
+        mCompanion = cwUtils.setUpMultiDevice(deviceInfos, mDeviceList);
+        mInfoMap = deviceInfos;
     }
 }
