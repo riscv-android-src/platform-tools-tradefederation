@@ -361,6 +361,7 @@ public class CommandSchedulerFuncTest extends TestCase {
                 mCommandScheduler.shutdownHard();
             }
         });
+        test.setName("CommandSchedulerFuncTest#testShutdown_interruptible");
         test.start();
         synchronized (mMockTestInvoker) {
             mMockTestInvoker.wait(WAIT_TIMEOUT_MS);
@@ -434,6 +435,7 @@ public class CommandSchedulerFuncTest extends TestCase {
                 mCommandScheduler.shutdownHard();
             }
         });
+        shutdownThread.setName("CommandSchedulerFuncTest#testShutdown_notInterruptible");
         shutdownThread.start();
         synchronized (li) {
             // Invocation will finish first because shorter than shutdownHard final timeout
@@ -551,6 +553,7 @@ public class CommandSchedulerFuncTest extends TestCase {
                 mCommandScheduler.shutdownHard();
             }
         });
+        shutdownThread.setName("CommandSchedulerFuncTest#testShutdown_notInterruptible_timeout");
         shutdownThread.start();
         synchronized (li) {
             // Setting a timeout longer than the shutdown timeout.

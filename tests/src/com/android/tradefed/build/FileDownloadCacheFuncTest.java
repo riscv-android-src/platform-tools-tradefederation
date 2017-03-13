@@ -93,16 +93,20 @@ public class FileDownloadCacheFuncTest extends TestCase {
             }
           }
         };
-        Thread downloadThread2 = new Thread() {
-            @Override
-            public void run() {
-              try {
-                  mReturnedFiles.add(mCache.fetchRemoteFile(mMockDownloader, REMOTE_PATH));
-              } catch (BuildRetrievalError e) {
-                  Log.e(LOG_TAG, e);
-              }
-            }
-          };
+        downloadThread1.setName("FileDownloadCacheFuncTest#testFetchRemoteFile_concurrent-1");
+        Thread downloadThread2 =
+                new Thread() {
+                    @Override
+                    public void run() {
+                        try {
+                            mReturnedFiles.add(
+                                    mCache.fetchRemoteFile(mMockDownloader, REMOTE_PATH));
+                        } catch (BuildRetrievalError e) {
+                            Log.e(LOG_TAG, e);
+                        }
+                    }
+                };
+        downloadThread2.setName("FileDownloadCacheFuncTest#testFetchRemoteFile_concurrent-2");
         downloadThread1.start();
         downloadThread2.start();
         downloadThread1.join();

@@ -186,6 +186,7 @@ public class InstrumentationTestFuncTest extends DeviceTestCase {
                 }
             }
         };
+        rebootThread.setName("InstrumentationTestFuncTest#testRun_deviceReboot");
         rebootThread.start();
         mInstrumentationTest.run(mMockListener);
         EasyMock.verify(mMockListener);
@@ -264,6 +265,7 @@ public class InstrumentationTestFuncTest extends DeviceTestCase {
                         }
                     }
                 };
+        resetThread.setName("InstrumentationTestFuncTest#testRun_deviceRuntimeReset");
         resetThread.start();
         mInstrumentationTest.run(mMockListener);
         EasyMock.verify(mMockListener);
