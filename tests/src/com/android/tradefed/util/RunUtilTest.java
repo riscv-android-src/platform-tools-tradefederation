@@ -279,7 +279,7 @@ public class RunUtilTest extends TestCase {
      */
     public void testRuntimedCmd_regularOutput_fileNull() {
         String[] command = {"echo", "TEST"};
-        CommandResult result = mRunUtil.runTimedCmd(SHORT_TIMEOUT_MS, null, null, command);
+        CommandResult result = mRunUtil.runTimedCmd(LONG_TIMEOUT_MS, null, null, command);
         assertEquals(CommandStatus.SUCCESS, result.getStatus());
         assertEquals(result.getStdout(), "TEST\n");
         assertEquals(result.getStderr(), "");
