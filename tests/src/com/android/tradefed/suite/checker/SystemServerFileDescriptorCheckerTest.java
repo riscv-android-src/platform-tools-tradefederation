@@ -53,7 +53,9 @@ public class SystemServerFileDescriptorCheckerTest {
     public void testFailToGetFdCount() throws Exception {
         EasyMock.expect(mMockDevice.executeShellCommand(EasyMock.eq("pidof system_server")))
                 .andReturn("1024\n");
-        EasyMock.expect(mMockDevice.executeShellCommand(EasyMock.eq("ls /proc/1024/fd | wc -l")))
+        EasyMock.expect(
+                        mMockDevice.executeShellCommand(
+                                EasyMock.eq("su root ls /proc/1024/fd | wc -w")))
                 .andReturn("not found\n");
         EasyMock.replay(mMockDevice);
         assertTrue(mChecker.preExecutionCheck(mMockDevice));
@@ -65,7 +67,9 @@ public class SystemServerFileDescriptorCheckerTest {
     public void testAcceptableFdCount() throws Exception {
         EasyMock.expect(mMockDevice.executeShellCommand(EasyMock.eq("pidof system_server")))
                 .andReturn("914\n");
-        EasyMock.expect(mMockDevice.executeShellCommand(EasyMock.eq("ls /proc/914/fd | wc -l")))
+        EasyMock.expect(
+                        mMockDevice.executeShellCommand(
+                                EasyMock.eq("su root ls /proc/914/fd | wc -w")))
                 .andReturn("382  \n");
         EasyMock.replay(mMockDevice);
         assertTrue(mChecker.preExecutionCheck(mMockDevice));
@@ -77,7 +81,9 @@ public class SystemServerFileDescriptorCheckerTest {
     public void testUnacceptableFdCount() throws Exception {
         EasyMock.expect(mMockDevice.executeShellCommand(EasyMock.eq("pidof system_server")))
                 .andReturn("914\n");
-        EasyMock.expect(mMockDevice.executeShellCommand(EasyMock.eq("ls /proc/914/fd | wc -l")))
+        EasyMock.expect(
+                        mMockDevice.executeShellCommand(
+                                EasyMock.eq("su root ls /proc/914/fd | wc -w")))
                 .andReturn("1002  \n");
         EasyMock.replay(mMockDevice);
         assertTrue(mChecker.preExecutionCheck(mMockDevice)); // Noop

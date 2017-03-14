@@ -33,7 +33,7 @@ public class SystemServerFileDescriptorChecker implements ISystemStatusChecker {
             return true;
         }
 
-        Integer fds = getIntegerFromCommand(device, "ls /proc/" + pid + "/fd | wc -l");
+        Integer fds = getIntegerFromCommand(device, "su root ls /proc/" + pid + "/fd | wc -w");
         if (fds == null) {
             CLog.d("Unable to query system_server fd count.");
             return true;
