@@ -175,11 +175,11 @@ public class TfTestLauncher extends SubprocessTfLauncher {
         // Evaluate coverage from the subprocess
         if (mEnableCoverage) {
             InputStreamSource coverage = null;
-            File csvResult = null;
+            File xmlResult = null;
             try {
-                csvResult = processExecData(mDestCoverageFile, mRootDir);
-                coverage = new FileInputStreamSource(csvResult);
-                listener.testLog("coverage_csv", LogDataType.TEXT, coverage);
+                xmlResult = processExecData(mDestCoverageFile, mRootDir);
+                coverage = new FileInputStreamSource(xmlResult);
+                listener.testLog("coverage_xml", LogDataType.JACOCO_XML, coverage);
             } catch (IOException e) {
                 if (exception) {
                     // If exception was thrown above, we only log this one since it's most
@@ -191,7 +191,7 @@ public class TfTestLauncher extends SubprocessTfLauncher {
             } finally {
                 FileUtil.deleteFile(mDestCoverageFile);
                 StreamUtil.cancel(coverage);
-                FileUtil.deleteFile(csvResult);
+                FileUtil.deleteFile(xmlResult);
             }
         }
 
@@ -237,15 +237,15 @@ public class TfTestLauncher extends SubprocessTfLauncher {
     }
 
     /**
-     * Helper to process the execution data into user readable format (csv) that can easily be
+     * Helper to process the execution data into user readable format (xml) that can easily be
      * parsed.
      *
      * @param executionData output files of the java args jacoco.
      * @param rootDir base directory of downloaded TF
-     * @return a {@link File} pointing to the human readable csv result file.
+     * @return a {@link File} pointing to the human readable xml result file.
      */
     private File processExecData(File executionData, String rootDir) throws IOException {
-        File csvReport = FileUtil.createTempFile("coverage_csv", ".csv");
+        File xmlReport = FileUtil.createTempFile("coverage_xml", ".xml");
         InputStream template = getClass().getResourceAsStream(mAntConfigResource);
         if (template == null) {
             throw new IOException("Could not find " + mAntConfigResource);
@@ -264,14 +264,14 @@ public class TfTestLauncher extends SubprocessTfLauncher {
                     "-Djacocoant.path=" + jacocoAnt.getAbsolutePath(),
                     "-Dexecution.files=" + executionData.getAbsolutePath(),
                     "-Droot.dir=" + rootDir,
-                    "-Ddest.file=" + csvReport.getAbsolutePath()};
+                    "-Ddest.file=" + xmlReport.getAbsolutePath()};
             CommandResult result = RunUtil.getDefault().runTimedCmd(COVERAGE_REPORT_TIMEOUT_MS,
                     cmd);
             CLog.d(result.getStdout());
             if (!CommandStatus.SUCCESS.equals(result.getStatus())) {
                 throw new IOException(result.getStderr());
             }
-            return csvReport;
+            return xmlReport;
         } finally {
             FileUtil.deleteFile(antConfig);
             FileUtil.deleteFile(jacocoAnt);
