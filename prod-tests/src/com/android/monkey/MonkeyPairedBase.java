@@ -16,7 +16,6 @@
 
 package com.android.monkey;
 
-import com.android.clockwork.ClockworkUtils;
 import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.config.Option;
 import com.android.tradefed.device.DeviceNotAvailableException;
@@ -24,6 +23,7 @@ import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.testtype.IMultiDeviceTest;
+import com.android.tradefed.util.clockwork.ClockworkUtils;
 
 import java.util.ArrayList;
 import java.util.concurrent.Executors;

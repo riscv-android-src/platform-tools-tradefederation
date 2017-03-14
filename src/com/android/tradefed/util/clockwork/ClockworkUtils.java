@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package com.android.clockwork;
+package com.android.tradefed.util.clockwork;
 
 import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.device.DeviceNotAvailableException;
