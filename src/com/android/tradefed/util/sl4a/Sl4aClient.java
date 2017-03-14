@@ -43,6 +43,8 @@ public class Sl4aClient implements AutoCloseable {
     private static final String INIT = "initiate";
     public static final String IS_SL4A_RUNNING_CMD =
             "ps -e | grep \"S com.googlecode.android_scripting\"";
+    public static final String IS_SL4A_RUNNING_CMD_OLD =
+            "ps | grep \"S com.googlecode.android_scripting\"";
     public static final String SL4A_LAUNCH_CMD =
             "am start -a com.googlecode.android_scripting.action.LAUNCH_SERVER " +
             "--ei com.googlecode.android_scripting.extra.USE_SERVICE_PORT %s " +
@@ -74,14 +76,30 @@ public class Sl4aClient implements AutoCloseable {
     }
 
     /**
-     * Convenience method to create and start a client ready to use.
+     * Creates the Sl4A client.
      *
      * @param device the {ITestDevice} that the client will be for.
      * @param sl4aApkFile file path to hte sl4a apk to install, or null if already installed.
-     * @return an {@link Sl4aClient} instance that has been started.
-     * @throws DeviceNotAvailableException
+     * @param devicePort the device port used to communicate to.
      */
-    public static Sl4aClient startSL4A(ITestDevice device, File sl4aApkFile)
+    public Sl4aClient(ITestDevice device, File sl4aApkFile) throws DeviceNotAvailableException {
+        installSl4a(device, sl4aApkFile);
+        ServerSocket s = null;
+        int port = -1;
+        try {
+            s = new ServerSocket(0);
+            s.setReuseAddress(true);
+            port = s.getLocalPort();
+            s.close();
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+        mDevice = device;
+        mHostPort = port;
+        mDeviceSidePort = 9998;
+    }
+
+    private static void installSl4a(ITestDevice device, File sl4aApkFile)
             throws DeviceNotAvailableException {
         if (sl4aApkFile != null) {
             if (!sl4aApkFile.exists()) {
@@ -94,6 +112,19 @@ public class Sl4aClient implements AutoCloseable {
                         res));
             }
         }
+    }
+
+    /**
+     * Convenience method to create and start a client ready to use.
+     *
+     * @param device the {ITestDevice} that the client will be for.
+     * @param sl4aApkFile file path to hte sl4a apk to install, or null if already installed.
+     * @return an {@link Sl4aClient} instance that has been started.
+     * @throws DeviceNotAvailableException
+     */
+    public static Sl4aClient startSL4A(ITestDevice device, File sl4aApkFile)
+            throws DeviceNotAvailableException {
+        installSl4a(device, sl4aApkFile);
         ServerSocket s = null;
         int port = -1;
         try {
@@ -137,18 +168,23 @@ public class Sl4aClient implements AutoCloseable {
      */
     public boolean isSl4ARunning() throws DeviceNotAvailableException {
         // Grep for process with a preceding S which means it is truly started.
-        String out = mDevice.executeShellCommand(IS_SL4A_RUNNING_CMD);
-        if (out.length() == 0) {
+        // Some devices running older version do not support ps -e command, use ps instead
+        // Right now there is no easy way to find out which system support -e option
+        String out1 = mDevice.executeShellCommand(IS_SL4A_RUNNING_CMD_OLD);
+        String out2 = mDevice.executeShellCommand(IS_SL4A_RUNNING_CMD);
+        if (out1 == null || out2 == null) {
+            CLog.i("Null string return");
+            return false;
+        } else if (out1.trim().isEmpty() && out2.trim().isEmpty()) {
+            CLog.i("Empty return");
             return false;
         } else {
             return true;
         }
     }
 
-    /**
-     * Helper to actually starts the connection host to device for sl4a.
-     */
-    private void open() {
+    /** Helper to actually starts the connection host to device for sl4a. */
+    public void open() {
         try {
             mDevice.executeAdbCommand("forward", "tcp:" + mHostPort, "tcp:" + mDeviceSidePort);
             String res = mDevice.executeAdbCommand("forward", "--list");

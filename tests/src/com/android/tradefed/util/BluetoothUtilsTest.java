@@ -16,12 +16,45 @@
 
 package com.android.tradefed.util;
 
-import junit.framework.TestCase;
+import static org.mockito.Mockito.when;
 
+import com.android.tradefed.device.DeviceNotAvailableException;
+import com.android.tradefed.device.ITestDevice;
+import com.android.tradefed.util.sl4a.Sl4aClient;
+import com.android.tradefed.util.sl4a.FakeSocketServerHelper;
+
+import java.io.IOException;
 import java.util.Set;
+import org.junit.Assert;
+import org.junit.After;
+import org.junit.Before;
+import org.junit.Test;
 
-public class BluetoothUtilsTest extends TestCase {
+import org.mockito.Mockito;
 
+public class BluetoothUtilsTest {
+
+    private Sl4aClient mClient;
+    private Sl4aClient mSpyClient;
+    private FakeSocketServerHelper mDeviceServer;
+    private ITestDevice mMockDevice;
+    private IRunUtil mMockRunUtil;
+
+    @Before
+    public void setUp() throws IOException {
+        mMockDevice = Mockito.mock(ITestDevice.class);
+        mClient = new Sl4aClient(mMockDevice, 1234, 9998);
+        mSpyClient = Mockito.spy(mClient);
+    }
+
+    @After
+    public void tearDown() throws IOException {
+        if (mDeviceServer != null) {
+            mDeviceServer.close();
+        }
+    }
+
+    @Test
     public void testParseBondedDeviceInstrumentationOutput() throws Exception {
         String[] lines = {
                 "INSTRUMENTATION_RESULT: result=SUCCESS",
@@ -31,9 +64,48 @@ public class BluetoothUtilsTest extends TestCase {
                 "INSTRUMENTATION_CODE: -1",
         };
         Set<String> ret = BluetoothUtils.parseBondedDeviceInstrumentationOutput(lines);
-        assertEquals("return set has wrong number of entries", 3, ret.size());
-        assertTrue("missing mac 00", ret.contains("11:22:33:44:55:66"));
-        assertTrue("missing mac 01", ret.contains("22:33:44:55:66:77"));
-        assertTrue("missing mac 02", ret.contains("33:44:55:66:77:88"));
+        Assert.assertEquals("return set has wrong number of entries", 3, ret.size());
+        Assert.assertTrue("missing mac 00", ret.contains("11:22:33:44:55:66"));
+        Assert.assertTrue("missing mac 01", ret.contains("22:33:44:55:66:77"));
+        Assert.assertTrue("missing mac 02", ret.contains("33:44:55:66:77:88"));
     }
+
+    @Test
+    public void testEnableBtsnoopLogging() throws DeviceNotAvailableException, IOException {
+        when(mMockDevice.executeShellCommand(Mockito.anyString())).thenReturn("");
+        Mockito.doReturn(true).when(mSpyClient).isSl4ARunning();
+        Mockito.doNothing().when(mSpyClient).open();
+        Mockito.doReturn(null).when(mSpyClient).rpcCall(BluetoothUtils.BTSNOOP_API, true);
+        Assert.assertTrue(BluetoothUtils.toggleBtsnoopLogging(mSpyClient, true));
+    }
+
+    @Test
+    public void testEnableBtsnoopLoggingFailed() throws DeviceNotAvailableException, IOException {
+        when(mMockDevice.executeShellCommand(Mockito.anyString())).thenReturn("");
+        Mockito.doReturn(true).when(mSpyClient).isSl4ARunning();
+        Mockito.doNothing().when(mSpyClient).open();
+        Mockito.doThrow(new IOException())
+                .when(mSpyClient)
+                .rpcCall(BluetoothUtils.BTSNOOP_API, true);
+        Assert.assertFalse(BluetoothUtils.toggleBtsnoopLogging(mSpyClient, true));
+    }
+
+    @Test
+    public void testDisableBtsnoopLogging() throws DeviceNotAvailableException, IOException {
+        when(mMockDevice.executeShellCommand(Mockito.anyString())).thenReturn("");
+        Mockito.doReturn(true).when(mSpyClient).isSl4ARunning();
+        Mockito.doNothing().when(mSpyClient).open();
+        Mockito.doReturn(null).when(mSpyClient).rpcCall(BluetoothUtils.BTSNOOP_API, false);
+        Assert.assertTrue(BluetoothUtils.toggleBtsnoopLogging(mSpyClient, false));
+    }
+
+    @Test
+    public void testDisableBtsnoopLoggingFailed() throws DeviceNotAvailableException, IOException {
+        when(mMockDevice.executeShellCommand(Mockito.anyString())).thenReturn("");
+        Mockito.doReturn(false).when(mSpyClient).isSl4ARunning();
+        Mockito.doNothing().when(mSpyClient).open();
+        Mockito.doReturn(null).when(mSpyClient).rpcCall(BluetoothUtils.BTSNOOP_API, false);
+        Assert.assertFalse(BluetoothUtils.toggleBtsnoopLogging(mSpyClient, false));
+    }
+
 }

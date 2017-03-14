@@ -73,6 +73,10 @@ public class Sl4aClientTest {
         EasyMock.expect(mMockDevice.executeShellCommand(Sl4aClient.IS_SL4A_RUNNING_CMD))
                 .andReturn("system    3968   452 1127644  49448 epoll_wait   ae1217f8 S "
                         + "com.googlecode.android_scripting");
+        EasyMock.expect(mMockDevice.executeShellCommand(Sl4aClient.IS_SL4A_RUNNING_CMD_OLD))
+                .andReturn(
+                        "system    3968   452 1127644  49448 epoll_wait   ae1217f8 S "
+                                + "com.googlecode.android_scripting");
         EasyMock.replay(mMockDevice);
         Assert.assertTrue(mClient.isSl4ARunning());
         EasyMock.verify(mMockDevice);
@@ -84,6 +88,8 @@ public class Sl4aClientTest {
     @Test
     public void testIsSl4ARunning_notRunning() throws DeviceNotAvailableException {
         EasyMock.expect(mMockDevice.executeShellCommand(Sl4aClient.IS_SL4A_RUNNING_CMD))
+                .andReturn("");
+        EasyMock.expect(mMockDevice.executeShellCommand(Sl4aClient.IS_SL4A_RUNNING_CMD_OLD))
                 .andReturn("");
         EasyMock.replay(mMockDevice);
         Assert.assertFalse(mClient.isSl4ARunning());
@@ -99,6 +105,8 @@ public class Sl4aClientTest {
         EasyMock.expect(mMockDevice.executeShellCommand(cmd))
                 .andReturn("");
         EasyMock.expect(mMockDevice.executeShellCommand(Sl4aClient.IS_SL4A_RUNNING_CMD))
+                .andReturn("");
+        EasyMock.expect(mMockDevice.executeShellCommand(Sl4aClient.IS_SL4A_RUNNING_CMD_OLD))
                 .andReturn("");
         mMockRunUtil.sleep(EasyMock.anyLong());
         EasyMock.expectLastCall();
@@ -122,6 +130,10 @@ public class Sl4aClientTest {
         EasyMock.expect(mMockDevice.executeShellCommand(Sl4aClient.IS_SL4A_RUNNING_CMD))
         .andReturn("system    3968   452 1127644  49448 epoll_wait   ae1217f8 S "
                 + "com.googlecode.android_scripting");
+        EasyMock.expect(mMockDevice.executeShellCommand(Sl4aClient.IS_SL4A_RUNNING_CMD_OLD))
+                .andReturn(
+                        "system    3968   452 1127644  49448 epoll_wait   ae1217f8 S "
+                                + "com.googlecode.android_scripting");
         mMockRunUtil.sleep(EasyMock.anyLong());
         EasyMock.expectLastCall();
         EasyMock.expect(mMockDevice.executeShellCommand(Sl4aClient.STOP_SL4A_CMD)).andReturn("");

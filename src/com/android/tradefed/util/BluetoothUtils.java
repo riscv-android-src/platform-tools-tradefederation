@@ -24,11 +24,9 @@ import com.android.tradefed.result.FileInputStreamSource;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.InputStreamSource;
 import com.android.tradefed.result.LogDataType;
+import com.android.tradefed.util.sl4a.Sl4aClient;
 
-import java.io.BufferedReader;
 import java.io.File;
-import java.io.FileReader;
-import java.io.IOException;
 import java.util.HashSet;
 import java.util.Set;
 import java.util.regex.Matcher;
@@ -53,6 +51,7 @@ public class BluetoothUtils {
             Pattern.compile("INSTRUMENTATION_RESULT: device-\\d{2}=(.*)$");
     private static final String BTSNOOP_LOG_FILE = "btsnoop_hci.log";
     private static final String BTSNOOP_CONF_FILE = "/etc/bluetooth/bt_stack.conf";
+    public static final String BTSNOOP_API = "bluetoothConfigHciSnoopLog";
 
     /**
      * Convenience method to execute BT instrumentation command and return output
@@ -164,75 +163,68 @@ public class BluetoothUtils {
     }
 
     /**
-     * Enable btsnoop logging by changing the BtSnoopLogOutput line in /etc/bluetooth/bt_stack.conf
-     * to true.
+     * Enable btsnoop logging by sl4a call
+     *
+     * @param device
+     * @return success or not
+     * @throws DeviceNotAvailableException
      */
     public static boolean enableBtsnoopLogging(ITestDevice device)
             throws DeviceNotAvailableException {
-        File confFile = device.pullFile(BTSNOOP_CONF_FILE);
-        if (confFile == null) {
-            return false;
-        }
-
-        BufferedReader confReader = null;
-        try {
-            confReader = new BufferedReader(new FileReader(confFile));
-            StringBuilder newConf = new StringBuilder();
-            String line;
-            while ((line = confReader.readLine()) != null) {
-                if (line.startsWith("BtSnoopLogOutput=")) {
-                    newConf.append("BtSnoopLogOutput=true\n");
-                } else {
-                    newConf.append(line).append("\n");
-                }
-            }
-            device.remountSystemWritable();
-            CLog.d("System remount complete");
-            return device.pushString(newConf.toString(), BTSNOOP_CONF_FILE);
-        } catch (IOException e) {
-            CLog.e(e);
-            return false;
-        } finally {
-            // Delete host's copy of configuration file
-            FileUtil.deleteFile(confFile);
-            StreamUtil.close(confReader);
-            device.reboot();
-        }
+        return enableBtsnoopLogging(device, null);
     }
 
     /**
-     * Disable btsnoop logging by changing the BtSnoopLogOutput line in /etc/bluetooth/bt_stack.conf
-     * to false.
+     * Enable btsnoop logging by sl4a call
+     *
+     * @param device
+     * @param sl4aApkFile sl4a.apk file location, null if it has been installed
+     * @return success or not
+     * @throws DeviceNotAvailableException
+     */
+    public static boolean enableBtsnoopLogging(ITestDevice device, File sl4aApkFile)
+            throws DeviceNotAvailableException {
+        Sl4aClient client = new Sl4aClient(device, sl4aApkFile);
+        return toggleBtsnoopLogging(client, true);
+    }
+
+    /**
+     * Disable btsnoop logging by sl4a call
+     *
+     * @param device
+     * @return success or not
+     * @throws DeviceNotAvailableException
      */
     public static boolean disableBtsnoopLogging(ITestDevice device)
             throws DeviceNotAvailableException {
-        File confFile = device.pullFile(BTSNOOP_CONF_FILE);
-        if (confFile == null) {
-            return false;
-        }
+        return disableBtsnoopLogging(device, null);
+    }
 
-        BufferedReader confReader = null;
+    /**
+     * Disable btsnoop logging by sl4a call
+     *
+     * @param device
+     * @param sl4aApkFile sl4a.apk file location, null if it has been installed
+     * @return success or not
+     * @throws DeviceNotAvailableException
+     */
+    public static boolean disableBtsnoopLogging(ITestDevice device, File sl4aApkFile)
+            throws DeviceNotAvailableException {
+        Sl4aClient client = new Sl4aClient(device, sl4aApkFile);
+        return toggleBtsnoopLogging(client, false);
+    }
+
+    public static boolean toggleBtsnoopLogging(Sl4aClient client, boolean onOff)
+            throws DeviceNotAvailableException {
         try {
-            confReader = new BufferedReader(new FileReader(confFile));
-            StringBuilder newConf = new StringBuilder();
-            String line;
-            while ((line = confReader.readLine()) != null) {
-                if (line.startsWith("BtSnoopLogOutput=")) {
-                    newConf.append("BtSnoopLogOutput=false\n");
-                } else {
-                    newConf.append(line).append("\n");
-                }
-            }
-            device.remountSystemWritable();
-            return device.pushString(newConf.toString(), BTSNOOP_CONF_FILE);
-        } catch (IOException e) {
+            client.startSl4A();
+            client.rpcCall(BTSNOOP_API, onOff);
+            return true;
+        } catch (Exception e) {
+            CLog.e(e);
             return false;
         } finally {
-            // Delete host's copy of configuration file
-            FileUtil.deleteFile(confFile);
-            StreamUtil.close(confReader);
-            // Delete BT snoop log
-            cleanLogFile(device);
+            client.close();
         }
     }
 
