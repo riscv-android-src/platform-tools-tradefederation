@@ -13,6 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 package com.android.tradefed.result;
 
 import com.android.tradefed.build.BuildInfo;
@@ -138,7 +139,7 @@ public class LogFileSaverTest extends TestCase {
         SimpleDateFormat formatter = new SimpleDateFormat(RetentionFileSaver.RETENTION_DATE_FORMAT);
         Date retentionDate = formatter.parse(timestamp);
         Date currentDate = new Date();
-        int expectedDay = currentDate.getDay() == 6 ? 0 :  currentDate.getDay() + 1;
+        int expectedDay = currentDate.getDay() == 6 ? 0 : currentDate.getDay() + 1;
         assertEquals(expectedDay, retentionDate.getDay());
     }
 
@@ -171,8 +172,31 @@ public class LogFileSaverTest extends TestCase {
     }
 
     /**
-     * Simple normal case test for
-     * {@link LogFileSaver#saveAndZipLogData}.
+     * Simple normal case test for {@link LogFileSaver#saveAndGZipLogData}.
+     */
+    public void testSaveAndGZipLogData() throws IOException {
+        File logFile = null;
+        GZIPInputStream gzipStream = null;
+        try {
+            // TODO: would be nice to create a mock file output to make this test not use disk I/O
+            LogFileSaver saver = new LogFileSaver(new BuildInfo(), mRootDir);
+            final String testData = "Here's some test data, blah";
+            ByteArrayInputStream mockInput = new ByteArrayInputStream(testData.getBytes());
+            logFile = saver.saveAndGZipLogData("testSaveLogData", LogDataType.TEXT, mockInput);
+
+            assertTrue(logFile.getName().endsWith(LogDataType.GZIP.getFileExt()));
+            // Verify test data was written to file
+            gzipStream = new GZIPInputStream(new FileInputStream(logFile));
+            String actualLogString = StreamUtil.getStringFromStream(gzipStream);
+            assertTrue(actualLogString.equals(testData));
+        } finally {
+            StreamUtil.close(gzipStream);
+            FileUtil.deleteFile(logFile);
+        }
+    }
+
+    /**
+     * Simple normal case test for {@link LogFileSaver#saveAndZipLogData}.
      */
     public void testSaveAndZipLogData() throws IOException {
         File logFile = null;
@@ -200,8 +224,7 @@ public class LogFileSaverTest extends TestCase {
     }
 
     /**
-     * Simple normal case test for
-     * {@link LogFileSaver#createCompressedLogFile} and
+     * Simple normal case test for {@link LogFileSaver#createCompressedLogFile} and
      * {@link LogFileSaver#createGZipLogStream(File)}
      */
     public void testCreateAndGZipLogData() throws IOException {
@@ -211,8 +234,7 @@ public class LogFileSaverTest extends TestCase {
         try {
             // TODO: would be nice to create a mock file output to make this test not use disk I/O
             LogFileSaver saver = new LogFileSaver(new BuildInfo(), mRootDir);
-            logFile = saver.createCompressedLogFile("testSaveAndGZipLogData", LogDataType.TEXT,
-                    LogDataType.GZIP);
+            logFile = saver.createCompressedLogFile("testSaveAndGZipLogData", LogDataType.TEXT);
             assertTrue(logFile.getName().endsWith(LogDataType.TEXT.getFileExt() + "." +
                     LogDataType.GZIP.getFileExt()));
             assertTrue(logFile.exists());

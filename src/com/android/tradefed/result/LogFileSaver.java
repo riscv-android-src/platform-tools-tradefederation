@@ -222,11 +222,43 @@ public class LogFileSaver {
     }
 
     /**
+     * Save and compress, if necessary, the log data to a gzip file
+     *
+     * @param dataName a {@link String} descriptive name of the data. e.g. "dev
+     * @param dataType the {@link LogDataType} of the file. Log data which is a (ie
+     *            {@link LogDataType#isCompressed()} is <code>true</code>)
+     * @param dataStream the {@link InputStream} of the data.
+     * @return the file of the generated data
+     * @throws IOException if log file could not be generated
+     */
+    public File saveAndGZipLogData(String dataName, LogDataType dataType, InputStream dataStream)
+            throws IOException {
+        if (dataType.isCompressed()) {
+            CLog.d("Log data for %s is already compressed, skipping compression", dataName);
+            return saveLogData(dataName, dataType, dataStream);
+        }
+        BufferedInputStream bufInput = null;
+        OutputStream outStream = null;
+        try {
+            final String saneDataName = sanitizeFilename(dataName);
+            File logFile = createCompressedLogFile(saneDataName, dataType);
+            bufInput = new BufferedInputStream(dataStream);
+            outStream = createGZipLogStream(logFile);
+            StreamUtil.copyStreams(bufInput, outStream);
+            CLog.i("Saved log file %s", logFile.getAbsolutePath());
+            return logFile;
+        } finally {
+            StreamUtil.close(bufInput);
+            StreamUtil.close(outStream);
+        }
+    }
+
+    /**
      * Save and compress, if necessary, the log data to a zip file
      *
      * @param dataName a {@link String} descriptive name of the data. e.g. "dev
-     * @param dataType the {@link LogDataType} of the file. Log data which is a
-     *            (ie {@link LogDataType#isCompressed()} is <code>true</code>)
+     * @param dataType the {@link LogDataType} of the file. Log data which is a (ie
+     *            {@link LogDataType#isCompressed()} is <code>true</code>)
      * @param dataStream the {@link InputStream} of the data.
      * @return the file of the generated data
      * @throws IOException if log file could not be generated
@@ -263,13 +295,11 @@ public class LogFileSaver {
      * @param dataName a {@link String} descriptive name of the data to be stor
      *            "device_logcat"
      * @param origDataType the type of {@link LogDataType} to be stored
-     * @param compressedType the {@link LogDataType} representing the compressi
-     *            {@link LogDataType#GZIP} or {@link LogDataType#ZIP}
      * @return a {@link File}
      * @throws IOException if log file could not be created
      */
-    public File createCompressedLogFile(String dataName, LogDataType origDataType,
-            LogDataType compressedType) throws IOException {
+    public File createCompressedLogFile(String dataName, LogDataType origDataType)
+            throws IOException {
         // add underscore to end of data name to make generated name more readable
         return FileUtil.createTempFile(dataName + "_",
                 String.format(".%s.%s", origDataType.getFileExt(), LogDataType.GZIP.getFileExt()),
