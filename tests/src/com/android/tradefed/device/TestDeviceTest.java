@@ -2923,8 +2923,8 @@ public class TestDeviceTest extends TestCase {
     }
 
     /**
-     * Test for {@link TestDevice#compressRawImage(RawImage, String)} properly reduce the image
-     * size with different encoding.
+     * Test for {@link TestDevice#compressRawImage(RawImage, String, boolean)} properly reduce the
+     * image size with different encoding.
      */
     public void testCompressScreenshot() throws Exception {
         File testImageFile = getTestImageResource();

@@ -19,11 +19,14 @@ LOCAL_ERROR_PRONE_FLAGS:= -XDandroidCompatible=false \
                           -Xep:BoxedPrimitiveConstructor:ERROR \
                           -Xep:ConstantField:ERROR \
                           -Xep:FormatString:ERROR \
+                          -Xep:JUnitAmbiguousTestClass:ERROR \
                           -Xep:MissingFail:ERROR \
+                          -Xep:MissingOverride:ERROR \
                           -Xep:Overrides:ERROR \
                           -Xep:PackageLocation:ERROR \
                           -Xep:ReferenceEquality:ERROR \
                           -Xep:RemoveUnusedImports:ERROR \
                           -Xep:ReturnValueIgnored:ERROR \
-                          -Xep:SelfEquals:ERROR
+                          -Xep:SelfEquals:ERROR \
+                          -Xep:SizeGreaterThanOrEqualsZero:ERROR
 
