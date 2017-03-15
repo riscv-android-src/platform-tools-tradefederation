@@ -51,6 +51,7 @@ public class HostTestTest extends TestCase {
     private IBuildInfo mMockBuildInfo;
 
     @MyAnnotation
+    @MyAnnotation3
     public static class SuccessTestCase extends TestCase {
         public SuccessTestCase() {
         }
@@ -71,7 +72,6 @@ public class HostTestTest extends TestCase {
     }
 
     @MyAnnotation
-    @MyAnnotation2
     public static class AnotherTestCase extends TestCase {
         public AnotherTestCase() {
         }
@@ -82,8 +82,8 @@ public class HostTestTest extends TestCase {
 
         @MyAnnotation
         @MyAnnotation2
-        public void testPass3() {
-        }
+        @MyAnnotation3
+        public void testPass3() {}
 
         @MyAnnotation
         public void testPass4() {
@@ -160,6 +160,10 @@ public class HostTestTest extends TestCase {
     public @interface MyAnnotation2 {
     }
 
+    /** Simple Annotation class for testing */
+    @Retention(RetentionPolicy.RUNTIME)
+    public @interface MyAnnotation3 {}
+
     public static class SuccessTestSuite extends TestSuite {
         public SuccessTestSuite() {
             super(SuccessTestCase.class);
@@ -183,8 +187,38 @@ public class HostTestTest extends TestCase {
         }
     }
 
-    public static class TestRemoteNotCollector extends TestCase implements IDeviceTest,
-            IRemoteTest {
+    @MyAnnotation
+    public static class SuccessDeviceTest2 extends DeviceTestCase {
+        public SuccessDeviceTest2() {
+            super();
+        }
+
+        @MyAnnotation3
+        public void testPass1() {
+            assertNotNull(getDevice());
+        }
+
+        public void testPass2() {
+            assertNotNull(getDevice());
+        }
+    }
+
+    @MyAnnotation
+    public static class InheritedDeviceTest3 extends SuccessDeviceTest2 {
+        public InheritedDeviceTest3() {
+            super();
+        }
+
+        @Override
+        public void testPass1() {
+            super.testPass1();
+        }
+
+        @MyAnnotation3
+        public void testPass3() {}
+    }
+
+    public static class TestRemoteNotCollector implements IDeviceTest, IRemoteTest {
         @Override
         public void run(ITestInvocationListener listener) throws DeviceNotAvailableException {}
 
@@ -611,7 +645,7 @@ public class HostTestTest extends TestCase {
      */
     public void testRun_shouldTestRunMulti_Success() throws Exception {
         mHostTest.addIncludeAnnotation("com.android.tradefed.testtype.HostTestTest$MyAnnotation");
-        mHostTest.addIncludeAnnotation("com.android.tradefed.testtype.HostTestTest$MyAnnotation2");
+        mHostTest.addExcludeAnnotation("com.android.tradefed.testtype.HostTestTest$MyAnnotation2");
         assertTrue(mHostTest.shouldTestRun(AnotherTestCase.class));
     }
 
@@ -630,11 +664,11 @@ public class HostTestTest extends TestCase {
      */
     public void testRun_shouldNotRunMulti() throws Exception {
         mHostTest.addExcludeAnnotation("com.android.tradefed.testtype.HostTestTest$MyAnnotation");
-        assertFalse(mHostTest.shouldTestRun(AnotherTestCase.class));
+        assertFalse(mHostTest.shouldTestRun(SuccessTestCase.class));
         mHostTest = new HostTest();
         // If only the other annotation is excluded.
-        mHostTest.addExcludeAnnotation("com.android.tradefed.testtype.HostTestTest$MyAnnotation2");
-        assertFalse(mHostTest.shouldTestRun(AnotherTestCase.class));
+        mHostTest.addExcludeAnnotation("com.android.tradefed.testtype.HostTestTest$MyAnnotation3");
+        assertFalse(mHostTest.shouldTestRun(SuccessTestCase.class));
     }
 
     /**
@@ -1067,5 +1101,153 @@ public class HostTestTest extends TestCase {
         assertEquals(1, ((HostTest)shard2).getClasses().size());
         assertEquals("com.android.tradefed.testtype.HostTestTest$TestRemoteNotCollector",
                 ((HostTest)shard2).getClasses().get(0).getName());
+    }
+
+    /** An annotation on the class exclude it. All the method of the class should be excluded. */
+    public void testClassAnnotation_excludeAll() throws Exception {
+        mHostTest.setClassName(SuccessTestCase.class.getName());
+        mHostTest.addExcludeAnnotation("com.android.tradefed.testtype.HostTestTest$MyAnnotation3");
+        assertEquals(0, mHostTest.countTestCases());
+        // nothing run.
+        EasyMock.replay(mListener);
+        mHostTest.run(mListener);
+        EasyMock.verify(mListener);
+    }
+
+    /** An annotation on the class include it. We include all the method inside it. */
+    public void testClassAnnotation_includeAll() throws Exception {
+        mHostTest.setClassName(SuccessTestCase.class.getName());
+        mHostTest.addIncludeAnnotation("com.android.tradefed.testtype.HostTestTest$MyAnnotation3");
+        assertEquals(2, mHostTest.countTestCases());
+        TestIdentifier test1 = new TestIdentifier(SuccessTestCase.class.getName(), "testPass");
+        TestIdentifier test2 = new TestIdentifier(SuccessTestCase.class.getName(), "testPass2");
+        mListener.testRunStarted((String) EasyMock.anyObject(), EasyMock.eq(2));
+        mListener.testStarted(EasyMock.eq(test1));
+        mListener.testEnded(EasyMock.eq(test1), (Map<String, String>) EasyMock.anyObject());
+        mListener.testStarted(EasyMock.eq(test2));
+        mListener.testEnded(EasyMock.eq(test2), (Map<String, String>) EasyMock.anyObject());
+        mListener.testRunEnded(EasyMock.anyLong(), (Map<String, String>) EasyMock.anyObject());
+        EasyMock.replay(mListener);
+        mHostTest.run(mListener);
+        EasyMock.verify(mListener);
+    }
+
+    /**
+     * An annotation on the method (no annotation on class) exclude it. This method does not run.
+     */
+    public void testMethodAnnotation_excludeAll() throws Exception {
+        mHostTest.setClassName(AnotherTestCase.class.getName());
+        mHostTest.addExcludeAnnotation("com.android.tradefed.testtype.HostTestTest$MyAnnotation3");
+        assertEquals(1, mHostTest.countTestCases());
+        TestIdentifier test1 = new TestIdentifier(AnotherTestCase.class.getName(), "testPass4");
+        mListener.testRunStarted((String) EasyMock.anyObject(), EasyMock.eq(1));
+        mListener.testStarted(EasyMock.eq(test1));
+        mListener.testEnded(EasyMock.eq(test1), (Map<String, String>) EasyMock.anyObject());
+        mListener.testRunEnded(EasyMock.anyLong(), (Map<String, String>) EasyMock.anyObject());
+        EasyMock.replay(mListener);
+        mHostTest.run(mListener);
+        EasyMock.verify(mListener);
+    }
+
+    /** An annotation on the method (no annotation on class) include it. Only this method run. */
+    public void testMethodAnnotation_includeAll() throws Exception {
+        mHostTest.setClassName(AnotherTestCase.class.getName());
+        mHostTest.addIncludeAnnotation("com.android.tradefed.testtype.HostTestTest$MyAnnotation3");
+        assertEquals(1, mHostTest.countTestCases());
+        TestIdentifier test1 = new TestIdentifier(AnotherTestCase.class.getName(), "testPass3");
+        mListener.testRunStarted((String) EasyMock.anyObject(), EasyMock.eq(1));
+        mListener.testStarted(EasyMock.eq(test1));
+        mListener.testEnded(EasyMock.eq(test1), (Map<String, String>) EasyMock.anyObject());
+        mListener.testRunEnded(EasyMock.anyLong(), (Map<String, String>) EasyMock.anyObject());
+        EasyMock.replay(mListener);
+        mHostTest.run(mListener);
+        EasyMock.verify(mListener);
+    }
+
+    /**
+     * Check that a method annotation in a {@link DeviceTestCase} is properly included with an
+     * include filter during collect-tests-only
+     */
+    public void testMethodAnnotation_includeAll_collect() throws Exception {
+        mHostTest.setCollectTestsOnly(true);
+        mHostTest.setClassName(SuccessDeviceTest2.class.getName());
+        mHostTest.addIncludeAnnotation("com.android.tradefed.testtype.HostTestTest$MyAnnotation3");
+        assertEquals(1, mHostTest.countTestCases());
+        TestIdentifier test1 = new TestIdentifier(SuccessDeviceTest2.class.getName(), "testPass1");
+        mListener.testRunStarted((String) EasyMock.anyObject(), EasyMock.eq(1));
+        mListener.testStarted(EasyMock.eq(test1));
+        mListener.testEnded(EasyMock.eq(test1), (Map<String, String>) EasyMock.anyObject());
+        mListener.testRunEnded(EasyMock.anyLong(), (Map<String, String>) EasyMock.anyObject());
+        EasyMock.replay(mListener);
+        mHostTest.run(mListener);
+        EasyMock.verify(mListener);
+    }
+
+    /**
+     * Test that a method annotated and overriden is not included because the child method is not
+     * annotated (annotation are not inherited).
+     */
+    public void testMethodAnnotation_inherited() throws Exception {
+        mHostTest.setCollectTestsOnly(true);
+        mHostTest.setClassName(InheritedDeviceTest3.class.getName());
+        mHostTest.addIncludeAnnotation("com.android.tradefed.testtype.HostTestTest$MyAnnotation3");
+        assertEquals(1, mHostTest.countTestCases());
+        TestIdentifier test1 =
+                new TestIdentifier(InheritedDeviceTest3.class.getName(), "testPass3");
+        mListener.testRunStarted((String) EasyMock.anyObject(), EasyMock.eq(1));
+        mListener.testStarted(EasyMock.eq(test1));
+        mListener.testEnded(EasyMock.eq(test1), (Map<String, String>) EasyMock.anyObject());
+        mListener.testRunEnded(EasyMock.anyLong(), (Map<String, String>) EasyMock.anyObject());
+        EasyMock.replay(mListener);
+        mHostTest.run(mListener);
+        EasyMock.verify(mListener);
+    }
+
+    /**
+     * Test that a method annotated and overriden is not excluded if the child method does not have
+     * the annotation.
+     */
+    public void testMethodAnnotation_inherited_exclude() throws Exception {
+        mHostTest.setCollectTestsOnly(true);
+        mHostTest.setClassName(InheritedDeviceTest3.class.getName());
+        mHostTest.addExcludeAnnotation("com.android.tradefed.testtype.HostTestTest$MyAnnotation3");
+        assertEquals(2, mHostTest.countTestCases());
+        TestIdentifier test1 =
+                new TestIdentifier(InheritedDeviceTest3.class.getName(), "testPass1");
+        TestIdentifier test2 =
+                new TestIdentifier(InheritedDeviceTest3.class.getName(), "testPass2");
+        mListener.testRunStarted((String) EasyMock.anyObject(), EasyMock.eq(2));
+        mListener.testStarted(EasyMock.eq(test1));
+        mListener.testEnded(EasyMock.eq(test1), (Map<String, String>) EasyMock.anyObject());
+        mListener.testStarted(EasyMock.eq(test2));
+        mListener.testEnded(EasyMock.eq(test2), (Map<String, String>) EasyMock.anyObject());
+        mListener.testRunEnded(EasyMock.anyLong(), (Map<String, String>) EasyMock.anyObject());
+        EasyMock.replay(mListener);
+        mHostTest.run(mListener);
+        EasyMock.verify(mListener);
+    }
+
+    /** Check that a {@link DeviceTestCase} is properly excluded when the class is excluded. */
+    public void testDeviceTestCase_excludeClass() throws Exception {
+        mHostTest.setClassName(SuccessDeviceTest2.class.getName());
+        mHostTest.addExcludeAnnotation("com.android.tradefed.testtype.HostTestTest$MyAnnotation");
+        assertEquals(0, mHostTest.countTestCases());
+        EasyMock.replay(mListener);
+        mHostTest.run(mListener);
+        EasyMock.verify(mListener);
+    }
+
+    /**
+     * Check that a {@link DeviceTestCase} is properly excluded when the class is excluded in
+     * collect-tests-only mode (yielding the same result as above).
+     */
+    public void testDeviceTestCase_excludeClass_collect() throws Exception {
+        mHostTest.setCollectTestsOnly(true);
+        mHostTest.setClassName(SuccessDeviceTest2.class.getName());
+        mHostTest.addExcludeAnnotation("com.android.tradefed.testtype.HostTestTest$MyAnnotation");
+        assertEquals(0, mHostTest.countTestCases());
+        EasyMock.replay(mListener);
+        mHostTest.run(mListener);
+        EasyMock.verify(mListener);
     }
 }

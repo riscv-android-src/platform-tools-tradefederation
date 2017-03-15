@@ -77,8 +77,7 @@ public class JUnit4TestFilter extends Filter {
                             || !method.getReturnType().equals(Void.TYPE)
                             || method.getParameterTypes().length > 0
                             || !method.getName().startsWith("test")
-                            || !mFilterHelper.shouldRun(packageName, classObj.getName(),
-                                    method)) {
+                            || !mFilterHelper.shouldRun(packageName, classObj, method)) {
                         CLog.i("excluding %s", description);
                         return false;
                     } else {

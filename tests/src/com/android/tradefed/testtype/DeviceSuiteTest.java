@@ -29,7 +29,9 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.Suite.SuiteClasses;
 
-import java.util.Map;
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
+import java.util.Collections;
 
 /**
  * Unit Tests for {@link DeviceSuite}
@@ -69,6 +71,7 @@ public class DeviceSuiteTest {
         }
 
         @Test
+        @MyAnnotation1
         public void testPass1() {}
 
         @Test
@@ -102,8 +105,11 @@ public class DeviceSuiteTest {
     public class Junit4DeviceSuite {
     }
 
+    /** Simple Annotation class for testing */
+    @Retention(RetentionPolicy.RUNTIME)
+    public @interface MyAnnotation1 {}
+
     @Test
-    @SuppressWarnings("unchecked")
     public void testRunDeviceSuite() throws Exception {
         OptionSetter setter = new OptionSetter(mHostTest);
         setter.setOptionValue("class", Junit4DeviceSuite.class.getName());
@@ -115,10 +121,10 @@ public class DeviceSuiteTest {
         TestIdentifier test2 = new TestIdentifier(Junit4DeviceTestclass.class.getName(),
                 "testPass2");
         mListener.testStarted(EasyMock.eq(test1));
-        mListener.testEnded(EasyMock.eq(test1), (Map<String, String>)EasyMock.anyObject());
+        mListener.testEnded(EasyMock.eq(test1), EasyMock.eq(Collections.emptyMap()));
         mListener.testStarted(EasyMock.eq(test2));
-        mListener.testEnded(EasyMock.eq(test2), (Map<String, String>)EasyMock.anyObject());
-        mListener.testRunEnded(EasyMock.anyLong(), (Map<String, String>)EasyMock.anyObject());
+        mListener.testEnded(EasyMock.eq(test2), EasyMock.eq(Collections.emptyMap()));
+        mListener.testRunEnded(EasyMock.anyLong(), EasyMock.eq(Collections.emptyMap()));
         EasyMock.replay(mListener, mMockDevice);
         mHostTest.run(mListener);
         EasyMock.verify(mListener, mMockDevice);
@@ -126,5 +132,26 @@ public class DeviceSuiteTest {
         assertEquals(mMockDevice, Junit4DeviceTestclass.sDevice);
         assertEquals(mMockBuildInfo, Junit4DeviceTestclass.sBuildInfo);
         assertEquals(mMockAbi, Junit4DeviceTestclass.sAbi);
+    }
+
+    /** Test the run with filtering to include only one annotation. */
+    @Test
+    public void testRun_withFiltering() throws Exception {
+        OptionSetter setter = new OptionSetter(mHostTest);
+        setter.setOptionValue("class", Junit4DeviceSuite.class.getName());
+        mHostTest.addIncludeAnnotation(
+                "com.android.tradefed.testtype.DeviceSuiteTest$MyAnnotation1");
+        assertEquals(1, mHostTest.countTestCases());
+        mListener.testRunStarted(
+                EasyMock.eq("com.android.tradefed.testtype.DeviceSuiteTest$Junit4DeviceSuite"),
+                EasyMock.eq(1));
+        TestIdentifier test1 =
+                new TestIdentifier(Junit4DeviceTestclass.class.getName(), "testPass1");
+        mListener.testStarted(EasyMock.eq(test1));
+        mListener.testEnded(EasyMock.eq(test1), EasyMock.eq(Collections.emptyMap()));
+        mListener.testRunEnded(EasyMock.anyLong(), EasyMock.eq(Collections.emptyMap()));
+        EasyMock.replay(mListener, mMockDevice);
+        mHostTest.run(mListener);
+        EasyMock.verify(mListener, mMockDevice);
     }
 }

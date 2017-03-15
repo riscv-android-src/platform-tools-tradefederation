@@ -117,32 +117,32 @@ public class DeviceTestCase extends TestCase implements IDeviceTest, IRemoteTest
         if (getName() == null && mMethodName != null) {
             setName(mMethodName);
         }
-        if (mFilterHelper.shouldTestRun(this.getClass())) {
-            if (mCollectTestsOnly) {
-                // Collect only mode, fake the junit test execution.
-                Map<String, String> empty = Collections.emptyMap();
-                String runName = this.getClass().getName();
-                if (getName() == null) {
-                    Collection<String> testMethodNames = getTestMethodNames();
-                    listener.testRunStarted(runName, testMethodNames.size());
-                    for (String methodName : testMethodNames) {
-                        TestIdentifier testId =
-                                new TestIdentifier(runName, methodName);
-                        listener.testStarted(testId);
-                        listener.testEnded(testId, empty);
-                    }
-                    listener.testRunEnded(0, empty);
-                } else {
-                    listener.testRunStarted(runName, 1);
-                    TestIdentifier testId =
-                            new TestIdentifier(runName, getName());
+        if (mCollectTestsOnly) {
+            // Collect only mode, fake the junit test execution.
+            Map<String, String> empty = Collections.emptyMap();
+            String runName = this.getClass().getName();
+            if (getName() == null) {
+                Collection<String> testMethodNames = getTestMethodNames();
+                if (testMethodNames.isEmpty()) {
+                    CLog.v("Skipping empty test case %s", runName);
+                    return;
+                }
+                listener.testRunStarted(runName, testMethodNames.size());
+                for (String methodName : testMethodNames) {
+                    TestIdentifier testId = new TestIdentifier(runName, methodName);
                     listener.testStarted(testId);
                     listener.testEnded(testId, empty);
-                    listener.testRunEnded(0, empty);
                 }
+                listener.testRunEnded(0, empty);
             } else {
-                JUnitRunUtil.runTest(listener, this);
+                listener.testRunStarted(runName, 1);
+                TestIdentifier testId = new TestIdentifier(runName, getName());
+                listener.testStarted(testId);
+                listener.testEnded(testId, empty);
+                listener.testRunEnded(0, empty);
             }
+        } else {
+            JUnitRunUtil.runTest(listener, this);
         }
     }
 
@@ -266,16 +266,22 @@ public class DeviceTestCase extends TestCase implements IDeviceTest, IRemoteTest
         if (mMethodNames == null) {
             mMethodNames = new Vector<String>();
             // Unfortunately {@link TestSuite} doesn't expose the functionality to find all test*
-            // methods,
-            // so needed to copy and paste code from TestSuite
+            // methods, so needed to copy and paste code from TestSuite
             Class<?> theClass = this.getClass();
             Class<?> superClass = theClass;
+            Set<String> overridenMethod = new HashSet<>();
             while (Test.class.isAssignableFrom(superClass)) {
                 Method[] methods = superClass.getDeclaredMethods();
                 for (Method method : methods) {
-                    if (mFilterHelper.shouldRun(
-                            theClass.getPackage().getName(), theClass.getName(), method)) {
-                        addTestMethod(method, mMethodNames);
+                    // If the method in child class was considered already, we do not
+                    if (!overridenMethod.contains(method.getName())) {
+                        if (mFilterHelper.shouldRun(
+                                theClass.getPackage().getName(), theClass, method)) {
+                            addTestMethod(method, mMethodNames);
+                        }
+                    }
+                    if (theClass.equals(method.getDeclaringClass())) {
+                        overridenMethod.add(method.getName());
                     }
                 }
                 superClass = superClass.getSuperclass();
