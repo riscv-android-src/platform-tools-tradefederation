@@ -16,11 +16,13 @@
 
 package com.android.tradefed.targetprep;
 
+import com.android.tradefed.config.OptionSetter;
 import com.android.tradefed.device.ITestDevice;
 
 import junit.framework.TestCase;
 
 import org.easymock.EasyMock;
+import org.mockito.Mockito;
 
 import java.io.File;
 import java.util.Arrays;
@@ -32,6 +34,7 @@ public class PushFilePreparerTest extends TestCase {
 
     private PushFilePreparer mPreparer = null;
     private ITestDevice mMockDevice = null;
+    private OptionSetter mOptionSetter = null;
 
     /**
      * {@inheritDoc}
@@ -43,6 +46,7 @@ public class PushFilePreparerTest extends TestCase {
         EasyMock.expect(mMockDevice.getDeviceDescriptor()).andStubReturn(null);
         EasyMock.expect(mMockDevice.getSerialNumber()).andStubReturn("SERIAL");
         mPreparer = new PushFilePreparer();
+        mOptionSetter = new OptionSetter(mPreparer);
     }
 
     /**
@@ -54,8 +58,8 @@ public class PushFilePreparerTest extends TestCase {
     }
 
     public void testLocalNoExist() throws Exception {
-        mPreparer.setPushSpecs(Arrays.asList("/noexist->/data/"));
-        mPreparer.setPostPushCommands(Arrays.asList("ls /"));
+        mOptionSetter.setOptionValue("push", "/noexist->/data/");
+        mOptionSetter.setOptionValue("post-push", "ls /");
         EasyMock.replay(mMockDevice);
         try {
             // Should throw TargetSetupError and _not_ run any post-push command
@@ -67,8 +71,8 @@ public class PushFilePreparerTest extends TestCase {
     }
 
     public void testRemoteNoExist() throws Exception {
-        mPreparer.setPushSpecs(Arrays.asList("/bin/sh->/noexist/"));
-        mPreparer.setPostPushCommands(Arrays.asList("ls /"));
+        mOptionSetter.setOptionValue("push", "/bin/sh->/noexist/");
+        mOptionSetter.setOptionValue("post-push", "ls /");
         // expect a pushFile() call and return false (failed)
         EasyMock.expect(
                 mMockDevice.pushFile((File)EasyMock.anyObject(), EasyMock.eq("/noexist/")))
@@ -84,9 +88,10 @@ public class PushFilePreparerTest extends TestCase {
     }
 
     public void testWarnOnFailure() throws Exception {
-        mPreparer.setPushSpecs(Arrays.asList("/noexist->/data/", "/bin/sh->/noexist/"));
-        mPreparer.setPostPushCommands(Arrays.asList("ls /"));
-        mPreparer.setAbortOnFailure(false);
+        mOptionSetter.setOptionValue("push", "/bin/sh->/noexist/");
+        mOptionSetter.setOptionValue("push", "/noexist->/data/");
+        mOptionSetter.setOptionValue("post-push", "ls /");
+        mOptionSetter.setOptionValue("abort-on-push-failure", "false");
 
         // expect a pushFile() call and return false (failed)
         EasyMock.expect(
@@ -98,6 +103,19 @@ public class PushFilePreparerTest extends TestCase {
 
         // Don't expect any exceptions to be thrown
         mPreparer.setUp(mMockDevice, null);
+    }
+
+    public void testPushFromTestCasesDir() throws Exception {
+        mOptionSetter.setOptionValue("push", "sh->/noexist/");
+        mOptionSetter.setOptionValue("post-push", "ls /");
+
+        PushFilePreparer spyPreparer = Mockito.spy(mPreparer);
+        Mockito.doReturn(Arrays.asList(new File("/bin"))).when(spyPreparer).getTestCasesDirs();
+
+        // expect a pushFile() call as /bin/sh should exist and return false (failed)
+        EasyMock.expect(mMockDevice.pushFile((File) EasyMock.anyObject(), EasyMock.eq("/noexist/")))
+                .andReturn(Boolean.FALSE);
+        EasyMock.replay(mMockDevice);
     }
 }
 

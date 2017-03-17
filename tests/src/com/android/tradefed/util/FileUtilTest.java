@@ -327,4 +327,37 @@ public class FileUtilTest extends TestCase {
                 perms.remove(PosixFilePermission.OTHERS_EXECUTE) &&
                 perms.isEmpty());
     }
+
+    /** Test {@link FileUtil#findFiles()} can find files successfully. */
+    public void testFindFilesSuccess() throws IOException {
+        File tmpDir = FileUtil.createTempDir("find_files_test");
+        try {
+            File matchFile1 = FileUtil.createTempFile("test", ".config", tmpDir);
+            File subDir = new File(tmpDir, "subfolder");
+            subDir.mkdirs();
+            File matchFile2 = FileUtil.createTempFile("test", ".config", subDir);
+            File unmatchFile = FileUtil.createTempFile("test", ".xml", subDir);
+            Set<String> matchFiles = FileUtil.findFiles(tmpDir, ".*.config");
+            assertTrue(matchFiles.contains(matchFile1.getAbsolutePath()));
+            assertTrue(matchFiles.contains(matchFile2.getAbsolutePath()));
+            assertEquals(matchFiles.size(), 2);
+        } finally {
+            FileUtil.recursiveDelete(tmpDir);
+        }
+    }
+
+    /** Test {@link FileUtil#findFiles()} returns empty set if no file matches filter. */
+    public void testFindFilesFail() throws IOException {
+        File tmpDir = FileUtil.createTempDir("find_files_test");
+        try {
+            File file1 = FileUtil.createTempFile("test", ".config", tmpDir);
+            File subDir = new File(tmpDir, "subfolder");
+            subDir.mkdirs();
+            File file2 = FileUtil.createTempFile("test", ".config", subDir);
+            Set<String> matchFiles = FileUtil.findFiles(tmpDir, ".*.config_x");
+            assertEquals(matchFiles.size(), 0);
+        } finally {
+            FileUtil.recursiveDelete(tmpDir);
+        }
+    }
 }

@@ -29,6 +29,7 @@ import com.android.tradefed.testtype.IAbiReceiver;
 import com.android.tradefed.util.AaptParser;
 import com.android.tradefed.util.AbiFormatter;
 import com.android.tradefed.util.BuildTestsZipUtils;
+import com.android.tradefed.util.SystemUtil;
 
 import java.io.File;
 import java.io.IOException;
@@ -120,11 +121,21 @@ public class TestAppInstallSetup implements ITargetCleaner, IAbiReceiver {
     }
 
     /**
-     * {@inheritDoc}
+     * Get a list of {@link File} of the test cases directories
+     *
+     * <p>The wrapper function is for unit test to mock the system calls.
+     *
+     * @return a list of {@link File} of directories of the test cases folder of build output, based
+     *     on the value of environment variables.
      */
+    List<File> getTestCasesDirs() {
+        return SystemUtil.getTestCasesDirs();
+    }
+
+    /** {@inheritDoc} */
     @Override
-    public void setUp(ITestDevice device, IBuildInfo buildInfo) throws TargetSetupError,
-            DeviceNotAvailableException {
+    public void setUp(ITestDevice device, IBuildInfo buildInfo)
+            throws TargetSetupError, DeviceNotAvailableException {
         if (mTestFileNames == null || mTestFileNames.size() == 0) {
             CLog.i("No test apps to install, skipping");
             return;
@@ -132,6 +143,12 @@ public class TestAppInstallSetup implements ITargetCleaner, IAbiReceiver {
         if (mCleanup) {
             mPackagesInstalled = new ArrayList<>();
         }
+
+        // Force to look for apk files in build ouput's test cases directory.
+        for (File testCasesDir : getTestCasesDirs()) {
+            setAltDir(testCasesDir);
+        }
+
         for (String testAppName : mTestFileNames) {
             if (testAppName == null || testAppName.trim().isEmpty()) {
                 continue;

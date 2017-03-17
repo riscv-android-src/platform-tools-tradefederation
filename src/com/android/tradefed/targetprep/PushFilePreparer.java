@@ -23,11 +23,14 @@ import com.android.tradefed.config.Option;
 import com.android.tradefed.config.OptionClass;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
+import com.android.tradefed.util.FileUtil;
+import com.android.tradefed.util.SystemUtil;
 
 import java.io.File;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.List;
 
 /**
  * A {@link ITargetPreparer} that attempts to push any number of files from any host path to any
@@ -73,27 +76,6 @@ public class PushFilePreparer implements ITargetCleaner {
     private Collection<String> mFilesPushed = null;
 
     /**
-     * Set abort on failure.  Exposed for testing.
-     */
-    void setAbortOnFailure(boolean value) {
-        mAbortOnFailure = value;
-    }
-
-    /**
-     * Set pushspecs.  Exposed for testing.
-     */
-    void setPushSpecs(Collection<String> pushspecs) {
-        mPushSpecs = pushspecs;
-    }
-
-    /**
-     * Set post-push commands.  Exposed for testing.
-     */
-    void setPostPushCommands(Collection<String> commands) {
-        mPostPushCommands = commands;
-    }
-
-    /**
      * Helper method to only throw if mAbortOnFailure is enabled.  Callers should behave as if this
      * method may return.
      */
@@ -107,14 +89,36 @@ public class PushFilePreparer implements ITargetCleaner {
     }
 
     /**
-     * Resolve relative file path via {@link IBuildInfo}
+     * Get a list of {@link File} of the test cases directories
+     *
+     * <p>The wrapper function is for unit test to mock the system calls.
+     *
+     * @return a list of {@link File} of directories of the test cases folder of build output, based
+     *     on the value of environment variables.
+     */
+    List<File> getTestCasesDirs() {
+        return SystemUtil.getTestCasesDirs();
+    }
+
+    /**
+     * Resolve relative file path via {@link IBuildInfo} and test cases directories.
      *
      * @param buildInfo the build artifact information
      * @param fileName relative file path to be resolved
-     * @return the file from the build info
+     * @return the file from the build info or test cases directories
      */
     public File resolveRelativeFilePath(IBuildInfo buildInfo, String fileName) {
-        return buildInfo.getFile(fileName);
+        File src = buildInfo.getFile(fileName);
+        if (src != null && src.exists()) {
+            return src;
+        }
+        for (File dir : getTestCasesDirs()) {
+            src = FileUtil.getFileForPath(dir, fileName);
+            if (src != null && src.exists()) {
+                return src;
+            }
+        }
+        return null;
     }
 
     /**
