@@ -140,7 +140,7 @@ public class SubprocessResultsReporter implements ITestInvocationListener, AutoC
      */
     @Override
     public void invocationStarted(IInvocationContext context) {
-        // ignore
+        printEvent(SubprocessTestResultsParser.StatusKeys.TEST_TAG, context.getTestTag());
     }
 
     /** {@inheritDoc} */
