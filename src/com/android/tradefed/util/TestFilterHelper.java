@@ -152,15 +152,26 @@ public class TestFilterHelper {
      * Internal helper to determine if a particular test should run based on its annotations.
      */
     private boolean shouldTestRun(Collection<Annotation> annotationsList) {
+        if (isExcluded(annotationsList)) {
+            return false;
+        }
+        return isIncluded(annotationsList);
+    }
+
+    private boolean isExcluded(Collection<Annotation> annotationsList) {
         if (!mExcludeAnnotations.isEmpty()) {
             for (Annotation a : annotationsList) {
                 if (mExcludeAnnotations.contains(a.annotationType().getName())) {
                     // If any of the method annotation match an ExcludeAnnotation, don't run it
                     CLog.i("Skipping %s, ExcludeAnnotation exclude it", a);
-                    return false;
+                    return true;
                 }
             }
         }
+        return false;
+    }
+
+    private boolean isIncluded(Collection<Annotation> annotationsList) {
         if (!mIncludeAnnotations.isEmpty()) {
             Set<String> neededAnnotation = new HashSet<String>();
             neededAnnotation.addAll(mIncludeAnnotations);
@@ -182,17 +193,32 @@ public class TestFilterHelper {
      * Check if an element that has annotation passes the filter
      *
      * @param packageName name of the method's package
-     * @param className name of the method's class
+     * @param classObj method's class
      * @param method test method
      * @return true if the test method should run, false otherwise
      */
-    public boolean shouldRun(String packageName, String className, Method method) {
+    public boolean shouldRun(String packageName, Class<?> classObj, Method method) {
+        String className = classObj.getName();
         String methodName = String.format("%s#%s", className, method.getName());
         if (!shouldRunFilter(packageName, className, methodName)) {
             return false;
         }
-        if (!shouldTestRun(method)) {
+        // If class is explicitly annotated to be excluded.
+        if (isExcluded(Arrays.asList(classObj.getAnnotations()))) {
             return false;
+        }
+        // if class include but method exclude, we exclude
+        if (isIncluded(Arrays.asList(classObj.getAnnotations()))
+                && isExcluded(Arrays.asList(method.getAnnotations()))) {
+            return false;
+        }
+        // If a class is explicitly included and check above says method could run, we skip method
+        // check, it will be included.
+        if (mIncludeAnnotations.isEmpty()
+                || !isIncluded(Arrays.asList(classObj.getAnnotations()))) {
+            if (!shouldTestRun(method)) {
+                return false;
+            }
         }
         return mIncludeFilters.isEmpty()
                 || mIncludeFilters.contains(methodName)

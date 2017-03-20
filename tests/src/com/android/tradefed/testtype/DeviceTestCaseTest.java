@@ -143,6 +143,7 @@ public class DeviceTestCaseTest extends TestCase {
         MockAnnotatedTest test = new MockAnnotatedTest();
         test.addIncludeAnnotation(
                 "com.android.tradefed.testtype.DeviceTestCaseTest$MyAnnotation1");
+        test.addExcludeAnnotation("com.android.tradefed.testtype.DeviceTestCaseTest$MyAnnotation2");
         ITestInvocationListener listener = EasyMock.createMock(ITestInvocationListener.class);
         listener.testRunStarted(MockAnnotatedTest.class.getName(), 1);
         final TestIdentifier test1 = new TestIdentifier(MockAnnotatedTest.class.getName(), "test1");

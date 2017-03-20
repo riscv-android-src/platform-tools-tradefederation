@@ -218,7 +218,9 @@ public class HostTest
                     || Test.class.isAssignableFrom(classObj)) {
                 TestSuite suite = collectTests(collectClasses(classObj));
                 int suiteCount = suite.countTestCases();
-                if (suiteCount == 0 && IRemoteTest.class.isAssignableFrom(classObj)) {
+                if (suiteCount == 0
+                        && IRemoteTest.class.isAssignableFrom(classObj)
+                        && !Test.class.isAssignableFrom(classObj)) {
                     // If it's a pure IRemoteTest we count the run() as one test.
                     count++;
                 } else {
@@ -345,18 +347,17 @@ public class HostTest
             if (IRemoteTest.class.isAssignableFrom(classObj)) {
                 IRemoteTest test = (IRemoteTest) loadObject(classObj);
                 applyFilters(classObj, test);
-                if (mFilterHelper.shouldTestRun(test.getClass())) {
-                    if (mCollectTestsOnly) {
-                        // Collect only mode is propagated to the test.
-                        if (test instanceof ITestCollector) {
-                            ((ITestCollector)test).setCollectTestsOnly(true);
-                        } else {
-                            throw new IllegalArgumentException(String.format(
-                                    "%s does not implement ITestCollector", test.getClass()));
-                        }
+                if (mCollectTestsOnly) {
+                    // Collect only mode is propagated to the test.
+                    if (test instanceof ITestCollector) {
+                        ((ITestCollector) test).setCollectTestsOnly(true);
+                    } else {
+                        throw new IllegalArgumentException(
+                                String.format(
+                                        "%s does not implement ITestCollector", test.getClass()));
                     }
-                    test.run(listener);
                 }
+                test.run(listener);
             } else if (Test.class.isAssignableFrom(classObj)) {
                 if (mCollectTestsOnly) {
                     // Collect only mode, fake the junit test execution.
@@ -492,13 +493,14 @@ public class HostTest
                         || !method.getReturnType().equals(Void.TYPE)
                         || method.getParameterTypes().length > 0
                         || !method.getName().startsWith("test")
-                        || !mFilterHelper.shouldRun(packageName, className, method)) {
+                        || !mFilterHelper.shouldRun(packageName, classObj, method)) {
                     continue;
                 }
                 Test testObj = (Test) loadObject(classObj, false);
                 if (testObj instanceof TestCase) {
                     ((TestCase)testObj).setName(method.getName());
                 }
+
                 suite.addTest(testObj);
             }
         }
