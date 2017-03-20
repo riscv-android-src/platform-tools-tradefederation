@@ -966,6 +966,7 @@ public class CommandScheduler extends Thread implements ICommandScheduler, IComm
     }
 
     protected void processReadyCommands(IDeviceManager manager) {
+        CLog.d("processReadyCommands...");
         Map<ExecutableCommand, IInvocationContext> scheduledCommandMap = new HashMap<>();
         // minimize length of synchronized block by just matching commands with device first,
         // then scheduling invocations/adding looping commands back to queue
@@ -1024,9 +1025,10 @@ public class CommandScheduler extends Thread implements ICommandScheduler, IComm
                                 + "config's requirements for cmd id %d.",
                                 cmd.getCommandTracker().getId());
                         // make sure not to record since it may contains password
-                        PrintWriter pw = new PrintWriter(System.out, true);
-                        pw.println(String.format("The command %s will be rescheduled.",
-                                Arrays.toString(cmd.getCommandTracker().getArgs())));
+                        System.out.println(
+                                String.format(
+                                        "The command %s will be rescheduled.",
+                                        Arrays.toString(cmd.getCommandTracker().getArgs())));
                         mUnscheduledWarning.add(cmd);
                     }
                 }
@@ -1043,6 +1045,7 @@ public class CommandScheduler extends Thread implements ICommandScheduler, IComm
                 addNewExecCommandToQueue(cmd.getCommandTracker());
             }
         }
+        CLog.d("done processReadyCommands...");
     }
 
     /**
