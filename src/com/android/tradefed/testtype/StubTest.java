@@ -19,6 +19,7 @@ package com.android.tradefed.testtype;
 import com.android.ddmlib.Log.LogLevel;
 import com.android.tradefed.config.Option;
 import com.android.tradefed.device.DeviceNotAvailableException;
+import com.android.tradefed.device.DeviceUnresponsiveException;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.result.ITestInvocationListener;
 
@@ -36,11 +37,44 @@ public class StubTest implements IShardableTest {
             description = "Shard this test into given number of separately runnable chunks")
     private int mNumShards = 1;
 
+    @Option(
+        name = "test-throw-runtime",
+        description =
+                "test option to force the stub test to throw a runtime exception."
+                        + "Used for testing."
+    )
+    private boolean mThrowRuntime = false;
+
+    @Option(
+        name = "test-throw-not-available",
+        description =
+                "test option to force the stub test to throw a DeviceNotAvailable "
+                        + "exception. Used for testing."
+    )
+    private boolean mThrowNotAvailable = false;
+
+    @Option(
+        name = "test-throw-unresponsive",
+        description =
+                "test option to force the stub test to throw a DeviceUnresponsive "
+                        + "exception. Used for testing."
+    )
+    private boolean mThrowUnresponsive = false;
+
     /**
      * {@inheritDoc}
      */
     @Override
     public void run(ITestInvocationListener listener) throws DeviceNotAvailableException {
+        if (mThrowRuntime) {
+            throw new RuntimeException("StubTest RuntimeException");
+        }
+        if (mThrowNotAvailable) {
+            throw new DeviceNotAvailableException("StubTest DeviceNotAvailableException", "serial");
+        }
+        if (mThrowUnresponsive) {
+            throw new DeviceUnresponsiveException("StubTest DeviceUnresponsiveException", "serial");
+        }
         CLog.i("nothing to test!");
 
     }

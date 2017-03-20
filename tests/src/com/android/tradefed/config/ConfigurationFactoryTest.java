@@ -1267,7 +1267,7 @@ public class ConfigurationFactoryTest extends TestCase {
      * This unit test ensures that the code will search for missing test configs in directories
      * specified in certain environment variables.
      */
-    public void testSearchConfigFromEnvVar() throws ConfigurationException, IOException {
+    public void testSearchConfigFromEnvVar() throws IOException {
         File externalConfig = FileUtil.createTempFile("external-config", ".config");
         String configName = FileUtil.getBaseName(externalConfig.getName());
         File tmpDir = externalConfig.getParentFile();
@@ -1287,7 +1287,7 @@ public class ConfigurationFactoryTest extends TestCase {
      * This unit test ensures that the code will search for missing test configs in directories
      * specified in certain environment variables, and fail as the test config still can't be found.
      */
-    public void testSearchConfigFromEnvVarFailed() throws ConfigurationException, IOException {
+    public void testSearchConfigFromEnvVarFailed() {
         File tmpDir = new File(System.getProperty("java.io.tmpdir"));
 
         ConfigurationFactory spyFactory = Mockito.spy(mFactory);

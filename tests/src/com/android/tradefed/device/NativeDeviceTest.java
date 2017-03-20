@@ -1686,9 +1686,11 @@ public class NativeDeviceTest extends TestCase {
         try {
             boolean res = mTestDevice.pullFile(fakeRemotePath, tmpFile);
             EasyMock.verify(mMockIDevice);
-            Mockito.verify(s).pullFile(Mockito.eq(fakeRemotePath),
-                    Mockito.eq(tmpFile.getAbsolutePath()),
-                    (ISyncProgressMonitor)Mockito.anyObject());
+            Mockito.verify(s)
+                    .pullFile(
+                            Mockito.eq(fakeRemotePath),
+                            Mockito.eq(tmpFile.getAbsolutePath()),
+                            Mockito.any(ISyncProgressMonitor.class));
             Mockito.verify(s).close();
             assertTrue(res);
         } finally {
@@ -1706,15 +1708,20 @@ public class NativeDeviceTest extends TestCase {
         EasyMock.expect(mMockIDevice.getSyncService()).andReturn(s);
         EasyMock.replay(mMockIDevice);
         File tmpFile = FileUtil.createTempFile("pull", ".test");
-        doThrow(new SyncException(SyncError.CANCELED)).when(s).pullFile(Mockito.eq(fakeRemotePath),
-                Mockito.eq(tmpFile.getAbsolutePath()),
-                (ISyncProgressMonitor)Mockito.anyObject());
+        doThrow(new SyncException(SyncError.CANCELED))
+                .when(s)
+                .pullFile(
+                        Mockito.eq(fakeRemotePath),
+                        Mockito.eq(tmpFile.getAbsolutePath()),
+                        Mockito.any(ISyncProgressMonitor.class));
         try {
             boolean res = mTestDevice.pullFile(fakeRemotePath, tmpFile);
             EasyMock.verify(mMockIDevice);
-            Mockito.verify(s).pullFile(Mockito.eq(fakeRemotePath),
-                    Mockito.eq(tmpFile.getAbsolutePath()),
-                    (ISyncProgressMonitor)Mockito.anyObject());
+            Mockito.verify(s)
+                    .pullFile(
+                            Mockito.eq(fakeRemotePath),
+                            Mockito.eq(tmpFile.getAbsolutePath()),
+                            Mockito.any(ISyncProgressMonitor.class));
             Mockito.verify(s).close();
             assertFalse(res);
         } finally {
@@ -1776,9 +1783,11 @@ public class NativeDeviceTest extends TestCase {
         try {
             boolean res = mTestDevice.pushFile(tmpFile, fakeRemotePath);
             EasyMock.verify(mMockIDevice);
-            Mockito.verify(s).pushFile(Mockito.eq(tmpFile.getAbsolutePath()),
-                    Mockito.eq(fakeRemotePath),
-                    (ISyncProgressMonitor)Mockito.anyObject());
+            Mockito.verify(s)
+                    .pushFile(
+                            Mockito.eq(tmpFile.getAbsolutePath()),
+                            Mockito.eq(fakeRemotePath),
+                            Mockito.any(ISyncProgressMonitor.class));
             Mockito.verify(s).close();
             assertTrue(res);
         } finally {
@@ -1796,16 +1805,20 @@ public class NativeDeviceTest extends TestCase {
         EasyMock.expect(mMockIDevice.getSyncService()).andReturn(s);
         EasyMock.replay(mMockIDevice);
         File tmpFile = FileUtil.createTempFile("push", ".test");
-        doThrow(new SyncException(SyncError.CANCELED)).when(s).pushFile(
-                Mockito.eq(tmpFile.getAbsolutePath()),
-                Mockito.eq(fakeRemotePath),
-                (ISyncProgressMonitor)Mockito.anyObject());
+        doThrow(new SyncException(SyncError.CANCELED))
+                .when(s)
+                .pushFile(
+                        Mockito.eq(tmpFile.getAbsolutePath()),
+                        Mockito.eq(fakeRemotePath),
+                        Mockito.any(ISyncProgressMonitor.class));
         try {
             boolean res = mTestDevice.pushFile(tmpFile, fakeRemotePath);
             EasyMock.verify(mMockIDevice);
-            Mockito.verify(s).pushFile(Mockito.eq(tmpFile.getAbsolutePath()),
-                    Mockito.eq(fakeRemotePath),
-                    (ISyncProgressMonitor)Mockito.anyObject());
+            Mockito.verify(s)
+                    .pushFile(
+                            Mockito.eq(tmpFile.getAbsolutePath()),
+                            Mockito.eq(fakeRemotePath),
+                            Mockito.any(ISyncProgressMonitor.class));
             Mockito.verify(s).close();
             assertFalse(res);
         } finally {

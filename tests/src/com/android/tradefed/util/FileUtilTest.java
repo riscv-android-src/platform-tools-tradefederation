@@ -328,7 +328,7 @@ public class FileUtilTest extends TestCase {
                 perms.isEmpty());
     }
 
-    /** Test {@link FileUtil#findFiles()} can find files successfully. */
+    /** Test {@link FileUtil#findFiles(File, String)} can find files successfully. */
     public void testFindFilesSuccess() throws IOException {
         File tmpDir = FileUtil.createTempDir("find_files_test");
         try {
@@ -336,7 +336,7 @@ public class FileUtilTest extends TestCase {
             File subDir = new File(tmpDir, "subfolder");
             subDir.mkdirs();
             File matchFile2 = FileUtil.createTempFile("test", ".config", subDir);
-            File unmatchFile = FileUtil.createTempFile("test", ".xml", subDir);
+            FileUtil.createTempFile("test", ".xml", subDir);
             Set<String> matchFiles = FileUtil.findFiles(tmpDir, ".*.config");
             assertTrue(matchFiles.contains(matchFile1.getAbsolutePath()));
             assertTrue(matchFiles.contains(matchFile2.getAbsolutePath()));
@@ -346,14 +346,16 @@ public class FileUtilTest extends TestCase {
         }
     }
 
-    /** Test {@link FileUtil#findFiles()} returns empty set if no file matches filter. */
+    /**
+     * Test {@link FileUtil#findFiles(File, String)} returns empty set if no file matches filter.
+     */
     public void testFindFilesFail() throws IOException {
         File tmpDir = FileUtil.createTempDir("find_files_test");
         try {
-            File file1 = FileUtil.createTempFile("test", ".config", tmpDir);
+            FileUtil.createTempFile("test", ".config", tmpDir);
             File subDir = new File(tmpDir, "subfolder");
             subDir.mkdirs();
-            File file2 = FileUtil.createTempFile("test", ".config", subDir);
+            FileUtil.createTempFile("test", ".config", subDir);
             Set<String> matchFiles = FileUtil.findFiles(tmpDir, ".*.config_x");
             assertEquals(matchFiles.size(), 0);
         } finally {

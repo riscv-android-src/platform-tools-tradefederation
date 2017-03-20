@@ -16,6 +16,7 @@
 
 package com.android.tradefed.targetprep;
 
+import static org.junit.Assert.fail;
 import static org.mockito.Mockito.when;
 
 import com.android.tradefed.build.IBuildInfo;
@@ -24,15 +25,17 @@ import com.android.tradefed.util.CommandResult;
 import com.android.tradefed.util.CommandStatus;
 import com.android.tradefed.util.IRunUtil;
 
-import junit.framework.Assert;
-import junit.framework.TestCase;
-
+import org.junit.Before;
+import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.junit.runners.JUnit4;
 import org.mockito.Mockito;
 
 import java.io.File;
 
 /** Unit tests for {@link PushFilePreparer} */
-public class PreloadedClassesPreparerTest extends TestCase {
+@RunWith(JUnit4.class)
+public class PreloadedClassesPreparerTest {
     private static final String FAKE_FILE_PATH = "/file/path";
     private static final String FAKE_TOOL_PATH = "/tool/path";
     private static final String PRELOAD_TOOL_NAME = "preload2.jar";
@@ -46,10 +49,8 @@ public class PreloadedClassesPreparerTest extends TestCase {
     private PreloadedClassesPreparer mRealPreparer;
     private PreloadedClassesPreparer mSpyPreparer;
 
-    /** {@inheritDoc} */
-    @Override
-    protected void setUp() throws Exception {
-        super.setUp();
+    @Before
+    public void setUp() throws Exception {
         // Setup mocks and spies
         mMockDevice = Mockito.mock(ITestDevice.class);
         mMockBuildInfo = Mockito.mock(IBuildInfo.class);
@@ -63,6 +64,7 @@ public class PreloadedClassesPreparerTest extends TestCase {
     }
 
     // Using the build info to get the preload tool is specific to remote runs.
+    @Test
     public void testSetUp_RemoteSuccess() throws Exception {
         // Create a fully mocked success case
         File tool = Mockito.mock(File.class);
@@ -81,18 +83,20 @@ public class PreloadedClassesPreparerTest extends TestCase {
     }
 
     // Using the build info to get the preload tool is specific to remote runs.
+    @Test
     public void testSetUp_RemoteNoTool() throws Exception {
         // Set mocks to fail returning the tool
         when(mSpyPreparer.getPreloadedClassesPath()).thenReturn(FAKE_FILE_PATH);
         when(mMockBuildInfo.getFile(PRELOAD_TOOL_NAME)).thenReturn(null);
         try {
             mSpyPreparer.setUp(mMockDevice, mMockBuildInfo);
-            Assert.fail("Did not fail when there was no tool available.");
+            fail("Did not fail when there was no tool available.");
         } catch (TargetSetupError e) {
             // Good, this should throw
         }
     }
 
+    @Test
     public void testSetUp_LocalSuccess() throws Exception {
         when(mSpyPreparer.getPreloadToolPath()).thenReturn(FAKE_TOOL_PATH);
         when(mSpyPreparer.getPreloadedClassesPath()).thenReturn(FAKE_FILE_PATH);
@@ -106,11 +110,13 @@ public class PreloadedClassesPreparerTest extends TestCase {
         mSpyPreparer.setUp(mMockDevice, mMockBuildInfo);
     }
 
+    @Test
     public void testSetUp_NoFile() throws Exception {
         // If not skipped, expect this to error out.
         mSpyPreparer.setUp(mMockDevice, mMockBuildInfo);
     }
 
+    @Test
     public void testSetUp_WriteFailure() throws Exception {
         when(mSpyPreparer.getPreloadToolPath()).thenReturn(FAKE_TOOL_PATH);
         when(mSpyPreparer.getPreloadedClassesPath()).thenReturn(FAKE_FILE_PATH);
@@ -123,7 +129,7 @@ public class PreloadedClassesPreparerTest extends TestCase {
         // Run and encounter a write issue
         try {
             mSpyPreparer.setUp(mMockDevice, mMockBuildInfo);
-            Assert.fail("Did not fail when writing with the tool failed.");
+            fail("Did not fail when writing with the tool failed.");
         } catch (TargetSetupError e) {
             // Good, this should throw.
         }

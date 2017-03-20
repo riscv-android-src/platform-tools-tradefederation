@@ -65,7 +65,7 @@ public class SystemUtilTest {
      * variable is set or the directory does not exist.
      */
     @Test
-    public void testGetTestCasesDirsNoDir() throws IOException {
+    public void testGetTestCasesDirsNoDir() {
         File targetOutDir = new File("/path/not/exist_1");
 
         SystemUtil.singleton = Mockito.mock(SystemUtil.class);

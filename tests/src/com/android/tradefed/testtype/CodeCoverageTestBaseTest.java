@@ -15,17 +15,13 @@
  */
 package com.android.tradefed.testtype;
 
-import static org.mockito.Matchers.any;
-import static org.mockito.Matchers.anyString;
-import static org.mockito.Matchers.eq;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
-
-import com.google.common.collect.ImmutableMap;
-import com.google.common.collect.Lists;
-import com.google.common.collect.Sets;
 
 import com.android.ddmlib.testrunner.IRemoteAndroidTestRunner;
 import com.android.ddmlib.testrunner.ITestRunListener;
@@ -42,6 +38,10 @@ import com.android.tradefed.result.LogDataType;
 import com.android.tradefed.util.ICompressionStrategy;
 import com.android.tradefed.util.ListInstrumentationParser;
 import com.android.tradefed.util.ListInstrumentationParser.InstrumentationTarget;
+
+import com.google.common.collect.ImmutableMap;
+import com.google.common.collect.Lists;
+import com.google.common.collect.Sets;
 
 import junit.framework.TestCase;
 
@@ -198,6 +198,9 @@ public class CodeCoverageTestBaseTest extends TestCase {
 
         TestRunResult success = Mockito.mock(TestRunResult.class);
         doReturn(false).when(success).isRunFailure();
+        Map<String, String> fakeResultMap = new HashMap<>();
+        fakeResultMap.put(CodeCoverageTest.COVERAGE_REMOTE_FILE_LABEL, "fakepath");
+        doReturn(fakeResultMap).when(success).getRunMetrics();
 
         // Mocking boilerplate
         ITestInvocationListener mockListener = Mockito.mock(ITestInvocationListener.class);
@@ -209,7 +212,6 @@ public class CodeCoverageTestBaseTest extends TestCase {
 
         // Run the test
         coverageTest.run(mockListener);
-
         // Verify that the test was run, and that the report was logged
         verify(coverageTest).runTest(any(CodeCoverageTest.class),
                 any(ITestInvocationListener.class));
@@ -346,6 +348,9 @@ public class CodeCoverageTestBaseTest extends TestCase {
 
         TestRunResult success = Mockito.mock(TestRunResult.class);
         doReturn(false).when(success).isRunFailure();
+        Map<String, String> fakeResultMap = new HashMap<>();
+        fakeResultMap.put(CodeCoverageTest.COVERAGE_REMOTE_FILE_LABEL, "fakepath");
+        doReturn(fakeResultMap).when(success).getRunMetrics();
 
         // Mocking boilerplate
         ITestInvocationListener mockListener = Mockito.mock(ITestInvocationListener.class);

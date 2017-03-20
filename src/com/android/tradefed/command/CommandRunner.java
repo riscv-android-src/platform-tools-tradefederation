@@ -49,9 +49,13 @@ public class CommandRunner {
         GlobalConfiguration.createGlobalConfiguration(args);
     }
 
-    /**
-     * Prints the exception stack to stderr.
-     */
+    /** Get the {@link ICommandScheduler} instance from the global configuration. */
+    @VisibleForTesting
+    ICommandScheduler getCommandScheduler() {
+        return GlobalConfiguration.getInstance().getCommandScheduler();
+    }
+
+    /** Prints the exception stack to stderr. */
     @VisibleForTesting
     void printStackTrace(Throwable e) {
         e.printStackTrace();
@@ -65,7 +69,7 @@ public class CommandRunner {
     public void run(String[] args) {
         try {
             initGlobalConfig(args);
-            mScheduler = GlobalConfiguration.getInstance().getCommandScheduler();
+            mScheduler = getCommandScheduler();
             mScheduler.start();
             mScheduler.addCommand(args);
         } catch (ConfigurationException e) {
