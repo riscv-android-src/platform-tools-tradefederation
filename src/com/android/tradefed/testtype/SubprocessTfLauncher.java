@@ -19,6 +19,7 @@ import com.android.ddmlib.testrunner.TestIdentifier;
 import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.build.IFolderBuildInfo;
 import com.android.tradefed.config.Option;
+import com.android.tradefed.invoker.IInvocationContext;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.result.FileInputStreamSource;
 import com.android.tradefed.result.ITestInvocationListener;
@@ -44,11 +45,12 @@ import java.util.List;
 
 /**
  * A {@link IRemoteTest} for running tests against a separate TF installation.
- * <p/>
- * Launches an external java process to run the tests. Used for running the TF unit or
- * functional tests continuously.
+ *
+ * <p>Launches an external java process to run the tests. Used for running the TF unit or functional
+ * tests continuously.
  */
-public abstract class SubprocessTfLauncher implements IRemoteTest, IBuildReceiver {
+public abstract class SubprocessTfLauncher
+        implements IBuildReceiver, IInvocationContextReceiver, IRemoteTest {
 
     @Option(name = "max-run-time", description =
             "The maximum time to allow for a TF test run.", isTimeVal = true)
@@ -84,6 +86,12 @@ public abstract class SubprocessTfLauncher implements IRemoteTest, IBuildReceive
     protected List<String> mCmdArgs = null;
     // The absolute path to the build's root directory.
     protected String mRootDir = null;
+    private IInvocationContext mContext;
+
+    @Override
+    public void setInvocationContext(IInvocationContext invocationContext) {
+        mContext = invocationContext;
+    }
 
     /**
      * Set use-event-streaming.
@@ -180,13 +188,12 @@ public abstract class SubprocessTfLauncher implements IRemoteTest, IBuildReceive
             stderr = new FileOutputStream(stderrFile);
             stdout = new FileOutputStream(stdoutFile);
 
+            eventParser = new SubprocessTestResultsParser(listener, mEventStreaming, mContext);
             if (mEventStreaming) {
-                eventParser = new SubprocessTestResultsParser(listener, true);
                 mCmdArgs.add("--subprocess-report-port");
                 mCmdArgs.add(Integer.toString(eventParser.getSocketServerPort()));
             } else {
                 eventFile = FileUtil.createTempFile("event_subprocess_", ".log");
-                eventParser = new SubprocessTestResultsParser(listener);
                 mCmdArgs.add("--subprocess-report-file");
                 mCmdArgs.add(eventFile.getAbsolutePath());
             }

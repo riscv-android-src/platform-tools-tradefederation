@@ -17,8 +17,8 @@ package com.android.tradefed.util;
 
 import com.android.ddmlib.testrunner.TestIdentifier;
 import com.android.tradefed.log.LogUtil.CLog;
+import com.android.tradefed.invoker.InvocationContext;
 import com.android.tradefed.result.ITestInvocationListener;
-import com.android.tradefed.util.FileUtil;
 
 import junit.framework.TestCase;
 
@@ -27,7 +27,6 @@ import org.easymock.EasyMock;
 
 import java.io.BufferedReader;
 import java.io.File;
-import java.io.FileWriter;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
@@ -76,7 +75,7 @@ public class SubprocessTestResultsParserTest extends TestCase {
      */
     @SuppressWarnings("unchecked")
     public void testParse_randomEvents() throws Exception {
-        String[] contents =  readInFile(SUBPROC_OUTPUT_FILE_1);
+        String[] contents = readInFile(SUBPROC_OUTPUT_FILE_1);
         ITestInvocationListener mockRunListener =
                 EasyMock.createMock(ITestInvocationListener.class);
         mockRunListener.testRunStarted("arm64-v8a CtsGestureTestCases", 4);
@@ -159,23 +158,20 @@ public class SubprocessTestResultsParserTest extends TestCase {
         EasyMock.expectLastCall().times(1);
         EasyMock.replay(mockRunListener);
         File tmp = FileUtil.createTempFile("sub", "unit");
-        FileWriter fw = new FileWriter(tmp, true);
         SubprocessTestResultsParser resultParser = null;
         try {
             resultParser = new SubprocessTestResultsParser(mockRunListener);
             String startRun = "TEST_RUN_STARTED {\"testCount\":4,\"runName\":\"arm64-v8a "
                     + "CtsGestureTestCases\"}\n";
-            fw.append(startRun);
+            FileUtil.writeToFile(startRun, tmp, true);
             String testEnded = "03-22 14:04:02 E/SubprocessResultsReporter: TEST_ENDED "
                     + "{\"className\":\"android.gesture.cts.GestureLibraryTest\",\"testName\":"
                     + "\"testGetGestures\",\"extra\":\"data\"}\n";
-            fw.append(testEnded);
-            fw.flush();
+            FileUtil.writeToFile(testEnded, tmp, true);
             resultParser.parseFile(tmp);
             EasyMock.verify(mockRunListener);
         } finally {
             StreamUtil.close(resultParser);
-            fw.close();
             FileUtil.deleteFile(tmp);
         }
     }
@@ -191,7 +187,6 @@ public class SubprocessTestResultsParserTest extends TestCase {
         mockRunListener.invocationFailed((EasyMock.capture(cap)));
         EasyMock.replay(mockRunListener);
         File tmp = FileUtil.createTempFile("sub", "unit");
-        FileWriter fw = new FileWriter(tmp, true);
         SubprocessTestResultsParser resultParser = null;
         try {
             resultParser = new SubprocessTestResultsParser(mockRunListener);
@@ -204,15 +199,13 @@ public class SubprocessTestResultsParserTest extends TestCase {
                     + "TargetSetupError: Not all target preparation steps completed\\n\\tat "
                     + "com.android.compatibility.common.tradefed.targetprep."
                     + "ApkInstrumentationPreparer.run(ApkInstrumentationPreparer.java:88)\\n\"}\n";
-            fw.append(startRun);
-            fw.flush();
+            FileUtil.writeToFile(startRun, tmp, true);
             resultParser.parseFile(tmp);
             EasyMock.verify(mockRunListener);
             String expected = cap.getValue().getMessage();
             assertEquals(cause, expected);
         } finally {
             StreamUtil.close(resultParser);
-            fw.close();
             FileUtil.deleteFile(tmp);
         }
     }
@@ -271,6 +264,55 @@ public class SubprocessTestResultsParserTest extends TestCase {
             EasyMock.verify(mockRunListener);
         } finally {
             StreamUtil.close(resultParser);
+        }
+    }
+
+    /** Tests the parser receiving event on updating test tag. */
+    public void testParse_testTag() throws Exception {
+        final String subTestTag = "test_tag_in_subprocess";
+        InvocationContext context = new InvocationContext();
+        context.setTestTag("stub");
+
+        ITestInvocationListener mockRunListener =
+                EasyMock.createMock(ITestInvocationListener.class);
+        EasyMock.replay(mockRunListener);
+        File tmp = FileUtil.createTempFile("sub", "unit");
+        SubprocessTestResultsParser resultParser = null;
+        try {
+            resultParser = new SubprocessTestResultsParser(mockRunListener, false, context);
+            String testTagEvent = String.format("TEST_TAG %s", subTestTag);
+            FileUtil.writeToFile(testTagEvent, tmp, true);
+            resultParser.parseFile(tmp);
+            EasyMock.verify(mockRunListener);
+            assertEquals(subTestTag, context.getTestTag());
+        } finally {
+            StreamUtil.close(resultParser);
+            FileUtil.deleteFile(tmp);
+        }
+    }
+
+    /** Tests the parser should not overwrite the test tag in parent process if it's already set. */
+    public void testParse_testTagNotOverwrite() throws Exception {
+        final String subTestTag = "test_tag_in_subprocess";
+        final String parentTestTag = "test_tag_in_parent_process";
+        InvocationContext context = new InvocationContext();
+        context.setTestTag(parentTestTag);
+
+        ITestInvocationListener mockRunListener =
+                EasyMock.createMock(ITestInvocationListener.class);
+        EasyMock.replay(mockRunListener);
+        File tmp = FileUtil.createTempFile("sub", "unit");
+        SubprocessTestResultsParser resultParser = null;
+        try {
+            resultParser = new SubprocessTestResultsParser(mockRunListener, false, context);
+            String testTagEvent = String.format("TEST_TAG %s", subTestTag);
+            FileUtil.writeToFile(testTagEvent, tmp, true);
+            resultParser.parseFile(tmp);
+            EasyMock.verify(mockRunListener);
+            assertEquals(parentTestTag, context.getTestTag());
+        } finally {
+            StreamUtil.close(resultParser);
+            FileUtil.deleteFile(tmp);
         }
     }
 }

@@ -16,6 +16,7 @@
 package com.android.tradefed.util;
 
 import com.android.ddmlib.testrunner.TestIdentifier;
+import com.android.tradefed.invoker.IInvocationContext;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.result.FileInputStreamSource;
 import com.android.tradefed.result.ITestInvocationListener;
@@ -61,6 +62,7 @@ public class SubprocessTestResultsParser implements Closeable {
     private Pattern mPattern = null;
     private Map<String, EventHandler> mHandlerMap = null;
     private EventReceiverThread mEventReceiver = null;
+    private IInvocationContext mContext = null;
 
     /** Relevant test status keys. */
     public static class StatusKeys {
@@ -74,6 +76,7 @@ public class SubprocessTestResultsParser implements Closeable {
         public static final String TEST_RUN_FAILED = "TEST_RUN_FAILED";
         public static final String TEST_RUN_STARTED = "TEST_RUN_STARTED";
         public static final String TEST_LOG = "TEST_LOG";
+        public static final String TEST_TAG = "TEST_TAG";
     }
 
     /**
@@ -172,7 +175,15 @@ public class SubprocessTestResultsParser implements Closeable {
      *
      * @param listener {@link ITestInvocationListener} where to report the results
      * @param streaming if True, a socket receiver will be open to receive results.
+     * @param context information about the invocation
      */
+    public SubprocessTestResultsParser(
+            ITestInvocationListener listener, boolean streaming, IInvocationContext context)
+            throws IOException {
+        this(listener, streaming);
+        mContext = context;
+    }
+
     public SubprocessTestResultsParser(ITestInvocationListener listener, boolean streaming)
             throws IOException {
         this(listener);
@@ -194,7 +205,8 @@ public class SubprocessTestResultsParser implements Closeable {
         sb.append(StatusKeys.TEST_RUN_ENDED).append("|");
         sb.append(StatusKeys.TEST_RUN_FAILED).append("|");
         sb.append(StatusKeys.TEST_RUN_STARTED).append("|");
-        sb.append(StatusKeys.TEST_LOG);
+        sb.append(StatusKeys.TEST_LOG).append("|");
+        sb.append(StatusKeys.TEST_TAG);
         String patt = String.format("(.*)(%s)( )(.*)", sb.toString());
         mPattern = Pattern.compile(patt);
 
@@ -211,6 +223,7 @@ public class SubprocessTestResultsParser implements Closeable {
         mHandlerMap.put(StatusKeys.TEST_RUN_FAILED, new TestRunFailedEventHandler());
         mHandlerMap.put(StatusKeys.TEST_RUN_STARTED, new TestRunStartedEventHandler());
         mHandlerMap.put(StatusKeys.TEST_LOG, new TestLogEventHandler());
+        mHandlerMap.put(StatusKeys.TEST_TAG, new TestTagEventHandler());
     }
 
     public void parseFile(File file) {
@@ -374,6 +387,18 @@ public class SubprocessTestResultsParser implements Closeable {
             InputStreamSource data = new FileInputStreamSource(logInfo.mDataFile);
             mListener.testLog(name, logInfo.mLogType, data);
             FileUtil.deleteFile(logInfo.mDataFile);
+        }
+    }
+
+    /*
+     * The parent process should use the test tag of the subprocess if it's not set yet.
+     */
+    private class TestTagEventHandler implements EventHandler {
+        @Override
+        public void handleEvent(String testTag) {
+            if (mContext.getTestTag() == null || "stub".equals(mContext.getTestTag())) {
+                mContext.setTestTag(testTag);
+            }
         }
     }
 }
