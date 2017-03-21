@@ -15,6 +15,8 @@
  */
 package com.android.tradefed.testtype;
 
+import com.google.common.annotations.VisibleForTesting;
+
 import com.android.ddmlib.testrunner.TestIdentifier;
 import com.android.tradefed.build.IFolderBuildInfo;
 import com.android.tradefed.config.Option;
@@ -28,8 +30,6 @@ import com.android.tradefed.util.CommandStatus;
 import com.android.tradefed.util.FileUtil;
 import com.android.tradefed.util.RunUtil;
 import com.android.tradefed.util.StreamUtil;
-
-import com.google.common.annotations.VisibleForTesting;
 
 import java.io.File;
 import java.io.IOException;
@@ -85,7 +85,7 @@ public class TfTestLauncher extends SubprocessTfLauncher {
     // Any file not matching the patterns, or multiple files in the temporary dir match the same
     // pattern, is considered as test failure.
     private static final String[] EXPECTED_TMP_FILE_PATTERNS = {
-        "inv_.*", "tradefed_global_log_.*", "lc_cache"
+        "inv_.*", "tradefed_global_log_.*", "lc_cache", "stage-android-build-api",
     };
 
     // A destination file where the report will be put.
