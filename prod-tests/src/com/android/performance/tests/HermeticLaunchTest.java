@@ -204,7 +204,6 @@ public class HermeticLaunchTest implements IRemoteTest, IDeviceTest {
     /**
      * Report run metrics by creating an empty test run to stick them in.
      * @param listener The {@link ITestInvocationListener} of test results
-     * @param metrics The {@link Map} that contains metrics for the given test
      */
     private void reportMetrics(ITestInvocationListener listener) {
         for (String activityName : mActivityTimeResultMap.keySet()) {

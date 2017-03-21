@@ -15,11 +15,12 @@
  */
 package com.android.tradefed.testtype;
 
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.any;
+import static org.mockito.Mockito.anyCollection;
+import static org.mockito.Mockito.anyString;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.doReturn;
+import static org.mockito.Mockito.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 
@@ -45,7 +46,6 @@ import com.google.common.collect.Sets;
 
 import junit.framework.TestCase;
 
-import org.mockito.Matchers;
 import org.mockito.Mockito;
 import org.mockito.invocation.InvocationOnMock;
 import org.mockito.stubbing.Answer;
@@ -143,7 +143,7 @@ public class CodeCoverageTestBaseTest extends TestCase {
 
         @Override
         ICompressionStrategy getCompressionStrategy() {
-            return Mockito.mock(ICompressionStrategy.class);
+            return mock(ICompressionStrategy.class);
         }
 
         @Override
@@ -196,14 +196,14 @@ public class CodeCoverageTestBaseTest extends TestCase {
         // Prepare some test data
         InstrumentationTarget target = new InstrumentationTarget(PACKAGE_NAME1, RUNNER_NAME1, "");
 
-        TestRunResult success = Mockito.mock(TestRunResult.class);
+        TestRunResult success = mock(TestRunResult.class);
         doReturn(false).when(success).isRunFailure();
         Map<String, String> fakeResultMap = new HashMap<>();
         fakeResultMap.put(CodeCoverageTest.COVERAGE_REMOTE_FILE_LABEL, "fakepath");
         doReturn(fakeResultMap).when(success).getRunMetrics();
 
         // Mocking boilerplate
-        ITestInvocationListener mockListener = Mockito.mock(ITestInvocationListener.class);
+        ITestInvocationListener mockListener = mock(ITestInvocationListener.class);
         CodeCoverageTestStub coverageTest = Mockito.spy(new CodeCoverageTestStub());
         coverageTest.addTests(target, FOO_TESTS);
 
@@ -215,8 +215,7 @@ public class CodeCoverageTestBaseTest extends TestCase {
         // Verify that the test was run, and that the report was logged
         verify(coverageTest).runTest(any(CodeCoverageTest.class),
                 any(ITestInvocationListener.class));
-        verify(coverageTest).generateCoverageReport(Matchers.<Collection<File>>any(),
-                eq(FakeReportFormat.HTML));
+        verify(coverageTest).generateCoverageReport(anyCollection(), eq(FakeReportFormat.HTML));
         verify(coverageTest).doLogReport(anyString(), eq(FakeReportFormat.HTML.getLogDataType()),
                 eq(FAKE_COVERAGE_REPORT), any(ITestLogger.class));
     }
@@ -227,11 +226,11 @@ public class CodeCoverageTestBaseTest extends TestCase {
         InstrumentationTarget target2 = new InstrumentationTarget(PACKAGE_NAME2, RUNNER_NAME1, "");
         InstrumentationTarget target3 = new InstrumentationTarget(PACKAGE_NAME3, RUNNER_NAME1, "");
 
-        TestRunResult success = Mockito.mock(TestRunResult.class);
+        TestRunResult success = mock(TestRunResult.class);
         doReturn(false).when(success).isRunFailure();
 
         // Mocking boilerplate
-        ITestInvocationListener mockListener = Mockito.mock(ITestInvocationListener.class);
+        ITestInvocationListener mockListener = mock(ITestInvocationListener.class);
         CodeCoverageTestStub coverageTest = Mockito.spy(new CodeCoverageTestStub());
         coverageTest.addTests(target1, FOO_TESTS);
         coverageTest.addTests(target2, BAR_TESTS);
@@ -253,11 +252,11 @@ public class CodeCoverageTestBaseTest extends TestCase {
         // Prepare some test data
         InstrumentationTarget target = new InstrumentationTarget(PACKAGE_NAME1, RUNNER_NAME1, "");
 
-        TestRunResult success = Mockito.mock(TestRunResult.class);
+        TestRunResult success = mock(TestRunResult.class);
         doReturn(false).when(success).isRunFailure();
 
         // Mocking boilerplate
-        ITestInvocationListener mockListener = Mockito.mock(ITestInvocationListener.class);
+        ITestInvocationListener mockListener = mock(ITestInvocationListener.class);
         CodeCoverageTestStub coverageTest = Mockito.spy(new CodeCoverageTestStub());
         coverageTest.addTests(target, FOO_TESTS);
         coverageTest.setShardingEnabled(RUNNER_NAME1, true);
@@ -283,13 +282,13 @@ public class CodeCoverageTestBaseTest extends TestCase {
         // Prepare some test data
         InstrumentationTarget target = new InstrumentationTarget(PACKAGE_NAME1, RUNNER_NAME1, "");
 
-        TestRunResult success = Mockito.mock(TestRunResult.class);
+        TestRunResult success = mock(TestRunResult.class);
         doReturn(false).when(success).isRunFailure();
-        TestRunResult failure = Mockito.mock(TestRunResult.class);
+        TestRunResult failure = mock(TestRunResult.class);
         doReturn(true).when(failure).isRunFailure();
 
         // Mocking boilerplate
-        ITestInvocationListener mockListener = Mockito.mock(ITestInvocationListener.class);
+        ITestInvocationListener mockListener = mock(ITestInvocationListener.class);
         CodeCoverageTestStub coverageTest = Mockito.spy(new CodeCoverageTestStub());
         coverageTest.addTests(target, FOO_TESTS);
 
@@ -317,11 +316,11 @@ public class CodeCoverageTestBaseTest extends TestCase {
         // Prepare some test data
         InstrumentationTarget target = new InstrumentationTarget(PACKAGE_NAME1, RUNNER_NAME1, "");
 
-        TestRunResult success = Mockito.mock(TestRunResult.class);
+        TestRunResult success = mock(TestRunResult.class);
         doReturn(false).when(success).isRunFailure();
 
         // Mocking boilerplate
-        ITestInvocationListener mockListener = Mockito.mock(ITestInvocationListener.class);
+        ITestInvocationListener mockListener = mock(ITestInvocationListener.class);
         CodeCoverageTestStub coverageTest = Mockito.spy(new CodeCoverageTestStub());
         coverageTest.addTests(target, FOO_TESTS);
 
@@ -346,22 +345,24 @@ public class CodeCoverageTestBaseTest extends TestCase {
         File fakeHtmlReport = FAKE_COVERAGE_REPORT;
         File fakeXmlReport = new File("/some/fake/xml/report.xml");
 
-        TestRunResult success = Mockito.mock(TestRunResult.class);
+        TestRunResult success = mock(TestRunResult.class);
         doReturn(false).when(success).isRunFailure();
         Map<String, String> fakeResultMap = new HashMap<>();
         fakeResultMap.put(CodeCoverageTest.COVERAGE_REMOTE_FILE_LABEL, "fakepath");
         doReturn(fakeResultMap).when(success).getRunMetrics();
 
         // Mocking boilerplate
-        ITestInvocationListener mockListener = Mockito.mock(ITestInvocationListener.class);
+        ITestInvocationListener mockListener = mock(ITestInvocationListener.class);
         CodeCoverageTestStub coverageTest = Mockito.spy(new CodeCoverageTestStub());
         coverageTest.addTests(target, FOO_TESTS);
         doReturn(Arrays.asList(FakeReportFormat.XML, FakeReportFormat.HTML))
                 .when(coverageTest).getReportFormat();
-        doReturn(fakeHtmlReport).when(coverageTest).generateCoverageReport(
-                Matchers.<Collection<File>>any(), eq(FakeReportFormat.HTML));
-        doReturn(fakeXmlReport).when(coverageTest).generateCoverageReport(
-                Matchers.<Collection<File>>any(), eq(FakeReportFormat.XML));
+        doReturn(fakeHtmlReport)
+                .when(coverageTest)
+                .generateCoverageReport(anyCollection(), eq(FakeReportFormat.HTML));
+        doReturn(fakeXmlReport)
+                .when(coverageTest)
+                .generateCoverageReport(anyCollection(), eq(FakeReportFormat.XML));
         doReturn(success).when(coverageTest).runTest(any(CodeCoverageTest.class),
                 any(ITestInvocationListener.class));
 
@@ -371,12 +372,10 @@ public class CodeCoverageTestBaseTest extends TestCase {
         // Verify that the test was run, and that the reports were logged
         verify(coverageTest).runTest(any(CodeCoverageTest.class),
                 any(ITestInvocationListener.class));
-        verify(coverageTest).generateCoverageReport(Matchers.<Collection<File>>any(),
-                eq(FakeReportFormat.HTML));
+        verify(coverageTest).generateCoverageReport(anyCollection(), eq(FakeReportFormat.HTML));
         verify(coverageTest).doLogReport(anyString(), eq(FakeReportFormat.HTML.getLogDataType()),
                 eq(fakeHtmlReport), any(ITestLogger.class));
-        verify(coverageTest).generateCoverageReport(Matchers.<Collection<File>>any(),
-                eq(FakeReportFormat.XML));
+        verify(coverageTest).generateCoverageReport(anyCollection(), eq(FakeReportFormat.XML));
         verify(coverageTest).doLogReport(anyString(), eq(FakeReportFormat.XML.getLogDataType()),
                 eq(fakeXmlReport), any(ITestLogger.class));
     }
