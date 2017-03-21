@@ -20,18 +20,15 @@ import com.android.tradefed.device.CollectingOutputReceiver;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.log.LogUtil.CLog;
+import com.android.tradefed.result.FileInputStreamSource;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.InputStreamSource;
 import com.android.tradefed.result.LogDataType;
-import com.android.tradefed.result.SnapshotInputStreamSource;
-import com.android.tradefed.util.RunUtil;
 
 import java.io.BufferedReader;
 import java.io.File;
-import java.io.FileInputStream;
 import java.io.FileReader;
 import java.io.IOException;
-
 import java.util.HashSet;
 import java.util.Set;
 import java.util.regex.Matcher;
@@ -251,13 +248,10 @@ public class BluetoothUtils {
             if (logFile != null) {
                 CLog.d("Sending %s %d byte file %s into the logosphere!", type, logFile.length(),
                         logFile);
-                logSource = new SnapshotInputStreamSource(new FileInputStream(logFile));
+                logSource = new FileInputStreamSource(logFile);
                 listener.testLog(String.format("%s_btsnoop_%d", type, iteration),
                         LogDataType.UNKNOWN, logSource);
             }
-        } catch (IOException e) {
-            CLog.e("IOException while uploading the log files");
-            CLog.e(e);
         } finally {
             FileUtil.deleteFile(logFile);
             StreamUtil.cancel(logSource);

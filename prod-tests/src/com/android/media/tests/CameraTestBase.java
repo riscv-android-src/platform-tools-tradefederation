@@ -26,10 +26,10 @@ import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.result.ByteArrayInputStreamSource;
 import com.android.tradefed.result.CollectingTestListener;
+import com.android.tradefed.result.FileInputStreamSource;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.InputStreamSource;
 import com.android.tradefed.result.LogDataType;
-import com.android.tradefed.result.SnapshotInputStreamSource;
 import com.android.tradefed.testtype.IDeviceTest;
 import com.android.tradefed.testtype.IRemoteTest;
 import com.android.tradefed.testtype.InstrumentationTest;
@@ -43,8 +43,6 @@ import org.junit.Assert;
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
 import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileNotFoundException;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.io.StringReader;
@@ -79,7 +77,7 @@ public class CameraTestBase implements IDeviceTest, IRemoteTest, IConfigurationR
     private String mTestClass = null;
 
     @Option(name = "test-methods", description = "Test method to run. May be repeated.")
-    private Collection<String> mTestMethods = new ArrayList<String>();
+    private Collection<String> mTestMethods = new ArrayList<>();
 
     @Option(name = "test-runner", description = "Test runner for test instrumentation.")
     private String mTestRunner = "android.test.InstrumentationTestRunner";
@@ -101,9 +99,11 @@ public class CameraTestBase implements IDeviceTest, IRemoteTest, IConfigurationR
             "take a logcat snapshot on every test failure.")
     private boolean mLogcatOnFailure = false;
 
-    @Option(name = "instrumentation-arg",
-            description = "Additional instrumentation arguments to provide.")
-    private Map<String, String> mInstrArgMap = new HashMap<String, String>();
+    @Option(
+        name = "instrumentation-arg",
+        description = "Additional instrumentation arguments to provide."
+    )
+    private Map<String, String> mInstrArgMap = new HashMap<>();
 
     @Option(name = "dump-meminfo", description =
             "take a dumpsys meminfo at a given interval time.")
@@ -233,8 +233,8 @@ public class CameraTestBase implements IDeviceTest, IRemoteTest, IConfigurationR
     protected abstract class AbstractCollectingListener extends CollectingTestListener {
 
         private ITestInvocationListener mListener = null;
-        private Map<String, String> mMetrics = new HashMap<String, String>();
-        private Map<String, String> mFatalErrors = new HashMap<String, String>();
+        private Map<String, String> mMetrics = new HashMap<>();
+        private Map<String, String> mFatalErrors = new HashMap<>();
 
         private static final String INCOMPLETE_TEST_ERR_MSG_PREFIX =
                 "Test failed to run to completion. Reason: 'Instrumentation run failed";
@@ -356,13 +356,9 @@ public class CameraTestBase implements IDeviceTest, IRemoteTest, IConfigurationR
                 // Grab a snapshot of meminfo file and post it to dashboard.
                 try {
                     outputFile = mMeminfoTimer.getOutputFile();
-                    outputSource = new SnapshotInputStreamSource(new FileInputStream(outputFile));
+                    outputSource = new FileInputStreamSource(outputFile, true /* delete */);
                     String logName = String.format("meminfo_%s", test.getTestName());
                     mListener.testLog(logName, LogDataType.TEXT, outputSource);
-                    outputFile.delete();
-                } catch (FileNotFoundException e) {
-                    CLog.e("Failed to read meminfo log %s:", outputFile);
-                    CLog.e(e);
                 } finally {
                     StreamUtil.cancel(outputSource);
                 }
@@ -371,13 +367,9 @@ public class CameraTestBase implements IDeviceTest, IRemoteTest, IConfigurationR
                 mThreadTrackerTimer.stop();
                 try {
                     outputFile = mThreadTrackerTimer.getOutputFile();
-                    outputSource = new SnapshotInputStreamSource(new FileInputStream(outputFile));
+                    outputSource = new FileInputStreamSource(outputFile, true /* delete */);
                     String logName = String.format("ps_%s", test.getTestName());
                     mListener.testLog(logName, LogDataType.TEXT, outputSource);
-                    outputFile.delete();
-                } catch (FileNotFoundException e) {
-                    CLog.e("Failed to read thread count log %s", outputFile);
-                    CLog.e(e);
                 } finally {
                     StreamUtil.cancel(outputSource);
                 }

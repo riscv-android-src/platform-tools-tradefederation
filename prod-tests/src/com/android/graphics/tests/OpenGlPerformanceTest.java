@@ -24,10 +24,10 @@ import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.result.BugreportCollector;
+import com.android.tradefed.result.FileInputStreamSource;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.InputStreamSource;
 import com.android.tradefed.result.LogDataType;
-import com.android.tradefed.result.SnapshotInputStreamSource;
 import com.android.tradefed.testtype.IDeviceTest;
 import com.android.tradefed.testtype.IRemoteTest;
 import com.android.tradefed.util.FileUtil;
@@ -70,9 +70,9 @@ public class OpenGlPerformanceTest implements IDeviceTest, IRemoteTest {
     private static final int TEST_TIMER = 60 * 60 *1000; // test running timer 1 hour
     private static final long START_TIMER = 2 * 60 * 1000; // 2 minutes
 
-    private final RegexTrie<String> mPatternMap = new RegexTrie<String>();
-    private Map<String, String[]> mKeyMap = new HashMap<String, String[]>();
-    private Map<String, Double[]> mTestResults = new HashMap<String, Double[]>();
+    private final RegexTrie<String> mPatternMap = new RegexTrie<>();
+    private Map<String, String[]> mKeyMap = new HashMap<>();
+    private Map<String, Double[]> mTestResults = new HashMap<>();
 
     @Option(name="iterations",
             description="The number of iterations to run benchmark tests.")
@@ -207,7 +207,7 @@ public class OpenGlPerformanceTest implements IDeviceTest, IRemoteTest {
                     // Save a copy of the output file
                     CLog.d("Sending %d byte file %s into the logosphere!",
                             resFile.length(), resFile);
-                    outputSource = new SnapshotInputStreamSource(new FileInputStream(resFile));
+                    outputSource = new FileInputStreamSource(resFile);
                     listener.testLog(outputFileName, LogDataType.TEXT,
                             outputSource);
 
@@ -227,7 +227,7 @@ public class OpenGlPerformanceTest implements IDeviceTest, IRemoteTest {
         printTestResults();
         printKeyMap();
 
-        Map<String, String> runMetrics = new HashMap<String,String>();
+        Map<String, String> runMetrics = new HashMap<>();
 
         // After processing the output file, calculate average data and report data
         // Find the RU-ITEM keys mapping for data posting
@@ -257,7 +257,7 @@ public class OpenGlPerformanceTest implements IDeviceTest, IRemoteTest {
             BufferedReader br= new BufferedReader(new InputStreamReader(dataInputStream));
             String line = null;
             while ((line = br.readLine()) != null) {
-                List<List<String>> capture = new ArrayList<List<String>>(1);
+                List<List<String>> capture = new ArrayList<>(1);
                 String key = mPatternMap.retrieve(capture, line);
 
                 if (key != null) {

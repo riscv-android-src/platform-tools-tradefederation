@@ -23,10 +23,10 @@ import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.result.BugreportCollector;
+import com.android.tradefed.result.FileInputStreamSource;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.InputStreamSource;
 import com.android.tradefed.result.LogDataType;
-import com.android.tradefed.result.SnapshotInputStreamSource;
 import com.android.tradefed.testtype.IDeviceTest;
 import com.android.tradefed.testtype.IRemoteTest;
 import com.android.tradefed.util.FileUtil;
@@ -38,7 +38,6 @@ import org.junit.Assert;
 
 import java.io.BufferedReader;
 import java.io.File;
-import java.io.FileInputStream;
 import java.io.FileReader;
 import java.io.IOException;
 import java.util.ArrayList;
@@ -138,7 +137,7 @@ public class WifiStressTest implements IRemoteTest, IDeviceTest {
         if (mTestList != null) {
             return;
         }
-        mTestList = new ArrayList<TestInfo>(3);
+        mTestList = new ArrayList<>(3);
 
         // Add WiFi AP stress test
         TestInfo t = new TestInfo();
@@ -147,7 +146,7 @@ public class WifiStressTest implements IRemoteTest, IDeviceTest {
         t.mTestMethod = "testWifiHotSpot";
         t.mTestMetricsName = "wifi_stress";
         t.mTestTimer = AP_TEST_TIMER;
-        t.mPatternMap = new RegexTrie<String>();
+        t.mPatternMap = new RegexTrie<>();
         t.mPatternMap.put("wifi_ap_stress", ITERATION_PATTERN);
         if (mTetherTestFlag) {
             mTestList.add(t);
@@ -160,7 +159,7 @@ public class WifiStressTest implements IRemoteTest, IDeviceTest {
         t.mTestMethod = "testWifiScanning";
         t.mTestMetricsName = "wifi_scan_performance";
         t.mTestTimer = SCAN_TEST_TIMER;
-        t.mPatternMap = new RegexTrie<String>();
+        t.mPatternMap = new RegexTrie<>();
         t.mPatternMap.put("avg_scan_time", "^average scanning time is (\\d+)");
         t.mPatternMap.put("scan_quality","ssid appear (\\d+) out of (\\d+) scan iterations");
         if (mScanTestFlag) {
@@ -174,7 +173,7 @@ public class WifiStressTest implements IRemoteTest, IDeviceTest {
         t.mTestMethod = "testWifiReconnectionAfterSleep";
         t.mTestMetricsName = "wifi_stress";
         t.mTestTimer = RECONNECT_TEST_TIMER;
-        t.mPatternMap = new RegexTrie<String>();
+        t.mPatternMap = new RegexTrie<>();
         t.mPatternMap.put("wifi_reconnection_stress", ITERATION_PATTERN);
         if (mReconnectionTestFlag) {
             mTestList.add(t);
@@ -291,15 +290,13 @@ public class WifiStressTest implements IRemoteTest, IDeviceTest {
                 // Save a copy of the output file
                 CLog.d("Sending %d byte file %s into the logosphere!",
                         resFile.length(), resFile);
-                outputSource = new SnapshotInputStreamSource(new FileInputStream(resFile));
+                outputSource = new FileInputStreamSource(resFile);
                 listener.testLog(String.format("result-%s.txt", test.mTestName), LogDataType.TEXT,
                         outputSource);
 
                 // Parse the results file and post results to test listener
                 parseOutputFile(test, resFile, listener);
             }
-        } catch (IOException e) {
-            CLog.e("IOException while reading output file: %s", mOutputFile);
         } finally {
             FileUtil.deleteFile(resFile);
             StreamUtil.cancel(outputSource);
@@ -308,7 +305,7 @@ public class WifiStressTest implements IRemoteTest, IDeviceTest {
 
     private void parseOutputFile(TestInfo test, File dataFile,
             ITestInvocationListener listener) {
-        Map<String, String> runMetrics = new HashMap<String, String>();
+        Map<String, String> runMetrics = new HashMap<>();
         Map<String, String> runScanMetrics = null;
         boolean isScanningTest = "WifiScanning".equals(test.mTestName);
         Integer iteration = null;
@@ -317,7 +314,7 @@ public class WifiStressTest implements IRemoteTest, IDeviceTest {
             br = new BufferedReader(new FileReader(dataFile));
             String line = null;
             while ((line = br.readLine()) != null) {
-                List<List<String>> capture = new ArrayList<List<String>>(1);
+                List<List<String>> capture = new ArrayList<>(1);
                 String key = test.mPatternMap.retrieve(capture, line);
                 if (key != null) {
                     CLog.d("In output file of test case %s: retrieve key: %s, " +
@@ -346,7 +343,7 @@ public class WifiStressTest implements IRemoteTest, IDeviceTest {
                 }
             }
             if (isScanningTest) {
-                runScanMetrics = new HashMap<String, String>(1);
+                runScanMetrics = new HashMap<>(1);
                 if (iteration == null) {
                     // no matching is found
                     CLog.d("No iteration logs found in %s, set to 0", mOutputFile);

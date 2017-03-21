@@ -21,14 +21,13 @@ import com.android.tradefed.config.OptionClass;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.IFileEntry;
 import com.android.tradefed.log.LogUtil.CLog;
+import com.android.tradefed.result.FileInputStreamSource;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.LogDataType;
-import com.android.tradefed.result.SnapshotInputStreamSource;
 import com.android.tradefed.util.FileUtil;
 
 import java.io.BufferedReader;
 import java.io.File;
-import java.io.FileInputStream;
 import java.io.FileReader;
 import java.io.IOException;
 import java.util.HashMap;
@@ -102,10 +101,11 @@ public class Camera2StressTest extends CameraTestBase {
         }
 
         private void postScreenshotOnFailure(TestIdentifier test) {
+            File tmpDir = null;
             try {
                 IFileEntry screenshotDir = getDevice().getFileEntry(FAILURE_SCREENSHOT_DIR);
                 if (screenshotDir != null && screenshotDir.isDirectory()) {
-                    File tmpDir = FileUtil.createTempDir("screenshot");
+                    tmpDir = FileUtil.createTempDir("screenshot");
                     for (IFileEntry remoteFile : screenshotDir.getChildren(false)) {
                         if (remoteFile.isDirectory()) {
                             continue;
@@ -120,14 +120,18 @@ public class Camera2StressTest extends CameraTestBase {
                             CLog.w("Could not pull screenshot: %s", remoteFile.getFullPath());
                             continue;
                         }
-                        testLog("screenshot_" + screenshot.getName(), LogDataType.PNG,
-                                new SnapshotInputStreamSource(new FileInputStream(screenshot)));
+                        testLog(
+                                "screenshot_" + screenshot.getName(),
+                                LogDataType.PNG,
+                                new FileInputStreamSource(screenshot));
                     }
                 }
             } catch (DeviceNotAvailableException e) {
                 CLog.e(e);
             } catch (IOException e) {
                 CLog.e(e);
+            } finally {
+                FileUtil.recursiveDelete(tmpDir);
             }
         }
 
@@ -142,7 +146,7 @@ public class Camera2StressTest extends CameraTestBase {
                 }
                 BufferedReader reader = new BufferedReader(new FileReader(outputFile));
                 String line;
-                Map<String, String> resultMap = new HashMap<String, String>();
+                Map<String, String> resultMap = new HashMap<>();
 
                 // Parse results from log file that contain the key-value pairs.
                 // eg. "numAttempts=10|iteration=9"

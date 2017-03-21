@@ -45,8 +45,7 @@ public class LogRegistry implements ILogRegistry {
     private static final String GLOBAL_LOG_PREFIX = "tradefed_global_log_";
     private static final String HISTORY_LOG_PREFIX = "tradefed_history_log_";
     private static LogRegistry mLogRegistry = null;
-    private Map<ThreadGroup, ILeveledLogOutput> mLogTable =
-            new Hashtable<ThreadGroup, ILeveledLogOutput>();
+    private Map<ThreadGroup, ILeveledLogOutput> mLogTable = new Hashtable<>();
     private FileLogger mGlobalLogger;
     private HistoryLogger mHistoryLogger;
 
@@ -251,8 +250,11 @@ public class LogRegistry implements ILogRegistry {
      */
     private void saveGlobalLogToDir(File dir) {
         InputStreamSource globalLog = mGlobalLogger.getLog();
-        saveLog(GLOBAL_LOG_PREFIX, globalLog, dir);
-        globalLog.cancel();
+        try {
+            saveLog(GLOBAL_LOG_PREFIX, globalLog, dir);
+        } finally {
+            globalLog.cancel();
+        }
     }
 
     /**
@@ -262,8 +264,11 @@ public class LogRegistry implements ILogRegistry {
      */
     private void saveHistoryLogToDir(File dir) {
         InputStreamSource globalLog = mHistoryLogger.getLog();
-        saveLog(HISTORY_LOG_PREFIX, globalLog, dir);
-        globalLog.cancel();
+        try {
+            saveLog(HISTORY_LOG_PREFIX, globalLog, dir);
+        } finally {
+            globalLog.cancel();
+        }
     }
 
     /**
@@ -301,8 +306,11 @@ public class LogRegistry implements ILogRegistry {
                 // use thread group name as file name - assume its descriptive
                 String filePrefix = String.format("%s_log_", logEntry.getKey().getName());
                 InputStreamSource logSource = logEntry.getValue().getLog();
-                saveLog(filePrefix, logSource, dir);
-                logSource.cancel();
+                try {
+                    saveLog(filePrefix, logSource, dir);
+                } finally {
+                    logSource.cancel();
+                }
             }
         }
         // save history log

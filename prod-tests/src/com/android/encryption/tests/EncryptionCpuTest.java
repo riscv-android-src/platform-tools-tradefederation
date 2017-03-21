@@ -26,19 +26,18 @@ import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.device.TopHelper;
 import com.android.tradefed.log.LogUtil.CLog;
+import com.android.tradefed.result.FileInputStreamSource;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.InputStreamSource;
 import com.android.tradefed.result.LogDataType;
-import com.android.tradefed.result.SnapshotInputStreamSource;
 import com.android.tradefed.testtype.IDeviceTest;
 import com.android.tradefed.testtype.IRemoteTest;
 import com.android.tradefed.util.FileUtil;
+import com.android.tradefed.util.StreamUtil;
 
 import org.junit.Assert;
 
 import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -79,7 +78,7 @@ public class EncryptionCpuTest implements IDeviceTest, IRemoteTest {
         private CpuStatsCollector mCpuStatsCollector = null;
         private File mLogFile = null;
 
-        private Map<String, String> mMetrics = new HashMap<String, String>();
+        private Map<String, String> mMetrics = new HashMap<>();
 
         /**
          * Run the test.
@@ -211,14 +210,12 @@ public class EncryptionCpuTest implements IDeviceTest, IRemoteTest {
                 mTopHelper.cancel();
             }
             if (mLogFile != null) {
+                InputStreamSource source = new FileInputStreamSource(mLogFile, true /* delete */);
                 try {
-                    listener.testLog(String.format("stats_%s", mKey), LogDataType.TEXT,
-                            new SnapshotInputStreamSource(new FileInputStream(mLogFile)));
-                } catch (FileNotFoundException e) {
-                    CLog.e("Error saving log file:");
-                    CLog.e(e);
+                    listener.testLog(String.format("stats_%s", mKey), LogDataType.TEXT, source);
+                } finally {
+                    StreamUtil.cancel(source);
                 }
-                FileUtil.deleteFile(mLogFile);
                 mLogFile = null;
             }
             InputStreamSource bugreport = mTestDevice.getBugreport();
@@ -423,7 +420,7 @@ public class EncryptionCpuTest implements IDeviceTest, IRemoteTest {
         }
 
         // Allocate enough space for all AbstractEncryptionCpuTest instances below
-        mTestCases = new ArrayList<CpuTest>(4);
+        mTestCases = new ArrayList<>(4);
         CpuTest test;
 
         if (mRunPush) {

@@ -26,10 +26,10 @@ import com.android.tradefed.config.OptionClass;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.log.LogUtil.CLog;
+import com.android.tradefed.result.FileInputStreamSource;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.InputStreamSource;
 import com.android.tradefed.result.LogDataType;
-import com.android.tradefed.result.SnapshotInputStreamSource;
 import com.android.tradefed.targetprep.BuildError;
 import com.android.tradefed.targetprep.ITargetPreparer;
 import com.android.tradefed.targetprep.TargetSetupError;
@@ -46,7 +46,6 @@ import com.android.tradefed.util.StreamUtil;
 import org.junit.Assert;
 
 import java.io.File;
-import java.io.FileInputStream;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -181,7 +180,7 @@ public class OtaStabilityTest implements IDeviceTest, IBuildReceiver, IConfigura
         if (mShards == null || mShards <= 1) {
             return null;
         }
-        Collection<IRemoteTest> shards = new ArrayList<IRemoteTest>(mShards);
+        Collection<IRemoteTest> shards = new ArrayList<>(mShards);
         int remainingIterations = mIterations;
         for (int i = mShards; i > 0; i--) {
             OtaStabilityTest testShard = new OtaStabilityTest();
@@ -234,7 +233,7 @@ public class OtaStabilityTest implements IDeviceTest, IBuildReceiver, IConfigura
         } catch (ConfigurationException e) {
             Log.e(LOG_TAG, e);
         } finally {
-            Map<String, String> metrics = new HashMap<String, String>(1);
+            Map<String, String> metrics = new HashMap<>(1);
             metrics.put("iterations", Integer.toString(actualIterations));
             long endTime = System.currentTimeMillis() - startTime;
             listener.testRunEnded(endTime, metrics);
@@ -328,7 +327,7 @@ public class OtaStabilityTest implements IDeviceTest, IBuildReceiver, IConfigura
             destFile = FileUtil.createTempFile("recovery", "log");
             boolean gotFile = mDevice.pullFile("/tmp/recovery.log", destFile);
             if (gotFile) {
-                destSource = new SnapshotInputStreamSource(new FileInputStream(destFile));
+                destSource = new FileInputStreamSource(destFile);
                 listener.testLog("recovery_log", LogDataType.TEXT, destSource);
             }
         } catch (IOException e) {

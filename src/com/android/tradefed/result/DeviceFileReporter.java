@@ -21,11 +21,7 @@ import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.util.FileUtil;
 import com.android.tradefed.util.StreamUtil;
 
-import java.io.BufferedInputStream;
 import java.io.File;
-import java.io.FileInputStream;
-import java.io.IOException;
-import java.io.InputStream;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -40,14 +36,14 @@ import java.util.Set;
  * {@link ITestInvocationListener#testLog(String, LogDataType, InputStreamSource)} if found.
  */
 public class DeviceFileReporter {
-    private final Map<String, LogDataType> mFilePatterns = new LinkedHashMap<String, LogDataType>();
+    private final Map<String, LogDataType> mFilePatterns = new LinkedHashMap<>();
     private final ITestInvocationListener mListener;
     private final ITestDevice mDevice;
 
     /** Whether to ignore files that have already been captured by a prior Pattern */
     private boolean mSkipRepeatFiles = true;
     /** The files which have already been reported */
-    private Set<String> mReportedFiles = new HashSet<String>();
+    private Set<String> mReportedFiles = new HashSet<>();
 
     /** Whether to attempt to infer data types for patterns with {@code UNKNOWN} data type */
     private boolean mInferDataTypes = true;
@@ -155,7 +151,7 @@ public class DeviceFileReporter {
      * {@link ITestInvocationListener#testLog} if found
      */
     public List<String> run() throws DeviceNotAvailableException {
-        List<String> filenames = new LinkedList<String>();
+        List<String> filenames = new LinkedList<>();
         CLog.d(String.format("Analyzing %d patterns.", mFilePatterns.size()));
         for (Map.Entry<String, LogDataType> pat : mFilePatterns.entrySet()) {
             final String searchCmd = String.format("ls %s", pat.getKey());
@@ -184,9 +180,6 @@ public class DeviceFileReporter {
                     mListener.testLog(filename, type, iss);
                     filenames.add(filename);
                     mReportedFiles.add(filename);
-                } catch (IOException e) {
-                    CLog.w("Failed to log file %s: %s", filename);
-                    CLog.e(e);
                 } finally {
                     StreamUtil.cancel(iss);
                     iss = null;
@@ -225,11 +218,10 @@ public class DeviceFileReporter {
 
     /**
      * Create an {@link InputStreamSource} for a file
-     * <p />
-     * Exposed for unit testing
+     *
+     * <p>Exposed for unit testing
      */
-    InputStreamSource createIssForFile(File file) throws IOException {
-        InputStream bufStr = new BufferedInputStream(new FileInputStream(file));
-        return new SnapshotInputStreamSource(bufStr);
+    InputStreamSource createIssForFile(File file) {
+        return new FileInputStreamSource(file);
     }
 }

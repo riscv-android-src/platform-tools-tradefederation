@@ -23,10 +23,10 @@ import com.android.tradefed.config.Option;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.log.LogUtil.CLog;
+import com.android.tradefed.result.FileInputStreamSource;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.InputStreamSource;
 import com.android.tradefed.result.LogDataType;
-import com.android.tradefed.result.SnapshotInputStreamSource;
 import com.android.tradefed.testtype.IDeviceTest;
 import com.android.tradefed.testtype.IRemoteTest;
 import com.android.tradefed.util.FileUtil;
@@ -37,8 +37,6 @@ import junit.framework.TestCase;
 import org.junit.Assert;
 
 import java.io.File;
-import java.io.FileInputStream;
-import java.io.IOException;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedList;
@@ -127,7 +125,7 @@ public class FioBenchmarkTest implements IDeviceTest, IRemoteTest {
      */
     private static class JobInfo {
         public String mJobName = null;
-        public Map<String, String> mParameters = new HashMap<String, String>();
+        public Map<String, String> mParameters = new HashMap<>();
 
         /**
          * Gets the job as a string.
@@ -204,9 +202,9 @@ public class FioBenchmarkTest implements IDeviceTest, IRemoteTest {
     private static class TestInfo {
         public String mTestName = null;
         public String mKey = null;
-        public List<JobInfo> mJobs = new LinkedList<JobInfo>();
-        public Set<TestFileInfo> mTestFiles = new HashSet<TestFileInfo>();
-        public Set<PerfMetricInfo> mPerfMetrics = new HashSet<PerfMetricInfo>();
+        public List<JobInfo> mJobs = new LinkedList<>();
+        public Set<TestFileInfo> mTestFiles = new HashSet<>();
+        public Set<PerfMetricInfo> mPerfMetrics = new HashSet<>();
 
         /**
          * Gets the config file.
@@ -226,8 +224,7 @@ public class FioBenchmarkTest implements IDeviceTest, IRemoteTest {
      * Parses the output of the FIO and allows the values to be looked up by job name and property.
      */
     private static class FioParser extends MultiLineReceiver {
-        public Map<String, Map<String, String>> mResults =
-                new HashMap<String, Map<String, String>>();
+        public Map<String, Map<String, String>> mResults = new HashMap<>();
 
         /**
          * Gets the result for a job and property, or null if the job or the property do not exist.
@@ -255,13 +252,13 @@ public class FioBenchmarkTest implements IDeviceTest, IRemoteTest {
                     continue;
                 }
                 if (fields.length < FIO_V3_RESULT_FIELDS.length) {
-                    Map<String, String> r = new HashMap<String, String>();
+                    Map<String, String> r = new HashMap<>();
                     for (int i = 0; i < FIO_V0_RESULT_FIELDS.length; i++) {
                         r.put(FIO_V0_RESULT_FIELDS[i], fields[i]);
                     }
                     mResults.put(fields[0], r); // Job name is index 0
                 } else if ("3".equals(fields[0])) {
-                    Map<String, String> r = new HashMap<String, String>();
+                    Map<String, String> r = new HashMap<>();
                     for (int i = 0; i < FIO_V3_RESULT_FIELDS.length; i++) {
                         r.put(FIO_V3_RESULT_FIELDS[i], fields[i]);
                     }
@@ -393,7 +390,7 @@ public class FioBenchmarkTest implements IDeviceTest, IRemoteTest {
             return;
         }
 
-        mTestCases = new LinkedList<TestInfo>();
+        mTestCases = new LinkedList<>();
 
         if (mRunSimpleInternalTest) {
             addSimpleTest("read", "sync", true);
@@ -866,7 +863,7 @@ public class FioBenchmarkTest implements IDeviceTest, IRemoteTest {
         collectLogs(test, listener, "after");
 
         // Report metrics
-        Map<String, String> metrics = new HashMap<String, String>();
+        Map<String, String> metrics = new HashMap<>();
         String key = mKeySuffix == null ? test.mKey : test.mKey + mKeySuffix;
 
         listener.testRunStarted(key, 0);
@@ -904,11 +901,9 @@ public class FioBenchmarkTest implements IDeviceTest, IRemoteTest {
             outputFile = testDevice.pullFile(remoteFileName);
             if (outputFile != null) {
                 CLog.d("Sending %d byte file %s to logosphere!", outputFile.length(), outputFile);
-                outputSource = new SnapshotInputStreamSource(new FileInputStream(outputFile));
+                outputSource = new FileInputStreamSource(outputFile);
                 listener.testLog(localFileName, LogDataType.TEXT, outputSource);
             }
-        } catch (IOException e) {
-            CLog.e(e);
         } finally {
             FileUtil.deleteFile(outputFile);
             StreamUtil.cancel(outputSource);
@@ -974,7 +969,7 @@ public class FioBenchmarkTest implements IDeviceTest, IRemoteTest {
             String[] lines = j.createJob().split("\n");
             assertEquals(3, lines.length);
             assertEquals("[job]", lines[0]);
-            Set<String> params = new HashSet<String>(2);
+            Set<String> params = new HashSet<>(2);
             params.add(lines[1]);
             params.add(lines[2]);
             assertTrue(params.contains("param1"));

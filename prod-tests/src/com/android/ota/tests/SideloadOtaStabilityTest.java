@@ -34,18 +34,18 @@ import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.device.TestDeviceState;
 import com.android.tradefed.log.LogReceiver;
 import com.android.tradefed.log.LogUtil.CLog;
+import com.android.tradefed.result.FileInputStreamSource;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.InputStreamSource;
 import com.android.tradefed.result.LogDataType;
-import com.android.tradefed.result.SnapshotInputStreamSource;
 import com.android.tradefed.targetprep.BuildError;
 import com.android.tradefed.targetprep.ITargetPreparer;
 import com.android.tradefed.targetprep.TargetSetupError;
 import com.android.tradefed.testtype.IBuildReceiver;
 import com.android.tradefed.testtype.IDeviceTest;
 import com.android.tradefed.testtype.IResumableTest;
-import com.android.tradefed.util.FileUtil;
 import com.android.tradefed.util.DeviceRecoveryModeUtil;
+import com.android.tradefed.util.FileUtil;
 import com.android.tradefed.util.StreamUtil;
 
 import org.junit.Assert;
@@ -53,8 +53,6 @@ import org.junit.Assert;
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.net.ServerSocket;
@@ -234,7 +232,7 @@ public class SideloadOtaStabilityTest implements IDeviceTest, IBuildReceiver,
                         mMaxInstallOnlineTimeSec * 1000);
             }
             double updateTime = sendRecoveryLog(listener);
-            Map<String, String> metrics = new HashMap<String, String>(1);
+            Map<String, String> metrics = new HashMap<>(1);
             metrics.put("iterations", Integer.toString(actualIterations));
             metrics.put("failed_iterations", Integer.toString(mIterations - actualIterations));
             metrics.put("update_time", Double.toString(updateTime));
@@ -290,7 +288,7 @@ public class SideloadOtaStabilityTest implements IDeviceTest, IBuildReceiver,
     private BootTimeInfo installOta(ITestInvocationListener listener, IDeviceBuildInfo otaBuild)
             throws DeviceNotAvailableException {
         TestIdentifier test = new TestIdentifier(getClass().getName(), "apply_ota");
-        Map<String, String> metrics = new HashMap<String, String>();
+        Map<String, String> metrics = new HashMap<>();
         listener.testStarted(test);
         try {
             mKmsgReceiver.start();
@@ -367,7 +365,7 @@ public class SideloadOtaStabilityTest implements IDeviceTest, IBuildReceiver,
             File destFile = FileUtil.createTempFile("recovery", "log");
             boolean gotFile = mDevice.pullFile(location, destFile);
             if (gotFile) {
-                return new SnapshotInputStreamSource(new FileInputStream(destFile));
+                return new FileInputStreamSource(destFile, true /* delete */);
             }
         } catch (IOException e) {
             CLog.e("Failed to get recovery log from device %s", mDevice.getSerialNumber());
@@ -379,10 +377,9 @@ public class SideloadOtaStabilityTest implements IDeviceTest, IBuildReceiver,
     protected void sendUpdatePackage(ITestInvocationListener listener, IDeviceBuildInfo otaBuild) {
         InputStreamSource pkgSource = null;
         try {
-            pkgSource = new SnapshotInputStreamSource(
-                    new FileInputStream(otaBuild.getOtaPackageFile()));
+            pkgSource = new FileInputStreamSource(otaBuild.getOtaPackageFile());
             listener.testLog(mRunName + "_package", LogDataType.ZIP, pkgSource);
-        } catch (FileNotFoundException | NullPointerException e) {
+        } catch (NullPointerException e) {
             CLog.w("Couldn't save update package due to exception");
             CLog.e(e);
             return;
@@ -433,12 +430,13 @@ public class SideloadOtaStabilityTest implements IDeviceTest, IBuildReceiver,
     }
 
     /**
-     * Uncrypt needs to attach to a socket before it will actually begin work, so we need to
-     * attach a socket to it.
+     * Uncrypt needs to attach to a socket before it will actually begin work, so we need to attach
+     * a socket to it.
      *
      * @return Elapse time of uncrypt
      */
-    public long doUncrypt(ISocketFactory sockets, ITestInvocationListener listener)
+    public long doUncrypt(
+            ISocketFactory sockets, @SuppressWarnings("unused") ITestInvocationListener listener)
             throws DeviceNotAvailableException {
         // init has to start uncrypt or the socket will not be allocated
         CLog.i("Starting uncrypt service");

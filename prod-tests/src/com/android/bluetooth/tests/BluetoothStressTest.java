@@ -25,10 +25,10 @@ import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.device.LargeOutputReceiver;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.result.BugreportCollector;
+import com.android.tradefed.result.FileInputStreamSource;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.InputStreamSource;
 import com.android.tradefed.result.LogDataType;
-import com.android.tradefed.result.SnapshotInputStreamSource;
 import com.android.tradefed.testtype.IDeviceTest;
 import com.android.tradefed.testtype.IRemoteTest;
 import com.android.tradefed.util.BluetoothUtils;
@@ -117,7 +117,7 @@ public class BluetoothStressTest implements IDeviceTest, IRemoteTest {
         public String mTestMethod = null;
         public String mIterKey = null;
         public Integer mIterCount = null;
-        public Set<String> mPerfMetrics = new HashSet<String>();
+        public Set<String> mPerfMetrics = new HashSet<>();
 
         // Arguments for remote device tests
         public boolean mRemoteDeviceTest = false;
@@ -300,7 +300,7 @@ public class BluetoothStressTest implements IDeviceTest, IRemoteTest {
             return;
         }
         // Allocate enough space for all of the TestInfo instances below
-        mTestCases = new ArrayList<TestInfo>(12);
+        mTestCases = new ArrayList<>(12);
 
         TestInfo t = new TestInfo();
         t.mTestName = "discoverable";
@@ -579,7 +579,7 @@ public class BluetoothStressTest implements IDeviceTest, IRemoteTest {
             if (outputFile != null) {
                 CLog.d("Sending %d byte file %s into the logosphere!",
                         outputFile.length(), outputFile);
-                outputSource = new SnapshotInputStreamSource(new FileInputStream(outputFile));
+                outputSource = new FileInputStreamSource(outputFile);
                 listener.testLog(String.format("%s_output", testInfo.mTestName),
                         LogDataType.TEXT, outputSource);
                 parseOutputFile(testInfo, new FileInputStream(outputFile), listener);
@@ -612,8 +612,8 @@ public class BluetoothStressTest implements IDeviceTest, IRemoteTest {
         ListIterator<String> lineIter = lines.listIterator();
         String line;
         Integer iterCount = null;
-        Map<String, List<Integer>> perfData = new HashMap<String, List<Integer>>();
-        Map<String, Integer> iterData = new HashMap<String, Integer>();
+        Map<String, List<Integer>> perfData = new HashMap<>();
+        Map<String, Integer> iterData = new HashMap<>();
 
         // Iterate through each line of output
         while (lineIter.hasNext()) {
@@ -655,7 +655,7 @@ public class BluetoothStressTest implements IDeviceTest, IRemoteTest {
             iterCount = 0;
         }
 
-        Map<String, String> runMetrics = new HashMap<String, String>();
+        Map<String, String> runMetrics = new HashMap<>();
         for (String metric : testInfo.mPerfMetrics) {
             if (perfData.containsKey(metric)) {
                 List<Integer> values = perfData.get(metric);

@@ -685,7 +685,7 @@ public class NativeDevice implements IManagedTestDevice {
     @Override
     public boolean runInstrumentationTests(IRemoteAndroidTestRunner runner,
             ITestRunListener... listeners) throws DeviceNotAvailableException {
-        List<ITestRunListener> listenerList = new ArrayList<ITestRunListener>();
+        List<ITestRunListener> listenerList = new ArrayList<>();
         listenerList.addAll(Arrays.asList(listeners));
         return runInstrumentationTests(runner, listenerList);
     }
@@ -1063,7 +1063,7 @@ public class NativeDevice implements IManagedTestDevice {
     public List<MountPointInfo> getMountPointInfo() throws DeviceNotAvailableException {
         final String mountInfo = executeShellCommand("cat /proc/mounts");
         final String[] mountInfoLines = mountInfo.split("\r?\n");
-        List<MountPointInfo> list = new ArrayList<MountPointInfo>(mountInfoLines.length);
+        List<MountPointInfo> list = new ArrayList<>(mountInfoLines.length);
 
         for (String line : mountInfoLines) {
             // We ignore the last two fields
@@ -1278,7 +1278,7 @@ public class NativeDevice implements IManagedTestDevice {
                 remoteFileEntry.getFullPath(), getSerialNumber());
         // find newer files to sync
         File[] localFiles = localFileDir.listFiles(new NoHiddenFilesFilter());
-        ArrayList<String> filePathsToSync = new ArrayList<String>();
+        ArrayList<String> filePathsToSync = new ArrayList<>();
         for (File localFile : localFiles) {
             IFileEntry entry = remoteFileEntry.findChild(localFile.getName());
             if (entry == null) {

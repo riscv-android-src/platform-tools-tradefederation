@@ -23,16 +23,17 @@ import com.android.tradefed.device.CollectingOutputReceiver;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.log.LogUtil.CLog;
+import com.android.tradefed.result.ByteArrayInputStreamSource;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.LogDataType;
-import com.android.tradefed.result.SnapshotInputStreamSource;
 import com.android.tradefed.testtype.IDeviceTest;
 import com.android.tradefed.testtype.IRemoteTest;
 import com.android.tradefed.util.CommandResult;
 import com.android.tradefed.util.IRunUtil;
 import com.android.tradefed.util.RunUtil;
 
-import java.io.ByteArrayInputStream;
+import org.junit.Assert;
+
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -42,8 +43,6 @@ import java.util.Map;
 import java.util.concurrent.TimeUnit;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-
-import org.junit.Assert;
 
 /**
  * A harness that test video playback and reports result.
@@ -284,8 +283,8 @@ public class VideoMultimeterTest implements IDeviceTest, IRemoteTest {
         // get all results from multimeter and write to output file
         cr = getRunUtil().runTimedCmd(GETDATA_TIMEOUT_MS, mMeterUtilPath, CMD_GET_ALL_DATA);
         String allData = cr.getStdout();
-        listener.testLog(keyprefix, LogDataType.TEXT, new SnapshotInputStreamSource(
-                new ByteArrayInputStream(allData.getBytes())));
+        listener.testLog(
+                keyprefix, LogDataType.TEXT, new ByteArrayInputStreamSource(allData.getBytes()));
 
         // parse results
         return parseResult(metrics, nrOfDataPoints, allData, keyprefix, fps, lipsync);
@@ -331,7 +330,7 @@ public class VideoMultimeterTest implements IDeviceTest, IRemoteTest {
         listener.testStarted(testId);
 
         long testStartTime = System.currentTimeMillis();
-        Map<String, String> metrics = new HashMap<String, String>();
+        Map<String, String> metrics = new HashMap<>();
 
         if (setupTestEnv()) {
             runMultimeterTest(listener, metrics);
@@ -428,7 +427,7 @@ public class VideoMultimeterTest implements IDeviceTest, IRemoteTest {
         // format: "OK (time); (frame duration); (marker color); (total dropped frames); (lipsync)"
         p = Pattern.compile(LIPSYNC_DATA_PATTERN);
         if (lipsync) {
-            ArrayList<Integer> lipsyncVals = new ArrayList<Integer>();
+            ArrayList<Integer> lipsyncVals = new ArrayList<>();
             StringBuilder lipsyncValsStr = new StringBuilder("[");
             long lipsyncSum = 0;
             for (int i = 0; i < lines.length; i++) {

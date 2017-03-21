@@ -23,7 +23,6 @@ import junit.framework.TestCase;
 import org.easymock.EasyMock;
 
 import java.io.File;
-import java.io.IOException;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -65,12 +64,13 @@ public class DeviceFileReporterTest extends TestCase {
         EasyMock.expect(mDevice.getSerialNumber()).andStubReturn("serial");
 
         mListener = EasyMock.createMock(ITestInvocationListener.class);
-        dfr = new DeviceFileReporter(mDevice, mListener) {
-            @Override
-            InputStreamSource createIssForFile(File file) throws IOException {
-                return mDfrIss;
-            }
-        };
+        dfr =
+                new DeviceFileReporter(mDevice, mListener) {
+                    @Override
+                    InputStreamSource createIssForFile(File file) {
+                        return mDfrIss;
+                    }
+                };
     }
 
     public void testSimple() throws Exception {
@@ -191,17 +191,18 @@ public class DeviceFileReporterTest extends TestCase {
         final InputStreamSource pngIss = new ByteArrayInputStreamSource(pngContents.getBytes());
         final InputStreamSource xmlIss = new ByteArrayInputStreamSource(xmlContents.getBytes());
 
-        dfr = new DeviceFileReporter(mDevice, mListener) {
-            @Override
-            InputStreamSource createIssForFile(File file) throws IOException {
-                if (file.toString().endsWith(".png")) {
-                    return pngIss;
-                } else if (file.toString().endsWith(".xml")) {
-                    return xmlIss;
-                }
-                throw new IOException ("unknown fake file");
-            }
-        };
+        dfr =
+                new DeviceFileReporter(mDevice, mListener) {
+                    @Override
+                    InputStreamSource createIssForFile(File file) {
+                        if (file.toString().endsWith(".png")) {
+                            return pngIss;
+                        } else if (file.toString().endsWith(".xml")) {
+                            return xmlIss;
+                        }
+                        return null;
+                    }
+                };
         dfr.addPatterns(patMap);
         dfr.setInferUnknownDataTypes(false);
 
@@ -245,17 +246,18 @@ public class DeviceFileReporterTest extends TestCase {
         final InputStreamSource pngIss = new ByteArrayInputStreamSource(pngContents.getBytes());
         final InputStreamSource xmlIss = new ByteArrayInputStreamSource(xmlContents.getBytes());
 
-        dfr = new DeviceFileReporter(mDevice, mListener) {
-            @Override
-            InputStreamSource createIssForFile(File file) throws IOException {
-                if (file.toString().endsWith(".png")) {
-                    return pngIss;
-                } else if (file.toString().endsWith(".xml")) {
-                    return xmlIss;
-                }
-                throw new IOException ("unknown fake file");
-            }
-        };
+        dfr =
+                new DeviceFileReporter(mDevice, mListener) {
+                    @Override
+                    InputStreamSource createIssForFile(File file) {
+                        if (file.toString().endsWith(".png")) {
+                            return pngIss;
+                        } else if (file.toString().endsWith(".xml")) {
+                            return xmlIss;
+                        }
+                        return null;
+                    }
+                };
         dfr.addPatterns(patMap);
         dfr.setInferUnknownDataTypes(false);
         // this should cause us to see three pulls instead of two

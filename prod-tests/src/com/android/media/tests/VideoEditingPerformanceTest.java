@@ -26,10 +26,10 @@ import com.android.tradefed.result.BugreportCollector;
 import com.android.tradefed.result.BugreportCollector.Freq;
 import com.android.tradefed.result.BugreportCollector.Noun;
 import com.android.tradefed.result.BugreportCollector.Relation;
+import com.android.tradefed.result.FileInputStreamSource;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.InputStreamSource;
 import com.android.tradefed.result.LogDataType;
-import com.android.tradefed.result.SnapshotInputStreamSource;
 import com.android.tradefed.testtype.IDeviceTest;
 import com.android.tradefed.testtype.IRemoteTest;
 import com.android.tradefed.util.FileUtil;
@@ -75,7 +75,7 @@ public class VideoEditingPerformanceTest implements IDeviceTest, IRemoteTest {
 
     private static final String OUTPUT_PATH = "VideoEditorPerformance.txt";
 
-    private final RegexTrie<String> mPatternMap = new RegexTrie<String>();
+    private final RegexTrie<String> mPatternMap = new RegexTrie<>();
 
     public VideoEditingPerformanceTest() {
         mPatternMap.put("ImageItemCreate",
@@ -179,8 +179,7 @@ public class VideoEditingPerformanceTest implements IDeviceTest, IRemoteTest {
             Log.d(LOG_TAG, String.format(
                     "Sending %d byte file %s into the logosphere!",
                     outputFile.length(), outputFile));
-            outputSource = new SnapshotInputStreamSource(new FileInputStream(
-                    outputFile));
+            outputSource = new FileInputStreamSource(outputFile);
             listener.testLog(OUTPUT_PATH, LogDataType.TEXT, outputSource);
 
             // Parse the output file to upload aggregated metrics
@@ -200,7 +199,7 @@ public class VideoEditingPerformanceTest implements IDeviceTest, IRemoteTest {
     private void parseOutputFile(InputStream dataStream,
             ITestInvocationListener listener) {
 
-        Map<String, String> runMetrics = new HashMap<String, String>();
+        Map<String, String> runMetrics = new HashMap<>();
 
         // try to parse it
         String contents;
@@ -217,7 +216,7 @@ public class VideoEditingPerformanceTest implements IDeviceTest, IRemoteTest {
         String line;
         while (lineIter.hasNext()) {
             line = lineIter.next();
-            List<List<String>> capture = new ArrayList<List<String>>(1);
+            List<List<String>> capture = new ArrayList<>(1);
             String key = mPatternMap.retrieve(capture, line);
             if (key != null) {
                 Log.d(LOG_TAG, String.format("Got '%s' and captures '%s'", key,

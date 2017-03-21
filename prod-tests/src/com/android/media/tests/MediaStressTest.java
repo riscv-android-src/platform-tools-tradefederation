@@ -22,10 +22,10 @@ import com.android.ddmlib.testrunner.RemoteAndroidTestRunner;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.log.LogUtil.CLog;
+import com.android.tradefed.result.FileInputStreamSource;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.InputStreamSource;
 import com.android.tradefed.result.LogDataType;
-import com.android.tradefed.result.SnapshotInputStreamSource;
 import com.android.tradefed.testtype.IDeviceTest;
 import com.android.tradefed.testtype.IRemoteTest;
 import com.android.tradefed.util.FileUtil;
@@ -113,12 +113,9 @@ public class MediaStressTest implements IDeviceTest, IRemoteTest {
             }
 
             CLog.d("Sending %d byte file %s into the logosphere!", outputFile.length(), outputFile);
-            outputSource = new SnapshotInputStreamSource(new FileInputStream(outputFile));
+            outputSource = new FileInputStreamSource(outputFile);
             listener.testLog(OUTPUT_PATH, LogDataType.TEXT, outputSource);
             parseOutputFile(outputFile, listener);
-        } catch (IOException e) {
-            CLog.e("IOException while reading or parsing output file");
-            CLog.e(e);
         } finally {
             FileUtil.deleteFile(outputFile);
             StreamUtil.cancel(outputSource);
@@ -129,8 +126,8 @@ public class MediaStressTest implements IDeviceTest, IRemoteTest {
      * Parse the relevant metrics from the Instrumentation test output file
      */
     private void parseOutputFile(File outputFile, ITestInvocationListener listener) {
-        Map<String, String> runMetrics = new HashMap<String, String>();
-        Map<String, String> stanzaKeyMap = new HashMap<String, String>();
+        Map<String, String> runMetrics = new HashMap<>();
+        Map<String, String> stanzaKeyMap = new HashMap<>();
         stanzaKeyMap.put("testStressRecordVideoAndPlayback1080P", "VideoRecordPlayback1080P");
         stanzaKeyMap.put("testStressRecordVideoAndPlayback720P", "VideoRecordPlayback720P");
         stanzaKeyMap.put("testStressRecordVideoAndPlayback480P", "VideoRecordPlayback480P");

@@ -23,10 +23,10 @@ import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.result.BugreportCollector;
+import com.android.tradefed.result.FileInputStreamSource;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.InputStreamSource;
 import com.android.tradefed.result.LogDataType;
-import com.android.tradefed.result.SnapshotInputStreamSource;
 import com.android.tradefed.testtype.IDeviceTest;
 import com.android.tradefed.testtype.IRemoteTest;
 import com.android.tradefed.util.FileUtil;
@@ -37,7 +37,6 @@ import org.junit.Assert;
 
 import java.io.BufferedReader;
 import java.io.File;
-import java.io.FileInputStream;
 import java.io.FileReader;
 import java.io.IOException;
 import java.util.HashMap;
@@ -126,24 +125,24 @@ public class UiPerformanceTest implements IDeviceTest, IRemoteTest {
 
     private void pullRawDataFile(ITestInvocationListener listener)
             throws DeviceNotAvailableException {
-        try {
-            String extStore = mTestDevice.getMountPoint(IDevice.MNT_EXTERNAL_STORAGE);
-            String rawFileDir = String.format("%s/%s", extStore, RAW_DATA_DIRECTORY);
+        String extStore = mTestDevice.getMountPoint(IDevice.MNT_EXTERNAL_STORAGE);
+        String rawFileDir = String.format("%s/%s", extStore, RAW_DATA_DIRECTORY);
 
-            String rawFileList =
-                    mTestDevice.executeShellCommand(String.format("ls \"%s\"", rawFileDir));
-            String[] rawFileString = rawFileList.split("\r?\n");
-            File resFile = null;
-            InputStreamSource outputSource = null;
-            for (int i = 0; i < rawFileString.length; i++) {
-                CLog.v("file %d is:  \"%s\"", i, rawFileString[i]);
+        String rawFileList =
+                mTestDevice.executeShellCommand(String.format("ls \"%s\"", rawFileDir));
+        String[] rawFileString = rawFileList.split("\r?\n");
+        File resFile = null;
+        InputStreamSource outputSource = null;
+        for (int i = 0; i < rawFileString.length; i++) {
+            CLog.v("file %d is:  \"%s\"", i, rawFileString[i]);
+            try {
                 resFile = mTestDevice.pullFileFromExternal(
                         String.format("%s/%s", RAW_DATA_DIRECTORY, rawFileString[i]));
-                outputSource = new SnapshotInputStreamSource(new FileInputStream(resFile));
+                outputSource = new FileInputStreamSource(resFile, true /* delete */);
                 listener.testLog(rawFileString[i], LogDataType.TEXT, outputSource);
+            } finally {
+                StreamUtil.cancel(outputSource);
             }
-        } catch (IOException e) {
-            CLog.e("IOException while reading raw data files: " + e.toString());
         }
     }
 
@@ -158,7 +157,7 @@ public class UiPerformanceTest implements IDeviceTest, IRemoteTest {
 
         File resFile = null;
         InputStreamSource outputSource = null;
-        Map<String, String> runMetrics = new HashMap<String, String>();
+        Map<String, String> runMetrics = new HashMap<>();
         BufferedReader br = null;
         try {
             resFile = mTestDevice.pullFileFromExternal(OUTPUT_FILE_NAME);
@@ -170,7 +169,7 @@ public class UiPerformanceTest implements IDeviceTest, IRemoteTest {
             // Save a copy of the output file
             CLog.d("Sending %d byte file %s into the logosphere!",
                     resFile.length(), resFile);
-            outputSource = new SnapshotInputStreamSource(new FileInputStream(resFile));
+            outputSource = new FileInputStreamSource(resFile);
             listener.testLog(OUTPUT_FILE_NAME, LogDataType.TEXT, outputSource);
 
             // Parse the results file

@@ -27,10 +27,10 @@ import com.android.tradefed.result.BugreportCollector;
 import com.android.tradefed.result.BugreportCollector.Freq;
 import com.android.tradefed.result.BugreportCollector.Noun;
 import com.android.tradefed.result.BugreportCollector.Relation;
+import com.android.tradefed.result.FileInputStreamSource;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.InputStreamSource;
 import com.android.tradefed.result.LogDataType;
-import com.android.tradefed.result.SnapshotInputStreamSource;
 import com.android.tradefed.testtype.IDeviceTest;
 import com.android.tradefed.testtype.IRemoteTest;
 import com.android.tradefed.util.FileUtil;
@@ -84,8 +84,8 @@ public class VideoEditingMemoryTest implements IDeviceTest, IRemoteTest {
     public static final Pattern TOTAL_MEM_DIFF_PATTERN =
             Pattern.compile("(.+?)\\s.*diff.*\\s(-?\\d+)");
 
-    public Map<String, String> mRunMetrics = new HashMap<String, String>();
-    public Map<String, String> mKeyMap = new HashMap<String, String>();
+    public Map<String, String> mRunMetrics = new HashMap<>();
+    public Map<String, String> mKeyMap = new HashMap<>();
 
     @Option(name = "getHeapDump", description = "Collect the heap")
     private boolean mGetHeapDump = false;
@@ -156,13 +156,8 @@ public class VideoEditingMemoryTest implements IDeviceTest, IRemoteTest {
                 if (outputFile == null) {
                     continue;
                 }
-                outputSource = new SnapshotInputStreamSource(
-                        new FileInputStream(outputFile));
-                listener.testLog(heapOutputFile, LogDataType.TEXT,
-                        outputSource);
-            } catch (IOException e) {
-                Log.e(LOG_TAG, String.format(
-                        "IOException while reading or parsing output file: %s", e));
+                outputSource = new FileInputStreamSource(outputFile);
+                listener.testLog(heapOutputFile, LogDataType.TEXT, outputSource);
             } finally {
                 FileUtil.deleteFile(outputFile);
                 StreamUtil.cancel(outputSource);
@@ -179,12 +174,12 @@ public class VideoEditingMemoryTest implements IDeviceTest, IRemoteTest {
         File outputFile = null;
         InputStreamSource outputSource = null;
 
-        try {
-            if (mGetHeapDump) {
-                // Upload all the heap dump files.
-                uploadHeapDumpFiles(listener);
-            }
-            for(String resultFile : mKeyMap.keySet()) {
+        if (mGetHeapDump) {
+            // Upload all the heap dump files.
+            uploadHeapDumpFiles(listener);
+        }
+        for (String resultFile : mKeyMap.keySet()) {
+            try {
                 outputFile = mTestDevice.pullFileFromExternal(resultFile);
 
                 if (outputFile == null) {
@@ -195,21 +190,19 @@ public class VideoEditingMemoryTest implements IDeviceTest, IRemoteTest {
                 Log.d(LOG_TAG, String.format(
                         "Sending %d byte file %s into the logosphere!",
                         outputFile.length(), outputFile));
-                outputSource = new SnapshotInputStreamSource(
-                        new FileInputStream(outputFile));
-                listener.testLog(resultFile, LogDataType.TEXT,
-                        outputSource);
+                outputSource = new FileInputStreamSource(outputFile);
+                listener.testLog(resultFile, LogDataType.TEXT, outputSource);
 
                 // Parse the output file to upload aggregated metrics
-                parseOutputFile(new FileInputStream(outputFile), listener,
-                        resultFile);
+                parseOutputFile(new FileInputStream(outputFile), listener, resultFile);
+            } catch (IOException e) {
+                Log.e(
+                        LOG_TAG,
+                        String.format("IOException while reading or parsing output file: %s", e));
+            } finally {
+                FileUtil.deleteFile(outputFile);
+                StreamUtil.cancel(outputSource);
             }
-        } catch (IOException e) {
-            Log.e(LOG_TAG, String.format(
-                    "IOException while reading or parsing output file: %s", e));
-        } finally {
-            FileUtil.deleteFile(outputFile);
-            StreamUtil.cancel(outputSource);
         }
     }
 
