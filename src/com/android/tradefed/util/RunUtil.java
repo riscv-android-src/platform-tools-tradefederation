@@ -284,8 +284,8 @@ public class RunUtil implements IRunUtil {
             throws IOException {
         CLog.v("Running %s", command);
         Process process = createProcessBuilder(command).start();
-        inheritIO(process.getInputStream(), output);
-        inheritIO(process.getErrorStream(), output);
+        inheritIO(process.getInputStream(), output, String.format("inheritio-stdout-%s", command));
+        inheritIO(process.getErrorStream(), output, String.format("inheritio-stderr-%s", command));
         return process;
     }
 
@@ -598,8 +598,17 @@ public class RunUtil implements IRunUtil {
                 processStdin.flush();
                 processStdin.close();
             }
-            Thread stdoutThread = inheritIO(mProcess.getInputStream(), stdOut);
-            Thread stderrThread = inheritIO(mProcess.getErrorStream(), stdErr);
+            // Log the command for thread tracking purpose.
+            Thread stdoutThread =
+                    inheritIO(
+                            mProcess.getInputStream(),
+                            stdOut,
+                            String.format("inheritio-stdout-%s", mProcessBuilder.command()));
+            Thread stderrThread =
+                    inheritIO(
+                            mProcess.getErrorStream(),
+                            stdErr,
+                            String.format("inheritio-stderr-%s", mProcessBuilder.command()));
             // Wait for process to complete.
             int rc = Integer.MIN_VALUE;
             try {
@@ -669,10 +678,13 @@ public class RunUtil implements IRunUtil {
 
     /**
      * Helper method to redirect input stream.
+     *
      * @param src {@link InputStream} to inherit/redirect from
      * @param dest {@link BufferedOutputStream} to inherit/redirect to
+     * @param name the name of the thread returned.
+     * @return a {@link Thread} started that receives the IO.
      */
-    private static Thread inheritIO(final InputStream src, final OutputStream dest) {
+    private static Thread inheritIO(final InputStream src, final OutputStream dest, String name) {
         Thread t = new Thread(new Runnable() {
             @Override
             public void run() {
@@ -683,7 +695,7 @@ public class RunUtil implements IRunUtil {
                 }
             }
         });
-        t.setName("inheritIO-runUtil-thread");
+        t.setName(name);
         t.start();
         return t;
     }
