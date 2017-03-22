@@ -21,12 +21,30 @@ import com.android.tradefed.log.LogUtil.CLog;
 
 /** Checks if system server appears to be running out of FDs. */
 public class SystemServerFileDescriptorChecker implements ISystemStatusChecker {
+
     /** Process will fail to allocate beyond 1024, so heuristic considers 900 a bad state */
     private static final int MAX_EXPECTED_FDS = 900;
+    private static final String BUILD_TYPE_PROP = "ro.build.type";
+    private static final String USER_BUILD = "user";
+
+    private String mBuildType = null;
+
+    @Override
+    public boolean preExecutionCheck(ITestDevice device) throws DeviceNotAvailableException {
+        if (mBuildType == null) {
+            // build type not initialized yet, check on device
+            mBuildType = device.getProperty(BUILD_TYPE_PROP);
+        }
+        return true;
+    }
 
     /** {@inheritDoc} */
     @Override
     public boolean postExecutionCheck(ITestDevice device) throws DeviceNotAvailableException {
+        if (USER_BUILD.equals(mBuildType)) {
+            CLog.d("Skipping system_server fd check on user builds.");
+            return true;
+        }
         Integer pid = getIntegerFromCommand(device, "pidof system_server");
         if (pid == null) {
             CLog.d("Unable to find system_server pid.");
