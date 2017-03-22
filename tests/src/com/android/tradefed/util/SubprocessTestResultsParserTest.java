@@ -99,7 +99,8 @@ public class SubprocessTestResultsParserTest extends TestCase {
         File tmp = FileUtil.createTempFile("sub", "unit");
         SubprocessTestResultsParser resultParser = null;
         try {
-            resultParser = new SubprocessTestResultsParser(mockRunListener);
+            resultParser =
+                    new SubprocessTestResultsParser(mockRunListener, new InvocationContext());
             resultParser.processNewLines(contents);
             EasyMock.verify(mockRunListener);
         } finally {
@@ -136,7 +137,8 @@ public class SubprocessTestResultsParserTest extends TestCase {
         File tmp = FileUtil.createTempFile("sub", "unit");
         SubprocessTestResultsParser resultParser = null;
         try {
-            resultParser = new SubprocessTestResultsParser(mockRunListener);
+            resultParser =
+                    new SubprocessTestResultsParser(mockRunListener, new InvocationContext());
             resultParser.processNewLines(contents);
             EasyMock.verify(mockRunListener);
         } finally {
@@ -160,7 +162,8 @@ public class SubprocessTestResultsParserTest extends TestCase {
         File tmp = FileUtil.createTempFile("sub", "unit");
         SubprocessTestResultsParser resultParser = null;
         try {
-            resultParser = new SubprocessTestResultsParser(mockRunListener);
+            resultParser =
+                    new SubprocessTestResultsParser(mockRunListener, new InvocationContext());
             String startRun = "TEST_RUN_STARTED {\"testCount\":4,\"runName\":\"arm64-v8a "
                     + "CtsGestureTestCases\"}\n";
             FileUtil.writeToFile(startRun, tmp, true);
@@ -189,7 +192,8 @@ public class SubprocessTestResultsParserTest extends TestCase {
         File tmp = FileUtil.createTempFile("sub", "unit");
         SubprocessTestResultsParser resultParser = null;
         try {
-            resultParser = new SubprocessTestResultsParser(mockRunListener);
+            resultParser =
+                    new SubprocessTestResultsParser(mockRunListener, new InvocationContext());
             String cause = "com.android.tradefed.targetprep."
                     + "TargetSetupError: Not all target preparation steps completed\n\tat "
                     + "com.android.compatibility.common.tradefed.targetprep."
@@ -225,7 +229,8 @@ public class SubprocessTestResultsParserTest extends TestCase {
         SubprocessTestResultsParser resultParser = null;
         Socket socket = null;
         try {
-            resultParser = new SubprocessTestResultsParser(mockRunListener, true);
+            resultParser =
+                    new SubprocessTestResultsParser(mockRunListener, true, new InvocationContext());
             socket = new Socket("localhost", resultParser.getSocketServerPort());
             if (!socket.isConnected()) {
                 fail("socket did not connect");
@@ -259,7 +264,8 @@ public class SubprocessTestResultsParserTest extends TestCase {
         EasyMock.replay(mockRunListener);
         SubprocessTestResultsParser resultParser = null;
         try {
-            resultParser = new SubprocessTestResultsParser(mockRunListener, true);
+            resultParser =
+                    new SubprocessTestResultsParser(mockRunListener, true, new InvocationContext());
             assertFalse(resultParser.joinReceiver(50));
             EasyMock.verify(mockRunListener);
         } finally {

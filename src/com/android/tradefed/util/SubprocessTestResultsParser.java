@@ -175,26 +175,28 @@ public class SubprocessTestResultsParser implements Closeable {
      *
      * @param listener {@link ITestInvocationListener} where to report the results
      * @param streaming if True, a socket receiver will be open to receive results.
-     * @param context information about the invocation
+     * @param context a {@link IInvocationContext} information about the invocation
      */
     public SubprocessTestResultsParser(
             ITestInvocationListener listener, boolean streaming, IInvocationContext context)
             throws IOException {
-        this(listener, streaming);
-        mContext = context;
-    }
-
-    public SubprocessTestResultsParser(ITestInvocationListener listener, boolean streaming)
-            throws IOException {
-        this(listener);
+        this(listener, context);
         if (streaming) {
             mEventReceiver = new EventReceiverThread();
             mEventReceiver.start();
         }
     }
 
-    public SubprocessTestResultsParser(ITestInvocationListener listener) {
+    /**
+     * Constructor for the result parser
+     *
+     * @param listener {@link ITestInvocationListener} where to report the results
+     * @param context a {@link IInvocationContext} information about the invocation
+     */
+    public SubprocessTestResultsParser(
+            ITestInvocationListener listener, IInvocationContext context) {
         mListener = listener;
+        mContext = context;
         StringBuilder sb = new StringBuilder();
         sb.append(StatusKeys.INVOCATION_FAILED).append("|");
         sb.append(StatusKeys.TEST_ASSUMPTION_FAILURE).append("|");
