@@ -41,6 +41,8 @@ public class SystemServerFileDescriptorCheckerTest {
 
     @Test
     public void testFailToGetPid() throws Exception {
+        EasyMock.expect(mMockDevice.getProperty(EasyMock.eq("ro.build.type")))
+                .andReturn("userdebug");
         EasyMock.expect(mMockDevice.executeShellCommand(EasyMock.eq("pidof system_server")))
                 .andReturn("not found\n");
         EasyMock.replay(mMockDevice);
@@ -51,6 +53,8 @@ public class SystemServerFileDescriptorCheckerTest {
 
     @Test
     public void testFailToGetFdCount() throws Exception {
+        EasyMock.expect(mMockDevice.getProperty(EasyMock.eq("ro.build.type")))
+                .andReturn("userdebug");
         EasyMock.expect(mMockDevice.executeShellCommand(EasyMock.eq("pidof system_server")))
                 .andReturn("1024\n");
         EasyMock.expect(
@@ -65,6 +69,8 @@ public class SystemServerFileDescriptorCheckerTest {
 
     @Test
     public void testAcceptableFdCount() throws Exception {
+        EasyMock.expect(mMockDevice.getProperty(EasyMock.eq("ro.build.type")))
+                .andReturn("userdebug");
         EasyMock.expect(mMockDevice.executeShellCommand(EasyMock.eq("pidof system_server")))
                 .andReturn("914\n");
         EasyMock.expect(
@@ -79,6 +85,8 @@ public class SystemServerFileDescriptorCheckerTest {
 
     @Test
     public void testUnacceptableFdCount() throws Exception {
+        EasyMock.expect(mMockDevice.getProperty(EasyMock.eq("ro.build.type")))
+                .andReturn("userdebug");
         EasyMock.expect(mMockDevice.executeShellCommand(EasyMock.eq("pidof system_server")))
                 .andReturn("914\n");
         EasyMock.expect(
@@ -86,8 +94,18 @@ public class SystemServerFileDescriptorCheckerTest {
                                 EasyMock.eq("su root ls /proc/914/fd | wc -w")))
                 .andReturn("1002  \n");
         EasyMock.replay(mMockDevice);
-        assertTrue(mChecker.preExecutionCheck(mMockDevice)); // Noop
+        assertTrue(mChecker.preExecutionCheck(mMockDevice));
         assertFalse(mChecker.postExecutionCheck(mMockDevice));
+        EasyMock.verify(mMockDevice);
+    }
+
+    @Test
+    public void testUserBuild() throws Exception {
+        EasyMock.expect(mMockDevice.getProperty(EasyMock.eq("ro.build.type"))).andReturn("user");
+        // no further calls should happen after above
+        EasyMock.replay(mMockDevice);
+        assertTrue(mChecker.preExecutionCheck(mMockDevice));
+        assertTrue(mChecker.postExecutionCheck(mMockDevice));
         EasyMock.verify(mMockDevice);
     }
 }
