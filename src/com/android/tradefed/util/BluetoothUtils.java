@@ -27,6 +27,7 @@ import com.android.tradefed.result.LogDataType;
 import com.android.tradefed.util.sl4a.Sl4aClient;
 
 import java.io.File;
+import java.io.IOException;
 import java.util.HashSet;
 import java.util.Set;
 import java.util.regex.Matcher;
@@ -50,7 +51,6 @@ public class BluetoothUtils {
     private static final Pattern BONDED_MAC_HEADER =
             Pattern.compile("INSTRUMENTATION_RESULT: device-\\d{2}=(.*)$");
     private static final String BTSNOOP_LOG_FILE = "btsnoop_hci.log";
-    private static final String BTSNOOP_CONF_FILE = "/etc/bluetooth/bt_stack.conf";
     public static final String BTSNOOP_API = "bluetoothConfigHciSnoopLog";
 
     /**
@@ -220,7 +220,7 @@ public class BluetoothUtils {
             client.startSl4A();
             client.rpcCall(BTSNOOP_API, onOff);
             return true;
-        } catch (Exception e) {
+        } catch (IOException | RuntimeException e) {
             CLog.e(e);
             return false;
         } finally {
