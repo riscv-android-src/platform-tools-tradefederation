@@ -80,7 +80,6 @@ public class Sl4aClient implements AutoCloseable {
      *
      * @param device the {ITestDevice} that the client will be for.
      * @param sl4aApkFile file path to hte sl4a apk to install, or null if already installed.
-     * @param devicePort the device port used to communicate to.
      */
     public Sl4aClient(ITestDevice device, File sl4aApkFile) throws DeviceNotAvailableException {
         installSl4a(device, sl4aApkFile);

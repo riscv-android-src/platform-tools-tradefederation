@@ -20,18 +20,19 @@ import static org.mockito.Mockito.when;
 
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
-import com.android.tradefed.util.sl4a.Sl4aClient;
 import com.android.tradefed.util.sl4a.FakeSocketServerHelper;
+import com.android.tradefed.util.sl4a.Sl4aClient;
+
+import org.junit.After;
+import org.junit.Assert;
+import org.junit.Before;
+import org.junit.Test;
+import org.mockito.Mockito;
 
 import java.io.IOException;
 import java.util.Set;
-import org.junit.Assert;
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Test;
 
-import org.mockito.Mockito;
-
+/** Unit tests for {@link BluetoothUtils} */
 public class BluetoothUtilsTest {
 
     private Sl4aClient mClient;
@@ -41,9 +42,17 @@ public class BluetoothUtilsTest {
     private IRunUtil mMockRunUtil;
 
     @Before
-    public void setUp() throws IOException {
+    public void setUp() {
         mMockDevice = Mockito.mock(ITestDevice.class);
-        mClient = new Sl4aClient(mMockDevice, 1234, 9998);
+        mMockRunUtil = Mockito.mock(IRunUtil.class);
+        mClient =
+                new Sl4aClient(mMockDevice, 1234, 9998) {
+                    @Override
+                    protected IRunUtil getRunUtil() {
+                        return mMockRunUtil;
+                    }
+                };
+        Mockito.doNothing().when(mMockRunUtil).sleep(Mockito.anyLong());
         mSpyClient = Mockito.spy(mClient);
     }
 
