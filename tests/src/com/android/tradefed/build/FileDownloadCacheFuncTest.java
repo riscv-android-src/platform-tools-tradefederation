@@ -27,6 +27,7 @@ import org.easymock.IAnswer;
 import java.io.File;
 import java.io.FileInputStream;
 import java.util.ArrayList;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.List;
 
 /**
@@ -83,29 +84,9 @@ public class FileDownloadCacheFuncTest extends TestCase {
         mMockDownloader.downloadFile(EasyMock.eq(REMOTE_PATH), EasyMock.<File>anyObject());
         EasyMock.expectLastCall().andAnswer(slowDownloadAnswer);
         EasyMock.replay(mMockDownloader);
-        Thread downloadThread1 = new Thread() {
-          @Override
-        public void run() {
-            try {
-                mReturnedFiles.add(mCache.fetchRemoteFile(mMockDownloader, REMOTE_PATH));
-            } catch (BuildRetrievalError e) {
-                Log.e(LOG_TAG, e);
-            }
-          }
-        };
+        Thread downloadThread1 = createDownloadThread(mMockDownloader, REMOTE_PATH);
         downloadThread1.setName("FileDownloadCacheFuncTest#testFetchRemoteFile_concurrent-1");
-        Thread downloadThread2 =
-                new Thread() {
-                    @Override
-                    public void run() {
-                        try {
-                            mReturnedFiles.add(
-                                    mCache.fetchRemoteFile(mMockDownloader, REMOTE_PATH));
-                        } catch (BuildRetrievalError e) {
-                            Log.e(LOG_TAG, e);
-                        }
-                    }
-                };
+        Thread downloadThread2 = createDownloadThread(mMockDownloader, REMOTE_PATH);
         downloadThread2.setName("FileDownloadCacheFuncTest#testFetchRemoteFile_concurrent-2");
         downloadThread1.start();
         downloadThread2.start();
@@ -123,8 +104,149 @@ public class FileDownloadCacheFuncTest extends TestCase {
     }
 
     /**
-     * Verify the cache is built from disk contents on creation
+     * Test {@link FileDownloadCache#fetchRemoteFile(IFileDownloader, String)} being called
+     * concurrently by multiple threads trying to download different files.
      */
+    @SuppressWarnings("unchecked")
+    public void testFetchRemoteFile_multiConcurrent() throws Exception {
+        String remotePath1 = "path1";
+        String remotePath2 = "path2";
+        String remotePath3 = "path3";
+
+        // Block first download, but allow other downloads to pass.
+        final AtomicBoolean startedDownload = new AtomicBoolean(false);
+        final AtomicBoolean blockDownload = new AtomicBoolean(true);
+        IAnswer<Object> blockedDownloadAnswer =
+                new IAnswer<Object>() {
+                    @Override
+                    public Object answer() throws Throwable {
+                        if (!startedDownload.get()) {
+                            startedDownload.set(true);
+                            while (blockDownload.get()) {
+                                Thread.sleep(10);
+                            }
+                        }
+                        File fileArg = (File) EasyMock.getCurrentArguments()[1];
+                        FileUtil.writeToFile(DOWNLOADED_CONTENTS, fileArg);
+                        return null;
+                    }
+                };
+        mCache.setMaxCacheSize(DOWNLOADED_CONTENTS.length() + 1);
+
+        // Download is only called once, second thread will wait on synchronized until the download
+        // is done, then link the downloaded file.
+        mMockDownloader.downloadFile(EasyMock.eq(remotePath1), EasyMock.<File>anyObject());
+        EasyMock.expectLastCall().andAnswer(blockedDownloadAnswer);
+        mMockDownloader.downloadFile(EasyMock.eq(remotePath2), EasyMock.<File>anyObject());
+        EasyMock.expectLastCall().andAnswer(blockedDownloadAnswer);
+        mMockDownloader.downloadFile(EasyMock.eq(remotePath3), EasyMock.<File>anyObject());
+        EasyMock.expectLastCall().andAnswer(blockedDownloadAnswer);
+
+        // Disable thread safety, otherwise the first call will block the rest.
+        EasyMock.makeThreadSafe(mMockDownloader, false);
+        EasyMock.replay(mMockDownloader);
+
+        Thread downloadThread1 = createDownloadThread(mMockDownloader, remotePath1);
+        downloadThread1.setName("FileDownloadCacheFuncTest#testFetchRemoteFile_multiConcurrent-1");
+        Thread downloadThread2 = createDownloadThread(mMockDownloader, remotePath2);
+        downloadThread2.setName("FileDownloadCacheFuncTest#testFetchRemoteFile_multiConcurrent-2");
+        Thread downloadThread3 = createDownloadThread(mMockDownloader, remotePath3);
+        downloadThread3.setName("FileDownloadCacheFuncTest#testFetchRemoteFile_multiConcurrent-3");
+
+        // Start first thread, and wait for download to begin
+        downloadThread1.start();
+        while (!startedDownload.get()) {
+            Thread.sleep(10);
+        }
+
+        // Start the other threads, which should run to completion. The cache should be adjusted,
+        // but the file in the first thread should not be deleted since it is still being
+        // downloaded.
+        downloadThread2.start();
+        downloadThread3.start();
+        downloadThread2.join(2000);
+        downloadThread3.join(2000);
+        assertFalse(downloadThread2.isAlive());
+        assertFalse(downloadThread3.isAlive());
+        assertNotNull(mCache.getCachedFile(remotePath1));
+
+        // Complete download of first thread, and let the thread run to completion. What files are
+        // left in the cache can depend on implementation, so we're not testing for it.
+        blockDownload.set(false);
+        downloadThread1.join(2000);
+        assertFalse(downloadThread1.isAlive());
+
+        EasyMock.verify(mMockDownloader);
+    }
+
+    /**
+     * Test {@link FileDownloadCache#fetchRemoteFile(IFileDownloader, String)} being called
+     * concurrently by multiple threads trying to download the same file, with one thread failing.
+     */
+    @SuppressWarnings("unchecked")
+    public void testFetchRemoteFile_concurrentFail() throws Exception {
+        // Block first download, and later raise an error, but allow other downloads to pass.
+        final AtomicBoolean startedDownload = new AtomicBoolean(false);
+        final AtomicBoolean throwException = new AtomicBoolean(false);
+        IAnswer<Object> blockedDownloadAnswer =
+                new IAnswer<Object>() {
+                    @Override
+                    public Object answer() throws Throwable {
+                        if (!startedDownload.get()) {
+                            startedDownload.set(true);
+                            while (!throwException.get()) {
+                                Thread.sleep(10);
+                            }
+                            throw new BuildRetrievalError("download error");
+                        }
+                        File fileArg = (File) EasyMock.getCurrentArguments()[1];
+                        FileUtil.writeToFile(DOWNLOADED_CONTENTS, fileArg);
+                        return null;
+                    }
+                };
+
+        // Download should be called twice. The first call will result in an error, and the second
+        // will run to completion.
+        mMockDownloader.downloadFile(EasyMock.eq(REMOTE_PATH), EasyMock.<File>anyObject());
+        EasyMock.expectLastCall().andAnswer(blockedDownloadAnswer).times(2);
+
+        // Disable thread safety, otherwise the first call will block the rest.
+        EasyMock.makeThreadSafe(mMockDownloader, false);
+        EasyMock.replay(mMockDownloader);
+
+        Thread downloadThread1 = createDownloadThread(mMockDownloader, REMOTE_PATH);
+        downloadThread1.setName("FileDownloadCacheFuncTest#testFetchRemoteFile_concurrentFail-1");
+        Thread downloadThread2 = createDownloadThread(mMockDownloader, REMOTE_PATH);
+        downloadThread2.setName("FileDownloadCacheFuncTest#testFetchRemoteFile_concurrentFail-2");
+        Thread downloadThread3 = createDownloadThread(mMockDownloader, REMOTE_PATH);
+        downloadThread3.setName("FileDownloadCacheFuncTest#testFetchRemoteFile_concurrentFail-3");
+
+        // Start first thread, and wait for download to begin
+        downloadThread1.start();
+        while (!startedDownload.get()) {
+            Thread.sleep(10);
+        }
+
+        // Start second thread, and allow it to attempt to obtain the file lock.
+        downloadThread2.start();
+        Thread.sleep(100);
+
+        // Throw a BuildRetrievalError, and allow both threads to run to completion.
+        throwException.set(true);
+        downloadThread1.join(2000);
+        downloadThread2.join(2000);
+        assertFalse(downloadThread1.isAlive());
+        assertFalse(downloadThread2.isAlive());
+        assertNotNull(mCache.getCachedFile(REMOTE_PATH));
+
+        // A third attempt to retrive the file should not result in another download call.
+        downloadThread3.start();
+        downloadThread3.join(2000);
+
+        EasyMock.verify(mMockDownloader);
+    }
+
+    /** Verify the cache is built from disk contents on creation */
     public void testConstructor_createCache() throws Exception {
         // create cache contents on disk
         File cacheRoot = FileUtil.createTempDir("constructorTest");
@@ -179,5 +301,19 @@ public class FileDownloadCacheFuncTest extends TestCase {
         } finally {
             FileUtil.recursiveDelete(cacheRoot);
         }
+    }
+
+    /** Utility method to create thread that calls fetchRemoteFile. */
+    private Thread createDownloadThread(IFileDownloader downloader, String remotePath) {
+        return new Thread() {
+            @Override
+            public void run() {
+                try {
+                    mReturnedFiles.add(mCache.fetchRemoteFile(downloader, remotePath));
+                } catch (BuildRetrievalError e) {
+                    Log.e(LOG_TAG, e);
+                }
+            }
+        };
     }
 }
