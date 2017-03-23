@@ -16,6 +16,8 @@
 
 package com.android.tradefed.command;
 
+import com.google.common.annotations.VisibleForTesting;
+
 import com.android.ddmlib.DdmPreferences;
 import com.android.ddmlib.IDevice;
 import com.android.ddmlib.Log;
@@ -72,8 +74,6 @@ import com.android.tradefed.util.hostmetric.IHostMonitor.HostMetricType;
 import com.android.tradefed.util.keystore.IKeyStoreClient;
 import com.android.tradefed.util.keystore.IKeyStoreFactory;
 import com.android.tradefed.util.keystore.KeyStoreException;
-
-import com.google.common.annotations.VisibleForTesting;
 
 import org.json.JSONException;
 
@@ -978,38 +978,7 @@ public class CommandScheduler extends Thread implements ICommandScheduler, IComm
                 ExecutableCommand cmd = cmdIter.next();
                 IConfiguration config = cmd.getConfiguration();
                 IInvocationContext context = new InvocationContext();
-                Map<String, ITestDevice> devices = new LinkedHashMap<String, ITestDevice>();
-
-                if (!config.getDeviceConfig().isEmpty()) {
-                    for (IDeviceConfiguration deviceConfig : config.getDeviceConfig()) {
-                        ITestDevice device =
-                                manager.allocateDevice(deviceConfig.getDeviceRequirements());
-                        if (device != null) {
-                            devices.put(deviceConfig.getDeviceName(), device);
-                        } else {
-                            // If one of the several device cannot be allocated, we de-allocate
-                            // all the previous one.
-                            for (ITestDevice allocatedDevice : devices.values()) {
-                                FreeDeviceState deviceState = FreeDeviceState.AVAILABLE;
-                                if (allocatedDevice.getIDevice() instanceof StubDevice) {
-                                    deviceState = FreeDeviceState.AVAILABLE;
-                                } else if (!TestDeviceState.ONLINE.equals(
-                                        allocatedDevice.getDeviceState())) {
-                                    // If the device is offline at the end of the test
-                                    deviceState = FreeDeviceState.UNAVAILABLE;
-                                }
-                                manager.freeDevice(allocatedDevice, deviceState);
-                            }
-                            // Could not allocate all devices
-                            devices.clear();
-                            break;
-                        }
-                    }
-                } else {
-                    // Should not happen
-                    throw new RuntimeException("We should always have at least one device config.");
-                }
-
+                Map<String, ITestDevice> devices = allocateDevices(config, manager);
                 if (!devices.isEmpty()) {
                     cmdIter.remove();
                     mExecutingCommands.add(cmd);
@@ -1322,24 +1291,58 @@ public class CommandScheduler extends Thread implements ICommandScheduler, IComm
         config.validateOptions();
 
         ExecutableCommand execCmd = createExecutableCommand(cmdTracker, config, false);
-        ITestDevice device;
         IInvocationContext context = new InvocationContext();
-        synchronized(this) {
-            // TODO: add support for execCommand multi-device allocation
-            if (config.getDeviceConfig().size() > 1) {
-                throw new RuntimeException("execCommand for multi device not supported yet.");
+        Map<String, ITestDevice> devices = allocateDevices(config, manager);
+        if (!devices.isEmpty()) {
+            context.addAllocatedDevice(devices);
+            synchronized (this) {
+                mExecutingCommands.add(execCmd);
             }
-            device = manager.allocateDevice(config.getDeviceRequirements());
-            if (device == null) {
-                throw new NoDeviceException(
-                        "no device is available for command: " + Arrays.asList(args));
-            }
-            context.addAllocatedDevice(config.getDeviceConfig().get(0).getDeviceName(), device);
-            CLog.i("Executing '%s' on '%s'", cmdTracker.getArgs()[0], device.getSerialNumber());
-            mExecutingCommands.add(execCmd);
+            CLog.d("Executing '%s' on '%s'", cmdTracker.getArgs()[0], devices);
+            startInvocation(context, execCmd, listener, new FreeDeviceHandler(manager));
+        } else {
+            throw new NoDeviceException(
+                    "no devices is available for command: " + Arrays.asList(args));
         }
+    }
 
-        startInvocation(context, execCmd, listener, new FreeDeviceHandler(manager));
+    /**
+     * Allocate devices for a config.
+     * @param config a {@link IConfiguration} has device requirements.
+     * @param manager a {@link IDeviceManager}
+     * @return allocated devices
+     */
+    Map<String, ITestDevice> allocateDevices(IConfiguration config, IDeviceManager manager) {
+        Map<String, ITestDevice> devices = new LinkedHashMap<String, ITestDevice>();
+        ITestDevice device = null;
+        synchronized(this) {
+            if (!config.getDeviceConfig().isEmpty()) {
+                for (IDeviceConfiguration deviceConfig : config.getDeviceConfig()) {
+                    device = manager.allocateDevice(deviceConfig.getDeviceRequirements());
+                    if (device != null) {
+                        devices.put(deviceConfig.getDeviceName(), device);
+                    } else {
+                        // If one of the several device cannot be allocated, we de-allocate
+                        // all the previous one.
+                        for (ITestDevice allocatedDevice : devices.values()) {
+                            FreeDeviceState deviceState = FreeDeviceState.AVAILABLE;
+                            if (allocatedDevice.getIDevice() instanceof StubDevice) {
+                                deviceState = FreeDeviceState.AVAILABLE;
+                            } else if (!TestDeviceState.ONLINE.equals(
+                                    allocatedDevice.getDeviceState())) {
+                                // If the device is offline at the end of the test
+                                deviceState = FreeDeviceState.UNAVAILABLE;
+                            }
+                            manager.freeDevice(allocatedDevice, deviceState);
+                        }
+                        // Could not allocate all devices
+                        devices.clear();
+                        break;
+                    }
+                }
+            }
+            return devices;
+        }
     }
 
     /**
