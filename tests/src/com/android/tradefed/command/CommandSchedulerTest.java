@@ -33,6 +33,7 @@ import com.android.tradefed.device.IDeviceManager;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.device.ITestDevice.RecoveryMode;
 import com.android.tradefed.device.MockDeviceManager;
+import com.android.tradefed.device.NoDeviceException;
 import com.android.tradefed.device.StubDevice;
 import com.android.tradefed.device.TcpDevice;
 import com.android.tradefed.device.TestDeviceState;
@@ -941,5 +942,123 @@ public class CommandSchedulerTest extends TestCase {
         mScheduler.addCommand(args);
         assertNull(mScheduler.getInvocationInfo(999));
         mScheduler.shutdown();
+    }
+
+    public void testAllocateDevices() throws Exception {
+        String[] args = new String[] {"foo", "test"};
+        mMockManager.setNumDevices(1);
+        setCreateConfigExpectations(args, 1);
+        mMockConfiguration.validateOptions();
+        replayMocks();
+        mScheduler.start();
+        Map<String, ITestDevice> devices = mScheduler.allocateDevices(
+                mMockConfiguration, mMockManager);
+        assertEquals(1, devices.size());
+        mScheduler.shutdown();
+    }
+
+    private IDeviceConfiguration createDeviceConfig(String serial) throws Exception {
+        IDeviceConfiguration mockConfig = new DeviceConfigurationHolder(serial);
+        DeviceSelectionOptions options = new DeviceSelectionOptions();
+        options.addSerial(serial);
+        mockConfig.addSpecificConfig(options);
+        return mockConfig;
+    }
+
+    public void testAllocateDevices_multipleDevices() throws Exception {
+        String[] args = new String[] {"foo", "test"};
+
+        mMockManager.setNumDevices(2);
+        mMockDeviceConfig.add(createDeviceConfig("serial0"));
+        mMockDeviceConfig.add(createDeviceConfig("serial1"));
+
+        setCreateConfigExpectations(args, 1);
+        mMockConfiguration.validateOptions();
+        replayMocks();
+        mScheduler.start();
+        Map<String, ITestDevice> devices = mScheduler.allocateDevices(
+                mMockConfiguration, mMockManager);
+        assertEquals(2, devices.size());
+        assertEquals(0, mMockManager.getQueueOfAvailableDeviceSize());
+        mScheduler.shutdown();
+    }
+
+    public void testAllocateDevices_multipleDevices_failed() throws Exception {
+        String[] args = new String[] {"foo", "test"};
+
+        mMockManager.setNumDevices(2);
+        mMockDeviceConfig.add(createDeviceConfig("serial0"));
+        mMockDeviceConfig.add(createDeviceConfig("not_exist_serial"));
+
+        setCreateConfigExpectations(args, 1);
+        mMockConfiguration.validateOptions();
+        replayMocks();
+        mScheduler.start();
+        Map<String, ITestDevice> devices = mScheduler.allocateDevices(
+                mMockConfiguration, mMockManager);
+        assertEquals(0, devices.size());
+        assertEquals(2, mMockManager.getQueueOfAvailableDeviceSize());
+        mScheduler.shutdown();
+    }
+
+    /**
+     * Test case for execCommand with multiple devices.
+     * {@link CommandScheduler#execCommand(IScheduledInvocationListener, String[])}
+     */
+    @SuppressWarnings("unchecked")
+    public void testExecCommand_multipleDevices() throws Throwable {
+        String[] args = new String[] {
+            "foo"
+        };
+        mMockManager.setNumDevices(2);
+        mMockDeviceConfig.add(createDeviceConfig("serial0"));
+        mMockDeviceConfig.add(createDeviceConfig("serial1"));
+        setCreateConfigExpectations(args, 1);
+        mMockConfiguration.validateOptions();
+        mMockInvocation.invoke((IInvocationContext)EasyMock.anyObject(),
+                (IConfiguration)EasyMock.anyObject(), (IRescheduler)EasyMock.anyObject(),
+                (ITestInvocationListener)EasyMock.anyObject(),
+                // This is FreeDeviceHandler.
+                (IScheduledInvocationListener)EasyMock.anyObject());
+        IScheduledInvocationListener mockListener = EasyMock
+                .createMock(IScheduledInvocationListener.class);
+        mockListener.invocationComplete((IInvocationContext)EasyMock.anyObject(),
+                (Map<ITestDevice, FreeDeviceState>)EasyMock.anyObject());
+        replayMocks(mockListener);
+
+        mScheduler.start();
+        mScheduler.execCommand(mockListener, args);
+        mScheduler.shutdownOnEmpty();
+        mScheduler.join(2 * 1000);
+        verifyMocks(mockListener);
+    }
+
+    /**
+     * Test case for execCommand with multiple devices but fail to allocate some device.
+     * {@link CommandScheduler#execCommand(IScheduledInvocationListener, String[])}
+     */
+    public void testExecCommand_multipleDevices_noDevice() throws Throwable {
+        String[] args = new String[] {
+            "foo"
+        };
+        mMockManager.setNumDevices(2);
+        mMockDeviceConfig.add(createDeviceConfig("serial0"));
+        mMockDeviceConfig.add(createDeviceConfig("not_exist_serial"));
+        setCreateConfigExpectations(args, 1);
+        mMockConfiguration.validateOptions();
+        IScheduledInvocationListener mockListener = EasyMock
+                .createMock(IScheduledInvocationListener.class);
+        replayMocks(mockListener);
+
+        mScheduler.start();
+        try {
+            mScheduler.execCommand(mockListener, args);
+            fail();
+        } catch (NoDeviceException e) {
+            // expect NoDeviceException
+        }
+        mScheduler.shutdownOnEmpty();
+        mScheduler.join(2 * 1000);
+        verifyMocks(mockListener);
     }
 }
