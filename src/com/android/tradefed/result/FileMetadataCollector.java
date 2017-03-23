@@ -17,6 +17,7 @@ package com.android.tradefed.result;
 
 import com.android.test.metrics.proto.FileMetadataProto.FileMetadata;
 import com.android.test.metrics.proto.FileMetadataProto.LogFile;
+import com.android.test.metrics.proto.FileMetadataProto.LogType;
 import com.android.tradefed.config.Option;
 import com.android.tradefed.config.OptionClass;
 import com.android.tradefed.log.LogUtil.CLog;
@@ -54,7 +55,8 @@ public class FileMetadataCollector implements ILogSaverListener, ITestInvocation
             return;
         }
 
-        LogFile log = LogFile.newBuilder().setType(dataType.name()).setName(dataName).build();
+        LogFile log =
+                LogFile.newBuilder().setLogType(getLogType(dataType)).setName(dataName).build();
         mMetadataBuilder.addLogFiles(log);
     }
 
@@ -77,5 +79,30 @@ public class FileMetadataCollector implements ILogSaverListener, ITestInvocation
     @Override
     public void setLogSaver(ILogSaver logSaver) {
         mLogSaver = logSaver;
+    }
+
+    private LogType getLogType(LogDataType type) {
+        switch (type) {
+            case BUGREPORT:
+                return LogType.BUGREPORT;
+            case BUGREPORTZ:
+                return LogType.BUGREPORTZ;
+            case LOGCAT:
+                return LogType.LOGCAT;
+            case KERNEL_LOG:
+                return LogType.KERNEL;
+            case MEM_INFO:
+                return LogType.MEMINFO;
+            case TOP:
+                return LogType.TOP;
+            case DUMPSYS:
+                return LogType.DUMPSYS;
+            case COMPACT_MEMINFO:
+                return LogType.COMPACT_MEMINFO;
+            case SERVICES:
+                return LogType.SERVICES;
+            default: // All others
+                return LogType.UNKNOWN;
+        }
     }
 }

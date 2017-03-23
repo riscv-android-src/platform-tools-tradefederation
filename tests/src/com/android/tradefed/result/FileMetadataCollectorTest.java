@@ -18,6 +18,7 @@ package com.android.tradefed.result;
 
 import com.android.test.metrics.proto.FileMetadataProto.FileMetadata;
 import com.android.test.metrics.proto.FileMetadataProto.LogFile;
+import com.android.test.metrics.proto.FileMetadataProto.LogType;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
@@ -29,8 +30,10 @@ import org.junit.runners.JUnit4;
 public class FileMetadataCollectorTest {
     private FileMetadataCollector mCollector = null;
 
-    private static final LogDataType TYPE_BR = LogDataType.BUGREPORT;
-    private static final LogDataType TYPE_LC = LogDataType.LOGCAT;
+    private static final LogDataType DATA_TYPE_BR = LogDataType.BUGREPORT;
+    private static final LogDataType DATA_TYPE_LC = LogDataType.LOGCAT;
+    private static final LogType LOG_TYPE_BR = LogType.BUGREPORT;
+    private static final LogType LOG_TYPE_LC = LogType.LOGCAT;
     private static final String NAME_BR1 = "br1";
     private static final String NAME_BR2 = "br2";
     private static final String NAME_LC1 = "lc1";
@@ -59,10 +62,10 @@ public class FileMetadataCollectorTest {
     @Test
     public void testSingleTypeSingleElement() throws Exception {
         // Generate actual value
-        mCollector.testLogSaved(NAME_BR1, TYPE_BR, null, null);
+        mCollector.testLogSaved(NAME_BR1, DATA_TYPE_BR, null, null);
         FileMetadata actual = mCollector.getMetadataContents();
         // Generate expected value
-        LogFile log = LogFile.newBuilder().setType(TYPE_BR.name()).setName(NAME_BR1).build();
+        LogFile log = LogFile.newBuilder().setLogType(LOG_TYPE_BR).setName(NAME_BR1).build();
         FileMetadata expected = FileMetadata.newBuilder().addLogFiles(log).build();
         // Assert equality
         Assert.assertEquals(actual, expected);
@@ -75,12 +78,12 @@ public class FileMetadataCollectorTest {
     @Test
     public void testSingleTypeMultipleElements() throws Exception {
         // Generate actual value
-        mCollector.testLogSaved(NAME_BR1, TYPE_BR, null, null);
-        mCollector.testLogSaved(NAME_BR2, TYPE_BR, null, null);
+        mCollector.testLogSaved(NAME_BR1, DATA_TYPE_BR, null, null);
+        mCollector.testLogSaved(NAME_BR2, DATA_TYPE_BR, null, null);
         FileMetadata actual = mCollector.getMetadataContents();
         // Generate expected value
-        LogFile log1 = LogFile.newBuilder().setType(TYPE_BR.name()).setName(NAME_BR1).build();
-        LogFile log2 = LogFile.newBuilder().setType(TYPE_BR.name()).setName(NAME_BR2).build();
+        LogFile log1 = LogFile.newBuilder().setLogType(LOG_TYPE_BR).setName(NAME_BR1).build();
+        LogFile log2 = LogFile.newBuilder().setLogType(LOG_TYPE_BR).setName(NAME_BR2).build();
         FileMetadata expected = FileMetadata.newBuilder()
                 .addLogFiles(log1).addLogFiles(log2).build();
         // Assert equality
@@ -94,16 +97,16 @@ public class FileMetadataCollectorTest {
     @Test
     public void testMultipleTypesMultipleElements() throws Exception {
         // Generate actual value
-        mCollector.testLogSaved(NAME_BR1, TYPE_BR, null, null);
-        mCollector.testLogSaved(NAME_BR2, TYPE_BR, null, null);
-        mCollector.testLogSaved(NAME_LC1, TYPE_LC, null, null);
-        mCollector.testLogSaved(NAME_LC2, TYPE_LC, null, null);
+        mCollector.testLogSaved(NAME_BR1, DATA_TYPE_BR, null, null);
+        mCollector.testLogSaved(NAME_BR2, DATA_TYPE_BR, null, null);
+        mCollector.testLogSaved(NAME_LC1, DATA_TYPE_LC, null, null);
+        mCollector.testLogSaved(NAME_LC2, DATA_TYPE_LC, null, null);
         FileMetadata actual = mCollector.getMetadataContents();
         // Generate expected value
-        LogFile log1 = LogFile.newBuilder().setType(TYPE_BR.name()).setName(NAME_BR1).build();
-        LogFile log2 = LogFile.newBuilder().setType(TYPE_BR.name()).setName(NAME_BR2).build();
-        LogFile log3 = LogFile.newBuilder().setType(TYPE_LC.name()).setName(NAME_LC1).build();
-        LogFile log4 = LogFile.newBuilder().setType(TYPE_LC.name()).setName(NAME_LC2).build();
+        LogFile log1 = LogFile.newBuilder().setLogType(LOG_TYPE_BR).setName(NAME_BR1).build();
+        LogFile log2 = LogFile.newBuilder().setLogType(LOG_TYPE_BR).setName(NAME_BR2).build();
+        LogFile log3 = LogFile.newBuilder().setLogType(LOG_TYPE_LC).setName(NAME_LC1).build();
+        LogFile log4 = LogFile.newBuilder().setLogType(LOG_TYPE_LC).setName(NAME_LC2).build();
         FileMetadata expected = FileMetadata.newBuilder()
                 .addLogFiles(log1).addLogFiles(log2).addLogFiles(log3).addLogFiles(log4).build();
         // Assert equality
