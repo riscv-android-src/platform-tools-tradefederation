@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2012 The Android Open Source Project
+ * Copyright (C) 2017 The Android Open Source Project
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -34,16 +34,22 @@ import java.util.List;
 @OptionClass(alias = "run-host-command")
 public class RunHostCommandTargetPreparer implements ITargetCleaner {
 
-    @Option(name = "host-setup-command", description = "Commands to run before the test.")
+    @Option(
+        name = "host-setup-command",
+        description = "Command to be run before the test. Can be repeated."
+    )
     private List<String> mSetUpCommands = new LinkedList<>();
 
-    @Option(name = "host-teardown-command", description = "Commands to run after the test.")
+    @Option(
+        name = "host-teardown-command",
+        description = "Command to be run after the test. Can be repeated."
+    )
     private List<String> mTearDownCommands = new LinkedList<>();
 
     @Option(
         name = "host-cmd-timeout",
         isTimeVal = true,
-        description = "Timeout of running commands in milliseconds."
+        description = "Timeout for each command specified."
     )
     private long mTimeout = 60000L;
 
