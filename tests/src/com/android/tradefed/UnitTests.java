@@ -107,6 +107,7 @@ import com.android.tradefed.targetprep.PreloadedClassesPreparerTest;
 import com.android.tradefed.targetprep.PushFilePreparerTest;
 import com.android.tradefed.targetprep.PythonVirtualenvPreparerTest;
 import com.android.tradefed.targetprep.RunCommandTargetPreparerTest;
+import com.android.tradefed.targetprep.RunHostCommandTargetPreparerTest;
 import com.android.tradefed.targetprep.SdkAvdPreparerTest;
 import com.android.tradefed.targetprep.StopServicesSetupTest;
 import com.android.tradefed.targetprep.SystemUpdaterDeviceFlasherTest;
@@ -322,6 +323,7 @@ import org.junit.runners.Suite.SuiteClasses;
     PushFilePreparerTest.class,
     PythonVirtualenvPreparerTest.class,
     RunCommandTargetPreparerTest.class,
+    RunHostCommandTargetPreparerTest.class,
     SdkAvdPreparerTest.class,
     StopServicesSetupTest.class,
     SystemUpdaterDeviceFlasherTest.class,
