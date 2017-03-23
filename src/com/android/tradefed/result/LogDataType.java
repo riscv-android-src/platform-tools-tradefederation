@@ -20,48 +20,54 @@ package com.android.tradefed.result;
  */
 public enum LogDataType {
 
-    TEXT("txt", false, true),
-    XML("xml", false, true),
-    HTML("html", true, true),
-    PNG("png", true, false),
-    EAR("ear", true, false),
-    ZIP("zip", true, false),
-    JPEG("jpeg", true, false),
-    TAR_GZ("tar.gz", true, false),
-    GZIP("gz", true, false),
-    HPROF("hprof", true, false),
-    COVERAGE("ec", false, false),  /* Emma coverage file */
+    TEXT("txt", "text/plain", false, true),
+    XML("xml", "text/xml", false, true),
+    HTML("html", "text/html", true, true),
+    PNG("png", "image/png", true, false),
+    EAR("ear", "application/octet-stream", true, false),
+    ZIP("zip", "application/zip", true, false),
+    JPEG("jpeg", "image/jpeg", true, false),
+    TAR_GZ("tar.gz", "application/gzip", true, false),
+    GZIP("gz", "application/gzip", true, false),
+    HPROF("hprof", "text/plain", true, false),
+    COVERAGE("ec", "text/plain", false, false),  /* Emma coverage file */
     /* Specific text file types */
-    BUGREPORT("txt", false, true),
-    BUGREPORTZ("zip", true, false),
-    LOGCAT("txt", false, true),
-    KERNEL_LOG("txt", false, true),
-    MONKEY_LOG("txt", false, true),
-    PROCRANK("txt", false, true),
-    MEM_INFO("txt", false, true),
-    TOP("txt", false, true),
-    DUMPSYS("txt", false, true),
-    COMPACT_MEMINFO("txt", false, true),  // dumpsys meminfo -c
-    SERVICES("txt", false, true),  // dumpsys activity services
-    GFX_INFO("txt", false, true),  // dumpsys gfxinfo
-    CPU_INFO("txt", false, true),  // dumpsys cpuinfo
-    JACOCO_CSV("csv", false, true), // JaCoCo coverage report in CSV format
-    JACOCO_XML("xml", false, true), // JaCoCo coverage report in XML format
+    BUGREPORT("txt", "text/plain", false, true),
+    BUGREPORTZ("zip", "application/zip", true, false),
+    LOGCAT("txt", "text/plain", false, true),
+    KERNEL_LOG("txt", "text/plain", false, true),
+    MONKEY_LOG("txt", "text/plain", false, true),
+    PROCRANK("txt", "text/plain", false, true),
+    MEM_INFO("txt", "text/plain", false, true),
+    TOP("txt", "text/plain", false, true),
+    DUMPSYS("txt", "text/plain", false, true),
+    COMPACT_MEMINFO("txt", "text/plain", false, true),  // dumpsys meminfo -c
+    SERVICES("txt", "text/plain", false, true),  // dumpsys activity services
+    GFX_INFO("txt", "text/plain", false, true),  // dumpsys gfxinfo
+    CPU_INFO("txt", "text/plain", false, true),  // dumpsys cpuinfo
+    JACOCO_CSV("csv", "text/csv", false, true), // JaCoCo coverage report in CSV format
+    JACOCO_XML("xml", "text/xml", false, true), // JaCoCo coverage report in XML format
     /* Unknown file type */
-    UNKNOWN("dat", false, false);
+    UNKNOWN("dat", "text/plain", false, false);
 
     private final String mFileExt;
+    private final String mContentType;
     private final boolean mIsCompressed;
     private final boolean mIsText;
 
-    LogDataType(String fileExt, boolean compressed, boolean text) {
+    LogDataType(String fileExt, String contentType, boolean compressed, boolean text) {
         mFileExt = fileExt;
         mIsCompressed = compressed;
         mIsText = text;
+        mContentType = contentType;
     }
 
     public String getFileExt() {
         return mFileExt;
+    }
+
+    public String getContentType() {
+        return mContentType;
     }
 
     /**
