@@ -51,6 +51,7 @@ public class BluetoothUtils {
     private static final Pattern BONDED_MAC_HEADER =
             Pattern.compile("INSTRUMENTATION_RESULT: device-\\d{2}=(.*)$");
     private static final String BTSNOOP_LOG_FILE = "btsnoop_hci.log";
+    private static final String BT_STACK_CONF = "/etc/bluetooth/bt_stack.conf";
     public static final String BTSNOOP_API = "bluetoothConfigHciSnoopLog";
 
     /**
@@ -235,18 +236,26 @@ public class BluetoothUtils {
             String type, int iteration) throws DeviceNotAvailableException {
         File logFile = null;
         InputStreamSource logSource = null;
-        try {
-            logFile = device.pullFileFromExternal(BTSNOOP_LOG_FILE);
-            if (logFile != null) {
-                CLog.d("Sending %s %d byte file %s into the logosphere!", type, logFile.length(),
-                        logFile);
-                logSource = new FileInputStreamSource(logFile);
-                listener.testLog(String.format("%s_btsnoop_%d", type, iteration),
-                        LogDataType.UNKNOWN, logSource);
+        String fileName = getBtSnoopLogFilePath(device);
+        if (fileName != null) {
+            try {
+                logFile = device.pullFile(fileName);
+                if (logFile != null) {
+                    CLog.d(
+                            "Sending %s %d byte file %s into the logosphere!",
+                            type, logFile.length(), logFile);
+                    logSource = new FileInputStreamSource(logFile);
+                    listener.testLog(
+                            String.format("%s_btsnoop_%d", type, iteration),
+                            LogDataType.UNKNOWN,
+                            logSource);
+                }
+            } finally {
+                FileUtil.deleteFile(logFile);
+                StreamUtil.cancel(logSource);
             }
-        } finally {
-            FileUtil.deleteFile(logFile);
-            StreamUtil.cancel(logSource);
+        } else {
+            return;
         }
     }
 
@@ -254,6 +263,31 @@ public class BluetoothUtils {
      * Delete snoop log file from device
      */
     public static void cleanLogFile(ITestDevice device) throws DeviceNotAvailableException {
-        device.executeShellCommand(String.format("rm ${EXTERNAL_STORAGE}/%s", BTSNOOP_LOG_FILE));
+        String fileName = getBtSnoopLogFilePath(device);
+        if (fileName != null) {
+            device.executeShellCommand(String.format("rm %s", fileName));
+        } else {
+            CLog.e("Not able to delete BT snoop log, file not found");
+        }
+    }
+
+    /**
+     * Get bt snoop log file path from bt_stack.config file
+     *
+     * @param device
+     * @return THe file name for bt_snoop_log or null if it is not found
+     */
+    public static String getBtSnoopLogFilePath(ITestDevice device)
+            throws DeviceNotAvailableException {
+        String snoopfileSetting =
+                device.executeShellCommand(
+                        String.format("cat %s | grep BtSnoopFileName", BT_STACK_CONF));
+        String[] settingItems = snoopfileSetting.split("=");
+        if (settingItems.length > 1) {
+            return settingItems[1].trim();
+        } else {
+            CLog.e(String.format("Not able to local BT snoop log, '%s'", snoopfileSetting));
+            return null;
+        }
     }
 }
