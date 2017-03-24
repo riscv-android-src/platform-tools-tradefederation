@@ -16,6 +16,7 @@
 package com.android.tradefed.util;
 
 import com.android.tradefed.log.LogUtil.CLog;
+import com.android.tradefed.result.LogDataType;
 
 import junit.framework.TestCase;
 
@@ -361,5 +362,20 @@ public class FileUtilTest extends TestCase {
         } finally {
             FileUtil.recursiveDelete(tmpDir);
         }
+    }
+
+    public void testGetContentType_text() throws Exception {
+        assertEquals(LogDataType.TEXT.getContentType(),
+                FileUtil.getContentType("path/to/file.txt"));
+    }
+
+    public void testGetContentType_html() throws Exception {
+        assertEquals(LogDataType.HTML.getContentType(),
+                FileUtil.getContentType("path/to/file.html"));
+    }
+
+    public void testGetContentType_png() throws Exception {
+        assertEquals(LogDataType.PNG.getContentType(),
+                FileUtil.getContentType("path/to/file.png"));
     }
 }

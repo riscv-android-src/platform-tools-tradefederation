@@ -19,6 +19,7 @@ import com.android.ddmlib.Log;
 import com.android.tradefed.command.FatalHostError;
 import com.android.tradefed.config.Option;
 import com.android.tradefed.log.LogUtil.CLog;
+import com.android.tradefed.result.LogDataType;
 
 import java.io.BufferedInputStream;
 import java.io.BufferedOutputStream;
@@ -31,9 +32,9 @@ import java.io.FilenameFilter;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
-import java.nio.file.attribute.PosixFilePermission;
 import java.nio.file.Files;
 import java.nio.file.Paths;
+import java.nio.file.attribute.PosixFilePermission;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.EnumSet;
@@ -960,5 +961,25 @@ public class FileUtil {
                 .filter(path -> new File(path.toString()).getName().matches(filter))
                 .forEach(path -> files.add(path.toString()));
         return files;
+    }
+
+    /**
+     * Get file's content type based it's extension.
+     * @param filePath the file path
+     * @return content type
+     */
+    public static String getContentType(String filePath) {
+        int index = filePath.lastIndexOf('.');
+        String ext = "";
+        if (index >= 0) {
+            ext = filePath.substring(index + 1);
+        }
+        LogDataType[] dataTypes = LogDataType.values();
+        for (LogDataType dataType: dataTypes) {
+            if (ext.equals(dataType.getFileExt())) {
+                return dataType.getContentType();
+            }
+        }
+        return LogDataType.UNKNOWN.getContentType();
     }
 }
