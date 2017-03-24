@@ -149,7 +149,10 @@ public class SubprocessResultsReporter implements ITestInvocationListener, AutoC
         if (dataStream != null && dataStream.size() != 0) {
             File tmpFile = null;
             try {
-                tmpFile = FileUtil.createTempFile(dataName, dataType.getFileExt());
+                // put 'subprocess' in front to identify the files.
+                tmpFile =
+                        FileUtil.createTempFile(
+                                "subprocess-" + dataName, "." + dataType.getFileExt());
                 FileUtil.writeToFile(dataStream.createInputStream(), tmpFile);
                 TestLogEventInfo info = new TestLogEventInfo(dataName, dataType, tmpFile);
                 printEvent(SubprocessTestResultsParser.StatusKeys.TEST_LOG, info);

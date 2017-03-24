@@ -175,6 +175,22 @@ public class ZipUtilTest extends TestCase {
         }
     }
 
+    /**
+     * Test that {@link ZipUtil#extractZipToTemp(File, String)} properly throws when an incorrect
+     * zip is presented.
+     */
+    public void testExtractZipToTemp() throws Exception {
+        File tmpFile = FileUtil.createTempFile("ziputiltest", ".zip");
+        try {
+            ZipUtil.extractZipToTemp(tmpFile, "testExtractZipToTemp");
+            fail("Should have thrown an exception");
+        } catch (IOException expected) {
+            // expected
+        } finally {
+            FileUtil.deleteFile(tmpFile);
+        }
+    }
+
     // Helpers
     private File createTempDir(String prefix) throws IOException {
         return createTempDir(prefix, null);

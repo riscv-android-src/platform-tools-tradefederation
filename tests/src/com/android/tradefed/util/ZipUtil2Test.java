@@ -15,6 +15,8 @@
  */
 package com.android.tradefed.util;
 
+import static org.junit.Assert.fail;
+
 import org.apache.commons.compress.archivers.zip.ZipFile;
 import org.junit.After;
 import org.junit.Assert;
@@ -97,6 +99,23 @@ public class ZipUtil2Test {
             }
         } finally {
             ZipFile.closeQuietly(zipFile);
+        }
+    }
+
+    /**
+     * Test that {@link ZipUtil2#extractZipToTemp(File, String)} properly throws when an incorrect
+     * zip is presented.
+     */
+    @Test
+    public void testExtractZipToTemp() throws Exception {
+        File tmpFile = FileUtil.createTempFile("ziputiltest", ".zip");
+        try {
+            ZipUtil2.extractZipToTemp(tmpFile, "testExtractZipToTemp");
+            fail("Should have thrown an exception");
+        } catch (IOException expected) {
+            // expected
+        } finally {
+            FileUtil.deleteFile(tmpFile);
         }
     }
 

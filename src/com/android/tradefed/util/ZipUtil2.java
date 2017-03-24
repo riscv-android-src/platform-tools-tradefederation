@@ -100,9 +100,13 @@ public class ZipUtil2 {
      */
     public static File extractZipToTemp(File zipFile, String nameHint) throws IOException {
         File localRootDir = FileUtil.createTempDir(nameHint);
-        try (ZipFile zipFileTmp = new ZipFile(zipFile)) {
-            extractZip(zipFileTmp, localRootDir);
+        try (ZipFile zip = new ZipFile(zipFile)) {
+            extractZip(zip, localRootDir);
             return localRootDir;
+        } catch (IOException e) {
+            // clean tmp file since we couldn't extract.
+            FileUtil.recursiveDelete(localRootDir);
+            throw e;
         }
     }
 
