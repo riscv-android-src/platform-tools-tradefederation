@@ -117,4 +117,20 @@ public class BluetoothUtilsTest {
         Assert.assertFalse(BluetoothUtils.toggleBtsnoopLogging(mSpyClient, false));
     }
 
+    @Test
+    public void testGetBtSnoopLogFilePath() throws DeviceNotAvailableException, IOException {
+        when(mMockDevice.executeShellCommand(Mockito.anyString()))
+                .thenReturn("BtSnoopFileName=/data/misc/bluetooth/logs/btsnoop_hci.log");
+        Assert.assertEquals(
+                BluetoothUtils.getBtSnoopLogFilePath(mMockDevice),
+                "/data/misc/bluetooth/logs/btsnoop_hci.log");
+    }
+
+    @Test
+    public void testGetBtSnoopLogFilePathFailed() throws DeviceNotAvailableException, IOException {
+        when(mMockDevice.executeShellCommand(Mockito.anyString()))
+                .thenReturn("BtSnoopFileName/data/misc/bluetooth/logs/btsnoop_hci.log");
+        Assert.assertNull(BluetoothUtils.getBtSnoopLogFilePath(mMockDevice));
+    }
+
 }
