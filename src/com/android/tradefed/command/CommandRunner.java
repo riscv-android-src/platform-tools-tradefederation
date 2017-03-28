@@ -33,9 +33,7 @@ public class CommandRunner {
     private ICommandScheduler mScheduler;
     private ExitCode mErrorCode = ExitCode.NO_ERROR;
 
-    CommandRunner() {
-
-    }
+    public CommandRunner() {}
 
     public ExitCode getErrorCode() {
         return mErrorCode;
