@@ -287,8 +287,9 @@ public class SideloadOtaStabilityTest implements IDeviceTest, IBuildReceiver,
      */
     private BootTimeInfo installOta(ITestInvocationListener listener, IDeviceBuildInfo otaBuild)
             throws DeviceNotAvailableException {
-        TestIdentifier test = new TestIdentifier(getClass().getName(), "apply_ota");
-        Map<String, String> metrics = new HashMap<>();
+        TestIdentifier test = new TestIdentifier(getClass().getName(),
+                String.format("apply_ota[%s]", mRunName));
+        Map<String, String> metrics = new HashMap<String, String>();
         listener.testStarted(test);
         try {
             mKmsgReceiver.start();
