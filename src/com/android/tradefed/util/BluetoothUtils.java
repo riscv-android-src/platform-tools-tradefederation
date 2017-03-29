@@ -50,7 +50,6 @@ public class BluetoothUtils {
     private static final int MAX_RETRIES = 3;
     private static final Pattern BONDED_MAC_HEADER =
             Pattern.compile("INSTRUMENTATION_RESULT: device-\\d{2}=(.*)$");
-    private static final String BTSNOOP_LOG_FILE = "btsnoop_hci.log";
     private static final String BT_STACK_CONF = "/etc/bluetooth/bt_stack.conf";
     public static final String BTSNOOP_API = "bluetoothConfigHciSnoopLog";
 
