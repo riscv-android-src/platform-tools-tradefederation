@@ -61,11 +61,10 @@ public class SystemUtil {
      */
     public static List<File> getTestCasesDirs() {
         List<File> testCasesDirs = new ArrayList<File>();
+        // TODO(b/36782030): Add ENV_ANDROID_HOST_OUT_TESTCASES back to the list.
         Set<String> testCasesDirNames =
                 new HashSet<String>(
-                        Arrays.asList(
-                                singleton.getEnv(ENV_ANDROID_TARGET_OUT_TESTCASES),
-                                singleton.getEnv(ENV_ANDROID_HOST_OUT_TESTCASES)));
+                        Arrays.asList(singleton.getEnv(ENV_ANDROID_TARGET_OUT_TESTCASES)));
         for (String testCasesDirName : testCasesDirNames) {
             if (testCasesDirName != null) {
                 File dir = new File(testCasesDirName);
