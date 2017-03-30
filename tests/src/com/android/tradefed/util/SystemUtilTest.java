@@ -48,12 +48,10 @@ public class SystemUtilTest {
             SystemUtil.singleton = Mockito.mock(SystemUtil.class);
             Mockito.when(SystemUtil.singleton.getEnv(SystemUtil.ENV_ANDROID_TARGET_OUT_TESTCASES))
                     .thenReturn(targetOutDir.getAbsolutePath());
-            Mockito.when(SystemUtil.singleton.getEnv(SystemUtil.ENV_ANDROID_HOST_OUT_TESTCASES))
-                    .thenReturn(hostOutDir.getAbsolutePath());
 
             Set<File> testCasesDirs = new HashSet<File>(SystemUtil.getTestCasesDirs());
             assertTrue(testCasesDirs.contains(targetOutDir));
-            assertTrue(testCasesDirs.contains(hostOutDir));
+            assertTrue(!testCasesDirs.contains(hostOutDir));
         } finally {
             FileUtil.recursiveDelete(targetOutDir);
             FileUtil.recursiveDelete(hostOutDir);
@@ -71,8 +69,6 @@ public class SystemUtilTest {
         SystemUtil.singleton = Mockito.mock(SystemUtil.class);
         Mockito.when(SystemUtil.singleton.getEnv(SystemUtil.ENV_ANDROID_TARGET_OUT_TESTCASES))
                 .thenReturn(targetOutDir.getAbsolutePath());
-        Mockito.when(SystemUtil.singleton.getEnv(SystemUtil.ENV_ANDROID_HOST_OUT_TESTCASES))
-                .thenReturn(null);
 
         Set<File> testCasesDirs = new HashSet<File>(SystemUtil.getTestCasesDirs());
         assertEquals(testCasesDirs.size(), 0);
