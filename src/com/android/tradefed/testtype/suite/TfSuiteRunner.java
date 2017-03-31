@@ -30,11 +30,15 @@ import java.util.List;
  * folder.
  */
 public class TfSuiteRunner extends ITestSuite {
-    private static final String SUITE_PREFIX = "suite/";
-
     @Option(name = "run-suite-tag", description = "The tag that must be run.",
             mandatory = true)
     private String mSuiteTag = null;
+
+    @Option(
+        name = "suite-config-prefix",
+        description = "Search only configs with given prefix for suite tags."
+    )
+    private String mSuitePrefix = null;
 
     /**
      * {@inheritDoc}
@@ -44,8 +48,8 @@ public class TfSuiteRunner extends ITestSuite {
         LinkedHashMap <String, IConfiguration> configMap =
                 new LinkedHashMap<String, IConfiguration>();
         IConfigurationFactory configFactory = ConfigurationFactory.getInstance();
-        // We only list configuration under config/suite/ in order to have a smaller search.
-        List<String> configs = configFactory.getConfigList(SUITE_PREFIX);
+        // TODO: Do a better job searching for configs.
+        List<String> configs = configFactory.getConfigList(mSuitePrefix);
         for (String configName : configs) {
             try {
                 IConfiguration testConfig =
