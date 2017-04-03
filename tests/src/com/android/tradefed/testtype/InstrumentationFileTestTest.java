@@ -123,8 +123,9 @@ public class InstrumentationFileTestTest extends TestCase {
 
         // mock successful test run lifecycle
         mMockListener.testRunStarted(TEST_PACKAGE_VALUE, 1);
-        mMockListener.testStarted(test);
-        mMockListener.testEnded(test, Collections.EMPTY_MAP);
+        mMockListener.testStarted(EasyMock.eq(test), EasyMock.anyLong());
+        mMockListener.testEnded(
+                EasyMock.eq(test), EasyMock.anyLong(), EasyMock.eq(Collections.EMPTY_MAP));
         mMockListener.testRunEnded(0, Collections.EMPTY_MAP);
 
         EasyMock.replay(mMockListener, mMockTestDevice);
@@ -202,20 +203,23 @@ public class InstrumentationFileTestTest extends TestCase {
         // First run:
         mMockListener.testRunStarted(TEST_PACKAGE_VALUE, 2);
         // expect test1 to start and finish successfully
-        mMockListener.testStarted(test1);
-        mMockListener.testEnded(test1, Collections.EMPTY_MAP);
+        mMockListener.testStarted(EasyMock.eq(test1), EasyMock.anyLong());
+        mMockListener.testEnded(
+                EasyMock.eq(test1), EasyMock.anyLong(), EasyMock.eq(Collections.EMPTY_MAP));
         mMockListener.testRunEnded(1, Collections.EMPTY_MAP);
         // expect test2 to start but never finish
-        mMockListener.testStarted(test2);
+        mMockListener.testStarted(EasyMock.eq(test2), EasyMock.anyLong());
         // Second run:
         mMockListener.testRunStarted(TEST_PACKAGE_VALUE, 2);
         // expect test3 to start and finish successfully
-        mMockListener.testStarted(test3);
-        mMockListener.testEnded(test3, Collections.EMPTY_MAP);
+        mMockListener.testStarted(EasyMock.eq(test3), EasyMock.anyLong());
+        mMockListener.testEnded(
+                EasyMock.eq(test3), EasyMock.anyLong(), EasyMock.eq(Collections.EMPTY_MAP));
         mMockListener.testRunEnded(1, Collections.EMPTY_MAP);
         // expect to rerun test2 successfully
-        mMockListener.testStarted(test2);
-        mMockListener.testEnded(test2, Collections.EMPTY_MAP);
+        mMockListener.testStarted(EasyMock.eq(test2), EasyMock.anyLong());
+        mMockListener.testEnded(
+                EasyMock.eq(test2), EasyMock.anyLong(), EasyMock.eq(Collections.EMPTY_MAP));
         mMockListener.testRunEnded(1, Collections.EMPTY_MAP);
 
         EasyMock.replay(mMockListener, mMockTestDevice);
@@ -299,21 +303,23 @@ public class InstrumentationFileTestTest extends TestCase {
         // First run:
         mMockListener.testRunStarted(TEST_PACKAGE_VALUE, 2);
         // expect test1 and test 2 to start but never finish
-        mMockListener.testStarted(test1);
-        mMockListener.testStarted(test2);
+        mMockListener.testStarted(EasyMock.eq(test1), EasyMock.anyLong());
+        mMockListener.testStarted(EasyMock.eq(test2), EasyMock.anyLong());
 
         // re-run test1 and test2 serially
         // first serial re-run:
         mMockListener.testRunStarted(TEST_PACKAGE_VALUE, 1);
         // expect test1 to start and finish successfully
-        mMockListener.testStarted(test1);
-        mMockListener.testEnded(test1, Collections.EMPTY_MAP);
+        mMockListener.testStarted(EasyMock.eq(test1), EasyMock.anyLong());
+        mMockListener.testEnded(
+                EasyMock.eq(test1), EasyMock.anyLong(), EasyMock.eq(Collections.EMPTY_MAP));
         mMockListener.testRunEnded(1, Collections.EMPTY_MAP);
         // first serial re-run:
         mMockListener.testRunStarted(TEST_PACKAGE_VALUE, 1);
         // expect test2 to start and finish successfully
-        mMockListener.testStarted(test2);
-        mMockListener.testEnded(test2, Collections.EMPTY_MAP);
+        mMockListener.testStarted(EasyMock.eq(test2), EasyMock.anyLong());
+        mMockListener.testEnded(
+                EasyMock.eq(test2), EasyMock.anyLong(), EasyMock.eq(Collections.EMPTY_MAP));
         mMockListener.testRunEnded(1, Collections.EMPTY_MAP);
 
         EasyMock.replay(mMockListener, mMockTestDevice);
@@ -371,8 +377,8 @@ public class InstrumentationFileTestTest extends TestCase {
         // First run:
         mMockListener.testRunStarted(TEST_PACKAGE_VALUE, 2);
         // expect test1 and test 2 to start but never finish
-        mMockListener.testStarted(test1);
-        mMockListener.testStarted(test2);
+        mMockListener.testStarted(EasyMock.eq(test1), EasyMock.anyLong());
+        mMockListener.testStarted(EasyMock.eq(test2), EasyMock.anyLong());
 
         EasyMock.replay(mMockListener, mMockTestDevice);
         mInstrumentationFileTest.run(mMockListener);
@@ -476,24 +482,27 @@ public class InstrumentationFileTestTest extends TestCase {
 
         // First run:
         mMockListener.testRunStarted(TEST_PACKAGE_VALUE, 6);
-        mMockListener.testStarted(test1);
-        mMockListener.testEnded(test1, Collections.EMPTY_MAP);
+        mMockListener.testStarted(EasyMock.eq(test1), EasyMock.anyLong());
+        mMockListener.testEnded(
+                EasyMock.eq(test1), EasyMock.anyLong(), EasyMock.eq(Collections.EMPTY_MAP));
         mMockListener.testRunEnded(1, Collections.EMPTY_MAP);
-        mMockListener.testStarted(test2);
+        mMockListener.testStarted(EasyMock.eq(test2), EasyMock.anyLong());
 
         // Second run:
         mMockListener.testRunStarted(TEST_PACKAGE_VALUE, 5);
-        mMockListener.testStarted(test2);
-        mMockListener.testEnded(test2, Collections.EMPTY_MAP);
+        mMockListener.testStarted(EasyMock.eq(test2), EasyMock.anyLong());
+        mMockListener.testEnded(
+                EasyMock.eq(test2), EasyMock.anyLong(), EasyMock.eq(Collections.EMPTY_MAP));
         mMockListener.testRunEnded(1, Collections.EMPTY_MAP);
-        mMockListener.testStarted(test3);
+        mMockListener.testStarted(EasyMock.eq(test3), EasyMock.anyLong());
 
         // Third run:
         mMockListener.testRunStarted(TEST_PACKAGE_VALUE, 4);
-        mMockListener.testStarted(test3);
-        mMockListener.testEnded(test3, Collections.EMPTY_MAP);
+        mMockListener.testStarted(EasyMock.eq(test3), EasyMock.anyLong());
+        mMockListener.testEnded(
+                EasyMock.eq(test3), EasyMock.anyLong(), EasyMock.eq(Collections.EMPTY_MAP));
         mMockListener.testRunEnded(1, Collections.EMPTY_MAP);
-        mMockListener.testStarted(test4);
+        mMockListener.testStarted(EasyMock.eq(test4), EasyMock.anyLong());
 
         // MAX_ATTEMPTS is 3, so there will be no forth run.
 

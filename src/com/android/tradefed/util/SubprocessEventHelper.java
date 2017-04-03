@@ -40,6 +40,8 @@ public class SubprocessEventHelper {
     private static final String TESTCOUNT_KEY = "testCount";
     private static final String TIME_KEY = "time";
     private static final String REASON_KEY = "reason";
+    private static final String START_TIME = "start_time";
+    private static final String END_TIME = "end_time";
 
     private static final String DATA_NAME_KEY = "dataName";
     private static final String DATA_TYPE_KEY = "dataType";
@@ -181,9 +183,7 @@ public class SubprocessEventHelper {
         }
     }
 
-    /**
-     * Base Helper for testStarted and TestIgnored information.
-     */
+    /** Base Helper for TestIgnored information. */
     public static class BaseTestEventInfo {
         public String mClassName = null;
         public String mTestName = null;
@@ -222,9 +222,36 @@ public class SubprocessEventHelper {
         }
     }
 
-    /**
-     * Helper for testFailed information.
-     */
+    /** Helper for testStarted information */
+    public static class TestStartedEventInfo extends BaseTestEventInfo {
+        public Long mStartTime = null;
+
+        public TestStartedEventInfo(String className, String testName, Long startTime) {
+            super(className, testName);
+            mStartTime = startTime;
+        }
+
+        public TestStartedEventInfo(JSONObject jsonObject) throws JSONException {
+            super(jsonObject);
+            if (jsonObject.has(START_TIME)) {
+                mStartTime = jsonObject.getLong(START_TIME);
+            }
+            jsonObject.remove(START_TIME);
+        }
+
+        @Override
+        protected JSONObject getNewJson() {
+            JSONObject json = new JSONObject();
+            try {
+                json.put(START_TIME, mStartTime);
+            } catch (JSONException e) {
+                CLog.e(e);
+            }
+            return json;
+        }
+    }
+
+    /** Helper for testFailed information. */
     public static class FailedTestEventInfo extends BaseTestEventInfo {
         public String mTrace = null;
 
@@ -258,15 +285,38 @@ public class SubprocessEventHelper {
      */
     public static class TestEndedEventInfo extends BaseTestEventInfo {
         public Map<String, String> mRunMetrics = null;
+        public Long mEndTime = null;
 
         public TestEndedEventInfo(String className, String testName,
                 Map<String, String> runMetrics) {
             super(className, testName);
             mRunMetrics = runMetrics;
+            mEndTime = System.currentTimeMillis();
         }
 
+        /**
+         * Create an event object to represent the testEnded callback.
+         *
+         * @param className the classname of the tests
+         * @param testName the name of the tests
+         * @param endTime the timestamp at which the test ended (from {@link
+         *     System#currentTimeMillis()})
+         * @param runMetrics the metrics reported by the test.
+         */
+        public TestEndedEventInfo(
+                String className, String testName, Long endTime, Map<String, String> runMetrics) {
+            super(className, testName);
+            mEndTime = endTime;
+            mRunMetrics = runMetrics;
+        }
+
+        /** Create and populate and event object for testEnded from a JSON. */
         public TestEndedEventInfo(JSONObject jsonObject) throws JSONException {
             super(jsonObject);
+            if (jsonObject.has(END_TIME)) {
+                mEndTime = jsonObject.getLong(END_TIME);
+            }
+            jsonObject.remove(END_TIME);
             Iterator<?> i = jsonObject.keys();
             mRunMetrics = new HashMap<String, String>();
             while(i.hasNext()) {
@@ -277,11 +327,18 @@ public class SubprocessEventHelper {
 
         @Override
         protected JSONObject getNewJson() {
+            JSONObject json;
             if (mRunMetrics != null) {
-                return new JSONObject(mRunMetrics);
+                json = new JSONObject(mRunMetrics);
             } else {
-                return new JSONObject();
+                json = new JSONObject();
             }
+            try {
+                json.put(END_TIME, mEndTime);
+            } catch (JSONException e) {
+                CLog.e(e);
+            }
+            return json;
         }
     }
 
