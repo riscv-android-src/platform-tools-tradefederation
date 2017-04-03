@@ -93,7 +93,8 @@ public class RunUtilTest extends TestCase {
     }
 
     /**
-     * Test that {@link RunUtil#runTimedCmd(long, String[])} fails when garbage times out.
+     * Test that {@link RunUtil#runTimedCmd(long, String[])} is returning timed out state when the
+     * command does not return in time.
      */
     public void testRunTimedCmd_timeout() {
         String[] command = {"sleep", "10000"};
