@@ -22,7 +22,6 @@ import com.android.tradefed.result.ByteArrayInputStreamSource;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.InputStreamSource;
 import com.android.tradefed.result.LogDataType;
-import com.android.tradefed.testtype.suite.TestFailureListener;
 import com.android.tradefed.util.IRunUtil;
 
 import org.easymock.EasyMock;
@@ -33,9 +32,7 @@ import org.junit.runners.JUnit4;
 
 import java.util.Collections;
 
-/**
- * Unit tests for {@link TestFailureListener}
- */
+/** Unit tests for {@link com.android.tradefed.testtype.suite.TestFailureListener} */
 @RunWith(JUnit4.class)
 public class TestFailureListenerTest {
 
@@ -46,7 +43,7 @@ public class TestFailureListenerTest {
     @Before
     public void setUp() {
         mMockListener = EasyMock.createMock(ITestInvocationListener.class);
-        mMockDevice = EasyMock.createMock(ITestDevice.class);
+        mMockDevice = EasyMock.createStrictMock(ITestDevice.class);
         EasyMock.expect(mMockDevice.getSerialNumber()).andStubReturn("SERIAL");
         // Create base failure listener with all option ON and default logcat size.
         mFailureListener = new TestFailureListener(mMockListener, mMockDevice,

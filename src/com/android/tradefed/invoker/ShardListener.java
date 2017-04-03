@@ -126,7 +126,7 @@ public class ShardListener extends CollectingTestListener {
 
     private void forwardTestResults(Map<TestIdentifier, TestResult> testResults) {
         for (Map.Entry<TestIdentifier, TestResult> testEntry : testResults.entrySet()) {
-            mMasterListener.testStarted(testEntry.getKey());
+            mMasterListener.testStarted(testEntry.getKey(), testEntry.getValue().getStartTime());
             switch (testEntry.getValue().getStatus()) {
                 case FAILURE:
                     mMasterListener.testFailed(testEntry.getKey(),
@@ -143,7 +143,10 @@ public class ShardListener extends CollectingTestListener {
                     break;
             }
             if (!testEntry.getValue().getStatus().equals(TestStatus.INCOMPLETE)) {
-                mMasterListener.testEnded(testEntry.getKey(), testEntry.getValue().getMetrics());
+                mMasterListener.testEnded(
+                        testEntry.getKey(),
+                        testEntry.getValue().getEndTime(),
+                        testEntry.getValue().getMetrics());
             }
         }
     }

@@ -29,6 +29,7 @@ import com.android.tradefed.util.SubprocessEventHelper.TestLogEventInfo;
 import com.android.tradefed.util.SubprocessEventHelper.TestRunEndedEventInfo;
 import com.android.tradefed.util.SubprocessEventHelper.TestRunFailedEventInfo;
 import com.android.tradefed.util.SubprocessEventHelper.TestRunStartedEventInfo;
+import com.android.tradefed.util.SubprocessEventHelper.TestStartedEventInfo;
 import com.android.tradefed.util.SubprocessTestResultsParser;
 
 import java.io.File;
@@ -70,14 +71,19 @@ public class SubprocessResultsReporter implements ITestInvocationListener, AutoC
      */
     @Override
     public void testEnded(TestIdentifier testId, Map<String, String> metrics) {
+        testEnded(testId, System.currentTimeMillis(), metrics);
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public void testEnded(TestIdentifier testId, long endTime, Map<String, String> metrics) {
         TestEndedEventInfo info =
-                new TestEndedEventInfo(testId.getClassName(), testId.getTestName(), metrics);
+                new TestEndedEventInfo(
+                        testId.getClassName(), testId.getTestName(), endTime, metrics);
         printEvent(SubprocessTestResultsParser.StatusKeys.TEST_ENDED, info);
     }
 
-    /**
-     * {@inheritDoc}
-     */
+    /** {@inheritDoc} */
     @Override
     public void testFailed(TestIdentifier testId, String reason) {
         FailedTestEventInfo info =
@@ -131,7 +137,14 @@ public class SubprocessResultsReporter implements ITestInvocationListener, AutoC
      */
     @Override
     public void testStarted(TestIdentifier testId) {
-        BaseTestEventInfo info = new BaseTestEventInfo(testId.getClassName(), testId.getTestName());
+        testStarted(testId, System.currentTimeMillis());
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public void testStarted(TestIdentifier testId, long startTime) {
+        TestStartedEventInfo info =
+                new TestStartedEventInfo(testId.getClassName(), testId.getTestName(), startTime);
         printEvent(SubprocessTestResultsParser.StatusKeys.TEST_STARTED, info);
     }
 
