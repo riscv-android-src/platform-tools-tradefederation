@@ -42,6 +42,9 @@ import java.util.concurrent.TimeUnit;
  */
 public class RunUtil implements IRunUtil {
 
+    public static final String RUNNABLE_NOTIFIER_NAME = "RunnableNotifier";
+    public static final String INHERITIO_PREFIX = "inheritio-";
+
     private static final int POLL_TIME_INCREASE_FACTOR = 4;
     private static final long THREAD_JOIN_POLL_INTERVAL = 30 * 1000;
     private static final long IO_THREAD_JOIN_INTERVAL = 5 * 1000;
@@ -284,8 +287,14 @@ public class RunUtil implements IRunUtil {
             throws IOException {
         CLog.v("Running %s", command);
         Process process = createProcessBuilder(command).start();
-        inheritIO(process.getInputStream(), output, String.format("inheritio-stdout-%s", command));
-        inheritIO(process.getErrorStream(), output, String.format("inheritio-stderr-%s", command));
+        inheritIO(
+                process.getInputStream(),
+                output,
+                String.format(INHERITIO_PREFIX + "stdout-%s", command));
+        inheritIO(
+                process.getErrorStream(),
+                output,
+                String.format(INHERITIO_PREFIX + "stderr-%s", command));
         return process;
     }
 
@@ -502,7 +511,7 @@ public class RunUtil implements IRunUtil {
         RunnableNotifier(IRunUtil.IRunnableResult runnable, boolean logErrors) {
             // Set this thread to be a daemon so that it does not prevent
             // TF from shutting down.
-            setName("RunnableNotifier");
+            setName(RUNNABLE_NOTIFIER_NAME);
             setDaemon(true);
             mRunnable = runnable;
             mLogErrors = logErrors;
@@ -547,6 +556,8 @@ public class RunUtil implements IRunUtil {
         private OutputStream stdOut = null;
         private OutputStream stdErr = null;
         private final boolean mCloseStreamAfterRun;
+        private Object mLock = new Object();
+        private boolean mCancelled = false;
 
         RunnableResult(final CommandResult result, final String input,
                 final ProcessBuilder processBuilder) {
@@ -588,27 +599,36 @@ public class RunUtil implements IRunUtil {
 
         @Override
         public boolean run() throws Exception {
-            mExecutionThread = Thread.currentThread();
-            CLog.d("Running %s", mProcessBuilder.command());
-            mProcess = mProcessBuilder.start();
-            if (mInput != null) {
-                BufferedOutputStream processStdin = new BufferedOutputStream(
-                        mProcess.getOutputStream());
-                processStdin.write(mInput.getBytes("UTF-8"));
-                processStdin.flush();
-                processStdin.close();
+            Thread stdoutThread = null;
+            Thread stderrThread = null;
+            synchronized (mLock) {
+                if (mCancelled == true) {
+                    // if cancel() was called before run() took the lock, we do not even attempt
+                    // to run.
+                    return false;
+                }
+                mExecutionThread = Thread.currentThread();
+                CLog.d("Running %s", mProcessBuilder.command());
+                mProcess = mProcessBuilder.start();
+                if (mInput != null) {
+                    BufferedOutputStream processStdin =
+                            new BufferedOutputStream(mProcess.getOutputStream());
+                    processStdin.write(mInput.getBytes("UTF-8"));
+                    processStdin.flush();
+                    processStdin.close();
+                }
+                // Log the command for thread tracking purpose.
+                stdoutThread =
+                        inheritIO(
+                                mProcess.getInputStream(),
+                                stdOut,
+                                String.format("inheritio-stdout-%s", mProcessBuilder.command()));
+                stderrThread =
+                        inheritIO(
+                                mProcess.getErrorStream(),
+                                stdErr,
+                                String.format("inheritio-stderr-%s", mProcessBuilder.command()));
             }
-            // Log the command for thread tracking purpose.
-            Thread stdoutThread =
-                    inheritIO(
-                            mProcess.getInputStream(),
-                            stdOut,
-                            String.format("inheritio-stdout-%s", mProcessBuilder.command()));
-            Thread stderrThread =
-                    inheritIO(
-                            mProcess.getErrorStream(),
-                            stdErr,
-                            String.format("inheritio-stderr-%s", mProcessBuilder.command()));
             // Wait for process to complete.
             int rc = Integer.MIN_VALUE;
             try {
@@ -658,7 +678,11 @@ public class RunUtil implements IRunUtil {
 
         @Override
         public void cancel() {
-            if (mProcess != null) {
+            mCancelled = true;
+            synchronized (mLock) {
+                if (mProcess == null) {
+                    return;
+                }
                 CLog.i("Cancelling the process execution");
                 mProcess.destroy();
                 try {
