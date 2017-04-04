@@ -73,6 +73,11 @@ public class JsonHttpTestResultReporter extends CollectingTestListener {
             "flag to skip reporting of all the results")
     private boolean mSkipReporting = false;
 
+    @Option(name = "reporting-unit-key-suffix",
+            description = "suffix to append after the regular reporting unit key")
+    private String mReportingUnitKeySuffix = null;
+
+
     private boolean mHasInvocationFailures = false;
     private IInvocationContext mInvocationContext = null;
 
@@ -154,8 +159,12 @@ public class JsonHttpTestResultReporter extends CollectingTestListener {
             // Parse run metrics
             if (runResult.getRunMetrics().size() > 0) {
                 JSONObject runResultMetrics = new JSONObject(runResult.getRunMetrics());
-                allTestMetrics.put(runResult.getName(), runResultMetrics);
-                resultsName.append(String.format("%s%s", runResult.getName(), RESULT_SEPARATOR));
+                String reportingUnit = runResult.getName();
+                if (mReportingUnitKeySuffix != null && !mReportingUnitKeySuffix.isEmpty()) {
+                    reportingUnit += mReportingUnitKeySuffix;
+                }
+                allTestMetrics.put(reportingUnit, runResultMetrics);
+                resultsName.append(String.format("%s%s", reportingUnit, RESULT_SEPARATOR));
             } else {
                 CLog.d("Skipping metrics for %s because results are empty.", runResult.getName());
             }
@@ -169,6 +178,9 @@ public class JsonHttpTestResultReporter extends CollectingTestListener {
                 String reportingUnit = joiner.join(
                         mIncludeRunName ? runResult.getName() : null,
                         testIdentifier.getClassName(), testIdentifier.getTestName());
+                if (mReportingUnitKeySuffix != null && !mReportingUnitKeySuffix.isEmpty()) {
+                    reportingUnit += mReportingUnitKeySuffix;
+                }
                 resultsName.append(String.format("%s%s", reportingUnit, RESULT_SEPARATOR));
                 if (testResult.getMetrics().size() > 0) {
                     JSONObject testResultMetrics = new JSONObject(testResult.getMetrics());
