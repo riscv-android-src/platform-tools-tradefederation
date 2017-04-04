@@ -630,7 +630,9 @@ public class CommandScheduler extends Thread implements ICommandScheduler, IComm
                     "Stray thread detected for command %d, %s. %d threads instead of %d",
                     mCmd.getCommandTracker().getId(), cmd, numThread, EXPECTED_THREAD_COUNT);
             // This is the best we have for debug, it prints to std out.
-            this.getThreadGroup().list();
+            Thread[] listThreads = new Thread[numThread];
+            this.getThreadGroup().enumerate(listThreads);
+            CLog.e("List of remaining threads: %s", Arrays.asList(listThreads));
             List<IHostMonitor> hostMonitors = GlobalConfiguration.getHostMonitorInstances();
             if (hostMonitors != null) {
                 for (IHostMonitor hm : hostMonitors) {
@@ -641,8 +643,9 @@ public class CommandScheduler extends Thread implements ICommandScheduler, IComm
             // printing to stderr will help to catch them.
             System.err.println(
                     String.format(
-                            "We have %s threads instead of 1. Check the logs for list of threads.",
-                            numThread));
+                            "We have %s threads instead of 1: %s. Check the logs for list of "
+                                    + "threads.",
+                            numThread, Arrays.asList(listThreads)));
         }
 
         /** Helper to log an invocation ended event. */

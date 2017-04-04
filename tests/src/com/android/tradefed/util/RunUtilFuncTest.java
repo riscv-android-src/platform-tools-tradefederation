@@ -31,6 +31,7 @@ import java.io.Writer;
  */
 public class RunUtilFuncTest extends TestCase {
 
+    private static final long VERY_SHORT_TIMEOUT_MS = 10;
     private static final long SHORT_TIMEOUT_MS = 500;
 
     private abstract class MyRunnable implements IRunUtil.IRunnableResult {
@@ -153,5 +154,31 @@ public class RunUtilFuncTest extends TestCase {
         result = runUtil.runTimedCmd(SHORT_TIMEOUT_MS, "printenv", "bar");
         assertTrue(result.getStatus() == CommandStatus.FAILED);
         assertTrue("".equals(result.getStdout().trim()));
+    }
+
+    /**
+     * Test that {@link RunUtil#runTimedCmd(long, String[])} returns timeout when the command is too
+     * short and also clean up all its thread.
+     */
+    public void testRunTimedCmd_timeout() throws InterruptedException {
+        RunUtil runUtil = new RunUtil();
+        String[] command = {"sleep", "10000"};
+        CommandResult result = runUtil.runTimedCmd(VERY_SHORT_TIMEOUT_MS, command);
+        assertEquals(CommandStatus.TIMED_OUT, result.getStatus());
+        assertEquals("", result.getStdout());
+        assertEquals("", result.getStderr());
+        // We give it some times to clean up the process
+        Thread.sleep(5000);
+        Thread[] list = new Thread[Thread.currentThread().getThreadGroup().activeCount()];
+        Thread.currentThread().getThreadGroup().enumerate(list);
+        // Ensure the list of Threads does not contain the RunnableNotifier or InheritIO threads.
+        for (Thread t : list) {
+            assertFalse(
+                    String.format("We found a thread: %s", t.getName()),
+                    t.getName().contains(RunUtil.RUNNABLE_NOTIFIER_NAME));
+            assertFalse(
+                    String.format("We found a thread: %s", t.getName()),
+                    t.getName().contains(RunUtil.INHERITIO_PREFIX));
+        }
     }
 }
