@@ -673,6 +673,7 @@ public class CommandScheduler extends Thread implements ICommandScheduler, IComm
          * all running invocations.
          */
         public void stopInvocation(String message) {
+            getInvocation().notifyInvocationStopped();
             for (ITestDevice device : mInvocationContext.getDevices()) {
                 if (device != null && device.getIDevice().isOnline()) {
                     // Kill all running processes on device.

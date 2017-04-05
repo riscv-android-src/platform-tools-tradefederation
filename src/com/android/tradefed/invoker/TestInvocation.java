@@ -115,6 +115,7 @@ public class TestInvocation implements ITestInvocation {
     }
 
     private String mStatus = "(not invoked)";
+    private boolean mStopRequested = false;
 
     /**
      * A {@link ResultForwarder} for forwarding resumed invocations.
@@ -472,6 +473,17 @@ public class TestInvocation implements ITestInvocation {
                 }
                 for (ITestDevice device : context.getDevices()) {
                     reportLogs(device, listener, Stage.TEARDOWN);
+                }
+                if (mStopRequested) {
+                    CLog.e(
+                            "====================================================================="
+                                    + "====");
+                    CLog.e(
+                            "Invocation was interrupted due to TradeFed stop, results will be "
+                                    + "affected.");
+                    CLog.e(
+                            "====================================================================="
+                                    + "====");
                 }
                 reportHostLog(listener, config.getLogOutput());
                 elapsedTime = System.currentTimeMillis() - startTime;
@@ -968,5 +980,10 @@ public class TestInvocation implements ITestInvocation {
 
     public static String getEmulatorLogName(Stage stage) {
         return EMULATOR_LOG_NAME_PREFIX + stage.getName();
+    }
+
+    @Override
+    public void notifyInvocationStopped() {
+        mStopRequested = true;
     }
 }
