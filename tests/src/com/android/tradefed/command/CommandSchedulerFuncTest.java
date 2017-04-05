@@ -197,6 +197,7 @@ public class CommandSchedulerFuncTest extends TestCase {
         Integer mFastCount = 0;
         Integer mSlowCountLimit = 40;
         public boolean runInterrupted = false;
+        public boolean printedStop = false;
 
         @Deprecated
         @Override
@@ -244,7 +245,12 @@ public class CommandSchedulerFuncTest extends TestCase {
                         throws DeviceNotAvailableException, Throwable {
             invoke(metadata.getDevices().get(0), config, rescheduler, extraListeners);
         }
-   }
+
+        @Override
+        public void notifyInvocationStopped() {
+            printedStop = true;
+        }
+    }
 
     /**
      * Test that the Invocation is not interruptible even when Battery is low.
@@ -285,6 +291,8 @@ public class CommandSchedulerFuncTest extends TestCase {
         mCommandScheduler.shutdown();
         mCommandScheduler.join(WAIT_TIMEOUT_MS);
         assertFalse(mMockTestInvoker.runInterrupted);
+        // Notify was not sent to the invocation because it was not forced shutdown.
+        assertFalse(mMockTestInvoker.printedStop);
     }
 
     /**
@@ -370,6 +378,8 @@ public class CommandSchedulerFuncTest extends TestCase {
         mCommandScheduler.join(WAIT_TIMEOUT_MS);
         // Was interrupted during execution.
         assertTrue(mMockTestInvoker.runInterrupted);
+        // Notify was sent to the invocation
+        assertTrue(mMockTestInvoker.printedStop);
     }
 
     /**
@@ -445,6 +455,8 @@ public class CommandSchedulerFuncTest extends TestCase {
         mCommandScheduler.join(WAIT_TIMEOUT_MS);
         // Stop but was not interrupted
         assertFalse(mMockTestInvoker.runInterrupted);
+        // Notify was sent to the invocation
+        assertTrue(mMockTestInvoker.printedStop);
     }
 
     private class LongInvocation implements ITestInvocation {
