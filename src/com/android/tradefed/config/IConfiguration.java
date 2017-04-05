@@ -49,6 +49,9 @@ import java.util.List;
  */
 public interface IConfiguration {
 
+    /** Returns the name of the configuration. */
+    public String getName();
+
     /**
      * Gets the {@link IBuildProvider} from the configuration.
      *
