@@ -213,6 +213,7 @@ public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestColl
         }
     }
 
+    /** Finalize results to report them all and count if there are missing tests. */
     private void reportFinalResults(
             ITestInvocationListener listener,
             int totalExpectedTests,
