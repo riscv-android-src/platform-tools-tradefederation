@@ -507,6 +507,9 @@ public class CommandScheduler extends Thread implements ICommandScheduler, IComm
          */
         private static final long CHECK_WAIT_DEVICE_AVAIL_MS = 30 * 1000;
         private static final int EXPECTED_THREAD_COUNT = 1;
+        private static final String INVOC_END_EVENT_ID_KEY = "id";
+        private static final String INVOC_END_EVENT_ELAPSED_KEY = "elapsed-time";
+        private static final String INVOC_END_EVENT_TAG_KEY = "test-tag";
 
         private final IScheduledInvocationListener[] mListeners;
         private final IInvocationContext mInvocationContext;
@@ -652,9 +655,14 @@ public class CommandScheduler extends Thread implements ICommandScheduler, IComm
         private void logInvocationEndedEvent(
                 int invocId, long elapsedTime, final IInvocationContext context) {
             Map<String, String> args = new HashMap<>();
-            args.put("id", Integer.toString(invocId));
-            args.put("elapsed time", TimeUtil.formatElapsedTime(elapsedTime));
-            args.put("test-tag", context.getTestTag());
+            args.put(INVOC_END_EVENT_ID_KEY, Integer.toString(invocId));
+            args.put(INVOC_END_EVENT_ELAPSED_KEY, TimeUtil.formatElapsedTime(elapsedTime));
+            args.put(INVOC_END_EVENT_TAG_KEY, context.getTestTag());
+            // Add all the invocation attributes to the final event logging.
+            // UniqueMultiMap cannot be easily converted to Map so we just iterate.
+            for (String key : context.getAttributes().keySet()) {
+                args.put(key, context.getAttributes().get(key).get(0));
+            }
             logEvent(EventType.INVOCATION_END, args);
         }
 

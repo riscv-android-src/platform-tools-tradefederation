@@ -15,6 +15,9 @@
  */
 package com.android.tradefed.invoker;
 
+import static org.mockito.Mockito.doReturn;
+
+import com.android.ddmlib.IDevice;
 import com.android.tradefed.build.BuildRetrievalError;
 import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.build.IBuildProvider;
@@ -35,6 +38,7 @@ import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.IDeviceRecovery;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.device.ITestDevice.RecoveryMode;
+import com.android.tradefed.device.StubDevice;
 import com.android.tradefed.device.TestDeviceOptions;
 import com.android.tradefed.log.ILeveledLogOutput;
 import com.android.tradefed.log.ILogRegistry;
@@ -62,11 +66,14 @@ import com.android.tradefed.testtype.IRetriableTest;
 import com.android.tradefed.testtype.IShardableTest;
 import com.android.tradefed.testtype.IStrictShardableTest;
 
+import com.google.common.util.concurrent.SettableFuture;
+
 import junit.framework.Test;
 import junit.framework.TestCase;
 
 import org.easymock.Capture;
 import org.easymock.EasyMock;
+import org.mockito.Mockito;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -1264,6 +1271,104 @@ public class TestInvocationTest extends TestCase {
         replayMocks(test, mockRescheduler, shard1, shard2);
         mTestInvocation.invoke(mStubInvocationMetadata, mStubConfiguration, mockRescheduler);
         verifyMocks(test, mockRescheduler, shard1, shard2);
+    }
+
+    /**
+     * Test that {@link TestInvocation#logDeviceBatteryLevel(IInvocationContext, String)} is not
+     * adding battery information for placeholder device.
+     */
+    public void testLogDeviceBatteryLevel_placeholderDevice() {
+        final String fakeEvent = "event";
+        IInvocationContext context = new InvocationContext();
+        ITestDevice device1 = EasyMock.createMock(ITestDevice.class);
+        EasyMock.expect(device1.getIDevice()).andReturn(new StubDevice("serial1"));
+        context.addAllocatedDevice("device1", device1);
+        EasyMock.replay(device1);
+        mTestInvocation.logDeviceBatteryLevel(context, fakeEvent);
+        EasyMock.verify(device1);
+        assertEquals(0, context.getAttributes().size());
+    }
+
+    /**
+     * Test that {@link TestInvocation#logDeviceBatteryLevel(IInvocationContext, String)} is adding
+     * battery information for physical real device.
+     */
+    public void testLogDeviceBatteryLevel_physicalDevice() {
+        final String fakeEvent = "event";
+        IInvocationContext context = new InvocationContext();
+        ITestDevice device1 = EasyMock.createMock(ITestDevice.class);
+        IDevice idevice = Mockito.mock(IDevice.class);
+        EasyMock.expect(device1.getIDevice()).andReturn(idevice);
+        SettableFuture<Integer> future = SettableFuture.create();
+        future.set(50);
+        doReturn(future).when(idevice).getBattery(Mockito.anyLong(), Mockito.any());
+        EasyMock.expect(device1.getSerialNumber()).andReturn("serial1");
+        context.addAllocatedDevice("device1", device1);
+        EasyMock.replay(device1);
+        mTestInvocation.logDeviceBatteryLevel(context, fakeEvent);
+        EasyMock.verify(device1);
+        assertEquals(1, context.getAttributes().size());
+        assertEquals("50", context.getAttributes().get("serial1-battery-" + fakeEvent).get(0));
+    }
+
+    /**
+     * Test that {@link TestInvocation#logDeviceBatteryLevel(IInvocationContext, String)} is adding
+     * battery information for multiple physical real device.
+     */
+    public void testLogDeviceBatteryLevel_physicalDevice_multi() {
+        final String fakeEvent = "event";
+        IInvocationContext context = new InvocationContext();
+        ITestDevice device1 = EasyMock.createMock(ITestDevice.class);
+        IDevice idevice = Mockito.mock(IDevice.class);
+        EasyMock.expect(device1.getSerialNumber()).andReturn("serial1");
+        EasyMock.expect(device1.getIDevice()).andReturn(idevice);
+        SettableFuture<Integer> future = SettableFuture.create();
+        future.set(50);
+        doReturn(future).when(idevice).getBattery(Mockito.anyLong(), Mockito.any());
+        ITestDevice device2 = EasyMock.createMock(ITestDevice.class);
+        EasyMock.expect(device2.getIDevice()).andReturn(idevice);
+        EasyMock.expect(device2.getSerialNumber()).andReturn("serial2");
+        context.addAllocatedDevice("device1", device1);
+        context.addAllocatedDevice("device2", device2);
+        EasyMock.replay(device1, device2);
+        mTestInvocation.logDeviceBatteryLevel(context, fakeEvent);
+        EasyMock.verify(device1, device2);
+        assertEquals(2, context.getAttributes().size());
+        assertEquals("50", context.getAttributes().get("serial1-battery-" + fakeEvent).get(0));
+        assertEquals("50", context.getAttributes().get("serial2-battery-" + fakeEvent).get(0));
+    }
+
+    /**
+     * Test that {@link TestInvocation#logDeviceBatteryLevel(IInvocationContext, String)} is adding
+     * battery information for multiple physical real device, and ignore stub device if any.
+     */
+    public void testLogDeviceBatteryLevel_physicalDevice_stub_multi() {
+        final String fakeEvent = "event";
+        IInvocationContext context = new InvocationContext();
+        ITestDevice device1 = EasyMock.createMock(ITestDevice.class);
+        IDevice idevice = Mockito.mock(IDevice.class);
+        EasyMock.expect(device1.getSerialNumber()).andReturn("serial1");
+        EasyMock.expect(device1.getIDevice()).andReturn(idevice);
+        SettableFuture<Integer> future = SettableFuture.create();
+        future.set(50);
+        doReturn(future).when(idevice).getBattery(Mockito.anyLong(), Mockito.any());
+        ITestDevice device2 = EasyMock.createMock(ITestDevice.class);
+        EasyMock.expect(device2.getIDevice()).andReturn(idevice);
+        EasyMock.expect(device2.getSerialNumber()).andReturn("serial2");
+        ITestDevice device3 = EasyMock.createMock(ITestDevice.class);
+        EasyMock.expect(device1.getIDevice()).andStubReturn(new StubDevice("stub1"));
+        ITestDevice device4 = EasyMock.createMock(ITestDevice.class);
+        EasyMock.expect(device1.getIDevice()).andStubReturn(new StubDevice("stub2"));
+        context.addAllocatedDevice("device1", device1);
+        context.addAllocatedDevice("device2", device2);
+        context.addAllocatedDevice("device3", device3);
+        context.addAllocatedDevice("device4", device4);
+        EasyMock.replay(device1, device2);
+        mTestInvocation.logDeviceBatteryLevel(context, fakeEvent);
+        EasyMock.verify(device1, device2);
+        assertEquals(2, context.getAttributes().size());
+        assertEquals("50", context.getAttributes().get("serial1-battery-" + fakeEvent).get(0));
+        assertEquals("50", context.getAttributes().get("serial2-battery-" + fakeEvent).get(0));
     }
 
     /** Helper to set the expectation for N number of shards. */

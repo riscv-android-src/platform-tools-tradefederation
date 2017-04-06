@@ -68,6 +68,8 @@ import com.android.tradefed.util.RunInterruptedException;
 import com.android.tradefed.util.RunUtil;
 import com.android.tradefed.util.StreamUtil;
 
+import com.google.common.annotations.VisibleForTesting;
+
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -87,6 +89,12 @@ import java.util.concurrent.TimeUnit;
  *   - reports results
  */
 public class TestInvocation implements ITestInvocation {
+
+    /**
+     * Format of the key in {@link IInvocationContext} to log the battery level for each step of the
+     * invocation. (Setup, test, tear down).
+     */
+    private static final String BATTERY_ATTRIBUTE_FORMAT_KEY = "%s-battery-%s";
 
     static final String TRADEFED_LOG_NAME = "host_log";
     static final String DEVICE_LOG_NAME_PREFIX = "device_logcat_";
@@ -829,24 +837,35 @@ public class TestInvocation implements ITestInvocation {
         return mStatus;
     }
 
-    private void logDeviceBatteryLevel(IInvocationContext context, String event) {
+    /**
+     * Log the battery level of each device in the invocation.
+     *
+     * @param context the {@link IInvocationContext} of the invocation.
+     * @param event a {@link String} describing the context of the logging (initial, setup, etc.).
+     */
+    @VisibleForTesting
+    void logDeviceBatteryLevel(IInvocationContext context, String event) {
         for (ITestDevice testDevice : context.getDevices()) {
             if (testDevice == null) {
-                return;
+                continue;
             }
             IDevice device = testDevice.getIDevice();
-            if (device == null) {
-                return;
+            if (device == null || device instanceof StubDevice) {
+                continue;
             }
             try {
-                CLog.v("%s - %s - %d%%", BATT_TAG, event,
-                        device.getBattery(500, TimeUnit.MILLISECONDS).get());
-                return;
+                Integer batteryLevel = device.getBattery(500, TimeUnit.MILLISECONDS).get();
+                CLog.v("%s - %s - %d%%", BATT_TAG, event, batteryLevel);
+                context.addInvocationAttribute(
+                        String.format(
+                                BATTERY_ATTRIBUTE_FORMAT_KEY, testDevice.getSerialNumber(), event),
+                        batteryLevel.toString());
+                continue;
             } catch (InterruptedException | ExecutionException e) {
                 // fall through
             }
 
-            CLog.v("Failed to get battery level");
+            CLog.v("Failed to get battery level for %s", testDevice.getSerialNumber());
         }
     }
 
