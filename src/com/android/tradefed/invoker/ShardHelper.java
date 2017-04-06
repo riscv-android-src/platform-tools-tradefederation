@@ -18,12 +18,15 @@ package com.android.tradefed.invoker;
 import com.android.tradefed.build.ExistingBuildProvider;
 import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.config.ConfigurationException;
+import com.android.tradefed.config.ConfigurationFactory;
 import com.android.tradefed.config.IConfiguration;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.result.IShardableListener;
 import com.android.tradefed.result.ITestInvocationListener;
+import com.android.tradefed.suite.checker.ISystemStatusChecker;
 import com.android.tradefed.testtype.IRemoteTest;
 import com.android.tradefed.testtype.IShardableTest;
+import com.android.tradefed.util.QuotationAwareTokenizer;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -71,6 +74,7 @@ public class ShardHelper {
             CLog.i("Rescheduling sharded config...");
             IConfiguration shardConfig = config.clone();
             shardConfig.setTest(testShard);
+            cloneStatusChecker(config, shardConfig);
 
             cloneBuildInfos(config, shardConfig, context);
 
@@ -89,6 +93,23 @@ public class ShardHelper {
                     .cleanUp(context.getBuildInfo(deviceName));
         }
         return true;
+    }
+
+    /**
+     * Helper to clone {@link ISystemStatusChecker}s from the original config to the clonedConfig.
+     */
+    private static void cloneStatusChecker(IConfiguration oriConfig, IConfiguration clonedConfig) {
+        try {
+            IConfiguration deepCopy =
+                    ConfigurationFactory.getInstance()
+                            .createConfigurationFromArgs(
+                                    QuotationAwareTokenizer.tokenizeLine(
+                                            oriConfig.getCommandLine()));
+            clonedConfig.setSystemStatusCheckers(deepCopy.getSystemStatusCheckers());
+        } catch (ConfigurationException e) {
+            // should not happen
+            throw new RuntimeException("failed to deep copy a configuration", e);
+        }
     }
 
     /**
