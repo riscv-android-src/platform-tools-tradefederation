@@ -1245,7 +1245,8 @@ public class TestInvocationTest extends TestCase {
      * ITestInvocationListener[])} scenario with {@link IShardableTest}.
      */
     public void testInvoke_shardableTest_legacy() throws Throwable {
-        String[] commandLine = {"config", "arg"};
+        String command = "empty --test-tag t";
+        String[] commandLine = {"empty", "--test-tag", "t"};
         int shardCount = 2;
         IShardableTest test = EasyMock.createMock(IShardableTest.class);
         List<IRemoteTest> shards = new ArrayList<>();
@@ -1258,22 +1259,20 @@ public class TestInvocationTest extends TestCase {
         mStubConfiguration.setCommandLine(commandLine);
 
         setupInvoke();
-        setupNShardInvocation(shardCount);
+        setupNShardInvocation(shardCount, command);
 
         replayMocks(test, mockRescheduler, shard1, shard2);
         mTestInvocation.invoke(mStubInvocationMetadata, mStubConfiguration, mockRescheduler);
         verifyMocks(test, mockRescheduler, shard1, shard2);
     }
 
-    /**
-     * Helper to set the expectation for N number of shards.
-     */
-    private void setupNShardInvocation(int numShard) throws Exception {
+    /** Helper to set the expectation for N number of shards. */
+    private void setupNShardInvocation(int numShard, String commandLine) throws Exception {
         mMockBuildInfo.setTestTag(EasyMock.eq("stub"));
         EasyMock.expectLastCall();
         EasyMock.expect(mMockBuildProvider.getBuild()).andReturn(mMockBuildInfo);
         EasyMock.expect(mMockBuildInfo.getTestTag()).andStubReturn("");
-        mMockBuildInfo.addBuildAttribute("command_line_args", "config arg");
+        mMockBuildInfo.addBuildAttribute("command_line_args", commandLine);
         mMockLogSaver.invocationStarted((IInvocationContext)EasyMock.anyObject());
         EasyMock.expectLastCall();
         mMockTestListener.invocationStarted((IInvocationContext)EasyMock.anyObject());
