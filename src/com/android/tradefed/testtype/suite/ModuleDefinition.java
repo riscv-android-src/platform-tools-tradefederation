@@ -17,7 +17,6 @@ package com.android.tradefed.testtype.suite;
 
 import com.android.ddmlib.testrunner.TestIdentifier;
 import com.android.ddmlib.testrunner.TestResult;
-import com.android.ddmlib.testrunner.TestResult.TestStatus;
 import com.android.ddmlib.testrunner.TestRunResult;
 import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.device.DeviceNotAvailableException;
@@ -202,14 +201,14 @@ public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestColl
                 }
             }
         } finally {
+            // finalize results
+            if (preparationException == null) {
+                reportFinalResults(listener, mExpectedTests, mTestsResults);
+            }
             // Tear down
             for (ITargetCleaner cleaner : mCleaners) {
                 CLog.d("Cleaner: %s", cleaner.getClass().getSimpleName());
                 cleaner.tearDown(mDevice, mBuild, null);
-            }
-
-            if (preparationException == null) {
-                reportFinalResults(listener, mExpectedTests, mTestsResults);
             }
         }
     }
@@ -259,15 +258,17 @@ public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestColl
                 case IGNORED:
                     listener.testIgnored(testEntry.getKey());
                     break;
+                case INCOMPLETE:
+                    listener.testFailed(
+                            testEntry.getKey(), "Test did not complete due to exception.");
+                    break;
                 default:
                     break;
             }
-            if (!testEntry.getValue().getStatus().equals(TestStatus.INCOMPLETE)) {
-                listener.testEnded(
-                        testEntry.getKey(),
-                        testEntry.getValue().getEndTime(),
-                        testEntry.getValue().getMetrics());
-            }
+            listener.testEnded(
+                    testEntry.getKey(),
+                    testEntry.getValue().getEndTime(),
+                    testEntry.getValue().getMetrics());
         }
     }
 
