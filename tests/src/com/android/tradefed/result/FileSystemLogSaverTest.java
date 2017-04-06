@@ -16,8 +16,10 @@
 package com.android.tradefed.result;
 
 import com.android.tradefed.build.IBuildInfo;
+import com.android.tradefed.config.OptionSetter;
 import com.android.tradefed.invoker.IInvocationContext;
 import com.android.tradefed.invoker.InvocationContext;
+import com.android.tradefed.invoker.ShardMasterResultForwarder;
 import com.android.tradefed.util.FileUtil;
 import com.android.tradefed.util.StreamUtil;
 
@@ -34,6 +36,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
+import java.util.ArrayList;
 import java.util.Date;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
@@ -242,5 +245,38 @@ public class FileSystemLogSaverTest extends TestCase {
             StreamUtil.close(logFileReader);
             FileUtil.deleteFile(new File(logFile.getPath()));
         }
+    }
+
+    /**
+     * Test running the log saver in sharded environment, only one reporting folder should be
+     * created.
+     */
+    public void testCreateReportDirectory_sharded() throws Exception {
+        final int shardCount = 5;
+        FileSystemLogSaver saver = new FileSystemLogSaver();
+        OptionSetter setter = new OptionSetter(saver);
+        setter.setOptionValue("log-file-path", mReportDir.getAbsolutePath());
+        saver.invocationStarted(mContext);
+        ShardMasterResultForwarder master =
+                new ShardMasterResultForwarder(
+                        saver, new ArrayList<ITestInvocationListener>(), shardCount);
+        for (int i = 0; i < shardCount; i++) {
+            master.invocationStarted(mContext);
+        }
+        for (int i = 0; i < shardCount; i++) {
+            master.invocationEnded(5);
+        }
+        // only one folder is created under the hierarchy: branch/buildid/testtag/<inv_ folders>
+        assertEquals(1, mReportDir.list().length);
+        assertEquals(BRANCH, mReportDir.list()[0]);
+        assertEquals(1, mReportDir.listFiles()[0].list().length);
+        assertEquals(BUILD_ID, mReportDir.listFiles()[0].list()[0]);
+        assertEquals(1, mReportDir.listFiles()[0].listFiles()[0].list().length);
+        assertEquals(TEST_TAG, mReportDir.listFiles()[0].listFiles()[0].list()[0]);
+        // Only one inv_ folder
+        assertEquals(1, mReportDir.listFiles()[0].listFiles()[0].listFiles()[0].list().length);
+        assertTrue(
+                mReportDir.listFiles()[0].listFiles()[0].listFiles()[0].list()[0].startsWith(
+                        "inv_"));
     }
 }
