@@ -25,11 +25,11 @@ import java.util.List;
 /**
  * A {@link ResultForwarder} that combines the results of a sharded test invocations. It only
  * reports completion of the invocation to the listeners once all sharded invocations are complete.
- * <p/>
- * This class is not thread safe. It is expected that clients will lock on this class when sending
- * test results, to prevent invocation callbacks from being called out of order.
+ *
+ * <p>This class is not thread safe. It is expected that clients will lock on this class when
+ * sending test results, to prevent invocation callbacks from being called out of order.
  */
-class ShardMasterResultForwarder extends LogSaverResultForwarder {
+public class ShardMasterResultForwarder extends LogSaverResultForwarder {
 
     private int mShardsRemaining;
     private int mTotalElapsed = 0;

@@ -62,18 +62,29 @@ public class FileSystemLogSaver implements ILogSaver {
     private File mLogReportDir = null;
 
     /**
+     * A counter to control access to methods which modify this class's directories. Acting as a
+     * non-blocking reentrant lock, this int blocks access to sharded child invocations from
+     * attempting to create or delete directories.
+     */
+    private int mShardingLock = 0;
+
+    /**
      * {@inheritDoc}
-     * <p>
-     * Also, create a unique file system directory under
-     * {@code report-dir/[branch/]build-id/test-tag/unique_dir} for saving logs.  If the creation
-     * of the directory fails, will write logs to a temporary directory on the local file system.
-     * </p>
+     *
+     * <p>Also, create a unique file system directory under {@code
+     * report-dir/[branch/]build-id/test-tag/unique_dir} for saving logs. If the creation of the
+     * directory fails, will write logs to a temporary directory on the local file system.
      */
     @Override
     public void invocationStarted(IInvocationContext context) {
         // Create log directory on first build info
         IBuildInfo info = context.getBuildInfos().get(0);
-        mLogReportDir = createLogReportDir(info, mRootReportDir, mLogRetentionDays);
+        synchronized (this) {
+            if (mShardingLock == 0) {
+                mLogReportDir = createLogReportDir(info, mRootReportDir, mLogRetentionDays);
+            }
+            mShardingLock++;
+        }
     }
 
     /**
@@ -81,7 +92,15 @@ public class FileSystemLogSaver implements ILogSaver {
      */
     @Override
     public void invocationEnded(long elapsedTime) {
-        // Ignore, no clean up needed.
+        // no clean up needed.
+        synchronized (this) {
+            --mShardingLock;
+            if (mShardingLock < 0) {
+                CLog.w(
+                        "Sharding lock exited more times than entered, possible "
+                                + "unbalanced invocationStarted/Ended calls");
+            }
+        }
     }
 
     /**
