@@ -36,6 +36,7 @@ import com.android.tradefed.testtype.IStrictShardableTest;
 import com.android.tradefed.testtype.ITestCollector;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map.Entry;
@@ -191,9 +192,23 @@ public abstract class ITestSuite
                 mDevice.getSerialNumber(),
                 runModules.size(),
                 runModules);
-        /** Run all the module */
-        for (ModuleDefinition module : runModules) {
-            runSingleModule(module, listener, failureListener);
+
+        /** Run all the module, make sure to reduce the list to release resources as we go. */
+        try {
+            while (!runModules.isEmpty()) {
+                ModuleDefinition module = runModules.remove(0);
+                runSingleModule(module, listener, failureListener);
+            }
+        } catch (DeviceNotAvailableException e) {
+            CLog.e(
+                    "A DeviceNotAvailableException occurred, following modules did not run: %s",
+                    runModules);
+            for (ModuleDefinition module : runModules) {
+                listener.testRunStarted(module.getId(), 0);
+                listener.testRunFailed("Module did not run due to device not available.");
+                listener.testRunEnded(0, Collections.emptyMap());
+            }
+            throw e;
         }
     }
 
