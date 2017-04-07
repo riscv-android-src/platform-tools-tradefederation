@@ -17,9 +17,11 @@ package com.android.tradefed.invoker;
 
 import com.android.tradefed.build.BuildInfo;
 import com.android.tradefed.build.IBuildInfo;
+import com.android.tradefed.config.ConfigurationDescriptor;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.device.ITestDevice.RecoveryMode;
 import com.android.tradefed.log.LogUtil.CLog;
+import com.android.tradefed.testtype.suite.ITestSuite;
 import com.android.tradefed.util.MultiMap;
 import com.android.tradefed.util.UniqueMultiMap;
 
@@ -42,6 +44,10 @@ public class InvocationContext implements IInvocationContext {
             new UniqueMultiMap<String, String>();
     /** Invocation test-tag **/
     private String mTestTag;
+    /** configuration descriptor */
+    private ConfigurationDescriptor mConfigurationDescriptor;
+    /** module invocation context (when running as part of a {@link ITestSuite} */
+    private IInvocationContext mModuleContext;
 
     /**
      * Creates a {@link BuildInfo} using default attribute values.
@@ -222,5 +228,29 @@ public class InvocationContext implements IInvocationContext {
         for (ITestDevice device : getDevices()) {
             device.setRecoveryMode(mode);
         }
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public void setConfigurationDescriptor(ConfigurationDescriptor configurationDescriptor) {
+        mConfigurationDescriptor = configurationDescriptor;
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public ConfigurationDescriptor getConfigurationDescriptor() {
+        return mConfigurationDescriptor;
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public void setModuleInvocationContext(IInvocationContext invocationContext) {
+        mModuleContext = invocationContext;
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public IInvocationContext getModuleInvocationContext() {
+        return mModuleContext;
     }
 }
