@@ -18,18 +18,24 @@ package com.android.tradefed.testtype.suite;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
+import static org.mockito.Mockito.mock;
 
+import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.config.ConfigurationException;
 import com.android.tradefed.config.IConfiguration;
 import com.android.tradefed.config.OptionSetter;
+import com.android.tradefed.device.ITestDevice;
+import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.testtype.IRemoteTest;
 import com.android.tradefed.testtype.StubTest;
 
+import org.easymock.EasyMock;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
 
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
 
 /**
@@ -51,6 +57,7 @@ public class TfSuiteRunnerTest {
     @Test
     public void testLoadTests() throws Exception {
         OptionSetter setter = new OptionSetter(mRunner);
+        setter.setOptionValue("suite-config-prefix", "suite");
         setter.setOptionValue("run-suite-tag", "example-suite");
         LinkedHashMap <String, IConfiguration> configMap = mRunner.loadTests();
         assertEquals(2, configMap.size());
@@ -65,6 +72,7 @@ public class TfSuiteRunnerTest {
     @Test
     public void testLoadTests_suite2() throws Exception {
         OptionSetter setter = new OptionSetter(mRunner);
+        setter.setOptionValue("suite-config-prefix", "suite");
         setter.setOptionValue("run-suite-tag", "example-suite2");
         LinkedHashMap <String, IConfiguration> configMap = mRunner.loadTests();
         assertEquals(1, configMap.size());
@@ -127,5 +135,23 @@ public class TfSuiteRunnerTest {
         } catch (RuntimeException expected) {
             // expected
         }
+    }
+
+    /** Test for {@link TfSuiteRunner#run(ITestInvocationListener)} when loading another suite. */
+    @Test
+    public void testLoadTests_suite() throws Exception {
+        OptionSetter setter = new OptionSetter(mRunner);
+        setter.setOptionValue("suite-config-prefix", "suite");
+        setter.setOptionValue("run-suite-tag", "example-suite3");
+        ITestInvocationListener listener = EasyMock.createMock(ITestInvocationListener.class);
+        mRunner.setDevice(mock(ITestDevice.class));
+        mRunner.setBuild(mock(IBuildInfo.class));
+        mRunner.setSystemStatusChecker(new ArrayList<>());
+        // runs the expanded suite
+        listener.testRunStarted("suite/stub1", 0);
+        listener.testRunEnded(EasyMock.anyLong(), EasyMock.anyObject());
+        EasyMock.replay(listener);
+        mRunner.run(listener);
+        EasyMock.verify(listener);
     }
 }
