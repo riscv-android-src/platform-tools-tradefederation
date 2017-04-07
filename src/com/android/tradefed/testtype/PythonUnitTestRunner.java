@@ -29,6 +29,7 @@ import com.android.tradefed.util.CommandResult;
 import com.android.tradefed.util.CommandStatus;
 import com.android.tradefed.util.IRunUtil;
 import com.android.tradefed.util.RunUtil;
+import com.android.tradefed.util.TimeUtil;
 
 import org.junit.Assert;
 
@@ -154,7 +155,8 @@ public class PythonUnitTestRunner implements IRemoteTest, IBuildReceiver {
         }
     }
 
-    private void doRunTest(ITestRunListener listener, IRunUtil runUtil, String pyModule) {
+    // Exposed for testing purpose.
+    void doRunTest(ITestRunListener listener, IRunUtil runUtil, String pyModule) {
         String[] baseOpts = {mPythonBin, "-m", "unittest", "-v"};
         String[] testModule = {pyModule};
         String[] cmd;
@@ -165,12 +167,17 @@ public class PythonUnitTestRunner implements IRemoteTest, IBuildReceiver {
         }
         CommandResult c = runUtil.runTimedCmd(mTestTimeout, cmd);
 
-        if (c.getStatus() != CommandStatus.SUCCESS) {
-            CLog.e("Python process failed");
+        if (c.getStatus() == CommandStatus.TIMED_OUT) {
+            CLog.e("Python process timed out");
             CLog.e("Stderr: %s", c.getStderr());
             CLog.e("Stdout: %s", c.getStdout());
-            throw new RuntimeException("Failed to run python unit test");
+            throw new RuntimeException(
+                    String.format(
+                            "Python unit test timed out after %s",
+                            TimeUtil.formatElapsedTime(mTestTimeout)));
         }
+        // If test execution succeeds, regardless of test results the parser will parse the output.
+        // If test execution fails, result parser will throw an exception.
         CLog.i("Parsing test result: %s", c.getStderr());
         MultiLineReceiver parser = new PythonUnitTestResultParser(
                 ArrayUtil.list(listener), pyModule);
