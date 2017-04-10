@@ -107,8 +107,8 @@ public class ITestSuiteTest {
                     throw mRunException;
                 }
                 TestIdentifier test = new TestIdentifier(EMPTY_CONFIG, EMPTY_CONFIG);
-                listener.testStarted(test);
-                listener.testEnded(test, Collections.emptyMap());
+                listener.testStarted(test, 0);
+                listener.testEnded(test, 5, Collections.emptyMap());
             } finally {
                 listener.testRunEnded(0, Collections.emptyMap());
             }
@@ -145,8 +145,8 @@ public class ITestSuiteTest {
     private void expectTestRun(ITestInvocationListener listener) {
         listener.testRunStarted(TEST_CONFIG_NAME, 1);
         TestIdentifier test = new TestIdentifier(EMPTY_CONFIG, EMPTY_CONFIG);
-        listener.testStarted(test);
-        listener.testEnded(test, Collections.emptyMap());
+        listener.testStarted(test, 0);
+        listener.testEnded(test, 5, Collections.emptyMap());
         listener.testRunEnded(0, Collections.emptyMap());
     }
 

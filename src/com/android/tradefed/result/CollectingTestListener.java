@@ -144,8 +144,14 @@ public class CollectingTestListener implements ITestInvocationListener {
      */
     @Override
     public void testStarted(TestIdentifier test) {
+        testStarted(test, System.currentTimeMillis());
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public void testStarted(TestIdentifier test, long startTime) {
         mIsCountDirty = true;
-        mCurrentResults.testStarted(test);
+        mCurrentResults.testStarted(test, startTime);
     }
 
     /**
@@ -153,13 +159,17 @@ public class CollectingTestListener implements ITestInvocationListener {
      */
     @Override
     public void testEnded(TestIdentifier test, Map<String, String> testMetrics) {
-        mIsCountDirty = true;
-        mCurrentResults.testEnded(test, testMetrics);
+        testEnded(test, System.currentTimeMillis(), testMetrics);
     }
 
-    /**
-     * {@inheritDoc}
-     */
+    /** {@inheritDoc} */
+    @Override
+    public void testEnded(TestIdentifier test, long endTime, Map<String, String> testMetrics) {
+        mIsCountDirty = true;
+        mCurrentResults.testEnded(test, endTime, testMetrics);
+    }
+
+    /** {@inheritDoc} */
     @Override
     public void testFailed(TestIdentifier test, String trace) {
         mIsCountDirty = true;

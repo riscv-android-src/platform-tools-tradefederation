@@ -214,8 +214,11 @@ public class ModuleDefinitionTest {
                 EasyMock.eq(mMockDevice), EasyMock.eq(mMockBuildInfo), EasyMock.isNull());
         mMockListener.testRunStarted(MODULE_NAME, testCount);
         for (int i = 0; i < testCount; i++) {
-            mMockListener.testStarted(EasyMock.anyObject());
-            mMockListener.testEnded(EasyMock.anyObject(), EasyMock.anyObject());
+            mMockListener.testStarted((TestIdentifier) EasyMock.anyObject(), EasyMock.anyLong());
+            mMockListener.testEnded(
+                    (TestIdentifier) EasyMock.anyObject(),
+                    EasyMock.anyLong(),
+                    EasyMock.anyObject());
         }
         mMockListener.testRunEnded(0, Collections.emptyMap());
         replayMocks();
