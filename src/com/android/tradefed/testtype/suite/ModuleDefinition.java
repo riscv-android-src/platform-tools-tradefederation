@@ -247,7 +247,7 @@ public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestColl
     private void forwardTestResults(
             Map<TestIdentifier, TestResult> testResults, ITestInvocationListener listener) {
         for (Map.Entry<TestIdentifier, TestResult> testEntry : testResults.entrySet()) {
-            listener.testStarted(testEntry.getKey());
+            listener.testStarted(testEntry.getKey(), testEntry.getValue().getStartTime());
             switch (testEntry.getValue().getStatus()) {
                 case FAILURE:
                     listener.testFailed(testEntry.getKey(), testEntry.getValue().getStackTrace());
@@ -263,7 +263,10 @@ public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestColl
                     break;
             }
             if (!testEntry.getValue().getStatus().equals(TestStatus.INCOMPLETE)) {
-                listener.testEnded(testEntry.getKey(), testEntry.getValue().getMetrics());
+                listener.testEnded(
+                        testEntry.getKey(),
+                        testEntry.getValue().getEndTime(),
+                        testEntry.getValue().getMetrics());
             }
         }
     }

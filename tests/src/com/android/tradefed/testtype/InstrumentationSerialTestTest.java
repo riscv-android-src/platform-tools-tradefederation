@@ -82,8 +82,9 @@ public class InstrumentationSerialTestTest extends TestCase {
             }
         };
         mMockListener.testRunStarted(packageName, 1);
-        mMockListener.testStarted(test);
-        mMockListener.testEnded(test, Collections.EMPTY_MAP);
+        mMockListener.testStarted(EasyMock.eq(test), EasyMock.anyLong());
+        mMockListener.testEnded(
+                EasyMock.eq(test), EasyMock.anyLong(), EasyMock.eq(Collections.EMPTY_MAP));
         mMockListener.testRunEnded(0, Collections.EMPTY_MAP);
 
         EasyMock.replay(mMockListener, mMockTestDevice);
@@ -133,10 +134,11 @@ public class InstrumentationSerialTestTest extends TestCase {
         EasyMock.expectLastCall().times(expectedAttempts);
 
         // now expect test to be marked as failed
-        mMockListener.testStarted(test);
+        mMockListener.testStarted(EasyMock.eq(test), EasyMock.anyLong());
         mMockListener.testFailed(EasyMock.eq(test),
                 EasyMock.contains(runFailureMsg));
-        mMockListener.testEnded(test, Collections.EMPTY_MAP);
+        mMockListener.testEnded(
+                EasyMock.eq(test), EasyMock.anyLong(), EasyMock.eq(Collections.EMPTY_MAP));
 
         EasyMock.replay(mMockListener, mMockTestDevice);
         mInstrumentationSerialTest.run(mMockListener);

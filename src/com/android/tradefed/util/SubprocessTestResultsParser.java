@@ -29,6 +29,7 @@ import com.android.tradefed.util.SubprocessEventHelper.TestLogEventInfo;
 import com.android.tradefed.util.SubprocessEventHelper.TestRunEndedEventInfo;
 import com.android.tradefed.util.SubprocessEventHelper.TestRunFailedEventInfo;
 import com.android.tradefed.util.SubprocessEventHelper.TestRunStartedEventInfo;
+import com.android.tradefed.util.SubprocessEventHelper.TestStartedEventInfo;
 
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -334,9 +335,13 @@ public class SubprocessTestResultsParser implements Closeable {
     private class TestStartedEventHandler implements EventHandler {
         @Override
         public void handleEvent(String eventJson) throws JSONException {
-            BaseTestEventInfo bti = new BaseTestEventInfo(new JSONObject(eventJson));
+            TestStartedEventInfo bti = new TestStartedEventInfo(new JSONObject(eventJson));
             currentTest = new TestIdentifier(bti.mClassName, bti.mTestName);
-            mListener.testStarted(currentTest);
+            if (bti.mStartTime != null) {
+                mListener.testStarted(currentTest, bti.mStartTime);
+            } else {
+                mListener.testStarted(currentTest);
+            }
         }
     }
 
@@ -355,7 +360,11 @@ public class SubprocessTestResultsParser implements Closeable {
             try {
                 TestEndedEventInfo tei = new TestEndedEventInfo(new JSONObject(eventJson));
                 checkCurrentTestId(tei.mClassName, tei.mTestName);
-                mListener.testEnded(currentTest, tei.mRunMetrics);
+                if (tei.mEndTime != null) {
+                    mListener.testEnded(currentTest, tei.mEndTime, tei.mRunMetrics);
+                } else {
+                    mListener.testEnded(currentTest, tei.mRunMetrics);
+                }
             } finally {
                 currentTest = null;
             }

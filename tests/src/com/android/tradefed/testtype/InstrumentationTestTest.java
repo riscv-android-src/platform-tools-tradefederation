@@ -448,13 +448,15 @@ public class InstrumentationTestTest extends TestCase {
 
         // expect both TEST1 and TEST2 to be executed
         mMockListener.testRunStarted(TEST_PACKAGE_VALUE, 2);
-        mMockListener.testStarted(TEST1);
-        mMockListener.testEnded(TEST1, EMPTY_STRING_MAP);
+        mMockListener.testStarted(EasyMock.eq(TEST1), EasyMock.anyLong());
+        mMockListener.testEnded(
+                EasyMock.eq(TEST1), EasyMock.anyLong(), EasyMock.eq(EMPTY_STRING_MAP));
         mMockListener.testRunFailed(RUN_ERROR_MSG);
         mMockListener.testRunEnded(1, EMPTY_STRING_MAP);
         mMockListener.testRunStarted(TEST_PACKAGE_VALUE, 1);
-        mMockListener.testStarted(TEST2);
-        mMockListener.testEnded(TEST2, EMPTY_STRING_MAP);
+        mMockListener.testStarted(EasyMock.eq(TEST2), EasyMock.anyLong());
+        mMockListener.testEnded(
+                EasyMock.eq(TEST2), EasyMock.anyLong(), EasyMock.eq(EMPTY_STRING_MAP));
         mMockListener.testRunEnded(1, EMPTY_STRING_MAP);
     }
 

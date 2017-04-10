@@ -100,11 +100,16 @@ public interface ITestInvocationListener extends ITestRunListener, ITestLogger {
     @Override
     default public void testEnded(TestIdentifier test, Map<String, String> testMetrics) { }
 
-    /**
-     * {@inheritDoc}
-     */
+    /** {@inheritDoc} */
     @Override
-    default public void testFailed(TestIdentifier test, String trace) { }
+    public default void testEnded(
+            TestIdentifier test, long endTime, Map<String, String> testMetrics) {
+        testEnded(test, testMetrics);
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public default void testFailed(TestIdentifier test, String trace) {}
 
     /**
      * {@inheritDoc}
@@ -147,4 +152,10 @@ public interface ITestInvocationListener extends ITestRunListener, ITestLogger {
      */
     @Override
     default public void testStarted(TestIdentifier test) { }
+
+    /** {@inheritDoc} */
+    @Override
+    default void testStarted(TestIdentifier test, long startTime) {
+        testStarted(test);
+    }
 }

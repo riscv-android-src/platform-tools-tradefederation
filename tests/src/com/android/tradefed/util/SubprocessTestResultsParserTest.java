@@ -79,10 +79,12 @@ public class SubprocessTestResultsParserTest extends TestCase {
         ITestInvocationListener mockRunListener =
                 EasyMock.createMock(ITestInvocationListener.class);
         mockRunListener.testRunStarted("arm64-v8a CtsGestureTestCases", 4);
-        mockRunListener.testStarted((TestIdentifier)EasyMock.anyObject());
+        mockRunListener.testStarted((TestIdentifier) EasyMock.anyObject(), EasyMock.anyLong());
         EasyMock.expectLastCall().times(4);
-        mockRunListener.testEnded((TestIdentifier)EasyMock.anyObject(),
-                (Map<String, String>)EasyMock.anyObject());
+        mockRunListener.testEnded(
+                (TestIdentifier) EasyMock.anyObject(),
+                EasyMock.anyLong(),
+                (Map<String, String>) EasyMock.anyObject());
         EasyMock.expectLastCall().times(4);
         mockRunListener.testRunEnded(EasyMock.anyLong(),
                 (Map<String, String>) EasyMock.anyObject());
@@ -118,10 +120,12 @@ public class SubprocessTestResultsParserTest extends TestCase {
         ITestInvocationListener mockRunListener =
                 EasyMock.createMock(ITestInvocationListener.class);
         mockRunListener.testRunStarted("arm64-v8a CtsGestureTestCases", 4);
-        mockRunListener.testStarted((TestIdentifier)EasyMock.anyObject());
+        mockRunListener.testStarted((TestIdentifier) EasyMock.anyObject(), EasyMock.anyLong());
         EasyMock.expectLastCall().times(4);
-        mockRunListener.testEnded((TestIdentifier)EasyMock.anyObject(),
-                (Map<String, String>)EasyMock.anyObject());
+        mockRunListener.testEnded(
+                (TestIdentifier) EasyMock.anyObject(),
+                EasyMock.anyLong(),
+                (Map<String, String>) EasyMock.anyObject());
         EasyMock.expectLastCall().times(3);
         mockRunListener.testRunFailed((String)EasyMock.anyObject());
         EasyMock.expectLastCall().times(1);
@@ -155,8 +159,42 @@ public class SubprocessTestResultsParserTest extends TestCase {
         ITestInvocationListener mockRunListener =
                 EasyMock.createMock(ITestInvocationListener.class);
         mockRunListener.testRunStarted("arm64-v8a CtsGestureTestCases", 4);
-        mockRunListener.testEnded((TestIdentifier)EasyMock.anyObject(),
-                (Map<String, String>)EasyMock.anyObject());
+        mockRunListener.testEnded(
+                (TestIdentifier) EasyMock.anyObject(),
+                EasyMock.anyLong(),
+                (Map<String, String>) EasyMock.anyObject());
+        EasyMock.expectLastCall().times(1);
+        EasyMock.replay(mockRunListener);
+        File tmp = FileUtil.createTempFile("sub", "unit");
+        SubprocessTestResultsParser resultParser = null;
+        try {
+            resultParser =
+                    new SubprocessTestResultsParser(mockRunListener, new InvocationContext());
+            String startRun =
+                    "TEST_RUN_STARTED {\"testCount\":4,\"runName\":\"arm64-v8a "
+                            + "CtsGestureTestCases\"}\n";
+            FileUtil.writeToFile(startRun, tmp, true);
+            String testEnded =
+                    "03-22 14:04:02 E/SubprocessResultsReporter: TEST_ENDED "
+                            + "{\"end_time\":1489160958359,\"className\":\"android.gesture.cts."
+                            + "GestureLibraryTest\",\"testName\":\"testGetGestures\",\"extra\":\""
+                            + "data\"}\n";
+            FileUtil.writeToFile(testEnded, tmp, true);
+            resultParser.parseFile(tmp);
+            EasyMock.verify(mockRunListener);
+        } finally {
+            StreamUtil.close(resultParser);
+            FileUtil.deleteFile(tmp);
+        }
+    }
+
+    /** Tests the parser for a cases when there is no start/end time stamp. */
+    public void testParse_noTimeStamp() throws Exception {
+        ITestInvocationListener mockRunListener =
+                EasyMock.createMock(ITestInvocationListener.class);
+        mockRunListener.testRunStarted("arm64-v8a CtsGestureTestCases", 4);
+        mockRunListener.testStarted(EasyMock.anyObject());
+        mockRunListener.testEnded((TestIdentifier) EasyMock.anyObject(), EasyMock.anyObject());
         EasyMock.expectLastCall().times(1);
         EasyMock.replay(mockRunListener);
         File tmp = FileUtil.createTempFile("sub", "unit");
@@ -167,9 +205,16 @@ public class SubprocessTestResultsParserTest extends TestCase {
             String startRun = "TEST_RUN_STARTED {\"testCount\":4,\"runName\":\"arm64-v8a "
                     + "CtsGestureTestCases\"}\n";
             FileUtil.writeToFile(startRun, tmp, true);
-            String testEnded = "03-22 14:04:02 E/SubprocessResultsReporter: TEST_ENDED "
-                    + "{\"className\":\"android.gesture.cts.GestureLibraryTest\",\"testName\":"
-                    + "\"testGetGestures\",\"extra\":\"data\"}\n";
+            String testStarted =
+                    "03-22 14:04:02 E/SubprocessResultsReporter: TEST_STARTED "
+                            + "{\"className\":\"android.gesture.cts."
+                            + "GestureLibraryTest\",\"testName\":\"testGetGestures\"}\n";
+            FileUtil.writeToFile(testStarted, tmp, true);
+            String testEnded =
+                    "03-22 14:04:02 E/SubprocessResultsReporter: TEST_ENDED "
+                            + "{\"className\":\"android.gesture.cts."
+                            + "GestureLibraryTest\",\"testName\":\"testGetGestures\",\"extra\":\""
+                            + "data\"}\n";
             FileUtil.writeToFile(testEnded, tmp, true);
             resultParser.parseFile(tmp);
             EasyMock.verify(mockRunListener);
@@ -222,8 +267,10 @@ public class SubprocessTestResultsParserTest extends TestCase {
         ITestInvocationListener mockRunListener =
                 EasyMock.createMock(ITestInvocationListener.class);
         mockRunListener.testRunStarted("arm64-v8a CtsGestureTestCases", 4);
-        mockRunListener.testEnded((TestIdentifier)EasyMock.anyObject(),
-                (Map<String, String>)EasyMock.anyObject());
+        mockRunListener.testEnded(
+                (TestIdentifier) EasyMock.anyObject(),
+                EasyMock.anyLong(),
+                (Map<String, String>) EasyMock.anyObject());
         EasyMock.expectLastCall().times(1);
         EasyMock.replay(mockRunListener);
         SubprocessTestResultsParser resultParser = null;
@@ -240,9 +287,11 @@ public class SubprocessTestResultsParserTest extends TestCase {
                     + "CtsGestureTestCases\"}\n";
             out.print(startRun);
             out.flush();
-            String testEnded = "03-22 14:04:02 E/SubprocessResultsReporter: TEST_ENDED "
-                    + "{\"className\":\"android.gesture.cts.GestureLibraryTest\",\"testName\":"
-                    + "\"testGetGestures\",\"extra\":\"data\"}\n";
+            String testEnded =
+                    "03-22 14:04:02 E/SubprocessResultsReporter: TEST_ENDED "
+                            + "{\"end_time\":1489160958359,\"className\":\"android.gesture.cts."
+                            + "GestureLibraryTest\",\"testName\":\"testGetGestures\",\"extra\":\""
+                            + "data\"}\n";
             out.print(testEnded);
             out.flush();
             StreamUtil.close(socket);
