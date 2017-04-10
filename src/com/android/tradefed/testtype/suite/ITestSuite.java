@@ -159,6 +159,10 @@ public abstract class ITestSuite
     @Override
     final public void run(ITestInvocationListener listener) throws DeviceNotAvailableException {
         LinkedHashMap<String, IConfiguration> runConfig = loadTests();
+        if (runConfig.isEmpty()) {
+            CLog.i("No config were loaded. Nothing to run.");
+            return;
+        }
         List<ModuleDefinition> runModules = new ArrayList<>();
         for (Entry<String, IConfiguration> config : runConfig.entrySet()) {
             if (!ValidateSuiteConfigHelper.validateConfig(config.getValue())) {

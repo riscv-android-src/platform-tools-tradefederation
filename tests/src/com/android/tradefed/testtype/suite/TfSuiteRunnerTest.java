@@ -17,11 +17,13 @@ package com.android.tradefed.testtype.suite;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 
+import com.android.tradefed.config.ConfigurationException;
 import com.android.tradefed.config.IConfiguration;
 import com.android.tradefed.config.OptionSetter;
 import com.android.tradefed.testtype.IRemoteTest;
-import com.android.tradefed.testtype.suite.TfSuiteRunner;
+import com.android.tradefed.testtype.StubTest;
 
 import org.junit.Before;
 import org.junit.Test;
@@ -76,5 +78,54 @@ public class TfSuiteRunnerTest {
     public void testSplit() {
         IRemoteTest test = mRunner.getTestShard(1, 0);
         assertTrue(test instanceof TfSuiteRunner);
+    }
+
+    /**
+     * Attempt to load a suite from a suite, but the sub-suite does not have a default run-suite-tag
+     * so it cannot run anything.
+     */
+    @Test
+    public void testLoadSuite_noSubConfigs() throws ConfigurationException {
+        OptionSetter setter = new OptionSetter(mRunner);
+        setter.setOptionValue("run-suite-tag", "test-empty");
+        LinkedHashMap<String, IConfiguration> configMap = mRunner.loadTests();
+        assertEquals(0, configMap.size());
+    }
+
+    /**
+     * Attempt to load a suite from a suite, the sub-suite has a default run-suite-tag that will be
+     * loaded.
+     */
+    @Test
+    public void testLoadSuite() throws ConfigurationException {
+        OptionSetter setter = new OptionSetter(mRunner);
+        setter.setOptionValue("run-suite-tag", "test-sub-suite");
+        LinkedHashMap<String, IConfiguration> configMap = mRunner.loadTests();
+        assertEquals(3, configMap.size());
+        // 2 test configs loaded from the sub-suite
+        assertTrue(configMap.containsKey("suite/stub1"));
+        assertTrue(configMap.containsKey("suite/stub2"));
+        // 1 config from the left over <test> that was not a suite.
+        assertTrue(configMap.containsKey("suite/sub-suite"));
+        IConfiguration config = configMap.get("suite/sub-suite");
+        // assert that the TfSuiteRunner was removed from the config, only the stubTest remains
+        assertTrue(config.getTests().size() == 1);
+        assertTrue(config.getTests().get(0) instanceof StubTest);
+    }
+
+    /**
+     * In case of cycle include of sub-suite configuration. We throw an exception to prevent any
+     * weird runs.
+     */
+    @Test
+    public void testLoadSuite_cycle() throws ConfigurationException {
+        OptionSetter setter = new OptionSetter(mRunner);
+        setter.setOptionValue("run-suite-tag", "test-cycle-a");
+        try {
+            mRunner.loadTests();
+            fail("Should have thrown an exception.");
+        } catch (RuntimeException expected) {
+            // expected
+        }
     }
 }
