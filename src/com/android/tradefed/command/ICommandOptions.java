@@ -143,4 +143,7 @@ public interface ICommandOptions {
 
     /** Return true if the test should skip device setup during TestInvocation setup. */
     public boolean shouldSkipPreDeviceSetup();
+
+    /** Returns if we should use dynamic sharding or not */
+    public boolean shouldUseDynamicSharding();
 }

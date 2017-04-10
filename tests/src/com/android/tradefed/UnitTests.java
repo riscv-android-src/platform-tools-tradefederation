@@ -61,6 +61,7 @@ import com.android.tradefed.device.WaitDeviceRecoveryTest;
 import com.android.tradefed.device.WifiHelperTest;
 import com.android.tradefed.invoker.InvocationContextTest;
 import com.android.tradefed.invoker.TestInvocationTest;
+import com.android.tradefed.invoker.shard.TestsPoolPollerTest;
 import com.android.tradefed.log.FileLoggerTest;
 import com.android.tradefed.log.HistoryLoggerTest;
 import com.android.tradefed.log.LogRegistryTest;
@@ -274,6 +275,9 @@ import org.junit.runners.Suite.SuiteClasses;
     // invoker
     InvocationContextTest.class,
     TestInvocationTest.class,
+
+    // invoker.shard
+    TestsPoolPollerTest.class,
 
     // log
     FileLoggerTest.class,
