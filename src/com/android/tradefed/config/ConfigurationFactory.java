@@ -216,7 +216,7 @@ public class ConfigurationFactory implements IConfigurationFactory {
      */
     @VisibleForTesting
     File getTestCaseConfigPath(String name) {
-        String[] possibleConfigFileNames = {name + ".xml", name + ".config", name + ".dynamic"};
+        String[] possibleConfigFileNames = {name + ".xml", name + ".config"};
         for (File testCasesDir : getTestCasesDirs()) {
             for (String configFileName : possibleConfigFileNames) {
                 File config = FileUtil.findFile(testCasesDir, configFileName);
@@ -624,7 +624,6 @@ public class ConfigurationFactory implements IConfigurationFactory {
             try {
                 configNames.addAll(FileUtil.findFiles(testCasesDir, ".*.config"));
                 configNames.addAll(FileUtil.findFiles(testCasesDir, ".*.xml"));
-                configNames.addAll(FileUtil.findFiles(testCasesDir, ".*.dynamic"));
             } catch (IOException e) {
                 CLog.w(
                         "Failed to get test config files from directory %s",
