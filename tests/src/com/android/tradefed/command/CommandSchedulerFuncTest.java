@@ -455,8 +455,8 @@ public class CommandSchedulerFuncTest extends TestCase {
         mCommandScheduler.join(WAIT_TIMEOUT_MS);
         // Stop but was not interrupted
         assertFalse(mMockTestInvoker.runInterrupted);
-        // Notify was sent to the invocation
-        assertTrue(mMockTestInvoker.printedStop);
+        // Notify was not sent to the invocation because it was not interrupted.
+        assertFalse(mMockTestInvoker.printedStop);
     }
 
     private class LongInvocation implements ITestInvocation {

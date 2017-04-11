@@ -15,6 +15,8 @@
  */
 package com.android.tradefed.testtype.suite;
 
+import static org.junit.Assert.*;
+
 import com.android.ddmlib.testrunner.TestIdentifier;
 import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.command.remote.DeviceDescriptor;
@@ -62,10 +64,12 @@ public class ModuleDefinitionTest {
         private ITestDevice mDevice;
         private String mRunName;
         private int mNumTest;
+        private boolean mShouldThrow;
 
-        public TestObject(String runName, int numTest) {
+        public TestObject(String runName, int numTest, boolean shouldThrow) {
             mRunName = runName;
             mNumTest = numTest;
+            mShouldThrow = shouldThrow;
         }
 
         @Override
@@ -74,6 +78,9 @@ public class ModuleDefinitionTest {
             for (int i = 0; i < mNumTest; i++) {
                 TestIdentifier test = new TestIdentifier(mRunName + "class", "test" + i);
                 listener.testStarted(test);
+                if (mShouldThrow && i == mNumTest / 2) {
+                    throw new DeviceNotAvailableException();
+                }
                 listener.testEnded(test, Collections.emptyMap());
             }
             listener.testRunEnded(0, Collections.emptyMap());
@@ -204,7 +211,7 @@ public class ModuleDefinitionTest {
     public void testRun_fullPass() throws Exception {
         final int testCount = 5;
         List<IRemoteTest> testList = new ArrayList<>();
-        testList.add(new TestObject("run1", testCount));
+        testList.add(new TestObject("run1", testCount, false));
         mModule = new ModuleDefinition(MODULE_NAME, testList, mTargetPrepList);
         mModule.setBuild(mMockBuildInfo);
         mModule.setDevice(mMockDevice);
@@ -223,6 +230,47 @@ public class ModuleDefinitionTest {
         mMockListener.testRunEnded(0, Collections.emptyMap());
         replayMocks();
         mModule.run(mMockListener);
+        verifyMocks();
+    }
+
+    /**
+     * Test that {@link ModuleDefinition#run(ITestInvocationListener)} is properly going through the
+     * execution flow with actual test callbacks.
+     */
+    @Test
+    public void testRun_partialRun() throws Exception {
+        final int testCount = 4;
+        List<IRemoteTest> testList = new ArrayList<>();
+        testList.add(new TestObject("run1", testCount, true));
+        mModule = new ModuleDefinition(MODULE_NAME, testList, mTargetPrepList);
+        mModule.setBuild(mMockBuildInfo);
+        mModule.setDevice(mMockDevice);
+        mMockPrep.setUp(EasyMock.eq(mMockDevice), EasyMock.eq(mMockBuildInfo));
+        mMockCleaner.setUp(EasyMock.eq(mMockDevice), EasyMock.eq(mMockBuildInfo));
+        mMockCleaner.tearDown(
+                EasyMock.eq(mMockDevice), EasyMock.eq(mMockBuildInfo), EasyMock.isNull());
+        EasyMock.expectLastCall().andThrow(new DeviceNotAvailableException());
+        mMockListener.testRunStarted(MODULE_NAME, testCount);
+        for (int i = 0; i < 3; i++) {
+            mMockListener.testStarted((TestIdentifier) EasyMock.anyObject(), EasyMock.anyLong());
+            mMockListener.testEnded(
+                    (TestIdentifier) EasyMock.anyObject(),
+                    EasyMock.anyLong(),
+                    EasyMock.anyObject());
+        }
+        mMockListener.testFailed(EasyMock.anyObject(), EasyMock.anyObject());
+        mMockListener.testRunFailed(EasyMock.anyObject());
+        mMockListener.testRunEnded(0, Collections.emptyMap());
+        replayMocks();
+        try {
+            mModule.run(mMockListener);
+            fail("Should have thrown an exception.");
+        } catch (DeviceNotAvailableException expected) {
+            // expected
+        }
+        // Only one module
+        assertEquals(1, mModule.getTestsResults().size());
+        assertEquals(2, mModule.getTestsResults().get(0).getNumCompleteTests());
         verifyMocks();
     }
 }
