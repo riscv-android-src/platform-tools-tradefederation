@@ -113,6 +113,7 @@ import com.android.tradefed.targetprep.StopServicesSetupTest;
 import com.android.tradefed.targetprep.SystemUpdaterDeviceFlasherTest;
 import com.android.tradefed.targetprep.TestAppInstallSetupTest;
 import com.android.tradefed.targetprep.TestFilePushSetupTest;
+import com.android.tradefed.targetprep.suite.SuiteApkInstallerTest;
 import com.android.tradefed.testtype.AndroidJUnitTestTest;
 import com.android.tradefed.testtype.CodeCoverageTestBaseTest;
 import com.android.tradefed.testtype.DeviceBatteryLevelCheckerTest;
@@ -331,6 +332,9 @@ import org.junit.runners.Suite.SuiteClasses;
     SystemUpdaterDeviceFlasherTest.class,
     TestAppInstallSetupTest.class,
     TestFilePushSetupTest.class,
+
+    // targetprep.suite
+    SuiteApkInstallerTest.class,
 
     // suite/checker
     KeyguardStatusCheckerTest.class,
