@@ -147,6 +147,7 @@ import com.android.tradefed.testtype.suite.ModuleDefinitionTest;
 import com.android.tradefed.testtype.suite.ModuleListenerTest;
 import com.android.tradefed.testtype.suite.TestFailureListenerTest;
 import com.android.tradefed.testtype.suite.TfSuiteRunnerTest;
+import com.android.tradefed.testtype.suite.ValidateSuiteConfigHelperTest;
 import com.android.tradefed.testtype.testdefs.XmlDefsParserTest;
 import com.android.tradefed.testtype.testdefs.XmlDefsTestTest;
 import com.android.tradefed.util.AaptParserTest;
@@ -373,6 +374,7 @@ import org.junit.runners.Suite.SuiteClasses;
     ModuleListenerTest.class,
     TestFailureListenerTest.class,
     TfSuiteRunnerTest.class,
+    ValidateSuiteConfigHelperTest.class,
 
     // testtype/testdefs
     XmlDefsParserTest.class,

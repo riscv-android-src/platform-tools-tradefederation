@@ -235,9 +235,8 @@ public class Configuration implements IConfiguration {
         }
     }
 
-    /**
-     * @return the name of this {@link Configuration}
-     */
+    /** {@inheritDoc} */
+    @Override
     public String getName() {
         return mName;
     }

@@ -17,6 +17,7 @@ package com.android.tradefed.testtype.suite;
 
 import com.android.ddmlib.Log.LogLevel;
 import com.android.tradefed.build.IBuildInfo;
+import com.android.tradefed.config.ConfigurationException;
 import com.android.tradefed.config.IConfiguration;
 import com.android.tradefed.config.Option;
 import com.android.tradefed.config.OptionCopier;
@@ -158,16 +159,23 @@ public abstract class ITestSuite
     @Override
     final public void run(ITestInvocationListener listener) throws DeviceNotAvailableException {
         LinkedHashMap<String, IConfiguration> runConfig = loadTests();
-        // TODO: validate the xml configuration are "suite" ready: build provider may not be
-        // expected to run, etc.
         List<ModuleDefinition> runModules = new ArrayList<>();
         for (Entry<String, IConfiguration> config : runConfig.entrySet()) {
+            if (!ValidateSuiteConfigHelper.validateConfig(config.getValue())) {
+                throw new RuntimeException(
+                        new ConfigurationException(
+                                String.format(
+                                        "Configuration %s cannot be run in a suite.",
+                                        config.getValue().getName())));
+            }
             ModuleDefinition module = new ModuleDefinition(config.getKey(),
                     config.getValue().getTests(), config.getValue().getTargetPreparers());
             module.setDevice(mDevice);
             module.setBuild(mBuildInfo);
             runModules.add(module);
         }
+        // Free the map once we are done with it.
+        runConfig = null;
 
         runModules = shardModules(runModules, mShardCount, mShardIndex);
         if (runModules.isEmpty()) {
