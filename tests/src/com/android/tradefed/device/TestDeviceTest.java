@@ -46,6 +46,8 @@ import org.easymock.EasyMock;
 import org.easymock.IAnswer;
 import org.easymock.IExpectationSetters;
 import org.junit.Assert;
+import org.mockito.ArgumentCaptor;
+import org.mockito.Mockito;
 
 import java.awt.image.BufferedImage;
 import java.io.File;
@@ -3047,5 +3049,90 @@ public class TestDeviceTest extends TestCase {
                     }
                 };
         assertNull(mTestDevice.getKeyguardState());
+    }
+
+    public void testSetDeviceOwner_success() throws Exception {
+        mTestDevice =
+                new TestableTestDevice() {
+                    @Override
+                    public String executeShellCommand(String command)
+                            throws DeviceNotAvailableException {
+                        return "Success: Device owner set to package ComponentInfo{xxx/yyy}";
+                    }
+                };
+        assertTrue(mTestDevice.setDeviceOwner("xxx/yyy", 0));
+    }
+
+    public void testSetDeviceOwner_fail() throws Exception {
+        mTestDevice =
+                new TestableTestDevice() {
+                    @Override
+                    public String executeShellCommand(String command)
+                            throws DeviceNotAvailableException {
+                        return "java.lang.IllegalStateException: Trying to set the device owner";
+                    }
+                };
+        assertFalse(mTestDevice.setDeviceOwner("xxx/yyy", 0));
+    }
+
+    public void testRemoveAdmin_success() throws Exception {
+        mTestDevice =
+                new TestableTestDevice() {
+                    @Override
+                    public String executeShellCommand(String command)
+                            throws DeviceNotAvailableException {
+                        return "Success: Admin removed";
+                    }
+                };
+        assertTrue(mTestDevice.removeAdmin("xxx/yyy", 0));
+    }
+
+    public void testRemoveAdmin_fail() throws Exception {
+        mTestDevice =
+                new TestableTestDevice() {
+                    @Override
+                    public String executeShellCommand(String command)
+                            throws DeviceNotAvailableException {
+                        return "java.lang.SecurityException: Attempt to remove non-test admin";
+                    }
+                };
+        assertFalse(mTestDevice.removeAdmin("xxx/yyy", 0));
+    }
+
+    public void testRemoveOwners() throws Exception {
+        mTestDevice =
+                Mockito.spy(
+                        new TestableTestDevice() {
+                            @Override
+                            public String executeShellCommand(String command)
+                                    throws DeviceNotAvailableException {
+                                return "Current Device Policy Manager state:\n"
+                                        + "  Device Owner: \n"
+                                        + "    admin=ComponentInfo{aaa/aaa}\n"
+                                        + "    name=\n"
+                                        + "    package=aaa\n"
+                                        + "    User ID: 0\n"
+                                        + "\n"
+                                        + "  Profile Owner (User 10): \n"
+                                        + "    admin=ComponentInfo{bbb/bbb}\n"
+                                        + "    name=bbb\n"
+                                        + "    package=bbb\n";
+                            }
+                        });
+        mTestDevice.removeOwners();
+
+        // Verified removeAdmin is called to remove owners.
+        ArgumentCaptor<String> stringCaptor = ArgumentCaptor.forClass(String.class);
+        ArgumentCaptor<Integer> intCaptor = ArgumentCaptor.forClass(Integer.class);
+        Mockito.verify(mTestDevice, Mockito.times(2))
+                .removeAdmin(stringCaptor.capture(), intCaptor.capture());
+        List<String> stringArgs = stringCaptor.getAllValues();
+        List<Integer> intArgs = intCaptor.getAllValues();
+
+        assertEquals("aaa/aaa", stringArgs.get(0));
+        assertEquals(Integer.valueOf(0), intArgs.get(0));
+
+        assertEquals("bbb/bbb", stringArgs.get(1));
+        assertEquals(Integer.valueOf(10), intArgs.get(1));
     }
 }

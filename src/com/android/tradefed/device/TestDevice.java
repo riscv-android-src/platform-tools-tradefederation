@@ -1140,6 +1140,62 @@ public class TestDevice extends NativeDevice {
         return new WifiHelper(this);
     }
 
+    /** {@inheritDoc} */
+    @Override
+    public boolean setDeviceOwner(String componentName, int userId)
+            throws DeviceNotAvailableException {
+        final String command = "dpm set-device-owner --user " + userId + " '" + componentName + "'";
+        final String commandOutput = executeShellCommand(command);
+        return commandOutput.startsWith("Success:");
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public boolean removeAdmin(String componentName, int userId)
+            throws DeviceNotAvailableException {
+        final String command =
+                "dpm remove-active-admin --user " + userId + " '" + componentName + "'";
+        final String commandOutput = executeShellCommand(command);
+        return commandOutput.startsWith("Success:");
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public void removeOwners() throws DeviceNotAvailableException {
+        String command = "dumpsys device_policy";
+        String commandOutput = executeShellCommand(command);
+        String[] lines = commandOutput.split("\\r?\\n");
+        for (int i = 0; i < lines.length; ++i) {
+            String line = lines[i].trim();
+            if (line.contains("Profile Owner")) {
+                // Line is "Profile owner (User <id>):
+                String[] tokens = line.split("\\(|\\)| ");
+                int userId = Integer.parseInt(tokens[4]);
+                i++;
+                line = lines[i].trim();
+                // Line is admin=ComponentInfo{<component>}
+                tokens = line.split("\\{|\\}");
+                String componentName = tokens[1];
+                CLog.d("Cleaning up profile owner " + userId + " " + componentName);
+                removeAdmin(componentName, userId);
+            } else if (line.contains("Device Owner:")) {
+                i++;
+                line = lines[i].trim();
+                // Line is admin=ComponentInfo{<component>}
+                String[] tokens = line.split("\\{|\\}");
+                String componentName = tokens[1];
+                // Skip to user id line.
+                i += 3;
+                line = lines[i].trim();
+                // Line is User ID: <N>
+                tokens = line.split(":");
+                int userId = Integer.parseInt(tokens[1].trim());
+                CLog.d("Cleaning up device owner " + userId + " " + componentName);
+                removeAdmin(componentName, userId);
+            }
+        }
+    }
+
     /**
      * Helper for Api level checking of features in the new release before we incremented the api
      * number.
