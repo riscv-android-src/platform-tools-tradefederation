@@ -140,4 +140,7 @@ public interface ICommandOptions {
      * Sets the shard index for the command.
      */
     public void setShardIndex(Integer shardIndex);
+
+    /** Return true if the test should skip device setup during TestInvocation setup. */
+    public boolean shouldSkipPreDeviceSetup();
 }

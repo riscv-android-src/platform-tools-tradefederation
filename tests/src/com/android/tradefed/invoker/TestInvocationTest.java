@@ -33,9 +33,11 @@ import com.android.tradefed.config.DeviceConfigurationHolder;
 import com.android.tradefed.config.IConfiguration;
 import com.android.tradefed.config.IConfigurationFactory;
 import com.android.tradefed.config.IDeviceConfiguration;
+import com.android.tradefed.config.OptionSetter;
 import com.android.tradefed.device.DeviceAllocationState;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.IDeviceRecovery;
+import com.android.tradefed.device.INativeDevice;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.device.ITestDevice.RecoveryMode;
 import com.android.tradefed.device.StubDevice;
@@ -1440,5 +1442,69 @@ public class TestInvocationTest extends TestCase {
      */
     private interface DeviceConfigTest extends IRemoteTest, IDeviceTest {
 
+    }
+
+    /**
+     * Test {@link INativeDevice#preInvocationSetup(IBuildInfo info)} is called when command option
+     * skip-pre-device-setup is not set.
+     */
+    public void testNotSkipPreDeviceSetup() throws Throwable {
+        IInvocationContext context = new InvocationContext();
+        ITestDevice device1 = EasyMock.createMock(ITestDevice.class);
+        IDevice idevice = Mockito.mock(IDevice.class);
+        context.addAllocatedDevice("DEFAULT_DEVICE", device1);
+        EasyMock.expect(device1.getSerialNumber()).andReturn("serial1").anyTimes();
+        EasyMock.expect(device1.getIDevice()).andReturn(idevice).anyTimes();
+        EasyMock.expect(device1.getLogcat()).andReturn(EMPTY_STREAM_SOURCE).times(1);
+        device1.clearLogcat();
+        EasyMock.expectLastCall().once();
+        device1.preInvocationSetup((IBuildInfo) EasyMock.anyObject());
+        EasyMock.expectLastCall().once();
+
+        CommandOptions commandOption = new CommandOptions();
+        OptionSetter setter = new OptionSetter(commandOption);
+        setter.setOptionValue("skip-pre-device-setup", "false");
+        mStubConfiguration.setCommandOptions(commandOption);
+
+        ITestInvocationListener listener = EasyMock.createStrictMock(ITestInvocationListener.class);
+        listener.testLog(
+                EasyMock.eq(LOGCAT_NAME_SETUP),
+                EasyMock.eq(LogDataType.LOGCAT),
+                (InputStreamSource) EasyMock.anyObject());
+
+        EasyMock.replay(device1, listener);
+        mTestInvocation.doSetup(mStubConfiguration, context, listener);
+        EasyMock.verify(device1, listener);
+    }
+
+    /**
+     * Test {@link INativeDevice#preInvocationSetup(IBuildInfo info)} is not called when command
+     * option skip-pre-device-setup is set.
+     */
+    public void testSkipPreDeviceSetup() throws Throwable {
+        IInvocationContext context = new InvocationContext();
+        ITestDevice device1 = EasyMock.createMock(ITestDevice.class);
+        IDevice idevice = Mockito.mock(IDevice.class);
+        context.addAllocatedDevice("DEFAULT_DEVICE", device1);
+        EasyMock.expect(device1.getSerialNumber()).andReturn("serial1").anyTimes();
+        EasyMock.expect(device1.getIDevice()).andReturn(idevice).anyTimes();
+        EasyMock.expect(device1.getLogcat()).andReturn(EMPTY_STREAM_SOURCE).times(1);
+        device1.clearLogcat();
+        EasyMock.expectLastCall().once();
+
+        CommandOptions commandOption = new CommandOptions();
+        OptionSetter setter = new OptionSetter(commandOption);
+        setter.setOptionValue("skip-pre-device-setup", "true");
+        mStubConfiguration.setCommandOptions(commandOption);
+
+        ITestInvocationListener listener = EasyMock.createStrictMock(ITestInvocationListener.class);
+        listener.testLog(
+                EasyMock.eq(LOGCAT_NAME_SETUP),
+                EasyMock.eq(LogDataType.LOGCAT),
+                (InputStreamSource) EasyMock.anyObject());
+
+        EasyMock.replay(device1, listener);
+        mTestInvocation.doSetup(mStubConfiguration, context, listener);
+        EasyMock.verify(device1, listener);
     }
 }

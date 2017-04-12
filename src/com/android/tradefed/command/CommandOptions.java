@@ -106,6 +106,14 @@ public class CommandOptions implements ICommandOptions {
             "[0, shard-count)")
     private Integer mShardIndex;
 
+    @Option(
+        name = "skip-pre-device-setup",
+        description =
+                "allow TestInvocation to skip calling device.preInvocationSetup. This is for "
+                        + "delaying device setup when the test runs with VersionedTfLauncher."
+    )
+    private boolean mSkipPreDeviceSetup = false;
+
     /**
      * Set the help mode for the config.
      * <p/>
@@ -331,5 +339,11 @@ public class CommandOptions implements ICommandOptions {
     @Override
     public String getTestTagSuffix() {
         return mTestTagSuffix;
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public boolean shouldSkipPreDeviceSetup() {
+        return mSkipPreDeviceSetup;
     }
 }

@@ -525,7 +525,10 @@ public class TestInvocation implements ITestInvocation {
         logDeviceBatteryLevel(context, "after test");
     }
 
-    private void doSetup(IConfiguration config, IInvocationContext context,
+    @VisibleForTesting
+    void doSetup(
+            IConfiguration config,
+            IInvocationContext context,
             final ITestInvocationListener listener)
             throws TargetSetupError, BuildError, DeviceNotAvailableException {
         // TODO: evaluate doing device setup in parallel
@@ -536,8 +539,9 @@ public class TestInvocation implements ITestInvocation {
                 ((ITestLoggerReceiver) context.getDevice(deviceName))
                         .setTestLogger(listener);
             }
-            device.preInvocationSetup(context.getBuildInfo(deviceName));
-
+            if (!config.getCommandOptions().shouldSkipPreDeviceSetup()) {
+                device.preInvocationSetup(context.getBuildInfo(deviceName));
+            }
             for (ITargetPreparer preparer : config.getDeviceConfigByName(deviceName)
                     .getTargetPreparers()) {
                 if (preparer instanceof ITestLoggerReceiver) {
