@@ -65,13 +65,13 @@ public class FileLoggerTest extends TestCase {
                     logSource.createInputStream()));
 
             String actualLogString = logFileReader.readLine().trim();
-            assertEquals(expectedText1, actualLogString);
+            assertEquals(trimTimestamp(expectedText1), trimTimestamp(actualLogString));
 
             actualLogString = logFileReader.readLine().trim();
-            assertEquals(expectedText2, actualLogString);
+            assertEquals(trimTimestamp(expectedText2), trimTimestamp(actualLogString));
 
             actualLogString = logFileReader.readLine().trim();
-            assertEquals(expectedText3, actualLogString);
+            assertEquals(trimTimestamp(expectedText3), trimTimestamp(actualLogString));
         }
         finally {
             StreamUtil.close(logFileReader);
@@ -81,8 +81,20 @@ public class FileLoggerTest extends TestCase {
     }
 
     /**
-     * Test behavior when  {@link FileLogger#getLog()} is called after
-     * {@link FileLogger#closeLog()}.
+     * Remove the timestamp at the beginning of the log message.
+     *
+     * @param message log message with leading timestamp.
+     * @return a {@link String} of message without leading timestamp.
+     */
+    private String trimTimestamp(String message) {
+        // The log level character is prefixed to the log tag. For example:
+        // 04-11 10:30:[50] I/FileLoggerTest: The quick brown fox jumps.
+        int startIndex = message.indexOf(LOG_TAG) - 2;
+        return message.substring(startIndex);
+    }
+
+    /**
+     * Test behavior when {@link FileLogger#getLog()} is called after {@link FileLogger#closeLog()}.
      */
     public void testGetLog_afterClose() throws Exception {
         FileLogger logger = new FileLogger();
