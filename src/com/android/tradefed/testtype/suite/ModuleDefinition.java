@@ -25,6 +25,7 @@ import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.ResultForwarder;
+import com.android.tradefed.suite.checker.ISystemStatusCheckerReceiver;
 import com.android.tradefed.targetprep.BuildError;
 import com.android.tradefed.targetprep.ITargetCleaner;
 import com.android.tradefed.targetprep.ITargetPreparer;
@@ -160,12 +161,16 @@ public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestColl
                 return;
             }
             for (IRemoteTest test : mTests) {
-                CLog.d("Test: %s", test.getClass().getSimpleName());
                 if (test instanceof IBuildReceiver) {
                     ((IBuildReceiver) test).setBuild(mBuild);
                 }
                 if (test instanceof IDeviceTest) {
                     ((IDeviceTest) test).setDevice(mDevice);
+                }
+                if (test instanceof ISystemStatusCheckerReceiver) {
+                    // We do not pass down Status checker because they are already running at the
+                    // top level suite.
+                    ((ISystemStatusCheckerReceiver) test).setSystemStatusChecker(new ArrayList<>());
                 }
 
                 // Run the test, only in case of DeviceNotAvailable we exit the module
