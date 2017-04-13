@@ -22,8 +22,10 @@ import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.DeviceUnresponsiveException;
 import com.android.tradefed.device.ITestDevice;
+import com.android.tradefed.log.ITestLogger;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.result.ITestInvocationListener;
+import com.android.tradefed.result.ITestLoggerReceiver;
 import com.android.tradefed.result.ResultForwarder;
 import com.android.tradefed.suite.checker.ISystemStatusCheckerReceiver;
 import com.android.tradefed.targetprep.BuildError;
@@ -137,7 +139,7 @@ public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestColl
         Exception preparationException = null;
         // Setup
         for (ITargetPreparer preparer : mPreparers) {
-            preparationException = runPreparerSetup(preparer);
+            preparationException = runPreparerSetup(preparer, listener);
             if (preparationException != null) {
                 mIsFailedModule = true;
                 CLog.e("Some preparation step failed. failing the module %s", getId());
@@ -278,13 +280,15 @@ public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestColl
         }
     }
 
-    /**
-     * Run all the prepare steps.
-     */
-    private Exception runPreparerSetup(ITargetPreparer preparer)
+    /** Run all the prepare steps. */
+    private Exception runPreparerSetup(ITargetPreparer preparer, ITestLogger logger)
             throws DeviceNotAvailableException {
         CLog.d("Preparer: %s", preparer.getClass().getSimpleName());
         try {
+            // set the logger in case they need it.
+            if (preparer instanceof ITestLoggerReceiver) {
+                ((ITestLoggerReceiver) preparer).setTestLogger(logger);
+            }
             preparer.setUp(mDevice, mBuild);
             return null;
         } catch (BuildError | TargetSetupError e) {
