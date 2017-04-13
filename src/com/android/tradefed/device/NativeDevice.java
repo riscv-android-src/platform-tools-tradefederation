@@ -153,6 +153,9 @@ public class NativeDevice implements IManagedTestDevice {
     static final String BUILD_TAGS = "ro.build.tags";
     private static final String PS_COMMAND = "ps -A || ps";
 
+    private static final String SIM_STATE_PROP = "gsm.sim.state";
+    private static final String SIM_OPERATOR_PROP = "gsm.operator.alpha";
+
     static final String MAC_ADDRESS_PATTERN = "([0-9a-fA-F]{2}:){5}[0-9a-fA-F]{2}";
     static final String MAC_ADDRESS_COMMAND = "cat /sys/class/net/wlan0/address";
 
@@ -3638,7 +3641,8 @@ public class NativeDevice implements IManagedTestDevice {
     public DeviceDescriptor getDeviceDescriptor() {
         IDeviceSelection selector = new DeviceSelectionOptions();
         IDevice idevice = getIDevice();
-        return new DeviceDescriptor(idevice.getSerialNumber(),
+        return new DeviceDescriptor(
+                idevice.getSerialNumber(),
                 idevice instanceof StubDevice,
                 getAllocationState(),
                 getDisplayString(selector.getDeviceProductType(idevice)),
@@ -3647,7 +3651,9 @@ public class NativeDevice implements IManagedTestDevice {
                 getDisplayString(idevice.getProperty("ro.build.id")),
                 getDisplayString(selector.getBatteryLevel(idevice)),
                 getDeviceClass(),
-                getDisplayString(getMacAddress()));
+                getDisplayString(getMacAddress()),
+                getDisplayString(getSimState()),
+                getDisplayString(getSimOperator()));
     }
 
     /**
@@ -3718,5 +3724,29 @@ public class NativeDevice implements IManagedTestDevice {
         }
         CLog.d("No valid MAC address queried from device %s", mIDevice.getSerialNumber());
         return null;
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public String getSimState() {
+        try {
+            return getProperty(SIM_STATE_PROP);
+        } catch (DeviceNotAvailableException e) {
+            CLog.w("Failed to query SIM state for %s", mIDevice.getSerialNumber());
+            CLog.w(e);
+            return null;
+        }
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public String getSimOperator() {
+        try {
+            return getProperty(SIM_OPERATOR_PROP);
+        } catch (DeviceNotAvailableException e) {
+            CLog.w("Failed to query SIM operator for %s", mIDevice.getSerialNumber());
+            CLog.w(e);
+            return null;
+        }
     }
 }

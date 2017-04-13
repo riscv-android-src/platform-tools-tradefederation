@@ -49,6 +49,8 @@ public class DeviceManagerTest extends TestCase {
 
     private static final String DEVICE_SERIAL = "serial";
     private static final String MAC_ADDRESS = "FF:FF:FF:FF:FF:FF";
+    private static final String SIM_STATE = "READY";
+    private static final String SIM_OPERATOR = "operator";
 
     private IAndroidDebugBridge mMockAdbBridge;
     private IDevice mMockIDevice;
@@ -177,6 +179,8 @@ public class DeviceManagerTest extends TestCase {
         EasyMock.expect(mMockStateMonitor.getSerialNumber()).andStubReturn(DEVICE_SERIAL);
         EasyMock.expect(mMockIDevice.isEmulator()).andStubReturn(Boolean.FALSE);
         EasyMock.expect(mMockTestDevice.getMacAddress()).andStubReturn(MAC_ADDRESS);
+        EasyMock.expect(mMockTestDevice.getSimState()).andStubReturn(SIM_STATE);
+        EasyMock.expect(mMockTestDevice.getSimOperator()).andStubReturn(SIM_OPERATOR);
         final Capture<IDevice> capturedIDevice = new Capture<>();
         mMockTestDevice.setIDevice(EasyMock.capture(capturedIDevice));
         EasyMock.expectLastCall().anyTimes();
@@ -913,6 +917,9 @@ public class DeviceManagerTest extends TestCase {
         List<DeviceDescriptor> res = manager.listAllDevices();
         assertEquals(1, res.size());
         assertEquals("[serial hardware_test:product_test bid_test]", res.get(0).toString());
+        assertEquals(MAC_ADDRESS, res.get(0).getMacAddress());
+        assertEquals(SIM_STATE, res.get(0).getSimState());
+        assertEquals(SIM_OPERATOR, res.get(0).getSimOperator());
         verifyMocks();
     }
 
