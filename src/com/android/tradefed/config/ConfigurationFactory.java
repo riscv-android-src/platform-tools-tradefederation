@@ -599,6 +599,8 @@ public class ConfigurationFactory implements IConfigurationFactory {
     @Override
     public List<String> getConfigList(String subPath) {
         Set<String> configNames = getConfigSetFromClasspath(subPath);
+        // list config on variable path too
+        configNames.addAll(getConfigNamesFromTestCases(subPath));
         // sort the configs by name before adding to list
         SortedSet<String> configDefs = new TreeSet<String>();
         configDefs.addAll(configNames);
@@ -615,12 +617,18 @@ public class ConfigurationFactory implements IConfigurationFactory {
         return cpScanner.getClassPathEntries(new ConfigClasspathFilter(subPath));
     }
 
-    /** Helper to get the test config files from test cases directories from build output. */
+    /**
+     * Helper to get the test config files from test cases directories from build output.
+     *
+     * @param subPath where to look for configuration. Can be null.
+     */
     @VisibleForTesting
-    Set<String> getConfigNamesFromTestCases() {
-
+    Set<String> getConfigNamesFromTestCases(String subPath) {
         Set<String> configNames = new HashSet<String>();
         for (File testCasesDir : getTestCasesDirs()) {
+            if (subPath != null) {
+                testCasesDir = new File(testCasesDir, subPath);
+            }
             try {
                 configNames.addAll(FileUtil.findFiles(testCasesDir, ".*.config"));
                 configNames.addAll(FileUtil.findFiles(testCasesDir, ".*.xml"));
@@ -646,7 +654,7 @@ public class ConfigurationFactory implements IConfigurationFactory {
         Set<String> configNames = getConfigSetFromClasspath(null);
         // TODO: split the the configs into two lists, one from the jar packages and one from test
         // cases directories.
-        configNames.addAll(getConfigNamesFromTestCases());
+        configNames.addAll(getConfigNamesFromTestCases(null));
         for (String configName : configNames) {
             final ConfigId configId = new ConfigId(configName);
             try {

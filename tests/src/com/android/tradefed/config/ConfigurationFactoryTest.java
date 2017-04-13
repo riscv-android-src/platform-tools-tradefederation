@@ -37,6 +37,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 /**
  * Unit tests for {@link ConfigurationFactory}
@@ -72,12 +73,12 @@ public class ConfigurationFactoryTest extends TestCase {
      */
     public void testLoadAllConfigs() throws ConfigurationException {
         ConfigurationFactory spyFactory = Mockito.spy(mRealFactory);
-        Mockito.doReturn(new HashSet<String>()).when(spyFactory).getConfigNamesFromTestCases();
+        Mockito.doReturn(new HashSet<String>()).when(spyFactory).getConfigNamesFromTestCases(null);
 
         // we dry-run the templates otherwise it will always fail.
         spyFactory.loadAllConfigs(false);
         assertTrue(spyFactory.getMapConfig().size() > 0);
-        Mockito.verify(spyFactory, Mockito.times(1)).getConfigNamesFromTestCases();
+        Mockito.verify(spyFactory, Mockito.times(1)).getConfigNamesFromTestCases(null);
     }
 
     /**
@@ -85,12 +86,12 @@ public class ConfigurationFactoryTest extends TestCase {
      */
     public void testLoadAndPrintAllConfigs() throws ConfigurationException {
         ConfigurationFactory spyFactory = Mockito.spy(mRealFactory);
-        Mockito.doReturn(new HashSet<String>()).when(spyFactory).getConfigNamesFromTestCases();
+        Mockito.doReturn(new HashSet<String>()).when(spyFactory).getConfigNamesFromTestCases(null);
 
         // Printing the help involves more checks since it tries to resolve the config objects.
         spyFactory.loadAndPrintAllConfigs();
         assertTrue(spyFactory.getMapConfig().size() > 0);
-        Mockito.verify(spyFactory, Mockito.times(1)).getConfigNamesFromTestCases();
+        Mockito.verify(spyFactory, Mockito.times(1)).getConfigNamesFromTestCases(null);
     }
 
     /**
@@ -1296,5 +1297,28 @@ public class ConfigurationFactoryTest extends TestCase {
         File config = spyFactory.getTestCaseConfigPath("non-exist");
         assertNull(config);
         Mockito.verify(spyFactory, Mockito.times(1)).getTestCasesDirs();
+    }
+
+    /**
+     * Tests that {@link ConfigurationFactory#getConfigNamesFromTestCases(String)} returns the
+     * proper files of the subpath only.
+     */
+    public void testGetConfigNamesFromTestCases_subpath() throws Exception {
+        File tmpDir = FileUtil.createTempDir("test-config-dir");
+        try {
+            FileUtil.createTempFile("testconfig1", ".config", tmpDir);
+            File subDir = FileUtil.createTempDir("subdir", tmpDir);
+            FileUtil.createTempFile("testconfig2", ".xml", subDir);
+            ConfigurationFactory spyFactory = Mockito.spy(mFactory);
+            Mockito.doReturn(Arrays.asList(tmpDir)).when(spyFactory).getTestCasesDirs();
+            // looking at full path we get both configs
+            Set<String> res = spyFactory.getConfigNamesFromTestCases(null);
+            assertEquals(2, res.size());
+            res = spyFactory.getConfigNamesFromTestCases(subDir.getName());
+            assertEquals(1, res.size());
+            assertTrue(res.iterator().next().contains("testconfig2"));
+        } finally {
+            FileUtil.recursiveDelete(tmpDir);
+        }
     }
 }

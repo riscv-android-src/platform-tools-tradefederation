@@ -91,9 +91,9 @@ public class TfSuiteRunner extends ITestSuite {
                             expandTestSuites(configName, testConfig, graph);
                     configMap.putAll(expandedConfig);
                 }
-            } catch (ConfigurationException e) {
+            } catch (ConfigurationException | NoClassDefFoundError e) {
+                // Do not print the stack it's too verbose.
                 CLog.e("Configuration '%s' cannot be loaded, ignoring.", configName);
-                CLog.e(e);
             }
         }
         return configMap;
