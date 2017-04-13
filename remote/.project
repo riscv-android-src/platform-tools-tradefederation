@@ -14,4 +14,16 @@
 	<natures>
 		<nature>org.eclipse.jdt.core.javanature</nature>
 	</natures>
+	<linkedResources>
+		<link>
+			<name>guava</name>
+			<type>2</type>
+			<location>TRADEFED_ROOT/external/guava/guava/src</location>
+		</link>
+		<link>
+			<name>jsr305</name>
+			<type>2</type>
+                        <location>TRADEFED_ROOT/external/jsr305/ri/src/main/java</location>
+		</link>
+	</linkedResources>
 </projectDescription>

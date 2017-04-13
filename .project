@@ -16,9 +16,29 @@
 	</natures>
 	<linkedResources>
 		<link>
+			<name>hamcrest</name>
+			<type>2</type>
+			<location>TRADEFED_ROOT/external/hamcrest/hamcrest-core/src/main/java</location>
+		</link>
+		<link>
+			<name>jline</name>
+			<type>2</type>
+			<locationURI>TRADEFED_ROOT/external/jline/src/src/main/java</locationURI>
+		</link>
+		<link>
+			<name>junit</name>
+			<type>2</type>
+			<locationURI>TRADEFED_ROOT/external/junit/src/main/java</locationURI>
+		</link>
+		<link>
 			<name>proto_gen</name>
 			<type>2</type>
 			<locationURI>TRADEFED_ROOT/out/host/common/obj/JAVA_LIBRARIES/tradefed-protos_intermediates/proto/src</locationURI>
+		</link>
+		<link>
+			<name>protobuf</name>
+			<type>2</type>
+			<locationURI>TRADEFED_ROOT/out/host/common/obj/JAVA_LIBRARIES/host-libprotobuf-java-full_intermediates/proto/src</locationURI>
 		</link>
 	</linkedResources>
 </projectDescription>
