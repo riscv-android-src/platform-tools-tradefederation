@@ -825,17 +825,21 @@ public class DeviceManager implements IDeviceManager {
         IDeviceSelection selector = getDeviceSelectionOptions();
         for (IManagedTestDevice d : mManagedDeviceList) {
             IDevice idevice = d.getIDevice();
-            serialStates.add(new DeviceDescriptor(idevice.getSerialNumber(),
-                    idevice instanceof StubDevice,
-                    idevice.getState(),
-                    d.getAllocationState(),
-                    getDisplay(selector.getDeviceProductType(idevice)),
-                    getDisplay(selector.getDeviceProductVariant(idevice)),
-                    getDisplay(idevice.getProperty("ro.build.version.sdk")),
-                    getDisplay(idevice.getProperty("ro.build.id")),
-                    getDisplay(selector.getBatteryLevel(idevice)),
-                    d.getDeviceClass(),
-                    getDisplay(d.getMacAddress())));
+            serialStates.add(
+                    new DeviceDescriptor(
+                            idevice.getSerialNumber(),
+                            idevice instanceof StubDevice,
+                            idevice.getState(),
+                            d.getAllocationState(),
+                            getDisplay(selector.getDeviceProductType(idevice)),
+                            getDisplay(selector.getDeviceProductVariant(idevice)),
+                            getDisplay(idevice.getProperty("ro.build.version.sdk")),
+                            getDisplay(idevice.getProperty("ro.build.id")),
+                            getDisplay(selector.getBatteryLevel(idevice)),
+                            d.getDeviceClass(),
+                            getDisplay(d.getMacAddress()),
+                            getDisplay(d.getSimState()),
+                            getDisplay(d.getSimOperator())));
         }
         return serialStates;
     }
