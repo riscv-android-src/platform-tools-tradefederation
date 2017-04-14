@@ -95,6 +95,7 @@ public class TfSuiteRunnerTest {
     @Test
     public void testLoadSuite_noSubConfigs() throws ConfigurationException {
         OptionSetter setter = new OptionSetter(mRunner);
+        setter.setOptionValue("suite-config-prefix", "suite");
         setter.setOptionValue("run-suite-tag", "test-empty");
         LinkedHashMap<String, IConfiguration> configMap = mRunner.loadTests();
         assertEquals(0, configMap.size());
@@ -107,6 +108,7 @@ public class TfSuiteRunnerTest {
     @Test
     public void testLoadSuite() throws ConfigurationException {
         OptionSetter setter = new OptionSetter(mRunner);
+        setter.setOptionValue("suite-config-prefix", "suite");
         setter.setOptionValue("run-suite-tag", "test-sub-suite");
         LinkedHashMap<String, IConfiguration> configMap = mRunner.loadTests();
         assertEquals(3, configMap.size());
@@ -128,6 +130,7 @@ public class TfSuiteRunnerTest {
     @Test
     public void testLoadSuite_cycle() throws ConfigurationException {
         OptionSetter setter = new OptionSetter(mRunner);
+        setter.setOptionValue("suite-config-prefix", "suite");
         setter.setOptionValue("run-suite-tag", "test-cycle-a");
         try {
             mRunner.loadTests();

@@ -17,6 +17,7 @@
     <option name="log-level" value="verbose" />
     <option name="test-suite-tag" value="test-cycle-a" />
     <test class="com.android.tradefed.testtype.suite.TfSuiteRunner">
+        <option name="suite-config-prefix" value="suite" />
         <option name="run-suite-tag" value="test-cycle-b" />
     </test>
     <logger class="com.android.tradefed.log.FileLogger" />

@@ -139,7 +139,7 @@ public class ConfigurationFactory implements IConfigurationFactory {
         private String mPrefix = null;
 
         public ConfigClasspathFilter(String prefix) {
-            mPrefix = CONFIG_PREFIX;
+            mPrefix = getConfigPrefix();
             if (prefix != null) {
                 mPrefix += prefix;
             }
@@ -163,7 +163,7 @@ public class ConfigurationFactory implements IConfigurationFactory {
         @Override
         public String transform(String pathName) {
             // strip off CONFIG_PREFIX and CONFIG_SUFFIX
-            int pathStartIndex = CONFIG_PREFIX.length();
+            int pathStartIndex = getConfigPrefix().length();
             int pathEndIndex = pathName.length() - CONFIG_SUFFIX.length();
             return pathName.substring(pathStartIndex, pathEndIndex);
         }
