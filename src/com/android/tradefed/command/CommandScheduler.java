@@ -165,8 +165,10 @@ public class CommandScheduler extends Thread implements ICommandScheduler, IComm
     // FIXME: enable this to be enabled or disabled on a per-cmdfile basis
     private boolean mReloadCmdfiles = false;
 
-    @Option(name = "max-poll-time", description =
-            "ms between forced command scheduler execution time")
+    @Option(
+        name = "max-poll-time",
+        description = "ms between forced command scheduler execution time"
+    )
     private long mPollTime = 30 * 1000; // 30 seconds
 
     @Option(name = "shutdown-on-cmdfile-error", description =
@@ -938,20 +940,14 @@ public class CommandScheduler extends Thread implements ICommandScheduler, IComm
                 mCommandProcessWait.waitAndReset(mPollTime);
                 checkInvocations();
                 processReadyCommands(manager);
+                postProcessReadyCommands();
             }
             mCommandTimer.shutdown();
             // We signal the device manager to stop device recovery threads because it could
             // potentially create more invocations.
             manager.terminateDeviceRecovery();
             CLog.i("Waiting for invocation threads to complete");
-            List<InvocationThread> threadListCopy;
-            synchronized (this) {
-                threadListCopy = new ArrayList<InvocationThread>(mInvocationThreadMap.size());
-                threadListCopy.addAll(mInvocationThreadMap.values());
-            }
-            for (Thread thread : threadListCopy) {
-                waitForThread(thread);
-            }
+            waitForAllInvocationThreads();
             closeRemoteClient();
             if (mRemoteManager != null) {
                 mRemoteManager.cancelAndWait();
@@ -965,6 +961,13 @@ public class CommandScheduler extends Thread implements ICommandScheduler, IComm
             System.out.flush();
         }
     }
+
+    /**
+     * Placeholder method within the scheduler main loop, called after {@link
+     * #processReadyCommands(IDeviceManager)}. Default implementation is empty and does not provide
+     * any extra actions.
+     */
+    protected void postProcessReadyCommands() {}
 
     void checkInvocations() {
         CLog.d("Checking invocations...");
@@ -1055,6 +1058,18 @@ public class CommandScheduler extends Thread implements ICommandScheduler, IComm
             thread.join();
         } catch (InterruptedException e) {
             // ignore
+            waitForThread(thread);
+        }
+    }
+
+    /** Wait until all invocation threads complete. */
+    protected void waitForAllInvocationThreads() {
+        List<InvocationThread> threadListCopy;
+        synchronized (this) {
+            threadListCopy = new ArrayList<InvocationThread>(mInvocationThreadMap.size());
+            threadListCopy.addAll(mInvocationThreadMap.values());
+        }
+        for (Thread thread : threadListCopy) {
             waitForThread(thread);
         }
     }
@@ -1172,8 +1187,8 @@ public class CommandScheduler extends Thread implements ICommandScheduler, IComm
 
     /**
      * Factory method for creating a {@link CommandFileParser}.
-     * <p/>
-     * Exposed for unit testing.
+     *
+     * <p>Exposed for unit testing.
      */
     CommandFileParser createCommandFileParser() {
         return new CommandFileParser();
@@ -1383,17 +1398,24 @@ public class CommandScheduler extends Thread implements ICommandScheduler, IComm
         startInvocation(context, execCmd, listener);
     }
 
+    /** Optional initialization step before test invocation starts */
+    protected void initInvocation() {}
+
     /**
      * Spawns off thread to run invocation for given device.
      *
      * @param context the {@link IInvocationContext}
      * @param cmd the {@link ExecutableCommand} to execute
-     * @param listeners the
-     * {@link com.android.tradefed.command.ICommandScheduler.IScheduledInvocationListener}s
-     * to invoke when complete
+     * @param listeners the {@link
+     *     com.android.tradefed.command.ICommandScheduler.IScheduledInvocationListener}s to invoke
+     *     when complete
      */
-    private void startInvocation(IInvocationContext context, ExecutableCommand cmd,
+    private void startInvocation(
+            IInvocationContext context,
+            ExecutableCommand cmd,
             IScheduledInvocationListener... listeners) {
+        initInvocation();
+
         // Check if device is not used in another invocation.
         throwIfDeviceInInvocationThread(context.getDevices());
 
@@ -1840,8 +1862,8 @@ public class CommandScheduler extends Thread implements ICommandScheduler, IComm
 
     /**
      * Starts remote manager to listen to remote commands.
-     * <p/>
-     * TODO: refactor to throw exception on failure
+     *
+     * <p>TODO: refactor to throw exception on failure
      */
     private void startRemoteManager() {
         if (mRemoteManager != null && !mRemoteManager.isCanceled()) {
@@ -1898,8 +1920,8 @@ public class CommandScheduler extends Thread implements ICommandScheduler, IComm
 
     /**
      * Helper object for allowing multiple threads to synchronize on an event.
-     * <p/>
-     * Basically a modest wrapper around Object's wait and notify methods, that supports
+     *
+     * <p>Basically a modest wrapper around Object's wait and notify methods, that supports
      * remembering if a notify call was made.
      */
     private static class WaitObj {

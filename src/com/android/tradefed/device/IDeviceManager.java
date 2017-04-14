@@ -168,10 +168,20 @@ public interface IDeviceManager {
     /** Like {@link #terminate()}, but attempts to forcefully shut down adb as well. */
     public void terminateHard();
 
+    /** Stop adb bridge and services depend on adb connections. */
+    public void stopAdbBridge();
+
+    /**
+     * Restart (if {@link #stopAdbBridge()} was called) adb bridge and services depend on adb
+     * connections.
+     */
+    public void restartAdbBridge();
+
     /**
      * Returns a map of all known devices and their state
-     * @return a list of device serials and their
-     *         {@link com.android.tradefed.device.DeviceAllocationState}
+     *
+     * @return a list of device serials and their {@link
+     *     com.android.tradefed.device.DeviceAllocationState}
      */
     public List<DeviceDescriptor> listAllDevices();
 
