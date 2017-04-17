@@ -33,6 +33,8 @@ import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.DeviceUnresponsiveException;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.device.ITestDevice.RecoveryMode;
+import com.android.tradefed.invoker.shard.IShardHelper;
+import com.android.tradefed.invoker.shard.ShardHelper;
 import com.android.tradefed.device.StubDevice;
 import com.android.tradefed.device.TestDeviceState;
 import com.android.tradefed.log.ILeveledLogOutput;
@@ -176,7 +178,7 @@ public class TestInvocation implements ITestInvocation {
      *
      * <p>If a shard count is greater than 1, it will simply create configs for each shard by
      * setting shard indices and reschedule them. If a shard count is not set,it would fallback to
-     * {@link ShardHelper#legacyShardConfig}.
+     * {@link IShardHelper#shardConfig}.
      *
      * @param config the current {@link IConfiguration}.
      * @param context the {@link IInvocationContext} holding the info of the tests.
@@ -185,6 +187,7 @@ public class TestInvocation implements ITestInvocation {
      */
     private boolean shardConfig(
             IConfiguration config, IInvocationContext context, IRescheduler rescheduler) {
+        // TODO: Refactor to use the sharding strategy from configuration.
         if (config.getCommandOptions().getShardIndex() != null) {
             // The config is already for a single shard.
             return false;
@@ -192,7 +195,7 @@ public class TestInvocation implements ITestInvocation {
 
         mStatus = "sharding";
         if (config.getCommandOptions().getShardCount() == null) {
-            return ShardHelper.legacyShardConfig(config, context, rescheduler);
+            return new ShardHelper().shardConfig(config, context, rescheduler);
         }
         // Schedules shard configs.
         int shardCount = config.getCommandOptions().getShardCount();

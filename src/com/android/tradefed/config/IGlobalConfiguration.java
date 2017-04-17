@@ -23,6 +23,7 @@ import com.android.tradefed.device.IDeviceMonitor;
 import com.android.tradefed.device.IDeviceSelection;
 import com.android.tradefed.device.IMultiDeviceRecovery;
 import com.android.tradefed.host.IHostOptions;
+import com.android.tradefed.invoker.shard.IShardHelper;
 import com.android.tradefed.log.ITerribleFailureHandler;
 import com.android.tradefed.util.hostmetric.IHostMonitor;
 import com.android.tradefed.util.keystore.IKeyStoreFactory;
@@ -194,6 +195,9 @@ public interface IGlobalConfiguration {
      */
     public IKeyStoreFactory getKeyStoreFactory();
 
+    /** Returns the {@link IShardHelper} that defines the way to shard a configuration. */
+    public IShardHelper getShardingStrategy();
+
     /**
      * Set the {@link IHostOptions}, replacing any existing values.
      *
@@ -223,6 +227,9 @@ public interface IGlobalConfiguration {
      * @param factory
      */
     public void setKeyStoreFactory(IKeyStoreFactory factory);
+
+    /** Sets the {@link IShardHelper} to be used when sharding a configuration. */
+    public void setShardingStrategy(IShardHelper sharding);
 
     /**
      * Generic method to set the config object with the given name, replacing any existing value.

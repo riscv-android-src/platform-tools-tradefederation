@@ -20,18 +20,23 @@ import com.android.tradefed.device.ITestDevice;
 import java.util.Collection;
 
 /**
- * A {@link IRemoteTest} that can be split into separately executable sub-tests.
+ * A {@link IRemoteTest} that can be split into separately executable sub-tests. The splitting into
+ * sub-tests is expected to be deterministic and each sub-test should be independent in order to
+ * allow for execution of different shards on different hosts.
  */
 public interface IShardableTest extends IRemoteTest {
 
     /**
      * Shard the test into separately runnable chunks.
-     * <p/>
-     * This will be called before test execution, so injected dependencies (such as the
-     * {@link ITestDevice} for {@link IDeviceTest}s) may be null.
+     *
+     * <p>This must be deterministic and always return the same list of {@link IRemoteTest}s for the
+     * same input.
+     *
+     * <p>This will be called before test execution, so injected dependencies (such as the {@link
+     * ITestDevice} for {@link IDeviceTest}s) may be null.
      *
      * @return a collection of subtests to be executed separately or <code>null</code> if test is
-     *         not currently shardable
+     *     not currently shardable
      */
     public Collection<IRemoteTest> split();
 

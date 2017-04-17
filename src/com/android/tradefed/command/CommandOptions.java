@@ -114,6 +114,14 @@ public class CommandOptions implements ICommandOptions {
     )
     private boolean mSkipPreDeviceSetup = false;
 
+    @Option(
+        name = "dynamic-sharding",
+        description =
+                "Allow to dynamically move IRemoteTest from one shard to another. Only for local "
+                        + "sharding."
+    )
+    private boolean mDynamicSharding = false;
+
     /**
      * Set the help mode for the config.
      * <p/>
@@ -343,7 +351,14 @@ public class CommandOptions implements ICommandOptions {
 
     /** {@inheritDoc} */
     @Override
+
     public boolean shouldSkipPreDeviceSetup() {
         return mSkipPreDeviceSetup;
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public boolean shouldUseDynamicSharding() {
+        return mDynamicSharding;
     }
 }
