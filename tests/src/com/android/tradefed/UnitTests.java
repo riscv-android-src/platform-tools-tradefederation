@@ -138,6 +138,7 @@ import com.android.tradefed.testtype.NativeBenchmarkTestParserTest;
 import com.android.tradefed.testtype.NativeBenchmarkTestTest;
 import com.android.tradefed.testtype.NativeStressTestParserTest;
 import com.android.tradefed.testtype.NativeStressTestTest;
+import com.android.tradefed.testtype.NoisyDryRunTestTest;
 import com.android.tradefed.testtype.PythonUnitTestResultParserTest;
 import com.android.tradefed.testtype.PythonUnitTestRunnerTest;
 import com.android.tradefed.testtype.TfTestLauncherTest;
@@ -366,6 +367,7 @@ import org.junit.runners.Suite.SuiteClasses;
     NativeBenchmarkTestTest.class,
     NativeStressTestParserTest.class,
     NativeStressTestTest.class,
+    NoisyDryRunTestTest.class,
     PythonUnitTestResultParserTest.class,
     PythonUnitTestRunnerTest.class,
     TfTestLauncherTest.class,
