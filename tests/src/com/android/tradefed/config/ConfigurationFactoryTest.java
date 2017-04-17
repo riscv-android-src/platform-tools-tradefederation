@@ -357,7 +357,7 @@ public class ConfigurationFactoryTest extends TestCase {
      * Test {@link ConfigurationFactory#getConfigList()}
      */
     public void testListAllConfigs() {
-        List<String> listConfigs = mFactory.getConfigList();
+        List<String> listConfigs = mRealFactory.getConfigList();
         assertTrue(listConfigs.size() != 0);
         // Check that our basic configs are always here
         assertTrue(listConfigs.contains("empty"));
@@ -371,7 +371,7 @@ public class ConfigurationFactoryTest extends TestCase {
      */
     public void testListSubConfig() {
         final String subDir = "suite/";
-        List<String> listConfigs = mFactory.getConfigList(subDir);
+        List<String> listConfigs = mRealFactory.getConfigList(subDir);
         assertTrue(listConfigs.size() != 0);
         // Check that our basic configs are always here
         assertTrue(listConfigs.contains("suite/stub1"));
