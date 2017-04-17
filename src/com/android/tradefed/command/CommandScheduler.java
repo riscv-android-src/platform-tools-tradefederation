@@ -1548,7 +1548,7 @@ public class CommandScheduler extends Thread implements ICommandScheduler, IComm
             mRemoteClient = RemoteClient.connect(handoverPort);
             CLog.d("Connected to remote manager at %d", handoverPort);
             handoverDevices(mRemoteClient);
-            handoverCommands(mRemoteClient);
+            CLog.i("Done with device handover.");
             mRemoteClient.sendHandoverInitComplete();
             shutdown();
             return true;
@@ -1559,60 +1559,13 @@ public class CommandScheduler extends Thread implements ICommandScheduler, IComm
         return false;
     }
 
-    /**
-     * Informs remote manager of the devices we are still using
-     */
+    /** Informs remote manager of the physical devices we are still using. */
     private void handoverDevices(IRemoteClient client) throws RemoteException {
         for (DeviceDescriptor deviceDesc : getDeviceManager().listAllDevices()) {
-            if (deviceDesc.getState() == DeviceAllocationState.Allocated) {
+            if (DeviceAllocationState.Allocated.equals(deviceDesc.getState())
+                    && !deviceDesc.isStubDevice()) {
                 client.sendAllocateDevice(deviceDesc.getSerial());
                 CLog.d("Sent filter device %s command", deviceDesc.getSerial());
-            }
-        }
-    }
-
-    /**
-     * Pass the set of remote commands in use to remote client
-     */
-    private void handoverCommands(IRemoteClient client) throws RemoteException {
-        // now send command info
-        List<CommandTracker> cmdCopy = getCommandTrackers();
-        // send commands as files if appropriate to do so
-        handoverCmdFiles(client, cmdCopy);
-
-        // now send remaining commands
-        for (CommandTracker cmd : cmdCopy) {
-            client.sendAddCommand(cmd.getTotalExecTime(), cmd.mArgs);
-        }
-    }
-
-    /**
-     * If appropriate, send remote commands in use as command files
-     *
-     * @param client
-     * @param cmdCopy the list of commands. Will remove commands from this list as they are sent.
-     * @throws RemoteException
-     */
-    private void handoverCmdFiles(IRemoteClient client, List<CommandTracker> cmdCopy)
-            throws RemoteException {
-        if (mReloadCmdfiles) {
-            // keep track of files we've sent
-            Set<String> cmdFilesSent = new HashSet<>();
-            // only want to send commands in file form if reload is on, because otherwise
-            // it is not guaranteed that commands currently running are same as in file
-            Iterator<CommandTracker> cmdIter = cmdCopy.iterator();
-            while (cmdIter.hasNext()) {
-                CommandTracker cmd = cmdIter.next();
-                String cmdPath = cmd.getCommandFilePath();
-                if (cmdPath != null) {
-                    cmdIter.remove();
-                    if (!cmdFilesSent.contains(cmdPath)) {
-                        List<String> extraArgs = getCommandFileWatcher().getExtraArgsForFile(
-                                cmdPath);
-                        client.sendAddCommandFile(cmdPath, extraArgs);
-                        cmdFilesSent.add(cmdPath);
-                    }
-                }
             }
         }
     }
