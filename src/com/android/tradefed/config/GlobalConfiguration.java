@@ -27,6 +27,7 @@ import com.android.tradefed.device.IMultiDeviceRecovery;
 import com.android.tradefed.host.HostOptions;
 import com.android.tradefed.host.IHostOptions;
 import com.android.tradefed.invoker.shard.IShardHelper;
+import com.android.tradefed.invoker.shard.ShardHelper;
 import com.android.tradefed.log.ITerribleFailureHandler;
 import com.android.tradefed.util.ArrayUtil;
 import com.android.tradefed.util.MultiMap;
@@ -237,6 +238,7 @@ public class GlobalConfiguration implements IGlobalConfiguration {
         setDeviceManager(new DeviceManager());
         setCommandScheduler(new CommandScheduler());
         setKeyStoreFactory(new StubKeyStoreFactory());
+        setShardingStrategy(new ShardHelper());
     }
 
     /**

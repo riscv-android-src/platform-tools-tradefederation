@@ -15,8 +15,6 @@
  */
 package com.android.tradefed.invoker.shard;
 
-import com.android.tradefed.build.ExistingBuildProvider;
-import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.config.ConfigurationException;
 import com.android.tradefed.config.ConfigurationFactory;
 import com.android.tradefed.config.IConfiguration;
@@ -87,7 +85,7 @@ public class ShardHelper implements IShardHelper {
                 }
                 cloneStatusChecker(config, shardConfig);
 
-                cloneBuildInfos(config, shardConfig, context);
+                ShardBuildCloner.cloneBuildInfos(config, shardConfig, context);
 
                 shardConfig.setTestInvocationListeners(
                         buildShardListeners(resultCollector, config.getTestInvocationListeners()));
@@ -147,31 +145,6 @@ public class ShardHelper implements IShardHelper {
         return isSharded;
     }
 
-    /**
-     * Helper to set the Sharded configuration build provider to the {@link ExistingBuildProvider}.
-     *
-     * @param fromConfig Original configuration
-     * @param toConfig cloned configuration recreated from the command line.
-     * @param context invocation context
-     */
-    public static void cloneBuildInfos(
-            IConfiguration fromConfig, IConfiguration toConfig, IInvocationContext context) {
-        for (String deviceName : context.getDeviceConfigNames()) {
-            IBuildInfo toBuild = context.getBuildInfo(deviceName).clone();
-            try {
-                toConfig.getDeviceConfigByName(deviceName)
-                        .addSpecificConfig(
-                                new ExistingBuildProvider(
-                                        toBuild,
-                                        fromConfig
-                                                .getDeviceConfigByName(deviceName)
-                                                .getBuildProvider()));
-            } catch (ConfigurationException e) {
-                // Should never happen, no action taken
-                CLog.e(e);
-            }
-        }
-    }
 
     /**
      * Builds the {@link ITestInvocationListener} listeners that will collect the results from all
