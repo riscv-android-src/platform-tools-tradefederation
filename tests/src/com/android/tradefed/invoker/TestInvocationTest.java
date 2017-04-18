@@ -301,6 +301,9 @@ public class TestInvocationTest extends TestCase {
         EasyMock.expect(mMockDevice.getLogcat()).andReturn(EMPTY_STREAM_SOURCE).times(2);
         mMockDevice.clearLogcat();
         EasyMock.expectLastCall().times(2);
+        mMockLogRegistry.unregisterLogger();
+        mMockLogRegistry.dumpToGlobalLog(mMockLogger);
+        mMockLogger.closeLog();
         replayMocks(test, mockRescheduler);
         mTestInvocation.invoke(mStubInvocationMetadata, mStubConfiguration, mockRescheduler);
         verifyMocks(test, mockRescheduler);
@@ -316,6 +319,7 @@ public class TestInvocationTest extends TestCase {
         IRemoteTest test = EasyMock.createMock(IRemoteTest.class);
         mStubConfiguration.setTest(test);
         mMockLogRegistry.dumpToGlobalLog(mMockLogger);
+        EasyMock.expectLastCall().times(2);
         setupInvoke();
         replayMocks(test, mockRescheduler);
         mTestInvocation.invoke(mStubInvocationMetadata, mStubConfiguration, mockRescheduler);
@@ -336,6 +340,7 @@ public class TestInvocationTest extends TestCase {
         mStubConfiguration.setTest(test);
         mStubConfiguration.getCommandOptions().setLoopMode(false);
         mMockLogRegistry.dumpToGlobalLog(mMockLogger);
+        EasyMock.expectLastCall().times(2);
         setupInvoke();
         replayMocks(test);
         EasyMock.replay(mockRescheduler);
@@ -601,9 +606,9 @@ public class TestInvocationTest extends TestCase {
         EasyMock.expect(resumeListener.getSummary()).andReturn(null);
         mMockBuildInfo.cleanUp();
         mMockLogger.closeLog();
+        EasyMock.expectLastCall().times(3);
         mMockDevice.clearLastConnectedWifiNetwork();
         mMockDevice.stopLogcat();
-
         EasyMock.replay(mockRescheduler, resumeListener, resumableTest, mMockPreparer,
                 mMockBuildProvider, mMockLogger, mMockLogSaver, mMockDevice, mMockBuildInfo);
 
@@ -819,6 +824,8 @@ public class TestInvocationTest extends TestCase {
         }
         mMockBuildInfo.setDeviceSerial(SERIAL);
         EasyMock.expectLastCall();
+        mMockLogRegistry.dumpToGlobalLog(mMockLogger);
+
         replayMocks(test, mockRescheduler);
 
         mTestInvocation.invoke(mStubInvocationMetadata, mStubConfiguration, mockRescheduler);
@@ -946,6 +953,9 @@ public class TestInvocationTest extends TestCase {
         mMockBuildInfo.setTestTag(EasyMock.eq("not-default"));
         EasyMock.expectLastCall();
         EasyMock.expect(mMockBuildInfo.getTestTag()).andStubReturn("stub");
+        mMockLogRegistry.unregisterLogger();
+        mMockLogRegistry.dumpToGlobalLog(mMockLogger);
+        mMockLogger.closeLog();
         replayMocks();
         mTestInvocation.invoke(mStubInvocationMetadata, mStubConfiguration, mockRescheduler);
         verifyMocks();
@@ -970,7 +980,9 @@ public class TestInvocationTest extends TestCase {
         mMockBuildInfo.addBuildAttribute("command_line_args", "run empty");
         mMockPreparer.setUp(mMockDevice, mMockBuildInfo);
         EasyMock.expect(mMockBuildInfo.getTestTag()).andStubReturn("buildprovidertesttag");
-
+        mMockLogRegistry.dumpToGlobalLog(mMockLogger);
+        mMockLogRegistry.unregisterLogger();
+        mMockLogger.closeLog();
         replayMocks();
         mTestInvocation.invoke(mStubInvocationMetadata, mStubConfiguration, mockRescheduler);
         verifyMocks();
@@ -997,6 +1009,9 @@ public class TestInvocationTest extends TestCase {
         EasyMock.expect(mMockBuildInfo.getTestTag()).andStubReturn(null);
         mMockBuildInfo.setTestTag(EasyMock.eq("stub"));
         EasyMock.expectLastCall();
+        mMockLogRegistry.dumpToGlobalLog(mMockLogger);
+        mMockLogRegistry.unregisterLogger();
+        mMockLogger.closeLog();
         replayMocks();
         mTestInvocation.invoke(mStubInvocationMetadata, mStubConfiguration, mockRescheduler);
         verifyMocks();
@@ -1036,6 +1051,10 @@ public class TestInvocationTest extends TestCase {
         mockProvider.setInvocationContext((IInvocationContext)EasyMock.anyObject());
         EasyMock.expect(mockProvider.getBuild(mMockDevice)).andReturn(mMockBuildInfo);
         mockProvider.cleanUp(mMockBuildInfo);
+        mMockLogRegistry.dumpToGlobalLog(mMockLogger);
+        mMockLogRegistry.unregisterLogger();
+        mMockLogger.closeLog();
+
         replayMocks(mockProvider);
         mTestInvocation.invoke(mStubInvocationMetadata, mStubConfiguration, mockRescheduler);
         verifyMocks(mockProvider);
@@ -1075,7 +1094,6 @@ public class TestInvocationTest extends TestCase {
         EasyMock.expect(mMockBuildProvider.getBuild()).andReturn(mMockBuildInfo);
 
         mMockPreparer.setUp(mMockDevice, mMockBuildInfo);
-
         replayMocks(test);
     }
 
@@ -1105,6 +1123,10 @@ public class TestInvocationTest extends TestCase {
         mMockBuildInfo.setTestTag(EasyMock.eq("stub"));
         EasyMock.expectLastCall();
         EasyMock.expect(mMockBuildInfo.getTestTag()).andStubReturn("");
+
+        mMockLogRegistry.unregisterLogger();
+        mMockLogRegistry.dumpToGlobalLog(mMockLogger);
+        mMockLogger.closeLog();
     }
 
     /**
@@ -1269,7 +1291,7 @@ public class TestInvocationTest extends TestCase {
 
         setupInvoke();
         setupNShardInvocation(shardCount, command);
-
+        mMockLogRegistry.dumpToGlobalLog(mMockLogger);
         replayMocks(test, mockRescheduler, shard1, shard2);
         mTestInvocation.invoke(mStubInvocationMetadata, mStubConfiguration, mockRescheduler);
         verifyMocks(test, mockRescheduler, shard1, shard2);
