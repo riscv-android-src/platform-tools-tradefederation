@@ -582,4 +582,33 @@ public interface ITestDevice extends INativeDevice {
      * @throws DeviceNotAvailableException
      */
     public Map<Integer, String> getAndroidIds() throws DeviceNotAvailableException;
+
+    /**
+     * Set a device admin component as device owner in given user.
+     *
+     * @param componentName of device admin to be device owner.
+     * @param userId of the user that the device owner lives in.
+     * @return True if it is successful, false otherwise.
+     * @throws DeviceNotAvailableException
+     */
+    public boolean setDeviceOwner(String componentName, int userId)
+            throws DeviceNotAvailableException;
+
+    /**
+     * Remove given device admin in given user and return {@code true} if it is successful, {@code
+     * false} otherwise.
+     *
+     * @param componentName of device admin to be removed.
+     * @param userId of user that the device admin lives in.
+     * @return True if it is successful, false otherwise.
+     * @throws DeviceNotAvailableException
+     */
+    public boolean removeAdmin(String componentName, int userId) throws DeviceNotAvailableException;
+
+    /**
+     * Remove all existing device profile owners with the best effort.
+     *
+     * @throws DeviceNotAvailableException
+     */
+    public void removeOwners() throws DeviceNotAvailableException;
 }
