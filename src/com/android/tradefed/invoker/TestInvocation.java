@@ -741,6 +741,10 @@ public class TestInvocation implements ITestInvocation {
         InputStreamSource globalLogSource = logger.getLog();
         listener.testLog(TRADEFED_LOG_NAME, LogDataType.TEXT, globalLogSource);
         globalLogSource.cancel();
+        // once tradefed log is reported, all further log calls for this invocation can get lost
+        // unregister logger so future log calls get directed to the tradefed global log
+        getLogRegistry().unregisterLogger();
+        logger.closeLog();
     }
 
     private void takeBugreport(ITestDevice device, ITestInvocationListener listener,
@@ -961,6 +965,9 @@ public class TestInvocation implements ITestInvocation {
                     context.getDevice(deviceName).stopLogcat();
                 }
             }
+            // save remaining logs contents to global log
+            getLogRegistry().dumpToGlobalLog(config.getLogOutput());
+            // Ensure log is unregistered and closed
             getLogRegistry().unregisterLogger();
             config.getLogOutput().closeLog();
         }
