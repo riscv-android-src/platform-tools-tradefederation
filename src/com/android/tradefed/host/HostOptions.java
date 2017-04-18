@@ -30,6 +30,14 @@ public class HostOptions implements IHostOptions {
             "The maximum number of concurrent flashers (may be useful to avoid memory constraints)")
     private Integer mConcurrentFlasherLimit = null;
 
+    @Option(
+        name = "concurrent-download-limit",
+        description =
+                "The maximum number of concurrent downloads (may be useful to avoid network "
+                        + "constraints)"
+    )
+    private Integer mConcurrentDownloadLimit = null;
+
     /**
      * {@inheritDoc}
      */
@@ -38,4 +46,9 @@ public class HostOptions implements IHostOptions {
         return mConcurrentFlasherLimit;
     }
 
+    /** {@inheritDoc} */
+    @Override
+    public Integer getConcurrentDownloadLimit() {
+        return mConcurrentDownloadLimit;
+    }
 }
