@@ -3582,9 +3582,27 @@ public class NativeDevice implements IManagedTestDevice {
         throw new UnsupportedOperationException("No support for user's feature.");
     }
 
-    /**
-     * {@inheritDoc}
-     */
+    /** {@inheritDoc} */
+    @Override
+    public boolean setDeviceOwner(String componentName, int userId)
+            throws DeviceNotAvailableException {
+        throw new UnsupportedOperationException("No support for user's feature.");
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public boolean removeAdmin(String componentName, int userId)
+            throws DeviceNotAvailableException {
+        throw new UnsupportedOperationException("No support for user's feature.");
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public void removeOwners() throws DeviceNotAvailableException {
+        throw new UnsupportedOperationException("No support for user's feature.");
+    }
+
+    /** {@inheritDoc} */
     @Override
     public String getDeviceClass() {
         IDevice device = getIDevice();
