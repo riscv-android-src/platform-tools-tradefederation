@@ -77,17 +77,30 @@ public class TfTestLauncherTest {
     @Test
     public void testRun() {
         CommandResult cr = new CommandResult(CommandStatus.SUCCESS);
-        EasyMock.expect(mMockRunUtil.runTimedCmd(EasyMock.anyLong(),
-                (FileOutputStream)EasyMock.anyObject(), (FileOutputStream)EasyMock.anyObject(),
-                EasyMock.eq("java"), (String)EasyMock.anyObject(), EasyMock.eq("-cp"),
-                (String)EasyMock.anyObject(),
-                EasyMock.eq("com.android.tradefed.command.CommandRunner"),
-                EasyMock.eq(CONFIG_NAME), EasyMock.eq("-n"), EasyMock.eq("--test-tag"),
-                EasyMock.eq(TEST_TAG), EasyMock.eq("--build-id"), EasyMock.eq(BUILD_ID),
-                EasyMock.eq("--branch"), EasyMock.eq(BUILD_BRANCH),
-                EasyMock.eq("--build-flavor"), EasyMock.eq(BUILD_FLAVOR),
-                EasyMock.eq("--subprocess-report-file"),
-                (String)EasyMock.anyObject())).andReturn(cr);
+        EasyMock.expect(
+                        mMockRunUtil.runTimedCmd(
+                                EasyMock.anyLong(),
+                                (FileOutputStream) EasyMock.anyObject(),
+                                (FileOutputStream) EasyMock.anyObject(),
+                                EasyMock.eq("java"),
+                                (String) EasyMock.anyObject(),
+                                EasyMock.eq("-cp"),
+                                (String) EasyMock.anyObject(),
+                                EasyMock.eq("com.android.tradefed.command.CommandRunner"),
+                                EasyMock.eq(CONFIG_NAME),
+                                EasyMock.eq("-n"),
+                                EasyMock.eq("--test-tag"),
+                                EasyMock.eq(TEST_TAG),
+                                EasyMock.eq("--build-id"),
+                                EasyMock.eq(BUILD_ID),
+                                EasyMock.eq("--branch"),
+                                EasyMock.eq(BUILD_BRANCH),
+                                EasyMock.eq("--build-flavor"),
+                                EasyMock.eq(BUILD_FLAVOR),
+                                EasyMock.eq("--subprocess-report-file"),
+                                (String) EasyMock.anyObject(),
+                                EasyMock.eq("--output-test-log")))
+                .andReturn(cr);
 
         mMockRunUtil.unsetEnvVariable(SubprocessTfLauncher.TF_GLOBAL_CONFIG);
         mMockRunUtil.setEnvVariablePriority(EnvPriority.SET);
