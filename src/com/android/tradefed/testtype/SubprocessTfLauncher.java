@@ -197,6 +197,7 @@ public abstract class SubprocessTfLauncher
                 mCmdArgs.add("--subprocess-report-file");
                 mCmdArgs.add(eventFile.getAbsolutePath());
             }
+            mCmdArgs.add("--output-test-log");
 
             CommandResult result = mRunUtil.runTimedCmd(mMaxTfRunTime, stdout,
                     stderr, mCmdArgs.toArray(new String[0]));
