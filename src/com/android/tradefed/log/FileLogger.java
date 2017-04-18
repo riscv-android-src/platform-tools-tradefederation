@@ -223,7 +223,9 @@ public class FileLogger implements ILeveledLogOutput {
         SizeLimitedOutputStream stream = mLogStream;
         mLogStream = null;
         StreamUtil.flushAndCloseStream(stream);
-        stream.delete();
+        if (stream != null) {
+            stream.delete();
+        }
     }
 
     /**
