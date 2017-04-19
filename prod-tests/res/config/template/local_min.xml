@@ -15,6 +15,7 @@
 -->
 <!-- Common base configuration for local runs with minimum overhead. -->
 <configuration description="Common base configuration for local runs with minimum overhead">
+    <build_provider class="com.android.tradefed.build.BootstrapBuildProvider" />
     <target_preparer class="com.android.tradefed.targetprep.PreloadedClassesPreparer">
         <option name="skip" value="true" />
     </target_preparer>
