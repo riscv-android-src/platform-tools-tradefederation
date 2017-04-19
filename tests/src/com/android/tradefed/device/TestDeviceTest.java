@@ -17,6 +17,7 @@ package com.android.tradefed.device;
 
 import com.android.ddmlib.AdbCommandRejectedException;
 import com.android.ddmlib.IDevice;
+import com.android.ddmlib.IDevice.DeviceState;
 import com.android.ddmlib.IShellOutputReceiver;
 import com.android.ddmlib.RawImage;
 import com.android.ddmlib.ShellCommandUnresponsiveException;
@@ -366,6 +367,7 @@ public class TestDeviceTest extends TestCase {
     public void testGetProductType_adbFail() throws Exception {
         EasyMock.expect(mMockIDevice.getProperty(EasyMock.<String>anyObject())).andStubReturn(null);
         injectSystemProperty("ro.hardware", null).times(3);
+        EasyMock.expect(mMockIDevice.getState()).andReturn(DeviceState.ONLINE).times(2);
         EasyMock.replay(mMockIDevice);
         try {
             mTestDevice.getProductType();
@@ -677,6 +679,7 @@ public class TestDeviceTest extends TestCase {
         for (int i=0; i <= TestDevice.MAX_RETRY_ATTEMPTS; i++) {
             assertRecoverySuccess();
         }
+        EasyMock.expect(mMockIDevice.getState()).andReturn(DeviceState.ONLINE).times(2);
         injectSystemProperty("ro.build.version.sdk", "23").times(3);
         replayMocks();
         try {
@@ -1503,6 +1506,7 @@ public class TestDeviceTest extends TestCase {
             final String property, final String value) {
         SettableFuture<String> valueResponse = SettableFuture.create();
         valueResponse.set(value);
+        EasyMock.expect(mMockIDevice.getState()).andReturn(DeviceState.ONLINE);
         return EasyMock.expect(mMockIDevice.getSystemProperty(property)).andReturn(valueResponse);
     }
 

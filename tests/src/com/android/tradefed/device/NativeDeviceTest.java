@@ -19,6 +19,7 @@ import static org.mockito.Mockito.doThrow;
 
 import com.android.ddmlib.AdbCommandRejectedException;
 import com.android.ddmlib.IDevice;
+import com.android.ddmlib.IDevice.DeviceState;
 import com.android.ddmlib.IShellOutputReceiver;
 import com.android.ddmlib.ShellCommandUnresponsiveException;
 import com.android.ddmlib.SyncException;
@@ -42,6 +43,9 @@ import com.android.tradefed.util.StreamUtil;
 
 import junit.framework.TestCase;
 
+import org.easymock.EasyMock;
+import org.mockito.Mockito;
+
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
@@ -52,9 +56,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
-
-import org.easymock.EasyMock;
-import org.mockito.Mockito;
 
 /**
  * Unit tests for {@link NativeDevice}.
@@ -1907,5 +1908,25 @@ public class NativeDeviceTest extends TestCase {
         };
         mTestDevice.setIDevice(device);
         assertNull(mTestDevice.getMacAddress());
+    }
+
+    /** Test that a non online device return null for sim state. */
+    public void testGetSimState_unavailableDevice() {
+        mMockIDevice = EasyMock.createMock(IDevice.class);
+        EasyMock.expect(mMockIDevice.getState()).andReturn(DeviceState.UNAUTHORIZED);
+        EasyMock.expect(mMockIDevice.getSerialNumber()).andReturn("serial");
+        EasyMock.replay(mMockIDevice, mMockStateMonitor, mMockDvcMonitor);
+        assertNull(mTestDevice.getSimState());
+        EasyMock.verify(mMockIDevice, mMockStateMonitor, mMockDvcMonitor);
+    }
+
+    /** Test that a non online device return null for sim operator. */
+    public void testGetSimOperator_unavailableDevice() {
+        mMockIDevice = EasyMock.createMock(IDevice.class);
+        EasyMock.expect(mMockIDevice.getState()).andReturn(DeviceState.UNAUTHORIZED);
+        EasyMock.expect(mMockIDevice.getSerialNumber()).andReturn("serial");
+        EasyMock.replay(mMockIDevice, mMockStateMonitor, mMockDvcMonitor);
+        assertNull(mTestDevice.getSimOperator());
+        EasyMock.verify(mMockIDevice, mMockStateMonitor, mMockDvcMonitor);
     }
 }
