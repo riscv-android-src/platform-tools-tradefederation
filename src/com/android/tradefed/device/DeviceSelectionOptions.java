@@ -401,6 +401,15 @@ public class DeviceSelectionOptions implements IDeviceSelection {
             }
         }
 
+        return extraMatching(device);
+    }
+
+    /** Extra validation step that maybe overriden if it does not make sense. */
+    protected boolean extraMatching(IDevice device) {
+        // Any device that extends TcpDevice and is not a TcpDevice will be rejected.
+        if (device instanceof TcpDevice && !device.getClass().isAssignableFrom(TcpDevice.class)) {
+            return false;
+        }
         return true;
     }
 
