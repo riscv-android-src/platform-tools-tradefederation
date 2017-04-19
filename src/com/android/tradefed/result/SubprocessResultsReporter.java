@@ -52,6 +52,9 @@ public class SubprocessResultsReporter implements ITestInvocationListener, AutoC
             + "events.")
     private Integer mReportPort = null;
 
+    @Option(name = "output-test-log", description = "Option to report test logs to parent process.")
+    private boolean mOutputTestlog = false;
+
     private Socket mReportSocket = null;
 
     private boolean mPrintWarning = true;
@@ -159,6 +162,9 @@ public class SubprocessResultsReporter implements ITestInvocationListener, AutoC
     /** {@inheritDoc} */
     @Override
     public void testLog(String dataName, LogDataType dataType, InputStreamSource dataStream) {
+        if (!mOutputTestlog) {
+            return;
+        }
         if (dataStream != null && dataStream.size() != 0) {
             File tmpFile = null;
             try {
