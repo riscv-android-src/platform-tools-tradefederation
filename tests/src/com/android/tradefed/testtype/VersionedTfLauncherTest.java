@@ -21,7 +21,9 @@ import com.android.ddmlib.IDevice;
 import com.android.ddmlib.testrunner.TestIdentifier;
 import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.build.IFolderBuildInfo;
+import com.android.tradefed.command.CommandOptions;
 import com.android.tradefed.config.GlobalConfiguration;
+import com.android.tradefed.config.IConfiguration;
 import com.android.tradefed.config.OptionSetter;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.device.NullDevice;
@@ -67,6 +69,7 @@ public class VersionedTfLauncherTest {
     private ITestDevice mMockTestDevice;
     private IDevice mMockIDevice;
     private IFolderBuildInfo mMockBuildInfo;
+    private IConfiguration mMockConfig;
 
     @Before
     public void setUp() throws Exception {
@@ -74,11 +77,13 @@ public class VersionedTfLauncherTest {
         mMockRunUtil = EasyMock.createMock(IRunUtil.class);
         mMockBuildInfo = EasyMock.createMock(IFolderBuildInfo.class);
         mMockTestDevice = EasyMock.createMock(ITestDevice.class);
+        mMockConfig = EasyMock.createMock(IConfiguration.class);
 
         mVersionedTfLauncher = new VersionedTfLauncher();
         mVersionedTfLauncher.setRunUtil(mMockRunUtil);
         mVersionedTfLauncher.setBuild(mMockBuildInfo);
         mVersionedTfLauncher.setEventStreaming(false);
+        mVersionedTfLauncher.setConfiguration(mMockConfig);
 
         OptionSetter setter = new OptionSetter(mVersionedTfLauncher);
         setter.setOptionValue("config-name", CONFIG_NAME);
@@ -140,9 +145,10 @@ public class VersionedTfLauncherTest {
                 EasyMock.eq(Collections.<String, String>emptyMap()));
         mMockListener.testRunEnded(0, Collections.emptyMap());
 
-        EasyMock.replay(mMockTestDevice, mMockBuildInfo, mMockRunUtil, mMockListener);
+        EasyMock.expect(mMockConfig.getCommandOptions()).andReturn(new CommandOptions());
+        EasyMock.replay(mMockTestDevice, mMockBuildInfo, mMockRunUtil, mMockListener, mMockConfig);
         mVersionedTfLauncher.run(mMockListener);
-        EasyMock.verify(mMockTestDevice, mMockBuildInfo, mMockRunUtil, mMockListener);
+        EasyMock.verify(mMockTestDevice, mMockBuildInfo, mMockRunUtil, mMockListener, mMockConfig);
     }
 
     /**
@@ -192,9 +198,10 @@ public class VersionedTfLauncherTest {
                 EasyMock.eq(Collections.<String, String>emptyMap()));
         mMockListener.testRunEnded(0, Collections.emptyMap());
 
-        EasyMock.replay(mMockTestDevice, mMockBuildInfo, mMockRunUtil, mMockListener);
+        EasyMock.expect(mMockConfig.getCommandOptions()).andReturn(new CommandOptions());
+        EasyMock.replay(mMockTestDevice, mMockBuildInfo, mMockRunUtil, mMockListener, mMockConfig);
         mVersionedTfLauncher.run(mMockListener);
-        EasyMock.verify(mMockTestDevice, mMockBuildInfo, mMockRunUtil, mMockListener);
+        EasyMock.verify(mMockTestDevice, mMockBuildInfo, mMockRunUtil, mMockListener, mMockConfig);
     }
 
     /**
@@ -211,6 +218,7 @@ public class VersionedTfLauncherTest {
         shardedTest.setRunUtil(mMockRunUtil);
         shardedTest.setBuild(mMockBuildInfo);
         shardedTest.setEventStreaming(false);
+        shardedTest.setConfiguration(mMockConfig);
 
         mMockIDevice = EasyMock.createMock(IDevice.class);
 
@@ -262,9 +270,9 @@ public class VersionedTfLauncherTest {
                 (TestIdentifier) EasyMock.anyObject(),
                 EasyMock.eq(Collections.<String, String>emptyMap()));
         mMockListener.testRunEnded(0, Collections.emptyMap());
-
-        EasyMock.replay(mMockTestDevice, mMockBuildInfo, mMockRunUtil, mMockListener);
+        EasyMock.expect(mMockConfig.getCommandOptions()).andReturn(new CommandOptions());
+        EasyMock.replay(mMockTestDevice, mMockBuildInfo, mMockRunUtil, mMockListener, mMockConfig);
         shardedTest.run(mMockListener);
-        EasyMock.verify(mMockTestDevice, mMockBuildInfo, mMockRunUtil, mMockListener);
+        EasyMock.verify(mMockTestDevice, mMockBuildInfo, mMockRunUtil, mMockListener, mMockConfig);
     }
 }

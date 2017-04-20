@@ -19,6 +19,8 @@ import com.android.ddmlib.testrunner.TestIdentifier;
 import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.build.IFolderBuildInfo;
 import com.android.tradefed.config.GlobalConfiguration;
+import com.android.tradefed.config.IConfiguration;
+import com.android.tradefed.config.IConfigurationReceiver;
 import com.android.tradefed.config.Option;
 import com.android.tradefed.invoker.IInvocationContext;
 import com.android.tradefed.log.LogUtil.CLog;
@@ -34,6 +36,7 @@ import com.android.tradefed.util.RunUtil;
 import com.android.tradefed.util.StreamUtil;
 import com.android.tradefed.util.SubprocessTestResultsParser;
 import com.android.tradefed.util.TimeUtil;
+import com.android.tradefed.util.UniqueMultiMap;
 
 import org.junit.Assert;
 
@@ -51,7 +54,7 @@ import java.util.List;
  * tests continuously.
  */
 public abstract class SubprocessTfLauncher
-        implements IBuildReceiver, IInvocationContextReceiver, IRemoteTest {
+        implements IBuildReceiver, IInvocationContextReceiver, IRemoteTest, IConfigurationReceiver {
 
     @Option(name = "max-run-time", description =
             "The maximum time to allow for a TF test run.", isTimeVal = true)
@@ -91,10 +94,16 @@ public abstract class SubprocessTfLauncher
     // The absolute path to the build's root directory.
     protected String mRootDir = null;
     private IInvocationContext mContext;
+    private IConfiguration mConfig;
 
     @Override
     public void setInvocationContext(IInvocationContext invocationContext) {
         mContext = invocationContext;
+    }
+
+    @Override
+    public void setConfiguration(IConfiguration configuration) {
+        mConfig = configuration;
     }
 
     /**
@@ -185,12 +194,23 @@ public abstract class SubprocessTfLauncher
      */
     protected void postRun(ITestInvocationListener listener, boolean exception) {}
 
-    /**
-     * {@inheritDoc}
-     */
+    /** Pipe to the subprocess the invocation-data so that it can use them if needed. */
+    private void addInvocationData() {
+        UniqueMultiMap<String, String> data = mConfig.getCommandOptions().getInvocationData();
+        for (String key : data.keySet()) {
+            for (String value : data.get(key)) {
+                mCmdArgs.add("--invocation-data");
+                mCmdArgs.add(key);
+                mCmdArgs.add(value);
+            }
+        }
+    }
+
+    /** {@inheritDoc} */
     @Override
     public void run(ITestInvocationListener listener) {
         preRun();
+        addInvocationData();
 
         File stdoutFile = null;
         File stderrFile = null;

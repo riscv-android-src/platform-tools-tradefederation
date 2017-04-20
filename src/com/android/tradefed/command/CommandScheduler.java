@@ -547,6 +547,14 @@ public class CommandScheduler extends Thread implements ICommandScheduler, IComm
             ITestInvocation instance = getInvocation();
             IConfiguration config = mCmd.getConfiguration();
 
+            // Copy the command options invocation attributes to the invocation.
+            // TODO: Implement a locking/read-only mechanism to prevent unwanted attributes to be
+            // added during the invocation.
+            if (!config.getCommandOptions().getInvocationData().isEmpty()) {
+                mInvocationContext.addInvocationAttributes(
+                        config.getCommandOptions().getInvocationData());
+            }
+
             try {
                 mCmd.commandStarted();
                 long invocTimeout = config.getCommandOptions().getInvocationTimeout();
