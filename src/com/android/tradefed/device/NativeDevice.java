@@ -19,6 +19,7 @@ import com.android.ddmlib.AdbCommandRejectedException;
 import com.android.ddmlib.FileListingService;
 import com.android.ddmlib.FileListingService.FileEntry;
 import com.android.ddmlib.IDevice;
+import com.android.ddmlib.IDevice.DeviceState;
 import com.android.ddmlib.IShellOutputReceiver;
 import com.android.ddmlib.InstallException;
 import com.android.ddmlib.NullOutputReceiver;
@@ -371,6 +372,10 @@ public class NativeDevice implements IManagedTestDevice {
      */
     @Override
     public String getProperty(final String name) throws DeviceNotAvailableException {
+        if (!DeviceState.ONLINE.equals(getIDevice().getState())) {
+            CLog.d("Device %s is not online cannot get property %s.", getSerialNumber(), name);
+            return null;
+        }
         final String[] result = new String[1];
         DeviceAction propAction = new DeviceAction() {
 
