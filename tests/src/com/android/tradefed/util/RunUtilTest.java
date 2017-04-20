@@ -15,24 +15,30 @@
  */
 package com.android.tradefed.util;
 
-import com.android.tradefed.util.IRunUtil.IRunnableResult;
+import static org.mockito.Mockito.doReturn;
+import static org.mockito.Mockito.doThrow;
+
 import com.android.tradefed.util.IRunUtil.EnvPriority;
+import com.android.tradefed.util.IRunUtil.IRunnableResult;
+import com.android.tradefed.util.RunUtil.RunnableResult;
 
 import junit.framework.TestCase;
 
 import org.easymock.EasyMock;
+import org.mockito.Mockito;
 
+import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.OutputStream;
 
-/**
- * Unit tests for {@link RunUtilTest}
- */
+/** Unit tests for {@link RunUtil} */
 public class RunUtilTest extends TestCase {
 
     private RunUtil mRunUtil;
+    private RunnableResult mMockRunnableResult;
     private long mSleepTime = 0;
     private boolean success = false;
     private static final long VERY_SHORT_TIMEOUT_MS = 10;
@@ -43,6 +49,45 @@ public class RunUtilTest extends TestCase {
     protected void setUp() throws Exception {
         super.setUp();
         mRunUtil = new RunUtil();
+        mMockRunnableResult = null;
+    }
+
+    /** Test class on {@link RunUtil} in order to avoid creating a real process. */
+    class SpyRunUtil extends RunUtil {
+        private boolean mShouldThrow = false;
+
+        public SpyRunUtil(boolean shouldThrow) {
+            mShouldThrow = shouldThrow;
+        }
+
+        @Override
+        IRunnableResult createRunnableResult(
+                CommandResult result,
+                OutputStream stdout,
+                OutputStream stderr,
+                boolean closeStreamAfterRun,
+                String... command) {
+            IRunnableResult real =
+                    super.createRunnableResult(
+                            result, stdout, stderr, closeStreamAfterRun, command);
+            mMockRunnableResult = (RunnableResult) Mockito.spy(real);
+            try {
+                if (mShouldThrow) {
+                    // Test if the binary does not exists, startProcess throws directly in this case
+                    doThrow(
+                                    new RuntimeException(
+                                            "Cannot run program \"\": error=2,"
+                                                    + "No such file or directory"))
+                            .when(mMockRunnableResult)
+                            .startProcess();
+                } else {
+                    doReturn(new FakeProcess()).when(mMockRunnableResult).startProcess();
+                }
+            } catch (Exception e) {
+                throw new RuntimeException(e);
+            }
+            return mMockRunnableResult;
+        }
     }
 
     /**
@@ -86,7 +131,8 @@ public class RunUtilTest extends TestCase {
      * Test that {@link RunUtil#runTimedCmd(long, String[])} fails when given a garbage command.
      */
     public void testRunTimedCmd_failed() {
-        CommandResult result = mRunUtil.runTimedCmd(1000, "blahggggwarggg");
+        RunUtil spyUtil = new SpyRunUtil(true);
+        CommandResult result = spyUtil.runTimedCmd(1000, "blahggggwarggg");
         assertEquals(CommandStatus.EXCEPTION, result.getStatus());
         assertEquals("", result.getStdout());
         assertEquals("", result.getStderr());
@@ -253,9 +299,10 @@ public class RunUtilTest extends TestCase {
         } catch (IOException e) {
             fail("Failed to create output files: " + e.getMessage());
         }
+        RunUtil spyUtil = new SpyRunUtil(false);
         String[] command = {"echo", "TEST"};
-        CommandResult result = mRunUtil.runTimedCmd(LONG_TIMEOUT_MS, stdoutStream, stderrStream,
-                command);
+        CommandResult result =
+                spyUtil.runTimedCmd(LONG_TIMEOUT_MS, stdoutStream, stderrStream, command);
         assertEquals(CommandStatus.SUCCESS, result.getStatus());
         assertEquals(result.getStdout(),
                 "redirected to " + stdoutStream.getClass().getSimpleName());
@@ -275,12 +322,14 @@ public class RunUtilTest extends TestCase {
     }
 
     /**
-     * Test whether a {@link RunUtil#runTimedCmd(long, OutputStream, OutputStream, String[])}
-     * call correctly redirect the output to stdout because files are null.
+     * Test whether a {@link RunUtil#runTimedCmd(long, OutputStream, OutputStream, String[])} call
+     * correctly redirect the output to stdout because files are null. Replace the process by a fake
+     * one to avoid waiting on real system IO.
      */
     public void testRuntimedCmd_regularOutput_fileNull() {
+        RunUtil spyUtil = new SpyRunUtil(false);
         String[] command = {"echo", "TEST"};
-        CommandResult result = mRunUtil.runTimedCmd(LONG_TIMEOUT_MS, null, null, command);
+        CommandResult result = spyUtil.runTimedCmd(LONG_TIMEOUT_MS, null, null, command);
         assertEquals(CommandStatus.SUCCESS, result.getStatus());
         assertEquals(result.getStdout(), "TEST\n");
         assertEquals(result.getStderr(), "");
@@ -305,9 +354,10 @@ public class RunUtilTest extends TestCase {
         } catch (IOException e) {
             fail("Failed to create output files: " + e.getMessage());
         }
+        RunUtil spyUtil = new SpyRunUtil(false);
         String[] command = {"echo", "TEST"};
-        CommandResult result = mRunUtil.runTimedCmd(SHORT_TIMEOUT_MS, stdoutStream, stderrStream,
-                command);
+        CommandResult result =
+                spyUtil.runTimedCmd(SHORT_TIMEOUT_MS, stdoutStream, stderrStream, command);
         assertEquals(CommandStatus.SUCCESS, result.getStatus());
         assertEquals(result.getStdout(),
                 "redirected to " + stdoutStream.getClass().getSimpleName());
@@ -406,5 +456,43 @@ public class RunUtilTest extends TestCase {
         assertNotNull(result.getStdout());
         // Variable should be set and returned.
         assertEquals(expected + "\n", result.getStdout());
+    }
+
+    /**
+     * Implementation of {@link Process} to simulate a success of 'echo Test' without actually
+     * calling the underlying system.
+     */
+    private class FakeProcess extends Process {
+
+        @Override
+        public int waitFor() throws InterruptedException {
+            return 0;
+        }
+
+        @Override
+        public OutputStream getOutputStream() {
+            return null;
+        }
+
+        @Override
+        public InputStream getInputStream() {
+            ByteArrayInputStream stream = new ByteArrayInputStream("TEST\n".getBytes());
+            return stream;
+        }
+
+        @Override
+        public InputStream getErrorStream() {
+            return new ByteArrayInputStream("".getBytes());
+        }
+
+        @Override
+        public int exitValue() {
+            return 0;
+        }
+
+        @Override
+        public void destroy() {
+            // ignore
+        }
     }
 }
