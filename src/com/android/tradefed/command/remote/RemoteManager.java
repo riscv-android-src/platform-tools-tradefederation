@@ -28,6 +28,8 @@ import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.util.ArrayUtil;
 import com.android.tradefed.util.StreamUtil;
 
+import com.google.common.annotations.VisibleForTesting;
+
 import org.json.JSONException;
 import org.json.JSONObject;
 
@@ -152,8 +154,11 @@ public class RemoteManager extends Thread {
         try {
             return new ServerSocket(port);
         } catch (IOException e) {
-            CLog.e("Failed to open server socket:");
-            CLog.e(e);
+            // avoid printing a scary stack that is due to handover.
+            CLog.w(
+                    "Failed to open server socket: %s. Probably due to another instance of TF "
+                            + "running.",
+                    e.getMessage());
             return null;
         }
     }
@@ -228,7 +233,15 @@ public class RemoteManager extends Thread {
         }
     }
 
-    private void processClientOperations(BufferedReader in, PrintWriter out) throws IOException {
+    /**
+     * Process {@link RemoteClient} operations.
+     *
+     * @param in the {@link BufferedReader} coming from the client socket.
+     * @param out the {@link PrintWriter} to write to the client socket.
+     * @throws IOException
+     */
+    @VisibleForTesting
+    void processClientOperations(BufferedReader in, PrintWriter out) throws IOException {
         String line = null;
         while ((line = in.readLine()) != null && !mCancel) {
             JSONObject result = new JSONObject();
@@ -308,7 +321,7 @@ public class RemoteManager extends Thread {
         }
     }
 
-    private Thread processStartHandover(StartHandoverOp c, JSONObject result) throws JSONException {
+    private Thread processStartHandover(StartHandoverOp c, JSONObject result) {
         final int port = c.getPort();
         CLog.logAndDisplay(LogLevel.INFO, "Performing handover to remote TF at port %d", port);
         // handle the handover as an async operation
@@ -323,12 +336,12 @@ public class RemoteManager extends Thread {
         return t;
     }
 
-    private void processHandoverInitComplete(HandoverInitCompleteOp c, JSONObject result)
-            throws JSONException {
+    private void processHandoverInitComplete(HandoverInitCompleteOp c, JSONObject result) {
+        CLog.logAndDisplay(LogLevel.INFO, "Received handover complete.");
         mScheduler.handoverInitiationComplete();
     }
 
-    private Thread processHandoverComplete(HandoverCompleteOp c, JSONObject result) throws JSONException {
+    private Thread processHandoverComplete(HandoverCompleteOp c, JSONObject result) {
         // handle the handover as an async operation
         Thread t = new Thread("handover thread") {
             @Override
