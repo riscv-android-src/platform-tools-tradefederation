@@ -120,7 +120,7 @@ public class JacocoCodeCoverageTestTest {
             reportDir = jacocoCodeCoverageTest.generateCoverageReport(executionFiles,
                     JacocoCodeCoverageReportFormat.HTML);
             verify(jacocoCodeCoverageTest, times(1)).runTimedCmd(reportTimeout, new String[] {
-                    "ant", "-f", tempBuildXml.getAbsolutePath()
+                    "ant", "-verbose", "-f", tempBuildXml.getAbsolutePath()
             });
             assertNotNull(reportDir);
         } finally {
