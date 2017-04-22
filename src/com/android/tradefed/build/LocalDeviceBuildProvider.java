@@ -16,13 +16,14 @@
 package com.android.tradefed.build;
 
 import com.android.tradefed.config.Option;
-import com.android.tradefed.config.Option.Importance;
 import com.android.tradefed.config.OptionClass;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.targetprep.FlashingResourcesParser;
 import com.android.tradefed.targetprep.IFlashingResourcesParser;
 import com.android.tradefed.targetprep.TargetSetupError;
+import com.android.tradefed.util.SystemUtil;
 import com.android.tradefed.util.ZipUtil;
+
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.io.PatternFilenameFilter;
 
@@ -47,9 +48,8 @@ public class LocalDeviceBuildProvider extends StubBuildProvider {
     private String mBootloaderVersion = null;
     private String mRadioVersion = null;
 
-    @Option(name = BUILD_DIR_OPTION_NAME, description = "the directory containing device files.",
-            mandatory = true, importance = Importance.ALWAYS)
-    private File mBuildDir = null;
+    @Option(name = BUILD_DIR_OPTION_NAME, description = "the directory containing device files.")
+    private File mBuildDir = SystemUtil.getProductOutputDir();
 
     @Option(name = "device-img-pattern", description =
             "the regex use to find device system image zip file within --build-dir.")
@@ -76,6 +76,13 @@ public class LocalDeviceBuildProvider extends StubBuildProvider {
      */
     @Override
     public IBuildInfo getBuild() throws BuildRetrievalError {
+        if (mBuildDir == null) {
+            throw new BuildRetrievalError(
+                    "Product output directory is not specified. If running "
+                            + "from a Android source tree, make sure `lunch` has been run; "
+                            + "if outside, provide a valid path via --"
+                            + BUILD_DIR_OPTION_NAME);
+        }
         if (!mBuildDir.exists()) {
             throw new BuildRetrievalError(String.format("Directory '%s' does not exist. " +
                     "Please provide a valid path via --%s", mBuildDir.getAbsolutePath(),
