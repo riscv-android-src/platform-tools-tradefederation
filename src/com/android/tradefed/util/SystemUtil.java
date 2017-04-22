@@ -40,6 +40,8 @@ public class SystemUtil {
     @VisibleForTesting
     static final String ENV_ANDROID_HOST_OUT_TESTCASES = "ANDROID_HOST_OUT_TESTCASES";
 
+    static final String ENV_ANDROID_PRODUCT_OUT = "ANDROID_PRODUCT_OUT";
+
     /**
      * Get the value of an environment variable.
      *
@@ -79,5 +81,22 @@ public class SystemUtil {
             }
         }
         return testCasesDirs;
+    }
+
+    /**
+     * Gets the product specific output dir from an Android build tree. Typically this location
+     * contains images for various device partitions, bootloader, radio and so on.
+     *
+     * <p>Note: the method does not guarantee that this path exists.
+     *
+     * @return the location of the output dir or <code>null</code> if the current build is not
+     */
+    public static File getProductOutputDir() {
+        String path = singleton.getEnv(ENV_ANDROID_PRODUCT_OUT);
+        if (path == null) {
+            return null;
+        } else {
+            return new File(path);
+        }
     }
 }
