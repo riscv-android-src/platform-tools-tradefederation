@@ -942,7 +942,10 @@ public class TestInvocation implements ITestInvocation {
                     device.setRecovery(deviceConfig.getDeviceRecovery());
                 } else {
                     mStatus = "(no build to test)";
-                    CLog.i("No build to test for device: %s", device.getSerialNumber());
+                    CLog.logAndDisplay(
+                            LogLevel.WARN,
+                            "No build found to test for device: %s",
+                            device.getSerialNumber());
                     rescheduleTest(config, rescheduler);
                     // save current log contents to global log
                     getLogRegistry().dumpToGlobalLog(config.getLogOutput());
