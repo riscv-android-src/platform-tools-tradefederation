@@ -26,7 +26,9 @@ import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.targetprep.ITargetPreparer;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 /**
  * A concrete {@link IDeviceConfiguration} implementation that stores the loaded device
@@ -39,6 +41,8 @@ public class DeviceConfigurationHolder implements IDeviceConfiguration {
     private IDeviceRecovery mDeviceRecovery = new WaitDeviceRecovery();
     private IDeviceSelection mDeviceSelection = new DeviceSelectionOptions();
     private TestDeviceOptions mTestDeviceOption = new TestDeviceOptions();
+
+    private Map<Object, Integer> mFreqMap = new HashMap<>();
 
     public DeviceConfigurationHolder() {
         mDeviceName = "";
@@ -77,9 +81,19 @@ public class DeviceConfigurationHolder implements IDeviceConfiguration {
         }
     }
 
-    /**
-     * {@inheritDoc}
-     */
+    /** {@inheritDoc} */
+    @Override
+    public void addFrequency(Object config, Integer frequency) {
+        mFreqMap.put(config, frequency);
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public Integer getFrequency(Object config) {
+        return mFreqMap.get(config);
+    }
+
+    /** {@inheritDoc} */
     @Override
     public List<Object> getAllObjects() {
         List<Object> allObject = new ArrayList<Object>();
