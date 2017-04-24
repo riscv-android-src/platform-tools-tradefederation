@@ -234,7 +234,7 @@ public class RemoteManager extends Thread {
     }
 
     /**
-     * Process {@link RemoteClient} operations.
+     * Process {@link com.android.tradefed.command.remote.RemoteClient} operations.
      *
      * @param in the {@link BufferedReader} coming from the client socket.
      * @param out the {@link PrintWriter} to write to the client socket.
