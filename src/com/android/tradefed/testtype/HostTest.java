@@ -716,7 +716,12 @@ public class HostTest
         } else {
             // update the runtime hint on pro-rate of number of tests.
             int newCount = ((HostTest) test).countTestCases();
-            ((HostTest) test).mRuntimeHint = (mRuntimeHint * newCount) / numTotalTestCases;
+            if (newCount == 0) {
+                // In case there is not tests left.
+                ((HostTest) test).mRuntimeHint = 0l;
+            } else {
+                ((HostTest) test).mRuntimeHint = (mRuntimeHint * newCount) / numTotalTestCases;
+            }
         }
         return test;
     }
