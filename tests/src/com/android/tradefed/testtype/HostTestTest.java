@@ -1250,4 +1250,16 @@ public class HostTestTest extends TestCase {
         mHostTest.run(mListener);
         EasyMock.verify(mListener);
     }
+
+    /**
+     * Test that {@link HostTest#getTestShard(int, int)} returns a {@link IRemoteTest} with no
+     * runtime and no tests when filtered out of all its tests.
+     */
+    public void testShardAndUpdateRuntime() {
+        mHostTest.setClassName(SuccessTestCase.class.getName());
+        mHostTest.addExcludeAnnotation("com.android.tradefed.testtype.HostTestTest$MyAnnotation");
+        HostTest test = (HostTest) mHostTest.getTestShard(2, 0);
+        assertEquals(0l, test.getRuntimeHint());
+        assertEquals(0, test.countTestCases());
+    }
 }
