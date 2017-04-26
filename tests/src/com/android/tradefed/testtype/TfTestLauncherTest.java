@@ -98,8 +98,7 @@ public class TfTestLauncherTest {
                                 EasyMock.eq("--build-flavor"),
                                 EasyMock.eq(BUILD_FLAVOR),
                                 EasyMock.eq("--subprocess-report-file"),
-                                (String) EasyMock.anyObject(),
-                                EasyMock.eq("--output-test-log")))
+                                (String) EasyMock.anyObject()))
                 .andReturn(cr);
 
         mMockRunUtil.unsetEnvVariable(SubprocessTfLauncher.TF_GLOBAL_CONFIG);
