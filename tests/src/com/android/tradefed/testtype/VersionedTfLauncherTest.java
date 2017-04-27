@@ -111,8 +111,7 @@ public class VersionedTfLauncherTest {
                                 EasyMock.eq("--serial"),
                                 EasyMock.eq(FAKE_SERIAL),
                                 EasyMock.eq("--subprocess-report-file"),
-                                (String) EasyMock.anyObject(),
-                                EasyMock.eq("--output-test-log")))
+                                (String) EasyMock.anyObject()))
                 .andReturn(cr);
         Map<ITestDevice, IBuildInfo> deviceInfos = new HashMap<ITestDevice, IBuildInfo>();
         deviceInfos.put(mMockTestDevice, null);
@@ -162,8 +161,7 @@ public class VersionedTfLauncherTest {
                                 EasyMock.eq(TF_COMMAND_LINE_OPTION_VALUE),
                                 EasyMock.eq("--null-device"),
                                 EasyMock.eq("--subprocess-report-file"),
-                                (String) EasyMock.anyObject(),
-                                EasyMock.eq("--output-test-log")))
+                                (String) EasyMock.anyObject()))
                 .andReturn(cr);
         Map<ITestDevice, IBuildInfo> deviceInfos = new HashMap<ITestDevice, IBuildInfo>();
         deviceInfos.put(mMockTestDevice, null);
@@ -227,8 +225,7 @@ public class VersionedTfLauncherTest {
                                 EasyMock.eq("--shard-index"),
                                 EasyMock.eq("1"),
                                 EasyMock.eq("--subprocess-report-file"),
-                                (String) EasyMock.anyObject(),
-                                EasyMock.eq("--output-test-log")))
+                                (String) EasyMock.anyObject()))
                 .andReturn(cr);
         Map<ITestDevice, IBuildInfo> deviceInfos = new HashMap<ITestDevice, IBuildInfo>();
         deviceInfos.put(mMockTestDevice, null);
