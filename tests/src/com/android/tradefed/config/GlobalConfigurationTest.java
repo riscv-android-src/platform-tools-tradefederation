@@ -18,10 +18,13 @@ package com.android.tradefed.config;
 import com.android.tradefed.command.CommandScheduler;
 import com.android.tradefed.config.Option.Importance;
 import com.android.tradefed.util.ArrayUtil;
+import com.android.tradefed.util.FileUtil;
+import com.android.tradefed.util.keystore.StubKeyStoreFactory;
 
 import junit.framework.TestCase;
 
 import java.io.ByteArrayOutputStream;
+import java.io.File;
 import java.io.PrintStream;
 import java.util.ArrayList;
 import java.util.List;
@@ -127,8 +130,88 @@ public class GlobalConfigurationTest extends TestCase {
         assertNotNull(mGlobalConfig);
         assertNotNull(mGlobalConfig.getDeviceMonitors());
         assertNotNull(mGlobalConfig.getWtfHandler());
+        assertNotNull(mGlobalConfig.getKeyStoreFactory());
         mGlobalConfig.validateOptions();
         // Only --test-tag test remains, the global config name has been removed.
         assertTrue(nonGlobalArgs.size() == 2);
+    }
+
+    /**
+     * Test that a subset of Global configuration can be created based on the default white list
+     * filtering defined in GlobalConfiguration.
+     */
+    public void testCreateGlobalConfiguration_cloneConfigWithFilterByDefault() throws Exception {
+        String[] args = {};
+        List<String> nonGlobalArgs = new ArrayList<String>();
+        // In order to find our test config, we provide our testconfigs/ folder. Otherwise only
+        // the config/ folder is searched for configuration by default.
+        IConfigurationFactory configFactory =
+                new ConfigurationFactory() {
+                    @Override
+                    String getConfigPrefix() {
+                        return "testconfigs/";
+                    }
+                };
+        String globalConfigPath = GLOBAL_TEST_CONFIG;
+        IGlobalConfiguration globalConfig =
+                configFactory.createGlobalConfigurationFromArgs(
+                        ArrayUtil.buildArray(new String[] {globalConfigPath}, args), nonGlobalArgs);
+
+        File tmpXml = FileUtil.createTempFile("filtered_global_config", ".xml");
+        try {
+            globalConfig.cloneConfigWithFilter(tmpXml, null);
+
+            // Load the filtered XML and confirm it has desired content.
+            IGlobalConfiguration filteredGlobalConfig =
+                    configFactory.createGlobalConfigurationFromArgs(
+                            ArrayUtil.buildArray(new String[] {tmpXml.toString()}, args),
+                            nonGlobalArgs);
+            assertNotNull(filteredGlobalConfig);
+            assertNotNull(filteredGlobalConfig.getKeyStoreFactory());
+            filteredGlobalConfig.validateOptions();
+            // Fail if any configuration not in the white list presents.
+            assertNull(filteredGlobalConfig.getDeviceMonitors());
+            assertNull(filteredGlobalConfig.getWtfHandler());
+        } finally {
+            FileUtil.deleteFile(tmpXml);
+        }
+    }
+
+    /** Test that a subset of Global configuration can be created based on a given white list. */
+    public void testCreateGlobalConfiguration_cloneConfigWithFilter() throws Exception {
+        String[] args = {};
+        List<String> nonGlobalArgs = new ArrayList<String>();
+        // In order to find our test config, we provide our testconfigs/ folder. Otherwise only
+        // the config/ folder is searched for configuration by default.
+        IConfigurationFactory configFactory =
+                new ConfigurationFactory() {
+                    @Override
+                    String getConfigPrefix() {
+                        return "testconfigs/";
+                    }
+                };
+        String globalConfigPath = GLOBAL_TEST_CONFIG;
+        IGlobalConfiguration globalConfig =
+                configFactory.createGlobalConfigurationFromArgs(
+                        ArrayUtil.buildArray(new String[] {globalConfigPath}, args), nonGlobalArgs);
+
+        File tmpXml = FileUtil.createTempFile("filtered_global_config", ".xml");
+        try {
+            globalConfig.cloneConfigWithFilter(tmpXml, new String[] {"wtf_handler"});
+
+            // Load the filtered XML and confirm it has desired content.
+            IGlobalConfiguration filteredGlobalConfig =
+                    configFactory.createGlobalConfigurationFromArgs(
+                            ArrayUtil.buildArray(new String[] {tmpXml.toString()}, args),
+                            nonGlobalArgs);
+            assertNotNull(filteredGlobalConfig);
+            assertNotNull(filteredGlobalConfig.getWtfHandler());
+            filteredGlobalConfig.validateOptions();
+            // Fail if any configuration not in the white list presents.
+            assertNull(filteredGlobalConfig.getDeviceMonitors());
+            assertTrue(filteredGlobalConfig.getKeyStoreFactory() instanceof StubKeyStoreFactory);
+        } finally {
+            FileUtil.deleteFile(tmpXml);
+        }
     }
 }
