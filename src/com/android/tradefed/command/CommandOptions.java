@@ -131,6 +131,12 @@ public class CommandOptions implements ICommandOptions {
     )
     private UniqueMultiMap<String, String> mInvocationData = new UniqueMultiMap<>();
 
+    @Option(
+        name = "disable-strict-sharding",
+        description = "Temporary option to disable the new sharding logic while being tested."
+    )
+    private boolean mUseTfSharding = false;
+
     /**
      * Set the help mode for the config.
      * <p/>
@@ -375,5 +381,11 @@ public class CommandOptions implements ICommandOptions {
     @Override
     public UniqueMultiMap<String, String> getInvocationData() {
         return mInvocationData;
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public boolean shouldUseTfSharding() {
+        return mUseTfSharding;
     }
 }

@@ -38,6 +38,19 @@ public interface IShardableTest extends IRemoteTest {
      * @return a collection of subtests to be executed separately or <code>null</code> if test is
      *     not currently shardable
      */
-    public Collection<IRemoteTest> split();
+    public default Collection<IRemoteTest> split() {
+        return null;
+    }
 
+    /**
+     * Alternative version of {@link #split()} which also provides the shardCount that is attempted
+     * to be run. This is useful for some test runner that cannot arbitrarly decide sometimes.
+     *
+     * @param shardCountHint the attempted shard count.
+     * @return a collection of subtests to be executed separately or <code>null</code> if test is
+     *     not currently shardable
+     */
+    public default Collection<IRemoteTest> split(int shardCountHint) {
+        return split();
+    }
 }

@@ -23,10 +23,12 @@ import com.android.tradefed.invoker.IInvocationContext;
 import com.android.tradefed.invoker.IRescheduler;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.testtype.IRemoteTest;
+import com.android.tradefed.testtype.IShardableTest;
 import com.android.tradefed.testtype.IStrictShardableTest;
 import com.android.tradefed.util.QuotationAwareTokenizer;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
 
 /** Sharding strategy to create strict shards that do not report together, */
@@ -45,14 +47,28 @@ public class StrictShardHelper implements IShardHelper {
 
         // Split tests in place, without actually sharding.
         if (shardIndex != null) {
-            updateConfigIfSharded(config, shardCount, shardIndex);
+            if (!config.getCommandOptions().shouldUseTfSharding()) {
+                updateConfigIfSharded(config, shardCount, shardIndex);
+            } else {
+                List<IRemoteTest> listAllTests = getAllTests(config, shardCount);
+                config.setTests(splitTests(listAllTests, shardCount, shardIndex));
+            }
             return false;
         }
 
+        List<IRemoteTest> listAllTests = getAllTests(config, shardCount);
         // Schedules shard configs.
+        // TODO: merge this behavior with {@link ShardHelper} since when no shard-index is specified
+        // we are basically doing local sharding.
         for (int i = 0; i < shardCount; i++) {
             IConfiguration shardConfig = deepCloneConfig(config);
-            updateConfigIfSharded(shardConfig, shardCount, i);
+
+            // Temporary flag to default to old logic during testing of new one.
+            if (!config.getCommandOptions().shouldUseTfSharding()) {
+                updateConfigIfSharded(shardConfig, shardCount, i);
+            } else {
+                config.setTests(splitTests(listAllTests, shardCount, i));
+            }
             ShardBuildCloner.cloneBuildInfos(config, shardConfig, context);
 
             shardConfig.getCommandOptions().setShardCount(shardCount);
@@ -80,6 +96,60 @@ public class StrictShardHelper implements IShardHelper {
             testShards.add(testShard);
         }
         config.setTests(testShards);
+    }
+
+    /**
+     * Helper to return the full list of {@link IRemoteTest} based on {@link IShardableTest} split.
+     *
+     * @param config the {@link IConfiguration} describing the invocation.
+     * @param shardCount the shard count hint to be provided to some tests.
+     * @return the list of all {@link IRemoteTest}.
+     */
+    private List<IRemoteTest> getAllTests(IConfiguration config, Integer shardCount) {
+        List<IRemoteTest> allTests = new ArrayList<>();
+        for (IRemoteTest test : config.getTests()) {
+            if (test instanceof IShardableTest) {
+                Collection<IRemoteTest> subTests = ((IShardableTest) test).split(shardCount);
+                if (subTests == null) {
+                    allTests.add(test);
+                } else {
+                    allTests.addAll(subTests);
+                }
+            }
+        }
+        return allTests;
+    }
+
+    /**
+     * Split the list of tests to run however the implementation see fit. Sharding needs to be
+     * consistent. It is acceptable to return an empty list if no tests can be run in the shard.
+     *
+     * <p>Implement this in order to provide a test suite specific sharding. The default
+     * implementation strictly split by number of tests which is not always optimal. TODO: improve
+     * the splitting criteria.
+     *
+     * @param fullList the initial full list of {@link IRemoteTest} containing all the tests that
+     *     need to run.
+     * @param shardCount the total number of shard that need to run.
+     * @param shardIndex the index of the current shard that needs to run.
+     * @return a list of {@link IRemoteTest} that need to run in the current shard.
+     */
+    private List<IRemoteTest> splitTests(
+            List<IRemoteTest> fullList, int shardCount, int shardIndex) {
+        if (shardCount == 1) {
+            // Not sharded
+            return fullList;
+        }
+        if (shardIndex >= fullList.size()) {
+            // Return empty list when we don't have enough tests for all the shards.
+            return new ArrayList<IRemoteTest>();
+        }
+        int numPerShard = (int) Math.ceil(fullList.size() / (float) shardCount);
+        if (shardIndex == shardCount - 1) {
+            // last shard take everything remaining.
+            return fullList.subList(shardIndex * numPerShard, fullList.size());
+        }
+        return fullList.subList(shardIndex * numPerShard, numPerShard + (shardIndex * numPerShard));
     }
 
     /** Clone a {@link IConfiguration} using the original command line. */
