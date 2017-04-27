@@ -23,20 +23,19 @@ import com.android.tradefed.build.IBuildProvider;
 import com.android.tradefed.build.IDeviceBuildProvider;
 import com.android.tradefed.command.CommandRunner.ExitCode;
 import com.android.tradefed.config.ConfigurationDef;
-import com.android.tradefed.config.ConfigurationException;
-import com.android.tradefed.config.ConfigurationFactory;
 import com.android.tradefed.config.GlobalConfiguration;
 import com.android.tradefed.config.IConfiguration;
-import com.android.tradefed.config.IConfigurationFactory;
 import com.android.tradefed.config.IDeviceConfiguration;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.DeviceUnresponsiveException;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.device.ITestDevice.RecoveryMode;
-import com.android.tradefed.invoker.shard.IShardHelper;
-import com.android.tradefed.invoker.shard.ShardHelper;
 import com.android.tradefed.device.StubDevice;
 import com.android.tradefed.device.TestDeviceState;
+import com.android.tradefed.invoker.shard.IShardHelper;
+import com.android.tradefed.invoker.shard.ShardBuildCloner;
+import com.android.tradefed.invoker.shard.ShardHelper;
+import com.android.tradefed.invoker.shard.StrictShardHelper;
 import com.android.tradefed.log.ILeveledLogOutput;
 import com.android.tradefed.log.ILogRegistry;
 import com.android.tradefed.log.LogRegistry;
@@ -63,9 +62,7 @@ import com.android.tradefed.testtype.IMultiDeviceTest;
 import com.android.tradefed.testtype.IRemoteTest;
 import com.android.tradefed.testtype.IResumableTest;
 import com.android.tradefed.testtype.IRetriableTest;
-import com.android.tradefed.testtype.IStrictShardableTest;
 import com.android.tradefed.util.IRunUtil;
-import com.android.tradefed.util.QuotationAwareTokenizer;
 import com.android.tradefed.util.RunInterruptedException;
 import com.android.tradefed.util.RunUtil;
 import com.android.tradefed.util.StreamUtil;
@@ -187,45 +184,18 @@ public class TestInvocation implements ITestInvocation {
      */
     private boolean shardConfig(
             IConfiguration config, IInvocationContext context, IRescheduler rescheduler) {
-        // TODO: Refactor to use the sharding strategy from configuration.
-        if (config.getCommandOptions().getShardIndex() != null) {
-            // The config is already for a single shard.
-            return false;
-        }
-
+        // TODO: use sharding strategy to choose the sharding method
         mStatus = "sharding";
         if (config.getCommandOptions().getShardCount() == null) {
             return new ShardHelper().shardConfig(config, context, rescheduler);
         }
-        // Schedules shard configs.
-        int shardCount = config.getCommandOptions().getShardCount();
-        for (int i = 0; i < config.getCommandOptions().getShardCount(); i++) {
-            IConfiguration shardConfig = null;
-            // Create a deep copy of the configuration.
-            try {
-                shardConfig = getConfigFactory().createConfigurationFromArgs(
-                        QuotationAwareTokenizer.tokenizeLine(config.getCommandLine()));
-            } catch (ConfigurationException e) {
-                // This must not happen.
-                throw new RuntimeException("failed to deep copy a configuration", e);
-            }
-
-            ShardHelper.cloneBuildInfos(config, shardConfig, context);
-
-            shardConfig.getCommandOptions().setShardCount(shardCount);
-            shardConfig.getCommandOptions().setShardIndex(i);
-            rescheduler.scheduleConfig(shardConfig);
-        }
-        return true;
+        return createShardHelper().shardConfig(config, context, rescheduler);
     }
 
-    /**
-     * Factory method for getting a reference to the {@link IConfigurationFactory}
-     *
-     * @return the {@link IConfigurationFactory} to use
-     */
-    protected IConfigurationFactory getConfigFactory() {
-        return ConfigurationFactory.getInstance();
+    /** Create an return the {@link IShardHelper} to be used. */
+    @VisibleForTesting
+    protected IShardHelper createShardHelper() {
+        return new StrictShardHelper();
     }
 
     /**
@@ -297,37 +267,6 @@ public class TestInvocation implements ITestInvocation {
     }
 
     /**
-     * Updates the {@link IConfiguration} to run a single shard if a shard index is set.
-     *
-     * @see IStrictShardableTest
-     *
-     * @param config the {@link IConfiguration}.
-     */
-    private void updateConfigIfSharded(IConfiguration config) {
-        if (config.getCommandOptions().getShardIndex() == null) {
-            return;
-        }
-
-        int shardCount = config.getCommandOptions().getShardCount();
-        int shardIndex = config.getCommandOptions().getShardIndex();
-        List<IRemoteTest> testShards = new ArrayList<>();
-        for (IRemoteTest test : config.getTests()) {
-            if (!(test instanceof IStrictShardableTest)) {
-                CLog.w("%s is not shardable; the whole test will run in shard 0",
-                        test.getClass().getName());
-                if (shardIndex == 0) {
-                    testShards.add(test);
-                }
-                continue;
-            }
-            IRemoteTest testShard = ((IStrictShardableTest) test).getTestShard(shardCount,
-                    shardIndex);
-            testShards.add(testShard);
-        }
-        config.setTests(testShards);
-    }
-
-    /**
      * Display a log message informing the user of a invocation being started.
      *
      * @param context the {@link IInvocationContext}
@@ -336,9 +275,11 @@ public class TestInvocation implements ITestInvocation {
     private void logStartInvocation(IInvocationContext context, IConfiguration config) {
         String shardSuffix = "";
         if (config.getCommandOptions().getShardIndex() != null) {
-            shardSuffix = String.format(" (shard %d of %d)",
-                    config.getCommandOptions().getShardIndex(),
-                    config.getCommandOptions().getShardCount());
+            shardSuffix =
+                    String.format(
+                            " (shard %d of %d)",
+                            config.getCommandOptions().getShardIndex() + 1,
+                            config.getCommandOptions().getShardCount());
         }
         StringBuilder buildInfos = new StringBuilder();
         StringBuilder msg = new StringBuilder("Starting invocation for '");
@@ -677,7 +618,7 @@ public class TestInvocation implements ITestInvocation {
                     // resume this config if any test is resumable
                     IConfiguration resumeConfig = config.clone();
                     // reuse the same build for the resumed invocation
-                    ShardHelper.cloneBuildInfos(resumeConfig, resumeConfig, context);
+                    ShardBuildCloner.cloneBuildInfos(resumeConfig, resumeConfig, context);
 
                     // create a result forwarder, to prevent sending two invocationStarted events
                     resumeConfig.setTestInvocationListener(new ResumeResultForwarder(
@@ -961,7 +902,6 @@ public class TestInvocation implements ITestInvocation {
                 CLog.i("Invocation for %s has been sharded, rescheduling",
                         context.getSerials().toString());
             } else {
-                updateConfigIfSharded(config);
                 if (config.getTests() == null || config.getTests().isEmpty()) {
                     CLog.e("No tests to run");
                 } else {

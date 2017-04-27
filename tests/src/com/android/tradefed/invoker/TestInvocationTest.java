@@ -42,6 +42,8 @@ import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.device.ITestDevice.RecoveryMode;
 import com.android.tradefed.device.StubDevice;
 import com.android.tradefed.device.TestDeviceOptions;
+import com.android.tradefed.invoker.shard.IShardHelper;
+import com.android.tradefed.invoker.shard.StrictShardHelper;
 import com.android.tradefed.log.ILeveledLogOutput;
 import com.android.tradefed.log.ILogRegistry;
 import com.android.tradefed.profiler.IAggregatingTestProfiler;
@@ -204,21 +206,28 @@ public class TestInvocationTest extends TestCase {
                 mMockBuildInfo);
 
         // create the BaseTestInvocation to test
-        mTestInvocation = new TestInvocation() {
-            @Override
-            ILogRegistry getLogRegistry() {
-                return mMockLogRegistry;
-            }
+        mTestInvocation =
+                new TestInvocation() {
+                    @Override
+                    ILogRegistry getLogRegistry() {
+                        return mMockLogRegistry;
+                    }
 
-            @Override
-            protected IConfigurationFactory getConfigFactory() {
-                return mMockConfigFactory;
-            }
-            @Override
-            protected void setExitCode(ExitCode code, Throwable stack) {
-                // empty on purpose
-            }
-        };
+                    @Override
+                    protected IShardHelper createShardHelper() {
+                        return new StrictShardHelper() {
+                            @Override
+                            protected IConfigurationFactory getConfigFactory() {
+                                return mMockConfigFactory;
+                            }
+                        };
+                    }
+
+                    @Override
+                    protected void setExitCode(ExitCode code, Throwable stack) {
+                        // empty on purpose
+                    }
+                };
     }
 
     @Override
