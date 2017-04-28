@@ -3608,6 +3608,14 @@ public class NativeDevice implements IManagedTestDevice {
         throw new UnsupportedOperationException("No support for user's feature.");
     }
 
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void disableKeyguard() throws DeviceNotAvailableException {
+        throw new UnsupportedOperationException("No support for Window Manager's features");
+    }
+
     /** {@inheritDoc} */
     @Override
     public String getDeviceClass() {

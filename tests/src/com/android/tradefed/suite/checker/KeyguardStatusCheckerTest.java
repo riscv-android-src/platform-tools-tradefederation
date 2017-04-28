@@ -63,6 +63,8 @@ public class KeyguardStatusCheckerTest {
     @Test
     public void testPostExecutionCheck_showingAfter() throws DeviceNotAvailableException {
         EasyMock.expect(mMockDevice.getKeyguardState()).andReturn(createKeyguardState(true, false));
+        mMockDevice.disableKeyguard();
+        EasyMock.expectLastCall();
         EasyMock.replay(mMockDevice);
         assertFalse(mKsc.postExecutionCheck(mMockDevice));
         EasyMock.verify(mMockDevice);
