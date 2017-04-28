@@ -929,8 +929,37 @@ public class ConfigurationFactoryTest extends TestCase {
     }
 
     /**
-     * Parse a config with 3 different device configuration specified.
-     * And apply a command line to override some attributes.
+     * Test that if an object inside a <device> tag is implementing {@link IConfigurationReceiver}
+     * it will receives the config properly like non-device object.
+     */
+    public void testCreateConfigurationFromArgs_injectConfiguration() throws Exception {
+        IConfiguration config = mFactory.createConfigurationFromArgs(new String[] {"multi-device"});
+        assertEquals(1, config.getTests().size());
+
+        assertNotNull(config.getDeviceConfigByName("device2"));
+        assertEquals(1, config.getDeviceConfigByName("device2").getTargetPreparers().size());
+        assertTrue(
+                config.getDeviceConfigByName("device2").getTargetPreparers().get(0)
+                        instanceof StubTargetPreparer);
+        StubTargetPreparer stubDevice2 =
+                (StubTargetPreparer)
+                        config.getDeviceConfigByName("device2").getTargetPreparers().get(0);
+        assertEquals(config, stubDevice2.getConfiguration());
+
+        assertNotNull(config.getDeviceConfigByName("device3"));
+        assertEquals(2, config.getDeviceConfigByName("device3").getTargetPreparers().size());
+        assertTrue(
+                config.getDeviceConfigByName("device3").getTargetPreparers().get(0)
+                        instanceof StubTargetPreparer);
+        StubTargetPreparer stubDevice3 =
+                (StubTargetPreparer)
+                        config.getDeviceConfigByName("device3").getTargetPreparers().get(0);
+        assertEquals(config, stubDevice3.getConfiguration());
+    }
+
+    /**
+     * Parse a config with 3 different device configuration specified. And apply a command line to
+     * override some attributes.
      */
     public void testCreateConfigurationFromArgs_multidevice_applyCommandLine() throws Exception {
         IConfiguration config = mFactory.createConfigurationFromArgs(

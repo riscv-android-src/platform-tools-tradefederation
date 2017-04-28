@@ -845,6 +845,14 @@ public class Configuration implements IConfiguration {
         if (configObject instanceof IConfigurationReceiver) {
             ((IConfigurationReceiver) configObject).setConfiguration(this);
         }
+        // Inject to object inside device holder too.
+        if (configObject instanceof IDeviceConfiguration) {
+            for (Object obj : ((IDeviceConfiguration) configObject).getAllObjects()) {
+                if (obj instanceof IConfigurationReceiver) {
+                    ((IConfigurationReceiver) obj).setConfiguration(this);
+                }
+            }
+        }
     }
 
     /**
