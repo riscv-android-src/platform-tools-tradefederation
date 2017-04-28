@@ -28,6 +28,8 @@ import com.android.tradefed.log.ITerribleFailureHandler;
 import com.android.tradefed.util.hostmetric.IHostMonitor;
 import com.android.tradefed.util.keystore.IKeyStoreFactory;
 
+import java.io.File;
+import java.io.IOException;
 import java.util.List;
 
 /**
@@ -257,4 +259,35 @@ public interface IGlobalConfiguration {
      * @throws ConfigurationException if configuration is missing mandatory fields
      */
     public void validateOptions() throws ConfigurationException;
+
+    /**
+     * Filter the GlobalConfiguration based on a white list and output to an XML file.
+     *
+     * <p>For example, for following configuration:
+     * {@code
+     * <xml>
+     *     <configuration>
+     *         <device_monitor class="com.android.tradefed.device.DeviceMonitorMultiplexer" />
+     *         <wtf_handler class="com.android.tradefed.log.TerribleFailureEmailHandler" />
+     *         <key_store class="com.android.tradefed.util.keystore.JSONFileKeyStoreFactory" />
+     *     </configuration>
+     * </xml>
+     * }
+     *
+     * <p>all config except "key_store" will be filtered out, and result a config file with
+     * following content:
+     * {@code
+     * <xml>
+     *     <configuration>
+     *         <key_store class="com.android.tradefed.util.keystore.JSONFileKeyStoreFactory" />
+     *     </configuration>
+     * </xml>
+     * }
+     *
+     * @param outputXml the XML file to write to
+     * @param whitelistConfigs an {@link String[]} of configs to be included in the new XML file. If
+     *     it's set to <code>null<code/>, a default list should be used.
+     * @throws IOException
+     */
+    public void cloneConfigWithFilter(File outputXml, String[] whitelistConfigs) throws IOException;
 }
