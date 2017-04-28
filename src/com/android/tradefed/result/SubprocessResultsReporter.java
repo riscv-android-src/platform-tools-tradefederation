@@ -56,6 +56,7 @@ public class SubprocessResultsReporter implements ITestInvocationListener, AutoC
     private boolean mOutputTestlog = false;
 
     private Socket mReportSocket = null;
+    private PrintWriter mPrintWriter = null;
 
     private boolean mPrintWarning = true;
 
@@ -232,14 +233,14 @@ public class SubprocessResultsReporter implements ITestInvocationListener, AutoC
             try {
                 if (mReportSocket == null) {
                     mReportSocket = new Socket("localhost", mReportPort.intValue());
+                    mPrintWriter = new PrintWriter(mReportSocket.getOutputStream(), true);
                 }
                 if (!mReportSocket.isConnected()) {
                     throw new RuntimeException("Reporter Socket is not connected");
                 }
-                PrintWriter out = new PrintWriter(mReportSocket.getOutputStream(), true);
                 String eventLog = String.format("%s %s\n", key, event.toString());
-                out.print(eventLog);
-                out.flush();
+                mPrintWriter.print(eventLog);
+                mPrintWriter.flush();
             } catch (IOException e) {
                 throw new RuntimeException(e);
             }
@@ -257,5 +258,6 @@ public class SubprocessResultsReporter implements ITestInvocationListener, AutoC
     @Override
     public void close() {
         StreamUtil.close(mReportSocket);
+        StreamUtil.close(mPrintWriter);
     }
 }

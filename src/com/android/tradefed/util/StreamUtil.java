@@ -120,6 +120,7 @@ public class StreamUtil {
         while ((irChar = ir.read()) != -1) {
             builder.append((char)irChar);
         }
+        StreamUtil.close(ir);
         return builder.toString();
     }
 
