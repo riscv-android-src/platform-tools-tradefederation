@@ -459,14 +459,10 @@ public class TestDevice extends NativeDevice {
     }
 
     /**
-     * Attempts to disable the keyguard.
-     * <p>
-     * First wait for the input dispatch to become ready, this happens around the same time when the
-     * device reports BOOT_COMPLETE, apparently asynchronously, because current framework
-     * implementation has occasional race condition. Then command is sent to dismiss keyguard (works
-     * on non-secure ones only)
+     * {@inheritDoc}
      */
-    void disableKeyguard() throws DeviceNotAvailableException {
+    @Override
+    public void disableKeyguard() throws DeviceNotAvailableException {
         long start = System.currentTimeMillis();
         while (true) {
             Boolean ready = isDeviceInputReady();
