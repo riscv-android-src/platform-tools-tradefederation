@@ -53,6 +53,7 @@ public class HermeticMemoryTest implements IDeviceTest, IRemoteTest {
     private static final String MEMFREE = "MemFree";
     private static final String CACHED = "Cached";
     private static final int NO_PROCESS_ID = -1;
+    private static final String DROP_CACHE = "echo 3 > /proc/sys/vm/drop_caches";
 
 
     @Option(name = "post-app-launch-delay",
@@ -92,8 +93,9 @@ public class HermeticMemoryTest implements IDeviceTest, IRemoteTest {
         Assert.assertTrue("Device built in memory in kb is mandatory.Use --total-memory-kb value"
                 + "command line parameter",
                 mTotalMemory != 0);
-
-        RunUtil.getDefault().sleep(10000);
+        RunUtil.getDefault().sleep(5000);
+        mTestDevice.executeShellCommand(DROP_CACHE);
+        RunUtil.getDefault().sleep(5000);
         Assert.assertTrue("Not a valid component name to start the activity",
                 (mComponentName.split("/").length == 2));
         mTestDevice.executeShellCommand(String.format(AM_START, mComponentName));

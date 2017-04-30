@@ -18,6 +18,7 @@ package com.android.tradefed.testtype;
 import com.android.ddmlib.testrunner.TestIdentifier;
 import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.build.IFolderBuildInfo;
+import com.android.tradefed.config.GlobalConfiguration;
 import com.android.tradefed.config.Option;
 import com.android.tradefed.invoker.IInvocationContext;
 import com.android.tradefed.log.LogUtil.CLog;
@@ -71,6 +72,9 @@ public abstract class SubprocessTfLauncher
             + "sub process, can be local or from jar resources. Be careful of conflicts with "
             + "parent process.")
     private String mGlobalConfig = null;
+
+    // Temp global configuration filtered from the parent process.
+    private String mFilteredGlobalConfig = null;
 
     /** Timeout to wait for the events received from subprocess to finish being processed.*/
     private static final long EVENT_THREAD_JOIN_TIMEOUT_MS = 30 * 1000;
@@ -145,6 +149,20 @@ public abstract class SubprocessTfLauncher
 
         // clear the TF_GLOBAL_CONFIG env, so another tradefed will not reuse the global config file
         mRunUtil.unsetEnvVariable(TF_GLOBAL_CONFIG);
+        if (mGlobalConfig == null) {
+            // If the global configuration is not set in option, create a filtered global
+            // configuration for subprocess to use.
+            try {
+                File filteredGlobalConfig =
+                        FileUtil.createTempFile("filtered_global_config", ".config");
+                GlobalConfiguration.getInstance().cloneConfigWithFilter(filteredGlobalConfig, null);
+                mFilteredGlobalConfig = filteredGlobalConfig.getAbsolutePath();
+                mGlobalConfig = mFilteredGlobalConfig;
+            } catch (IOException e) {
+                CLog.e("Failed to create filtered global configuration");
+                CLog.e(e);
+            }
+        }
         if (mGlobalConfig != null) {
             // We allow overriding this global config and then set it for the subprocess.
             mRunUtil.setEnvVariablePriority(EnvPriority.SET);
@@ -197,7 +215,6 @@ public abstract class SubprocessTfLauncher
                 mCmdArgs.add("--subprocess-report-file");
                 mCmdArgs.add(eventFile.getAbsolutePath());
             }
-            mCmdArgs.add("--output-test-log");
 
             CommandResult result = mRunUtil.runTimedCmd(mMaxTfRunTime, stdout,
                     stderr, mCmdArgs.toArray(new String[0]));
@@ -244,6 +261,10 @@ public abstract class SubprocessTfLauncher
 
             if (mTmpDir != null) {
                 FileUtil.recursiveDelete(mTmpDir);
+            }
+
+            if (mFilteredGlobalConfig != null) {
+                FileUtil.deleteFile(new File(mFilteredGlobalConfig));
             }
         }
     }

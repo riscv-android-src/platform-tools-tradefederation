@@ -21,6 +21,7 @@ import com.android.ddmlib.IDevice;
 import com.android.ddmlib.testrunner.TestIdentifier;
 import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.build.IFolderBuildInfo;
+import com.android.tradefed.config.GlobalConfiguration;
 import com.android.tradefed.config.OptionSetter;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.device.NullDevice;
@@ -30,6 +31,7 @@ import com.android.tradefed.result.LogDataType;
 import com.android.tradefed.util.CommandResult;
 import com.android.tradefed.util.CommandStatus;
 import com.android.tradefed.util.IRunUtil;
+import com.android.tradefed.util.IRunUtil.EnvPriority;
 
 import org.easymock.EasyMock;
 import org.junit.Before;
@@ -81,6 +83,12 @@ public class VersionedTfLauncherTest {
         OptionSetter setter = new OptionSetter(mVersionedTfLauncher);
         setter.setOptionValue("config-name", CONFIG_NAME);
         setter.setOptionValue("tf-command-line", TF_COMMAND_LINE);
+
+        try {
+            GlobalConfiguration.createGlobalConfiguration(new String[] {});
+        } catch (IllegalStateException e) {
+            // ignore re-init.
+        }
     }
 
     /**
@@ -92,6 +100,9 @@ public class VersionedTfLauncherTest {
 
         CommandResult cr = new CommandResult(CommandStatus.SUCCESS);
         mMockRunUtil.unsetEnvVariable(SubprocessTfLauncher.TF_GLOBAL_CONFIG);
+        mMockRunUtil.setEnvVariablePriority(EnvPriority.SET);
+        mMockRunUtil.setEnvVariable(
+                EasyMock.eq(SubprocessTfLauncher.TF_GLOBAL_CONFIG), (String) EasyMock.anyObject());
 
         EasyMock.expect(
                         mMockRunUtil.runTimedCmd(
@@ -111,8 +122,7 @@ public class VersionedTfLauncherTest {
                                 EasyMock.eq("--serial"),
                                 EasyMock.eq(FAKE_SERIAL),
                                 EasyMock.eq("--subprocess-report-file"),
-                                (String) EasyMock.anyObject(),
-                                EasyMock.eq("--output-test-log")))
+                                (String) EasyMock.anyObject()))
                 .andReturn(cr);
         Map<ITestDevice, IBuildInfo> deviceInfos = new HashMap<ITestDevice, IBuildInfo>();
         deviceInfos.put(mMockTestDevice, null);
@@ -144,6 +154,9 @@ public class VersionedTfLauncherTest {
 
         CommandResult cr = new CommandResult(CommandStatus.SUCCESS);
         mMockRunUtil.unsetEnvVariable(SubprocessTfLauncher.TF_GLOBAL_CONFIG);
+        mMockRunUtil.setEnvVariablePriority(EnvPriority.SET);
+        mMockRunUtil.setEnvVariable(
+                EasyMock.eq(SubprocessTfLauncher.TF_GLOBAL_CONFIG), (String) EasyMock.anyObject());
 
         EasyMock.expect(
                         mMockRunUtil.runTimedCmd(
@@ -162,8 +175,7 @@ public class VersionedTfLauncherTest {
                                 EasyMock.eq(TF_COMMAND_LINE_OPTION_VALUE),
                                 EasyMock.eq("--null-device"),
                                 EasyMock.eq("--subprocess-report-file"),
-                                (String) EasyMock.anyObject(),
-                                EasyMock.eq("--output-test-log")))
+                                (String) EasyMock.anyObject()))
                 .andReturn(cr);
         Map<ITestDevice, IBuildInfo> deviceInfos = new HashMap<ITestDevice, IBuildInfo>();
         deviceInfos.put(mMockTestDevice, null);
@@ -204,6 +216,9 @@ public class VersionedTfLauncherTest {
 
         CommandResult cr = new CommandResult(CommandStatus.SUCCESS);
         mMockRunUtil.unsetEnvVariable(SubprocessTfLauncher.TF_GLOBAL_CONFIG);
+        mMockRunUtil.setEnvVariablePriority(EnvPriority.SET);
+        mMockRunUtil.setEnvVariable(
+                EasyMock.eq(SubprocessTfLauncher.TF_GLOBAL_CONFIG), (String) EasyMock.anyObject());
 
         EasyMock.expect(
                         mMockRunUtil.runTimedCmd(
@@ -227,8 +242,7 @@ public class VersionedTfLauncherTest {
                                 EasyMock.eq("--shard-index"),
                                 EasyMock.eq("1"),
                                 EasyMock.eq("--subprocess-report-file"),
-                                (String) EasyMock.anyObject(),
-                                EasyMock.eq("--output-test-log")))
+                                (String) EasyMock.anyObject()))
                 .andReturn(cr);
         Map<ITestDevice, IBuildInfo> deviceInfos = new HashMap<ITestDevice, IBuildInfo>();
         deviceInfos.put(mMockTestDevice, null);
