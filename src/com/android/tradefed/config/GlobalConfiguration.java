@@ -35,7 +35,10 @@ import com.android.tradefed.util.hostmetric.IHostMonitor;
 import com.android.tradefed.util.keystore.IKeyStoreFactory;
 import com.android.tradefed.util.keystore.StubKeyStoreFactory;
 
+import org.kxml2.io.KXmlSerializer;
+
 import java.io.File;
+import java.io.IOException;
 import java.io.PrintStream;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -43,6 +46,7 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+
 
 /**
  * An {@link IGlobalConfiguration} implementation that stores the loaded config objects in a map
@@ -69,6 +73,10 @@ public class GlobalConfiguration implements IGlobalConfiguration {
 
     // Empty embedded configuration available by default
     private static final String DEFAULT_EMPTY_CONFIG_NAME = "empty";
+
+    // Configurations to be passed to subprocess
+    private static final String[] CONFIGS_FOR_SUBPROCESS_WHITE_LIST =
+            new String[] {KEY_STORE_TYPE_NAME};
 
     /** Mapping of config object type name to config objects. */
     private Map<String, List<Object>> mConfigMap;
@@ -635,5 +643,21 @@ public class GlobalConfiguration implements IGlobalConfiguration {
     @Override
     public void validateOptions() throws ConfigurationException {
         new ArgsOptionParser(getAllConfigurationObjects()).validateMandatoryOptions();
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public void cloneConfigWithFilter(File outputXml, String[] whitelistConfigs)
+            throws IOException {
+        KXmlSerializer serializer = ConfigurationUtil.createSerializer(outputXml);
+        serializer.startTag(null, ConfigurationUtil.CONFIGURATION_NAME);
+        if (whitelistConfigs == null) {
+            whitelistConfigs = CONFIGS_FOR_SUBPROCESS_WHITE_LIST;
+        }
+        for (String config : whitelistConfigs) {
+            ConfigurationUtil.dumpClassToXml(serializer, config, getConfigurationObject(config));
+        }
+        serializer.endTag(null, ConfigurationUtil.CONFIGURATION_NAME);
+        serializer.endDocument();
     }
 }

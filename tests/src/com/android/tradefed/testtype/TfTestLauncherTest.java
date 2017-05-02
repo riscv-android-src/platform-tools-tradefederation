@@ -19,6 +19,8 @@ import static org.junit.Assert.assertTrue;
 
 import com.android.ddmlib.testrunner.TestIdentifier;
 import com.android.tradefed.build.IFolderBuildInfo;
+import com.android.tradefed.command.CommandOptions;
+import com.android.tradefed.config.IConfiguration;
 import com.android.tradefed.config.OptionSetter;
 import com.android.tradefed.result.FileInputStreamSource;
 import com.android.tradefed.result.ITestInvocationListener;
@@ -54,17 +56,20 @@ public class TfTestLauncherTest {
     private ITestInvocationListener mMockListener;
     private IRunUtil mMockRunUtil;
     private IFolderBuildInfo mMockBuildInfo;
+    private IConfiguration mMockConfig;
 
     @Before
     public void setUp() throws Exception {
         mMockListener = EasyMock.createMock(ITestInvocationListener.class);
         mMockRunUtil = EasyMock.createMock(IRunUtil.class);
         mMockBuildInfo = EasyMock.createMock(IFolderBuildInfo.class);
+        mMockConfig = EasyMock.createMock(IConfiguration.class);
 
         mTfTestLauncher = new TfTestLauncher();
         mTfTestLauncher.setRunUtil(mMockRunUtil);
         mTfTestLauncher.setBuild(mMockBuildInfo);
         mTfTestLauncher.setEventStreaming(false);
+        mTfTestLauncher.setConfiguration(mMockConfig);
 
         OptionSetter setter = new OptionSetter(mTfTestLauncher);
         setter.setOptionValue("config-name", CONFIG_NAME);
@@ -98,8 +103,7 @@ public class TfTestLauncherTest {
                                 EasyMock.eq("--build-flavor"),
                                 EasyMock.eq(BUILD_FLAVOR),
                                 EasyMock.eq("--subprocess-report-file"),
-                                (String) EasyMock.anyObject(),
-                                EasyMock.eq("--output-test-log")))
+                                (String) EasyMock.anyObject()))
                 .andReturn(cr);
 
         mMockRunUtil.unsetEnvVariable(SubprocessTfLauncher.TF_GLOBAL_CONFIG);
@@ -127,9 +131,11 @@ public class TfTestLauncherTest {
         mMockListener.testRunStarted("elapsed-time", 0);
         mMockListener.testRunEnded(EasyMock.anyLong(), EasyMock.anyObject());
 
-        EasyMock.replay(mMockBuildInfo, mMockRunUtil, mMockListener);
+        EasyMock.expect(mMockConfig.getCommandOptions()).andReturn(new CommandOptions());
+
+        EasyMock.replay(mMockBuildInfo, mMockRunUtil, mMockListener, mMockConfig);
         mTfTestLauncher.run(mMockListener);
-        EasyMock.verify(mMockBuildInfo, mMockRunUtil, mMockListener);
+        EasyMock.verify(mMockBuildInfo, mMockRunUtil, mMockListener, mMockConfig);
     }
 
     /**

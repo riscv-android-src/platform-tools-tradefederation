@@ -148,19 +148,32 @@ public class RunUtil implements IRunUtil {
     private CommandResult runTimedCmd(final long timeout, OutputStream stdout,
             OutputStream stderr, boolean closeStreamAfterRun, final String... command) {
         final CommandResult result = new CommandResult();
-        IRunUtil.IRunnableResult osRunnable = new RunnableResult(result, null,
-                createProcessBuilder(command), stdout, stderr, closeStreamAfterRun);
+        IRunUtil.IRunnableResult osRunnable =
+                createRunnableResult(result, stdout, stderr, closeStreamAfterRun, command);
         CommandStatus status = runTimed(timeout, osRunnable, true);
         result.setStatus(status);
         return result;
     }
 
     /**
-     * {@inheritDoc}
+     * Create a {@link com.android.tradefed.util.IRunUtil.IRunnableResult} that will run the
+     * command.
      */
-    @Override
-    public CommandResult runTimedCmdRetry(long timeout, long retryInterval, int attempts,
+    @VisibleForTesting
+    IRunUtil.IRunnableResult createRunnableResult(
+            CommandResult result,
+            OutputStream stdout,
+            OutputStream stderr,
+            boolean closeStreamAfterRun,
             String... command) {
+        return new RunnableResult(
+                result, null, createProcessBuilder(command), stdout, stderr, closeStreamAfterRun);
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public CommandResult runTimedCmdRetry(
+            long timeout, long retryInterval, int attempts, String... command) {
         CommandResult result = null;
         int counter = 0;
         while (counter < attempts) {
@@ -546,7 +559,7 @@ public class RunUtil implements IRunUtil {
         }
     }
 
-    private class RunnableResult implements IRunUtil.IRunnableResult {
+    class RunnableResult implements IRunUtil.IRunnableResult {
         private final ProcessBuilder mProcessBuilder;
         private final CommandResult mCommandResult;
         private final String mInput;
@@ -597,6 +610,12 @@ public class RunUtil implements IRunUtil {
             }
         }
 
+        /** Start a {@link Process} based on the {@link ProcessBuilder}. */
+        @VisibleForTesting
+        Process startProcess() throws IOException {
+            return mProcessBuilder.start();
+        }
+
         @Override
         public boolean run() throws Exception {
             Thread stdoutThread = null;
@@ -609,7 +628,7 @@ public class RunUtil implements IRunUtil {
                 }
                 mExecutionThread = Thread.currentThread();
                 CLog.d("Running %s", mProcessBuilder.command());
-                mProcess = mProcessBuilder.start();
+                mProcess = startProcess();
                 if (mInput != null) {
                     BufferedOutputStream processStdin =
                             new BufferedOutputStream(mProcess.getOutputStream());

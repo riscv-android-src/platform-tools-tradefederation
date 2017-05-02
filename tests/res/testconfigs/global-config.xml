@@ -20,4 +20,7 @@
     <wtf_handler class="com.android.tradefed.log.TerribleFailureEmailHandler" />
     <device_manager class="com.android.tradefed.device.DeviceManager" />
     <option name="dmgr:max-emulators" value="25" />
+    <key_store class="com.android.tradefed.util.keystore.JSONFileKeyStoreFactory">
+        <option name="json-key-store-file" value="key_store.json" />
+    </key_store>
 </configuration>

@@ -611,4 +611,14 @@ public interface ITestDevice extends INativeDevice {
      * @throws DeviceNotAvailableException
      */
     public void removeOwners() throws DeviceNotAvailableException;
+
+    /**
+     * Attempts to disable the keyguard.
+     * <p>
+     * First wait for the input dispatch to become ready, this happens around the same time when the
+     * device reports BOOT_COMPLETE, apparently asynchronously, because current framework
+     * implementation has occasional race condition. Then command is sent to dismiss keyguard (works
+     * on non-secure ones only)
+     */
+    public void disableKeyguard() throws DeviceNotAvailableException;
 }
