@@ -948,7 +948,7 @@ public class FileUtil {
         return result;
     }
 
-    /*
+    /**
      * Get all file paths of files in the given directory with name matching the given filter
      *
      * @param dir {@link File} object of the directory to search for files recursively
