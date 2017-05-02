@@ -1262,4 +1262,17 @@ public class HostTestTest extends TestCase {
         assertEquals(0l, test.getRuntimeHint());
         assertEquals(0, test.countTestCases());
     }
+
+    /**
+     * {@link HostTest#getTestShard(int, int)} returns a {@link IRemoteTest} with no runtime and no
+     * tests when filtered out of all its tests with a exclude-filter.
+     */
+    public void testShardAndUpdateRuntime_filters() {
+        mHostTest.setClassName(SuccessDeviceTest.class.getName());
+        mHostTest.addExcludeFilter(
+                "com.android.tradefed.testtype.HostTestTest$SuccessDeviceTest#testPass");
+        HostTest test = (HostTest) mHostTest.getTestShard(2, 0);
+        assertEquals(0l, test.getRuntimeHint());
+        assertEquals(0, test.countTestCases());
+    }
 }

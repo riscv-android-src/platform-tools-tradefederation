@@ -264,17 +264,17 @@ public class TestFilterHelper {
     private boolean shouldRunFilter(String packageName, String className, String methodName) {
         if (mExcludeFilters.contains(packageName)) {
             // Skip package because it was excluded
-            CLog.i("Skip package because it was excluded");
+            CLog.i("Skip package %s because it was excluded", packageName);
             return false;
         }
         if (mExcludeFilters.contains(className)) {
             // Skip class because it was excluded
-            CLog.i("Skip class because it was excluded");
+            CLog.i("Skip class %s because it was excluded", className);
             return false;
         }
         if (mExcludeFilters.contains(methodName)) {
             // Skip method because it was excluded
-            CLog.i("Skip method because it was excluded");
+            CLog.i("Skip method %s in class %s because it was excluded", methodName, className);
             return false;
         }
         return true;
