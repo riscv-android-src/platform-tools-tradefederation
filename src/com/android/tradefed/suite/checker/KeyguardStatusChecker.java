@@ -45,9 +45,12 @@ public class KeyguardStatusChecker implements ISystemStatusChecker {
         if (mIsKeyguardShowing || mIsKeyguardOccluded) {
             CLog.logAndDisplay(
                     LogLevel.WARN,
-                    "SystemChecker - pre-execution:\n" + "\tKeyguard on: %s, occluded: %s",
+                    "SystemChecker - post-execution:\n" + "\tKeyguard on: %s, occluded: %s",
                     mIsKeyguardShowing,
                     mIsKeyguardOccluded);
+            // best effort to dismiss keyguard: will not work if a secured keyguard was left around
+            CLog.w("Also attempting to dismiss keyguard.");
+            device.disableKeyguard();
             return false;
         }
         return true;

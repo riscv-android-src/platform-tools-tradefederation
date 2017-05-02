@@ -18,6 +18,9 @@ package com.android.tradefed.testtype;
 import com.android.ddmlib.testrunner.TestIdentifier;
 import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.build.IFolderBuildInfo;
+import com.android.tradefed.config.GlobalConfiguration;
+import com.android.tradefed.config.IConfiguration;
+import com.android.tradefed.config.IConfigurationReceiver;
 import com.android.tradefed.config.Option;
 import com.android.tradefed.invoker.IInvocationContext;
 import com.android.tradefed.log.LogUtil.CLog;
@@ -33,6 +36,7 @@ import com.android.tradefed.util.RunUtil;
 import com.android.tradefed.util.StreamUtil;
 import com.android.tradefed.util.SubprocessTestResultsParser;
 import com.android.tradefed.util.TimeUtil;
+import com.android.tradefed.util.UniqueMultiMap;
 
 import org.junit.Assert;
 
@@ -50,7 +54,7 @@ import java.util.List;
  * tests continuously.
  */
 public abstract class SubprocessTfLauncher
-        implements IBuildReceiver, IInvocationContextReceiver, IRemoteTest {
+        implements IBuildReceiver, IInvocationContextReceiver, IRemoteTest, IConfigurationReceiver {
 
     @Option(name = "max-run-time", description =
             "The maximum time to allow for a TF test run.", isTimeVal = true)
@@ -72,6 +76,9 @@ public abstract class SubprocessTfLauncher
             + "parent process.")
     private String mGlobalConfig = null;
 
+    // Temp global configuration filtered from the parent process.
+    private String mFilteredGlobalConfig = null;
+
     /** Timeout to wait for the events received from subprocess to finish being processed.*/
     private static final long EVENT_THREAD_JOIN_TIMEOUT_MS = 30 * 1000;
 
@@ -87,10 +94,16 @@ public abstract class SubprocessTfLauncher
     // The absolute path to the build's root directory.
     protected String mRootDir = null;
     private IInvocationContext mContext;
+    private IConfiguration mConfig;
 
     @Override
     public void setInvocationContext(IInvocationContext invocationContext) {
         mContext = invocationContext;
+    }
+
+    @Override
+    public void setConfiguration(IConfiguration configuration) {
+        mConfig = configuration;
     }
 
     /**
@@ -145,6 +158,20 @@ public abstract class SubprocessTfLauncher
 
         // clear the TF_GLOBAL_CONFIG env, so another tradefed will not reuse the global config file
         mRunUtil.unsetEnvVariable(TF_GLOBAL_CONFIG);
+        if (mGlobalConfig == null) {
+            // If the global configuration is not set in option, create a filtered global
+            // configuration for subprocess to use.
+            try {
+                File filteredGlobalConfig =
+                        FileUtil.createTempFile("filtered_global_config", ".config");
+                GlobalConfiguration.getInstance().cloneConfigWithFilter(filteredGlobalConfig, null);
+                mFilteredGlobalConfig = filteredGlobalConfig.getAbsolutePath();
+                mGlobalConfig = mFilteredGlobalConfig;
+            } catch (IOException e) {
+                CLog.e("Failed to create filtered global configuration");
+                CLog.e(e);
+            }
+        }
         if (mGlobalConfig != null) {
             // We allow overriding this global config and then set it for the subprocess.
             mRunUtil.setEnvVariablePriority(EnvPriority.SET);
@@ -167,12 +194,23 @@ public abstract class SubprocessTfLauncher
      */
     protected void postRun(ITestInvocationListener listener, boolean exception) {}
 
-    /**
-     * {@inheritDoc}
-     */
+    /** Pipe to the subprocess the invocation-data so that it can use them if needed. */
+    private void addInvocationData() {
+        UniqueMultiMap<String, String> data = mConfig.getCommandOptions().getInvocationData();
+        for (String key : data.keySet()) {
+            for (String value : data.get(key)) {
+                mCmdArgs.add("--invocation-data");
+                mCmdArgs.add(key);
+                mCmdArgs.add(value);
+            }
+        }
+    }
+
+    /** {@inheritDoc} */
     @Override
     public void run(ITestInvocationListener listener) {
         preRun();
+        addInvocationData();
 
         File stdoutFile = null;
         File stderrFile = null;
@@ -197,7 +235,6 @@ public abstract class SubprocessTfLauncher
                 mCmdArgs.add("--subprocess-report-file");
                 mCmdArgs.add(eventFile.getAbsolutePath());
             }
-            mCmdArgs.add("--output-test-log");
 
             CommandResult result = mRunUtil.runTimedCmd(mMaxTfRunTime, stdout,
                     stderr, mCmdArgs.toArray(new String[0]));
@@ -244,6 +281,10 @@ public abstract class SubprocessTfLauncher
 
             if (mTmpDir != null) {
                 FileUtil.recursiveDelete(mTmpDir);
+            }
+
+            if (mFilteredGlobalConfig != null) {
+                FileUtil.deleteFile(new File(mFilteredGlobalConfig));
             }
         }
     }
