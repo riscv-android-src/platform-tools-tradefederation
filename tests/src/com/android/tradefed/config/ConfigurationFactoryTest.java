@@ -1287,14 +1287,16 @@ public class ConfigurationFactoryTest extends TestCase {
      * This unit test ensures that the code will search for missing test configs in directories
      * specified in certain environment variables, and fail as the test config still can't be found.
      */
-    public void testSearchConfigFromEnvVarFailed() {
-        File tmpDir = new File(System.getProperty("java.io.tmpdir"));
-
-        ConfigurationFactory spyFactory = Mockito.spy(mFactory);
-        Mockito.doReturn(Arrays.asList(tmpDir)).when(spyFactory).getTestCasesDirs();
-
-        File config = spyFactory.getTestCaseConfigPath("non-exist");
-        assertNull(config);
-        Mockito.verify(spyFactory, Mockito.times(1)).getTestCasesDirs();
+    public void testSearchConfigFromEnvVarFailed() throws Exception {
+        File tmpDir = FileUtil.createTempDir("config-check-var");
+        try {
+            ConfigurationFactory spyFactory = Mockito.spy(mFactory);
+            Mockito.doReturn(Arrays.asList(tmpDir)).when(spyFactory).getTestCasesDirs();
+            File config = spyFactory.getTestCaseConfigPath("non-exist");
+            assertNull(config);
+            Mockito.verify(spyFactory, Mockito.times(1)).getTestCasesDirs();
+        } finally {
+            FileUtil.recursiveDelete(tmpDir);
+        }
     }
 }
