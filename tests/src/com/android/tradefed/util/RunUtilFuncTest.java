@@ -144,16 +144,17 @@ public class RunUtilFuncTest extends TestCase {
         runUtil.setEnvVariable("bar", "foo");
         // FIXME: this test case is not ideal, as it will only work on platforms that support
         // printenv
-        CommandResult result = runUtil.runTimedCmd(SHORT_TIMEOUT_MS, "printenv", "bar");
-        assertTrue(result.getStatus() == CommandStatus.SUCCESS);
-        assertTrue("foo".equals(result.getStdout().trim()));
+        CommandResult result =
+                runUtil.runTimedCmdRetry(SHORT_TIMEOUT_MS, SHORT_TIMEOUT_MS, 3, "printenv", "bar");
+        assertEquals(CommandStatus.SUCCESS, result.getStatus());
+        assertEquals("foo", result.getStdout().trim());
 
         // remove env variable
         runUtil.unsetEnvVariable("bar");
         // printenv with non-exist variable will fail
         result = runUtil.runTimedCmd(SHORT_TIMEOUT_MS, "printenv", "bar");
-        assertTrue(result.getStatus() == CommandStatus.FAILED);
-        assertTrue("".equals(result.getStdout().trim()));
+        assertEquals(CommandStatus.FAILED, result.getStatus());
+        assertEquals("", result.getStdout().trim());
     }
 
     /**
