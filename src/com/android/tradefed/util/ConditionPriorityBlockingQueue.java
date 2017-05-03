@@ -218,7 +218,6 @@ public class ConditionPriorityBlockingQueue<T> implements Iterable<T> {
                 mWaitingMatcherList.remove(myMatcherPair);
             }
 
-            assert matchedObj != null;
             return matchedObj;
         } finally {
             mLock.unlock();
