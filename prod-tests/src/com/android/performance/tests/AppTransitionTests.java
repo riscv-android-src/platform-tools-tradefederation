@@ -433,6 +433,7 @@ public class AppTransitionTests implements IRemoteTest, IDeviceTest {
                 }
             }
         }
+        removeAdditionalLaunchInfo(appKeyTransitionDelayMap);
         computeAndUploadResults(TEST_COLD_LAUNCH, appKeyTransitionDelayMap);
     }
 
@@ -563,6 +564,7 @@ public class AppTransitionTests implements IRemoteTest, IDeviceTest {
                 isRecentsBefore = false;
             }
         }
+        removeAdditionalLaunchInfo(appKeyTransitionDelayMap);
         computeAndUploadResults(TEST_HOT_LAUNCH_FROM_RECENTS, appKeyTransitionDelayMap);
     }
 
