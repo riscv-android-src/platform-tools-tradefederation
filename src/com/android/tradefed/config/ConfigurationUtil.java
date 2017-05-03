@@ -16,6 +16,8 @@
 
 package com.android.tradefed.config;
 
+import com.android.tradefed.log.LogUtil.CLog;
+import com.android.tradefed.util.FileUtil;
 import com.android.tradefed.util.MultiMap;
 
 import org.kxml2.io.KXmlSerializer;
@@ -25,8 +27,11 @@ import java.io.IOException;
 import java.io.PrintWriter;
 import java.lang.reflect.Field;
 import java.util.Collection;
+import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.Set;
 
 /** Utility functions to handle configuration files. */
 public class ConfigurationUtil {
@@ -127,5 +132,31 @@ public class ConfigurationUtil {
         }
         serializer.attribute(null, VALUE_NAME, value);
         serializer.endTag(null, OPTION_NAME);
+    }
+
+    /**
+     * Helper to get the test config files from given directories.
+     *
+     * @param subPath where to look for configuration. Can be null.
+     * @param dirs a list of {@link File} of extra directories to search for test configs
+     */
+    public static Set<String> getConfigNamesFromDirs(String subPath, List<File> dirs) {
+        Set<String> configNames = new HashSet<String>();
+        for (File dir : dirs) {
+            if (subPath != null) {
+                dir = new File(dir, subPath);
+            }
+            if (!dir.isDirectory()) {
+                CLog.d("%s doesn't exist or is not a directory.", dir.getAbsolutePath());
+                continue;
+            }
+            try {
+                configNames.addAll(FileUtil.findFiles(dir, ".*.config"));
+                configNames.addAll(FileUtil.findFiles(dir, ".*.xml"));
+            } catch (IOException e) {
+                CLog.w("Failed to get test config files from directory %s", dir.getAbsolutePath());
+            }
+        }
+        return configNames;
     }
 }
