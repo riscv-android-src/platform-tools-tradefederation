@@ -42,7 +42,6 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Comparator;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.Hashtable;
 import java.util.List;
 import java.util.Map;
@@ -624,21 +623,7 @@ public class ConfigurationFactory implements IConfigurationFactory {
      */
     @VisibleForTesting
     Set<String> getConfigNamesFromTestCases(String subPath) {
-        Set<String> configNames = new HashSet<String>();
-        for (File testCasesDir : getTestCasesDirs()) {
-            if (subPath != null) {
-                testCasesDir = new File(testCasesDir, subPath);
-            }
-            try {
-                configNames.addAll(FileUtil.findFiles(testCasesDir, ".*.config"));
-                configNames.addAll(FileUtil.findFiles(testCasesDir, ".*.xml"));
-            } catch (IOException e) {
-                CLog.w(
-                        "Failed to get test config files from directory %s",
-                        testCasesDir.getAbsolutePath());
-            }
-        }
-        return configNames;
+        return ConfigurationUtil.getConfigNamesFromDirs(subPath, getTestCasesDirs());
     }
 
     /**
