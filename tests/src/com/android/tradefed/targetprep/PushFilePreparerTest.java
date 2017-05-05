@@ -58,6 +58,7 @@ public class PushFilePreparerTest {
     public void testNoop() throws Exception {
         EasyMock.replay(mMockDevice);
         mPreparer.setUp(mMockDevice, null);
+        EasyMock.verify(mMockDevice);
     }
 
     @Test
@@ -72,6 +73,7 @@ public class PushFilePreparerTest {
         } catch (TargetSetupError e) {
             // expected
         }
+        EasyMock.verify(mMockDevice);
     }
 
     @Test
@@ -90,6 +92,7 @@ public class PushFilePreparerTest {
         } catch (TargetSetupError e) {
             // expected
         }
+        EasyMock.verify(mMockDevice);
     }
 
     @Test
@@ -109,12 +112,13 @@ public class PushFilePreparerTest {
 
         // Don't expect any exceptions to be thrown
         mPreparer.setUp(mMockDevice, null);
+        EasyMock.verify(mMockDevice);
     }
 
     @Test
     public void testPushFromTestCasesDir() throws Exception {
         mOptionSetter.setOptionValue("push", "sh->/noexist/");
-        mOptionSetter.setOptionValue("post-push", "ls /");
+        mOptionSetter.setOptionValue("abort-on-push-failure", "false");
 
         PushFilePreparer spyPreparer = Mockito.spy(mPreparer);
         Mockito.doReturn(Arrays.asList(new File("/bin"))).when(spyPreparer).getTestCasesDirs();
@@ -123,6 +127,9 @@ public class PushFilePreparerTest {
         EasyMock.expect(mMockDevice.pushFile((File) EasyMock.anyObject(), EasyMock.eq("/noexist/")))
                 .andReturn(Boolean.FALSE);
         EasyMock.replay(mMockDevice);
+
+        spyPreparer.setUp(mMockDevice, null);
+        EasyMock.verify(mMockDevice);
     }
 
     /**
@@ -137,6 +144,7 @@ public class PushFilePreparerTest {
         EasyMock.replay(buildInfo);
 
         assertNull(mPreparer.resolveRelativeFilePath(buildInfo, fileName));
+        EasyMock.verify(buildInfo);
     }
 
     /**
@@ -163,6 +171,7 @@ public class PushFilePreparerTest {
             assertEquals(
                     sourceFile.getAbsolutePath(),
                     mPreparer.resolveRelativeFilePath(buildInfo, fileName).getAbsolutePath());
+            EasyMock.verify(buildInfo);
         } finally {
             FileUtil.recursiveDelete(testsDir);
         }
