@@ -56,8 +56,9 @@ public class ShardHelper implements IShardHelper {
             IConfiguration config, IInvocationContext context, IRescheduler rescheduler) {
         List<IRemoteTest> shardableTests = new ArrayList<IRemoteTest>();
         boolean isSharded = false;
+        Integer shardCount = config.getCommandOptions().getShardCount();
         for (IRemoteTest test : config.getTests()) {
-            isSharded |= shardTest(shardableTests, test);
+            isSharded |= shardTest(shardableTests, test, shardCount);
         }
         if (!isSharded) {
             return false;
@@ -74,26 +75,28 @@ public class ShardHelper implements IShardHelper {
 
         resultCollector.invocationStarted(context);
         synchronized (shardableTests) {
-            for (IRemoteTest testShard : shardableTests) {
-                CLog.i("Rescheduling sharded config...");
-                IConfiguration shardConfig = config.clone();
-
-                if (config.getCommandOptions().shouldUseDynamicSharding()) {
+            // When shardCount is available only create 1 poller per shard
+            // TODO: current --shard-count does not reach here but once ShardingStrategy is ready
+            // it will be exercised.
+            // TODO: consider aggregating both case by picking a predefined shardCount if not
+            // available (like 4) for autosharding.
+            if (shardCount != null && config.getCommandOptions().shouldUseDynamicSharding()) {
+                for (int i = 0; i < shardCount; i++) {
+                    IConfiguration shardConfig = config.clone();
                     shardConfig.setTest(new TestsPoolPoller(shardableTests));
-                } else {
-                    shardConfig.setTest(testShard);
+                    rescheduleConfig(shardConfig, config, context, rescheduler, resultCollector);
                 }
-                cloneStatusChecker(config, shardConfig);
-
-                ShardBuildCloner.cloneBuildInfos(config, shardConfig, context);
-
-                shardConfig.setTestInvocationListeners(
-                        buildShardListeners(resultCollector, config.getTestInvocationListeners()));
-                shardConfig.setLogOutput(config.getLogOutput().clone());
-                shardConfig.setCommandOptions(config.getCommandOptions().clone());
-                // use the same {@link ITargetPreparer}, {@link IDeviceRecovery} etc as original
-                // config
-                rescheduler.scheduleConfig(shardConfig);
+            } else {
+                for (IRemoteTest testShard : shardableTests) {
+                    CLog.i("Rescheduling sharded config...");
+                    IConfiguration shardConfig = config.clone();
+                    if (config.getCommandOptions().shouldUseDynamicSharding()) {
+                        shardConfig.setTest(new TestsPoolPoller(shardableTests));
+                    } else {
+                        shardConfig.setTest(testShard);
+                    }
+                    rescheduleConfig(shardConfig, config, context, rescheduler, resultCollector);
+                }
             }
         }
         // clean up original builds
@@ -103,6 +106,24 @@ public class ShardHelper implements IShardHelper {
                     .cleanUp(context.getBuildInfo(deviceName));
         }
         return true;
+    }
+
+    public void rescheduleConfig(
+            IConfiguration shardConfig,
+            IConfiguration config,
+            IInvocationContext context,
+            IRescheduler rescheduler,
+            ShardMasterResultForwarder resultCollector) {
+        cloneStatusChecker(config, shardConfig);
+        ShardBuildCloner.cloneBuildInfos(config, shardConfig, context);
+
+        shardConfig.setTestInvocationListeners(
+                buildShardListeners(resultCollector, config.getTestInvocationListeners()));
+        shardConfig.setLogOutput(config.getLogOutput().clone());
+        shardConfig.setCommandOptions(config.getCommandOptions().clone());
+        // use the same {@link ITargetPreparer}, {@link IDeviceRecovery} etc as original
+        // config
+        rescheduler.scheduleConfig(shardConfig);
     }
 
     /**
@@ -127,13 +148,21 @@ public class ShardHelper implements IShardHelper {
      *
      * @param shardableTests the list of {@link IRemoteTest}s to add to
      * @param test the {@link IRemoteTest} to shard
+     * @param shardCount attempted number of shard, can be null.
      * @return <code>true</code> if test was sharded
      */
-    private static boolean shardTest(List<IRemoteTest> shardableTests, IRemoteTest test) {
+    private static boolean shardTest(
+            List<IRemoteTest> shardableTests, IRemoteTest test, Integer shardCount) {
         boolean isSharded = false;
         if (test instanceof IShardableTest) {
             IShardableTest shardableTest = (IShardableTest) test;
-            Collection<IRemoteTest> shards = shardableTest.split();
+            Collection<IRemoteTest> shards = null;
+            // Give the shardCount hint to tests if they need it.
+            if (shardCount != null) {
+                shards = shardableTest.split(shardCount);
+            } else {
+                shards = shardableTest.split();
+            }
             if (shards != null) {
                 shardableTests.addAll(shards);
                 isSharded = true;
@@ -144,7 +173,6 @@ public class ShardHelper implements IShardHelper {
         }
         return isSharded;
     }
-
 
     /**
      * Builds the {@link ITestInvocationListener} listeners that will collect the results from all
