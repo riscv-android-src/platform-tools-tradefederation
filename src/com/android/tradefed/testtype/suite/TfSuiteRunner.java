@@ -77,8 +77,10 @@ public class TfSuiteRunner extends ITestSuite {
         if (getBuildInfo() instanceof IDeviceBuildInfo) {
             IDeviceBuildInfo deviceBuildInfo = (IDeviceBuildInfo) getBuildInfo();
             File testsDir = deviceBuildInfo.getTestsDir();
-            CLog.d("Loading extra test configs from device build's tests directory: %s", testsDir);
             if (testsDir != null) {
+                CLog.d(
+                        "Loading extra test configs from device build's tests directory: %s",
+                        testsDir.getAbsolutePath());
                 List<File> extraTestCasesDirs = Arrays.asList(testsDir);
                 configs.addAll(
                         ConfigurationUtil.getConfigNamesFromDirs(mSuitePrefix, extraTestCasesDirs));

@@ -111,9 +111,12 @@ public class PushFilePreparer implements ITargetCleaner {
      * @return the file from the build info or test cases directories
      */
     public File resolveRelativeFilePath(IBuildInfo buildInfo, String fileName) {
-        File src = buildInfo.getFile(fileName);
-        if (src != null && src.exists()) {
-            return src;
+        File src = null;
+        if (buildInfo != null) {
+            src = buildInfo.getFile(fileName);
+            if (src != null && src.exists()) {
+                return src;
+            }
         }
         List<File> testCasesDirs = getTestCasesDirs();
 
