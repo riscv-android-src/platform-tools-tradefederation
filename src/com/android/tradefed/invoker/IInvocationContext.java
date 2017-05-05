@@ -16,8 +16,10 @@
 package com.android.tradefed.invoker;
 
 import com.android.tradefed.build.IBuildInfo;
+import com.android.tradefed.config.ConfigurationDescriptor;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.device.ITestDevice.RecoveryMode;
+import com.android.tradefed.testtype.suite.ITestSuite;
 import com.android.tradefed.util.MultiMap;
 
 import java.util.List;
@@ -120,9 +122,25 @@ public interface IInvocationContext {
      */
     public MultiMap<String, String> getAttributes();
 
+    /** Sets the descriptor associated with the test configuration that launched the invocation */
+    public void setConfigurationDescriptor(ConfigurationDescriptor configurationDescriptor);
+
     /**
-     * Returns the invocation test-tag.
+     * Returns the descriptor associated with the test configuration that launched the invocation
      */
+    public ConfigurationDescriptor getConfigurationDescriptor();
+
+    /**
+     * Sets the invocation context of module while being executed as part of a {@link ITestSuite}
+     */
+    public void setModuleInvocationContext(IInvocationContext invocationContext);
+
+    /**
+     * Returns the invocation context of module while being executed as part of a {@link ITestSuite}
+     */
+    public IInvocationContext getModuleInvocationContext();
+
+    /** Returns the invocation test-tag. */
     public String getTestTag();
 
     /**

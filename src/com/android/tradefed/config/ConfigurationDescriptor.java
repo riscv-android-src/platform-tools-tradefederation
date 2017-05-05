@@ -15,6 +15,8 @@
  */
 package com.android.tradefed.config;
 
+import com.android.tradefed.util.MultiMap;
+
 import java.util.ArrayList;
 import java.util.List;
 
@@ -23,10 +25,15 @@ import java.util.List;
  * test-suite-tag. This class cannot receive option values via command line. Only directly in the
  * xml.
  */
+@OptionClass(alias = "config-descriptor")
 public class ConfigurationDescriptor {
 
     @Option(name = "test-suite-tag", description = "A membership tag to suite. Can be repeated.")
     private List<String> mSuiteTags = new ArrayList<>();
+
+    @Option(name = "metadata", description = "Metadata associated with this configuration, can be "
+            + "free formed key value pairs, and a key may be associated with multiple values.")
+    private MultiMap<String, String> mMetaData = new MultiMap<>();
 
     /** Returns the list of suite tags the test is part of. */
     public List<String> getSuiteTags() {
@@ -36,5 +43,15 @@ public class ConfigurationDescriptor {
     /** Sets the list of suite tags the test is part of. */
     public void setSuiteTags(List<String> suiteTags) {
         mSuiteTags = suiteTags;
+    }
+
+    /** Retrieves all configured metadata */
+    public MultiMap<String, String> getAllMetaData() {
+        return mMetaData;
+    }
+
+    /** Get the named metadata entries */
+    public List<String> getMetaData(String name) {
+        return mMetaData.get(name);
     }
 }
