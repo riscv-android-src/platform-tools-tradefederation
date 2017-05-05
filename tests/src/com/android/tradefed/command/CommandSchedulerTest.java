@@ -20,6 +20,7 @@ import com.android.tradefed.command.CommandFileParser.CommandLine;
 import com.android.tradefed.command.CommandScheduler.CommandTracker;
 import com.android.tradefed.command.CommandScheduler.CommandTrackerIdComparator;
 import com.android.tradefed.command.ICommandScheduler.IScheduledInvocationListener;
+import com.android.tradefed.config.ConfigurationDescriptor;
 import com.android.tradefed.config.ConfigurationException;
 import com.android.tradefed.config.DeviceConfigurationHolder;
 import com.android.tradefed.config.IConfiguration;
@@ -84,6 +85,7 @@ public class CommandSchedulerTest extends TestCase {
     private DeviceSelectionOptions mDeviceOptions;
     private CommandFileParser mMockCmdFileParser;
     private List<IDeviceConfiguration> mMockDeviceConfig;
+    private ConfigurationDescriptor mMockConfigDescriptor;
 
     /**
      * {@inheritDoc}
@@ -99,6 +101,7 @@ public class CommandSchedulerTest extends TestCase {
         mCommandOptions = new CommandOptions();
         mDeviceOptions = new DeviceSelectionOptions();
         mMockDeviceConfig = new ArrayList<IDeviceConfiguration>();
+        mMockConfigDescriptor = new ConfigurationDescriptor();
 
         mScheduler =
                 new CommandScheduler() {
@@ -498,7 +501,6 @@ public class CommandSchedulerTest extends TestCase {
     /**
      * Test {@link CommandScheduler#run()} when one config has been rescheduled
      */
-    @SuppressWarnings("unchecked")
     public void testRun_rescheduled() throws Throwable {
         String[] args = new String[] {};
         mMockManager.setNumDevices(2);
@@ -510,6 +512,8 @@ public class CommandSchedulerTest extends TestCase {
                 mDeviceOptions);
         EasyMock.expect(rescheduledConfig.getDeviceConfig()).andStubReturn(mMockDeviceConfig);
         EasyMock.expect(rescheduledConfig.getCommandLine()).andStubReturn("");
+        EasyMock.expect(rescheduledConfig.getConfigurationDescription())
+            .andStubReturn(mMockConfigDescriptor);
 
         // an ITestInvocationn#invoke response for calling reschedule
         IAnswer<Object> rescheduleAndThrowAnswer = new IAnswer<Object>() {
@@ -694,6 +698,8 @@ public class CommandSchedulerTest extends TestCase {
                 mDeviceOptions);
         EasyMock.expect(mMockConfiguration.getDeviceConfig()).andStubReturn(mMockDeviceConfig);
         EasyMock.expect(mMockConfiguration.getCommandLine()).andStubReturn("");
+        EasyMock.expect(mMockConfiguration.getConfigurationDescription())
+            .andStubReturn(mMockConfigDescriptor);
 
         // Assume all legacy test are single device
         if (mMockDeviceConfig.isEmpty()) {
