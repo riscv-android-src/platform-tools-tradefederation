@@ -998,6 +998,7 @@ public class CommandScheduler extends Thread implements ICommandScheduler, IComm
                 ExecutableCommand cmd = cmdIter.next();
                 IConfiguration config = cmd.getConfiguration();
                 IInvocationContext context = new InvocationContext();
+                context.setConfigurationDescriptor(config.getConfigurationDescription());
                 Map<String, ITestDevice> devices = allocateDevices(config, manager);
                 if (!devices.isEmpty()) {
                     cmdIter.remove();
@@ -1312,6 +1313,7 @@ public class CommandScheduler extends Thread implements ICommandScheduler, IComm
 
         ExecutableCommand execCmd = createExecutableCommand(cmdTracker, config, false);
         IInvocationContext context = new InvocationContext();
+        context.setConfigurationDescriptor(config.getConfigurationDescription());
         Map<String, ITestDevice> devices = allocateDevices(config, manager);
         if (!devices.isEmpty()) {
             context.addAllocatedDevice(devices);
@@ -1387,6 +1389,7 @@ public class CommandScheduler extends Thread implements ICommandScheduler, IComm
             mExecutingCommands.add(execCmd);
         }
         IInvocationContext context = new InvocationContext();
+        context.setConfigurationDescriptor(config.getConfigurationDescription());
         context.addAllocatedDevice(config.getDeviceConfig().get(0).getDeviceName(), device);
         startInvocation(context, execCmd, listener);
     }

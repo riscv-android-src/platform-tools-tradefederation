@@ -18,6 +18,7 @@ LOCAL_ERROR_PRONE_FLAGS:= -XDandroidCompatible=false \
                           -Xep:ArrayToString:ERROR \
                           -Xep:BoxedPrimitiveConstructor:ERROR \
                           -Xep:ConstantField:ERROR \
+                          -Xep:EqualsIncompatibleType:ERROR \
                           -Xep:FormatString:ERROR \
                           -Xep:JUnit3TestNotRun:ERROR \
                           -Xep:JUnitAmbiguousTestClass:ERROR \

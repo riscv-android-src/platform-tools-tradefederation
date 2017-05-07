@@ -16,6 +16,7 @@
 
 package com.android.tradefed.config;
 
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
 import com.android.tradefed.device.DeviceManager;
@@ -26,6 +27,9 @@ import org.kxml2.io.KXmlSerializer;
 
 import java.io.File;
 import java.io.PrintWriter;
+import java.util.Arrays;
+import java.util.List;
+import java.util.Set;
 
 /** Unit tests for {@link ConfigurationUtil} */
 public class ConfigurationUtilTest {
@@ -63,6 +67,38 @@ public class ConfigurationUtilTest {
                             "<device_manager class=\"com.android.tradefed.device.DeviceManager\">"));
         } finally {
             FileUtil.deleteFile(tmpXml);
+        }
+    }
+
+    /**
+     * Test {@link ConfigurationUtil#getConfigNamesFromDirs(String, List)} is able to retrieve the
+     * test configs from given directories.
+     */
+    @Test
+    public void testGetConfigNamesFromDirs() throws Exception {
+        File tmpDir = null;
+        try {
+            tmpDir = FileUtil.createTempDir("test_configs_dir");
+            // Test config (.config) located in the root directory
+            File config1 = FileUtil.createTempFile("config", ".config", tmpDir);
+            // Test config (.xml) located in a sub directory
+            File subDir = FileUtil.getFileForPath(tmpDir, "sub");
+            FileUtil.mkdirsRWX(subDir);
+            File config2 = FileUtil.createTempFile("config", ".xml", subDir);
+
+            // Test getConfigNamesFromDirs only locate configs under subPath.
+            Set<String> configs =
+                    ConfigurationUtil.getConfigNamesFromDirs("sub", Arrays.asList(tmpDir));
+            assertEquals(1, configs.size());
+            assertTrue(configs.contains(config2.getAbsolutePath()));
+
+            // Test getConfigNamesFromDirs locate all configs.
+            configs = ConfigurationUtil.getConfigNamesFromDirs("", Arrays.asList(tmpDir));
+            assertEquals(2, configs.size());
+            assertTrue(configs.contains(config1.getAbsolutePath()));
+            assertTrue(configs.contains(config2.getAbsolutePath()));
+        } finally {
+            FileUtil.recursiveDelete(tmpDir);
         }
     }
 }

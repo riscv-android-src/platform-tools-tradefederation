@@ -165,6 +165,7 @@ public class TestInvocation implements ITestInvocation {
             ITestInvocationListener... extraListeners)
             throws DeviceNotAvailableException, Throwable {
         IInvocationContext context = new InvocationContext();
+        context.setConfigurationDescriptor(config.getConfigurationDescription());
         context.addAllocatedDevice(ConfigurationDef.DEFAULT_DEVICE_NAME, device);
         invoke(context, config, rescheduler, extraListeners);
     }

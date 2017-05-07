@@ -15,8 +15,10 @@
  */
 package com.android.tradefed.testtype.suite;
 
+import com.android.tradefed.build.IDeviceBuildInfo;
 import com.android.tradefed.config.ConfigurationException;
 import com.android.tradefed.config.ConfigurationFactory;
+import com.android.tradefed.config.ConfigurationUtil;
 import com.android.tradefed.config.IConfiguration;
 import com.android.tradefed.config.IConfigurationFactory;
 import com.android.tradefed.config.Option;
@@ -24,7 +26,9 @@ import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.testtype.IRemoteTest;
 import com.android.tradefed.util.DirectedGraph;
 
+import java.io.File;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.LinkedHashMap;
 import java.util.List;
 
@@ -69,6 +73,20 @@ public class TfSuiteRunner extends ITestSuite {
         IConfigurationFactory configFactory = ConfigurationFactory.getInstance();
         // TODO: Do a better job searching for configs.
         List<String> configs = configFactory.getConfigList(mSuitePrefix);
+
+        if (getBuildInfo() instanceof IDeviceBuildInfo) {
+            IDeviceBuildInfo deviceBuildInfo = (IDeviceBuildInfo) getBuildInfo();
+            File testsDir = deviceBuildInfo.getTestsDir();
+            if (testsDir != null) {
+                CLog.d(
+                        "Loading extra test configs from device build's tests directory: %s",
+                        testsDir.getAbsolutePath());
+                List<File> extraTestCasesDirs = Arrays.asList(testsDir);
+                configs.addAll(
+                        ConfigurationUtil.getConfigNamesFromDirs(mSuitePrefix, extraTestCasesDirs));
+            }
+        }
+
         for (String configName : configs) {
             try {
                 IConfiguration testConfig =
