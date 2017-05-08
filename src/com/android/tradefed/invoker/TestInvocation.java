@@ -34,8 +34,6 @@ import com.android.tradefed.device.StubDevice;
 import com.android.tradefed.device.TestDeviceState;
 import com.android.tradefed.invoker.shard.IShardHelper;
 import com.android.tradefed.invoker.shard.ShardBuildCloner;
-import com.android.tradefed.invoker.shard.ShardHelper;
-import com.android.tradefed.invoker.shard.StrictShardHelper;
 import com.android.tradefed.log.ILeveledLogOutput;
 import com.android.tradefed.log.ILogRegistry;
 import com.android.tradefed.log.LogRegistry;
@@ -185,18 +183,14 @@ public class TestInvocation implements ITestInvocation {
      */
     private boolean shardConfig(
             IConfiguration config, IInvocationContext context, IRescheduler rescheduler) {
-        // TODO: use sharding strategy to choose the sharding method
         mStatus = "sharding";
-        if (config.getCommandOptions().getShardCount() == null) {
-            return new ShardHelper().shardConfig(config, context, rescheduler);
-        }
         return createShardHelper().shardConfig(config, context, rescheduler);
     }
 
     /** Create an return the {@link IShardHelper} to be used. */
     @VisibleForTesting
     protected IShardHelper createShardHelper() {
-        return new StrictShardHelper();
+        return GlobalConfiguration.getInstance().getShardingStrategy();
     }
 
     /**
