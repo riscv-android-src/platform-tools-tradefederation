@@ -115,8 +115,8 @@ public abstract class ITestSuite
     private int mShardIndex = 0;
 
     /**
-     * Abstract method to load the tests configuration that will be run. Each tests is defined by
-     * a {@link IConfiguration} and a unique name under which it will report results.
+     * Abstract method to load the tests configuration that will be run. Each tests is defined by a
+     * {@link IConfiguration} and a unique name under which it will report results.
      */
     public abstract LinkedHashMap<String, IConfiguration> loadTests();
 
@@ -162,11 +162,9 @@ public abstract class ITestSuite
         return fullList.subList(shardIndex * numPerShard, numPerShard + (shardIndex * numPerShard));
     }
 
-    /**
-     * Generic run method for all test loaded from {@link #loadTests()}.
-     */
+    /** Generic run method for all test loaded from {@link #loadTests()}. */
     @Override
-    final public void run(ITestInvocationListener listener) throws DeviceNotAvailableException {
+    public final void run(ITestInvocationListener listener) throws DeviceNotAvailableException {
         LinkedHashMap<String, IConfiguration> runConfig = loadTests();
         if (runConfig.isEmpty()) {
             CLog.i("No config were loaded. Nothing to run.");
