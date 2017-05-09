@@ -16,6 +16,7 @@
 package com.android.tradefed.testtype.suite;
 
 import com.android.ddmlib.Log.LogLevel;
+import com.android.ddmlib.testrunner.TestIdentifier;
 import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.config.ConfigurationException;
 import com.android.tradefed.config.IConfiguration;
@@ -54,6 +55,8 @@ public abstract class ITestSuite
                 IStrictShardableTest,
                 ITestCollector {
 
+    protected static final String MODULE_SYSTEM_CHECKER_FAILURE = "SystemStatusChecker";
+
     // Options for test failure case
     @Option(
         name = "bugreport-on-failure",
@@ -87,6 +90,12 @@ public abstract class ITestSuite
     @Option(name = "skip-all-system-status-check",
             description = "Whether all system status check between modules should be skipped")
     private boolean mSkipAllSystemStatusCheck = false;
+
+    @Option(
+        name = "report-system-check-failures",
+        description = "Whether marking a failure for a module failing a system status checker."
+    )
+    private boolean mRaiseSystemCheckerFailure = false;
 
     @Option(
         name = "collect-tests-only",
@@ -229,6 +238,7 @@ public abstract class ITestSuite
      *
      * @param module The {@link ModuleDefinition} to be ran.
      * @param listener The {@link ITestInvocationListener} where to report results
+     * @param failureListener The {@link TestFailureListener} that collect infos on failures.
      * @throws DeviceNotAvailableException
      */
     private void runSingleModule(
@@ -290,8 +300,12 @@ public abstract class ITestSuite
      * Helper to run the System Status checkers postExecutionCheck defined for the test and log
      * their failures.
      */
-    private void runPostModuleCheck(String moduleName, List<ISystemStatusChecker> checkers,
-            ITestDevice device, ITestLogger logger) throws DeviceNotAvailableException {
+    private void runPostModuleCheck(
+            String moduleName,
+            List<ISystemStatusChecker> checkers,
+            ITestDevice device,
+            ITestInvocationListener listener)
+            throws DeviceNotAvailableException {
         CLog.i("Running system status checker after module execution: %s", moduleName);
         List<String> failures = new ArrayList<>();
         for (ISystemStatusChecker checker : checkers) {
@@ -305,9 +319,21 @@ public abstract class ITestSuite
             CLog.w("There are failed system status checkers: %s capturing a bugreport",
                     failures.toString());
             InputStreamSource bugSource = device.getBugreport();
-            logger.testLog(String.format("bugreport-checker-post-module-%s", moduleName),
-                    LogDataType.BUGREPORT, bugSource);
+            listener.testLog(
+                    String.format("bugreport-checker-post-module-%s", moduleName),
+                    LogDataType.BUGREPORT,
+                    bugSource);
             bugSource.cancel();
+            // We report a failure for the module
+            if (mRaiseSystemCheckerFailure) {
+                TestIdentifier tid = new TestIdentifier(MODULE_SYSTEM_CHECKER_FAILURE, moduleName);
+                listener.testRunStarted(MODULE_SYSTEM_CHECKER_FAILURE, 1);
+                listener.testStarted(tid);
+                listener.testFailed(
+                        tid, String.format("%s failed '%s' checkers", moduleName, failures));
+                listener.testEnded(tid, Collections.emptyMap());
+                listener.testRunEnded(0, Collections.emptyMap());
+            }
         }
     }
 
