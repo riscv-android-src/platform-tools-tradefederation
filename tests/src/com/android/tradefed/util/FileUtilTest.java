@@ -209,9 +209,10 @@ public class FileUtilTest {
     public void testWriteToFile_overwrites_doesNotExist() throws IOException {
         File testFile = null;
         try {
-            testFile = new File("nonexistant");
+            testFile = FileUtil.createTempFile("fileutiltest", ".test");
+            FileUtil.deleteFile(testFile);
             FileUtil.writeToFile(new ByteArrayInputStream("write1".getBytes()), testFile, false);
-            assertEquals(FileUtil.readStringFromFile(testFile), "write1");
+            assertEquals("write1", FileUtil.readStringFromFile(testFile));
         } finally {
             FileUtil.deleteFile(testFile);
         }
