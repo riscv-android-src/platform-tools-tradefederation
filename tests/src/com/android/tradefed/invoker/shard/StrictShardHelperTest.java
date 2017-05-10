@@ -17,6 +17,7 @@ package com.android.tradefed.invoker.shard;
 
 import static org.junit.Assert.*;
 
+import com.android.tradefed.build.BuildInfo;
 import com.android.tradefed.command.CommandOptions;
 import com.android.tradefed.config.Configuration;
 import com.android.tradefed.config.IConfiguration;
@@ -24,6 +25,7 @@ import com.android.tradefed.config.OptionSetter;
 import com.android.tradefed.invoker.IInvocationContext;
 import com.android.tradefed.invoker.IRescheduler;
 import com.android.tradefed.invoker.InvocationContext;
+import com.android.tradefed.result.ILogSaver;
 import com.android.tradefed.testtype.StubTest;
 
 import org.junit.Before;
@@ -39,6 +41,7 @@ public class StrictShardHelperTest {
 
     private StrictShardHelper mHelper;
     private IConfiguration mConfig;
+    private ILogSaver mMockLogSaver;
     private IInvocationContext mContext;
     private IRescheduler mRescheduler;
 
@@ -47,7 +50,10 @@ public class StrictShardHelperTest {
         mHelper = new StrictShardHelper();
         mConfig = new Configuration("fake_sharding_config", "desc");
         mContext = new InvocationContext();
+        mContext.addDeviceBuildInfo("default", new BuildInfo());
         mRescheduler = Mockito.mock(IRescheduler.class);
+        mMockLogSaver = Mockito.mock(ILogSaver.class);
+        mConfig.setLogSaver(mMockLogSaver);
     }
 
     /** Test sharding using Tradefed internal algorithm. */

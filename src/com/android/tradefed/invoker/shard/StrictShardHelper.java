@@ -15,7 +15,6 @@
  */
 package com.android.tradefed.invoker.shard;
 
-import com.android.tradefed.config.ConfigurationException;
 import com.android.tradefed.config.ConfigurationFactory;
 import com.android.tradefed.config.IConfiguration;
 import com.android.tradefed.config.IConfigurationFactory;
@@ -25,14 +24,13 @@ import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.testtype.IRemoteTest;
 import com.android.tradefed.testtype.IShardableTest;
 import com.android.tradefed.testtype.IStrictShardableTest;
-import com.android.tradefed.util.QuotationAwareTokenizer;
 
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 
 /** Sharding strategy to create strict shards that do not report together, */
-public class StrictShardHelper implements IShardHelper {
+public class StrictShardHelper extends ShardHelper {
 
     /** {@inheritDoc} */
     @Override
@@ -41,41 +39,21 @@ public class StrictShardHelper implements IShardHelper {
         Integer shardCount = config.getCommandOptions().getShardCount();
         Integer shardIndex = config.getCommandOptions().getShardIndex();
         if (shardCount == null) {
-            // if no number of shard was requested.
             return false;
+        }
+        if (shardIndex == null) {
+            return super.shardConfig(config, context, rescheduler);
         }
 
         // Split tests in place, without actually sharding.
-        if (shardIndex != null) {
-            if (!config.getCommandOptions().shouldUseTfSharding()) {
-                updateConfigIfSharded(config, shardCount, shardIndex);
-            } else {
-                List<IRemoteTest> listAllTests = getAllTests(config, shardCount);
-                config.setTests(splitTests(listAllTests, shardCount, shardIndex));
-            }
-            return false;
+        if (!config.getCommandOptions().shouldUseTfSharding()) {
+            // TODO: remove when IStrictShardableTest is removed.
+            updateConfigIfSharded(config, shardCount, shardIndex);
+        } else {
+            List<IRemoteTest> listAllTests = getAllTests(config, shardCount);
+            config.setTests(splitTests(listAllTests, shardCount, shardIndex));
         }
-
-        List<IRemoteTest> listAllTests = getAllTests(config, shardCount);
-        // Schedules shard configs.
-        // TODO: merge this behavior with {@link ShardHelper} since when no shard-index is specified
-        // we are basically doing local sharding.
-        for (int i = 0; i < shardCount; i++) {
-            IConfiguration shardConfig = deepCloneConfig(config);
-
-            // Temporary flag to default to old logic during testing of new one.
-            if (!config.getCommandOptions().shouldUseTfSharding()) {
-                updateConfigIfSharded(shardConfig, shardCount, i);
-            } else {
-                config.setTests(splitTests(listAllTests, shardCount, i));
-            }
-            ShardBuildCloner.cloneBuildInfos(config, shardConfig, context);
-
-            shardConfig.getCommandOptions().setShardCount(shardCount);
-            shardConfig.getCommandOptions().setShardIndex(i);
-            rescheduler.scheduleConfig(shardConfig);
-        }
-        return true;
+        return false;
     }
 
     // TODO: Retire IStrictShardableTest for IShardableTest and have TF balance the list of tests.
@@ -150,23 +128,6 @@ public class StrictShardHelper implements IShardHelper {
             return fullList.subList(shardIndex * numPerShard, fullList.size());
         }
         return fullList.subList(shardIndex * numPerShard, numPerShard + (shardIndex * numPerShard));
-    }
-
-    /** Clone a {@link IConfiguration} using the original command line. */
-    private IConfiguration deepCloneConfig(IConfiguration origConfig) {
-        IConfiguration shardConfig = null;
-        // Create a deep copy of the configuration.
-        try {
-            shardConfig =
-                    getConfigFactory()
-                            .createConfigurationFromArgs(
-                                    QuotationAwareTokenizer.tokenizeLine(
-                                            origConfig.getCommandLine()));
-        } catch (ConfigurationException e) {
-            // This must not happen.
-            throw new RuntimeException("failed to deep copy a configuration", e);
-        }
-        return shardConfig;
     }
 
     /**

@@ -43,6 +43,7 @@ import com.android.tradefed.device.ITestDevice.RecoveryMode;
 import com.android.tradefed.device.StubDevice;
 import com.android.tradefed.device.TestDeviceOptions;
 import com.android.tradefed.invoker.shard.IShardHelper;
+import com.android.tradefed.invoker.shard.ShardHelper;
 import com.android.tradefed.invoker.shard.StrictShardHelper;
 import com.android.tradefed.log.ILeveledLogOutput;
 import com.android.tradefed.log.ILogRegistry;
@@ -215,12 +216,7 @@ public class TestInvocationTest extends TestCase {
 
                     @Override
                     protected IShardHelper createShardHelper() {
-                        return new StrictShardHelper() {
-                            @Override
-                            protected IConfigurationFactory getConfigFactory() {
-                                return mMockConfigFactory;
-                            }
-                        };
+                        return new ShardHelper();
                     }
 
                     @Override
@@ -806,50 +802,26 @@ public class TestInvocationTest extends TestCase {
     /**
      * Test the {@link TestInvocation#invoke(IInvocationContext, IConfiguration, IRescheduler,
      * ITestInvocationListener[])}
-     * scenario with {@link IStrictShardableTest}.
-     */
-    public void testInvoke_strictShardableTest() throws Throwable {
-        String[] commandLine = {"config", "arg"};
-        int shardCount = 10;
-        IStrictShardableTest test = EasyMock.createMock(IStrictShardableTest.class);
-        mStubConfiguration.setTest(test);
-        mStubConfiguration.setCommandLine(commandLine);
-        mStubConfiguration.getCommandOptions().setShardCount(shardCount);
-        mMockBuildInfo.setTestTag(EasyMock.eq("stub"));
-        EasyMock.expectLastCall();
-
-        setupInvoke();
-        EasyMock.expect(mMockBuildProvider.getBuild()).andReturn(mMockBuildInfo);
-        EasyMock.expect(mMockBuildInfo.getTestTag()).andStubReturn("");
-        mMockBuildInfo.addBuildAttribute("command_line_args", "config arg");
-        mMockBuildInfo.addBuildAttribute("shard_count", "10");
-        IConfiguration shardConfig = new Configuration("foo", "bar");
-        for (int i = 1; i <= shardCount; i++) {
-            EasyMock.expect(
-                    mMockConfigFactory.createConfigurationFromArgs((String[])EasyMock.anyObject()))
-                    .andReturn(shardConfig);
-            EasyMock.expect(mMockBuildInfo.clone()).andReturn(mMockBuildInfo);
-            EasyMock.expect(mockRescheduler.scheduleConfig(shardConfig)).andReturn(true);
-        }
-        mMockBuildInfo.setDeviceSerial(SERIAL);
-        EasyMock.expectLastCall();
-        mMockLogRegistry.dumpToGlobalLog(mMockLogger);
-
-        replayMocks(test, mockRescheduler);
-
-        mTestInvocation.invoke(mStubInvocationMetadata, mStubConfiguration, mockRescheduler);
-
-        verifyMocks(test, mockRescheduler);
-        assertEquals(shardCount, (int)shardConfig.getCommandOptions().getShardCount());
-        assertEquals(shardCount - 1, (int)shardConfig.getCommandOptions().getShardIndex());
-    }
-
-    /**
-     * Test the {@link TestInvocation#invoke(IInvocationContext, IConfiguration, IRescheduler,
-     * ITestInvocationListener[])}
      * scenario with {@link IStrictShardableTest} when a shard index is given.
      */
     public void testInvoke_strictShardableTest_withShardIndex() throws Throwable {
+        mTestInvocation =
+                new TestInvocation() {
+                    @Override
+                    ILogRegistry getLogRegistry() {
+                        return mMockLogRegistry;
+                    }
+
+                    @Override
+                    protected IShardHelper createShardHelper() {
+                        return new StrictShardHelper();
+                    }
+
+                    @Override
+                    protected void setExitCode(ExitCode code, Throwable stack) {
+                        // empty on purpose
+                    }
+                };
         String[] commandLine = {"config", "arg"};
         int shardCount = 10;
         int shardIndex = 5;
@@ -912,6 +884,23 @@ public class TestInvocationTest extends TestCase {
      * scenario with non-{@link IStrictShardableTest} when a shard index non-0 is given.
      */
     public void testInvoke_nonStrictShardableTest_withShardIndexNonZero() throws Throwable {
+        mTestInvocation =
+                new TestInvocation() {
+                    @Override
+                    ILogRegistry getLogRegistry() {
+                        return mMockLogRegistry;
+                    }
+
+                    @Override
+                    protected IShardHelper createShardHelper() {
+                        return new StrictShardHelper();
+                    }
+
+                    @Override
+                    protected void setExitCode(ExitCode code, Throwable stack) {
+                        // empty on purpose
+                    }
+                };
         String[] commandLine = {"config", "arg"};
         int shardCount = 10;
         int shardIndex = 1;

@@ -62,6 +62,7 @@ import com.android.tradefed.device.WaitDeviceRecoveryTest;
 import com.android.tradefed.device.WifiHelperTest;
 import com.android.tradefed.invoker.InvocationContextTest;
 import com.android.tradefed.invoker.TestInvocationTest;
+import com.android.tradefed.invoker.shard.ShardHelperTest;
 import com.android.tradefed.invoker.shard.StrictShardHelperTest;
 import com.android.tradefed.invoker.shard.TestsPoolPollerTest;
 import com.android.tradefed.log.FileLoggerTest;
@@ -282,6 +283,7 @@ import org.junit.runners.Suite.SuiteClasses;
     TestInvocationTest.class,
 
     // invoker.shard
+    ShardHelperTest.class,
     StrictShardHelperTest.class,
     TestsPoolPollerTest.class,
 

@@ -121,7 +121,7 @@ public class CommandOptions implements ICommandOptions {
                 "Allow to dynamically move IRemoteTest from one shard to another. Only for local "
                         + "sharding."
     )
-    private boolean mDynamicSharding = false;
+    private boolean mDynamicSharding = true;
 
     @Option(
         name = "invocation-data",

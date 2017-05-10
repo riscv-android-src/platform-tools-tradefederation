@@ -76,12 +76,11 @@ public class ShardHelper implements IShardHelper {
         resultCollector.invocationStarted(context);
         synchronized (shardableTests) {
             // When shardCount is available only create 1 poller per shard
-            // TODO: current --shard-count does not reach here but once ShardingStrategy is ready
-            // it will be exercised.
             // TODO: consider aggregating both case by picking a predefined shardCount if not
             // available (like 4) for autosharding.
-            if (shardCount != null && config.getCommandOptions().shouldUseDynamicSharding()) {
-                for (int i = 0; i < shardCount; i++) {
+            if (shardCount != null) {
+                int maxShard = Math.min(shardCount, shardableTests.size());
+                for (int i = 0; i < maxShard; i++) {
                     IConfiguration shardConfig = config.clone();
                     shardConfig.setTest(new TestsPoolPoller(shardableTests));
                     rescheduleConfig(shardConfig, config, context, rescheduler, resultCollector);
@@ -121,8 +120,7 @@ public class ShardHelper implements IShardHelper {
                 buildShardListeners(resultCollector, config.getTestInvocationListeners()));
         shardConfig.setLogOutput(config.getLogOutput().clone());
         shardConfig.setCommandOptions(config.getCommandOptions().clone());
-        // use the same {@link ITargetPreparer}, {@link IDeviceRecovery} etc as original
-        // config
+        // use the same {@link ITargetPreparer}, {@link IDeviceRecovery} etc as original config
         rescheduler.scheduleConfig(shardConfig);
     }
 
