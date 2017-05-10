@@ -21,6 +21,7 @@ import static org.junit.Assert.fail;
 import static org.mockito.Mockito.mock;
 
 import com.android.tradefed.build.IBuildInfo;
+import com.android.tradefed.build.IDeviceBuildInfo;
 import com.android.tradefed.config.ConfigurationException;
 import com.android.tradefed.config.IConfiguration;
 import com.android.tradefed.config.OptionSetter;
@@ -28,6 +29,9 @@ import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.testtype.IRemoteTest;
 import com.android.tradefed.testtype.StubTest;
+import com.android.tradefed.util.FileUtil;
+import com.android.tradefed.util.StreamUtil;
+import com.android.tradefed.util.ZipUtil;
 
 import org.easymock.EasyMock;
 import org.junit.Before;
@@ -35,14 +39,24 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
 
+import java.io.File;
+import java.io.FileOutputStream;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
+import java.util.LinkedList;
+import java.util.zip.ZipOutputStream;
 
 /**
  * Unit tests for {@link TfSuiteRunner}.
  */
 @RunWith(JUnit4.class)
 public class TfSuiteRunnerTest {
+
+    private static final String TEST_CONFIG =
+            "<configuration description=\"Runs a stub tests part of some suite\">\n"
+                    + "    <option name=\"test-suite-tag\" value=\"example-suite\" />\n"
+                    + "    <test class=\"com.android.tradefed.testtype.StubTest\" />\n"
+                    + "</configuration>";
 
     private TfSuiteRunner mRunner;
 
@@ -156,5 +170,50 @@ public class TfSuiteRunnerTest {
         EasyMock.replay(listener);
         mRunner.run(listener);
         EasyMock.verify(listener);
+    }
+
+    /**
+     * Test for {@link TfSuiteRunner#run(ITestInvocationListener)} when loading test configs from
+     * additional-tests-zip.
+     */
+    @Test
+    public void testLoadTests_additionalTestsZip() throws Exception {
+        File tmpDir = null;
+        try {
+            tmpDir = FileUtil.createTempDir("test");
+
+            // tests directory for the build.
+            File testsDir = FileUtil.getFileForPath(tmpDir, "testcases");
+            FileUtil.mkdirsRWX(testsDir);
+
+            // Create a test config inside a zip.
+            File testConfig = new File(tmpDir, "test1.config");
+            FileUtil.writeToFile(TEST_CONFIG, testConfig);
+            File additionalTestsZipFile = new File(tmpDir, "tests.zip");
+            ZipOutputStream zipOutput =
+                    new ZipOutputStream(new FileOutputStream(additionalTestsZipFile));
+            ZipUtil.addToZip(zipOutput, testConfig, new LinkedList<String>());
+            StreamUtil.close(zipOutput);
+
+            OptionSetter setter = new OptionSetter(mRunner);
+            setter.setOptionValue("run-suite-tag", "example-suite");
+            setter.setOptionValue("additional-tests-zip", additionalTestsZipFile.getAbsolutePath());
+
+            IDeviceBuildInfo deviceBuildInfo = EasyMock.createMock(IDeviceBuildInfo.class);
+            EasyMock.expect(deviceBuildInfo.getTestsDir()).andReturn(testsDir);
+            mRunner.setBuild(deviceBuildInfo);
+
+            EasyMock.replay(deviceBuildInfo);
+            LinkedHashMap<String, IConfiguration> configMap = mRunner.loadTests();
+            assertEquals(3, configMap.size());
+            assertTrue(configMap.containsKey("suite/stub1"));
+            assertTrue(configMap.containsKey("suite/stub2"));
+            assertTrue(
+                    configMap.containsKey(
+                            FileUtil.getFileForPath(testsDir, "test1.config").getAbsolutePath()));
+            EasyMock.verify(deviceBuildInfo);
+        } finally {
+            FileUtil.recursiveDelete(tmpDir);
+        }
     }
 }
