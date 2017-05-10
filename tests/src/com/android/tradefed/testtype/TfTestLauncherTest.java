@@ -19,7 +19,6 @@ import static org.junit.Assert.assertTrue;
 
 import com.android.ddmlib.testrunner.TestIdentifier;
 import com.android.tradefed.build.IFolderBuildInfo;
-import com.android.tradefed.command.CommandOptions;
 import com.android.tradefed.config.IConfiguration;
 import com.android.tradefed.config.OptionSetter;
 import com.android.tradefed.result.FileInputStreamSource;
@@ -76,9 +75,7 @@ public class TfTestLauncherTest {
         setter.setOptionValue("sub-global-config", SUB_GLOBAL_CONFIG);
     }
 
-    /**
-     * Test {@link TfTestLauncher#run(ITestInvocationListener)}
-     */
+    /** Test {@link TfTestLauncher#run(ITestInvocationListener)} */
     @Test
     public void testRun() {
         CommandResult cr = new CommandResult(CommandStatus.SUCCESS);
@@ -130,8 +127,6 @@ public class TfTestLauncherTest {
         }
         mMockListener.testRunStarted("elapsed-time", 0);
         mMockListener.testRunEnded(EasyMock.anyLong(), EasyMock.anyObject());
-
-        EasyMock.expect(mMockConfig.getCommandOptions()).andReturn(new CommandOptions());
 
         EasyMock.replay(mMockBuildInfo, mMockRunUtil, mMockListener, mMockConfig);
         mTfTestLauncher.run(mMockListener);
