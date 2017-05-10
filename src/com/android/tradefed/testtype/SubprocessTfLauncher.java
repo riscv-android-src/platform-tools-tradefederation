@@ -76,6 +76,12 @@ public abstract class SubprocessTfLauncher
             + "parent process.")
     private String mGlobalConfig = null;
 
+    @Option(
+        name = "inject-invocation-data",
+        description = "Pass the invocation-data to the subprocess if enabled."
+    )
+    private boolean mInjectInvocationData = false;
+
     // Temp global configuration filtered from the parent process.
     private String mFilteredGlobalConfig = null;
 
@@ -196,6 +202,9 @@ public abstract class SubprocessTfLauncher
 
     /** Pipe to the subprocess the invocation-data so that it can use them if needed. */
     private void addInvocationData() {
+        if (!mInjectInvocationData) {
+            return;
+        }
         UniqueMultiMap<String, String> data = mConfig.getCommandOptions().getInvocationData();
         for (String key : data.keySet()) {
             for (String value : data.get(key)) {

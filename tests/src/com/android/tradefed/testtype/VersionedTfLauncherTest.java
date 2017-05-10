@@ -88,6 +88,7 @@ public class VersionedTfLauncherTest {
         OptionSetter setter = new OptionSetter(mVersionedTfLauncher);
         setter.setOptionValue("config-name", CONFIG_NAME);
         setter.setOptionValue("tf-command-line", TF_COMMAND_LINE);
+        setter.setOptionValue("inject-invocation-data", "true");
 
         try {
             GlobalConfiguration.createGlobalConfiguration(new String[] {});
