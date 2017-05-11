@@ -16,6 +16,7 @@
 package com.android.tradefed.targetprep.suite;
 
 import com.android.tradefed.build.IBuildInfo;
+import com.android.tradefed.build.IDeviceBuildInfo;
 import com.android.tradefed.config.OptionClass;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.targetprep.TargetSetupError;
@@ -26,6 +27,8 @@ import com.google.common.annotations.VisibleForTesting;
 
 import java.io.File;
 import java.io.FileNotFoundException;
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * Installs specified APKs for Suite configuration: either from $ANDROID_TARGET_OUT_TESTCASES
@@ -70,8 +73,21 @@ public class SuiteApkInstaller extends TestAppInstallSetup {
             IBuildInfo buildInfo, String apkFileName, ITestDevice device) throws TargetSetupError {
         File apkFile = null;
         try {
-            // use findFile because there may be a subdirectory
-            apkFile = FileUtil.findFile(getTestsDir(buildInfo), apkFileName);
+            List<File> testsDirs = new ArrayList<File>();
+            testsDirs.add(getTestsDir(buildInfo));
+            if (buildInfo instanceof IDeviceBuildInfo) {
+                IDeviceBuildInfo deviceBuildInfo = (IDeviceBuildInfo) buildInfo;
+                testsDirs.add(deviceBuildInfo.getTestsDir());
+            }
+            for (File testsDir : testsDirs) {
+                if (testsDir != null) {
+                    // use findFile because there may be a subdirectory
+                    apkFile = FileUtil.findFile(testsDir, apkFileName);
+                    if (apkFile != null) {
+                        break;
+                    }
+                }
+            }
             if (apkFile == null || !apkFile.isFile()) {
                 throw new FileNotFoundException();
             }

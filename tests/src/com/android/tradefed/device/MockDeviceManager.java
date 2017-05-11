@@ -42,7 +42,10 @@ public class MockDeviceManager implements IDeviceManager {
     private int mTotalDevices;
     private DeviceMonitorMultiplexer mDvcMon = new DeviceMonitorMultiplexer();
     private boolean mTcpDeviceRequested = false;
+    private boolean mNullDeviceRequested = false;
     private boolean mStubDeviceRequested = false;
+    private int mStopAdbBridgeCallCount = 0;
+    private int mRestartAdbBridgeCallCount = 0;
 
     public MockDeviceManager(int numDevices) {
         setNumDevices(numDevices);
@@ -118,6 +121,8 @@ public class MockDeviceManager implements IDeviceManager {
             IDevice idevice) {
         if (idevice instanceof TcpDevice) {
             mTcpDeviceRequested = true;
+        } else if (idevice instanceof NullDevice) {
+            mNullDeviceRequested = true;
         } else if (idevice instanceof StubDevice) {
             mStubDeviceRequested = true;
         }
@@ -238,6 +243,9 @@ public class MockDeviceManager implements IDeviceManager {
         if (mTcpDeviceRequested) {
             ((DeviceSelectionOptions)options).setTcpDeviceRequested(true);
         }
+        if (mNullDeviceRequested) {
+            ((DeviceSelectionOptions) options).setNullDeviceRequested(true);
+        }
         if (mStubDeviceRequested) {
             ((DeviceSelectionOptions)options).setStubEmulatorRequested(true);
         }
@@ -269,6 +277,18 @@ public class MockDeviceManager implements IDeviceManager {
     public void init(IDeviceSelection globalDeviceFilter,
             List<IDeviceMonitor> globalDeviceMonitors) {
         // ignore
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public void stopAdbBridge() {
+        mStopAdbBridgeCallCount += 1;
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public void restartAdbBridge() {
+        mRestartAdbBridgeCallCount += 1;
     }
 
     /**
@@ -366,5 +386,23 @@ public class MockDeviceManager implements IDeviceManager {
     @Override
     public boolean waitForFirstDeviceAdded(long timeout) {
         return false;
+    }
+
+    /**
+     * Enable unittest for stopAdbBridge().
+     *
+     * @return number of times stopAdbBridge() was called.
+     */
+    public int getStopAdbBridgeCallCount() {
+        return mStopAdbBridgeCallCount;
+    }
+
+    /**
+     * Enable unittest for restartAdbBridge().
+     *
+     * @return number of times restartAdbBridge() was called.
+     */
+    public int getRestartAdbBridgeCallCount() {
+        return mRestartAdbBridgeCallCount;
     }
 }

@@ -23,6 +23,7 @@ import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.device.NullDevice;
 import com.android.tradefed.util.StringEscapeUtils;
 
+import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -93,6 +94,13 @@ public class VersionedTfLauncher extends SubprocessTfLauncher
             mCmdArgs.add(Integer.toString(mShardCount));
             mCmdArgs.add("--shard-index");
             mCmdArgs.add(Integer.toString(mShardIndex));
+        }
+
+        // Add option for the path to general-tests.zip
+        File generalTests = mBuildInfo.getFile("general-tests.zip");
+        if (generalTests != null) {
+            mCmdArgs.add("--additional-tests-zip");
+            mCmdArgs.add(generalTests.getAbsolutePath());
         }
     }
 

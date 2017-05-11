@@ -62,6 +62,7 @@ public class VersionedTfLauncherTest {
     private static final String TF_COMMAND_LINE =
             (TF_COMMAND_LINE_TEMPLATE + " " + TF_COMMAND_LINE_TEST + " " + TF_COMMAND_LINE_OPTION +
              " " + TF_COMMAND_LINE_OPTION_VALUE_QUOTED);
+    private static final String ADDITIONAL_TEST_ZIP = "/tmp/tests.zip";
 
     private VersionedTfLauncher mVersionedTfLauncher;
     private ITestInvocationListener mMockListener;
@@ -88,6 +89,7 @@ public class VersionedTfLauncherTest {
         OptionSetter setter = new OptionSetter(mVersionedTfLauncher);
         setter.setOptionValue("config-name", CONFIG_NAME);
         setter.setOptionValue("tf-command-line", TF_COMMAND_LINE);
+        setter.setOptionValue("inject-invocation-data", "true");
 
         try {
             GlobalConfiguration.createGlobalConfiguration(new String[] {});
@@ -126,6 +128,8 @@ public class VersionedTfLauncherTest {
                                 EasyMock.eq(TF_COMMAND_LINE_OPTION_VALUE),
                                 EasyMock.eq("--serial"),
                                 EasyMock.eq(FAKE_SERIAL),
+                                EasyMock.eq("--additional-tests-zip"),
+                                EasyMock.eq(ADDITIONAL_TEST_ZIP),
                                 EasyMock.eq("--subprocess-report-file"),
                                 (String) EasyMock.anyObject()))
                 .andReturn(cr);
@@ -134,6 +138,8 @@ public class VersionedTfLauncherTest {
         mVersionedTfLauncher.setDeviceInfos(deviceInfos);
         EasyMock.expect(mMockBuildInfo.getRootDir()).andReturn(new File(""));
         EasyMock.expect(mMockBuildInfo.getBuildId()).andReturn("FAKEID").times(2);
+        EasyMock.expect(mMockBuildInfo.getFile("general-tests.zip"))
+                .andReturn(new File(ADDITIONAL_TEST_ZIP));
         EasyMock.expect(mMockTestDevice.getIDevice()).andReturn(mMockIDevice).times(1);
         EasyMock.expect(mMockTestDevice.getSerialNumber()).andReturn(FAKE_SERIAL).times(1);
         mMockListener.testLog((String)EasyMock.anyObject(), (LogDataType)EasyMock.anyObject(),
@@ -188,6 +194,7 @@ public class VersionedTfLauncherTest {
         mVersionedTfLauncher.setDeviceInfos(deviceInfos);
         EasyMock.expect(mMockBuildInfo.getRootDir()).andReturn(new File(""));
         EasyMock.expect(mMockBuildInfo.getBuildId()).andReturn("FAKEID").times(2);
+        EasyMock.expect(mMockBuildInfo.getFile("general-tests.zip")).andReturn(null);
         EasyMock.expect(mMockTestDevice.getIDevice()).andReturn(mMockIDevice).times(1);
         mMockListener.testLog((String)EasyMock.anyObject(), (LogDataType)EasyMock.anyObject(),
                 (FileInputStreamSource)EasyMock.anyObject());
@@ -257,6 +264,7 @@ public class VersionedTfLauncherTest {
         shardedTest.setDeviceInfos(deviceInfos);
         EasyMock.expect(mMockBuildInfo.getRootDir()).andReturn(new File(""));
         EasyMock.expect(mMockBuildInfo.getBuildId()).andReturn("FAKEID").times(2);
+        EasyMock.expect(mMockBuildInfo.getFile("general-tests.zip")).andReturn(null);
         EasyMock.expect(mMockTestDevice.getIDevice()).andReturn(mMockIDevice).times(1);
         EasyMock.expect(mMockTestDevice.getSerialNumber()).andReturn(FAKE_SERIAL).times(1);
         mMockListener.testLog(
