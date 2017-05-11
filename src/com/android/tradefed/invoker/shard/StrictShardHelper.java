@@ -15,9 +15,7 @@
  */
 package com.android.tradefed.invoker.shard;
 
-import com.android.tradefed.config.ConfigurationFactory;
 import com.android.tradefed.config.IConfiguration;
-import com.android.tradefed.config.IConfigurationFactory;
 import com.android.tradefed.invoker.IInvocationContext;
 import com.android.tradefed.invoker.IRescheduler;
 import com.android.tradefed.log.LogUtil.CLog;
@@ -89,10 +87,14 @@ public class StrictShardHelper extends ShardHelper {
             if (test instanceof IShardableTest) {
                 Collection<IRemoteTest> subTests = ((IShardableTest) test).split(shardCount);
                 if (subTests == null) {
+                    // test did not shard so we add it as is.
                     allTests.add(test);
                 } else {
                     allTests.addAll(subTests);
                 }
+            } else {
+                // if test is not shardable we add it as is.
+                allTests.add(test);
             }
         }
         return allTests;
@@ -128,14 +130,5 @@ public class StrictShardHelper extends ShardHelper {
             return fullList.subList(shardIndex * numPerShard, fullList.size());
         }
         return fullList.subList(shardIndex * numPerShard, numPerShard + (shardIndex * numPerShard));
-    }
-
-    /**
-     * Factory method for getting a reference to the {@link IConfigurationFactory}
-     *
-     * @return the {@link IConfigurationFactory} to use
-     */
-    protected IConfigurationFactory getConfigFactory() {
-        return ConfigurationFactory.getInstance();
     }
 }

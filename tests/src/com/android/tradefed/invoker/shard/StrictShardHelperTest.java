@@ -22,10 +22,13 @@ import com.android.tradefed.command.CommandOptions;
 import com.android.tradefed.config.Configuration;
 import com.android.tradefed.config.IConfiguration;
 import com.android.tradefed.config.OptionSetter;
+import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.invoker.IInvocationContext;
 import com.android.tradefed.invoker.IRescheduler;
 import com.android.tradefed.invoker.InvocationContext;
 import com.android.tradefed.result.ILogSaver;
+import com.android.tradefed.result.ITestInvocationListener;
+import com.android.tradefed.testtype.IRemoteTest;
 import com.android.tradefed.testtype.StubTest;
 
 import org.junit.Before;
@@ -106,5 +109,68 @@ public class StrictShardHelperTest {
         assertEquals(1, mConfig.getTests().size());
         // Original IRemoteTest was replaced by the sharded one in the configuration.
         assertNotEquals(test, mConfig.getTests().get(0));
+    }
+
+    /**
+     * Test sharding using Tradefed internal algorithm. On a non shardable IRemoteTest and getting
+     * the shard 0.
+     */
+    @Test
+    public void testShardConfig_internal_shardIndex_notShardable_shard0() throws Exception {
+        CommandOptions options = new CommandOptions();
+        OptionSetter setter = new OptionSetter(options);
+        setter.setOptionValue("disable-strict-sharding", "true");
+        setter.setOptionValue("shard-count", "5");
+        setter.setOptionValue("shard-index", "0");
+        mConfig.setCommandOptions(options);
+        mConfig.setCommandLine(new String[] {"empty"});
+        IRemoteTest test =
+                new IRemoteTest() {
+                    @Override
+                    public void run(ITestInvocationListener listener)
+                            throws DeviceNotAvailableException {
+                        // do nothing.
+                    }
+                };
+        mConfig.setTest(test);
+        assertEquals(1, mConfig.getTests().size());
+        // We do not shard, we are relying on the current invocation to run.
+        assertFalse(mHelper.shardConfig(mConfig, mContext, mRescheduler));
+        // Rescheduled is NOT called because we use the current invocation to run the index.
+        Mockito.verify(mRescheduler, Mockito.times(0)).scheduleConfig(Mockito.any());
+        assertEquals(1, mConfig.getTests().size());
+        // Original IRemoteTest is the same since the test was not shardable
+        assertSame(test, mConfig.getTests().get(0));
+    }
+
+    /**
+     * Test sharding using Tradefed internal algorithm. On a non shardable IRemoteTest and getting
+     * the shard 1.
+     */
+    @Test
+    public void testShardConfig_internal_shardIndex_notShardable_shard1() throws Exception {
+        CommandOptions options = new CommandOptions();
+        OptionSetter setter = new OptionSetter(options);
+        setter.setOptionValue("disable-strict-sharding", "true");
+        setter.setOptionValue("shard-count", "5");
+        setter.setOptionValue("shard-index", "1");
+        mConfig.setCommandOptions(options);
+        mConfig.setCommandLine(new String[] {"empty"});
+        IRemoteTest test =
+                new IRemoteTest() {
+                    @Override
+                    public void run(ITestInvocationListener listener)
+                            throws DeviceNotAvailableException {
+                        // do nothing.
+                    }
+                };
+        mConfig.setTest(test);
+        assertEquals(1, mConfig.getTests().size());
+        // We do not shard, we are relying on the current invocation to run.
+        assertFalse(mHelper.shardConfig(mConfig, mContext, mRescheduler));
+        // Rescheduled is NOT called because we use the current invocation to run the index.
+        Mockito.verify(mRescheduler, Mockito.times(0)).scheduleConfig(Mockito.any());
+        // We have no tests to put in shard-index 1 so it's empty.
+        assertEquals(0, mConfig.getTests().size());
     }
 }
