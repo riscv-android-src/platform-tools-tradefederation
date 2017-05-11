@@ -273,26 +273,25 @@ public class CameraTestBase implements IDeviceTest, IRemoteTest, IConfigurationR
 
         /**
          * Report the end of an individual camera test and delegate handling the collected metrics
-         * to subclasses.
-         * Do not override testEnded to manipulate the test metrics after each test. Instead,
-         * use handleMetricsOnTestEnded.
+         * to subclasses. Do not override testEnded to manipulate the test metrics after each test.
+         * Instead, use handleMetricsOnTestEnded.
          *
          * @param test identifies the test
          * @param testMetrics a {@link Map} of the metrics emitted
          */
         @Override
-        public void testEnded(TestIdentifier test, Map<String, String> testMetrics) {
-            super.testEnded(test, testMetrics);
+        public void testEnded(TestIdentifier test, long endTime, Map<String, String> testMetrics) {
+            super.testEnded(test, endTime, testMetrics);
             handleMetricsOnTestEnded(test, testMetrics);
             stopDumping(test);
-            mListener.testEnded(test, testMetrics);
+            mListener.testEnded(test, endTime, testMetrics);
         }
 
         @Override
-        public void testStarted(TestIdentifier test) {
-            super.testStarted(test);
+        public void testStarted(TestIdentifier test, long startTime) {
+            super.testStarted(test, startTime);
             startDumping(test);
-            mListener.testStarted(test);
+            mListener.testStarted(test, startTime);
         }
 
         @Override
