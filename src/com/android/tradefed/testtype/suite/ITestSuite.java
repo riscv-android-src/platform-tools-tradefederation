@@ -21,7 +21,6 @@ import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.config.ConfigurationException;
 import com.android.tradefed.config.IConfiguration;
 import com.android.tradefed.config.Option;
-import com.android.tradefed.config.OptionCopier;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.log.ITestLogger;
@@ -34,10 +33,11 @@ import com.android.tradefed.suite.checker.ISystemStatusCheckerReceiver;
 import com.android.tradefed.testtype.IBuildReceiver;
 import com.android.tradefed.testtype.IDeviceTest;
 import com.android.tradefed.testtype.IRemoteTest;
-import com.android.tradefed.testtype.IStrictShardableTest;
+import com.android.tradefed.testtype.IShardableTest;
 import com.android.tradefed.testtype.ITestCollector;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -52,7 +52,7 @@ public abstract class ITestSuite
                 IDeviceTest,
                 IBuildReceiver,
                 ISystemStatusCheckerReceiver,
-                IStrictShardableTest,
+                IShardableTest,
                 ITestCollector {
 
     protected static final String MODULE_SYSTEM_CHECKER_FAILURE = "SystemStatusChecker";
@@ -111,8 +111,8 @@ public abstract class ITestSuite
     private List<ISystemStatusChecker> mSystemStatusCheckers;
 
     // Sharding attributes
-    private int mShardCount = 1;
-    private int mShardIndex = 0;
+    private boolean mIsSharded = false;
+    private ModuleDefinition mDirectModule = null;
 
     /**
      * Abstract method to load the tests configuration that will be run. Each tests is defined by a
@@ -131,46 +131,23 @@ public abstract class ITestSuite
         }
     }
 
-    /**
-     * Split the list of tests to run however the implementation see fit. Sharding needs to be
-     * consistent. It is acceptable to return an empty list if no tests can be run in the shard.
-     * <p/>
-     * Implement this in order to provide a test suite specific sharding. The default
-     * implementation strictly split by number of tests which is not always optimal.
-     *
-     * @param fullList the initial full list of {@link ModuleDefinition} containing all the tests
-     *        that need to run.
-     * @param shardCount the total number of shard that need to run.
-     * @param shardIndex the index of the current shard that needs to run.
-     * @return a list of {@link ModuleDefinition} that need to run in the current shard.
-     */
-    public List<ModuleDefinition> shardModules(List<ModuleDefinition> fullList,
-            int shardCount, int shardIndex) {
-        if (shardCount == 1) {
-            // Not sharded
-            return fullList;
+    /** Helper that creates and returns the list of {@link ModuleDefinition} to be executed. */
+    private List<ModuleDefinition> createExecutionList() {
+        List<ModuleDefinition> runModules = new ArrayList<>();
+        if (mDirectModule != null) {
+            // If we are sharded and already know what to run then we just do it.
+            runModules.add(mDirectModule);
+            mDirectModule.setDevice(mDevice);
+            mDirectModule.setBuild(mBuildInfo);
+            return runModules;
         }
-        if (shardIndex >= fullList.size()) {
-            // Return empty list when we don't have enough tests for all the shards.
-            return new ArrayList<ModuleDefinition>();
-        }
-        int numPerShard = (int) Math.ceil(fullList.size() / (float)shardCount);
-        if (shardIndex == shardCount - 1) {
-            // last shard take everything remaining.
-            return fullList.subList(shardIndex * numPerShard, fullList.size());
-        }
-        return fullList.subList(shardIndex * numPerShard, numPerShard + (shardIndex * numPerShard));
-    }
 
-    /** Generic run method for all test loaded from {@link #loadTests()}. */
-    @Override
-    public final void run(ITestInvocationListener listener) throws DeviceNotAvailableException {
         LinkedHashMap<String, IConfiguration> runConfig = loadTests();
         if (runConfig.isEmpty()) {
             CLog.i("No config were loaded. Nothing to run.");
-            return;
+            return runModules;
         }
-        List<ModuleDefinition> runModules = new ArrayList<>();
+
         for (Entry<String, IConfiguration> config : runConfig.entrySet()) {
             if (!ValidateSuiteConfigHelper.validateConfig(config.getValue())) {
                 throw new RuntimeException(
@@ -187,10 +164,16 @@ public abstract class ITestSuite
         }
         // Free the map once we are done with it.
         runConfig = null;
+        return runModules;
+    }
 
-        runModules = shardModules(runModules, mShardCount, mShardIndex);
+    /** Generic run method for all test loaded from {@link #loadTests()}. */
+    @Override
+    public final void run(ITestInvocationListener listener) throws DeviceNotAvailableException {
+        List<ModuleDefinition> runModules = createExecutionList();
+        // Check if we have something to run.
         if (runModules.isEmpty()) {
-            CLog.i("No tests to be run in shard %d out of %d", (mShardIndex + 1), mShardCount);
+            CLog.i("No tests to be run.");
             return;
         }
 
@@ -335,16 +318,35 @@ public abstract class ITestSuite
         }
     }
 
-    /**
-     * {@inheritDoc}
-     */
+    /** {@inheritDoc} */
     @Override
-    public IRemoteTest getTestShard(int shardCount, int shardIndex) {
-        ITestSuite test = createInstance();
-        test.mShardCount = shardCount;
-        test.mShardIndex = shardIndex;
-        OptionCopier.copyOptionsNoThrow(this, test);
-        return test;
+    public Collection<IRemoteTest> split(int shardCountHint) {
+        if (shardCountHint <= 1 || mIsSharded) {
+            // cannot shard or already sharded
+            return null;
+        }
+
+        LinkedHashMap<String, IConfiguration> runConfig = loadTests();
+        if (runConfig.isEmpty()) {
+            CLog.i("No config were loaded. Nothing to run.");
+            return null;
+        }
+
+        List<ModuleDefinition> splitModules =
+                ModuleSplitter.splitConfiguration(runConfig, shardCountHint);
+        runConfig.clear();
+        runConfig = null;
+        // create an association of one ITestSuite <=> one ModuleDefinition as the smallest
+        // execution unit supported.
+        List<IRemoteTest> splitTests = new ArrayList<>();
+        for (ModuleDefinition m : splitModules) {
+            ITestSuite suite = createInstance();
+            suite.mIsSharded = true;
+            suite.mDirectModule = m;
+            splitTests.add(suite);
+        }
+        // return the list of ITestSuite with their ModuleDefinition assigned
+        return splitTests;
     }
 
     /**

@@ -34,6 +34,7 @@ import com.android.tradefed.result.InputStreamSource;
 import com.android.tradefed.result.LogDataType;
 import com.android.tradefed.suite.checker.ISystemStatusChecker;
 import com.android.tradefed.testtype.IRemoteTest;
+import com.android.tradefed.testtype.StubTest;
 
 import org.easymock.EasyMock;
 import org.junit.Before;
@@ -42,6 +43,7 @@ import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -65,6 +67,14 @@ public class ITestSuiteTest {
      * Very basic implementation of {@link ITestSuite} to test it.
      */
     static class TestSuiteImpl extends ITestSuite {
+        private int mNumTests = 1;
+
+        public TestSuiteImpl() {}
+
+        public TestSuiteImpl(int numTests) {
+            mNumTests = numTests;
+        }
+
         @Override
         public LinkedHashMap<String, IConfiguration> loadTests() {
             LinkedHashMap<String, IConfiguration> testConfig = new LinkedHashMap<>();
@@ -74,6 +84,14 @@ public class ITestSuiteTest {
                                 .createConfigurationFromArgs(new String[] {EMPTY_CONFIG});
                 config.setTest(new StubCollectingTest());
                 testConfig.put(TEST_CONFIG_NAME, config);
+
+                for (int i = 1; i < mNumTests; i++) {
+                    IConfiguration extraConfig =
+                            ConfigurationFactory.getInstance()
+                                    .createConfigurationFromArgs(new String[] {EMPTY_CONFIG});
+                    extraConfig.setTest(new StubTest());
+                    testConfig.put(TEST_CONFIG_NAME + i, extraConfig);
+                }
             } catch (ConfigurationException e) {
                 CLog.e(e);
                 throw new RuntimeException(e);
@@ -329,45 +347,27 @@ public class ITestSuiteTest {
     }
 
     /**
-     * Test for {@link ITestSuite#shardModules(List, int, int)} for different use cases of sharding
+     * Test for {@link ITestSuite#split(int)} for modules that are not shardable. We end up with a
+     * list of all tests. Note that the shardCountHint of 3 in this case does not drive the final
+     * number of tests.
      */
     @Test
-    public void testShardModules() {
-        List<ModuleDefinition> fakeTestList = new ArrayList<>();
-        fakeTestList.add(new ModuleDefinition("test1", new ArrayList<>(), new ArrayList<>()));
-        fakeTestList.add(new ModuleDefinition("test2", new ArrayList<>(), new ArrayList<>()));
-        fakeTestList.add(new ModuleDefinition("test3", new ArrayList<>(), new ArrayList<>()));
-        fakeTestList.add(new ModuleDefinition("test4", new ArrayList<>(), new ArrayList<>()));
-        fakeTestList.add(new ModuleDefinition("test5", new ArrayList<>(), new ArrayList<>()));
-        // no sharding
-        List<ModuleDefinition> res = mTestSuite.shardModules(fakeTestList, 1, 0);
-        assertEquals(fakeTestList.size(), res.size());
-        // asking for more shards than tests
-        res = mTestSuite.shardModules(fakeTestList, 6, 5);
-        assertEquals(0, res.size());
-        res = mTestSuite.shardModules(fakeTestList, 6, 2);
-        assertEquals(1, res.size());
-        assertEquals("test3", res.get(0).getId());
-        // normal test sharding
-        res = mTestSuite.shardModules(fakeTestList, 3, 0);
-        assertEquals(2, res.size());
-        assertEquals("test1", res.get(0).getId());
-        assertEquals("test2", res.get(1).getId());
-        res = mTestSuite.shardModules(fakeTestList, 3, 1);
-        assertEquals(2, res.size());
-        assertEquals("test3", res.get(0).getId());
-        assertEquals("test4", res.get(1).getId());
-        res = mTestSuite.shardModules(fakeTestList, 3, 2);
-        assertEquals(1, res.size());
-        assertEquals("test5", res.get(0).getId());
+    public void testShardModules_notShardable() {
+        mTestSuite = new TestSuiteImpl(5);
+        Collection<IRemoteTest> tests = mTestSuite.split(3);
+        assertEquals(5, tests.size());
+        for (IRemoteTest test : tests) {
+            assertTrue(test instanceof TestSuiteImpl);
+        }
     }
 
-    /**
-     * Test that when splitting, the instance of the implementation is used.
-     */
+    /** Test that when splitting a single non-splitable test we end up with only one IRemoteTest. */
     @Test
-    public void testGetTestShard() {
-        IRemoteTest test = mTestSuite.getTestShard(1, 0);
-        assertTrue(test instanceof TestSuiteImpl);
+    public void testGetTestShard_onlyOneTest() {
+        Collection<IRemoteTest> tests = mTestSuite.split(2);
+        assertEquals(1, tests.size());
+        for (IRemoteTest test : tests) {
+            assertTrue(test instanceof TestSuiteImpl);
+        }
     }
 }
