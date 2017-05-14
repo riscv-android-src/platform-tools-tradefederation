@@ -15,9 +15,7 @@
  */
 package com.android.tradefed.testtype.suite;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.fail;
+import static org.junit.Assert.*;
 import static org.mockito.Mockito.mock;
 
 import com.android.tradefed.build.IBuildInfo;
@@ -42,6 +40,7 @@ import org.junit.runners.JUnit4;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.LinkedHashMap;
 import java.util.LinkedList;
 import java.util.zip.ZipOutputStream;
@@ -93,13 +92,25 @@ public class TfSuiteRunnerTest {
         assertTrue(configMap.containsKey("suite/stub1"));
     }
 
+    /** Test that when splitting, the instance of the implementation is used. */
+    @Test
+    public void testSplit() throws Exception {
+        OptionSetter setter = new OptionSetter(mRunner);
+        setter.setOptionValue("run-suite-tag", "example-suite");
+        Collection<IRemoteTest> tests = mRunner.split(2);
+        assertEquals(2, tests.size());
+        for (IRemoteTest test : tests) {
+            assertTrue(test instanceof TfSuiteRunner);
+        }
+    }
+
     /**
-     * Test that when splitting, the instance of the implementation is used.
+     * Test that when {@link TfSuiteRunner} run-suite-tag is not set we cannot shard since there is
+     * no configuration.
      */
     @Test
-    public void testSplit() {
-        IRemoteTest test = mRunner.getTestShard(1, 0);
-        assertTrue(test instanceof TfSuiteRunner);
+    public void testSplit_nothingToLoad() {
+        assertNull(mRunner.split(2));
     }
 
     /**
