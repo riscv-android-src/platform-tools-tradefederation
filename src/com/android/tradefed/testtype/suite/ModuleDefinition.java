@@ -42,6 +42,7 @@ import com.google.common.annotations.VisibleForTesting;
 import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
@@ -52,14 +53,13 @@ import java.util.Map;
  */
 public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestCollector {
 
-    protected static final String MODULE_INCOMPLETE_MSG = "Module did not run all its tests.";
-
     private final String mId;
-    private List<IRemoteTest> mTests = null;
+    private Collection<IRemoteTest> mTests = null;
     private List<ITargetPreparer> mPreparers = new ArrayList<>();
     private List<ITargetCleaner> mCleaners = new ArrayList<>();
     private IBuildInfo mBuild;
     private ITestDevice mDevice;
+    private boolean mCollectTestsOnly = false;
 
     private List<TestRunResult> mTestsResults = new ArrayList<>();
     private int mExpectedTests = 0;
@@ -72,7 +72,8 @@ public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestColl
      * @param tests list of {@link IRemoteTest} that needs to run.
      * @param preparers list of {@link ITargetPreparer} to be used to setup the device.
      */
-    public ModuleDefinition(String name, List<IRemoteTest> tests, List<ITargetPreparer> preparers) {
+    public ModuleDefinition(
+            String name, Collection<IRemoteTest> tests, List<ITargetPreparer> preparers) {
         mId = name;
         mTests = tests;
         for (ITargetPreparer preparer : preparers) {
@@ -86,8 +87,30 @@ public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestColl
     }
 
     /**
-     * Return the unique module name.
+     * Returns the next {@link IRemoteTest} from the list of tests. The list of tests of a module
+     * may be shared with another one in case of sharding.
      */
+    IRemoteTest poll() {
+        synchronized (mTests) {
+            if (mTests.isEmpty()) {
+                return null;
+            }
+            IRemoteTest test = mTests.iterator().next();
+            mTests.remove(test);
+            return test;
+        }
+    }
+
+    /**
+     * Return True if the Module still has {@link IRemoteTest} to run in its pool. False otherwise.
+     */
+    protected boolean hasTests() {
+        synchronized (mTests) {
+            return mTests.isEmpty();
+        }
+    }
+
+    /** Return the unique module name. */
     public String getId() {
         return mId;
     }
@@ -162,7 +185,12 @@ public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestColl
                 listener.testRunEnded(0, Collections.emptyMap());
                 return;
             }
-            for (IRemoteTest test : mTests) {
+            while (true) {
+                IRemoteTest test = poll();
+                if (test == null) {
+                    return;
+                }
+
                 if (test instanceof IBuildReceiver) {
                     ((IBuildReceiver) test).setBuild(mBuild);
                 }
@@ -173,6 +201,9 @@ public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestColl
                     // We do not pass down Status checker because they are already running at the
                     // top level suite.
                     ((ISystemStatusCheckerReceiver) test).setSystemStatusChecker(new ArrayList<>());
+                }
+                if (test instanceof ITestCollector) {
+                    ((ITestCollector) test).setCollectTestsOnly(mCollectTestsOnly);
                 }
 
                 // Run the test, only in case of DeviceNotAvailable we exit the module
@@ -239,10 +270,12 @@ public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestColl
         }
 
         if (totalExpectedTests != numResults) {
-            listener.testRunFailed(MODULE_INCOMPLETE_MSG);
-            CLog.e(
-                    "Module %s only ran %d out of %d expected tests.",
-                    getId(), numResults, totalExpectedTests);
+            String error =
+                    String.format(
+                            "Module %s only ran %d out of %d expected tests.",
+                            getId(), numResults, totalExpectedTests);
+            listener.testRunFailed(error);
+            CLog.e(error);
             mIsFailedModule = true;
         }
         listener.testRunEnded(elapsedTime, metrics);
@@ -297,9 +330,7 @@ public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestColl
 
     @Override
     public void setCollectTestsOnly(boolean collectTestsOnly) {
-        for (IRemoteTest test : mTests) {
-            ((ITestCollector) test).setCollectTestsOnly(collectTestsOnly);
-        }
+        mCollectTestsOnly = collectTestsOnly;
     }
 
     /** Returns a list of tests that ran in this module. */
@@ -332,6 +363,6 @@ public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestColl
     /** Returns the list of {@link IRemoteTest} defined for this module. */
     @VisibleForTesting
     List<IRemoteTest> getTests() {
-        return mTests;
+        return new ArrayList<>(mTests);
     }
 }

@@ -297,7 +297,7 @@ public class ITestSuiteTest {
         EasyMock.expect(mMockDevice.getProperty("ro.build.type")).andReturn("user");
         mMockListener.testRunStarted(TEST_CONFIG_NAME, 1);
         EasyMock.expectLastCall().times(1);
-        mMockListener.testRunFailed(ModuleDefinition.MODULE_INCOMPLETE_MSG);
+        mMockListener.testRunFailed("Module test only ran 0 out of 1 expected tests.");
         mMockListener.testRunEnded(0, Collections.emptyMap());
         EasyMock.expectLastCall().times(1);
         replayMocks();
@@ -338,7 +338,7 @@ public class ITestSuiteTest {
         EasyMock.expect(mMockDevice.getProperty("ro.build.type")).andReturn("user");
         mMockListener.testRunStarted(TEST_CONFIG_NAME, 1);
         EasyMock.expectLastCall().times(1);
-        mMockListener.testRunFailed(ModuleDefinition.MODULE_INCOMPLETE_MSG);
+        mMockListener.testRunFailed("Module test only ran 0 out of 1 expected tests.");
         mMockListener.testRunEnded(0, Collections.emptyMap());
         EasyMock.expectLastCall().times(1);
         replayMocks();
