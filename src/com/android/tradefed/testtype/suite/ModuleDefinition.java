@@ -37,6 +37,8 @@ import com.android.tradefed.testtype.IDeviceTest;
 import com.android.tradefed.testtype.IRemoteTest;
 import com.android.tradefed.testtype.ITestCollector;
 
+import com.google.common.annotations.VisibleForTesting;
+
 import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.util.ArrayList;
@@ -319,5 +321,17 @@ public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestColl
     @Override
     public String toString() {
         return getId();
+    }
+
+    /** Returns the list of {@link ITargetPreparer} defined for this module. */
+    @VisibleForTesting
+    List<ITargetPreparer> getTargetPreparers() {
+        return mPreparers;
+    }
+
+    /** Returns the list of {@link IRemoteTest} defined for this module. */
+    @VisibleForTesting
+    List<IRemoteTest> getTests() {
+        return mTests;
     }
 }
