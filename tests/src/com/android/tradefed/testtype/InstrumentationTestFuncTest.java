@@ -24,6 +24,7 @@ import com.android.tradefed.config.OptionSetter;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.DeviceUnresponsiveException;
 import com.android.tradefed.device.ITestDevice.RecoveryMode;
+import com.android.tradefed.device.RemoteAndroidDevice;
 import com.android.tradefed.result.CollectingTestListener;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.util.KeyguardControllerState;
@@ -39,8 +40,8 @@ import java.io.IOException;
 public class InstrumentationTestFuncTest extends DeviceTestCase {
 
     private static final String LOG_TAG = "InstrumentationTestFuncTest";
-    private static final long SHELL_TIMEOUT = 1500;
-    private static final int TEST_TIMEOUT = 1000;
+    private static final long SHELL_TIMEOUT = 2500;
+    private static final int TEST_TIMEOUT = 2000;
     private static final long WAIT_FOR_DEVICE_AVAILABLE = 5 * 60 * 1000;
 
     /** The {@link InstrumentationTest} under test */
@@ -60,6 +61,7 @@ public class InstrumentationTestFuncTest extends DeviceTestCase {
         // set to no rerun by default
         mInstrumentationTest.setRerunMode(false);
         mMockListener = EasyMock.createStrictMock(ITestInvocationListener.class);
+        getDevice().disableKeyguard();
     }
 
     /**
@@ -93,7 +95,8 @@ public class InstrumentationTestFuncTest extends DeviceTestCase {
         mInstrumentationTest.setMethodName(TestAppConstants.FAILED_TEST_METHOD);
         mInstrumentationTest.setTestTimeout(TEST_TIMEOUT);
         mInstrumentationTest.setShellTimeout(SHELL_TIMEOUT);
-        mMockListener.testRunStarted(TestAppConstants.TESTAPP_PACKAGE, 1);
+        mMockListener.testRunStarted(
+                EasyMock.eq(TestAppConstants.TESTAPP_PACKAGE), EasyMock.anyInt());
         mMockListener.testStarted(EasyMock.eq(expectedTest));
         mMockListener.testFailed(
                 EasyMock.eq(expectedTest),
@@ -116,13 +119,22 @@ public class InstrumentationTestFuncTest extends DeviceTestCase {
         mInstrumentationTest.setMethodName(TestAppConstants.CRASH_TEST_METHOD);
         mInstrumentationTest.setTestTimeout(TEST_TIMEOUT);
         mInstrumentationTest.setShellTimeout(SHELL_TIMEOUT);
-
         mMockListener.testRunStarted(TestAppConstants.TESTAPP_PACKAGE, 1);
         mMockListener.testStarted(EasyMock.eq(expectedTest));
-        mMockListener.testFailed(EasyMock.eq(expectedTest), EasyMock.contains("Process crashed."));
-        mMockListener.testEnded(EasyMock.eq(expectedTest), EasyMock.anyObject());
-        mMockListener.testRunFailed(
-                EasyMock.eq("Instrumentation run failed due to 'Process crashed.'"));
+        if (getDevice().getApiLevel() <= 23) {
+            // Before N handling of instrumentation crash is slightly different.
+            mMockListener.testFailed(
+                    EasyMock.eq(expectedTest), EasyMock.contains("RuntimeException"));
+            mMockListener.testEnded(EasyMock.eq(expectedTest), EasyMock.anyObject());
+            mMockListener.testRunFailed(
+                    EasyMock.eq("Instrumentation run failed due to 'java.lang.RuntimeException'"));
+        } else {
+            mMockListener.testFailed(
+                    EasyMock.eq(expectedTest), EasyMock.contains("Process crashed."));
+            mMockListener.testEnded(EasyMock.eq(expectedTest), EasyMock.anyObject());
+            mMockListener.testRunFailed(
+                    EasyMock.eq("Instrumentation run failed due to 'Process crashed.'"));
+        }
         mMockListener.testRunEnded(EasyMock.anyLong(), EasyMock.anyObject());
         EasyMock.replay(mMockListener);
         mInstrumentationTest.run(mMockListener);
@@ -145,7 +157,8 @@ public class InstrumentationTestFuncTest extends DeviceTestCase {
             mInstrumentationTest.setShellTimeout(SHELL_TIMEOUT);
             mInstrumentationTest.setTestTimeout(TEST_TIMEOUT);
 
-            mMockListener.testRunStarted(TestAppConstants.TESTAPP_PACKAGE, 1);
+            mMockListener.testRunStarted(
+                    EasyMock.eq(TestAppConstants.TESTAPP_PACKAGE), EasyMock.anyInt());
             mMockListener.testStarted(EasyMock.eq(expectedTest));
             mMockListener.testFailed(
                     EasyMock.eq(expectedTest),
@@ -211,7 +224,10 @@ public class InstrumentationTestFuncTest extends DeviceTestCase {
         getDevice().setRecoveryMode(RecoveryMode.NONE);
         try {
             mInstrumentationTest.run(mMockListener);
-            fail("Should have thrown an exception.");
+            // Remote device will not throw the DUE because of the different recovery path.
+            if (!(getDevice() instanceof RemoteAndroidDevice)) {
+                fail("Should have thrown an exception.");
+            }
         } catch (DeviceUnresponsiveException expected) {
             // expected
         } finally {
