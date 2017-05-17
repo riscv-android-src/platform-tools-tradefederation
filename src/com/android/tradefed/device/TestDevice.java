@@ -43,6 +43,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.TimeUnit;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -85,6 +86,8 @@ public class TestDevice extends NativeDevice {
     private static final String USER_PATTERN = "(.*?\\{)(\\d+)(:)(.*)(:)(\\d+)(\\}.*)";
 
     private static final int API_LEVEL_GET_CURRENT_USER = 24;
+    /** Timeout to wait for a screenshot before giving up to avoid hanging forever */
+    private static final long MAX_SCREENSHOT_TIMEOUT = 5 * 60 * 1000; // 5 min
 
     /**
      * @param device
@@ -292,7 +295,8 @@ public class TestDevice extends NativeDevice {
         @Override
         public boolean run() throws IOException, TimeoutException, AdbCommandRejectedException,
                 ShellCommandUnresponsiveException, InstallException, SyncException {
-            mRawScreenshot = getIDevice().getScreenshot();
+            mRawScreenshot =
+                    getIDevice().getScreenshot(MAX_SCREENSHOT_TIMEOUT, TimeUnit.MILLISECONDS);
             return mRawScreenshot != null;
         }
     }

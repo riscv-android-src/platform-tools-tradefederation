@@ -62,6 +62,8 @@ import com.android.tradefed.device.WaitDeviceRecoveryTest;
 import com.android.tradefed.device.WifiHelperTest;
 import com.android.tradefed.invoker.InvocationContextTest;
 import com.android.tradefed.invoker.TestInvocationTest;
+import com.android.tradefed.invoker.shard.ShardHelperTest;
+import com.android.tradefed.invoker.shard.StrictShardHelperTest;
 import com.android.tradefed.invoker.shard.TestsPoolPollerTest;
 import com.android.tradefed.log.FileLoggerTest;
 import com.android.tradefed.log.HistoryLoggerTest;
@@ -149,6 +151,7 @@ import com.android.tradefed.testtype.suite.ITestSuiteIntegrationTest;
 import com.android.tradefed.testtype.suite.ITestSuiteTest;
 import com.android.tradefed.testtype.suite.ModuleDefinitionTest;
 import com.android.tradefed.testtype.suite.ModuleListenerTest;
+import com.android.tradefed.testtype.suite.ModuleSplitterTest;
 import com.android.tradefed.testtype.suite.TestFailureListenerTest;
 import com.android.tradefed.testtype.suite.TfSuiteRunnerTest;
 import com.android.tradefed.testtype.suite.ValidateSuiteConfigHelperTest;
@@ -199,6 +202,7 @@ import com.android.tradefed.util.ZipUtilTest;
 import com.android.tradefed.util.hostmetric.AbstractHostMonitorTest;
 import com.android.tradefed.util.hostmetric.HeapHostMonitorTest;
 import com.android.tradefed.util.keystore.JSONFileKeyStoreClientTest;
+import com.android.tradefed.util.keystore.JSONFileKeyStoreFactoryTest;
 import com.android.tradefed.util.net.HttpHelperTest;
 import com.android.tradefed.util.net.HttpMultipartPostTest;
 import com.android.tradefed.util.net.XmlRpcHelperTest;
@@ -280,6 +284,8 @@ import org.junit.runners.Suite.SuiteClasses;
     TestInvocationTest.class,
 
     // invoker.shard
+    ShardHelperTest.class,
+    StrictShardHelperTest.class,
     TestsPoolPollerTest.class,
 
     // log
@@ -384,6 +390,7 @@ import org.junit.runners.Suite.SuiteClasses;
     ITestSuiteTest.class,
     ModuleDefinitionTest.class,
     ModuleListenerTest.class,
+    ModuleSplitterTest.class,
     TestFailureListenerTest.class,
     TfSuiteRunnerTest.class,
     ValidateSuiteConfigHelperTest.class,
@@ -448,6 +455,7 @@ import org.junit.runners.Suite.SuiteClasses;
 
     // util/keystore
     JSONFileKeyStoreClientTest.class,
+    JSONFileKeyStoreFactoryTest.class,
 })
 public class UnitTests {
     // empty of purpose

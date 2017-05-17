@@ -19,6 +19,7 @@ package com.android.tradefed.targetprep;
 import com.android.ddmlib.IDevice;
 import com.android.ddmlib.Log;
 import com.android.tradefed.build.IBuildInfo;
+import com.android.tradefed.build.IDeviceBuildInfo;
 import com.android.tradefed.config.Option;
 import com.android.tradefed.config.OptionClass;
 import com.android.tradefed.device.DeviceNotAvailableException;
@@ -44,6 +45,8 @@ public class PushFilePreparer implements ITargetCleaner {
     private static final String MEDIA_SCAN_INTENT =
             "am broadcast -a android.intent.action.MEDIA_MOUNTED -d file://%s "
                     + "--receiver-include-background";
+    private static final String HOST_TESTCASES = "host/testcases";
+    private static final String TARGET_TESTCASES = "target/testcases";
 
     @Option(name="push", description=
             "A push-spec, formatted as '/path/to/srcfile.txt->/path/to/destfile.txt' or " +
@@ -108,11 +111,29 @@ public class PushFilePreparer implements ITargetCleaner {
      * @return the file from the build info or test cases directories
      */
     public File resolveRelativeFilePath(IBuildInfo buildInfo, String fileName) {
-        File src = buildInfo.getFile(fileName);
-        if (src != null && src.exists()) {
-            return src;
+        File src = null;
+        if (buildInfo != null) {
+            src = buildInfo.getFile(fileName);
+            if (src != null && src.exists()) {
+                return src;
+            }
         }
-        for (File dir : getTestCasesDirs()) {
+        List<File> testCasesDirs = getTestCasesDirs();
+
+        // Search for source file in tests directory if buildInfo is IDeviceBuildInfo.
+        if (buildInfo instanceof IDeviceBuildInfo) {
+            IDeviceBuildInfo deviceBuildInfo = (IDeviceBuildInfo) buildInfo;
+            File testsDir = deviceBuildInfo.getTestsDir();
+            // Add all possible paths to the testcases directory list.
+            if (testsDir != null) {
+                testCasesDirs.addAll(
+                        Arrays.asList(
+                                testsDir,
+                                FileUtil.getFileForPath(testsDir, HOST_TESTCASES),
+                                FileUtil.getFileForPath(testsDir, TARGET_TESTCASES)));
+            }
+        }
+        for (File dir : testCasesDirs) {
             src = FileUtil.getFileForPath(dir, fileName);
             if (src != null && src.exists()) {
                 return src;

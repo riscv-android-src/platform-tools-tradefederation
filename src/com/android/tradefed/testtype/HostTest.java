@@ -702,20 +702,29 @@ public class HostTest
                 if (test == null) {
                     test = createHostTest(classObj);
                 } else {
-                    ((HostTest)test).addClassName(classObj.getName());
+                    ((HostTest) test).addClassName(classObj.getName());
                 }
+                // Carry over non-annotation filters to shards.
+                ((HostTest) test).addAllExcludeFilters(mFilterHelper.getExcludeFilters());
+                ((HostTest) test).addAllIncludeFilters(mFilterHelper.getIncludeFilters());
             }
             i++;
         }
         // In case we don't have enough classes to shard, we return a Stub.
         if (test == null) {
             test = createHostTest(null);
-            ((HostTest)test).mSkipTestClassCheck = true;
-            ((HostTest)test).mClasses.clear();
+            ((HostTest) test).mSkipTestClassCheck = true;
+            ((HostTest) test).mClasses.clear();
             ((HostTest) test).mRuntimeHint = 0l;
         } else {
-            // update the runtime hint on pro-rate of number of tests.
             int newCount = ((HostTest) test).countTestCases();
+            // In case of counting inconsistency we raise the issue. Should not happen if we are
+            // counting properly. Here as a security.
+            if (newCount > numTotalTestCases) {
+                throw new RuntimeException(
+                        "Tests count number after sharding is higher than initial count.");
+            }
+            // update the runtime hint on pro-rate of number of tests.
             if (newCount == 0) {
                 // In case there is not tests left.
                 ((HostTest) test).mRuntimeHint = 0l;

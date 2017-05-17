@@ -144,8 +144,8 @@ class InstrumentationSerialTest implements IRemoteTest {
         }
 
         @Override
-        public void testEnded(TestIdentifier test, Map<String, String> testMetrics) {
-            super.testEnded(test, testMetrics);
+        public void testEnded(TestIdentifier test, long endTime, Map<String, String> testMetrics) {
+            super.testEnded(test, endTime, testMetrics);
             if (mExpectedTest.equals(test)) {
                 mDidTestRun  = true;
             } else {

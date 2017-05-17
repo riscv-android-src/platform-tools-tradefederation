@@ -15,10 +15,13 @@
  */
 package com.android.tradefed.util;
 
+import static org.junit.Assert.*;
+
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.result.LogDataType;
 
-import junit.framework.TestCase;
+import org.junit.Before;
+import org.junit.Test;
 
 import java.io.ByteArrayInputStream;
 import java.io.File;
@@ -27,29 +30,24 @@ import java.io.InputStream;
 import java.nio.file.attribute.PosixFilePermission;
 import java.util.Set;
 
-/**
- * Unit tests for {@link FileUtil}
- */
-public class FileUtilTest extends TestCase {
+/** Unit tests for {@link FileUtil} */
+public class FileUtilTest {
 
-    @Override
-    protected void setUp() throws Exception {
-        super.setUp();
+    @Before
+    public void setUp() throws Exception {
         FileUtil.setChmodBinary("chmod");
     }
 
-    /**
-     * test {@link FileUtil#getExtension(String)}
-     */
+    /** test {@link FileUtil#getExtension(String)} */
+    @Test
     public void testGetExtension() {
         assertEquals("", FileUtil.getExtension("filewithoutext"));
         assertEquals(".txt", FileUtil.getExtension("file.txt"));
         assertEquals(".txt", FileUtil.getExtension("foo.file.txt"));
     }
 
-    /**
-     * test {@link FileUtil#chmodGroupRW(File)} on a system that supports 'chmod'
-     */
+    /** test {@link FileUtil#chmodGroupRW(File)} on a system that supports 'chmod' */
+    @Test
     public void testChmodGroupRW() throws IOException {
         File testFile = null;
         try {
@@ -68,9 +66,10 @@ public class FileUtilTest extends TestCase {
     }
 
     /**
-     * test {@link FileUtil#chmodGroupRW(File)} on a system that does not supports 'chmod'.
-     * File permission should still be set with the fallback.
+     * test {@link FileUtil#chmodGroupRW(File)} on a system that does not supports 'chmod'. File
+     * permission should still be set with the fallback.
      */
+    @Test
     public void testChmodGroupRW_noChmod() throws IOException {
         File testFile = null;
         FileUtil.setChmodBinary("fake_not_existing_chmod");
@@ -85,9 +84,8 @@ public class FileUtilTest extends TestCase {
         }
     }
 
-    /**
-     * test {@link FileUtil#chmodGroupRWX(File)} on a system that supports 'chmod'
-     */
+    /** test {@link FileUtil#chmodGroupRWX(File)} on a system that supports 'chmod' */
+    @Test
     public void testChmodGroupRWX() throws IOException {
         File testFile = null;
         try {
@@ -106,9 +104,10 @@ public class FileUtilTest extends TestCase {
     }
 
     /**
-     * test {@link FileUtil#chmodGroupRWX(File)} on a system that does not supports 'chmod'.
-     * File permission should still be set with the fallback.
+     * test {@link FileUtil#chmodGroupRWX(File)} on a system that does not supports 'chmod'. File
+     * permission should still be set with the fallback.
      */
+    @Test
     public void testChmodGroupRWX_noChmod() throws IOException {
         File testFile = null;
         FileUtil.setChmodBinary("fake_not_existing_chmod");
@@ -127,6 +126,7 @@ public class FileUtilTest extends TestCase {
      * test {@link FileUtil#createTempFile(String, String)} with a very long file name. FileSystem
      * should not throw any exception.
      */
+    @Test
     public void testCreateTempFile_filenameTooLong() throws IOException {
         File testFile = null;
         try {
@@ -144,10 +144,10 @@ public class FileUtilTest extends TestCase {
 
     /**
      * test {@link FileUtil#createTempFile(String, String)} with a very long file name. FileSystem
-     * should not throw any exception.
-     * If both suffix is smaller than overflow length, it will be completely truncated, and prefix
-     * will truncate the remaining.
+     * should not throw any exception. If both suffix is smaller than overflow length, it will be
+     * completely truncated, and prefix will truncate the remaining.
      */
+    @Test
     public void testCreateTempFile_filenameTooLongEdge() throws IOException {
         File testFile = null;
         try {
@@ -170,6 +170,7 @@ public class FileUtilTest extends TestCase {
      * Test {@link FileUtil#writeToFile(InputStream, File, boolean)} succeeds overwriting an
      * existent file.
      */
+    @Test
     public void testWriteToFile_overwrites_exists() throws IOException {
         File testFile = null;
         try {
@@ -187,6 +188,7 @@ public class FileUtilTest extends TestCase {
      * Test {@link FileUtil#writeToFile(InputStream, File, boolean)} succeeds appending to an
      * existent file.
      */
+    @Test
     public void testWriteToFile_appends_exists() throws IOException {
         File testFile = null;
         try {
@@ -203,12 +205,14 @@ public class FileUtilTest extends TestCase {
      * Test {@link FileUtil#writeToFile(InputStream, File, boolean)} succeeds writing to an
      * uncreated file.
      */
+    @Test
     public void testWriteToFile_overwrites_doesNotExist() throws IOException {
         File testFile = null;
         try {
-            testFile = new File("nonexistant");
+            testFile = FileUtil.createTempFile("fileutiltest", ".test");
+            FileUtil.deleteFile(testFile);
             FileUtil.writeToFile(new ByteArrayInputStream("write1".getBytes()), testFile, false);
-            assertEquals(FileUtil.readStringFromFile(testFile), "write1");
+            assertEquals("write1", FileUtil.readStringFromFile(testFile));
         } finally {
             FileUtil.deleteFile(testFile);
         }
@@ -218,6 +222,7 @@ public class FileUtilTest extends TestCase {
      * Test {@link FileUtil#writeToFile(InputStream, File, boolean)} succeeds appending to an
      * uncreated file.
      */
+    @Test
     public void testWriteToFile_appends_doesNotExist() throws IOException {
         File testFile = null;
         try {
@@ -229,9 +234,8 @@ public class FileUtilTest extends TestCase {
         }
     }
 
-    /**
-     * Test {@link FileUtil#writeToFile(InputStream, File)} succeeds overwriting to a file.
-     */
+    /** Test {@link FileUtil#writeToFile(InputStream, File)} succeeds overwriting to a file. */
+    @Test
     public void testWriteToFile_stream_overwrites() throws IOException {
         File testFile = null;
         try {
@@ -245,9 +249,8 @@ public class FileUtilTest extends TestCase {
         }
     }
 
-    /**
-     * Test {@link FileUtil#writeToFile(String, File, boolean)} succeeds overwriting to a file.
-     */
+    /** Test {@link FileUtil#writeToFile(String, File, boolean)} succeeds overwriting to a file. */
+    @Test
     public void testWriteToFile_string_overwrites() throws IOException {
         File testFile = null;
         try {
@@ -261,9 +264,8 @@ public class FileUtilTest extends TestCase {
         }
     }
 
-    /**
-     * Test {@link FileUtil#writeToFile(String, File, boolean)} succeeds appending to a file.
-     */
+    /** Test {@link FileUtil#writeToFile(String, File, boolean)} succeeds appending to a file. */
+    @Test
     public void testWriteToFile_string_appends() throws IOException {
         File testFile = null;
         try {
@@ -276,9 +278,8 @@ public class FileUtilTest extends TestCase {
         }
     }
 
-    /**
-     * Test {@link FileUtil#writeToFile(String, File)} succeeds overwriting to a file.
-     */
+    /** Test {@link FileUtil#writeToFile(String, File)} succeeds overwriting to a file. */
+    @Test
     public void testWriteToFile_string_defaultOverwrites() throws IOException {
         File testFile = null;
         try {
@@ -292,9 +293,8 @@ public class FileUtilTest extends TestCase {
         }
     }
 
-    /**
-     * Test {@link FileUtil#unixModeToPosix(int)} returns expected results;
-     */
+    /** Test {@link FileUtil#unixModeToPosix(int)} returns expected results; */
+    @Test
     public void testUnixModeToPosix() {
         Set<PosixFilePermission> perms = null;
         // can't test all 8 * 8 * 8, so just a select few
@@ -330,6 +330,7 @@ public class FileUtilTest extends TestCase {
     }
 
     /** Test {@link FileUtil#findFiles(File, String)} can find files successfully. */
+    @Test
     public void testFindFilesSuccess() throws IOException {
         File tmpDir = FileUtil.createTempDir("find_files_test");
         try {
@@ -350,6 +351,7 @@ public class FileUtilTest extends TestCase {
     /**
      * Test {@link FileUtil#findFiles(File, String)} returns empty set if no file matches filter.
      */
+    @Test
     public void testFindFilesFail() throws IOException {
         File tmpDir = FileUtil.createTempDir("find_files_test");
         try {
@@ -364,18 +366,52 @@ public class FileUtilTest extends TestCase {
         }
     }
 
+    @Test
     public void testGetContentType_text() throws Exception {
         assertEquals(LogDataType.TEXT.getContentType(),
                 FileUtil.getContentType("path/to/file.txt"));
     }
 
+    @Test
     public void testGetContentType_html() throws Exception {
         assertEquals(LogDataType.HTML.getContentType(),
                 FileUtil.getContentType("path/to/file.html"));
     }
 
+    @Test
     public void testGetContentType_png() throws Exception {
         assertEquals(LogDataType.PNG.getContentType(),
                 FileUtil.getContentType("path/to/file.png"));
+    }
+
+    /** Test {@link FileUtil#findFile(File, String)} when finding a file. */
+    @Test
+    public void testFindFile() throws IOException {
+        File tmpDir = FileUtil.createTempDir("find_file_test");
+        try {
+            File subDir = FileUtil.createTempDir("sub_find_file_test", tmpDir);
+            File subFile = FileUtil.createTempFile("find_file_file", ".txt", subDir);
+            File res = FileUtil.findFile(tmpDir, subFile.getName());
+            assertEquals(subFile.getAbsolutePath(), res.getAbsolutePath());
+        } finally {
+            FileUtil.recursiveDelete(tmpDir);
+        }
+    }
+
+    /**
+     * Test {@link FileUtil#findDirsUnder(File, File)} when root dir is not a directory, it should
+     * throw an exception.
+     */
+    @Test
+    public void testFindDirsUnder_exception() throws IOException {
+        File illegalRoot = FileUtil.createTempFile("find_under", ".txt");
+        try {
+            FileUtil.findDirsUnder(illegalRoot, null);
+            fail("Should have thrown an exception.");
+        } catch (IllegalArgumentException expected) {
+            // expected
+        } finally {
+            FileUtil.recursiveDelete(illegalRoot);
+        }
     }
 }

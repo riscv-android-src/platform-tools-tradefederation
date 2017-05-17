@@ -36,4 +36,6 @@ while [[ $# -gt 0 ]]; do
 done
 
 
-${TF_DIR}/tradefed.sh run singleCommand host -n --class ${TEST_CLASS} ${FORWARDED_ARGS[*]}
+${TF_DIR}/tradefed.sh run singleCommand host -n \
+  --console-result-reporter:suppress-passed-tests \
+  --class ${TEST_CLASS} ${FORWARDED_ARGS[*]}

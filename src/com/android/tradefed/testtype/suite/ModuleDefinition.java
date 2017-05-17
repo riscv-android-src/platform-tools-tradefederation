@@ -36,9 +36,9 @@ import com.android.tradefed.testtype.IBuildReceiver;
 import com.android.tradefed.testtype.IDeviceTest;
 import com.android.tradefed.testtype.IRemoteTest;
 import com.android.tradefed.testtype.ITestCollector;
-import com.android.tradefed.util.StreamUtil;
 
-import java.io.ByteArrayOutputStream;
+import com.google.common.annotations.VisibleForTesting;
+
 import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.util.ArrayList;
@@ -194,13 +194,10 @@ public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestColl
                     // being able to catch a DeviceUnresponsiveException here implies that
                     // recovery was successful, and test execution should proceed to next
                     // module.
-                    ByteArrayOutputStream stack = new ByteArrayOutputStream();
-                    due.printStackTrace(new PrintWriter(stack, true));
-                    StreamUtil.close(stack);
                     CLog.w(
                             "Ignored DeviceUnresponsiveException because recovery was "
-                                    + "successful, proceeding with next module. Stack trace: %s",
-                            stack.toString());
+                                    + "successful, proceeding with next module. Stack trace:");
+                    CLog.w(due);
                     CLog.w("Proceeding to the next test.");
                 } finally {
                     mTestsResults.addAll(moduleListener.getRunResults());
@@ -324,5 +321,17 @@ public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestColl
     @Override
     public String toString() {
         return getId();
+    }
+
+    /** Returns the list of {@link ITargetPreparer} defined for this module. */
+    @VisibleForTesting
+    List<ITargetPreparer> getTargetPreparers() {
+        return mPreparers;
+    }
+
+    /** Returns the list of {@link IRemoteTest} defined for this module. */
+    @VisibleForTesting
+    List<IRemoteTest> getTests() {
+        return mTests;
     }
 }

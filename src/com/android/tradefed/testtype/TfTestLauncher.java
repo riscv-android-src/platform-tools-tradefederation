@@ -15,8 +15,6 @@
  */
 package com.android.tradefed.testtype;
 
-import com.google.common.annotations.VisibleForTesting;
-
 import com.android.ddmlib.testrunner.TestIdentifier;
 import com.android.tradefed.build.IFolderBuildInfo;
 import com.android.tradefed.config.Option;
@@ -30,6 +28,8 @@ import com.android.tradefed.util.CommandStatus;
 import com.android.tradefed.util.FileUtil;
 import com.android.tradefed.util.RunUtil;
 import com.android.tradefed.util.StreamUtil;
+
+import com.google.common.annotations.VisibleForTesting;
 
 import java.io.File;
 import java.io.IOException;
@@ -55,6 +55,14 @@ public class TfTestLauncher extends SubprocessTfLauncher {
     @Option(name = "jacoco-code-coverage", description = "Enable jacoco code coverage on the java "
             + "sub process. Run will be slightly slower because of the overhead.")
     private boolean mEnableCoverage = false;
+
+    @Option(
+        name = "hprof-heap-memory",
+        description =
+                "Enable hprof agent while running the java"
+                        + "sub process. Run will be slightly slower because of the overhead."
+    )
+    private boolean mEnableHprof = false;
 
     @Option(name = "ant-config-res", description = "The name of the ant resource configuration to "
             + "transform the results in readable format.")
@@ -90,6 +98,8 @@ public class TfTestLauncher extends SubprocessTfLauncher {
 
     // A destination file where the report will be put.
     private File mDestCoverageFile = null;
+    // A destination file where the hprof report will be put.
+    private File mHprofFile = null;
     // A {@link File} pointing to the jacoco args jar file extracted from the resources
     private File mAgent = null;
     // we track the elapsed time of the invocation to report it.
@@ -99,14 +109,24 @@ public class TfTestLauncher extends SubprocessTfLauncher {
     @Override
     protected void addJavaArguments(List<String> args) {
         super.addJavaArguments(args);
-        if (mEnableCoverage) {
-            try {
+        try {
+            if (mEnableCoverage) {
                 mDestCoverageFile = FileUtil.createTempFile("coverage", ".exec");
                 mAgent = extractJacocoAgent();
                 addCoverageArgs(mAgent, args, mDestCoverageFile);
-            } catch (IOException e) {
-                throw new RuntimeException(e);
             }
+            if (mEnableHprof) {
+                mHprofFile = FileUtil.createTempFile("java.hprof", ".txt");
+                // verbose=n to avoid dump in stderr
+                // cutoff the min value we look at.
+                String hprofAgent =
+                        String.format(
+                                "-agentlib:hprof=heap=sites,cutoff=0.01,depth=12,verbose=n,file=%s",
+                                mHprofFile.getAbsolutePath());
+                args.add(hprofAgent);
+            }
+        } catch (IOException e) {
+            throw new RuntimeException(e);
         }
     }
 
@@ -194,6 +214,15 @@ public class TfTestLauncher extends SubprocessTfLauncher {
                 FileUtil.deleteFile(xmlResult);
             }
         }
+        if (mEnableHprof) {
+            InputStreamSource memory = null;
+            try {
+                memory = new FileInputStreamSource(mHprofFile);
+                listener.testLog("hprof", LogDataType.TEXT, memory);
+            } finally {
+                StreamUtil.cancel(memory);
+            }
+        }
 
         if (mTmpDir != null) {
             testTmpDirClean(mTmpDir, listener);
@@ -203,6 +232,7 @@ public class TfTestLauncher extends SubprocessTfLauncher {
 
     @VisibleForTesting
     void cleanTmpFile() {
+        FileUtil.deleteFile(mHprofFile);
         FileUtil.deleteFile(mDestCoverageFile);
         FileUtil.deleteFile(mAgent);
     }

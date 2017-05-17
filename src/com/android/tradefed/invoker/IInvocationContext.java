@@ -16,9 +16,12 @@
 package com.android.tradefed.invoker;
 
 import com.android.tradefed.build.IBuildInfo;
+import com.android.tradefed.config.ConfigurationDescriptor;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.device.ITestDevice.RecoveryMode;
+import com.android.tradefed.testtype.suite.ITestSuite;
 import com.android.tradefed.util.MultiMap;
+import com.android.tradefed.util.UniqueMultiMap;
 
 import java.util.List;
 import java.util.Map;
@@ -115,14 +118,31 @@ public interface IInvocationContext {
      */
     public void addInvocationAttribute(String attributeName, String attributeValue);
 
-    /**
-     * Returns the map of invocation attributes.
-     */
+    /** Add several invocation attributes at once through a {@link UniqueMultiMap}. */
+    public void addInvocationAttributes(UniqueMultiMap<String, String> attributesMap);
+
+    /** Returns the map of invocation attributes. */
     public MultiMap<String, String> getAttributes();
 
+    /** Sets the descriptor associated with the test configuration that launched the invocation */
+    public void setConfigurationDescriptor(ConfigurationDescriptor configurationDescriptor);
+
     /**
-     * Returns the invocation test-tag.
+     * Returns the descriptor associated with the test configuration that launched the invocation
      */
+    public ConfigurationDescriptor getConfigurationDescriptor();
+
+    /**
+     * Sets the invocation context of module while being executed as part of a {@link ITestSuite}
+     */
+    public void setModuleInvocationContext(IInvocationContext invocationContext);
+
+    /**
+     * Returns the invocation context of module while being executed as part of a {@link ITestSuite}
+     */
+    public IInvocationContext getModuleInvocationContext();
+
+    /** Returns the invocation test-tag. */
     public String getTestTag();
 
     /**

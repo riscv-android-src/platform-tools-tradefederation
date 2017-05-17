@@ -15,16 +15,25 @@
  */
 package com.android.tradefed.testtype.suite;
 
+import com.android.tradefed.build.IDeviceBuildInfo;
 import com.android.tradefed.config.ConfigurationException;
 import com.android.tradefed.config.ConfigurationFactory;
+import com.android.tradefed.config.ConfigurationUtil;
 import com.android.tradefed.config.IConfiguration;
 import com.android.tradefed.config.IConfigurationFactory;
 import com.android.tradefed.config.Option;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.testtype.IRemoteTest;
 import com.android.tradefed.util.DirectedGraph;
+import com.android.tradefed.util.StreamUtil;
+import com.android.tradefed.util.ZipUtil2;
 
+import org.apache.commons.compress.archivers.zip.ZipFile;
+
+import java.io.File;
+import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.LinkedHashMap;
 import java.util.List;
 
@@ -33,6 +42,7 @@ import java.util.List;
  * folder.
  */
 public class TfSuiteRunner extends ITestSuite {
+
     @Option(name = "run-suite-tag", description = "The tag that must be run.",
             mandatory = true)
     private String mSuiteTag = null;
@@ -43,11 +53,15 @@ public class TfSuiteRunner extends ITestSuite {
     )
     private String mSuitePrefix = null;
 
+    @Option(
+        name = "additional-tests-zip",
+        description = "Path to a zip file containing additional tests to be loaded."
+    )
+    private String mAdditionalTestsZip = null;
+
     private DirectedGraph<String> mLoadedConfigGraph = null;
 
-    /**
-     * {@inheritDoc}
-     */
+    /** {@inheritDoc} */
     @Override
     public LinkedHashMap<String, IConfiguration> loadTests() {
         mLoadedConfigGraph = new DirectedGraph<>();
@@ -69,6 +83,41 @@ public class TfSuiteRunner extends ITestSuite {
         IConfigurationFactory configFactory = ConfigurationFactory.getInstance();
         // TODO: Do a better job searching for configs.
         List<String> configs = configFactory.getConfigList(mSuitePrefix);
+
+        if (getBuildInfo() instanceof IDeviceBuildInfo) {
+            IDeviceBuildInfo deviceBuildInfo = (IDeviceBuildInfo) getBuildInfo();
+            File testsDir = deviceBuildInfo.getTestsDir();
+            if (testsDir != null) {
+                if (mAdditionalTestsZip != null) {
+                    CLog.d(
+                            "Extract general-tests.zip (%s) to tests directory.",
+                            mAdditionalTestsZip);
+                    ZipFile zip = null;
+                    try {
+                        zip = new ZipFile(mAdditionalTestsZip);
+                        ZipUtil2.extractZip(zip, testsDir);
+                    } catch (IOException e) {
+                        RuntimeException runtimeException =
+                                new RuntimeException(
+                                        String.format(
+                                                "IO error (%s) when unzipping general-tests.zip",
+                                                e.toString()),
+                                        e);
+                        throw runtimeException;
+                    } finally {
+                        StreamUtil.close(zip);
+                    }
+                }
+
+                CLog.d(
+                        "Loading extra test configs from the tests directory: %s",
+                        testsDir.getAbsolutePath());
+                List<File> extraTestCasesDirs = Arrays.asList(testsDir);
+                configs.addAll(
+                        ConfigurationUtil.getConfigNamesFromDirs(mSuitePrefix, extraTestCasesDirs));
+            }
+        }
+
         for (String configName : configs) {
             try {
                 IConfiguration testConfig =

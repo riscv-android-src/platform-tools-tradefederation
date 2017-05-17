@@ -16,6 +16,8 @@
 
 package com.android.tradefed.command;
 
+import com.android.tradefed.util.UniqueMultiMap;
+
 /**
  *  Container for execution options for commands.
  */
@@ -146,4 +148,10 @@ public interface ICommandOptions {
 
     /** Returns if we should use dynamic sharding or not */
     public boolean shouldUseDynamicSharding();
+
+    /** Returns the data passed to the invocation to describe it */
+    public UniqueMultiMap<String, String> getInvocationData();
+
+    /** Returns true if we should use Tf new sharding logic */
+    public boolean shouldUseTfSharding();
 }

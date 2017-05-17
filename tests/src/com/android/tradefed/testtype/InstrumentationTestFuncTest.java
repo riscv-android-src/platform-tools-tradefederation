@@ -22,6 +22,9 @@ import com.android.ddmlib.testrunner.TestResult.TestStatus;
 import com.android.tradefed.TestAppConstants;
 import com.android.tradefed.config.OptionSetter;
 import com.android.tradefed.device.DeviceNotAvailableException;
+import com.android.tradefed.device.DeviceUnresponsiveException;
+import com.android.tradefed.device.ITestDevice.RecoveryMode;
+import com.android.tradefed.device.RemoteAndroidDevice;
 import com.android.tradefed.result.CollectingTestListener;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.util.KeyguardControllerState;
@@ -30,7 +33,6 @@ import com.android.tradefed.util.RunUtil;
 import org.easymock.EasyMock;
 
 import java.io.IOException;
-import java.util.Map;
 
 /**
  * Functional tests for {@link InstrumentationTest}.
@@ -38,8 +40,9 @@ import java.util.Map;
 public class InstrumentationTestFuncTest extends DeviceTestCase {
 
     private static final String LOG_TAG = "InstrumentationTestFuncTest";
-    private static final long SHELL_TIMEOUT = 1000;
-    private static final int TEST_TIMEOUT = 1500;
+    private static final long SHELL_TIMEOUT = 2500;
+    private static final int TEST_TIMEOUT = 2000;
+    private static final long WAIT_FOR_DEVICE_AVAILABLE = 5 * 60 * 1000;
 
     /** The {@link InstrumentationTest} under test */
     private InstrumentationTest mInstrumentationTest;
@@ -58,103 +61,130 @@ public class InstrumentationTestFuncTest extends DeviceTestCase {
         // set to no rerun by default
         mInstrumentationTest.setRerunMode(false);
         mMockListener = EasyMock.createStrictMock(ITestInvocationListener.class);
+        getDevice().disableKeyguard();
     }
 
     /**
      * Test normal run scenario with a single passed test result.
      */
-    @SuppressWarnings("unchecked")
     public void testRun() throws DeviceNotAvailableException {
         Log.i(LOG_TAG, "testRun");
         TestIdentifier expectedTest = new TestIdentifier(TestAppConstants.TESTAPP_CLASS,
                 TestAppConstants.PASSED_TEST_METHOD);
         mInstrumentationTest.setClassName(TestAppConstants.TESTAPP_CLASS);
         mInstrumentationTest.setMethodName(TestAppConstants.PASSED_TEST_METHOD);
-        mMockListener.testRunStarted(TestAppConstants.TESTAPP_PACKAGE, 1);
-        mMockListener.testStarted(EasyMock.eq(expectedTest));
-        mMockListener.testEnded(EasyMock.eq(expectedTest),
-                    (Map<String, String>)EasyMock.anyObject());
-        mMockListener.testRunEnded(EasyMock.anyLong(), (Map<String, String>)EasyMock.anyObject());
-        EasyMock.replay(mMockListener);
-        mInstrumentationTest.run(mMockListener);
-    }
-
-    /**
-     * Test normal run scenario with a single failed test result.
-     */
-    @SuppressWarnings("unchecked")
-    public void testRun_testFailed() throws DeviceNotAvailableException {
-        Log.i(LOG_TAG, "testRun_testFailed");
-
-        TestIdentifier expectedTest = new TestIdentifier(TestAppConstants.TESTAPP_CLASS,
-                TestAppConstants.FAILED_TEST_METHOD);
-        mInstrumentationTest.setClassName(TestAppConstants.TESTAPP_CLASS);
-        mInstrumentationTest.setMethodName(TestAppConstants.FAILED_TEST_METHOD);
-        mMockListener.testRunStarted(TestAppConstants.TESTAPP_PACKAGE, 1);
-        mMockListener.testStarted(EasyMock.eq(expectedTest));
-        // TODO: add stricter checking on stackTrace
-        mMockListener.testFailed(EasyMock.eq(expectedTest),
-                (String)EasyMock.anyObject());
-        mMockListener.testEnded(EasyMock.eq(expectedTest),
-                    (Map<String, String>)EasyMock.anyObject());
-        mMockListener.testRunEnded(EasyMock.anyLong(), (Map<String, String>)EasyMock.anyObject());
-        EasyMock.replay(mMockListener);
-        mInstrumentationTest.run(mMockListener);
-    }
-
-    /**
-     * Test run scenario where test process crashes.
-     */
-    @SuppressWarnings("unchecked")
-    public void testRun_testCrash() throws DeviceNotAvailableException {
-        Log.i(LOG_TAG, "testRun_testCrash");
-
-        TestIdentifier expectedTest = new TestIdentifier(TestAppConstants.TESTAPP_CLASS,
-                TestAppConstants.CRASH_TEST_METHOD);
-        mInstrumentationTest.setClassName(TestAppConstants.TESTAPP_CLASS);
-        mInstrumentationTest.setMethodName(TestAppConstants.CRASH_TEST_METHOD);
-        mMockListener.testRunStarted(TestAppConstants.TESTAPP_PACKAGE, 1);
-        mMockListener.testStarted(EasyMock.eq(expectedTest));
-        mMockListener.testFailed(EasyMock.eq(expectedTest),
-                (String)EasyMock.anyObject());
-        mMockListener.testEnded(EasyMock.eq(expectedTest),
-                    (Map<String, String>)EasyMock.anyObject());
-        mMockListener.testRunFailed((String)EasyMock.anyObject());
-        mMockListener.testRunEnded(EasyMock.anyLong(), (Map<String, String>)EasyMock.anyObject());
-        EasyMock.replay(mMockListener);
-        mInstrumentationTest.run(mMockListener);
-    }
-
-    /**
-     * Test run scenario where test run hangs indefinitely, and times out.
-     */
-    @SuppressWarnings("unchecked")
-    public void testRun_testTimeout() throws DeviceNotAvailableException {
-        Log.i(LOG_TAG, "testRun_testTimeout");
-
-        TestIdentifier expectedTest = new TestIdentifier(TestAppConstants.TESTAPP_CLASS,
-                TestAppConstants.TIMEOUT_TEST_METHOD);
-        mInstrumentationTest.setClassName(TestAppConstants.TESTAPP_CLASS);
-        mInstrumentationTest.setMethodName(TestAppConstants.TIMEOUT_TEST_METHOD);
-        mInstrumentationTest.setShellTimeout(SHELL_TIMEOUT);
         mInstrumentationTest.setTestTimeout(TEST_TIMEOUT);
+        mInstrumentationTest.setShellTimeout(SHELL_TIMEOUT);
         mMockListener.testRunStarted(TestAppConstants.TESTAPP_PACKAGE, 1);
         mMockListener.testStarted(EasyMock.eq(expectedTest));
-        mMockListener.testFailed(EasyMock.eq(expectedTest),
-                (String)EasyMock.anyObject());
-        mMockListener.testEnded(EasyMock.eq(expectedTest),
-                (Map<String, String>)EasyMock.anyObject());
-        mMockListener.testRunFailed((String)EasyMock.anyObject());
-        mMockListener.testRunEnded(EasyMock.anyLong(), (Map<String, String>)EasyMock.anyObject());
+        mMockListener.testEnded(EasyMock.eq(expectedTest), EasyMock.anyObject());
+        mMockListener.testRunEnded(EasyMock.anyLong(), EasyMock.anyObject());
         EasyMock.replay(mMockListener);
         mInstrumentationTest.run(mMockListener);
         EasyMock.verify(mMockListener);
     }
 
     /**
+     * Test normal run scenario with a single failed test result.
+     */
+    public void testRun_testFailed() throws DeviceNotAvailableException {
+        Log.i(LOG_TAG, "testRun_testFailed");
+        TestIdentifier expectedTest = new TestIdentifier(TestAppConstants.TESTAPP_CLASS,
+                TestAppConstants.FAILED_TEST_METHOD);
+        mInstrumentationTest.setClassName(TestAppConstants.TESTAPP_CLASS);
+        mInstrumentationTest.setMethodName(TestAppConstants.FAILED_TEST_METHOD);
+        mInstrumentationTest.setTestTimeout(TEST_TIMEOUT);
+        mInstrumentationTest.setShellTimeout(SHELL_TIMEOUT);
+        mMockListener.testRunStarted(
+                EasyMock.eq(TestAppConstants.TESTAPP_PACKAGE), EasyMock.anyInt());
+        mMockListener.testStarted(EasyMock.eq(expectedTest));
+        mMockListener.testFailed(
+                EasyMock.eq(expectedTest),
+                EasyMock.contains("junit.framework.AssertionFailedError: test failed"));
+        mMockListener.testEnded(EasyMock.eq(expectedTest), EasyMock.anyObject());
+        mMockListener.testRunEnded(EasyMock.anyLong(), EasyMock.anyObject());
+        EasyMock.replay(mMockListener);
+        mInstrumentationTest.run(mMockListener);
+        EasyMock.verify(mMockListener);
+    }
+
+    /**
+     * Test run scenario where test process crashes.
+     */
+    public void testRun_testCrash() throws DeviceNotAvailableException {
+        Log.i(LOG_TAG, "testRun_testCrash");
+        TestIdentifier expectedTest = new TestIdentifier(TestAppConstants.TESTAPP_CLASS,
+                TestAppConstants.CRASH_TEST_METHOD);
+        mInstrumentationTest.setClassName(TestAppConstants.TESTAPP_CLASS);
+        mInstrumentationTest.setMethodName(TestAppConstants.CRASH_TEST_METHOD);
+        mInstrumentationTest.setTestTimeout(TEST_TIMEOUT);
+        mInstrumentationTest.setShellTimeout(SHELL_TIMEOUT);
+        mMockListener.testRunStarted(TestAppConstants.TESTAPP_PACKAGE, 1);
+        mMockListener.testStarted(EasyMock.eq(expectedTest));
+        if (getDevice().getApiLevel() <= 23) {
+            // Before N handling of instrumentation crash is slightly different.
+            mMockListener.testFailed(
+                    EasyMock.eq(expectedTest), EasyMock.contains("RuntimeException"));
+            mMockListener.testEnded(EasyMock.eq(expectedTest), EasyMock.anyObject());
+            mMockListener.testRunFailed(
+                    EasyMock.eq("Instrumentation run failed due to 'java.lang.RuntimeException'"));
+        } else {
+            mMockListener.testFailed(
+                    EasyMock.eq(expectedTest), EasyMock.contains("Process crashed."));
+            mMockListener.testEnded(EasyMock.eq(expectedTest), EasyMock.anyObject());
+            mMockListener.testRunFailed(
+                    EasyMock.eq("Instrumentation run failed due to 'Process crashed.'"));
+        }
+        mMockListener.testRunEnded(EasyMock.anyLong(), EasyMock.anyObject());
+        EasyMock.replay(mMockListener);
+        mInstrumentationTest.run(mMockListener);
+        EasyMock.verify(mMockListener);
+    }
+
+    /**
+     * Test run scenario where test run hangs indefinitely, and times out.
+     */
+    public void testRun_testTimeout() throws DeviceNotAvailableException {
+        Log.i(LOG_TAG, "testRun_testTimeout");
+        RecoveryMode initMode = getDevice().getRecoveryMode();
+        getDevice().setRecoveryMode(RecoveryMode.NONE);
+        try {
+            TestIdentifier expectedTest =
+                    new TestIdentifier(
+                            TestAppConstants.TESTAPP_CLASS, TestAppConstants.TIMEOUT_TEST_METHOD);
+            mInstrumentationTest.setClassName(TestAppConstants.TESTAPP_CLASS);
+            mInstrumentationTest.setMethodName(TestAppConstants.TIMEOUT_TEST_METHOD);
+            mInstrumentationTest.setShellTimeout(SHELL_TIMEOUT);
+            mInstrumentationTest.setTestTimeout(TEST_TIMEOUT);
+
+            mMockListener.testRunStarted(
+                    EasyMock.eq(TestAppConstants.TESTAPP_PACKAGE), EasyMock.anyInt());
+            mMockListener.testStarted(EasyMock.eq(expectedTest));
+            mMockListener.testFailed(
+                    EasyMock.eq(expectedTest),
+                    EasyMock.contains(
+                            String.format(
+                                    "Failed to receive adb shell test output within %s ms",
+                                    SHELL_TIMEOUT)));
+            mMockListener.testEnded(EasyMock.eq(expectedTest), EasyMock.anyObject());
+            mMockListener.testRunFailed(
+                    EasyMock.contains(
+                            String.format(
+                                    "Failed to receive adb shell test output within %s ms",
+                                    SHELL_TIMEOUT)));
+            mMockListener.testRunEnded(EasyMock.anyLong(), EasyMock.anyObject());
+            EasyMock.replay(mMockListener);
+            mInstrumentationTest.run(mMockListener);
+            EasyMock.verify(mMockListener);
+        } finally {
+            getDevice().setRecoveryMode(initMode);
+            RunUtil.getDefault().sleep(500);
+        }
+    }
+
+    /**
      * Test run scenario where device reboots during test run.
      */
-    @SuppressWarnings("unchecked")
     public void testRun_deviceReboot() throws Exception {
         Log.i(LOG_TAG, "testRun_deviceReboot");
 
@@ -162,39 +192,51 @@ public class InstrumentationTestFuncTest extends DeviceTestCase {
                 TestAppConstants.TIMEOUT_TEST_METHOD);
         mInstrumentationTest.setClassName(TestAppConstants.TESTAPP_CLASS);
         mInstrumentationTest.setMethodName(TestAppConstants.TIMEOUT_TEST_METHOD);
+
         mMockListener.testRunStarted(TestAppConstants.TESTAPP_PACKAGE, 1);
         mMockListener.testStarted(EasyMock.eq(expectedTest));
-        mMockListener.testFailed(EasyMock.eq(expectedTest),
-                (String)EasyMock.anyObject());
-        mMockListener.testEnded(EasyMock.eq(expectedTest),
-                    (Map<String, String>)EasyMock.anyObject());
-        mMockListener.testRunFailed((String)EasyMock.anyObject());
-        mMockListener.testRunEnded(EasyMock.anyLong(), (Map<String, String>)EasyMock.anyObject());
+        mMockListener.testFailed(EasyMock.eq(expectedTest), EasyMock.anyObject());
+        mMockListener.testEnded(EasyMock.eq(expectedTest), EasyMock.anyObject());
+        mMockListener.testRunFailed(
+                EasyMock.eq("Test run failed to complete. Expected 1 tests, received 0"));
+        mMockListener.testRunEnded(EasyMock.anyLong(), EasyMock.anyObject());
         EasyMock.replay(mMockListener);
         // fork off a thread to do the reboot
-        Thread rebootThread = new Thread() {
-            @Override
-            public void run() {
-                // wait for test run to begin
-                try {
-                    Thread.sleep(1000);
-                    getDevice().reboot();
-                } catch (InterruptedException e) {
-                    Log.w(LOG_TAG, "interrupted");
-                } catch (DeviceNotAvailableException dnae) {
-                    Log.w(LOG_TAG, "Device did not come back online after reboot");
-                }
-            }
-        };
+        Thread rebootThread =
+                new Thread() {
+                    @Override
+                    public void run() {
+                        // wait for test run to begin
+                        try {
+                            // Give time to the instrumentation to start
+                            Thread.sleep(2000);
+                            getDevice().reboot();
+                        } catch (InterruptedException e) {
+                            Log.w(LOG_TAG, "interrupted");
+                        } catch (DeviceNotAvailableException dnae) {
+                            Log.w(LOG_TAG, "Device did not come back online after reboot");
+                        }
+                    }
+                };
         rebootThread.setName("InstrumentationTestFuncTest#testRun_deviceReboot");
         rebootThread.start();
-        mInstrumentationTest.run(mMockListener);
+        RecoveryMode initMode = getDevice().getRecoveryMode();
+        getDevice().setRecoveryMode(RecoveryMode.NONE);
+        try {
+            mInstrumentationTest.run(mMockListener);
+            // Remote device will not throw the DUE because of the different recovery path.
+            if (!(getDevice() instanceof RemoteAndroidDevice)) {
+                fail("Should have thrown an exception.");
+            }
+        } catch (DeviceUnresponsiveException expected) {
+            // expected
+        } finally {
+            getDevice().setRecoveryMode(initMode);
+        }
+        rebootThread.join(WAIT_FOR_DEVICE_AVAILABLE);
         EasyMock.verify(mMockListener);
-        // Give some times to detect offline
-        RunUtil.getDefault().sleep(2000);
-        getDevice().waitForDeviceAvailable();
         // Give some time after device available so that keyguard disabled is picked up.
-        RunUtil.getDefault().sleep(2000);
+        RunUtil.getDefault().sleep(5000);
         // now we check that the keyguard is dismissed.
         KeyguardControllerState kcs = getDevice().getKeyguardState();
         if (kcs != null) {
@@ -209,35 +251,26 @@ public class InstrumentationTestFuncTest extends DeviceTestCase {
      * <p/>
      * TODO: this test probably belongs more in TestDeviceFuncTest
      */
-    @SuppressWarnings("unchecked")
     public void testRun_deviceRuntimeReset() throws Exception {
         Log.i(LOG_TAG, "testRun_deviceRuntimeReset");
-        // Attempt to setup the device in known state
-        int retry = 5;
-        while (!runUITests()) {
-            getDevice().reboot();
-            getDevice().waitForDeviceAvailable();
-            RunUtil.getDefault().sleep(500);
-            if (retry == 0) {
-                fail("Fail to setup the device in a known state");
-            }
-            retry--;
-        }
-
         TestIdentifier expectedTest = new TestIdentifier(TestAppConstants.TESTAPP_CLASS,
                 TestAppConstants.TIMEOUT_TEST_METHOD);
         mInstrumentationTest.setShellTimeout(SHELL_TIMEOUT);
         mInstrumentationTest.setTestTimeout(TEST_TIMEOUT);
         mInstrumentationTest.setClassName(TestAppConstants.TESTAPP_CLASS);
         mInstrumentationTest.setMethodName(TestAppConstants.TIMEOUT_TEST_METHOD);
-        mMockListener.testRunStarted(TestAppConstants.TESTAPP_PACKAGE, 1);
+
+        mMockListener.testRunStarted(
+                EasyMock.eq(TestAppConstants.TESTAPP_PACKAGE), EasyMock.anyInt());
         mMockListener.testStarted(EasyMock.eq(expectedTest));
-        mMockListener.testFailed(EasyMock.eq(expectedTest),
-                (String)EasyMock.anyObject());
-        mMockListener.testEnded(EasyMock.eq(expectedTest),
-                    (Map<String, String>)EasyMock.anyObject());
-        mMockListener.testRunFailed((String)EasyMock.anyObject());
-        mMockListener.testRunEnded(EasyMock.anyLong(), (Map<String, String>)EasyMock.anyObject());
+        EasyMock.expectLastCall().anyTimes();
+        mMockListener.testFailed(EasyMock.eq(expectedTest), EasyMock.anyObject());
+        EasyMock.expectLastCall().anyTimes();
+        mMockListener.testEnded(EasyMock.eq(expectedTest), EasyMock.anyObject());
+        EasyMock.expectLastCall().anyTimes();
+        mMockListener.testRunFailed(EasyMock.anyObject());
+        mMockListener.testRunEnded(EasyMock.anyLong(), EasyMock.anyObject());
+
         EasyMock.replay(mMockListener);
         // fork off a thread to do the runtime reset
         Thread resetThread =
@@ -252,7 +285,7 @@ public class InstrumentationTestFuncTest extends DeviceTestCase {
                                             String.format(
                                                     "adb -s %s shell stop",
                                                     getDevice().getIDevice().getSerialNumber()));
-                            Thread.sleep(200);
+                            Thread.sleep(500);
                             Runtime.getRuntime()
                                     .exec(
                                             String.format(
@@ -268,17 +301,10 @@ public class InstrumentationTestFuncTest extends DeviceTestCase {
         resetThread.setName("InstrumentationTestFuncTest#testRun_deviceRuntimeReset");
         resetThread.start();
         mInstrumentationTest.run(mMockListener);
+        resetThread.join(WAIT_FOR_DEVICE_AVAILABLE);
         EasyMock.verify(mMockListener);
-        RunUtil.getDefault().sleep(2000);
+        RunUtil.getDefault().sleep(5000);
         getDevice().waitForDeviceAvailable();
-        RunUtil.getDefault().sleep(2000);
-        // now we check that the keyguard is dismissed.
-        KeyguardControllerState kcs = getDevice().getKeyguardState();
-        if (kcs != null) {
-            assertFalse("Keyguard is showing when it should not.", kcs.isKeyguardShowing());
-        } else {
-            assertTrue(runUITests());
-        }
     }
 
     /**
@@ -300,17 +326,23 @@ public class InstrumentationTestFuncTest extends DeviceTestCase {
      */
     public void testRun_rerun() throws Exception {
         Log.i(LOG_TAG, "testRun_rerun");
-
         // run all tests in class
-        mInstrumentationTest.setClassName(TestAppConstants.TESTAPP_CLASS);
-        mInstrumentationTest.setRerunMode(true);
-        mInstrumentationTest.setShellTimeout(SHELL_TIMEOUT);
-        mInstrumentationTest.setTestTimeout(TEST_TIMEOUT);
-        CollectingTestListener listener = new CollectingTestListener();
-        mInstrumentationTest.run(listener);
-        assertEquals(TestAppConstants.TOTAL_TEST_CLASS_TESTS, listener.getNumTotalTests());
-        assertEquals(TestAppConstants.TOTAL_TEST_CLASS_PASSED_TESTS,
-                listener.getNumTestsInState(TestStatus.PASSED));
+        RecoveryMode initMode = getDevice().getRecoveryMode();
+        getDevice().setRecoveryMode(RecoveryMode.NONE);
+        try {
+            mInstrumentationTest.setClassName(TestAppConstants.TESTAPP_CLASS);
+            mInstrumentationTest.setRerunMode(true);
+            mInstrumentationTest.setShellTimeout(SHELL_TIMEOUT);
+            mInstrumentationTest.setTestTimeout(TEST_TIMEOUT);
+            CollectingTestListener listener = new CollectingTestListener();
+            mInstrumentationTest.run(listener);
+            assertEquals(TestAppConstants.TOTAL_TEST_CLASS_TESTS, listener.getNumTotalTests());
+            assertEquals(
+                    TestAppConstants.TOTAL_TEST_CLASS_PASSED_TESTS,
+                    listener.getNumTestsInState(TestStatus.PASSED));
+        } finally {
+            getDevice().setRecoveryMode(initMode);
+        }
     }
 
     /**
@@ -320,10 +352,9 @@ public class InstrumentationTestFuncTest extends DeviceTestCase {
      */
     public void testRun_rerunCrash() throws Exception {
         Log.i(LOG_TAG, "testRun_rerunCrash");
-
         mInstrumentationTest.setClassName(TestAppConstants.CRASH_ON_INIT_TEST_CLASS);
         mInstrumentationTest.setMethodName(TestAppConstants.CRASH_ON_INIT_TEST_METHOD);
-        mInstrumentationTest.setRerunMode(true);
+        mInstrumentationTest.setRerunMode(false);
         mInstrumentationTest.setShellTimeout(SHELL_TIMEOUT);
         mInstrumentationTest.setTestTimeout(TEST_TIMEOUT);
         CollectingTestListener listener = new CollectingTestListener();
@@ -342,16 +373,24 @@ public class InstrumentationTestFuncTest extends DeviceTestCase {
      */
     public void testRun_rerunHang() throws Exception {
         Log.i(LOG_TAG, "testRun_rerunHang");
-        OptionSetter setter = new OptionSetter(mInstrumentationTest);
-        setter.setOptionValue("collect-tests-timeout", Long.toString(SHELL_TIMEOUT));
-
-        mInstrumentationTest.setClassName(TestAppConstants.HANG_ON_INIT_TEST_CLASS);
-        mInstrumentationTest.setRerunMode(true);
-        mInstrumentationTest.setShellTimeout(SHELL_TIMEOUT);
-        mInstrumentationTest.setTestTimeout(TEST_TIMEOUT);
-        CollectingTestListener listener = new CollectingTestListener();
-        mInstrumentationTest.run(listener);
-        assertEquals(0, listener.getNumTotalTests());
-        assertTrue(listener.getCurrentRunResults().isRunFailure());
+        RecoveryMode initMode = getDevice().getRecoveryMode();
+        getDevice().setRecoveryMode(RecoveryMode.NONE);
+        try {
+            OptionSetter setter = new OptionSetter(mInstrumentationTest);
+            setter.setOptionValue("collect-tests-timeout", Long.toString(SHELL_TIMEOUT));
+            mInstrumentationTest.setClassName(TestAppConstants.HANG_ON_INIT_TEST_CLASS);
+            mInstrumentationTest.setRerunMode(false);
+            mInstrumentationTest.setShellTimeout(SHELL_TIMEOUT);
+            mInstrumentationTest.setTestTimeout(TEST_TIMEOUT);
+            CollectingTestListener listener = new CollectingTestListener();
+            mInstrumentationTest.run(listener);
+            assertEquals(0, listener.getNumTotalTests());
+            assertEquals(
+                    TestAppConstants.TESTAPP_PACKAGE, listener.getCurrentRunResults().getName());
+            assertTrue(listener.getCurrentRunResults().isRunFailure());
+            assertTrue(listener.getCurrentRunResults().isRunComplete());
+        } finally {
+            getDevice().setRecoveryMode(initMode);
+        }
     }
 }

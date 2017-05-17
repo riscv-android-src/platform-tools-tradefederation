@@ -34,6 +34,7 @@ public class BackgroundDeviceActionTest extends TestCase {
     private static final String MOCK_DEVICE_SERIAL = "serial";
     private static final int SHORT_WAIT_TIME_MS = 100;
     private static final int LONG_WAIT_TIME_MS = 200;
+    private static final long JOIN_WAIT_TIME_MS = 5000;
 
     private IShellOutputReceiver mMockReceiver;
     private IDevice mMockIDevice;
@@ -76,7 +77,7 @@ public class BackgroundDeviceActionTest extends TestCase {
         RunUtil.getDefault().sleep(SHORT_WAIT_TIME_MS);
         assertTrue(mBackgroundAction.isAlive());
         mBackgroundAction.cancel();
-        RunUtil.getDefault().sleep(SHORT_WAIT_TIME_MS);
+        mBackgroundAction.join(JOIN_WAIT_TIME_MS);
         assertFalse(mBackgroundAction.isAlive());
         mBackgroundAction.interrupt();
     }
@@ -107,7 +108,7 @@ public class BackgroundDeviceActionTest extends TestCase {
         RunUtil.getDefault().sleep(LONG_WAIT_TIME_MS);
         assertTrue(mBackgroundAction.isAlive());
         mBackgroundAction.cancel();
-        RunUtil.getDefault().sleep(LONG_WAIT_TIME_MS);
+        mBackgroundAction.join(JOIN_WAIT_TIME_MS);
         assertFalse(mBackgroundAction.isAlive());
         assertEquals(TestDeviceState.NOT_AVAILABLE, mDeviceState);
         mBackgroundAction.interrupt();
@@ -132,7 +133,7 @@ public class BackgroundDeviceActionTest extends TestCase {
         test.setName(getClass().getCanonicalName() + "#testwaitForDeviceRecovery_online");
         test.start();
         // Specify a timeout for join, not to be stuck if broken.
-        test.join(LONG_WAIT_TIME_MS);
+        test.join(JOIN_WAIT_TIME_MS);
         assertFalse(test.isAlive());
         test.interrupt();
     }
@@ -157,7 +158,7 @@ public class BackgroundDeviceActionTest extends TestCase {
         test.setName(getClass().getCanonicalName() + "#testwaitForDeviceRecovery_blockOffline");
         test.start();
         // Specify a timeout for join, not to be stuck.
-        test.join(LONG_WAIT_TIME_MS);
+        test.join(JOIN_WAIT_TIME_MS);
         // Thread should still be alive.
         assertTrue(test.isAlive());
         mBackgroundAction.cancel();

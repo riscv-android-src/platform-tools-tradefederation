@@ -941,4 +941,18 @@ public class DeviceManagerTest extends TestCase {
                 + "\nserial  ONLINE  Available   hardware_test  product_test  bid_test  50       "
                 + "\n", out.toString());
     }
+
+    public void testAdbBridgeFlag() throws Exception {
+        setCheckAvailableDeviceExpectations();
+        replayMocks();
+        DeviceManager manager = createDeviceManager(null, mMockIDevice);
+
+        assertFalse(manager.shouldAdbBridgeBeRestarted());
+        manager.stopAdbBridge();
+        assertTrue(manager.shouldAdbBridgeBeRestarted());
+        manager.restartAdbBridge();
+        assertFalse(manager.shouldAdbBridgeBeRestarted());
+
+        verifyMocks();
+    }
 }

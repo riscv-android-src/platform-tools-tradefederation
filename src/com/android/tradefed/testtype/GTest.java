@@ -38,18 +38,23 @@ import org.json.JSONObject;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import java.util.regex.Pattern;
 
-/**
- * A Test that runs a native test package on given device.
- */
+/** A Test that runs a native test package on given device. */
 @OptionClass(alias = "gtest")
-public class GTest implements IDeviceTest, IRemoteTest, ITestFilterReceiver, IRuntimeHintProvider,
-        ITestCollector, IStrictShardableTest {
+public class GTest
+        implements IDeviceTest,
+                IRemoteTest,
+                ITestFilterReceiver,
+                IRuntimeHintProvider,
+                ITestCollector,
+                IShardableTest,
+                IStrictShardableTest {
 
     static final String DEFAULT_NATIVETEST_PATH = "/data/nativetest";
     private static final Pattern EXE_FILE = Pattern.compile("^[-l]r.x.+");
@@ -140,6 +145,7 @@ public class GTest implements IDeviceTest, IRemoteTest, ITestFilterReceiver, IRu
 
     private int mShardCount = 0;
     private int mShardIndex = 0;
+    private boolean mIsSharded = false;
 
     /** coverage target value. Just report all gtests as 'native' for now */
     private static final String COVERAGE_TARGET = "Native";
@@ -643,9 +649,23 @@ public class GTest implements IDeviceTest, IRemoteTest, ITestFilterReceiver, IRu
         OptionCopier.copyOptionsNoThrow(this, shard);
         shard.mShardIndex = shardIndex;
         shard.mShardCount = shardCount;
+        shard.mIsSharded = true;
         // We approximate the runtime of each shard to be equal since we can't know.
         shard.mRuntimeHint = mRuntimeHint / shardCount;
         return shard;
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public Collection<IRemoteTest> split(int shardCountHint) {
+        if (shardCountHint <= 1 || mIsSharded) {
+            return null;
+        }
+        Collection<IRemoteTest> tests = new ArrayList<>();
+        for (int i = 0; i < shardCountHint; i++) {
+            tests.add(getTestShard(shardCountHint, i));
+        }
+        return tests;
     }
 
     /**

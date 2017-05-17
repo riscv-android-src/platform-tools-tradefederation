@@ -21,7 +21,9 @@ import com.android.ddmlib.IDevice;
 import com.android.ddmlib.testrunner.TestIdentifier;
 import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.build.IFolderBuildInfo;
+import com.android.tradefed.command.CommandOptions;
 import com.android.tradefed.config.GlobalConfiguration;
+import com.android.tradefed.config.IConfiguration;
 import com.android.tradefed.config.OptionSetter;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.device.NullDevice;
@@ -60,6 +62,7 @@ public class VersionedTfLauncherTest {
     private static final String TF_COMMAND_LINE =
             (TF_COMMAND_LINE_TEMPLATE + " " + TF_COMMAND_LINE_TEST + " " + TF_COMMAND_LINE_OPTION +
              " " + TF_COMMAND_LINE_OPTION_VALUE_QUOTED);
+    private static final String ADDITIONAL_TEST_ZIP = "/tmp/tests.zip";
 
     private VersionedTfLauncher mVersionedTfLauncher;
     private ITestInvocationListener mMockListener;
@@ -67,6 +70,7 @@ public class VersionedTfLauncherTest {
     private ITestDevice mMockTestDevice;
     private IDevice mMockIDevice;
     private IFolderBuildInfo mMockBuildInfo;
+    private IConfiguration mMockConfig;
 
     @Before
     public void setUp() throws Exception {
@@ -74,15 +78,18 @@ public class VersionedTfLauncherTest {
         mMockRunUtil = EasyMock.createMock(IRunUtil.class);
         mMockBuildInfo = EasyMock.createMock(IFolderBuildInfo.class);
         mMockTestDevice = EasyMock.createMock(ITestDevice.class);
+        mMockConfig = EasyMock.createMock(IConfiguration.class);
 
         mVersionedTfLauncher = new VersionedTfLauncher();
         mVersionedTfLauncher.setRunUtil(mMockRunUtil);
         mVersionedTfLauncher.setBuild(mMockBuildInfo);
         mVersionedTfLauncher.setEventStreaming(false);
+        mVersionedTfLauncher.setConfiguration(mMockConfig);
 
         OptionSetter setter = new OptionSetter(mVersionedTfLauncher);
         setter.setOptionValue("config-name", CONFIG_NAME);
         setter.setOptionValue("tf-command-line", TF_COMMAND_LINE);
+        setter.setOptionValue("inject-invocation-data", "true");
 
         try {
             GlobalConfiguration.createGlobalConfiguration(new String[] {});
@@ -121,6 +128,8 @@ public class VersionedTfLauncherTest {
                                 EasyMock.eq(TF_COMMAND_LINE_OPTION_VALUE),
                                 EasyMock.eq("--serial"),
                                 EasyMock.eq(FAKE_SERIAL),
+                                EasyMock.eq("--additional-tests-zip"),
+                                EasyMock.eq(ADDITIONAL_TEST_ZIP),
                                 EasyMock.eq("--subprocess-report-file"),
                                 (String) EasyMock.anyObject()))
                 .andReturn(cr);
@@ -129,6 +138,8 @@ public class VersionedTfLauncherTest {
         mVersionedTfLauncher.setDeviceInfos(deviceInfos);
         EasyMock.expect(mMockBuildInfo.getRootDir()).andReturn(new File(""));
         EasyMock.expect(mMockBuildInfo.getBuildId()).andReturn("FAKEID").times(2);
+        EasyMock.expect(mMockBuildInfo.getFile("general-tests.zip"))
+                .andReturn(new File(ADDITIONAL_TEST_ZIP));
         EasyMock.expect(mMockTestDevice.getIDevice()).andReturn(mMockIDevice).times(1);
         EasyMock.expect(mMockTestDevice.getSerialNumber()).andReturn(FAKE_SERIAL).times(1);
         mMockListener.testLog((String)EasyMock.anyObject(), (LogDataType)EasyMock.anyObject(),
@@ -140,9 +151,10 @@ public class VersionedTfLauncherTest {
                 EasyMock.eq(Collections.<String, String>emptyMap()));
         mMockListener.testRunEnded(0, Collections.emptyMap());
 
-        EasyMock.replay(mMockTestDevice, mMockBuildInfo, mMockRunUtil, mMockListener);
+        EasyMock.expect(mMockConfig.getCommandOptions()).andReturn(new CommandOptions());
+        EasyMock.replay(mMockTestDevice, mMockBuildInfo, mMockRunUtil, mMockListener, mMockConfig);
         mVersionedTfLauncher.run(mMockListener);
-        EasyMock.verify(mMockTestDevice, mMockBuildInfo, mMockRunUtil, mMockListener);
+        EasyMock.verify(mMockTestDevice, mMockBuildInfo, mMockRunUtil, mMockListener, mMockConfig);
     }
 
     /**
@@ -182,6 +194,7 @@ public class VersionedTfLauncherTest {
         mVersionedTfLauncher.setDeviceInfos(deviceInfos);
         EasyMock.expect(mMockBuildInfo.getRootDir()).andReturn(new File(""));
         EasyMock.expect(mMockBuildInfo.getBuildId()).andReturn("FAKEID").times(2);
+        EasyMock.expect(mMockBuildInfo.getFile("general-tests.zip")).andReturn(null);
         EasyMock.expect(mMockTestDevice.getIDevice()).andReturn(mMockIDevice).times(1);
         mMockListener.testLog((String)EasyMock.anyObject(), (LogDataType)EasyMock.anyObject(),
                 (FileInputStreamSource)EasyMock.anyObject());
@@ -192,9 +205,10 @@ public class VersionedTfLauncherTest {
                 EasyMock.eq(Collections.<String, String>emptyMap()));
         mMockListener.testRunEnded(0, Collections.emptyMap());
 
-        EasyMock.replay(mMockTestDevice, mMockBuildInfo, mMockRunUtil, mMockListener);
+        EasyMock.expect(mMockConfig.getCommandOptions()).andReturn(new CommandOptions());
+        EasyMock.replay(mMockTestDevice, mMockBuildInfo, mMockRunUtil, mMockListener, mMockConfig);
         mVersionedTfLauncher.run(mMockListener);
-        EasyMock.verify(mMockTestDevice, mMockBuildInfo, mMockRunUtil, mMockListener);
+        EasyMock.verify(mMockTestDevice, mMockBuildInfo, mMockRunUtil, mMockListener, mMockConfig);
     }
 
     /**
@@ -211,6 +225,7 @@ public class VersionedTfLauncherTest {
         shardedTest.setRunUtil(mMockRunUtil);
         shardedTest.setBuild(mMockBuildInfo);
         shardedTest.setEventStreaming(false);
+        shardedTest.setConfiguration(mMockConfig);
 
         mMockIDevice = EasyMock.createMock(IDevice.class);
 
@@ -249,6 +264,7 @@ public class VersionedTfLauncherTest {
         shardedTest.setDeviceInfos(deviceInfos);
         EasyMock.expect(mMockBuildInfo.getRootDir()).andReturn(new File(""));
         EasyMock.expect(mMockBuildInfo.getBuildId()).andReturn("FAKEID").times(2);
+        EasyMock.expect(mMockBuildInfo.getFile("general-tests.zip")).andReturn(null);
         EasyMock.expect(mMockTestDevice.getIDevice()).andReturn(mMockIDevice).times(1);
         EasyMock.expect(mMockTestDevice.getSerialNumber()).andReturn(FAKE_SERIAL).times(1);
         mMockListener.testLog(
@@ -262,9 +278,9 @@ public class VersionedTfLauncherTest {
                 (TestIdentifier) EasyMock.anyObject(),
                 EasyMock.eq(Collections.<String, String>emptyMap()));
         mMockListener.testRunEnded(0, Collections.emptyMap());
-
-        EasyMock.replay(mMockTestDevice, mMockBuildInfo, mMockRunUtil, mMockListener);
+        EasyMock.expect(mMockConfig.getCommandOptions()).andReturn(new CommandOptions());
+        EasyMock.replay(mMockTestDevice, mMockBuildInfo, mMockRunUtil, mMockListener, mMockConfig);
         shardedTest.run(mMockListener);
-        EasyMock.verify(mMockTestDevice, mMockBuildInfo, mMockRunUtil, mMockListener);
+        EasyMock.verify(mMockTestDevice, mMockBuildInfo, mMockRunUtil, mMockListener, mMockConfig);
     }
 }

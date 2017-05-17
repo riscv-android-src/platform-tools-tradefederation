@@ -21,6 +21,7 @@ import com.android.tradefed.config.Option.Importance;
 import com.android.tradefed.config.OptionCopier;
 import com.android.tradefed.config.OptionUpdateRule;
 import com.android.tradefed.log.LogUtil.CLog;
+import com.android.tradefed.util.UniqueMultiMap;
 
 /**
  * Implementation of {@link ICommandOptions}.
@@ -120,7 +121,21 @@ public class CommandOptions implements ICommandOptions {
                 "Allow to dynamically move IRemoteTest from one shard to another. Only for local "
                         + "sharding."
     )
-    private boolean mDynamicSharding = false;
+    private boolean mDynamicSharding = true;
+
+    @Option(
+        name = "invocation-data",
+        description =
+                "A map of values that describe the invocation, these values will be added to the "
+                        + "invocation context."
+    )
+    private UniqueMultiMap<String, String> mInvocationData = new UniqueMultiMap<>();
+
+    @Option(
+        name = "disable-strict-sharding",
+        description = "Temporary option to disable the new sharding logic while being tested."
+    )
+    private boolean mUseTfSharding = false;
 
     /**
      * Set the help mode for the config.
@@ -360,5 +375,17 @@ public class CommandOptions implements ICommandOptions {
     @Override
     public boolean shouldUseDynamicSharding() {
         return mDynamicSharding;
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public UniqueMultiMap<String, String> getInvocationData() {
+        return mInvocationData;
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public boolean shouldUseTfSharding() {
+        return mUseTfSharding;
     }
 }

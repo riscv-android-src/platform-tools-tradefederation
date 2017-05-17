@@ -18,7 +18,10 @@ LOCAL_ERROR_PRONE_FLAGS:= -XDandroidCompatible=false \
                           -Xep:ArrayToString:ERROR \
                           -Xep:BoxedPrimitiveConstructor:ERROR \
                           -Xep:ConstantField:ERROR \
+                          -Xep:EqualsIncompatibleType:ERROR \
                           -Xep:FormatString:ERROR \
+                          -Xep:GetClassOnClass:ERROR \
+                          -Xep:JUnit3TestNotRun:ERROR \
                           -Xep:JUnitAmbiguousTestClass:ERROR \
                           -Xep:MissingFail:ERROR \
                           -Xep:MissingOverride:ERROR \
@@ -28,5 +31,6 @@ LOCAL_ERROR_PRONE_FLAGS:= -XDandroidCompatible=false \
                           -Xep:RemoveUnusedImports:ERROR \
                           -Xep:ReturnValueIgnored:ERROR \
                           -Xep:SelfEquals:ERROR \
-                          -Xep:SizeGreaterThanOrEqualsZero:ERROR
+                          -Xep:SizeGreaterThanOrEqualsZero:ERROR \
+                          -Xep:TryFailThrowable:ERROR
 
