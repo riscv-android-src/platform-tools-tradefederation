@@ -99,17 +99,22 @@ public class TestAppInstallSetup implements ITargetCleaner, IAbiReceiver {
         mTestFileNames.add(fileName);
     }
 
+    /** Returns a copy of the list of specified test apk names. */
+    public List<String> getTestsFileName() {
+        return new ArrayList<String>(mTestFileNames);
+    }
+
     /**
      * Resolve the actual apk path based on testing artifact information inside build info.
      *
      * @param buildInfo build artifact information
      * @param apkFileName filename of the apk to install
      * @param device the {@link ITestDevice} being prepared
-     * @return a {@link File} representing the physical apk file on host or {@code null} if the
-     *     file does not exist.
+     * @return a {@link File} representing the physical apk file on host or {@code null} if the file
+     *     does not exist.
      */
-    protected File getLocalPathForFilename(IBuildInfo buildInfo, String apkFileName,
-            ITestDevice device) throws TargetSetupError {
+    protected File getLocalPathForFilename(
+            IBuildInfo buildInfo, String apkFileName, ITestDevice device) throws TargetSetupError {
         try {
             return BuildTestsZipUtils.getApkFile(buildInfo, apkFileName, mAltDirs, mAltDirBehavior,
                     false /* use resource as fallback */,
