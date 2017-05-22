@@ -66,9 +66,9 @@ public class ModuleListener extends CollectingTestListener {
 
     /** {@inheritDoc} */
     @Override
-    public void testStarted(TestIdentifier test) {
-        CLog.logAndDisplay(LogLevel.INFO, "ModuleListener.testStarted(%s)", test.toString());
-        super.testStarted(test);
+    public void testStarted(TestIdentifier test, long startTime) {
+        CLog.d("ModuleListener.testStarted(%s)", test.toString());
+        super.testStarted(test, startTime);
     }
 
     /** {@inheritDoc} */

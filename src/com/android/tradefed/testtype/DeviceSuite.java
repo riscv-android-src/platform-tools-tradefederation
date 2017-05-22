@@ -67,6 +67,11 @@ public class DeviceSuite extends Suite implements IDeviceTest, IBuildReceiver, I
     }
 
     @Override
+    public IAbi getAbi() {
+        return mAbi;
+    }
+
+    @Override
     public void setBuild(IBuildInfo buildInfo) {
         mBuildInfo = buildInfo;
         for (Runner r : getChildren()) {

@@ -76,6 +76,11 @@ public class DeviceJUnit4ClassRunner extends BlockJUnit4ClassRunner implements I
     }
 
     @Override
+    public IAbi getAbi() {
+        return mAbi;
+    }
+
+    @Override
     public void setBuild(IBuildInfo buildInfo) {
         mBuildInfo = buildInfo;
     }

@@ -155,6 +155,12 @@ public class HostTest
         mAbi = abi;
     }
 
+    /** {@inheritDoc} */
+    @Override
+    public IAbi getAbi() {
+        return mAbi;
+    }
+
     /**
      * {@inheritDoc}
      */
@@ -682,6 +688,8 @@ public class HostTest
         if (classObj != null) {
             test.setClassName(classObj.getName());
         }
+        // Copy the abi if available
+        test.setAbi(mAbi);
         return test;
     }
 
