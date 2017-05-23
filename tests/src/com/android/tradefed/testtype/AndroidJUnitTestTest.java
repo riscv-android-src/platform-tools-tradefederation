@@ -321,6 +321,7 @@ public class AndroidJUnitTestTest extends TestCase {
      * Test that {@link AndroidJUnitTest#split()} returns 3 shards when requested to do so.
      */
     public void testSplit_threeShards() throws Exception {
+        mAndroidJUnitTest = new AndroidJUnitTest();
         assertEquals(AndroidJUnitTest.AJUR, mAndroidJUnitTest.getRunnerName());
         OptionSetter setter = new OptionSetter(mAndroidJUnitTest);
         setter.setOptionValue("runtime-hint", "60s");

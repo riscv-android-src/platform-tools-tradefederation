@@ -24,12 +24,16 @@ import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.invoker.IInvocationContext;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.result.ITestInvocationListener;
+import com.android.tradefed.suite.checker.ISystemStatusChecker;
+import com.android.tradefed.suite.checker.ISystemStatusCheckerReceiver;
 import com.android.tradefed.testtype.IBuildReceiver;
 import com.android.tradefed.testtype.IDeviceTest;
 import com.android.tradefed.testtype.IInvocationContextReceiver;
 import com.android.tradefed.testtype.IMultiDeviceTest;
 import com.android.tradefed.testtype.IRemoteTest;
+import com.android.tradefed.testtype.ITestCollector;
 
+import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 
@@ -45,22 +49,26 @@ public class TestsPoolPoller
                 IDeviceTest,
                 IBuildReceiver,
                 IMultiDeviceTest,
-                IInvocationContextReceiver {
+                IInvocationContextReceiver,
+                ISystemStatusCheckerReceiver,
+                ITestCollector {
 
-    private List<IRemoteTest> mGenericPool;
+    private Collection<IRemoteTest> mGenericPool;
 
     private ITestDevice mDevice;
     private IBuildInfo mBuildInfo;
     private IInvocationContext mContext;
     private Map<ITestDevice, IBuildInfo> mDeviceInfos;
     private IConfiguration mConfig;
+    private List<ISystemStatusChecker> mSystemStatusCheckers;
+    private boolean mShouldCollectTest = false;
 
     /**
      * Ctor where the pool of {@link IRemoteTest} is provided.
      *
      * @param tests {@link IRemoteTest}s pool of all tests.
      */
-    public TestsPoolPoller(List<IRemoteTest> tests) {
+    public TestsPoolPoller(Collection<IRemoteTest> tests) {
         mGenericPool = tests;
     }
 
@@ -70,7 +78,8 @@ public class TestsPoolPoller
             if (mGenericPool.isEmpty()) {
                 return null;
             }
-            IRemoteTest test = mGenericPool.remove(0);
+            IRemoteTest test = mGenericPool.iterator().next();
+            mGenericPool.remove(test);
             return test;
         }
     }
@@ -97,6 +106,12 @@ public class TestsPoolPoller
             }
             if (test instanceof IMultiDeviceTest) {
                 ((IMultiDeviceTest) test).setDeviceInfos(mDeviceInfos);
+            }
+            if (test instanceof ISystemStatusCheckerReceiver) {
+                ((ISystemStatusCheckerReceiver) test).setSystemStatusChecker(mSystemStatusCheckers);
+            }
+            if (test instanceof ITestCollector) {
+                ((ITestCollector) test).setCollectTestsOnly(mShouldCollectTest);
             }
             // Run the test itself and prevent random exception from stopping the poller.
             try {
@@ -156,5 +171,15 @@ public class TestsPoolPoller
     @Override
     public void setConfiguration(IConfiguration configuration) {
         mConfig = configuration;
+    }
+
+    @Override
+    public void setSystemStatusChecker(List<ISystemStatusChecker> systemCheckers) {
+        mSystemStatusCheckers = systemCheckers;
+    }
+
+    @Override
+    public void setCollectTestsOnly(boolean shouldCollectTest) {
+        mShouldCollectTest = shouldCollectTest;
     }
 }
