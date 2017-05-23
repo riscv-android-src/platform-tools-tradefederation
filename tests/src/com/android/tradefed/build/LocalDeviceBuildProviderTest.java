@@ -36,9 +36,10 @@ import java.io.File;
  */
 public class LocalDeviceBuildProviderTest {
 
-    private static final String ANDROID_INFO = "require board=bullhead\n" +
-        "require version-bootloader=BHZ11h\n" +
-        "require version-baseband=M8994F-2.6.36.2.20";
+    private static final String ANDROID_INFO =
+            "require board=board\n"
+                    + "require version-bootloader=BHZ11h\n"
+                    + "require version-baseband=M8994F-2.6.36.2.20";
     private static final String BOOT_IMG = "boot_img";
     private static final String RADIO_IMG = "radio_img";
     private static final String BOOTLOADER_IMG = "bootloader_img";
@@ -157,7 +158,7 @@ public class LocalDeviceBuildProviderTest {
     @Test
     public void testSetDeviceImageFile() throws Exception {
         DeviceBuildInfo buildInfo = new DeviceBuildInfo();
-        File buildImageZip = new File(mBuildDir, "bullhead-img-12345.zip");
+        File buildImageZip = new File(mBuildDir, "board-img-12345.zip");
         FileUtil.writeToFile("build_image", buildImageZip);
         mLocalDeviceBuildProvider.setDeviceImageFile(buildInfo);
         assertEquals(buildImageZip, buildInfo.getDeviceImageFile());

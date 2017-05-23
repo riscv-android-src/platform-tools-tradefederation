@@ -1070,6 +1070,11 @@ public class InstrumentationTest implements IDeviceTest, IResumableTest, ITestCo
         mAbi = abi;
     }
 
+    @Override
+    public IAbi getAbi() {
+        return mAbi;
+    }
+
     /** Set True if we enforce the AJUR output format of instrumentation. */
     public void setEnforceFormat(boolean enforce) {
         mShouldEnforceFormat = enforce;

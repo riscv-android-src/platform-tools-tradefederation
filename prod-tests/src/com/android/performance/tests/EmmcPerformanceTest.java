@@ -71,6 +71,15 @@ public class EmmcPerformanceTest implements IDeviceTest, IRemoteTest {
     @Option(name = "cpufreq", description = "The path to the cpufreq directory on the DUT.")
     private String mCpufreq = "/sys/devices/system/cpu/cpu0/cpufreq";
 
+    @Option(name = "auto-discover-cache-info",
+            description =
+                    "Indicate if test should attempt auto discover cache path and partition size "
+                            + "from the test device. Default to be false, ie. manually set "
+                            + "cache-device and cache-partition-size, or use default."
+                            + " If fail to discover, it will fallback to what is set in "
+                            + "cache-device")
+    private boolean mAutoDiscoverCacheInfo = false;
+
     @Option(name = "cache-device", description = "The path to the cache block device on the DUT." +
             "  Nakasi: /dev/block/platform/sdhci-tegra.3/by-name/CAC\n" +
             "  Prime: /dev/block/platform/omap/omap_hsmmc.0/by-name/cache\n" +
@@ -355,6 +364,51 @@ public class EmmcPerformanceTest implements IDeviceTest, IRemoteTest {
                 mSimpleperfArgu.add("-e cpu-cycles:k,cpu-cycles:u");
             }
             mSpUtil.setArgumentList(mSimpleperfArgu);
+        }
+
+        if (mAutoDiscoverCacheInfo) {
+            // Attempt to detect cache path automatically
+            // Expected output look similar to the following:
+            //
+            // > ... vdc dump | grep cache
+            // 0 4123 /dev/block/platform/soc/7824900.sdhci/by-name/cache /cache ext4 rw, \
+            // seclabel,nosuid,nodev,noatime,discard,data=ordered 0 0
+            if (mTestDevice.enableAdbRoot()) {
+                String output = mTestDevice.executeShellCommand("vdc dump | grep cache");
+                CLog.d("Output from shell command 'vdc dump | grep cache': %s", output);
+                String[] segments = output.split(" ");
+                if (segments.length >= 3) {
+                    mCache = segments[2];
+                } else {
+                    CLog.w("Fail to detect cache path. Fall back to use '%s'", mCache);
+                }
+            } else {
+                CLog.d("Cannot get cache path because device %s is not rooted.",
+                        mTestDevice.getSerialNumber());
+            }
+
+            // Attempt to detect cache partition size automatically
+            // Expected output looks similar to the following:
+            //
+            // > ... df cache
+            // Filesystem            1K-blocks Used Available Use% Mounted on
+            // /dev/block/mmcblk0p34     60400   56     60344   1% /cache
+            String output = mTestDevice.executeShellCommand("df cache");
+            CLog.d(String.format("Output from shell command 'df cache': %s", output));
+            String[] lines = output.split("\r?\n");
+            if (lines.length >= 2) {
+                String[] segments = lines[1].split(" ");
+                if (segments.length >= 2) {
+                    if (lines[0].toLowerCase().contains("1k-blocks")) {
+                        mCachePartitionSize = Integer.parseInt(segments[1]) / 1024;
+                    } else {
+                        throw new IllegalArgumentException("Unknown unit for the cache size.");
+                    }
+                }
+            }
+
+            CLog.d("cache-device is set to %s ...", mCache);
+            CLog.d("cache-partition-size is set to %d ...", mCachePartitionSize);
         }
     }
 

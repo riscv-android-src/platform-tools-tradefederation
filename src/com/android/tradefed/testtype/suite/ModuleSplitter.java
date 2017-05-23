@@ -19,11 +19,11 @@ import com.android.tradefed.config.ConfigurationException;
 import com.android.tradefed.config.IConfiguration;
 import com.android.tradefed.config.OptionCopier;
 import com.android.tradefed.targetprep.ITargetPreparer;
+import com.android.tradefed.testtype.IAbiReceiver;
 import com.android.tradefed.testtype.IRemoteTest;
 import com.android.tradefed.testtype.IShardableTest;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collection;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -88,25 +88,28 @@ public class ModuleSplitter {
             if (test instanceof IShardableTest) {
                 Collection<IRemoteTest> shardedTests = ((IShardableTest) test).split(shardCount);
                 if (shardedTests == null) {
+                    List<IRemoteTest> testList = new ArrayList<>();
+                    testList.add(test);
                     // test did not shard
                     ModuleDefinition module =
-                            new ModuleDefinition(
-                                    moduleName, Arrays.asList(test), clonePreparers(config));
+                            new ModuleDefinition(moduleName, testList, clonePreparers(config));
                     currentList.add(module);
                 } else {
-                    // Test did shard we put one shard per ModuleDefinition
-                    for (IRemoteTest shard : shardedTests) {
+                    // Test did shard we put the shard pool in ModuleDefinition which has a polling
+                    // behavior on the pool.
+                    for (int i = 0; i < shardCount; i++) {
                         ModuleDefinition module =
                                 new ModuleDefinition(
-                                        moduleName, Arrays.asList(shard), clonePreparers(config));
+                                        moduleName, shardedTests, clonePreparers(config));
                         currentList.add(module);
                     }
                 }
             } else {
+                List<IRemoteTest> testList = new ArrayList<>();
+                testList.add(test);
                 // test is not shardable
                 ModuleDefinition module =
-                        new ModuleDefinition(
-                                moduleName, Arrays.asList(test), clonePreparers(config));
+                        new ModuleDefinition(moduleName, testList, clonePreparers(config));
                 currentList.add(module);
             }
         }
@@ -134,6 +137,10 @@ public class ModuleSplitter {
             try {
                 ITargetPreparer clone = prep.getClass().newInstance();
                 OptionCopier.copyOptions(prep, clone);
+                // Ensure we copy the Abi too.
+                if (clone instanceof IAbiReceiver) {
+                    ((IAbiReceiver) clone).setAbi(((IAbiReceiver) prep).getAbi());
+                }
                 clones.add(clone);
             } catch (InstantiationException | IllegalAccessException | ConfigurationException e) {
                 throw new RuntimeException(e);

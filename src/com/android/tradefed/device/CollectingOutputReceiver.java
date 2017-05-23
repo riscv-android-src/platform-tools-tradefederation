@@ -71,4 +71,9 @@ public class CollectingOutputReceiver implements IShellOutputReceiver {
     public void flush() {
         // ignore
     }
+
+    /** Clear the content of the buffer. */
+    public void clearBuffer() {
+        mOutputBuffer.setLength(0);
+    }
 }

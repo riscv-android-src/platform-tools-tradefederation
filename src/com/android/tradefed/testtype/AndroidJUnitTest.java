@@ -365,7 +365,13 @@ public class AndroidJUnitTest extends InstrumentationTest implements IRuntimeHin
      */
     @Override
     public IRemoteTest getTestShard(int shardCount, int shardIndex) {
-        AndroidJUnitTest shard = new AndroidJUnitTest();
+        AndroidJUnitTest shard;
+        // ensure we handle runners that extend AndroidJUnitRunner
+        try {
+            shard = this.getClass().newInstance();
+        } catch (InstantiationException | IllegalAccessException e) {
+            throw new RuntimeException(e);
+        }
         try {
             OptionCopier.copyOptions(this, shard);
         } catch (ConfigurationException e) {
@@ -374,6 +380,7 @@ public class AndroidJUnitTest extends InstrumentationTest implements IRuntimeHin
         shard.mShardIndex = shardIndex;
         shard.mTotalShards = shardCount;
         shard.mIsSharded = true;
+        shard.setAbi(getAbi());
         // We approximate the runtime of each shard to be equal since we can't know.
         shard.mRuntimeHint = mRuntimeHint / shardCount;
         return shard;

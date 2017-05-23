@@ -141,6 +141,11 @@ public class TestSuiteStub
     }
 
     @Override
+    public IAbi getAbi() {
+        return null;
+    }
+
+    @Override
     public long getRuntimeHint() {
         return 1L;
     }

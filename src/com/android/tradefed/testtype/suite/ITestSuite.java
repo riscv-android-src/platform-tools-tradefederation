@@ -188,17 +188,25 @@ public abstract class ITestSuite
                         mRebootOnFailure,
                         mMaxLogcatBytes);
 
-        CLog.logAndDisplay(
-                LogLevel.INFO,
-                "%s running %s modules: %s",
-                mDevice.getSerialNumber(),
-                runModules.size(),
-                runModules);
+        // Only print the running log if we are going to run something.
+        if (runModules.get(0).hasTests()) {
+            CLog.logAndDisplay(
+                    LogLevel.INFO,
+                    "%s running %s modules: %s",
+                    mDevice.getSerialNumber(),
+                    runModules.size(),
+                    runModules);
+        }
 
         /** Run all the module, make sure to reduce the list to release resources as we go. */
         try {
             while (!runModules.isEmpty()) {
                 ModuleDefinition module = runModules.remove(0);
+                // Before running the module we ensure it has tests at this point or skip completely
+                // to avoid running SystemCheckers and preparation for nothing.
+                if (module.hasTests()) {
+                    continue;
+                }
                 runSingleModule(module, listener, failureListener);
             }
         } catch (DeviceNotAvailableException e) {
@@ -331,6 +339,7 @@ public abstract class ITestSuite
             CLog.i("No config were loaded. Nothing to run.");
             return null;
         }
+        injectInfo(runConfig);
 
         List<ModuleDefinition> splitModules =
                 ModuleSplitter.splitConfiguration(runConfig, shardCountHint);
@@ -350,8 +359,23 @@ public abstract class ITestSuite
     }
 
     /**
-     * {@inheritDoc}
+     * Inject {@link ITestDevice} and {@link IBuildInfo} to the {@link IRemoteTest}s in the config
+     * before sharding since they may be needed.
      */
+    private void injectInfo(LinkedHashMap<String, IConfiguration> runConfig) {
+        for (IConfiguration config : runConfig.values()) {
+            for (IRemoteTest test : config.getTests()) {
+                if (test instanceof IBuildReceiver) {
+                    ((IBuildReceiver) test).setBuild(mBuildInfo);
+                }
+                if (test instanceof IDeviceTest) {
+                    ((IDeviceTest) test).setDevice(mDevice);
+                }
+            }
+        }
+    }
+
+    /** {@inheritDoc} */
     @Override
     public void setDevice(ITestDevice device) {
         mDevice = device;

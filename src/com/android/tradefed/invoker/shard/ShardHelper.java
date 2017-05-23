@@ -26,12 +26,15 @@ import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.result.IShardableListener;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.suite.checker.ISystemStatusChecker;
+import com.android.tradefed.testtype.IBuildReceiver;
+import com.android.tradefed.testtype.IDeviceTest;
 import com.android.tradefed.testtype.IRemoteTest;
 import com.android.tradefed.testtype.IShardableTest;
 import com.android.tradefed.util.QuotationAwareTokenizer;
 
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.List;
 
 /** Helper class that handles creating the shards and scheduling them for an invocation. */
@@ -58,7 +61,7 @@ public class ShardHelper implements IShardHelper {
         boolean isSharded = false;
         Integer shardCount = config.getCommandOptions().getShardCount();
         for (IRemoteTest test : config.getTests()) {
-            isSharded |= shardTest(shardableTests, test, shardCount);
+            isSharded |= shardTest(shardableTests, test, shardCount, context);
         }
         if (!isSharded) {
             return false;
@@ -67,11 +70,13 @@ public class ShardHelper implements IShardHelper {
         // create the TestInvocationListener that will collect results from all the shards,
         // and forward them to the original set of listeners (minus any ISharddableListeners)
         // once all shards complete
+        int expectedShard = shardableTests.size();
+        if (shardCount != null) {
+            expectedShard = Math.min(shardCount, shardableTests.size());
+        }
         ShardMasterResultForwarder resultCollector =
                 new ShardMasterResultForwarder(
-                        config.getLogSaver(),
-                        buildMasterShardListeners(config),
-                        shardableTests.size());
+                        config.getLogSaver(), buildMasterShardListeners(config), expectedShard);
 
         resultCollector.invocationStarted(context);
         synchronized (shardableTests) {
@@ -79,6 +84,9 @@ public class ShardHelper implements IShardHelper {
             // TODO: consider aggregating both case by picking a predefined shardCount if not
             // available (like 4) for autosharding.
             if (shardCount != null) {
+                // We shuffle the tests for best results: avoid having the same module sub-tests
+                // contiguously in the list.
+                Collections.shuffle(shardableTests);
                 int maxShard = Math.min(shardCount, shardableTests.size());
                 for (int i = 0; i < maxShard; i++) {
                     IConfiguration shardConfig = config.clone();
@@ -147,12 +155,23 @@ public class ShardHelper implements IShardHelper {
      * @param shardableTests the list of {@link IRemoteTest}s to add to
      * @param test the {@link IRemoteTest} to shard
      * @param shardCount attempted number of shard, can be null.
+     * @param context the {@link IInvocationContext} of the current invocation.
      * @return <code>true</code> if test was sharded
      */
     private static boolean shardTest(
-            List<IRemoteTest> shardableTests, IRemoteTest test, Integer shardCount) {
+            List<IRemoteTest> shardableTests,
+            IRemoteTest test,
+            Integer shardCount,
+            IInvocationContext context) {
         boolean isSharded = false;
         if (test instanceof IShardableTest) {
+            // inject device and build since they might be required to shard.
+            if (test instanceof IBuildReceiver) {
+                ((IBuildReceiver) test).setBuild(context.getBuildInfos().get(0));
+            }
+            if (test instanceof IDeviceTest) {
+                ((IDeviceTest) test).setDevice(context.getDevices().get(0));
+            }
             IShardableTest shardableTest = (IShardableTest) test;
             Collection<IRemoteTest> shards = null;
             // Give the shardCount hint to tests if they need it.
