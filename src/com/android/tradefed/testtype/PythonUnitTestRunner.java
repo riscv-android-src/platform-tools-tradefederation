@@ -70,9 +70,18 @@ public class PythonUnitTestRunner implements IRemoteTest, IBuildReceiver {
 
     private String mPythonPath;
     private IBuildInfo mBuildInfo;
+    private IRunUtil mRunUtil;
 
     private static final String PYTHONPATH = "PYTHONPATH";
     private static final String VERSION_REGEX = "(?:(\\d+)\\.)?(?:(\\d+)\\.)?(\\*|\\d+)$";
+
+    /** Returns an {@link IRunUtil} that runs the unittest */
+    protected IRunUtil getRunUtil() {
+        if (mRunUtil == null) {
+            mRunUtil = new RunUtil();
+        }
+        return mRunUtil;
+    }
 
     @Override
     public void run(ITestInvocationListener listener) throws DeviceNotAvailableException {
@@ -80,7 +89,7 @@ public class PythonUnitTestRunner implements IRemoteTest, IBuildReceiver {
         if (mPythonBin == null) {
             mPythonBin = getPythonBinary();
         }
-        IRunUtil runUtil = new RunUtil();
+        IRunUtil runUtil = getRunUtil();
         runUtil.setEnvVariable(PYTHONPATH, mPythonPath);
         for (String module : mTests) {
             doRunTest(listener, runUtil, module);
@@ -90,6 +99,11 @@ public class PythonUnitTestRunner implements IRemoteTest, IBuildReceiver {
     @Override
     public void setBuild(IBuildInfo buildInfo) {
         mBuildInfo = buildInfo;
+    }
+
+    /** Returns the {@link IBuildInfo} for this invocation. */
+    protected IBuildInfo getBuild() {
+        return mBuildInfo;
     }
 
     String getMinPythonVersion() {
@@ -125,9 +139,9 @@ public class PythonUnitTestRunner implements IRemoteTest, IBuildReceiver {
             sb.append(":");
             sb.append(pathdir.getAbsolutePath());
         }
-        if (mBuildInfo.getFile(PYTHONPATH) != null) {
+        if (getBuild().getFile(PYTHONPATH) != null) {
             sb.append(":");
-            sb.append(mBuildInfo.getFile(PYTHONPATH).getAbsolutePath());
+            sb.append(getBuild().getFile(PYTHONPATH).getAbsolutePath());
         }
         mPythonPath = sb.toString();
     }
