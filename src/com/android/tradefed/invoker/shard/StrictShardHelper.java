@@ -19,9 +19,12 @@ import com.android.tradefed.config.IConfiguration;
 import com.android.tradefed.invoker.IInvocationContext;
 import com.android.tradefed.invoker.IRescheduler;
 import com.android.tradefed.log.LogUtil.CLog;
+import com.android.tradefed.testtype.IBuildReceiver;
+import com.android.tradefed.testtype.IDeviceTest;
 import com.android.tradefed.testtype.IRemoteTest;
 import com.android.tradefed.testtype.IShardableTest;
 import com.android.tradefed.testtype.IStrictShardableTest;
+import com.android.tradefed.testtype.suite.ITestSuite;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -48,7 +51,7 @@ public class StrictShardHelper extends ShardHelper {
             // TODO: remove when IStrictShardableTest is removed.
             updateConfigIfSharded(config, shardCount, shardIndex);
         } else {
-            List<IRemoteTest> listAllTests = getAllTests(config, shardCount);
+            List<IRemoteTest> listAllTests = getAllTests(config, shardCount, context);
             config.setTests(splitTests(listAllTests, shardCount, shardIndex));
         }
         return false;
@@ -79,12 +82,27 @@ public class StrictShardHelper extends ShardHelper {
      *
      * @param config the {@link IConfiguration} describing the invocation.
      * @param shardCount the shard count hint to be provided to some tests.
+     * @param context the {@link IInvocationContext} of the parent invocation.
      * @return the list of all {@link IRemoteTest}.
      */
-    private List<IRemoteTest> getAllTests(IConfiguration config, Integer shardCount) {
+    private List<IRemoteTest> getAllTests(
+            IConfiguration config, Integer shardCount, IInvocationContext context) {
         List<IRemoteTest> allTests = new ArrayList<>();
         for (IRemoteTest test : config.getTests()) {
             if (test instanceof IShardableTest) {
+                // Inject current information to help with sharding
+                if (test instanceof IBuildReceiver) {
+                    ((IBuildReceiver) test).setBuild(context.getBuildInfos().get(0));
+                }
+                if (test instanceof IDeviceTest) {
+                    ((IDeviceTest) test).setDevice(context.getDevices().get(0));
+                }
+                // Handling of the ITestSuite is a special case, we do not allow pool of tests
+                // since each shard needs to be independent.
+                if (test instanceof ITestSuite) {
+                    ((ITestSuite) test).setShouldMakeDynamicModule(false);
+                }
+
                 Collection<IRemoteTest> subTests = ((IShardableTest) test).split(shardCount);
                 if (subTests == null) {
                     // test did not shard so we add it as is.

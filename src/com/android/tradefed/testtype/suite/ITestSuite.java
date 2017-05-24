@@ -113,6 +113,7 @@ public abstract class ITestSuite
     // Sharding attributes
     private boolean mIsSharded = false;
     private ModuleDefinition mDirectModule = null;
+    private boolean mShouldMakeDynamicModule = true;
 
     /**
      * Abstract method to load the tests configuration that will be run. Each tests is defined by a
@@ -342,7 +343,8 @@ public abstract class ITestSuite
         injectInfo(runConfig);
 
         List<ModuleDefinition> splitModules =
-                ModuleSplitter.splitConfiguration(runConfig, shardCountHint);
+                ModuleSplitter.splitConfiguration(
+                        runConfig, shardCountHint, mShouldMakeDynamicModule);
         runConfig.clear();
         runConfig = null;
         // create an association of one ITestSuite <=> one ModuleDefinition as the smallest
@@ -419,5 +421,13 @@ public abstract class ITestSuite
     @Override
     public void setCollectTestsOnly(boolean shouldCollectTest) {
         mCollectTestsOnly = shouldCollectTest;
+    }
+
+    /**
+     * When doing distributed sharding, we cannot have ModuleDefinition that shares tests in a pool
+     * otherwise intra-module sharding will not work, so we allow to disable it.
+     */
+    public void setShouldMakeDynamicModule(boolean dynamicModule) {
+        mShouldMakeDynamicModule = dynamicModule;
     }
 }
