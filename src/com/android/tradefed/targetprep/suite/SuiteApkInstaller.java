@@ -75,7 +75,10 @@ public class SuiteApkInstaller extends TestAppInstallSetup {
     private File getApkFromBuildTestsDir(IBuildInfo buildInfo, String apkFileName) {
         if (buildInfo instanceof IDeviceBuildInfo) {
             IDeviceBuildInfo deviceBuildInfo = (IDeviceBuildInfo) buildInfo;
-            return FileUtil.findFile(deviceBuildInfo.getTestsDir(), apkFileName);
+            File testDir = deviceBuildInfo.getTestsDir();
+            if (testDir != null && testDir.isDirectory()) {
+                return FileUtil.findFile(testDir, apkFileName);
+            }
         }
         return null;
     }
