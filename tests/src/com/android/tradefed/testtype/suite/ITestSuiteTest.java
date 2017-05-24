@@ -165,7 +165,7 @@ public class ITestSuiteTest {
         TestIdentifier test = new TestIdentifier(EMPTY_CONFIG, EMPTY_CONFIG);
         listener.testStarted(test, 0);
         listener.testEnded(test, 5, Collections.emptyMap());
-        listener.testRunEnded(0, Collections.emptyMap());
+        listener.testRunEnded(EasyMock.anyLong(), EasyMock.anyObject());
     }
 
     /** Test for {@link ITestSuite#run(ITestInvocationListener)}. */
@@ -298,7 +298,7 @@ public class ITestSuiteTest {
         mMockListener.testRunStarted(TEST_CONFIG_NAME, 1);
         EasyMock.expectLastCall().times(1);
         mMockListener.testRunFailed("Module test only ran 0 out of 1 expected tests.");
-        mMockListener.testRunEnded(0, Collections.emptyMap());
+        mMockListener.testRunEnded(EasyMock.anyLong(), EasyMock.anyObject());
         EasyMock.expectLastCall().times(1);
         replayMocks();
         mTestSuite.run(mMockListener);
@@ -339,7 +339,7 @@ public class ITestSuiteTest {
         mMockListener.testRunStarted(TEST_CONFIG_NAME, 1);
         EasyMock.expectLastCall().times(1);
         mMockListener.testRunFailed("Module test only ran 0 out of 1 expected tests.");
-        mMockListener.testRunEnded(0, Collections.emptyMap());
+        mMockListener.testRunEnded(EasyMock.anyLong(), EasyMock.anyObject());
         EasyMock.expectLastCall().times(1);
         replayMocks();
         mTestSuite.run(mMockListener);
