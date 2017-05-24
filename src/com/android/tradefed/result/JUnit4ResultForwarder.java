@@ -68,6 +68,10 @@ public class JUnit4ResultForwarder extends RunListener {
     public void testIgnored(Description description) throws Exception {
         TestIdentifier testid = new TestIdentifier(description.getClassName(),
                 description.getMethodName());
+        // We complete the event life cycle since JUnit4 fireIgnored is not within fireTestStarted
+        // and fireTestEnded.
+        mListener.testStarted(testid);
         mListener.testIgnored(testid);
+        mListener.testEnded(testid, Collections.emptyMap());
     }
 }
