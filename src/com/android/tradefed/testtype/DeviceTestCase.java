@@ -25,7 +25,6 @@ import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.util.TestFilterHelper;
 
 import junit.framework.Test;
-import junit.framework.TestCase;
 import junit.framework.TestResult;
 
 import java.lang.reflect.Method;
@@ -39,12 +38,16 @@ import java.util.Vector;
 
 /**
  * Helper JUnit test case that provides the {@link IRemoteTest} and {@link IDeviceTest} services.
- * <p/>
- * This is useful if you want to implement tests that follow the JUnit pattern of defining tests,
+ *
+ * <p>This is useful if you want to implement tests that follow the JUnit pattern of defining tests,
  * and still have full support for other tradefed features such as {@link Option}s
  */
-public class DeviceTestCase extends TestCase implements IDeviceTest, IRemoteTest, ITestCollector,
-        ITestFilterReceiver, ITestAnnotationFilterReceiver {
+public class DeviceTestCase extends MetricTestCase
+        implements IDeviceTest,
+                IRemoteTest,
+                ITestCollector,
+                ITestFilterReceiver,
+                ITestAnnotationFilterReceiver {
 
     private static final String LOG_TAG = "DeviceTestCase";
     private ITestDevice mDevice;
