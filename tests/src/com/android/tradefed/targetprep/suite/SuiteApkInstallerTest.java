@@ -103,8 +103,9 @@ public class SuiteApkInstallerTest {
      * ROOT_DIR.
      */
     @Test
-    public void testGetTestsDir() throws Exception {
+    public void testGetLocalPathForFilename_withVariable() throws Exception {
         File varDir = FileUtil.createTempDir("suite-apk-installer-var");
+        File apk = FileUtil.createTempFile("testapk", ".apk", varDir);
         try {
             mPreparer =
                     new SuiteApkInstaller() {
@@ -113,12 +114,45 @@ public class SuiteApkInstallerTest {
                             return varDir.getAbsolutePath();
                         }
                     };
-            File res = mPreparer.getTestsDir(mMockBuildInfo);
+            File res =
+                    mPreparer.getLocalPathForFilename(mMockBuildInfo, apk.getName(), mMockDevice);
             verify(mMockBuildInfo, times(0)).getBuildAttributes();
             assertNotNull(res);
-            assertEquals(varDir.getAbsolutePath(), res.getAbsolutePath());
+            assertEquals(apk.getAbsolutePath(), res.getAbsolutePath());
         } finally {
             FileUtil.recursiveDelete(varDir);
+        }
+    }
+
+    /**
+     * Tests that when $ANDROID_TARGET_OUT_TESTCASES is defined but is not a directory, we check and
+     * return ROOT_DIR instead.
+     */
+    @Test
+    public void testGetTestsDir_notDir() throws Exception {
+        File varDir = FileUtil.createTempFile("suite-apk-installer-var", ".txt");
+        File tmpDir = FileUtil.createTempDir("suite-apk-installer");
+        File apkFile = FileUtil.createTempFile("apk-test", ".apk", tmpDir);
+        try {
+            mPreparer =
+                    new SuiteApkInstaller() {
+                        @Override
+                        String getEnvVariable() {
+                            return varDir.getAbsolutePath();
+                        }
+                    };
+
+            Map<String, String> attributes = new HashMap<>();
+            attributes.put("ROOT_DIR", tmpDir.getAbsolutePath());
+            doReturn(attributes).when(mMockBuildInfo).getBuildAttributes();
+            File res =
+                    mPreparer.getLocalPathForFilename(
+                            mMockBuildInfo, apkFile.getName(), mMockDevice);
+            assertNotNull(res);
+            assertEquals(apkFile.getAbsolutePath(), res.getAbsolutePath());
+        } finally {
+            FileUtil.recursiveDelete(varDir);
+            FileUtil.recursiveDelete(tmpDir);
         }
     }
 
