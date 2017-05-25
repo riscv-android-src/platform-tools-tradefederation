@@ -16,6 +16,7 @@
 package com.android.tradefed.targetprep.suite;
 
 import com.android.tradefed.build.IBuildInfo;
+import com.android.tradefed.build.IDeviceBuildInfo;
 import com.android.tradefed.config.OptionClass;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.targetprep.TargetSetupError;
@@ -51,17 +52,35 @@ public class SuiteApkInstaller extends TestAppInstallSetup {
      */
     @VisibleForTesting
     protected File getTestsDir(IBuildInfo buildInfo) throws FileNotFoundException {
-        String testcasesPath = getEnvVariable();
-        if (testcasesPath != null) {
-            return new File(testcasesPath);
-        }
         if (buildInfo.getBuildAttributes().get(ROOT_DIR) != null) {
             return new File(buildInfo.getBuildAttributes().get(ROOT_DIR));
         }
-        throw new FileNotFoundException(
-                String.format(
-                        "$%s is undefined, and no %s was found.",
-                        ANDROID_TARGET_TESTCASES, ROOT_DIR));
+        throw new FileNotFoundException(String.format("%s was found.", ROOT_DIR));
+    }
+
+    /** Check within $ANDROID_TARGET_OUT_TESTCASES if the apk exists. */
+    private File getApkFromVariableTestsDir(String apkFileName) {
+        String testcasesPath = getEnvVariable();
+        if (testcasesPath != null) {
+            File testCasesFile = new File(testcasesPath);
+            // Only return the variable directory if it exists
+            if (testCasesFile.isDirectory()) {
+                return FileUtil.findFile(testCasesFile, apkFileName);
+            }
+        }
+        return null;
+    }
+
+    /** Check within {@link IDeviceBuildInfo#getTestsDir()} if the apk exists. */
+    private File getApkFromBuildTestsDir(IBuildInfo buildInfo, String apkFileName) {
+        if (buildInfo instanceof IDeviceBuildInfo) {
+            IDeviceBuildInfo deviceBuildInfo = (IDeviceBuildInfo) buildInfo;
+            File testDir = deviceBuildInfo.getTestsDir();
+            if (testDir != null && testDir.isDirectory()) {
+                return FileUtil.findFile(testDir, apkFileName);
+            }
+        }
+        return null;
     }
 
     /** {@inheritDoc} */
@@ -70,7 +89,19 @@ public class SuiteApkInstaller extends TestAppInstallSetup {
             IBuildInfo buildInfo, String apkFileName, ITestDevice device) throws TargetSetupError {
         File apkFile = null;
         try {
-            // use findFile because there may be a subdirectory
+            // check in ANDROID_TARGET_OUT_TESTCASES first.
+            apkFile = getApkFromVariableTestsDir(apkFileName);
+            if (apkFile != null && apkFile.isFile()) {
+                return apkFile;
+            }
+
+            // check from IDeviceBuildInfo.
+            apkFile = getApkFromBuildTestsDir(buildInfo, apkFileName);
+            if (apkFile != null && apkFile.isFile()) {
+                return apkFile;
+            }
+
+            // check ROOT_DIR
             apkFile = FileUtil.findFile(getTestsDir(buildInfo), apkFileName);
             if (apkFile == null || !apkFile.isFile()) {
                 throw new FileNotFoundException();
