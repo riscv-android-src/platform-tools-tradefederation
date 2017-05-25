@@ -21,6 +21,7 @@ import com.android.ddmlib.testrunner.TestRunResult;
 import com.android.tradefed.invoker.IInvocationContext;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.result.CollectingTestListener;
+import com.android.tradefed.testtype.suite.ModuleDefinition;
 import com.android.tradefed.util.TimeUtil;
 
 import java.util.ArrayList;
@@ -49,6 +50,14 @@ public class SuiteResultReporter extends CollectingTestListener {
 
     private Map<String, Integer> mModuleExpectedTests = new HashMap<>();
     private Map<String, String> mFailedModule = new HashMap<>();
+    // Map holding the preparation time for each Module.
+    private Map<String, ModulePrepTimes> mPreparationMap = new HashMap<>();
+
+    public SuiteResultReporter() {
+        super();
+        // force aggregate true to get full metrics.
+        setIsAggregrateMetrics(true);
+    }
 
     @Override
     public void invocationStarted(IInvocationContext context) {
@@ -87,13 +96,23 @@ public class SuiteResultReporter extends CollectingTestListener {
             mFailedTests += moduleResult.getNumAllFailedTests();
             mSkippedTests += moduleResult.getNumTestsInState(TestStatus.IGNORED);
             mAssumeFailureTests += moduleResult.getNumTestsInState(TestStatus.ASSUMPTION_FAILURE);
+
+            // Get the module metrics for target preparation
+            String prepTime = moduleResult.getRunMetrics().get(ModuleDefinition.PREPARATION_TIME);
+            String tearTime = moduleResult.getRunMetrics().get(ModuleDefinition.TEAR_DOWN_TIME);
+            if (prepTime != null && tearTime != null) {
+                mPreparationMap.put(
+                        moduleResult.getName(),
+                        new ModulePrepTimes(Long.parseLong(prepTime), Long.parseLong(tearTime)));
+            }
         }
         // print a short report summary
         CLog.logAndDisplay(LogLevel.INFO, "============================================");
         CLog.logAndDisplay(LogLevel.INFO, "================= Results ==================");
         printTop10TimeConsumer(results);
         printTop10SlowModules(results);
-        CLog.logAndDisplay(LogLevel.INFO, "==========================");
+        printPreparationMetrics(mPreparationMap);
+        CLog.logAndDisplay(LogLevel.INFO, "=============== Summary ===============");
         CLog.logAndDisplay(
                 LogLevel.INFO, "Total Run time: %s", TimeUtil.formatElapsedTime(mElapsedTime));
         CLog.logAndDisplay(
@@ -176,6 +195,9 @@ public class SuiteResultReporter extends CollectingTestListener {
                     }
                 });
         int maxModuleDisplay = Math.min(moduleTime.size(), 10);
+        if (maxModuleDisplay == 0) {
+            return;
+        }
         CLog.logAndDisplay(
                 LogLevel.INFO,
                 "============== TOP %s Slow Modules ==============",
@@ -189,6 +211,20 @@ public class SuiteResultReporter extends CollectingTestListener {
                             / (moduleTime.get(i).getElapsedTime() / 1000f)),
                     moduleTime.get(i).getNumTests(),
                     moduleTime.get(i).getElapsedTime());
+        }
+    }
+
+    /**
+     * Print the collected times for Module preparation and tear Down. This only log to debug since
+     * it will be quite verbose for full run.
+     */
+    private void printPreparationMetrics(Map<String, ModulePrepTimes> metrics) {
+        if (metrics.isEmpty()) {
+            return;
+        }
+        CLog.d("============== Modules Preparation Times ==============");
+        for (String moduleName : metrics.keySet()) {
+            CLog.d("    %s => %s", moduleName, metrics.get(moduleName).toString());
         }
     }
 
@@ -210,5 +246,22 @@ public class SuiteResultReporter extends CollectingTestListener {
 
     public long getFailedTests() {
         return mFailedTests;
+    }
+
+    /** Object holder for the preparation and tear down time of one module. */
+    public static class ModulePrepTimes {
+
+        public final long mPrepTime;
+        public final long mTearDownTime;
+
+        public ModulePrepTimes(long prepTime, long tearTime) {
+            mPrepTime = prepTime;
+            mTearDownTime = tearTime;
+        }
+
+        @Override
+        public String toString() {
+            return String.format("prep = %s ms || clean = %s ms", mPrepTime, mTearDownTime);
+        }
     }
 }
