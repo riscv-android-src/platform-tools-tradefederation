@@ -211,35 +211,41 @@ public class ITestSuiteTest {
 
     /**
      * Test for {@link ITestSuite#run(ITestInvocationListener)} when the System status checker is
-     * failing and we enable reporting a failure for it.
+     * passing pre-check but failing post-check and we enable reporting a failure for it.
      */
     @Test
     public void testRun_failedSystemChecker_reportFailure() throws Exception {
         OptionSetter setter = new OptionSetter(mTestSuite);
-        setter.setOptionValue("report-system-check-failures", "true");
+        setter.setOptionValue("report-system-checkers", "true");
         final byte[] fakeData = "fakeData".getBytes();
         InputStreamSource fakeSource = new ByteArrayInputStreamSource(fakeData);
         List<ISystemStatusChecker> sysChecker = new ArrayList<ISystemStatusChecker>();
         sysChecker.add(mMockSysChecker);
         mTestSuite.setSystemStatusChecker(sysChecker);
         EasyMock.expect(mMockSysChecker.preExecutionCheck(EasyMock.eq(mMockDevice)))
-                .andReturn(false);
-        EasyMock.expect(mMockDevice.getBugreport()).andReturn(fakeSource).times(2);
+                .andReturn(true);
+        EasyMock.expect(mMockDevice.getBugreport()).andReturn(fakeSource).times(1);
         mMockListener.testLog(
                 (String) EasyMock.anyObject(),
                 EasyMock.eq(LogDataType.BUGREPORT),
                 EasyMock.eq(fakeSource));
-        EasyMock.expectLastCall().times(2);
+        EasyMock.expectLastCall().times(1);
         EasyMock.expect(mMockSysChecker.postExecutionCheck(EasyMock.eq(mMockDevice)))
                 .andReturn(false);
         expectTestRun(mMockListener);
 
-        mMockListener.testRunStarted(ITestSuite.MODULE_SYSTEM_CHECKER_FAILURE, 1);
-        TestIdentifier tid = new TestIdentifier(ITestSuite.MODULE_SYSTEM_CHECKER_FAILURE, "test");
+        mMockListener.testRunStarted(ITestSuite.MODULE_CHECKER_PRE + "_test", 1);
+        TestIdentifier tidPre = new TestIdentifier(ITestSuite.MODULE_CHECKER_PRE, "test");
+        mMockListener.testStarted(tidPre);
+        mMockListener.testEnded(tidPre, Collections.emptyMap());
+        mMockListener.testRunEnded(EasyMock.anyLong(), EasyMock.anyObject());
+
+        mMockListener.testRunStarted(ITestSuite.MODULE_CHECKER_POST + "_test", 1);
+        TestIdentifier tid = new TestIdentifier(ITestSuite.MODULE_CHECKER_POST, "test");
         mMockListener.testStarted(tid);
         mMockListener.testFailed(EasyMock.eq(tid), EasyMock.anyObject());
         mMockListener.testEnded(tid, Collections.emptyMap());
-        mMockListener.testRunEnded(0, Collections.emptyMap());
+        mMockListener.testRunEnded(EasyMock.anyLong(), EasyMock.anyObject());
 
         replayMocks();
         mTestSuite.run(mMockListener);
