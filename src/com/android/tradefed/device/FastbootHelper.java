@@ -76,7 +76,7 @@ public class FastbootHelper {
 
 
     /**
-     * Returns a set of device serials in fastboot mode.
+     * Returns a set of device serials in fastboot mode or an empty set if no fastboot devices.
      *
      * @return a set of device serials.
      */
@@ -91,7 +91,7 @@ public class FastbootHelper {
             CLog.w("'fastboot devices' failed. Result: %s, stderr: %s", fastbootResult.getStatus(),
                     fastbootResult.getStderr());
         }
-        return null;
+        return new HashSet<String>();
     }
 
     /**
