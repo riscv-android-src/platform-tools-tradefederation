@@ -15,7 +15,10 @@
  */
 package com.android.tradefed.testtype.suite;
 
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 import static org.mockito.Mockito.mock;
 
 import com.android.tradefed.build.IBuildInfo;
@@ -28,7 +31,6 @@ import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.testtype.IRemoteTest;
 import com.android.tradefed.testtype.StubTest;
 import com.android.tradefed.util.FileUtil;
-import com.android.tradefed.util.StreamUtil;
 import com.android.tradefed.util.ZipUtil;
 
 import org.easymock.EasyMock;
@@ -38,12 +40,9 @@ import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
 
 import java.io.File;
-import java.io.FileOutputStream;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.LinkedHashMap;
-import java.util.LinkedList;
-import java.util.zip.ZipOutputStream;
 
 /**
  * Unit tests for {@link TfSuiteRunner}.
@@ -96,6 +95,7 @@ public class TfSuiteRunnerTest {
     @Test
     public void testSplit() throws Exception {
         OptionSetter setter = new OptionSetter(mRunner);
+        setter.setOptionValue("suite-config-prefix", "suite");
         setter.setOptionValue("run-suite-tag", "example-suite");
         Collection<IRemoteTest> tests = mRunner.split(2);
         assertEquals(2, tests.size());
@@ -190,28 +190,28 @@ public class TfSuiteRunnerTest {
     @Test
     public void testLoadTests_additionalTestsZip() throws Exception {
         File tmpDir = null;
+        File deviceTestDir = null;
+        File additionalTestsZipFile = null;
         try {
             tmpDir = FileUtil.createTempDir("test");
-
             // tests directory for the build.
-            File testsDir = FileUtil.getFileForPath(tmpDir, "testcases");
-            FileUtil.mkdirsRWX(testsDir);
+            deviceTestDir = FileUtil.createTempDir("build-info-test-dir");
+
+            File zipDir = FileUtil.getFileForPath(tmpDir, "suite");
+            FileUtil.mkdirsRWX(zipDir);
 
             // Create a test config inside a zip.
-            File testConfig = new File(tmpDir, "test1.config");
+            File testConfig = new File(zipDir, "test1.config");
             FileUtil.writeToFile(TEST_CONFIG, testConfig);
-            File additionalTestsZipFile = new File(tmpDir, "tests.zip");
-            ZipOutputStream zipOutput =
-                    new ZipOutputStream(new FileOutputStream(additionalTestsZipFile));
-            ZipUtil.addToZip(zipOutput, testConfig, new LinkedList<String>());
-            StreamUtil.close(zipOutput);
+            additionalTestsZipFile = ZipUtil.createZip(zipDir);
 
             OptionSetter setter = new OptionSetter(mRunner);
+            setter.setOptionValue("suite-config-prefix", "suite");
             setter.setOptionValue("run-suite-tag", "example-suite");
             setter.setOptionValue("additional-tests-zip", additionalTestsZipFile.getAbsolutePath());
 
             IDeviceBuildInfo deviceBuildInfo = EasyMock.createMock(IDeviceBuildInfo.class);
-            EasyMock.expect(deviceBuildInfo.getTestsDir()).andReturn(testsDir);
+            EasyMock.expect(deviceBuildInfo.getTestsDir()).andReturn(deviceTestDir);
             mRunner.setBuild(deviceBuildInfo);
 
             EasyMock.replay(deviceBuildInfo);
@@ -221,10 +221,13 @@ public class TfSuiteRunnerTest {
             assertTrue(configMap.containsKey("suite/stub2"));
             assertTrue(
                     configMap.containsKey(
-                            FileUtil.getFileForPath(testsDir, "test1.config").getAbsolutePath()));
+                            FileUtil.getFileForPath(deviceTestDir, "suite/test1.config")
+                                    .getAbsolutePath()));
             EasyMock.verify(deviceBuildInfo);
         } finally {
+            FileUtil.recursiveDelete(deviceTestDir);
             FileUtil.recursiveDelete(tmpDir);
+            FileUtil.recursiveDelete(additionalTestsZipFile);
         }
     }
 }
