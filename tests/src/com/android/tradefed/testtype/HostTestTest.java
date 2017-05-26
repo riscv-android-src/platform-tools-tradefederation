@@ -29,6 +29,7 @@ import junit.framework.TestSuite;
 import org.easymock.Capture;
 import org.easymock.EasyMock;
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.runner.RunWith;
 import org.junit.runners.Suite.SuiteClasses;
 
@@ -109,6 +110,34 @@ public class HostTestTest extends TestCase {
         @org.junit.Test
         public void testPass6() {
         }
+
+        @Override
+        public void setDevice(ITestDevice device) {
+            mDevice = device;
+        }
+
+        @Override
+        public ITestDevice getDevice() {
+            return mDevice;
+        }
+    }
+
+    /**
+     * Test class, we have to annotate with full org.junit.Test to avoid name collision in import.
+     * And with one test marked as Ignored
+     */
+    @RunWith(DeviceJUnit4ClassRunner.class)
+    public static class Junit4TestClassWithIgnore implements IDeviceTest {
+        private ITestDevice mDevice;
+
+        public Junit4TestClassWithIgnore() {}
+
+        @org.junit.Test
+        public void testPass5() {}
+
+        @Ignore
+        @org.junit.Test
+        public void testPass6() {}
 
         @Override
         public void setDevice(ITestDevice device) {
@@ -732,6 +761,28 @@ public class HostTestTest extends TestCase {
         mListener.testStarted(EasyMock.eq(test2));
         mListener.testEnded(EasyMock.eq(test2), (Map<String, String>)EasyMock.anyObject());
         mListener.testRunEnded(EasyMock.anyLong(), (Map<String, String>)EasyMock.anyObject());
+        EasyMock.replay(mListener);
+        mHostTest.run(mListener);
+        EasyMock.verify(mListener);
+    }
+
+    /**
+     * Test for {@link HostTest#run(ITestInvocationListener)}, for test with Junit4 style and
+     * handling of @Ignored.
+     */
+    public void testRun_junit4style_ignored() throws Exception {
+        mHostTest.setClassName(Junit4TestClassWithIgnore.class.getName());
+        TestIdentifier test1 =
+                new TestIdentifier(Junit4TestClassWithIgnore.class.getName(), "testPass5");
+        TestIdentifier test2 =
+                new TestIdentifier(Junit4TestClassWithIgnore.class.getName(), "testPass6");
+        mListener.testRunStarted((String) EasyMock.anyObject(), EasyMock.eq(2));
+        mListener.testStarted(EasyMock.eq(test1));
+        mListener.testEnded(EasyMock.eq(test1), (Map<String, String>) EasyMock.anyObject());
+        mListener.testStarted(EasyMock.eq(test2));
+        mListener.testIgnored(EasyMock.eq(test2));
+        mListener.testEnded(EasyMock.eq(test2), (Map<String, String>) EasyMock.anyObject());
+        mListener.testRunEnded(EasyMock.anyLong(), (Map<String, String>) EasyMock.anyObject());
         EasyMock.replay(mListener);
         mHostTest.run(mListener);
         EasyMock.verify(mListener);
