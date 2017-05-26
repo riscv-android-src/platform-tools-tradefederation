@@ -71,7 +71,7 @@ public class PythonUnitTestResultParser extends MultiLineReceiver {
     String[] mAllLines;
     String mCurrentLine;
     int mLineNum;
-    ParserState mCurrentParseState = ParserState.TEST_CASE;
+    ParserState mCurrentParseState = null; // do not assume it always starts with TEST_CASE
 
     // Current test state
     TestIdentifier mCurrentTestId;
@@ -90,7 +90,10 @@ public class PythonUnitTestResultParser extends MultiLineReceiver {
             "======================================================================";
     static final String LINE =
             "----------------------------------------------------------------------";
+    static final String TRACEBACK_LINE = "Traceback (most recent call last):";
     static final String CASE_OK = "ok";
+    static final String CASE_EXPECTED_FAILURE_1 = "expected";
+    static final String CASE_EXPECTED_FAILURE_2 = "failure";
     static final String RUN_OK = "OK";
     static final String RUN_FAILED = "FAILED";
 
@@ -147,10 +150,17 @@ public class PythonUnitTestResultParser extends MultiLineReceiver {
         }
     }
 
-    void init(String[] lines) {
+    void init(String[] lines) throws PythonUnitTestParseException {
         mAllLines = lines;
         mLineNum = 0;
         mCurrentLine = mAllLines[0];
+        if (mCurrentParseState == null) {
+            // parser on the first line of *the entire* test output
+            if (tracebackLine()) {
+                throw new PythonUnitTestParseException("Test execution failed");
+            }
+            mCurrentParseState = ParserState.TEST_CASE;
+        }
     }
 
     void parse() throws PythonUnitTestParseException {
@@ -196,12 +206,21 @@ public class PythonUnitTestResultParser extends MultiLineReceiver {
             mCurrentTestId = new TestIdentifier(testClass, testName);
             // 3rd token is just "..."
             if (toks.length == 4) {
+                // one-word status ("ok" | "ERROR")
                 String status = toks[3];
-                if (status.equals(CASE_OK)) {
+                if (CASE_OK.equals(status)) {
                     markTestSuccess();
                 }
                 // if there's an error just do nothing, we can't get the trace
                 // immediately anyway
+            } else if (toks.length == 5) {
+                // two-word status ("expected failure")
+                String status1 = toks[3];
+                String status2 = toks[4];
+                if (CASE_EXPECTED_FAILURE_1.equals(status1)
+                        && CASE_EXPECTED_FAILURE_2.equals(status2)) {
+                    markTestSuccess();
+                }
             } else {
                 parseError("TestResult");
             }
@@ -301,6 +320,10 @@ public class PythonUnitTestResultParser extends MultiLineReceiver {
 
     boolean line() {
         return mCurrentLine.startsWith(LINE);
+    }
+
+    boolean tracebackLine() {
+        return mCurrentLine.startsWith(TRACEBACK_LINE);
     }
 
     /**
