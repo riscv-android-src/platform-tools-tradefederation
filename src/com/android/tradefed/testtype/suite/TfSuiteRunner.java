@@ -80,10 +80,6 @@ public class TfSuiteRunner extends ITestSuite {
             String parentConfig, DirectedGraph<String> graph) {
         LinkedHashMap <String, IConfiguration> configMap =
                 new LinkedHashMap<String, IConfiguration>();
-        if (mSuiteTag == null) {
-            // If there is no suite-tag requested, return directly.
-            return configMap;
-        }
         IConfigurationFactory configFactory = ConfigurationFactory.getInstance();
         // TODO: Do a better job searching for configs.
         List<String> configs = configFactory.getConfigList(mSuitePrefix);

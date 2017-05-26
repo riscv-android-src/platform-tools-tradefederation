@@ -109,7 +109,10 @@ public class TfSuiteRunnerTest {
      * no configuration.
      */
     @Test
-    public void testSplit_nothingToLoad() {
+    public void testSplit_nothingToLoad() throws Exception {
+        OptionSetter setter = new OptionSetter(mRunner);
+        setter.setOptionValue("suite-config-prefix", "doesnotexists");
+        setter.setOptionValue("run-suite-tag", "doesnotexists");
         assertNull(mRunner.split(2));
     }
 
