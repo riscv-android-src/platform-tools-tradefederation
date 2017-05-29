@@ -65,6 +65,13 @@ public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestColl
     private int mExpectedTests = 0;
     private boolean mIsFailedModule = false;
 
+    // Tracking of preparers performance
+    private long mElapsedPreparation = 0l;
+    private long mElapsedTearDown = 0l;
+
+    public static final String PREPARATION_TIME = "PREP_TIME";
+    public static final String TEAR_DOWN_TIME = "TEARDOWN_TIME";
+
     /**
      * Constructor
      *
@@ -161,6 +168,7 @@ public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestColl
         CLog.d("Running module %s", getId());
         Exception preparationException = null;
         // Setup
+        long prepStartTime = getCurrentTime();
         for (ITargetPreparer preparer : mPreparers) {
             preparationException = runPreparerSetup(preparer, listener);
             if (preparationException != null) {
@@ -169,6 +177,7 @@ public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestColl
                 break;
             }
         }
+        mElapsedPreparation = getCurrentTime() - prepStartTime;
         // Run the tests
         try {
             if (preparationException != null) {
@@ -236,14 +245,19 @@ public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestColl
                 }
             }
         } finally {
-            // finalize results
-            if (preparationException == null) {
-                reportFinalResults(listener, mExpectedTests, mTestsResults);
-            }
-            // Tear down
-            for (ITargetCleaner cleaner : mCleaners) {
-                CLog.d("Cleaner: %s", cleaner.getClass().getSimpleName());
-                cleaner.tearDown(mDevice, mBuild, null);
+            long cleanStartTime = getCurrentTime();
+            try {
+                // Tear down
+                for (ITargetCleaner cleaner : mCleaners) {
+                    CLog.d("Cleaner: %s", cleaner.getClass().getSimpleName());
+                    cleaner.tearDown(mDevice, mBuild, null);
+                }
+            } finally {
+                mElapsedTearDown = getCurrentTime() - cleanStartTime;
+                // finalize results
+                if (preparationException == null) {
+                    reportFinalResults(listener, mExpectedTests, mTestsResults);
+                }
             }
         }
     }
@@ -266,8 +280,12 @@ public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestColl
                 mIsFailedModule = true;
             }
             elapsedTime += runResult.getElapsedTime();
+            // put metrics from the tests
             metrics.putAll(runResult.getRunMetrics());
         }
+        // put metrics from the preparation
+        metrics.put(PREPARATION_TIME, Long.toString(mElapsedPreparation));
+        metrics.put(TEAR_DOWN_TIME, Long.toString(mElapsedTearDown));
 
         if (totalExpectedTests != numResults) {
             String error =
@@ -326,6 +344,11 @@ public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestColl
             CLog.e(e);
             return e;
         }
+    }
+
+    /** Returns the current time. */
+    private long getCurrentTime() {
+        return System.currentTimeMillis();
     }
 
     @Override

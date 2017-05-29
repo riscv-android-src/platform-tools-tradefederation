@@ -57,12 +57,8 @@ public class CollectingTestListener implements ITestInvocationListener {
     private IBuildInfo mBuildInfo;
     private IInvocationContext mContext;
 
-    /**
-     * Toggle the 'aggregate metrics' option
-     * <p/>
-     * Exposed for unit testing
-     */
-    void setIsAggregrateMetrics(boolean aggregate) {
+    /** Toggle the 'aggregate metrics' option */
+    protected void setIsAggregrateMetrics(boolean aggregate) {
         mIsAggregateMetrics = aggregate;
     }
 
