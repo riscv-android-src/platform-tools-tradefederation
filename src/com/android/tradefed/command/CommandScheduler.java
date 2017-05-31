@@ -2134,4 +2134,9 @@ public class CommandScheduler extends Thread implements ICommandScheduler, IComm
         mLastInvocationExitCode = code;
         mLastInvocationThrowable = throwable;
     }
+
+    @Override
+    public synchronized int getReadyCommandCount() {
+        return mReadyCommands.size();
+    }
 }
