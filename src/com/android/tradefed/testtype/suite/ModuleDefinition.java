@@ -22,6 +22,7 @@ import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.DeviceUnresponsiveException;
 import com.android.tradefed.device.ITestDevice;
+import com.android.tradefed.invoker.IInvocationContext;
 import com.android.tradefed.log.ITestLogger;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.result.ITestInvocationListener;
@@ -52,6 +53,10 @@ import java.util.Map;
  * Container for the test run configuration. This class is an helper to prepare and run the tests.
  */
 public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestCollector {
+
+    /** key names used for saving module info into {@link IInvocationContext} */
+    public static final String MODULE_NAME = "module-name";
+    public static final String MODULE_ABI = "module-abi";
 
     private final String mId;
     private Collection<IRemoteTest> mTests = null;
