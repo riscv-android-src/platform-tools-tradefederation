@@ -17,6 +17,8 @@ package com.android.tradefed.config;
 
 import com.android.tradefed.util.MultiMap;
 
+import com.google.common.annotations.VisibleForTesting;
+
 import java.util.ArrayList;
 import java.util.List;
 
@@ -53,5 +55,10 @@ public class ConfigurationDescriptor {
     /** Get the named metadata entries */
     public List<String> getMetaData(String name) {
         return mMetaData.get(name);
+    }
+
+    @VisibleForTesting
+    public void setMetaData(MultiMap<String, String> metadata) {
+        mMetaData = metadata;
     }
 }
