@@ -72,6 +72,7 @@ public class TestDeviceTest extends TestCase {
     // For getCurrentUser, the min api should be 24. We make the stub return 23, the logic should
     // increment it by one.
     private static final int MIN_API_LEVEL_GET_CURRENT_USER = 23;
+    private static final int MIN_API_LEVEL_STOP_USER = 22;
     private static final String RAWIMAGE_RESOURCE = "/testdata/rawImage.zip";
     private IDevice mMockIDevice;
     private IShellOutputReceiver mMockReceiver;
@@ -2423,20 +2424,29 @@ public class TestDeviceTest extends TestCase {
      * Unit test for {@link TestDevice#stopUser(int)}, cannot stop current user.
      */
     public void testStopUser_notCurrent() throws Exception {
-        mTestDevice = new TestableTestDevice() {
-            @Override
-            public int getCurrentUser() throws DeviceNotAvailableException {
-                return 0;
-            }
-            @Override
-            public int getApiLevel() throws DeviceNotAvailableException {
-                return MIN_API_LEVEL_GET_CURRENT_USER;
-            }
-            @Override
-            public String getProperty(String name) throws DeviceNotAvailableException {
-                return "N\n";
-            }
-        };
+        mTestDevice =
+                new TestableTestDevice() {
+                    @Override
+                    public String executeShellCommand(String command)
+                            throws DeviceNotAvailableException {
+                        return "Can't stop current user";
+                    }
+
+                    @Override
+                    public int getCurrentUser() throws DeviceNotAvailableException {
+                        return 0;
+                    }
+
+                    @Override
+                    public int getApiLevel() throws DeviceNotAvailableException {
+                        return MIN_API_LEVEL_STOP_USER;
+                    }
+
+                    @Override
+                    public String getProperty(String name) throws DeviceNotAvailableException {
+                        return "N\n";
+                    }
+                };
         assertFalse(mTestDevice.stopUser(0));
     }
 
@@ -2444,88 +2454,157 @@ public class TestDeviceTest extends TestCase {
      * Unit test for {@link TestDevice#stopUser(int)}, cannot stop system
      */
     public void testStopUser_notSystem() throws Exception {
-        mTestDevice = new TestableTestDevice() {
-            @Override
-            public String executeShellCommand(String command) throws DeviceNotAvailableException {
-                return "Error: Can't stop system user 0";
-            }
-            @Override
-            public int getCurrentUser() throws DeviceNotAvailableException {
-                return 10;
-            }
-            @Override
-            public int getApiLevel() throws DeviceNotAvailableException {
-                return MIN_API_LEVEL_GET_CURRENT_USER;
-            }
-            @Override
-            public String getProperty(String name) throws DeviceNotAvailableException {
-                return "N\n";
-            }
-        };
+        mTestDevice =
+                new TestableTestDevice() {
+                    @Override
+                    public String executeShellCommand(String command)
+                            throws DeviceNotAvailableException {
+                        return "Error: Can't stop system user 0";
+                    }
+
+                    @Override
+                    public int getCurrentUser() throws DeviceNotAvailableException {
+                        return 10;
+                    }
+
+                    @Override
+                    public int getApiLevel() throws DeviceNotAvailableException {
+                        return MIN_API_LEVEL_STOP_USER;
+                    }
+
+                    @Override
+                    public String getProperty(String name) throws DeviceNotAvailableException {
+                        return "N\n";
+                    }
+                };
         assertFalse(mTestDevice.stopUser(0));
     }
 
     /**
-     * Unit test for {@link TestDevice#stopUser(int, boolean, boolean)}, for a success stop
+     * Unit test for {@link TestDevice#stopUser(int, boolean, boolean)}, for a success stop in API
+     * 22.
      */
-    public void testStopUser_success() throws Exception {
-        mTestDevice = new TestableTestDevice() {
-            @Override
-            public String executeShellCommand(String command) throws DeviceNotAvailableException {
-                if (command.contains("am")) {
-                    assertEquals("am stop-user -w -f 0", command);
-                } else if (command.contains("pm")) {
-                    assertEquals("pm list users", command);
-                } else {
-                    fail("Unexpected command");
-                }
-                return "Users:\n\tUserInfo{0:Test:13}";
-            }
-            @Override
-            public int getCurrentUser() throws DeviceNotAvailableException {
-                return 10;
-            }
-            @Override
-            public int getApiLevel() throws DeviceNotAvailableException {
-                return MIN_API_LEVEL_GET_CURRENT_USER;
-            }
-            @Override
-            public String getProperty(String name) throws DeviceNotAvailableException {
-                return "N\n";
-            }
-        };
-        assertTrue(mTestDevice.stopUser(0, true, true));
+    public void testStopUser_success_api22() throws Exception {
+        verifyStopUserSuccess(22, false, false, "am stop-user 10");
+    }
+
+    /**
+     * Unit test for {@link TestDevice#stopUser(int, boolean, boolean)}, for a success stop in API
+     * 23.
+     */
+    public void testStopUser_success_api23() throws Exception {
+        verifyStopUserSuccess(23, true, false, "am stop-user -w 10");
+    }
+
+    /**
+     * Unit test for {@link TestDevice#stopUser(int, boolean, boolean)}, for a success stop in API
+     * 24.
+     */
+    public void testStopUser_success_api24() throws Exception {
+        verifyStopUserSuccess(24, true, true, "am stop-user -w -f 10");
+    }
+
+    private void verifyStopUserSuccess(
+            int apiLevel, boolean wait, boolean force, String expectedCommand) throws Exception {
+        mTestDevice =
+                new TestableTestDevice() {
+                    @Override
+                    public String executeShellCommand(String command)
+                            throws DeviceNotAvailableException {
+                        if (command.contains("am")) {
+                            assertEquals(expectedCommand, command);
+                        } else if (command.contains("pm")) {
+                            assertEquals("pm list users", command);
+                        } else {
+                            fail("Unexpected command");
+                        }
+                        return "Users:\n\tUserInfo{0:Test:13}";
+                    }
+
+                    @Override
+                    public int getCurrentUser() throws DeviceNotAvailableException {
+                        return 0;
+                    }
+
+                    @Override
+                    public int getApiLevel() throws DeviceNotAvailableException {
+                        return apiLevel;
+                    }
+
+                    @Override
+                    public String getProperty(String name) throws DeviceNotAvailableException {
+                        return "N\n";
+                    }
+                };
+        assertTrue(mTestDevice.stopUser(10, wait, force));
+    }
+
+    public void testStopUser_wait_api22() throws Exception {
+        mTestDevice =
+                new TestableTestDevice() {
+                    @Override
+                    public int getApiLevel() throws DeviceNotAvailableException {
+                        return 22;
+                    }
+                };
+        try {
+            mTestDevice.stopUser(10, true, false);
+            fail("IllegalArgumentException should be thrown");
+        } catch (IllegalArgumentException ex) {
+            // expected
+        }
+    }
+
+    public void testStopUser_force_api22() throws Exception {
+        mTestDevice =
+                new TestableTestDevice() {
+                    @Override
+                    public int getApiLevel() throws DeviceNotAvailableException {
+                        return 22;
+                    }
+                };
+        try {
+            mTestDevice.stopUser(10, false, true);
+            fail("IllegalArgumentException should be thrown");
+        } catch (IllegalArgumentException ex) {
+            // expected
+        }
     }
 
     /**
      * Unit test for {@link TestDevice#stopUser(int)}, for a failed stop
      */
     public void testStopUser_failed() throws Exception {
-        mTestDevice = new TestableTestDevice() {
-            @Override
-            public String executeShellCommand(String command) throws DeviceNotAvailableException {
-                if (command.contains("am")) {
-                    assertEquals("am stop-user 0", command);
-                } else if (command.contains("pm")) {
-                    assertEquals("pm list users", command);
-                } else {
-                    fail("Unexpected command");
-                }
-                return "Users:\n\tUserInfo{0:Test:13} running";
-            }
-            @Override
-            public int getCurrentUser() throws DeviceNotAvailableException {
-                return 10;
-            }
-            @Override
-            public int getApiLevel() throws DeviceNotAvailableException {
-                return MIN_API_LEVEL_GET_CURRENT_USER;
-            }
-            @Override
-            public String getProperty(String name) throws DeviceNotAvailableException {
-                return "N\n";
-            }
-        };
+        mTestDevice =
+                new TestableTestDevice() {
+                    @Override
+                    public String executeShellCommand(String command)
+                            throws DeviceNotAvailableException {
+                        if (command.contains("am")) {
+                            assertEquals("am stop-user 0", command);
+                        } else if (command.contains("pm")) {
+                            assertEquals("pm list users", command);
+                        } else {
+                            fail("Unexpected command");
+                        }
+                        return "Users:\n\tUserInfo{0:Test:13} running";
+                    }
+
+                    @Override
+                    public int getCurrentUser() throws DeviceNotAvailableException {
+                        return 10;
+                    }
+
+                    @Override
+                    public int getApiLevel() throws DeviceNotAvailableException {
+                        return MIN_API_LEVEL_STOP_USER;
+                    }
+
+                    @Override
+                    public String getProperty(String name) throws DeviceNotAvailableException {
+                        return "N\n";
+                    }
+                };
         assertFalse(mTestDevice.stopUser(0));
     }
 

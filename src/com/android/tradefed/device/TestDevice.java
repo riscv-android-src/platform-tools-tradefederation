@@ -837,10 +837,12 @@ public class TestDevice extends NativeDevice {
     @Override
     public boolean stopUser(int userId, boolean waitFlag, boolean forceFlag)
             throws DeviceNotAvailableException {
-        checkApiLevelAgainstNextRelease("stopUser", API_LEVEL_GET_CURRENT_USER);
-        if (userId == getCurrentUser()) {
-            CLog.d("Cannot stop current user.");
-            return false;
+        final int apiLevel = getApiLevel();
+        if (waitFlag && apiLevel < 23) {
+            throw new IllegalArgumentException("stop-user -w requires API level >= 23");
+        }
+        if (forceFlag && apiLevel < 24) {
+            throw new IllegalArgumentException("stop-user -f requires API level >= 24");
         }
         StringBuilder cmd = new StringBuilder("am stop-user ");
         if (waitFlag) {
@@ -855,6 +857,10 @@ public class TestDevice extends NativeDevice {
         final String output = executeShellCommand(cmd.toString());
         if (output.contains("Error: Can't stop system user")) {
             CLog.e("Cannot stop System user.");
+            return false;
+        }
+        if (output.contains("Can't stop current user")) {
+            CLog.e("Cannot stop current user.");
             return false;
         }
         if (isUserRunning(userId)) {
