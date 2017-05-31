@@ -16,12 +16,16 @@
 package com.android.tradefed.result;
 
 import com.android.ddmlib.testrunner.TestIdentifier;
+import com.android.tradefed.testtype.DeviceJUnit4ClassRunner.MetricAnnotation;
 
 import org.junit.runner.Description;
 import org.junit.runner.notification.Failure;
 import org.junit.runner.notification.RunListener;
 
+import java.lang.annotation.Annotation;
 import java.util.Collections;
+import java.util.HashMap;
+import java.util.Map;
 
 /**
  * Result forwarder from JUnit4 Runner.
@@ -61,13 +65,27 @@ public class JUnit4ResultForwarder extends RunListener {
     public void testFinished(Description description) {
         TestIdentifier testid = new TestIdentifier(description.getClassName(),
                 description.getMethodName());
-        mListener.testEnded(testid, Collections.emptyMap());
+        // Explore the Description to see if we find any Annotation metrics carrier
+        Map<String, String> metrics = new HashMap<>();
+        for (Description child : description.getChildren()) {
+            for (Annotation a : child.getAnnotations()) {
+                if (a instanceof MetricAnnotation) {
+                    metrics.putAll(((MetricAnnotation) a).mMetrics);
+                }
+            }
+        }
+        //description.
+        mListener.testEnded(testid, metrics);
     }
 
     @Override
     public void testIgnored(Description description) throws Exception {
         TestIdentifier testid = new TestIdentifier(description.getClassName(),
                 description.getMethodName());
+        // We complete the event life cycle since JUnit4 fireIgnored is not within fireTestStarted
+        // and fireTestEnded.
+        mListener.testStarted(testid);
         mListener.testIgnored(testid);
+        mListener.testEnded(testid, Collections.emptyMap());
     }
 }

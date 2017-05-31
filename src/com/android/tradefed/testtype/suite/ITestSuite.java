@@ -23,7 +23,6 @@ import com.android.tradefed.config.IConfiguration;
 import com.android.tradefed.config.Option;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
-import com.android.tradefed.log.ITestLogger;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.InputStreamSource;
@@ -55,7 +54,8 @@ public abstract class ITestSuite
                 IShardableTest,
                 ITestCollector {
 
-    protected static final String MODULE_SYSTEM_CHECKER_FAILURE = "SystemStatusChecker";
+    protected static final String MODULE_CHECKER_PRE = "PreModuleChecker";
+    protected static final String MODULE_CHECKER_POST = "PostModuleChecker";
 
     // Options for test failure case
     @Option(
@@ -92,10 +92,10 @@ public abstract class ITestSuite
     private boolean mSkipAllSystemStatusCheck = false;
 
     @Option(
-        name = "report-system-check-failures",
-        description = "Whether marking a failure for a module failing a system status checker."
+        name = "report-system-checkers",
+        description = "Whether reporting system checkers as test or not."
     )
-    private boolean mRaiseSystemCheckerFailure = false;
+    private boolean mReportSystemChecker = false;
 
     @Option(
         name = "collect-tests-only",
@@ -113,6 +113,7 @@ public abstract class ITestSuite
     // Sharding attributes
     private boolean mIsSharded = false;
     private ModuleDefinition mDirectModule = null;
+    private boolean mShouldMakeDynamicModule = true;
 
     /**
      * Abstract method to load the tests configuration that will be run. Each tests is defined by a
@@ -264,8 +265,13 @@ public abstract class ITestSuite
      * Helper to run the System Status checkers preExecutionChecks defined for the test and log
      * their failures.
      */
-    private void runPreModuleCheck(String moduleName, List<ISystemStatusChecker> checkers,
-            ITestDevice device, ITestLogger logger) throws DeviceNotAvailableException {
+    private void runPreModuleCheck(
+            String moduleName,
+            List<ISystemStatusChecker> checkers,
+            ITestDevice device,
+            ITestInvocationListener listener)
+            throws DeviceNotAvailableException {
+        long startTime = System.currentTimeMillis();
         CLog.i("Running system status checker before module execution: %s", moduleName);
         List<String> failures = new ArrayList<>();
         for (ISystemStatusChecker checker : checkers) {
@@ -279,10 +285,15 @@ public abstract class ITestSuite
             CLog.w("There are failed system status checkers: %s capturing a bugreport",
                     failures.toString());
             InputStreamSource bugSource = device.getBugreport();
-            logger.testLog(String.format("bugreport-checker-pre-module-%s", moduleName),
-                    LogDataType.BUGREPORT, bugSource);
+            listener.testLog(
+                    String.format("bugreport-checker-pre-module-%s", moduleName),
+                    LogDataType.BUGREPORT,
+                    bugSource);
             bugSource.cancel();
         }
+
+        // We report System checkers like tests.
+        reportModuleCheckerResult(MODULE_CHECKER_PRE, moduleName, failures, startTime, listener);
     }
 
     /**
@@ -295,6 +306,7 @@ public abstract class ITestSuite
             ITestDevice device,
             ITestInvocationListener listener)
             throws DeviceNotAvailableException {
+        long startTime = System.currentTimeMillis();
         CLog.i("Running system status checker after module execution: %s", moduleName);
         List<String> failures = new ArrayList<>();
         for (ISystemStatusChecker checker : checkers) {
@@ -313,17 +325,32 @@ public abstract class ITestSuite
                     LogDataType.BUGREPORT,
                     bugSource);
             bugSource.cancel();
-            // We report a failure for the module
-            if (mRaiseSystemCheckerFailure) {
-                TestIdentifier tid = new TestIdentifier(MODULE_SYSTEM_CHECKER_FAILURE, moduleName);
-                listener.testRunStarted(MODULE_SYSTEM_CHECKER_FAILURE, 1);
-                listener.testStarted(tid);
-                listener.testFailed(
-                        tid, String.format("%s failed '%s' checkers", moduleName, failures));
-                listener.testEnded(tid, Collections.emptyMap());
-                listener.testRunEnded(0, Collections.emptyMap());
-            }
         }
+
+        // We report System checkers like tests.
+        reportModuleCheckerResult(MODULE_CHECKER_POST, moduleName, failures, startTime, listener);
+    }
+
+    /** Helper to report status checker results as test results. */
+    private void reportModuleCheckerResult(
+            String identifier,
+            String moduleName,
+            List<String> failures,
+            long startTime,
+            ITestInvocationListener listener) {
+        if (!mReportSystemChecker) {
+            // do not log here, otherwise it could be very verbose.
+            return;
+        }
+        TestIdentifier tid = new TestIdentifier(identifier, moduleName);
+        listener.testRunStarted(identifier + "_" + moduleName, 1);
+        listener.testStarted(tid);
+        if (!failures.isEmpty()) {
+            listener.testFailed(
+                    tid, String.format("%s failed '%s' checkers", moduleName, failures));
+        }
+        listener.testEnded(tid, Collections.emptyMap());
+        listener.testRunEnded(System.currentTimeMillis() - startTime, Collections.emptyMap());
     }
 
     /** {@inheritDoc} */
@@ -342,7 +369,8 @@ public abstract class ITestSuite
         injectInfo(runConfig);
 
         List<ModuleDefinition> splitModules =
-                ModuleSplitter.splitConfiguration(runConfig, shardCountHint);
+                ModuleSplitter.splitConfiguration(
+                        runConfig, shardCountHint, mShouldMakeDynamicModule);
         runConfig.clear();
         runConfig = null;
         // create an association of one ITestSuite <=> one ModuleDefinition as the smallest
@@ -419,5 +447,13 @@ public abstract class ITestSuite
     @Override
     public void setCollectTestsOnly(boolean shouldCollectTest) {
         mCollectTestsOnly = shouldCollectTest;
+    }
+
+    /**
+     * When doing distributed sharding, we cannot have ModuleDefinition that shares tests in a pool
+     * otherwise intra-module sharding will not work, so we allow to disable it.
+     */
+    public void setShouldMakeDynamicModule(boolean dynamicModule) {
+        mShouldMakeDynamicModule = dynamicModule;
     }
 }

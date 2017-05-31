@@ -15,14 +15,8 @@
  */
 package com.android.tradefed.util;
 
-import com.android.tradefed.log.LogUtil.CLog;
-
 import org.junit.runner.Description;
 import org.junit.runner.manipulation.Filter;
-
-import java.lang.annotation.Annotation;
-import java.lang.reflect.Method;
-import java.lang.reflect.Modifier;
 
 /**
  * Helper Class that provides the filtering for JUnit4 runner by extending the {@link Filter}.
@@ -35,58 +29,20 @@ public class JUnit4TestFilter extends Filter {
         mFilterHelper = filterHelper;
     }
 
-    final Annotation junit4TestAnnotation = new Annotation() {
-        @Override
-        public Class<? extends Annotation> annotationType() {
-            return org.junit.Test.class;
-        }
-    };
-
     /**
      * Filter function deciding whether a test should run or not.
-     * TODO: Once the JUnit4 version is updated, the JUnit3 tests will have their annotations
-     * available in {@link Description} for direct filtering.
      */
     @Override
     public boolean shouldRun(Description description) {
-        if (description.getAnnotations().contains(junit4TestAnnotation)) {
-            // if we are looking at a JUnit 4 Test in a JUnit4 Suite
-            return mFilterHelper.shouldRun(description);
-        } else {
-            // Not the main use case but if we are looking at a JUnit 3 Test in a JUnit4 Suite
-            // For Junit3 we have some extra work to do because the annotations are not
-            // available in {@link Description}
-            if (description.getMethodName() == null) {
-                // Containers are always included
-                return true;
-            }
-
-            Class<?> classObj = null;
-            try {
-                classObj = Class.forName(description.getClassName());
-            } catch (ClassNotFoundException e) {
-                throw new IllegalArgumentException(String.format("Could not load Test class %s",
-                        classObj), e);
-            }
-
-            String packageName = classObj.getPackage().getName();
-            Method[] methods = classObj.getMethods();
-            for (Method method : methods) {
-                if (description.getMethodName().equals(method.getName())) {
-                    if (!Modifier.isPublic(method.getModifiers())
-                            || !method.getReturnType().equals(Void.TYPE)
-                            || method.getParameterTypes().length > 0
-                            || !method.getName().startsWith("test")
-                            || !mFilterHelper.shouldRun(packageName, classObj, method)) {
-                        CLog.i("excluding %s", description);
-                        return false;
-                    } else {
-                        return true;
-                    }
+        // If it's a suite, we check if at least one of the children can run, if yes then we run it
+        if (description.isSuite()) {
+            for (Description desc : description.getChildren()) {
+                if (shouldRun(desc)) {
+                    return true;
                 }
             }
-            return false;
         }
+        return mFilterHelper.shouldRun(description);
     }
 
     @Override

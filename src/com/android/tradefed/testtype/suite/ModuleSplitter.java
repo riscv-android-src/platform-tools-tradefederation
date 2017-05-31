@@ -59,11 +59,18 @@ public class ModuleSplitter {
      * @return List of {@link ModuleDefinition}
      */
     public static List<ModuleDefinition> splitConfiguration(
-            LinkedHashMap<String, IConfiguration> runConfig, int shardCount) {
+            LinkedHashMap<String, IConfiguration> runConfig,
+            int shardCount,
+            boolean dynamicModule) {
         List<ModuleDefinition> runModules = new ArrayList<>();
         for (Entry<String, IConfiguration> configMap : runConfig.entrySet()) {
             validateConfig(configMap.getValue());
-            createAndAddModule(runModules, configMap.getKey(), configMap.getValue(), shardCount);
+            createAndAddModule(
+                    runModules,
+                    configMap.getKey(),
+                    configMap.getValue(),
+                    shardCount,
+                    dynamicModule);
         }
         return runModules;
     }
@@ -72,7 +79,8 @@ public class ModuleSplitter {
             List<ModuleDefinition> currentList,
             String moduleName,
             IConfiguration config,
-            int shardCount) {
+            int shardCount,
+            boolean dynamicModule) {
         // If this particular configuration module is declared as 'not shardable' we take it whole
         // no need to clone target_preparers.
         if (config.getConfigurationDescription().isNotShardable()) {
@@ -87,32 +95,45 @@ public class ModuleSplitter {
         for (IRemoteTest test : config.getTests()) {
             if (test instanceof IShardableTest) {
                 Collection<IRemoteTest> shardedTests = ((IShardableTest) test).split(shardCount);
-                if (shardedTests == null) {
-                    List<IRemoteTest> testList = new ArrayList<>();
-                    testList.add(test);
-                    // test did not shard
-                    ModuleDefinition module =
-                            new ModuleDefinition(moduleName, testList, clonePreparers(config));
-                    currentList.add(module);
-                } else {
+                if (shardedTests != null) {
                     // Test did shard we put the shard pool in ModuleDefinition which has a polling
                     // behavior on the pool.
-                    for (int i = 0; i < shardCount; i++) {
-                        ModuleDefinition module =
-                                new ModuleDefinition(
-                                        moduleName, shardedTests, clonePreparers(config));
-                        currentList.add(module);
+                    if (dynamicModule) {
+                        for (int i = 0; i < shardCount; i++) {
+                            ModuleDefinition module =
+                                    new ModuleDefinition(
+                                            moduleName, shardedTests, clonePreparers(config));
+                            currentList.add(module);
+                        }
+                    } else {
+                        // We create independent modules with each sharded test.
+                        for (IRemoteTest moduleTest : shardedTests) {
+                            addModuleToListFromSingleTest(
+                                    currentList, moduleTest, moduleName, config);
+                        }
                     }
+                    continue;
                 }
-            } else {
-                List<IRemoteTest> testList = new ArrayList<>();
-                testList.add(test);
-                // test is not shardable
-                ModuleDefinition module =
-                        new ModuleDefinition(moduleName, testList, clonePreparers(config));
-                currentList.add(module);
             }
+            // test is not shardable or did not shard
+            addModuleToListFromSingleTest(currentList, test, moduleName, config);
         }
+    }
+
+    /**
+     * Helper to add a new {@link ModuleDefinition} to our list of Modules from a single {@link
+     * IRemoteTest}.
+     */
+    private static void addModuleToListFromSingleTest(
+            List<ModuleDefinition> currentList,
+            IRemoteTest test,
+            String moduleName,
+            IConfiguration config) {
+        List<IRemoteTest> testList = new ArrayList<>();
+        testList.add(test);
+        ModuleDefinition module =
+                new ModuleDefinition(moduleName, testList, clonePreparers(config));
+        currentList.add(module);
     }
 
     private static void validateConfig(IConfiguration config) {

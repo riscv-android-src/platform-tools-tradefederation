@@ -420,18 +420,16 @@ public class DeviceManager implements IDeviceManager {
     private void addFastbootDevices() {
         final FastbootHelper fastboot = new FastbootHelper(getRunUtil(), mFastbootPath);
         Set<String> serials = fastboot.getDevices();
-        if (serials != null) {
-            for (String serial : serials) {
-                FastbootDevice d = new FastbootDevice(serial);
-                if (mGlobalDeviceFilter != null && mGlobalDeviceFilter.matches(d)) {
-                    addAvailableDevice(d);
-                }
+        for (String serial : serials) {
+            FastbootDevice d = new FastbootDevice(serial);
+            if (mGlobalDeviceFilter != null && mGlobalDeviceFilter.matches(d)) {
+                addAvailableDevice(d);
             }
         }
     }
 
-    static class FastbootDevice extends StubDevice {
-        FastbootDevice(String serial) {
+    public static class FastbootDevice extends StubDevice {
+        public FastbootDevice(String serial) {
             super(serial, false);
         }
     }
