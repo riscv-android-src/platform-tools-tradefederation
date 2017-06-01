@@ -809,6 +809,12 @@ public class DeviceManager implements IDeviceManager {
 
     /** {@inheritDoc} */
     @Override
+    public synchronized void terminateDeviceMonitor() {
+        mDvcMon.stop();
+    }
+
+    /** {@inheritDoc} */
+    @Override
     public synchronized void terminateHard() {
         checkInit();
         if (!mIsTerminated ) {

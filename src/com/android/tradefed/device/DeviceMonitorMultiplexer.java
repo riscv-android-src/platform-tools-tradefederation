@@ -71,4 +71,11 @@ public class DeviceMonitorMultiplexer implements IDeviceMonitor {
     public synchronized void removeMonitor(IDeviceMonitor mon) {
         mDeviceMonitors.remove(mon);
     }
+
+    @Override
+    public synchronized void stop() {
+        for (IDeviceMonitor monitor : mDeviceMonitors) {
+            monitor.stop();
+        }
+    }
 }

@@ -792,6 +792,11 @@ public class CommandScheduler extends Thread implements ICommandScheduler, IComm
         }
 
         @Override
+        public void stop() {
+            // ignore
+        }
+
+        @Override
         public void setDeviceLister(DeviceLister lister) {
             // ignore
         }
@@ -954,6 +959,7 @@ public class CommandScheduler extends Thread implements ICommandScheduler, IComm
             // We signal the device manager to stop device recovery threads because it could
             // potentially create more invocations.
             manager.terminateDeviceRecovery();
+            manager.terminateDeviceMonitor();
             CLog.i("Waiting for invocation threads to complete");
             waitForAllInvocationThreads();
             closeRemoteClient();
