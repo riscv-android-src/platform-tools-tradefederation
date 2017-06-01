@@ -16,12 +16,19 @@
 package com.android.tradefed.testtype;
 
 import com.android.tradefed.device.DeviceNotAvailableException;
+import com.android.tradefed.result.JUnitToInvocationResultForwarder;
 
 import junit.framework.AssertionFailedError;
 import junit.framework.Protectable;
 import junit.framework.Test;
 import junit.framework.TestCase;
+import junit.framework.TestListener;
 import junit.framework.TestResult;
+
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 /**
  * An specialization of {@link junit.framework.TestResult} that will abort when a
@@ -86,5 +93,35 @@ public class DeviceTestResult extends TestResult {
         } finally {
             endTest(test);
         }
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public void endTest(Test test) {
+        Map<String, String> metrics = new HashMap<>();
+        if (test instanceof MetricTestCase) {
+            metrics.putAll(((MetricTestCase) test).mMetrics);
+            // reset the metric for next test.
+            ((MetricTestCase) test).mMetrics = new HashMap<String, String>();
+        }
+        for (TestListener each : cloneListeners()) {
+            // when possible pass the metrics collected from the tests to our reporters.
+            if (!metrics.isEmpty() && each instanceof JUnitToInvocationResultForwarder) {
+                ((JUnitToInvocationResultForwarder) each).endTest(test, metrics);
+            } else {
+                each.endTest(test);
+            }
+        }
+    }
+
+    /**
+     * Returns a copy of the listeners. Copied from {@link TestResult} to enable overriding {@link
+     * #endTest(Test)} in a similar way. This allows to override {@link #endTest(Test)} and report
+     * our metrics.
+     */
+    private synchronized List<TestListener> cloneListeners() {
+        List<TestListener> result = new ArrayList<TestListener>();
+        result.addAll(fListeners);
+        return result;
     }
 }

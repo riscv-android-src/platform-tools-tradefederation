@@ -81,8 +81,18 @@ public class JUnitToInvocationResultForwarder implements TestListener {
     }
 
     /**
-     * {@inheritDoc}
+     * Callback from JUnit3 tests that can forward metrics.
+     *
+     * @param test The {@link Test} that just finished running.
+     * @param metrics The metrics in a Map format to be passed to the results callback.
      */
+    public void endTest(Test test, Map<String, String> metrics) {
+        for (ITestInvocationListener listener : mInvocationListeners) {
+            listener.testEnded(getTestId(test), metrics);
+        }
+    }
+
+    /** {@inheritDoc} */
     @Override
     public void startTest(Test test) {
         for (ITestInvocationListener listener : mInvocationListeners) {

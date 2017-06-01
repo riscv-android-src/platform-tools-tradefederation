@@ -74,6 +74,17 @@ public class HostTestTest extends TestCase {
         }
     }
 
+    public static class TestMetricTestCase extends MetricTestCase {
+
+        public void testPass() {
+            addTestMetric("key1", "metric1");
+        }
+
+        public void testPass2() {
+            addTestMetric("key2", "metric2");
+        }
+    }
+
     @MyAnnotation
     public static class AnotherTestCase extends TestCase {
         public AnotherTestCase() {
@@ -300,6 +311,31 @@ public class HostTestTest extends TestCase {
         mListener.testStarted(EasyMock.eq(test2));
         mListener.testEnded(EasyMock.eq(test2), (Map<String, String>)EasyMock.anyObject());
         mListener.testRunEnded(EasyMock.anyLong(), (Map<String, String>)EasyMock.anyObject());
+        EasyMock.replay(mListener);
+        mHostTest.run(mListener);
+        EasyMock.verify(mListener);
+    }
+
+    /**
+     * Test success case for {@link HostTest#run(ITestInvocationListener)}, where test to run is a
+     * {@link MetricTestCase}.
+     */
+    public void testRun_MetricTestCase() throws Exception {
+        mHostTest.setClassName(TestMetricTestCase.class.getName());
+        TestIdentifier test1 = new TestIdentifier(TestMetricTestCase.class.getName(), "testPass");
+        TestIdentifier test2 = new TestIdentifier(TestMetricTestCase.class.getName(), "testPass2");
+        mListener.testRunStarted((String) EasyMock.anyObject(), EasyMock.eq(2));
+        mListener.testStarted(EasyMock.eq(test1));
+        // test1 should only have its metrics
+        Map<String, String> metric1 = new HashMap<>();
+        metric1.put("key1", "metric1");
+        mListener.testEnded(test1, metric1);
+        // test2 should only have its metrics
+        mListener.testStarted(EasyMock.eq(test2));
+        Map<String, String> metric2 = new HashMap<>();
+        metric2.put("key2", "metric2");
+        mListener.testEnded(test2, metric2);
+        mListener.testRunEnded(EasyMock.anyLong(), (Map<String, String>) EasyMock.anyObject());
         EasyMock.replay(mListener);
         mHostTest.run(mListener);
         EasyMock.verify(mListener);
