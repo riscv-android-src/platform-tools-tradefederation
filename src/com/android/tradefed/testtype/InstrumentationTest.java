@@ -40,6 +40,7 @@ import com.android.tradefed.result.ResultForwarder;
 import com.android.tradefed.util.AbiFormatter;
 import com.android.tradefed.util.ListInstrumentationParser;
 import com.android.tradefed.util.ListInstrumentationParser.InstrumentationTarget;
+import com.android.tradefed.util.StreamUtil;
 import com.android.tradefed.util.StringEscapeUtils;
 
 import com.google.common.annotations.VisibleForTesting;
@@ -987,7 +988,7 @@ public class InstrumentationTest implements IDeviceTest, IResumableTest, ITestCo
                 InputStreamSource screenSource = mDevice.getScreenshot();
                 super.testLog(String.format("screenshot-%s_%s", test.getClassName(),
                         test.getTestName()), LogDataType.PNG, screenSource);
-                screenSource.cancel();
+                StreamUtil.cancel(screenSource);
             } catch (DeviceNotAvailableException e) {
                 // TODO: rethrow this somehow
                 CLog.e("Device %s became unavailable while capturing screenshot, %s",
@@ -1053,7 +1054,7 @@ public class InstrumentationTest implements IDeviceTest, IResumableTest, ITestCo
             }
             super.testLog(String.format("logcat-%s_%s", test.getClassName(), test.getTestName()),
                     LogDataType.TEXT, logSource);
-            logSource.cancel();
+            StreamUtil.cancel(logSource);
         }
     }
 

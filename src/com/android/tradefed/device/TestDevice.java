@@ -279,7 +279,9 @@ public class TestDevice extends NativeDevice {
                 return new ByteArrayInputStreamSource(imageData);
             }
         }
-        return null;
+        // Return an error in the buffer
+        return new ByteArrayInputStreamSource(
+                "Error: device reported null for screenshot.".getBytes());
     }
 
     private class ScreenshotAction implements DeviceAction {
