@@ -19,6 +19,7 @@ import com.android.ddmlib.AdbCommandRejectedException;
 import com.android.ddmlib.FileListingService;
 import com.android.ddmlib.FileListingService.FileEntry;
 import com.android.ddmlib.IDevice;
+import com.android.ddmlib.IDevice.DeviceState;
 import com.android.ddmlib.IShellOutputReceiver;
 import com.android.ddmlib.InstallException;
 import com.android.ddmlib.NullOutputReceiver;
@@ -152,6 +153,9 @@ public class NativeDevice implements IManagedTestDevice {
     static final String BUILD_CODENAME_PROP = "ro.build.version.codename";
     static final String BUILD_TAGS = "ro.build.tags";
     private static final String PS_COMMAND = "ps -A || ps";
+
+    private static final String SIM_STATE_PROP = "gsm.sim.state";
+    private static final String SIM_OPERATOR_PROP = "gsm.operator.alpha";
 
     static final String MAC_ADDRESS_PATTERN = "([0-9a-fA-F]{2}:){5}[0-9a-fA-F]{2}";
     static final String MAC_ADDRESS_COMMAND = "cat /sys/class/net/wlan0/address";
@@ -368,6 +372,10 @@ public class NativeDevice implements IManagedTestDevice {
      */
     @Override
     public String getProperty(final String name) throws DeviceNotAvailableException {
+        if (!DeviceState.ONLINE.equals(getIDevice().getState())) {
+            CLog.d("Device %s is not online cannot get property %s.", getSerialNumber(), name);
+            return null;
+        }
         final String[] result = new String[1];
         DeviceAction propAction = new DeviceAction() {
 
@@ -3673,7 +3681,8 @@ public class NativeDevice implements IManagedTestDevice {
     public DeviceDescriptor getDeviceDescriptor() {
         IDeviceSelection selector = new DeviceSelectionOptions();
         IDevice idevice = getIDevice();
-        return new DeviceDescriptor(idevice.getSerialNumber(),
+        return new DeviceDescriptor(
+                idevice.getSerialNumber(),
                 idevice instanceof StubDevice,
                 getAllocationState(),
                 getDisplayString(selector.getDeviceProductType(idevice)),
@@ -3682,7 +3691,9 @@ public class NativeDevice implements IManagedTestDevice {
                 getDisplayString(idevice.getProperty("ro.build.id")),
                 getDisplayString(selector.getBatteryLevel(idevice)),
                 getDeviceClass(),
-                getDisplayString(getMacAddress()));
+                getDisplayString(getMacAddress()),
+                getDisplayString(getSimState()),
+                getDisplayString(getSimOperator()));
     }
 
     /**
@@ -3753,5 +3764,29 @@ public class NativeDevice implements IManagedTestDevice {
         }
         CLog.d("No valid MAC address queried from device %s", mIDevice.getSerialNumber());
         return null;
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public String getSimState() {
+        try {
+            return getProperty(SIM_STATE_PROP);
+        } catch (DeviceNotAvailableException e) {
+            CLog.w("Failed to query SIM state for %s", mIDevice.getSerialNumber());
+            CLog.w(e);
+            return null;
+        }
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public String getSimOperator() {
+        try {
+            return getProperty(SIM_OPERATOR_PROP);
+        } catch (DeviceNotAvailableException e) {
+            CLog.w("Failed to query SIM operator for %s", mIDevice.getSerialNumber());
+            CLog.w(e);
+            return null;
+        }
     }
 }

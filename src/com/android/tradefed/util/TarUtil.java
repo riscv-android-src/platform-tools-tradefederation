@@ -145,8 +145,9 @@ public class TarUtil {
 
         // extract and upload internal files.
         File dir = FileUtil.createTempDir("tmp_tar_dir");
-        File ungzipLog = TarUtil.unGzip(targzFile, dir);
+        File ungzipLog = null;
         try {
+            ungzipLog = TarUtil.unGzip(targzFile, dir);
             List<File> logs = TarUtil.unTar(ungzipLog, dir);
             for (File f : logs) {
                 InputStreamSource s = null;

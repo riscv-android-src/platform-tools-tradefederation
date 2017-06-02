@@ -141,7 +141,7 @@ public class FastbootHelperTest extends TestCase {
         EasyMock.expect(mMockRunUtil.runTimedCmd(EasyMock.anyLong(),
                 EasyMock.eq("fastboot"), EasyMock.eq("devices"))).andReturn(fakeRes);
         EasyMock.replay(mMockRunUtil);
-        assertNull(mFastbootHelper.getDevices());
+        assertTrue(mFastbootHelper.getDevices().isEmpty());
         EasyMock.verify(mMockRunUtil);
     }
 

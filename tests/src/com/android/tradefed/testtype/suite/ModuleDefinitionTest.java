@@ -168,7 +168,7 @@ public class ModuleDefinitionTest {
         mMockCleaner.tearDown(EasyMock.eq(mMockDevice), EasyMock.eq(mMockBuildInfo),
                 EasyMock.isNull());
         mMockListener.testRunStarted(MODULE_NAME, 0);
-        mMockListener.testRunEnded(0, Collections.emptyMap());
+        mMockListener.testRunEnded(EasyMock.anyLong(), EasyMock.anyObject());
         replayMocks();
         mModule.run(mMockListener);
         verifyMocks();
@@ -227,7 +227,7 @@ public class ModuleDefinitionTest {
                     EasyMock.anyLong(),
                     EasyMock.anyObject());
         }
-        mMockListener.testRunEnded(0, Collections.emptyMap());
+        mMockListener.testRunEnded(EasyMock.anyLong(), EasyMock.anyObject());
         replayMocks();
         mModule.run(mMockListener);
         verifyMocks();
@@ -260,7 +260,7 @@ public class ModuleDefinitionTest {
         }
         mMockListener.testFailed(EasyMock.anyObject(), EasyMock.anyObject());
         mMockListener.testRunFailed(EasyMock.anyObject());
-        mMockListener.testRunEnded(0, Collections.emptyMap());
+        mMockListener.testRunEnded(EasyMock.anyLong(), EasyMock.anyObject());
         replayMocks();
         try {
             mModule.run(mMockListener);

@@ -119,6 +119,7 @@ public class ClassPathScanner {
             if (filter.accept(entryName)) {
                 entryNames.add(filter.transform(entryName));
             }
+            entryName = null;
         }
         jarFile.close();
         return entryNames;

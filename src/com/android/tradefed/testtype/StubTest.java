@@ -17,6 +17,7 @@
 package com.android.tradefed.testtype;
 
 import com.android.ddmlib.Log.LogLevel;
+import com.android.ddmlib.testrunner.TestIdentifier;
 import com.android.tradefed.config.Option;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.DeviceUnresponsiveException;
@@ -25,6 +26,7 @@ import com.android.tradefed.result.ITestInvocationListener;
 
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.List;
 
 /**
@@ -61,6 +63,13 @@ public class StubTest implements IShardableTest {
     )
     private boolean mThrowUnresponsive = false;
 
+    @Option(
+        name = "run-a-test",
+        description =
+                "Test option to make the stub test trigger some test callbacks on the invocation."
+    )
+    private boolean mRunTest = false;
+
     /**
      * {@inheritDoc}
      */
@@ -75,8 +84,15 @@ public class StubTest implements IShardableTest {
         if (mThrowUnresponsive) {
             throw new DeviceUnresponsiveException("StubTest DeviceUnresponsiveException", "serial");
         }
-        CLog.i("nothing to test!");
-
+        if (!mRunTest) {
+            CLog.i("nothing to test!");
+        } else {
+            listener.testRunStarted("TestStub", 1);
+            TestIdentifier testId = new TestIdentifier("StubTest", "StubMethod");
+            listener.testStarted(testId);
+            listener.testEnded(testId, Collections.emptyMap());
+            listener.testRunEnded(500, Collections.emptyMap());
+        }
     }
 
     @Override

@@ -158,7 +158,7 @@ public class BackgroundDeviceActionTest extends TestCase {
         test.setName(getClass().getCanonicalName() + "#testwaitForDeviceRecovery_blockOffline");
         test.start();
         // Specify a timeout for join, not to be stuck.
-        test.join(JOIN_WAIT_TIME_MS);
+        test.join(LONG_WAIT_TIME_MS);
         // Thread should still be alive.
         assertTrue(test.isAlive());
         mBackgroundAction.cancel();

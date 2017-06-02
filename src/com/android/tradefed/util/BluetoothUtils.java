@@ -50,9 +50,12 @@ public class BluetoothUtils {
     private static final int MAX_RETRIES = 3;
     private static final Pattern BONDED_MAC_HEADER =
             Pattern.compile("INSTRUMENTATION_RESULT: device-\\d{2}=(.*)$");
-    private static final String BTSNOOP_LOG_FILE = "btsnoop_hci.log";
     private static final String BT_STACK_CONF = "/etc/bluetooth/bt_stack.conf";
     public static final String BTSNOOP_API = "bluetoothConfigHciSnoopLog";
+    public static final String BTSNOOP_CMD = "setprop persist.bluetooth.btsnoopenable ";
+    public static final String BTSNOOP_ENABLE_CMD = BTSNOOP_CMD + "true";
+    public static final String BTSNOOP_DISABLE_CMD = BTSNOOP_CMD + "false";
+    public static final String O_BUILD = "O";
 
     /**
      * Convenience method to execute BT instrumentation command and return output
@@ -164,6 +167,21 @@ public class BluetoothUtils {
     }
 
     /**
+     * Confirm branch version if it is Gold or not based on build alias
+     *
+     * @param device, Test device to check
+     * @throws DeviceNotAvailableException
+     */
+    private static boolean isGoldAndAbove(ITestDevice device) throws DeviceNotAvailableException {
+        // TODO: Use API level once it is bumped up
+        int apiLevel = device.getApiLevel();
+        if (!"REL".equals(device.getProperty("ro.build.version.codename"))) {
+            apiLevel++;
+        }
+        return apiLevel >= 25;
+    }
+
+    /**
      * Enable btsnoop logging by sl4a call
      *
      * @param device
@@ -172,6 +190,10 @@ public class BluetoothUtils {
      */
     public static boolean enableBtsnoopLogging(ITestDevice device)
             throws DeviceNotAvailableException {
+        if (isGoldAndAbove(device)) {
+            device.executeShellCommand(BTSNOOP_ENABLE_CMD);
+            return true;
+        }
         return enableBtsnoopLogging(device, null);
     }
 
@@ -198,6 +220,10 @@ public class BluetoothUtils {
      */
     public static boolean disableBtsnoopLogging(ITestDevice device)
             throws DeviceNotAvailableException {
+        if (isGoldAndAbove(device)) {
+            device.executeShellCommand(BTSNOOP_DISABLE_CMD);
+            return true;
+        }
         return disableBtsnoopLogging(device, null);
     }
 

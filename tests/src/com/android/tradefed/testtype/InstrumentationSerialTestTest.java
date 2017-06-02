@@ -54,38 +54,39 @@ public class InstrumentationSerialTestTest extends TestCase {
     /**
      * Test normal run scenario with a single test.
      */
-    @SuppressWarnings("unchecked")
     public void testRun() throws DeviceNotAvailableException, ConfigurationException {
         final String packageName = "com.foo";
         final TestIdentifier test = new TestIdentifier("FooTest", "testFoo");
         final Collection<TestIdentifier> testList = new ArrayList<TestIdentifier>(1);
         testList.add(test);
-        final InstrumentationTest mockITest = new InstrumentationTest() {
-            @Override
-            public void run(ITestInvocationListener listener) {
-                listener.testRunStarted(packageName, 1);
-                listener.testStarted(test);
-                listener.testEnded(test, Collections.EMPTY_MAP);
-                listener.testRunEnded(0, Collections.EMPTY_MAP);
-            }
-        };
+        final InstrumentationTest mockITest =
+                new InstrumentationTest() {
+                    @Override
+                    public void run(ITestInvocationListener listener) {
+                        listener.testRunStarted(packageName, 1);
+                        listener.testStarted(test, 5l);
+                        listener.testEnded(test, 10l, Collections.emptyMap());
+                        listener.testRunEnded(0, Collections.emptyMap());
+                    }
+                };
 
         // mock out InstrumentationTest that will be used to create InstrumentationSerialTest
         mockITest.setDevice(mMockTestDevice);
         mockITest.setPackageName(packageName);
 
-        mInstrumentationSerialTest = new InstrumentationSerialTest(mockITest, testList) {
-            @Override
-            InstrumentationTest createInstrumentationTest(InstrumentationTest instrumentationTest) throws
-                    ConfigurationException {
-                return mockITest;
-            }
-        };
+        mInstrumentationSerialTest =
+                new InstrumentationSerialTest(mockITest, testList) {
+                    @Override
+                    InstrumentationTest createInstrumentationTest(
+                            InstrumentationTest instrumentationTest) throws ConfigurationException {
+                        return mockITest;
+                    }
+                };
         mMockListener.testRunStarted(packageName, 1);
-        mMockListener.testStarted(EasyMock.eq(test), EasyMock.anyLong());
+        mMockListener.testStarted(EasyMock.eq(test), EasyMock.eq(5l));
         mMockListener.testEnded(
-                EasyMock.eq(test), EasyMock.anyLong(), EasyMock.eq(Collections.EMPTY_MAP));
-        mMockListener.testRunEnded(0, Collections.EMPTY_MAP);
+                EasyMock.eq(test), EasyMock.eq(10l), EasyMock.eq(Collections.emptyMap()));
+        mMockListener.testRunEnded(0, Collections.emptyMap());
 
         EasyMock.replay(mMockListener, mMockTestDevice);
         mInstrumentationSerialTest.run(mMockListener);

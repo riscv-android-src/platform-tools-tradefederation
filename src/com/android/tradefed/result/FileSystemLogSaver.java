@@ -137,7 +137,7 @@ public class FileSystemLogSaver implements ILogSaver {
                     BUFFER_SIZE));
             outputStream.putNextEntry(new ZipEntry(saneDataName + "." + dataType.getFileExt()));
             StreamUtil.copyStreams(bufferedDataStream, outputStream);
-            CLog.i("Saved log file %s", log.getAbsolutePath());
+            CLog.d("Saved log file %s", log.getAbsolutePath());
             return new LogFile(log.getAbsolutePath(), getUrl(log), true, dataType.isText());
         } finally {
             StreamUtil.close(bufferedDataStream);
@@ -167,7 +167,7 @@ public class FileSystemLogSaver implements ILogSaver {
         }
 
         FileUtil.writeToFile(dataStream, log);
-        CLog.i("Saved raw log file %s", log.getAbsolutePath());
+        CLog.d("Saved raw log file %s", log.getAbsolutePath());
         return log;
     }
 
@@ -216,7 +216,7 @@ public class FileSystemLogSaver implements ILogSaver {
         if (logRetentionDays != null && logRetentionDays > 0) {
             new RetentionFileSaver().writeRetentionFile(logReportDir, logRetentionDays);
         }
-        CLog.i("Using log file directory %s", logReportDir.getAbsolutePath());
+        CLog.d("Using log file directory %s", logReportDir.getAbsolutePath());
         return logReportDir;
     }
 

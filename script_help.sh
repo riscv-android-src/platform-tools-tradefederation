@@ -76,6 +76,15 @@ if [ -z "${TF_PATH}" ]; then
     exit
 fi
 
+# include any host-side test jars from suite
+if [ ! -z "${ANDROID_HOST_OUT_TESTCASES}" ]; then
+    for folder in ${ANDROID_HOST_OUT_TESTCASES}/*; do
+        for j in $folder/*.jar; do
+            TF_PATH=${TF_PATH}:$j
+        done
+    done
+fi
+
 # set any host specific options
 # file format for file at $TRADEFED_OPTS_FILE is one line per host with the following format:
 # <hostname>=<options>

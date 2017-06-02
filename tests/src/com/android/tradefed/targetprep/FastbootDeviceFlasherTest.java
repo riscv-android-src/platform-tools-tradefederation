@@ -21,6 +21,7 @@ import com.android.tradefed.build.IDeviceBuildInfo;
 import com.android.tradefed.command.remote.DeviceDescriptor;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
+import com.android.tradefed.device.TestDeviceState;
 import com.android.tradefed.targetprep.IDeviceFlasher.UserDataFlashOption;
 import com.android.tradefed.util.ArrayUtil;
 import com.android.tradefed.util.CommandResult;
@@ -139,8 +140,50 @@ public class FastbootDeviceFlasherTest extends TestCase {
     }
 
     /**
-     * Test that a fastboot command is retried if it does not output anything.
+     * Test {@link FastbootDeviceFlasher#getCurrentSlot(ITestDevice)} when device is in fastboot.
      */
+    public void testGetCurrentSlot_fastboot() throws DeviceNotAvailableException, TargetSetupError {
+        CommandResult fastbootResult = new CommandResult();
+        fastbootResult.setStatus(CommandStatus.SUCCESS);
+        fastbootResult.setStderr("current-slot: _a\nfinished. total time 0.001s");
+        fastbootResult.setStdout("");
+        EasyMock.expect(mMockDevice.getDeviceState()).andReturn(TestDeviceState.FASTBOOT);
+        EasyMock.expect(mMockDevice.executeFastbootCommand("getvar", "current-slot"))
+                .andReturn(fastbootResult);
+        EasyMock.replay(mMockDevice, mMockRunUtil);
+        String currentSlot = mFlasher.getCurrentSlot(mMockDevice);
+        assertEquals("a", currentSlot);
+        EasyMock.verify(mMockDevice, mMockRunUtil);
+    }
+
+    /** Test {@link FastbootDeviceFlasher#getCurrentSlot(ITestDevice)} when device is in adb. */
+    public void testGetCurrentSlot_adb() throws DeviceNotAvailableException, TargetSetupError {
+        String adbResult = "[ro.boot.slot_suffix]: [_b]\n";
+        EasyMock.expect(mMockDevice.getDeviceState()).andReturn(TestDeviceState.ONLINE);
+        EasyMock.expect(mMockDevice.executeShellCommand("getprop ro.boot.slot_suffix"))
+                .andReturn(adbResult);
+        EasyMock.replay(mMockDevice, mMockRunUtil);
+        String currentSlot = mFlasher.getCurrentSlot(mMockDevice);
+        assertEquals("b", currentSlot);
+        EasyMock.verify(mMockDevice, mMockRunUtil);
+    }
+
+    /**
+     * Test {@link FastbootDeviceFlasher#getCurrentSlot(ITestDevice)} when device does not support
+     * A/B.
+     */
+    public void testGetCurrentSlot_null() throws DeviceNotAvailableException, TargetSetupError {
+        String adbResult = "\n";
+        EasyMock.expect(mMockDevice.getDeviceState()).andReturn(TestDeviceState.ONLINE);
+        EasyMock.expect(mMockDevice.executeShellCommand("getprop ro.boot.slot_suffix"))
+                .andReturn(adbResult);
+        EasyMock.replay(mMockDevice, mMockRunUtil);
+        String currentSlot = mFlasher.getCurrentSlot(mMockDevice);
+        assertNull(currentSlot);
+        EasyMock.verify(mMockDevice, mMockRunUtil);
+    }
+
+    /** Test that a fastboot command is retried if it does not output anything. */
     public void testRetryGetVersionCommand() throws DeviceNotAvailableException, TargetSetupError {
         // The first time command is tried, make it return an empty string.
         CommandResult fastbootInValidResult = new CommandResult();

@@ -28,6 +28,8 @@ import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.util.ArrayUtil;
 import com.android.tradefed.util.StreamUtil;
 
+import com.google.common.annotations.VisibleForTesting;
+
 import org.json.JSONException;
 import org.json.JSONObject;
 
@@ -152,8 +154,11 @@ public class RemoteManager extends Thread {
         try {
             return new ServerSocket(port);
         } catch (IOException e) {
-            CLog.e("Failed to open server socket:");
-            CLog.e(e);
+            // avoid printing a scary stack that is due to handover.
+            CLog.w(
+                    "Failed to open server socket: %s. Probably due to another instance of TF "
+                            + "running.",
+                    e.getMessage());
             return null;
         }
     }
@@ -228,7 +233,15 @@ public class RemoteManager extends Thread {
         }
     }
 
-    private void processClientOperations(BufferedReader in, PrintWriter out) throws IOException {
+    /**
+     * Process {@link com.android.tradefed.command.remote.RemoteClient} operations.
+     *
+     * @param in the {@link BufferedReader} coming from the client socket.
+     * @param out the {@link PrintWriter} to write to the client socket.
+     * @throws IOException
+     */
+    @VisibleForTesting
+    void processClientOperations(BufferedReader in, PrintWriter out) throws IOException {
         String line = null;
         while ((line = in.readLine()) != null && !mCancel) {
             JSONObject result = new JSONObject();
@@ -308,7 +321,12 @@ public class RemoteManager extends Thread {
         }
     }
 
-    private Thread processStartHandover(StartHandoverOp c, JSONObject result) throws JSONException {
+    @VisibleForTesting
+    DeviceTracker getDeviceTracker() {
+        return DeviceTracker.getInstance();
+    }
+
+    private Thread processStartHandover(StartHandoverOp c, JSONObject result) {
         final int port = c.getPort();
         CLog.logAndDisplay(LogLevel.INFO, "Performing handover to remote TF at port %d", port);
         // handle the handover as an async operation
@@ -323,12 +341,12 @@ public class RemoteManager extends Thread {
         return t;
     }
 
-    private void processHandoverInitComplete(HandoverInitCompleteOp c, JSONObject result)
-            throws JSONException {
+    private void processHandoverInitComplete(HandoverInitCompleteOp c, JSONObject result) {
+        CLog.logAndDisplay(LogLevel.INFO, "Received handover complete.");
         mScheduler.handoverInitiationComplete();
     }
 
-    private Thread processHandoverComplete(HandoverCompleteOp c, JSONObject result) throws JSONException {
+    private Thread processHandoverComplete(HandoverCompleteOp c, JSONObject result) {
         // handle the handover as an async operation
         Thread t = new Thread("handover thread") {
             @Override
@@ -343,7 +361,7 @@ public class RemoteManager extends Thread {
         ITestDevice allocatedDevice = mDeviceManager.forceAllocateDevice(c.getDeviceSerial());
         if (allocatedDevice != null) {
             CLog.logAndDisplay(LogLevel.INFO, "Remotely allocating device %s", c.getDeviceSerial());
-            DeviceTracker.getInstance().allocateDevice(allocatedDevice);
+            getDeviceTracker().allocateDevice(allocatedDevice);
         } else {
             String msg = "Failed to allocate device " + c.getDeviceSerial();
             CLog.e(msg);
@@ -355,7 +373,7 @@ public class RemoteManager extends Thread {
         if (FreeDeviceOp.ALL_DEVICES.equals(c.getDeviceSerial())) {
             freeAllDevices();
         } else {
-            ITestDevice d = DeviceTracker.getInstance().freeDevice(c.getDeviceSerial());
+            ITestDevice d = getDeviceTracker().freeDevice(c.getDeviceSerial());
             if (d != null) {
                 CLog.logAndDisplay(LogLevel.INFO,
                         "Remotely freeing device %s",
@@ -396,7 +414,7 @@ public class RemoteManager extends Thread {
     }
 
     private void processExecCommand(ExecCommandOp c, JSONObject result) throws JSONException {
-        ITestDevice device = DeviceTracker.getInstance().getDeviceForSerial(c.getDeviceSerial());
+        ITestDevice device = getDeviceTracker().getDeviceForSerial(c.getDeviceSerial());
         if (device == null) {
             String msg = String.format("Could not find remotely allocated device with serial %s",
                     c.getDeviceSerial());
@@ -405,7 +423,7 @@ public class RemoteManager extends Thread {
             return;
         }
         ExecCommandTracker commandResult =
-            DeviceTracker.getInstance().getLastCommandResult(c.getDeviceSerial());
+                getDeviceTracker().getLastCommandResult(c.getDeviceSerial());
         if (commandResult != null &&
             commandResult.getCommandResult().getStatus() == Status.EXECUTING) {
             String msg = String.format("Another command is already executing on %s",
@@ -419,7 +437,7 @@ public class RemoteManager extends Thread {
         try {
             ExecCommandTracker tracker = new ExecCommandTracker();
             mScheduler.execCommand(tracker, device, c.getCommandArgs());
-            DeviceTracker.getInstance().setCommandTracker(c.getDeviceSerial(), tracker);
+            getDeviceTracker().setCommandTracker(c.getDeviceSerial(), tracker);
         } catch (ConfigurationException e) {
             CLog.e("Failed to exec command");
             CLog.e(e);
@@ -429,9 +447,8 @@ public class RemoteManager extends Thread {
 
     private void processGetLastCommandResult(GetLastCommandResultOp c, JSONObject json)
             throws JSONException {
-        ITestDevice device = DeviceTracker.getInstance().getDeviceForSerial(c.getDeviceSerial());
-        ExecCommandTracker tracker = DeviceTracker.getInstance().getLastCommandResult(
-                c.getDeviceSerial());
+        ITestDevice device = getDeviceTracker().getDeviceForSerial(c.getDeviceSerial());
+        ExecCommandTracker tracker = getDeviceTracker().getLastCommandResult(c.getDeviceSerial());
         if (device == null) {
             c.packResponseIntoJson(new CommandResult(CommandResult.Status.NOT_ALLOCATED), json);
         } else if (tracker == null) {
@@ -447,7 +464,7 @@ public class RemoteManager extends Thread {
     }
 
     private void freeAllDevices() {
-        for (ITestDevice d : DeviceTracker.getInstance().freeAll()) {
+        for (ITestDevice d : getDeviceTracker().freeAll()) {
             CLog.logAndDisplay(LogLevel.INFO,
                     "Freeing device %s no longer in use by remote tradefed",
                             d.getSerialNumber());

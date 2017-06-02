@@ -104,14 +104,12 @@ public class AndroidJUnitTest extends InstrumentationTest implements IRuntimeHin
             description="The device directory path to which the test filtering files are pushed")
     private String mTestFilterDir = "/data/local/tmp/ajur";
 
-    @Option(name = "shards", description =
-            "Split test run into this many parallel shards")
-    private int mShards = 0;
-
     private String mDeviceIncludeFile = null;
     private String mDeviceExcludeFile = null;
     private int mTotalShards = 0;
     private int mShardIndex = 0;
+    // Flag to avoid re-sharding a test that already was.
+    private boolean mIsSharded = false;
 
     public AndroidJUnitTest() {
         super();
@@ -345,18 +343,17 @@ public class AndroidJUnitTest extends InstrumentationTest implements IRuntimeHin
         return ListInstrumentationParser.SHARDABLE_RUNNERS.contains(getRunnerName());
     }
 
-    /**
-     * {@inheritDoc}
-     */
+    /** {@inheritDoc} */
     @Override
-    public Collection<IRemoteTest> split() {
+    public Collection<IRemoteTest> split(int shardCount) {
         if (!isShardable()) {
             return null;
         }
-        if (mShards > 1) {
-            Collection<IRemoteTest> shards = new ArrayList<>(mShards);
-            for (int index = 0; index < mShards; index++) {
-                shards.add(getTestShard(mShards, index));
+        if (!mIsSharded && shardCount > 1) {
+            mIsSharded = true;
+            Collection<IRemoteTest> shards = new ArrayList<>(shardCount);
+            for (int index = 0; index < shardCount; index++) {
+                shards.add(getTestShard(shardCount, index));
             }
             return shards;
         }
@@ -368,15 +365,22 @@ public class AndroidJUnitTest extends InstrumentationTest implements IRuntimeHin
      */
     @Override
     public IRemoteTest getTestShard(int shardCount, int shardIndex) {
-        AndroidJUnitTest shard = new AndroidJUnitTest();
+        AndroidJUnitTest shard;
+        // ensure we handle runners that extend AndroidJUnitRunner
+        try {
+            shard = this.getClass().newInstance();
+        } catch (InstantiationException | IllegalAccessException e) {
+            throw new RuntimeException(e);
+        }
         try {
             OptionCopier.copyOptions(this, shard);
         } catch (ConfigurationException e) {
             CLog.e("Failed to copy instrumentation options: %s", e.getMessage());
         }
-        shard.mShards = 0;
         shard.mShardIndex = shardIndex;
         shard.mTotalShards = shardCount;
+        shard.mIsSharded = true;
+        shard.setAbi(getAbi());
         // We approximate the runtime of each shard to be equal since we can't know.
         shard.mRuntimeHint = mRuntimeHint / shardCount;
         return shard;
