@@ -165,8 +165,10 @@ public class CommandScheduler extends Thread implements ICommandScheduler, IComm
     // FIXME: enable this to be enabled or disabled on a per-cmdfile basis
     private boolean mReloadCmdfiles = false;
 
-    @Option(name = "max-poll-time", description =
-            "ms between forced command scheduler execution time")
+    @Option(
+        name = "max-poll-time",
+        description = "ms between forced command scheduler execution time"
+    )
     private long mPollTime = 30 * 1000; // 30 seconds
 
     @Option(name = "shutdown-on-cmdfile-error", description =
@@ -507,6 +509,9 @@ public class CommandScheduler extends Thread implements ICommandScheduler, IComm
          */
         private static final long CHECK_WAIT_DEVICE_AVAIL_MS = 30 * 1000;
         private static final int EXPECTED_THREAD_COUNT = 1;
+        private static final String INVOC_END_EVENT_ID_KEY = "id";
+        private static final String INVOC_END_EVENT_ELAPSED_KEY = "elapsed-time";
+        private static final String INVOC_END_EVENT_TAG_KEY = "test-tag";
 
         private final IScheduledInvocationListener[] mListeners;
         private final IInvocationContext mInvocationContext;
@@ -543,6 +548,14 @@ public class CommandScheduler extends Thread implements ICommandScheduler, IComm
             mStartTime = System.currentTimeMillis();
             ITestInvocation instance = getInvocation();
             IConfiguration config = mCmd.getConfiguration();
+
+            // Copy the command options invocation attributes to the invocation.
+            // TODO: Implement a locking/read-only mechanism to prevent unwanted attributes to be
+            // added during the invocation.
+            if (!config.getCommandOptions().getInvocationData().isEmpty()) {
+                mInvocationContext.addInvocationAttributes(
+                        config.getCommandOptions().getInvocationData());
+            }
 
             try {
                 mCmd.commandStarted();
@@ -652,9 +665,14 @@ public class CommandScheduler extends Thread implements ICommandScheduler, IComm
         private void logInvocationEndedEvent(
                 int invocId, long elapsedTime, final IInvocationContext context) {
             Map<String, String> args = new HashMap<>();
-            args.put("id", Integer.toString(invocId));
-            args.put("elapsed time", TimeUtil.formatElapsedTime(elapsedTime));
-            args.put("test-tag", context.getTestTag());
+            args.put(INVOC_END_EVENT_ID_KEY, Integer.toString(invocId));
+            args.put(INVOC_END_EVENT_ELAPSED_KEY, TimeUtil.formatElapsedTime(elapsedTime));
+            args.put(INVOC_END_EVENT_TAG_KEY, context.getTestTag());
+            // Add all the invocation attributes to the final event logging.
+            // UniqueMultiMap cannot be easily converted to Map so we just iterate.
+            for (String key : context.getAttributes().keySet()) {
+                args.put(key, context.getAttributes().get(key).get(0));
+            }
             logEvent(EventType.INVOCATION_END, args);
         }
 
@@ -930,20 +948,14 @@ public class CommandScheduler extends Thread implements ICommandScheduler, IComm
                 mCommandProcessWait.waitAndReset(mPollTime);
                 checkInvocations();
                 processReadyCommands(manager);
+                postProcessReadyCommands();
             }
             mCommandTimer.shutdown();
             // We signal the device manager to stop device recovery threads because it could
             // potentially create more invocations.
             manager.terminateDeviceRecovery();
             CLog.i("Waiting for invocation threads to complete");
-            List<InvocationThread> threadListCopy;
-            synchronized (this) {
-                threadListCopy = new ArrayList<InvocationThread>(mInvocationThreadMap.size());
-                threadListCopy.addAll(mInvocationThreadMap.values());
-            }
-            for (Thread thread : threadListCopy) {
-                waitForThread(thread);
-            }
+            waitForAllInvocationThreads();
             closeRemoteClient();
             if (mRemoteManager != null) {
                 mRemoteManager.cancelAndWait();
@@ -957,6 +969,13 @@ public class CommandScheduler extends Thread implements ICommandScheduler, IComm
             System.out.flush();
         }
     }
+
+    /**
+     * Placeholder method within the scheduler main loop, called after {@link
+     * #processReadyCommands(IDeviceManager)}. Default implementation is empty and does not provide
+     * any extra actions.
+     */
+    protected void postProcessReadyCommands() {}
 
     void checkInvocations() {
         CLog.d("Checking invocations...");
@@ -1048,6 +1067,18 @@ public class CommandScheduler extends Thread implements ICommandScheduler, IComm
             thread.join();
         } catch (InterruptedException e) {
             // ignore
+            waitForThread(thread);
+        }
+    }
+
+    /** Wait until all invocation threads complete. */
+    protected void waitForAllInvocationThreads() {
+        List<InvocationThread> threadListCopy;
+        synchronized (this) {
+            threadListCopy = new ArrayList<InvocationThread>(mInvocationThreadMap.size());
+            threadListCopy.addAll(mInvocationThreadMap.values());
+        }
+        for (Thread thread : threadListCopy) {
             waitForThread(thread);
         }
     }
@@ -1165,8 +1196,8 @@ public class CommandScheduler extends Thread implements ICommandScheduler, IComm
 
     /**
      * Factory method for creating a {@link CommandFileParser}.
-     * <p/>
-     * Exposed for unit testing.
+     *
+     * <p>Exposed for unit testing.
      */
     CommandFileParser createCommandFileParser() {
         return new CommandFileParser();
@@ -1378,17 +1409,24 @@ public class CommandScheduler extends Thread implements ICommandScheduler, IComm
         startInvocation(context, execCmd, listener);
     }
 
+    /** Optional initialization step before test invocation starts */
+    protected void initInvocation() {}
+
     /**
      * Spawns off thread to run invocation for given device.
      *
      * @param context the {@link IInvocationContext}
      * @param cmd the {@link ExecutableCommand} to execute
-     * @param listeners the
-     * {@link com.android.tradefed.command.ICommandScheduler.IScheduledInvocationListener}s
-     * to invoke when complete
+     * @param listeners the {@link
+     *     com.android.tradefed.command.ICommandScheduler.IScheduledInvocationListener}s to invoke
+     *     when complete
      */
-    private void startInvocation(IInvocationContext context, ExecutableCommand cmd,
+    private void startInvocation(
+            IInvocationContext context,
+            ExecutableCommand cmd,
             IScheduledInvocationListener... listeners) {
+        initInvocation();
+
         // Check if device is not used in another invocation.
         throwIfDeviceInInvocationThread(context.getDevices());
 
@@ -1543,7 +1581,7 @@ public class CommandScheduler extends Thread implements ICommandScheduler, IComm
             mRemoteClient = RemoteClient.connect(handoverPort);
             CLog.d("Connected to remote manager at %d", handoverPort);
             handoverDevices(mRemoteClient);
-            handoverCommands(mRemoteClient);
+            CLog.i("Done with device handover.");
             mRemoteClient.sendHandoverInitComplete();
             shutdown();
             return true;
@@ -1554,60 +1592,13 @@ public class CommandScheduler extends Thread implements ICommandScheduler, IComm
         return false;
     }
 
-    /**
-     * Informs remote manager of the devices we are still using
-     */
+    /** Informs remote manager of the physical devices we are still using. */
     private void handoverDevices(IRemoteClient client) throws RemoteException {
         for (DeviceDescriptor deviceDesc : getDeviceManager().listAllDevices()) {
-            if (deviceDesc.getState() == DeviceAllocationState.Allocated) {
+            if (DeviceAllocationState.Allocated.equals(deviceDesc.getState())
+                    && !deviceDesc.isStubDevice()) {
                 client.sendAllocateDevice(deviceDesc.getSerial());
                 CLog.d("Sent filter device %s command", deviceDesc.getSerial());
-            }
-        }
-    }
-
-    /**
-     * Pass the set of remote commands in use to remote client
-     */
-    private void handoverCommands(IRemoteClient client) throws RemoteException {
-        // now send command info
-        List<CommandTracker> cmdCopy = getCommandTrackers();
-        // send commands as files if appropriate to do so
-        handoverCmdFiles(client, cmdCopy);
-
-        // now send remaining commands
-        for (CommandTracker cmd : cmdCopy) {
-            client.sendAddCommand(cmd.getTotalExecTime(), cmd.mArgs);
-        }
-    }
-
-    /**
-     * If appropriate, send remote commands in use as command files
-     *
-     * @param client
-     * @param cmdCopy the list of commands. Will remove commands from this list as they are sent.
-     * @throws RemoteException
-     */
-    private void handoverCmdFiles(IRemoteClient client, List<CommandTracker> cmdCopy)
-            throws RemoteException {
-        if (mReloadCmdfiles) {
-            // keep track of files we've sent
-            Set<String> cmdFilesSent = new HashSet<>();
-            // only want to send commands in file form if reload is on, because otherwise
-            // it is not guaranteed that commands currently running are same as in file
-            Iterator<CommandTracker> cmdIter = cmdCopy.iterator();
-            while (cmdIter.hasNext()) {
-                CommandTracker cmd = cmdIter.next();
-                String cmdPath = cmd.getCommandFilePath();
-                if (cmdPath != null) {
-                    cmdIter.remove();
-                    if (!cmdFilesSent.contains(cmdPath)) {
-                        List<String> extraArgs = getCommandFileWatcher().getExtraArgsForFile(
-                                cmdPath);
-                        client.sendAddCommandFile(cmdPath, extraArgs);
-                        cmdFilesSent.add(cmdPath);
-                    }
-                }
             }
         }
     }
@@ -1882,8 +1873,8 @@ public class CommandScheduler extends Thread implements ICommandScheduler, IComm
 
     /**
      * Starts remote manager to listen to remote commands.
-     * <p/>
-     * TODO: refactor to throw exception on failure
+     *
+     * <p>TODO: refactor to throw exception on failure
      */
     private void startRemoteManager() {
         if (mRemoteManager != null && !mRemoteManager.isCanceled()) {
@@ -1940,8 +1931,8 @@ public class CommandScheduler extends Thread implements ICommandScheduler, IComm
 
     /**
      * Helper object for allowing multiple threads to synchronize on an event.
-     * <p/>
-     * Basically a modest wrapper around Object's wait and notify methods, that supports
+     *
+     * <p>Basically a modest wrapper around Object's wait and notify methods, that supports
      * remembering if a notify call was made.
      */
     private static class WaitObj {

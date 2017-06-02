@@ -20,6 +20,7 @@ import com.android.tradefed.build.IDeviceBuildInfo;
 import com.android.tradefed.command.remote.DeviceDescriptor;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
+import com.android.tradefed.device.TestDeviceState;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.util.CommandResult;
 import com.android.tradefed.util.CommandStatus;
@@ -46,6 +47,9 @@ public class FastbootDeviceFlasher implements IDeviceFlasher  {
 
     private static final int MAX_RETRY_ATTEMPTS = 3;
     private static final int RETRY_SLEEP = 2 * 1000; // 2s sleep between retries
+
+    private static final String SLOT_PROP = "ro.boot.slot_suffix";
+    private static final String SLOT_VAR = "current-slot";
 
     private long mWipeTimeout = 4 * 60 * 1000;
 
@@ -124,14 +128,28 @@ public class FastbootDeviceFlasher implements IDeviceFlasher  {
         device.rebootIntoBootloader();
 
         downloadFlashingResources(device, deviceBuild);
+        preFlashSetup(device, deviceBuild);
         handleUserDataFlashing(device, deviceBuild);
         checkAndFlashBootloader(device, deviceBuild);
         checkAndFlashBaseband(device, deviceBuild);
+        flashExtraImages(device, deviceBuild);
         checkAndFlashSystem(device, systemBuildId, systemBuildFlavor, deviceBuild);
     }
 
     /**
+     * Perform any additional pre-flashing setup required. No-op unless overridden.
+     *
+     * @param device the {@link ITestDevice} to prepare
+     * @param deviceBuild the {@link IDeviceBuildInfo} containing the build files
+     * @throws DeviceNotAvailableException
+     * @throws TargetSetupError
+     */
+    protected void preFlashSetup(ITestDevice device, IDeviceBuildInfo deviceBuild)
+            throws DeviceNotAvailableException, TargetSetupError {}
+
+    /**
      * Handle flashing of userdata/cache partition
+     *
      * @param device the {@link ITestDevice} to flash
      * @param deviceBuild the {@link IDeviceBuildInfo} that contains the files to flash
      * @throws DeviceNotAvailableException
@@ -499,11 +517,23 @@ public class FastbootDeviceFlasher implements IDeviceFlasher  {
     }
 
     /**
+     * Flash any device specific partitions before flashing system and rebooting. No-op unless
+     * overridden.
+     *
+     * @param device the {@link ITestDevice} to flash
+     * @param deviceBuild the {@link IDeviceBuildInfo} containing the build files
+     * @throws DeviceNotAvailableException
+     * @throws TargetSetupError
+     */
+    protected void flashExtraImages(ITestDevice device, IDeviceBuildInfo deviceBuild)
+            throws DeviceNotAvailableException, TargetSetupError {}
+
+    /**
      * If needed, flash the system image on device.
-     * <p/>
-     * Please look at {@link #shouldFlashSystem(String, String, IDeviceBuildInfo)}
-     * <p/>
-     * Regardless of path chosen, after method execution device should be booting into userspace.
+     *
+     * <p>Please look at {@link #shouldFlashSystem(String, String, IDeviceBuildInfo)}
+     *
+     * <p>Regardless of path chosen, after method execution device should be booting into userspace.
      *
      * @param device the {@link ITestDevice} to flash
      * @param systemBuildId the current build id running on the device
@@ -513,9 +543,12 @@ public class FastbootDeviceFlasher implements IDeviceFlasher  {
      * @throws DeviceNotAvailableException if device is not available
      * @throws TargetSetupError if failed to flash bootloader
      */
-    protected boolean checkAndFlashSystem(ITestDevice device, String systemBuildId,
-            String systemBuildFlavor, IDeviceBuildInfo deviceBuild)
-                    throws DeviceNotAvailableException, TargetSetupError {
+    protected boolean checkAndFlashSystem(
+            ITestDevice device,
+            String systemBuildId,
+            String systemBuildFlavor,
+            IDeviceBuildInfo deviceBuild)
+            throws DeviceNotAvailableException, TargetSetupError {
        if (shouldFlashSystem(systemBuildId, systemBuildFlavor, deviceBuild)) {
             CLog.i("Flashing system %s", deviceBuild.getDeviceBuildId());
             flashSystem(device, deviceBuild);
@@ -608,8 +641,34 @@ public class FastbootDeviceFlasher implements IDeviceFlasher  {
     }
 
     /**
-     * Exposed for testing.
+     * Helper method to retrieve the current slot (for A/B capable devices).
+     *
+     * @param device the {@link ITestDevice} to execute command on.
+     * @return "a", "b" or null (if device is not A/B capable)
+     * @throws DeviceNotAvailableException
+     * @throws TargetSetupError
      */
+    protected String getCurrentSlot(ITestDevice device)
+            throws DeviceNotAvailableException, TargetSetupError {
+        Matcher matcher;
+        if (device.getDeviceState().equals(TestDeviceState.FASTBOOT)) {
+            String queryOutput = executeFastbootCmd(device, "getvar", SLOT_VAR);
+            Pattern outputPattern = Pattern.compile(String.format("^%s: _?([ab])", SLOT_VAR));
+            matcher = outputPattern.matcher(queryOutput);
+        } else {
+            String queryOutput = device.executeShellCommand(String.format("getprop %s", SLOT_PROP));
+            Pattern outputPattern =
+                    Pattern.compile(String.format("^\\[%s\\]: \\[_?([ab])\\]", SLOT_PROP));
+            matcher = outputPattern.matcher(queryOutput);
+        }
+        if (matcher.find()) {
+            return matcher.group(1);
+        } else {
+            return null;
+        }
+    }
+
+    /** Exposed for testing. */
     protected IRunUtil getRunUtil() {
         return RunUtil.getDefault();
     }

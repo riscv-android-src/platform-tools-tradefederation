@@ -15,47 +15,53 @@
  */
 package com.android.tradefed.build;
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertTrue;
+
 import com.android.tradefed.util.FileUtil;
 
-import junit.framework.TestCase;
+import org.junit.After;
+import org.junit.Before;
+import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.junit.runners.JUnit4;
 
 import java.io.File;
 
-/**
- * Unit tests for {@link DeviceBuildInfo}.
- */
-public class DeviceBuildInfoTest extends TestCase {
+/** Unit tests for {@link DeviceBuildInfo}. */
+@RunWith(JUnit4.class)
+public class DeviceBuildInfoTest {
 
     private static final String VERSION = "1";
     private DeviceBuildInfo mBuildInfo;
     private File mImageFile;
 
-    @Override
-    protected void setUp() throws Exception {
-        super.setUp();
+    @Before
+    public void setUp() throws Exception {
         mBuildInfo = new DeviceBuildInfo("2", "target");
         mImageFile = FileUtil.createTempFile("image", "tmp");
         FileUtil.writeToFile("filedata", mImageFile);
         mBuildInfo.setBasebandImage(mImageFile, VERSION);
     }
 
-    @Override
-    protected void tearDown() throws Exception {
-        super.tearDown();
-        if (mImageFile != null && mImageFile.exists()) {
-            mImageFile.delete();
-        }
+    @After
+    public void tearDown() throws Exception {
+        FileUtil.deleteFile(mImageFile);
     }
 
-    /**
-     * Test method for {@link DeviceBuildInfo#clone()}.
-     */
+    /** Test method for {@link DeviceBuildInfo#clone()}. */
+    @Test
     public void testClone() throws Exception {
         DeviceBuildInfo copy = (DeviceBuildInfo)mBuildInfo.clone();
         try {
             // ensure a copy of mImageFile was created
             assertEquals(VERSION, copy.getBasebandVersion());
-            assertTrue(!mImageFile.getAbsolutePath().equals(copy.getBasebandImageFile()));
+            assertTrue(
+                    !mImageFile
+                            .getAbsolutePath()
+                            .equals(copy.getBasebandImageFile().getAbsolutePath()));
             assertTrue(FileUtil.compareFileContents(mImageFile, copy.getBasebandImageFile()));
         } finally {
             if (copy.getBasebandImageFile() != null) {
@@ -64,9 +70,8 @@ public class DeviceBuildInfoTest extends TestCase {
         }
     }
 
-    /**
-     * Test method for {@link DeviceBuildInfo#cleanUp()}.
-     */
+    /** Test method for {@link DeviceBuildInfo#cleanUp()}. */
+    @Test
     public void testCleanUp() {
         assertTrue(mBuildInfo.getBasebandImageFile().exists());
         mBuildInfo.cleanUp();

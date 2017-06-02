@@ -18,12 +18,12 @@
 		<link>
 			<name>guava</name>
 			<type>2</type>
-			<location>TRADEFED_ROOT/external/guava/guava/src</location>
+			<locationURI>TRADEFED_ROOT/external/guava/guava/src</locationURI>
 		</link>
 		<link>
 			<name>jsr305</name>
 			<type>2</type>
-                        <location>TRADEFED_ROOT/external/jsr305/ri/src/main/java</location>
+			<locationURI>TRADEFED_ROOT/external/jsr305/ri/src/main/java</locationURI>
 		</link>
 	</linkedResources>
 </projectDescription>

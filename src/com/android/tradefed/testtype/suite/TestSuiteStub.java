@@ -17,15 +17,19 @@ package com.android.tradefed.testtype.suite;
 
 import com.android.ddmlib.testrunner.TestIdentifier;
 import com.android.tradefed.config.Option;
+import com.android.tradefed.config.OptionCopier;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.testtype.IAbi;
 import com.android.tradefed.testtype.IAbiReceiver;
 import com.android.tradefed.testtype.IRemoteTest;
 import com.android.tradefed.testtype.IRuntimeHintProvider;
+import com.android.tradefed.testtype.IShardableTest;
 import com.android.tradefed.testtype.ITestCollector;
 import com.android.tradefed.testtype.ITestFilterReceiver;
 
+import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 import java.util.Set;
@@ -36,7 +40,8 @@ public class TestSuiteStub
                 IAbiReceiver,
                 IRuntimeHintProvider,
                 ITestCollector,
-                ITestFilterReceiver {
+                ITestFilterReceiver,
+                IShardableTest {
 
     @Option(name = "module")
     private String mModule;
@@ -136,8 +141,29 @@ public class TestSuiteStub
     }
 
     @Override
+    public Collection<IRemoteTest> split(int shardCountHint) {
+        if (mShardedTestToRun == null) {
+            return null;
+        }
+        Collection<IRemoteTest> listTest = new ArrayList<>();
+        for (TestIdentifier id : mShardedTestToRun) {
+            TestSuiteStub stub = new TestSuiteStub();
+            OptionCopier.copyOptionsNoThrow(this, stub);
+            stub.mShardedTestToRun = new ArrayList<>();
+            stub.mShardedTestToRun.add(id);
+            listTest.add(stub);
+        }
+        return listTest;
+    }
+
+    @Override
     public void setAbi(IAbi abi) {
         // Do nothing
+    }
+
+    @Override
+    public IAbi getAbi() {
+        return null;
     }
 
     @Override

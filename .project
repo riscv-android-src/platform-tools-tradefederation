@@ -18,7 +18,7 @@
 		<link>
 			<name>hamcrest</name>
 			<type>2</type>
-			<location>TRADEFED_ROOT/external/hamcrest/hamcrest-core/src/main/java</location>
+			<locationURI>TRADEFED_ROOT/external/hamcrest/hamcrest-core/src/main/java</locationURI>
 		</link>
 		<link>
 			<name>jline</name>

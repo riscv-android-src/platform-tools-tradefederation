@@ -172,6 +172,11 @@ public class AllTestAppsInstallSetup implements ITargetCleaner, IAbiReceiver {
         mAbi = abi;
     }
 
+    @Override
+    public IAbi getAbi() {
+        return mAbi;
+    }
+
     /**
      * {@inheritDoc}
      */

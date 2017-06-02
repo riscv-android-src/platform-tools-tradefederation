@@ -88,14 +88,6 @@ public class Configuration implements IConfiguration {
     public static final String DEVICE_NAME = "device";
     public static final String TEST_PROFILER_TYPE_NAME = "test_profiler";
 
-    // additional element names used for emitting the configuration XML.
-    private static final String CONFIGURATION_NAME = "configuration";
-    private static final String OPTION_NAME = "option";
-    private static final String CLASS_NAME = "class";
-    private static final String NAME_NAME = "name";
-    private static final String KEY_NAME = "key";
-    private static final String VALUE_NAME = "value";
-
     private static Map<String, ObjTypeInfo> sObjTypeMap = null;
     private static Set<String> sMultiDeviceSupportedTag = null;
 
@@ -845,6 +837,14 @@ public class Configuration implements IConfiguration {
         if (configObject instanceof IConfigurationReceiver) {
             ((IConfigurationReceiver) configObject).setConfiguration(this);
         }
+        // Inject to object inside device holder too.
+        if (configObject instanceof IDeviceConfiguration) {
+            for (Object obj : ((IDeviceConfiguration) configObject).getAllObjects()) {
+                if (obj instanceof IConfigurationReceiver) {
+                    ((IConfigurationReceiver) obj).setConfiguration(this);
+                }
+            }
+        }
     }
 
     /**
@@ -1169,13 +1169,13 @@ public class Configuration implements IConfiguration {
         serializer.setOutput(output);
         serializer.setFeature("http://xmlpull.org/v1/doc/features.html#indent-output", true);
         serializer.startDocument("UTF-8", null);
-        serializer.startTag(null, CONFIGURATION_NAME);
+        serializer.startTag(null, ConfigurationUtil.CONFIGURATION_NAME);
 
         for (IMultiTargetPreparer multipreparer : getMultiTargetPreparers()) {
-            dumpClassToXml(serializer, MULTI_PREPARER_TYPE_NAME, multipreparer);
+            ConfigurationUtil.dumpClassToXml(serializer, MULTI_PREPARER_TYPE_NAME, multipreparer);
         }
         for (ISystemStatusChecker checker : getSystemStatusCheckers()) {
-            dumpClassToXml(serializer, SYSTEM_STATUS_CHECKER_TYPE_NAME, checker);
+            ConfigurationUtil.dumpClassToXml(serializer, SYSTEM_STATUS_CHECKER_TYPE_NAME, checker);
         }
 
         if (getDeviceConfig().size() > 1) {
@@ -1183,105 +1183,50 @@ public class Configuration implements IConfiguration {
             for (IDeviceConfiguration deviceConfig : getDeviceConfig()) {
                 serializer.startTag(null, Configuration.DEVICE_NAME);
                 serializer.attribute(null, "name", deviceConfig.getDeviceName());
-                dumpClassToXml(
+                ConfigurationUtil.dumpClassToXml(
                         serializer, BUILD_PROVIDER_TYPE_NAME, deviceConfig.getBuildProvider());
                 for (ITargetPreparer preparer : deviceConfig.getTargetPreparers()) {
-                    dumpClassToXml(serializer, TARGET_PREPARER_TYPE_NAME, preparer);
+                    ConfigurationUtil.dumpClassToXml(
+                            serializer, TARGET_PREPARER_TYPE_NAME, preparer);
                 }
-                dumpClassToXml(
+                ConfigurationUtil.dumpClassToXml(
                         serializer, DEVICE_RECOVERY_TYPE_NAME, deviceConfig.getDeviceRecovery());
-                dumpClassToXml(
+                ConfigurationUtil.dumpClassToXml(
                         serializer,
                         DEVICE_REQUIREMENTS_TYPE_NAME,
                         deviceConfig.getDeviceRequirements());
-                dumpClassToXml(
+                ConfigurationUtil.dumpClassToXml(
                         serializer, DEVICE_OPTIONS_TYPE_NAME, deviceConfig.getDeviceOptions());
                 serializer.endTag(null, Configuration.DEVICE_NAME);
             }
         } else {
             // Put single device tags
-            dumpClassToXml(serializer, BUILD_PROVIDER_TYPE_NAME, getBuildProvider());
+            ConfigurationUtil.dumpClassToXml(
+                    serializer, BUILD_PROVIDER_TYPE_NAME, getBuildProvider());
             for (ITargetPreparer preparer : getTargetPreparers()) {
-                dumpClassToXml(serializer, TARGET_PREPARER_TYPE_NAME, preparer);
+                ConfigurationUtil.dumpClassToXml(serializer, TARGET_PREPARER_TYPE_NAME, preparer);
             }
-            dumpClassToXml(serializer, DEVICE_RECOVERY_TYPE_NAME, getDeviceRecovery());
-            dumpClassToXml(serializer, DEVICE_REQUIREMENTS_TYPE_NAME, getDeviceRequirements());
-            dumpClassToXml(serializer, DEVICE_OPTIONS_TYPE_NAME, getDeviceOptions());
+            ConfigurationUtil.dumpClassToXml(
+                    serializer, DEVICE_RECOVERY_TYPE_NAME, getDeviceRecovery());
+            ConfigurationUtil.dumpClassToXml(
+                    serializer, DEVICE_REQUIREMENTS_TYPE_NAME, getDeviceRequirements());
+            ConfigurationUtil.dumpClassToXml(
+                    serializer, DEVICE_OPTIONS_TYPE_NAME, getDeviceOptions());
         }
         for (IRemoteTest test : getTests()) {
-            dumpClassToXml(serializer, TEST_TYPE_NAME, test);
+            ConfigurationUtil.dumpClassToXml(serializer, TEST_TYPE_NAME, test);
         }
 
-        dumpClassToXml(serializer, LOGGER_TYPE_NAME, getLogOutput());
-        dumpClassToXml(serializer, LOG_SAVER_TYPE_NAME, getLogSaver());
+        ConfigurationUtil.dumpClassToXml(serializer, LOGGER_TYPE_NAME, getLogOutput());
+        ConfigurationUtil.dumpClassToXml(serializer, LOG_SAVER_TYPE_NAME, getLogSaver());
         for (ITestInvocationListener listener : getTestInvocationListeners()) {
-            dumpClassToXml(serializer, RESULT_REPORTER_TYPE_NAME, listener);
+            ConfigurationUtil.dumpClassToXml(serializer, RESULT_REPORTER_TYPE_NAME, listener);
         }
-        dumpClassToXml(serializer, CMD_OPTIONS_TYPE_NAME, getCommandOptions());
+        ConfigurationUtil.dumpClassToXml(serializer, CMD_OPTIONS_TYPE_NAME, getCommandOptions());
 
-        dumpClassToXml(serializer, TEST_PROFILER_TYPE_NAME, getProfiler());
+        ConfigurationUtil.dumpClassToXml(serializer, TEST_PROFILER_TYPE_NAME, getProfiler());
 
-        serializer.endTag(null, CONFIGURATION_NAME);
+        serializer.endTag(null, ConfigurationUtil.CONFIGURATION_NAME);
         serializer.endDocument();
-    }
-
-    /** Add a class to the command XML dump. */
-    private void dumpClassToXml(KXmlSerializer serializer, String classTypeName, Object obj)
-            throws IOException {
-        serializer.startTag(null, classTypeName);
-        serializer.attribute(null, CLASS_NAME, obj.getClass().getName());
-        dumpOptionsToXml(serializer, obj);
-        serializer.endTag(null, classTypeName);
-    }
-
-    /**
-     * Add all the options of class to the command XML dump.
-     */
-    @SuppressWarnings({
-            "rawtypes", "unchecked"
-    })
-    private void dumpOptionsToXml(KXmlSerializer serializer, Object obj) throws IOException {
-        for (Field field : OptionSetter.getOptionFieldsForClass(obj.getClass())) {
-            Option option = field.getAnnotation(Option.class);
-            Object fieldVal = OptionSetter.getFieldValue(field, obj);
-            if (fieldVal == null) {
-                continue;
-            } else if (fieldVal instanceof Collection) {
-                for (Object entry : (Collection) fieldVal) {
-                    dumpOptionToXml(serializer, option.name(), null, entry.toString());
-                }
-            } else if (fieldVal instanceof Map) {
-                Map map = (Map) fieldVal;
-                for (Object entryObj : map.entrySet()) {
-                    Map.Entry entry = (Entry) entryObj;
-                    dumpOptionToXml(serializer, option.name(), entry.getKey().toString(),
-                            entry.getValue().toString());
-                }
-            } else if (fieldVal instanceof MultiMap) {
-                MultiMap multimap = (MultiMap) fieldVal;
-                for (Object keyObj : multimap.keySet()) {
-                    for (Object valueObj : multimap.get(keyObj)) {
-                        dumpOptionToXml(serializer, option.name(), keyObj.toString(),
-                                valueObj.toString());
-                    }
-                }
-            } else {
-                dumpOptionToXml(serializer, option.name(), null, fieldVal.toString());
-            }
-        }
-    }
-
-    /**
-     * Add a single option to the command XML dump.
-     */
-    private void dumpOptionToXml(KXmlSerializer serializer, String name, String key, String value)
-            throws IOException {
-        serializer.startTag(null, OPTION_NAME);
-        serializer.attribute(null, NAME_NAME, name);
-        if (key != null) {
-            serializer.attribute(null, KEY_NAME, key);
-        }
-        serializer.attribute(null, VALUE_NAME, value);
-        serializer.endTag(null, OPTION_NAME);
     }
 }

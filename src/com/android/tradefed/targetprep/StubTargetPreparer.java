@@ -17,12 +17,14 @@ package com.android.tradefed.targetprep;
 
 import com.android.ddmlib.Log;
 import com.android.tradefed.build.IBuildInfo;
+import com.android.tradefed.config.IConfiguration;
+import com.android.tradefed.config.IConfigurationReceiver;
 import com.android.tradefed.device.ITestDevice;
 
-/**
- * Placeholder empty implementation of a {@link ITargetPreparer}.
- */
-public class StubTargetPreparer implements ITargetPreparer {
+/** Placeholder empty implementation of a {@link ITargetPreparer}. */
+public class StubTargetPreparer implements ITargetPreparer, IConfigurationReceiver {
+
+    private IConfiguration mConfig;
 
     /**
      * {@inheritDoc}
@@ -30,5 +32,16 @@ public class StubTargetPreparer implements ITargetPreparer {
     @Override
     public void setUp(ITestDevice device, IBuildInfo buildInfo) throws TargetSetupError {
         Log.d("TargetPreparer", "skipping target prepare step");
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public void setConfiguration(IConfiguration configuration) {
+        mConfig = configuration;
+    }
+
+    /** Returns the configuration received through {@link #setConfiguration(IConfiguration)}. */
+    public IConfiguration getConfiguration() {
+        return mConfig;
     }
 }

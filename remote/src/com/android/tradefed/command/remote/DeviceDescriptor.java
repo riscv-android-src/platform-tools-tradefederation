@@ -35,24 +35,28 @@ public class DeviceDescriptor {
     private final String mBatteryLevel;
     private final String mDeviceClass;
     private final String mMacAddress;
+    private final String mSimState;
+    private final String mSimOperator;
 
     public DeviceDescriptor(String serial, boolean isStubDevice, DeviceAllocationState state,
             String product, String productVariant, String sdkVersion, String buildId,
             String batteryLevel) {
         this(serial, isStubDevice, state, product, productVariant, sdkVersion, buildId,
-                batteryLevel, "", "");
+                batteryLevel, "", "", "", "");
     }
 
     public DeviceDescriptor(String serial, boolean isStubDevice, DeviceAllocationState state,
             String product, String productVariant, String sdkVersion, String buildId,
-            String batteryLevel, String deviceClass, String macAddress) {
+            String batteryLevel, String deviceClass, String macAddress, String simState,
+            String simOperator) {
         this(serial, isStubDevice, null, state, product, productVariant, sdkVersion, buildId,
-                batteryLevel, deviceClass, macAddress);
+                batteryLevel, deviceClass, macAddress, simState, simOperator);
     }
 
     public DeviceDescriptor(String serial, boolean isStubDevice, DeviceState deviceState,
             DeviceAllocationState state, String product, String productVariant, String sdkVersion,
-            String buildId, String batteryLevel, String deviceClass, String macAddress) {
+            String buildId, String batteryLevel, String deviceClass, String macAddress,
+            String simState, String simOperator) {
         mSerial = serial;
         mIsStubDevice = isStubDevice;
         mDeviceState = deviceState;
@@ -64,6 +68,8 @@ public class DeviceDescriptor {
         mBatteryLevel = batteryLevel;
         mDeviceClass = deviceClass;
         mMacAddress = macAddress;
+        mSimState = simState;
+        mSimOperator = simOperator;
     }
 
     public String getSerial() {
@@ -111,6 +117,14 @@ public class DeviceDescriptor {
 
     public String getMacAddress() {
         return mMacAddress;
+    }
+
+    public String getSimState() {
+        return mSimState;
+    }
+
+    public String getSimOperator() {
+        return mSimOperator;
     }
 
     /**

@@ -23,9 +23,12 @@ import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.DeviceUnresponsiveException;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.invoker.IInvocationContext;
+import com.android.tradefed.log.ITestLogger;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.result.ITestInvocationListener;
+import com.android.tradefed.result.ITestLoggerReceiver;
 import com.android.tradefed.result.ResultForwarder;
+import com.android.tradefed.suite.checker.ISystemStatusCheckerReceiver;
 import com.android.tradefed.targetprep.BuildError;
 import com.android.tradefed.targetprep.ITargetCleaner;
 import com.android.tradefed.targetprep.ITargetPreparer;
@@ -34,12 +37,13 @@ import com.android.tradefed.testtype.IBuildReceiver;
 import com.android.tradefed.testtype.IDeviceTest;
 import com.android.tradefed.testtype.IRemoteTest;
 import com.android.tradefed.testtype.ITestCollector;
-import com.android.tradefed.util.StreamUtil;
 
-import java.io.ByteArrayOutputStream;
+import com.google.common.annotations.VisibleForTesting;
+
 import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
@@ -54,18 +58,24 @@ public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestColl
     public static final String MODULE_NAME = "module-name";
     public static final String MODULE_ABI = "module-abi";
 
-    protected static final String MODULE_INCOMPLETE_MSG = "Module did not run all its tests.";
-
     private final String mId;
-    private List<IRemoteTest> mTests = null;
+    private Collection<IRemoteTest> mTests = null;
     private List<ITargetPreparer> mPreparers = new ArrayList<>();
     private List<ITargetCleaner> mCleaners = new ArrayList<>();
     private IBuildInfo mBuild;
     private ITestDevice mDevice;
+    private boolean mCollectTestsOnly = false;
 
     private List<TestRunResult> mTestsResults = new ArrayList<>();
     private int mExpectedTests = 0;
     private boolean mIsFailedModule = false;
+
+    // Tracking of preparers performance
+    private long mElapsedPreparation = 0l;
+    private long mElapsedTearDown = 0l;
+
+    public static final String PREPARATION_TIME = "PREP_TIME";
+    public static final String TEAR_DOWN_TIME = "TEARDOWN_TIME";
 
     /**
      * Constructor
@@ -74,7 +84,8 @@ public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestColl
      * @param tests list of {@link IRemoteTest} that needs to run.
      * @param preparers list of {@link ITargetPreparer} to be used to setup the device.
      */
-    public ModuleDefinition(String name, List<IRemoteTest> tests, List<ITargetPreparer> preparers) {
+    public ModuleDefinition(
+            String name, Collection<IRemoteTest> tests, List<ITargetPreparer> preparers) {
         mId = name;
         mTests = tests;
         for (ITargetPreparer preparer : preparers) {
@@ -88,8 +99,30 @@ public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestColl
     }
 
     /**
-     * Return the unique module name.
+     * Returns the next {@link IRemoteTest} from the list of tests. The list of tests of a module
+     * may be shared with another one in case of sharding.
      */
+    IRemoteTest poll() {
+        synchronized (mTests) {
+            if (mTests.isEmpty()) {
+                return null;
+            }
+            IRemoteTest test = mTests.iterator().next();
+            mTests.remove(test);
+            return test;
+        }
+    }
+
+    /**
+     * Return True if the Module still has {@link IRemoteTest} to run in its pool. False otherwise.
+     */
+    protected boolean hasTests() {
+        synchronized (mTests) {
+            return mTests.isEmpty();
+        }
+    }
+
+    /** Return the unique module name. */
     public String getId() {
         return mId;
     }
@@ -140,14 +173,16 @@ public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestColl
         CLog.d("Running module %s", getId());
         Exception preparationException = null;
         // Setup
+        long prepStartTime = getCurrentTime();
         for (ITargetPreparer preparer : mPreparers) {
-            preparationException = runPreparerSetup(preparer);
+            preparationException = runPreparerSetup(preparer, listener);
             if (preparationException != null) {
                 mIsFailedModule = true;
                 CLog.e("Some preparation step failed. failing the module %s", getId());
                 break;
             }
         }
+        mElapsedPreparation = getCurrentTime() - prepStartTime;
         // Run the tests
         try {
             if (preparationException != null) {
@@ -164,13 +199,25 @@ public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestColl
                 listener.testRunEnded(0, Collections.emptyMap());
                 return;
             }
-            for (IRemoteTest test : mTests) {
-                CLog.d("Test: %s", test.getClass().getSimpleName());
+            while (true) {
+                IRemoteTest test = poll();
+                if (test == null) {
+                    return;
+                }
+
                 if (test instanceof IBuildReceiver) {
                     ((IBuildReceiver) test).setBuild(mBuild);
                 }
                 if (test instanceof IDeviceTest) {
                     ((IDeviceTest) test).setDevice(mDevice);
+                }
+                if (test instanceof ISystemStatusCheckerReceiver) {
+                    // We do not pass down Status checker because they are already running at the
+                    // top level suite.
+                    ((ISystemStatusCheckerReceiver) test).setSystemStatusChecker(new ArrayList<>());
+                }
+                if (test instanceof ITestCollector) {
+                    ((ITestCollector) test).setCollectTestsOnly(mCollectTestsOnly);
                 }
 
                 // Run the test, only in case of DeviceNotAvailable we exit the module
@@ -192,13 +239,10 @@ public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestColl
                     // being able to catch a DeviceUnresponsiveException here implies that
                     // recovery was successful, and test execution should proceed to next
                     // module.
-                    ByteArrayOutputStream stack = new ByteArrayOutputStream();
-                    due.printStackTrace(new PrintWriter(stack, true));
-                    StreamUtil.close(stack);
                     CLog.w(
                             "Ignored DeviceUnresponsiveException because recovery was "
-                                    + "successful, proceeding with next module. Stack trace: %s",
-                            stack.toString());
+                                    + "successful, proceeding with next module. Stack trace:");
+                    CLog.w(due);
                     CLog.w("Proceeding to the next test.");
                 } finally {
                     mTestsResults.addAll(moduleListener.getRunResults());
@@ -206,14 +250,19 @@ public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestColl
                 }
             }
         } finally {
-            // finalize results
-            if (preparationException == null) {
-                reportFinalResults(listener, mExpectedTests, mTestsResults);
-            }
-            // Tear down
-            for (ITargetCleaner cleaner : mCleaners) {
-                CLog.d("Cleaner: %s", cleaner.getClass().getSimpleName());
-                cleaner.tearDown(mDevice, mBuild, null);
+            long cleanStartTime = getCurrentTime();
+            try {
+                // Tear down
+                for (ITargetCleaner cleaner : mCleaners) {
+                    CLog.d("Cleaner: %s", cleaner.getClass().getSimpleName());
+                    cleaner.tearDown(mDevice, mBuild, null);
+                }
+            } finally {
+                mElapsedTearDown = getCurrentTime() - cleanStartTime;
+                // finalize results
+                if (preparationException == null) {
+                    reportFinalResults(listener, mExpectedTests, mTestsResults);
+                }
             }
         }
     }
@@ -236,14 +285,20 @@ public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestColl
                 mIsFailedModule = true;
             }
             elapsedTime += runResult.getElapsedTime();
+            // put metrics from the tests
             metrics.putAll(runResult.getRunMetrics());
         }
+        // put metrics from the preparation
+        metrics.put(PREPARATION_TIME, Long.toString(mElapsedPreparation));
+        metrics.put(TEAR_DOWN_TIME, Long.toString(mElapsedTearDown));
 
         if (totalExpectedTests != numResults) {
-            listener.testRunFailed(MODULE_INCOMPLETE_MSG);
-            CLog.e(
-                    "Module %s only ran %d out of %d expected tests.",
-                    getId(), numResults, totalExpectedTests);
+            String error =
+                    String.format(
+                            "Module %s only ran %d out of %d expected tests.",
+                            getId(), numResults, totalExpectedTests);
+            listener.testRunFailed(error);
+            CLog.e(error);
             mIsFailedModule = true;
         }
         listener.testRunEnded(elapsedTime, metrics);
@@ -278,13 +333,15 @@ public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestColl
         }
     }
 
-    /**
-     * Run all the prepare steps.
-     */
-    private Exception runPreparerSetup(ITargetPreparer preparer)
+    /** Run all the prepare steps. */
+    private Exception runPreparerSetup(ITargetPreparer preparer, ITestLogger logger)
             throws DeviceNotAvailableException {
         CLog.d("Preparer: %s", preparer.getClass().getSimpleName());
         try {
+            // set the logger in case they need it.
+            if (preparer instanceof ITestLoggerReceiver) {
+                ((ITestLoggerReceiver) preparer).setTestLogger(logger);
+            }
             preparer.setUp(mDevice, mBuild);
             return null;
         } catch (BuildError | TargetSetupError e) {
@@ -294,11 +351,14 @@ public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestColl
         }
     }
 
+    /** Returns the current time. */
+    private long getCurrentTime() {
+        return System.currentTimeMillis();
+    }
+
     @Override
     public void setCollectTestsOnly(boolean collectTestsOnly) {
-        for (IRemoteTest test : mTests) {
-            ((ITestCollector) test).setCollectTestsOnly(collectTestsOnly);
-        }
+        mCollectTestsOnly = collectTestsOnly;
     }
 
     /** Returns a list of tests that ran in this module. */
@@ -320,5 +380,17 @@ public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestColl
     @Override
     public String toString() {
         return getId();
+    }
+
+    /** Returns the list of {@link ITargetPreparer} defined for this module. */
+    @VisibleForTesting
+    List<ITargetPreparer> getTargetPreparers() {
+        return mPreparers;
+    }
+
+    /** Returns the list of {@link IRemoteTest} defined for this module. */
+    @VisibleForTesting
+    List<IRemoteTest> getTests() {
+        return new ArrayList<>(mTests);
     }
 }

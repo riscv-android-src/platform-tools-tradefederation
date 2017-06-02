@@ -50,7 +50,6 @@ import java.util.regex.Pattern;
  * Tests include:
  * </p><ul>
  * <li>{@code micro_bench sleep 1 ITERATIONS}</li>
- * <li>{@code micro_bench cpu 0 ITERATIONS}</li>
  * <li>{@code micro_bench memset ARG ITERATIONS} where ARG is defined by {@code memset-small}</li>
  * <li>{@code micro_bench memset ARG ITERATIONS} where ARG is defined by {@code memset-large}</li>
  * <li>{@code micro_bench memcpy ARG ITERATIONS} where ARG is defined by {@code memcpy-small}</li>
@@ -63,8 +62,6 @@ public class MicroBenchTest implements IDeviceTest, IRemoteTest {
 
     private final static Pattern SLEEP_PATTERN = Pattern.compile(
             "sleep\\(\\d+\\) took (\\d+.\\d+) seconds");
-    private final static Pattern CPU_PATTERN = Pattern.compile(
-            "cpu took (\\d+.\\d+) seconds");
     private final static Pattern MEMSET_PATTERN = Pattern.compile(
             "memset \\d+x\\d+ bytes took (\\d+.\\d+) seconds \\((\\d+.\\d+) MB/s\\)");
     private final static Pattern MEMCPY_PATTERN = Pattern.compile(
@@ -74,7 +71,6 @@ public class MicroBenchTest implements IDeviceTest, IRemoteTest {
 
     private final static String BINARY_NAME = "micro_bench|#ABI32#|";
     private final static String SLEEP_CMD = "%s sleep 1 %d";
-    private final static String CPU_CMD = "%s cpu 0 %d";
     // memset, memcpy, and memread pass in another argument befor passing the cmd format string to
     // TestCase, so escape the command and iteration formats.
     private final static String MEMSET_CMD = "%%s memset %d %%d";
@@ -88,9 +84,6 @@ public class MicroBenchTest implements IDeviceTest, IRemoteTest {
 
     @Option(name = "sleep-iterations")
     private Integer mSleepIterations = 10;
-
-    @Option(name = "cpu-iterations")
-    private Integer mCpuIterations = 100;
 
     @Option(name = "memset-iterations")
     private Integer mMemsetIterations = 100;
@@ -414,9 +407,6 @@ public class MicroBenchTest implements IDeviceTest, IRemoteTest {
             // Sleep test case
             testCases.add(new TestCase("sleep", "sleep", SLEEP_CMD, mSleepIterations, SLEEP_PATTERN,
                     1, -1));
-
-            // CPU test case
-            testCases.add(new TestCase("cpu", "cpu", CPU_CMD, mCpuIterations, CPU_PATTERN, 1, -1));
 
             // memset small test case
             name = String.format("memset %d", mMemsetSmall);

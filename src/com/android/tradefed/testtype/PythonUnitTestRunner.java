@@ -29,6 +29,7 @@ import com.android.tradefed.util.CommandResult;
 import com.android.tradefed.util.CommandStatus;
 import com.android.tradefed.util.IRunUtil;
 import com.android.tradefed.util.RunUtil;
+import com.android.tradefed.util.TimeUtil;
 
 import org.junit.Assert;
 
@@ -69,9 +70,18 @@ public class PythonUnitTestRunner implements IRemoteTest, IBuildReceiver {
 
     private String mPythonPath;
     private IBuildInfo mBuildInfo;
+    private IRunUtil mRunUtil;
 
     private static final String PYTHONPATH = "PYTHONPATH";
     private static final String VERSION_REGEX = "(?:(\\d+)\\.)?(?:(\\d+)\\.)?(\\*|\\d+)$";
+
+    /** Returns an {@link IRunUtil} that runs the unittest */
+    protected IRunUtil getRunUtil() {
+        if (mRunUtil == null) {
+            mRunUtil = new RunUtil();
+        }
+        return mRunUtil;
+    }
 
     @Override
     public void run(ITestInvocationListener listener) throws DeviceNotAvailableException {
@@ -79,7 +89,7 @@ public class PythonUnitTestRunner implements IRemoteTest, IBuildReceiver {
         if (mPythonBin == null) {
             mPythonBin = getPythonBinary();
         }
-        IRunUtil runUtil = new RunUtil();
+        IRunUtil runUtil = getRunUtil();
         runUtil.setEnvVariable(PYTHONPATH, mPythonPath);
         for (String module : mTests) {
             doRunTest(listener, runUtil, module);
@@ -89,6 +99,11 @@ public class PythonUnitTestRunner implements IRemoteTest, IBuildReceiver {
     @Override
     public void setBuild(IBuildInfo buildInfo) {
         mBuildInfo = buildInfo;
+    }
+
+    /** Returns the {@link IBuildInfo} for this invocation. */
+    protected IBuildInfo getBuild() {
+        return mBuildInfo;
     }
 
     String getMinPythonVersion() {
@@ -124,9 +139,9 @@ public class PythonUnitTestRunner implements IRemoteTest, IBuildReceiver {
             sb.append(":");
             sb.append(pathdir.getAbsolutePath());
         }
-        if (mBuildInfo.getFile(PYTHONPATH) != null) {
+        if (getBuild().getFile(PYTHONPATH) != null) {
             sb.append(":");
-            sb.append(mBuildInfo.getFile(PYTHONPATH).getAbsolutePath());
+            sb.append(getBuild().getFile(PYTHONPATH).getAbsolutePath());
         }
         mPythonPath = sb.toString();
     }
@@ -154,7 +169,8 @@ public class PythonUnitTestRunner implements IRemoteTest, IBuildReceiver {
         }
     }
 
-    private void doRunTest(ITestRunListener listener, IRunUtil runUtil, String pyModule) {
+    // Exposed for testing purpose.
+    void doRunTest(ITestRunListener listener, IRunUtil runUtil, String pyModule) {
         String[] baseOpts = {mPythonBin, "-m", "unittest", "-v"};
         String[] testModule = {pyModule};
         String[] cmd;
@@ -165,12 +181,17 @@ public class PythonUnitTestRunner implements IRemoteTest, IBuildReceiver {
         }
         CommandResult c = runUtil.runTimedCmd(mTestTimeout, cmd);
 
-        if (c.getStatus() != CommandStatus.SUCCESS) {
-            CLog.e("Python process failed");
+        if (c.getStatus() == CommandStatus.TIMED_OUT) {
+            CLog.e("Python process timed out");
             CLog.e("Stderr: %s", c.getStderr());
             CLog.e("Stdout: %s", c.getStdout());
-            throw new RuntimeException("Failed to run python unit test");
+            throw new RuntimeException(
+                    String.format(
+                            "Python unit test timed out after %s",
+                            TimeUtil.formatElapsedTime(mTestTimeout)));
         }
+        // If test execution succeeds, regardless of test results the parser will parse the output.
+        // If test execution fails, result parser will throw an exception.
         CLog.i("Parsing test result: %s", c.getStderr());
         MultiLineReceiver parser = new PythonUnitTestResultParser(
                 ArrayUtil.list(listener), pyModule);

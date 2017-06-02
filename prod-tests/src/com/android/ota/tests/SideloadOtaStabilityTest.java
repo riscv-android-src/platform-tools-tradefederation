@@ -287,8 +287,9 @@ public class SideloadOtaStabilityTest implements IDeviceTest, IBuildReceiver,
      */
     private BootTimeInfo installOta(ITestInvocationListener listener, IDeviceBuildInfo otaBuild)
             throws DeviceNotAvailableException {
-        TestIdentifier test = new TestIdentifier(getClass().getName(), "apply_ota");
-        Map<String, String> metrics = new HashMap<>();
+        TestIdentifier test = new TestIdentifier(getClass().getName(),
+                String.format("apply_ota[%s]", mRunName));
+        Map<String, String> metrics = new HashMap<String, String>();
         listener.testStarted(test);
         try {
             mKmsgReceiver.start();
@@ -450,6 +451,11 @@ public class SideloadOtaStabilityTest implements IDeviceTest, IBuildReceiver,
             CLog.i("Got interrupted when waiting to uncrypt file.");
             Thread.currentThread().interrupt();
         }
+        // MNC version of uncrypt does not require socket connection
+        if (mDevice.getApiLevel() < 24) {
+            CLog.i("Waiting for MNC uncrypt service finish");
+            return waitForUncrypt();
+        }
         int port;
         try {
             port = getFreePort();
@@ -481,28 +487,32 @@ public class SideloadOtaStabilityTest implements IDeviceTest, IBuildReceiver,
         } catch (IOException e) {
             CLog.e("Lost connection with uncrypt due to IOException:");
             CLog.e(e);
-            CLog.i("Continuing to watch uncrypt progress for %d ms",
-                    UNCRYPT_TIMEOUT);
-            long time = 0;
-            int lastStatus = -1;
-            while ((time = System.currentTimeMillis() - start) < UNCRYPT_TIMEOUT) {
-                int status = readUncryptStatusFromFile();
-                if (isUncryptSuccess(status)) {
-                    return time;
-                }
-                if (status != lastStatus) {
-                    lastStatus = status;
-                    CLog.d("uncrypt status: %d", status);
-                }
-                try {
-                    Thread.sleep(1000);
-                } catch (InterruptedException unused) {
-                    Thread.currentThread().interrupt();
-                }
-            }
-            CLog.e("Uncrypt didn't finish, last status was %d", lastStatus);
-            throw new RuntimeException("Uncrypt didn't succeed after timeout");
+            return waitForUncrypt();
         }
+    }
+
+    private long waitForUncrypt() throws DeviceNotAvailableException {
+        CLog.i("Continuing to watch uncrypt progress for %d ms", UNCRYPT_TIMEOUT);
+        long time = 0;
+        int lastStatus = -1;
+        long start = System.currentTimeMillis();
+        while ((time = System.currentTimeMillis() - start) < UNCRYPT_TIMEOUT) {
+            int status = readUncryptStatusFromFile();
+            if (isUncryptSuccess(status)) {
+                return time;
+            }
+            if (status != lastStatus) {
+                lastStatus = status;
+                CLog.d("uncrypt status: %d", status);
+            }
+            try {
+                Thread.sleep(1000);
+            } catch (InterruptedException unused) {
+                Thread.currentThread().interrupt();
+            }
+        }
+        CLog.e("Uncrypt didn't finish, last status was %d", lastStatus);
+        throw new RuntimeException("Uncrypt didn't succeed after timeout");
     }
 
     private boolean isUncryptSuccess(int status) {
@@ -539,9 +549,10 @@ public class SideloadOtaStabilityTest implements IDeviceTest, IBuildReceiver,
             if (endLine.toLowerCase().startsWith("uncrypt_error:")) {
                 String[] elements = endLine.split(":");
                 return Integer.parseInt(elements[1].trim());
+            } else {
+                // MNC device case
+                return Integer.parseInt(endLine.trim());
             }
-            // Only log error status.
-            return 0;
         } catch (IOException e) {
             throw new RuntimeException(e);
         }

@@ -17,8 +17,9 @@
 package com.android.tradefed.util.keystore;
 
 import com.android.tradefed.config.Option;
-import com.android.tradefed.config.OptionClass;
 import com.android.tradefed.config.Option.Importance;
+import com.android.tradefed.config.OptionClass;
+import com.android.tradefed.log.LogUtil.CLog;
 
 import java.io.File;
 
@@ -33,12 +34,34 @@ public class JSONFileKeyStoreFactory implements IKeyStoreFactory {
             importance = Importance.IF_UNSET)
     private File mJsonFile = null;
 
+    /** Keystore factory is a global object and may be accessed concurrently so we need a lock */
+    private static final Object mLock = new Object();
+
+    private JSONFileKeyStoreClient mCachedClient = null;
+    private long mLastModified = 0l;
+
     /**
      * {@inheritDoc}
      */
     @Override
     public IKeyStoreClient createKeyStoreClient() throws KeyStoreException {
-        return new JSONFileKeyStoreClient(mJsonFile);
+        synchronized (mLock) {
+            if (mCachedClient == null) {
+                createKeyStoreInternal();
+                CLog.d("Keystore initialized with %s", mJsonFile.getAbsolutePath());
+            }
+            if (mJsonFile.exists() && mLastModified < mJsonFile.lastModified()) {
+                CLog.d(
+                        "Keystore file: %s has changed, reloading the keystore.",
+                        mJsonFile.getAbsolutePath());
+                createKeyStoreInternal();
+            }
+            return mCachedClient;
+        }
     }
 
+    private void createKeyStoreInternal() throws KeyStoreException {
+        mLastModified = mJsonFile.lastModified();
+        mCachedClient = new JSONFileKeyStoreClient(mJsonFile);
+    }
 }

@@ -24,15 +24,16 @@ import com.google.common.annotations.VisibleForTesting;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Stack;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.ReentrantLock;
 
 /**
@@ -57,6 +58,9 @@ public class FileDownloadCache {
 
     /** the lock for <var>mCacheMap</var> */
     private final ReentrantLock mCacheMapLock = new ReentrantLock();
+
+    /** A map of remote file paths to locks. */
+    private final Map<String, ReentrantLock> mFileLocks = new HashMap<String, ReentrantLock>();
 
     private long mCurrentCacheSize = 0;
 
@@ -163,11 +167,59 @@ public class FileDownloadCache {
         }
     }
 
+    /** Acquires the lock for a file. */
+    protected void lockFile(String remoteFilePath) {
+        ReentrantLock fileLock;
+
+        synchronized (mFileLocks) {
+            fileLock = mFileLocks.get(remoteFilePath);
+            if (fileLock == null) {
+                fileLock = new ReentrantLock();
+                mFileLocks.put(remoteFilePath, fileLock);
+            }
+        }
+        fileLock.lock();
+    }
+
+    /**
+     * Acquire the lock for a file only if it is not held by another thread.
+     *
+     * @return true if the lock was acquired, and false otherwise.
+     */
+    protected boolean tryLockFile(String remoteFilePath) {
+        synchronized (mFileLocks) {
+            ReentrantLock fileLock = mFileLocks.get(remoteFilePath);
+            if (fileLock == null) {
+                fileLock = new ReentrantLock();
+                mFileLocks.put(remoteFilePath, fileLock);
+            }
+            try {
+                return fileLock.tryLock(0, TimeUnit.SECONDS);
+            } catch (InterruptedException e) {
+                return false;
+            }
+        }
+    }
+
+    /** Attempt to release a lock for a file. */
+    protected void unlockFile(String remoteFilePath) {
+        synchronized (mFileLocks) {
+            ReentrantLock fileLock = mFileLocks.get(remoteFilePath);
+            if (fileLock != null) {
+                if (!fileLock.hasQueuedThreads()) {
+                    mFileLocks.remove(remoteFilePath);
+                }
+                fileLock.unlock();
+            }
+        }
+    }
+
     /**
      * Set the maximum size of the local file cache.
-     * <p/>
-     * Cache will not be adjusted immediately if set to a smaller size than current, but will
+     *
+     * <p>Cache will not be adjusted immediately if set to a smaller size than current, but will
      * take effect on next file download.
+     *
      * @param numBytes
      */
     public void setMaxCacheSize(long numBytes) {
@@ -191,50 +243,47 @@ public class FileDownloadCache {
     public File fetchRemoteFile(IFileDownloader downloader, String remotePath)
             throws BuildRetrievalError {
         boolean download = false;
-        // remove and then add previous cache entry to maintain LRU order
-        mCacheMapLock.lock();
-        File copyFile = null;
+        File cachedFile, copyFile;
+
+        lockFile(remotePath);
         try {
-            File cachedFile = mCacheMap.remove(remotePath);
-            if (cachedFile == null) {
-                // create a local File that maps to remotePath
-                // convert remotePath to a local path if necessary
-                String localRelativePath = convertPath(remotePath);
-                cachedFile = new File(mCacheRoot, localRelativePath);
-                cachedFile.getParentFile().mkdirs();
-                download = true;
-            } else if (!cachedFile.exists()) {
-                // We just potentially re-download, the synchronized below will fail otherwise due
-                // to the cachedFile being a new object.
-                download = true;
-            }
-            // lock on the file, so no other thread attempts to delete it or access it before it's
-            // downloaded
+            mCacheMapLock.lock();
             try {
-                synchronized (cachedFile) {
-                    mCacheMap.put(remotePath, cachedFile);
-                    mCacheMapLock.unlock();
-                    // If at that time cachedFile still doesn't exists we download.
-                    if (download && !cachedFile.exists()) {
-                        downloadFile(downloader, remotePath, cachedFile);
-                    } else {
-                        Log.d(LOG_TAG, String.format("Retrieved remote file %s from cached file %s",
-                                remotePath, cachedFile.getAbsolutePath()));
-                    }
-                    copyFile = copyFile(remotePath, cachedFile);
+                cachedFile = mCacheMap.remove(remotePath);
+                if (cachedFile == null) {
+                    download = true;
+                    String localRelativePath = convertPath(remotePath);
+                    cachedFile = new File(mCacheRoot, localRelativePath);
                 }
+                mCacheMap.put(remotePath, cachedFile);
+            } finally {
+                mCacheMapLock.unlock();
+            }
+
+            try {
+                if (download || !cachedFile.exists()) {
+                    cachedFile.getParentFile().mkdirs();
+                    downloadFile(downloader, remotePath, cachedFile);
+                } else {
+                    Log.d(
+                            LOG_TAG,
+                            String.format(
+                                    "Retrieved remote file %s from cached file %s",
+                                    remotePath, cachedFile.getAbsolutePath()));
+                }
+                copyFile = copyFile(remotePath, cachedFile);
             } catch (BuildRetrievalError | RuntimeException e) {
                 // cached file is likely incomplete, delete it.
                 deleteCacheEntry(remotePath);
                 throw e;
             }
+
+            // Only the thread that first downloads the file should increment the cache.
             if (download) {
                incrementAndAdjustCache(cachedFile.length());
             }
         } finally {
-            if (mCacheMapLock.isHeldByCurrentThread() && mCacheMapLock.isLocked()) {
-                mCacheMapLock.unlock();
-            }
+            unlockFile(remotePath);
         }
         return copyFile;
     }
@@ -287,18 +336,24 @@ public class FileDownloadCache {
         mCacheMapLock.lock();
         try {
             mCurrentCacheSize += length;
-            Iterator<Map.Entry<String, File>> mapIterator = mCacheMap.entrySet().iterator();
-            // map cannot be modified while iterating, so store entries to be deleted in another list
-            Collection<String> keysToDelete = new LinkedList<String>();
-            while (mCurrentCacheSize > getMaxFileCacheSize() && mapIterator.hasNext()) {
-                Map.Entry<String, File> currentEntry = mapIterator.next();
-                keysToDelete.add(currentEntry.getKey());
-                mCurrentCacheSize -= currentEntry.getValue().length();
-            }
-            for (String deleteKey : keysToDelete) {
-                File deleteFile = mCacheMap.remove(deleteKey);
-                synchronized (deleteFile) {
-                    deleteFile.delete();
+            Iterator<String> keyIterator = mCacheMap.keySet().iterator();
+            while (mCurrentCacheSize > getMaxFileCacheSize() && keyIterator.hasNext()) {
+                String remotePath = keyIterator.next();
+                // Only delete the file if it is not being used by another thread.
+                if (tryLockFile(remotePath)) {
+                    try {
+                        File file = mCacheMap.get(remotePath);
+                        mCurrentCacheSize -= file.length();
+                        file.delete();
+                        keyIterator.remove();
+                    } finally {
+                        unlockFile(remotePath);
+                    }
+                } else {
+                    CLog.i(
+                            String.format(
+                                    "File %s is being used by another invocation. Skipping.",
+                                    remotePath));
                 }
             }
             // audit cache size
@@ -306,6 +361,10 @@ public class FileDownloadCache {
                 // should never happen
                 Log.e(LOG_TAG, "Cache size is less than 0!");
                 // TODO: throw fatal error?
+            } else if (mCurrentCacheSize > getMaxFileCacheSize()) {
+                // May occur if the cache is configured to be too small or if mCurrentCacheSize is
+                // accounting for non-existent files.
+                Log.w(LOG_TAG, "File cache is over-capacity.");
             }
         } finally {
             mCacheMapLock.unlock();
@@ -377,16 +436,21 @@ public class FileDownloadCache {
      * Allow deleting an entry from the cache. In case the entry is invalid or corrupted.
      */
     public void deleteCacheEntry(String remoteFilePath) {
-        mCacheMapLock.lock();
+        lockFile(remoteFilePath);
         try {
-            File file = mCacheMap.remove(remoteFilePath);
-            if (file != null) {
-                FileUtil.recursiveDelete(file);
-            } else {
-                CLog.i("No cache entry to delete for %s", remoteFilePath);
+            mCacheMapLock.lock();
+            try {
+                File file = mCacheMap.remove(remoteFilePath);
+                if (file != null) {
+                    FileUtil.recursiveDelete(file);
+                } else {
+                    CLog.i("No cache entry to delete for %s", remoteFilePath);
+                }
+            } finally {
+                mCacheMapLock.unlock();
             }
         } finally {
-            mCacheMapLock.unlock();
+            unlockFile(remoteFilePath);
         }
     }
 }

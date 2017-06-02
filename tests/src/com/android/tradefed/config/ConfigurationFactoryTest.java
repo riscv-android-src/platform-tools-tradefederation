@@ -37,6 +37,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 /**
  * Unit tests for {@link ConfigurationFactory}
@@ -72,12 +73,12 @@ public class ConfigurationFactoryTest extends TestCase {
      */
     public void testLoadAllConfigs() throws ConfigurationException {
         ConfigurationFactory spyFactory = Mockito.spy(mRealFactory);
-        Mockito.doReturn(new HashSet<String>()).when(spyFactory).getConfigNamesFromTestCases();
+        Mockito.doReturn(new HashSet<String>()).when(spyFactory).getConfigNamesFromTestCases(null);
 
         // we dry-run the templates otherwise it will always fail.
         spyFactory.loadAllConfigs(false);
         assertTrue(spyFactory.getMapConfig().size() > 0);
-        Mockito.verify(spyFactory, Mockito.times(1)).getConfigNamesFromTestCases();
+        Mockito.verify(spyFactory, Mockito.times(1)).getConfigNamesFromTestCases(null);
     }
 
     /**
@@ -85,12 +86,12 @@ public class ConfigurationFactoryTest extends TestCase {
      */
     public void testLoadAndPrintAllConfigs() throws ConfigurationException {
         ConfigurationFactory spyFactory = Mockito.spy(mRealFactory);
-        Mockito.doReturn(new HashSet<String>()).when(spyFactory).getConfigNamesFromTestCases();
+        Mockito.doReturn(new HashSet<String>()).when(spyFactory).getConfigNamesFromTestCases(null);
 
         // Printing the help involves more checks since it tries to resolve the config objects.
         spyFactory.loadAndPrintAllConfigs();
         assertTrue(spyFactory.getMapConfig().size() > 0);
-        Mockito.verify(spyFactory, Mockito.times(1)).getConfigNamesFromTestCases();
+        Mockito.verify(spyFactory, Mockito.times(1)).getConfigNamesFromTestCases(null);
     }
 
     /**
@@ -356,7 +357,7 @@ public class ConfigurationFactoryTest extends TestCase {
      * Test {@link ConfigurationFactory#getConfigList()}
      */
     public void testListAllConfigs() {
-        List<String> listConfigs = mFactory.getConfigList();
+        List<String> listConfigs = mRealFactory.getConfigList();
         assertTrue(listConfigs.size() != 0);
         // Check that our basic configs are always here
         assertTrue(listConfigs.contains("empty"));
@@ -370,7 +371,7 @@ public class ConfigurationFactoryTest extends TestCase {
      */
     public void testListSubConfig() {
         final String subDir = "suite/";
-        List<String> listConfigs = mFactory.getConfigList(subDir);
+        List<String> listConfigs = mRealFactory.getConfigList(subDir);
         assertTrue(listConfigs.size() != 0);
         // Check that our basic configs are always here
         assertTrue(listConfigs.contains("suite/stub1"));
@@ -928,8 +929,37 @@ public class ConfigurationFactoryTest extends TestCase {
     }
 
     /**
-     * Parse a config with 3 different device configuration specified.
-     * And apply a command line to override some attributes.
+     * Test that if an object inside a <device> tag is implementing {@link IConfigurationReceiver}
+     * it will receives the config properly like non-device object.
+     */
+    public void testCreateConfigurationFromArgs_injectConfiguration() throws Exception {
+        IConfiguration config = mFactory.createConfigurationFromArgs(new String[] {"multi-device"});
+        assertEquals(1, config.getTests().size());
+
+        assertNotNull(config.getDeviceConfigByName("device2"));
+        assertEquals(1, config.getDeviceConfigByName("device2").getTargetPreparers().size());
+        assertTrue(
+                config.getDeviceConfigByName("device2").getTargetPreparers().get(0)
+                        instanceof StubTargetPreparer);
+        StubTargetPreparer stubDevice2 =
+                (StubTargetPreparer)
+                        config.getDeviceConfigByName("device2").getTargetPreparers().get(0);
+        assertEquals(config, stubDevice2.getConfiguration());
+
+        assertNotNull(config.getDeviceConfigByName("device3"));
+        assertEquals(2, config.getDeviceConfigByName("device3").getTargetPreparers().size());
+        assertTrue(
+                config.getDeviceConfigByName("device3").getTargetPreparers().get(0)
+                        instanceof StubTargetPreparer);
+        StubTargetPreparer stubDevice3 =
+                (StubTargetPreparer)
+                        config.getDeviceConfigByName("device3").getTargetPreparers().get(0);
+        assertEquals(config, stubDevice3.getConfiguration());
+    }
+
+    /**
+     * Parse a config with 3 different device configuration specified. And apply a command line to
+     * override some attributes.
      */
     public void testCreateConfigurationFromArgs_multidevice_applyCommandLine() throws Exception {
         IConfiguration config = mFactory.createConfigurationFromArgs(
@@ -1295,6 +1325,29 @@ public class ConfigurationFactoryTest extends TestCase {
             File config = spyFactory.getTestCaseConfigPath("non-exist");
             assertNull(config);
             Mockito.verify(spyFactory, Mockito.times(1)).getTestCasesDirs();
+        } finally {
+            FileUtil.recursiveDelete(tmpDir);
+        }
+    }
+
+    /**
+     * Tests that {@link ConfigurationFactory#getConfigNamesFromTestCases(String)} returns the
+     * proper files of the subpath only.
+     */
+    public void testGetConfigNamesFromTestCases_subpath() throws Exception {
+        File tmpDir = FileUtil.createTempDir("test-config-dir");
+        try {
+            FileUtil.createTempFile("testconfig1", ".config", tmpDir);
+            File subDir = FileUtil.createTempDir("subdir", tmpDir);
+            FileUtil.createTempFile("testconfig2", ".xml", subDir);
+            ConfigurationFactory spyFactory = Mockito.spy(mFactory);
+            Mockito.doReturn(Arrays.asList(tmpDir)).when(spyFactory).getTestCasesDirs();
+            // looking at full path we get both configs
+            Set<String> res = spyFactory.getConfigNamesFromTestCases(null);
+            assertEquals(2, res.size());
+            res = spyFactory.getConfigNamesFromTestCases(subDir.getName());
+            assertEquals(1, res.size());
+            assertTrue(res.iterator().next().contains("testconfig2"));
         } finally {
             FileUtil.recursiveDelete(tmpDir);
         }

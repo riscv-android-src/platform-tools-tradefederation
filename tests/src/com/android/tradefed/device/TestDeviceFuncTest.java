@@ -67,13 +67,17 @@ public class TestDeviceFuncTest extends DeviceTestCase {
      * Simple testcase to ensure that the grabbing a bugreport from a real TestDevice works.
      */
     public void testBugreport() throws Exception {
-        String data = StreamUtil.getStringFromStream(
-                mTestDevice.getBugreport().createInputStream());
-        assertTrue(
-                String.format(
-                        "Expected at least %d characters; only saw %d",
-                        MIN_BUGREPORT_BYTES, data.length()),
-                data.length() >= MIN_BUGREPORT_BYTES);
+        InputStreamSource bugreport = mTestDevice.getBugreport();
+        try {
+            String data = StreamUtil.getStringFromStream(bugreport.createInputStream());
+            assertTrue(
+                    String.format(
+                            "Expected at least %d characters; only saw %d",
+                            MIN_BUGREPORT_BYTES, data.length()),
+                    data.length() >= MIN_BUGREPORT_BYTES);
+        } finally {
+            StreamUtil.cancel(bugreport);
+        }
     }
 
     /**
