@@ -40,6 +40,7 @@ import com.android.tradefed.result.ResultForwarder;
 import com.android.tradefed.util.AbiFormatter;
 import com.android.tradefed.util.ListInstrumentationParser;
 import com.android.tradefed.util.ListInstrumentationParser.InstrumentationTarget;
+import com.android.tradefed.util.StreamUtil;
 import com.android.tradefed.util.StringEscapeUtils;
 
 import com.google.common.annotations.VisibleForTesting;
@@ -793,7 +794,22 @@ public class InstrumentationTest implements IDeviceTest, IResumableTest, ITestCo
         CollectingTestListener testTracker = new CollectingTestListener();
         mRemainingTests = expectedTests;
         try {
-            mDevice.runInstrumentationTests(mRunner, new ResultForwarder(listener, testTracker));
+            mDevice.runInstrumentationTests(
+                    mRunner,
+                    new ResultForwarder(listener, testTracker) {
+                        @Override
+                        public void testRunStarted(String runName, int testCount) {
+                            // In case of crash, run will attempt to report with 0
+                            if (testCount == 0 && !expectedTests.isEmpty()) {
+                                CLog.e(
+                                        "Run reported 0 tests while we collected %s",
+                                        expectedTests.size());
+                                super.testRunStarted(runName, expectedTests.size());
+                            } else {
+                                super.testRunStarted(runName, testCount);
+                            }
+                        }
+                    });
         } finally {
             calculateRemainingTests(mRemainingTests, testTracker);
         }
@@ -840,10 +856,9 @@ public class InstrumentationTest implements IDeviceTest, IResumableTest, ITestCo
         }
     }
 
-    /**
-     * re-runs tests one by one via {@link InstrumentationSerialTest}
-     */
-    private void reRunTestsSerially(final ITestInvocationListener listener)
+    /** re-runs tests one by one via {@link InstrumentationSerialTest} */
+    @VisibleForTesting
+    void reRunTestsSerially(final ITestInvocationListener listener)
             throws DeviceNotAvailableException {
         CLog.i("Running individual tests serially");
         // Since the same runner is reused we must ensure TEST_FILE_INST_ARGS_KEY is not set.
@@ -987,7 +1002,7 @@ public class InstrumentationTest implements IDeviceTest, IResumableTest, ITestCo
                 InputStreamSource screenSource = mDevice.getScreenshot();
                 super.testLog(String.format("screenshot-%s_%s", test.getClassName(),
                         test.getTestName()), LogDataType.PNG, screenSource);
-                screenSource.cancel();
+                StreamUtil.cancel(screenSource);
             } catch (DeviceNotAvailableException e) {
                 // TODO: rethrow this somehow
                 CLog.e("Device %s became unavailable while capturing screenshot, %s",
@@ -1053,7 +1068,7 @@ public class InstrumentationTest implements IDeviceTest, IResumableTest, ITestCo
             }
             super.testLog(String.format("logcat-%s_%s", test.getClassName(), test.getTestName()),
                     LogDataType.TEXT, logSource);
-            logSource.cancel();
+            StreamUtil.cancel(logSource);
         }
     }
 
@@ -1068,6 +1083,11 @@ public class InstrumentationTest implements IDeviceTest, IResumableTest, ITestCo
     @Override
     public void setAbi(IAbi abi) {
         mAbi = abi;
+    }
+
+    @Override
+    public IAbi getAbi() {
+        return mAbi;
     }
 
     /** Set True if we enforce the AJUR output format of instrumentation. */

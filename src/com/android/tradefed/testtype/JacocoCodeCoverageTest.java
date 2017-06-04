@@ -203,7 +203,7 @@ public class JacocoCodeCoverageTest extends CodeCoverageTestBase<JacocoCodeCover
     private void runAntBuild(File buildXml) throws IOException {
         // Run ant to generate the coverage report
         String[] cmd = {
-                mAntBinary, "-f", buildXml.getAbsolutePath()
+                mAntBinary, "-verbose", "-f", buildXml.getAbsolutePath()
         };
         CommandResult result = runTimedCmd(mReportTimeout, cmd);
 

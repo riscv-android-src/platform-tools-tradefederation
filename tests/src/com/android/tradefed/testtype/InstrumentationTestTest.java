@@ -553,6 +553,80 @@ public class InstrumentationTestTest extends TestCase {
         EasyMock.verify(mMockRemoteRunner, mMockListener, mMockTestDevice);
     }
 
+    /**
+     * Test that if we successfully collect a list of tests and the run crash and try to report 0 we
+     * instead do report the number of collected test to get an appropriate count.
+     */
+    public void testCollectWorks_RunCrash() throws Exception {
+        mInstrumentationTest =
+                new InstrumentationTest() {
+                    @Override
+                    IRemoteAndroidTestRunner createRemoteAndroidTestRunner(
+                            String packageName, String runnerName, IDevice device) {
+                        return mMockRemoteRunner;
+                    }
+
+                    @Override
+                    void reRunTestsSerially(ITestInvocationListener listener)
+                            throws DeviceNotAvailableException {
+                        // ignore serial re-run
+                    }
+                };
+        mInstrumentationTest.setPackageName(TEST_PACKAGE_VALUE);
+        mInstrumentationTest.setRunnerName(TEST_RUNNER_VALUE);
+        mInstrumentationTest.setDevice(mMockTestDevice);
+        mInstrumentationTest.setListInstrumentationParser(mMockListInstrumentationParser);
+        // default to no timeout for simplicity
+        mInstrumentationTest.setTestTimeout(TEST_TIMEOUT);
+        mInstrumentationTest.setShellTimeout(SHELL_TIMEOUT);
+        mInstrumentationTest.setRerunMode(true);
+        mMockRemoteRunner.setTestCollection(true);
+        mMockRemoteRunner.setDebug(false);
+        // expect normal mode to be turned back on
+        mMockRemoteRunner.setMaxTimeToOutputResponse(TEST_TIMEOUT, TimeUnit.MILLISECONDS);
+        mMockRemoteRunner.setTestCollection(false);
+        // We collect successfully 5 tests
+        CollectTestAnswer collectTestAnswer =
+                new CollectTestAnswer() {
+                    @Override
+                    public Boolean answer(
+                            IRemoteAndroidTestRunner runner, ITestRunListener listener) {
+                        listener.testRunStarted("fakeName", 5);
+                        for (int i = 0; i < 5; i++) {
+                            TestIdentifier tid = new TestIdentifier("fakeclass", "fakemethod" + i);
+                            listener.testStarted(tid, 5);
+                            listener.testEnded(tid, 15, Collections.emptyMap());
+                        }
+                        listener.testRunEnded(500, Collections.emptyMap());
+                        return true;
+                    }
+                };
+        setCollectTestsExpectations(collectTestAnswer);
+        // We attempt to run and crash
+        RunTestAnswer secondRunAnswer =
+                new RunTestAnswer() {
+                    @Override
+                    public Boolean answer(
+                            IRemoteAndroidTestRunner runner, ITestRunListener listener) {
+                        listener.testRunStarted("fakeName", 0);
+                        listener.testRunFailed(
+                                "Instrumentation run failed due to 'Process crashed.'");
+                        listener.testRunEnded(1, EMPTY_STRING_MAP);
+                        return true;
+                    }
+                };
+        setRunTestExpectations(secondRunAnswer);
+
+        // The reported number of tests is the one from the collected output
+        mMockListener.testRunStarted("fakeName", 5);
+        mMockListener.testRunFailed("Instrumentation run failed due to 'Process crashed.'");
+        mMockListener.testRunEnded(1, EMPTY_STRING_MAP);
+
+        EasyMock.replay(mMockRemoteRunner, mMockTestDevice, mMockListener);
+        mInstrumentationTest.run(mMockListener);
+        EasyMock.verify(mMockRemoteRunner, mMockTestDevice, mMockListener);
+    }
+
     private void setCollectTestsExpectations(CollectTestAnswer collectTestAnswer)
             throws DeviceNotAvailableException {
         EasyMock.expect(

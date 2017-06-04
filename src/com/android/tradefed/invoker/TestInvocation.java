@@ -23,11 +23,8 @@ import com.android.tradefed.build.IBuildProvider;
 import com.android.tradefed.build.IDeviceBuildProvider;
 import com.android.tradefed.command.CommandRunner.ExitCode;
 import com.android.tradefed.config.ConfigurationDef;
-import com.android.tradefed.config.ConfigurationException;
-import com.android.tradefed.config.ConfigurationFactory;
 import com.android.tradefed.config.GlobalConfiguration;
 import com.android.tradefed.config.IConfiguration;
-import com.android.tradefed.config.IConfigurationFactory;
 import com.android.tradefed.config.IDeviceConfiguration;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.DeviceUnresponsiveException;
@@ -35,6 +32,8 @@ import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.device.ITestDevice.RecoveryMode;
 import com.android.tradefed.device.StubDevice;
 import com.android.tradefed.device.TestDeviceState;
+import com.android.tradefed.invoker.shard.IShardHelper;
+import com.android.tradefed.invoker.shard.ShardBuildCloner;
 import com.android.tradefed.log.ILeveledLogOutput;
 import com.android.tradefed.log.ILogRegistry;
 import com.android.tradefed.log.LogRegistry;
@@ -61,12 +60,12 @@ import com.android.tradefed.testtype.IMultiDeviceTest;
 import com.android.tradefed.testtype.IRemoteTest;
 import com.android.tradefed.testtype.IResumableTest;
 import com.android.tradefed.testtype.IRetriableTest;
-import com.android.tradefed.testtype.IStrictShardableTest;
 import com.android.tradefed.util.IRunUtil;
-import com.android.tradefed.util.QuotationAwareTokenizer;
 import com.android.tradefed.util.RunInterruptedException;
 import com.android.tradefed.util.RunUtil;
 import com.android.tradefed.util.StreamUtil;
+
+import com.google.common.annotations.VisibleForTesting;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -87,6 +86,12 @@ import java.util.concurrent.TimeUnit;
  *   - reports results
  */
 public class TestInvocation implements ITestInvocation {
+
+    /**
+     * Format of the key in {@link IInvocationContext} to log the battery level for each step of the
+     * invocation. (Setup, test, tear down).
+     */
+    private static final String BATTERY_ATTRIBUTE_FORMAT_KEY = "%s-battery-%s";
 
     static final String TRADEFED_LOG_NAME = "host_log";
     static final String DEVICE_LOG_NAME_PREFIX = "device_logcat_";
@@ -169,7 +174,7 @@ public class TestInvocation implements ITestInvocation {
      *
      * <p>If a shard count is greater than 1, it will simply create configs for each shard by
      * setting shard indices and reschedule them. If a shard count is not set,it would fallback to
-     * {@link ShardHelper#legacyShardConfig}.
+     * {@link IShardHelper#shardConfig}.
      *
      * @param config the current {@link IConfiguration}.
      * @param context the {@link IInvocationContext} holding the info of the tests.
@@ -178,44 +183,14 @@ public class TestInvocation implements ITestInvocation {
      */
     private boolean shardConfig(
             IConfiguration config, IInvocationContext context, IRescheduler rescheduler) {
-        if (config.getCommandOptions().getShardIndex() != null) {
-            // The config is already for a single shard.
-            return false;
-        }
-
         mStatus = "sharding";
-        if (config.getCommandOptions().getShardCount() == null) {
-            return ShardHelper.legacyShardConfig(config, context, rescheduler);
-        }
-        // Schedules shard configs.
-        int shardCount = config.getCommandOptions().getShardCount();
-        for (int i = 0; i < config.getCommandOptions().getShardCount(); i++) {
-            IConfiguration shardConfig = null;
-            // Create a deep copy of the configuration.
-            try {
-                shardConfig = getConfigFactory().createConfigurationFromArgs(
-                        QuotationAwareTokenizer.tokenizeLine(config.getCommandLine()));
-            } catch (ConfigurationException e) {
-                // This must not happen.
-                throw new RuntimeException("failed to deep copy a configuration", e);
-            }
-
-            ShardHelper.cloneBuildInfos(config, shardConfig, context);
-
-            shardConfig.getCommandOptions().setShardCount(shardCount);
-            shardConfig.getCommandOptions().setShardIndex(i);
-            rescheduler.scheduleConfig(shardConfig);
-        }
-        return true;
+        return createShardHelper().shardConfig(config, context, rescheduler);
     }
 
-    /**
-     * Factory method for getting a reference to the {@link IConfigurationFactory}
-     *
-     * @return the {@link IConfigurationFactory} to use
-     */
-    protected IConfigurationFactory getConfigFactory() {
-        return ConfigurationFactory.getInstance();
+    /** Create an return the {@link IShardHelper} to be used. */
+    @VisibleForTesting
+    protected IShardHelper createShardHelper() {
+        return GlobalConfiguration.getInstance().getShardingStrategy();
     }
 
     /**
@@ -287,37 +262,6 @@ public class TestInvocation implements ITestInvocation {
     }
 
     /**
-     * Updates the {@link IConfiguration} to run a single shard if a shard index is set.
-     *
-     * @see IStrictShardableTest
-     *
-     * @param config the {@link IConfiguration}.
-     */
-    private void updateConfigIfSharded(IConfiguration config) {
-        if (config.getCommandOptions().getShardIndex() == null) {
-            return;
-        }
-
-        int shardCount = config.getCommandOptions().getShardCount();
-        int shardIndex = config.getCommandOptions().getShardIndex();
-        List<IRemoteTest> testShards = new ArrayList<>();
-        for (IRemoteTest test : config.getTests()) {
-            if (!(test instanceof IStrictShardableTest)) {
-                CLog.w("%s is not shardable; the whole test will run in shard 0",
-                        test.getClass().getName());
-                if (shardIndex == 0) {
-                    testShards.add(test);
-                }
-                continue;
-            }
-            IRemoteTest testShard = ((IStrictShardableTest) test).getTestShard(shardCount,
-                    shardIndex);
-            testShards.add(testShard);
-        }
-        config.setTests(testShards);
-    }
-
-    /**
      * Display a log message informing the user of a invocation being started.
      *
      * @param context the {@link IInvocationContext}
@@ -326,9 +270,11 @@ public class TestInvocation implements ITestInvocation {
     private void logStartInvocation(IInvocationContext context, IConfiguration config) {
         String shardSuffix = "";
         if (config.getCommandOptions().getShardIndex() != null) {
-            shardSuffix = String.format(" (shard %d of %d)",
-                    config.getCommandOptions().getShardIndex(),
-                    config.getCommandOptions().getShardCount());
+            shardSuffix =
+                    String.format(
+                            " (shard %d of %d)",
+                            config.getCommandOptions().getShardIndex() + 1,
+                            config.getCommandOptions().getShardCount());
         }
         StringBuilder buildInfos = new StringBuilder();
         StringBuilder msg = new StringBuilder("Starting invocation for '");
@@ -518,7 +464,10 @@ public class TestInvocation implements ITestInvocation {
         logDeviceBatteryLevel(context, "after test");
     }
 
-    private void doSetup(IConfiguration config, IInvocationContext context,
+    @VisibleForTesting
+    void doSetup(
+            IConfiguration config,
+            IInvocationContext context,
             final ITestInvocationListener listener)
             throws TargetSetupError, BuildError, DeviceNotAvailableException {
         // TODO: evaluate doing device setup in parallel
@@ -529,8 +478,9 @@ public class TestInvocation implements ITestInvocation {
                 ((ITestLoggerReceiver) context.getDevice(deviceName))
                         .setTestLogger(listener);
             }
-            device.preInvocationSetup(context.getBuildInfo(deviceName));
-
+            if (!config.getCommandOptions().shouldSkipPreDeviceSetup()) {
+                device.preInvocationSetup(context.getBuildInfo(deviceName));
+            }
             for (ITargetPreparer preparer : config.getDeviceConfigByName(deviceName)
                     .getTargetPreparers()) {
                 if (preparer instanceof ITestLoggerReceiver) {
@@ -663,7 +613,7 @@ public class TestInvocation implements ITestInvocation {
                     // resume this config if any test is resumable
                     IConfiguration resumeConfig = config.clone();
                     // reuse the same build for the resumed invocation
-                    ShardHelper.cloneBuildInfos(resumeConfig, resumeConfig, context);
+                    ShardBuildCloner.cloneBuildInfos(resumeConfig, resumeConfig, context);
 
                     // create a result forwarder, to prevent sending two invocationStarted events
                     resumeConfig.setTestInvocationListener(new ResumeResultForwarder(
@@ -834,24 +784,35 @@ public class TestInvocation implements ITestInvocation {
         return mStatus;
     }
 
-    private void logDeviceBatteryLevel(IInvocationContext context, String event) {
+    /**
+     * Log the battery level of each device in the invocation.
+     *
+     * @param context the {@link IInvocationContext} of the invocation.
+     * @param event a {@link String} describing the context of the logging (initial, setup, etc.).
+     */
+    @VisibleForTesting
+    void logDeviceBatteryLevel(IInvocationContext context, String event) {
         for (ITestDevice testDevice : context.getDevices()) {
             if (testDevice == null) {
-                return;
+                continue;
             }
             IDevice device = testDevice.getIDevice();
-            if (device == null) {
-                return;
+            if (device == null || device instanceof StubDevice) {
+                continue;
             }
             try {
-                CLog.v("%s - %s - %d%%", BATT_TAG, event,
-                        device.getBattery(500, TimeUnit.MILLISECONDS).get());
-                return;
+                Integer batteryLevel = device.getBattery(500, TimeUnit.MILLISECONDS).get();
+                CLog.v("%s - %s - %d%%", BATT_TAG, event, batteryLevel);
+                context.addInvocationAttribute(
+                        String.format(
+                                BATTERY_ATTRIBUTE_FORMAT_KEY, testDevice.getSerialNumber(), event),
+                        batteryLevel.toString());
+                continue;
             } catch (InterruptedException | ExecutionException e) {
                 // fall through
             }
 
-            CLog.v("Failed to get battery level");
+            CLog.v("Failed to get battery level for %s", testDevice.getSerialNumber());
         }
     }
 
@@ -917,7 +878,10 @@ public class TestInvocation implements ITestInvocation {
                     device.setRecovery(deviceConfig.getDeviceRecovery());
                 } else {
                     mStatus = "(no build to test)";
-                    CLog.i("No build to test for device: %s", device.getSerialNumber());
+                    CLog.logAndDisplay(
+                            LogLevel.WARN,
+                            "No build found to test for device: %s",
+                            device.getSerialNumber());
                     rescheduleTest(config, rescheduler);
                     // save current log contents to global log
                     getLogRegistry().dumpToGlobalLog(config.getLogOutput());
@@ -933,7 +897,6 @@ public class TestInvocation implements ITestInvocation {
                 CLog.i("Invocation for %s has been sharded, rescheduling",
                         context.getSerials().toString());
             } else {
-                updateConfigIfSharded(config);
                 if (config.getTests() == null || config.getTests().isEmpty()) {
                     CLog.e("No tests to run");
                 } else {

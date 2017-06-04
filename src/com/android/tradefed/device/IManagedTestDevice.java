@@ -119,4 +119,10 @@ public interface IManagedTestDevice extends ITestDevice {
      * Returns the MAC address of the device, null if it fails to query from the device.
      */
     public String getMacAddress();
+
+    /** Return the SIM card state or null if device is not available. */
+    public String getSimState();
+
+    /** Return the SIM card operator or null if device is not available. */
+    public String getSimOperator();
 }

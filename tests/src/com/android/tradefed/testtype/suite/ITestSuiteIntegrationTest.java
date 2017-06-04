@@ -19,18 +19,29 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;
 import static org.mockito.Mockito.mock;
 
+import com.android.ddmlib.testrunner.TestIdentifier;
+import com.android.tradefed.build.BuildInfo;
 import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.config.ConfigurationException;
 import com.android.tradefed.config.ConfigurationFactory;
+import com.android.tradefed.config.DeviceConfigurationHolder;
 import com.android.tradefed.config.IConfiguration;
+import com.android.tradefed.config.IDeviceConfiguration;
+import com.android.tradefed.config.OptionSetter;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.invoker.IInvocationContext;
+import com.android.tradefed.invoker.IRescheduler;
 import com.android.tradefed.invoker.InvocationContext;
+import com.android.tradefed.invoker.shard.StrictShardHelper;
 import com.android.tradefed.log.LogUtil.CLog;
+import com.android.tradefed.result.ILogSaver;
 import com.android.tradefed.result.ITestInvocationListener;
+import com.android.tradefed.result.ResultForwarder;
 import com.android.tradefed.result.suite.SuiteResultReporter;
 import com.android.tradefed.suite.checker.ISystemStatusChecker;
+import com.android.tradefed.suite.checker.ISystemStatusCheckerReceiver;
+import com.android.tradefed.testtype.IRemoteTest;
 import com.android.tradefed.util.FileUtil;
 
 import org.junit.After;
@@ -131,12 +142,20 @@ public class ITestSuiteIntegrationTest {
     }
 
     /** Very basic implementation of {@link ITestSuite} to load the config from the folder */
-    public class TestSuiteFolderImpl extends ITestSuite {
+    public static class TestSuiteFolderImpl extends ITestSuite {
 
         private File mConfigFolder;
+        private List<TestIdentifier> mTests;
+
+        public TestSuiteFolderImpl() {}
 
         public TestSuiteFolderImpl(File configFolder) {
             mConfigFolder = configFolder;
+        }
+
+        public TestSuiteFolderImpl(File configFolder, List<TestIdentifier> tests) {
+            this(configFolder);
+            mTests = tests;
         }
 
         @Override
@@ -151,6 +170,11 @@ public class ITestSuiteIntegrationTest {
                                     .createConfigurationFromArgs(
                                             new String[] {configFile.getAbsolutePath()});
                     testConfig.put(configFile.getName(), config);
+                    for (IRemoteTest test : config.getTests()) {
+                        if (test instanceof TestSuiteStub) {
+                            ((TestSuiteStub) test).mShardedTestToRun = mTests;
+                        }
+                    }
                 } catch (ConfigurationException e) {
                     CLog.e(e);
                     throw new RuntimeException(e);
@@ -251,5 +275,268 @@ public class ITestSuiteIntegrationTest {
         assertEquals(3, mListener.getTotalTests());
         assertEquals(1, mListener.getPassedTests());
         assertEquals(1, mListener.getFailedTests());
+    }
+
+    /** ===================== TESTS WITH SHARDING ===================== */
+
+    /** Helper rescheduler to simulate one shard running after another. */
+    private class TestShardRescheduler implements IRescheduler {
+        @Override
+        public boolean scheduleConfig(IConfiguration config) {
+            new ResultForwarder(config.getTestInvocationListeners()).invocationStarted(mContext);
+            for (IRemoteTest test : config.getTests()) {
+                if (test instanceof ISystemStatusCheckerReceiver) {
+                    ((ISystemStatusCheckerReceiver) test)
+                            .setSystemStatusChecker(config.getSystemStatusCheckers());
+                }
+                try {
+                    test.run(new ResultForwarder(config.getTestInvocationListeners()));
+                } catch (DeviceNotAvailableException e) {
+                    throw new RuntimeException(e);
+                }
+            }
+            new ResultForwarder(config.getTestInvocationListeners()).invocationEnded(500);
+            return true;
+        }
+
+        @Override
+        public boolean rescheduleCommand() {
+            throw new RuntimeException("Should not be called.");
+        }
+    }
+
+    /** Helper rescheduler to simulate all shards running concurrently. */
+    private class TestParallelShardRescheduler implements IRescheduler {
+
+        public List<Thread> mRunning = new ArrayList<>();
+
+        @Override
+        public boolean scheduleConfig(IConfiguration config) {
+            Thread t =
+                    new Thread(
+                            new Runnable() {
+                                @Override
+                                public void run() {
+                                    new ResultForwarder(config.getTestInvocationListeners())
+                                            .invocationStarted(mContext);
+                                    for (IRemoteTest test : config.getTests()) {
+                                        if (test instanceof ISystemStatusCheckerReceiver) {
+                                            ((ISystemStatusCheckerReceiver) test)
+                                                    .setSystemStatusChecker(
+                                                            config.getSystemStatusCheckers());
+                                        }
+                                        try {
+                                            test.run(
+                                                    new ResultForwarder(
+                                                            config.getTestInvocationListeners()));
+                                        } catch (DeviceNotAvailableException e) {
+                                            throw new RuntimeException(e);
+                                        }
+                                    }
+                                    new ResultForwarder(config.getTestInvocationListeners())
+                                            .invocationEnded(500);
+                                }
+                            });
+            mRunning.add(t);
+            t.setName("shard-integration-test" + config.getName());
+            t.start();
+            return true;
+        }
+
+        @Override
+        public boolean rescheduleCommand() {
+            throw new RuntimeException("Should not be called.");
+        }
+    }
+
+    /** Tests running a split ITestSuite. Without parallelism, the first pool will run all tests. */
+    @Test
+    public void testRun_sharding_firstModuleRunsAll() throws Exception {
+        createConfig(mTestConfigFolder, "module1", TEST_STUB, true, true, false, false, false);
+        createConfig(mTestConfigFolder, "module2", TEST_STUB, true, true, true, false, false);
+        ITestSuite suite = new TestSuiteFolderImpl(mTestConfigFolder);
+        IConfiguration config =
+                ConfigurationFactory.getInstance()
+                        .createConfigurationFromArgs(new String[] {"empty"});
+        config.setLogSaver(mock(ILogSaver.class));
+        config.setTest(suite);
+        config.setSystemStatusCheckers(new ArrayList<ISystemStatusChecker>());
+        suite.setSystemStatusChecker(new ArrayList<ISystemStatusChecker>());
+        config.setTestInvocationListener(mListener);
+        config.getCommandOptions().setShardCount(5);
+        IDeviceConfiguration deviceConfig = new DeviceConfigurationHolder("device");
+        config.setDeviceConfig(deviceConfig);
+        // invocation context
+        mMockBuildInfo = new BuildInfo("9999", "test-target");
+        mContext = new InvocationContext();
+        mContext.addAllocatedDevice("device", mMockDevice);
+        mContext.addDeviceBuildInfo("device", mMockBuildInfo);
+
+        StrictShardHelper helper = new StrictShardHelper();
+        helper.shardConfig(config, mContext, new TestShardRescheduler());
+
+        assertEquals(2, mListener.getTotalModules());
+        assertEquals(2, mListener.getCompleteModules());
+        assertEquals(6, mListener.getTotalTests());
+        assertEquals(5, mListener.getPassedTests());
+        assertEquals(1, mListener.getFailedTests());
+    }
+
+    /**
+     * Tests running a split ITestSuite. With parallelism when rescheduling, we should still obtain
+     * the same final results.
+     */
+    @Test
+    public void testRun_sharding_parallelRun() throws Exception {
+        createConfig(mTestConfigFolder, "module1", TEST_STUB, true, true, false, false, false);
+        createConfig(mTestConfigFolder, "module2", TEST_STUB, true, true, true, false, false);
+        ITestSuite suite = new TestSuiteFolderImpl(mTestConfigFolder);
+        IConfiguration config =
+                ConfigurationFactory.getInstance()
+                        .createConfigurationFromArgs(new String[] {"empty"});
+        config.setLogSaver(mock(ILogSaver.class));
+        config.setTest(suite);
+        config.setSystemStatusCheckers(new ArrayList<ISystemStatusChecker>());
+        suite.setSystemStatusChecker(new ArrayList<ISystemStatusChecker>());
+        config.setTestInvocationListener(mListener);
+        config.getCommandOptions().setShardCount(5);
+        IDeviceConfiguration deviceConfig = new DeviceConfigurationHolder("device");
+        config.setDeviceConfig(deviceConfig);
+        // invocation context
+        mMockBuildInfo = new BuildInfo("9999", "test-target");
+        mContext = new InvocationContext();
+        mContext.addAllocatedDevice("device", mMockDevice);
+        mContext.addDeviceBuildInfo("device", mMockBuildInfo);
+
+        StrictShardHelper helper = new StrictShardHelper();
+        TestParallelShardRescheduler rescheduler = new TestParallelShardRescheduler();
+        helper.shardConfig(config, mContext, rescheduler);
+        for (Thread t : rescheduler.mRunning) {
+            t.join(2000);
+        }
+
+        assertEquals(2, mListener.getTotalModules());
+        assertEquals(2, mListener.getCompleteModules());
+        assertEquals(6, mListener.getTotalTests());
+        assertEquals(5, mListener.getPassedTests());
+        assertEquals(1, mListener.getFailedTests());
+    }
+
+    /**
+     * Test sharding of ITestSuite with shard-count and shard-index and with TF internal sharding
+     * (--disable-strict-sharding).
+     */
+    @Test
+    public void testRun_sharding_withIndex() throws Exception {
+        createConfig(mTestConfigFolder, "module1", TEST_STUB, true, true, false, false, false);
+        createConfig(mTestConfigFolder, "module2", TEST_STUB, true, true, true, false, false);
+        ITestSuite suite = new TestSuiteFolderImpl(mTestConfigFolder);
+        IConfiguration config =
+                ConfigurationFactory.getInstance()
+                        .createConfigurationFromArgs(new String[] {"empty"});
+        config.setLogSaver(mock(ILogSaver.class));
+        config.setTest(suite);
+        config.setSystemStatusCheckers(new ArrayList<ISystemStatusChecker>());
+        suite.setSystemStatusChecker(new ArrayList<ISystemStatusChecker>());
+        config.setTestInvocationListener(mListener);
+        config.getCommandOptions().setShardCount(2);
+        config.getCommandOptions().setShardIndex(0);
+        OptionSetter setter = new OptionSetter(config.getCommandOptions());
+        setter.setOptionValue("disable-strict-sharding", "true");
+        IDeviceConfiguration deviceConfig = new DeviceConfigurationHolder("device");
+        config.setDeviceConfig(deviceConfig);
+        // invocation context
+        mMockBuildInfo = new BuildInfo("9999", "test-target");
+        mContext = new InvocationContext();
+        mContext.addAllocatedDevice("device", mMockDevice);
+        mContext.addDeviceBuildInfo("device", mMockBuildInfo);
+
+        StrictShardHelper helper = new StrictShardHelper();
+        helper.shardConfig(config, mContext, null);
+        // rescheduler is not called, execution is in the same invocation.
+        new ResultForwarder(config.getTestInvocationListeners()).invocationStarted(mContext);
+        for (IRemoteTest test : config.getTests()) {
+            if (test instanceof ISystemStatusCheckerReceiver) {
+                ((ISystemStatusCheckerReceiver) test)
+                        .setSystemStatusChecker(config.getSystemStatusCheckers());
+            }
+            test.run(new ResultForwarder(config.getTestInvocationListeners()));
+        }
+        new ResultForwarder(config.getTestInvocationListeners()).invocationEnded(500);
+        // Only the first module is ran, which is passing.
+        assertEquals(1, mListener.getTotalModules());
+        assertEquals(1, mListener.getCompleteModules());
+        assertEquals(3, mListener.getTotalTests());
+        assertEquals(3, mListener.getPassedTests());
+        assertEquals(0, mListener.getFailedTests());
+    }
+
+    /**
+     * Test when sharding a single module into several shard and requesting only a subset to run.
+     */
+    @Test
+    public void testRun_intraModuleSharding_shard0() throws Exception {
+        helperTestShardIndex(2, 0);
+        // Only a subpart of the module runs. 2 out of 3 tests.
+        assertEquals(1, mListener.getTotalModules());
+        assertEquals(1, mListener.getCompleteModules());
+        assertEquals(2, mListener.getTotalTests());
+        assertEquals(2, mListener.getPassedTests());
+        assertEquals(0, mListener.getFailedTests());
+    }
+
+    /**
+     * Test when sharding a single module into several shard and requesting only a subset to run.
+     */
+    @Test
+    public void testRun_intraModuleSharding_shard1() throws Exception {
+        helperTestShardIndex(2, 1);
+        // Only a subpart of the module runs. 1 out of 3 tests.
+        assertEquals(1, mListener.getTotalModules());
+        assertEquals(1, mListener.getCompleteModules());
+        assertEquals(1, mListener.getTotalTests());
+        assertEquals(1, mListener.getPassedTests());
+        assertEquals(0, mListener.getFailedTests());
+    }
+
+    private void helperTestShardIndex(int shardCount, int shardIndex) throws Exception {
+        List<TestIdentifier> tests = new ArrayList<>();
+        tests.add(new TestIdentifier("class1", "test1"));
+        tests.add(new TestIdentifier("class1", "test2"));
+        tests.add(new TestIdentifier("class1", "test3"));
+        createConfig(mTestConfigFolder, "module1", TEST_STUB, true, true, false, false, false);
+        ITestSuite suite = new TestSuiteFolderImpl(mTestConfigFolder, tests);
+        IConfiguration config =
+                ConfigurationFactory.getInstance()
+                        .createConfigurationFromArgs(new String[] {"empty"});
+        config.setLogSaver(mock(ILogSaver.class));
+        config.setTest(suite);
+        config.setSystemStatusCheckers(new ArrayList<ISystemStatusChecker>());
+        suite.setSystemStatusChecker(new ArrayList<ISystemStatusChecker>());
+        config.setTestInvocationListener(mListener);
+        config.getCommandOptions().setShardCount(shardCount);
+        config.getCommandOptions().setShardIndex(shardIndex);
+        OptionSetter setter = new OptionSetter(config.getCommandOptions());
+        setter.setOptionValue("disable-strict-sharding", "true");
+        IDeviceConfiguration deviceConfig = new DeviceConfigurationHolder("device");
+        config.setDeviceConfig(deviceConfig);
+        // invocation context
+        mMockBuildInfo = new BuildInfo("9999", "test-target");
+        mContext = new InvocationContext();
+        mContext.addAllocatedDevice("device", mMockDevice);
+        mContext.addDeviceBuildInfo("device", mMockBuildInfo);
+
+        StrictShardHelper helper = new StrictShardHelper();
+        helper.shardConfig(config, mContext, null);
+        // rescheduler is not called, execution is in the same invocation.
+        new ResultForwarder(config.getTestInvocationListeners()).invocationStarted(mContext);
+        for (IRemoteTest test : config.getTests()) {
+            if (test instanceof ISystemStatusCheckerReceiver) {
+                ((ISystemStatusCheckerReceiver) test)
+                        .setSystemStatusChecker(config.getSystemStatusCheckers());
+            }
+            test.run(new ResultForwarder(config.getTestInvocationListeners()));
+        }
+        new ResultForwarder(config.getTestInvocationListeners()).invocationEnded(500);
     }
 }

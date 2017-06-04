@@ -17,6 +17,8 @@ package com.android.tradefed.config;
 
 import com.android.tradefed.util.MultiMap;
 
+import com.google.common.annotations.VisibleForTesting;
+
 import java.util.ArrayList;
 import java.util.List;
 
@@ -34,6 +36,15 @@ public class ConfigurationDescriptor {
     @Option(name = "metadata", description = "Metadata associated with this configuration, can be "
             + "free formed key value pairs, and a key may be associated with multiple values.")
     private MultiMap<String, String> mMetaData = new MultiMap<>();
+
+    @Option(
+        name = "not-shardable",
+        description =
+                "A metadata that allows a suite configuration to specify that it cannot be "
+                        + "sharded. Not because it doesn't support it but because it doesn't make "
+                        + "sense."
+    )
+    private boolean mNotShardable = false;
 
     /** Returns the list of suite tags the test is part of. */
     public List<String> getSuiteTags() {
@@ -53,5 +64,15 @@ public class ConfigurationDescriptor {
     /** Get the named metadata entries */
     public List<String> getMetaData(String name) {
         return mMetaData.get(name);
+    }
+
+    @VisibleForTesting
+    public void setMetaData(MultiMap<String, String> metadata) {
+        mMetaData = metadata;
+    }
+
+    /** Returns if the configuration is shardable or not as part of a suite */
+    public boolean isNotShardable() {
+        return mNotShardable;
     }
 }

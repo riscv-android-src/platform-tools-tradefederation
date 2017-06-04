@@ -15,22 +15,22 @@
  */
 package com.android.tradefed.result;
 
+import org.json.JSONException;
+import org.json.JSONObject;
+
 import com.android.ddmlib.testrunner.TestIdentifier;
 import com.android.ddmlib.testrunner.TestResult;
 import com.android.ddmlib.testrunner.TestRunResult;
 import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.config.Option;
 import com.android.tradefed.config.Option.Importance;
+import com.android.tradefed.config.OptionClass;
 import com.android.tradefed.invoker.IInvocationContext;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.util.StreamUtil;
 import com.android.tradefed.util.net.HttpHelper;
 import com.android.tradefed.util.net.IHttpHelper;
-
 import com.google.common.base.Joiner;
-
-import org.json.JSONException;
-import org.json.JSONObject;
 
 import java.io.IOException;
 import java.io.OutputStream;
@@ -45,19 +45,25 @@ import java.util.Map.Entry;
  * A result reporter that encode test metrics results and branch, device info into JSON and POST
  * into an HTTP service endpoint
  */
+@OptionClass(alias = "json-reporter")
 public class JsonHttpTestResultReporter extends CollectingTestListener {
 
     /** separator for class name and method name when encoding test identifier */
     private final static String SEPARATOR = "#";
+    private final static String RESULT_SEPARATOR = "##";
 
     /** constants used as keys in JSON results to be posted to remote end */
     private final static String KEY_METRICS = "metrics";
     private final static String KEY_BRANCH = "branch";
     private final static String KEY_BUILD_FLAVOR = "build_flavor";
     private final static String KEY_BUILD_ID = "build_id";
+    private final static String KEY_RESULTS_NAME = "results_name";
 
     /** timeout for HTTP connection to posting endpoint */
     private final static int CONNECTION_TIMEOUT_MS = 60 * 1000;
+
+    @Option(name="include-run-name", description="include test run name in reporting unit")
+    private boolean mIncludeRunName = false;
 
     @Option(name = "posting-endpoint", description = "url for the HTTP data posting endpoint",
             importance = Importance.ALWAYS)
@@ -66,6 +72,11 @@ public class JsonHttpTestResultReporter extends CollectingTestListener {
     @Option(name = "disable", description =
             "flag to skip reporting of all the results")
     private boolean mSkipReporting = false;
+
+    @Option(name = "reporting-unit-key-suffix",
+            description = "suffix to append after the regular reporting unit key")
+    private String mReportingUnitKeySuffix = null;
+
 
     private boolean mHasInvocationFailures = false;
     private IInvocationContext mInvocationContext = null;
@@ -140,22 +151,40 @@ public class JsonHttpTestResultReporter extends CollectingTestListener {
      */
     JSONObject convertMetricsToJson(Collection<TestRunResult> runResults) throws JSONException {
         JSONObject allTestMetrics = new JSONObject();
+
+        StringBuffer resultsName = new StringBuffer();
         // loops over all test runs
         for (TestRunResult runResult : runResults) {
+
+            // Parse run metrics
+            if (runResult.getRunMetrics().size() > 0) {
+                JSONObject runResultMetrics = new JSONObject(runResult.getRunMetrics());
+                String reportingUnit = runResult.getName();
+                if (mReportingUnitKeySuffix != null && !mReportingUnitKeySuffix.isEmpty()) {
+                    reportingUnit += mReportingUnitKeySuffix;
+                }
+                allTestMetrics.put(reportingUnit, runResultMetrics);
+                resultsName.append(String.format("%s%s", reportingUnit, RESULT_SEPARATOR));
+            } else {
+                CLog.d("Skipping metrics for %s because results are empty.", runResult.getName());
+            }
+
+            // Parse test metrics
             Map<TestIdentifier, TestResult> testResultMap = runResult.getTestResults();
-            // loops over all tests
             for (Entry<TestIdentifier, TestResult> entry : testResultMap.entrySet()) {
                 TestIdentifier testIdentifier = entry.getKey();
                 TestResult testResult = entry.getValue();
+                Joiner joiner = Joiner.on(SEPARATOR).skipNulls();
+                String reportingUnit = joiner.join(
+                        mIncludeRunName ? runResult.getName() : null,
+                        testIdentifier.getClassName(), testIdentifier.getTestName());
+                if (mReportingUnitKeySuffix != null && !mReportingUnitKeySuffix.isEmpty()) {
+                    reportingUnit += mReportingUnitKeySuffix;
+                }
+                resultsName.append(String.format("%s%s", reportingUnit, RESULT_SEPARATOR));
                 if (testResult.getMetrics().size() > 0) {
-                    Joiner joiner = Joiner.on(SEPARATOR).skipNulls();
-                    // note that we assume test identifiers here a unique event across test runs,
-                    // so the metrics being put into the map are not really identified with test run
-                    // name anywhere in the "key"
-                    String reportingKey = joiner.join(testIdentifier.getClassName(),
-                            testIdentifier.getTestName());
                     JSONObject testResultMetrics = new JSONObject(testResult.getMetrics());
-                    allTestMetrics.put(reportingKey, testResultMetrics);
+                    allTestMetrics.put(reportingUnit, testResultMetrics);
                 } else {
                     CLog.d("Skipping metrics for %s because results are empty.", testIdentifier);
                 }
@@ -170,6 +199,7 @@ public class JsonHttpTestResultReporter extends CollectingTestListener {
         }
         IBuildInfo buildInfo = buildInfos.get(0);
         JSONObject result = new JSONObject();
+        result.put(KEY_RESULTS_NAME, resultsName);
         result.put(KEY_METRICS, allTestMetrics);
         result.put(KEY_BRANCH, buildInfo.getBuildBranch());
         result.put(KEY_BUILD_FLAVOR, buildInfo.getBuildFlavor());

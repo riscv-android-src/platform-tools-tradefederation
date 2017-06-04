@@ -170,9 +170,13 @@ public class InvocationContext implements IInvocationContext {
         mInvocationAttributes.put(attributeName, attributeValue);
     }
 
-    /**
-     * {@inheritDoc}
-     */
+    /** {@inheritDoc} */
+    @Override
+    public void addInvocationAttributes(UniqueMultiMap<String, String> attributesMap) {
+        mInvocationAttributes.putAll(attributesMap);
+    }
+
+    /** {@inheritDoc} */
     @Override
     public MultiMap<String, String> getAttributes() {
         return mInvocationAttributes;

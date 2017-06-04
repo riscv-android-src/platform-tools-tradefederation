@@ -15,6 +15,9 @@
  */
 package com.android.tradefed.invoker;
 
+import static org.mockito.Mockito.doReturn;
+
+import com.android.ddmlib.IDevice;
 import com.android.tradefed.build.BuildRetrievalError;
 import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.build.IBuildProvider;
@@ -30,12 +33,18 @@ import com.android.tradefed.config.DeviceConfigurationHolder;
 import com.android.tradefed.config.IConfiguration;
 import com.android.tradefed.config.IConfigurationFactory;
 import com.android.tradefed.config.IDeviceConfiguration;
+import com.android.tradefed.config.OptionSetter;
 import com.android.tradefed.device.DeviceAllocationState;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.IDeviceRecovery;
+import com.android.tradefed.device.INativeDevice;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.device.ITestDevice.RecoveryMode;
+import com.android.tradefed.device.StubDevice;
 import com.android.tradefed.device.TestDeviceOptions;
+import com.android.tradefed.invoker.shard.IShardHelper;
+import com.android.tradefed.invoker.shard.ShardHelper;
+import com.android.tradefed.invoker.shard.StrictShardHelper;
 import com.android.tradefed.log.ILeveledLogOutput;
 import com.android.tradefed.log.ILogRegistry;
 import com.android.tradefed.profiler.IAggregatingTestProfiler;
@@ -62,11 +71,14 @@ import com.android.tradefed.testtype.IRetriableTest;
 import com.android.tradefed.testtype.IShardableTest;
 import com.android.tradefed.testtype.IStrictShardableTest;
 
+import com.google.common.util.concurrent.SettableFuture;
+
 import junit.framework.Test;
 import junit.framework.TestCase;
 
 import org.easymock.Capture;
 import org.easymock.EasyMock;
+import org.mockito.Mockito;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -195,21 +207,23 @@ public class TestInvocationTest extends TestCase {
                 mMockBuildInfo);
 
         // create the BaseTestInvocation to test
-        mTestInvocation = new TestInvocation() {
-            @Override
-            ILogRegistry getLogRegistry() {
-                return mMockLogRegistry;
-            }
+        mTestInvocation =
+                new TestInvocation() {
+                    @Override
+                    ILogRegistry getLogRegistry() {
+                        return mMockLogRegistry;
+                    }
 
-            @Override
-            protected IConfigurationFactory getConfigFactory() {
-                return mMockConfigFactory;
-            }
-            @Override
-            protected void setExitCode(ExitCode code, Throwable stack) {
-                // empty on purpose
-            }
-        };
+                    @Override
+                    protected IShardHelper createShardHelper() {
+                        return new ShardHelper();
+                    }
+
+                    @Override
+                    protected void setExitCode(ExitCode code, Throwable stack) {
+                        // empty on purpose
+                    }
+                };
     }
 
     @Override
@@ -788,50 +802,26 @@ public class TestInvocationTest extends TestCase {
     /**
      * Test the {@link TestInvocation#invoke(IInvocationContext, IConfiguration, IRescheduler,
      * ITestInvocationListener[])}
-     * scenario with {@link IStrictShardableTest}.
-     */
-    public void testInvoke_strictShardableTest() throws Throwable {
-        String[] commandLine = {"config", "arg"};
-        int shardCount = 10;
-        IStrictShardableTest test = EasyMock.createMock(IStrictShardableTest.class);
-        mStubConfiguration.setTest(test);
-        mStubConfiguration.setCommandLine(commandLine);
-        mStubConfiguration.getCommandOptions().setShardCount(shardCount);
-        mMockBuildInfo.setTestTag(EasyMock.eq("stub"));
-        EasyMock.expectLastCall();
-
-        setupInvoke();
-        EasyMock.expect(mMockBuildProvider.getBuild()).andReturn(mMockBuildInfo);
-        EasyMock.expect(mMockBuildInfo.getTestTag()).andStubReturn("");
-        mMockBuildInfo.addBuildAttribute("command_line_args", "config arg");
-        mMockBuildInfo.addBuildAttribute("shard_count", "10");
-        IConfiguration shardConfig = new Configuration("foo", "bar");
-        for (int i = 1; i <= shardCount; i++) {
-            EasyMock.expect(
-                    mMockConfigFactory.createConfigurationFromArgs((String[])EasyMock.anyObject()))
-                    .andReturn(shardConfig);
-            EasyMock.expect(mMockBuildInfo.clone()).andReturn(mMockBuildInfo);
-            EasyMock.expect(mockRescheduler.scheduleConfig(shardConfig)).andReturn(true);
-        }
-        mMockBuildInfo.setDeviceSerial(SERIAL);
-        EasyMock.expectLastCall();
-        mMockLogRegistry.dumpToGlobalLog(mMockLogger);
-
-        replayMocks(test, mockRescheduler);
-
-        mTestInvocation.invoke(mStubInvocationMetadata, mStubConfiguration, mockRescheduler);
-
-        verifyMocks(test, mockRescheduler);
-        assertEquals(shardCount, (int)shardConfig.getCommandOptions().getShardCount());
-        assertEquals(shardCount - 1, (int)shardConfig.getCommandOptions().getShardIndex());
-    }
-
-    /**
-     * Test the {@link TestInvocation#invoke(IInvocationContext, IConfiguration, IRescheduler,
-     * ITestInvocationListener[])}
      * scenario with {@link IStrictShardableTest} when a shard index is given.
      */
     public void testInvoke_strictShardableTest_withShardIndex() throws Throwable {
+        mTestInvocation =
+                new TestInvocation() {
+                    @Override
+                    ILogRegistry getLogRegistry() {
+                        return mMockLogRegistry;
+                    }
+
+                    @Override
+                    protected IShardHelper createShardHelper() {
+                        return new StrictShardHelper();
+                    }
+
+                    @Override
+                    protected void setExitCode(ExitCode code, Throwable stack) {
+                        // empty on purpose
+                    }
+                };
         String[] commandLine = {"config", "arg"};
         int shardCount = 10;
         int shardIndex = 5;
@@ -894,6 +884,23 @@ public class TestInvocationTest extends TestCase {
      * scenario with non-{@link IStrictShardableTest} when a shard index non-0 is given.
      */
     public void testInvoke_nonStrictShardableTest_withShardIndexNonZero() throws Throwable {
+        mTestInvocation =
+                new TestInvocation() {
+                    @Override
+                    ILogRegistry getLogRegistry() {
+                        return mMockLogRegistry;
+                    }
+
+                    @Override
+                    protected IShardHelper createShardHelper() {
+                        return new StrictShardHelper();
+                    }
+
+                    @Override
+                    protected void setExitCode(ExitCode code, Throwable stack) {
+                        // empty on purpose
+                    }
+                };
         String[] commandLine = {"config", "arg"};
         int shardCount = 10;
         int shardIndex = 1;
@@ -1288,6 +1295,104 @@ public class TestInvocationTest extends TestCase {
         verifyMocks(test, mockRescheduler, shard1, shard2);
     }
 
+    /**
+     * Test that {@link TestInvocation#logDeviceBatteryLevel(IInvocationContext, String)} is not
+     * adding battery information for placeholder device.
+     */
+    public void testLogDeviceBatteryLevel_placeholderDevice() {
+        final String fakeEvent = "event";
+        IInvocationContext context = new InvocationContext();
+        ITestDevice device1 = EasyMock.createMock(ITestDevice.class);
+        EasyMock.expect(device1.getIDevice()).andReturn(new StubDevice("serial1"));
+        context.addAllocatedDevice("device1", device1);
+        EasyMock.replay(device1);
+        mTestInvocation.logDeviceBatteryLevel(context, fakeEvent);
+        EasyMock.verify(device1);
+        assertEquals(0, context.getAttributes().size());
+    }
+
+    /**
+     * Test that {@link TestInvocation#logDeviceBatteryLevel(IInvocationContext, String)} is adding
+     * battery information for physical real device.
+     */
+    public void testLogDeviceBatteryLevel_physicalDevice() {
+        final String fakeEvent = "event";
+        IInvocationContext context = new InvocationContext();
+        ITestDevice device1 = EasyMock.createMock(ITestDevice.class);
+        IDevice idevice = Mockito.mock(IDevice.class);
+        EasyMock.expect(device1.getIDevice()).andReturn(idevice);
+        SettableFuture<Integer> future = SettableFuture.create();
+        future.set(50);
+        doReturn(future).when(idevice).getBattery(Mockito.anyLong(), Mockito.any());
+        EasyMock.expect(device1.getSerialNumber()).andReturn("serial1");
+        context.addAllocatedDevice("device1", device1);
+        EasyMock.replay(device1);
+        mTestInvocation.logDeviceBatteryLevel(context, fakeEvent);
+        EasyMock.verify(device1);
+        assertEquals(1, context.getAttributes().size());
+        assertEquals("50", context.getAttributes().get("serial1-battery-" + fakeEvent).get(0));
+    }
+
+    /**
+     * Test that {@link TestInvocation#logDeviceBatteryLevel(IInvocationContext, String)} is adding
+     * battery information for multiple physical real device.
+     */
+    public void testLogDeviceBatteryLevel_physicalDevice_multi() {
+        final String fakeEvent = "event";
+        IInvocationContext context = new InvocationContext();
+        ITestDevice device1 = EasyMock.createMock(ITestDevice.class);
+        IDevice idevice = Mockito.mock(IDevice.class);
+        EasyMock.expect(device1.getSerialNumber()).andReturn("serial1");
+        EasyMock.expect(device1.getIDevice()).andReturn(idevice);
+        SettableFuture<Integer> future = SettableFuture.create();
+        future.set(50);
+        doReturn(future).when(idevice).getBattery(Mockito.anyLong(), Mockito.any());
+        ITestDevice device2 = EasyMock.createMock(ITestDevice.class);
+        EasyMock.expect(device2.getIDevice()).andReturn(idevice);
+        EasyMock.expect(device2.getSerialNumber()).andReturn("serial2");
+        context.addAllocatedDevice("device1", device1);
+        context.addAllocatedDevice("device2", device2);
+        EasyMock.replay(device1, device2);
+        mTestInvocation.logDeviceBatteryLevel(context, fakeEvent);
+        EasyMock.verify(device1, device2);
+        assertEquals(2, context.getAttributes().size());
+        assertEquals("50", context.getAttributes().get("serial1-battery-" + fakeEvent).get(0));
+        assertEquals("50", context.getAttributes().get("serial2-battery-" + fakeEvent).get(0));
+    }
+
+    /**
+     * Test that {@link TestInvocation#logDeviceBatteryLevel(IInvocationContext, String)} is adding
+     * battery information for multiple physical real device, and ignore stub device if any.
+     */
+    public void testLogDeviceBatteryLevel_physicalDevice_stub_multi() {
+        final String fakeEvent = "event";
+        IInvocationContext context = new InvocationContext();
+        ITestDevice device1 = EasyMock.createMock(ITestDevice.class);
+        IDevice idevice = Mockito.mock(IDevice.class);
+        EasyMock.expect(device1.getSerialNumber()).andReturn("serial1");
+        EasyMock.expect(device1.getIDevice()).andReturn(idevice);
+        SettableFuture<Integer> future = SettableFuture.create();
+        future.set(50);
+        doReturn(future).when(idevice).getBattery(Mockito.anyLong(), Mockito.any());
+        ITestDevice device2 = EasyMock.createMock(ITestDevice.class);
+        EasyMock.expect(device2.getIDevice()).andReturn(idevice);
+        EasyMock.expect(device2.getSerialNumber()).andReturn("serial2");
+        ITestDevice device3 = EasyMock.createMock(ITestDevice.class);
+        EasyMock.expect(device1.getIDevice()).andStubReturn(new StubDevice("stub1"));
+        ITestDevice device4 = EasyMock.createMock(ITestDevice.class);
+        EasyMock.expect(device1.getIDevice()).andStubReturn(new StubDevice("stub2"));
+        context.addAllocatedDevice("device1", device1);
+        context.addAllocatedDevice("device2", device2);
+        context.addAllocatedDevice("device3", device3);
+        context.addAllocatedDevice("device4", device4);
+        EasyMock.replay(device1, device2);
+        mTestInvocation.logDeviceBatteryLevel(context, fakeEvent);
+        EasyMock.verify(device1, device2);
+        assertEquals(2, context.getAttributes().size());
+        assertEquals("50", context.getAttributes().get("serial1-battery-" + fakeEvent).get(0));
+        assertEquals("50", context.getAttributes().get("serial2-battery-" + fakeEvent).get(0));
+    }
+
     /** Helper to set the expectation for N number of shards. */
     private void setupNShardInvocation(int numShard, String commandLine) throws Exception {
         mMockBuildInfo.setTestTag(EasyMock.eq("stub"));
@@ -1357,5 +1462,69 @@ public class TestInvocationTest extends TestCase {
      */
     private interface DeviceConfigTest extends IRemoteTest, IDeviceTest {
 
+    }
+
+    /**
+     * Test {@link INativeDevice#preInvocationSetup(IBuildInfo info)} is called when command option
+     * skip-pre-device-setup is not set.
+     */
+    public void testNotSkipPreDeviceSetup() throws Throwable {
+        IInvocationContext context = new InvocationContext();
+        ITestDevice device1 = EasyMock.createMock(ITestDevice.class);
+        IDevice idevice = Mockito.mock(IDevice.class);
+        context.addAllocatedDevice("DEFAULT_DEVICE", device1);
+        EasyMock.expect(device1.getSerialNumber()).andReturn("serial1").anyTimes();
+        EasyMock.expect(device1.getIDevice()).andReturn(idevice).anyTimes();
+        EasyMock.expect(device1.getLogcat()).andReturn(EMPTY_STREAM_SOURCE).times(1);
+        device1.clearLogcat();
+        EasyMock.expectLastCall().once();
+        device1.preInvocationSetup((IBuildInfo) EasyMock.anyObject());
+        EasyMock.expectLastCall().once();
+
+        CommandOptions commandOption = new CommandOptions();
+        OptionSetter setter = new OptionSetter(commandOption);
+        setter.setOptionValue("skip-pre-device-setup", "false");
+        mStubConfiguration.setCommandOptions(commandOption);
+
+        ITestInvocationListener listener = EasyMock.createStrictMock(ITestInvocationListener.class);
+        listener.testLog(
+                EasyMock.eq(LOGCAT_NAME_SETUP),
+                EasyMock.eq(LogDataType.LOGCAT),
+                (InputStreamSource) EasyMock.anyObject());
+
+        EasyMock.replay(device1, listener);
+        mTestInvocation.doSetup(mStubConfiguration, context, listener);
+        EasyMock.verify(device1, listener);
+    }
+
+    /**
+     * Test {@link INativeDevice#preInvocationSetup(IBuildInfo info)} is not called when command
+     * option skip-pre-device-setup is set.
+     */
+    public void testSkipPreDeviceSetup() throws Throwable {
+        IInvocationContext context = new InvocationContext();
+        ITestDevice device1 = EasyMock.createMock(ITestDevice.class);
+        IDevice idevice = Mockito.mock(IDevice.class);
+        context.addAllocatedDevice("DEFAULT_DEVICE", device1);
+        EasyMock.expect(device1.getSerialNumber()).andReturn("serial1").anyTimes();
+        EasyMock.expect(device1.getIDevice()).andReturn(idevice).anyTimes();
+        EasyMock.expect(device1.getLogcat()).andReturn(EMPTY_STREAM_SOURCE).times(1);
+        device1.clearLogcat();
+        EasyMock.expectLastCall().once();
+
+        CommandOptions commandOption = new CommandOptions();
+        OptionSetter setter = new OptionSetter(commandOption);
+        setter.setOptionValue("skip-pre-device-setup", "true");
+        mStubConfiguration.setCommandOptions(commandOption);
+
+        ITestInvocationListener listener = EasyMock.createStrictMock(ITestInvocationListener.class);
+        listener.testLog(
+                EasyMock.eq(LOGCAT_NAME_SETUP),
+                EasyMock.eq(LogDataType.LOGCAT),
+                (InputStreamSource) EasyMock.anyObject());
+
+        EasyMock.replay(device1, listener);
+        mTestInvocation.doSetup(mStubConfiguration, context, listener);
+        EasyMock.verify(device1, listener);
     }
 }

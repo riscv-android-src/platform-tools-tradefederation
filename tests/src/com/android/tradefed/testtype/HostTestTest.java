@@ -21,6 +21,7 @@ import com.android.tradefed.config.OptionSetter;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.result.ITestInvocationListener;
+import com.android.tradefed.testtype.DeviceJUnit4ClassRunner.TestMetrics;
 
 import junit.framework.Test;
 import junit.framework.TestCase;
@@ -30,6 +31,7 @@ import org.easymock.Capture;
 import org.easymock.EasyMock;
 import org.junit.Before;
 import org.junit.Ignore;
+import org.junit.Rule;
 import org.junit.runner.RunWith;
 import org.junit.runners.Suite.SuiteClasses;
 
@@ -37,6 +39,7 @@ import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.reflect.AnnotatedElement;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -69,7 +72,17 @@ public class HostTestTest extends TestCase {
         @MyAnnotation2
         public void testPass2() {
         }
+    }
 
+    public static class TestMetricTestCase extends MetricTestCase {
+
+        public void testPass() {
+            addTestMetric("key1", "metric1");
+        }
+
+        public void testPass2() {
+            addTestMetric("key2", "metric2");
+        }
     }
 
     @MyAnnotation
@@ -95,30 +108,24 @@ public class HostTestTest extends TestCase {
      * Test class, we have to annotate with full org.junit.Test to avoid name collision in import.
      */
     @RunWith(DeviceJUnit4ClassRunner.class)
-    public static class Junit4TestClass implements IDeviceTest {
-        private ITestDevice mDevice;
+    public static class Junit4TestClass {
 
         public Junit4TestClass() {}
+
+        @Rule public TestMetrics metrics = new TestMetrics();
 
         @MyAnnotation
         @MyAnnotation2
         @org.junit.Test
         public void testPass5() {
+            // test log through the rule.
+            metrics.addTestMetric("key", "value");
         }
 
         @MyAnnotation
         @org.junit.Test
         public void testPass6() {
-        }
-
-        @Override
-        public void setDevice(ITestDevice device) {
-            mDevice = device;
-        }
-
-        @Override
-        public ITestDevice getDevice() {
-            return mDevice;
+            metrics.addTestMetric("key2", "value2");
         }
     }
 
@@ -304,6 +311,31 @@ public class HostTestTest extends TestCase {
         mListener.testStarted(EasyMock.eq(test2));
         mListener.testEnded(EasyMock.eq(test2), (Map<String, String>)EasyMock.anyObject());
         mListener.testRunEnded(EasyMock.anyLong(), (Map<String, String>)EasyMock.anyObject());
+        EasyMock.replay(mListener);
+        mHostTest.run(mListener);
+        EasyMock.verify(mListener);
+    }
+
+    /**
+     * Test success case for {@link HostTest#run(ITestInvocationListener)}, where test to run is a
+     * {@link MetricTestCase}.
+     */
+    public void testRun_MetricTestCase() throws Exception {
+        mHostTest.setClassName(TestMetricTestCase.class.getName());
+        TestIdentifier test1 = new TestIdentifier(TestMetricTestCase.class.getName(), "testPass");
+        TestIdentifier test2 = new TestIdentifier(TestMetricTestCase.class.getName(), "testPass2");
+        mListener.testRunStarted((String) EasyMock.anyObject(), EasyMock.eq(2));
+        mListener.testStarted(EasyMock.eq(test1));
+        // test1 should only have its metrics
+        Map<String, String> metric1 = new HashMap<>();
+        metric1.put("key1", "metric1");
+        mListener.testEnded(test1, metric1);
+        // test2 should only have its metrics
+        mListener.testStarted(EasyMock.eq(test2));
+        Map<String, String> metric2 = new HashMap<>();
+        metric2.put("key2", "metric2");
+        mListener.testEnded(test2, metric2);
+        mListener.testRunEnded(EasyMock.anyLong(), (Map<String, String>) EasyMock.anyObject());
         EasyMock.replay(mListener);
         mHostTest.run(mListener);
         EasyMock.verify(mListener);
@@ -757,10 +789,15 @@ public class HostTestTest extends TestCase {
         TestIdentifier test2 = new TestIdentifier(Junit4TestClass.class.getName(), "testPass6");
         mListener.testRunStarted((String)EasyMock.anyObject(), EasyMock.eq(2));
         mListener.testStarted(EasyMock.eq(test1));
-        mListener.testEnded(EasyMock.eq(test1), (Map<String, String>)EasyMock.anyObject());
+        Map<String, String> metrics = new HashMap<>();
+        metrics.put("key", "value");
+        mListener.testEnded(test1, metrics);
         mListener.testStarted(EasyMock.eq(test2));
-        mListener.testEnded(EasyMock.eq(test2), (Map<String, String>)EasyMock.anyObject());
-        mListener.testRunEnded(EasyMock.anyLong(), (Map<String, String>)EasyMock.anyObject());
+        // test cases do not share metrics.
+        Map<String, String> metrics2 = new HashMap<>();
+        metrics2.put("key2", "value2");
+        mListener.testEnded(test2, metrics2);
+        mListener.testRunEnded(EasyMock.anyLong(), EasyMock.anyObject());
         EasyMock.replay(mListener);
         mHostTest.run(mListener);
         EasyMock.verify(mListener);

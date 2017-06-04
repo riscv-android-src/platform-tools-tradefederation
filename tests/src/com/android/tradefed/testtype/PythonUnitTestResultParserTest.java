@@ -43,7 +43,7 @@ public class PythonUnitTestResultParserTest extends TestCase {
         mParser = new PythonUnitTestResultParser(ArrayUtil.list(mMockListener), "test");
     }
 
-    public void testAdvance_noBlankLines() {
+    public void testAdvance_noBlankLines() throws Exception {
         String[] lines = {"hello", "goodbye"};
         mParser.init(lines);
         boolean result = mParser.advance();
@@ -53,7 +53,7 @@ public class PythonUnitTestResultParserTest extends TestCase {
         assertEquals(1, mParser.mLineNum);
     }
 
-    public void testAdvance_blankLinesMid() {
+    public void testAdvance_blankLinesMid() throws Exception {
         String[] lines = {"hello", "", "goodbye"};
         mParser.init(lines);
         boolean result = mParser.advance();
@@ -63,7 +63,7 @@ public class PythonUnitTestResultParserTest extends TestCase {
         assertEquals(2, mParser.mLineNum);
     }
 
-    public void testAdvance_atEnd() {
+    public void testAdvance_atEnd() throws Exception {
         String[] lines = {"hello"};
         mParser.init(lines);
         boolean result = mParser.advance();
@@ -92,20 +92,79 @@ public class PythonUnitTestResultParserTest extends TestCase {
         verify(mMockListener);
     }
 
+    public void testParse_singleTestPassWithExpectedFailure_contiguous() throws Exception {
+        String[] output = {
+                "b (a) ... expected failure",
+                "",
+                PythonUnitTestResultParser.LINE,
+                "Ran 1 tests in 1s",
+                "",
+                "OK (expected failures=1)"
+        };
+        TestIdentifier[] ids = {new TestIdentifier("a", "b")};
+        boolean[] didPass = {true};
+        setTestIdChecks(ids, didPass);
+        setRunListenerChecks(1, 1000, true);
+
+        replay(mMockListener);
+        mParser.processNewLines(output);
+        verify(mMockListener);
+    }
+
     public void testParse_multiTestPass_contiguous() throws Exception {
         String[] output = {
                 "b (a) ... ok",
                 "d (c) ... ok",
                 "",
                 PythonUnitTestResultParser.LINE,
-                "Ran 1 tests in 1s",
+                "Ran 2 tests in 1s",
                 "",
                 "OK"
         };
         TestIdentifier[] ids = {new TestIdentifier("a", "b"), new TestIdentifier("c", "d")};
         boolean didPass[] = {true, true};
         setTestIdChecks(ids, didPass);
-        setRunListenerChecks(1, 1000, true);
+        setRunListenerChecks(2, 1000, true);
+
+        replay(mMockListener);
+        mParser.processNewLines(output);
+        verify(mMockListener);
+    }
+
+    public void testParse_multiTestPassWithOneExpectedFailure_contiguous() throws Exception {
+        String[] output = {
+                "b (a) ... expected failure",
+                "d (c) ... ok",
+                "",
+                PythonUnitTestResultParser.LINE,
+                "Ran 2 tests in 1s",
+                "",
+                "OK (expected failures=1)"
+        };
+        TestIdentifier[] ids = {new TestIdentifier("a", "b"), new TestIdentifier("c", "d")};
+        boolean[] didPass = {true, true};
+        setTestIdChecks(ids, didPass);
+        setRunListenerChecks(2, 1000, true);
+
+        replay(mMockListener);
+        mParser.processNewLines(output);
+        verify(mMockListener);
+    }
+
+    public void testParse_multiTestPassWithAllExpectedFailure_contiguous() throws Exception {
+        String[] output = {
+                "b (a) ... expected failure",
+                "d (c) ... expected failure",
+                "",
+                PythonUnitTestResultParser.LINE,
+                "Ran 2 tests in 1s",
+                "",
+                "OK (expected failures=2)"
+        };
+        TestIdentifier[] ids = {new TestIdentifier("a", "b"), new TestIdentifier("c", "d")};
+        boolean[] didPass = {true, true};
+        setTestIdChecks(ids, didPass);
+        setRunListenerChecks(2, 1000, true);
 
         replay(mMockListener);
         mParser.processNewLines(output);
@@ -119,7 +178,7 @@ public class PythonUnitTestResultParserTest extends TestCase {
                 "d (c) ... ok",
                 "",
                 PythonUnitTestResultParser.LINE,
-                "Ran 1 tests in 1s",
+                "Ran 2 tests in 1s",
                 "",
                 "OK"
         };
@@ -127,7 +186,7 @@ public class PythonUnitTestResultParserTest extends TestCase {
         ids[0] = new TestIdentifier("a", "b");
         boolean didPass[] = new boolean[2];
         didPass[0] = true;
-        setRunListenerChecks(1, 1000, true);
+        setRunListenerChecks(2, 1000, true);
         setTestIdChecks(ids, didPass);
 
         replay(mMockListener);
@@ -137,7 +196,7 @@ public class PythonUnitTestResultParserTest extends TestCase {
         ids[1] = new TestIdentifier("c", "d");
         didPass[1] = true;
         setTestIdChecks(ids, didPass);
-        setRunListenerChecks(1, 1000, true);
+        setRunListenerChecks(2, 1000, true);
 
         replay(mMockListener);
         mParser.processNewLines(output2);
@@ -163,6 +222,34 @@ public class PythonUnitTestResultParserTest extends TestCase {
         };
         TestIdentifier[] ids = {new TestIdentifier("a", "b")};
         boolean[] didPass = {false};
+        setRunListenerChecks(1, 1000, false);
+        setTestIdChecks(ids, didPass);
+
+        replay(mMockListener);
+        mParser.processNewLines(output);
+        verify(mMockListener);
+    }
+
+    public void testParse_multiTestFailWithExpectedFailure_contiguous() throws Exception {
+        String[] output = {
+                "b (a) ... expected failure",
+                "d (c) ... ERROR",
+                "",
+                PythonUnitTestResultParser.EQLINE,
+                "ERROR: d (c)",
+                PythonUnitTestResultParser.LINE,
+                "Traceback (most recent call last):",
+                "  File \"test_rangelib.py\", line 129, in test_reallyfail",
+                "    raise ValueError()",
+                "ValueError",
+                "",
+                PythonUnitTestResultParser.LINE,
+                "Ran 1 tests in 1s",
+                "",
+                "FAILED (errors=1)"
+        };
+        TestIdentifier[] ids = {new TestIdentifier("a", "b"), new TestIdentifier("c", "d")};
+        boolean[] didPass = {true, false};
         setRunListenerChecks(1, 1000, false);
         setTestIdChecks(ids, didPass);
 

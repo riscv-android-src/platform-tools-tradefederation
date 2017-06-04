@@ -26,6 +26,8 @@ import com.android.tradefed.device.IDeviceSelection;
 import com.android.tradefed.device.IMultiDeviceRecovery;
 import com.android.tradefed.host.HostOptions;
 import com.android.tradefed.host.IHostOptions;
+import com.android.tradefed.invoker.shard.IShardHelper;
+import com.android.tradefed.invoker.shard.StrictShardHelper;
 import com.android.tradefed.log.ITerribleFailureHandler;
 import com.android.tradefed.util.ArrayUtil;
 import com.android.tradefed.util.MultiMap;
@@ -33,7 +35,10 @@ import com.android.tradefed.util.hostmetric.IHostMonitor;
 import com.android.tradefed.util.keystore.IKeyStoreFactory;
 import com.android.tradefed.util.keystore.StubKeyStoreFactory;
 
+import org.kxml2.io.KXmlSerializer;
+
 import java.io.File;
+import java.io.IOException;
 import java.io.PrintStream;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -41,6 +46,7 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+
 
 /**
  * An {@link IGlobalConfiguration} implementation that stores the loaded config objects in a map
@@ -56,6 +62,7 @@ public class GlobalConfiguration implements IGlobalConfiguration {
     public static final String SCHEDULER_TYPE_NAME = "command_scheduler";
     public static final String MULTI_DEVICE_RECOVERY_TYPE_NAME = "multi_device_recovery";
     public static final String KEY_STORE_TYPE_NAME = "key_store";
+    public static final String SHARDING_STRATEGY_TYPE_NAME = "sharding_strategy";
 
     private static Map<String, ObjTypeInfo> sObjTypeMap = null;
     private static IGlobalConfiguration sInstance = null;
@@ -66,6 +73,10 @@ public class GlobalConfiguration implements IGlobalConfiguration {
 
     // Empty embedded configuration available by default
     private static final String DEFAULT_EMPTY_CONFIG_NAME = "empty";
+
+    // Configurations to be passed to subprocess
+    private static final String[] CONFIGS_FOR_SUBPROCESS_WHITE_LIST =
+            new String[] {KEY_STORE_TYPE_NAME};
 
     /** Mapping of config object type name to config objects. */
     private Map<String, List<Object>> mConfigMap;
@@ -215,6 +226,8 @@ public class GlobalConfiguration implements IGlobalConfiguration {
                     new ObjTypeInfo(IMultiDeviceRecovery.class, true));
             sObjTypeMap.put(KEY_STORE_TYPE_NAME,
                     new ObjTypeInfo(IKeyStoreFactory.class, false));
+            sObjTypeMap.put(
+                    SHARDING_STRATEGY_TYPE_NAME, new ObjTypeInfo(IShardHelper.class, false));
 
         }
         return sObjTypeMap;
@@ -233,6 +246,7 @@ public class GlobalConfiguration implements IGlobalConfiguration {
         setDeviceManager(new DeviceManager());
         setCommandScheduler(new CommandScheduler());
         setKeyStoreFactory(new StubKeyStoreFactory());
+        setShardingStrategy(new StrictShardHelper());
     }
 
     /**
@@ -291,9 +305,13 @@ public class GlobalConfiguration implements IGlobalConfiguration {
         return (IKeyStoreFactory) getConfigurationObject(KEY_STORE_TYPE_NAME);
     }
 
-    /**
-     * {@inheritDoc}
-     */
+    /** {@inheritDoc} */
+    @Override
+    public IShardHelper getShardingStrategy() {
+        return (IShardHelper) getConfigurationObject(SHARDING_STRATEGY_TYPE_NAME);
+    }
+
+    /** {@inheritDoc} */
     @Override
     public IDeviceManager getDeviceManager() {
         return (IDeviceManager)getConfigurationObject(DEVICE_MANAGER_TYPE_NAME);
@@ -439,9 +457,13 @@ public class GlobalConfiguration implements IGlobalConfiguration {
         setConfigurationObjectNoThrow(KEY_STORE_TYPE_NAME, factory);
     }
 
-    /**
-     * {@inheritDoc}
-     */
+    /** {@inheritDoc} */
+    @Override
+    public void setShardingStrategy(IShardHelper sharding) {
+        setConfigurationObjectNoThrow(SHARDING_STRATEGY_TYPE_NAME, sharding);
+    }
+
+    /** {@inheritDoc} */
     @Override
     public void setDeviceManager(IDeviceManager manager) {
         setConfigurationObjectNoThrow(DEVICE_MANAGER_TYPE_NAME, manager);
@@ -621,5 +643,21 @@ public class GlobalConfiguration implements IGlobalConfiguration {
     @Override
     public void validateOptions() throws ConfigurationException {
         new ArgsOptionParser(getAllConfigurationObjects()).validateMandatoryOptions();
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public void cloneConfigWithFilter(File outputXml, String[] whitelistConfigs)
+            throws IOException {
+        KXmlSerializer serializer = ConfigurationUtil.createSerializer(outputXml);
+        serializer.startTag(null, ConfigurationUtil.CONFIGURATION_NAME);
+        if (whitelistConfigs == null) {
+            whitelistConfigs = CONFIGS_FOR_SUBPROCESS_WHITE_LIST;
+        }
+        for (String config : whitelistConfigs) {
+            ConfigurationUtil.dumpClassToXml(serializer, config, getConfigurationObject(config));
+        }
+        serializer.endTag(null, ConfigurationUtil.CONFIGURATION_NAME);
+        serializer.endDocument();
     }
 }

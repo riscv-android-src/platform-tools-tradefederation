@@ -16,6 +16,7 @@
 
 package com.android.tradefed.host;
 
+import com.android.tradefed.build.IBuildProvider;
 import com.android.tradefed.targetprep.DeviceFlashPreparer;
 
 /**
@@ -31,4 +32,9 @@ public interface IHostOptions {
      */
     Integer getConcurrentFlasherLimit();
 
+    /**
+     * Returns the max number of concurrent downloads allowed. Used by {@link IBuildProvider} that
+     * downloads remote builds.
+     */
+    Integer getConcurrentDownloadLimit();
 }

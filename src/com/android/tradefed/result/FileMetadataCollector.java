@@ -21,8 +21,12 @@ import com.android.test.metrics.proto.FileMetadataProto.LogType;
 import com.android.tradefed.config.Option;
 import com.android.tradefed.config.OptionClass;
 import com.android.tradefed.log.LogUtil.CLog;
+import com.android.tradefed.util.StreamUtil;
+
 import com.google.common.annotations.VisibleForTesting;
+
 import java.io.IOException;
+import java.io.InputStream;
 
 /** A listener that collects and uploads metadata about saved log files. */
 @OptionClass(alias = "metadata")
@@ -68,11 +72,16 @@ public class FileMetadataCollector implements ILogSaverListener, ITestInvocation
         // Log(save) the file contents to the result directory
         InputStreamSource source =
                 new ByteArrayInputStreamSource(getMetadataContents().toByteArray());
+        InputStream stream = null;
         try {
-            mLogSaver.saveLogDataRaw("metadata", "textproto", source.createInputStream());
+            stream = source.createInputStream();
+            mLogSaver.saveLogDataRaw("metadata", "textproto", stream);
         } catch (IOException e) {
             CLog.e(e);
             CLog.e("Failed to save metadata.");
+        } finally {
+            StreamUtil.cancel(source);
+            StreamUtil.close(stream);
         }
     }
 

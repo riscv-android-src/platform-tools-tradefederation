@@ -34,8 +34,16 @@ abstract class RemoteOperation<T> {
      * Represents all types of remote operations that can be performed
      */
     enum OperationType {
-        ALLOCATE_DEVICE, FREE_DEVICE, CLOSE, ADD_COMMAND, START_HANDOVER, LIST_DEVICES,
-        EXEC_COMMAND, GET_LAST_COMMAND_RESULT, HANDOVER_COMPLETE, ADD_COMMAND_FILE,
+        ALLOCATE_DEVICE,
+        FREE_DEVICE,
+        CLOSE,
+        ADD_COMMAND,
+        START_HANDOVER,
+        LIST_DEVICES,
+        EXEC_COMMAND,
+        GET_LAST_COMMAND_RESULT,
+        HANDOVER_COMPLETE,
+        ADD_COMMAND_FILE,
         HANDOVER_INIT_COMPLETE,
     }
 

@@ -16,14 +16,13 @@
 package com.android.tradefed.testtype.suite;
 
 import com.android.ddmlib.Log.LogLevel;
+import com.android.ddmlib.testrunner.TestIdentifier;
 import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.config.ConfigurationException;
 import com.android.tradefed.config.IConfiguration;
 import com.android.tradefed.config.Option;
-import com.android.tradefed.config.OptionCopier;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
-import com.android.tradefed.log.ITestLogger;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.InputStreamSource;
@@ -33,10 +32,11 @@ import com.android.tradefed.suite.checker.ISystemStatusCheckerReceiver;
 import com.android.tradefed.testtype.IBuildReceiver;
 import com.android.tradefed.testtype.IDeviceTest;
 import com.android.tradefed.testtype.IRemoteTest;
-import com.android.tradefed.testtype.IStrictShardableTest;
+import com.android.tradefed.testtype.IShardableTest;
 import com.android.tradefed.testtype.ITestCollector;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -51,8 +51,11 @@ public abstract class ITestSuite
                 IDeviceTest,
                 IBuildReceiver,
                 ISystemStatusCheckerReceiver,
-                IStrictShardableTest,
+                IShardableTest,
                 ITestCollector {
+
+    protected static final String MODULE_CHECKER_PRE = "PreModuleChecker";
+    protected static final String MODULE_CHECKER_POST = "PostModuleChecker";
 
     // Options for test failure case
     @Option(
@@ -89,6 +92,12 @@ public abstract class ITestSuite
     private boolean mSkipAllSystemStatusCheck = false;
 
     @Option(
+        name = "report-system-checkers",
+        description = "Whether reporting system checkers as test or not."
+    )
+    private boolean mReportSystemChecker = false;
+
+    @Option(
         name = "collect-tests-only",
         description =
                 "Only invoke the suite to collect list of applicable test cases. All "
@@ -102,12 +111,13 @@ public abstract class ITestSuite
     private List<ISystemStatusChecker> mSystemStatusCheckers;
 
     // Sharding attributes
-    private int mShardCount = 1;
-    private int mShardIndex = 0;
+    private boolean mIsSharded = false;
+    private ModuleDefinition mDirectModule = null;
+    private boolean mShouldMakeDynamicModule = true;
 
     /**
-     * Abstract method to load the tests configuration that will be run. Each tests is defined by
-     * a {@link IConfiguration} and a unique name under which it will report results.
+     * Abstract method to load the tests configuration that will be run. Each tests is defined by a
+     * {@link IConfiguration} and a unique name under which it will report results.
      */
     public abstract LinkedHashMap<String, IConfiguration> loadTests();
 
@@ -122,44 +132,23 @@ public abstract class ITestSuite
         }
     }
 
-    /**
-     * Split the list of tests to run however the implementation see fit. Sharding needs to be
-     * consistent. It is acceptable to return an empty list if no tests can be run in the shard.
-     * <p/>
-     * Implement this in order to provide a test suite specific sharding. The default
-     * implementation strictly split by number of tests which is not always optimal.
-     *
-     * @param fullList the initial full list of {@link ModuleDefinition} containing all the tests
-     *        that need to run.
-     * @param shardCount the total number of shard that need to run.
-     * @param shardIndex the index of the current shard that needs to run.
-     * @return a list of {@link ModuleDefinition} that need to run in the current shard.
-     */
-    public List<ModuleDefinition> shardModules(List<ModuleDefinition> fullList,
-            int shardCount, int shardIndex) {
-        if (shardCount == 1) {
-            // Not sharded
-            return fullList;
-        }
-        if (shardIndex >= fullList.size()) {
-            // Return empty list when we don't have enough tests for all the shards.
-            return new ArrayList<ModuleDefinition>();
-        }
-        int numPerShard = (int) Math.ceil(fullList.size() / (float)shardCount);
-        if (shardIndex == shardCount - 1) {
-            // last shard take everything remaining.
-            return fullList.subList(shardIndex * numPerShard, fullList.size());
-        }
-        return fullList.subList(shardIndex * numPerShard, numPerShard + (shardIndex * numPerShard));
-    }
-
-    /**
-     * Generic run method for all test loaded from {@link #loadTests()}.
-     */
-    @Override
-    final public void run(ITestInvocationListener listener) throws DeviceNotAvailableException {
-        LinkedHashMap<String, IConfiguration> runConfig = loadTests();
+    /** Helper that creates and returns the list of {@link ModuleDefinition} to be executed. */
+    private List<ModuleDefinition> createExecutionList() {
         List<ModuleDefinition> runModules = new ArrayList<>();
+        if (mDirectModule != null) {
+            // If we are sharded and already know what to run then we just do it.
+            runModules.add(mDirectModule);
+            mDirectModule.setDevice(mDevice);
+            mDirectModule.setBuild(mBuildInfo);
+            return runModules;
+        }
+
+        LinkedHashMap<String, IConfiguration> runConfig = loadTests();
+        if (runConfig.isEmpty()) {
+            CLog.i("No config were loaded. Nothing to run.");
+            return runModules;
+        }
+
         for (Entry<String, IConfiguration> config : runConfig.entrySet()) {
             if (!ValidateSuiteConfigHelper.validateConfig(config.getValue())) {
                 throw new RuntimeException(
@@ -176,10 +165,16 @@ public abstract class ITestSuite
         }
         // Free the map once we are done with it.
         runConfig = null;
+        return runModules;
+    }
 
-        runModules = shardModules(runModules, mShardCount, mShardIndex);
+    /** Generic run method for all test loaded from {@link #loadTests()}. */
+    @Override
+    public final void run(ITestInvocationListener listener) throws DeviceNotAvailableException {
+        List<ModuleDefinition> runModules = createExecutionList();
+        // Check if we have something to run.
         if (runModules.isEmpty()) {
-            CLog.i("No tests to be run in shard %d out of %d", (mShardIndex + 1), mShardCount);
+            CLog.i("No tests to be run.");
             return;
         }
 
@@ -194,17 +189,25 @@ public abstract class ITestSuite
                         mRebootOnFailure,
                         mMaxLogcatBytes);
 
-        CLog.logAndDisplay(
-                LogLevel.INFO,
-                "%s running %s modules: %s",
-                mDevice.getSerialNumber(),
-                runModules.size(),
-                runModules);
+        // Only print the running log if we are going to run something.
+        if (runModules.get(0).hasTests()) {
+            CLog.logAndDisplay(
+                    LogLevel.INFO,
+                    "%s running %s modules: %s",
+                    mDevice.getSerialNumber(),
+                    runModules.size(),
+                    runModules);
+        }
 
         /** Run all the module, make sure to reduce the list to release resources as we go. */
         try {
             while (!runModules.isEmpty()) {
                 ModuleDefinition module = runModules.remove(0);
+                // Before running the module we ensure it has tests at this point or skip completely
+                // to avoid running SystemCheckers and preparation for nothing.
+                if (module.hasTests()) {
+                    continue;
+                }
                 runSingleModule(module, listener, failureListener);
             }
         } catch (DeviceNotAvailableException e) {
@@ -225,6 +228,7 @@ public abstract class ITestSuite
      *
      * @param module The {@link ModuleDefinition} to be ran.
      * @param listener The {@link ITestInvocationListener} where to report results
+     * @param failureListener The {@link TestFailureListener} that collect infos on failures.
      * @throws DeviceNotAvailableException
      */
     private void runSingleModule(
@@ -261,8 +265,13 @@ public abstract class ITestSuite
      * Helper to run the System Status checkers preExecutionChecks defined for the test and log
      * their failures.
      */
-    private void runPreModuleCheck(String moduleName, List<ISystemStatusChecker> checkers,
-            ITestDevice device, ITestLogger logger) throws DeviceNotAvailableException {
+    private void runPreModuleCheck(
+            String moduleName,
+            List<ISystemStatusChecker> checkers,
+            ITestDevice device,
+            ITestInvocationListener listener)
+            throws DeviceNotAvailableException {
+        long startTime = System.currentTimeMillis();
         CLog.i("Running system status checker before module execution: %s", moduleName);
         List<String> failures = new ArrayList<>();
         for (ISystemStatusChecker checker : checkers) {
@@ -276,18 +285,28 @@ public abstract class ITestSuite
             CLog.w("There are failed system status checkers: %s capturing a bugreport",
                     failures.toString());
             InputStreamSource bugSource = device.getBugreport();
-            logger.testLog(String.format("bugreport-checker-pre-module-%s", moduleName),
-                    LogDataType.BUGREPORT, bugSource);
+            listener.testLog(
+                    String.format("bugreport-checker-pre-module-%s", moduleName),
+                    LogDataType.BUGREPORT,
+                    bugSource);
             bugSource.cancel();
         }
+
+        // We report System checkers like tests.
+        reportModuleCheckerResult(MODULE_CHECKER_PRE, moduleName, failures, startTime, listener);
     }
 
     /**
      * Helper to run the System Status checkers postExecutionCheck defined for the test and log
      * their failures.
      */
-    private void runPostModuleCheck(String moduleName, List<ISystemStatusChecker> checkers,
-            ITestDevice device, ITestLogger logger) throws DeviceNotAvailableException {
+    private void runPostModuleCheck(
+            String moduleName,
+            List<ISystemStatusChecker> checkers,
+            ITestDevice device,
+            ITestInvocationListener listener)
+            throws DeviceNotAvailableException {
+        long startTime = System.currentTimeMillis();
         CLog.i("Running system status checker after module execution: %s", moduleName);
         List<String> failures = new ArrayList<>();
         for (ISystemStatusChecker checker : checkers) {
@@ -301,27 +320,90 @@ public abstract class ITestSuite
             CLog.w("There are failed system status checkers: %s capturing a bugreport",
                     failures.toString());
             InputStreamSource bugSource = device.getBugreport();
-            logger.testLog(String.format("bugreport-checker-post-module-%s", moduleName),
-                    LogDataType.BUGREPORT, bugSource);
+            listener.testLog(
+                    String.format("bugreport-checker-post-module-%s", moduleName),
+                    LogDataType.BUGREPORT,
+                    bugSource);
             bugSource.cancel();
+        }
+
+        // We report System checkers like tests.
+        reportModuleCheckerResult(MODULE_CHECKER_POST, moduleName, failures, startTime, listener);
+    }
+
+    /** Helper to report status checker results as test results. */
+    private void reportModuleCheckerResult(
+            String identifier,
+            String moduleName,
+            List<String> failures,
+            long startTime,
+            ITestInvocationListener listener) {
+        if (!mReportSystemChecker) {
+            // do not log here, otherwise it could be very verbose.
+            return;
+        }
+        TestIdentifier tid = new TestIdentifier(identifier, moduleName);
+        listener.testRunStarted(identifier + "_" + moduleName, 1);
+        listener.testStarted(tid);
+        if (!failures.isEmpty()) {
+            listener.testFailed(
+                    tid, String.format("%s failed '%s' checkers", moduleName, failures));
+        }
+        listener.testEnded(tid, Collections.emptyMap());
+        listener.testRunEnded(System.currentTimeMillis() - startTime, Collections.emptyMap());
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public Collection<IRemoteTest> split(int shardCountHint) {
+        if (shardCountHint <= 1 || mIsSharded) {
+            // cannot shard or already sharded
+            return null;
+        }
+
+        LinkedHashMap<String, IConfiguration> runConfig = loadTests();
+        if (runConfig.isEmpty()) {
+            CLog.i("No config were loaded. Nothing to run.");
+            return null;
+        }
+        injectInfo(runConfig);
+
+        List<ModuleDefinition> splitModules =
+                ModuleSplitter.splitConfiguration(
+                        runConfig, shardCountHint, mShouldMakeDynamicModule);
+        runConfig.clear();
+        runConfig = null;
+        // create an association of one ITestSuite <=> one ModuleDefinition as the smallest
+        // execution unit supported.
+        List<IRemoteTest> splitTests = new ArrayList<>();
+        for (ModuleDefinition m : splitModules) {
+            ITestSuite suite = createInstance();
+            suite.mIsSharded = true;
+            suite.mDirectModule = m;
+            splitTests.add(suite);
+        }
+        // return the list of ITestSuite with their ModuleDefinition assigned
+        return splitTests;
+    }
+
+    /**
+     * Inject {@link ITestDevice} and {@link IBuildInfo} to the {@link IRemoteTest}s in the config
+     * before sharding since they may be needed.
+     */
+    private void injectInfo(LinkedHashMap<String, IConfiguration> runConfig) {
+        for (IConfiguration config : runConfig.values()) {
+            for (IRemoteTest test : config.getTests()) {
+                if (test instanceof IBuildReceiver) {
+                    ((IBuildReceiver) test).setBuild(mBuildInfo);
+                }
+                if (test instanceof IDeviceTest) {
+                    ((IDeviceTest) test).setDevice(mDevice);
+                }
+            }
         }
     }
 
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public IRemoteTest getTestShard(int shardCount, int shardIndex) {
-        ITestSuite test = createInstance();
-        test.mShardCount = shardCount;
-        test.mShardIndex = shardIndex;
-        OptionCopier.copyOptionsNoThrow(this, test);
-        return test;
-    }
-
-    /**
-     * {@inheritDoc}
-     */
+    /** {@inheritDoc} */
     @Override
     public void setDevice(ITestDevice device) {
         mDevice = device;
@@ -365,5 +447,13 @@ public abstract class ITestSuite
     @Override
     public void setCollectTestsOnly(boolean shouldCollectTest) {
         mCollectTestsOnly = shouldCollectTest;
+    }
+
+    /**
+     * When doing distributed sharding, we cannot have ModuleDefinition that shares tests in a pool
+     * otherwise intra-module sharding will not work, so we allow to disable it.
+     */
+    public void setShouldMakeDynamicModule(boolean dynamicModule) {
+        mShouldMakeDynamicModule = dynamicModule;
     }
 }

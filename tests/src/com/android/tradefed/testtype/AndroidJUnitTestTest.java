@@ -321,16 +321,19 @@ public class AndroidJUnitTestTest extends TestCase {
      * Test that {@link AndroidJUnitTest#split()} returns 3 shards when requested to do so.
      */
     public void testSplit_threeShards() throws Exception {
+        mAndroidJUnitTest = new AndroidJUnitTest();
         assertEquals(AndroidJUnitTest.AJUR, mAndroidJUnitTest.getRunnerName());
         OptionSetter setter = new OptionSetter(mAndroidJUnitTest);
-        setter.setOptionValue("shards", "3");
         setter.setOptionValue("runtime-hint", "60s");
-        List<IRemoteTest> res = (List<IRemoteTest>) mAndroidJUnitTest.split();
+        List<IRemoteTest> res = (List<IRemoteTest>) mAndroidJUnitTest.split(3);
         assertNotNull(res);
         assertEquals(3, res.size());
         // Third of the execution time on each shard.
         assertEquals(20000L, ((AndroidJUnitTest)res.get(0)).getRuntimeHint());
         assertEquals(20000L, ((AndroidJUnitTest)res.get(1)).getRuntimeHint());
         assertEquals(20000L, ((AndroidJUnitTest)res.get(2)).getRuntimeHint());
+        // Make sure shards cannot be re-sharded
+        assertNull(((AndroidJUnitTest) res.get(0)).split(2));
+        assertNull(((AndroidJUnitTest) res.get(0)).split());
     }
 }

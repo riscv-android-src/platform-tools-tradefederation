@@ -75,7 +75,7 @@ public class Camera2StressTest extends CameraTestBase {
         }
 
         @Override
-        public void testEnded(TestIdentifier test, Map<String, String> testMetrics) {
+        public void testEnded(TestIdentifier test, long endTime, Map<String, String> testMetrics) {
             if (hasTestRunFatalError()) {
                 CLog.v("The instrumentation result not found. Fall back to get the metrics from a "
                         + "log file. errorMsg: %s", getCollectingListener().getErrorMessage());
@@ -97,7 +97,7 @@ public class Camera2StressTest extends CameraTestBase {
             parseLog(test.getTestName(), namedTestMetrics);
 
             postScreenshotOnFailure(test);
-            super.testEnded(test, namedTestMetrics);
+            super.testEnded(test, endTime, namedTestMetrics);
         }
 
         private void postScreenshotOnFailure(TestIdentifier test) {

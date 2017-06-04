@@ -42,7 +42,6 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Comparator;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.Hashtable;
 import java.util.List;
 import java.util.Map;
@@ -139,7 +138,7 @@ public class ConfigurationFactory implements IConfigurationFactory {
         private String mPrefix = null;
 
         public ConfigClasspathFilter(String prefix) {
-            mPrefix = CONFIG_PREFIX;
+            mPrefix = getConfigPrefix();
             if (prefix != null) {
                 mPrefix += prefix;
             }
@@ -163,7 +162,7 @@ public class ConfigurationFactory implements IConfigurationFactory {
         @Override
         public String transform(String pathName) {
             // strip off CONFIG_PREFIX and CONFIG_SUFFIX
-            int pathStartIndex = CONFIG_PREFIX.length();
+            int pathStartIndex = getConfigPrefix().length();
             int pathEndIndex = pathName.length() - CONFIG_SUFFIX.length();
             return pathName.substring(pathStartIndex, pathEndIndex);
         }
@@ -599,6 +598,8 @@ public class ConfigurationFactory implements IConfigurationFactory {
     @Override
     public List<String> getConfigList(String subPath) {
         Set<String> configNames = getConfigSetFromClasspath(subPath);
+        // list config on variable path too
+        configNames.addAll(getConfigNamesFromTestCases(subPath));
         // sort the configs by name before adding to list
         SortedSet<String> configDefs = new TreeSet<String>();
         configDefs.addAll(configNames);
@@ -615,22 +616,14 @@ public class ConfigurationFactory implements IConfigurationFactory {
         return cpScanner.getClassPathEntries(new ConfigClasspathFilter(subPath));
     }
 
-    /** Helper to get the test config files from test cases directories from build output. */
+    /**
+     * Helper to get the test config files from test cases directories from build output.
+     *
+     * @param subPath where to look for configuration. Can be null.
+     */
     @VisibleForTesting
-    Set<String> getConfigNamesFromTestCases() {
-
-        Set<String> configNames = new HashSet<String>();
-        for (File testCasesDir : getTestCasesDirs()) {
-            try {
-                configNames.addAll(FileUtil.findFiles(testCasesDir, ".*.config"));
-                configNames.addAll(FileUtil.findFiles(testCasesDir, ".*.xml"));
-            } catch (IOException e) {
-                CLog.w(
-                        "Failed to get test config files from directory %s",
-                        testCasesDir.getAbsolutePath());
-            }
-        }
-        return configNames;
+    Set<String> getConfigNamesFromTestCases(String subPath) {
+        return ConfigurationUtil.getConfigNamesFromDirs(subPath, getTestCasesDirs());
     }
 
     /**
@@ -646,7 +639,7 @@ public class ConfigurationFactory implements IConfigurationFactory {
         Set<String> configNames = getConfigSetFromClasspath(null);
         // TODO: split the the configs into two lists, one from the jar packages and one from test
         // cases directories.
-        configNames.addAll(getConfigNamesFromTestCases());
+        configNames.addAll(getConfigNamesFromTestCases(null));
         for (String configName : configNames) {
             final ConfigId configId = new ConfigId(configName);
             try {
