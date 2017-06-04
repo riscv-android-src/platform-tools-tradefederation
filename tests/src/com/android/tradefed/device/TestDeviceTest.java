@@ -37,6 +37,7 @@ import com.android.tradefed.util.FileUtil;
 import com.android.tradefed.util.IRunUtil;
 import com.android.tradefed.util.KeyguardControllerState;
 import com.android.tradefed.util.RunUtil;
+import com.android.tradefed.util.StreamUtil;
 import com.android.tradefed.util.ZipUtil2;
 
 import com.google.common.util.concurrent.SettableFuture;
@@ -2863,7 +2864,11 @@ public class TestDeviceTest extends TestCase {
                 return false;
             }
         };
-        assertNull(mTestDevice.getScreenshot());
+        InputStreamSource res = mTestDevice.getScreenshot();
+        assertNotNull(res);
+        assertEquals(
+                "Error: device reported null for screenshot.",
+                StreamUtil.getStringFromStream(res.createInputStream()));
     }
 
     /**
