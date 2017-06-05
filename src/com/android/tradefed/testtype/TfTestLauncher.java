@@ -315,9 +315,12 @@ public class TfTestLauncher extends SubprocessTfLauncher {
      * @param listener the {@link ITestInvocationListener} where to report the metric.
      */
     private void reportMetrics(long elapsedTime, ITestInvocationListener listener) {
-        listener.testRunStarted("elapsed-time", 0);
+        listener.testRunStarted("elapsed-time", 1);
+        TestIdentifier tid = new TestIdentifier("elapsed-time", "run-elapsed-time");
+        listener.testStarted(tid);
         Map<String, String> runMetrics = new HashMap<>();
         runMetrics.put("elapsed-time", Long.toString(elapsedTime));
+        listener.testEnded(tid, runMetrics);
         listener.testRunEnded(elapsedTime, runMetrics);
     }
 
