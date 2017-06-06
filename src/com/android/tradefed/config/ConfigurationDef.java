@@ -67,7 +67,7 @@ public class ConfigurationDef {
 
     private boolean mMultiDeviceMode = false;
     private Set<String> mExpectedDevices = new HashSet<>();
-    private static final String MULTI_PATTERN = "(.*)(:)(.*)";
+    private static final Pattern MULTI_PATTERN = Pattern.compile("(.*)(:)(.*)");
     public static final String DEFAULT_DEVICE_NAME = "DEFAULT_DEVICE";
 
     /** the unique name of the configuration definition */
@@ -190,7 +190,6 @@ public class ConfigurationDef {
                 deviceObjectList.add(new DeviceConfigurationHolder(name));
             }
         }
-        Pattern pattern = Pattern.compile(MULTI_PATTERN);
 
         for (Map.Entry<String, List<String>> objClassEntry : mObjectClassMap.entrySet()) {
             List<Object> objectList = new ArrayList<Object>(objClassEntry.getValue().size());
@@ -198,7 +197,10 @@ public class ConfigurationDef {
             boolean shouldAddToFlatConfig = true;
             for (String className : objClassEntry.getValue()) {
                 Object configObject = createObject(objClassEntry.getKey(), className);
-                Matcher matcher = pattern.matcher(entryName);
+                Matcher matcher = null;
+                if (mMultiDeviceMode) {
+                    matcher = MULTI_PATTERN.matcher(entryName);
+                }
                 if (mMultiDeviceMode && matcher.find()) {
                     // If we find the device namespace, fetch the matching device or create it if
                     // it doesn't exists.
