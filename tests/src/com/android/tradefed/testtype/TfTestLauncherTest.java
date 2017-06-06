@@ -125,7 +125,9 @@ public class TfTestLauncherTest {
                     EasyMock.eq(Collections.<String, String>emptyMap()));
             mMockListener.testRunEnded(0, Collections.emptyMap());
         }
-        mMockListener.testRunStarted("elapsed-time", 0);
+        mMockListener.testRunStarted("elapsed-time", 1);
+        mMockListener.testStarted(EasyMock.anyObject());
+        mMockListener.testEnded(EasyMock.anyObject(), EasyMock.anyObject());
         mMockListener.testRunEnded(EasyMock.anyLong(), EasyMock.anyObject());
 
         EasyMock.replay(mMockBuildInfo, mMockRunUtil, mMockListener, mMockConfig);
