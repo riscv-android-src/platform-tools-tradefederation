@@ -197,8 +197,9 @@ public abstract class SubprocessTfLauncher
      *
      * @param listener the original {@link ITestInvocationListener} where to report results.
      * @param exception True if exception was raised inside the test.
+     * @param elapsedTime the time taken to run the tests.
      */
-    protected void postRun(ITestInvocationListener listener, boolean exception) {}
+    protected void postRun(ITestInvocationListener listener, boolean exception, long elapsedTime) {}
 
     /** Pipe to the subprocess the invocation-data so that it can use them if needed. */
     private void addInvocationData() {
@@ -229,6 +230,7 @@ public abstract class SubprocessTfLauncher
         FileOutputStream stderr = null;
 
         boolean exception = false;
+        long startTime = 0l;
         try {
             stdoutFile = FileUtil.createTempFile("stdout_subprocess_", ".log");
             stderrFile = FileUtil.createTempFile("stderr_subprocess_", ".log");
@@ -244,7 +246,7 @@ public abstract class SubprocessTfLauncher
                 mCmdArgs.add("--subprocess-report-file");
                 mCmdArgs.add(eventFile.getAbsolutePath());
             }
-
+            startTime = System.currentTimeMillis();
             CommandResult result = mRunUtil.runTimedCmd(mMaxTfRunTime, stdout,
                     stderr, mCmdArgs.toArray(new String[0]));
             // We possibly allow for a little more time if the thread is still processing events.
@@ -276,6 +278,7 @@ public abstract class SubprocessTfLauncher
             exception = true;
             throw new RuntimeException(e);
         } finally {
+            long elapsedTime = System.currentTimeMillis() - startTime;
             StreamUtil.close(stdout);
             StreamUtil.close(stderr);
             logAndCleanFile(stdoutFile, listener);
@@ -286,7 +289,7 @@ public abstract class SubprocessTfLauncher
             }
             StreamUtil.close(eventParser);
 
-            postRun(listener, exception);
+            postRun(listener, exception, elapsedTime);
 
             if (mTmpDir != null) {
                 FileUtil.recursiveDelete(mTmpDir);

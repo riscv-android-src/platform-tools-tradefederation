@@ -102,8 +102,6 @@ public class TfTestLauncher extends SubprocessTfLauncher {
     private File mHprofFile = null;
     // A {@link File} pointing to the jacoco args jar file extracted from the resources
     private File mAgent = null;
-    // we track the elapsed time of the invocation to report it.
-    private long mStartTime = 0l;
 
     /** {@inheritDoc} */
     @Override
@@ -179,17 +177,13 @@ public class TfTestLauncher extends SubprocessTfLauncher {
                             apk);
             mCmdArgs.add(apkPath);
         }
-
-        mStartTime = System.currentTimeMillis();
     }
 
-    /**
-     * {@inheritDoc}
-     */
+    /** {@inheritDoc} */
     @Override
-    protected void postRun(ITestInvocationListener listener, boolean exception) {
-        super.postRun(listener, exception);
-        reportMetrics(System.currentTimeMillis() - mStartTime, listener);
+    protected void postRun(ITestInvocationListener listener, boolean exception, long elapsedTime) {
+        super.postRun(listener, exception, elapsedTime);
+        reportMetrics(elapsedTime, listener);
         FileUtil.deleteFile(mAgent);
 
         // Evaluate coverage from the subprocess
@@ -315,9 +309,12 @@ public class TfTestLauncher extends SubprocessTfLauncher {
      * @param listener the {@link ITestInvocationListener} where to report the metric.
      */
     private void reportMetrics(long elapsedTime, ITestInvocationListener listener) {
-        listener.testRunStarted("elapsed-time", 0);
+        listener.testRunStarted("elapsed-time", 1);
+        TestIdentifier tid = new TestIdentifier("elapsed-time", "run-elapsed-time");
+        listener.testStarted(tid);
         Map<String, String> runMetrics = new HashMap<>();
         runMetrics.put("elapsed-time", Long.toString(elapsedTime));
+        listener.testEnded(tid, runMetrics);
         listener.testRunEnded(elapsedTime, runMetrics);
     }
 
