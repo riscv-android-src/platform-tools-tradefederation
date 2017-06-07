@@ -37,6 +37,7 @@ public class ModuleListener extends CollectingTestListener {
     /** Constructor. Accept the original listener to forward testLog callback. */
     public ModuleListener(ITestInvocationListener listener) {
         mListener = listener;
+        setIsAggregrateMetrics(true);
     }
 
     /** {@inheritDoc} */

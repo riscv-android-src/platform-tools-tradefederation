@@ -231,6 +231,7 @@ public abstract class SubprocessTfLauncher
 
         boolean exception = false;
         long startTime = 0l;
+        long elapsedTime = -1l;
         try {
             stdoutFile = FileUtil.createTempFile("stdout_subprocess_", ".log");
             stderrFile = FileUtil.createTempFile("stderr_subprocess_", ".log");
@@ -249,8 +250,10 @@ public abstract class SubprocessTfLauncher
             startTime = System.currentTimeMillis();
             CommandResult result = mRunUtil.runTimedCmd(mMaxTfRunTime, stdout,
                     stderr, mCmdArgs.toArray(new String[0]));
+            elapsedTime = System.currentTimeMillis() - startTime;
             // We possibly allow for a little more time if the thread is still processing events.
             if (!eventParser.joinReceiver(EVENT_THREAD_JOIN_TIMEOUT_MS)) {
+                elapsedTime = -1l;
                 throw new RuntimeException(String.format("Event receiver thread did not complete:"
                         + "\n%s", FileUtil.readStringFromFile(stderrFile)));
             }
@@ -278,7 +281,6 @@ public abstract class SubprocessTfLauncher
             exception = true;
             throw new RuntimeException(e);
         } finally {
-            long elapsedTime = System.currentTimeMillis() - startTime;
             StreamUtil.close(stdout);
             StreamUtil.close(stderr);
             logAndCleanFile(stdoutFile, listener);

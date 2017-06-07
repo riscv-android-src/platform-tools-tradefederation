@@ -231,6 +231,12 @@ public class AndroidJUnitTest extends InstrumentationTest implements IRuntimeHin
             return;
         }
         super.run(listener);
+        if (mIncludeTestFile != null) {
+            removeTestFile(mDeviceIncludeFile);
+        }
+        if (mExcludeTestFile != null) {
+            removeTestFile(mDeviceExcludeFile);
+        }
     }
 
     /**
@@ -315,6 +321,11 @@ public class AndroidJUnitTest extends InstrumentationTest implements IRuntimeHin
                     + "in pushTestFile", testFile.getAbsolutePath(), destination,
                     device.getSerialNumber()));
         }
+    }
+
+    private void removeTestFile(String deviceTestFile) throws DeviceNotAvailableException {
+        ITestDevice device = getDevice();
+        device.executeShellCommand(String.format("rm %s", deviceTestFile));
     }
 
     /**
