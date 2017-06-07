@@ -62,6 +62,11 @@ public class ModuleSplitter {
             LinkedHashMap<String, IConfiguration> runConfig,
             int shardCount,
             boolean dynamicModule) {
+        if (dynamicModule) {
+            // We maximize the sharding for dynamic to reduce time difference between first and
+            // last shard as much as possible. Overhead is low due to our test pooling.
+            shardCount *= 2;
+        }
         List<ModuleDefinition> runModules = new ArrayList<>();
         for (Entry<String, IConfiguration> configMap : runConfig.entrySet()) {
             validateConfig(configMap.getValue());
@@ -82,12 +87,19 @@ public class ModuleSplitter {
             int shardCount,
             boolean dynamicModule) {
         // If this particular configuration module is declared as 'not shardable' we take it whole
-        // no need to clone target_preparers.
+        // but still split the individual IRemoteTest in a pool.
         if (config.getConfigurationDescription().isNotShardable()) {
-            ModuleDefinition module =
-                    new ModuleDefinition(
-                            moduleName, config.getTests(), config.getTargetPreparers());
-            currentList.add(module);
+            for (int i = 0; i < config.getTests().size(); i++) {
+                if (dynamicModule) {
+                    ModuleDefinition module =
+                            new ModuleDefinition(
+                                    moduleName, config.getTests(), clonePreparers(config));
+                    currentList.add(module);
+                } else {
+                    addModuleToListFromSingleTest(
+                            currentList, config.getTests().get(i), moduleName, config);
+                }
+            }
             return;
         }
 
