@@ -234,17 +234,11 @@ public class ITestSuiteTest {
                 .andReturn(false);
         expectTestRun(mMockListener);
 
-        mMockListener.testRunStarted(ITestSuite.MODULE_CHECKER_PRE + "_test", 1);
-        TestIdentifier tidPre = new TestIdentifier(ITestSuite.MODULE_CHECKER_PRE, "test");
-        mMockListener.testStarted(tidPre);
-        mMockListener.testEnded(tidPre, Collections.emptyMap());
+        mMockListener.testRunStarted(ITestSuite.MODULE_CHECKER_PRE + "_test", 0);
         mMockListener.testRunEnded(EasyMock.anyLong(), EasyMock.anyObject());
 
-        mMockListener.testRunStarted(ITestSuite.MODULE_CHECKER_POST + "_test", 1);
-        TestIdentifier tid = new TestIdentifier(ITestSuite.MODULE_CHECKER_POST, "test");
-        mMockListener.testStarted(tid);
-        mMockListener.testFailed(EasyMock.eq(tid), EasyMock.anyObject());
-        mMockListener.testEnded(tid, Collections.emptyMap());
+        mMockListener.testRunStarted(ITestSuite.MODULE_CHECKER_POST + "_test", 0);
+        mMockListener.testRunFailed(EasyMock.anyObject());
         mMockListener.testRunEnded(EasyMock.anyLong(), EasyMock.anyObject());
 
         replayMocks();
