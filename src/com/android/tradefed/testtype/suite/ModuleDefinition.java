@@ -74,8 +74,11 @@ public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestColl
     private long mElapsedPreparation = 0l;
     private long mElapsedTearDown = 0l;
 
+    private long mElapsedTest = 0l;
+
     public static final String PREPARATION_TIME = "PREP_TIME";
     public static final String TEAR_DOWN_TIME = "TEARDOWN_TIME";
+    public static final String TEST_TIME = "TEST_TIME";
 
     /**
      * Constructor
@@ -196,9 +199,12 @@ public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestColl
                 listener.testFailed(testid, sw.toString());
                 listener.testEnded(testid, Collections.emptyMap());
                 listener.testRunFailed(sw.toString());
-                listener.testRunEnded(0, Collections.emptyMap());
+                Map<String, String> metrics = new HashMap<>();
+                metrics.put(TEST_TIME, "0");
+                listener.testRunEnded(0, metrics);
                 return;
             }
+            mElapsedTest = getCurrentTime();
             while (true) {
                 IRemoteTest test = poll();
                 if (test == null) {
@@ -228,7 +234,6 @@ public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestColl
                     currentTestListener.add(failureListener);
                 }
                 currentTestListener.add(moduleListener);
-
                 try {
                     test.run(new ResultForwarder(currentTestListener));
                 } catch (RuntimeException re) {
@@ -291,7 +296,7 @@ public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestColl
         // put metrics from the preparation
         metrics.put(PREPARATION_TIME, Long.toString(mElapsedPreparation));
         metrics.put(TEAR_DOWN_TIME, Long.toString(mElapsedTearDown));
-
+        metrics.put(TEST_TIME, Long.toString(elapsedTime));
         if (totalExpectedTests != numResults) {
             String error =
                     String.format(
@@ -301,7 +306,7 @@ public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestColl
             CLog.e(error);
             mIsFailedModule = true;
         }
-        listener.testRunEnded(elapsedTime, metrics);
+        listener.testRunEnded(getCurrentTime() - mElapsedTest, metrics);
     }
 
     private void forwardTestResults(
