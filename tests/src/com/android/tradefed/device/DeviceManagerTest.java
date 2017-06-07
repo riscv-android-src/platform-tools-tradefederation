@@ -115,7 +115,6 @@ public class DeviceManagerTest extends TestCase {
         public int waitFor() throws InterruptedException {
             return 0;
         }
-
     }
 
     /**
@@ -887,6 +886,197 @@ public class DeviceManagerTest extends TestCase {
         assertNotNull(tcp);
         assertTrue(tcp.getDeviceState() == TestDeviceState.NOT_AVAILABLE);
         verifyMocks();
+    }
+
+    /**
+     * Test freeing a device that was unable but showing in adb devices. Device will become
+     * Unavailable but still seen by the DeviceManager.
+     */
+    public void testFreeDevice_unavailable() {
+        EasyMock.expect(mMockIDevice.isEmulator()).andStubReturn(Boolean.FALSE);
+        EasyMock.expect(mMockIDevice.getState()).andReturn(DeviceState.ONLINE);
+        EasyMock.expect(mMockStateMonitor.waitForDeviceShell(EasyMock.anyLong()))
+                .andReturn(Boolean.TRUE);
+        mMockStateMonitor.setState(TestDeviceState.NOT_AVAILABLE);
+
+        CommandResult stubAdbDevices = new CommandResult(CommandStatus.SUCCESS);
+        stubAdbDevices.setStdout("List of devices attached\nserial\tdevice\n");
+        EasyMock.expect(
+                        mMockRunUtil.runTimedCmd(
+                                EasyMock.anyLong(), EasyMock.eq("adb"), EasyMock.eq("devices")))
+                .andReturn(stubAdbDevices);
+
+        replayMocks();
+        IManagedTestDevice testDevice = new TestDevice(mMockIDevice, mMockStateMonitor, null);
+        DeviceManager manager = createDeviceManagerNoInit();
+        manager.init(
+                null,
+                null,
+                new ManagedTestDeviceFactory(false, null, null) {
+                    @Override
+                    public IManagedTestDevice createDevice(IDevice idevice) {
+                        mMockTestDevice.setIDevice(idevice);
+                        return testDevice;
+                    }
+
+                    @Override
+                    protected CollectingOutputReceiver createOutputReceiver() {
+                        return new CollectingOutputReceiver() {
+                            @Override
+                            public String getOutput() {
+                                return "/system/bin/pm";
+                            }
+                        };
+                    }
+
+                    @Override
+                    public void setFastbootEnabled(boolean enable) {
+                        // ignore
+                    }
+                });
+
+        mDeviceListener.deviceConnected(mMockIDevice);
+
+        IManagedTestDevice device = (IManagedTestDevice) manager.allocateDevice();
+        assertNotNull(device);
+        // device becomes unavailable
+        device.setDeviceState(TestDeviceState.NOT_AVAILABLE);
+        // a freed 'unavailable' device becomes UNAVAILABLE state
+        manager.freeDevice(device, FreeDeviceState.UNAVAILABLE);
+        // ensure device cannot be allocated again
+        ITestDevice device2 = manager.allocateDevice();
+        assertNull(device2);
+        verifyMocks();
+        // We still have the device in the list
+        assertEquals(1, manager.getDeviceList().size());
+    }
+
+    /**
+     * Test that when freeing an Unavailable device that is not in 'adb devices' we correctly remove
+     * it from our tracking list.
+     */
+    public void testFreeDevice_unknown() {
+        EasyMock.expect(mMockIDevice.isEmulator()).andStubReturn(Boolean.FALSE);
+        EasyMock.expect(mMockIDevice.getState()).andReturn(DeviceState.ONLINE);
+        EasyMock.expect(mMockStateMonitor.waitForDeviceShell(EasyMock.anyLong()))
+                .andReturn(Boolean.TRUE);
+        mMockStateMonitor.setState(TestDeviceState.NOT_AVAILABLE);
+
+        CommandResult stubAdbDevices = new CommandResult(CommandStatus.SUCCESS);
+        // device serial is not in the list
+        stubAdbDevices.setStdout("List of devices attached\n");
+        EasyMock.expect(
+                        mMockRunUtil.runTimedCmd(
+                                EasyMock.anyLong(), EasyMock.eq("adb"), EasyMock.eq("devices")))
+                .andReturn(stubAdbDevices);
+
+        replayMocks();
+        IManagedTestDevice testDevice = new TestDevice(mMockIDevice, mMockStateMonitor, null);
+        DeviceManager manager = createDeviceManagerNoInit();
+        manager.init(
+                null,
+                null,
+                new ManagedTestDeviceFactory(false, null, null) {
+                    @Override
+                    public IManagedTestDevice createDevice(IDevice idevice) {
+                        mMockTestDevice.setIDevice(idevice);
+                        return testDevice;
+                    }
+
+                    @Override
+                    protected CollectingOutputReceiver createOutputReceiver() {
+                        return new CollectingOutputReceiver() {
+                            @Override
+                            public String getOutput() {
+                                return "/system/bin/pm";
+                            }
+                        };
+                    }
+
+                    @Override
+                    public void setFastbootEnabled(boolean enable) {
+                        // ignore
+                    }
+                });
+
+        mDeviceListener.deviceConnected(mMockIDevice);
+
+        IManagedTestDevice device = (IManagedTestDevice) manager.allocateDevice();
+        assertNotNull(device);
+        // device becomes unavailable
+        device.setDeviceState(TestDeviceState.NOT_AVAILABLE);
+        // a freed 'unavailable' device becomes UNAVAILABLE state
+        manager.freeDevice(device, FreeDeviceState.UNAVAILABLE);
+        // ensure device cannot be allocated again
+        ITestDevice device2 = manager.allocateDevice();
+        assertNull(device2);
+        verifyMocks();
+        // We have 0 device in the list since it was removed
+        assertEquals(0, manager.getDeviceList().size());
+    }
+
+    /**
+     * Test that when freeing an Unavailable device that is not in 'adb devices' we correctly remove
+     * it from our tracking list even if its serial is a substring of another serial.
+     */
+    public void testFreeDevice_unknown_subName() {
+        EasyMock.expect(mMockIDevice.isEmulator()).andStubReturn(Boolean.FALSE);
+        EasyMock.expect(mMockIDevice.getState()).andReturn(DeviceState.ONLINE);
+        EasyMock.expect(mMockStateMonitor.waitForDeviceShell(EasyMock.anyLong()))
+                .andReturn(Boolean.TRUE);
+        mMockStateMonitor.setState(TestDeviceState.NOT_AVAILABLE);
+
+        CommandResult stubAdbDevices = new CommandResult(CommandStatus.SUCCESS);
+        // device serial is not in the list
+        stubAdbDevices.setStdout("List of devices attached\n2serial\tdevice\n");
+        EasyMock.expect(
+                        mMockRunUtil.runTimedCmd(
+                                EasyMock.anyLong(), EasyMock.eq("adb"), EasyMock.eq("devices")))
+                .andReturn(stubAdbDevices);
+
+        replayMocks();
+        IManagedTestDevice testDevice = new TestDevice(mMockIDevice, mMockStateMonitor, null);
+        DeviceManager manager = createDeviceManagerNoInit();
+        manager.init(
+                null,
+                null,
+                new ManagedTestDeviceFactory(false, null, null) {
+                    @Override
+                    public IManagedTestDevice createDevice(IDevice idevice) {
+                        mMockTestDevice.setIDevice(idevice);
+                        return testDevice;
+                    }
+
+                    @Override
+                    protected CollectingOutputReceiver createOutputReceiver() {
+                        return new CollectingOutputReceiver() {
+                            @Override
+                            public String getOutput() {
+                                return "/system/bin/pm";
+                            }
+                        };
+                    }
+
+                    @Override
+                    public void setFastbootEnabled(boolean enable) {
+                        // ignore
+                    }
+                });
+
+        mDeviceListener.deviceConnected(mMockIDevice);
+
+        IManagedTestDevice device = (IManagedTestDevice) manager.allocateDevice();
+        assertNotNull(device);
+        // device becomes unavailable
+        device.setDeviceState(TestDeviceState.NOT_AVAILABLE);
+        // a freed 'unavailable' device becomes UNAVAILABLE state
+        manager.freeDevice(device, FreeDeviceState.UNAVAILABLE);
+        // ensure device cannot be allocated again
+        ITestDevice device2 = manager.allocateDevice();
+        assertNull(device2);
+        verifyMocks();
+        // We have 0 device in the list since it was removed
+        assertEquals(0, manager.getDeviceList().size());
     }
 
     /**
