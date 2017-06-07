@@ -57,9 +57,9 @@ public class ModuleSplitterTest {
         List<ModuleDefinition> res = ModuleSplitter.splitConfiguration(runConfig, 5, true);
         // matching 1 for 1, config to ModuleDefinition since not shardable
         assertEquals(1, res.size());
-        // The original target preparer is still there
-        assertSame(config.getTargetPreparers().get(0), res.get(0).getTargetPreparers().get(0));
-        // The original IRemoteTest is still there
+        // The original target preparer is changed since we split multiple <test> tags.
+        assertNotSame(config.getTargetPreparers().get(0), res.get(0).getTargetPreparers().get(0));
+        // The original IRemoteTest is still there because we use a pool.
         assertSame(config.getTests().get(0), res.get(0).getTests().get(0));
     }
 
@@ -139,8 +139,8 @@ public class ModuleSplitterTest {
 
         runConfig.put("module1", config);
         List<ModuleDefinition> res = ModuleSplitter.splitConfiguration(runConfig, 5, true);
-        // matching 1 for 5 since tests sharding in 5 units.
-        assertEquals(5, res.size());
+        // matching 1 for 10 since tests sharding in 5 units times 2.
+        assertEquals(10, res.size());
         // The original IRemoteTest does not exists anymore, new IRemoteTests have been created.
         for (ModuleDefinition m : res) {
             assertNotSame(config.getTests().get(0), m.getTests().get(0));

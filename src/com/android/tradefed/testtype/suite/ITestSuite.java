@@ -16,11 +16,11 @@
 package com.android.tradefed.testtype.suite;
 
 import com.android.ddmlib.Log.LogLevel;
-import com.android.ddmlib.testrunner.TestIdentifier;
 import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.config.ConfigurationException;
 import com.android.tradefed.config.IConfiguration;
 import com.android.tradefed.config.Option;
+import com.android.tradefed.config.OptionCopier;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.log.LogUtil.CLog;
@@ -54,8 +54,8 @@ public abstract class ITestSuite
                 IShardableTest,
                 ITestCollector {
 
-    protected static final String MODULE_CHECKER_PRE = "PreModuleChecker";
-    protected static final String MODULE_CHECKER_POST = "PostModuleChecker";
+    public static final String MODULE_CHECKER_PRE = "PreModuleChecker";
+    public static final String MODULE_CHECKER_POST = "PostModuleChecker";
 
     // Options for test failure case
     @Option(
@@ -342,14 +342,11 @@ public abstract class ITestSuite
             // do not log here, otherwise it could be very verbose.
             return;
         }
-        TestIdentifier tid = new TestIdentifier(identifier, moduleName);
-        listener.testRunStarted(identifier + "_" + moduleName, 1);
-        listener.testStarted(tid);
+        // Avoid messing with the final test count by making them empty runs.
+        listener.testRunStarted(identifier + "_" + moduleName, 0);
         if (!failures.isEmpty()) {
-            listener.testFailed(
-                    tid, String.format("%s failed '%s' checkers", moduleName, failures));
+            listener.testRunFailed(String.format("%s failed '%s' checkers", moduleName, failures));
         }
-        listener.testEnded(tid, Collections.emptyMap());
         listener.testRunEnded(System.currentTimeMillis() - startTime, Collections.emptyMap());
     }
 
@@ -368,6 +365,8 @@ public abstract class ITestSuite
         }
         injectInfo(runConfig);
 
+        // We split individual tests on double the shardCountHint to provide better average.
+        // The test pool mechanism prevent this from creating too much overhead.
         List<ModuleDefinition> splitModules =
                 ModuleSplitter.splitConfiguration(
                         runConfig, shardCountHint, mShouldMakeDynamicModule);
@@ -378,6 +377,7 @@ public abstract class ITestSuite
         List<IRemoteTest> splitTests = new ArrayList<>();
         for (ModuleDefinition m : splitModules) {
             ITestSuite suite = createInstance();
+            OptionCopier.copyOptionsNoThrow(this, suite);
             suite.mIsSharded = true;
             suite.mDirectModule = m;
             splitTests.add(suite);
