@@ -21,6 +21,7 @@ import com.android.ddmlib.testrunner.TestRunResult;
 import com.android.tradefed.invoker.IInvocationContext;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.result.CollectingTestListener;
+import com.android.tradefed.testtype.suite.ITestSuite;
 import com.android.tradefed.testtype.suite.ModuleDefinition;
 import com.android.tradefed.util.TimeUtil;
 
@@ -75,6 +76,19 @@ public class SuiteResultReporter extends CollectingTestListener {
         }
     }
 
+    /** Helper to remove the module checker results from the final list of real module results. */
+    private List<TestRunResult> extractModuleCheckers(Collection<TestRunResult> results) {
+        List<TestRunResult> moduleCheckers = new ArrayList<TestRunResult>();
+        for (TestRunResult t : results) {
+            if (t.getName().startsWith(ITestSuite.MODULE_CHECKER_POST)
+                    || t.getName().startsWith(ITestSuite.MODULE_CHECKER_PRE)) {
+                moduleCheckers.add(t);
+            }
+        }
+        results.removeAll(moduleCheckers);
+        return moduleCheckers;
+    }
+
     @Override
     public void invocationEnded(long elapsedTime) {
         super.invocationEnded(elapsedTime);
@@ -82,6 +96,7 @@ public class SuiteResultReporter extends CollectingTestListener {
 
         // finalize and print results - general
         Collection<TestRunResult> results = getRunResults();
+        List<TestRunResult> moduleCheckers = extractModuleCheckers(results);
 
         mTotalModules = results.size();
 
@@ -109,9 +124,10 @@ public class SuiteResultReporter extends CollectingTestListener {
         // print a short report summary
         CLog.logAndDisplay(LogLevel.INFO, "============================================");
         CLog.logAndDisplay(LogLevel.INFO, "================= Results ==================");
-        printTop10TimeConsumer(results);
-        printTop10SlowModules(results);
+        printModuleTestTime(results);
+        printTopSlowModules(results);
         printPreparationMetrics(mPreparationMap);
+        printModuleCheckersMetric(moduleCheckers);
         CLog.logAndDisplay(LogLevel.INFO, "=============== Summary ===============");
         CLog.logAndDisplay(
                 LogLevel.INFO, "Total Run time: %s", TimeUtil.formatElapsedTime(mElapsedTime));
@@ -144,8 +160,8 @@ public class SuiteResultReporter extends CollectingTestListener {
         CLog.logAndDisplay(LogLevel.INFO, "============================================");
     }
 
-    /** Displays the top 10 time consumer for module tests run. */
-    void printTop10TimeConsumer(Collection<TestRunResult> results) {
+    /** Displays the time consumed by each module to run. */
+    private void printModuleTestTime(Collection<TestRunResult> results) {
         List<TestRunResult> moduleTime = new ArrayList<>();
         moduleTime.addAll(results);
         Collections.sort(
@@ -156,18 +172,20 @@ public class SuiteResultReporter extends CollectingTestListener {
                         return (int) (o2.getElapsedTime() - o1.getElapsedTime());
                     }
                 });
-        int maxModuleDisplay = Math.min(moduleTime.size(), 10);
-        CLog.logAndDisplay(
-                LogLevel.INFO,
-                "============== TOP %s Test Consumer ==============",
-                maxModuleDisplay);
-        for (int i = 0; i < maxModuleDisplay; i++) {
+        long totalRunTime = 0l;
+        CLog.logAndDisplay(LogLevel.INFO, "=============== Consumed Time ==============");
+        for (int i = 0; i < moduleTime.size(); i++) {
             CLog.logAndDisplay(
                     LogLevel.INFO,
                     "    %s: %s",
                     moduleTime.get(i).getName(),
                     TimeUtil.formatElapsedTime(moduleTime.get(i).getElapsedTime()));
+            totalRunTime += moduleTime.get(i).getElapsedTime();
         }
+        CLog.logAndDisplay(
+                LogLevel.INFO,
+                "Total aggregated tests run time: %s",
+                TimeUtil.formatElapsedTime(totalRunTime));
     }
 
     /**
@@ -175,7 +193,7 @@ public class SuiteResultReporter extends CollectingTestListener {
      * modules have way more test cases than others so only looking at elapsed time is not a good
      * metric for slow modules).
      */
-    void printTop10SlowModules(Collection<TestRunResult> results) {
+    private void printTopSlowModules(Collection<TestRunResult> results) {
         List<TestRunResult> moduleTime = new ArrayList<>();
         moduleTime.addAll(results);
         // We don't consider module which runs in less than 5 sec.
@@ -194,7 +212,7 @@ public class SuiteResultReporter extends CollectingTestListener {
                         return rate1.compareTo(rate2);
                     }
                 });
-        int maxModuleDisplay = Math.min(moduleTime.size(), 10);
+        int maxModuleDisplay = moduleTime.size();
         if (maxModuleDisplay == 0) {
             return;
         }
@@ -223,9 +241,32 @@ public class SuiteResultReporter extends CollectingTestListener {
             return;
         }
         CLog.d("============== Modules Preparation Times ==============");
+        long totalPrep = 0l;
+        long totalTear = 0l;
+
         for (String moduleName : metrics.keySet()) {
             CLog.d("    %s => %s", moduleName, metrics.get(moduleName).toString());
+            totalPrep += metrics.get(moduleName).mPrepTime;
+            totalTear += metrics.get(moduleName).mTearDownTime;
         }
+        CLog.d(
+                "Total preparation time: %s  ||  Total tear down time: %s",
+                TimeUtil.formatElapsedTime(totalPrep), TimeUtil.formatElapsedTime(totalTear));
+        CLog.d("=======================================================");
+    }
+
+    private void printModuleCheckersMetric(List<TestRunResult> moduleCheckerResults) {
+        if (moduleCheckerResults.isEmpty()) {
+            return;
+        }
+        CLog.d("============== Modules Checkers Times ==============");
+        long totalTime = 0l;
+        for (TestRunResult t : moduleCheckerResults) {
+            CLog.d("    %s: %s", t.getName(), TimeUtil.formatElapsedTime(t.getElapsedTime()));
+            totalTime += t.getElapsedTime();
+        }
+        CLog.d("Total module checkers time: %s", TimeUtil.formatElapsedTime(totalTime));
+        CLog.d("====================================================");
     }
 
     public int getTotalModules() {
