@@ -193,6 +193,8 @@ public class AndroidJUnitTestTest extends TestCase {
         setRunTestExpectations();
         EasyMock.expect(mMockTestDevice.pushFile(
                 EasyMock.<File>anyObject(), EasyMock.<String>anyObject())).andReturn(Boolean.TRUE);
+        EasyMock.expect(mMockTestDevice.executeShellCommand(EasyMock.<String>anyObject()))
+                .andReturn("");
         EasyMock.replay(mMockRemoteRunner, mMockTestDevice);
 
         File tmpFile = FileUtil.createTempFile("testFile", ".txt");
@@ -215,6 +217,8 @@ public class AndroidJUnitTestTest extends TestCase {
         setRunTestExpectations();
         EasyMock.expect(mMockTestDevice.pushFile(
                 EasyMock.<File>anyObject(), EasyMock.<String>anyObject())).andReturn(Boolean.TRUE);
+        EasyMock.expect(mMockTestDevice.executeShellCommand(EasyMock.<String>anyObject()))
+                .andReturn("");
         EasyMock.replay(mMockRemoteRunner, mMockTestDevice);
 
         File tmpFile = FileUtil.createTempFile("notTestFile", ".txt");
@@ -241,6 +245,9 @@ public class AndroidJUnitTestTest extends TestCase {
         setRunTestExpectations();
         EasyMock.expect(mMockTestDevice.pushFile(EasyMock.<File>anyObject(),
                 EasyMock.<String>anyObject())).andReturn(Boolean.TRUE).times(2);
+        EasyMock.expect(mMockTestDevice.executeShellCommand(EasyMock.<String>anyObject()))
+                .andReturn("")
+                .times(2);
         EasyMock.replay(mMockRemoteRunner, mMockTestDevice);
 
         File tmpFileInclude = FileUtil.createTempFile("includeFile", ".txt");
@@ -267,8 +274,14 @@ public class AndroidJUnitTestTest extends TestCase {
         mMockRemoteRunner.addInstrumentationArg(
                 EasyMock.eq("notTestFile"), EasyMock.<String>anyObject());
         setRunTestExpectations();
-        EasyMock.expect(mMockTestDevice.pushFile(EasyMock.<File>anyObject(),
-                EasyMock.<String>anyObject())).andReturn(Boolean.TRUE).times(2);
+        EasyMock.expect(
+                        mMockTestDevice.pushFile(
+                                EasyMock.<File>anyObject(), EasyMock.<String>anyObject()))
+                .andReturn(Boolean.TRUE)
+                .times(2);
+        EasyMock.expect(mMockTestDevice.executeShellCommand(EasyMock.<String>anyObject()))
+                .andReturn("")
+                .times(2);
         EasyMock.replay(mMockRemoteRunner, mMockTestDevice);
 
         File tmpFileInclude = FileUtil.createTempFile("includeFile", ".txt");

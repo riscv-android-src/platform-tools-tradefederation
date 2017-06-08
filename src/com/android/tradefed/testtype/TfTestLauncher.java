@@ -309,6 +309,9 @@ public class TfTestLauncher extends SubprocessTfLauncher {
      * @param listener the {@link ITestInvocationListener} where to report the metric.
      */
     private void reportMetrics(long elapsedTime, ITestInvocationListener listener) {
+        if (elapsedTime == -1l) {
+            return;
+        }
         listener.testRunStarted("elapsed-time", 1);
         TestIdentifier tid = new TestIdentifier("elapsed-time", "run-elapsed-time");
         listener.testStarted(tid);

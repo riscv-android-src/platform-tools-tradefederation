@@ -15,10 +15,12 @@
  */
 package com.android.tradefed.invoker;
 
+import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.result.ILogSaver;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.LogSaverResultForwarder;
 import com.android.tradefed.result.ResultForwarder;
+import com.android.tradefed.util.TimeUtil;
 
 import java.util.List;
 
@@ -31,9 +33,12 @@ import java.util.List;
  */
 public class ShardMasterResultForwarder extends LogSaverResultForwarder {
 
+    private final int mInitCount;
     private int mShardsRemaining;
     private int mTotalElapsed = 0;
     private boolean mStartReported = false;
+
+    private long mFirstShardEndTime = 0l;
 
     /**
      * Create a {@link ShardMasterResultForwarder}.
@@ -46,6 +51,7 @@ public class ShardMasterResultForwarder extends LogSaverResultForwarder {
             List<ITestInvocationListener> listeners, int expectedShards) {
         super(logSaver, listeners);
         mShardsRemaining = expectedShards;
+        mInitCount = expectedShards;
     }
 
     /**
@@ -75,8 +81,15 @@ public class ShardMasterResultForwarder extends LogSaverResultForwarder {
     @Override
     public void invocationEnded(long elapsedTime) {
         mTotalElapsed += elapsedTime;
+        if (mInitCount == mShardsRemaining) {
+            mFirstShardEndTime = System.currentTimeMillis();
+        }
         mShardsRemaining--;
         if (mShardsRemaining <= 0) {
+            // TODO: consider logging all shard final times.
+            CLog.i(
+                    "There was %s between the first and last shard ended.",
+                    TimeUtil.formatElapsedTime(System.currentTimeMillis() - mFirstShardEndTime));
             super.invocationEnded(mTotalElapsed);
         }
     }
