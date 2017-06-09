@@ -15,6 +15,7 @@
  */
 package com.android.tradefed.testtype.suite;
 
+import com.android.ddmlib.Log.LogLevel;
 import com.android.ddmlib.testrunner.TestIdentifier;
 import com.android.ddmlib.testrunner.TestResult;
 import com.android.ddmlib.testrunner.TestRunResult;
@@ -23,7 +24,9 @@ import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.DeviceUnresponsiveException;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.invoker.IInvocationContext;
+import com.android.tradefed.log.ILogRegistry.EventType;
 import com.android.tradefed.log.ITestLogger;
+import com.android.tradefed.log.LogRegistry;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.ITestLoggerReceiver;
@@ -37,6 +40,7 @@ import com.android.tradefed.testtype.IBuildReceiver;
 import com.android.tradefed.testtype.IDeviceTest;
 import com.android.tradefed.testtype.IRemoteTest;
 import com.android.tradefed.testtype.ITestCollector;
+import com.android.tradefed.util.StreamUtil;
 
 import com.google.common.annotations.VisibleForTesting;
 
@@ -249,6 +253,20 @@ public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestColl
                                     + "successful, proceeding with next module. Stack trace:");
                     CLog.w(due);
                     CLog.w("Proceeding to the next test.");
+                } catch (DeviceNotAvailableException dnae) {
+                    // We do special logging of some information in Context of the module for easier
+                    // debugging.
+                    CLog.e(
+                            "Module %s threw a DeviceNotAvailableException on device %s during test %s",
+                            getId(), mDevice.getSerialNumber(), test.getClass());
+                    CLog.e(dnae);
+                    // log an events
+                    logDeviceEvent(
+                            EventType.MODULE_DEVICE_NOT_AVAILABLE,
+                            mDevice.getSerialNumber(),
+                            dnae,
+                            getId());
+                    throw dnae;
                 } finally {
                     mTestsResults.addAll(moduleListener.getRunResults());
                     mExpectedTests += moduleListener.getNumTotalTests();
@@ -262,6 +280,11 @@ public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestColl
                     CLog.d("Cleaner: %s", cleaner.getClass().getSimpleName());
                     cleaner.tearDown(mDevice, mBuild, null);
                 }
+            } catch (DeviceNotAvailableException tearDownException) {
+                CLog.e(
+                        "Module %s failed during tearDown with: %s",
+                        getId(), StreamUtil.getStackTrace(tearDownException));
+                throw tearDownException;
             } finally {
                 mElapsedTearDown = getCurrentTime() - cleanStartTime;
                 // finalize results
@@ -270,6 +293,15 @@ public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestColl
                 }
             }
         }
+    }
+
+    /** Helper to log the device events. */
+    private void logDeviceEvent(EventType event, String serial, Throwable t, String moduleId) {
+        Map<String, String> args = new HashMap<>();
+        args.put("serial", serial);
+        args.put("trace", StreamUtil.getStackTrace(t));
+        args.put("module-id", moduleId);
+        LogRegistry.getLogRegistry().logEvent(LogLevel.DEBUG, event, args);
     }
 
     /** Finalize results to report them all and count if there are missing tests. */

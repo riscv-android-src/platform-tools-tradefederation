@@ -31,10 +31,13 @@ public interface ILogRegistry extends ILogOutput {
     /** Events that are useful to be logged */
     public enum EventType {
         DEVICE_CONNECTED,
+        DEVICE_CONNECTED_OFFLINE,
         DEVICE_DISCONNECTED,
         INVOCATION_START,
         INVOCATION_END,
         HEAP_MEMORY,
+        SHARD_POLLER_EARLY_TERMINATION,
+        MODULE_DEVICE_NOT_AVAILABLE,
     }
 
     /**
