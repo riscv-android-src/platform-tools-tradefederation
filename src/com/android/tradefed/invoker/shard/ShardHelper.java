@@ -36,6 +36,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
+import java.util.concurrent.CountDownLatch;
 
 /** Helper class that handles creating the shards and scheduling them for an invocation. */
 public class ShardHelper implements IShardHelper {
@@ -88,17 +89,19 @@ public class ShardHelper implements IShardHelper {
                 // contiguously in the list.
                 Collections.shuffle(shardableTests);
                 int maxShard = Math.min(shardCount, shardableTests.size());
+                CountDownLatch tracker = new CountDownLatch(maxShard);
                 for (int i = 0; i < maxShard; i++) {
                     IConfiguration shardConfig = config.clone();
-                    shardConfig.setTest(new TestsPoolPoller(shardableTests));
+                    shardConfig.setTest(new TestsPoolPoller(shardableTests, tracker));
                     rescheduleConfig(shardConfig, config, context, rescheduler, resultCollector);
                 }
             } else {
+                CountDownLatch tracker = new CountDownLatch(shardableTests.size());
                 for (IRemoteTest testShard : shardableTests) {
                     CLog.i("Rescheduling sharded config...");
                     IConfiguration shardConfig = config.clone();
                     if (config.getCommandOptions().shouldUseDynamicSharding()) {
-                        shardConfig.setTest(new TestsPoolPoller(shardableTests));
+                        shardConfig.setTest(new TestsPoolPoller(shardableTests, tracker));
                     } else {
                         shardConfig.setTest(testShard);
                     }

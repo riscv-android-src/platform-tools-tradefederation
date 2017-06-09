@@ -15,6 +15,7 @@
  */
 package com.android.tradefed.invoker.shard;
 
+import com.android.ddmlib.Log.LogLevel;
 import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.config.IConfiguration;
 import com.android.tradefed.config.IConfigurationReceiver;
@@ -22,6 +23,8 @@ import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.DeviceUnresponsiveException;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.invoker.IInvocationContext;
+import com.android.tradefed.log.ILogRegistry.EventType;
+import com.android.tradefed.log.LogRegistry;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.suite.checker.ISystemStatusChecker;
@@ -32,10 +35,13 @@ import com.android.tradefed.testtype.IInvocationContextReceiver;
 import com.android.tradefed.testtype.IMultiDeviceTest;
 import com.android.tradefed.testtype.IRemoteTest;
 import com.android.tradefed.testtype.ITestCollector;
+import com.android.tradefed.util.StreamUtil;
 
 import java.util.Collection;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.CountDownLatch;
 
 /**
  * Tests wrapper that allow to execute all the tests of a pool of tests. Tests can be shared by
@@ -53,7 +59,10 @@ public class TestsPoolPoller
                 ISystemStatusCheckerReceiver,
                 ITestCollector {
 
+    private static final long WAIT_RECOVERY_TIME = 5 * 60 * 1000;
+
     private Collection<IRemoteTest> mGenericPool;
+    private CountDownLatch mTracker;
 
     private ITestDevice mDevice;
     private IBuildInfo mBuildInfo;
@@ -67,9 +76,11 @@ public class TestsPoolPoller
      * Ctor where the pool of {@link IRemoteTest} is provided.
      *
      * @param tests {@link IRemoteTest}s pool of all tests.
+     * @param tracker a {@link CountDownLatch} shared to get the number of running poller.
      */
-    public TestsPoolPoller(Collection<IRemoteTest> tests) {
+    public TestsPoolPoller(Collection<IRemoteTest> tests, CountDownLatch tracker) {
         mGenericPool = tests;
+        mTracker = tracker;
     }
 
     /** Returns the first {@link IRemoteTest} from the pool or null if none remaining. */
@@ -87,60 +98,96 @@ public class TestsPoolPoller
     /** {@inheritDoc} */
     @Override
     public void run(ITestInvocationListener listener) throws DeviceNotAvailableException {
-        while (true) {
-            IRemoteTest test = poll();
-            if (test == null) {
+        try {
+            while (true) {
+                IRemoteTest test = poll();
+                if (test == null) {
+                    return;
+                }
+                if (test instanceof IBuildReceiver) {
+                    ((IBuildReceiver) test).setBuild(mBuildInfo);
+                }
+                if (test instanceof IConfigurationReceiver) {
+                    ((IConfigurationReceiver) test).setConfiguration(mConfig);
+                }
+                if (test instanceof IDeviceTest) {
+                    ((IDeviceTest) test).setDevice(mDevice);
+                }
+                if (test instanceof IInvocationContextReceiver) {
+                    ((IInvocationContextReceiver) test).setInvocationContext(mContext);
+                }
+                if (test instanceof IMultiDeviceTest) {
+                    ((IMultiDeviceTest) test).setDeviceInfos(mDeviceInfos);
+                }
+                if (test instanceof ISystemStatusCheckerReceiver) {
+                    ((ISystemStatusCheckerReceiver) test)
+                            .setSystemStatusChecker(mSystemStatusCheckers);
+                }
+                if (test instanceof ITestCollector) {
+                    ((ITestCollector) test).setCollectTestsOnly(mShouldCollectTest);
+                }
+                // Run the test itself and prevent random exception from stopping the poller.
+                try {
+                    test.run(listener);
+                } catch (RuntimeException e) {
+                    CLog.e(
+                            "Caught an Exception in a test: %s. Proceeding to next test.",
+                            test.getClass());
+                    CLog.e(e);
+                } catch (DeviceUnresponsiveException due) {
+                    // being able to catch a DeviceUnresponsiveException here implies that recovery was
+                    // successful, and test execution should proceed to next test.
+                    CLog.w(
+                            "Ignored DeviceUnresponsiveException because recovery was "
+                                    + "successful, proceeding with next test. Stack trace:");
+                    CLog.w(due);
+                    CLog.w("Proceeding to the next test.");
+                } catch (DeviceNotAvailableException dnae) {
+                    HandleDeviceNotAvailable(dnae, test);
+                }
+            }
+        } finally {
+            mTracker.countDown();
+        }
+    }
+
+    /**
+     * Helper to wait for the device to maybe come back online, in that case we reboot it to refresh
+     * the state and proceed with execution.
+     */
+    void HandleDeviceNotAvailable(DeviceNotAvailableException originalException, IRemoteTest test)
+            throws DeviceNotAvailableException {
+        try {
+            if (mTracker.getCount() > 1) {
+                CLog.d("Wait 5 min for device to maybe coming back online.");
+                mDevice.waitForDeviceAvailable(WAIT_RECOVERY_TIME);
+                mDevice.reboot();
+                CLog.d("TestPoller was recovered after %s went offline", mDevice.getSerialNumber());
                 return;
             }
-            if (test instanceof IBuildReceiver) {
-                ((IBuildReceiver) test).setBuild(mBuildInfo);
-            }
-            if (test instanceof IConfigurationReceiver) {
-                ((IConfigurationReceiver) test).setConfiguration(mConfig);
-            }
-            if (test instanceof IDeviceTest) {
-                ((IDeviceTest) test).setDevice(mDevice);
-            }
-            if (test instanceof IInvocationContextReceiver) {
-                ((IInvocationContextReceiver) test).setInvocationContext(mContext);
-            }
-            if (test instanceof IMultiDeviceTest) {
-                ((IMultiDeviceTest) test).setDeviceInfos(mDeviceInfos);
-            }
-            if (test instanceof ISystemStatusCheckerReceiver) {
-                ((ISystemStatusCheckerReceiver) test).setSystemStatusChecker(mSystemStatusCheckers);
-            }
-            if (test instanceof ITestCollector) {
-                ((ITestCollector) test).setCollectTestsOnly(mShouldCollectTest);
-            }
-            // Run the test itself and prevent random exception from stopping the poller.
-            try {
-                test.run(listener);
-            } catch (RuntimeException e) {
-                CLog.e(
-                        "Caught an Exception in a test: %s. Proceeding to next test.",
-                        test.getClass());
-                CLog.e(e);
-            } catch (DeviceUnresponsiveException due) {
-                // being able to catch a DeviceUnresponsiveException here implies that recovery was
-                // successful, and test execution should proceed to next test.
-                CLog.w(
-                        "Ignored DeviceUnresponsiveException because recovery was "
-                                + "successful, proceeding with next test. Stack trace:");
-                CLog.w(due);
-                CLog.w("Proceeding to the next test.");
-            } catch (DeviceNotAvailableException dnae) {
-                // We catch and rethrow in order to log that the poller associated with the device
-                // that went offline is terminating.
-                CLog.e(
-                        "Test %s threw DeviceNotAvailableException. Test poller associated with "
-                                + "device %s is terminating.",
-                        test.getClass(), mDevice.getSerialNumber());
-                // TODO: Add a fail-safe mechanism in case all pollers terminate and we still have
-                // tests in the pool.
-                throw dnae;
-            }
+            // We catch and rethrow in order to log that the poller associated with the device
+            // that went offline is terminating.
+            CLog.e(
+                    "Test %s threw DeviceNotAvailableException. Test poller associated with "
+                            + "device %s is terminating.",
+                    test.getClass(), mDevice.getSerialNumber());
+            // Log an event to track more easily the failure
+            logDeviceEvent(
+                    EventType.SHARD_POLLER_EARLY_TERMINATION,
+                    mDevice.getSerialNumber(),
+                    originalException);
+        } catch (DeviceNotAvailableException e) {
+            // ignore this exception
         }
+        throw originalException;
+    }
+
+    /** Helper to log the device events. */
+    private void logDeviceEvent(EventType event, String serial, Throwable t) {
+        Map<String, String> args = new HashMap<>();
+        args.put("serial", serial);
+        args.put("trace", StreamUtil.getStackTrace(t));
+        LogRegistry.getLogRegistry().logEvent(LogLevel.DEBUG, event, args);
     }
 
     @Override
