@@ -1014,6 +1014,7 @@ public class DeviceManager implements IDeviceManager {
             } else if (DeviceState.OFFLINE.equals(idevice.getState()) ||
                     DeviceState.UNAUTHORIZED.equals(idevice.getState())) {
                 mManagedDeviceList.handleDeviceEvent(testDevice, DeviceEvent.CONNECTED_OFFLINE);
+                logDeviceEvent(EventType.DEVICE_CONNECTED_OFFLINE, testDevice.getSerialNumber());
             }
             mFirstDeviceAdded.countDown();
         }
