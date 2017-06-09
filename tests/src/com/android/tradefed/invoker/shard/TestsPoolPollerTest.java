@@ -15,7 +15,11 @@
  */
 package com.android.tradefed.invoker.shard;
 
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 
 import com.android.tradefed.config.OptionSetter;
 import com.android.tradefed.device.DeviceNotAvailableException;
@@ -33,6 +37,7 @@ import org.mockito.Mockito;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.CountDownLatch;
 
 /** Unit tests for {@link TestsPoolPoller}. */
 @RunWith(JUnit4.class)
@@ -59,8 +64,9 @@ public class TestsPoolPollerTest {
         for (int i = 0; i < numTests; i++) {
             testsList.add(new StubTest());
         }
-        TestsPoolPoller poller1 = new TestsPoolPoller(testsList);
-        TestsPoolPoller poller2 = new TestsPoolPoller(testsList);
+        CountDownLatch tracker = new CountDownLatch(2);
+        TestsPoolPoller poller1 = new TestsPoolPoller(testsList, tracker);
+        TestsPoolPoller poller2 = new TestsPoolPoller(testsList, tracker);
         // initial size
         assertEquals(numTests, testsList.size());
         assertNotNull(poller1.poll());
@@ -90,12 +96,14 @@ public class TestsPoolPollerTest {
             setter.setOptionValue("run-a-test", "true");
             testsList.add(test);
         }
-        TestsPoolPoller poller = new TestsPoolPoller(testsList);
+        CountDownLatch tracker = new CountDownLatch(1);
+        TestsPoolPoller poller = new TestsPoolPoller(testsList, tracker);
         poller.run(mListener);
         Mockito.verify(mListener, Mockito.times(numTests))
                 .testRunStarted(Mockito.anyString(), Mockito.anyInt());
         Mockito.verify(mListener, Mockito.times(numTests))
                 .testRunEnded(Mockito.anyLong(), Mockito.any());
+        assertEquals(0, tracker.getCount());
     }
 
     /**
@@ -118,12 +126,14 @@ public class TestsPoolPollerTest {
             s.setOptionValue("run-a-test", "true");
             testsList.add(test);
         }
-        TestsPoolPoller poller = new TestsPoolPoller(testsList);
+        CountDownLatch tracker = new CountDownLatch(1);
+        TestsPoolPoller poller = new TestsPoolPoller(testsList, tracker);
         poller.run(mListener);
         Mockito.verify(mListener, Mockito.times(numTests))
                 .testRunStarted(Mockito.anyString(), Mockito.anyInt());
         Mockito.verify(mListener, Mockito.times(numTests))
                 .testRunEnded(Mockito.anyLong(), Mockito.any());
+        assertEquals(0, tracker.getCount());
     }
 
     /**
@@ -146,12 +156,14 @@ public class TestsPoolPollerTest {
             s.setOptionValue("run-a-test", "true");
             testsList.add(test);
         }
-        TestsPoolPoller poller = new TestsPoolPoller(testsList);
+        CountDownLatch tracker = new CountDownLatch(1);
+        TestsPoolPoller poller = new TestsPoolPoller(testsList, tracker);
         poller.run(mListener);
         Mockito.verify(mListener, Mockito.times(numTests))
                 .testRunStarted(Mockito.anyString(), Mockito.anyInt());
         Mockito.verify(mListener, Mockito.times(numTests))
                 .testRunEnded(Mockito.anyLong(), Mockito.any());
+        assertEquals(0, tracker.getCount());
     }
 
     /**
@@ -174,7 +186,8 @@ public class TestsPoolPollerTest {
             s.setOptionValue("run-a-test", "true");
             testsList.add(test);
         }
-        TestsPoolPoller poller = new TestsPoolPoller(testsList);
+        CountDownLatch tracker = new CountDownLatch(1);
+        TestsPoolPoller poller = new TestsPoolPoller(testsList, tracker);
         poller.setDevice(mDevice);
         try {
             poller.run(mListener);
@@ -186,5 +199,44 @@ public class TestsPoolPollerTest {
         Mockito.verify(mListener, Mockito.times(0))
                 .testRunStarted(Mockito.anyString(), Mockito.anyInt());
         Mockito.verify(mListener, Mockito.times(0)).testRunEnded(Mockito.anyLong(), Mockito.any());
+        assertEquals(0, tracker.getCount());
+    }
+
+    /**
+     * If a device not available exception is thrown from a tests, and the poller is not the last
+     * one alive, we wait and attempt to recover the device. In case of success, execution will
+     * proceed.
+     */
+    @Test
+    public void testRun_dnae_NotLastDevice() throws Exception {
+        List<IRemoteTest> testsList = new ArrayList<>();
+        // Add one bad test first that will throw an exception.
+        IRemoteTest badTest = new StubTest();
+        OptionSetter setter = new OptionSetter(badTest);
+        setter.setOptionValue("test-throw-not-available", "true");
+        testsList.add(badTest);
+        // Add tests that can run
+        int numTests = 5;
+        for (int i = 0; i < numTests; i++) {
+            IRemoteTest test = new StubTest();
+            OptionSetter s = new OptionSetter(test);
+            s.setOptionValue("run-a-test", "true");
+            testsList.add(test);
+        }
+        CountDownLatch tracker = new CountDownLatch(3);
+        TestsPoolPoller poller = new TestsPoolPoller(testsList, tracker);
+        poller.setDevice(mDevice);
+
+        poller.run(mListener);
+        // The callbacks from all the other tests because the device was recovered
+        Mockito.verify(mListener, Mockito.times(numTests))
+                .testRunStarted(Mockito.anyString(), Mockito.anyInt());
+        Mockito.verify(mListener, Mockito.times(numTests)).testStarted(Mockito.any());
+        Mockito.verify(mListener, Mockito.times(numTests)).testEnded(Mockito.any(), Mockito.any());
+        Mockito.verify(mListener, Mockito.times(numTests))
+                .testRunEnded(Mockito.anyLong(), Mockito.any());
+        Mockito.verify(mDevice).waitForDeviceAvailable(Mockito.anyLong());
+        Mockito.verify(mDevice).reboot();
+        assertEquals(2, tracker.getCount());
     }
 }
