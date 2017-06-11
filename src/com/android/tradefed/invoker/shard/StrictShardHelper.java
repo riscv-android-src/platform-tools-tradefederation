@@ -39,11 +39,12 @@ public class StrictShardHelper extends ShardHelper {
             IConfiguration config, IInvocationContext context, IRescheduler rescheduler) {
         Integer shardCount = config.getCommandOptions().getShardCount();
         Integer shardIndex = config.getCommandOptions().getShardIndex();
-        if (shardCount == null) {
-            return false;
-        }
+
         if (shardIndex == null) {
             return super.shardConfig(config, context, rescheduler);
+        }
+        if (shardCount == null) {
+            throw new RuntimeException("shard-count is null while shard-index is " + shardIndex);
         }
 
         // Split tests in place, without actually sharding.
