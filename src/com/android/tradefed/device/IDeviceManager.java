@@ -165,6 +165,9 @@ public interface IDeviceManager {
     /** Stops the device recovery thread. */
     public void terminateDeviceRecovery();
 
+    /** Stop the Device Monitors. */
+    public void terminateDeviceMonitor();
+
     /** Like {@link #terminate()}, but attempts to forcefully shut down adb as well. */
     public void terminateHard();
 
