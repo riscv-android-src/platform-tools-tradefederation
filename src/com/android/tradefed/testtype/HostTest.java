@@ -661,6 +661,9 @@ public class HostTest
         for (Class<?> classObj : classes) {
             HostTest test = createHostTest(classObj);
             test.mRuntimeHint = mRuntimeHint / classes.size();
+            // Carry over non-annotation filters to shards.
+            test.addAllExcludeFilters(mFilterHelper.getExcludeFilters());
+            test.addAllIncludeFilters(mFilterHelper.getIncludeFilters());
             listTests.add(test);
         }
         return listTests;
