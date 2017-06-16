@@ -567,6 +567,11 @@ public class OptionSetter {
                     index = freqMap.get(deviceObject.getClass().getName());
                     index = index == null ? 1 : index + 1;
                     freqMap.put(deviceObject.getClass().getName(), index);
+                    Integer tracked =
+                            ((IDeviceConfiguration) objectSource).getFrequency(deviceObject);
+                    if (tracked != null && !index.equals(tracked)) {
+                        index = tracked;
+                    }
                     addOptionsForObject(deviceObject, optionMap, index,
                             ((IDeviceConfiguration)objectSource).getDeviceName());
                 }
