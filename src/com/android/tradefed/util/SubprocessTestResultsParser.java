@@ -24,6 +24,7 @@ import com.android.tradefed.result.InputStreamSource;
 import com.android.tradefed.util.SubprocessEventHelper.BaseTestEventInfo;
 import com.android.tradefed.util.SubprocessEventHelper.FailedTestEventInfo;
 import com.android.tradefed.util.SubprocessEventHelper.InvocationFailedEventInfo;
+import com.android.tradefed.util.SubprocessEventHelper.InvocationStartedEventInfo;
 import com.android.tradefed.util.SubprocessEventHelper.TestEndedEventInfo;
 import com.android.tradefed.util.SubprocessEventHelper.TestLogEventInfo;
 import com.android.tradefed.util.SubprocessEventHelper.TestRunEndedEventInfo;
@@ -64,6 +65,7 @@ public class SubprocessTestResultsParser implements Closeable {
     private Map<String, EventHandler> mHandlerMap = null;
     private EventReceiverThread mEventReceiver = null;
     private IInvocationContext mContext = null;
+    private Long mStartTime = null;
 
     /** Relevant test status keys. */
     public static class StatusKeys {
@@ -77,7 +79,7 @@ public class SubprocessTestResultsParser implements Closeable {
         public static final String TEST_RUN_FAILED = "TEST_RUN_FAILED";
         public static final String TEST_RUN_STARTED = "TEST_RUN_STARTED";
         public static final String TEST_LOG = "TEST_LOG";
-        public static final String TEST_TAG = "TEST_TAG";
+        public static final String INVOCATION_STARTED = "INVOCATION_STARTED";
     }
 
     /**
@@ -209,7 +211,7 @@ public class SubprocessTestResultsParser implements Closeable {
         sb.append(StatusKeys.TEST_RUN_FAILED).append("|");
         sb.append(StatusKeys.TEST_RUN_STARTED).append("|");
         sb.append(StatusKeys.TEST_LOG).append("|");
-        sb.append(StatusKeys.TEST_TAG);
+        sb.append(StatusKeys.INVOCATION_STARTED);
         String patt = String.format("(.*)(%s)( )(.*)", sb.toString());
         mPattern = Pattern.compile(patt);
 
@@ -226,7 +228,7 @@ public class SubprocessTestResultsParser implements Closeable {
         mHandlerMap.put(StatusKeys.TEST_RUN_FAILED, new TestRunFailedEventHandler());
         mHandlerMap.put(StatusKeys.TEST_RUN_STARTED, new TestRunStartedEventHandler());
         mHandlerMap.put(StatusKeys.TEST_LOG, new TestLogEventHandler());
-        mHandlerMap.put(StatusKeys.TEST_TAG, new TestTagEventHandler());
+        mHandlerMap.put(StatusKeys.INVOCATION_STARTED, new InvocationStartedEventHandler());
     }
 
     public void parseFile(File file) {
@@ -404,15 +406,23 @@ public class SubprocessTestResultsParser implements Closeable {
         }
     }
 
-    /*
-     * The parent process should use the test tag of the subprocess if it's not set yet.
-     */
-    private class TestTagEventHandler implements EventHandler {
+    private class InvocationStartedEventHandler implements EventHandler {
         @Override
-        public void handleEvent(String testTag) {
+        public void handleEvent(String eventJson) throws JSONException {
+            InvocationStartedEventInfo eventStart =
+                    new InvocationStartedEventInfo(new JSONObject(eventJson));
             if (mContext.getTestTag() == null || "stub".equals(mContext.getTestTag())) {
-                mContext.setTestTag(testTag);
+                mContext.setTestTag(eventStart.mTestTag);
             }
+            mStartTime = eventStart.mStartTime;
         }
+    }
+
+    /**
+     * Returns the start time associated with the invocation start event from the subprocess
+     * invocation.
+     */
+    public Long getStartTime() {
+        return mStartTime;
     }
 }

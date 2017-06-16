@@ -24,6 +24,7 @@ import com.android.tradefed.util.StreamUtil;
 import com.android.tradefed.util.SubprocessEventHelper.BaseTestEventInfo;
 import com.android.tradefed.util.SubprocessEventHelper.FailedTestEventInfo;
 import com.android.tradefed.util.SubprocessEventHelper.InvocationFailedEventInfo;
+import com.android.tradefed.util.SubprocessEventHelper.InvocationStartedEventInfo;
 import com.android.tradefed.util.SubprocessEventHelper.TestEndedEventInfo;
 import com.android.tradefed.util.SubprocessEventHelper.TestLogEventInfo;
 import com.android.tradefed.util.SubprocessEventHelper.TestRunEndedEventInfo;
@@ -157,7 +158,9 @@ public class SubprocessResultsReporter implements ITestInvocationListener, AutoC
      */
     @Override
     public void invocationStarted(IInvocationContext context) {
-        printEvent(SubprocessTestResultsParser.StatusKeys.TEST_TAG, context.getTestTag());
+        InvocationStartedEventInfo info =
+                new InvocationStartedEventInfo(context.getTestTag(), System.currentTimeMillis());
+        printEvent(SubprocessTestResultsParser.StatusKeys.INVOCATION_STARTED, info);
     }
 
     /** {@inheritDoc} */
