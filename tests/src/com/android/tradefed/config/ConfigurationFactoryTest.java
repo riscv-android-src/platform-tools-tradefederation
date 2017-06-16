@@ -19,6 +19,7 @@ import com.android.ddmlib.Log.LogLevel;
 import com.android.tradefed.config.ConfigurationFactory.ConfigId;
 import com.android.tradefed.log.ILeveledLogOutput;
 import com.android.tradefed.log.LogUtil.CLog;
+import com.android.tradefed.targetprep.DeviceWiper;
 import com.android.tradefed.targetprep.StubTargetPreparer;
 import com.android.tradefed.util.FileUtil;
 
@@ -1104,8 +1105,75 @@ public class ConfigurationFactoryTest extends TestCase {
     }
 
     /**
-     * Configuration for multi device is wrong since it contains a build_provider tag outside
-     * the devices tags.
+     * Test that when <device> tags are out of order (device 1 - device 2 - device 1) and an option
+     * is specified in the last device 1 with an increased frequency (a same class object from the
+     * first device 1 or 2), the option is properly found and assigned.
+     */
+    public void testCreateConfigurationFromArgs_frequency() throws Exception {
+        IConfiguration config =
+                mFactory.createConfigurationFromArgs(new String[] {"multi-device-mix"});
+        assertNotNull(config.getDeviceConfigByName("device1"));
+        assertEquals(3, config.getDeviceConfigByName("device1").getTargetPreparers().size());
+        assertTrue(
+                config.getDeviceConfigByName("device1").getTargetPreparers().get(0)
+                        instanceof DeviceWiper);
+        DeviceWiper prep1 =
+                (DeviceWiper) config.getDeviceConfigByName("device1").getTargetPreparers().get(0);
+        assertTrue(prep1.isDisabled());
+        assertTrue(
+                config.getDeviceConfigByName("device1").getTargetPreparers().get(2)
+                        instanceof DeviceWiper);
+        DeviceWiper prep3 =
+                (DeviceWiper) config.getDeviceConfigByName("device1").getTargetPreparers().get(2);
+        assertFalse(prep3.isDisabled());
+
+        assertNotNull(config.getDeviceConfigByName("device2"));
+        assertEquals(1, config.getDeviceConfigByName("device2").getTargetPreparers().size());
+        assertTrue(
+                config.getDeviceConfigByName("device2").getTargetPreparers().get(0)
+                        instanceof DeviceWiper);
+        DeviceWiper prep2 =
+                (DeviceWiper) config.getDeviceConfigByName("device2").getTargetPreparers().get(0);
+        // Only device 1 preparer has been targeted.
+        assertTrue(prep2.isDisabled());
+    }
+
+    /**
+     * Tests a different usage of options for a multi device interleaved config where options are
+     * specified.
+     */
+    public void testCreateConfigurationFromArgs_frequency_withOptionOpen() throws Exception {
+        IConfiguration config =
+                mFactory.createConfigurationFromArgs(new String[] {"multi-device-mix-options"});
+        assertNotNull(config.getDeviceConfigByName("device1"));
+        assertEquals(3, config.getDeviceConfigByName("device1").getTargetPreparers().size());
+        assertTrue(
+                config.getDeviceConfigByName("device1").getTargetPreparers().get(0)
+                        instanceof DeviceWiper);
+        DeviceWiper prep1 =
+                (DeviceWiper) config.getDeviceConfigByName("device1").getTargetPreparers().get(0);
+        assertTrue(prep1.isDisabled());
+        assertTrue(
+                config.getDeviceConfigByName("device1").getTargetPreparers().get(2)
+                        instanceof DeviceWiper);
+        DeviceWiper prep3 =
+                (DeviceWiper) config.getDeviceConfigByName("device1").getTargetPreparers().get(2);
+        assertFalse(prep3.isDisabled());
+
+        assertNotNull(config.getDeviceConfigByName("device2"));
+        assertEquals(1, config.getDeviceConfigByName("device2").getTargetPreparers().size());
+        assertTrue(
+                config.getDeviceConfigByName("device2").getTargetPreparers().get(0)
+                        instanceof DeviceWiper);
+        DeviceWiper prep2 =
+                (DeviceWiper) config.getDeviceConfigByName("device2").getTargetPreparers().get(0);
+        // Only device 1 preparer has been targeted.
+        assertTrue(prep2.isDisabled());
+    }
+
+    /**
+     * Configuration for multi device is wrong since it contains a build_provider tag outside the
+     * devices tags.
      */
     public void testCreateConfigurationFromArgs_multidevice_exception() throws Exception {
         String expectedException = "Tags [build_provider] should be included in a <device> tag.";
