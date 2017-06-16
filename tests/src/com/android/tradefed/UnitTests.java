@@ -18,6 +18,7 @@ package com.android.tradefed;
 import com.android.tradefed.build.BuildInfoTest;
 import com.android.tradefed.build.DeviceBuildDescriptorTest;
 import com.android.tradefed.build.DeviceBuildInfoTest;
+import com.android.tradefed.build.DeviceFolderBuildInfoTest;
 import com.android.tradefed.build.FileDownloadCacheTest;
 import com.android.tradefed.build.KernelBuildInfoTest;
 import com.android.tradefed.build.KernelDeviceBuildInfoTest;
@@ -227,6 +228,7 @@ import org.junit.runners.Suite.SuiteClasses;
     BuildInfoTest.class,
     DeviceBuildInfoTest.class,
     DeviceBuildDescriptorTest.class,
+    DeviceFolderBuildInfoTest.class,
     FileDownloadCacheTest.class,
     KernelBuildInfoTest.class,
     KernelDeviceBuildInfoTest.class,
