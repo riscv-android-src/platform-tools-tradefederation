@@ -55,7 +55,9 @@ public class ConfigurationXmlParserTest extends TestCase {
         xmlParser.parse(configDef, configName, getStringAsStream(normalConfig), null);
         assertEquals(configName, configDef.getName());
         assertEquals("desc", configDef.getDescription());
-        assertEquals("junit.framework.TestCase", configDef.getObjectClassMap().get("test").get(0));
+        assertEquals(
+                "junit.framework.TestCase",
+                configDef.getObjectClassMap().get("test").get(0).mClassName);
         assertEquals("junit.framework.TestCase:1:opName", configDef.getOptionList().get(0).name);
         assertEquals("val", configDef.getOptionList().get(0).value);
     }
@@ -75,7 +77,9 @@ public class ConfigurationXmlParserTest extends TestCase {
         xmlParser.parse(configDef, configName, getStringAsStream(normalConfig), null);
         assertEquals(configName, configDef.getName());
         assertEquals("desc", configDef.getDescription());
-        assertEquals("junit.framework.TestCase", configDef.getObjectClassMap().get("test").get(0));
+        assertEquals(
+                "junit.framework.TestCase",
+                configDef.getObjectClassMap().get("test").get(0).mClassName);
         // the non-namespaced option value should be used
         assertEquals("opName", configDef.getOptionList().get(0).name);
         assertEquals("val", configDef.getOptionList().get(0).value);
@@ -101,11 +105,15 @@ public class ConfigurationXmlParserTest extends TestCase {
         assertEquals(configName, configDef.getName());
         assertEquals("desc", configDef.getDescription());
 
-        assertEquals("com.android.tradefed.testtype.HostTest", configDef.getObjectClassMap().get("test").get(0));
+        assertEquals(
+                "com.android.tradefed.testtype.HostTest",
+                configDef.getObjectClassMap().get("test").get(0).mClassName);
         assertEquals("com.android.tradefed.testtype.HostTest:1:class", configDef.getOptionList().get(0).name);
         assertEquals("val1", configDef.getOptionList().get(0).value);
 
-        assertEquals("com.android.tradefed.testtype.HostTest", configDef.getObjectClassMap().get("test").get(1));
+        assertEquals(
+                "com.android.tradefed.testtype.HostTest",
+                configDef.getObjectClassMap().get("test").get(1).mClassName);
         assertEquals("com.android.tradefed.testtype.HostTest:2:class", configDef.getOptionList().get(1).name);
         assertEquals("val2", configDef.getOptionList().get(1).value);
     }
@@ -146,7 +154,9 @@ public class ConfigurationXmlParserTest extends TestCase {
             "<object type=\"foo\" class=\"junit.framework.TestCase\" />";
         ConfigurationDef configDef = new ConfigurationDef("name");
         xmlParser.parse(configDef, "name", getStringAsStream(config), null);
-        assertEquals("junit.framework.TestCase", configDef.getObjectClassMap().get("foo").get(0));
+        assertEquals(
+                "junit.framework.TestCase",
+                configDef.getObjectClassMap().get("foo").get(0).mClassName);
     }
 
     /**
