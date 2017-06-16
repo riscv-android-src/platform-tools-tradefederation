@@ -60,6 +60,12 @@ public class TestAppInstallSetup implements ITargetCleaner, IAbiReceiver {
             importance = Importance.IF_UNSET)
     private Collection<String> mTestFileNames = new ArrayList<String>();
 
+    @Option(
+        name = "throw-if-not-found",
+        description = "Throw exception if the specified file is not found."
+    )
+    private boolean mThrowIfNoFile = true;
+
     @Option(name = AbiFormatter.FORCE_ABI_STRING,
             description = AbiFormatter.FORCE_ABI_DESCRIPTION,
             importance = Importance.IF_UNSET)
@@ -160,12 +166,24 @@ public class TestAppInstallSetup implements ITargetCleaner, IAbiReceiver {
             }
             File testAppFile = getLocalPathForFilename(buildInfo, testAppName, device);
             if (testAppFile == null) {
-                CLog.d("Test app %s was not found", testAppName);
-                continue;
+                if (mThrowIfNoFile) {
+                    throw new TargetSetupError(
+                            String.format("Test app %s was not found.", testAppName),
+                            device.getDeviceDescriptor());
+                } else {
+                    CLog.d("Test app %s was not found.", testAppName);
+                    continue;
+                }
             }
             if (!testAppFile.canRead()) {
-                CLog.d("Could not read file %s", testAppName);
-                continue;
+                if (mThrowIfNoFile) {
+                    throw new TargetSetupError(
+                            String.format("Could not read file %s.", testAppName),
+                            device.getDeviceDescriptor());
+                } else {
+                    CLog.d("Could not read file %s.", testAppName);
+                    continue;
+                }
             }
             // resolve abi flags
             if (mAbi != null && mForceAbi != null) {
