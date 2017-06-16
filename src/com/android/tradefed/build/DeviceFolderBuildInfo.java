@@ -16,6 +16,9 @@
 package com.android.tradefed.build;
 
 import java.io.File;
+import java.util.Collection;
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * A {@link IDeviceBuildInfo} that also contains other build artifacts contained in a directory on
@@ -247,7 +250,16 @@ public class DeviceFolderBuildInfo extends BuildInfo implements IDeviceBuildInfo
         mDeviceBuild.setRamdiskFile(ramdisk, version);
     }
 
-
+    /** {@inheritDoc} */
+    @Override
+    public Collection<VersionedFile> getFiles() {
+        Collection<VersionedFile> rootFiles = super.getFiles();
+        Collection<VersionedFile> deviceFiles = mDeviceBuild.getFiles();
+        List<VersionedFile> combinedFiles = new ArrayList<VersionedFile>();
+        combinedFiles.addAll(rootFiles);
+        combinedFiles.addAll(deviceFiles);
+        return combinedFiles;
+    }
 
     /**
      * {@inheritDoc}
