@@ -39,6 +39,8 @@ import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.reflect.AnnotatedElement;
 import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -1362,5 +1364,53 @@ public class HostTestTest extends TestCase {
         HostTest test = (HostTest) mHostTest.getTestShard(2, 0);
         assertEquals(0l, test.getRuntimeHint());
         assertEquals(0, test.countTestCases());
+    }
+
+    /**
+     * Test for {@link HostTest#split()} when the exclude-filter is set, it should be carried over
+     * to shards.
+     */
+    public void testSplit_withExclude() throws Exception {
+        OptionSetter setter = new OptionSetter(mHostTest);
+        setter.setOptionValue("class", SuccessTestCase.class.getName());
+        setter.setOptionValue("class", AnotherTestCase.class.getName());
+        mHostTest.addExcludeFilter(
+                "com.android.tradefed.testtype.HostTestTest$SuccessTestCase#testPass");
+        Collection<IRemoteTest> res = mHostTest.split();
+        assertEquals(2, res.size());
+
+        // only one tests in the SuccessTestCase because it's been filtered out.
+        mListener.testRunStarted(
+                EasyMock.eq("com.android.tradefed.testtype.HostTestTest$SuccessTestCase"),
+                EasyMock.eq(1));
+        TestIdentifier tid2 =
+                new TestIdentifier(
+                        "com.android.tradefed.testtype.HostTestTest$SuccessTestCase", "testPass2");
+        mListener.testStarted(tid2);
+        mListener.testEnded(tid2, Collections.emptyMap());
+        mListener.testRunEnded(EasyMock.anyLong(), EasyMock.anyObject());
+
+        mListener.testRunStarted(
+                EasyMock.eq("com.android.tradefed.testtype.HostTestTest$AnotherTestCase"),
+                EasyMock.eq(2));
+        TestIdentifier tid3 =
+                new TestIdentifier(
+                        "com.android.tradefed.testtype.HostTestTest$AnotherTestCase", "testPass3");
+        mListener.testStarted(tid3);
+        mListener.testEnded(tid3, Collections.emptyMap());
+        TestIdentifier tid4 =
+                new TestIdentifier(
+                        "com.android.tradefed.testtype.HostTestTest$AnotherTestCase", "testPass4");
+        mListener.testStarted(tid4);
+        mListener.testEnded(tid4, Collections.emptyMap());
+        mListener.testRunEnded(EasyMock.anyLong(), EasyMock.anyObject());
+
+        EasyMock.replay(mListener, mMockDevice);
+        for (IRemoteTest test : res) {
+            assertTrue(test instanceof HostTest);
+            ((HostTest) test).setDevice(mMockDevice);
+            test.run(mListener);
+        }
+        EasyMock.verify(mListener, mMockDevice);
     }
 }
