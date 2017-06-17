@@ -278,13 +278,21 @@ public class DeviceTestCase extends MetricTestCase
                 for (Method method : methods) {
                     // If the method in child class was considered already, we do not
                     if (!overridenMethod.contains(method.getName())) {
-                        if (mFilterHelper.shouldRun(
-                                theClass.getPackage().getName(), theClass, method)) {
-                            addTestMethod(method, mMethodNames);
+                        // if it at least meet the requirements for a test method
+                        if (Modifier.isPublic(method.getModifiers())
+                                && method.getReturnType().equals(Void.TYPE)
+                                && method.getParameterTypes().length == 0
+                                && method.getName().startsWith("test")) {
+                            // We add it to the child method seen
+                            if (theClass.equals(method.getDeclaringClass())) {
+                                overridenMethod.add(method.getName());
+                            }
+                            // We check if it should actually run
+                            if (mFilterHelper.shouldRun(
+                                    theClass.getPackage().getName(), theClass, method)) {
+                                mMethodNames.addElement(method.getName());
+                            }
                         }
-                    }
-                    if (theClass.equals(method.getDeclaringClass())) {
-                        overridenMethod.add(method.getName());
                     }
                 }
                 superClass = superClass.getSuperclass();
@@ -294,31 +302,6 @@ public class DeviceTestCase extends MetricTestCase
             }
         }
         return mMethodNames;
-    }
-
-    private void addTestMethod(Method m, Vector<String> names) {
-        String name = m.getName();
-        if (names.contains(name)) {
-            return;
-        }
-        if (!isPublicTestMethod(m)) {
-            if (isTestMethod(m)) {
-                Log.w(LOG_TAG, String.format("Test method isn't public: %s", m.getName()));
-            }
-            return;
-        }
-        names.addElement(name);
-    }
-
-    private boolean isPublicTestMethod(Method m) {
-        return isTestMethod(m) && Modifier.isPublic(m.getModifiers());
-    }
-
-    private boolean isTestMethod(Method m) {
-        String name = m.getName();
-        Class<?>[] parameters = m.getParameterTypes();
-        Class<?> returnType = m.getReturnType();
-        return parameters.length == 0 && name.startsWith("test") && returnType.equals(Void.TYPE);
     }
 
     /**
