@@ -52,8 +52,17 @@ public interface IDeviceConfiguration {
     public void addSpecificConfig(Object config) throws ConfigurationException;
 
     /**
-     * Return {@link IBuildProvider} that the device configuration holder has reference to.
+     * Keep track of the frequency of the object so we can properly inject option against it.
+     *
+     * @param config the object we are tracking the frequency.
+     * @param frequency frequency associated with the object.
      */
+    public void addFrequency(Object config, Integer frequency);
+
+    /** Returns the frequency of the object. */
+    public Integer getFrequency(Object config);
+
+    /** Return {@link IBuildProvider} that the device configuration holder has reference to. */
     public IBuildProvider getBuildProvider();
 
     /**

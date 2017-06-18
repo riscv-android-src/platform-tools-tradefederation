@@ -223,6 +223,14 @@ public class DeviceUtilStatsMonitor implements IDeviceMonitor {
     }
 
     @Override
+    public void stop() {
+        if (mTimer != null) {
+            mTimer.cancel();
+            mTimer.purge();
+        }
+    }
+
+    @Override
     public void setDeviceLister(DeviceLister lister) {
         mDeviceLister = lister;
     }
