@@ -52,6 +52,20 @@ public class DeviceTestCaseTest extends TestCase {
         public void test2() {}
     }
 
+    /** A test class that illustrate duplicate names but from only one real test. */
+    public static class DuplicateTest extends DeviceTestCase {
+
+        public void test1() {
+            test1("");
+        }
+
+        private void test1(String arg) {
+            assertTrue(arg.isEmpty());
+        }
+
+        public void test2() {}
+    }
+
     /**
      * Simple Annotation class for testing
      */
@@ -272,6 +286,28 @@ public class DeviceTestCaseTest extends TestCase {
                 (Map<String, String>)EasyMock.anyObject());
         listener.testRunEnded(EasyMock.anyLong(), (Map<String, String>)EasyMock.anyObject());
         EasyMock.replay(listener);
+        test.run(listener);
+        EasyMock.verify(listener);
+    }
+
+    /**
+     * Test that when a test class has some private method with a method name we properly ignore it
+     * and only consider the actual real method that can execute in the filtering.
+     */
+    public void testRun_duplicateName() throws Exception {
+        DuplicateTest test = new DuplicateTest();
+        ITestInvocationListener listener = EasyMock.createMock(ITestInvocationListener.class);
+
+        listener.testRunStarted(DuplicateTest.class.getName(), 2);
+        final TestIdentifier test1 = new TestIdentifier(DuplicateTest.class.getName(), "test1");
+        final TestIdentifier test2 = new TestIdentifier(DuplicateTest.class.getName(), "test2");
+        listener.testStarted(test1);
+        listener.testEnded(test1, Collections.emptyMap());
+        listener.testStarted(test2);
+        listener.testEnded(test2, Collections.emptyMap());
+        listener.testRunEnded(EasyMock.anyLong(), EasyMock.anyObject());
+        EasyMock.replay(listener);
+
         test.run(listener);
         EasyMock.verify(listener);
     }

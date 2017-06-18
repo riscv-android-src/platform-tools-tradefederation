@@ -36,7 +36,7 @@ public class ConfigurationDef {
      * a map of object type names to config object class name(s). Use LinkedHashMap to keep objects
      * in the same order they were added.
      */
-    private final Map<String, List<String>> mObjectClassMap = new LinkedHashMap<>();
+    private final Map<String, List<ConfigObjectDef>> mObjectClassMap = new LinkedHashMap<>();
 
     /** a list of option name/value pairs. */
     private final List<OptionDef> mOptionList = new ArrayList<>();
@@ -62,6 +62,20 @@ public class ConfigurationDef {
             this.key = optionKey;
             this.value = optionValue;
             this.source = source;
+        }
+    }
+
+    /**
+     * Object to hold info for a className and the appearance number it has (e.g. if a config has
+     * the same object twice, the first one will have the first appearance number).
+     */
+    public static class ConfigObjectDef {
+        final String mClassName;
+        final Integer mAppearanceNum;
+
+        ConfigObjectDef(String className, Integer appearance) {
+            mClassName = className;
+            mAppearanceNum = appearance;
         }
     }
 
@@ -105,17 +119,17 @@ public class ConfigurationDef {
      *         just-added instance of <code>clasName</code>.
      */
     int addConfigObjectDef(String typeName, String className) {
-        List<String> classList = mObjectClassMap.get(typeName);
+        List<ConfigObjectDef> classList = mObjectClassMap.get(typeName);
         if (classList == null) {
-            classList = new ArrayList<String>();
+            classList = new ArrayList<ConfigObjectDef>();
             mObjectClassMap.put(typeName, classList);
         }
-        classList.add(className);
 
         // Increment and store count for this className
         Integer freq = mClassFrequency.get(className);
         freq = freq == null ? 1 : freq + 1;
         mClassFrequency.put(className, freq);
+        classList.add(new ConfigObjectDef(className, freq));
 
         return freq;
     }
@@ -153,10 +167,10 @@ public class ConfigurationDef {
 
     /**
      * Get the object type name-class map.
-     * <p/>
-     * Exposed for unit testing
+     *
+     * <p>Exposed for unit testing
      */
-    Map<String, List<String>> getObjectClassMap() {
+    Map<String, List<ConfigObjectDef>> getObjectClassMap() {
         return mObjectClassMap;
     }
 
@@ -191,12 +205,13 @@ public class ConfigurationDef {
             }
         }
 
-        for (Map.Entry<String, List<String>> objClassEntry : mObjectClassMap.entrySet()) {
+        for (Map.Entry<String, List<ConfigObjectDef>> objClassEntry : mObjectClassMap.entrySet()) {
             List<Object> objectList = new ArrayList<Object>(objClassEntry.getValue().size());
             String entryName = objClassEntry.getKey();
             boolean shouldAddToFlatConfig = true;
-            for (String className : objClassEntry.getValue()) {
-                Object configObject = createObject(objClassEntry.getKey(), className);
+
+            for (ConfigObjectDef configDef : objClassEntry.getValue()) {
+                Object configObject = createObject(objClassEntry.getKey(), configDef.mClassName);
                 Matcher matcher = null;
                 if (mMultiDeviceMode) {
                     matcher = MULTI_PATTERN.matcher(entryName);
@@ -218,9 +233,11 @@ public class ConfigurationDef {
                     }
                     // We reference the original object to the device and not to the flat list.
                     multiDev.addSpecificConfig(configObject);
+                    multiDev.addFrequency(configObject, configDef.mAppearanceNum);
                 } else {
                     if (Configuration.doesBuiltInObjSupportMultiDevice(entryName)) {
                         defaultDeviceConfig.addSpecificConfig(configObject);
+                        defaultDeviceConfig.addFrequency(configObject, configDef.mAppearanceNum);
                     } else {
                         // Only add to flat list if they are not part of multi device config.
                         objectList.add(configObject);
@@ -248,10 +265,10 @@ public class ConfigurationDef {
     IGlobalConfiguration createGlobalConfiguration() throws ConfigurationException {
         IGlobalConfiguration config = new GlobalConfiguration(getName(), getDescription());
 
-        for (Map.Entry<String, List<String>> objClassEntry : mObjectClassMap.entrySet()) {
+        for (Map.Entry<String, List<ConfigObjectDef>> objClassEntry : mObjectClassMap.entrySet()) {
             List<Object> objectList = new ArrayList<Object>(objClassEntry.getValue().size());
-            for (String className : objClassEntry.getValue()) {
-                Object configObject = createObject(objClassEntry.getKey(), className);
+            for (ConfigObjectDef configDef : objClassEntry.getValue()) {
+                Object configObject = createObject(objClassEntry.getKey(), configDef.mClassName);
                 objectList.add(configObject);
             }
             config.setConfigurationObjectList(objClassEntry.getKey(), objectList);
