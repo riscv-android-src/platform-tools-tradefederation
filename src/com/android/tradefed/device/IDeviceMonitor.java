@@ -32,12 +32,15 @@ public interface IDeviceMonitor {
      */
     public void run();
 
+    /** A method that will be called when the Monitor need to be stopped. */
+    public void stop();
+
     /**
-     * A {@link Runnable}-like class that should return the known devices and their states.
-     * This class allows the {@link IDeviceMonitor} to fetch device info from its own thread, which
+     * A {@link Runnable}-like class that should return the known devices and their states. This
+     * class allows the {@link IDeviceMonitor} to fetch device info from its own thread, which
      * should avoid deadlocks that may occur while listing devices.
      */
-    public static abstract class DeviceLister {
+    public abstract static class DeviceLister {
         public abstract List<DeviceDescriptor> listDevices();
     }
 
