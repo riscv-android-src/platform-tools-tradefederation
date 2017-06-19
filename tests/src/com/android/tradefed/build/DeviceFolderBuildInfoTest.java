@@ -15,9 +15,11 @@
  */
 package com.android.tradefed.build;
 
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 
 import com.android.tradefed.util.FileUtil;
+import com.android.tradefed.util.SerializationUtil;
 
 import org.junit.After;
 import org.junit.Before;
@@ -89,5 +91,25 @@ public class DeviceFolderBuildInfoTest {
 
         assertEquals(1, files.size());
         assertTrue(hasFile(files, "img-version"));
+    }
+
+    /**
+     * Test that all the components of {@link DeviceFolderBuildInfo} can be serialized via the
+     * default java object serialization.
+     */
+    @Test
+    public void testSerialization() throws Exception {
+        DeviceBuildInfo deviceBuildInfo = new DeviceBuildInfo();
+        deviceBuildInfo.setDeviceImageFile(new File("fake"), "version 32");
+        mDeviceFolderBuildInfo.setDeviceBuild(deviceBuildInfo);
+        File tmpSerialized = SerializationUtil.serialize(mDeviceFolderBuildInfo);
+        Object o = SerializationUtil.deserialize(tmpSerialized, true);
+        assertTrue(o instanceof DeviceFolderBuildInfo);
+        DeviceFolderBuildInfo test = (DeviceFolderBuildInfo) o;
+        // use the custom build info equals to check similar properties
+        assertTrue(mDeviceFolderBuildInfo.equals(test));
+        // Both sub-build properties have been copied.
+        assertEquals("version 32", mDeviceFolderBuildInfo.getDeviceBuildId());
+        assertEquals("version 32", test.getDeviceBuildId());
     }
 }
