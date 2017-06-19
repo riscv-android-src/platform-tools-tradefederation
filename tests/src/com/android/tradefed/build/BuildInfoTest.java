@@ -15,9 +15,13 @@
  */
 package com.android.tradefed.build;
 
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertTrue;
 
 import com.android.tradefed.util.FileUtil;
+import com.android.tradefed.util.SerializationUtil;
 
 import org.junit.After;
 import org.junit.Before;
@@ -97,5 +101,19 @@ public class BuildInfoTest {
         String expected = "BuildInfo{build_alias=NMR12, bid=1, target=target, "
                 + "build_flavor=testFlavor, branch=testBranch, serial=fakeSerial}";
         assertEquals(expected, mBuildInfo.toString());
+    }
+
+    /**
+     * Test that all the components of {@link BuildInfo} can be serialized via the default java
+     * object serialization.
+     */
+    @Test
+    public void testSerialization() throws Exception {
+        File tmpSerialized = SerializationUtil.serialize(mBuildInfo);
+        Object o = SerializationUtil.deserialize(tmpSerialized, true);
+        assertTrue(o instanceof BuildInfo);
+        BuildInfo test = (BuildInfo) o;
+        // use the custom build info equals to check similar properties
+        assertTrue(mBuildInfo.equals(test));
     }
 }
