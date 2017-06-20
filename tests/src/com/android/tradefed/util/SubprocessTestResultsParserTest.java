@@ -16,8 +16,8 @@
 package com.android.tradefed.util;
 
 import com.android.ddmlib.testrunner.TestIdentifier;
-import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.invoker.InvocationContext;
+import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.result.ITestInvocationListener;
 
 import junit.framework.TestCase;
@@ -335,11 +335,15 @@ public class SubprocessTestResultsParserTest extends TestCase {
         SubprocessTestResultsParser resultParser = null;
         try {
             resultParser = new SubprocessTestResultsParser(mockRunListener, false, context);
-            String testTagEvent = String.format("TEST_TAG %s", subTestTag);
+            String testTagEvent =
+                    String.format(
+                            "INVOCATION_STARTED {\"testTag\": \"%s\",\"start_time\":250}",
+                            subTestTag);
             FileUtil.writeToFile(testTagEvent, tmp, true);
             resultParser.parseFile(tmp);
             EasyMock.verify(mockRunListener);
             assertEquals(subTestTag, context.getTestTag());
+            assertEquals(250l, resultParser.getStartTime().longValue());
         } finally {
             StreamUtil.close(resultParser);
             FileUtil.deleteFile(tmp);
