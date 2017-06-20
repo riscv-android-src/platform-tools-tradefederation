@@ -78,6 +78,8 @@ public class AbiUtils {
 
     private static final Map<String, String> ABI_TO_ARCH = new HashMap<String, String>();
 
+    private static final Map<String, String> ABI_TO_BASE_ARCH = new HashMap<String, String>();
+
     static {
         ABIS_32BIT.add(ABI_ARM_V7A);
         ABIS_32BIT.add(ABI_X86);
@@ -113,6 +115,13 @@ public class AbiUtils {
         ABI_TO_ARCH.put(ABI_X86_64, ARCH_X86_64);
         ABI_TO_ARCH.put(ABI_MIPS, BASE_ARCH_MIPS);
         ABI_TO_ARCH.put(ABI_MIPS64, ARCH_MIPS64);
+
+        ABI_TO_BASE_ARCH.put(ABI_ARM_V7A, BASE_ARCH_ARM);
+        ABI_TO_BASE_ARCH.put(ABI_ARM_64_V8A, BASE_ARCH_ARM);
+        ABI_TO_BASE_ARCH.put(ABI_X86, BASE_ARCH_X86);
+        ABI_TO_BASE_ARCH.put(ABI_X86_64, BASE_ARCH_X86);
+        ABI_TO_BASE_ARCH.put(ABI_MIPS, BASE_ARCH_MIPS);
+        ABI_TO_BASE_ARCH.put(ABI_MIPS64, BASE_ARCH_MIPS);
     }
 
     /**
@@ -142,8 +151,17 @@ public class AbiUtils {
         return ABI_TO_ARCH.get(abi);
     }
 
+    /** Returns the base architecture matching the abi. */
+    public static String getBaseArchForAbi(String abi) {
+        if (abi == null || abi.isEmpty()) {
+            throw new IllegalArgumentException("Abi cannot be null or empty");
+        }
+        return ABI_TO_BASE_ARCH.get(abi);
+    }
+
     /**
      * Returns the set of ABIs supported by Compatibility.
+     *
      * @return a new Set containing the supported ABIs.
      */
     public static Set<String> getAbisSupportedByCompatibility() {
