@@ -59,7 +59,7 @@ public class TestsPoolPoller
                 ISystemStatusCheckerReceiver,
                 ITestCollector {
 
-    private static final long WAIT_RECOVERY_TIME = 5 * 60 * 1000;
+    private static final long WAIT_RECOVERY_TIME = 15 * 60 * 1000;
 
     private Collection<IRemoteTest> mGenericPool;
     private CountDownLatch mTracker;

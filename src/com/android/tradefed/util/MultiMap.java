@@ -17,16 +17,15 @@ package com.android.tradefed.util;
 
 import com.google.common.base.Objects;
 
+import java.io.Serializable;
 import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-/**
- * A {@link Map} that supports multiple values per key.
- */
-public class MultiMap<K, V> {
+/** A {@link Map} that supports multiple values per key. */
+public class MultiMap<K, V> implements Serializable {
 
     private final Map<K, List<V>> mInternalMap;
 
