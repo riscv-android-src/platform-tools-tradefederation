@@ -122,6 +122,33 @@ public class AbiUtilsTest {
     }
 
     @Test
+    public void getBaseArchForAbi_emptyNull() {
+        try {
+            AbiUtils.getBaseArchForAbi(null);
+            Assert.fail("Should have thrown an exception");
+        } catch (IllegalArgumentException expected) {
+            Assert.assertEquals("Abi cannot be null or empty", expected.getMessage());
+        }
+        try {
+            AbiUtils.getBaseArchForAbi("");
+            Assert.fail("Should have thrown an exception");
+        } catch (IllegalArgumentException expected) {
+            Assert.assertEquals("Abi cannot be null or empty", expected.getMessage());
+        }
+    }
+
+    @Test
+    public void getBaseArchForAbi() {
+        assertEquals(AbiUtils.BASE_ARCH_ARM, AbiUtils.getBaseArchForAbi(AbiUtils.ABI_ARM_V7A));
+        assertEquals(AbiUtils.BASE_ARCH_ARM, AbiUtils.getBaseArchForAbi(AbiUtils.ABI_ARM_64_V8A));
+        assertEquals(AbiUtils.BASE_ARCH_X86, AbiUtils.getBaseArchForAbi(AbiUtils.ABI_X86));
+        assertEquals(AbiUtils.BASE_ARCH_X86, AbiUtils.getBaseArchForAbi(AbiUtils.ABI_X86_64));
+        assertEquals(AbiUtils.BASE_ARCH_MIPS, AbiUtils.getBaseArchForAbi(AbiUtils.ABI_MIPS));
+        assertEquals(AbiUtils.BASE_ARCH_MIPS, AbiUtils.getBaseArchForAbi(AbiUtils.ABI_MIPS64));
+    }
+
+
+    @Test
     public void testParseFromProperty() {
         Set<String> abiSet = new HashSet<>();
         abiSet.add("arm64-v8a");
