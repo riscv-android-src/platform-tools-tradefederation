@@ -18,13 +18,12 @@ package com.android.tradefed.build;
 import com.android.tradefed.device.ITestDevice;
 
 import java.io.File;
+import java.io.Serializable;
 import java.util.Collection;
 import java.util.Map;
 
-/**
- * Holds information about the build under test.
- */
-public interface IBuildInfo {
+/** Holds information about the build under test. */
+public interface IBuildInfo extends Serializable {
 
     /**
      * Default value when build ID is unknown.
