@@ -47,6 +47,8 @@ public class SubprocessEventHelper {
     private static final String DATA_TYPE_KEY = "dataType";
     private static final String DATA_FILE_KEY = "dataFile";
 
+    private static final String TEST_TAG_KEY = "testTag";
+
     /**
      * Helper for testRunStarted information
      */
@@ -375,6 +377,41 @@ public class SubprocessEventHelper {
                 }
                 if (mDataFile != null) {
                     tags.put(DATA_FILE_KEY, mDataFile.getAbsolutePath());
+                }
+            } catch (JSONException e) {
+                CLog.e(e);
+            }
+            return tags.toString();
+        }
+    }
+
+    /** Helper for invocation started information. */
+    public static class InvocationStartedEventInfo {
+        public String mTestTag = null;
+        public Long mStartTime = null;
+
+        public InvocationStartedEventInfo(String testTag, Long startTime) {
+            mTestTag = testTag;
+            mStartTime = startTime;
+        }
+
+        public InvocationStartedEventInfo(JSONObject jsonObject) throws JSONException {
+            mTestTag = jsonObject.getString(TEST_TAG_KEY);
+            if (jsonObject.has(START_TIME)) {
+                mStartTime = jsonObject.getLong(START_TIME);
+            }
+        }
+
+        @Override
+        public String toString() {
+            JSONObject tags = null;
+            try {
+                tags = new JSONObject();
+                if (mTestTag != null) {
+                    tags.put(TEST_TAG_KEY, mTestTag);
+                }
+                if (mStartTime != null) {
+                    tags.put(START_TIME, mStartTime);
                 }
             } catch (JSONException e) {
                 CLog.e(e);

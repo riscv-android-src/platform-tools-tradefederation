@@ -250,6 +250,9 @@ public abstract class SubprocessTfLauncher
             startTime = System.currentTimeMillis();
             CommandResult result = mRunUtil.runTimedCmd(mMaxTfRunTime, stdout,
                     stderr, mCmdArgs.toArray(new String[0]));
+            if (eventParser.getStartTime() != null) {
+                startTime = eventParser.getStartTime();
+            }
             elapsedTime = System.currentTimeMillis() - startTime;
             // We possibly allow for a little more time if the thread is still processing events.
             if (!eventParser.joinReceiver(EVENT_THREAD_JOIN_TIMEOUT_MS)) {
