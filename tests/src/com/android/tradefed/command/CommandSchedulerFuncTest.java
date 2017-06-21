@@ -199,9 +199,11 @@ public class CommandSchedulerFuncTest extends TestCase {
         public boolean runInterrupted = false;
         public boolean printedStop = false;
 
-        @Deprecated
         @Override
-        public void invoke(ITestDevice device, IConfiguration config, IRescheduler rescheduler,
+        public void invoke(
+                IInvocationContext metadata,
+                IConfiguration config,
+                IRescheduler rescheduler,
                 ITestInvocationListener... listeners)
                 throws DeviceNotAvailableException {
             try {
@@ -236,14 +238,6 @@ public class CommandSchedulerFuncTest extends TestCase {
                     notify();
                 }
             }
-        }
-
-        @Override
-        public void invoke(
-                IInvocationContext metadata, IConfiguration config, IRescheduler rescheduler,
-                ITestInvocationListener... extraListeners)
-                        throws DeviceNotAvailableException, Throwable {
-            invoke(metadata.getDevices().get(0), config, rescheduler, extraListeners);
         }
 
         @Override
@@ -467,9 +461,11 @@ public class CommandSchedulerFuncTest extends TestCase {
             mIteration = iteration;
         }
 
-        @Deprecated
         @Override
-        public void invoke(ITestDevice device, IConfiguration config, IRescheduler rescheduler,
+        public void invoke(
+                IInvocationContext metadata,
+                IConfiguration config,
+                IRescheduler rescheduler,
                 ITestInvocationListener... listeners)
                 throws DeviceNotAvailableException {
             try {
@@ -491,14 +487,6 @@ public class CommandSchedulerFuncTest extends TestCase {
                     notify();
                 }
             }
-        }
-
-        @Override
-        public void invoke(
-                IInvocationContext metadata, IConfiguration config, IRescheduler rescheduler,
-                ITestInvocationListener... extraListeners)
-                        throws DeviceNotAvailableException, Throwable {
-            invoke(metadata.getDevices().get(0), config, rescheduler, extraListeners);
         }
     }
 
