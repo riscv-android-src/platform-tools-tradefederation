@@ -1467,10 +1467,14 @@ public class CommandScheduler extends Thread implements ICommandScheduler, IComm
 
     private synchronized void throwIfDeviceInInvocationThread(List<ITestDevice> devices) {
         for (ITestDevice device : devices) {
-            if (mInvocationThreadMap.containsKey(device)) {
-                throw new IllegalStateException(
-                        String.format("Attempting invocation on device %s when one is already "
-                                + "running", device.getSerialNumber()));
+            for (IInvocationContext context : mInvocationThreadMap.keySet()) {
+                if (context.getDevices().contains(device)) {
+                    throw new IllegalStateException(
+                            String.format(
+                                    "Attempting invocation on device %s when one is already "
+                                            + "running",
+                                    device.getSerialNumber()));
+                }
             }
         }
     }
