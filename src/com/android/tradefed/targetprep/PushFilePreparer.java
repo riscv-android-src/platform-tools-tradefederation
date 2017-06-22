@@ -19,7 +19,6 @@ package com.android.tradefed.targetprep;
 import com.android.ddmlib.IDevice;
 import com.android.ddmlib.Log;
 import com.android.tradefed.build.IBuildInfo;
-import com.android.tradefed.build.IDeviceBuildInfo;
 import com.android.tradefed.config.Option;
 import com.android.tradefed.config.OptionClass;
 import com.android.tradefed.device.DeviceNotAvailableException;
@@ -96,11 +95,12 @@ public class PushFilePreparer implements ITargetCleaner {
      *
      * <p>The wrapper function is for unit test to mock the system calls.
      *
+     * @param buildInfo the build artifact information
      * @return a list of {@link File} of directories of the test cases folder of build output, based
      *     on the value of environment variables.
      */
-    List<File> getTestCasesDirs() {
-        return SystemUtil.getTestCasesDirs();
+    List<File> getTestCasesDirs(IBuildInfo buildInfo) {
+        return SystemUtil.getTestCasesDirs(buildInfo);
     }
 
     /**
@@ -118,21 +118,8 @@ public class PushFilePreparer implements ITargetCleaner {
                 return src;
             }
         }
-        List<File> testCasesDirs = getTestCasesDirs();
 
-        // Search for source file in tests directory if buildInfo is IDeviceBuildInfo.
-        if (buildInfo instanceof IDeviceBuildInfo) {
-            IDeviceBuildInfo deviceBuildInfo = (IDeviceBuildInfo) buildInfo;
-            File testsDir = deviceBuildInfo.getTestsDir();
-            // Add all possible paths to the testcases directory list.
-            if (testsDir != null) {
-                testCasesDirs.addAll(
-                        Arrays.asList(
-                                testsDir,
-                                FileUtil.getFileForPath(testsDir, HOST_TESTCASES),
-                                FileUtil.getFileForPath(testsDir, TARGET_TESTCASES)));
-            }
-        }
+        List<File> testCasesDirs = getTestCasesDirs(buildInfo);
         for (File dir : testCasesDirs) {
             src = FileUtil.getFileForPath(dir, fileName);
             if (src != null && src.exists()) {

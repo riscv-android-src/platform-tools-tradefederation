@@ -194,7 +194,7 @@ public class ConfigurationFactory implements IConfigurationFactory {
      */
     @VisibleForTesting
     List<File> getTestCasesDirs() {
-        return SystemUtil.getTestCasesDirs();
+        return SystemUtil.getTestCasesDirs(null);
     }
 
     /**

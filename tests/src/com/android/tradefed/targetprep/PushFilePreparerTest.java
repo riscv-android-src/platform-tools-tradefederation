@@ -121,7 +121,7 @@ public class PushFilePreparerTest {
         mOptionSetter.setOptionValue("abort-on-push-failure", "false");
 
         PushFilePreparer spyPreparer = Mockito.spy(mPreparer);
-        Mockito.doReturn(Arrays.asList(new File("/bin"))).when(spyPreparer).getTestCasesDirs();
+        Mockito.doReturn(Arrays.asList(new File("/bin"))).when(spyPreparer).getTestCasesDirs(null);
 
         // expect a pushFile() call as /bin/sh should exist and return false (failed)
         EasyMock.expect(mMockDevice.pushFile((File) EasyMock.anyObject(), EasyMock.eq("/noexist/")))
