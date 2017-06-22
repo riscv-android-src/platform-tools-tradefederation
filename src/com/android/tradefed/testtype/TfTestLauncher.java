@@ -26,6 +26,7 @@ import com.android.tradefed.result.LogDataType;
 import com.android.tradefed.util.CommandResult;
 import com.android.tradefed.util.CommandStatus;
 import com.android.tradefed.util.FileUtil;
+import com.android.tradefed.util.HprofAllocSiteParser;
 import com.android.tradefed.util.RunUtil;
 import com.android.tradefed.util.StreamUtil;
 
@@ -209,13 +210,7 @@ public class TfTestLauncher extends SubprocessTfLauncher {
             }
         }
         if (mEnableHprof) {
-            InputStreamSource memory = null;
-            try {
-                memory = new FileInputStreamSource(mHprofFile);
-                listener.testLog("hprof", LogDataType.TEXT, memory);
-            } finally {
-                StreamUtil.cancel(memory);
-            }
+            logHprofResults(mHprofFile, listener);
         }
 
         if (mTmpDir != null) {
@@ -358,5 +353,44 @@ public class TfTestLauncher extends SubprocessTfLauncher {
         }
         listener.testEnded(tid, Collections.emptyMap());
         listener.testRunEnded(0, Collections.emptyMap());
+    }
+
+    /**
+     * Helper to log and report as metric the hprof data.
+     *
+     * @param hprofFile file containing the Hprof report
+     * @param listener the {@link ITestInvocationListener} where to report the test.
+     */
+    private void logHprofResults(File hprofFile, ITestInvocationListener listener) {
+        if (hprofFile == null) {
+            CLog.w("Hprof file was null. Skipping parsing.");
+            return;
+        }
+        if (!hprofFile.exists()) {
+            CLog.w("Hprof file %s was not found. Skipping parsing.", hprofFile.getAbsolutePath());
+            return;
+        }
+        InputStreamSource memory = null;
+        try {
+            memory = new FileInputStreamSource(hprofFile);
+            listener.testLog("hprof", LogDataType.TEXT, memory);
+        } finally {
+            StreamUtil.cancel(memory);
+        }
+        HprofAllocSiteParser parser = new HprofAllocSiteParser();
+        try {
+            Map<String, String> results = parser.parse(hprofFile);
+            if (results.isEmpty()) {
+                CLog.d("No allocation site found from hprof file");
+                return;
+            }
+            listener.testRunStarted("hprofAllocSites", 1);
+            TestIdentifier tid = new TestIdentifier("hprof", "allocationSites");
+            listener.testStarted(tid);
+            listener.testEnded(tid, results);
+            listener.testRunEnded(0, Collections.emptyMap());
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
     }
 }
