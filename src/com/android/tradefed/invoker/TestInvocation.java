@@ -22,7 +22,6 @@ import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.build.IBuildProvider;
 import com.android.tradefed.build.IDeviceBuildProvider;
 import com.android.tradefed.command.CommandRunner.ExitCode;
-import com.android.tradefed.config.ConfigurationDef;
 import com.android.tradefed.config.GlobalConfiguration;
 import com.android.tradefed.config.IConfiguration;
 import com.android.tradefed.config.IDeviceConfiguration;
@@ -150,22 +149,6 @@ public class TestInvocation implements ITestInvocation {
         public void invocationEnded(long newElapsedTime) {
             super.invocationEnded(mCurrentElapsedTime + newElapsedTime);
         }
-    }
-
-    /**
-     * {@inheritDoc}
-     * @deprecated use {@link #invoke(IInvocationContext, IConfiguration, IRescheduler,
-            ITestInvocationListener[])} instead.
-     */
-    @Override
-    @Deprecated
-    public void invoke(ITestDevice device, IConfiguration config, IRescheduler rescheduler,
-            ITestInvocationListener... extraListeners)
-            throws DeviceNotAvailableException, Throwable {
-        IInvocationContext context = new InvocationContext();
-        context.setConfigurationDescriptor(config.getConfigurationDescription());
-        context.addAllocatedDevice(ConfigurationDef.DEFAULT_DEVICE_NAME, device);
-        invoke(context, config, rescheduler, extraListeners);
     }
 
     /**
