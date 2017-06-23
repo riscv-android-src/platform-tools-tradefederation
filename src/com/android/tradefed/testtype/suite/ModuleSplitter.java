@@ -93,7 +93,10 @@ public class ModuleSplitter {
                 if (dynamicModule) {
                     ModuleDefinition module =
                             new ModuleDefinition(
-                                    moduleName, config.getTests(), clonePreparers(config));
+                                    moduleName,
+                                    config.getTests(),
+                                    clonePreparers(config),
+                                    config.getConfigurationDescription());
                     currentList.add(module);
                 } else {
                     addModuleToListFromSingleTest(
@@ -114,7 +117,10 @@ public class ModuleSplitter {
                         for (int i = 0; i < shardCount; i++) {
                             ModuleDefinition module =
                                     new ModuleDefinition(
-                                            moduleName, shardedTests, clonePreparers(config));
+                                            moduleName,
+                                            shardedTests,
+                                            clonePreparers(config),
+                                            config.getConfigurationDescription());
                             currentList.add(module);
                         }
                     } else {
@@ -144,7 +150,11 @@ public class ModuleSplitter {
         List<IRemoteTest> testList = new ArrayList<>();
         testList.add(test);
         ModuleDefinition module =
-                new ModuleDefinition(moduleName, testList, clonePreparers(config));
+                new ModuleDefinition(
+                        moduleName,
+                        testList,
+                        clonePreparers(config),
+                        config.getConfigurationDescription());
         currentList.add(module);
     }
 
