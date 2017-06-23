@@ -164,8 +164,8 @@ public class CodeCoverageTestBaseTest extends TestCase {
         }
 
         @Override
-        CodeCoverageTest internalCreateCoverageTest() {
-            return Mockito.spy(super.internalCreateCoverageTest());
+        InstrumentationTest internalCreateTest() {
+            return Mockito.spy(super.internalCreateTest());
         }
 
         @Override
@@ -207,14 +207,15 @@ public class CodeCoverageTestBaseTest extends TestCase {
         CodeCoverageTestStub coverageTest = Mockito.spy(new CodeCoverageTestStub());
         coverageTest.addTests(target, FOO_TESTS);
 
-        doReturn(success).when(coverageTest).runTest(any(CodeCoverageTest.class),
-                any(ITestInvocationListener.class));
+        doReturn(success)
+                .when(coverageTest)
+                .runTest(any(InstrumentationTest.class), any(ITestInvocationListener.class));
 
         // Run the test
         coverageTest.run(mockListener);
         // Verify that the test was run, and that the report was logged
-        verify(coverageTest).runTest(any(CodeCoverageTest.class),
-                any(ITestInvocationListener.class));
+        verify(coverageTest)
+                .runTest(any(InstrumentationTest.class), any(ITestInvocationListener.class));
         verify(coverageTest).generateCoverageReport(anyCollection(), eq(FakeReportFormat.HTML));
         verify(coverageTest).doLogReport(anyString(), eq(FakeReportFormat.HTML.getLogDataType()),
                 eq(FAKE_COVERAGE_REPORT), any(ITestLogger.class));
@@ -236,8 +237,9 @@ public class CodeCoverageTestBaseTest extends TestCase {
         coverageTest.addTests(target2, BAR_TESTS);
         coverageTest.addTests(target3, BAZ_TESTS);
 
-        doReturn(success).when(coverageTest).runTest(any(CodeCoverageTest.class),
-                any(ITestInvocationListener.class));
+        doReturn(success)
+                .when(coverageTest)
+                .runTest(any(InstrumentationTest.class), any(ITestInvocationListener.class));
 
         // Run the test
         coverageTest.run(mockListener);
@@ -261,8 +263,9 @@ public class CodeCoverageTestBaseTest extends TestCase {
         coverageTest.addTests(target, FOO_TESTS);
         coverageTest.setShardingEnabled(RUNNER_NAME1, true);
 
-        doReturn(success).when(coverageTest).runTest(any(CodeCoverageTest.class),
-                any(ITestInvocationListener.class));
+        doReturn(success)
+                .when(coverageTest)
+                .runTest(any(InstrumentationTest.class), any(ITestInvocationListener.class));
 
         // Indicate that the test should be split into 3 shards
         int numShards = 3;
@@ -324,8 +327,9 @@ public class CodeCoverageTestBaseTest extends TestCase {
         CodeCoverageTestStub coverageTest = Mockito.spy(new CodeCoverageTestStub());
         coverageTest.addTests(target, FOO_TESTS);
 
-        doReturn(success).when(coverageTest).runTest(any(CodeCoverageTest.class),
-                any(ITestInvocationListener.class));
+        doReturn(success)
+                .when(coverageTest)
+                .runTest(any(InstrumentationTest.class), any(ITestInvocationListener.class));
         ITestDevice mockDevice = coverageTest.getDevice();
         doReturn(false).doReturn(true).when(mockDevice).doesFileExist(anyString());
 
@@ -363,15 +367,16 @@ public class CodeCoverageTestBaseTest extends TestCase {
         doReturn(fakeXmlReport)
                 .when(coverageTest)
                 .generateCoverageReport(anyCollection(), eq(FakeReportFormat.XML));
-        doReturn(success).when(coverageTest).runTest(any(CodeCoverageTest.class),
-                any(ITestInvocationListener.class));
+        doReturn(success)
+                .when(coverageTest)
+                .runTest(any(InstrumentationTest.class), any(ITestInvocationListener.class));
 
         // Run the test
         coverageTest.run(mockListener);
 
         // Verify that the test was run, and that the reports were logged
-        verify(coverageTest).runTest(any(CodeCoverageTest.class),
-                any(ITestInvocationListener.class));
+        verify(coverageTest)
+                .runTest(any(InstrumentationTest.class), any(ITestInvocationListener.class));
         verify(coverageTest).generateCoverageReport(anyCollection(), eq(FakeReportFormat.HTML));
         verify(coverageTest).doLogReport(anyString(), eq(FakeReportFormat.HTML.getLogDataType()),
                 eq(fakeHtmlReport), any(ITestLogger.class));
@@ -705,7 +710,7 @@ public class CodeCoverageTestBaseTest extends TestCase {
         CodeCoverageTestStub coverageTest = Mockito.spy(new CodeCoverageTestStub());
 
         // Create a CodeCoverageTest instance
-        CodeCoverageTest test = coverageTest.createCoverageTest(target);
+        InstrumentationTest test = coverageTest.createTest(target);
 
         // Verify that the test has the correct values
         assertEquals(PACKAGE_NAME1, test.getPackageName());
@@ -722,7 +727,7 @@ public class CodeCoverageTestBaseTest extends TestCase {
         doReturn(args).when(coverageTest).getInstrumentationArgs();
 
         // Create a CodeCoverageTest instance
-        CodeCoverageTest test = coverageTest.createCoverageTest(target, 0, 3);
+        InstrumentationTest test = coverageTest.createTest(target, 0, 3);
 
         // Verify that the addInstrumentationArg(..) method was called with each argument
         for (Map.Entry<String, String> entry : args.entrySet()) {
@@ -740,7 +745,7 @@ public class CodeCoverageTestBaseTest extends TestCase {
         CodeCoverageTestStub coverageTest = Mockito.spy(new CodeCoverageTestStub());
 
         // Create a CodeCoverageTest instance
-        CodeCoverageTest test = coverageTest.createCoverageTest(target, shardIndex, numShards);
+        InstrumentationTest test = coverageTest.createTest(target, shardIndex, numShards);
 
         // Verify that the addInstrumentationArg(..) method was called to configure the shards
         verify(test).addInstrumentationArg("shardIndex", Integer.toString(shardIndex));
