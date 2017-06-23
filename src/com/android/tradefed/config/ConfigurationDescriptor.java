@@ -15,6 +15,7 @@
  */
 package com.android.tradefed.config;
 
+import com.android.tradefed.testtype.IAbi;
 import com.android.tradefed.util.MultiMap;
 
 import com.google.common.annotations.VisibleForTesting;
@@ -46,6 +47,9 @@ public class ConfigurationDescriptor {
     )
     private boolean mNotShardable = false;
 
+    /** Optional Abi information the configuration will be run against. */
+    private IAbi mAbi = null;
+
     /** Returns the list of suite tags the test is part of. */
     public List<String> getSuiteTags() {
         return mSuiteTags;
@@ -74,5 +78,15 @@ public class ConfigurationDescriptor {
     /** Returns if the configuration is shardable or not as part of a suite */
     public boolean isNotShardable() {
         return mNotShardable;
+    }
+
+    /** Sets the abi the configuration is going to run against. */
+    public void setAbi(IAbi abi) {
+        mAbi = abi;
+    }
+
+    /** Returns the abi the configuration is running against if known, null otherwise. */
+    public IAbi getAbi() {
+        return mAbi;
     }
 }
