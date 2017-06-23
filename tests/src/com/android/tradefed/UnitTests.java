@@ -174,6 +174,7 @@ import com.android.tradefed.util.EmmaXmlReporterParserTest;
 import com.android.tradefed.util.FakeTestsZipFolderTest;
 import com.android.tradefed.util.FileUtilTest;
 import com.android.tradefed.util.FixedByteArrayOutputStreamTest;
+import com.android.tradefed.util.HprofAllocSiteParserTest;
 import com.android.tradefed.util.JUnitXmlParserTest;
 import com.android.tradefed.util.KeyguardControllerStateTest;
 import com.android.tradefed.util.ListInstrumentationParserTest;
@@ -418,6 +419,7 @@ import org.junit.runners.Suite.SuiteClasses;
     FakeTestsZipFolderTest.class,
     FileUtilTest.class,
     FixedByteArrayOutputStreamTest.class,
+    HprofAllocSiteParserTest.class,
     HttpHelperTest.class,
     HttpMultipartPostTest.class,
     JUnitXmlParserTest.class,
