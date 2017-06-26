@@ -134,13 +134,12 @@ public class TestAppInstallSetup implements ITargetCleaner, IAbiReceiver {
     /**
      * Get a list of {@link File} of the test cases directories
      *
-     * <p>The wrapper function is for unit test to mock the system calls.
-     *
+     * @param buildInfo the build artifact information
      * @return a list of {@link File} of directories of the test cases folder of build output, based
-     *     on the value of environment variables.
+     *     on the value of environment variables and the device build info.
      */
-    List<File> getTestCasesDirs() {
-        return SystemUtil.getTestCasesDirs();
+    List<File> getTestCasesDirs(IBuildInfo buildInfo) {
+        return SystemUtil.getTestCasesDirs(buildInfo);
     }
 
     /** {@inheritDoc} */
@@ -156,7 +155,7 @@ public class TestAppInstallSetup implements ITargetCleaner, IAbiReceiver {
         }
 
         // Force to look for apk files in build ouput's test cases directory.
-        for (File testCasesDir : getTestCasesDirs()) {
+        for (File testCasesDir : getTestCasesDirs(buildInfo)) {
             setAltDir(testCasesDir);
         }
 

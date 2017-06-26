@@ -90,6 +90,7 @@ public class TestAppInstallSetupTest {
                         mMockTestDevice.installPackage(
                                 (File) EasyMock.anyObject(), EasyMock.eq(true)))
                 .andReturn(null);
+        EasyMock.expect(mMockBuildInfo.getTestsDir()).andReturn(null);
         EasyMock.replay(mMockBuildInfo, mMockTestDevice);
         mPrep.setUp(mMockTestDevice, mMockBuildInfo);
         EasyMock.verify(mMockBuildInfo, mMockTestDevice);
@@ -102,6 +103,7 @@ public class TestAppInstallSetupTest {
                         mMockTestDevice.installPackage(
                                 (File) EasyMock.anyObject(), EasyMock.eq(true)))
                 .andReturn(failure);
+        EasyMock.expect(mMockBuildInfo.getTestsDir()).andReturn(null);
         EasyMock.replay(mMockBuildInfo, mMockTestDevice);
         try {
             mPrep.setUp(mMockTestDevice, mMockBuildInfo);
@@ -128,6 +130,7 @@ public class TestAppInstallSetupTest {
                         mMockTestDevice.installPackage(
                                 (File) EasyMock.anyObject(), EasyMock.eq(true)))
                 .andReturn(null);
+        EasyMock.expect(mMockBuildInfo.getTestsDir()).andReturn(null);
         EasyMock.replay(mMockBuildInfo, mMockTestDevice);
         mPrep.setUp(mMockTestDevice, mMockBuildInfo);
         EasyMock.verify(mMockBuildInfo, mMockTestDevice);
