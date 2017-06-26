@@ -19,18 +19,17 @@ package com.android.tradefed.targetprep;
 import com.android.ddmlib.IDevice;
 import com.android.ddmlib.Log;
 import com.android.tradefed.build.IBuildInfo;
+import com.android.tradefed.build.IDeviceBuildInfo;
 import com.android.tradefed.config.Option;
 import com.android.tradefed.config.OptionClass;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.util.FileUtil;
-import com.android.tradefed.util.SystemUtil;
 
 import java.io.File;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
-import java.util.List;
 
 /**
  * A {@link ITargetPreparer} that attempts to push any number of files from any host path to any
@@ -44,8 +43,6 @@ public class PushFilePreparer implements ITargetCleaner {
     private static final String MEDIA_SCAN_INTENT =
             "am broadcast -a android.intent.action.MEDIA_MOUNTED -d file://%s "
                     + "--receiver-include-background";
-    private static final String HOST_TESTCASES = "host/testcases";
-    private static final String TARGET_TESTCASES = "target/testcases";
 
     @Option(name="push", description=
             "A push-spec, formatted as '/path/to/srcfile.txt->/path/to/destfile.txt' or " +
@@ -91,19 +88,6 @@ public class PushFilePreparer implements ITargetCleaner {
     }
 
     /**
-     * Get a list of {@link File} of the test cases directories
-     *
-     * <p>The wrapper function is for unit test to mock the system calls.
-     *
-     * @param buildInfo the build artifact information
-     * @return a list of {@link File} of directories of the test cases folder of build output, based
-     *     on the value of environment variables.
-     */
-    List<File> getTestCasesDirs(IBuildInfo buildInfo) {
-        return SystemUtil.getTestCasesDirs(buildInfo);
-    }
-
-    /**
      * Resolve relative file path via {@link IBuildInfo} and test cases directories.
      *
      * @param buildInfo the build artifact information
@@ -119,12 +103,9 @@ public class PushFilePreparer implements ITargetCleaner {
             }
         }
 
-        List<File> testCasesDirs = getTestCasesDirs(buildInfo);
-        for (File dir : testCasesDirs) {
-            src = FileUtil.getFileForPath(dir, fileName);
-            if (src != null && src.exists()) {
-                return src;
-            }
+        if (buildInfo instanceof IDeviceBuildInfo) {
+            File testsDir = ((IDeviceBuildInfo) buildInfo).getTestsDir();
+            return FileUtil.findFile(testsDir, fileName);
         }
         return null;
     }

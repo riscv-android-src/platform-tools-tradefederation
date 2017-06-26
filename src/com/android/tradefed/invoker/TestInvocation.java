@@ -20,6 +20,7 @@ import com.android.ddmlib.Log.LogLevel;
 import com.android.tradefed.build.BuildRetrievalError;
 import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.build.IBuildProvider;
+import com.android.tradefed.build.IDeviceBuildInfo;
 import com.android.tradefed.build.IDeviceBuildProvider;
 import com.android.tradefed.command.CommandRunner.ExitCode;
 import com.android.tradefed.config.GlobalConfiguration;
@@ -59,13 +60,16 @@ import com.android.tradefed.testtype.IMultiDeviceTest;
 import com.android.tradefed.testtype.IRemoteTest;
 import com.android.tradefed.testtype.IResumableTest;
 import com.android.tradefed.testtype.IRetriableTest;
+import com.android.tradefed.util.FileUtil;
 import com.android.tradefed.util.IRunUtil;
 import com.android.tradefed.util.RunInterruptedException;
 import com.android.tradefed.util.RunUtil;
 import com.android.tradefed.util.StreamUtil;
+import com.android.tradefed.util.SystemUtil;
 
 import com.google.common.annotations.VisibleForTesting;
 
+import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -207,6 +211,30 @@ public class TestInvocation implements ITestInvocation {
             CLog.w("Using the test-tag from the build_provider. Consider updating your config to"
                     + " have no alias/namespace in front of test-tag.");
         }
+
+        // Load environment tests dir.
+        if (info instanceof IDeviceBuildInfo) {
+            File testsDir = ((IDeviceBuildInfo) info).getTestsDir();
+            if (testsDir != null && testsDir.exists()) {
+                for (File externalTestDir : getExternalTestCasesDirs()) {
+                    try {
+                        File subDir = new File(testsDir, externalTestDir.getName());
+                        FileUtil.recursiveCopy(externalTestDir, subDir);
+                    } catch (IOException e) {
+                        CLog.e(
+                                "Failed to load external test dir %s. Ignoring it.",
+                                externalTestDir);
+                        CLog.e(e);
+                    }
+                }
+            }
+        }
+    }
+
+    /** Returns the list of external directories to Tradefed coming from the environment. */
+    @VisibleForTesting
+    List<File> getExternalTestCasesDirs() {
+        return SystemUtil.getExternalTestCasesDirs();
     }
 
     /**
