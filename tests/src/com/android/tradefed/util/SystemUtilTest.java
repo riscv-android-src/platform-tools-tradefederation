@@ -34,8 +34,8 @@ import org.junit.Test;
 public class SystemUtilTest {
 
     /**
-     * test {@link SystemUtil#getTestCasesDirs()} to make sure it gets directories from environment
-     * variables.
+     * test {@link SystemUtil#getTestCasesDirs(IBuildInfo)} to make sure it gets directories from
+     * environment variables.
      */
     @Test
     public void testGetTestCasesDirs() throws IOException {
@@ -49,7 +49,7 @@ public class SystemUtilTest {
             Mockito.when(SystemUtil.singleton.getEnv(SystemUtil.ENV_ANDROID_TARGET_OUT_TESTCASES))
                     .thenReturn(targetOutDir.getAbsolutePath());
 
-            Set<File> testCasesDirs = new HashSet<File>(SystemUtil.getTestCasesDirs());
+            Set<File> testCasesDirs = new HashSet<File>(SystemUtil.getTestCasesDirs(null));
             assertTrue(testCasesDirs.contains(targetOutDir));
             assertTrue(!testCasesDirs.contains(hostOutDir));
         } finally {
@@ -59,8 +59,8 @@ public class SystemUtilTest {
     }
 
     /**
-     * test {@link SystemUtil#getTestCasesDirs()} to make sure no exception thrown if no environment
-     * variable is set or the directory does not exist.
+     * test {@link SystemUtil#getTestCasesDirs(IBuildInfo)} to make sure no exception thrown if no
+     * environment variable is set or the directory does not exist.
      */
     @Test
     public void testGetTestCasesDirsNoDir() {
@@ -70,7 +70,7 @@ public class SystemUtilTest {
         Mockito.when(SystemUtil.singleton.getEnv(SystemUtil.ENV_ANDROID_TARGET_OUT_TESTCASES))
                 .thenReturn(targetOutDir.getAbsolutePath());
 
-        Set<File> testCasesDirs = new HashSet<File>(SystemUtil.getTestCasesDirs());
+        Set<File> testCasesDirs = new HashSet<File>(SystemUtil.getTestCasesDirs(null));
         assertEquals(testCasesDirs.size(), 0);
     }
 }
