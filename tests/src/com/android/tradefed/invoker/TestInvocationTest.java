@@ -21,6 +21,7 @@ import com.android.ddmlib.IDevice;
 import com.android.tradefed.build.BuildRetrievalError;
 import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.build.IBuildProvider;
+import com.android.tradefed.build.IDeviceBuildInfo;
 import com.android.tradefed.build.IDeviceBuildProvider;
 import com.android.tradefed.command.CommandOptions;
 import com.android.tradefed.command.CommandRunner.ExitCode;
@@ -70,6 +71,7 @@ import com.android.tradefed.testtype.IResumableTest;
 import com.android.tradefed.testtype.IRetriableTest;
 import com.android.tradefed.testtype.IShardableTest;
 import com.android.tradefed.testtype.IStrictShardableTest;
+import com.android.tradefed.util.FileUtil;
 
 import com.google.common.util.concurrent.SettableFuture;
 
@@ -80,6 +82,7 @@ import org.easymock.Capture;
 import org.easymock.EasyMock;
 import org.mockito.Mockito;
 
+import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.ArrayList;
@@ -1526,5 +1529,95 @@ public class TestInvocationTest extends TestCase {
         EasyMock.replay(device1, listener);
         mTestInvocation.doSetup(mStubConfiguration, context, listener);
         EasyMock.verify(device1, listener);
+    }
+
+    /**
+     * Test when a {@link IDeviceBuildInfo} is passing through we do not attempt to add any external
+     * directories when there is none coming from environment.
+     */
+    public void testInvoke_deviceInfoBuild_noEnv() throws Throwable {
+        mMockBuildInfo = EasyMock.createMock(IDeviceBuildInfo.class);
+        IRemoteTest test = EasyMock.createNiceMock(IRemoteTest.class);
+        ITargetCleaner mockCleaner = EasyMock.createMock(ITargetCleaner.class);
+        mockCleaner.setUp(mMockDevice, mMockBuildInfo);
+        mockCleaner.tearDown(mMockDevice, mMockBuildInfo, null);
+        mStubConfiguration.getTargetPreparers().add(mockCleaner);
+
+        File tmpTestsDir = FileUtil.createTempDir("invocation-tests-dir");
+        try {
+            EasyMock.expect(((IDeviceBuildInfo) mMockBuildInfo).getTestsDir())
+                    .andReturn(tmpTestsDir);
+            setupMockSuccessListeners();
+            setupNormalInvoke(test);
+            EasyMock.replay(mockCleaner, mockRescheduler);
+            mTestInvocation.invoke(mStubInvocationMetadata, mStubConfiguration, mockRescheduler);
+            verifyMocks(mockCleaner, mockRescheduler);
+            verifySummaryListener();
+        } finally {
+            FileUtil.recursiveDelete(tmpTestsDir);
+        }
+    }
+
+    /**
+     * Test when a {@link IDeviceBuildInfo} is passing through we attempt to add the external
+     * directories to it when they are available.
+     */
+    public void testInvoke_deviceInfoBuild_withEnv() throws Throwable {
+        File tmpTestsDir = FileUtil.createTempDir("invocation-tests-dir");
+        File tmpExternalTestsDir = FileUtil.createTempDir("external-tf-dir");
+        File tmpTestsFile = FileUtil.createTempFile("testsfile", "txt", tmpExternalTestsDir);
+        try {
+            mTestInvocation =
+                    new TestInvocation() {
+                        @Override
+                        ILogRegistry getLogRegistry() {
+                            return mMockLogRegistry;
+                        }
+
+                        @Override
+                        protected IShardHelper createShardHelper() {
+                            return new ShardHelper();
+                        }
+
+                        @Override
+                        protected void setExitCode(ExitCode code, Throwable stack) {
+                            // empty on purpose
+                        }
+
+                        @Override
+                        List<File> getExternalTestCasesDirs() {
+                            List<File> list = new ArrayList<>();
+                            list.add(tmpExternalTestsDir);
+                            return list;
+                        }
+                    };
+            mMockBuildInfo = EasyMock.createMock(IDeviceBuildInfo.class);
+            IRemoteTest test = EasyMock.createNiceMock(IRemoteTest.class);
+            ITargetCleaner mockCleaner = EasyMock.createMock(ITargetCleaner.class);
+            mockCleaner.setUp(mMockDevice, mMockBuildInfo);
+            mockCleaner.tearDown(mMockDevice, mMockBuildInfo, null);
+            mStubConfiguration.getTargetPreparers().add(mockCleaner);
+
+            EasyMock.expect(((IDeviceBuildInfo) mMockBuildInfo).getTestsDir())
+                    .andReturn(tmpTestsDir);
+
+            setupMockSuccessListeners();
+            setupNormalInvoke(test);
+            EasyMock.replay(mockCleaner, mockRescheduler);
+            mTestInvocation.invoke(mStubInvocationMetadata, mStubConfiguration, mockRescheduler);
+            verifyMocks(mockCleaner, mockRescheduler);
+            verifySummaryListener();
+            // Check that the external directory was copied in the testsDir.
+            assertTrue(tmpTestsDir.listFiles().length == 1);
+            // external-tf-dir
+            assertEquals(tmpExternalTestsDir.getName(), tmpTestsDir.listFiles()[0].getName());
+            // testsfile.txt
+            assertTrue(tmpTestsDir.listFiles()[0].listFiles().length == 1);
+            assertEquals(
+                    tmpTestsFile.getName(), tmpTestsDir.listFiles()[0].listFiles()[0].getName());
+        } finally {
+            FileUtil.recursiveDelete(tmpTestsDir);
+            FileUtil.recursiveDelete(tmpExternalTestsDir);
+        }
     }
 }

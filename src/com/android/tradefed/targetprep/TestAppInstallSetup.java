@@ -29,7 +29,6 @@ import com.android.tradefed.testtype.IAbiReceiver;
 import com.android.tradefed.util.AaptParser;
 import com.android.tradefed.util.AbiFormatter;
 import com.android.tradefed.util.BuildTestsZipUtils;
-import com.android.tradefed.util.SystemUtil;
 
 import java.io.File;
 import java.io.IOException;
@@ -131,17 +130,6 @@ public class TestAppInstallSetup implements ITargetCleaner, IAbiReceiver {
         }
     }
 
-    /**
-     * Get a list of {@link File} of the test cases directories
-     *
-     * @param buildInfo the build artifact information
-     * @return a list of {@link File} of directories of the test cases folder of build output, based
-     *     on the value of environment variables and the device build info.
-     */
-    List<File> getTestCasesDirs(IBuildInfo buildInfo) {
-        return SystemUtil.getTestCasesDirs(buildInfo);
-    }
-
     /** {@inheritDoc} */
     @Override
     public void setUp(ITestDevice device, IBuildInfo buildInfo)
@@ -152,11 +140,6 @@ public class TestAppInstallSetup implements ITargetCleaner, IAbiReceiver {
         }
         if (mCleanup) {
             mPackagesInstalled = new ArrayList<>();
-        }
-
-        // Force to look for apk files in build ouput's test cases directory.
-        for (File testCasesDir : getTestCasesDirs(buildInfo)) {
-            setAltDir(testCasesDir);
         }
 
         for (String testAppName : mTestFileNames) {

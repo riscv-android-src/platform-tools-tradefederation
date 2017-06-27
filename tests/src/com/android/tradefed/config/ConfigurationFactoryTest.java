@@ -1371,7 +1371,7 @@ public class ConfigurationFactoryTest extends TestCase {
         File tmpDir = externalConfig.getParentFile();
 
         ConfigurationFactory spyFactory = Mockito.spy(mFactory);
-        Mockito.doReturn(Arrays.asList(tmpDir)).when(spyFactory).getTestCasesDirs();
+        Mockito.doReturn(Arrays.asList(tmpDir)).when(spyFactory).getExternalTestCasesDirs();
 
         try {
             File config = spyFactory.getTestCaseConfigPath(configName);
@@ -1389,10 +1389,10 @@ public class ConfigurationFactoryTest extends TestCase {
         File tmpDir = FileUtil.createTempDir("config-check-var");
         try {
             ConfigurationFactory spyFactory = Mockito.spy(mFactory);
-            Mockito.doReturn(Arrays.asList(tmpDir)).when(spyFactory).getTestCasesDirs();
+            Mockito.doReturn(Arrays.asList(tmpDir)).when(spyFactory).getExternalTestCasesDirs();
             File config = spyFactory.getTestCaseConfigPath("non-exist");
             assertNull(config);
-            Mockito.verify(spyFactory, Mockito.times(1)).getTestCasesDirs();
+            Mockito.verify(spyFactory, Mockito.times(1)).getExternalTestCasesDirs();
         } finally {
             FileUtil.recursiveDelete(tmpDir);
         }
@@ -1409,7 +1409,7 @@ public class ConfigurationFactoryTest extends TestCase {
             File subDir = FileUtil.createTempDir("subdir", tmpDir);
             FileUtil.createTempFile("testconfig2", ".xml", subDir);
             ConfigurationFactory spyFactory = Mockito.spy(mFactory);
-            Mockito.doReturn(Arrays.asList(tmpDir)).when(spyFactory).getTestCasesDirs();
+            Mockito.doReturn(Arrays.asList(tmpDir)).when(spyFactory).getExternalTestCasesDirs();
             // looking at full path we get both configs
             Set<String> res = spyFactory.getConfigNamesFromTestCases(null);
             assertEquals(2, res.size());
