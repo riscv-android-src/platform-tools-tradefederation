@@ -61,8 +61,6 @@ public class BuildTestsZipUtils {
                 dirs.add(FileUtil.getFileForPath(dir, "DATA", "priv-app", apkBase));
                 // Files in out dir will be in data/app/apk_name
                 dirs.add(FileUtil.getFileForPath(dir, "data", "app", apkBase));
-                // Files in testcases directory will be in //apkBase
-                dirs.add(FileUtil.getFileForPath(dir, apkBase));
             }
         }
         // reverse the order so ones provided via command line last can be searched first
@@ -70,12 +68,14 @@ public class BuildTestsZipUtils {
 
         List<File> expandedTestDirs = new ArrayList<>();
         if (buildInfo != null && buildInfo instanceof IDeviceBuildInfo) {
-            File testsDir = ((IDeviceBuildInfo)buildInfo).getTestsDir();
+            File testsDir = ((IDeviceBuildInfo) buildInfo).getTestsDir();
             if (testsDir != null && testsDir.exists()) {
                 expandedTestDirs.add(FileUtil.getFileForPath(testsDir, "DATA", "app"));
                 expandedTestDirs.add(FileUtil.getFileForPath(testsDir, "DATA", "app", apkBase));
-                expandedTestDirs.add(FileUtil.getFileForPath(
-                    testsDir, "DATA", "priv-app", apkBase));
+                expandedTestDirs.add(
+                        FileUtil.getFileForPath(testsDir, "DATA", "priv-app", apkBase));
+                // Files in testcases directory will be in base build info tests dir.
+                expandedTestDirs.add(FileUtil.getFileForPath(testsDir, apkBase));
             }
         }
         if (altDirBehavior == null) {
@@ -97,8 +97,9 @@ public class BuildTestsZipUtils {
         }
 
         for (File dir : dirs) {
-            File testAppFile = new File(dir, apkFileName);
-            if (testAppFile.exists()) {
+            // Recursively search each folder
+            File testAppFile = FileUtil.findFile(dir, apkFileName);
+            if (testAppFile != null && testAppFile.exists()) {
                 return testAppFile;
             }
         }
