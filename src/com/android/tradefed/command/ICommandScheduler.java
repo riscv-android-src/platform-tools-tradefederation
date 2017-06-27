@@ -44,17 +44,6 @@ public interface ICommandScheduler {
          * Callback when entire invocation has completed, including all
          * {@link ITestInvocationListener#invocationEnded(long)} events.
          *
-         * @param device
-         * @param deviceState
-         * @deprecated use {@link #invocationComplete(IInvocationContext, Map)}.
-         */
-        @Deprecated
-        public void invocationComplete(ITestDevice device, FreeDeviceState deviceState);
-
-        /**
-         * Callback when entire invocation has completed, including all
-         * {@link ITestInvocationListener#invocationEnded(long)} events.
-         *
          * @param metadata
          * @param devicesStates
          */

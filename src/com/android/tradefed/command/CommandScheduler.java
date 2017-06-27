@@ -16,8 +16,6 @@
 
 package com.android.tradefed.command;
 
-import com.google.common.annotations.VisibleForTesting;
-
 import com.android.ddmlib.DdmPreferences;
 import com.android.ddmlib.IDevice;
 import com.android.ddmlib.Log;
@@ -30,7 +28,6 @@ import com.android.tradefed.command.remote.IRemoteClient;
 import com.android.tradefed.command.remote.RemoteClient;
 import com.android.tradefed.command.remote.RemoteException;
 import com.android.tradefed.command.remote.RemoteManager;
-import com.android.tradefed.config.ConfigurationDef;
 import com.android.tradefed.config.ConfigurationException;
 import com.android.tradefed.config.ConfigurationFactory;
 import com.android.tradefed.config.GlobalConfiguration;
@@ -74,6 +71,8 @@ import com.android.tradefed.util.hostmetric.IHostMonitor.HostMetricType;
 import com.android.tradefed.util.keystore.IKeyStoreClient;
 import com.android.tradefed.util.keystore.IKeyStoreFactory;
 import com.android.tradefed.util.keystore.KeyStoreException;
+
+import com.google.common.annotations.VisibleForTesting;
 
 import org.json.JSONException;
 
@@ -446,17 +445,6 @@ public class CommandScheduler extends Thread implements ICommandScheduler, IComm
                 IScheduledInvocationListener... listeners) {
             super(listeners);
             mDeviceManager = deviceManager;
-        }
-
-        @Deprecated
-        @Override
-        public void invocationComplete(ITestDevice device, FreeDeviceState deviceState) {
-            IInvocationContext context = new InvocationContext();
-            // Fake a single device context for compatibility
-            context.addAllocatedDevice(ConfigurationDef.DEFAULT_DEVICE_NAME, device);
-            Map<ITestDevice, FreeDeviceState> state = new HashMap<>();
-            state.put(device, deviceState);
-            invocationComplete(context, state);
         }
 
         @Override
