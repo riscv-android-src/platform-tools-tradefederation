@@ -234,12 +234,14 @@ public class FileUtil {
      * Internal helper to determine if 'chmod' is available on the system OS.
      */
     protected static boolean chmodExists() {
-        CommandResult result = RunUtil.getDefault().runTimedCmd(10 * 1000, sChmod);
+        // Silence the scary process exception when chmod is missing, we will log instead.
+        CommandResult result = RunUtil.getDefault().runTimedCmdSilently(10 * 1000, sChmod);
         // We expect a status fail because 'chmod' requires arguments.
         if (CommandStatus.FAILED.equals(result.getStatus()) &&
                 result.getStderr().contains("chmod: missing operand")) {
             return true;
         }
+        CLog.w("Chmod is not supported by this OS.");
         return false;
     }
 
