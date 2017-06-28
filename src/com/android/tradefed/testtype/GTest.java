@@ -109,6 +109,9 @@ public class GTest
             description = "adb shell command(s) to run after GTest.")
     private List<String> mAfterTestCmd = new ArrayList<>();
 
+    @Option(name = "run-test-as", description = "User to execute test binary as.")
+    private String mRunTestAs = null;
+
     @Option(name = "ld-library-path",
             description = "LD_LIBRARY_PATH value to include in the GTest execution command.")
     private String mLdLibraryPath = null;
@@ -174,10 +177,6 @@ public class GTest
     @Override
     public ITestDevice getDevice() {
         return mDevice;
-    }
-
-    public void setEnableXmlOutput(boolean b) {
-        mEnableXmlOutput = b;
     }
 
     /**
@@ -636,6 +635,12 @@ public class GTest
             gTestCmdLine.append(String.format("GTEST_SHARD_INDEX=%s ", mShardIndex));
             gTestCmdLine.append(String.format("GTEST_TOTAL_SHARDS=%s ", mShardCount));
         }
+
+        // su to requested user
+        if (mRunTestAs != null) {
+            gTestCmdLine.append(String.format("su %s ", mRunTestAs));
+        }
+
         gTestCmdLine.append(String.format("%s %s", fullPath, flags));
         return gTestCmdLine.toString();
     }
@@ -738,7 +743,4 @@ public class GTest
         mCollectTestsOnly = shouldCollectTest;
     }
 
-    protected void setLoadFilterFromFile(String loadFilterFromFile) {
-        mTestFilterKey = loadFilterFromFile;
-    }
 }
