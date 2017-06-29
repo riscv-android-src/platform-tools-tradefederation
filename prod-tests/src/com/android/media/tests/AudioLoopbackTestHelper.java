@@ -62,9 +62,12 @@ public class AudioLoopbackTestHelper {
         GRAPH,
         PLAYER_BUFFER,
         PLAYER_BUFFER_HISTOGRAM,
+        PLAYER_BUFFER_PERIOD_TIMES,
         RECORDER_BUFFER,
         RECORDER_BUFFER_HISTOGRAM,
+        RECORDER_BUFFER_PERIOD_TIMES,
         GLITCHES_MILLIS,
+        HEAT_MAP,
         LOGCAT
     }
 
@@ -203,6 +206,7 @@ public class AudioLoopbackTestHelper {
         }
 
         public void setLogFile(LogFileType log, String filename) {
+            CLog.i("setLogFile: type=" + log.name() + ", filename=" + filename);
             if (!mLogs.containsKey(log) && filename != null && !filename.isEmpty()) {
                 mLogs.put(log, filename);
             }
@@ -352,6 +356,7 @@ public class AudioLoopbackTestHelper {
     public static Map<String, String> parseKeyValuePairFromFile(
             File result,
             final Map<String, String> dictionary,
+            final String resultKeyPrefix,
             final String splitOn,
             final String keyValueFormat)
             throws IOException {
@@ -369,7 +374,7 @@ public class AudioLoopbackTestHelper {
                     final String value = tokens[1].trim();
                     if (dictionary.containsKey(key)) {
                         CLog.i(String.format(keyValueFormat, key, value));
-                        resultMap.put(dictionary.get(key), value);
+                        resultMap.put(resultKeyPrefix + dictionary.get(key), value);
                     }
                 }
                 line = br.readLine();
@@ -583,5 +588,21 @@ public class AudioLoopbackTestHelper {
                 String.format(
                         "No Confidence results: %1$d of %2$d",
                         testWithoutConfidenceResultCount, totalNrOfTests));
+    }
+
+    /** Generates metrics dictionary for stress test */
+    public void populateStressTestMetrics(
+            Map<String, String> metrics, final String resultKeyPrefix) {
+        metrics.put(resultKeyPrefix + "total_nr_of_tests", Integer.toString(mAllResults.size()));
+        metrics.put(resultKeyPrefix + "nr_of_good_tests", Integer.toString(mGoodResults.size()));
+        metrics.put(resultKeyPrefix + "latency_max", Double.toString(mLatencyStats.mMax));
+        metrics.put(resultKeyPrefix + "latency_min", Double.toString(mLatencyStats.mMin));
+        metrics.put(resultKeyPrefix + "latency_mean", Double.toString(mLatencyStats.mMean));
+        metrics.put(resultKeyPrefix + "latency_median", Double.toString(mLatencyStats.mMedian));
+        metrics.put(resultKeyPrefix + "confidence_max", Double.toString(mConfidenceStats.mMax));
+        metrics.put(resultKeyPrefix + "confidence_min", Double.toString(mConfidenceStats.mMin));
+        metrics.put(resultKeyPrefix + "confidence_mean", Double.toString(mConfidenceStats.mMean));
+        metrics.put(
+                resultKeyPrefix + "confidence_median", Double.toString(mConfidenceStats.mMedian));
     }
 }

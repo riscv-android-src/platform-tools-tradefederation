@@ -37,6 +37,7 @@ import com.android.tradefed.util.RunUtil;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.Date;
 import java.util.HashMap;
@@ -151,16 +152,20 @@ public class AudioLoopbackTest implements IDeviceTest, IRemoteTest {
     private static final String KEY_RESULT_AUDIO_LEVEL = "audio_level";
     private static final String KEY_RESULT_RMS = "rms";
     private static final String KEY_RESULT_RMS_AVERAGE = "rms_average";
-    private static final String KEY_RESULT_SAMPLING_FREQUENCY_CONFIDENCE = "sf";
+    private static final String KEY_RESULT_SAMPLING_FREQUENCY_CONFIDENCE = "sampling_frequency";
     private static final String KEY_RESULT_PERIOD_CONFIDENCE = "period_confidence";
-    private static final String KEY_RESULT_SAMPLING_BLOCK_SIZE = "bs";
+    private static final String KEY_RESULT_SAMPLING_BLOCK_SIZE = "block_size";
 
     private static final LogFileType[] LATENCY_TEST_LOGS = {
         LogFileType.RESULT,
         LogFileType.GRAPH,
         LogFileType.WAVE,
         LogFileType.PLAYER_BUFFER,
+        LogFileType.PLAYER_BUFFER_HISTOGRAM,
+        LogFileType.PLAYER_BUFFER_PERIOD_TIMES,
         LogFileType.RECORDER_BUFFER,
+        LogFileType.RECORDER_BUFFER_HISTOGRAM,
+        LogFileType.RECORDER_BUFFER_PERIOD_TIMES,
         LogFileType.LOGCAT
     };
 
@@ -170,9 +175,12 @@ public class AudioLoopbackTest implements IDeviceTest, IRemoteTest {
         LogFileType.WAVE,
         LogFileType.PLAYER_BUFFER,
         LogFileType.PLAYER_BUFFER_HISTOGRAM,
+        LogFileType.PLAYER_BUFFER_PERIOD_TIMES,
         LogFileType.RECORDER_BUFFER,
         LogFileType.RECORDER_BUFFER_HISTOGRAM,
+        LogFileType.RECORDER_BUFFER_PERIOD_TIMES,
         LogFileType.GLITCHES_MILLIS,
+        LogFileType.HEAT_MAP,
         LogFileType.LOGCAT
     };
 
@@ -205,16 +213,30 @@ public class AudioLoopbackTest implements IDeviceTest, IRemoteTest {
         l = new LogFileData("_playerBufferPeriod.png", "player_buffer_histogram", LogDataType.PNG);
         result.put(LogFileType.PLAYER_BUFFER_HISTOGRAM, l);
 
+        String fileExtension = "_playerBufferPeriodTimes.txt";
+        String uploadName = "player_buffer_period_times";
+        l = new LogFileData(fileExtension, uploadName, LogDataType.TEXT);
+        result.put(LogFileType.PLAYER_BUFFER_PERIOD_TIMES, l);
+
         l = new LogFileData("_recorderBufferPeriod.txt", "recorder_buffer", LogDataType.TEXT);
         result.put(LogFileType.RECORDER_BUFFER, l);
 
-        l =
-                new LogFileData(
-                        "_recorderBufferPeriod.png", "recorder_buffer_histogram", LogDataType.PNG);
+        fileExtension = "_recorderBufferPeriod.png";
+        uploadName = "recorder_buffer_histogram";
+        l = new LogFileData(fileExtension, uploadName, LogDataType.PNG);
         result.put(LogFileType.RECORDER_BUFFER_HISTOGRAM, l);
 
-        l = new LogFileData("_glitchMillis.txt", "wave", LogDataType.TEXT);
+        fileExtension = "_recorderBufferPeriodTimes.txt";
+        uploadName = "recorder_buffer_period_times";
+        l = new LogFileData(fileExtension, uploadName, LogDataType.TEXT);
+        result.put(LogFileType.RECORDER_BUFFER_PERIOD_TIMES, l);
+
+        l = new LogFileData("_glitchMillis.txt", "glitches_millis", LogDataType.TEXT);
         result.put(LogFileType.GLITCHES_MILLIS, l);
+
+
+        l = new LogFileData("_heatMap.png", "heat_map", LogDataType.PNG);
+        result.put(LogFileType.HEAT_MAP, l);
 
         l = new LogFileData(".txt", "logcat", LogDataType.TEXT);
         result.put(LogFileType.LOGCAT, l);
@@ -322,7 +344,9 @@ public class AudioLoopbackTest implements IDeviceTest, IRemoteTest {
 
             mLoopbackTestHelper.processTestData();
         } finally {
-            mTestRunHelper.endTest(uploadLogsReturnMetrics(listener));
+            Map<String, String> metrics = uploadLogsReturnMetrics(listener);
+            CLog.i("Uploading metrics values:\n" + Arrays.toString(metrics.entrySet().toArray()));
+            mTestRunHelper.endTest(metrics);
             deleteAllTempFiles();
             getDevice().startLogcat();
         }
@@ -405,7 +429,7 @@ public class AudioLoopbackTest implements IDeviceTest, IRemoteTest {
         try {
             loopbackResult =
                     AudioLoopbackTestHelper.parseKeyValuePairFromFile(
-                            loopbackReport, METRICS_KEY_MAP, "=", "%s: %s");
+                            loopbackReport, METRICS_KEY_MAP, mKeyPrefix, "=", "%s: %s");
             populateResultData(loopbackResult, data);
 
             // Trust but verify, so get Audio Level from ADB and compare to value from app
@@ -429,6 +453,9 @@ public class AudioLoopbackTest implements IDeviceTest, IRemoteTest {
         return loopbackResult;
     }
 
+    private String getMetricsKey(final String key) {
+        return mKeyPrefix + key;
+    }
     private final long getSingleTestTimeoutValue() {
         return Long.parseLong(mBufferTestDuration) * 1000 + TIMEOUT_MS;
     }
@@ -444,26 +471,42 @@ public class AudioLoopbackTest implements IDeviceTest, IRemoteTest {
 
         switch (getTestType()) {
             case GLITCH:
-            case LATENCY:
-                // use dictionary collected from single test run
                 resultDictionary = mLoopbackTestHelper.getResultDictionaryForIteration(0);
+                // Upload all test files to be backward compatible with old test
                 results = mLoopbackTestHelper.getAllTestData();
                 break;
+            case LATENCY:
+                {
+                    final int nrOfValidResults = mLoopbackTestHelper.processTestData();
+                    if (nrOfValidResults == 0) {
+                        mTestRunHelper.reportFailure("No good data was collected");
+                    } else {
+                        // use dictionary collected from single test run
+                        resultDictionary = mLoopbackTestHelper.getResultDictionaryForIteration(0);
+                    }
+
+                    // Upload all test files to be backward compatible with old test
+                    results = mLoopbackTestHelper.getAllTestData();
+                }
+                break;
             case LATENCY_STRESS:
-                try {
-                    saveResultsAsCSVFile(listener);
-                } catch (final IOException e) {
-                    CLog.e(e);
-                }
+                {
+                    final int nrOfValidResults = mLoopbackTestHelper.processTestData();
+                    if (nrOfValidResults == 0) {
+                        mTestRunHelper.reportFailure("No good data was collected");
+                    } else {
+                        mLoopbackTestHelper.populateStressTestMetrics(resultDictionary, mKeyPrefix);
+                    }
 
-                final int nrOfValidResults = mLoopbackTestHelper.processTestData();
-                if (nrOfValidResults == 0) {
-                    mTestRunHelper.reportFailure("No good data was collected");
-                }
+                    results = mLoopbackTestHelper.getWorstResults(MAX_NR_OF_LOG_UPLOADS);
 
-                final String nrOfTestsWithResults = Integer.toString(nrOfValidResults);
-                resultDictionary.put("NrOfTestsWithResults", nrOfTestsWithResults);
-                results = mLoopbackTestHelper.getWorstResults(MAX_NR_OF_LOG_UPLOADS);
+                    // Save all test data in a spreadsheet style csv file for post test analysis
+                    try {
+                        saveResultsAsCSVFile(listener);
+                    } catch (final IOException e) {
+                        CLog.e(e);
+                    }
+                }
                 break;
             default:
                 break;
@@ -541,37 +584,37 @@ public class AudioLoopbackTest implements IDeviceTest, IRemoteTest {
             return;
         }
 
-        String key = KEY_RESULT_LATENCY_MS;
+        String key = getMetricsKey(KEY_RESULT_LATENCY_MS);
         if (results.containsKey(key)) {
             data.setLatency(Float.parseFloat(results.get(key)));
         }
 
-        key = KEY_RESULT_LATENCY_CONFIDENCE;
+        key = getMetricsKey(KEY_RESULT_LATENCY_CONFIDENCE);
         if (results.containsKey(key)) {
             data.setConfidence(Float.parseFloat(results.get(key)));
         }
 
-        key = KEY_RESULT_AUDIO_LEVEL;
+        key = getMetricsKey(KEY_RESULT_AUDIO_LEVEL);
         if (results.containsKey(key)) {
             data.setAudioLevel(Integer.parseInt(results.get(key)));
         }
 
-        key = KEY_RESULT_RMS;
+        key = getMetricsKey(KEY_RESULT_RMS);
         if (results.containsKey(key)) {
             data.setRMS(Float.parseFloat(results.get(key)));
         }
 
-        key = KEY_RESULT_RMS_AVERAGE;
+        key = getMetricsKey(KEY_RESULT_RMS_AVERAGE);
         if (results.containsKey(key)) {
             data.setRMSAverage(Float.parseFloat(results.get(key)));
         }
 
-        key = KEY_RESULT_PERIOD_CONFIDENCE;
+        key = getMetricsKey(KEY_RESULT_PERIOD_CONFIDENCE);
         if (results.containsKey(key)) {
             data.setPeriodConfidence(Float.parseFloat(results.get(key)));
         }
 
-        key = KEY_RESULT_SAMPLING_BLOCK_SIZE;
+        key = getMetricsKey(KEY_RESULT_SAMPLING_BLOCK_SIZE);
         if (results.containsKey(key)) {
             data.setBlockSize(Integer.parseInt(results.get(key)));
         }
@@ -594,7 +637,12 @@ public class AudioLoopbackTest implements IDeviceTest, IRemoteTest {
         for (final ResultData d : mLoopbackTestHelper.getAllTestData()) {
             final LogFileType[] logFileTypes = getLogFileTypesForCurrentTest();
             for (final LogFileType logType : logFileTypes) {
-                FileUtil.deleteFile(new File(d.getLogFile(logType)));
+                final String logFilename = d.getLogFile(logType);
+                if (logFilename == null || logFilename.isEmpty()) {
+                    CLog.e("Logfile not found for LogFileType=" + logType.name());
+                } else {
+                    FileUtil.deleteFile(new File(logFilename));
+                }
             }
         }
     }
@@ -641,12 +689,17 @@ public class AudioLoopbackTest implements IDeviceTest, IRemoteTest {
         final LogFileData logInfo = map.get(key);
         final String prefix = getKeyPrefixForIteration(data.getIteration()) + logInfo.filePrefix;
         final LogDataType logDataType = logInfo.logDataType;
-        File logFile = new File(data.getLogFile(key));
-        InputStreamSource iss = new FileInputStreamSource(logFile);
-        listener.testLog(prefix, logDataType, iss);
+        final String logFilename = data.getLogFile(key);
+        if (logFilename == null || logFilename.isEmpty()) {
+            CLog.e("Logfile not found for LogFileType=" + key.name());
+        } else {
+            File logFile = new File(logFilename);
+            InputStreamSource iss = new FileInputStreamSource(logFile);
+            listener.testLog(prefix, logDataType, iss);
 
-        // cleanup
-        iss.cancel();
+            // cleanup
+            iss.cancel();
+        }
     }
 
     private void saveLogcatForIteration(ResultData data, InputStreamSource logcat, int iteration) {
