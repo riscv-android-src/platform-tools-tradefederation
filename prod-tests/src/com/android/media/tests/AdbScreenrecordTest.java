@@ -31,9 +31,13 @@ import com.android.tradefed.util.FileUtil;
 import com.android.tradefed.util.RunUtil;
 
 import java.io.File;
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
+import java.util.Arrays;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.TimeZone;
 import java.util.concurrent.TimeUnit;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -67,7 +71,7 @@ public class AdbScreenrecordTest implements IDeviceTest, IRemoteTest {
     // CLASS VARIABLES
     //===================================================================
     private ITestDevice mDevice;
-    private TestIdentifier mTestId;
+    private TestRunHelper mTestRunHelper;
 
     //===================================================================
     // CONSTANTS
@@ -113,23 +117,25 @@ public class AdbScreenrecordTest implements IDeviceTest, IRemoteTest {
     public void run(ITestInvocationListener listener) throws DeviceNotAvailableException {
         initializeTest(listener);
 
-        CLog.i("Verify that test options are valid");
-        if (!verifyTestParameters(listener, mTestId)) {
-            return;
-        }
-
         CLog.i("Verify required software is installed on host");
         verifyRequiredSoftwareIsInstalled(HOST_SOFTWARE.AVPROBE);
 
-        final long testStartTime = System.currentTimeMillis();
+        mTestRunHelper.startTest(1);
 
-        final Map<String, String> resultsDictionary = runTest(listener, TEST_TIMEOUT_MS);
+        Map<String, String> resultsDictionary = new HashMap<String, String>();
+        try {
+            CLog.i("Verify that test options are valid");
+            if (!verifyTestParameters()) {
+                return;
+            }
 
-        final long testStopTime = System.currentTimeMillis();
-
-        // "resultDictionary" can be used to post results to dashboards like BlackBox
-        listener.testEnded(mTestId, resultsDictionary);
-        listener.testRunEnded(testStopTime - testStartTime, resultsDictionary);
+            // "resultDictionary" can be used to post results to dashboards like BlackBox
+            resultsDictionary = runTest(resultsDictionary, TEST_TIMEOUT_MS);
+        } finally {
+            final String metricsStr = Arrays.toString(resultsDictionary.entrySet().toArray());
+            CLog.i("Uploading metrics values:\n" + metricsStr);
+            mTestRunHelper.endTest(resultsDictionary);
+        }
     }
 
     /**
@@ -145,10 +151,11 @@ public class AdbScreenrecordTest implements IDeviceTest, IRemoteTest {
      *   <li>5. Using avprobe, analyze video file and extract duration and bitrate
      *   <li>6. Return extracted results
      * </ul>
+     *
+     * @throws DeviceNotAvailableException
      */
-    private Map<String, String> runTest(final ITestInvocationListener listener, final long timeout)
+    private Map<String, String> runTest(Map<String, String> results, final long timeout)
             throws DeviceNotAvailableException {
-        final Map<String, String> results = new HashMap<String, String>();
         final CollectingOutputReceiver receiver = new CollectingOutputReceiver();
         final String cmd = generateAdbScreenRecordCommand();
         final String deviceFileName = getAbsoluteFilename();
@@ -161,21 +168,63 @@ public class AdbScreenrecordTest implements IDeviceTest, IRemoteTest {
 
         CLog.i("Wait for recorded file: " + deviceFileName);
         if (!waitForFile(getDevice(), timeout, deviceFileName)) {
-            reportFailure(listener, mTestId, "Recorded test file not found");
+            mTestRunHelper.reportFailure("Recorded test file not found");
             // Since we don't have a file, no need to delete it; we can return here
             return results;
         }
 
         CLog.i("Get number of recorded frames and recorded length from adb output");
-        if (!extractVideoDataFromAdbOutput(listener, adbOutput, results)) {
+        if (!extractVideoDataFromAdbOutput(adbOutput, results)) {
             deleteFileFromDevice(deviceFileName);
             return results;
         }
 
         CLog.i("Get duration and bitrate info from video file using '" + AVPROBE_STR + "'");
-        extractDurationAndBitrateFromVideoFileUsingAvprobe(listener, deviceFileName, results);
+        try {
+            extractDurationAndBitrateFromVideoFileUsingAvprobe(deviceFileName, results);
+        } catch (ParseException e) {
+            throw new RuntimeException(e);
+        }
         deleteFileFromDevice(deviceFileName);
         return results;
+    }
+
+    /** Convert a string on form HH:mm:ss.SS to nearest number of seconds */
+    private long convertBitrateToKilobits(String bitrate) {
+        Matcher m = Pattern.compile("(\\d+) (.)b\\/s").matcher(bitrate);
+        if (!m.matches()) {
+            return -1;
+        }
+
+        final String unit = m.group(2).toUpperCase();
+        long factor = 1;
+        switch (unit) {
+            case "K":
+                factor = 1;
+                break;
+            case "M":
+                factor = 1000;
+                break;
+            case "G":
+                factor = 1000000;
+                break;
+        }
+
+        long rate = Long.parseLong(m.group(1));
+
+        return rate * factor;
+    }
+
+    /**
+     * Convert a string on form HH:mm:ss.SS to nearest number of seconds
+     *
+     * @throws ParseException
+     */
+    private long convertDurationToMilliseconds(String duration) throws ParseException {
+        SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SS");
+        sdf.setTimeZone(TimeZone.getTimeZone("UTC"));
+        Date convertedDate = sdf.parse("1970-01-01 " + duration);
+        return convertedDate.getTime();
     }
 
     /**
@@ -193,14 +242,15 @@ public class AdbScreenrecordTest implements IDeviceTest, IRemoteTest {
      * Extracts duration and bitrate data from a video file
      *
      * @throws DeviceNotAvailableException
+     * @throws ParseException
      */
     private boolean extractDurationAndBitrateFromVideoFileUsingAvprobe(
-            ITestInvocationListener listener, String deviceFileName, Map<String, String> results)
-            throws DeviceNotAvailableException {
+            String deviceFileName, Map<String, String> results)
+            throws DeviceNotAvailableException, ParseException {
         CLog.i("Check if the recorded file has some data in it: " + deviceFileName);
         IFileEntry video = getDevice().getFileEntry(deviceFileName);
         if (video == null || video.getFileEntry().getSizeValue() < 1) {
-            reportFailure(listener, mTestId, "Video Entry info failed");
+            mTestRunHelper.reportFailure("Video Entry info failed");
             return false;
         }
 
@@ -220,14 +270,14 @@ public class AdbScreenrecordTest implements IDeviceTest, IRemoteTest {
         FileUtil.deleteFile(recordedVideo);
 
         if (result.getStatus() != CommandStatus.SUCCESS) {
-            reportFailure(listener, mTestId, AVPROBE_STR + " command failed");
+            mTestRunHelper.reportFailure(AVPROBE_STR + " command failed");
             return false;
         }
 
         String data = result.getStderr();
         CLog.i("data: " + data);
         if (data == null || data.isEmpty()) {
-            reportFailure(listener, mTestId, AVPROBE_STR + " output data is empty");
+            mTestRunHelper.reportFailure(AVPROBE_STR + " output data is empty");
             return false;
         }
 
@@ -235,22 +285,26 @@ public class AdbScreenrecordTest implements IDeviceTest, IRemoteTest {
         if (!m.find()) {
             final String errMsg =
                     "Video verification failed; no matching verification pattern found";
-            reportFailure(listener, mTestId, errMsg);
+            mTestRunHelper.reportFailure(errMsg);
             return false;
         }
 
-        results.put(RESULT_KEY_VERIFIED_DURATION, m.group(1));
-        results.put(RESULT_KEY_VERIFIED_BITRATE, m.group(2));
+        String duration = m.group(1);
+        long durationInMilliseconds = convertDurationToMilliseconds(duration);
+        String bitrate = m.group(2);
+        long bitrateInKilobits = convertBitrateToKilobits(bitrate);
+
+        results.put(RESULT_KEY_VERIFIED_DURATION, Long.toString(durationInMilliseconds / 1000));
+        results.put(RESULT_KEY_VERIFIED_BITRATE, Long.toString(bitrateInKilobits));
         return true;
     }
 
     /** Extracts recorded number of frames and recorded video length from adb output */
-    private boolean extractVideoDataFromAdbOutput(
-            ITestInvocationListener listener, String adbOutput, Map<String, String> results) {
+    private boolean extractVideoDataFromAdbOutput(String adbOutput, Map<String, String> results) {
         final String regEx = "recorded (\\d+) frames in (\\d+) second";
         Matcher m = Pattern.compile(regEx).matcher(adbOutput);
         if (!m.find()) {
-            reportFailure(listener, mTestId, "Regular Expression did not find recorded frames");
+            mTestRunHelper.reportFailure("Regular Expression did not find recorded frames");
             return false;
         }
 
@@ -259,7 +313,7 @@ public class AdbScreenrecordTest implements IDeviceTest, IRemoteTest {
         CLog.i("Recorded frames: " + recordedFrames);
         CLog.i("Recorded length: " + recordedLength);
         if (recordedFrames <= 0) {
-            reportFailure(listener, mTestId, "No recorded frames detected");
+            mTestRunHelper.reportFailure("No recorded frames detected");
             return false;
         }
 
@@ -299,25 +353,16 @@ public class AdbScreenrecordTest implements IDeviceTest, IRemoteTest {
     /** Performs test initialization steps */
     private void initializeTest(ITestInvocationListener listener)
             throws UnsupportedOperationException, DeviceNotAvailableException {
-        mTestId = new TestIdentifier(getClass().getCanonicalName(), mRunKey);
+        TestIdentifier testId = new TestIdentifier(getClass().getCanonicalName(), mRunKey);
 
-        getDevice().unlockDevice();
+        // Allocate helpers
+        mTestRunHelper = new TestRunHelper(listener, testId);
+
+        getDevice().disableKeyguard();
         getDevice().waitForDeviceAvailable(DEVICE_SYNC_MS);
 
         CLog.i("Sync device time to host time");
         getDevice().setDate(new Date());
-
-        listener.testRunStarted(mRunKey, 1);
-        listener.testStarted(mTestId);
-    }
-
-    /** Reports test failure with error message */
-    private static void reportFailure(
-            ITestInvocationListener listener, TestIdentifier testId, String errMsg) {
-        CLog.e(errMsg);
-        listener.testFailed(testId, errMsg);
-        listener.testEnded(testId, new HashMap<String, String>());
-        listener.testRunFailed(errMsg);
     }
 
     /** Verifies that required software is installed on host machine */
@@ -343,13 +388,11 @@ public class AdbScreenrecordTest implements IDeviceTest, IRemoteTest {
     }
 
     /** Verifies that passed in test parameters are legitimate */
-    private boolean verifyTestParameters(
-            ITestInvocationListener listener, final TestIdentifier testId) {
-
+    private boolean verifyTestParameters() {
         if (mRecordTimeInSeconds != -1 && mRecordTimeInSeconds < 1) {
             final String error =
                     String.format(ERR_OPTION_MALFORMED, OPTION_TIME_LIMIT, mRecordTimeInSeconds);
-            reportFailure(listener, testId, error);
+            mTestRunHelper.reportFailure(error);
             return false;
         }
 
@@ -358,14 +401,14 @@ public class AdbScreenrecordTest implements IDeviceTest, IRemoteTest {
             Matcher m = Pattern.compile(videoSizeRegEx).matcher(mVideoSize);
             if (!m.matches()) {
                 final String error = String.format(ERR_OPTION_MALFORMED, OPTION_SIZE, mVideoSize);
-                reportFailure(listener, testId, error);
+                mTestRunHelper.reportFailure(error);
                 return false;
             }
         }
 
         if (mBitRate != -1 && mBitRate < 1) {
             final String error = String.format(ERR_OPTION_MALFORMED, OPTION_BITRATE, mBitRate);
-            reportFailure(listener, testId, error);
+            mTestRunHelper.reportFailure(error);
             return false;
         }
 
