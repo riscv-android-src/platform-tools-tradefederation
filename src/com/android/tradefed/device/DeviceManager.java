@@ -63,6 +63,9 @@ import java.util.concurrent.TimeUnit;
 @OptionClass(alias = "dmgr", global_namespace = false)
 public class DeviceManager implements IDeviceManager {
 
+    /** Display string for unknown properties */
+    public static final String UNKNOWN_DISPLAY_STRING = "unknown";
+
     /** max wait time in ms for fastboot devices command to complete */
     private static final long FASTBOOT_CMD_TIMEOUT = 1 * 60 * 1000;
     /** time to wait in ms between fastboot devices requests */
@@ -956,7 +959,7 @@ public class DeviceManager implements IDeviceManager {
      * Return the displayable string for given object
      */
     private String getDisplay(Object o) {
-        return o == null ? "unknown" : o.toString();
+        return o == null ? UNKNOWN_DISPLAY_STRING : o.toString();
     }
 
     /**
