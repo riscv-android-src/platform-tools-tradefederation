@@ -20,10 +20,12 @@ import com.android.ddmlib.testrunner.TestIdentifier;
 import com.android.ddmlib.testrunner.TestResult;
 import com.android.ddmlib.testrunner.TestRunResult;
 import com.android.tradefed.build.IBuildInfo;
+import com.android.tradefed.config.ConfigurationDescriptor;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.DeviceUnresponsiveException;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.invoker.IInvocationContext;
+import com.android.tradefed.invoker.InvocationContext;
 import com.android.tradefed.log.ILogRegistry.EventType;
 import com.android.tradefed.log.ITestLogger;
 import com.android.tradefed.log.LogRegistry;
@@ -62,6 +64,8 @@ public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestColl
     public static final String MODULE_NAME = "module-name";
     public static final String MODULE_ABI = "module-abi";
 
+    private final IInvocationContext mModuleInvocationContext;
+
     private final String mId;
     private Collection<IRemoteTest> mTests = null;
     private List<ITargetPreparer> mPreparers = new ArrayList<>();
@@ -90,11 +94,25 @@ public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestColl
      * @param name unique name of the test configuration.
      * @param tests list of {@link IRemoteTest} that needs to run.
      * @param preparers list of {@link ITargetPreparer} to be used to setup the device.
+     * @param configDescriptor the {@link ConfigurationDescriptor} of the underlying module config.
      */
     public ModuleDefinition(
-            String name, Collection<IRemoteTest> tests, List<ITargetPreparer> preparers) {
+            String name,
+            Collection<IRemoteTest> tests,
+            List<ITargetPreparer> preparers,
+            ConfigurationDescriptor configDescriptor) {
         mId = name;
         mTests = tests;
+
+        mModuleInvocationContext = new InvocationContext();
+        mModuleInvocationContext.setConfigurationDescriptor(configDescriptor);
+        mModuleInvocationContext.addInvocationAttribute(MODULE_NAME, mId);
+        // If available in the suite, add the abi name
+        if (configDescriptor.getAbi() != null) {
+            mModuleInvocationContext.addInvocationAttribute(
+                    MODULE_ABI, configDescriptor.getAbi().getName());
+        }
+
         for (ITargetPreparer preparer : preparers) {
             mPreparers.add(preparer);
             if (preparer instanceof ITargetCleaner) {
@@ -429,5 +447,10 @@ public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestColl
     @VisibleForTesting
     List<IRemoteTest> getTests() {
         return new ArrayList<>(mTests);
+    }
+
+    /** Returns the {@link IInvocationContext} associated with the module. */
+    public IInvocationContext getModuleInvocationContext() {
+        return mModuleInvocationContext;
     }
 }
