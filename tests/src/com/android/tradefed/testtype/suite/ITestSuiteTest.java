@@ -27,6 +27,8 @@ import com.android.tradefed.config.OptionSetter;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.DeviceUnresponsiveException;
 import com.android.tradefed.device.ITestDevice;
+import com.android.tradefed.invoker.IInvocationContext;
+import com.android.tradefed.invoker.InvocationContext;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.result.ByteArrayInputStreamSource;
 import com.android.tradefed.result.ITestInvocationListener;
@@ -62,6 +64,7 @@ public class ITestSuiteTest {
     private ITestDevice mMockDevice;
     private IBuildInfo mMockBuildInfo;
     private ISystemStatusChecker mMockSysChecker;
+    private IInvocationContext mContext;
 
     /**
      * Very basic implementation of {@link ITestSuite} to test it.
@@ -143,6 +146,8 @@ public class ITestSuiteTest {
         mMockSysChecker = EasyMock.createMock(ISystemStatusChecker.class);
         mTestSuite.setDevice(mMockDevice);
         mTestSuite.setBuild(mMockBuildInfo);
+        mContext = new InvocationContext();
+        mTestSuite.setInvocationContext(mContext);
     }
 
     /**
@@ -291,6 +296,7 @@ public class ITestSuiteTest {
                 };
         mTestSuite.setDevice(mMockDevice);
         mTestSuite.setBuild(mMockBuildInfo);
+        mTestSuite.setInvocationContext(mContext);
         OptionSetter setter = new OptionSetter(mTestSuite);
         setter.setOptionValue("skip-all-system-status-check", "true");
         setter.setOptionValue("reboot-per-module", "true");
@@ -332,6 +338,7 @@ public class ITestSuiteTest {
                 };
         mTestSuite.setDevice(mMockDevice);
         mTestSuite.setBuild(mMockBuildInfo);
+        mTestSuite.setInvocationContext(mContext);
         OptionSetter setter = new OptionSetter(mTestSuite);
         setter.setOptionValue("skip-all-system-status-check", "true");
         setter.setOptionValue("reboot-per-module", "true");
