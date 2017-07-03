@@ -27,6 +27,7 @@ import com.android.tradefed.config.ConfigurationException;
 import com.android.tradefed.config.IConfiguration;
 import com.android.tradefed.config.OptionSetter;
 import com.android.tradefed.device.ITestDevice;
+import com.android.tradefed.invoker.InvocationContext;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.testtype.IRemoteTest;
 import com.android.tradefed.testtype.StubTest;
@@ -178,6 +179,7 @@ public class TfSuiteRunnerTest {
         mRunner.setDevice(mock(ITestDevice.class));
         mRunner.setBuild(mock(IBuildInfo.class));
         mRunner.setSystemStatusChecker(new ArrayList<>());
+        mRunner.setInvocationContext(new InvocationContext());
         // runs the expanded suite
         listener.testRunStarted("suite/stub1", 0);
         listener.testRunEnded(EasyMock.anyLong(), EasyMock.anyObject());
