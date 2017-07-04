@@ -23,6 +23,7 @@ import com.android.tradefed.config.Option;
 import com.android.tradefed.config.OptionCopier;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
+import com.android.tradefed.invoker.IInvocationContext;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.InputStreamSource;
@@ -31,6 +32,7 @@ import com.android.tradefed.suite.checker.ISystemStatusChecker;
 import com.android.tradefed.suite.checker.ISystemStatusCheckerReceiver;
 import com.android.tradefed.testtype.IBuildReceiver;
 import com.android.tradefed.testtype.IDeviceTest;
+import com.android.tradefed.testtype.IInvocationContextReceiver;
 import com.android.tradefed.testtype.IRemoteTest;
 import com.android.tradefed.testtype.IShardableTest;
 import com.android.tradefed.testtype.ITestCollector;
@@ -52,7 +54,8 @@ public abstract class ITestSuite
                 IBuildReceiver,
                 ISystemStatusCheckerReceiver,
                 IShardableTest,
-                ITestCollector {
+                ITestCollector,
+                IInvocationContextReceiver {
 
     public static final String MODULE_CHECKER_PRE = "PreModuleChecker";
     public static final String MODULE_CHECKER_POST = "PostModuleChecker";
@@ -109,6 +112,7 @@ public abstract class ITestSuite
     private ITestDevice mDevice;
     private IBuildInfo mBuildInfo;
     private List<ISystemStatusChecker> mSystemStatusCheckers;
+    private IInvocationContext mContext;
 
     // Sharding attributes
     private boolean mIsSharded = false;
@@ -157,8 +161,12 @@ public abstract class ITestSuite
                                         "Configuration %s cannot be run in a suite.",
                                         config.getValue().getName())));
             }
-            ModuleDefinition module = new ModuleDefinition(config.getKey(),
-                    config.getValue().getTests(), config.getValue().getTargetPreparers());
+            ModuleDefinition module =
+                    new ModuleDefinition(
+                            config.getKey(),
+                            config.getValue().getTests(),
+                            config.getValue().getTargetPreparers(),
+                            config.getValue().getConfigurationDescription());
             module.setDevice(mDevice);
             module.setBuild(mBuildInfo);
             runModules.add(module);
@@ -208,7 +216,15 @@ public abstract class ITestSuite
                 if (module.hasTests()) {
                     continue;
                 }
-                runSingleModule(module, listener, failureListener);
+
+                try {
+                    mContext.setModuleInvocationContext(module.getModuleInvocationContext());
+                    runSingleModule(module, listener, failureListener);
+                } finally {
+                    // clear out module invocation context since we are now done with module
+                    // execution
+                    mContext.setModuleInvocationContext(null);
+                }
             }
         } catch (DeviceNotAvailableException e) {
             CLog.e(
@@ -455,5 +471,11 @@ public abstract class ITestSuite
      */
     public void setShouldMakeDynamicModule(boolean dynamicModule) {
         mShouldMakeDynamicModule = dynamicModule;
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public void setInvocationContext(IInvocationContext invocationContext) {
+        mContext = invocationContext;
     }
 }
