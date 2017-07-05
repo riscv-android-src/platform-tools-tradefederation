@@ -17,6 +17,7 @@ package com.android.tradefed.testtype.suite;
 
 import com.android.tradefed.build.StubBuildProvider;
 import com.android.tradefed.config.IConfiguration;
+import com.android.tradefed.config.IDeviceConfiguration;
 import com.android.tradefed.result.TextResultReporter;
 
 /**
@@ -34,6 +35,15 @@ public class ValidateSuiteConfigHelper {
     public static boolean validateConfig(IConfiguration config) {
         if (!config.getBuildProvider().getClass().isAssignableFrom(StubBuildProvider.class)) {
             return false;
+        }
+        // if a multi device config is presented, ensure none of the devices define a build_provider
+        for (IDeviceConfiguration deviceConfig : config.getDeviceConfig()) {
+            if (!deviceConfig
+                    .getBuildProvider()
+                    .getClass()
+                    .isAssignableFrom(StubBuildProvider.class)) {
+                return false;
+            }
         }
         if (config.getTestInvocationListeners().size() != 1) {
             return false;
