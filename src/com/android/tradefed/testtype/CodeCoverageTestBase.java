@@ -37,6 +37,8 @@ import com.android.tradefed.util.FileUtil;
 import com.android.tradefed.util.ICompressionStrategy;
 import com.android.tradefed.util.ListInstrumentationParser;
 import com.android.tradefed.util.ListInstrumentationParser.InstrumentationTarget;
+import com.google.common.annotations.VisibleForTesting;
+import com.google.common.collect.ImmutableMap;
 
 import java.io.File;
 import java.io.IOException;
@@ -67,9 +69,11 @@ public abstract class CodeCoverageTestBase<T extends CodeCoverageReportFormat>
             description = "Only run instrumentation targets with the given test runner")
     private List<String> mRunnerFilter = new ArrayList<>();
 
-    @Option(name = "instrumentation-arg",
-            description = "Additional instrumentation arguments to provide to the runner")
-    private Map<String, String> mInstrArgMap = new HashMap<String, String>();
+    @Option(
+        name = "instrumentation-arg",
+        description = "Additional instrumentation arguments to provide to the runner"
+    )
+    private Map<String, String> mInstrumentationArgs = new HashMap<String, String>();
 
     @Option(name = "max-tests-per-chunk",
             description = "Maximum number of tests to execute in a single call to 'am instrument'. "
@@ -115,19 +119,43 @@ public abstract class CodeCoverageTestBase<T extends CodeCoverageReportFormat>
         return mPackageFilter;
     }
 
+    /** Sets the package-filter option for testing. */
+    @VisibleForTesting
+    void setPackageFilter(List<String> packageFilter) {
+        mPackageFilter = packageFilter;
+    }
+
     /** Returns the runner filter as set by the --runner option(s). */
     List<String> getRunnerFilter() {
         return mRunnerFilter;
     }
 
+    /** Sets the runner-filter option for testing. */
+    @VisibleForTesting
+    void setRunnerFilter(List<String> runnerFilter) {
+        mRunnerFilter = runnerFilter;
+    }
+
     /** Returns the instrumentation arguments as set by the --instrumentation-arg option(s). */
     Map<String, String> getInstrumentationArgs() {
-        return mInstrArgMap;
+        return mInstrumentationArgs;
+    }
+
+    /** Sets the instrumentation-arg options for testing. */
+    @VisibleForTesting
+    void setInstrumentationArgs(Map<String, String> instrumentationArgs) {
+        mInstrumentationArgs = ImmutableMap.copyOf(instrumentationArgs);
     }
 
     /** Returns the maximum number of tests to run at once as set by --max-tests-per-chunk. */
     int getMaxTestsPerChunk() {
         return mMaxTestsPerChunk;
+    }
+
+    /** Sets the max-tests-per-chunk option for testing. */
+    @VisibleForTesting
+    void setMaxTestsPerChunk(int maxTestsPerChunk) {
+        mMaxTestsPerChunk = maxTestsPerChunk;
     }
 
     /** Returns the compression strategy that should be used to archive the coverage report.  */
@@ -400,10 +428,14 @@ public abstract class CodeCoverageTestBase<T extends CodeCoverageReportFormat>
         ret.setPackageName(target.packageName);
         ret.setRunnerName(target.runnerName);
 
+        // Disable rerun mode, we want to stop the tests as soon as we fail.
+        ret.setRerunMode(false);
+
         // Add instrumentation arguments
         for (Map.Entry<String, String> argEntry : getInstrumentationArgs().entrySet()) {
             ret.addInstrumentationArg(argEntry.getKey(), argEntry.getValue());
         }
+        ret.addInstrumentationArg("coverage", "true");
 
         return ret;
     }
@@ -495,26 +527,32 @@ public abstract class CodeCoverageTestBase<T extends CodeCoverageReportFormat>
         public void testRunEnded(long elapsedTime, Map<String, String> runMetrics) {
             // Look for the coverage file path from the run metrics
             String coverageFilePath = runMetrics.get(CodeCoverageTest.COVERAGE_REMOTE_FILE_LABEL);
-            CLog.d("Coverage file at %s", coverageFilePath);
+            if (coverageFilePath != null) {
+                CLog.d("Coverage file at %s", coverageFilePath);
 
-            // Try to pull the coverage measurements off of the device
-            File coverageFile = null;
-            try {
-                coverageFile = mDevice.pullFile(coverageFilePath);
-                if (coverageFile == null) {
-                    FileInputStreamSource source = new FileInputStreamSource(coverageFile);
-                    testLog(mCurrentRunName + "_runtime_coverage", LogDataType.COVERAGE, source);
-                    source.cancel();
-                } else {
-                    CLog.w("Failed to pull coverage file from device: %s", coverageFilePath);
+                // Try to pull the coverage measurements off of the device
+                File coverageFile = null;
+                try {
+                    coverageFile = mDevice.pullFile(coverageFilePath);
+                    if (coverageFile != null) {
+                        FileInputStreamSource source = new FileInputStreamSource(coverageFile);
+                        testLog(
+                                mCurrentRunName + "_runtime_coverage",
+                                LogDataType.COVERAGE,
+                                source);
+                        source.cancel();
+                    } else {
+                        CLog.w("Failed to pull coverage file from device: %s", coverageFilePath);
+                    }
+                } catch (DeviceNotAvailableException e) {
+                    // Nothing we can do, so just log the error.
+                    CLog.w(e);
+                } finally {
+                    FileUtil.deleteFile(coverageFile);
                 }
-            } catch (DeviceNotAvailableException e) {
-                // Nothing we can do, so just log the error.
-                CLog.w(e);
-            } finally {
-                FileUtil.deleteFile(coverageFile);
-                super.testRunEnded(elapsedTime, runMetrics);
             }
+
+            super.testRunEnded(elapsedTime, runMetrics);
         }
 
         /** {@inheritDoc} */
