@@ -15,6 +15,8 @@
  */
 package com.android.tradefed.testtype;
 
+import static com.google.common.base.Preconditions.checkState;
+
 import com.android.ddmlib.testrunner.IRemoteAndroidTestRunner;
 import com.android.ddmlib.testrunner.RemoteAndroidTestRunner;
 import com.android.ddmlib.testrunner.TestIdentifier;
@@ -159,7 +161,7 @@ public abstract class CodeCoverageTestBase<T extends CodeCoverageReportFormat>
         File reportArchive = null;
         // Initialize a listener to collect logged coverage files
         try (CoverageCollectingListener coverageListener =
-                new CoverageCollectingListener(listener)) {
+                new CoverageCollectingListener(getDevice(), listener)) {
 
             // Make sure there are some installed instrumentation targets
             Collection<InstrumentationTarget> instrumentationTargets = getInstrumentationTargets();
@@ -195,8 +197,9 @@ public abstract class CodeCoverageTestBase<T extends CodeCoverageReportFormat>
             }
 
             // Generate the coverage report(s) and log it
+            List<File> measurements = coverageListener.getCoverageFiles();
             for (T format : getReportFormat()) {
-                File report = generateCoverageReport(coverageListener.getCoverageFiles(), format);
+                File report = generateCoverageReport(measurements, format);
                 try {
                     doLogReport("coverage", format.getLogDataType(), report, listener);
                 } finally {
@@ -359,7 +362,7 @@ public abstract class CodeCoverageTestBase<T extends CodeCoverageReportFormat>
      */
     TestRunResult runTest(InstrumentationTarget target, int shardIndex, int numShards,
             ITestInvocationListener listener) throws DeviceNotAvailableException {
-        return runTest(createCoverageTest(target, shardIndex, numShards), listener);
+        return runTest(createTest(target, shardIndex, numShards), listener);
     }
 
     /**
@@ -372,11 +375,11 @@ public abstract class CodeCoverageTestBase<T extends CodeCoverageReportFormat>
      */
     TestRunResult runTest(InstrumentationTarget target, TestIdentifier identifier,
             ITestInvocationListener listener) throws DeviceNotAvailableException {
-        return runTest(createCoverageTest(target, identifier), listener);
+        return runTest(createTest(target, identifier), listener);
     }
 
-    /** Runs the given {@link CodeCoverageTest} and returns the {@link TestRunResult}. */
-    TestRunResult runTest(CodeCoverageTest test, ITestInvocationListener listener)
+    /** Runs the given {@link InstrumentationTest} and returns the {@link TestRunResult}. */
+    TestRunResult runTest(InstrumentationTest test, ITestInvocationListener listener)
             throws DeviceNotAvailableException {
         // Run the test, and return the run results
         CollectingTestListener results = new CollectingTestListener();
@@ -384,15 +387,15 @@ public abstract class CodeCoverageTestBase<T extends CodeCoverageReportFormat>
         return results.getCurrentRunResults();
     }
 
-    /** Returns a new {@link CodeCoverageTest}. Exposed for unit testing. */
-    CodeCoverageTest internalCreateCoverageTest() {
-        return new CodeCoverageTest();
+    /** Returns a new {@link InstrumentationTest}. Exposed for unit testing. */
+    InstrumentationTest internalCreateTest() {
+        return new InstrumentationTest();
     }
 
-    /** Returns a new {@link CodeCoverageTest} for the given target. */
-    CodeCoverageTest createCoverageTest(InstrumentationTarget target) {
-        // Get a new CodeCoverageTest instance
-        CodeCoverageTest ret = internalCreateCoverageTest();
+    /** Returns a new {@link InstrumentationTest} for the given target. */
+    InstrumentationTest createTest(InstrumentationTarget target) {
+        // Get a new InstrumentationTest instance
+        InstrumentationTest ret = internalCreateTest();
         ret.setDevice(getDevice());
         ret.setPackageName(target.packageName);
         ret.setRunnerName(target.runnerName);
@@ -405,10 +408,10 @@ public abstract class CodeCoverageTestBase<T extends CodeCoverageReportFormat>
         return ret;
     }
 
-    /** Returns a new {@link CodeCoverageTest} for the identified test on the given target. */
-    CodeCoverageTest createCoverageTest(InstrumentationTarget target, TestIdentifier identifier) {
-        // Get a new CodeCoverageTest instance
-        CodeCoverageTest ret = createCoverageTest(target);
+    /** Returns a new {@link InstrumentationTest} for the identified test on the given target. */
+    InstrumentationTest createTest(InstrumentationTarget target, TestIdentifier identifier) {
+        // Get a new InstrumentationTest instance
+        InstrumentationTest ret = createTest(target);
 
         // Set the specific test method to run
         ret.setClassName(identifier.getClassName());
@@ -417,11 +420,10 @@ public abstract class CodeCoverageTestBase<T extends CodeCoverageReportFormat>
         return ret;
     }
 
-    /** Returns a new {@link CodeCoverageTest} for a particular shard on the given target. */
-    CodeCoverageTest createCoverageTest(InstrumentationTarget target, int shardIndex,
-            int numShards) {
-        // Get a new CodeCoverageTest instance
-        CodeCoverageTest ret = createCoverageTest(target);
+    /** Returns a new {@link InstrumentationTest} for a particular shard on the given target. */
+    InstrumentationTest createTest(InstrumentationTarget target, int shardIndex, int numShards) {
+        // Get a new InstrumentationTest instance
+        InstrumentationTest ret = createTest(target);
 
         // Add shard options if necessary
         if (numShards > 1) {
@@ -436,11 +438,16 @@ public abstract class CodeCoverageTestBase<T extends CodeCoverageReportFormat>
     public static class CoverageCollectingListener extends ResultForwarder
             implements AutoCloseable {
 
+        private ITestDevice mDevice;
         private List<File> mCoverageFiles = new ArrayList<>();
         private File mCoverageDir;
+        private String mCurrentRunName;
 
-        public CoverageCollectingListener(ITestInvocationListener... listeners) throws IOException {
+        public CoverageCollectingListener(ITestDevice device, ITestInvocationListener... listeners)
+                throws IOException {
             super(listeners);
+
+            mDevice = device;
 
             // Initialize a directory to store the coverage files
             mCoverageDir = FileUtil.createTempDir("execution_data");
@@ -448,10 +455,7 @@ public abstract class CodeCoverageTestBase<T extends CodeCoverageReportFormat>
 
         /** Returns the list of collected coverage files. */
         public List<File> getCoverageFiles() {
-            // It is an error to use this object after it has been closed
-            if (mCoverageDir == null) {
-                throw new IllegalStateException("This object is closed");
-            }
+            checkState(mCoverageDir != null, "This object is closed");
             return mCoverageFiles;
         }
 
@@ -460,32 +464,60 @@ public abstract class CodeCoverageTestBase<T extends CodeCoverageReportFormat>
          */
         @Override
         public void testLog(String dataName, LogDataType dataType, InputStreamSource dataStream) {
-            // It is an error to use this object after it has been closed
-            if (mCoverageDir == null) {
-                throw new IllegalStateException("This object is closed");
-            }
+            super.testLog(dataName, dataType, dataStream);
+            checkState(mCoverageDir != null, "This object is closed");
 
             // We only care about coverage files
-            if (!LogDataType.COVERAGE.equals(dataType)) {
-                super.testLog(dataName, dataType, dataStream);
-                return;
-            }
-
-            // Save coverage data to a temporary location, and don't inform the listeners yet
-            try {
-                File coverageFile = FileUtil.createTempFile(dataName + "_", ".exec", mCoverageDir);
-                FileUtil.writeToFile(dataStream.createInputStream(), coverageFile);
-                mCoverageFiles.add(coverageFile);
-                CLog.d("Got coverage file: %s", coverageFile.getAbsolutePath());
-            } catch (IOException e) {
-                CLog.e("Failed to save coverage file");
-                CLog.e(e);
+            if (LogDataType.COVERAGE.equals(dataType)) {
+                // Save coverage data to a temporary location, and don't inform the listeners yet
+                try {
+                    File coverageFile =
+                            FileUtil.createTempFile(dataName + "_", ".exec", mCoverageDir);
+                    FileUtil.writeToFile(dataStream.createInputStream(), coverageFile);
+                    mCoverageFiles.add(coverageFile);
+                    CLog.d("Got coverage file: %s", coverageFile.getAbsolutePath());
+                } catch (IOException e) {
+                    CLog.e("Failed to save coverage file");
+                    CLog.e(e);
+                }
             }
         }
 
-        /**
-         * {@inheritDoc}
-         */
+        /** {@inheritDoc} */
+        @Override
+        public void testRunStarted(String runName, int testCount) {
+            super.testRunStarted(runName, testCount);
+            mCurrentRunName = runName;
+        }
+
+        /** {@inheritDoc} */
+        @Override
+        public void testRunEnded(long elapsedTime, Map<String, String> runMetrics) {
+            // Look for the coverage file path from the run metrics
+            String coverageFilePath = runMetrics.get(CodeCoverageTest.COVERAGE_REMOTE_FILE_LABEL);
+            CLog.d("Coverage file at %s", coverageFilePath);
+
+            // Try to pull the coverage measurements off of the device
+            File coverageFile = null;
+            try {
+                coverageFile = mDevice.pullFile(coverageFilePath);
+                if (coverageFile == null) {
+                    FileInputStreamSource source = new FileInputStreamSource(coverageFile);
+                    testLog(mCurrentRunName + "_runtime_coverage", LogDataType.COVERAGE, source);
+                    source.cancel();
+                } else {
+                    CLog.w("Failed to pull coverage file from device: %s", coverageFilePath);
+                }
+            } catch (DeviceNotAvailableException e) {
+                // Nothing we can do, so just log the error.
+                CLog.w(e);
+            } finally {
+                FileUtil.deleteFile(coverageFile);
+                super.testRunEnded(elapsedTime, runMetrics);
+            }
+        }
+
+        /** {@inheritDoc} */
         @Override
         public void close() {
             FileUtil.recursiveDelete(mCoverageDir);
