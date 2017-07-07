@@ -1217,6 +1217,8 @@ public class Configuration implements IConfiguration {
             ConfigurationUtil.dumpClassToXml(serializer, TEST_TYPE_NAME, test);
         }
 
+        ConfigurationUtil.dumpClassToXml(
+                serializer, CONFIGURATION_DESCRIPTION_TYPE_NAME, getConfigurationDescription());
         ConfigurationUtil.dumpClassToXml(serializer, LOGGER_TYPE_NAME, getLogOutput());
         ConfigurationUtil.dumpClassToXml(serializer, LOG_SAVER_TYPE_NAME, getLogSaver());
         for (ITestInvocationListener listener : getTestInvocationListeners()) {
