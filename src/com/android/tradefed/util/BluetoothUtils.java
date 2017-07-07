@@ -192,6 +192,8 @@ public class BluetoothUtils {
             throws DeviceNotAvailableException {
         if (isGoldAndAbove(device)) {
             device.executeShellCommand(BTSNOOP_ENABLE_CMD);
+            disable(device);
+            enable(device);
             return true;
         }
         return enableBtsnoopLogging(device, null);
@@ -222,6 +224,8 @@ public class BluetoothUtils {
             throws DeviceNotAvailableException {
         if (isGoldAndAbove(device)) {
             device.executeShellCommand(BTSNOOP_DISABLE_CMD);
+            disable(device);
+            enable(device);
             return true;
         }
         return disableBtsnoopLogging(device, null);

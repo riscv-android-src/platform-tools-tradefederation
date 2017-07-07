@@ -22,6 +22,7 @@ import java.io.File;
  * An {@link IBuildInfo} that contains otatools artifacts.
  */
 public class OtatoolsBuildInfo extends BuildInfo {
+    private static final long serialVersionUID = BuildSerializedVersion.VERSION;
     private static final String SECURITY_DIR_NAME = "otatools_security";
     private static final String BIN_DIR_NAME = "otatools_bin";
     private static final String FRAMEWORK_DIR_NAME = "otatools_framework";
