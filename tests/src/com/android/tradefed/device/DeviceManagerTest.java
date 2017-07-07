@@ -40,6 +40,7 @@ import java.io.ByteArrayOutputStream;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.io.PrintWriter;
+import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -1132,6 +1133,10 @@ public class DeviceManagerTest extends TestCase {
                 + "\n", out.toString());
     }
 
+    /**
+     * Test that {@link DeviceManager#shouldAdbBridgeBeRestarted()} properly reports the flag state
+     * based on if it was requested or not.
+     */
     public void testAdbBridgeFlag() throws Exception {
         setCheckAvailableDeviceExpectations();
         replayMocks();
@@ -1144,5 +1149,25 @@ public class DeviceManagerTest extends TestCase {
         assertFalse(manager.shouldAdbBridgeBeRestarted());
 
         verifyMocks();
+    }
+
+    /**
+     * Test that when a {@link IDeviceMonitor} is available in {@link DeviceManager} it properly
+     * goes through its life cycle.
+     */
+    public void testDeviceMonitorLifeCyle() throws Exception {
+        IDeviceMonitor mockMonitor = EasyMock.createMock(IDeviceMonitor.class);
+        List<IDeviceMonitor> monitors = new ArrayList<>();
+        monitors.add(mockMonitor);
+        setCheckAvailableDeviceExpectations();
+
+        mockMonitor.setDeviceLister(EasyMock.anyObject());
+        mockMonitor.run();
+        mockMonitor.stop();
+
+        replayMocks(mockMonitor);
+        DeviceManager manager = createDeviceManager(monitors, mMockIDevice);
+        manager.terminateDeviceMonitor();
+        verifyMocks(mockMonitor);
     }
 }
