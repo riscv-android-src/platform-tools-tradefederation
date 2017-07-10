@@ -3017,22 +3017,28 @@ public class TestDeviceTest extends TestCase {
      * image size with different encoding.
      */
     public void testCompressScreenshot() throws Exception {
-        File testImageFile = getTestImageResource();
+        InputStream imageData = getClass().getResourceAsStream("/testdata/SmallRawImage.raw");
+        File testImageFile = FileUtil.createTempFile("raw-to-buffered", ".raw");
+        FileUtil.writeToFile(imageData, testImageFile);
         try {
             RawImage testImage = prepareRawImage(testImageFile);
+            // We used the small image so we adapt the size.
+            testImage.height = 25;
+            testImage.size = 2000;
+            testImage.width = 25;
             // Size of the raw test data
-            Assert.assertEquals(12441600, testImage.data.length);
+            Assert.assertEquals(3000, testImage.data.length);
             byte[] result = mTestDevice.compressRawImage(testImage, "PNG", true);
             // Size after compressing
-            Assert.assertEquals(4082, result.length);
+            Assert.assertEquals(107, result.length);
 
             // Do it again with JPEG encoding
-            Assert.assertEquals(12441600, testImage.data.length);
+            Assert.assertEquals(3000, testImage.data.length);
             result = mTestDevice.compressRawImage(testImage, "JPEG", true);
             // Size after compressing as JPEG
-            Assert.assertEquals(119998, result.length);
+            Assert.assertEquals(1041, result.length);
         } finally {
-            FileUtil.recursiveDelete(testImageFile.getParentFile());
+            FileUtil.deleteFile(testImageFile);
         }
     }
 
@@ -3042,10 +3048,15 @@ public class TestDeviceTest extends TestCase {
      * @throws Exception
      */
     public void testRawImageToBufferedImage() throws Exception {
-        File testImageFile = getTestImageResource();
-
+        InputStream imageData = getClass().getResourceAsStream("/testdata/SmallRawImage.raw");
+        File testImageFile = FileUtil.createTempFile("raw-to-buffered", ".raw");
+        FileUtil.writeToFile(imageData, testImageFile);
         try {
             RawImage testImage = prepareRawImage(testImageFile);
+            // We used the small image so we adapt the size.
+            testImage.height = 25;
+            testImage.size = 2000;
+            testImage.width = 25;
 
             // Test PNG format
             BufferedImage bufferedImage = mTestDevice.rawImageToBufferedImage(testImage, "PNG");
@@ -3059,7 +3070,7 @@ public class TestDeviceTest extends TestCase {
             assertEquals(testImage.height, bufferedImage.getHeight());
             assertEquals(BufferedImage.TYPE_3BYTE_BGR, bufferedImage.getType());
         } finally {
-            FileUtil.recursiveDelete(testImageFile.getParentFile());
+            FileUtil.deleteFile(testImageFile);
         }
     }
 
