@@ -567,7 +567,9 @@ public class TestInvocation implements ITestInvocation {
                 }
             }
             // Extra tear down step for the device
-            device.postInvocationTearDown();
+            if (!config.getCommandOptions().shouldSkipPreDeviceSetup()) {
+                device.postInvocationTearDown();
+            }
         }
 
         if (throwable != null) {
