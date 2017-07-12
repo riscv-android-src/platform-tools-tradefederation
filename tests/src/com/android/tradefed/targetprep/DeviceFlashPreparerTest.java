@@ -117,7 +117,6 @@ public class DeviceFlashPreparerTest {
         EasyMock.expect(mMockDevice.enableAdbRoot()).andStubReturn(Boolean.TRUE);
         mMockDevice.setDate(null);
         EasyMock.expect(mMockDevice.getBuildId()).andReturn(mMockBuildInfo.getBuildId());
-        EasyMock.expect(mMockDevice.getBuildFlavor()).andReturn(mMockBuildInfo.getBuildFlavor());
         EasyMock.expect(mMockDevice.isEncryptionSupported()).andStubReturn(Boolean.TRUE);
         EasyMock.expect(mMockDevice.isDeviceEncrypted()).andStubReturn(Boolean.FALSE);
         mMockDevice.clearLogcat();
@@ -154,7 +153,6 @@ public class DeviceFlashPreparerTest {
         EasyMock.expect(mMockDevice.enableAdbRoot()).andStubReturn(Boolean.TRUE);
         mMockDevice.setDate(null);
         EasyMock.expect(mMockDevice.getBuildId()).andReturn(mMockBuildInfo.getBuildId());
-        EasyMock.expect(mMockDevice.getBuildFlavor()).andReturn(mMockBuildInfo.getBuildFlavor());
         EasyMock.expect(mMockDevice.isEncryptionSupported()).andStubReturn(Boolean.TRUE);
         EasyMock.expect(mMockDevice.isDeviceEncrypted()).andStubReturn(Boolean.FALSE);
         EasyMock.expect(mMockDevice.getProductType()).andReturn("flavor");

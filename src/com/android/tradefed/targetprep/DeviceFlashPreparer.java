@@ -76,7 +76,7 @@ public abstract class DeviceFlashPreparer implements ITargetCleaner {
      */
     @Option(name = "skip-post-flash-flavor-check", description =
             "specify if system flavor should not be checked after flash")
-    private boolean mSkipPostFlashFlavorCheck = false;
+    private boolean mSkipPostFlashFlavorCheck = true;
 
     /*
      * Used for update testing
