@@ -321,10 +321,10 @@ public class TestInvocation implements ITestInvocation {
         Throwable exception = null;
         Throwable tearDownException = null;
         ITestDevice badDevice = null;
-        // Ensure that no unexpected attributes are added afterward
-        ((InvocationContext) context).lockAttributes();
 
         startInvocation(config, context, listener);
+        // Ensure that no unexpected attributes are added afterward
+        ((InvocationContext) context).lockAttributes();
         try {
             logDeviceBatteryLevel(context, "initial");
             prepareAndRun(config, context, listener);
