@@ -123,6 +123,21 @@ public class PythonUnitTestResultParserTest extends TestCase {
         assertEquals(0, mParser.mLineNum);
     }
 
+    public void testParse_noTests() throws Exception {
+        String[] output = {
+                "",
+                PythonUnitTestResultParser.LINE,
+                "Ran 0 tests in 0.000s",
+                "",
+                "OK"
+        };
+        setRunListenerChecks(0, 0, true);
+
+        replay(mMockListener);
+        mParser.processNewLines(output);
+        verify(mMockListener);
+    }
+
     public void testParse_singleTestPass_contiguous() throws Exception {
         String[] output = {
                 "b (a) ... ok",

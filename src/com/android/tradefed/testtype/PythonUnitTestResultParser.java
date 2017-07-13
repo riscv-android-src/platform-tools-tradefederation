@@ -249,13 +249,19 @@ public class PythonUnitTestResultParser extends MultiLineReceiver {
     }
 
     void testResult() throws PythonUnitTestParseException {
-        // we're at the end of the TEST_CASE section
+        // separate line before traceback message
         if (eqline()) {
             mCurrentParseState = ParserState.FAIL_MESSAGE;
             return;
         }
+        // separate line before test summary
         if (line()) {
             mCurrentParseState = ParserState.TEST_SUMMARY;
+            return;
+        }
+        // empty line preceding the separate line
+        if (emptyLine()) {
+            // skip
             return;
         }
 
@@ -408,6 +414,10 @@ public class PythonUnitTestResultParser extends MultiLineReceiver {
 
     boolean tracebackLine() {
         return mCurrentLine.startsWith(TRACEBACK_LINE);
+    }
+
+    boolean emptyLine() {
+        return mCurrentLine.isEmpty();
     }
 
     /**
