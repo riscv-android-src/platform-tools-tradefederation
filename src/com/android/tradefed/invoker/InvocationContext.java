@@ -49,6 +49,8 @@ public class InvocationContext implements IInvocationContext {
     /** module invocation context (when running as part of a {@link ITestSuite} */
     private IInvocationContext mModuleContext;
 
+    private boolean mLocked;
+
     /**
      * Creates a {@link BuildInfo} using default attribute values.
      */
@@ -167,19 +169,30 @@ public class InvocationContext implements IInvocationContext {
      */
     @Override
     public void addInvocationAttribute(String attributeName, String attributeValue) {
+        if (mLocked) {
+            throw new IllegalStateException(
+                    "Attempting to add invocation attribute during a test.");
+        }
         mInvocationAttributes.put(attributeName, attributeValue);
     }
 
     /** {@inheritDoc} */
     @Override
     public void addInvocationAttributes(UniqueMultiMap<String, String> attributesMap) {
+        if (mLocked) {
+            throw new IllegalStateException(
+                    "Attempting to add invocation attribute during a test.");
+        }
         mInvocationAttributes.putAll(attributesMap);
     }
 
     /** {@inheritDoc} */
     @Override
     public MultiMap<String, String> getAttributes() {
-        return mInvocationAttributes;
+        // Return a copy of the map to avoid unwanted modifications.
+        UniqueMultiMap<String, String> copy = new UniqueMultiMap<>();
+        copy.putAll(mInvocationAttributes);
+        return copy;
     }
 
     /**
@@ -256,5 +269,10 @@ public class InvocationContext implements IInvocationContext {
     @Override
     public IInvocationContext getModuleInvocationContext() {
         return mModuleContext;
+    }
+
+    /** Lock the context to prevent more invocation attributes to be added. */
+    public void lockAttributes() {
+        mLocked = true;
     }
 }
