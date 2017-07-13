@@ -18,12 +18,16 @@ package com.android.tradefed.invoker;
 import static org.junit.Assert.*;
 
 import com.android.tradefed.device.ITestDevice;
+import com.android.tradefed.util.MultiMap;
+import com.android.tradefed.util.UniqueMultiMap;
 
 import org.easymock.EasyMock;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
+
+import java.util.Arrays;
 
 /** Unit tests for {@link InvocationContext} */
 @RunWith(JUnit4.class)
@@ -46,5 +50,37 @@ public class InvocationContextTest {
         mContext.addAllocatedDevice("test1", device1);
         assertEquals("test1", mContext.getDeviceName(device1));
         assertNull(mContext.getDeviceName(device2));
+    }
+
+    /**
+     * Test adding attributes and querying them. The map returned is always a copy and does not
+     * affect the actual invocation attributes.
+     */
+    @Test
+    public void testGetAttributes() {
+        mContext.addInvocationAttribute("TEST_KEY", "TEST_VALUE");
+        assertEquals(Arrays.asList("TEST_VALUE"), mContext.getAttributes().get("TEST_KEY"));
+        MultiMap<String, String> map = mContext.getAttributes();
+        map.remove("TEST_KEY");
+        // assert that the key is still there in the map from the context
+        assertEquals(Arrays.asList("TEST_VALUE"), mContext.getAttributes().get("TEST_KEY"));
+    }
+
+    /** Test that once locked the invocation context does not accept more invocation attributes. */
+    @Test
+    public void testLockedContext() {
+        mContext.lockAttributes();
+        try {
+            mContext.addInvocationAttribute("test", "Test");
+            fail("Should have thrown an exception.");
+        } catch (IllegalStateException expected) {
+            // expected
+        }
+        try {
+            mContext.addInvocationAttributes(new UniqueMultiMap<>());
+            fail("Should have thrown an exception.");
+        } catch (IllegalStateException expected) {
+            // expected
+        }
     }
 }
