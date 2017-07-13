@@ -3237,4 +3237,46 @@ public class TestDeviceTest extends TestCase {
         assertEquals("bbb/bbb", stringArgs.get(1));
         assertEquals(Integer.valueOf(10), intArgs.get(1));
     }
+
+    /** Test that the output of cryptfs allows for encryption for newest format. */
+    public void testIsEncryptionSupported_newformat() throws Exception {
+        mTestDevice =
+                new TestableTestDevice() {
+                    @Override
+                    public boolean isAdbRoot() throws DeviceNotAvailableException {
+                        return true;
+                    }
+
+                    @Override
+                    public boolean enableAdbRoot() throws DeviceNotAvailableException {
+                        return true;
+                    }
+                };
+        injectShellResponse(
+                "vdc cryptfs enablecrypto",
+                "500 8674 Usage with ext4crypt: cryptfs enablecrypto inplace default noui\r\n");
+        EasyMock.replay(mMockIDevice, mMockStateMonitor, mMockDvcMonitor);
+        assertTrue(mTestDevice.isEncryptionSupported());
+        EasyMock.verify(mMockIDevice, mMockStateMonitor, mMockDvcMonitor);
+    }
+
+    /** Test that the output of cryptfs does not allow for encryption. */
+    public void testIsEncryptionSupported_failure() throws Exception {
+        mTestDevice =
+                new TestableTestDevice() {
+                    @Override
+                    public boolean isAdbRoot() throws DeviceNotAvailableException {
+                        return true;
+                    }
+
+                    @Override
+                    public boolean enableAdbRoot() throws DeviceNotAvailableException {
+                        return true;
+                    }
+                };
+        injectShellResponse("vdc cryptfs enablecrypto", "500 8674 Command not recognized\r\n");
+        EasyMock.replay(mMockIDevice, mMockStateMonitor, mMockDvcMonitor);
+        assertFalse(mTestDevice.isEncryptionSupported());
+        EasyMock.verify(mMockIDevice, mMockStateMonitor, mMockDvcMonitor);
+    }
 }
