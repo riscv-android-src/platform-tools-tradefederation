@@ -18,6 +18,7 @@ package com.android.tradefed.invoker;
 import static org.mockito.Mockito.doReturn;
 
 import com.android.ddmlib.IDevice;
+import com.android.tradefed.build.BuildInfo;
 import com.android.tradefed.build.BuildRetrievalError;
 import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.build.IBuildProvider;
@@ -1329,11 +1330,16 @@ public class TestInvocationTest extends TestCase {
         doReturn(future).when(idevice).getBattery(Mockito.anyLong(), Mockito.any());
         EasyMock.expect(device1.getSerialNumber()).andReturn("serial1");
         context.addAllocatedDevice("device1", device1);
+        context.addDeviceBuildInfo("device1", new BuildInfo());
         EasyMock.replay(device1);
         mTestInvocation.logDeviceBatteryLevel(context, fakeEvent);
         EasyMock.verify(device1);
-        assertEquals(1, context.getAttributes().size());
-        assertEquals("50", context.getAttributes().get("serial1-battery-" + fakeEvent).get(0));
+        assertEquals(1, context.getBuildInfo("device1").getBuildAttributes().size());
+        assertEquals(
+                "50",
+                context.getBuildInfo("device1")
+                        .getBuildAttributes()
+                        .get("serial1-battery-" + fakeEvent));
     }
 
     /**
@@ -1354,13 +1360,24 @@ public class TestInvocationTest extends TestCase {
         EasyMock.expect(device2.getIDevice()).andReturn(idevice);
         EasyMock.expect(device2.getSerialNumber()).andReturn("serial2");
         context.addAllocatedDevice("device1", device1);
+        context.addDeviceBuildInfo("device1", new BuildInfo());
         context.addAllocatedDevice("device2", device2);
+        context.addDeviceBuildInfo("device2", new BuildInfo());
         EasyMock.replay(device1, device2);
         mTestInvocation.logDeviceBatteryLevel(context, fakeEvent);
         EasyMock.verify(device1, device2);
-        assertEquals(2, context.getAttributes().size());
-        assertEquals("50", context.getAttributes().get("serial1-battery-" + fakeEvent).get(0));
-        assertEquals("50", context.getAttributes().get("serial2-battery-" + fakeEvent).get(0));
+        assertEquals(1, context.getBuildInfo("device1").getBuildAttributes().size());
+        assertEquals(1, context.getBuildInfo("device2").getBuildAttributes().size());
+        assertEquals(
+                "50",
+                context.getBuildInfo("device1")
+                        .getBuildAttributes()
+                        .get("serial1-battery-" + fakeEvent));
+        assertEquals(
+                "50",
+                context.getBuildInfo("device2")
+                        .getBuildAttributes()
+                        .get("serial2-battery-" + fakeEvent));
     }
 
     /**
@@ -1385,15 +1402,26 @@ public class TestInvocationTest extends TestCase {
         ITestDevice device4 = EasyMock.createMock(ITestDevice.class);
         EasyMock.expect(device1.getIDevice()).andStubReturn(new StubDevice("stub2"));
         context.addAllocatedDevice("device1", device1);
+        context.addDeviceBuildInfo("device1", new BuildInfo());
         context.addAllocatedDevice("device2", device2);
+        context.addDeviceBuildInfo("device2", new BuildInfo());
         context.addAllocatedDevice("device3", device3);
         context.addAllocatedDevice("device4", device4);
         EasyMock.replay(device1, device2);
         mTestInvocation.logDeviceBatteryLevel(context, fakeEvent);
         EasyMock.verify(device1, device2);
-        assertEquals(2, context.getAttributes().size());
-        assertEquals("50", context.getAttributes().get("serial1-battery-" + fakeEvent).get(0));
-        assertEquals("50", context.getAttributes().get("serial2-battery-" + fakeEvent).get(0));
+        assertEquals(1, context.getBuildInfo("device1").getBuildAttributes().size());
+        assertEquals(1, context.getBuildInfo("device2").getBuildAttributes().size());
+        assertEquals(
+                "50",
+                context.getBuildInfo("device1")
+                        .getBuildAttributes()
+                        .get("serial1-battery-" + fakeEvent));
+        assertEquals(
+                "50",
+                context.getBuildInfo("device2")
+                        .getBuildAttributes()
+                        .get("serial2-battery-" + fakeEvent));
     }
 
     /** Helper to set the expectation for N number of shards. */
