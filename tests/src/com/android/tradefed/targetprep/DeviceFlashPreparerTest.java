@@ -97,6 +97,7 @@ public class DeviceFlashPreparerTest {
     /** Simple normal case test for {@link DeviceFlashPreparer#setUp(ITestDevice, IBuildInfo)}. */
     @Test
     public void testSetup() throws Exception {
+        mDeviceFlashPreparer.setSkipPreFlashProductType(false);
         doSetupExpectations();
         EasyMock.replay(mMockFlasher, mMockDevice);
         mDeviceFlashPreparer.setUp(mMockDevice, mMockBuildInfo);
@@ -117,6 +118,7 @@ public class DeviceFlashPreparerTest {
         EasyMock.expect(mMockDevice.enableAdbRoot()).andStubReturn(Boolean.TRUE);
         mMockDevice.setDate(null);
         EasyMock.expect(mMockDevice.getBuildId()).andReturn(mMockBuildInfo.getBuildId());
+        EasyMock.expect(mMockDevice.getBuildFlavor()).andReturn(mMockBuildInfo.getBuildFlavor());
         EasyMock.expect(mMockDevice.isEncryptionSupported()).andStubReturn(Boolean.TRUE);
         EasyMock.expect(mMockDevice.isDeviceEncrypted()).andStubReturn(Boolean.FALSE);
         mMockDevice.clearLogcat();
@@ -143,6 +145,7 @@ public class DeviceFlashPreparerTest {
     /** Test {@link DeviceFlashPreparer#setUp(ITestDevice, IBuildInfo)} when build does not boot. */
     @Test
     public void testSetup_buildError() throws Exception {
+        mDeviceFlashPreparer.setSkipPreFlashProductType(false);
         mMockDevice.setRecoveryMode(RecoveryMode.ONLINE);
         mMockFlasher.overrideDeviceOptions(mMockDevice);
         mMockFlasher.setForceSystemFlash(false);
@@ -153,6 +156,7 @@ public class DeviceFlashPreparerTest {
         EasyMock.expect(mMockDevice.enableAdbRoot()).andStubReturn(Boolean.TRUE);
         mMockDevice.setDate(null);
         EasyMock.expect(mMockDevice.getBuildId()).andReturn(mMockBuildInfo.getBuildId());
+        EasyMock.expect(mMockDevice.getBuildFlavor()).andReturn(mMockBuildInfo.getBuildFlavor());
         EasyMock.expect(mMockDevice.isEncryptionSupported()).andStubReturn(Boolean.TRUE);
         EasyMock.expect(mMockDevice.isDeviceEncrypted()).andStubReturn(Boolean.FALSE);
         EasyMock.expect(mMockDevice.getProductType()).andReturn("flavor");
@@ -289,6 +293,7 @@ public class DeviceFlashPreparerTest {
      */
     @Test
     public void testSetup_checkDeviceBuild() throws Exception {
+        mDeviceFlashPreparer.setSkipPreFlashProductType(false);
         mMockBuildInfo = new DeviceBuildInfo();
         mMockBuildInfo.setBuildFlavor("deviceBoard-userdebug");
         EasyMock.expect(mMockDevice.getProductType()).andReturn("deviceBoard");
@@ -305,6 +310,7 @@ public class DeviceFlashPreparerTest {
     public void testSetup_checkDeviceBuild_fail() throws Exception {
         mMockBuildInfo = new DeviceBuildInfo();
         mMockBuildInfo.setBuildFlavor("deviceBoard2-userdebug");
+        mDeviceFlashPreparer.setSkipPreFlashProductType(false);
         EasyMock.expect(mMockDevice.getProductType()).andReturn("deviceBoard");
         EasyMock.expect(mMockDevice.getDeviceDescriptor()).andReturn(null);
         EasyMock.replay(mMockDevice);

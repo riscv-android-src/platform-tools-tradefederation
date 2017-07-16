@@ -91,7 +91,7 @@ import java.util.concurrent.TimeUnit;
 public class TestInvocation implements ITestInvocation {
 
     /**
-     * Format of the key in {@link IInvocationContext} to log the battery level for each step of the
+     * Format of the key in {@link IBuildInfo} to log the battery level for each step of the
      * invocation. (Setup, test, tear down).
      */
     private static final String BATTERY_ATTRIBUTE_FORMAT_KEY = "%s-battery-%s";
@@ -323,6 +323,8 @@ public class TestInvocation implements ITestInvocation {
         ITestDevice badDevice = null;
 
         startInvocation(config, context, listener);
+        // Ensure that no unexpected attributes are added afterward
+        ((InvocationContext) context).lockAttributes();
         try {
             logDeviceBatteryLevel(context, "initial");
             prepareAndRun(config, context, listener);
@@ -814,10 +816,13 @@ public class TestInvocation implements ITestInvocation {
             try {
                 Integer batteryLevel = device.getBattery(500, TimeUnit.MILLISECONDS).get();
                 CLog.v("%s - %s - %d%%", BATT_TAG, event, batteryLevel);
-                context.addInvocationAttribute(
-                        String.format(
-                                BATTERY_ATTRIBUTE_FORMAT_KEY, testDevice.getSerialNumber(), event),
-                        batteryLevel.toString());
+                context.getBuildInfo(testDevice)
+                        .addBuildAttribute(
+                                String.format(
+                                        BATTERY_ATTRIBUTE_FORMAT_KEY,
+                                        testDevice.getSerialNumber(),
+                                        event),
+                                batteryLevel.toString());
                 continue;
             } catch (InterruptedException | ExecutionException e) {
                 // fall through

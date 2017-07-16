@@ -121,7 +121,7 @@ public interface IInvocationContext {
     /** Add several invocation attributes at once through a {@link UniqueMultiMap}. */
     public void addInvocationAttributes(UniqueMultiMap<String, String> attributesMap);
 
-    /** Returns the map of invocation attributes. */
+    /** Returns a copy of the map containing all the invocation attributes. */
     public MultiMap<String, String> getAttributes();
 
     /** Sets the descriptor associated with the test configuration that launched the invocation */
