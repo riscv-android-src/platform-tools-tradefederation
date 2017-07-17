@@ -68,7 +68,7 @@ public abstract class DeviceFlashPreparer implements ITargetCleaner {
         name = "skip-pre-flash-product-check",
         description = "Specify if device product type should be checked before flashing"
     )
-    private boolean mSkipPreFlashProductType = false;
+    private boolean mSkipPreFlashProductType = true;
 
     /*
      * A temporary workaround for special builds. Should be removed after changes from build team.
@@ -121,6 +121,15 @@ public abstract class DeviceFlashPreparer implements ITargetCleaner {
      */
     void setDeviceBootTime(long bootTime) {
         mDeviceBootTime = bootTime;
+    }
+
+    /**
+     * Sets the skipPreFlashProductType flag.
+     * <p/>
+     * Exposed for unit testing
+     */
+    void setSkipPreFlashProductType(boolean skipPreFlashProductType) {
+        mSkipPreFlashProductType = skipPreFlashProductType;
     }
 
     /**
