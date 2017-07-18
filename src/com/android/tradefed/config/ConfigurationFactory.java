@@ -220,6 +220,7 @@ public class ConfigurationFactory implements IConfigurationFactory {
             for (String configFileName : possibleConfigFileNames) {
                 File config = FileUtil.findFile(testCasesDir, configFileName);
                 if (config != null) {
+                    CLog.d("Using config: %s/%s", testCasesDir.getAbsoluteFile(), configFileName);
                     return config;
                 }
             }
@@ -272,9 +273,7 @@ public class ConfigurationFactory implements IConfigurationFactory {
             } else {
                 if (templateMap != null) {
                     // Clearing the map before returning the cached config to
-                    // avoid seeing them as
-                    // unused.
-                    CLog.d("Using cached configuration, ensuring map is clean.");
+                    // avoid seeing them as unused.
                     templateMap.clear();
                 }
             }
