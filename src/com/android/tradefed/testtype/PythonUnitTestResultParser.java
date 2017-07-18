@@ -110,20 +110,18 @@ import java.util.regex.Pattern;
  */
 public class PythonUnitTestResultParser extends MultiLineReceiver {
 
-    // Parser state
-    String[] mAllLines;
-    String mCurrentLine;
-    int mLineNum;
-    ParserState mCurrentParseState = null; // do not assume it always starts with TEST_CASE
-
     // Current test state
-    TestIdentifier mCurrentTestId;
-    StringBuilder mCurrentTraceback;
-    long mTotalElapsedTime;
-    int mTotalTestCount;
+    private ParserState mCurrentParseState;
+    private String mCurrentTestName;
+    private String mCurrentTestClass;
+    private String mCurrentTestStatus;
+    private Matcher mCurrentMatcher;
+    private StringBuilder mCurrentTraceback;
+    private long mTotalElapsedTime;
+    private int mTotalTestCount;
+    private int mFailedTestCount;
 
     // General state
-    private int mFailedTestCount;
     private final Collection<ITestRunListener> mListeners;
     private final String mRunName;
     private Map<TestIdentifier, String> mTestResultCache;
@@ -131,9 +129,9 @@ public class PythonUnitTestResultParser extends MultiLineReceiver {
     static final String SKIPPED_ENTRY = "Skipped";
 
     // Constant tokens that appear in the result grammar.
-    static final String EQLINE =
+    static final String EQUAL_LINE =
             "======================================================================";
-    static final String LINE =
+    static final String DASH_LINE =
             "----------------------------------------------------------------------";
     static final String TRACEBACK_LINE =
             "Traceback (most recent call last):";
@@ -156,32 +154,12 @@ public class PythonUnitTestResultParser extends MultiLineReceiver {
 
     static final Pattern PATTERN_RUN_RESULT = Pattern.compile("(OK|FAILED).*");
 
-    /**
-     * Keeps track of the state the parser is currently in.
-     * Since the parser may receive an incomplete set of lines,
-     * it's important for the parse to be resumable. So we need to
-     * keep a record of the parser's current state, so we know which
-     * method to drop into from processNewLines.
-     *
-     * State progression:
-     *
-     *     v------,
-     * TEST_CASE-'->[failed?]-(n)-->RUN_SUMMARY-->RUN_RESULT-->COMPLETE
-     *                         |          ^
-     *                        (y)         '------(n)--,
-     *                         |  ,---TRACEBACK---->[more?]
-     *                         v  v       ^           |
-     *                    FAIL_MESSAGE ---'          (y)
-     *                            ^-------------------'
-     */
-    static enum ParserState {
+    enum ParserState {
         TEST_CASE,
-        TRACEBACK,
-        RUN_SUMMARY,
-        RUN_RESULT,
         FAIL_MESSAGE,
-        FAIL_MESSAGE_OPTIONAL_DOCSTRING,
-        COMPLETE
+        TRACEBACK,
+        SUMMARY,
+        COMPLETE,
     }
 
     private class PythonUnitTestParseException extends Exception {
@@ -201,185 +179,127 @@ public class PythonUnitTestResultParser extends MultiLineReceiver {
     @Override
     public void processNewLines(String[] lines) {
         try {
-            init(lines);
-            do {
-                parse();
-            } while (advance());
-        } catch (PythonUnitTestParseException e) {
-            throw new RuntimeException("Failed to parse python-unittest", e);
-        }
-    }
-
-    void init(String[] lines) throws PythonUnitTestParseException {
-        mAllLines = lines;
-        mLineNum = 0;
-        mCurrentLine = mAllLines[0];
-        if (mCurrentParseState == null) {
-            // parser on the first line of *the entire* test output
-            if (tracebackLine()) {
+            if (lines.length < 1 || isTracebackLine(lines[0])) {
                 throw new PythonUnitTestParseException("Test execution failed");
             }
+
             mCurrentParseState = ParserState.TEST_CASE;
+            for (String line : lines) {
+                parse(line);
+            }
+
+            if (mCurrentParseState != ParserState.COMPLETE) {
+                throw new PythonUnitTestParseException(
+                        "Parser finished in unexpected state " + mCurrentParseState.toString());
+            }
+        } catch (PythonUnitTestParseException e) {
+            throw new RuntimeException("Failed to parse Python unittest result", e);
         }
     }
 
-    void parse() throws PythonUnitTestParseException {
+    void parse(String line) throws PythonUnitTestParseException {
         switch (mCurrentParseState) {
             case TEST_CASE:
-                testCase();
+                processTestCase(line);
                 break;
             case TRACEBACK:
-                traceback();
+                processTraceback(line);
                 break;
-            case RUN_SUMMARY:
-                runSummary();
-                break;
-            case RUN_RESULT:
-                runResult();
+            case SUMMARY:
+                processRunSummary(line);
                 break;
             case FAIL_MESSAGE:
-                failMessage();
-                break;
-            case FAIL_MESSAGE_OPTIONAL_DOCSTRING:
-                failMessageOptionalDocstring();
+                processFailMessage(line);
                 break;
             case COMPLETE:
                 break;
         }
     }
 
-    void testCase() throws PythonUnitTestParseException {
-        // separate line before traceback message
-        if (eqline()) {
+    void processTestCase(String line) throws PythonUnitTestParseException {
+        if (isEqualLine(line)) {
+            // equal line before fail message
             mCurrentParseState = ParserState.FAIL_MESSAGE;
-            return;
-        }
-        // separate line before test summary
-        if (line()) {
-            mCurrentParseState = ParserState.RUN_SUMMARY;
-            return;
-        }
-        // empty line preceding the separate line
-        if (emptyLine()) {
-            // skip
-            return;
-        }
-
-        // actually process the test case
-        mCurrentParseState = ParserState.TEST_CASE;
-        String testName = null, testClass = null, status = null;
-        Matcher m = PATTERN_ONE_LINE_RESULT.matcher(mCurrentLine);
-        if (m.matches()) {
-            // one line test result
-            testName = m.group(1);
-            testClass = m.group(2);
-            status = m.group(3);
-        } else {
-            // two line test result
-            Matcher m1 = PATTERN_TWO_LINE_RESULT_FIRST.matcher(mCurrentLine);
-            if (!m1.matches()) {
-                parseError("Test case and result");
-            }
-            testName = m1.group(1);
-            testClass = m1.group(2);
-            if (!advance()) {
-                parseError("Second line of test result");
-            }
-            Matcher m2 = PATTERN_TWO_LINE_RESULT_SECOND.matcher(mCurrentLine);
-            if (!m2.matches()) {
-                parseError("Second line of test result");
-            }
-            status = m2.group(2);
-        }
-        mCurrentTestId = new TestIdentifier(testClass, testName);
-        if (PATTERN_TEST_SUCCESS.matcher(status).matches()) {
-            markTestSuccess();
-        } else if (PATTERN_TEST_SKIPPED.matcher(status).matches()) {
-            markTestSkipped();
-        } else if (PATTERN_TEST_UNEXPECTED_SUCCESS.matcher(status).matches()) {
-            markTestUnexpectedSuccess();
-        } else if (PATTERN_TEST_FAILURE.matcher(status).matches()) {
-            // Do nothing because we can't get the trace immediately
-        } else {
-            throw new PythonUnitTestParseException("Unrecognized test status");
+        } else if (isDashLine(line)) {
+            // dash line before run summary
+            mCurrentParseState = ParserState.SUMMARY;
+        } else if (lineMatchesPattern(line, PATTERN_ONE_LINE_RESULT)) {
+            mCurrentTestName = mCurrentMatcher.group(1);
+            mCurrentTestClass = mCurrentMatcher.group(2);
+            mCurrentTestStatus = mCurrentMatcher.group(3);
+            reportNonFailureTestResult();
+        } else if (lineMatchesPattern(line, PATTERN_TWO_LINE_RESULT_FIRST)) {
+            mCurrentTestName = mCurrentMatcher.group(1);
+            mCurrentTestClass = mCurrentMatcher.group(2);
+        } else if (lineMatchesPattern(line, PATTERN_TWO_LINE_RESULT_SECOND)) {
+            mCurrentTestStatus = mCurrentMatcher.group(2);
+            reportNonFailureTestResult();
         }
     }
 
-    void failMessage() throws PythonUnitTestParseException {
-        Matcher m = PATTERN_FAIL_MESSAGE.matcher(mCurrentLine);
-        if (!m.matches()) {
-            throw new PythonUnitTestParseException("Failed to parse test failure message");
+    void processFailMessage(String line) throws PythonUnitTestParseException {
+        if (isDashLine(line)) {
+            // dash line before traceback
+            mCurrentParseState = ParserState.TRACEBACK;
+            mCurrentTraceback = new StringBuilder();
+        } else if (lineMatchesPattern(line, PATTERN_FAIL_MESSAGE)) {
+            mCurrentTestName = mCurrentMatcher.group(2);
+            mCurrentTestClass = mCurrentMatcher.group(3);
+            mCurrentTestStatus = mCurrentMatcher.group(1);
         }
-        String testName = m.group(2);
-        String testClass = m.group(3);
-        mCurrentTestId = new TestIdentifier(testClass, testName);
-        mCurrentParseState = ParserState.FAIL_MESSAGE_OPTIONAL_DOCSTRING;
+        // optional docstring - do nothing
     }
 
-    void failMessageOptionalDocstring() throws PythonUnitTestParseException {
-        // skip the optional docstring line if there is one; do nothing otherwise
-        if (!line()) {
-            advance();
-        }
-        preTraceback();
-    }
-
-    void preTraceback() throws PythonUnitTestParseException {
-        if (!line()) {
-            throw new PythonUnitTestParseException("Failed to parse test failure message");
-        }
-        mCurrentParseState = ParserState.TRACEBACK;
-        mCurrentTraceback = new StringBuilder();
-    }
-
-    void traceback() throws PythonUnitTestParseException {
-        // traceback is always terminated with LINE or EQLINE
-        while (!line() && !eqline()) {
-            mCurrentTraceback.append(mCurrentLine);
-            if (!advance()) return;
-        }
-        // end of traceback section
-        // first report the failure
-        markTestFailure();
-        // move on to the next section
-        if (line()) {
-            mCurrentParseState = ParserState.RUN_SUMMARY;
-        }
-        else if (eqline()) {
+    void processTraceback(String line) throws PythonUnitTestParseException {
+        if (isDashLine(line)) {
+            // dash line before run summary
+            mCurrentParseState = ParserState.SUMMARY;
+            reportFailureTestResult();
+        } else if (isEqualLine(line)) {
+            // equal line before another fail message followed by traceback
             mCurrentParseState = ParserState.FAIL_MESSAGE;
-        }
-        else {
-            parseError(EQLINE);
+            reportFailureTestResult();
+        } else {
+            mCurrentTraceback.append(line);
         }
     }
 
-    void runSummary() throws PythonUnitTestParseException {
-        Matcher m = PATTERN_RUN_SUMMARY.matcher(mCurrentLine);
-        if (!m.matches()) {
-            throw new PythonUnitTestParseException("Failed to parse test summary");
+    void processRunSummary(String line) throws PythonUnitTestParseException {
+        if (lineMatchesPattern(line, PATTERN_RUN_SUMMARY)) {
+            mTotalTestCount = Integer.parseInt(mCurrentMatcher.group(1));
+            double timeInSeconds = Double.parseDouble(mCurrentMatcher.group(2));
+            mTotalElapsedTime = (long) timeInSeconds * 1000;
+            reportToListeners();
+            mCurrentParseState = ParserState.COMPLETE;
         }
-        double time = 0;
-        try {
-            mTotalTestCount = Integer.parseInt(m.group(1));
-        } catch (NumberFormatException e) {
-            parseError("integer");
-        }
-        try {
-            time = Double.parseDouble(m.group(2));
-        } catch (NumberFormatException e) {
-            parseError("double");
-        }
-        mTotalElapsedTime = (long) time * 1000;
-        mCurrentParseState = ParserState.RUN_RESULT;
+        // ignore status message on the last line because Python consider "unexpected success"
+        // passed while we consider it failed
     }
 
-    void runResult() throws PythonUnitTestParseException {
+    boolean isEqualLine(String line) {
+        return line.startsWith(EQUAL_LINE);
+    }
+
+    boolean isDashLine(String line) {
+        return line.startsWith(DASH_LINE);
+    }
+
+    boolean isTracebackLine(String line) {
+        return line.startsWith(TRACEBACK_LINE);
+    }
+
+    /** Check if the given line matches the given pattern and caches the matcher object */
+    private boolean lineMatchesPattern(String line, Pattern p) {
+        mCurrentMatcher = p.matcher(line);
+        return mCurrentMatcher.matches();
+    }
+
+    //TODO(ghliu): report test results on the fly
+    private void reportToListeners() throws PythonUnitTestParseException {
         String failReason = String.format("Failed %d tests", mFailedTestCount);
-        for (ITestRunListener listener: mListeners) {
-            // do testRunStarted
+        for (ITestRunListener listener : mListeners) {
             listener.testRunStarted(mRunName, mTotalTestCount);
 
-            // mark each test passed or failed
             for (Entry<TestIdentifier, String> test : mTestResultCache.entrySet()) {
                 listener.testStarted(test.getKey());
                 if (SKIPPED_ENTRY.equals(test.getValue())) {
@@ -387,77 +307,38 @@ public class PythonUnitTestResultParser extends MultiLineReceiver {
                 } else if (test.getValue() != null) {
                     listener.testFailed(test.getKey(), test.getValue());
                 }
-                listener.testEnded(test.getKey(), Collections.<String, String>emptyMap());
+                listener.testEnded(test.getKey(), Collections.emptyMap());
             }
 
-            // mark the whole run as passed or failed
-            // do not rely on the final result message, because Python consider "unexpected success"
-            // passed while we consider it failed
-            if (!PATTERN_RUN_RESULT.matcher(mCurrentLine).matches()) {
-                parseError("Status");
-            }
             if (mFailedTestCount > 0) {
                 listener.testRunFailed(failReason);
             }
-            listener.testRunEnded(mTotalElapsedTime, Collections.<String, String>emptyMap());
+            listener.testRunEnded(mTotalElapsedTime, Collections.emptyMap());
+        }
+
+    }
+
+    //TODO(ghliu): report test results on the fly
+    private void reportNonFailureTestResult() throws PythonUnitTestParseException {
+        TestIdentifier testId = new TestIdentifier(mCurrentTestClass, mCurrentTestName);
+        if (PATTERN_TEST_SUCCESS.matcher(mCurrentTestStatus).matches()) {
+            mTestResultCache.put(testId, null);
+        } else if (PATTERN_TEST_SKIPPED.matcher(mCurrentTestStatus).matches()) {
+            mTestResultCache.put(testId, SKIPPED_ENTRY);
+        } else if (PATTERN_TEST_UNEXPECTED_SUCCESS.matcher(mCurrentTestStatus).matches()) {
+            mTestResultCache.put(testId, "Test unexpected succeeded");
+            mFailedTestCount++;
+        } else if (PATTERN_TEST_FAILURE.matcher(mCurrentTestStatus).matches()) {
+            // do nothing for now, report only after traceback is collected
+        } else {
+            throw new PythonUnitTestParseException("Unrecognized test status");
         }
     }
 
-    boolean eqline() {
-        return mCurrentLine.startsWith(EQLINE);
-    }
-
-    boolean line() {
-        return mCurrentLine.startsWith(LINE);
-    }
-
-    boolean tracebackLine() {
-        return mCurrentLine.startsWith(TRACEBACK_LINE);
-    }
-
-    boolean emptyLine() {
-        return mCurrentLine.isEmpty();
-    }
-
-    /**
-     * Advance to the next non-empty line.
-     * @return true if a non-empty line was found, false otherwise.
-     */
-    boolean advance() {
-        do {
-            if (mLineNum == mAllLines.length - 1) {
-                return false;
-            }
-            mCurrentLine = mAllLines[++mLineNum];
-        } while (mCurrentLine.length() == 0);
-        return true;
-    }
-
-    private void parseError(String expected)
-            throws PythonUnitTestParseException {
-        throw new PythonUnitTestParseException(
-                String.format("Expected \"%s\" on line %d, found %s instead",
-                    expected, mLineNum + 1, mCurrentLine));
-    }
-
-    private void markTestSuccess() {
-        mTestResultCache.put(mCurrentTestId, null);
-    }
-
-    private void markTestFailure() {
-        mTestResultCache.put(mCurrentTestId, mCurrentTraceback.toString());
-        mFailedTestCount++;
-    }
-
-    private void markTestSkipped() {
-        mTestResultCache.put(mCurrentTestId, SKIPPED_ENTRY);
-    }
-
-    private void markTestUnexpectedSuccess() {
-        // In Python unittest, "unexpected success" (tests that are marked with
-        // @unittest.expectedFailure but passed) will not fail the entire test run.
-        // This behaviour is usually not desired, and such test should be treated as failed.
-        mTestResultCache.put(mCurrentTestId, "Test unexpected succeeded");
+    //TODO(ghliu): report test results on the fly
+    private void reportFailureTestResult() {
+        TestIdentifier testId = new TestIdentifier(mCurrentTestClass, mCurrentTestName);
+        mTestResultCache.put(testId, mCurrentTraceback.toString());
         mFailedTestCount++;
     }
 

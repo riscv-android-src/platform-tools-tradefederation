@@ -33,21 +33,21 @@ import java.util.Map;
 public class PythonUnitTestRunnerTest extends TestCase {
 
     private static final String[] TEST_PASS_STDERR = {
-        "b (a) ... ok", "", PythonUnitTestResultParser.LINE, "Ran 1 tests in 1s", "", "OK",
+        "b (a) ... ok", "", PythonUnitTestResultParser.DASH_LINE, "Ran 1 tests in 1s", "", "OK",
     };
 
     private static final String[] TEST_FAIL_STDERR = {
         "b (a) ... ERROR",
         "",
-        PythonUnitTestResultParser.EQLINE,
+        PythonUnitTestResultParser.EQUAL_LINE,
         "ERROR: b (a)",
-        PythonUnitTestResultParser.LINE,
+        PythonUnitTestResultParser.DASH_LINE,
         "Traceback (most recent call last):",
         "  File \"test_rangelib.py\", line 129, in test_reallyfail",
         "    raise ValueError()",
         "ValueError",
         "",
-        PythonUnitTestResultParser.LINE,
+        PythonUnitTestResultParser.DASH_LINE,
         "Ran 1 tests in 1s",
         "",
         "FAILED (errors=1)",
@@ -218,7 +218,7 @@ public class PythonUnitTestRunnerTest extends TestCase {
             mRunner.doRunTest(mMockListener, mockRunUtil, "");
             fail("Should not reach here.");
         } catch (RuntimeException e) {
-            assertEquals("Failed to parse python-unittest", e.getMessage());
+            assertEquals("Failed to parse Python unittest result", e.getMessage());
         }
         EasyMock.verify(mockRunUtil);
     }
