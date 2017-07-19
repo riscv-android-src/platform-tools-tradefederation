@@ -29,6 +29,13 @@ public class OtatoolsBuildInfo extends BuildInfo {
     private static final String RELEASETOOLS_DIR_NAME = "otatools_releasetools";
 
     /**
+     * Creates a {@link OtatoolsBuildInfo}
+     */
+    public OtatoolsBuildInfo(String buildId, String buildTargetName) {
+        super(buildId, buildTargetName);
+    }
+
+    /**
      * Add /build/target/product/security to this file map
      */
     public void setSecurityDir(File dir, String version) {
