@@ -16,6 +16,8 @@
 
 package com.android.tradefed.testtype;
 
+import static org.junit.Assert.*;
+
 import com.android.ddmlib.Log;
 import com.android.ddmlib.testrunner.TestIdentifier;
 import com.android.ddmlib.testrunner.TestResult.TestStatus;
@@ -23,6 +25,7 @@ import com.android.tradefed.TestAppConstants;
 import com.android.tradefed.config.OptionSetter;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.DeviceUnresponsiveException;
+import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.device.ITestDevice.RecoveryMode;
 import com.android.tradefed.device.RemoteAndroidDevice;
 import com.android.tradefed.result.CollectingTestListener;
@@ -31,18 +34,22 @@ import com.android.tradefed.util.KeyguardControllerState;
 import com.android.tradefed.util.RunUtil;
 
 import org.easymock.EasyMock;
+import org.junit.Before;
+import org.junit.Test;
+import org.junit.runner.RunWith;
 
 import java.io.IOException;
 
-/**
- * Functional tests for {@link InstrumentationTest}.
- */
-public class InstrumentationTestFuncTest extends DeviceTestCase {
+/** Functional tests for {@link InstrumentationTest}. */
+@RunWith(DeviceJUnit4ClassRunner.class)
+public class InstrumentationTestFuncTest implements IDeviceTest {
 
     private static final String LOG_TAG = "InstrumentationTestFuncTest";
     private static final long SHELL_TIMEOUT = 2500;
     private static final int TEST_TIMEOUT = 2000;
     private static final long WAIT_FOR_DEVICE_AVAILABLE = 5 * 60 * 1000;
+
+    private ITestDevice mDevice;
 
     /** The {@link InstrumentationTest} under test */
     private InstrumentationTest mInstrumentationTest;
@@ -50,8 +57,17 @@ public class InstrumentationTestFuncTest extends DeviceTestCase {
     private ITestInvocationListener mMockListener;
 
     @Override
-    protected void setUp() throws Exception {
-        super.setUp();
+    public void setDevice(ITestDevice device) {
+        mDevice = device;
+    }
+
+    @Override
+    public ITestDevice getDevice() {
+        return mDevice;
+    }
+
+    @Before
+    public void setUp() throws Exception {
 
         mInstrumentationTest = new InstrumentationTest();
         mInstrumentationTest.setPackageName(TestAppConstants.TESTAPP_PACKAGE);
@@ -64,9 +80,8 @@ public class InstrumentationTestFuncTest extends DeviceTestCase {
         getDevice().disableKeyguard();
     }
 
-    /**
-     * Test normal run scenario with a single passed test result.
-     */
+    /** Test normal run scenario with a single passed test result. */
+    @Test
     public void testRun() throws DeviceNotAvailableException {
         Log.i(LOG_TAG, "testRun");
         TestIdentifier expectedTest = new TestIdentifier(TestAppConstants.TESTAPP_CLASS,
@@ -84,9 +99,8 @@ public class InstrumentationTestFuncTest extends DeviceTestCase {
         EasyMock.verify(mMockListener);
     }
 
-    /**
-     * Test normal run scenario with a single failed test result.
-     */
+    /** Test normal run scenario with a single failed test result. */
+    @Test
     public void testRun_testFailed() throws DeviceNotAvailableException {
         Log.i(LOG_TAG, "testRun_testFailed");
         TestIdentifier expectedTest = new TestIdentifier(TestAppConstants.TESTAPP_CLASS,
@@ -108,9 +122,8 @@ public class InstrumentationTestFuncTest extends DeviceTestCase {
         EasyMock.verify(mMockListener);
     }
 
-    /**
-     * Test run scenario where test process crashes.
-     */
+    /** Test run scenario where test process crashes. */
+    @Test
     public void testRun_testCrash() throws DeviceNotAvailableException {
         Log.i(LOG_TAG, "testRun_testCrash");
         TestIdentifier expectedTest = new TestIdentifier(TestAppConstants.TESTAPP_CLASS,
@@ -141,9 +154,8 @@ public class InstrumentationTestFuncTest extends DeviceTestCase {
         EasyMock.verify(mMockListener);
     }
 
-    /**
-     * Test run scenario where test run hangs indefinitely, and times out.
-     */
+    /** Test run scenario where test run hangs indefinitely, and times out. */
+    @Test
     public void testRun_testTimeout() throws DeviceNotAvailableException {
         Log.i(LOG_TAG, "testRun_testTimeout");
         RecoveryMode initMode = getDevice().getRecoveryMode();
@@ -182,9 +194,8 @@ public class InstrumentationTestFuncTest extends DeviceTestCase {
         }
     }
 
-    /**
-     * Test run scenario where device reboots during test run.
-     */
+    /** Test run scenario where device reboots during test run. */
+    @Test
     public void testRun_deviceReboot() throws Exception {
         Log.i(LOG_TAG, "testRun_deviceReboot");
 
@@ -248,9 +259,10 @@ public class InstrumentationTestFuncTest extends DeviceTestCase {
 
     /**
      * Test run scenario where device runtime resets during test run.
-     * <p/>
-     * TODO: this test probably belongs more in TestDeviceFuncTest
+     *
+     * <p>TODO: this test probably belongs more in TestDeviceFuncTest
      */
+    @Test
     public void testRun_deviceRuntimeReset() throws Exception {
         Log.i(LOG_TAG, "testRun_deviceRuntimeReset");
         TestIdentifier expectedTest = new TestIdentifier(TestAppConstants.TESTAPP_CLASS,
@@ -324,6 +336,7 @@ public class InstrumentationTestFuncTest extends DeviceTestCase {
      * (currently TIMEOUT_TEST_METHOD and CRASH_TEST_METHOD). Verify that results are recorded for
      * all tests in the suite.
      */
+    @Test
     public void testRun_rerun() throws Exception {
         Log.i(LOG_TAG, "testRun_rerun");
         // run all tests in class
@@ -347,9 +360,10 @@ public class InstrumentationTestFuncTest extends DeviceTestCase {
 
     /**
      * Test a run that crashes when collecting tests.
-     * <p/>
-     * Expect run to proceed, but be reported as a run failure
+     *
+     * <p>Expect run to proceed, but be reported as a run failure
      */
+    @Test
     public void testRun_rerunCrash() throws Exception {
         Log.i(LOG_TAG, "testRun_rerunCrash");
         mInstrumentationTest.setClassName(TestAppConstants.CRASH_ON_INIT_TEST_CLASS);
@@ -368,9 +382,10 @@ public class InstrumentationTestFuncTest extends DeviceTestCase {
 
     /**
      * Test a run that hangs when collecting tests.
-     * <p/>
-     * Expect a run failure to be reported
+     *
+     * <p>Expect a run failure to be reported
      */
+    @Test
     public void testRun_rerunHang() throws Exception {
         Log.i(LOG_TAG, "testRun_rerunHang");
         RecoveryMode initMode = getDevice().getRecoveryMode();
