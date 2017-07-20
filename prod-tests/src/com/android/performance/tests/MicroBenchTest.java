@@ -41,6 +41,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -123,6 +124,12 @@ public class MicroBenchTest implements IDeviceTest, IRemoteTest {
 
     @Option(name = "simpleperf-argu", description = "simpleperf arguments")
     private List<String> mSimpleperfArgu = new ArrayList<String>();
+
+    @Option(
+        name = "simpleperf-cmd-timeout",
+        description = "Timeout (in seconds) while running simpleperf shell command."
+    )
+    private int mSimpleperfCmdTimeout = 240;
 
     String mFormattedBinaryName = null;
     ITestDevice mTestDevice = null;
@@ -288,7 +295,7 @@ public class MicroBenchTest implements IDeviceTest, IRemoteTest {
             final String cmd = String.format(mCommand, mFormattedBinaryName, mIterations);
 
             if (mSimpleperfMode) {
-                mSpUtil.executeCommand(cmd, mReceiver);
+                mSpUtil.executeCommand(cmd, mReceiver, mSimpleperfCmdTimeout, TimeUnit.SECONDS, 1);
             } else {
                 mTestDevice.executeShellCommand(cmd, mReceiver);
             }
