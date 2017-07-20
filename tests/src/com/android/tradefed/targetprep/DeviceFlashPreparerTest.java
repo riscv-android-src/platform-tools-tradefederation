@@ -124,7 +124,6 @@ public class DeviceFlashPreparerTest {
         mMockDevice.waitForDeviceAvailable(EasyMock.anyLong());
         mMockDevice.setRecoveryMode(RecoveryMode.AVAILABLE);
         mMockDevice.postBootSetup();
-        EasyMock.expect(mMockDevice.getProductType()).andReturn("flavor");
     }
 
     /**
@@ -157,7 +156,6 @@ public class DeviceFlashPreparerTest {
         EasyMock.expect(mMockDevice.getBuildFlavor()).andReturn(mMockBuildInfo.getBuildFlavor());
         EasyMock.expect(mMockDevice.isEncryptionSupported()).andStubReturn(Boolean.TRUE);
         EasyMock.expect(mMockDevice.isDeviceEncrypted()).andStubReturn(Boolean.FALSE);
-        EasyMock.expect(mMockDevice.getProductType()).andReturn("flavor");
         mMockDevice.clearLogcat();
         mMockDevice.waitForDeviceAvailable(EasyMock.anyLong());
         EasyMock.expectLastCall().andThrow(new DeviceUnresponsiveException("foo", "fakeserial"));
@@ -283,39 +281,5 @@ public class DeviceFlashPreparerTest {
             // Attempt to reset concurrent flash settings to defaults
             dfp.setConcurrentFlashSettings(null, null, true);
         }
-    }
-
-    /**
-     * Test for {@link DeviceFlashPreparer#checkDeviceProductType(ITestDevice, IDeviceBuildInfo)}
-     * where device board is matching the build-flavor.
-     */
-    @Test
-    public void testSetup_checkDeviceBuild() throws Exception {
-        mMockBuildInfo = new DeviceBuildInfo();
-        mMockBuildInfo.setBuildFlavor("deviceBoard-userdebug");
-        EasyMock.expect(mMockDevice.getProductType()).andReturn("deviceBoard");
-        EasyMock.replay(mMockDevice);
-        mDeviceFlashPreparer.checkDeviceProductType(mMockDevice, mMockBuildInfo);
-        EasyMock.verify(mMockDevice);
-    }
-
-    /**
-     * Test for {@link DeviceFlashPreparer#checkDeviceProductType(ITestDevice, IDeviceBuildInfo)}
-     * where device board is not matching the build-flavor, then we throw a build error.
-     */
-    @Test
-    public void testSetup_checkDeviceBuild_fail() throws Exception {
-        mMockBuildInfo = new DeviceBuildInfo();
-        mMockBuildInfo.setBuildFlavor("deviceBoard2-userdebug");
-        EasyMock.expect(mMockDevice.getProductType()).andReturn("deviceBoard");
-        EasyMock.expect(mMockDevice.getDeviceDescriptor()).andReturn(null);
-        EasyMock.replay(mMockDevice);
-        try {
-            mDeviceFlashPreparer.checkDeviceProductType(mMockDevice, mMockBuildInfo);
-            fail("Should have thrown an exception.");
-        } catch (BuildError expected) {
-            // expected
-        }
-        EasyMock.verify(mMockDevice);
     }
 }

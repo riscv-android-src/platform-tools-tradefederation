@@ -30,8 +30,6 @@ import com.android.tradefed.targetprep.IDeviceFlasher.UserDataFlashOption;
 import com.android.tradefed.util.IRunUtil;
 import com.android.tradefed.util.RunUtil;
 
-import com.google.common.annotations.VisibleForTesting;
-
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.concurrent.Semaphore;
@@ -63,12 +61,6 @@ public abstract class DeviceFlashPreparer implements ITargetCleaner {
     @Option(name = "force-system-flash", description =
         "specify if system should always be flashed even if already running desired build.")
     private boolean mForceSystemFlash = false;
-
-    @Option(
-        name = "skip-pre-flash-product-check",
-        description = "Specify if device product type should be checked before flashing"
-    )
-    private boolean mSkipPreFlashProductType = false;
 
     /*
      * A temporary workaround for special builds. Should be removed after changes from build team.
@@ -311,29 +303,17 @@ public abstract class DeviceFlashPreparer implements ITargetCleaner {
         }
     }
 
-    /** Check the device allocated against the build to ensure this is compatible to be flashed. */
-    @VisibleForTesting
-    void checkDeviceProductType(ITestDevice device, IDeviceBuildInfo deviceBuild)
+    /**
+     * Possible check before flashing to ensure the device is as expected compare to the build info.
+     *
+     * @param device the {@link ITestDevice} to flash.
+     * @param deviceBuild the {@link IDeviceBuildInfo} used to flash.
+     * @throws BuildError
+     * @throws DeviceNotAvailableException
+     */
+    protected void checkDeviceProductType(ITestDevice device, IDeviceBuildInfo deviceBuild)
             throws BuildError, DeviceNotAvailableException {
-        if (mSkipPreFlashProductType) {
-            CLog.d("Skipping pre flash device product check.");
-            return;
-        }
-        String buildFlavor = deviceBuild.getBuildFlavor();
-        String deviceTypeFromBuild = buildFlavor;
-        // handle a case where build flavor format is not really quite as expected.
-        // <'device board'>-<user|userdebug>
-        if (buildFlavor.indexOf("-") != -1) {
-            deviceTypeFromBuild = buildFlavor.substring(0, buildFlavor.indexOf("-"));
-        }
-        String deviceProduct = device.getProductType(); // ro.hardware of the device
-        if (!deviceTypeFromBuild.equals(deviceProduct)) {
-            throw new BuildError(
-                    String.format(
-                            "Device allocated is a '%s' while build is meant for a '%s'",
-                            deviceProduct, deviceTypeFromBuild),
-                    device.getDeviceDescriptor());
-        }
+        // empty of purpose
     }
 
     /**
