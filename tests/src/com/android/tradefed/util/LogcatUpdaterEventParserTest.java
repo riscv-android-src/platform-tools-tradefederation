@@ -111,10 +111,8 @@ public class LogcatUpdaterEventParserTest extends TestCase {
         assertEquals(mParser.parseEventType(unmappedLogLine), null);
     }
 
-    /**
-     * Test that a thread exits its wait loop when it sees any event.
-     */
-    public void testWaitForEvent_any() {
+    /** Test that a thread exits its wait loop when it sees any event. */
+    public void testWaitForEvent_any() throws Exception {
         Thread waitThread = new Thread(new Runnable() {
             @Override
             public void run() {
@@ -132,10 +130,8 @@ public class LogcatUpdaterEventParserTest extends TestCase {
         waitAndAssertTerminated(waitThread, logLines);
     }
 
-    /**
-     * Test that a thread exits its wait loop when it sees a specific expected event.
-     */
-    public void testWaitForEvent_specific() {
+    /** Test that a thread exits its wait loop when it sees a specific expected event. */
+    public void testWaitForEvent_specific() throws Exception {
         Thread waitThread = new Thread(new Runnable() {
             @Override
             public void run() {
@@ -153,7 +149,7 @@ public class LogcatUpdaterEventParserTest extends TestCase {
         waitAndAssertTerminated(waitThread, logLines);
     }
 
-    private void waitAndAssertTerminated(Thread waitThread, String[] logLines) {
+    private void waitAndAssertTerminated(Thread waitThread, String[] logLines) throws Exception {
         waitThread.start();
         for (String line : logLines) {
             try {
@@ -164,6 +160,7 @@ public class LogcatUpdaterEventParserTest extends TestCase {
         }
         // Allow short time for thread to switch state.
         RunUtil.getDefault().sleep(SHORT_WAIT_MS);
+        waitThread.join(5000);
         assertEquals(Thread.State.TERMINATED, waitThread.getState());
     }
 }
