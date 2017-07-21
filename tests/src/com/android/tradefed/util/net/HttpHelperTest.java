@@ -218,6 +218,7 @@ public class HttpHelperTest extends TestCase {
                         return super.doGet(url);
                     }
                 };
+        mHelper.setMaxTime(5000);
         // Avoid doing actual sleep in the retry
         doNothing().when(mockRunUtil).sleep(Mockito.anyLong());
         assertEquals(TEST_DATA, mHelper.doGetWithRetry(TEST_URL_STRING));
