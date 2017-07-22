@@ -50,7 +50,7 @@ public class DeviceSetupFuncTest implements IDeviceTest {
     }
 
     @Before
-    protected void setUp() throws Exception {
+    public void setUp() throws Exception {
         mMockBuildInfo = new DeviceBuildInfo("0", "");
         mDeviceSetup = new DeviceSetup();
     }
