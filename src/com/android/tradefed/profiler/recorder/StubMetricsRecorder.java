@@ -42,16 +42,16 @@ public class StubMetricsRecorder implements IMetricsRecorder {
      * {@inheritDoc}
      */
     @Override
-    public void startMetrics(ITestDevice device) {
-        CLog.d("Running startMetrics");
+    public void startRecording() {
+        CLog.d("Running startRecording");
     }
 
     /**
      * {@inheritDoc}
      */
     @Override
-    public Map<String, Double> stopMetrics(ITestDevice device) {
-        CLog.d("Running stopMetrics");
+    public Map<String, Double> stopRecordingAndReturnMetrics() {
+        CLog.d("Running stopRecordingAndReturnMetrics");
         Map<String, Double> superFakeMetrics = new HashMap<>();
         superFakeMetrics.put("stub", 1.0);
         return superFakeMetrics;

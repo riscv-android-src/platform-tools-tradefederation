@@ -45,6 +45,7 @@ public class TraceMetricsRecorder implements IMetricsRecorder {
     private Map<String, TraceMetric> mTraceMetrics;
     private Map<TraceMetric, BiFunction<Double, Double, Double>> mMergeFunctions;
     private TraceParser mParser;
+    private ITestDevice mDevice;
 
     // tracing_on setting before the test
     private String mTracingBefore;
@@ -57,9 +58,10 @@ public class TraceMetricsRecorder implements IMetricsRecorder {
         mMergeFunctions = new HashMap<>();
         mTraceMetrics = new HashMap<>();
         mParser = new TraceParser();
+        mDevice = device;
         for (String descriptor : descriptors) {
             TraceMetric metric = TraceMetric.parse(descriptor);
-            enableSingleEventTracing(device, metric.getPrefix() + "/" + metric.getFuncName());
+            enableSingleEventTracing(metric.getPrefix() + "/" + metric.getFuncName());
             mTraceMetrics.put(metric.getFuncName(), metric);
             mMergeFunctions.put(
                     metric, new NumericAggregateFunction(metric.getMetricType()).getFunction());
@@ -67,16 +69,17 @@ public class TraceMetricsRecorder implements IMetricsRecorder {
     }
 
     @Override
-    public void startMetrics(ITestDevice device) throws DeviceNotAvailableException {
-        enableTracing(device);
+    public void startRecording() throws DeviceNotAvailableException {
+        cleanUpTrace();
+        enableTracing();
     }
 
     @Override
-    public Map<String, Double> stopMetrics(ITestDevice device) throws DeviceNotAvailableException {
-        undoEnableTracing(device);
-        undoAllEnableSingleEventTracing(device);
-        File fullTrace = pullFullTrace(device);
-        cleanUpTrace(device);
+    public Map<String, Double> stopRecordingAndReturnMetrics() throws DeviceNotAvailableException {
+        undoEnableTracing();
+        undoAllEnableSingleEventTracing();
+        File fullTrace = pullFullTrace();
+        cleanUpTrace();
         return parseTraceFile(fullTrace);
     }
 
@@ -144,16 +147,15 @@ public class TraceMetricsRecorder implements IMetricsRecorder {
     /**
      * Helper function to write tracing setting ("0" or "1") to given path on device with "echo".
      */
-    void setTracingSetting(ITestDevice device, String enabled, String path)
-            throws DeviceNotAvailableException {
-        device.executeShellCommand(String.format("echo %s > %s", enabled, path));
+    void setTracingSetting(String enabled, String path) throws DeviceNotAvailableException {
+        mDevice.executeShellCommand(String.format("echo %s > %s", enabled, path));
     }
 
     /**
      * Helper function to read tracing setting ("0" or "1") from given path on device with "cat".
      */
-    String getTracingSetting(ITestDevice device, String path) throws DeviceNotAvailableException {
-        String s = device.executeShellCommand("cat " + path);
+    String getTracingSetting(String path) throws DeviceNotAvailableException {
+        String s = mDevice.executeShellCommand("cat " + path);
         if (s.length() > 0) {
             // remove trailing blank line
             return s.substring(0, 1);
@@ -163,44 +165,43 @@ public class TraceMetricsRecorder implements IMetricsRecorder {
     }
 
     /** Enable tracing on device. */
-    void enableTracing(ITestDevice device) throws DeviceNotAvailableException {
-        mTracingBefore = getTracingSetting(device, TRACE_DIR + "/tracing_on");
-        setTracingSetting(device, "1", TRACE_DIR + "/tracing_on");
+    void enableTracing() throws DeviceNotAvailableException {
+        mTracingBefore = getTracingSetting(TRACE_DIR + "/tracing_on");
+        setTracingSetting("1", TRACE_DIR + "/tracing_on");
     }
 
     /** Restore pre-test tracing setting. */
-    void undoEnableTracing(ITestDevice device) throws DeviceNotAvailableException {
-        setTracingSetting(device, mTracingBefore, TRACE_DIR + "/tracing_on");
+    void undoEnableTracing() throws DeviceNotAvailableException {
+        setTracingSetting(mTracingBefore, TRACE_DIR + "/tracing_on");
     }
 
-    File pullFullTrace(ITestDevice device) throws DeviceNotAvailableException {
-        File fullTrace = device.pullFile(TRACE_DIR + "/trace");
+    File pullFullTrace() throws DeviceNotAvailableException {
+        File fullTrace = mDevice.pullFile(TRACE_DIR + "/trace");
         if (fullTrace == null) {
             throw new RuntimeException("Failed to pull trace file");
         }
         return fullTrace;
     }
 
-    void cleanUpTrace(ITestDevice device) throws DeviceNotAvailableException {
-        device.executeShellCommand("echo > " + TRACE_DIR + "/trace");
+    void cleanUpTrace() throws DeviceNotAvailableException {
+        mDevice.executeShellCommand("echo > " + TRACE_DIR + "/trace");
     }
 
     /** Enable single event tracing. */
-    void enableSingleEventTracing(ITestDevice device, String location)
-            throws DeviceNotAvailableException {
+    void enableSingleEventTracing(String location) throws DeviceNotAvailableException {
         String fullLocation = EVENT_DIR + location + "/enable";
-        String enabledBefore = getTracingSetting(device, fullLocation);
+        String enabledBefore = getTracingSetting(fullLocation);
         mSingleEventTracingBefore.put(fullLocation, enabledBefore);
         CLog.d("Starting event located at %s", fullLocation);
-        setTracingSetting(device, "1", fullLocation);
+        setTracingSetting("1", fullLocation);
     }
 
     /** Restore pre-test single event tracing settings. */
-    void undoAllEnableSingleEventTracing(ITestDevice device) throws DeviceNotAvailableException {
+    void undoAllEnableSingleEventTracing() throws DeviceNotAvailableException {
         for (Map.Entry<String, String> entry : mSingleEventTracingBefore.entrySet()) {
             String fullLocation = entry.getKey();
             String enabledBefore = entry.getValue();
-            setTracingSetting(device, enabledBefore, fullLocation);
+            setTracingSetting(enabledBefore, fullLocation);
         }
     }
 

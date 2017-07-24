@@ -50,14 +50,12 @@ public class TraceMetricsRecorderTest {
         }
 
         @Override
-        void setTracingSetting(ITestDevice device, String enabled, String path)
-                throws DeviceNotAvailableException {
+        void setTracingSetting(String enabled, String path) throws DeviceNotAvailableException {
             mFakeFileSystem.put(path, enabled);
         }
 
         @Override
-        String getTracingSetting(ITestDevice device, String path)
-                throws DeviceNotAvailableException {
+        String getTracingSetting(String path) throws DeviceNotAvailableException {
             if (mFakeFileSystem.containsKey(path)) {
                 return mFakeFileSystem.get(path);
             } else {
@@ -77,7 +75,7 @@ public class TraceMetricsRecorderTest {
     }
 
     private MockTraceMetricsRecorder mRecorder;
-    ITestDevice mDevice;
+    private ITestDevice mDevice;
 
     @Before
     public void setUp() throws Exception {
@@ -90,9 +88,9 @@ public class TraceMetricsRecorderTest {
         String path = "/d/tracing/tracing_on";
         mRecorder.setFileContent("0", path);
 
-        mRecorder.enableTracing(mDevice);
+        mRecorder.enableTracing();
         Assert.assertEquals("1", mRecorder.getFileContent(path));
-        mRecorder.undoEnableTracing(mDevice);
+        mRecorder.undoEnableTracing();
         Assert.assertEquals("0", mRecorder.getFileContent(path));
     }
 
@@ -101,9 +99,9 @@ public class TraceMetricsRecorderTest {
         String path = "/d/tracing/tracing_on";
         mRecorder.setFileContent("1", path);
 
-        mRecorder.enableTracing(mDevice);
+        mRecorder.enableTracing();
         Assert.assertEquals("1", mRecorder.getFileContent(path));
-        mRecorder.undoEnableTracing(mDevice);
+        mRecorder.undoEnableTracing();
         Assert.assertEquals("1", mRecorder.getFileContent(path));
     }
 
@@ -114,11 +112,11 @@ public class TraceMetricsRecorderTest {
         mRecorder.setFileContent("1", path1);
         mRecorder.setFileContent("0", path2);
 
-        mRecorder.enableSingleEventTracing(mDevice, "mmc/mmc_cmd_rw_end");
-        mRecorder.enableSingleEventTracing(mDevice, "thermal/tsens_read");
+        mRecorder.enableSingleEventTracing("mmc/mmc_cmd_rw_end");
+        mRecorder.enableSingleEventTracing("thermal/tsens_read");
         Assert.assertEquals("1", mRecorder.getFileContent(path1));
         Assert.assertEquals("1", mRecorder.getFileContent(path2));
-        mRecorder.undoAllEnableSingleEventTracing(mDevice);
+        mRecorder.undoAllEnableSingleEventTracing();
         Assert.assertEquals("1", mRecorder.getFileContent(path1));
         Assert.assertEquals("0", mRecorder.getFileContent(path2));
     }
@@ -133,7 +131,7 @@ public class TraceMetricsRecorderTest {
                 .andStubReturn(new File(line));
         EasyMock.replay(mDevice);
         mRecorder.setUp(mDevice, Arrays.asList("mmc:mmc_cmd_rw_start:int_status:COUNT"));
-        Map<String, Double> metrics = mRecorder.stopMetrics(mDevice);
+        Map<String, Double> metrics = mRecorder.stopRecordingAndReturnMetrics();
         EasyMock.verify(mDevice);
         Assert.assertTrue(metrics.isEmpty());
     }
@@ -149,7 +147,7 @@ public class TraceMetricsRecorderTest {
                 .andStubReturn(new File(line));
         EasyMock.replay(mDevice);
         mRecorder.setUp(mDevice, Arrays.asList("mmc:mmc_cmd_rw_start:int_status:COUNT"));
-        Map<String, Double> metrics = mRecorder.stopMetrics(mDevice);
+        Map<String, Double> metrics = mRecorder.stopRecordingAndReturnMetrics();
         EasyMock.verify(mDevice);
         Assert.assertTrue(metrics.isEmpty());
     }
@@ -165,7 +163,7 @@ public class TraceMetricsRecorderTest {
                 .andStubReturn(new File(line));
         EasyMock.replay(mDevice);
         mRecorder.setUp(mDevice, Arrays.asList("mmc:mmc_cmd_rw_end:int_status:COUNT"));
-        Map<String, Double> metrics = mRecorder.stopMetrics(mDevice);
+        Map<String, Double> metrics = mRecorder.stopRecordingAndReturnMetrics();
         EasyMock.verify(mDevice);
         Assert.assertEquals(metrics.get("mmc:mmc_cmd_rw_end:int_status:COUNT"), 1.0, 0.001);
     }
@@ -185,7 +183,7 @@ public class TraceMetricsRecorderTest {
                 .andStubReturn(new File(line));
         EasyMock.replay(mDevice);
         mRecorder.setUp(mDevice, Arrays.asList("mmc:mmc_cmd_rw_end:int_status:COUNT"));
-        Map<String, Double> metrics = mRecorder.stopMetrics(mDevice);
+        Map<String, Double> metrics = mRecorder.stopRecordingAndReturnMetrics();
         EasyMock.verify(mDevice);
         Assert.assertEquals(metrics.get("mmc:mmc_cmd_rw_end:int_status:COUNT"), 3.0, 0.001);
     }

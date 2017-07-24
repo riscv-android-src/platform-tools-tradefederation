@@ -65,16 +65,18 @@ public class AggregatingProfiler implements IAggregatingTestProfiler {
     @Override
     public void setUp(IInvocationContext context) throws DeviceNotAvailableException {
         mContext = context;
-        for (String clazz : mRecorderClassNames) {
-            try {
-                mRecorders.add((IMetricsRecorder) Class.forName(clazz).newInstance());
-            } catch (InstantiationException | IllegalAccessException | ClassNotFoundException e) {
-                throw new RuntimeException(e);
-            }
-        }
         for (ITestDevice device : context.getDevices()) {
-            for (IMetricsRecorder recorder : getRecorders()) {
-                recorder.setUp(device, mMetricDescriptors);
+            for (String clazz : mRecorderClassNames) {
+                try {
+                    IMetricsRecorder recorder =
+                            (IMetricsRecorder) Class.forName(clazz).newInstance();
+                    recorder.setUp(device, mMetricDescriptors);
+                    mRecorders.add(recorder);
+                } catch (InstantiationException
+                        | IllegalAccessException
+                        | ClassNotFoundException e) {
+                    throw new RuntimeException(e);
+                }
             }
         }
     }
@@ -82,10 +84,8 @@ public class AggregatingProfiler implements IAggregatingTestProfiler {
     /** {@inheritDoc} */
     @Override
     public void startRecordingMetrics() throws DeviceNotAvailableException {
-        for (ITestDevice device : getDevices()) {
-            for (IMetricsRecorder recorder : getRecorders()) {
-                recorder.startMetrics(device);
-            }
+        for (IMetricsRecorder recorder : getRecorders()) {
+            recorder.startRecording();
         }
     }
 
@@ -93,17 +93,15 @@ public class AggregatingProfiler implements IAggregatingTestProfiler {
     @Override
     public Map<String, Double> stopRecordingMetrics(TestIdentifier test) throws DeviceNotAvailableException {
         Map<String, Double> allMetrics = new HashMap<>();
-        for (ITestDevice device : getDevices()) {
-            for (IMetricsRecorder recorder : getRecorders()) {
-                Map<String, Double> metrics = recorder.stopMetrics(device);
-                for (Map.Entry<String, Double> entry : metrics.entrySet()) {
-                    String key = entry.getKey();
-                    // merge metrics into the aggregate map unmodified
-                    mAggregateMetrics.merge(key, entry.getValue(), recorder.getMergeFunction(key));
-                    // this map aggregates metrics just across devices
-                    allMetrics.merge(key, entry.getValue(), recorder.getMergeFunction(key));
-                    CLog.v("allMetrics is %s", allMetrics);
-                }
+        for (IMetricsRecorder recorder : getRecorders()) {
+            Map<String, Double> metrics = recorder.stopRecordingAndReturnMetrics();
+            for (Map.Entry<String, Double> entry : metrics.entrySet()) {
+                String key = entry.getKey();
+                // merge metrics into the aggregate map unmodified
+                mAggregateMetrics.merge(key, entry.getValue(), recorder.getMergeFunction(key));
+                // this map aggregates metrics just across devices
+                allMetrics.merge(key, entry.getValue(), recorder.getMergeFunction(key));
+                CLog.v("allMetrics is %s", allMetrics);
             }
         }
         getMetricOutputUtil().addMetrics("test", test, allMetrics);

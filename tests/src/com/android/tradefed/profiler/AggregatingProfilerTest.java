@@ -43,16 +43,17 @@ import java.util.function.BiFunction;
  */
 @RunWith(JUnit4.class)
 public class AggregatingProfilerTest {
+    private static final double EPSILON = 1E-6;
 
-    AggregatingProfiler mProfiler;
-
-    ITestDevice mTestDevice1 = EasyMock.createMock(ITestDevice.class);
-    ITestDevice mTestDevice2 = EasyMock.createMock(ITestDevice.class);
-
-    IMetricsRecorder mRecorder1 = EasyMock.createMock(IMetricsRecorder.class);
-    IMetricsRecorder mRecorder2 = EasyMock.createMock(IMetricsRecorder.class);
-
-    IInvocationContext mContext = EasyMock.createMock(IInvocationContext.class);
+    private AggregatingProfiler mProfiler;
+    private TestIdentifier mTestId;
+    private ITestDevice mTestDevice1 = EasyMock.createMock(ITestDevice.class);
+    private ITestDevice mTestDevice2 = EasyMock.createMock(ITestDevice.class);
+    private IMetricsRecorder mRecorderA1 = EasyMock.createMock(IMetricsRecorder.class);
+    private IMetricsRecorder mRecorderA2 = EasyMock.createMock(IMetricsRecorder.class);
+    private IMetricsRecorder mRecorderB1 = EasyMock.createMock(IMetricsRecorder.class);
+    private IMetricsRecorder mRecorderB2 = EasyMock.createMock(IMetricsRecorder.class);
+    private IInvocationContext mContext = EasyMock.createMock(IInvocationContext.class);
 
     @Before
     public void setUp() throws Exception {
@@ -65,7 +66,7 @@ public class AggregatingProfilerTest {
 
                     @Override
                     public List<IMetricsRecorder> getRecorders() {
-                        return Arrays.asList(mRecorder1, mRecorder2);
+                        return Arrays.asList(mRecorderA1, mRecorderA2, mRecorderB1, mRecorderB2);
                     }
 
                     @Override
@@ -78,10 +79,14 @@ public class AggregatingProfilerTest {
                         return new MetricOutputData();
                     }
                 };
+
+        mTestId = new TestIdentifier("foo", "bar");
         EasyMock.expect(mTestDevice1.getSerialNumber()).andReturn("-1").anyTimes();
         EasyMock.expect(mTestDevice2.getSerialNumber()).andReturn("-2").anyTimes();
-        EasyMock.expect(mRecorder1.getName()).andReturn("1").anyTimes();
-        EasyMock.expect(mRecorder2.getName()).andReturn("2").anyTimes();
+        EasyMock.expect(mRecorderA1.getName()).andReturn("A1").anyTimes(); // device 1
+        EasyMock.expect(mRecorderA2.getName()).andReturn("A2").anyTimes(); // device 2
+        EasyMock.expect(mRecorderB1.getName()).andReturn("B1").anyTimes(); // device 1
+        EasyMock.expect(mRecorderB2.getName()).andReturn("B2").anyTimes(); // device 2
         EasyMock.expect(mContext.getDevices()).andReturn(new ArrayList<>()).anyTimes();
         EasyMock.expect(mContext.getTestTag()).andReturn("AggregatingProfilerTest").anyTimes();
         EasyMock.replay(mContext);
@@ -90,76 +95,96 @@ public class AggregatingProfilerTest {
 
     @Test
     public void testStartMetrics() throws Exception {
-        mRecorder1.startMetrics((ITestDevice) EasyMock.anyObject());
-        EasyMock.expectLastCall().times(2);
-        mRecorder2.startMetrics((ITestDevice) EasyMock.anyObject());
-        EasyMock.expectLastCall().times(2);
-        EasyMock.replay(mTestDevice1, mTestDevice2, mRecorder1, mRecorder2);
+        mRecorderA1.startRecording();
+        EasyMock.expectLastCall().times(1);
+        mRecorderA2.startRecording();
+        EasyMock.expectLastCall().times(1);
+        mRecorderB1.startRecording();
+        EasyMock.expectLastCall().times(1);
+        mRecorderB2.startRecording();
+        EasyMock.expectLastCall().times(1);
+        EasyMock.replay(
+                mTestDevice1, mTestDevice2, mRecorderA1, mRecorderA2, mRecorderB1, mRecorderB2);
         mProfiler.startRecordingMetrics();
-        EasyMock.verify(mRecorder1, mRecorder2);
+        EasyMock.verify(mRecorderA1, mRecorderA2, mRecorderB1, mRecorderB2);
     }
 
     @Test
     public void testStopMetrics() throws Exception {
-        TestIdentifier id = new TestIdentifier("foo", "bar");
-        Map<String, Double> metric1 = new HashMap<>();
-        metric1.put("hello1", 1.0);
-        metric1.put("goodbye1", 2.0);
-        metric1.put("generic", 3.0);
-        Map<String, Double> metric2 = new HashMap<>();
-        metric2.put("hello2", 1.0);
-        metric2.put("goodbye2", 2.0);
-        metric2.put("generic", 3.0);
-        EasyMock.expect(mRecorder1.stopMetrics((ITestDevice) EasyMock.anyObject()))
-                .andReturn(metric1)
-                .times(2);
-        EasyMock.expect(mRecorder2.stopMetrics((ITestDevice) EasyMock.anyObject()))
-                .andReturn(metric2)
-                .times(2);
-        EasyMock.expect(mRecorder1.getMergeFunction((String) EasyMock.anyObject()))
+        Map<String, Double> metricA1 = new HashMap<>();
+        metricA1.put("x", 1.0);
+        metricA1.put("y", 2.0);
+        Map<String, Double> metricA2 = new HashMap<>();
+        metricA2.put("x", 10.0);
+        metricA2.put("y", 20.0);
+        Map<String, Double> metricB1 = new HashMap<>();
+        metricB1.put("x", 100.0);
+        metricB1.put("y", 200.0);
+        Map<String, Double> metricB2 = new HashMap<>();
+        metricB2.put("x", 1000.0);
+        metricB2.put("y", 2000.0);
+        EasyMock.expect(mRecorderA1.stopRecordingAndReturnMetrics()).andReturn(metricA1).times(1);
+        EasyMock.expect(mRecorderA2.stopRecordingAndReturnMetrics()).andReturn(metricA2).times(1);
+        EasyMock.expect(mRecorderB1.stopRecordingAndReturnMetrics()).andReturn(metricB1).times(1);
+        EasyMock.expect(mRecorderB2.stopRecordingAndReturnMetrics()).andReturn(metricB2).times(1);
+        EasyMock.expect(mRecorderA1.getMergeFunction((String) EasyMock.anyObject()))
                 .andReturn(sum())
-                .times(12);
-        EasyMock.expect(mRecorder2.getMergeFunction((String) EasyMock.anyObject()))
+                .times(4);
+        EasyMock.expect(mRecorderA2.getMergeFunction((String) EasyMock.anyObject()))
                 .andReturn(sum())
-                .times(12);
-        EasyMock.replay(mTestDevice1, mTestDevice2, mRecorder1, mRecorder2);
-        mProfiler.setAggregateMetrics(new HashMap<>());
+                .times(4);
+        EasyMock.expect(mRecorderB1.getMergeFunction((String) EasyMock.anyObject()))
+                .andReturn(sum())
+                .times(4);
+        EasyMock.expect(mRecorderB2.getMergeFunction((String) EasyMock.anyObject()))
+                .andReturn(sum())
+                .times(4);
+        EasyMock.replay(
+                mTestDevice1, mTestDevice2, mRecorderA1, mRecorderA2, mRecorderB1, mRecorderB2);
 
-        Map<String, Double> m = mProfiler.stopRecordingMetrics(id);
-
-        EasyMock.verify(mRecorder1, mRecorder2);
+        Map<String, Double> m = mProfiler.stopRecordingMetrics(mTestId);
+        EasyMock.verify(mRecorderA1, mRecorderA2, mRecorderB1, mRecorderB2);
         Assert.assertEquals(m, mProfiler.getAggregateMetrics());
-        Assert.assertTrue(mProfiler.getAggregateMetrics().containsKey("generic"));
-        Assert.assertEquals(12.0d, mProfiler.getAggregateMetrics().get("generic"), 0.001);
-        Assert.assertTrue(m.containsKey("generic"));
-        Assert.assertEquals(12.0d, m.get("generic"), 0.001);
+        Assert.assertEquals(1111.0, mProfiler.getAggregateMetrics().get("x"), EPSILON);
+        Assert.assertEquals(1111.0, m.get("x"), EPSILON);
+    }
 
-        EasyMock.reset(mRecorder1, mRecorder2);
-        EasyMock.expect(mRecorder1.stopMetrics((ITestDevice) EasyMock.anyObject()))
-                .andReturn(metric1)
-                .times(2);
-        EasyMock.expect(mRecorder2.stopMetrics((ITestDevice) EasyMock.anyObject()))
-                .andReturn(metric2)
-                .times(2);
-        EasyMock.expect(mRecorder1.getMergeFunction((String) EasyMock.anyObject()))
+    @Test
+    public void testAggregateMetrics() throws Exception {
+        Map<String, Double> metric = new HashMap<>();
+        metric.put("x", 5.0);
+        EasyMock.expect(mRecorderA1.stopRecordingAndReturnMetrics()).andReturn(metric).anyTimes();
+        EasyMock.expect(mRecorderB1.stopRecordingAndReturnMetrics()).andReturn(metric).anyTimes();
+        EasyMock.expect(mRecorderA2.stopRecordingAndReturnMetrics()).andReturn(metric).anyTimes();
+        EasyMock.expect(mRecorderB2.stopRecordingAndReturnMetrics()).andReturn(metric).anyTimes();
+        EasyMock.expect(mRecorderA1.getMergeFunction((String) EasyMock.anyObject()))
                 .andReturn(sum())
-                .times(12);
-        EasyMock.expect(mRecorder2.getMergeFunction((String) EasyMock.anyObject()))
+                .anyTimes();
+        EasyMock.expect(mRecorderA2.getMergeFunction((String) EasyMock.anyObject()))
                 .andReturn(sum())
-                .times(12);
-        EasyMock.replay(mRecorder1, mRecorder2);
+                .anyTimes();
+        EasyMock.expect(mRecorderB1.getMergeFunction((String) EasyMock.anyObject()))
+                .andReturn(sum())
+                .anyTimes();
+        EasyMock.expect(mRecorderB2.getMergeFunction((String) EasyMock.anyObject()))
+                .andReturn(sum())
+                .anyTimes();
+        EasyMock.replay(
+                mTestDevice1, mTestDevice2, mRecorderA1, mRecorderA2, mRecorderB1, mRecorderB2);
 
-        Map<String, Double> m2 = mProfiler.stopRecordingMetrics(id);
-        Assert.assertTrue(mProfiler.getAggregateMetrics().containsKey("generic"));
-        Assert.assertEquals(24.0d, mProfiler.getAggregateMetrics().get("generic"), 0.001);
-        Assert.assertTrue(m2.containsKey("generic"));
-        Assert.assertEquals(12.0d, m2.get("generic"), 0.001);
+        Map<String, Double> m = mProfiler.stopRecordingMetrics(mTestId);
+        Assert.assertEquals(m, mProfiler.getAggregateMetrics());
+        Assert.assertEquals(20.0, mProfiler.getAggregateMetrics().get("x"), EPSILON);
+        Assert.assertEquals(20.0, m.get("x"), EPSILON);
+        Map<String, Double> m2 = mProfiler.stopRecordingMetrics(mTestId);
+        Assert.assertEquals(40.0, mProfiler.getAggregateMetrics().get("x"), EPSILON);
+        Assert.assertEquals(20.0, m2.get("x"), EPSILON);
     }
 
     @Test
     public void testReportAllMetrics() throws Exception {
         Map<String, Double> metric1 = new HashMap<>();
-        metric1.put("hello1", 1.0);
+        metric1.put("x", 5.0);
         mProfiler.setAggregateMetrics(metric1);
         ITestInvocationListener mockListener = EasyMock.createMock(ITestInvocationListener.class);
         mockListener.testLog((String)EasyMock.anyObject(), EasyMock.eq(LogDataType.MUGSHOT_LOG),
