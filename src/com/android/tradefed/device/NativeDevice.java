@@ -3177,7 +3177,8 @@ public class NativeDevice implements IManagedTestDevice {
                         getSerialNumber());
             } else {
                 try {
-                    return new SnapshotInputStreamSource(mEmulatorOutput.getData());
+                    return new SnapshotInputStreamSource(
+                            "getEmulatorOutput", mEmulatorOutput.getData());
                 } catch (IOException e) {
                     CLog.e("Failed to get %s data.", getSerialNumber());
                     CLog.e(e);
