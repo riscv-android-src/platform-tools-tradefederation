@@ -111,7 +111,7 @@ include $(CLEAR_VARS)
 # Note that this is incompatible with `make dist`.  If you want to make
 # the distribution, you must run `tapas` with the individual target names.
 .PHONY: tradefed-all
-tradefed-all: tradefed tradefed-tests tf-prod-tests tf-prod-metatests tradefed_win script_help verify tradefed-contrib
+tradefed-all: tradefed tradefed-tests tf-prod-tests tf-prod-metatests tradefed_win script_help verify tradefed-contrib loganalysis-tests
 
 # ====================================
 include $(CLEAR_VARS)
