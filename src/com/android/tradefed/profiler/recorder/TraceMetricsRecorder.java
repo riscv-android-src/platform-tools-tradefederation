@@ -46,6 +46,11 @@ public class TraceMetricsRecorder implements IMetricsRecorder {
     private Map<TraceMetric, BiFunction<Double, Double, Double>> mMergeFunctions;
     private TraceParser mParser;
 
+    // tracing_on setting before the test
+    private String mTracingBefore;
+    // single event trace settings before the test. Format: (path to "enable" file, setting before)
+    private Map<String, String> mSingleEventTracingBefore = new HashMap<>();
+
     @Override
     public void setUp(ITestDevice device, Collection<String> descriptors)
             throws DeviceNotAvailableException {
@@ -54,7 +59,7 @@ public class TraceMetricsRecorder implements IMetricsRecorder {
         mParser = new TraceParser();
         for (String descriptor : descriptors) {
             TraceMetric metric = TraceMetric.parse(descriptor);
-            enableSingleEventTrace(device, metric.getPrefix() + "/" + metric.getFuncName());
+            enableSingleEventTracing(device, metric.getPrefix() + "/" + metric.getFuncName());
             mTraceMetrics.put(metric.getFuncName(), metric);
             mMergeFunctions.put(
                     metric, new NumericAggregateFunction(metric.getMetricType()).getFunction());
@@ -68,12 +73,15 @@ public class TraceMetricsRecorder implements IMetricsRecorder {
 
     @Override
     public Map<String, Double> stopMetrics(ITestDevice device) throws DeviceNotAvailableException {
-        disableTracing(device);
+        undoEnableTracing(device);
+        undoAllEnableSingleEventTracing(device);
+        File fullTrace = pullFullTrace(device);
+        cleanUpTrace(device);
+        return parseTraceFile(fullTrace);
+    }
+
+    public Map<String, Double> parseTraceFile(File fullTrace) {
         Map<String, Double> metrics = new HashMap<>();
-        File fullTrace = device.pullFile(TRACE_DIR + "/trace");
-        if (fullTrace == null) {
-            throw new AssertionError("Failed to pull trace file");
-        }
         BufferedReader trace = null;
         try {
             trace = getReaderFromFile(fullTrace);
@@ -91,6 +99,8 @@ public class TraceMetricsRecorder implements IMetricsRecorder {
                 if (matchedMetric == null) {
                     continue;
                 }
+
+                //TODO(ghliu): do not handle specific MetricType here
                 if (matchedMetric.getMetricType() == MetricType.AVGTIME) {
                     lastTimestamp = descriptor.getTimestamp();
                     continue;
@@ -117,8 +127,6 @@ public class TraceMetricsRecorder implements IMetricsRecorder {
         } finally {
             StreamUtil.close(trace);
         }
-        // Clear out the trace
-        device.executeShellCommand("echo > " + TRACE_DIR + "/trace");
         return metrics;
     }
 
@@ -133,19 +141,67 @@ public class TraceMetricsRecorder implements IMetricsRecorder {
         return "TraceMetricsRecorder";
     }
 
-    private void enableTracing(ITestDevice device) throws DeviceNotAvailableException {
-        device.executeShellCommand("echo 1 > " + TRACE_DIR + "/tracing_on");
+    /**
+     * Helper function to write tracing setting ("0" or "1") to given path on device with "echo".
+     */
+    void setTracingSetting(ITestDevice device, String enabled, String path)
+            throws DeviceNotAvailableException {
+        device.executeShellCommand(String.format("echo %s > %s", enabled, path));
     }
 
-    private void disableTracing(ITestDevice device) throws DeviceNotAvailableException {
-        device.executeShellCommand("echo 0 > " + TRACE_DIR + "/tracing_on");
+    /**
+     * Helper function to read tracing setting ("0" or "1") from given path on device with "cat".
+     */
+    String getTracingSetting(ITestDevice device, String path) throws DeviceNotAvailableException {
+        String s = device.executeShellCommand("cat " + path);
+        if (s.length() > 0) {
+            // remove trailing blank line
+            return s.substring(0, 1);
+        } else {
+            return "0";
+        }
     }
 
-    private void enableSingleEventTrace(ITestDevice device, String location)
+    /** Enable tracing on device. */
+    void enableTracing(ITestDevice device) throws DeviceNotAvailableException {
+        mTracingBefore = getTracingSetting(device, TRACE_DIR + "/tracing_on");
+        setTracingSetting(device, "1", TRACE_DIR + "/tracing_on");
+    }
+
+    /** Restore pre-test tracing setting. */
+    void undoEnableTracing(ITestDevice device) throws DeviceNotAvailableException {
+        setTracingSetting(device, mTracingBefore, TRACE_DIR + "/tracing_on");
+    }
+
+    File pullFullTrace(ITestDevice device) throws DeviceNotAvailableException {
+        File fullTrace = device.pullFile(TRACE_DIR + "/trace");
+        if (fullTrace == null) {
+            throw new RuntimeException("Failed to pull trace file");
+        }
+        return fullTrace;
+    }
+
+    void cleanUpTrace(ITestDevice device) throws DeviceNotAvailableException {
+        device.executeShellCommand("echo > " + TRACE_DIR + "/trace");
+    }
+
+    /** Enable single event tracing. */
+    void enableSingleEventTracing(ITestDevice device, String location)
             throws DeviceNotAvailableException {
         String fullLocation = EVENT_DIR + location + "/enable";
+        String enabledBefore = getTracingSetting(device, fullLocation);
+        mSingleEventTracingBefore.put(fullLocation, enabledBefore);
         CLog.d("Starting event located at %s", fullLocation);
-        device.executeShellCommand("echo 1 > " + fullLocation);
+        setTracingSetting(device, "1", fullLocation);
+    }
+
+    /** Restore pre-test single event tracing settings. */
+    void undoAllEnableSingleEventTracing(ITestDevice device) throws DeviceNotAvailableException {
+        for (Map.Entry<String, String> entry : mSingleEventTracingBefore.entrySet()) {
+            String fullLocation = entry.getKey();
+            String enabledBefore = entry.getValue();
+            setTracingSetting(device, enabledBefore, fullLocation);
+        }
     }
 
     protected BufferedReader getReaderFromFile(File trace) throws FileNotFoundException {
