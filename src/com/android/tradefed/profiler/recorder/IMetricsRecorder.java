@@ -42,21 +42,20 @@ public interface IMetricsRecorder {
             throws DeviceNotAvailableException;
 
     /**
-     * Begin recording metrics on a device. This should be called at the beginning of a single test.
+     * Begin recording metrics. This should be called at the beginning of a single test.
      *
-     * @param device the device to start recording on
      * @throws DeviceNotAvailableException
      */
-    public void startMetrics(ITestDevice device) throws DeviceNotAvailableException;
+    public void startRecording() throws DeviceNotAvailableException;
 
     /**
-     * Stop recording metrics on a device. This should be called at the end of a single test.
+     * Stop recording metrics and return metrics recorded. This should be called at the end of a
+     * single test.
      *
-     * @param device the device to stop recording on
      * @return a {@link Map} which contains all metrics recorded over the duration of the test.
      * @throws DeviceNotAvailableException
      */
-    public Map<String, Double> stopMetrics(ITestDevice device) throws DeviceNotAvailableException;
+    public Map<String, Double> stopRecordingAndReturnMetrics() throws DeviceNotAvailableException;
 
     /**
      * Returns a {@link BiFunction} describing how to aggregate results for a particular metric over
