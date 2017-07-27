@@ -16,6 +16,7 @@
 package com.android.tradefed.testtype;
 
 import com.android.tradefed.build.IBuildInfo;
+import com.android.tradefed.config.Option;
 import com.android.tradefed.device.ITestDevice;
 
 import org.junit.rules.ExternalResource;
@@ -26,7 +27,9 @@ import org.junit.runners.model.InitializationError;
 import org.junit.runners.model.Statement;
 
 import java.lang.annotation.Annotation;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -38,6 +41,9 @@ public class DeviceJUnit4ClassRunner extends BlockJUnit4ClassRunner implements I
     private ITestDevice mDevice;
     private IBuildInfo mBuildInfo;
     private IAbi mAbi;
+
+    @Option(name = HostTest.SET_OPTION_NAME, description = HostTest.SET_OPTION_DESC)
+    private List<String> mKeyValueOptions = new ArrayList<>();
 
     public DeviceJUnit4ClassRunner(Class<?> klass) throws InitializationError {
         super(klass);
@@ -65,6 +71,8 @@ public class DeviceJUnit4ClassRunner extends BlockJUnit4ClassRunner implements I
         if (testObj instanceof IAbiReceiver) {
             ((IAbiReceiver) testObj).setAbi(mAbi);
         }
+        // Set options of test object
+        HostTest.setOptionToLoadedObject(testObj, mKeyValueOptions);
         return testObj;
     }
 
