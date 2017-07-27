@@ -29,6 +29,7 @@ import com.android.tradefed.util.FileUtil;
 import com.android.tradefed.util.HprofAllocSiteParser;
 import com.android.tradefed.util.RunUtil;
 import com.android.tradefed.util.StreamUtil;
+import com.android.tradefed.util.TarUtil;
 
 import com.google.common.annotations.VisibleForTesting;
 
@@ -371,11 +372,17 @@ public class TfTestLauncher extends SubprocessTfLauncher {
             return;
         }
         InputStreamSource memory = null;
+        File tmpGzip = null;
         try {
-            memory = new FileInputStreamSource(hprofFile);
-            listener.testLog("hprof", LogDataType.TEXT, memory);
+            tmpGzip = TarUtil.gzip(hprofFile);
+            memory = new FileInputStreamSource(tmpGzip);
+            listener.testLog("hprof", LogDataType.GZIP, memory);
+        } catch (IOException e) {
+            CLog.e(e);
+            return;
         } finally {
             StreamUtil.cancel(memory);
+            FileUtil.deleteFile(tmpGzip);
         }
         HprofAllocSiteParser parser = new HprofAllocSiteParser();
         try {
