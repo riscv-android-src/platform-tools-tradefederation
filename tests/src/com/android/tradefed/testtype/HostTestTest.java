@@ -34,7 +34,9 @@ import org.junit.Before;
 import org.junit.Ignore;
 import org.junit.Rule;
 import org.junit.runner.RunWith;
+import org.junit.runners.BlockJUnit4ClassRunner;
 import org.junit.runners.Suite.SuiteClasses;
+import org.junit.runners.model.InitializationError;
 
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
@@ -192,6 +194,26 @@ public class HostTestTest extends TestCase {
     }
 
     /**
+     * JUnit4 runner that implements {@link ISetOptionReceiver} but does not actually have the
+     * set-option.
+     */
+    public static class InvalidJunit4Runner extends BlockJUnit4ClassRunner
+            implements ISetOptionReceiver {
+        public InvalidJunit4Runner(Class<?> klass) throws InitializationError {
+            super(klass);
+        }
+    }
+
+    @RunWith(InvalidJunit4Runner.class)
+    public static class Junit4RegularClass {
+        @Option(name = "option")
+        private String mOption = null;
+
+        @org.junit.Test
+        public void testPass() {}
+    }
+
+    /**
      * Malformed on purpose test class.
      */
     public static class Junit4MalformedTestClass {
@@ -240,12 +262,19 @@ public class HostTestTest extends TestCase {
     }
 
     public static class SuccessDeviceTest extends DeviceTestCase {
+
+        @Option(name = "option")
+        public String mOption = null;
+
         public SuccessDeviceTest() {
             super();
         }
 
         public void testPass() {
             assertNotNull(getDevice());
+            if (mOption != null) {
+                addTestMetric("option", mOption);
+            }
         }
     }
 
@@ -576,11 +605,15 @@ public class HostTestTest extends TestCase {
         final ITestDevice device = EasyMock.createMock(ITestDevice.class);
         mHostTest.setClassName(SuccessDeviceTest.class.getName());
         mHostTest.setDevice(device);
+        OptionSetter setter = new OptionSetter(mHostTest);
+        setter.setOptionValue("set-option", "option:value");
 
         TestIdentifier test1 = new TestIdentifier(SuccessDeviceTest.class.getName(), "testPass");
         mListener.testRunStarted((String)EasyMock.anyObject(), EasyMock.eq(1));
         mListener.testStarted(EasyMock.eq(test1));
-        mListener.testEnded(EasyMock.eq(test1), (Map<String, String>)EasyMock.anyObject());
+        Map<String, String> expected = new HashMap<>();
+        expected.put("option", "value");
+        mListener.testEnded(EasyMock.eq(test1), EasyMock.eq(expected));
         mListener.testRunEnded(EasyMock.anyLong(), (Map<String, String>)EasyMock.anyObject());
         EasyMock.replay(mListener);
         mHostTest.run(mListener);
@@ -1488,6 +1521,28 @@ public class HostTestTest extends TestCase {
         // Map option with invalid format
         setter.setOptionValue("set-option", "map-option:key=value=2");
         mHostTest.setClassName(TestMetricTestCase.class.getName());
+        EasyMock.replay(mListener);
+        try {
+            mHostTest.run(mListener);
+            fail("Should have thrown an exception.");
+        } catch (RuntimeException expected) {
+            // expected
+        }
+        EasyMock.verify(mListener);
+    }
+
+    /**
+     * Test that when a JUnit runner implements {@link ISetOptionReceiver} we attempt to pass it the
+     * hostTest set-option.
+     */
+    public void testSetOption_regularJUnit4_fail() throws Exception {
+        OptionSetter setter = new OptionSetter(mHostTest);
+        // Map option with invalid format
+        setter.setOptionValue("set-option", "option:value");
+        mHostTest.setClassName(Junit4RegularClass.class.getName());
+        mListener.testRunStarted(
+                EasyMock.eq("com.android.tradefed.testtype.HostTestTest$Junit4RegularClass"),
+                EasyMock.eq(1));
         EasyMock.replay(mListener);
         try {
             mHostTest.run(mListener);

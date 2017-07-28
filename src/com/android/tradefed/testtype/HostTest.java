@@ -335,13 +335,15 @@ public class HostTest
             ((IAbiReceiver)testObj).setAbi(mAbi);
         }
         // managed runner should have the same set-option to pass option too.
-        try {
-            OptionSetter setter = new OptionSetter(testObj);
-            for (String item : mKeyValueOptions) {
-                setter.setOptionValue(SET_OPTION_NAME, item);
+        if (testObj instanceof ISetOptionReceiver) {
+            try {
+                OptionSetter setter = new OptionSetter(testObj);
+                for (String item : mKeyValueOptions) {
+                    setter.setOptionValue(SET_OPTION_NAME, item);
+                }
+            } catch (ConfigurationException e) {
+                throw new RuntimeException(e);
             }
-        } catch (ConfigurationException e) {
-            throw new RuntimeException(e);
         }
     }
 
