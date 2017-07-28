@@ -17,6 +17,7 @@ package com.android.tradefed.testtype;
 
 import com.android.ddmlib.testrunner.TestIdentifier;
 import com.android.tradefed.build.IBuildInfo;
+import com.android.tradefed.config.Option;
 import com.android.tradefed.config.OptionSetter;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
@@ -59,8 +60,7 @@ public class HostTestTest extends TestCase {
     @MyAnnotation
     @MyAnnotation3
     public static class SuccessTestCase extends TestCase {
-        public SuccessTestCase() {
-        }
+        public SuccessTestCase() {}
 
         public SuccessTestCase(String name) {
             super(name);
@@ -78,12 +78,30 @@ public class HostTestTest extends TestCase {
 
     public static class TestMetricTestCase extends MetricTestCase {
 
+        @Option(name = "test-option")
+        public String testOption = null;
+
+        @Option(name = "list-option")
+        public List<String> listOption = new ArrayList<>();
+
+        @Option(name = "map-option")
+        public Map<String, String> mapOption = new HashMap<>();
+
         public void testPass() {
             addTestMetric("key1", "metric1");
         }
 
         public void testPass2() {
             addTestMetric("key2", "metric2");
+            if (testOption != null) {
+                addTestMetric("test-option", testOption);
+            }
+            if (!listOption.isEmpty()) {
+                addTestMetric("list-option", listOption.toString());
+            }
+            if (!mapOption.isEmpty()) {
+                addTestMetric("map-option", mapOption.toString());
+            }
         }
     }
 
@@ -114,6 +132,9 @@ public class HostTestTest extends TestCase {
 
         public Junit4TestClass() {}
 
+        @Option(name = "junit4-option")
+        public boolean mOption = false;
+
         @Rule public TestMetrics metrics = new TestMetrics();
 
         @MyAnnotation
@@ -128,6 +149,9 @@ public class HostTestTest extends TestCase {
         @org.junit.Test
         public void testPass6() {
             metrics.addTestMetric("key2", "value2");
+            if (mOption) {
+                metrics.addTestMetric("junit4-option", "true");
+            }
         }
     }
 
@@ -336,6 +360,41 @@ public class HostTestTest extends TestCase {
         mListener.testStarted(EasyMock.eq(test2));
         Map<String, String> metric2 = new HashMap<>();
         metric2.put("key2", "metric2");
+        mListener.testEnded(test2, metric2);
+        mListener.testRunEnded(EasyMock.anyLong(), (Map<String, String>) EasyMock.anyObject());
+        EasyMock.replay(mListener);
+        mHostTest.run(mListener);
+        EasyMock.verify(mListener);
+    }
+
+    /**
+     * Test success case for {@link HostTest#run(ITestInvocationListener)}, where test to run is a
+     * {@link MetricTestCase} and where an option is set to get extra metrics.
+     */
+    public void testRun_MetricTestCase_withOption() throws Exception {
+        OptionSetter setter = new OptionSetter(mHostTest);
+        setter.setOptionValue("set-option", "test-option:test");
+        // List option can take several values.
+        setter.setOptionValue("set-option", "list-option:test1");
+        setter.setOptionValue("set-option", "list-option:test2");
+        // Map option
+        setter.setOptionValue("set-option", "map-option:key=value");
+        mHostTest.setClassName(TestMetricTestCase.class.getName());
+        TestIdentifier test1 = new TestIdentifier(TestMetricTestCase.class.getName(), "testPass");
+        TestIdentifier test2 = new TestIdentifier(TestMetricTestCase.class.getName(), "testPass2");
+        mListener.testRunStarted((String) EasyMock.anyObject(), EasyMock.eq(2));
+        mListener.testStarted(EasyMock.eq(test1));
+        // test1 should only have its metrics
+        Map<String, String> metric1 = new HashMap<>();
+        metric1.put("key1", "metric1");
+        mListener.testEnded(test1, metric1);
+        // test2 should only have its metrics
+        mListener.testStarted(EasyMock.eq(test2));
+        Map<String, String> metric2 = new HashMap<>();
+        metric2.put("key2", "metric2");
+        metric2.put("test-option", "test");
+        metric2.put("list-option", "[test1, test2]");
+        metric2.put("map-option", "{key=value}");
         mListener.testEnded(test2, metric2);
         mListener.testRunEnded(EasyMock.anyLong(), (Map<String, String>) EasyMock.anyObject());
         EasyMock.replay(mListener);
@@ -920,11 +979,17 @@ public class HostTestTest extends TestCase {
     public void testRun_testcase_Junit4TestNotAnnotationFiltering() throws Exception {
         mHostTest.setClassName(Junit4TestClass.class.getName());
         mHostTest.addExcludeAnnotation("com.android.tradefed.testtype.HostTestTest$MyAnnotation2");
+        OptionSetter setter = new OptionSetter(mHostTest);
+        setter.setOptionValue("set-option", "junit4-option:true");
         TestIdentifier test1 = new TestIdentifier(Junit4TestClass.class.getName(), "testPass6");
         // Only test1 will run, test2 should be filtered out.
         mListener.testRunStarted((String)EasyMock.anyObject(), EasyMock.eq(1));
         mListener.testStarted(EasyMock.eq(test1));
-        mListener.testEnded(EasyMock.eq(test1), (Map<String, String>)EasyMock.anyObject());
+        Map<String, String> metrics = new HashMap<>();
+        metrics.put("key2", "value2");
+        // If the option was correctly set, this metric should be true.
+        metrics.put("junit4-option", "true");
+        mListener.testEnded(EasyMock.eq(test1), EasyMock.eq(metrics));
         mListener.testRunEnded(EasyMock.anyLong(), (Map<String, String>)EasyMock.anyObject());
         EasyMock.replay(mListener);
         mHostTest.run(mListener);
@@ -1412,5 +1477,24 @@ public class HostTestTest extends TestCase {
             test.run(mListener);
         }
         EasyMock.verify(mListener, mMockDevice);
+    }
+
+    /**
+     * Test that when the 'set-option' format is not respected, an exception is thrown. Only one '='
+     * is allowed in the value.
+     */
+    public void testRun_setOption_invalid() throws Exception {
+        OptionSetter setter = new OptionSetter(mHostTest);
+        // Map option with invalid format
+        setter.setOptionValue("set-option", "map-option:key=value=2");
+        mHostTest.setClassName(TestMetricTestCase.class.getName());
+        EasyMock.replay(mListener);
+        try {
+            mHostTest.run(mListener);
+            fail("Should have thrown an exception.");
+        } catch (RuntimeException expected) {
+            // expected
+        }
+        EasyMock.verify(mListener);
     }
 }
