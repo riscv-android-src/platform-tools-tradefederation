@@ -655,7 +655,8 @@ public class GlobalConfiguration implements IGlobalConfiguration {
             whitelistConfigs = CONFIGS_FOR_SUBPROCESS_WHITE_LIST;
         }
         for (String config : whitelistConfigs) {
-            ConfigurationUtil.dumpClassToXml(serializer, config, getConfigurationObject(config));
+            ConfigurationUtil.dumpClassToXml(
+                    serializer, config, getConfigurationObject(config), new ArrayList<>());
         }
         serializer.endTag(null, ConfigurationUtil.CONFIGURATION_NAME);
         serializer.endDocument();
