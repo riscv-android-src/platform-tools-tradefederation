@@ -30,6 +30,7 @@ import com.android.tradefed.testtype.DeviceJUnit4ClassRunner;
 import com.android.tradefed.testtype.IDeviceTest;
 import com.android.tradefed.util.CommandStatus;
 import com.android.tradefed.util.FileUtil;
+import com.android.tradefed.util.KeyguardControllerState;
 import com.android.tradefed.util.RunUtil;
 import com.android.tradefed.util.StreamUtil;
 
@@ -648,7 +649,13 @@ public class TestDeviceFuncTest implements IDeviceTest {
         getDevice().reboot();
         mTestDevice.waitForDeviceAvailable();
         RunUtil.getDefault().sleep(500);
-        assertTrue(runUITests());
+        KeyguardControllerState keyguard = mTestDevice.getKeyguardState();
+        if (keyguard == null) {
+            // If the getKeyguardState is not supported.
+            assertTrue(runUITests());
+        } else {
+            assertFalse(keyguard.isKeyguardShowing());
+        }
     }
 
     /** Test that TradeFed can successfully recover from the adb host daemon process being killed */
