@@ -33,11 +33,11 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * JUnit4 test runner that also accommodate {@link IDeviceTest}.
- * Should be specify above JUnit4 Test with the RunWith annotation.
+ * JUnit4 test runner that also accommodate {@link IDeviceTest}. Should be specify above JUnit4 Test
+ * with the RunWith annotation.
  */
-public class DeviceJUnit4ClassRunner extends BlockJUnit4ClassRunner implements IDeviceTest,
-        IBuildReceiver, IAbiReceiver {
+public class DeviceJUnit4ClassRunner extends BlockJUnit4ClassRunner
+        implements IDeviceTest, IBuildReceiver, IAbiReceiver, ISetOptionReceiver {
     private ITestDevice mDevice;
     private IBuildInfo mBuildInfo;
     private IAbi mAbi;
