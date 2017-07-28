@@ -47,6 +47,15 @@ public class ConfigurationDescriptor {
     )
     private boolean mNotShardable = false;
 
+    @Option(
+        name = "not-strict-shardable",
+        description =
+                "A metadata to allows a suite configuration to specify that it cannot be "
+                        + "sharded in a strict context (independent shards). If a config is already "
+                        + "not-shardable, it will be not-strict-shardable."
+    )
+    private boolean mNotStrictShardable = false;
+
     /** Optional Abi information the configuration will be run against. */
     private IAbi mAbi = null;
 
@@ -78,6 +87,11 @@ public class ConfigurationDescriptor {
     /** Returns if the configuration is shardable or not as part of a suite */
     public boolean isNotShardable() {
         return mNotShardable;
+    }
+
+    /** Returns if the configuration is strict shardable or not as part of a suite */
+    public boolean isNotStrictShardable() {
+        return mNotStrictShardable;
     }
 
     /** Sets the abi the configuration is going to run against. */
