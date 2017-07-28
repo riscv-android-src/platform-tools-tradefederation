@@ -16,6 +16,7 @@
 package com.android.tradefed.invoker;
 
 import com.android.tradefed.build.BuildInfo;
+import com.android.tradefed.build.BuildSerializedVersion;
 import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.config.ConfigurationDescriptor;
 import com.android.tradefed.device.ITestDevice;
@@ -25,20 +26,25 @@ import com.android.tradefed.testtype.suite.ITestSuite;
 import com.android.tradefed.util.MultiMap;
 import com.android.tradefed.util.UniqueMultiMap;
 
+import java.io.IOException;
+import java.io.ObjectInputStream;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
 
 /**
  * Generic implementation of a {@link IInvocationContext}.
  */
 public class InvocationContext implements IInvocationContext {
+    private static final long serialVersionUID = BuildSerializedVersion.VERSION;
 
-    private Map<ITestDevice, IBuildInfo> mAllocatedDeviceAndBuildMap;
-    /** Map of the configuration device name and the actual {@link ITestDevice} **/
-    private Map<String, ITestDevice> mNameAndDeviceMap;
+    // Transient field are not serialized
+    private transient Map<ITestDevice, IBuildInfo> mAllocatedDeviceAndBuildMap;
+    /** Map of the configuration device name and the actual {@link ITestDevice} * */
+    private transient Map<String, ITestDevice> mNameAndDeviceMap;
     private Map<String, IBuildInfo> mNameAndBuildinfoMap;
     private final UniqueMultiMap<String, String> mInvocationAttributes =
             new UniqueMultiMap<String, String>();
@@ -75,6 +81,10 @@ public class InvocationContext implements IInvocationContext {
     @Override
     public void addAllocatedDevice(String devicename, ITestDevice testDevice) {
         mNameAndDeviceMap.put(devicename, testDevice);
+        // back fill the information if possible
+        if (mNameAndBuildinfoMap.get(devicename) != null) {
+            mAllocatedDeviceAndBuildMap.put(testDevice, mNameAndBuildinfoMap.get(devicename));
+        }
     }
 
     /**
@@ -83,6 +93,13 @@ public class InvocationContext implements IInvocationContext {
     @Override
     public void addAllocatedDevice(Map<String, ITestDevice> deviceWithName) {
         mNameAndDeviceMap.putAll(deviceWithName);
+        // back fill the information if possible
+        for (Entry<String, ITestDevice> entry : deviceWithName.entrySet()) {
+            if (mNameAndBuildinfoMap.get(entry.getKey()) != null) {
+                mAllocatedDeviceAndBuildMap.put(
+                        entry.getValue(), mNameAndBuildinfoMap.get(entry.getKey()));
+            }
+        }
     }
 
     /**
@@ -274,5 +291,14 @@ public class InvocationContext implements IInvocationContext {
     /** Lock the context to prevent more invocation attributes to be added. */
     public void lockAttributes() {
         mLocked = true;
+    }
+
+    /** Special java method that allows for custom deserialization. */
+    private void readObject(ObjectInputStream in) throws IOException, ClassNotFoundException {
+        // our "pseudo-constructor"
+        in.defaultReadObject();
+        // now we are a "live" object again, so let's init the transient field
+        mAllocatedDeviceAndBuildMap = new HashMap<ITestDevice, IBuildInfo>();
+        mNameAndDeviceMap = new LinkedHashMap<String, ITestDevice>();
     }
 }

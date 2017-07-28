@@ -15,11 +15,13 @@
  */
 package com.android.tradefed.config;
 
+import com.android.tradefed.build.BuildSerializedVersion;
 import com.android.tradefed.testtype.IAbi;
 import com.android.tradefed.util.MultiMap;
 
 import com.google.common.annotations.VisibleForTesting;
 
+import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -29,7 +31,8 @@ import java.util.List;
  * xml.
  */
 @OptionClass(alias = "config-descriptor")
-public class ConfigurationDescriptor {
+public class ConfigurationDescriptor implements Serializable {
+    private static final long serialVersionUID = BuildSerializedVersion.VERSION;
 
     @Option(name = "test-suite-tag", description = "A membership tag to suite. Can be repeated.")
     private List<String> mSuiteTags = new ArrayList<>();
