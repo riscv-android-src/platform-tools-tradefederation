@@ -17,8 +17,13 @@ package com.android.tradefed.invoker;
 
 import static org.junit.Assert.*;
 
+import com.android.tradefed.build.BuildInfo;
+import com.android.tradefed.build.IBuildInfo;
+import com.android.tradefed.config.ConfigurationDescriptor;
 import com.android.tradefed.device.ITestDevice;
+import com.android.tradefed.util.FileUtil;
 import com.android.tradefed.util.MultiMap;
+import com.android.tradefed.util.SerializationUtil;
 import com.android.tradefed.util.UniqueMultiMap;
 
 import org.easymock.EasyMock;
@@ -27,6 +32,7 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
 
+import java.io.File;
 import java.util.Arrays;
 
 /** Unit tests for {@link InvocationContext} */
@@ -81,6 +87,36 @@ public class InvocationContextTest {
             fail("Should have thrown an exception.");
         } catch (IllegalStateException expected) {
             // expected
+        }
+    }
+
+    /** Test that serializing and deserializing an {@link InvocationContext}. */
+    @Test
+    public void testSerialize() throws Exception {
+        assertNotNull(mContext.getDeviceBuildMap());
+        ITestDevice device = EasyMock.createMock(ITestDevice.class);
+        IBuildInfo info = new BuildInfo("1234", "test-target");
+        mContext.addAllocatedDevice("test-device", device);
+        mContext.addDeviceBuildInfo("test-device", info);
+        mContext.setConfigurationDescriptor(new ConfigurationDescriptor());
+        assertEquals(info, mContext.getBuildInfo(device));
+        File ser = SerializationUtil.serialize(mContext);
+        try {
+            InvocationContext deserialized =
+                    (InvocationContext) SerializationUtil.deserialize(ser, true);
+            // One consequence is that transient attribute will become null but our custom
+            // deserialization should fix that.
+            assertNotNull(deserialized.getDeviceBuildMap());
+            assertNotNull(deserialized.getConfigurationDescriptor());
+            assertEquals(info, deserialized.getBuildInfo("test-device"));
+
+            // The device are not carried
+            assertTrue(deserialized.getDevices().isEmpty());
+            // Re-assigning a device, recreate the previous relationships
+            deserialized.addAllocatedDevice("test-device", device);
+            assertEquals(info, mContext.getBuildInfo(device));
+        } finally {
+            FileUtil.deleteFile(ser);
         }
     }
 }

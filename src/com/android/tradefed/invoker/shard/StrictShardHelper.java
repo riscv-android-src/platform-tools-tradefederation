@@ -53,6 +53,10 @@ public class StrictShardHelper extends ShardHelper {
             updateConfigIfSharded(config, shardCount, shardIndex);
         } else {
             List<IRemoteTest> listAllTests = getAllTests(config, shardCount, context);
+            // We cannot shuffle to get better average results
+            // TODO: normalize the distribution of tests: current distributions is pretty much
+            // the order it was split into which tend to be unbalanced
+            normalizeDistribution(listAllTests, shardCount);
             config.setTests(splitTests(listAllTests, shardCount, shardIndex));
         }
         return false;
@@ -149,5 +153,21 @@ public class StrictShardHelper extends ShardHelper {
             return fullList.subList(shardIndex * numPerShard, fullList.size());
         }
         return fullList.subList(shardIndex * numPerShard, numPerShard + (shardIndex * numPerShard));
+    }
+
+    /**
+     * Move around predictably the tests in order to have a better uniformization of the tests in
+     * each shard.
+     */
+    private void normalizeDistribution(List<IRemoteTest> listAllTests, int shardCount) {
+        final int numRound = shardCount;
+        final int distance = shardCount + 1;
+        for (int i = 0; i < numRound; i++) {
+            for (int j = 0; j < listAllTests.size(); j = j + distance) {
+                // Push the test at the end
+                IRemoteTest push = listAllTests.remove(j);
+                listAllTests.add(push);
+            }
+        }
     }
 }
