@@ -232,27 +232,29 @@ public class SuiteResultReporter extends CollectingTestListener {
         }
     }
 
-    /**
-     * Print the collected times for Module preparation and tear Down. This only log to debug since
-     * it will be quite verbose for full run.
-     */
+    /** Print the collected times for Module preparation and tear Down. */
     private void printPreparationMetrics(Map<String, ModulePrepTimes> metrics) {
         if (metrics.isEmpty()) {
             return;
         }
-        CLog.d("============== Modules Preparation Times ==============");
+        CLog.logAndDisplay(
+                LogLevel.INFO, "============== Modules Preparation Times ==============");
         long totalPrep = 0l;
         long totalTear = 0l;
 
         for (String moduleName : metrics.keySet()) {
-            CLog.d("    %s => %s", moduleName, metrics.get(moduleName).toString());
+            CLog.logAndDisplay(
+                    LogLevel.INFO, "    %s => %s", moduleName, metrics.get(moduleName).toString());
             totalPrep += metrics.get(moduleName).mPrepTime;
             totalTear += metrics.get(moduleName).mTearDownTime;
         }
-        CLog.d(
+        CLog.logAndDisplay(
+                LogLevel.INFO,
                 "Total preparation time: %s  ||  Total tear down time: %s",
-                TimeUtil.formatElapsedTime(totalPrep), TimeUtil.formatElapsedTime(totalTear));
-        CLog.d("=======================================================");
+                TimeUtil.formatElapsedTime(totalPrep),
+                TimeUtil.formatElapsedTime(totalTear));
+        CLog.logAndDisplay(
+                LogLevel.INFO, "=======================================================");
     }
 
     private void printModuleCheckersMetric(List<TestRunResult> moduleCheckerResults) {
