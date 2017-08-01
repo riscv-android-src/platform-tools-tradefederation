@@ -82,7 +82,7 @@ public class LargeOutputReceiver implements IShellOutputReceiver {
     public synchronized InputStreamSource getData() {
         if (mOutStream != null) {
             try {
-                return new SnapshotInputStreamSource(mOutStream.getData());
+                return new SnapshotInputStreamSource("LargeOutputReceiver", mOutStream.getData());
             } catch (IOException e) {
                 CLog.e("failed to get %s data for %s.", mDescriptor, mSerialNumber);
                 CLog.e(e);
