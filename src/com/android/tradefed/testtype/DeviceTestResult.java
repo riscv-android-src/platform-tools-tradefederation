@@ -17,8 +17,6 @@ package com.android.tradefed.testtype;
 
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.result.JUnitToInvocationResultForwarder;
-import com.android.tradefed.testtype.MetricTestCase.LogHolder;
-import com.android.tradefed.util.StreamUtil;
 
 import junit.framework.AssertionFailedError;
 import junit.framework.Protectable;
@@ -102,24 +100,10 @@ public class DeviceTestResult extends TestResult {
     public void endTest(Test test) {
         Map<String, String> metrics = new HashMap<>();
         if (test instanceof MetricTestCase) {
-            MetricTestCase metricTest = (MetricTestCase) test;
-            metrics.putAll(metricTest.mMetrics);
+            metrics.putAll(((MetricTestCase) test).mMetrics);
             // reset the metric for next test.
-            metricTest.mMetrics = new HashMap<String, String>();
-
-            // testLog the log files
-            for (TestListener each : cloneListeners()) {
-                for (LogHolder log : metricTest.mLogs) {
-                    if (each instanceof JUnitToInvocationResultForwarder) {
-                        ((JUnitToInvocationResultForwarder) each)
-                                .testLog(log.mDataName, log.mDataType, log.mDataStream);
-                    }
-                    StreamUtil.cancel(log.mDataStream);
-                }
-            }
-            metricTest.mLogs.clear();
+            ((MetricTestCase) test).mMetrics = new HashMap<String, String>();
         }
-
         for (TestListener each : cloneListeners()) {
             // when possible pass the metrics collected from the tests to our reporters.
             if (!metrics.isEmpty() && each instanceof JUnitToInvocationResultForwarder) {
