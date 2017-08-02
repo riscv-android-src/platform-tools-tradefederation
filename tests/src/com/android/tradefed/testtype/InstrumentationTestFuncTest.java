@@ -178,9 +178,9 @@ public class InstrumentationTestFuncTest implements IDeviceTest {
                         }
                     });
             assertEquals(
-                    "Test failed to run to completion. Reason: '"
-                            + "com.android.ddmlib.TimeoutException: executeRemoteCommand timed out after "
-                            + "2500ms'. Check device logcat for details",
+                    "Test failed to run to completion. Reason: 'Failed to receive adb shell test "
+                            + "output within 2500 ms. Test may have timed out, or adb connection to device "
+                            + "became unresponsive'. Check device logcat for details",
                     error[0]);
         } finally {
             getDevice().setRecoveryMode(initMode);
@@ -240,7 +240,6 @@ public class InstrumentationTestFuncTest implements IDeviceTest {
 
     /** Test that when a max-timeout is set the instrumentation is stopped. */
     @Test
-    @Ignore
     public void testRun_maxTimeout() throws Exception {
         Log.i(LOG_TAG, "testRun_maxTimeout");
         mInstrumentationTest.setClassName(TestAppConstants.TESTAPP_CLASS);
