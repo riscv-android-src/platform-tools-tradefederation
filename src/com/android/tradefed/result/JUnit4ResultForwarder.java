@@ -16,7 +16,10 @@
 package com.android.tradefed.result;
 
 import com.android.ddmlib.testrunner.TestIdentifier;
+import com.android.tradefed.testtype.DeviceJUnit4ClassRunner.LogAnnotation;
 import com.android.tradefed.testtype.DeviceJUnit4ClassRunner.MetricAnnotation;
+import com.android.tradefed.testtype.MetricTestCase.LogHolder;
+import com.android.tradefed.util.StreamUtil;
 
 import org.junit.runner.Description;
 import org.junit.runner.notification.Failure;
@@ -71,6 +74,14 @@ public class JUnit4ResultForwarder extends RunListener {
             for (Annotation a : child.getAnnotations()) {
                 if (a instanceof MetricAnnotation) {
                     metrics.putAll(((MetricAnnotation) a).mMetrics);
+                }
+                if (a instanceof LogAnnotation) {
+                    // Log all the logs found.
+                    for (LogHolder log : ((LogAnnotation) a).mLogs) {
+                        mListener.testLog(log.mDataName, log.mDataType, log.mDataStream);
+                        StreamUtil.cancel(log.mDataStream);
+                    }
+                    ((LogAnnotation) a).mLogs.clear();
                 }
             }
         }
