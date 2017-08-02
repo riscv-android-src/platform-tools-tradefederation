@@ -4,8 +4,8 @@ package com.android.tradefed.testtype;
 import static com.android.tradefed.testtype.JackCodeCoverageReportFormat.CSV;
 import static com.android.tradefed.testtype.JackCodeCoverageReportFormat.HTML;
 import static com.android.tradefed.testtype.JackCodeCoverageReportFormat.XML;
-import static org.mockito.Matchers.any;
-import static org.mockito.Matchers.anyLong;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.doReturn;
 
 import com.google.common.collect.Iterables;

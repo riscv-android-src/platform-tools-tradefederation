@@ -482,18 +482,14 @@ public class GTestTest {
         doTestFilter("");
     }
 
-    /**
-     * Test {@link GTest#getGTestCmdLine(String, String) with default options.
-     */
+    /** Test {@link GTest#getGTestCmdLine(String, String)} with default options. */
     @Test
     public void testGetGTestCmdLine_defaults() {
         String cmd_line = mGTest.getGTestCmdLine("test_path", "flags");
         assertEquals("test_path flags", cmd_line);
     }
 
-    /**
-     * Test {@link GTest#getGTestCmdLine(String, String) with non-default user.
-     */
+    /** Test {@link GTest#getGTestCmdLine(String, String)} with non-default user. */
     @Test
     public void testGetGTestCmdLine_runAs() throws Exception {
         mSetter.setOptionValue("run-test-as", "shell");

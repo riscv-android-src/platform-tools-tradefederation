@@ -237,7 +237,7 @@ public class OptionSetterTest extends TestCase {
     private static enum CustomEnumClass {
         VAL1(42);
 
-        private int mVal;
+        private final int mVal;
 
         CustomEnumClass(int val) {
             mVal = val;
