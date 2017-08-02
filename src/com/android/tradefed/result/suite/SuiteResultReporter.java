@@ -261,14 +261,21 @@ public class SuiteResultReporter extends CollectingTestListener {
         if (moduleCheckerResults.isEmpty()) {
             return;
         }
-        CLog.d("============== Modules Checkers Times ==============");
+        CLog.logAndDisplay(LogLevel.INFO, "============== Modules Checkers Times ==============");
         long totalTime = 0l;
         for (TestRunResult t : moduleCheckerResults) {
-            CLog.d("    %s: %s", t.getName(), TimeUtil.formatElapsedTime(t.getElapsedTime()));
+            CLog.logAndDisplay(
+                    LogLevel.INFO,
+                    "    %s: %s",
+                    t.getName(),
+                    TimeUtil.formatElapsedTime(t.getElapsedTime()));
             totalTime += t.getElapsedTime();
         }
-        CLog.d("Total module checkers time: %s", TimeUtil.formatElapsedTime(totalTime));
-        CLog.d("====================================================");
+        CLog.logAndDisplay(
+                LogLevel.INFO,
+                "Total module checkers time: %s",
+                TimeUtil.formatElapsedTime(totalTime));
+        CLog.logAndDisplay(LogLevel.INFO, "====================================================");
     }
 
     public int getTotalModules() {
