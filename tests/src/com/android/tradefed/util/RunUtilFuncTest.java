@@ -33,7 +33,7 @@ public class RunUtilFuncTest extends TestCase {
 
     private static final long VERY_SHORT_TIMEOUT_MS = 10l;
     private static final long SHORT_TIMEOUT_MS = 500l;
-    private static final long LONG_TIMEOUT_MS = 1000l;
+    private static final long LONG_TIMEOUT_MS = 5000l;
 
     private abstract class MyRunnable implements IRunUtil.IRunnableResult {
         boolean mCanceled = false;
@@ -124,11 +124,11 @@ public class RunUtilFuncTest extends TestCase {
             }
             s.close();
 
-            final long timeOut = 5000;
             // FIXME: this test case is not ideal, as it will only work on platforms that support
             // cat command.
-            CommandResult result = RunUtil.getDefault().runTimedCmd(timeOut, "cat",
-                    f.getAbsolutePath());
+            CommandResult result =
+                    RunUtil.getDefault()
+                            .runTimedCmd(3 * LONG_TIMEOUT_MS, "cat", f.getAbsolutePath());
             assertEquals(
                     String.format(
                             "We expected SUCCESS but got %s, with stdout: '%s'\nstderr: %s",
