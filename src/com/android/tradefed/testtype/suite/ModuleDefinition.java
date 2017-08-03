@@ -139,6 +139,23 @@ public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestColl
     }
 
     /**
+     * Add some {@link IRemoteTest} to be executed as part of the module. Used when merging two
+     * modules.
+     */
+    void addTests(List<IRemoteTest> test) {
+        synchronized (mTests) {
+            mTests.addAll(test);
+        }
+    }
+
+    /** Returns the current number of {@link IRemoteTest} waiting to be executed. */
+    public int numTests() {
+        synchronized (mTests) {
+            return mTests.size();
+        }
+    }
+
+    /**
      * Return True if the Module still has {@link IRemoteTest} to run in its pool. False otherwise.
      */
     protected boolean hasTests() {
