@@ -21,8 +21,13 @@ import com.android.tradefed.config.Option;
 import com.android.tradefed.config.OptionSetter;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
+import com.android.tradefed.result.ByteArrayInputStreamSource;
 import com.android.tradefed.result.ITestInvocationListener;
+import com.android.tradefed.result.InputStreamSource;
+import com.android.tradefed.result.LogDataType;
+import com.android.tradefed.testtype.DeviceJUnit4ClassRunner.TestLogData;
 import com.android.tradefed.testtype.DeviceJUnit4ClassRunner.TestMetrics;
+import com.android.tradefed.util.StreamUtil;
 
 import junit.framework.Test;
 import junit.framework.TestCase;
@@ -107,6 +112,19 @@ public class HostTestTest extends TestCase {
         }
     }
 
+    public static class LogMetricTestCase extends MetricTestCase {
+
+        public void testPass() {}
+
+        public void testPass2() {
+            addTestLog(
+                    "test2_log",
+                    LogDataType.TEXT,
+                    new ByteArrayInputStreamSource("test_log".getBytes()));
+            addTestMetric("key2", "metric2");
+        }
+    }
+
     @MyAnnotation
     public static class AnotherTestCase extends TestCase {
         public AnotherTestCase() {
@@ -154,6 +172,33 @@ public class HostTestTest extends TestCase {
             if (mOption) {
                 metrics.addTestMetric("junit4-option", "true");
             }
+        }
+    }
+
+    /**
+     * Test class, we have to annotate with full org.junit.Test to avoid name collision in import.
+     */
+    @RunWith(DeviceJUnit4ClassRunner.class)
+    public static class Junit4TestLogClass {
+
+        public Junit4TestLogClass() {}
+
+        @Rule public TestLogData logs = new TestLogData();
+
+        @org.junit.Test
+        public void testPass1() {
+            ByteArrayInputStreamSource source = new ByteArrayInputStreamSource("test".getBytes());
+            logs.addTestLog("TEST", LogDataType.TEXT, source);
+            // Always cancel streams.
+            StreamUtil.cancel(source);
+        }
+
+        @org.junit.Test
+        public void testPass2() {
+            ByteArrayInputStreamSource source = new ByteArrayInputStreamSource("test2".getBytes());
+            logs.addTestLog("TEST2", LogDataType.TEXT, source);
+            // Always cancel streams.
+            StreamUtil.cancel(source);
         }
     }
 
@@ -389,6 +434,31 @@ public class HostTestTest extends TestCase {
         mListener.testStarted(EasyMock.eq(test2));
         Map<String, String> metric2 = new HashMap<>();
         metric2.put("key2", "metric2");
+        mListener.testEnded(test2, metric2);
+        mListener.testRunEnded(EasyMock.anyLong(), (Map<String, String>) EasyMock.anyObject());
+        EasyMock.replay(mListener);
+        mHostTest.run(mListener);
+        EasyMock.verify(mListener);
+    }
+
+    /**
+     * Test a case where a test use {@link MetricTestCase#addTestLog(String, LogDataType,
+     * InputStreamSource)} in order to log data for all the reporters to know about.
+     */
+    public void testRun_LogMetricTestCase() throws Exception {
+        mHostTest.setClassName(LogMetricTestCase.class.getName());
+        TestIdentifier test1 = new TestIdentifier(LogMetricTestCase.class.getName(), "testPass");
+        TestIdentifier test2 = new TestIdentifier(LogMetricTestCase.class.getName(), "testPass2");
+        mListener.testRunStarted((String) EasyMock.anyObject(), EasyMock.eq(2));
+        mListener.testStarted(EasyMock.eq(test1));
+        // test1 should only have its metrics
+        mListener.testEnded(test1, Collections.emptyMap());
+        // test2 should only have its metrics
+        mListener.testStarted(EasyMock.eq(test2));
+        Map<String, String> metric2 = new HashMap<>();
+        metric2.put("key2", "metric2");
+        mListener.testLog(
+                EasyMock.eq("test2_log"), EasyMock.eq(LogDataType.TEXT), EasyMock.anyObject());
         mListener.testEnded(test2, metric2);
         mListener.testRunEnded(EasyMock.anyLong(), (Map<String, String>) EasyMock.anyObject());
         EasyMock.replay(mListener);
@@ -1550,6 +1620,29 @@ public class HostTestTest extends TestCase {
         } catch (RuntimeException expected) {
             // expected
         }
+        EasyMock.verify(mListener);
+    }
+
+    /**
+     * Test for {@link HostTest#run(ITestInvocationListener)}, for test with Junit4 style that log
+     * some data.
+     */
+    public void testRun_junit4style_log() throws Exception {
+        mHostTest.setClassName(Junit4TestLogClass.class.getName());
+        TestIdentifier test1 = new TestIdentifier(Junit4TestLogClass.class.getName(), "testPass1");
+        TestIdentifier test2 = new TestIdentifier(Junit4TestLogClass.class.getName(), "testPass2");
+        mListener.testRunStarted((String) EasyMock.anyObject(), EasyMock.eq(2));
+        mListener.testStarted(EasyMock.eq(test1));
+        mListener.testLog(EasyMock.eq("TEST"), EasyMock.eq(LogDataType.TEXT), EasyMock.anyObject());
+        mListener.testEnded(test1, Collections.emptyMap());
+        mListener.testStarted(EasyMock.eq(test2));
+        // test cases do not share logs, only the second test logs are seen.
+        mListener.testLog(
+                EasyMock.eq("TEST2"), EasyMock.eq(LogDataType.TEXT), EasyMock.anyObject());
+        mListener.testEnded(test2, Collections.emptyMap());
+        mListener.testRunEnded(EasyMock.anyLong(), EasyMock.anyObject());
+        EasyMock.replay(mListener);
+        mHostTest.run(mListener);
         EasyMock.verify(mListener);
     }
 }
