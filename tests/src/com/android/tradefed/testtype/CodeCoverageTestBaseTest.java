@@ -150,7 +150,7 @@ public class CodeCoverageTestBaseTest {
         XML(LogDataType.JACOCO_XML),
         HTML(LogDataType.HTML);
 
-        private LogDataType mLogDataType;
+        private final LogDataType mLogDataType;
 
         private FakeReportFormat(LogDataType logDataType) {
             mLogDataType = logDataType;
@@ -243,7 +243,7 @@ public class CodeCoverageTestBaseTest {
     }
 
     @Test
-    public void testRun() throws DeviceNotAvailableException, IOException {
+    public void testRun() throws DeviceNotAvailableException {
         // Prepare some test data
         doReturn(ImmutableList.of(new InstrumentationTarget(PACKAGE_NAME1, RUNNER_NAME1, "")))
                 .when(mInstrumentationParser)
@@ -275,8 +275,7 @@ public class CodeCoverageTestBaseTest {
     }
 
     @Test
-    public void testRun_multipleInstrumentationTargets()
-            throws DeviceNotAvailableException, IOException {
+    public void testRun_multipleInstrumentationTargets() throws DeviceNotAvailableException {
         // Prepare some test data
         ImmutableList<InstrumentationTarget> targets =
                 ImmutableList.of(
@@ -726,7 +725,7 @@ public class CodeCoverageTestBaseTest {
                 Lists.partition(tests, (int) Math.ceil((double) tests.size() / numShards));
         int currentIndex = 0;
         for (List<TestIdentifier> shard : shards) {
-            doReturn(shards.get(currentIndex))
+            doReturn(shard)
                     .when(mTests)
                     .get(PACKAGE_NAME1, RUNNER_NAME1, currentIndex, shards.size());
             currentIndex++;
@@ -747,7 +746,7 @@ public class CodeCoverageTestBaseTest {
     }
 
     @Test
-    public void testCreateTestRunner() throws DeviceNotAvailableException {
+    public void testCreateTestRunner() {
         // Prepare some test data
         InstrumentationTarget target = new InstrumentationTarget(PACKAGE_NAME1, RUNNER_NAME1, "");
 
@@ -760,7 +759,7 @@ public class CodeCoverageTestBaseTest {
     }
 
     @Test
-    public void testCreateTestRunner_withArgs() throws DeviceNotAvailableException {
+    public void testCreateTestRunner_withArgs() {
         // Prepare some test data
         InstrumentationTarget target = new InstrumentationTarget(PACKAGE_NAME1, RUNNER_NAME1, "");
         Map<String, String> args = ImmutableMap.of("arg1", "value1", "arg2", "value2");
@@ -776,7 +775,7 @@ public class CodeCoverageTestBaseTest {
     }
 
     @Test
-    public void testCreateTestRunner_withShards() throws DeviceNotAvailableException {
+    public void testCreateTestRunner_withShards() {
         // Prepare some test data
         InstrumentationTarget target = new InstrumentationTarget(PACKAGE_NAME1, RUNNER_NAME1, "");
         int shardIndex = 3;
@@ -792,7 +791,7 @@ public class CodeCoverageTestBaseTest {
     }
 
     @Test
-    public void testCreateCoverageTest() throws DeviceNotAvailableException {
+    public void testCreateCoverageTest() {
         // Prepare some test data
         InstrumentationTarget target = new InstrumentationTarget(PACKAGE_NAME1, RUNNER_NAME1, "");
 
@@ -806,7 +805,7 @@ public class CodeCoverageTestBaseTest {
     }
 
     @Test
-    public void testCreateCoverageTest_withArgs() throws DeviceNotAvailableException {
+    public void testCreateCoverageTest_withArgs() {
         // Prepare some test data
         InstrumentationTarget target = new InstrumentationTarget(PACKAGE_NAME1, RUNNER_NAME1, "");
         Map<String, String> args = ImmutableMap.of("arg1", "value1", "arg2", "value2");
@@ -824,7 +823,7 @@ public class CodeCoverageTestBaseTest {
     }
 
     @Test
-    public void testCreateCoverageTest_withShards() throws DeviceNotAvailableException {
+    public void testCreateCoverageTest_withShards() {
         // Prepare some test data
         InstrumentationTarget target = new InstrumentationTarget(PACKAGE_NAME1, RUNNER_NAME1, "");
         int shardIndex = 3;

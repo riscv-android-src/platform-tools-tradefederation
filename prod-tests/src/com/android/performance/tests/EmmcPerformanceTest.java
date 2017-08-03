@@ -125,7 +125,7 @@ public class EmmcPerformanceTest implements IDeviceTest, IRemoteTest {
             runSequentialWrite(mIterations, listener, metrics);
             // FIXME: Figure out cache issues with random read and reenable test.
             // runRandomRead(mIterations, listener, metrics);
-            runRandomWrite(mIterations, listener, metrics);
+            // runRandomWrite(mIterations, listener, metrics);
 
             CLog.d("Metrics: %s", metrics.toString());
             listener.testRunEnded((System.currentTimeMillis() - beginTime), metrics);

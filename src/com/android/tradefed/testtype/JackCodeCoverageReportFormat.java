@@ -23,8 +23,8 @@ enum JackCodeCoverageReportFormat implements CodeCoverageReportFormat {
     XML("xml", LogDataType.JACOCO_XML),
     HTML("html", LogDataType.HTML);
 
-    private String mReporterArg;
-    private LogDataType mLogDataType;
+    private final String mReporterArg;
+    private final LogDataType mLogDataType;
 
     /**
      * Initialize a JackCodeCoverageReportFormat.
