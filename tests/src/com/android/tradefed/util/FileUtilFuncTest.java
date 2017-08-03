@@ -352,7 +352,8 @@ public class FileUtilFuncTest extends TestCase {
 
     // Helpers
     private String ls(String path) {
-        CommandResult result = RunUtil.getDefault().runTimedCmd(10 * 1000, "ls", "-ld", path);
+        CommandResult result =
+                RunUtil.getDefault().runTimedCmdRetry(10 * 1000, 0, 3, "ls", "-ld", path);
         return result.getStdout();
     }
 
