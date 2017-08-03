@@ -153,6 +153,7 @@ import com.android.tradefed.testtype.suite.ITestSuiteIntegrationTest;
 import com.android.tradefed.testtype.suite.ITestSuiteTest;
 import com.android.tradefed.testtype.suite.ModuleDefinitionTest;
 import com.android.tradefed.testtype.suite.ModuleListenerTest;
+import com.android.tradefed.testtype.suite.ModuleMergerTest;
 import com.android.tradefed.testtype.suite.ModuleSplitterTest;
 import com.android.tradefed.testtype.suite.TestFailureListenerTest;
 import com.android.tradefed.testtype.suite.TfSuiteRunnerTest;
@@ -396,6 +397,7 @@ import org.junit.runners.Suite.SuiteClasses;
     ITestSuiteTest.class,
     ModuleDefinitionTest.class,
     ModuleListenerTest.class,
+    ModuleMergerTest.class,
     ModuleSplitterTest.class,
     TestFailureListenerTest.class,
     TfSuiteRunnerTest.class,
