@@ -26,6 +26,7 @@ import com.android.tradefed.device.IDeviceRecovery;
 import com.android.tradefed.device.IDeviceSelection;
 import com.android.tradefed.invoker.InvocationContext;
 import com.android.tradefed.log.ILeveledLogOutput;
+import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.TextResultReporter;
 import com.android.tradefed.targetprep.ITargetPreparer;
@@ -637,6 +638,7 @@ public class ConfigurationTest extends TestCase {
             String content = FileUtil.readStringFromFile(test);
             assertTrue(content.length() > 100);
             assertTrue(content.contains("<configuration>"));
+            CLog.e("%s", content);
         } finally {
             FileUtil.deleteFile(test);
         }
