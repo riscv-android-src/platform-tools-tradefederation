@@ -5,7 +5,7 @@ disable=relative-import,too-few-public-methods,fixme
 [BASIC]
 
 # Naming hint for method names
-method-name-hint=(([a-z][a-z0-9_]{2,45})|(_[a-z0-9_]*))$
+method-name-hint=(([a-z][a-z0-9_]{2,50})|(_[a-z0-9_]*))$
 
 # Regular expression matching correct method names
-method-rgx=(([a-z][a-z0-9_]{2,45})|(_[a-z0-9_]*))$
+method-rgx=(([a-z][a-z0-9_]{2,50})|(_[a-z0-9_]*))$
