@@ -34,8 +34,10 @@ import com.android.tradefed.testtype.IBuildReceiver;
 import com.android.tradefed.testtype.IDeviceTest;
 import com.android.tradefed.testtype.IInvocationContextReceiver;
 import com.android.tradefed.testtype.IRemoteTest;
+import com.android.tradefed.testtype.IRuntimeHintProvider;
 import com.android.tradefed.testtype.IShardableTest;
 import com.android.tradefed.testtype.ITestCollector;
+import com.android.tradefed.util.TimeUtil;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -55,7 +57,8 @@ public abstract class ITestSuite
                 ISystemStatusCheckerReceiver,
                 IShardableTest,
                 ITestCollector,
-                IInvocationContextReceiver {
+                IInvocationContextReceiver,
+                IRuntimeHintProvider {
 
     public static final String MODULE_CHECKER_PRE = "PreModuleChecker";
     public static final String MODULE_CHECKER_POST = "PostModuleChecker";
@@ -477,6 +480,19 @@ public abstract class ITestSuite
     @Override
     public void setInvocationContext(IInvocationContext invocationContext) {
         mContext = invocationContext;
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public long getRuntimeHint() {
+        if (mDirectModule != null) {
+            CLog.e(
+                    "    %s: %s",
+                    mDirectModule.getId(),
+                    TimeUtil.formatElapsedTime(mDirectModule.getRuntimeHint()));
+            return mDirectModule.getRuntimeHint();
+        }
+        return 0l;
     }
 
     /**
