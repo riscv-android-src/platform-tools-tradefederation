@@ -41,6 +41,7 @@ import com.android.tradefed.targetprep.TargetSetupError;
 import com.android.tradefed.testtype.IBuildReceiver;
 import com.android.tradefed.testtype.IDeviceTest;
 import com.android.tradefed.testtype.IRemoteTest;
+import com.android.tradefed.testtype.IRuntimeHintProvider;
 import com.android.tradefed.testtype.ITestCollector;
 import com.android.tradefed.util.StreamUtil;
 
@@ -452,6 +453,19 @@ public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestColl
     @Override
     public String toString() {
         return getId();
+    }
+
+    /** Returns the approximate time to run all the tests in the module. */
+    public long getRuntimeHint() {
+        long hint = 0l;
+        for (IRemoteTest test : mTests) {
+            if (test instanceof IRuntimeHintProvider) {
+                hint += ((IRuntimeHintProvider) test).getRuntimeHint();
+            } else {
+                hint += 60000;
+            }
+        }
+        return hint;
     }
 
     /** Returns the list of {@link ITargetPreparer} defined for this module. */
