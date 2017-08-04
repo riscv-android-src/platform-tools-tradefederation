@@ -1155,7 +1155,7 @@ public class DeviceManagerTest extends TestCase {
      * Test that when a {@link IDeviceMonitor} is available in {@link DeviceManager} it properly
      * goes through its life cycle.
      */
-    public void testDeviceMonitorLifeCyle() throws Exception {
+    public void testDeviceMonitorLifeCycle() throws Exception {
         IDeviceMonitor mockMonitor = EasyMock.createMock(IDeviceMonitor.class);
         List<IDeviceMonitor> monitors = new ArrayList<>();
         monitors.add(mockMonitor);
@@ -1167,6 +1167,25 @@ public class DeviceManagerTest extends TestCase {
 
         replayMocks(mockMonitor);
         DeviceManager manager = createDeviceManager(monitors, mMockIDevice);
+        manager.terminateDeviceMonitor();
+        verifyMocks(mockMonitor);
+    }
+
+    /** Ensure that restarting adb bridge doesn't restart {@link IDeviceMonitor}. */
+    public void testDeviceMonitorLifeCycleWhenAdbRestarts() throws Exception {
+        IDeviceMonitor mockMonitor = EasyMock.createMock(IDeviceMonitor.class);
+        List<IDeviceMonitor> monitors = new ArrayList<>();
+        monitors.add(mockMonitor);
+        setCheckAvailableDeviceExpectations();
+
+        mockMonitor.setDeviceLister(EasyMock.anyObject());
+        mockMonitor.run();
+        mockMonitor.stop();
+
+        replayMocks(mockMonitor);
+        DeviceManager manager = createDeviceManager(monitors, mMockIDevice);
+        manager.stopAdbBridge();
+        manager.restartAdbBridge();
         manager.terminateDeviceMonitor();
         verifyMocks(mockMonitor);
     }
