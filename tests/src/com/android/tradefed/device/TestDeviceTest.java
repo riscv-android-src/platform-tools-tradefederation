@@ -3020,8 +3020,9 @@ public class TestDeviceTest extends TestCase {
         InputStream imageData = getClass().getResourceAsStream("/testdata/SmallRawImage.raw");
         File testImageFile = FileUtil.createTempFile("raw-to-buffered", ".raw");
         FileUtil.writeToFile(imageData, testImageFile);
+        RawImage testImage = null;
         try {
-            RawImage testImage = prepareRawImage(testImageFile);
+            testImage = prepareRawImage(testImageFile);
             // We used the small image so we adapt the size.
             testImage.height = 25;
             testImage.size = 2000;
@@ -3038,6 +3039,9 @@ public class TestDeviceTest extends TestCase {
             // Size after compressing as JPEG
             Assert.assertEquals(1041, result.length);
         } finally {
+            if (testImage != null) {
+                testImage.data = null;
+            }
             FileUtil.deleteFile(testImageFile);
         }
     }
@@ -3051,8 +3055,9 @@ public class TestDeviceTest extends TestCase {
         InputStream imageData = getClass().getResourceAsStream("/testdata/SmallRawImage.raw");
         File testImageFile = FileUtil.createTempFile("raw-to-buffered", ".raw");
         FileUtil.writeToFile(imageData, testImageFile);
+        RawImage testImage = null;
         try {
-            RawImage testImage = prepareRawImage(testImageFile);
+            testImage = prepareRawImage(testImageFile);
             // We used the small image so we adapt the size.
             testImage.height = 25;
             testImage.size = 2000;
@@ -3070,6 +3075,9 @@ public class TestDeviceTest extends TestCase {
             assertEquals(testImage.height, bufferedImage.getHeight());
             assertEquals(BufferedImage.TYPE_3BYTE_BGR, bufferedImage.getType());
         } finally {
+            if (testImage != null) {
+                testImage.data = null;
+            }
             FileUtil.deleteFile(testImageFile);
         }
     }
@@ -3081,15 +3089,18 @@ public class TestDeviceTest extends TestCase {
      */
     public void testRescaleImage() throws Exception {
         File testImageFile = getTestImageResource();
-
+        RawImage testImage = null;
         try {
-            RawImage testImage = prepareRawImage(testImageFile);
+            testImage = prepareRawImage(testImageFile);
             BufferedImage bufferedImage = mTestDevice.rawImageToBufferedImage(testImage, "PNG");
 
             BufferedImage scaledImage = mTestDevice.rescaleImage(bufferedImage);
             assertEquals(bufferedImage.getWidth() / 2, scaledImage.getWidth());
             assertEquals(bufferedImage.getHeight() / 2, scaledImage.getHeight());
         } finally {
+            if (testImage != null) {
+                testImage.data = null;
+            }
             FileUtil.recursiveDelete(testImageFile.getParentFile());
         }
     }
