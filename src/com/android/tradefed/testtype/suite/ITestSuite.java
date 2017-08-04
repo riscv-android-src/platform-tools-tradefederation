@@ -478,4 +478,12 @@ public abstract class ITestSuite
     public void setInvocationContext(IInvocationContext invocationContext) {
         mContext = invocationContext;
     }
+
+    /**
+     * Returns the {@link ModuleDefinition} to be executed directly, or null if none yet (when the
+     * ITestSuite has not been sharded yet).
+     */
+    public ModuleDefinition getDirectModule() {
+        return mDirectModule;
+    }
 }

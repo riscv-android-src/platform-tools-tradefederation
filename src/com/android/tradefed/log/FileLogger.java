@@ -197,7 +197,7 @@ public class FileLogger implements ILeveledLogOutput {
             try {
                 // create a InputStream from log file
                 mLogStream.flush();
-                return new SnapshotInputStreamSource(mLogStream.getData());
+                return new SnapshotInputStreamSource("FileLogger", mLogStream.getData());
             } catch (IOException e) {
                 System.err.println("Failed to get log");
                 e.printStackTrace();
