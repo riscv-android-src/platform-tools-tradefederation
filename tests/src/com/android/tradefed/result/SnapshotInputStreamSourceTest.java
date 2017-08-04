@@ -47,12 +47,13 @@ public class SnapshotInputStreamSourceTest extends TestCase {
             }
         };
 
-        InputStreamSource source = new SnapshotInputStreamSource(mInputStream) {
-            @Override
-            File createBackingFile(InputStream stream) {
-                return fakeFile;
-            }
-        };
+        InputStreamSource source =
+                new SnapshotInputStreamSource("SnapUnitTest", mInputStream) {
+                    @Override
+                    File createBackingFile(String name, InputStream stream) {
+                        return fakeFile;
+                    }
+                };
 
         try {
             source.cancel();

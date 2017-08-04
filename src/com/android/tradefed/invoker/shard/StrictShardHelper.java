@@ -25,6 +25,7 @@ import com.android.tradefed.testtype.IRemoteTest;
 import com.android.tradefed.testtype.IShardableTest;
 import com.android.tradefed.testtype.IStrictShardableTest;
 import com.android.tradefed.testtype.suite.ITestSuite;
+import com.android.tradefed.testtype.suite.ModuleMerger;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -54,10 +55,10 @@ public class StrictShardHelper extends ShardHelper {
         } else {
             List<IRemoteTest> listAllTests = getAllTests(config, shardCount, context);
             // We cannot shuffle to get better average results
-            // TODO: normalize the distribution of tests: current distributions is pretty much
-            // the order it was split into which tend to be unbalanced
             normalizeDistribution(listAllTests, shardCount);
-            config.setTests(splitTests(listAllTests, shardCount, shardIndex));
+            List<IRemoteTest> splitList = splitTests(listAllTests, shardCount, shardIndex);
+            aggregateSuiteModules(splitList);
+            config.setTests(splitList);
         }
         return false;
     }
@@ -167,6 +168,34 @@ public class StrictShardHelper extends ShardHelper {
                 // Push the test at the end
                 IRemoteTest push = listAllTests.remove(j);
                 listAllTests.add(push);
+            }
+        }
+    }
+
+    /**
+     * Special handling for suite from {@link ITestSuite}. We aggregate the tests in the same shard
+     * in order to optimize target_preparation step.
+     *
+     * @param tests the {@link List} of {@link IRemoteTest} for that shard.
+     */
+    private void aggregateSuiteModules(List<IRemoteTest> tests) {
+        List<IRemoteTest> dupList = new ArrayList<>(tests);
+        for (int i = 0; i < dupList.size(); i++) {
+            if (dupList.get(i) instanceof ITestSuite) {
+                // We iterate the other tests to see if we can find another from the same module.
+                for (int j = i + 1; j < dupList.size(); j++) {
+                    // If the test was not already merged
+                    if (tests.contains(dupList.get(j))) {
+                        if (dupList.get(j) instanceof ITestSuite) {
+                            if (ModuleMerger.arePartOfSameSuite(
+                                    (ITestSuite) dupList.get(i), (ITestSuite) dupList.get(j))) {
+                                ModuleMerger.mergeSplittedITestSuite(
+                                        (ITestSuite) dupList.get(i), (ITestSuite) dupList.get(j));
+                                tests.remove(dupList.get(j));
+                            }
+                        }
+                    }
+                }
             }
         }
     }
