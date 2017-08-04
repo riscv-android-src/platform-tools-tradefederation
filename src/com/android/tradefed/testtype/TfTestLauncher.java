@@ -121,7 +121,7 @@ public class TfTestLauncher extends SubprocessTfLauncher {
                 // cutoff the min value we look at.
                 String hprofAgent =
                         String.format(
-                                "-agentlib:hprof=heap=sites,cutoff=0.01,depth=12,verbose=n,file=%s",
+                                "-agentlib:hprof=heap=sites,cutoff=0.01,depth=16,verbose=n,file=%s",
                                 mHprofFile.getAbsolutePath());
                 args.add(hprofAgent);
             }
