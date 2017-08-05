@@ -331,9 +331,7 @@ public class AndroidJUnitTestTest extends TestCase {
         assertNull(mAndroidJUnitTest.split());
     }
 
-    /**
-     * Test that {@link AndroidJUnitTest#split()} returns 3 shards when requested to do so.
-     */
+    /** Test that {@link AndroidJUnitTest#split(int)} returns 3 shards when requested to do so. */
     public void testSplit_threeShards() throws Exception {
         mAndroidJUnitTest = new AndroidJUnitTest();
         assertEquals(AndroidJUnitTest.AJUR, mAndroidJUnitTest.getRunnerName());
@@ -346,6 +344,26 @@ public class AndroidJUnitTestTest extends TestCase {
         assertEquals(20000L, ((AndroidJUnitTest)res.get(0)).getRuntimeHint());
         assertEquals(20000L, ((AndroidJUnitTest)res.get(1)).getRuntimeHint());
         assertEquals(20000L, ((AndroidJUnitTest)res.get(2)).getRuntimeHint());
+        // Make sure shards cannot be re-sharded
+        assertNull(((AndroidJUnitTest) res.get(0)).split(2));
+        assertNull(((AndroidJUnitTest) res.get(0)).split());
+    }
+
+    /**
+     * Test that {@link AndroidJUnitTest#split(int)} can only split up to the ajur-max-shard option.
+     */
+    public void testSplit_maxShard() throws Exception {
+        mAndroidJUnitTest = new AndroidJUnitTest();
+        assertEquals(AndroidJUnitTest.AJUR, mAndroidJUnitTest.getRunnerName());
+        OptionSetter setter = new OptionSetter(mAndroidJUnitTest);
+        setter.setOptionValue("runtime-hint", "60s");
+        setter.setOptionValue("ajur-max-shard", "2");
+        List<IRemoteTest> res = (List<IRemoteTest>) mAndroidJUnitTest.split(3);
+        assertNotNull(res);
+        assertEquals(2, res.size());
+        // Third of the execution time on each shard.
+        assertEquals(30000L, ((AndroidJUnitTest) res.get(0)).getRuntimeHint());
+        assertEquals(30000L, ((AndroidJUnitTest) res.get(1)).getRuntimeHint());
         // Make sure shards cannot be re-sharded
         assertNull(((AndroidJUnitTest) res.get(0)).split(2));
         assertNull(((AndroidJUnitTest) res.get(0)).split());
