@@ -280,6 +280,7 @@ public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestColl
                     CLog.e("Module '%s' - test '%s' threw exception:", getId(), test.getClass());
                     CLog.e(re);
                     CLog.e("Proceeding to the next test.");
+                    reportFailure(new ResultForwarder(currentTestListener), re.getMessage());
                 } catch (DeviceUnresponsiveException due) {
                     // being able to catch a DeviceUnresponsiveException here implies that
                     // recovery was successful, and test execution should proceed to next
@@ -289,6 +290,7 @@ public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestColl
                                     + "successful, proceeding with next module. Stack trace:");
                     CLog.w(due);
                     CLog.w("Proceeding to the next test.");
+                    reportFailure(new ResultForwarder(currentTestListener), due.getMessage());
                 } catch (DeviceNotAvailableException dnae) {
                     // We do special logging of some information in Context of the module for easier
                     // debugging.
@@ -329,6 +331,10 @@ public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestColl
                 }
             }
         }
+    }
+
+    private void reportFailure(ITestInvocationListener listener, String errorMessage) {
+        listener.testRunFailed(errorMessage);
     }
 
     /** Helper to log the device events. */
