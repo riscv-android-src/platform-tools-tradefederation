@@ -28,6 +28,7 @@ import com.android.tradefed.util.FileUtil;
 import junit.framework.TestCase;
 
 import java.io.File;
+import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 
@@ -195,7 +196,8 @@ public class AndroidJUnitTestTest extends TestCase {
         EasyMock.expect(mMockTestDevice.pushFile(
                 EasyMock.<File>anyObject(), EasyMock.<String>anyObject())).andReturn(Boolean.TRUE);
         EasyMock.expect(mMockTestDevice.executeShellCommand(EasyMock.<String>anyObject()))
-                .andReturn("");
+                .andReturn("")
+                .times(2);
         EasyMock.replay(mMockRemoteRunner, mMockTestDevice);
 
         File tmpFile = FileUtil.createTempFile("testFile", ".txt");
@@ -219,7 +221,8 @@ public class AndroidJUnitTestTest extends TestCase {
         EasyMock.expect(mMockTestDevice.pushFile(
                 EasyMock.<File>anyObject(), EasyMock.<String>anyObject())).andReturn(Boolean.TRUE);
         EasyMock.expect(mMockTestDevice.executeShellCommand(EasyMock.<String>anyObject()))
-                .andReturn("");
+                .andReturn("")
+                .times(2);
         EasyMock.replay(mMockRemoteRunner, mMockTestDevice);
 
         File tmpFile = FileUtil.createTempFile("notTestFile", ".txt");
@@ -248,7 +251,7 @@ public class AndroidJUnitTestTest extends TestCase {
                 EasyMock.<String>anyObject())).andReturn(Boolean.TRUE).times(2);
         EasyMock.expect(mMockTestDevice.executeShellCommand(EasyMock.<String>anyObject()))
                 .andReturn("")
-                .times(2);
+                .times(4);
         EasyMock.replay(mMockRemoteRunner, mMockTestDevice);
 
         File tmpFileInclude = FileUtil.createTempFile("includeFile", ".txt");
@@ -267,6 +270,40 @@ public class AndroidJUnitTestTest extends TestCase {
     }
 
     /**
+     * Test that when pushing the filters fails, we have a test run failure since we were not able
+     * to run anything.
+     */
+    public void testRun_testFileAndFilters_fails() throws Exception {
+        mMockRemoteRunner = EasyMock.createMock(IRemoteAndroidTestRunner.class);
+        EasyMock.expect(
+                        mMockTestDevice.pushFile(
+                                EasyMock.<File>anyObject(), EasyMock.<String>anyObject()))
+                .andThrow(new DeviceNotAvailableException("failed to push", "device1"));
+
+        mMockListener.testRunStarted(EasyMock.anyObject(), EasyMock.eq(0));
+        mMockListener.testRunFailed("failed to push");
+        mMockListener.testRunEnded(0, Collections.emptyMap());
+
+        EasyMock.replay(mMockRemoteRunner, mMockTestDevice, mMockListener);
+        File tmpFileInclude = FileUtil.createTempFile("includeFile", ".txt");
+        File tmpFileExclude = FileUtil.createTempFile("excludeFile", ".txt");
+        try {
+            mAndroidJUnitTest.addIncludeFilter(TEST1.getClassName());
+            mAndroidJUnitTest.addExcludeFilter(TEST2.toString());
+            mAndroidJUnitTest.setIncludeTestFile(tmpFileInclude);
+            mAndroidJUnitTest.setExcludeTestFile(tmpFileExclude);
+            mAndroidJUnitTest.run(mMockListener);
+            fail("Should have thrown an exception.");
+        } catch (DeviceNotAvailableException expected) {
+            //expected
+        } finally {
+            FileUtil.deleteFile(tmpFileInclude);
+            FileUtil.deleteFile(tmpFileExclude);
+        }
+        EasyMock.verify(mMockRemoteRunner, mMockTestDevice, mMockListener);
+    }
+
+    /**
      * Test that setting option for "test-file-filter" works as intended
      */
     public void testRun_setTestFileOptions() throws Exception {
@@ -282,7 +319,7 @@ public class AndroidJUnitTestTest extends TestCase {
                 .times(2);
         EasyMock.expect(mMockTestDevice.executeShellCommand(EasyMock.<String>anyObject()))
                 .andReturn("")
-                .times(2);
+                .times(4);
         EasyMock.replay(mMockRemoteRunner, mMockTestDevice);
 
         File tmpFileInclude = FileUtil.createTempFile("includeFile", ".txt");
