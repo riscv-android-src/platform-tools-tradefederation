@@ -879,11 +879,19 @@ public class NativeDevice implements IManagedTestDevice {
                             status = true;
                         } catch (SyncException e) {
                             CLog.w(
-                                    "Failed to push %s to %s on device %s. Message %s",
+                                    "Failed to push %s to %s on device %s. Message: '%s'. "
+                                            + "Error code: %s",
                                     localFile.getAbsolutePath(),
                                     remoteFilePath,
                                     getSerialNumber(),
-                                    e.getMessage());
+                                    e.getMessage(),
+                                    e.getErrorCode());
+                            // TODO: check if ddmlib can report a better error
+                            if (SyncError.TRANSFER_PROTOCOL_ERROR.equals(e.getErrorCode())) {
+                                if (e.getMessage().contains("Permission denied")) {
+                                    return false;
+                                }
+                            }
                             throw e;
                         } finally {
                             if (syncService != null) {
