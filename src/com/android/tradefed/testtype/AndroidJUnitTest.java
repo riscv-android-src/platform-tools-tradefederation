@@ -104,6 +104,12 @@ public class AndroidJUnitTest extends InstrumentationTest implements IRuntimeHin
             description="The device directory path to which the test filtering files are pushed")
     private String mTestFilterDir = "/data/local/tmp/ajur";
 
+    @Option(
+        name = "ajur-max-shard",
+        description = "The maximum number of shard we want to allow the test to shard into"
+    )
+    private Integer mMaxShard = null;
+
     private String mDeviceIncludeFile = null;
     private String mDeviceExcludeFile = null;
     private int mTotalShards = 0;
@@ -359,6 +365,9 @@ public class AndroidJUnitTest extends InstrumentationTest implements IRuntimeHin
     public Collection<IRemoteTest> split(int shardCount) {
         if (!isShardable()) {
             return null;
+        }
+        if (mMaxShard != null) {
+            shardCount = Math.min(shardCount, mMaxShard);
         }
         if (!mIsSharded && shardCount > 1) {
             mIsSharded = true;
