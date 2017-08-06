@@ -25,27 +25,54 @@ atest is designed to support any test types that can be ran by TradeFederation.
 import os
 import sys
 
+import cli_translator
 
 TARGET_TESTCASES_ENV_VARIBLE = "ANDROID_TARGET_OUT_TESTCASES"
-
+EXIT_CODE_ENV_NOT_SETUP = 1
 
 def _has_environment_variables():
     """Verify the local environment has been setup to run atest.
 
-    @returns True if the environment has the correct variables initialized,
-             False otherwise.
+    Returns:
+        True if the environment has the correct variables initialized, False
+        otherwise.
     """
     return bool(os.environ.get(TARGET_TESTCASES_ENV_VARIBLE))
 
+def _parse_args(argv):
+    """Parse command line arguments.
+
+    Args:
+        argv: A list of arguments.
+
+    Returns:
+        An argspace.Namespace class instance holding parsed args.
+    """
+    import argparse
+    parser = argparse.ArgumentParser(
+        description='atest: Build and run Android tests locally.')
+    parser.add_argument('tests', nargs='+',
+                        help='Tests to run. Can be reference to the Module, '
+                             'Class, Package, Suite name, Integration name or '
+                             'some combination of these.')
+    # TODO(b/64273625): Add --verbose arg.
+    return parser.parse_args(argv)
+
 
 def main(argv):
-    """Entry point atest script.
+    """Entry point of atest script.
 
-    @param argv: arguments list
+    Args:
+        argv: A list of arguments.
     """
     if not _has_environment_variables():
         print >> sys.stderr, ("Local environment doesn't appear to have been "
                               "initialized. Did you remember to run lunch?")
+        return EXIT_CODE_ENV_NOT_SETUP
+    args = _parse_args(argv)
+    translator = cli_translator.CLITranslator()
+    translator.translate(args.tests)
+
 
 if __name__ == '__main__':
     sys.exit(main(sys.argv[1:]))

@@ -909,7 +909,8 @@ public class DeviceManager implements IDeviceManager {
                             d.getDeviceClass(),
                             getDisplay(d.getMacAddress()),
                             getDisplay(d.getSimState()),
-                            getDisplay(d.getSimOperator())));
+                            getDisplay(d.getSimOperator()),
+                            idevice));
         }
         return serialStates;
     }
