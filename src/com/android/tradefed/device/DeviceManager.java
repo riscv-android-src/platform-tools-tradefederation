@@ -101,6 +101,7 @@ public class DeviceManager implements IDeviceManager {
     private static final String DEVICE_LIST_PATTERN = "(.*)(\n)(%s)(\\s+)(device)(.*?)";
 
     protected DeviceMonitorMultiplexer mDvcMon = new DeviceMonitorMultiplexer();
+    private Boolean mDvcMonRunning = false;
 
     private boolean mIsInitialized = false;
 
@@ -235,7 +236,7 @@ public class DeviceManager implements IDeviceManager {
         // It's important to add the listener before initializing the ADB bridge to avoid a race
         // condition when detecting devices.
         mAdbBridge.addDeviceChangeListener(mManagedDeviceListener);
-        if (mDvcMon != null) {
+        if (mDvcMon != null && !mDvcMonRunning) {
             mDvcMon.setDeviceLister(new DeviceLister() {
                 @Override
                 public List<DeviceDescriptor> listDevices() {
@@ -243,6 +244,7 @@ public class DeviceManager implements IDeviceManager {
                 }
             });
             mDvcMon.run();
+            mDvcMonRunning = true;
         }
 
         mAdbBridge.init(false /* client support */, mAdbPath);
