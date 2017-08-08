@@ -1145,7 +1145,7 @@ public class TestDevice extends NativeDevice {
      */
     @Override
     IWifiHelper createWifiHelper() throws DeviceNotAvailableException {
-        return new WifiHelper(this);
+        return new WifiHelper(this, mOptions.getWifiUtilAPKPath());
     }
 
     /** {@inheritDoc} */
