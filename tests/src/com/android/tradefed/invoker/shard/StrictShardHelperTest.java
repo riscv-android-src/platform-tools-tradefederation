@@ -249,7 +249,7 @@ public class StrictShardHelperTest {
     @Test
     public void testMergeSuite_shard0() throws Exception {
         List<IRemoteTest> res = testShard(0);
-        assertEquals(3, res.size());
+        assertEquals(2, res.size());
 
         assertTrue(res.get(0) instanceof ITestSuite);
         assertEquals("module1", ((ITestSuite) res.get(0)).getDirectModule().getId());
@@ -257,38 +257,42 @@ public class StrictShardHelperTest {
 
         assertTrue(res.get(1) instanceof ITestSuite);
         assertEquals("module3", ((ITestSuite) res.get(1)).getDirectModule().getId());
-        assertEquals(1, ((ITestSuite) res.get(1)).getDirectModule().numTests());
-
-        assertTrue(res.get(2) instanceof ITestSuite);
-        assertEquals("module2", ((ITestSuite) res.get(2)).getDirectModule().getId());
-        assertEquals(1, ((ITestSuite) res.get(2)).getDirectModule().numTests());
+        assertEquals(2, ((ITestSuite) res.get(1)).getDirectModule().numTests());
     }
 
     @Test
     public void testMergeSuite_shard1() throws Exception {
         List<IRemoteTest> res = testShard(1);
-        assertEquals(2, res.size());
+        assertEquals(3, res.size());
 
         assertTrue(res.get(0) instanceof ITestSuite);
-        assertEquals("module3", ((ITestSuite) res.get(0)).getDirectModule().getId());
-        assertEquals(2, ((ITestSuite) res.get(0)).getDirectModule().numTests());
+        assertEquals("module1", ((ITestSuite) res.get(0)).getDirectModule().getId());
+        assertEquals(1, ((ITestSuite) res.get(0)).getDirectModule().numTests());
 
         assertTrue(res.get(1) instanceof ITestSuite);
         assertEquals("module2", ((ITestSuite) res.get(1)).getDirectModule().getId());
         assertEquals(3, ((ITestSuite) res.get(1)).getDirectModule().numTests());
+
+        assertTrue(res.get(2) instanceof ITestSuite);
+        assertEquals("module3", ((ITestSuite) res.get(2)).getDirectModule().getId());
+        assertEquals(1, ((ITestSuite) res.get(2)).getDirectModule().numTests());
     }
 
     @Test
     public void testMergeSuite_shard2() throws Exception {
         List<IRemoteTest> res = testShard(2);
-        assertEquals(2, res.size());
+        assertEquals(3, res.size());
 
         assertTrue(res.get(0) instanceof ITestSuite);
-        assertEquals("module1", ((ITestSuite) res.get(0)).getDirectModule().getId());
-        assertEquals(3, ((ITestSuite) res.get(0)).getDirectModule().numTests());
+        assertEquals("module3", ((ITestSuite) res.get(0)).getDirectModule().getId());
+        assertEquals(1, ((ITestSuite) res.get(0)).getDirectModule().numTests());
 
         assertTrue(res.get(1) instanceof ITestSuite);
-        assertEquals("module3", ((ITestSuite) res.get(1)).getDirectModule().getId());
+        assertEquals("module2", ((ITestSuite) res.get(1)).getDirectModule().getId());
         assertEquals(1, ((ITestSuite) res.get(1)).getDirectModule().numTests());
+
+        assertTrue(res.get(2) instanceof ITestSuite);
+        assertEquals("module1", ((ITestSuite) res.get(2)).getDirectModule().getId());
+        assertEquals(2, ((ITestSuite) res.get(2)).getDirectModule().numTests());
     }
 }
