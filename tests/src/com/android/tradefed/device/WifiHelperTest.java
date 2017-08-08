@@ -95,13 +95,12 @@ public class WifiHelperTest {
         MockTestDeviceHelper.injectShellResponse(mMockDevice, null, 5, TimeUnit.MINUTES, 0,
                 "INSTRUMENTATION_RESULT: result=1.2.3.4", false);
         EasyMock.replay(mMockDevice);
-        WifiHelper wifiHelper =
-                new WifiHelper(mMockDevice) {
-                    @Override
-                    IRunUtil getRunUtil() {
-                        return EasyMock.createNiceMock(IRunUtil.class);
-                    }
-                };
+        WifiHelper wifiHelper = new WifiHelper(mMockDevice) {
+            @Override
+            IRunUtil getRunUtil() {
+                return EasyMock.createNiceMock(IRunUtil.class);
+            }
+        };
         assertTrue(wifiHelper.waitForIp(10 * 60 * 1000));
         // verify that two executeCommand attempt were made
         EasyMock.verify(mMockDevice);
@@ -166,19 +165,6 @@ public class WifiHelperTest {
                 .andReturn(null);
         EasyMock.replay(mMockDevice);
         new WifiHelper(mMockDevice);
-        EasyMock.verify(mMockDevice);
-    }
-
-    @Test
-    public void testEnsureDeviceSetup_alternateWifiUtilAPKPath() throws Exception {
-        final String APK_PATH = "/google/data/ro/teams/tradefed/testdata/power/apks/WifiUtil.apk";
-        EasyMock.reset(mMockDevice);
-        EasyMock.expect(mMockDevice.executeShellCommand(WifiHelper.CHECK_PACKAGE_CMD))
-                .andReturn(
-                        String.format(
-                                "versionCode=%d targetSdk=7", WifiHelper.PACKAGE_VERSION_CODE));
-        EasyMock.replay(mMockDevice);
-        new WifiHelper(mMockDevice, APK_PATH);
         EasyMock.verify(mMockDevice);
     }
 

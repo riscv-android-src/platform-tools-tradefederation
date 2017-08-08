@@ -64,13 +64,7 @@ public class WifiHelper implements IWifiHelper {
 
     public WifiHelper(ITestDevice device) throws DeviceNotAvailableException {
         mDevice = device;
-        ensureDeviceSetup(null);
-    }
-
-    public WifiHelper(ITestDevice device, String wifiUtilAPKPath)
-            throws DeviceNotAvailableException {
-        mDevice = device;
-        ensureDeviceSetup(wifiUtilAPKPath);
+        ensureDeviceSetup();
     }
 
     /**
@@ -82,7 +76,7 @@ public class WifiHelper implements IWifiHelper {
         return RunUtil.getDefault();
     }
 
-    void ensureDeviceSetup(String wifiUtilAPKPath) throws DeviceNotAvailableException {
+    void ensureDeviceSetup() throws DeviceNotAvailableException {
         final String inst = mDevice.executeShellCommand(CHECK_PACKAGE_CMD);
         if (inst != null) {
             Matcher matcher = PACKAGE_VERSION_PAT.matcher(inst);
@@ -96,29 +90,25 @@ public class WifiHelper implements IWifiHelper {
                 }
             }
         }
+
         // Attempt to install utility
-        File apkFile = null;
+        File apkTempFile = null;
+        try {
+            apkTempFile = extractWifiUtilApk();
 
-        if (wifiUtilAPKPath != null) {
-            apkFile = new File(wifiUtilAPKPath);
-        } else {
-            try {
-                apkFile = extractWifiUtilApk();
-            } catch (IOException e) {
-                throw new RuntimeException(
-                        String.format("Failed to unpack WifiUtil utility: %s", e.getMessage()));
-            } finally {
-                FileUtil.deleteFile(apkFile);
+            final String error = mDevice.installPackage(apkTempFile, true);
+            if (error == null) {
+                // Installed successfully; good to go.
+                return;
+            } else {
+                throw new RuntimeException(String.format(
+                        "Unable to install WifiUtil utility: %s", error));
             }
-        }
-
-        final String error = mDevice.installPackage(apkFile, true);
-        if (error == null) {
-            // Installed successfully; good to go.
-            return;
-        } else {
-            throw new RuntimeException(
-                    String.format("Unable to install WifiUtil utility: %s", error));
+        } catch (IOException e) {
+            throw new RuntimeException(String.format(
+                    "Failed to unpack WifiUtil utility: %s", e.getMessage()));
+        } finally {
+            FileUtil.deleteFile(apkTempFile);
         }
     }
 
