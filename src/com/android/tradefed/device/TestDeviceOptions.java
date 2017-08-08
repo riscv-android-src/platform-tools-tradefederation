@@ -92,9 +92,6 @@ public class TestDeviceOptions {
                     + " a binary exponential back-offs when retrying.")
     private boolean mWifiExpoRetryEnabled = true;
 
-    @Option(name = "wifiutil-apk-path", description = "path to the wifiutil APK file")
-    private String mWifiUtilAPKPath = null;
-
     @Option(name = "post-boot-command",
             description = "shell command to run after reboots during invocation")
     private List<String> mPostBootCommands = new ArrayList<String>();
@@ -328,10 +325,5 @@ public class TestDeviceOptions {
      */
     public boolean isWifiExpoRetryEnabled() {
         return mWifiExpoRetryEnabled;
-    }
-
-    /** @return the wifiutil apk path */
-    public String getWifiUtilAPKPath() {
-        return mWifiUtilAPKPath;
     }
 }
