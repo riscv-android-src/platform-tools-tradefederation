@@ -481,12 +481,12 @@ public class ITestSuiteIntegrationTest {
             test.run(new ResultForwarder(config.getTestInvocationListeners()));
         }
         new ResultForwarder(config.getTestInvocationListeners()).invocationEnded(500);
-        // Bits of both module are run, including the failed test.
+        // Only the first module is ran, which is passing.
         assertEquals(1, mListener.getTotalModules());
         assertEquals(1, mListener.getCompleteModules());
         assertEquals(3, mListener.getTotalTests());
-        assertEquals(2, mListener.getPassedTests());
-        assertEquals(1, mListener.getFailedTests());
+        assertEquals(3, mListener.getPassedTests());
+        assertEquals(0, mListener.getFailedTests());
     }
 
     /**
