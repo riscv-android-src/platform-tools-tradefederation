@@ -105,6 +105,13 @@ public class GTest
             description = "adb shell command(s) to run before GTest.")
     private List<String> mBeforeTestCmd = new ArrayList<>();
 
+
+    @Option(
+        name = "reboot-before-test",
+        description = "Reboot the device before the test suite starts."
+    )
+    private boolean mRebootBeforeTest = false;
+
     @Option(name = "after-test-cmd",
             description = "adb shell command(s) to run after GTest.")
     private List<String> mAfterTestCmd = new ArrayList<>();
@@ -534,6 +541,12 @@ public class GTest
             for (String cmd : mBeforeTestCmd) {
                 testDevice.executeShellCommand(cmd);
             }
+
+            if (mRebootBeforeTest) {
+                CLog.d("Rebooting device before test starts as requested.");
+                testDevice.reboot();
+            }
+
             String cmd = getGTestCmdLine(fullPath, flags);
             // ensure that command is not too long for adb
             if (cmd.length() < GTEST_CMD_CHAR_LIMIT) {
