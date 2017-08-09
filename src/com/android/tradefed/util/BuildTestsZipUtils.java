@@ -75,7 +75,7 @@ public class BuildTestsZipUtils {
                 expandedTestDirs.add(
                         FileUtil.getFileForPath(testsDir, "DATA", "priv-app", apkBase));
                 // Files in testcases directory will be in base build info tests dir.
-                expandedTestDirs.add(FileUtil.getFileForPath(testsDir, apkBase));
+                expandedTestDirs.add(FileUtil.findFile(testsDir, apkBase));
             }
         }
         if (altDirBehavior == null) {
