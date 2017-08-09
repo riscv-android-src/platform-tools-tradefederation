@@ -15,6 +15,7 @@
  */
 package com.android.tradefed;
 
+import com.android.tradefed.build.BootstrapBuildProviderTest;
 import com.android.tradefed.build.BuildInfoTest;
 import com.android.tradefed.build.DeviceBuildDescriptorTest;
 import com.android.tradefed.build.DeviceBuildInfoTest;
@@ -230,6 +231,7 @@ import org.junit.runners.Suite.SuiteClasses;
 @SuiteClasses({
 
     // build
+    BootstrapBuildProviderTest.class,
     BuildInfoTest.class,
     DeviceBuildInfoTest.class,
     DeviceBuildDescriptorTest.class,
