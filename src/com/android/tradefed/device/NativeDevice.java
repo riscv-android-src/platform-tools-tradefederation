@@ -2630,6 +2630,9 @@ public class NativeDevice implements IManagedTestDevice {
         // if its necessary or not
         if (isAdbRoot()) {
             CLog.i("adb is already running as root on %s", getSerialNumber());
+            // Still check for online, in some case we could see the root, but device could be
+            // very early in its cycle.
+            waitForDeviceOnline();
             return true;
         }
         // Don't enable root if user requested no root
