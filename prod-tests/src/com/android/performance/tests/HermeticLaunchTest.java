@@ -99,7 +99,11 @@ public class HermeticLaunchTest implements IRemoteTest, IDeviceTest {
             "(?<secs>\\d+)\\.(?<usecs>\\d+):\\s+(?<function>.*)\\s*$");
     private static final Pattern ATRACE_BEGIN = Pattern
             .compile("tracing_mark_write: B\\|(?<pid>\\d+)\\|(?<name>.+)");
-    private static final Pattern ATRACE_END = Pattern.compile("tracing_mark_write: E");
+    // Matches new and old format of END time stamp.
+    // rformanceLaunc-6315  ( 6315) [007] ...1   182.622217: tracing_mark_write: E|6315
+    // rformanceLaunc-6315  ( 6315) [007] ...1   182.622217: tracing_mark_write: E
+    private static final Pattern ATRACE_END = Pattern.compile(
+            "tracing_mark_write: E\\|*(?<procid>\\d*)");
     private static final Pattern ATRACE_COUNTER = Pattern
             .compile("tracing_mark_write: C\\|(?<pid>\\d+)\\|(?<name>[^|]+)\\|(?<value>\\d+)");
     private static final Pattern ATRACE_HEADER_ENTRIES = Pattern
@@ -479,22 +483,25 @@ public class HermeticLaunchTest implements IRemoteTest, IDeviceTest {
                      * Matching pattern looks like tracing_mark_write: E Pop from the stack when end
                      * reaches
                      */
-                    TraceRecord matchingBegin = processStack.removeLast();
-                    if (mSectionSet.contains(matchingBegin.name)) {
-                        if (sectionInfo.containsKey(matchingBegin.name)) {
-                            SectionPeriod newSecPeriod = new SectionPeriod(matchingBegin.timestamp,
-                                    timestamp);
-                            CLog.v(String.format("Section :%s took :%f msecs ", matchingBegin.name,
-                                    newSecPeriod.duration));
-                            sectionInfo.get(matchingBegin.name).add(newSecPeriod);
-                        } else {
-                            List<SectionPeriod> infoList = new LinkedList<>();
-                            SectionPeriod newSecPeriod = new SectionPeriod(matchingBegin.timestamp,
-                                    timestamp);
-                            CLog.v(String.format("Section :%s took :%f msecs ", matchingBegin.name,
-                                    newSecPeriod.duration));
-                            infoList.add(newSecPeriod);
-                            sectionInfo.put(matchingBegin.name, infoList);
+                    String endProcId = match.group("procid");
+                    if (endProcId.isEmpty() || endProcId.equals(processId)) {
+                        TraceRecord matchingBegin = processStack.removeLast();
+                        if (mSectionSet.contains(matchingBegin.name)) {
+                            if (sectionInfo.containsKey(matchingBegin.name)) {
+                                SectionPeriod newSecPeriod = new SectionPeriod(
+                                        matchingBegin.timestamp, timestamp);
+                                CLog.v("Section :%s took :%f msecs ",
+                                        matchingBegin.name, newSecPeriod.duration);
+                                sectionInfo.get(matchingBegin.name).add(newSecPeriod);
+                            } else {
+                                List<SectionPeriod> infoList = new LinkedList<>();
+                                SectionPeriod newSecPeriod = new SectionPeriod(
+                                        matchingBegin.timestamp, timestamp);
+                                CLog.v(String.format("Section :%s took :%f msecs ",
+                                        matchingBegin.name, newSecPeriod.duration));
+                                infoList.add(newSecPeriod);
+                                sectionInfo.put(matchingBegin.name, infoList);
+                            }
                         }
                     }
                 } else if ((match = matches(ATRACE_COUNTER, function)) != null) {
