@@ -565,6 +565,7 @@ public class TestDeviceTest extends TestCase {
         assertRecoverySuccess();
         mMockIDevice.executeShellCommand(EasyMock.eq(testCommand), EasyMock.eq(mMockReceiver),
                 EasyMock.anyLong(), (TimeUnit)EasyMock.anyObject());
+        EasyMock.expect(mMockStateMonitor.waitForDeviceOnline()).andReturn(mMockIDevice);
         injectSystemProperty("ro.build.version.sdk", "23");
         replayMocks();
         mTestDevice.executeShellCommand(testCommand, mMockReceiver);
@@ -632,6 +633,7 @@ public class TestDeviceTest extends TestCase {
         // now expect shellCommand to be executed again, and succeed
         mMockIDevice.executeShellCommand(EasyMock.eq(testCommand), EasyMock.eq(mMockReceiver),
                 EasyMock.anyLong(), (TimeUnit)EasyMock.anyObject());
+        EasyMock.expect(mMockStateMonitor.waitForDeviceOnline()).andReturn(mMockIDevice);
         injectSystemProperty("ro.build.version.sdk", "23");
         replayMocks();
         mTestDevice.executeShellCommand(testCommand, mMockReceiver);
@@ -682,6 +684,7 @@ public class TestDeviceTest extends TestCase {
             assertRecoverySuccess();
         }
         EasyMock.expect(mMockIDevice.getState()).andReturn(DeviceState.ONLINE).times(2);
+        EasyMock.expect(mMockStateMonitor.waitForDeviceOnline()).andReturn(mMockIDevice).times(3);
         injectSystemProperty("ro.build.version.sdk", "23").times(3);
         replayMocks();
         try {
