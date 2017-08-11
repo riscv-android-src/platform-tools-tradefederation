@@ -161,7 +161,6 @@ import com.android.tradefed.testtype.InstalledInstrumentationsTestTest;
 import com.android.tradefed.testtype.InstrumentationFileTestTest;
 import com.android.tradefed.testtype.InstrumentationSerialTestTest;
 import com.android.tradefed.testtype.InstrumentationTestTest;
-import com.android.tradefed.testtype.JackCodeCoverageTestTest;
 import com.android.tradefed.testtype.JacocoCodeCoverageTestTest;
 import com.android.tradefed.testtype.NativeBenchmarkTestParserTest;
 import com.android.tradefed.testtype.NativeBenchmarkTestTest;
@@ -438,7 +437,6 @@ import org.junit.runners.Suite.SuiteClasses;
     InstrumentationSerialTestTest.class,
     InstrumentationFileTestTest.class,
     InstrumentationTestTest.class,
-    JackCodeCoverageTestTest.class,
     JacocoCodeCoverageTestTest.class,
     NativeBenchmarkTestParserTest.class,
     NativeBenchmarkTestTest.class,
