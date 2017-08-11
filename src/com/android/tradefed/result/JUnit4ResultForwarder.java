@@ -44,8 +44,14 @@ public class JUnit4ResultForwarder extends RunListener {
     @Override
     public void testFailure(Failure failure) throws Exception {
         Description description = failure.getDescription();
+        if (description.getMethodName() == null) {
+            // In case of exception in @BeforeClass, the method name will be null
+            mListener.testRunFailed(String.format("Failed with trace: %s", failure.getTrace()));
+            return;
+        }
         TestIdentifier testid = new TestIdentifier(description.getClassName(),
                 description.getMethodName());
+
         mListener.testFailed(testid, failure.getTrace());
     }
 
