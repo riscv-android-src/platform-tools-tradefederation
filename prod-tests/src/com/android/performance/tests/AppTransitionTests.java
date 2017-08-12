@@ -48,6 +48,7 @@ import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
 
 /**
  * Test that drives the transition delays during different user behavior like
@@ -124,6 +125,11 @@ public class AppTransitionTests implements IRemoteTest, IDeviceTest {
 
     @Option(name = "latency-iteration", description = "Iterations to be used in the latency tests.")
     private int mLatencyIteration = 10;
+
+    @Option(name = "timeout",
+            description = "Aborts the test run if any test takes longer than the specified number "
+                    + "of milliseconds. For no timeout, set to 0.", isTimeVal = true)
+    private long mTestTimeout = 45 * 60 * 1000;  // default to 45 minutes
 
     private ITestDevice mDevice = null;
     private IRemoteAndroidTestRunner mRunner = null;
@@ -261,6 +267,7 @@ public class AppTransitionTests implements IRemoteTest, IDeviceTest {
                 PACKAGE_NAME, mRunnerName, mDevice.getIDevice());
         runner.setMethodName(CLASS_NAME, testName);
         runner.addInstrumentationArg("launch_apps", launchApps);
+        runner.setMaxTimeout(mTestTimeout, TimeUnit.MILLISECONDS);
         if (null != preLaunchApps && !preLaunchApps.isEmpty()) {
             runner.addInstrumentationArg("pre_launch_apps", preLaunchApps);
         }
