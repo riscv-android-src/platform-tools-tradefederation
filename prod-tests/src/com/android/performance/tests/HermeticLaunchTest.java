@@ -260,8 +260,8 @@ public class HermeticLaunchTest implements IRemoteTest, IDeviceTest {
         Map<String, List<Integer>> amLaunchTimes = new HashMap<>();
         InputStreamSource input = mLogcat.getLogcatData();
         InputStream inputStream = input.createInputStream();
-        BufferedReader br = new BufferedReader(new InputStreamReader(
-                inputStream));
+        InputStreamReader streamReader = new InputStreamReader(inputStream);
+        BufferedReader br = new BufferedReader(streamReader);
         Map<Pattern, String> activityPatternMap = new HashMap<>();
         Matcher match = null;
         String line;
@@ -308,6 +308,11 @@ public class HermeticLaunchTest implements IRemoteTest, IDeviceTest {
             }
         } catch (IOException io) {
             CLog.e(io);
+        } finally {
+            StreamUtil.cancel(input);
+            StreamUtil.close(inputStream);
+            StreamUtil.close(streamReader);
+            StreamUtil.close(br);
         }
 
         // Verify logcat data
