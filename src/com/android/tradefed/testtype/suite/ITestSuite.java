@@ -303,12 +303,12 @@ public abstract class ITestSuite
         if (!failures.isEmpty()) {
             CLog.w("There are failed system status checkers: %s capturing a bugreport",
                     failures.toString());
-            InputStreamSource bugSource = device.getBugreport();
-            listener.testLog(
-                    String.format("bugreport-checker-pre-module-%s", moduleName),
-                    LogDataType.BUGREPORT,
-                    bugSource);
-            bugSource.cancel();
+            try (InputStreamSource bugSource = device.getBugreport()) {
+                listener.testLog(
+                        String.format("bugreport-checker-pre-module-%s", moduleName),
+                        LogDataType.BUGREPORT,
+                        bugSource);
+            }
         }
 
         // We report System checkers like tests.
@@ -338,12 +338,12 @@ public abstract class ITestSuite
         if (!failures.isEmpty()) {
             CLog.w("There are failed system status checkers: %s capturing a bugreport",
                     failures.toString());
-            InputStreamSource bugSource = device.getBugreport();
-            listener.testLog(
-                    String.format("bugreport-checker-post-module-%s", moduleName),
-                    LogDataType.BUGREPORT,
-                    bugSource);
-            bugSource.cancel();
+            try (InputStreamSource bugSource = device.getBugreport()) {
+                listener.testLog(
+                        String.format("bugreport-checker-post-module-%s", moduleName),
+                        LogDataType.BUGREPORT,
+                        bugSource);
+            }
         }
 
         // We report System checkers like tests.

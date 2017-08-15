@@ -279,7 +279,7 @@ public class StreamUtil {
      */
     public static void cancel(InputStreamSource outputSource) {
         if (outputSource != null) {
-            outputSource.cancel();
+            outputSource.close();
         }
     }
 
