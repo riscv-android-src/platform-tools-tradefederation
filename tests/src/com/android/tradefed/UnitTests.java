@@ -151,6 +151,7 @@ import com.android.tradefed.testtype.PythonUnitTestRunnerTest;
 import com.android.tradefed.testtype.TfTestLauncherTest;
 import com.android.tradefed.testtype.VersionedTfLauncherTest;
 import com.android.tradefed.testtype.suite.ITestSuiteIntegrationTest;
+import com.android.tradefed.testtype.suite.ITestSuiteMultiTest;
 import com.android.tradefed.testtype.suite.ITestSuiteTest;
 import com.android.tradefed.testtype.suite.ModuleDefinitionTest;
 import com.android.tradefed.testtype.suite.ModuleListenerTest;
@@ -397,6 +398,7 @@ import org.junit.runners.Suite.SuiteClasses;
 
     // testtype/suite
     ITestSuiteIntegrationTest.class,
+    ITestSuiteMultiTest.class,
     ITestSuiteTest.class,
     ModuleDefinitionTest.class,
     ModuleListenerTest.class,
