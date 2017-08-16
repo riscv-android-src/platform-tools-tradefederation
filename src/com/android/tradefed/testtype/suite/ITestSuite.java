@@ -169,6 +169,7 @@ public abstract class ITestSuite
                             config.getKey(),
                             config.getValue().getTests(),
                             config.getValue().getTargetPreparers(),
+                            config.getValue().getMultiTargetPreparers(),
                             config.getValue().getConfigurationDescription());
             module.setDevice(mDevice);
             module.setBuild(mBuildInfo);
