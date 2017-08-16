@@ -38,8 +38,10 @@ import com.android.tradefed.targetprep.BuildError;
 import com.android.tradefed.targetprep.ITargetCleaner;
 import com.android.tradefed.targetprep.ITargetPreparer;
 import com.android.tradefed.targetprep.TargetSetupError;
+import com.android.tradefed.targetprep.multi.IMultiTargetPreparer;
 import com.android.tradefed.testtype.IBuildReceiver;
 import com.android.tradefed.testtype.IDeviceTest;
+import com.android.tradefed.testtype.IMultiDeviceTest;
 import com.android.tradefed.testtype.IRemoteTest;
 import com.android.tradefed.testtype.IRuntimeHintProvider;
 import com.android.tradefed.testtype.ITestCollector;
@@ -71,8 +73,10 @@ public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestColl
     private Collection<IRemoteTest> mTests = null;
     private List<ITargetPreparer> mPreparers = new ArrayList<>();
     private List<ITargetCleaner> mCleaners = new ArrayList<>();
+    private List<IMultiTargetPreparer> mMultiPreparers = new ArrayList<>();
     private IBuildInfo mBuild;
     private ITestDevice mDevice;
+    private Map<ITestDevice, IBuildInfo> mDeviceInfos;
     private boolean mCollectTestsOnly = false;
 
     private List<TestRunResult> mTestsResults = new ArrayList<>();
@@ -101,6 +105,7 @@ public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestColl
             String name,
             Collection<IRemoteTest> tests,
             List<ITargetPreparer> preparers,
+            List<IMultiTargetPreparer> multiPreparers,
             ConfigurationDescriptor configDescriptor) {
         mId = name;
         mTests = tests;
@@ -113,6 +118,8 @@ public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestColl
             mModuleInvocationContext.addInvocationAttribute(
                     MODULE_ABI, configDescriptor.getAbi().getName());
         }
+
+        mMultiPreparers.addAll(multiPreparers);
 
         for (ITargetPreparer preparer : preparers) {
             mPreparers.add(preparer);
@@ -193,6 +200,13 @@ public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestColl
     }
 
     /**
+     * Inject the {@link Map} of {@link ITestDevice} and {@link IBuildInfo} for the configuration.
+     */
+    public void setDeviceInfos(Map<ITestDevice, IBuildInfo> deviceInfos) {
+        mDeviceInfos = deviceInfos;
+    }
+
+    /**
      * Run all the {@link IRemoteTest} contained in the module and use all the preparers before and
      * after to setup and clean the device.
      *
@@ -223,6 +237,17 @@ public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestColl
                 mIsFailedModule = true;
                 CLog.e("Some preparation step failed. failing the module %s", getId());
                 break;
+            }
+        }
+        // Skip multi-preparation if preparation already failed.
+        if (preparationException == null) {
+            for (IMultiTargetPreparer multiPreparer : mMultiPreparers) {
+                preparationException = runMultiPreparerSetup(multiPreparer, listener);
+                if (preparationException != null) {
+                    mIsFailedModule = true;
+                    CLog.e("Some preparation step failed. failing the module %s", getId());
+                    break;
+                }
             }
         }
         mElapsedPreparation = getCurrentTime() - prepStartTime;
@@ -256,6 +281,9 @@ public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestColl
                 }
                 if (test instanceof IDeviceTest) {
                     ((IDeviceTest) test).setDevice(mDevice);
+                }
+                if (test instanceof IMultiDeviceTest) {
+                    ((IMultiDeviceTest) test).setDeviceInfos(mDeviceInfos);
                 }
                 if (test instanceof ISystemStatusCheckerReceiver) {
                     // We do not pass down Status checker because they are already running at the
@@ -314,6 +342,12 @@ public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestColl
             long cleanStartTime = getCurrentTime();
             try {
                 // Tear down
+                List<IMultiTargetPreparer> cleanerList = new ArrayList<>(mMultiPreparers);
+                Collections.reverse(cleanerList);
+                for (IMultiTargetPreparer multiCleaner : cleanerList) {
+                    CLog.d("Multi cleaner: %s", multiCleaner.getClass().getSimpleName());
+                    multiCleaner.tearDown(mModuleInvocationContext, null);
+                }
                 for (ITargetCleaner cleaner : mCleaners) {
                     CLog.d("Cleaner: %s", cleaner.getClass().getSimpleName());
                     cleaner.tearDown(mDevice, mBuild, null);
@@ -424,6 +458,23 @@ public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestColl
             preparer.setUp(mDevice, mBuild);
             return null;
         } catch (BuildError | TargetSetupError e) {
+            CLog.e("Unexpected Exception from preparer: %s", preparer.getClass().getName());
+            CLog.e(e);
+            return e;
+        }
+    }
+
+    /** Run all multi target preparer step. */
+    private Exception runMultiPreparerSetup(IMultiTargetPreparer preparer, ITestLogger logger) {
+        CLog.d("Multi preparer: %s", preparer.getClass().getSimpleName());
+        try {
+            // set the logger in case they need it.
+            if (preparer instanceof ITestLoggerReceiver) {
+                ((ITestLoggerReceiver) preparer).setTestLogger(logger);
+            }
+            preparer.setUp(mModuleInvocationContext);
+            return null;
+        } catch (BuildError | TargetSetupError | DeviceNotAvailableException e) {
             CLog.e("Unexpected Exception from preparer: %s", preparer.getClass().getName());
             CLog.e(e);
             return e;
