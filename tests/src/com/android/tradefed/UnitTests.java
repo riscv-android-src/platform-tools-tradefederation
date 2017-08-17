@@ -63,6 +63,7 @@ import com.android.tradefed.device.TopHelperTest;
 import com.android.tradefed.device.WaitDeviceRecoveryTest;
 import com.android.tradefed.device.WifiHelperTest;
 import com.android.tradefed.invoker.InvocationContextTest;
+import com.android.tradefed.invoker.TestInvocationMultiTest;
 import com.android.tradefed.invoker.TestInvocationTest;
 import com.android.tradefed.invoker.shard.ShardHelperTest;
 import com.android.tradefed.invoker.shard.StrictShardHelperTest;
@@ -168,6 +169,7 @@ import com.android.tradefed.util.AbiUtilsTest;
 import com.android.tradefed.util.ArrayUtilTest;
 import com.android.tradefed.util.BluetoothUtilsTest;
 import com.android.tradefed.util.BugreportTest;
+import com.android.tradefed.util.BuildTestsZipUtilsTest;
 import com.android.tradefed.util.ByteArrayListTest;
 import com.android.tradefed.util.ClassPathScannerTest;
 import com.android.tradefed.util.ConditionPriorityBlockingQueueTest;
@@ -290,6 +292,7 @@ import org.junit.runners.Suite.SuiteClasses;
 
     // invoker
     InvocationContextTest.class,
+    TestInvocationMultiTest.class,
     TestInvocationTest.class,
 
     // invoker.shard
@@ -418,6 +421,7 @@ import org.junit.runners.Suite.SuiteClasses;
     ArrayUtilTest.class,
     BluetoothUtilsTest.class,
     BugreportTest.class,
+    BuildTestsZipUtilsTest.class,
     ByteArrayListTest.class,
     ClassPathScannerTest.class,
     ConditionPriorityBlockingQueueTest.class,

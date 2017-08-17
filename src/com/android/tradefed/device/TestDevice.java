@@ -796,10 +796,8 @@ public class TestDevice extends NativeDevice {
             } catch (NumberFormatException e) {
                 CLog.e("Failed to parse result: %s", output);
             }
-        } else {
-            CLog.e("Failed to create user: %s", output);
         }
-        throw new IllegalStateException();
+        throw new IllegalStateException(String.format("Failed to create user: %s", output));
     }
 
     /**
