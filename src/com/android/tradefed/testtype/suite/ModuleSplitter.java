@@ -19,6 +19,7 @@ import com.android.tradefed.config.ConfigurationException;
 import com.android.tradefed.config.IConfiguration;
 import com.android.tradefed.config.OptionCopier;
 import com.android.tradefed.targetprep.ITargetPreparer;
+import com.android.tradefed.targetprep.multi.IMultiTargetPreparer;
 import com.android.tradefed.testtype.IAbiReceiver;
 import com.android.tradefed.testtype.IRemoteTest;
 import com.android.tradefed.testtype.IShardableTest;
@@ -97,7 +98,8 @@ public class ModuleSplitter {
                             new ModuleDefinition(
                                     moduleName,
                                     config.getTests(),
-                                    clonePreparers(config),
+                                    clonePreparers(config.getTargetPreparers()),
+                                    clonePreparers(config.getMultiTargetPreparers()),
                                     config.getConfigurationDescription());
                     currentList.add(module);
                 } else {
@@ -121,7 +123,8 @@ public class ModuleSplitter {
                                     new ModuleDefinition(
                                             moduleName,
                                             shardedTests,
-                                            clonePreparers(config),
+                                            clonePreparers(config.getTargetPreparers()),
+                                            clonePreparers(config.getMultiTargetPreparers()),
                                             config.getConfigurationDescription());
                             currentList.add(module);
                         }
@@ -155,7 +158,8 @@ public class ModuleSplitter {
                 new ModuleDefinition(
                         moduleName,
                         testList,
-                        clonePreparers(config),
+                        clonePreparers(config.getTargetPreparers()),
+                        clonePreparers(config.getMultiTargetPreparers()),
                         config.getConfigurationDescription());
         currentList.add(module);
     }
@@ -171,16 +175,17 @@ public class ModuleSplitter {
     }
 
     /**
-     * Deep clone a list of {@link ITargetPreparer}. We are ensured to find a default constructor
-     * with no arguments since that's the expectation from Tradefed when loading configuration.
-     * Cloning preparers is required since they may be stateful and we cannot share instance across
-     * devices.
+     * Deep clone a list of {@link ITargetPreparer} or {@link IMultiTargetPreparer}. We are ensured
+     * to find a default constructor with no arguments since that's the expectation from Tradefed
+     * when loading configuration. Cloning preparers is required since they may be stateful and we
+     * cannot share instance across devices.
      */
-    private static List<ITargetPreparer> clonePreparers(IConfiguration config) {
-        List<ITargetPreparer> clones = new ArrayList<>();
-        for (ITargetPreparer prep : config.getTargetPreparers()) {
+    private static <T> List<T> clonePreparers(List<T> preparerList) {
+        List<T> clones = new ArrayList<>();
+        for (T prep : preparerList) {
             try {
-                ITargetPreparer clone = prep.getClass().newInstance();
+                @SuppressWarnings("unchecked")
+                T clone = (T) prep.getClass().newInstance();
                 OptionCopier.copyOptions(prep, clone);
                 // Ensure we copy the Abi too.
                 if (clone instanceof IAbiReceiver) {
