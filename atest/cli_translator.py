@@ -18,9 +18,17 @@ Command Line Translator for atest.
 """
 
 # TODO(b/64273625): Implement logging with proper levels for --verbose.
-import logging
 import enum
+import logging
+from collections import namedtuple
 
+
+RUN_CMD = ('tradefed.sh run commandAndExit template/local_min '
+           '--template:map test=%s')
+TestInfo = namedtuple('TestInfo', ['ref_type', 'module_name'])
+
+class NoTestFoundError(Exception):
+    """Raised when no tests are found."""
 
 class TestReferenceType(enum.Enum):
     """Test Reference Type Enums"""
@@ -44,6 +52,7 @@ class TestReferenceType(enum.Enum):
     SUITE = 8
 
 
+#pylint: disable=no-self-use
 class CLITranslator(object):
     """
     CLITranslator class contains public method translate() and some private
@@ -62,10 +71,9 @@ class CLITranslator(object):
 
     def __init__(self):
         self.ref_type_to_func_map = {
-            TestReferenceType.MODULE: self._find_by_module_name
+            TestReferenceType.MODULE: self._get_test_info_by_module_name
         }
 
-    #pylint: disable=no-self-use
     def _get_test_reference_types(self, test_reference):
         """Determine type of test reference based on the content of string.
 
@@ -82,48 +90,91 @@ class CLITranslator(object):
         Returns:
             A list of possible TestReferenceTypes for test_reference string.
         """
-        raise NotImplementedError()
+        if test_reference.startswith('.'):
+            return [TestReferenceType.FILE_PATH]
+        if '/' in test_reference:
+            return [TestReferenceType.FILE_PATH, TestReferenceType.INTEGRATION,
+                    TestReferenceType.SUITE]
+        if ':' in test_reference:
+            if '.' in test_reference:
+                return [TestReferenceType.MODULE_CLASS,
+                        TestReferenceType.MODULE_PACKAGE]
+            return [TestReferenceType.MODULE_CLASS]
+        if '.'  in test_reference:
+            return [TestReferenceType.CLASS, TestReferenceType.PACKAGE]
+        # TODO(b/64484081): When we support CLASS references, return
+        # [TestReferenceType.MODULE, TestReferenceType.CLASS] instead of
+        # just [TestReferenceType.MODULE] below.
+        return [TestReferenceType.MODULE]
 
-    #pylint: disable=no-self-use
-    def _find_by_module_name(self, module_name):
+    def _get_test_info_by_module_name(self, module_name):
         """Find test files given a module name.
 
         Args:
             module_name: A string of the test's module name.
 
         Returns:
-            A string of the path to the test dir.
+            A populated TestInfo namedtuple if found, else None.
         """
-        raise NotImplementedError()
+        # TODO(b/64484081): When we support CLASS references, we will need
+        # to use module-info.json to confirm here that this is indeed a module
+        # and determine it's path.  For now we only support MODULE, so we can
+        # assume we're given a valid module_name.
+        return TestInfo(TestReferenceType.MODULE, module_name)
 
-    #pylint: disable=no-self-use
-    def  _generate_build_targets(self, test_dir, reference_type):
+    def  _generate_build_targets(self, test_info):
         """Generate a list of build targets for a test.
 
         Args:
-            test_dir: A string of the path to test dir.
-            reference_type: A TestReferenceType of the test.
+            test_info: A TestInfo namedtuple.
 
         Returns:
             A list of strings of the build targets.
         """
-        raise NotImplementedError()
+        targets = []
+        if test_info.ref_type == TestReferenceType.MODULE:
+            targets.append(test_info.module_name)
+            targets.append('tradefed-all')
+        return targets
 
-    #pylint: disable=no-self-use
-    def _generate_run_command(self, test_name, filters=None, annotations=None):
+    def _generate_run_command(self, test_info, filters=None, annotations=None):
         """Generate a list of run commands for a test.
 
         Args:
-            test_name: A string of the test's name.
+            test_info: A TestInfo namedtuple.
             filters: A set of filters.
             annotations: A set of annotations.
 
         Returns:
             A string of the TradeFederation run command.
         """
-        raise NotImplementedError()
+        if filters or annotations:
+            logging.warn('Filters and Annotations are currently not supported.')
+        return RUN_CMD % test_info.module_name
 
-    #pylint: disable=no-self-use
+    def _get_test_info(self, test_name, reference_types):
+        """Tries to find directory containing test files else returns None
+
+        Args:
+            test_name: A string referencing a test.
+            reference_types: A list of the possible reference types.
+
+        Returns:
+            TestInfo namedtuple, else None if test files not found.
+        """
+        for ref_type in reference_types:
+            try:
+                test_info = self.ref_type_to_func_map[ref_type](test_name)
+                if test_info:
+                    return test_info
+                logging.warn('Failed to find %s: %s', ref_type.name, test_name)
+            except KeyError:
+                supported = ', '.join(k.name for k in self.ref_type_to_func_map)
+                logging.warn('"%s" as %s reference is unsupported. atest only '
+                             'supports identifying a test by its: %s',
+                             test_name, ref_type.name, supported)
+
+
     def translate(self, tests):
         """Translate atest command line into build targets and run commands.
 
@@ -134,6 +185,15 @@ class CLITranslator(object):
             A tuple with list of build_target strings and list of run command
             strings.
         """
-        logging.info('Translating: %s', tests)
-        # TODO(b/64148562): Implement translator logic for a Module test.
-        raise NotImplementedError()
+        logging.info('Finding tests: %s', tests)
+        build_targets = []
+        run_commands = []
+        for test in tests:
+            possible_reference_types = self._get_test_reference_types(test)
+            test_info = self._get_test_info(test, possible_reference_types)
+            if not test_info:
+                raise NoTestFoundError('No test found for: %s' % test)
+            logging.debug('Resolved input "%s" to: %s', test, test_info)
+            build_targets.extend(self._generate_build_targets(test_info))
+            run_commands.append(self._generate_run_command(test_info))
+        return build_targets, run_commands
