@@ -31,6 +31,7 @@ import com.android.tradefed.util.TimeUtil;
 
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.List;
 
 /** Sharding strategy to create strict shards that do not report together, */
@@ -163,15 +164,15 @@ public class StrictShardHelper extends ShardHelper {
             if (i == shardCount - 1) {
                 // last shard take everything remaining.
                 shardList = fullList.subList(i * numPerShard, fullList.size());
-                shards.add(shardList);
+                shards.add(new ArrayList<>(shardList));
                 continue;
             }
             shardList = fullList.subList(i * numPerShard, numPerShard + (i * numPerShard));
-            shards.add(shardList);
+            shards.add(new ArrayList<>(shardList));
         }
 
         // do last minute rebalancing
-        topBottom(shards);
+        topBottom(shards, shardCount);
         return shards.get(shardIndex);
     }
 
@@ -219,9 +220,14 @@ public class StrictShardHelper extends ShardHelper {
         }
     }
 
-    private void topBottom(List<List<IRemoteTest>> allShards) {
+    private void topBottom(List<List<IRemoteTest>> allShards, int shardCount) {
+        // We only attempt this when the number of shard is pretty high
+        if (shardCount < 4) {
+            return;
+        }
         // Generate approximate RuntimeHint for each shard
         int index = 0;
+        List<SortShardObj> shardTimes = new ArrayList<>();
         CLog.e("============================");
         for (List<IRemoteTest> shard : allShards) {
             long aggTime = 0l;
@@ -232,9 +238,48 @@ public class StrictShardHelper extends ShardHelper {
                 }
             }
             CLog.e("Shard %s approximate time: %s", index, TimeUtil.formatElapsedTime(aggTime));
+            shardTimes.add(new SortShardObj(index, aggTime));
             index++;
             CLog.e("+++++++++++++++++++++++++++++++++++++++++++");
         }
         CLog.e("============================");
+
+        Collections.sort(shardTimes);
+        if ((shardTimes.get(0).mAggTime - shardTimes.get(shardTimes.size() - 1).mAggTime)
+                < 60 * 60 * 1000l) {
+            return;
+        }
+
+        // take 30% top shard (10 shard = top 3 shards)
+        for (int i = 0; i < (shardCount * 0.3); i++) {
+            CLog.e(
+                    "Top shard %s is index %s with %s",
+                    i,
+                    shardTimes.get(i).mIndex,
+                    TimeUtil.formatElapsedTime(shardTimes.get(i).mAggTime));
+            int give = shardTimes.get(i).mIndex;
+            int receive = shardTimes.get(shardTimes.size() - 1 - i).mIndex;
+            CLog.e("Giving from shard %s to shard %s", give, receive);
+            for (int j = 0; j < (allShards.get(give).size() * (0.2f / (i + 1))); j++) {
+                IRemoteTest givetest = allShards.get(give).remove(0);
+                allShards.get(receive).add(givetest);
+            }
+        }
+    }
+
+    /** Object holder for shard, their index and their aggregated execution time. */
+    private class SortShardObj implements Comparable<SortShardObj> {
+        public final int mIndex;
+        public final Long mAggTime;
+
+        public SortShardObj(int index, long aggTime) {
+            mIndex = index;
+            mAggTime = aggTime;
+        }
+
+        @Override
+        public int compareTo(SortShardObj obj) {
+            return obj.mAggTime.compareTo(mAggTime);
+        }
     }
 }
