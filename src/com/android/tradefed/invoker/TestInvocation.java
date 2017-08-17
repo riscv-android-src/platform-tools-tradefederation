@@ -901,8 +901,6 @@ public class TestInvocation implements ITestInvocation {
                             "No build found to test for device: %s",
                             device.getSerialNumber());
                     rescheduleTest(config, rescheduler);
-                    // save current log contents to global log
-                    getLogRegistry().dumpToGlobalLog(config.getLogOutput());
                     // Set the exit code to error
                     setExitCode(ExitCode.NO_BUILD,
                             new BuildRetrievalError("No build found to test."));
@@ -941,6 +939,22 @@ public class TestInvocation implements ITestInvocation {
         } catch (IOException e) {
             CLog.e(e);
         } finally {
+
+            // Ensure build infos are always cleaned up at the end of invocation.
+            for (String cleanUpDevice : context.getDeviceConfigNames()) {
+                if (context.getBuildInfo(cleanUpDevice) != null) {
+                    try {
+                        config.getDeviceConfigByName(cleanUpDevice)
+                                .getBuildProvider()
+                                .cleanUp(context.getBuildInfo(cleanUpDevice));
+                    } catch (RuntimeException e) {
+                        // We catch an simply log exception in cleanUp to avoid missing any final
+                        // step of the invocation.
+                        CLog.e(e);
+                    }
+                }
+            }
+
             // ensure we always deregister the logger
             for (String deviceName : context.getDeviceConfigNames()) {
                 if (!(context.getDevice(deviceName).getIDevice() instanceof StubDevice)) {
