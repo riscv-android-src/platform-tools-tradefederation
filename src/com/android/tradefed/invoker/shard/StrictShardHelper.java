@@ -182,7 +182,7 @@ public class StrictShardHelper extends ShardHelper {
      */
     private void normalizeDistribution(List<IRemoteTest> listAllTests, int shardCount) {
         final int numRound = shardCount;
-        final int distance = shardCount + 1;
+        final int distance = shardCount - 1;
         for (int i = 0; i < numRound; i++) {
             for (int j = 0; j < listAllTests.size(); j = j + distance) {
                 // Push the test at the end
