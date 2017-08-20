@@ -14,7 +14,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Command line utility for running Android tests through TradeFederation.
+"""
+Command line utility for running Android tests through TradeFederation.
 
 atest helps automate the flow of building test modules across the Android
 code base and executing the tests via the TradeFederation test harness.
@@ -22,22 +23,20 @@ code base and executing the tests via the TradeFederation test harness.
 atest is designed to support any test types that can be ran by TradeFederation.
 """
 
+import logging
 import os
+import subprocess
 import sys
 
 import cli_translator
 
-TARGET_TESTCASES_ENV_VARIBLE = "ANDROID_TARGET_OUT_TESTCASES"
+EXPECTED_VARS = frozenset([
+    'ANDROID_BUILD_TOP',
+    'ANDROID_TARGET_OUT_TESTCASES'])
 EXIT_CODE_ENV_NOT_SETUP = 1
+EXIT_CODE_BUILD_FAILURE = 2
+BUILD_CMD = ['make', '-j', '-C', os.environ.get('ANDROID_BUILD_TOP')]
 
-def _has_environment_variables():
-    """Verify the local environment has been setup to run atest.
-
-    Returns:
-        True if the environment has the correct variables initialized, False
-        otherwise.
-    """
-    return bool(os.environ.get(TARGET_TESTCASES_ENV_VARIBLE))
 
 def _parse_args(argv):
     """Parse command line arguments.
@@ -55,8 +54,75 @@ def _parse_args(argv):
                         help='Tests to run. Can be reference to the Module, '
                              'Class, Package, Suite name, Integration name or '
                              'some combination of these.')
-    # TODO(b/64273625): Add --verbose arg.
+    parser.add_argument('--verbose', '-v', action='store_true',
+                        help='Display DEBUG level logging.')
     return parser.parse_args(argv)
+
+
+def _configure_logging(verbose):
+    """Configure the logger.
+
+    Args:
+        verbose: A boolean. If true display DEBUG level logs.
+    """
+    if verbose:
+        logging.basicConfig(level=logging.DEBUG)
+    else:
+        logging.basicConfig(level=logging.INFO)
+
+
+def _missing_environment_variables():
+    """Verify the local environment has been set up to run atest.
+
+    Returns:
+        List of strings of any missing environment variables.
+    """
+    missing = filter(None, [x for x in EXPECTED_VARS if not os.environ.get(x)])
+    if missing:
+        logging.error('Local environment doesn\'t appear to have been '
+                      'initialized. Did you remember to run lunch? Expected '
+                      'Environment Variables: %s.', missing)
+    return missing
+
+
+def build_tests(build_targets, verbose=False):
+    """Shell out and make build_targets.
+
+    Args:
+        build_targets: A list of strings of build targets to make.
+
+    Returns:
+        Boolean of whether build command was successful.
+    """
+    logging.info('Building tests')
+    cmd = BUILD_CMD + build_targets
+    logging.debug('Executing command: %s', cmd)
+    try:
+        if verbose:
+            subprocess.check_call(cmd, stderr=subprocess.STDOUT)
+        else:
+            # TODO: Save output to a log file.
+            subprocess.check_output(cmd, stderr=subprocess.STDOUT)
+        logging.info('Build successful')
+        return True
+    except subprocess.CalledProcessError as err:
+        logging.error('Error building: %s', build_targets)
+        if err.output:
+            logging.error(err.output)
+        return False
+
+
+def run_tests(run_commands):
+    """Shell out and execute tradefed run commands.
+
+    Args:
+        run_commands: A list of strings of Tradefed run commands.
+    """
+    logging.info('Running tests')
+    # TODO: Build result parser for run command. Until then display raw stdout.
+    for run_command in run_commands:
+        logging.debug('Executing command: %s', run_command)
+        subprocess.check_call(run_command, shell=True, stderr=subprocess.STDOUT)
 
 
 def main(argv):
@@ -65,13 +131,15 @@ def main(argv):
     Args:
         argv: A list of arguments.
     """
-    if not _has_environment_variables():
-        print >> sys.stderr, ("Local environment doesn't appear to have been "
-                              "initialized. Did you remember to run lunch?")
-        return EXIT_CODE_ENV_NOT_SETUP
     args = _parse_args(argv)
+    _configure_logging(args.verbose)
+    if _missing_environment_variables():
+        return EXIT_CODE_ENV_NOT_SETUP
     translator = cli_translator.CLITranslator()
-    translator.translate(args.tests)
+    build_targets, run_commands = translator.translate(args.tests)
+    if not build_tests(build_targets, args.verbose):
+        return EXIT_CODE_BUILD_FAILURE
+    run_tests(run_commands)
 
 
 if __name__ == '__main__':

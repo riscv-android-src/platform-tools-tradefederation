@@ -214,7 +214,11 @@ public abstract class DeviceFlashPreparer implements ITargetCleaner {
                 }
             }
         }
-
+        CLog.i(
+                "Requesting a flashing permit out of the host max limit of %s. Current queue "
+                        + "length: %s",
+                getHostOptions().getConcurrentFlasherLimit(),
+                sConcurrentFlashLock.getQueueLength());
         sConcurrentFlashLock.acquireUninterruptibly();
     }
 

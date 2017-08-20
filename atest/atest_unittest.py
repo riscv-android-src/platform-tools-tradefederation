@@ -21,27 +21,25 @@ import mock
 
 import atest
 
+#pylint: disable=protected-access
 class AtestUnittests(unittest.TestCase):
     """Unit tests for atest.py"""
 
     @mock.patch('os.environ.get', return_value=None)
-    def test_has_environment_variables_uninitialized(self, _):
+    def test_missing_environment_variables_uninitialized(self, _):
         """Test _has_environment_variables when no env vars."""
-        #pylint: disable=protected-access
-        self.assertFalse(atest._has_environment_variables())
+        self.assertTrue(atest._missing_environment_variables())
 
 
     @mock.patch('os.environ.get', return_value='out/testcases/')
-    def test_has_environment_variables_initialized(self, _):
+    def test_missing_environment_variables_initialized(self, _):
         """Test _has_environment_variables when env vars."""
-        #pylint: disable=protected-access
-        self.assertTrue(atest._has_environment_variables())
+        self.assertFalse(atest._missing_environment_variables())
 
 
     def test_parse_args(self):
         """Test _parse_args parses command line args."""
         args = ['test_name_one', 'test_name_two']
-        #pylint: disable=protected-access
         arg1, arg2 = atest._parse_args(args).tests
         self.assertTrue(arg1, 'test_name_one')
         self.assertTrue(arg2, 'test_name_two')
