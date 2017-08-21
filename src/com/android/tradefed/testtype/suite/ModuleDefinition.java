@@ -358,6 +358,9 @@ public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestColl
                         getId(), StreamUtil.getStackTrace(tearDownException));
                 throw tearDownException;
             } finally {
+                if (failureListener != null) {
+                    failureListener.join();
+                }
                 mElapsedTearDown = getCurrentTime() - cleanStartTime;
                 // finalize results
                 if (preparationException == null) {
