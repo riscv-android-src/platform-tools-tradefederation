@@ -108,6 +108,17 @@ public class RunUtilFuncTest extends TestCase {
     }
 
     /**
+     * Test that that running a command with a 0 timeout results in no timeout being applied to it.
+     */
+    public void testRunTimedCmd_noTimeout() {
+        // When there is no timeout, max_poll interval will be 30sec so we need a test with more
+        // than 30sec
+        CommandResult result = RunUtil.getDefault().runTimedCmd(0l, "sleep", "35");
+        assertTrue(CommandStatus.SUCCESS.equals(result.getStatus()));
+        assertTrue(result.getStdout().isEmpty());
+    }
+
+    /**
      * Test case for {@link RunUtil#runTimedCmd(long, String...)} for a command that produces
      * a large amount of output
      * @throws IOException
