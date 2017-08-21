@@ -156,10 +156,6 @@ public class TestFilePushSetup implements ITargetPreparer {
                             "Could not find test file %s directory in extracted tests.zip",
                             fileName), device.getDeviceDescriptor());
                 } else {
-                    CLog.w(String.format(
-                            "Could not find test file %s directory in extracted tests.zip, but" +
-                            "will continue test setup as throw-if-not-found is set to false",
-                            fileName));
                     continue;
                 }
             }
@@ -174,7 +170,7 @@ public class TestFilePushSetup implements ITargetPreparer {
             device.executeShellCommand(String.format("chown system.system %s", remoteFileName));
             filePushed++;
         }
-        if (filePushed == 0 && mThrowIfNoFile) {
+        if (filePushed == 0) {
             throw new TargetSetupError("No file is pushed from tests.zip",
                     device.getDeviceDescriptor());
         }
