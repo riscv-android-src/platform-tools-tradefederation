@@ -154,7 +154,7 @@ public class NativeDevice implements IManagedTestDevice {
     private static final String SIM_OPERATOR_PROP = "gsm.operator.alpha";
 
     static final String MAC_ADDRESS_PATTERN = "([0-9a-fA-F]{2}:){5}[0-9a-fA-F]{2}";
-    static final String MAC_ADDRESS_COMMAND = "cat /sys/class/net/wlan0/address";
+    static final String MAC_ADDRESS_COMMAND = "su root cat /sys/class/net/wlan0/address";
 
 
     /** The network monitoring interval in ms. */
