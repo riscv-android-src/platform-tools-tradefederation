@@ -33,6 +33,7 @@ import com.android.tradefed.device.ITestDevice.RecoveryMode;
 import com.android.tradefed.device.TestDeviceOptions;
 import com.android.tradefed.host.IHostOptions;
 import com.android.tradefed.targetprep.IDeviceFlasher.UserDataFlashOption;
+import com.android.tradefed.util.CommandStatus;
 import com.android.tradefed.util.FileUtil;
 import com.android.tradefed.util.RunUtil;
 
@@ -57,6 +58,7 @@ public class DeviceFlashPreparerTest {
     private IDeviceBuildInfo mMockBuildInfo;
     private IHostOptions mMockHostOptions;
     private File mTmpDir;
+    private boolean mFlashingMetricsReported;
 
     @Before
     public void setUp() throws Exception {
@@ -68,6 +70,7 @@ public class DeviceFlashPreparerTest {
         mMockBuildInfo.setDeviceImageFile(new File("foo"), "0");
         mMockBuildInfo.setBuildFlavor("flavor");
         mMockHostOptions = EasyMock.createMock(IHostOptions.class);
+        mFlashingMetricsReported = false;
         mDeviceFlashPreparer = new DeviceFlashPreparer() {
             @Override
             protected IDeviceFlasher createFlasher(ITestDevice device) {
@@ -82,6 +85,13 @@ public class DeviceFlashPreparerTest {
             @Override
             IHostOptions getHostOptions() {
                 return mMockHostOptions;
+            }
+
+            @Override
+            protected void reportFlashMetrics(String branch, String buildFlavor, String buildId,
+                    String serial, long queueTime, long flashingTime,
+                    CommandStatus flashingStatus) {
+                mFlashingMetricsReported = true;
             }
         };
         // Reset default settings
@@ -101,9 +111,12 @@ public class DeviceFlashPreparerTest {
     @Test
     public void testSetup() throws Exception {
         doSetupExpectations();
+        // report flashing success in normal case
+        EasyMock.expect(mMockFlasher.getSystemFlashingStatus()).andReturn(CommandStatus.SUCCESS);
         EasyMock.replay(mMockFlasher, mMockDevice);
         mDeviceFlashPreparer.setUp(mMockDevice, mMockBuildInfo);
         EasyMock.verify(mMockFlasher, mMockDevice);
+        assertTrue("should report flashing metrics in normal case", mFlashingMetricsReported);
     }
 
     /**
@@ -166,6 +179,8 @@ public class DeviceFlashPreparerTest {
         EasyMock.expect(mMockDevice.getDeviceDescriptor()).andReturn(
                 new DeviceDescriptor("SERIAL", false, DeviceAllocationState.Available, "unknown",
                         "unknown", "unknown", "unknown", "unknown"));
+        // report null for flashing status since we didn't flash it
+        EasyMock.expect(mMockFlasher.getSystemFlashingStatus()).andReturn(null);
         EasyMock.replay(mMockFlasher, mMockDevice);
         try {
             mDeviceFlashPreparer.setUp(mMockDevice, mMockBuildInfo);
@@ -176,6 +191,36 @@ public class DeviceFlashPreparerTest {
             assertTrue(e instanceof DeviceFailedToBootError);
         }
         EasyMock.verify(mMockFlasher, mMockDevice);
+        assertTrue("should report flashing metrics with device boot failure",
+                mFlashingMetricsReported);
+    }
+
+    /**
+     * Test {@link DeviceFlashPreparer#setUp(ITestDevice, IBuildInfo)} when flashing step hits
+     * device failure.
+     **/
+    @Test
+    public void testSetup_flashException() throws Exception {
+        mMockDevice.setRecoveryMode(RecoveryMode.ONLINE);
+        mMockFlasher.overrideDeviceOptions(mMockDevice);
+        mMockFlasher.setForceSystemFlash(false);
+        mMockFlasher.setDataWipeSkipList(Arrays.asList(new String[]{}));
+        mMockFlasher.flash(mMockDevice, mMockBuildInfo);
+        EasyMock.expectLastCall().andThrow(new DeviceNotAvailableException());
+        mMockFlasher.setWipeTimeout(EasyMock.anyLong());
+        // report null for flashing status since we didn't flash it
+        EasyMock.expect(mMockFlasher.getSystemFlashingStatus()).andReturn(null);
+        EasyMock.replay(mMockFlasher, mMockDevice);
+        try {
+            mDeviceFlashPreparer.setUp(mMockDevice, mMockBuildInfo);
+            fail("DeviceNotAvailableException not thrown");
+        } catch (DeviceNotAvailableException e) {
+            // expected
+            assertTrue(e instanceof DeviceNotAvailableException);
+        }
+        EasyMock.verify(mMockFlasher, mMockDevice);
+        assertTrue("should report flashing metrics with device flash failure",
+                mFlashingMetricsReported);
     }
 
     /** Ensure that the flasher instance limiting machinery is working as expected. */

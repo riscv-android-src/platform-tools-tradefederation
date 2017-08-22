@@ -19,6 +19,7 @@ package com.android.tradefed.targetprep;
 import com.android.tradefed.build.IDeviceBuildInfo;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
+import com.android.tradefed.util.CommandStatus;
 
 import java.util.Collection;
 
@@ -110,4 +111,12 @@ public interface IDeviceFlasher {
     public void flash(ITestDevice device, IDeviceBuildInfo deviceBuild) throws TargetSetupError,
             DeviceNotAvailableException;
 
+    /**
+     * Retrieve the command execution status for flashing primary system partitions.
+     * <p>
+     * Note that if system partitions are not flashed (system already has the build to be flashed)
+     * the command status may be <code>null</code>
+     * @return
+     */
+    public CommandStatus getSystemFlashingStatus();
 }
