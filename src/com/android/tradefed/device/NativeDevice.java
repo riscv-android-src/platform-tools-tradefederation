@@ -368,6 +368,9 @@ public class NativeDevice implements IManagedTestDevice {
      */
     @Override
     public String getProperty(final String name) throws DeviceNotAvailableException {
+        if (getIDevice() instanceof StubDevice) {
+            return null;
+        }
         if (!DeviceState.ONLINE.equals(getIDevice().getState())) {
             CLog.d("Device %s is not online cannot get property %s.", getSerialNumber(), name);
             return null;
