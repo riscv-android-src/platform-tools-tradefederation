@@ -108,12 +108,12 @@ public class TestFailureListener implements ITestInvocationListener {
                 mLogcatOnFailure, mScreenshotOnFailure);
         if (mScreenshotOnFailure) {
             try {
-                InputStreamSource screenSource = mDevice.getScreenshot();
-                testLog(
-                        String.format("%s-screenshot", test.toString()),
-                        LogDataType.PNG,
-                        screenSource);
-                screenSource.cancel();
+                try (InputStreamSource screenSource = mDevice.getScreenshot()) {
+                    testLog(
+                            String.format("%s-screenshot", test.toString()),
+                            LogDataType.PNG,
+                            screenSource);
+                }
             } catch (DeviceNotAvailableException e) {
                 CLog.e(e);
                 CLog.e("Device %s became unavailable while capturing screenshot",
@@ -121,12 +121,12 @@ public class TestFailureListener implements ITestInvocationListener {
             }
         }
         if (mBugReportOnFailure) {
-           InputStreamSource bugSource = mDevice.getBugreport();
-            testLog(
-                    String.format("%s-bugreport", test.toString()),
-                    LogDataType.BUGREPORT,
-                    bugSource);
-           bugSource.cancel();
+            try (InputStreamSource bugSource = mDevice.getBugreport()) {
+                testLog(
+                        String.format("%s-bugreport", test.toString()),
+                        LogDataType.BUGREPORT,
+                        bugSource);
+            }
         }
         if (mLogcatOnFailure) {
             InputStreamSource logSource = null;
@@ -139,7 +139,7 @@ public class TestFailureListener implements ITestInvocationListener {
                 logSource = mDevice.getLogcat(mMaxLogcatBytes);
             }
             testLog(String.format("%s-logcat", test.toString()), LogDataType.LOGCAT, logSource);
-            logSource.cancel();
+            logSource.close();
         }
         if (mRebootOnFailure) {
             try {
