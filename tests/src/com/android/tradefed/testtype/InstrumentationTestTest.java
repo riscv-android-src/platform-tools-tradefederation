@@ -15,6 +15,9 @@
  */
 package com.android.tradefed.testtype;
 
+import static com.google.common.truth.Truth.assertThat;
+import static org.junit.Assert.fail;
+
 import com.android.ddmlib.IDevice;
 import com.android.ddmlib.testrunner.IRemoteAndroidTestRunner;
 import com.android.ddmlib.testrunner.ITestRunListener;
@@ -25,10 +28,12 @@ import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.util.ListInstrumentationParser;
 
-import junit.framework.TestCase;
-
 import org.easymock.EasyMock;
 import org.easymock.IAnswer;
+import org.junit.Before;
+import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.junit.runners.JUnit4;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -37,10 +42,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
-/**
- * Unit tests for {@link InstrumentationTest}
- */
-public class InstrumentationTestTest extends TestCase {
+/** Unit tests for {@link InstrumentationTest} */
+@RunWith(JUnit4.class)
+public class InstrumentationTestTest {
 
     private static final int TEST_TIMEOUT = 0;
     private static final long SHELL_TIMEOUT = 0;
@@ -94,10 +98,8 @@ public class InstrumentationTestTest extends TestCase {
                 ITestRunListener listener) throws DeviceNotAvailableException;
     }
 
-    @Override
-    protected void setUp() throws Exception {
-        super.setUp();
-
+    @Before
+    public void setUp() throws Exception {
         mMockIDevice = EasyMock.createMock(IDevice.class);
         mMockTestDevice = EasyMock.createMock(ITestDevice.class);
         EasyMock.expect(mMockTestDevice.getIDevice()).andStubReturn(mMockIDevice);
@@ -140,9 +142,8 @@ public class InstrumentationTestTest extends TestCase {
                 Long.toString(SHELL_TIMEOUT));
     }
 
-    /**
-     * Test normal run scenario.
-     */
+    /** Test normal run scenario. */
+    @Test
     public void testRun() throws Exception {
         // verify the mock listener is passed through to the runner
         RunTestAnswer runTestResponse = new RunTestAnswer() {
@@ -159,6 +160,7 @@ public class InstrumentationTestTest extends TestCase {
         mInstrumentationTest.run(mMockListener);
     }
 
+    @Test
     public void testRun_bothAbi() throws DeviceNotAvailableException {
         mInstrumentationTest = new InstrumentationTest();
         mInstrumentationTest.setPackageName(TEST_PACKAGE_VALUE);
@@ -184,9 +186,8 @@ public class InstrumentationTestTest extends TestCase {
         fail("Should have thrown an exception.");
     }
 
-    /**
-     * Test normal run scenario with a test class specified.
-     */
+    /** Test normal run scenario with a test class specified. */
+    @Test
     public void testRun_class() throws Exception {
         final String className = "FooTest";
         mMockRemoteRunner.setClassName(className);
@@ -197,9 +198,8 @@ public class InstrumentationTestTest extends TestCase {
         EasyMock.verify(mMockRemoteRunner, mMockTestDevice);
     }
 
-    /**
-     * Test normal run scenario with a test class and method specified.
-     */
+    /** Test normal run scenario with a test class and method specified. */
+    @Test
     public void testRun_classMethod() throws Exception {
         final String className = "FooTest";
         final String methodName = "testFoo";
@@ -212,9 +212,8 @@ public class InstrumentationTestTest extends TestCase {
         EasyMock.verify(mMockRemoteRunner, mMockTestDevice);
     }
 
-    /**
-     * Test normal run scenario with a test package specified.
-     */
+    /** Test normal run scenario with a test package specified. */
+    @Test
     public void testRun_testPackage() throws Exception {
         final String testPackageName = "com.foo";
         // expect this call
@@ -226,9 +225,8 @@ public class InstrumentationTestTest extends TestCase {
         EasyMock.verify(mMockRemoteRunner, mMockTestDevice);
     }
 
-    /**
-     * Verify test package name is not passed to the runner if class name is set
-     */
+    /** Verify test package name is not passed to the runner if class name is set */
+    @Test
     public void testRun_testPackageAndClass() throws Exception {
         final String testClassName = "FooTest";
         // expect this call
@@ -241,9 +239,8 @@ public class InstrumentationTestTest extends TestCase {
         EasyMock.verify(mMockRemoteRunner, mMockTestDevice);
     }
 
-    /**
-     * Test that IllegalArgumentException is thrown when attempting run without setting package.
-     */
+    /** Test that IllegalArgumentException is thrown when attempting run without setting package. */
+    @Test
     public void testRun_noPackage() throws Exception {
         mInstrumentationTest.setPackageName(null);
         EasyMock.replay(mMockRemoteRunner);
@@ -255,9 +252,8 @@ public class InstrumentationTestTest extends TestCase {
         }
     }
 
-    /**
-     * Test that IllegalArgumentException is thrown when attempting run without setting device.
-     */
+    /** Test that IllegalArgumentException is thrown when attempting run without setting device. */
+    @Test
     public void testRun_noDevice() throws Exception {
         mInstrumentationTest.setDevice(null);
         EasyMock.replay(mMockRemoteRunner);
@@ -269,9 +265,8 @@ public class InstrumentationTestTest extends TestCase {
         }
     }
 
-    /**
-     * Test the rerun mode when test run has no tests.
-     */
+    /** Test the rerun mode when test run has no tests. */
+    @Test
     public void testRun_rerunEmpty() throws Exception {
         mInstrumentationTest.setRerunMode(true);
         // expect test collection mode run first to collect tests
@@ -298,9 +293,8 @@ public class InstrumentationTestTest extends TestCase {
         EasyMock.verify(mMockRemoteRunner, mMockTestDevice, mMockListener);
     }
 
-    /**
-     * Test the rerun mode when first test run fails.
-     */
+    /** Test the rerun mode when first test run fails. */
+    @Test
     public void testRun_rerun() throws Exception {
         RunTestAnswer firstRunAnswer = new RunTestAnswer() {
             @Override
@@ -322,9 +316,8 @@ public class InstrumentationTestTest extends TestCase {
         EasyMock.verify(mMockRemoteRunner, mMockTestDevice, mMockListener);
     }
 
-    /**
-     * Test the reboot before re-run option.
-     */
+    /** Test the reboot before re-run option. */
+    @Test
     public void testRun_rebootBeforeReRun() throws Exception {
         mInstrumentationTest.setRebootBeforeReRun(true);
         RunTestAnswer firstRunAnswer = new RunTestAnswer() {
@@ -348,9 +341,9 @@ public class InstrumentationTestTest extends TestCase {
     }
 
     /**
-     * Test resuming a test run when first run is aborted due to
-     * {@link DeviceNotAvailableException}
+     * Test resuming a test run when first run is aborted due to {@link DeviceNotAvailableException}
      */
+    @Test
     public void testRun_resume() throws Exception {
         RunTestAnswer firstRunResponse = new RunTestAnswer() {
             @Override
@@ -383,6 +376,7 @@ public class InstrumentationTestTest extends TestCase {
     /**
      * Test that IllegalArgumentException is thrown when attempting run with negative timeout args.
      */
+    @Test
     public void testRun_negativeTimeouts() throws Exception {
         mInstrumentationTest.setShellTimeout(-1);
         mInstrumentationTest.setTestTimeout(-2);
@@ -464,9 +458,8 @@ public class InstrumentationTestTest extends TestCase {
         mMockListener.testRunEnded(1, EMPTY_STRING_MAP);
     }
 
-    /**
-     * Test that IllegalArgumentException is thrown if an invalid test size is provided.
-     */
+    /** Test that IllegalArgumentException is thrown if an invalid test size is provided. */
+    @Test
     public void testRun_badTestSize() throws Exception {
         mInstrumentationTest.setTestSize("foo");
         EasyMock.replay(mMockRemoteRunner);
@@ -478,17 +471,20 @@ public class InstrumentationTestTest extends TestCase {
         }
     }
 
+    @Test
     public void testQueryRunnerName() throws Exception {
         String queriedRunner = mInstrumentationTest.queryRunnerName();
-        assertEquals("runner1", queriedRunner);
+        assertThat(queriedRunner).isEqualTo("runner1");
     }
 
+    @Test
     public void testQueryRunnerName_noMatch() throws Exception {
         mInstrumentationTest.setPackageName("noMatchPackage");
         String queriedRunner = mInstrumentationTest.queryRunnerName();
-        assertNull(queriedRunner);
+        assertThat(queriedRunner).isNull();
     }
 
+    @Test
     public void testRun_noMatchingRunner() throws Exception {
         mInstrumentationTest.setPackageName("noMatchPackage");
         mInstrumentationTest.setRunnerName(null);
@@ -505,6 +501,7 @@ public class InstrumentationTestTest extends TestCase {
      * Test for {@link InstrumentationTest#collectTestsAndRetry(IRemoteAndroidTestRunner,
      * ITestInvocationListener)} when the collection fails.
      */
+    @Test
     public void testCollectTestsAndRetry_Failure() throws Exception {
         mMockRemoteRunner = EasyMock.createMock(IRemoteAndroidTestRunner.class);
         CollectTestAnswer collectTestAnswer =
@@ -535,6 +532,7 @@ public class InstrumentationTestTest extends TestCase {
      * ITestInvocationListener)} when the tests collection fails but we do not enforce the format,
      * so we don't throw an exception.
      */
+    @Test
     public void testCollectTestsAndRetry_notEnforced() throws Exception {
         mMockRemoteRunner = EasyMock.createMock(IRemoteAndroidTestRunner.class);
         CollectTestAnswer collectTestAnswer =
@@ -553,7 +551,7 @@ public class InstrumentationTestTest extends TestCase {
         mInstrumentationTest.setEnforceFormat(false);
         Collection<TestIdentifier> res =
                 mInstrumentationTest.collectTestsAndRetry(mMockRemoteRunner, null);
-        assertNull(res);
+        assertThat(res).isNull();
         EasyMock.verify(mMockRemoteRunner, mMockListener, mMockTestDevice);
     }
 
@@ -561,6 +559,7 @@ public class InstrumentationTestTest extends TestCase {
      * Test that if we successfully collect a list of tests and the run crash and try to report 0 we
      * instead do report the number of collected test to get an appropriate count.
      */
+    @Test
     public void testCollectWorks_RunCrash() throws Exception {
         mInstrumentationTest =
                 new InstrumentationTest() {
