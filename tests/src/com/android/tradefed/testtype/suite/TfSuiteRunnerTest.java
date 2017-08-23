@@ -181,8 +181,10 @@ public class TfSuiteRunnerTest {
         mRunner.setSystemStatusChecker(new ArrayList<>());
         mRunner.setInvocationContext(new InvocationContext());
         // runs the expanded suite
+        listener.testModuleStarted(EasyMock.anyObject());
         listener.testRunStarted("suite/stub1", 0);
         listener.testRunEnded(EasyMock.anyLong(), EasyMock.anyObject());
+        listener.testModuleEnded();
         EasyMock.replay(listener);
         mRunner.run(listener);
         EasyMock.verify(listener);

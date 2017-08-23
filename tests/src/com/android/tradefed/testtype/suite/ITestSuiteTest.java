@@ -166,11 +166,13 @@ public class ITestSuiteTest {
 
     /** Helper to expect the test run callback. */
     private void expectTestRun(ITestInvocationListener listener) {
+        listener.testModuleStarted(EasyMock.anyObject());
         listener.testRunStarted(TEST_CONFIG_NAME, 1);
         TestIdentifier test = new TestIdentifier(EMPTY_CONFIG, EMPTY_CONFIG);
         listener.testStarted(test, 0);
         listener.testEnded(test, 5, Collections.emptyMap());
         listener.testRunEnded(EasyMock.anyLong(), EasyMock.anyObject());
+        listener.testModuleEnded();
     }
 
     /** Test for {@link ITestSuite#run(ITestInvocationListener)}. */
@@ -301,11 +303,13 @@ public class ITestSuiteTest {
         setter.setOptionValue("skip-all-system-status-check", "true");
         setter.setOptionValue("reboot-per-module", "true");
         EasyMock.expect(mMockDevice.getProperty("ro.build.type")).andReturn("user");
+        mMockListener.testModuleStarted(EasyMock.anyObject());
         mMockListener.testRunStarted(TEST_CONFIG_NAME, 1);
         EasyMock.expectLastCall().times(1);
         mMockListener.testRunFailed("Module test only ran 0 out of 1 expected tests.");
         mMockListener.testRunEnded(EasyMock.anyLong(), EasyMock.anyObject());
         EasyMock.expectLastCall().times(1);
+        mMockListener.testModuleEnded();
         replayMocks();
         mTestSuite.run(mMockListener);
         verifyMocks();
@@ -343,11 +347,13 @@ public class ITestSuiteTest {
         setter.setOptionValue("skip-all-system-status-check", "true");
         setter.setOptionValue("reboot-per-module", "true");
         EasyMock.expect(mMockDevice.getProperty("ro.build.type")).andReturn("user");
+        mMockListener.testModuleStarted(EasyMock.anyObject());
         mMockListener.testRunStarted(TEST_CONFIG_NAME, 1);
         EasyMock.expectLastCall().times(1);
         mMockListener.testRunFailed("Module test only ran 0 out of 1 expected tests.");
         mMockListener.testRunEnded(EasyMock.anyLong(), EasyMock.anyObject());
         EasyMock.expectLastCall().times(1);
+        mMockListener.testModuleEnded();
         replayMocks();
         mTestSuite.run(mMockListener);
         verifyMocks();
