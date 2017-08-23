@@ -322,9 +322,9 @@ public abstract class SubprocessTfLauncher
         if (fileToExport == null)
             return;
 
-        FileInputStreamSource inputStream = new FileInputStreamSource(fileToExport);
-        listener.testLog(fileToExport.getName(), LogDataType.TEXT, inputStream);
-        inputStream.cancel();
+        try (FileInputStreamSource inputStream = new FileInputStreamSource(fileToExport)) {
+            listener.testLog(fileToExport.getName(), LogDataType.TEXT, inputStream);
+        }
         FileUtil.deleteFile(fileToExport);
     }
 
