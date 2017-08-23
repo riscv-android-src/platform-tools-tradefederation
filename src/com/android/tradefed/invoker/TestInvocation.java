@@ -704,9 +704,9 @@ public class TestInvocation implements ITestInvocation {
     }
 
     private void reportHostLog(ITestInvocationListener listener, ILeveledLogOutput logger) {
-        InputStreamSource globalLogSource = logger.getLog();
-        listener.testLog(TRADEFED_LOG_NAME, LogDataType.TEXT, globalLogSource);
-        globalLogSource.cancel();
+        try (InputStreamSource globalLogSource = logger.getLog()) {
+            listener.testLog(TRADEFED_LOG_NAME, LogDataType.TEXT, globalLogSource);
+        }
         // once tradefed log is reported, all further log calls for this invocation can get lost
         // unregister logger so future log calls get directed to the tradefed global log
         getLogRegistry().unregisterLogger();
