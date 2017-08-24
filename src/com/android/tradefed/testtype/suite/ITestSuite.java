@@ -33,6 +33,7 @@ import com.android.tradefed.suite.checker.ISystemStatusCheckerReceiver;
 import com.android.tradefed.testtype.IBuildReceiver;
 import com.android.tradefed.testtype.IDeviceTest;
 import com.android.tradefed.testtype.IInvocationContextReceiver;
+import com.android.tradefed.testtype.IMultiDeviceTest;
 import com.android.tradefed.testtype.IRemoteTest;
 import com.android.tradefed.testtype.IRuntimeHintProvider;
 import com.android.tradefed.testtype.IShardableTest;
@@ -146,6 +147,7 @@ public abstract class ITestSuite
             // If we are sharded and already know what to run then we just do it.
             runModules.add(mDirectModule);
             mDirectModule.setDevice(mDevice);
+            mDirectModule.setDeviceInfos(mContext.getDeviceBuildMap());
             mDirectModule.setBuild(mBuildInfo);
             return runModules;
         }
@@ -172,6 +174,7 @@ public abstract class ITestSuite
                             config.getValue().getMultiTargetPreparers(),
                             config.getValue().getConfigurationDescription());
             module.setDevice(mDevice);
+            module.setDeviceInfos(mContext.getDeviceBuildMap());
             module.setBuild(mBuildInfo);
             runModules.add(module);
         }
@@ -223,6 +226,13 @@ public abstract class ITestSuite
 
                 try {
                     mContext.setModuleInvocationContext(module.getModuleInvocationContext());
+                    // Populate the module context with devices and builds
+                    for (String deviceName : mContext.getDeviceConfigNames()) {
+                        module.getModuleInvocationContext()
+                                .addAllocatedDevice(deviceName, mContext.getDevice(deviceName));
+                        module.getModuleInvocationContext()
+                                .addDeviceBuildInfo(deviceName, mContext.getBuildInfo(deviceName));
+                    }
                     runSingleModule(module, listener, failureListener);
                 } finally {
                     // clear out module invocation context since we are now done with module
@@ -304,12 +314,12 @@ public abstract class ITestSuite
         if (!failures.isEmpty()) {
             CLog.w("There are failed system status checkers: %s capturing a bugreport",
                     failures.toString());
-            InputStreamSource bugSource = device.getBugreport();
-            listener.testLog(
-                    String.format("bugreport-checker-pre-module-%s", moduleName),
-                    LogDataType.BUGREPORT,
-                    bugSource);
-            bugSource.cancel();
+            try (InputStreamSource bugSource = device.getBugreport()) {
+                listener.testLog(
+                        String.format("bugreport-checker-pre-module-%s", moduleName),
+                        LogDataType.BUGREPORT,
+                        bugSource);
+            }
         }
 
         // We report System checkers like tests.
@@ -339,12 +349,12 @@ public abstract class ITestSuite
         if (!failures.isEmpty()) {
             CLog.w("There are failed system status checkers: %s capturing a bugreport",
                     failures.toString());
-            InputStreamSource bugSource = device.getBugreport();
-            listener.testLog(
-                    String.format("bugreport-checker-post-module-%s", moduleName),
-                    LogDataType.BUGREPORT,
-                    bugSource);
-            bugSource.cancel();
+            try (InputStreamSource bugSource = device.getBugreport()) {
+                listener.testLog(
+                        String.format("bugreport-checker-post-module-%s", moduleName),
+                        LogDataType.BUGREPORT,
+                        bugSource);
+            }
         }
 
         // We report System checkers like tests.
@@ -418,6 +428,9 @@ public abstract class ITestSuite
                 }
                 if (test instanceof IDeviceTest) {
                     ((IDeviceTest) test).setDevice(mDevice);
+                }
+                if (test instanceof IMultiDeviceTest) {
+                    ((IMultiDeviceTest) test).setDeviceInfos(mContext.getDeviceBuildMap());
                 }
             }
         }
