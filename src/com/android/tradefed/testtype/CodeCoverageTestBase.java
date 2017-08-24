@@ -256,7 +256,7 @@ public abstract class CodeCoverageTestBase<T extends CodeCoverageReportFormat>
 
         // Log the data
         logger.testLog(dataName, dataType, streamSource);
-        streamSource.cancel();
+        streamSource.close();
     }
 
     /** Returns a new {@link ListInstrumentationParser}. Exposed for unit testing. */
