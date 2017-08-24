@@ -41,6 +41,7 @@ import com.android.tradefed.targetprep.TargetSetupError;
 import com.android.tradefed.targetprep.multi.IMultiTargetPreparer;
 import com.android.tradefed.testtype.IBuildReceiver;
 import com.android.tradefed.testtype.IDeviceTest;
+import com.android.tradefed.testtype.IInvocationContextReceiver;
 import com.android.tradefed.testtype.IMultiDeviceTest;
 import com.android.tradefed.testtype.IRemoteTest;
 import com.android.tradefed.testtype.IRuntimeHintProvider;
@@ -285,6 +286,10 @@ public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestColl
                 if (test instanceof IMultiDeviceTest) {
                     ((IMultiDeviceTest) test).setDeviceInfos(mDeviceInfos);
                 }
+                if (test instanceof IInvocationContextReceiver) {
+                    ((IInvocationContextReceiver) test)
+                            .setInvocationContext(mModuleInvocationContext);
+                }
                 if (test instanceof ISystemStatusCheckerReceiver) {
                     // We do not pass down Status checker because they are already running at the
                     // top level suite.
@@ -358,6 +363,9 @@ public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestColl
                         getId(), StreamUtil.getStackTrace(tearDownException));
                 throw tearDownException;
             } finally {
+                if (failureListener != null) {
+                    failureListener.join();
+                }
                 mElapsedTearDown = getCurrentTime() - cleanStartTime;
                 // finalize results
                 if (preparationException == null) {

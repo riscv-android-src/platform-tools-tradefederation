@@ -23,7 +23,7 @@ import logging
 from collections import namedtuple
 
 
-RUN_CMD = ('tradefed.sh run commandAndExit template/local_min '
+RUN_CMD = ('atest_tradefed.sh run commandAndExit template/local_min '
            '--template:map test=%s')
 TestInfo = namedtuple('TestInfo', ['ref_type', 'module_name'])
 
