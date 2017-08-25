@@ -276,6 +276,7 @@ public class TestDevice extends NativeDevice {
         }
         ScreenshotAction action = new ScreenshotAction();
         if (performDeviceAction("screenshot", action, MAX_RETRY_ATTEMPTS)) {
+            CLog.d("done taking screenshot, we now compress.");
             byte[] imageData =
                     compressRawImage(action.mRawScreenshot, format.toUpperCase(), rescale);
             if (imageData != null) {
