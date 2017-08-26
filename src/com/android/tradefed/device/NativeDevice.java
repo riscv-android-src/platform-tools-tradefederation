@@ -579,6 +579,35 @@ public class NativeDevice implements IManagedTestDevice {
         performDeviceAction(String.format("shell %s", command), action, retryAttempts);
     }
 
+    /** {@inheritDoc} */
+    @Override
+    public void executeShellCommand(
+            final String command,
+            final IShellOutputReceiver receiver,
+            final long maxTimeoutForCommand,
+            final long maxTimeToOutputShellResponse,
+            final TimeUnit timeUnit,
+            final int retryAttempts)
+            throws DeviceNotAvailableException {
+        DeviceAction action =
+                new DeviceAction() {
+                    @Override
+                    public boolean run()
+                            throws TimeoutException, IOException, AdbCommandRejectedException,
+                                    ShellCommandUnresponsiveException {
+                        getIDevice()
+                                .executeShellCommand(
+                                        command,
+                                        receiver,
+                                        maxTimeoutForCommand,
+                                        maxTimeToOutputShellResponse,
+                                        timeUnit);
+                        return true;
+                    }
+                };
+        performDeviceAction(String.format("shell %s", command), action, retryAttempts);
+    }
+
     /**
      * {@inheritDoc}
      */
