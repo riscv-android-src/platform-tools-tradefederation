@@ -355,9 +355,9 @@ public class TestDeviceTest extends TestCase {
      * product type property
      */
     public void testGetProductType_adb() throws Exception {
-        EasyMock.expect(mMockIDevice.getProperty("ro.hardware")).andReturn(null);
+        EasyMock.expect(mMockIDevice.getProperty(DeviceProperties.BOARD)).andReturn(null);
         final String expectedOutput = "nexusone";
-        injectSystemProperty("ro.hardware", expectedOutput);
+        injectSystemProperty(DeviceProperties.BOARD, expectedOutput);
         EasyMock.replay(mMockIDevice);
         assertEquals(expectedOutput, mTestDevice.getProductType());
     }
@@ -368,7 +368,7 @@ public class TestDeviceTest extends TestCase {
      */
     public void testGetProductType_adbFail() throws Exception {
         EasyMock.expect(mMockIDevice.getProperty(EasyMock.<String>anyObject())).andStubReturn(null);
-        injectSystemProperty("ro.hardware", null).times(3);
+        injectSystemProperty(DeviceProperties.BOARD, null).times(3);
         EasyMock.expect(mMockIDevice.getState()).andReturn(DeviceState.ONLINE).times(2);
         EasyMock.replay(mMockIDevice);
         try {

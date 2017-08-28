@@ -1087,9 +1087,9 @@ public class DeviceManagerTest extends TestCase {
         EasyMock.expect(mMockIDevice.getState()).andReturn(DeviceState.ONLINE);
         EasyMock.expect(mMockTestDevice.getAllocationState())
                 .andReturn(DeviceAllocationState.Available);
-        EasyMock.expect(mMockIDevice.getProperty("ro.hardware")).andReturn("hardware_test");
-        EasyMock.expect(mMockIDevice.getProperty("ro.product.device")).andReturn("product_test");
-        EasyMock.expect(mMockIDevice.getProperty("ro.build.version.sdk")).andReturn("sdk");
+        EasyMock.expect(mMockIDevice.getProperty(DeviceProperties.BOARD)).andReturn("hardware_test");
+        EasyMock.expect(mMockIDevice.getProperty(DeviceProperties.VARIANT)).andReturn("product_test");
+        EasyMock.expect(mMockIDevice.getProperty(DeviceProperties.SDK_VERSION)).andReturn("sdk");
         EasyMock.expect(mMockIDevice.getProperty("ro.build.id")).andReturn("bid_test");
         SettableFuture<Integer> future = SettableFuture.create();
         future.set(50);

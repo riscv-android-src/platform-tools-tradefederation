@@ -435,7 +435,7 @@ public class NativeDevice implements IManagedTestDevice {
      *        device's product type cannot be found.
      */
     private String internalGetProductType(int retryAttempts) throws DeviceNotAvailableException {
-        String productType = internalGetProperty("ro.hardware", "product", "Product type");
+        String productType = internalGetProperty(DeviceProperties.BOARD, "product", "Product type");
 
         // Things will likely break if we don't have a valid product type.  Try recovery (in case
         // the device is only partially booted for some reason), and if that doesn't help, bail.
