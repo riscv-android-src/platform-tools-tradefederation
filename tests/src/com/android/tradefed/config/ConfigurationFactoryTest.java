@@ -1210,6 +1210,35 @@ public class ConfigurationFactoryTest extends TestCase {
                 .getDeviceRequirements().getSerials());
     }
 
+    /**
+     * Test that when parsing command line options, boolean options with Device tag and namespace
+     * are correctly assigned.
+     */
+    public void testCreateConfiguration_injectDeviceBooleanOption() throws Exception {
+        IConfiguration config =
+                mFactory.createConfigurationFromArgs(
+                        new String[] {
+                            "test-config-multi",
+                            "--{device1}no-test-boolean-option",
+                            "--{device1}test-boolean-option-false",
+                            // testing with namespace too
+                            "--{device2}stub-preparer:no-test-boolean-option",
+                            "--{device2}stub-preparer:test-boolean-option-false"
+                        });
+        assertEquals(2, config.getDeviceConfig().size());
+        IDeviceConfiguration device1 = config.getDeviceConfigByName("device1");
+        StubTargetPreparer deviceSetup1 = (StubTargetPreparer) device1.getTargetPreparers().get(0);
+        // default value of test-boolean-option is true, we set it to false
+        assertFalse(deviceSetup1.getTestBooleanOption());
+        // default value of test-boolean-option-false is false, we set it to true.
+        assertTrue(deviceSetup1.getTestBooleanOptionFalse());
+
+        IDeviceConfiguration device2 = config.getDeviceConfigByName("device2");
+        StubTargetPreparer deviceSetup2 = (StubTargetPreparer) device2.getTargetPreparers().get(0);
+        assertFalse(deviceSetup2.getTestBooleanOption());
+        assertTrue(deviceSetup2.getTestBooleanOptionFalse());
+    }
+
     /** Test that {@link ConfigurationFactory#reorderArgs(String[])} is properly reordering args. */
     public void testReorderArgs_check_ordering() throws Throwable {
         String[] args =
