@@ -63,6 +63,10 @@ public class FastbootDeviceFlasher implements IDeviceFlasher  {
 
     private boolean mForceSystemFlash;
 
+    private CommandStatus mFbCmdStatus;
+
+    private CommandStatus mSystemFlashStatus;
+
     /**
      * {@inheritDoc}
      */
@@ -601,8 +605,18 @@ public class FastbootDeviceFlasher implements IDeviceFlasher  {
         CLog.i("Flashing %s with update %s", device.getSerialNumber(),
                 deviceBuild.getDeviceImageFile().getAbsolutePath());
         // give extra time to the update cmd
-        executeLongFastbootCmd(device, "update",
-                deviceBuild.getDeviceImageFile().getAbsolutePath());
+        try {
+            executeLongFastbootCmd(device, "update",
+                    deviceBuild.getDeviceImageFile().getAbsolutePath());
+            // only transfer last fastboot command status over to system flash status after having
+            // flashing the system partitions
+            mSystemFlashStatus = mFbCmdStatus;
+        } finally {
+            // if system flash status is still null here, an exception has happened
+            if (mSystemFlashStatus == null) {
+                mSystemFlashStatus = CommandStatus.EXCEPTION;
+            }
+        }
     }
 
     /**
@@ -725,8 +739,12 @@ public class FastbootDeviceFlasher implements IDeviceFlasher  {
             throws TargetSetupError {
         CLog.v("fastboot stdout: " + result.getStdout());
         CLog.v("fastboot stderr: " + result.getStderr());
-        // TODO: consider re-trying
-        if (result.getStatus() != CommandStatus.SUCCESS || result.getStderr().contains("FAILED")) {
+        mFbCmdStatus = result.getStatus();
+        if (result.getStderr().contains("FAILED")) {
+            // if output contains "FAILED", just override to failure
+            mFbCmdStatus = CommandStatus.FAILED;
+        }
+        if (mFbCmdStatus != CommandStatus.SUCCESS) {
             throw new TargetSetupError(String.format(
                     "fastboot command %s failed in device %s. stdout: %s, stderr: %s", cmdArgs[0],
                     device.getSerialNumber(), result.getStdout(), result.getStderr()),
@@ -777,5 +795,13 @@ public class FastbootDeviceFlasher implements IDeviceFlasher  {
     @Override
     public void setWipeTimeout(long timeout) {
         mWipeTimeout = timeout;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public CommandStatus getSystemFlashingStatus() {
+        return mSystemFlashStatus;
     }
 }

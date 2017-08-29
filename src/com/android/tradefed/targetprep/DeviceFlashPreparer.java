@@ -27,6 +27,7 @@ import com.android.tradefed.device.ITestDevice.RecoveryMode;
 import com.android.tradefed.host.IHostOptions;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.targetprep.IDeviceFlasher.UserDataFlashOption;
+import com.android.tradefed.util.CommandStatus;
 import com.android.tradefed.util.IRunUtil;
 import com.android.tradefed.util.RunUtil;
 
@@ -249,6 +250,9 @@ public abstract class DeviceFlashPreparer implements ITargetCleaner {
         }
         // don't allow interruptions during flashing operations.
         getRunUtil().allowInterrupt(false);
+        long queueTime = -1;
+        long flashingTime = -1;
+        long start = -1;
         try {
             IDeviceBuildInfo deviceBuild = (IDeviceBuildInfo)buildInfo;
             checkDeviceProductType(device, deviceBuild);
@@ -257,19 +261,26 @@ public abstract class DeviceFlashPreparer implements ITargetCleaner {
             flasher.setWipeTimeout(mWipeTimeout);
             // only surround fastboot related operations with flashing permit restriction
             try {
-                long start = System.currentTimeMillis();
+                start = System.currentTimeMillis();
                 takeFlashingPermit();
+                queueTime = System.currentTimeMillis() - start;
                 CLog.v("Flashing permit obtained after %ds",
-                        TimeUnit.MILLISECONDS.toSeconds((System.currentTimeMillis() - start)));
+                        TimeUnit.MILLISECONDS.toSeconds((queueTime)));
 
                 flasher.overrideDeviceOptions(device);
                 flasher.setUserDataFlashOption(mUserDataFlashOption);
                 flasher.setForceSystemFlash(mForceSystemFlash);
                 flasher.setDataWipeSkipList(mDataWipeSkipList);
                 preEncryptDevice(device, flasher);
+                start = System.currentTimeMillis();
                 flasher.flash(device, deviceBuild);
             } finally {
+                flashingTime = System.currentTimeMillis() - start;
                 returnFlashingPermit();
+                // report flashing status
+                reportFlashMetrics(buildInfo.getBuildBranch(), buildInfo.getBuildFlavor(),
+                        buildInfo.getBuildId(), device.getSerialNumber(),
+                        queueTime, flashingTime, flasher.getSystemFlashingStatus());
             }
             // only want logcat captured for current build, delete any accumulated log data
             device.clearLogcat();
@@ -483,5 +494,20 @@ public abstract class DeviceFlashPreparer implements ITargetCleaner {
                 }
             }
         }
+    }
+
+    /**
+     * Reports device flashing timing data to metrics backend
+     * @param branch the branch where the device build originated from
+     * @param buildFlavor the build flavor of the device build
+     * @param buildId the build number of the device build
+     * @param serial the serial number of device
+     * @param queueTime the time spent waiting for a flashing limit to become available
+     * @param flashingTime the time spent in flashing device image zip
+     * @param flashingStatus the execution status of flashing command
+     */
+    protected void reportFlashMetrics(String branch, String buildFlavor, String buildId,
+            String serial, long queueTime, long flashingTime, CommandStatus flashingStatus) {
+        // no-op as default implementation
     }
 }

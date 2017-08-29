@@ -29,13 +29,14 @@ import subprocess
 import sys
 
 import cli_translator
-
+ANDROID_BUILD_TOP = 'ANDROID_BUILD_TOP'
 EXPECTED_VARS = frozenset([
-    'ANDROID_BUILD_TOP',
-    'ANDROID_TARGET_OUT_TESTCASES'])
+    ANDROID_BUILD_TOP,
+    'ANDROID_TARGET_OUT_TESTCASES',
+    'OUT'])
 EXIT_CODE_ENV_NOT_SETUP = 1
 EXIT_CODE_BUILD_FAILURE = 2
-BUILD_CMD = ['make', '-j', '-C', os.environ.get('ANDROID_BUILD_TOP')]
+BUILD_CMD = ['make', '-j', '-C', os.environ.get(ANDROID_BUILD_TOP)]
 
 
 def _parse_args(argv):
@@ -89,13 +90,13 @@ def build_tests(build_targets, verbose=False):
     """Shell out and make build_targets.
 
     Args:
-        build_targets: A list of strings of build targets to make.
+        build_targets: A set of strings of build targets to make.
 
     Returns:
         Boolean of whether build command was successful.
     """
     logging.info('Building tests')
-    cmd = BUILD_CMD + build_targets
+    cmd = BUILD_CMD + list(build_targets)
     logging.debug('Executing command: %s', cmd)
     try:
         if verbose:
@@ -135,7 +136,8 @@ def main(argv):
     _configure_logging(args.verbose)
     if _missing_environment_variables():
         return EXIT_CODE_ENV_NOT_SETUP
-    translator = cli_translator.CLITranslator()
+    repo_root = os.environ.get(ANDROID_BUILD_TOP)
+    translator = cli_translator.CLITranslator(root_dir=repo_root)
     build_targets, run_commands = translator.translate(args.tests)
     if not build_tests(build_targets, args.verbose):
         return EXIT_CODE_BUILD_FAILURE
