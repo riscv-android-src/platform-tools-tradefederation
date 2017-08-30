@@ -1085,4 +1085,7 @@ public interface INativeDevice {
      * @return ProcessInfo of given processName
      */
     public ProcessInfo getProcessByName(String processName) throws DeviceNotAvailableException;
+
+    /** Returns the pid of the service or null if something went wrong. */
+    public String getProcessPid(String process) throws DeviceNotAvailableException;
 }
