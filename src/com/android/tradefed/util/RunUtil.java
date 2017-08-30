@@ -319,10 +319,12 @@ public class RunUtil implements IRunUtil {
             boolean logErrors) {
         checkInterrupted();
         RunnableNotifier runThread = new RunnableNotifier(runnable, logErrors);
-        if (timeout > 0l) {
-            CLog.d("Running command with timeout: %dms", timeout);
-        } else {
-            CLog.d("Running command without timeout.");
+        if (logErrors) {
+            if (timeout > 0l) {
+                CLog.d("Running command with timeout: %dms", timeout);
+            } else {
+                CLog.d("Running command without timeout.");
+            }
         }
         runThread.start();
         long startTime = System.currentTimeMillis();
@@ -721,6 +723,13 @@ public class RunUtil implements IRunUtil {
                     CLog.i("interrupted while waiting for process output to be saved");
                 }
             }
+        }
+
+        @Override
+        public String toString() {
+            return "RunnableResult [command="
+                    + ((mProcessBuilder != null) ? mProcessBuilder.command() : null)
+                    + "]";
         }
     }
 
