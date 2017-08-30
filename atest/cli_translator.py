@@ -17,7 +17,6 @@
 Command Line Translator for atest.
 """
 
-import enum
 import json
 import logging
 import os
@@ -49,26 +48,23 @@ class NoTestFoundError(Exception):
 class TestWithNoModuleError(Exception):
     """Raised when test files have no parent module directory."""
 
-class TestReferenceType(enum.Enum):
-    """Test Reference Type Enums"""
-    # MODULE: LOCAL_MODULE or LOCAL_PACKAGE_NAME value in
-    # Android.mk/Android.bp file.
-    MODULE = 1
-    # CLASS: name of java file and class in which test is defined.
-    CLASS = 2
-    # MODULE_CLASS: Combo of MODULE and CLASS as "module:class".
-    MODULE_CLASS = 3
-    # PACKAGE: package in java file. Same as file path to java file.
-    PACKAGE = 4
-    # MODULE_PACKAGE: Combo of MODULE and PACKAGE as "module:package".
-    MODULE_PACKAGE = 5
-    # FILE_PATH: file path to dir of tests or test itself.
-    FILE_PATH = 6
-    # INTEGRATION: xml file name in one of the 4 integration config directories.
-    INTEGRATION = 7
-    # SUITE: Value of the "run-suite-tag" in xml config file in 4 config dirs.
-    # Same as value of "test-suite-tag" in AndroidTest.xml files.
-    SUITE = 8
+class Enum(tuple):
+    """enum library isn't a Python 2.7 built-in, so roll our own."""
+    __getattr__ = tuple.index
+
+# Explanation of TEST_REFERENCE_TYPEs:
+# ----------------------------------
+# 0. MODULE: LOCAL_MODULE or LOCAL_PACKAGE_NAME value in Android.mk/Android.bp.
+# 1. MODULE_CLASS: Combo of MODULE and CLASS as "module:class".
+# 2. PACKAGE: package in java file. Same as file path to java file.
+# 3. MODULE_PACKAGE: Combo of MODULE and PACKAGE as "module:package".
+# 4. FILE_PATH: file path to dir of tests or test itself.
+# 5. INTEGRATION: xml file name in one of the 4 integration config directories.
+# 6. SUITE: Value of the "run-suite-tag" in xml config file in 4 config dirs.
+#           Same as value of "test-suite-tag" in AndroidTest.xml files.
+TEST_REFERENCE_TYPE = Enum(['MODULE', 'CLASS', 'MODULE_CLASS', 'PACKAGE',
+                            'MODULE_PACKAGE', 'FILE_PATH', 'INTEGRATION',
+                            'SUITE'])
 
 
 #pylint: disable=no-self-use
@@ -94,8 +90,8 @@ class CLITranslator(object):
         self.root_dir = os.path.realpath(root_dir)
         self.out_dir = os.environ.get('OUT')
         self.ref_type_to_func_map = {
-            TestReferenceType.MODULE: self._find_test_by_module_name,
-            TestReferenceType.CLASS: self._find_test_by_class_name,
+            TEST_REFERENCE_TYPE.MODULE: self._find_test_by_module_name,
+            TEST_REFERENCE_TYPE.CLASS: self._find_test_by_class_name,
         }
         self.module_info = self._load_module_info()
 
@@ -131,21 +127,22 @@ class CLITranslator(object):
             test_reference: A string referencing a test.
 
         Returns:
-            A list of possible TestReferenceTypes for test_reference string.
+            A list of possible TEST_REFERENCE_TYPEs (ints) for reference string.
         """
         if test_reference.startswith('.'):
-            return [TestReferenceType.FILE_PATH]
+            return [TEST_REFERENCE_TYPE.FILE_PATH]
         if '/' in test_reference:
-            return [TestReferenceType.FILE_PATH, TestReferenceType.INTEGRATION,
-                    TestReferenceType.SUITE]
+            return [TEST_REFERENCE_TYPE.FILE_PATH,
+                    TEST_REFERENCE_TYPE.INTEGRATION,
+                    TEST_REFERENCE_TYPE.SUITE]
         if ':' in test_reference:
             if '.' in test_reference:
-                return [TestReferenceType.MODULE_CLASS,
-                        TestReferenceType.MODULE_PACKAGE]
-            return [TestReferenceType.MODULE_CLASS]
+                return [TEST_REFERENCE_TYPE.MODULE_CLASS,
+                        TEST_REFERENCE_TYPE.MODULE_PACKAGE]
+            return [TEST_REFERENCE_TYPE.MODULE_CLASS]
         if '.'  in test_reference:
-            return [TestReferenceType.CLASS, TestReferenceType.PACKAGE]
-        return [TestReferenceType.MODULE, TestReferenceType.CLASS]
+            return [TEST_REFERENCE_TYPE.CLASS, TEST_REFERENCE_TYPE.PACKAGE]
+        return [TEST_REFERENCE_TYPE.MODULE, TEST_REFERENCE_TYPE.CLASS]
 
     def _is_sub_dir(self, sub_dir, parent_dir):
         """Return True if both are dirs and sub_dir is sub of parent_dir.
@@ -249,7 +246,7 @@ class CLITranslator(object):
         info = self.module_info.get(module_name)
         if info:
             # path is a list with only 1 element.
-            return TestInfo(TestReferenceType.MODULE, module_name,
+            return TestInfo(TEST_REFERENCE_TYPE.MODULE, module_name,
                             info['path'][0])
 
     def _find_test_by_class_name(self, class_name):
@@ -282,7 +279,7 @@ class CLITranslator(object):
             module_name = self._get_module_name(rel_module_dir)
             if not module_name:
                 return None
-            return TestInfo(TestReferenceType.CLASS, module_name,
+            return TestInfo(TEST_REFERENCE_TYPE.CLASS, module_name,
                             rel_module_dir)
         except subprocess.CalledProcessError:
             logging.info('Class (%s) not in %s', class_name, self.root_dir)
@@ -296,8 +293,8 @@ class CLITranslator(object):
         Returns:
             A list of strings of the build targets.
         """
-        if test_info.ref_type in (TestReferenceType.MODULE,
-                                  TestReferenceType.CLASS):
+        if test_info.ref_type in (TEST_REFERENCE_TYPE.MODULE,
+                                  TEST_REFERENCE_TYPE.CLASS):
             return ['tradefed-all',
                     MODULES_IN % test_info.rel_module_dir.replace('/', '-')]
 
@@ -321,25 +318,26 @@ class CLITranslator(object):
 
         Args:
             test_name: A string referencing a test.
-            reference_types: A list of the possible reference types.
+            reference_types: A list of TetReferenceTypes (ints).
 
         Returns:
             TestInfo namedtuple, else None if test files not found.
         """
         for ref_type in reference_types:
+            ref_name = TEST_REFERENCE_TYPE[ref_type]
             try:
                 test_info = self.ref_type_to_func_map[ref_type](test_name)
                 if test_info:
-                    logging.info('Found %s for: %s', ref_type.name, test_name)
-                    logging.debug('Resolved "%s" to %s', test_name, test_info)
+                    logging.info('Found %s for: %s', ref_name, test_name)
+                    logging.debug('Resolved "%s" to %s', ref_name, test_info)
                     return test_info
-                logging.debug('Failed to find %s as %s', test_name,
-                              ref_type.name)
+                logging.debug('Failed to find %s as %s', test_name, ref_name)
             except KeyError:
-                supported = ', '.join(k.name for k in self.ref_type_to_func_map)
+                supported = ', '.join(TEST_REFERENCE_TYPE[k]
+                                      for k in self.ref_type_to_func_map)
                 logging.warn('"%s" as %s reference is unsupported. atest only '
                              'supports identifying a test by its: %s',
-                             test_name, ref_type.name, supported)
+                             test_name, ref_name, supported)
 
     def translate(self, tests):
         """Translate atest command line into build targets and run commands.

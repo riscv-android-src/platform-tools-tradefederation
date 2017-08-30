@@ -28,9 +28,9 @@ CLASS_NAME = 'CtsDeviceJankUi'
 MODULE_DIR = 'cts/tests/jank'
 CLASS_DIR = 'cts/tests/jank/src/android/jank/cts/ui'
 QUALIFIED_CLASS_NAME = 'android.jank.cts.ui.CtsDeviceJankUi'
-RefType = cli_t.TestReferenceType
-MODULE_INFO = cli_t.TestInfo(RefType.MODULE, MODULE_NAME, MODULE_DIR)
-CLASS_INFO = cli_t.TestInfo(RefType.CLASS, MODULE_NAME, MODULE_DIR)
+REF_TYPE = cli_t.TEST_REFERENCE_TYPE
+MODULE_INFO = cli_t.TestInfo(REF_TYPE.MODULE, MODULE_NAME, MODULE_DIR)
+CLASS_INFO = cli_t.TestInfo(REF_TYPE.CLASS, MODULE_NAME, MODULE_DIR)
 TARGETS = ['tradefed-all', 'MODULES-IN-%s' % MODULE_DIR.replace('/', '-')]
 RUN_CMD = cli_t.RUN_CMD % MODULE_NAME
 PRODUCT = 'bullhead'
@@ -51,7 +51,7 @@ INFO_JSON = {
 }
 FIND_ONE = ROOT + 'cts/tests/jank/src/android/jank/cts/ui/CtsDeviceJankUi.java\n'
 FIND_TWO = ROOT + 'other/dir/test.java\n' + FIND_ONE
-FIND_OVER_MAX = FIND_ONE * (cli_t.MAX_FOR_USER_INPUT + 1)
+FIND_OVER_MAX = FIND_ONE * (cli_t.MAX_TEST_CHOICES_FOR_USER_INPUT + 1)
 
 #pylint: disable=protected-access
 #pylint: disable=no-self-use
@@ -94,43 +94,43 @@ class CLITranslatorUnittests(unittest.TestCase):
         """Test _get_test_reference_types parses reference types correctly."""
         self.assertEquals(
             self.ctr._get_test_reference_types('moduleOrClassName'),
-            [RefType.MODULE, RefType.CLASS]
+            [REF_TYPE.MODULE, REF_TYPE.CLASS]
         )
         self.assertEquals(
             self.ctr._get_test_reference_types('module_or_class_name'),
-            [RefType.MODULE, RefType.CLASS]
+            [REF_TYPE.MODULE, REF_TYPE.CLASS]
         )
         self.assertEquals(
             self.ctr._get_test_reference_types('class.name.or.package'),
-            [RefType.CLASS, RefType.PACKAGE]
+            [REF_TYPE.CLASS, REF_TYPE.PACKAGE]
         )
         self.assertEquals(
             self.ctr._get_test_reference_types('module:class'),
-            [RefType.MODULE_CLASS]
+            [REF_TYPE.MODULE_CLASS]
         )
         self.assertEquals(
             self.ctr._get_test_reference_types('module:class.or.package'),
-            [RefType.MODULE_CLASS, RefType.MODULE_PACKAGE]
+            [REF_TYPE.MODULE_CLASS, REF_TYPE.MODULE_PACKAGE]
         )
         self.assertEquals(
             self.ctr._get_test_reference_types('.'),
-            [RefType.FILE_PATH]
+            [REF_TYPE.FILE_PATH]
         )
         self.assertEquals(
             self.ctr._get_test_reference_types('..'),
-            [RefType.FILE_PATH]
+            [REF_TYPE.FILE_PATH]
         )
         self.assertEquals(
             self.ctr._get_test_reference_types('./rel/path/to/test'),
-            [RefType.FILE_PATH]
+            [REF_TYPE.FILE_PATH]
         )
         self.assertEquals(
             self.ctr._get_test_reference_types('rel/path/to/test'),
-            [RefType.FILE_PATH, RefType.INTEGRATION, RefType.SUITE]
+            [REF_TYPE.FILE_PATH, REF_TYPE.INTEGRATION, REF_TYPE.SUITE]
         )
         self.assertEquals(
             self.ctr._get_test_reference_types('/abs/path/to/test'),
-            [RefType.FILE_PATH, RefType.INTEGRATION, RefType.SUITE]
+            [REF_TYPE.FILE_PATH, REF_TYPE.INTEGRATION, REF_TYPE.SUITE]
         )
 
     def test_is_sub_dir(self):
@@ -204,7 +204,7 @@ class CLITranslatorUnittests(unittest.TestCase):
         ctr = cli_t.CLITranslator()
         mock_findbymodule.return_value = MODULE_INFO
         mock_findbyclass.return_value = CLASS_INFO
-        refs = [RefType.MODULE, RefType.CLASS]
+        refs = [REF_TYPE.MODULE, REF_TYPE.CLASS]
         self.assertEquals(ctr._get_test_info(MODULE_NAME, refs), MODULE_INFO)
         mock_findbymodule.return_value = None
         self.assertEquals(ctr._get_test_info(CLASS_NAME, refs), CLASS_INFO)
