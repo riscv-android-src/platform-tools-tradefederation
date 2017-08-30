@@ -15,7 +15,12 @@
  */
 package com.android.tradefed.device;
 
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 
 import com.android.ddmlib.IDevice;
 import com.android.ddmlib.Log;
@@ -691,7 +696,7 @@ public class TestDeviceFuncTest implements IDeviceTest {
             assertTrue(image.getHeight() > 200);
         } finally {
             FileUtil.deleteFile(tmpPngFile);
-            source.cancel();
+            source.close();
         }
     }
 
@@ -724,7 +729,7 @@ public class TestDeviceFuncTest implements IDeviceTest {
                     s.contains("testGetLogcat_size log dump 99"));
         } finally {
             FileUtil.deleteFile(tmpTxtFile);
-            source.cancel();
+            source.close();
         }
     }
 
@@ -762,9 +767,9 @@ public class TestDeviceFuncTest implements IDeviceTest {
     /** Test that {@link TestDevice#getProperty(String)} works after a reboot. */
     @Test
     public void testGetProperty() throws Exception {
-        assertNotNull(getDevice().getProperty("ro.hardware"));
+        assertNotNull(getDevice().getProperty(DeviceProperties.BOARD));
         getDevice().rebootUntilOnline();
-        assertNotNull(getDevice().getProperty("ro.hardware"));
+        assertNotNull(getDevice().getProperty(DeviceProperties.BOARD));
     }
 
     /** Test that {@link TestDevice#getProperty(String)} works for volatile properties. */

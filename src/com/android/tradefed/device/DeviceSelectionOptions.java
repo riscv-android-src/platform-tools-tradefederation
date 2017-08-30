@@ -101,10 +101,6 @@ public class DeviceSelectionOptions implements IDeviceSelection {
 
     private static final String VARIANT_SEPARATOR = ":";
 
-    public static final String DEVICE_PRODUCT_PROPERTY = "ro.hardware";
-    public static final String DEVICE_VARIANT_PROPERTY = "ro.product.device";
-    public static final String DEVICE_SDK_PROPERTY = "ro.build.version.sdk";
-
     /**
      * Add a serial number to the device selection options.
      *
@@ -459,7 +455,7 @@ public class DeviceSelectionOptions implements IDeviceSelection {
 
     @Override
     public String getDeviceProductType(IDevice device) {
-        return getProperty(device, DEVICE_PRODUCT_PROPERTY);
+        return getProperty(device, DeviceProperties.BOARD);
     }
 
     private String getProperty(IDevice device, String propName) {
@@ -468,7 +464,7 @@ public class DeviceSelectionOptions implements IDeviceSelection {
 
     @Override
     public String getDeviceProductVariant(IDevice device) {
-        return getProperty(device, DEVICE_VARIANT_PROPERTY);
+        return getProperty(device, DeviceProperties.VARIANT);
     }
 
     @Override
@@ -493,7 +489,7 @@ public class DeviceSelectionOptions implements IDeviceSelection {
      */
     private int getDeviceSdkLevel(IDevice device) {
         int apiLevel = -1;
-        String prop = getProperty(device, DEVICE_SDK_PROPERTY);
+        String prop = getProperty(device, DeviceProperties.SDK_VERSION);
         try {
             apiLevel = Integer.parseInt(prop);
         } catch (NumberFormatException nfe) {

@@ -125,7 +125,7 @@ public class TestFailureListener implements ITestInvocationListener {
             }
         }
         if (mBugReportOnFailure) {
-            try (InputStreamSource bugSource = mDevice.getBugreport()) {
+            try (InputStreamSource bugSource = mDevice.getBugreportz()) {
                 testLog(
                         String.format("%s-bugreport", test.toString()),
                         LogDataType.BUGREPORT,

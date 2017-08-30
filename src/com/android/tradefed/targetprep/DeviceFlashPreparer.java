@@ -278,9 +278,14 @@ public abstract class DeviceFlashPreparer implements ITargetCleaner {
                 flashingTime = System.currentTimeMillis() - start;
                 returnFlashingPermit();
                 // report flashing status
-                reportFlashMetrics(buildInfo.getBuildBranch(), buildInfo.getBuildFlavor(),
-                        buildInfo.getBuildId(), device.getSerialNumber(),
-                        queueTime, flashingTime, flasher.getSystemFlashingStatus());
+                CommandStatus status = flasher.getSystemFlashingStatus();
+                if (status == null) {
+                    CLog.i("Skipped reporting metrics because system partitions were not flashed.");
+                } else {
+                    reportFlashMetrics(buildInfo.getBuildBranch(), buildInfo.getBuildFlavor(),
+                            buildInfo.getBuildId(), device.getSerialNumber(), queueTime,
+                            flashingTime, status);
+                }
             }
             // only want logcat captured for current build, delete any accumulated log data
             device.clearLogcat();

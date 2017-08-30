@@ -541,6 +541,8 @@ public class FastbootDeviceFlasherTest extends TestCase {
         EasyMock.replay(mMockDevice, mockBuild);
         assertFalse(mFlasher.checkAndFlashSystem(mMockDevice, buildId, buildFlavor, mockBuild));
         EasyMock.verify(mMockDevice, mockBuild);
+        assertNull("system flash status should be null when partitions are not flashed",
+                mFlasher.getSystemFlashingStatus());
     }
 
     /**
@@ -562,6 +564,39 @@ public class FastbootDeviceFlasherTest extends TestCase {
             EasyMock.replay(mMockDevice, mockBuild);
             assertTrue(mFlasher.checkAndFlashSystem(mMockDevice, buildId, null, mockBuild));
             EasyMock.verify(mMockDevice, mockBuild);
+            assertEquals("system flashing status should be \"SUCCESS\"",
+                    CommandStatus.SUCCESS, mFlasher.getSystemFlashingStatus());
+        } finally {
+            FileUtil.deleteFile(deviceImage);
+        }
+    }
+
+    /**
+     * Test {@link FastbootDeviceFlasher#checkAndFlashSystem(ITestDevice,
+     * String, String, IDeviceBuildInfo)} when it needs to be flashed but throws an exception.
+     */
+    public void testCheckAndFlashSystem_exception() throws Exception {
+        final String buildId = "systemBuildId";
+        IDeviceBuildInfo mockBuild = EasyMock.createMock(IDeviceBuildInfo.class);
+        EasyMock.expect(mockBuild.getDeviceBuildId()).andReturn(buildId);
+        File deviceImage = FileUtil.createTempFile("fakeDeviceImage", "");
+        try {
+            EasyMock.expect(mockBuild.getDeviceImageFile()).andStubReturn(deviceImage);
+            CommandResult res = new CommandResult(CommandStatus.SUCCESS);
+            res.setStderr("flashing");
+            EasyMock.expect(mMockDevice.executeLongFastbootCommand(EasyMock.eq("update"),
+                    EasyMock.eq(deviceImage.getAbsolutePath())))
+                    .andThrow(new DeviceNotAvailableException());
+            EasyMock.replay(mMockDevice, mockBuild);
+            try {
+                mFlasher.checkAndFlashSystem(mMockDevice, buildId, null, mockBuild);
+                fail("Expected DeviceNotAvailableException not thrown");
+            } catch (DeviceNotAvailableException dnae) {
+                // expected
+                EasyMock.verify(mMockDevice, mockBuild);
+                assertEquals("system flashing status should be \"EXCEPTION\"",
+                        CommandStatus.EXCEPTION, mFlasher.getSystemFlashingStatus());
+            }
         } finally {
             FileUtil.deleteFile(deviceImage);
         }

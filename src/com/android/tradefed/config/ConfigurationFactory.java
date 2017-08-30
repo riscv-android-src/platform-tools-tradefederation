@@ -377,7 +377,7 @@ public class ConfigurationFactory implements IConfigurationFactory {
          */
         void loadConfiguration(String name, ConfigurationDef def, Map<String, String> templateMap)
                 throws ConfigurationException {
-            Log.d(LOG_TAG, String.format("Loading configuration '%s'", name));
+            //Log.d(LOG_TAG, String.format("Loading configuration '%s'", name));
             BufferedInputStream bufStream = getConfigStream(name);
             ConfigurationXmlParser parser = new ConfigurationXmlParser(this);
             parser.parse(def, name, bufStream, templateMap);
@@ -596,9 +596,17 @@ public class ConfigurationFactory implements IConfigurationFactory {
      */
     @Override
     public List<String> getConfigList(String subPath) {
+        return getConfigList(subPath, true);
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public List<String> getConfigList(String subPath, boolean loadFromEnv) {
         Set<String> configNames = getConfigSetFromClasspath(subPath);
-        // list config on variable path too
-        configNames.addAll(getConfigNamesFromTestCases(subPath));
+        if (loadFromEnv) {
+            // list config on variable path too
+            configNames.addAll(getConfigNamesFromTestCases(subPath));
+        }
         // sort the configs by name before adding to list
         SortedSet<String> configDefs = new TreeSet<String>();
         configDefs.addAll(configNames);

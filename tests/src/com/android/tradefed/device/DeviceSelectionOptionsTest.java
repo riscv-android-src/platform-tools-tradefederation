@@ -114,8 +114,8 @@ public class DeviceSelectionOptionsTest extends TestCase {
         DeviceSelectionOptions options = new DeviceSelectionOptions();
         options.addProductType(OTHER_DEVICE_TYPE);
 
-        EasyMock.expect(mMockDevice.getProperty("ro.hardware")).andReturn(DEVICE_TYPE);
-        EasyMock.expect(mMockDevice.getProperty("ro.product.device")).andReturn(null);
+        EasyMock.expect(mMockDevice.getProperty(DeviceProperties.BOARD)).andReturn(DEVICE_TYPE);
+        EasyMock.expect(mMockDevice.getProperty(DeviceProperties.VARIANT)).andReturn(null);
         EasyMock.replay(mMockDevice);
 
         assertFalse(options.matches(mMockDevice));
@@ -125,8 +125,8 @@ public class DeviceSelectionOptionsTest extends TestCase {
         DeviceSelectionOptions options = new DeviceSelectionOptions();
         options.addProductType(DEVICE_TYPE);
 
-        EasyMock.expect(mMockDevice.getProperty("ro.hardware")).andReturn(DEVICE_TYPE);
-        EasyMock.expect(mMockDevice.getProperty("ro.product.device")).andReturn(null);
+        EasyMock.expect(mMockDevice.getProperty(DeviceProperties.BOARD)).andReturn(DEVICE_TYPE);
+        EasyMock.expect(mMockDevice.getProperty(DeviceProperties.VARIANT)).andReturn(null);
         EasyMock.replay(mMockDevice);
         assertTrue(options.matches(mMockDevice));
     }
@@ -139,8 +139,8 @@ public class DeviceSelectionOptionsTest extends TestCase {
         DeviceSelectionOptions options = new DeviceSelectionOptions();
         options.addProductType(DEVICE_TYPE);
 
-        EasyMock.expect(mMockDevice.getProperty("ro.hardware")).andReturn(DEVICE_TYPE);
-        EasyMock.expect(mMockDevice.getProperty("ro.product.device")).andReturn(null);
+        EasyMock.expect(mMockDevice.getProperty(DeviceProperties.BOARD)).andReturn(DEVICE_TYPE);
+        EasyMock.expect(mMockDevice.getProperty(DeviceProperties.VARIANT)).andReturn(null);
         EasyMock.replay(mMockDevice);
         assertTrue(options.matches(mMockDevice));
     }
@@ -352,7 +352,7 @@ public class DeviceSelectionOptionsTest extends TestCase {
         ArgsOptionParser p = new ArgsOptionParser(options);
         p.parse("--min-sdk-level", "15");
         EasyMock.expect(
-                mMockDevice.getProperty(DeviceSelectionOptions.DEVICE_SDK_PROPERTY))
+                mMockDevice.getProperty(DeviceProperties.SDK_VERSION))
                 .andStubReturn("10");
         EasyMock.replay(mMockDevice, mMockEmulatorDevice);
         assertFalse(options.matches(mMockDevice));
@@ -366,7 +366,7 @@ public class DeviceSelectionOptionsTest extends TestCase {
         ArgsOptionParser p = new ArgsOptionParser(options);
         p.parse("--min-sdk-level", "10");
         EasyMock.expect(
-                mMockDevice.getProperty(DeviceSelectionOptions.DEVICE_SDK_PROPERTY))
+                mMockDevice.getProperty(DeviceProperties.SDK_VERSION))
                 .andStubReturn("10");
         EasyMock.replay(mMockDevice, mMockEmulatorDevice);
         assertTrue(options.matches(mMockDevice));
@@ -380,7 +380,7 @@ public class DeviceSelectionOptionsTest extends TestCase {
         ArgsOptionParser p = new ArgsOptionParser(options);
         p.parse("--min-sdk-level", "10");
         EasyMock.expect(
-                mMockDevice.getProperty(DeviceSelectionOptions.DEVICE_SDK_PROPERTY))
+                mMockDevice.getProperty(DeviceProperties.SDK_VERSION))
                 .andStubReturn("blargh");
         EasyMock.replay(mMockDevice, mMockEmulatorDevice);
         assertFalse(options.matches(mMockDevice));
@@ -394,7 +394,7 @@ public class DeviceSelectionOptionsTest extends TestCase {
         ArgsOptionParser p = new ArgsOptionParser(options);
         p.parse("--max-sdk-level", "15");
         EasyMock.expect(
-                mMockDevice.getProperty(DeviceSelectionOptions.DEVICE_SDK_PROPERTY))
+                mMockDevice.getProperty(DeviceProperties.SDK_VERSION))
                 .andStubReturn("25");
         EasyMock.replay(mMockDevice, mMockEmulatorDevice);
         assertFalse(options.matches(mMockDevice));
@@ -408,7 +408,7 @@ public class DeviceSelectionOptionsTest extends TestCase {
         ArgsOptionParser p = new ArgsOptionParser(options);
         p.parse("--max-sdk-level", "15");
         EasyMock.expect(
-                mMockDevice.getProperty(DeviceSelectionOptions.DEVICE_SDK_PROPERTY))
+                mMockDevice.getProperty(DeviceProperties.SDK_VERSION))
                 .andStubReturn("10");
         EasyMock.replay(mMockDevice, mMockEmulatorDevice);
         assertTrue(options.matches(mMockDevice));
@@ -422,7 +422,7 @@ public class DeviceSelectionOptionsTest extends TestCase {
         ArgsOptionParser p = new ArgsOptionParser(options);
         p.parse("--max-sdk-level", "15");
         EasyMock.expect(
-                mMockDevice.getProperty(DeviceSelectionOptions.DEVICE_SDK_PROPERTY))
+                mMockDevice.getProperty(DeviceProperties.SDK_VERSION))
                 .andStubReturn("blargh");
         EasyMock.replay(mMockDevice, mMockEmulatorDevice);
         assertFalse(options.matches(mMockDevice));

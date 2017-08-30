@@ -66,7 +66,7 @@ public class TestFailureListenerTest {
         mMockListener.testLog(EasyMock.eq(testId.toString() + "-screenshot"),
                 EasyMock.eq(LogDataType.PNG), EasyMock.eq(fakeSource));
         // Bugreport routine
-        EasyMock.expect(mMockDevice.getBugreport()).andReturn(fakeSource);
+        EasyMock.expect(mMockDevice.getBugreportz()).andReturn(fakeSource);
         mMockListener.testLog(EasyMock.eq(testId.toString() + "-bugreport"),
                 EasyMock.eq(LogDataType.BUGREPORT), EasyMock.eq(fakeSource));
         // logcat routine

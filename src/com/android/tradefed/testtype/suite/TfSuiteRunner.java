@@ -82,7 +82,9 @@ public class TfSuiteRunner extends ITestSuite {
                 new LinkedHashMap<String, IConfiguration>();
         IConfigurationFactory configFactory = ConfigurationFactory.getInstance();
         // TODO: Do a better job searching for configs.
-        List<String> configs = configFactory.getConfigList(mSuitePrefix);
+        // We do not load config from environment, they should be inside the testsDir of the build
+        // info.
+        List<String> configs = configFactory.getConfigList(mSuitePrefix, false);
 
         if (getBuildInfo() instanceof IDeviceBuildInfo) {
             IDeviceBuildInfo deviceBuildInfo = (IDeviceBuildInfo) getBuildInfo();
