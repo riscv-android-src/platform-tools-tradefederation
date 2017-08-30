@@ -26,6 +26,7 @@ import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.invoker.IInvocationContext;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.result.ITestInvocationListener;
+import com.android.tradefed.result.ITestLoggerReceiver;
 import com.android.tradefed.result.InputStreamSource;
 import com.android.tradefed.result.LogDataType;
 import com.android.tradefed.suite.checker.ISystemStatusChecker;
@@ -191,6 +192,13 @@ public abstract class ITestSuite
         if (runModules.isEmpty()) {
             CLog.i("No tests to be run.");
             return;
+        }
+
+        // Allow checkers to log files for easier debbuging.
+        for (ISystemStatusChecker checker : mSystemStatusCheckers) {
+            if (checker instanceof ITestLoggerReceiver) {
+                ((ITestLoggerReceiver) checker).setTestLogger(listener);
+            }
         }
 
         /** Setup a special listener to take actions on test failures. */
