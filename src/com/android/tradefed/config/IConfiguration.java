@@ -504,4 +504,16 @@ public interface IConfiguration {
      * @throws IOException
      */
     public void dumpXml(PrintWriter output) throws IOException;
+
+    /**
+     * Gets the expanded XML file for the config with all options shown for this {@link
+     * IConfiguration} minus the objects filters by their key name.
+     *
+     * <p>Filter example: {@link Configuration#TARGET_PREPARER_TYPE_NAME}.
+     *
+     * @param output the writer to print the xml to.
+     * @param excludeFilters the list of object type that should not be dumped.
+     * @throws IOException
+     */
+    public void dumpXml(PrintWriter output, List<String> excludeFilters) throws IOException;
 }
