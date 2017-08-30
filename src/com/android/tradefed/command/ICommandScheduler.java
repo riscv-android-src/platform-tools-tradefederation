@@ -118,6 +118,20 @@ public interface ICommandScheduler {
             String[] args) throws ConfigurationException;
 
     /**
+     * Directly allocates a device and executes a command without adding it to the command queue
+     * using an already existing {@link IInvocationContext}.
+     *
+     * @param context an existing {@link IInvocationContext}.
+     * @param listener the {@link ICommandScheduler.IScheduledInvocationListener} to be informed
+     * @param args the command arguments
+     * @throws ConfigurationException if command was invalid
+     * @throws NoDeviceException if there is no device to use
+     */
+    public void execCommand(
+            IInvocationContext context, IScheduledInvocationListener listener, String[] args)
+            throws ConfigurationException, NoDeviceException;
+
+    /**
      * Remove all commands from scheduler
      */
     public void removeAllCommands();
