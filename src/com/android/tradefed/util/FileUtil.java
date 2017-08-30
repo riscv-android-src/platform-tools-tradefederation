@@ -435,7 +435,7 @@ public class FileUtil {
         cmd.add(origFile.getAbsolutePath());
         cmd.add(destFile.getAbsolutePath());
         CommandResult result =
-                RunUtil.getDefault().runTimedCmd(10 * 1000, cmd.toArray(new String[0]));
+                RunUtil.getDefault().runTimedCmdSilently(10 * 1000, cmd.toArray(new String[0]));
         return result;
     }
 
