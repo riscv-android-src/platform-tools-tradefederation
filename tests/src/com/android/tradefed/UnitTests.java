@@ -96,6 +96,10 @@ import com.android.tradefed.result.SubprocessResultsReporterTest;
 import com.android.tradefed.result.TestFailureEmailResultReporterTest;
 import com.android.tradefed.result.TestSummaryTest;
 import com.android.tradefed.result.XmlResultReporterTest;
+import com.android.tradefed.sandbox.SandboxConfigDumpTest;
+import com.android.tradefed.sandbox.SandboxConfigUtilTest;
+import com.android.tradefed.sandbox.TradefedSandboxTest;
+import com.android.tradefed.suite.checker.ActivityStatusCheckerTest;
 import com.android.tradefed.suite.checker.KeyguardStatusCheckerTest;
 import com.android.tradefed.suite.checker.SystemServerFileDescriptorCheckerTest;
 import com.android.tradefed.suite.checker.SystemServerStatusCheckerTest;
@@ -362,7 +366,13 @@ import org.junit.runners.Suite.SuiteClasses;
     // targetprep.suite
     SuiteApkInstallerTest.class,
 
+    // sandbox
+    SandboxConfigDumpTest.class,
+    SandboxConfigUtilTest.class,
+    TradefedSandboxTest.class,
+
     // suite/checker
+    ActivityStatusCheckerTest.class,
     KeyguardStatusCheckerTest.class,
     SystemServerFileDescriptorCheckerTest.class,
     SystemServerStatusCheckerTest.class,

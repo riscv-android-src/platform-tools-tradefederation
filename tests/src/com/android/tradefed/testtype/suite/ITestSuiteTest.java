@@ -257,6 +257,9 @@ public class ITestSuiteTest {
      */
     @Test
     public void testRun_rebootBeforeModule() throws Exception {
+        List<ISystemStatusChecker> sysChecker = new ArrayList<ISystemStatusChecker>();
+        sysChecker.add(mMockSysChecker);
+        mTestSuite.setSystemStatusChecker(sysChecker);
         OptionSetter setter = new OptionSetter(mTestSuite);
         setter.setOptionValue("skip-all-system-status-check", "true");
         setter.setOptionValue("reboot-per-module", "true");
@@ -275,6 +278,8 @@ public class ITestSuiteTest {
      */
     @Test
     public void testRun_unresponsiveDevice() throws Exception {
+        List<ISystemStatusChecker> sysChecker = new ArrayList<ISystemStatusChecker>();
+        sysChecker.add(mMockSysChecker);
         mTestSuite =
                 new TestSuiteImpl() {
                     @Override
@@ -297,6 +302,7 @@ public class ITestSuiteTest {
         mTestSuite.setDevice(mMockDevice);
         mTestSuite.setBuild(mMockBuildInfo);
         mTestSuite.setInvocationContext(mContext);
+        mTestSuite.setSystemStatusChecker(sysChecker);
         OptionSetter setter = new OptionSetter(mTestSuite);
         setter.setOptionValue("skip-all-system-status-check", "true");
         setter.setOptionValue("reboot-per-module", "true");
@@ -317,6 +323,8 @@ public class ITestSuiteTest {
      */
     @Test
     public void testRun_runtimeException() throws Exception {
+        List<ISystemStatusChecker> sysChecker = new ArrayList<ISystemStatusChecker>();
+        sysChecker.add(mMockSysChecker);
         mTestSuite =
                 new TestSuiteImpl() {
                     @Override
@@ -336,6 +344,7 @@ public class ITestSuiteTest {
                         return testConfig;
                     }
                 };
+        mTestSuite.setSystemStatusChecker(sysChecker);
         mTestSuite.setDevice(mMockDevice);
         mTestSuite.setBuild(mMockBuildInfo);
         mTestSuite.setInvocationContext(mContext);

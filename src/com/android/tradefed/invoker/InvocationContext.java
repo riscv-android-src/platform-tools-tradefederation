@@ -29,7 +29,6 @@ import com.android.tradefed.util.UniqueMultiMap;
 import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -61,7 +60,7 @@ public class InvocationContext implements IInvocationContext {
      * Creates a {@link BuildInfo} using default attribute values.
      */
     public InvocationContext() {
-        mAllocatedDeviceAndBuildMap = new HashMap<ITestDevice, IBuildInfo>();
+        mAllocatedDeviceAndBuildMap = new LinkedHashMap<ITestDevice, IBuildInfo>();
         // Use LinkedHashMap to ensure key ordering by insertion order
         mNameAndDeviceMap = new LinkedHashMap<String, ITestDevice>();
         mNameAndBuildinfoMap = new LinkedHashMap<String, IBuildInfo>();
@@ -298,7 +297,7 @@ public class InvocationContext implements IInvocationContext {
         // our "pseudo-constructor"
         in.defaultReadObject();
         // now we are a "live" object again, so let's init the transient field
-        mAllocatedDeviceAndBuildMap = new HashMap<ITestDevice, IBuildInfo>();
+        mAllocatedDeviceAndBuildMap = new LinkedHashMap<ITestDevice, IBuildInfo>();
         mNameAndDeviceMap = new LinkedHashMap<String, ITestDevice>();
     }
 }

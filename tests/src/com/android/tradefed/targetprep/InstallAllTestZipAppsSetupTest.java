@@ -96,7 +96,7 @@ public class InstallAllTestZipAppsSetupTest {
     }
 
     @Test
-    public void testGetZipFile() throws DeviceNotAvailableException, TargetSetupError {
+    public void testGetZipFile() throws TargetSetupError {
         String zip = "zip";
         mPrep.setTestZipName(zip);
         File file = new File(zip);
@@ -108,7 +108,7 @@ public class InstallAllTestZipAppsSetupTest {
     }
 
     @Test
-    public void testGetZipFileDoesntExist() throws DeviceNotAvailableException, TargetSetupError {
+    public void testGetZipFileDoesntExist() throws TargetSetupError {
         String zip = "zip";
         mPrep.setTestZipName(zip);
         EasyMock.expect(mMockBuildInfo.getFile(zip)).andReturn(null);
