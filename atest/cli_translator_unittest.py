@@ -18,6 +18,7 @@
 
 import json
 import unittest
+import os
 import mock
 
 import cli_translator as cli_t
@@ -31,7 +32,7 @@ QUALIFIED_CLASS_NAME = 'android.jank.cts.ui.CtsDeviceJankUi'
 REF_TYPE = cli_t.TEST_REFERENCE_TYPE
 MODULE_INFO = cli_t.TestInfo(REF_TYPE.MODULE, MODULE_NAME, MODULE_DIR)
 CLASS_INFO = cli_t.TestInfo(REF_TYPE.CLASS, MODULE_NAME, MODULE_DIR)
-TARGETS = ['tradefed-all', 'MODULES-IN-%s' % MODULE_DIR.replace('/', '-')]
+TARGETS = {'tradefed-all', 'MODULES-IN-%s' % MODULE_DIR.replace('/', '-')}
 RUN_CMD = cli_t.RUN_CMD % MODULE_NAME
 PRODUCT = 'bullhead'
 OUT = '/android/master/out/target/product/%s' % PRODUCT
@@ -52,6 +53,7 @@ INFO_JSON = {
 FIND_ONE = ROOT + 'cts/tests/jank/src/android/jank/cts/ui/CtsDeviceJankUi.java\n'
 FIND_TWO = ROOT + 'other/dir/test.java\n' + FIND_ONE
 FIND_OVER_MAX = FIND_ONE * (cli_t.MAX_TEST_CHOICES_FOR_USER_INPUT + 1)
+XML_TARGETS = {'CtsUiDeviceTestCases', 'CtsJankDeviceTestCases'}
 
 #pylint: disable=protected-access
 #pylint: disable=no-self-use
@@ -145,7 +147,7 @@ class CLITranslatorUnittests(unittest.TestCase):
 
     def isfile_sideffect(self, value):
         """Mock return values for os.path.isfile"""
-        if value == '/%s/AndroidTest.xml' % MODULE_DIR:
+        if value == '/%s/%s' % (MODULE_DIR, cli_t.TEST_CONFIG):
             return True
         return False
 
@@ -172,7 +174,16 @@ class CLITranslatorUnittests(unittest.TestCase):
         self.assertEquals(self.ctr._get_module_name(MODULE_DIR), MODULE_NAME)
         self.assertIsNone(self.ctr._get_module_name('bad/path'))
 
-    def test_generate_build_targets(self):
+    def test_get_targets_from_xml(self):
+        """Test _get_targets_from_xml"""
+        # Mocking Etree is near impossible, so use a real file.
+        xml_dir = os.path.join(os.path.dirname(os.path.realpath(__file__)),
+                               'unittest_data')
+        self.assertEquals(self.ctr._get_targets_from_xml(xml_dir), XML_TARGETS)
+
+    @mock.patch.object(cli_t.CLITranslator, '_get_targets_from_xml',
+                       return_value=set())
+    def test_generate_build_targets(self, _):
         """Test _generate_build_targets method."""
         self.assertEquals(self.ctr._generate_build_targets(MODULE_INFO),
                           TARGETS)
@@ -218,7 +229,9 @@ class CLITranslatorUnittests(unittest.TestCase):
         if test_name == CLASS_NAME:
             return CLASS_INFO
 
-    def test_translate(self):
+    @mock.patch.object(cli_t.CLITranslator, '_get_targets_from_xml',
+                       return_value=set())
+    def test_translate(self, _):
         """Test translate method."""
         with mock.patch.object(self.ctr, '_get_test_info') as mock_find_test:
             mock_find_test.side_effect = self.findtest_sideeffect

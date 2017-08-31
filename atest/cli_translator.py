@@ -20,8 +20,10 @@ Command Line Translator for atest.
 import json
 import logging
 import os
+import re
 import subprocess
 import time
+import xml.etree.ElementTree as ET
 from collections import namedtuple
 
 
@@ -37,6 +39,9 @@ FIND_CMDS = {
     'qualified_class': r'find %s -type d -name .git -prune -o -wholename '
                        r'*%s.java -print'
 }
+TEST_CONFIG = 'AndroidTest.xml'
+# There are no restrictions on the apk file name. So just avoid "/".
+APK_RE = re.compile(r'^[^/]+\.apk$', re.I)
 
 
 class TooManyTestsFoundError(Exception):
@@ -105,7 +110,7 @@ class CLITranslator(object):
         # Make target is simply file path relative to root.
         make_target = os.path.relpath(file_path, self.root_dir)
         if not os.path.isfile(file_path):
-            logging.info('Generating module-info json - this is required for '
+            logging.info('Generating module-info.json - this is required for '
                          'initial runs.')
             cmd = ['make', '-j', '-C', self.root_dir, make_target]
             logging.debug('Executing: %s', cmd)
@@ -179,7 +184,7 @@ class CLITranslator(object):
             raise ValueError('%s not subdir of %s' % (start_dir, self.root_dir))
         current_dir = start_dir
         while current_dir != self.root_dir:
-            if os.path.isfile(os.path.join(current_dir, 'AndroidTest.xml')):
+            if os.path.isfile(os.path.join(current_dir, TEST_CONFIG)):
                 return os.path.relpath(current_dir, self.root_dir)
             current_dir = os.path.dirname(current_dir)
         raise TestWithNoModuleError('No Parent Module Dir for: %s' % start_dir)
@@ -284,6 +289,27 @@ class CLITranslator(object):
         except subprocess.CalledProcessError:
             logging.info('Class (%s) not in %s', class_name, self.root_dir)
 
+    def _get_targets_from_xml(self, rel_module_path):
+        """Parse any .apk files listed in the AndroidTest.xml file.
+
+        Args:
+            rel_module_path: path to module directory relative to repo root.
+
+        Returns:
+            A set of build targets based on the .apks found in the xml file.
+        """
+        targets = set()
+        file_path = os.path.join(self.root_dir, rel_module_path, TEST_CONFIG)
+        tree = ET.parse(file_path)
+        root = tree.getroot()
+        option_tags = root.findall('.//option')
+        for tag in option_tags:
+            value = tag.attrib['value'].strip()
+            if APK_RE.match(value):
+                targets.add(value[:-len('.apk')])
+        logging.debug('Found targets in %s: %s', TEST_CONFIG, targets)
+        return targets
+
     def  _generate_build_targets(self, test_info):
         """Generate a list of build targets for a test.
 
@@ -291,12 +317,14 @@ class CLITranslator(object):
             test_info: A TestInfo namedtuple.
 
         Returns:
-            A list of strings of the build targets.
+            A set of strings of the build targets.
         """
         if test_info.ref_type in (TEST_REFERENCE_TYPE.MODULE,
                                   TEST_REFERENCE_TYPE.CLASS):
-            return ['tradefed-all',
-                    MODULES_IN % test_info.rel_module_dir.replace('/', '-')]
+            targets = {'tradefed-all',
+                       MODULES_IN % test_info.rel_module_dir.replace('/', '-')}
+            targets |= self._get_targets_from_xml(test_info.rel_module_dir)
+            return targets
 
     def _generate_run_command(self, test_info, filters=None, annotations=None):
         """Generate a list of run commands for a test.
@@ -360,7 +388,7 @@ class CLITranslator(object):
             test_info = self._get_test_info(test, possible_reference_types)
             if not test_info:
                 raise NoTestFoundError('No test found for: %s' % test)
-            build_targets.update(self._generate_build_targets(test_info))
+            build_targets |= self._generate_build_targets(test_info)
             run_commands.append(self._generate_run_command(test_info))
         end = time.time()
         logging.info('Found tests in %ss', end - start)
