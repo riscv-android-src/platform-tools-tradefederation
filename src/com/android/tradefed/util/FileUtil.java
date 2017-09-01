@@ -415,7 +415,10 @@ public class FileUtil {
     public static void simlinkFile(File origFile, File destFile) throws IOException {
         CommandResult res = linkFile(origFile, destFile, true);
         if (!CommandStatus.SUCCESS.equals(res.getStatus())) {
-            throw new IOException("Error trying to simlink: " + res.getStderr());
+            throw new IOException(
+                    String.format(
+                            "Error trying to simlink: %s\nstdout:%s\nstderr:%s",
+                            res.getStatus(), res.getStdout(), res.getStderr()));
         }
     }
 
