@@ -158,20 +158,8 @@ public class TestInvocation implements ITestInvocation {
         }
     }
 
-    /**
-     * Attempt to shard the configuration into sub-configurations, to be re-scheduled to run on
-     * multiple resources in parallel.
-     *
-     * <p>If a shard count is greater than 1, it will simply create configs for each shard by
-     * setting shard indices and reschedule them. If a shard count is not set,it would fallback to
-     * {@link IShardHelper#shardConfig}.
-     *
-     * @param config the current {@link IConfiguration}.
-     * @param context the {@link IInvocationContext} holding the info of the tests.
-     * @param rescheduler the {@link IRescheduler}
-     * @return true if test was sharded. Otherwise return <code>false</code>
-     */
-    private boolean shardConfig(
+    @Override
+    public boolean shardConfig(
             IConfiguration config, IInvocationContext context, IRescheduler rescheduler) {
         mStatus = "sharding";
         return createShardHelper().shardConfig(config, context, rescheduler);
@@ -419,7 +407,7 @@ public class TestInvocation implements ITestInvocation {
             }
             mStatus = "tearing down";
             try {
-                doTeardown(config, context, exception);
+                doTeardown(context, config, exception);
             } catch (Throwable e) {
                 tearDownException = e;
                 CLog.e("Exception when tearing down invocation: %s", tearDownException.toString());
@@ -432,7 +420,7 @@ public class TestInvocation implements ITestInvocation {
             mStatus = "done running tests";
             try {
                 // Clean up host.
-                doCleanUp(config, context, exception);
+                doCleanUp(context, config, exception);
                 if (config.getProfiler() != null) {
                     config.getProfiler().reportAllMetrics(listener);
                 }
@@ -456,10 +444,7 @@ public class TestInvocation implements ITestInvocation {
                     listener.invocationEnded(elapsedTime);
                 }
             } finally {
-                for (String deviceName : context.getDeviceConfigNames()) {
-                    config.getDeviceConfigByName(deviceName).getBuildProvider()
-                            .cleanUp(context.getBuildInfo(deviceName));
-                }
+                cleanUpBuilds(context, config);
             }
         }
         if (tearDownException != null) {
@@ -482,16 +467,16 @@ public class TestInvocation implements ITestInvocation {
         }
         getRunUtil().allowInterrupt(true);
         logDeviceBatteryLevel(context, "initial -> setup");
-        doSetup(config, context, listener);
+        doSetup(context, config, listener);
         logDeviceBatteryLevel(context, "setup -> test");
         runTests(context, config, listener);
         logDeviceBatteryLevel(context, "after test");
     }
 
-    @VisibleForTesting
-    void doSetup(
-            IConfiguration config,
+    @Override
+    public void doSetup(
             IInvocationContext context,
+            IConfiguration config,
             final ITestInvocationListener listener)
             throws TargetSetupError, BuildError, DeviceNotAvailableException {
         // TODO: evaluate doing device setup in parallel
@@ -538,8 +523,9 @@ public class TestInvocation implements ITestInvocation {
         }
     }
 
-    private void doTeardown(IConfiguration config, IInvocationContext context,
-            Throwable exception) throws Throwable {
+    @Override
+    public void doTeardown(IInvocationContext context, IConfiguration config, Throwable exception)
+            throws Throwable {
         Throwable throwable = null;
 
         List<IMultiTargetPreparer> multiPreparers = config.getMultiTargetPreparers();
@@ -590,8 +576,8 @@ public class TestInvocation implements ITestInvocation {
         }
     }
 
-    private void doCleanUp(IConfiguration config, IInvocationContext context,
-            Throwable exception) {
+    @Override
+    public void doCleanUp(IInvocationContext context, IConfiguration config, Throwable exception) {
         for (String deviceName : context.getDeviceConfigNames()) {
             List<ITargetPreparer> preparers =
                     config.getDeviceConfigByName(deviceName).getTargetPreparers();
@@ -845,11 +831,8 @@ public class TestInvocation implements ITestInvocation {
         }
     }
 
-    /**
-     * Helper method that proceed with doing the complete build_provider step for each devices and
-     * return a success of failure status.
-     */
-    private boolean fetchBuild(
+    @Override
+    public boolean fetchBuild(
             IInvocationContext context,
             IConfiguration config,
             IRescheduler rescheduler,
@@ -919,6 +902,24 @@ public class TestInvocation implements ITestInvocation {
         return true;
     }
 
+    @Override
+    public void cleanUpBuilds(IInvocationContext context, IConfiguration config) {
+        // Ensure build infos are always cleaned up at the end of invocation.
+        for (String cleanUpDevice : context.getDeviceConfigNames()) {
+            if (context.getBuildInfo(cleanUpDevice) != null) {
+                try {
+                    config.getDeviceConfigByName(cleanUpDevice)
+                            .getBuildProvider()
+                            .cleanUp(context.getBuildInfo(cleanUpDevice));
+                } catch (RuntimeException e) {
+                    // We catch an simply log exception in cleanUp to avoid missing any final
+                    // step of the invocation.
+                    CLog.e(e);
+                }
+            }
+        }
+    }
+
     /** {@inheritDoc} */
     @Override
     public void invoke(
@@ -963,36 +964,25 @@ public class TestInvocation implements ITestInvocation {
                 return;
             }
 
-            if (shardConfig(config, context, rescheduler)) {
-                CLog.i(
-                        "Invocation for %s has been sharded, rescheduling",
-                        context.getSerials().toString());
-            } else {
-                if (config.getTests() == null || config.getTests().isEmpty()) {
-                    CLog.e("No tests to run");
-                } else {
-                    performInvocation(config, context, rescheduler, listener);
-                    setExitCode(ExitCode.NO_ERROR, null);
-                }
+            boolean sharding = shardConfig(config, context, rescheduler);
+            if (sharding) {
+                CLog.i("Invocation for %s has been sharded, rescheduling", context.getSerials());
+                return;
             }
+
+            if (config.getTests() == null || config.getTests().isEmpty()) {
+                CLog.e("No tests to run");
+                return;
+            }
+
+            performInvocation(config, context, rescheduler, listener);
+            setExitCode(ExitCode.NO_ERROR, null);
         } catch (IOException e) {
             CLog.e(e);
         } finally {
 
             // Ensure build infos are always cleaned up at the end of invocation.
-            for (String cleanUpDevice : context.getDeviceConfigNames()) {
-                if (context.getBuildInfo(cleanUpDevice) != null) {
-                    try {
-                        config.getDeviceConfigByName(cleanUpDevice)
-                                .getBuildProvider()
-                                .cleanUp(context.getBuildInfo(cleanUpDevice));
-                    } catch (RuntimeException e) {
-                        // We catch an simply log exception in cleanUp to avoid missing any final
-                        // step of the invocation.
-                        CLog.e(e);
-                    }
-                }
-            }
+            cleanUpBuilds(context, config);
 
             // ensure we always deregister the logger
             for (String deviceName : context.getDeviceConfigNames()) {
