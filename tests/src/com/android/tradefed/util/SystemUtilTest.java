@@ -14,7 +14,6 @@
  * limitations under the License.
  */
 package com.android.tradefed.util;
-
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
@@ -24,8 +23,8 @@ import org.mockito.Mockito;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.HashSet;
-import java.util.Set;
+import java.util.ArrayList;
+import java.util.List;
 
 import org.junit.Test;
 
@@ -38,7 +37,7 @@ public class SystemUtilTest {
      * environment variables.
      */
     @Test
-    public void testGetTestCasesDirs() throws IOException {
+    public void testGetExternalTestCasesDirs() throws IOException {
         File targetOutDir = null;
         File hostOutDir = null;
         try {
@@ -48,10 +47,12 @@ public class SystemUtilTest {
             SystemUtil.singleton = Mockito.mock(SystemUtil.class);
             Mockito.when(SystemUtil.singleton.getEnv(SystemUtil.ENV_ANDROID_TARGET_OUT_TESTCASES))
                     .thenReturn(targetOutDir.getAbsolutePath());
+            Mockito.when(SystemUtil.singleton.getEnv(SystemUtil.ENV_ANDROID_HOST_OUT_TESTCASES))
+                    .thenReturn(hostOutDir.getAbsolutePath());
 
-            Set<File> testCasesDirs = new HashSet<File>(SystemUtil.getTestCasesDirs(null));
-            assertTrue(testCasesDirs.contains(targetOutDir));
-            assertTrue(!testCasesDirs.contains(hostOutDir));
+            List<File> testCasesDirs = new ArrayList<File>(SystemUtil.getExternalTestCasesDirs());
+            assertTrue(testCasesDirs.get(0).equals(targetOutDir));
+            assertTrue(testCasesDirs.get(1).equals(hostOutDir));
         } finally {
             FileUtil.recursiveDelete(targetOutDir);
             FileUtil.recursiveDelete(hostOutDir);
@@ -63,14 +64,16 @@ public class SystemUtilTest {
      * environment variable is set or the directory does not exist.
      */
     @Test
-    public void testGetTestCasesDirsNoDir() {
+    public void testGetExternalTestCasesDirsNoDir() {
         File targetOutDir = new File("/path/not/exist_1");
 
         SystemUtil.singleton = Mockito.mock(SystemUtil.class);
         Mockito.when(SystemUtil.singleton.getEnv(SystemUtil.ENV_ANDROID_TARGET_OUT_TESTCASES))
                 .thenReturn(targetOutDir.getAbsolutePath());
+        Mockito.when(SystemUtil.singleton.getEnv(SystemUtil.ENV_ANDROID_HOST_OUT_TESTCASES))
+                .thenReturn(null);
 
-        Set<File> testCasesDirs = new HashSet<File>(SystemUtil.getTestCasesDirs(null));
+        List<File> testCasesDirs = new ArrayList<File>(SystemUtil.getExternalTestCasesDirs());
         assertEquals(testCasesDirs.size(), 0);
     }
 }
