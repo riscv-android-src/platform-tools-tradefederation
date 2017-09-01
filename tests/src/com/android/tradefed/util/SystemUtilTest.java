@@ -17,6 +17,9 @@ package com.android.tradefed.util;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
+import com.android.tradefed.build.IBuildInfo;
+
+import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
 import org.mockito.Mockito;
@@ -25,8 +28,6 @@ import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
-
-import org.junit.Test;
 
 /** Unit tests for {@link SystemUtil} */
 @RunWith(JUnit4.class)
@@ -72,8 +73,7 @@ public class SystemUtilTest {
                 .thenReturn(targetOutDir.getAbsolutePath());
         Mockito.when(SystemUtil.singleton.getEnv(SystemUtil.ENV_ANDROID_HOST_OUT_TESTCASES))
                 .thenReturn(null);
-
         List<File> testCasesDirs = new ArrayList<File>(SystemUtil.getExternalTestCasesDirs());
-        assertEquals(testCasesDirs.size(), 0);
+        assertEquals(0, testCasesDirs.size());
     }
 }
