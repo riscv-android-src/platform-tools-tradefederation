@@ -25,9 +25,8 @@ import com.google.common.annotations.VisibleForTesting;
 import java.io.File;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.HashSet;
 import java.util.List;
-import java.util.Set;
+
 
 /** Utility class for making system calls. */
 public class SystemUtil {
@@ -63,14 +62,17 @@ public class SystemUtil {
     /** Get a list of {@link File} pointing to tests directories external to Tradefed. */
     public static List<File> getExternalTestCasesDirs() {
         List<File> testCasesDirs = new ArrayList<File>();
-        // TODO(b/36782030): Add ENV_ANDROID_HOST_OUT_TESTCASES back to the list.
-        Set<String> testCasesDirNames =
-                new HashSet<String>(
-                        Arrays.asList(singleton.getEnv(ENV_ANDROID_TARGET_OUT_TESTCASES)));
+        // TODO(b/36782030): Support running both HOST and TARGET tests.
+        List<String> testCasesDirNames =
+                // List order matters. ConfigurationFactory caller uses first dir with test config.
+                Arrays.asList(
+                        singleton.getEnv(ENV_ANDROID_TARGET_OUT_TESTCASES),
+                        singleton.getEnv(ENV_ANDROID_HOST_OUT_TESTCASES));
         for (String testCasesDirName : testCasesDirNames) {
             if (testCasesDirName != null) {
                 File dir = new File(testCasesDirName);
                 if (dir.exists() && dir.isDirectory()) {
+                    CLog.d("Found test case dir: %s", testCasesDirName);
                     testCasesDirs.add(dir);
                 } else {
                     CLog.w(
