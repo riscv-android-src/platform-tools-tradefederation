@@ -455,7 +455,11 @@ public class DeviceSelectionOptions implements IDeviceSelection {
 
     @Override
     public String getDeviceProductType(IDevice device) {
-        return getProperty(device, DeviceProperties.BOARD);
+        String prop = getProperty(device, DeviceProperties.BOARD);
+        if (prop != null) {
+            prop = prop.toLowerCase();
+        }
+        return prop;
     }
 
     private String getProperty(IDevice device, String propName) {
@@ -464,7 +468,11 @@ public class DeviceSelectionOptions implements IDeviceSelection {
 
     @Override
     public String getDeviceProductVariant(IDevice device) {
-        return getProperty(device, DeviceProperties.VARIANT);
+        String prop = getProperty(device, DeviceProperties.VARIANT);
+        if (prop != null) {
+            prop = prop.toLowerCase();
+        }
+        return prop;
     }
 
     @Override

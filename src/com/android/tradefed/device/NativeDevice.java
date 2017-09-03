@@ -455,7 +455,7 @@ public class NativeDevice implements IManagedTestDevice {
             }
         }
 
-        return productType;
+        return productType.toLowerCase();
     }
 
     /**
@@ -464,7 +464,11 @@ public class NativeDevice implements IManagedTestDevice {
     @Override
     public String getFastbootProductType()
             throws DeviceNotAvailableException, UnsupportedOperationException {
-        return getFastbootVariable("product");
+        String prop = getFastbootVariable("product");
+        if (prop != null) {
+            prop = prop.toLowerCase();
+        }
+        return prop;
     }
 
     /**
@@ -472,7 +476,11 @@ public class NativeDevice implements IManagedTestDevice {
      */
     @Override
     public String getProductVariant() throws DeviceNotAvailableException {
-        return internalGetProperty("ro.product.device", "variant", "Product variant");
+        String prop = internalGetProperty("ro.product.device", "variant", "Product variant");
+        if (prop != null) {
+            prop = prop.toLowerCase();
+        }
+        return prop;
     }
 
     /**
@@ -481,7 +489,11 @@ public class NativeDevice implements IManagedTestDevice {
     @Override
     public String getFastbootProductVariant()
             throws DeviceNotAvailableException, UnsupportedOperationException {
-        return getFastbootVariable("variant");
+        String prop = getFastbootVariable("variant");
+        if (prop != null) {
+            prop = prop.toLowerCase();
+        }
+        return prop;
     }
 
     private String getFastbootVariable(String variableName)
