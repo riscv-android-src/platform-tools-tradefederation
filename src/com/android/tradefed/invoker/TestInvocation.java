@@ -222,9 +222,7 @@ public class TestInvocation implements ITestInvocation {
                 for (File externalTestDir : getExternalTestCasesDirs()) {
                     try {
                         File subDir = new File(testsDir, externalTestDir.getName());
-                        if (!subDir.exists()) {
-                            FileUtil.recursiveSimlink(externalTestDir, subDir);
-                        }
+                        FileUtil.recursiveSimlink(externalTestDir, subDir);
                     } catch (IOException e) {
                         CLog.e(
                                 "Failed to load external test dir %s. Ignoring it.",
