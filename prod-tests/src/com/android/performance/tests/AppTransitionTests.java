@@ -674,12 +674,10 @@ public class AppTransitionTests implements IRemoteTest, IDeviceTest {
     }
 
     /**
-     * Reverse the given appName,componentName info map to
-     * componenetName,appName info map.
-     *
-     * @return
+     * Reverse and returnthe given appName,componentName info map to componenetName,appName info
+     * map.
      */
-    private Map<String, String> reverseAppCmpInfoMap(Map<String,String> appNameCmpNameMap) {
+    private Map<String, String> reverseAppCmpInfoMap(Map<String, String> appNameCmpNameMap) {
         Map<String, String> cmpNameAppNameMap = new HashMap<String, String>();
         for (Map.Entry<String, String> entry : appNameCmpNameMap.entrySet()) {
             cmpNameAppNameMap.put(entry.getValue(), entry.getKey());
