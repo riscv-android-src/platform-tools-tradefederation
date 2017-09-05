@@ -1533,7 +1533,7 @@ public class TestInvocationTest extends TestCase {
                 (InputStreamSource) EasyMock.anyObject());
 
         EasyMock.replay(device1, listener);
-        mTestInvocation.doSetup(mStubConfiguration, context, listener);
+        mTestInvocation.doSetup(context, mStubConfiguration, listener);
         EasyMock.verify(device1, listener);
     }
 
@@ -1564,7 +1564,7 @@ public class TestInvocationTest extends TestCase {
                 (InputStreamSource) EasyMock.anyObject());
 
         EasyMock.replay(device1, listener);
-        mTestInvocation.doSetup(mStubConfiguration, context, listener);
+        mTestInvocation.doSetup(context, mStubConfiguration, listener);
         EasyMock.verify(device1, listener);
     }
 
