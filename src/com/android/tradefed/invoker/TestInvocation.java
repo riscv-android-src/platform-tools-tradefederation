@@ -65,7 +65,6 @@ import com.android.tradefed.util.FileUtil;
 import com.android.tradefed.util.IRunUtil;
 import com.android.tradefed.util.RunInterruptedException;
 import com.android.tradefed.util.RunUtil;
-import com.android.tradefed.util.StreamUtil;
 import com.android.tradefed.util.SystemUtil;
 
 import com.google.common.annotations.VisibleForTesting;
@@ -394,13 +393,11 @@ public class TestInvocation implements ITestInvocation {
             if (bugreportName != null) {
                 if (badDevice == null) {
                     for (ITestDevice device : context.getDevices()) {
-                        takeBugreport(device, listener, bugreportName,
-                                config.getCommandOptions().takeBugreportzOnInvocationEnded());
+                        takeBugreport(device, listener, bugreportName);
                     }
                 } else {
                     // If we have identified a faulty device only take the bugreport on it.
-                    takeBugreport(badDevice, listener, bugreportName,
-                            config.getCommandOptions().takeBugreportzOnInvocationEnded());
+                    takeBugreport(badDevice, listener, bugreportName);
                 }
             }
             mStatus = "tearing down";
@@ -703,31 +700,20 @@ public class TestInvocation implements ITestInvocation {
         logger.closeLog();
     }
 
-    private void takeBugreport(ITestDevice device, ITestInvocationListener listener,
-            String bugreportName, boolean useBugreportz) {
+    private void takeBugreport(
+            ITestDevice device, ITestInvocationListener listener, String bugreportName) {
         if (device == null) {
             return;
         }
         if (device.getIDevice() instanceof StubDevice) {
             return;
         }
-        if (useBugreportz) {
-            // logBugreport will report a regular bugreport if bugreportz is not supported.
-            device.logBugreport(String.format("%s_%s", bugreportName, device.getSerialNumber()),
-                    listener);
-        } else {
-            InputStreamSource bugreport = device.getBugreport();
-            try {
-                if (bugreport != null) {
-                    listener.testLog(String.format("%s_%s", bugreportName,
-                            device.getSerialNumber()), LogDataType.BUGREPORT, bugreport);
-                } else {
-                    CLog.w("Error when collecting bugreport for device '%s'",
-                            device.getSerialNumber());
-                }
-            } finally {
-                StreamUtil.cancel(bugreport);
-            }
+        // logBugreport will report a regular bugreport if bugreportz is not supported.
+        boolean res =
+                device.logBugreport(
+                        String.format("%s_%s", bugreportName, device.getSerialNumber()), listener);
+        if (!res) {
+            CLog.w("Error when collecting bugreport for device '%s'", device.getSerialNumber());
         }
     }
 
