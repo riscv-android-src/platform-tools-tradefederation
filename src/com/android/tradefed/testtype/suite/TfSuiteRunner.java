@@ -43,6 +43,8 @@ import java.util.List;
  */
 public class TfSuiteRunner extends ITestSuite {
 
+    private static final String CONFIG_EXT = ".config";
+
     @Option(name = "run-suite-tag", description = "The tag that must be run.",
             mandatory = true)
     private String mSuiteTag = null;
@@ -177,7 +179,7 @@ public class TfSuiteRunner extends ITestSuite {
         }
         // If we have any IRemoteTests remaining in the base configuration, it will run.
         if (!config.getTests().isEmpty()) {
-            configMap.put(configName, config);
+            configMap.put(sanitizeModuleName(configName), config);
         }
 
         return configMap;
@@ -185,5 +187,25 @@ public class TfSuiteRunner extends ITestSuite {
 
     private String getSuiteTag() {
         return mSuiteTag;
+    }
+
+    /**
+     * Some module names are currently the absolute path name of some config files. We want to
+     * sanitize that look more like a short included config name.
+     */
+    private String sanitizeModuleName(String originalName) {
+        if (originalName.endsWith(CONFIG_EXT)) {
+            originalName = originalName.substring(0, originalName.length() - CONFIG_EXT.length());
+        }
+        if (!originalName.startsWith("/")) {
+            return originalName;
+        }
+        // if it's an absolute path
+        String[] segments = originalName.split("/");
+        if (segments.length < 3) {
+            return originalName;
+        }
+        // return last two segments only
+        return String.join("/", segments[segments.length - 2], segments[segments.length - 1]);
     }
 }
