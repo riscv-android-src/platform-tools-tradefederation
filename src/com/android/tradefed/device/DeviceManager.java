@@ -230,7 +230,7 @@ public class DeviceManager implements IDeviceManager {
     /** Initialize adb connection and services depending on adb connection. */
     private synchronized void startAdbBridgeAndDependentServices() {
         // TODO: Temporarily increase default timeout as workaround for syncFiles timeouts
-        DdmPreferences.setTimeOut(30 * 1000);
+        DdmPreferences.setTimeOut(120 * 1000);
         mAdbBridge = createAdbBridge();
         mManagedDeviceListener = new ManagedDeviceListener();
         // It's important to add the listener before initializing the ADB bridge to avoid a race
