@@ -29,9 +29,9 @@ CLASS_NAME = 'CtsDeviceJankUi'
 MODULE_DIR = 'cts/tests/jank'
 CLASS_DIR = 'cts/tests/jank/src/android/jank/cts/ui'
 QUALIFIED_CLASS_NAME = 'android.jank.cts.ui.CtsDeviceJankUi'
-REF_TYPE = cli_t.TEST_REFERENCE_TYPE
-MODULE_INFO = cli_t.TestInfo(REF_TYPE.MODULE, MODULE_NAME, MODULE_DIR)
-CLASS_INFO = cli_t.TestInfo(REF_TYPE.CLASS, MODULE_NAME, MODULE_DIR)
+REF_TYPE = cli_t.REFERENCE_TYPE
+MODULE_INFO = cli_t.TestInfo(MODULE_NAME, MODULE_DIR, None)
+CLASS_INFO = cli_t.TestInfo(MODULE_NAME, MODULE_DIR, CLASS_NAME)
 TARGETS = {'tradefed-all', 'MODULES-IN-%s' % MODULE_DIR.replace('/', '-')}
 RUN_CMD = cli_t.RUN_CMD % MODULE_NAME
 PRODUCT = 'bullhead'
@@ -54,6 +54,25 @@ FIND_ONE = ROOT + 'cts/tests/jank/src/android/jank/cts/ui/CtsDeviceJankUi.java\n
 FIND_TWO = ROOT + 'other/dir/test.java\n' + FIND_ONE
 FIND_OVER_MAX = FIND_ONE * (cli_t.MAX_TEST_CHOICES_FOR_USER_INPUT + 1)
 XML_TARGETS = {'CtsUiDeviceTestCases', 'CtsJankDeviceTestCases'}
+
+def isfile_side_effect(value):
+    """Mock return values for os.path.isfile"""
+    if value == '/%s/%s' % (MODULE_DIR, cli_t.TEST_CONFIG):
+        return True
+    if value.endswith('.java'):
+        return True
+    return False
+
+def findtest_side_effect(test_name, _):
+    """Mock return values for _get_test_info"""
+    if test_name == MODULE_NAME:
+        return MODULE_INFO
+    if test_name == CLASS_NAME:
+        return CLASS_INFO
+
+def realpath_side_effect(path):
+    """Mock return values for os.path.realpath."""
+    return path
 
 #pylint: disable=protected-access
 #pylint: disable=no-self-use
@@ -135,26 +154,19 @@ class CLITranslatorUnittests(unittest.TestCase):
             [REF_TYPE.FILE_PATH, REF_TYPE.INTEGRATION, REF_TYPE.SUITE]
         )
 
-    def test_is_sub_dir(self):
-        """Test _is_sub_dir method."""
-        self.assertTrue(self.ctr._is_sub_dir('/a/b/c', '/'))
-        self.assertTrue(self.ctr._is_sub_dir('/a/b/c', '/a'))
-        self.assertFalse(self.ctr._is_sub_dir('/a/b/c', '/a/b/c'))
-        self.assertFalse(self.ctr._is_sub_dir('/a/b', '/a/b/c'))
-        self.assertFalse(self.ctr._is_sub_dir('/a', '/f'))
+    def test_is_equal_or_sub_dir(self):
+        """Test _is_equal_or_sub_dir method."""
+        self.assertTrue(self.ctr._is_equal_or_sub_dir('/a/b/c', '/'))
+        self.assertTrue(self.ctr._is_equal_or_sub_dir('/a/b/c', '/a'))
+        self.assertTrue(self.ctr._is_equal_or_sub_dir('/a/b/c', '/a/b/c'))
+        self.assertFalse(self.ctr._is_equal_or_sub_dir('/a/b', '/a/b/c'))
+        self.assertFalse(self.ctr._is_equal_or_sub_dir('/a', '/f'))
         self.mocks['isdir'].return_value = False
-        self.assertFalse(self.ctr._is_sub_dir('/a/b', '/a'))
+        self.assertFalse(self.ctr._is_equal_or_sub_dir('/a/b', '/a'))
 
-    def isfile_sideffect(self, value):
-        """Mock return values for os.path.isfile"""
-        if value == '/%s/%s' % (MODULE_DIR, cli_t.TEST_CONFIG):
-            return True
-        return False
-
-    @mock.patch('os.path.isfile')
-    def test_find_parent_module_dir(self, mock_isfile):
+    @mock.patch('os.path.isfile', side_effect=isfile_side_effect)
+    def test_find_parent_module_dir(self, _):
         """Test _find_parent_module_dir method."""
-        mock_isfile.side_effect = self.isfile_sideffect
         abs_class_dir = '/%s' % CLASS_DIR
         self.assertEquals(self.ctr._find_parent_module_dir(abs_class_dir),
                           MODULE_DIR)
@@ -172,21 +184,16 @@ class CLITranslatorUnittests(unittest.TestCase):
     def test_get_module_name(self):
         """Test _get_module_name method."""
         self.assertEquals(self.ctr._get_module_name(MODULE_DIR), MODULE_NAME)
-        self.assertIsNone(self.ctr._get_module_name('bad/path'))
+        self.assertRaises(cli_t.UnregisteredModuleError,
+                          self.ctr._get_module_name, 'bad/path')
 
     def test_get_targets_from_xml(self):
-        """Test _get_targets_from_xml"""
+        """Test _get_targets_from_xml method."""
         # Mocking Etree is near impossible, so use a real file.
         xml_dir = os.path.join(os.path.dirname(os.path.realpath(__file__)),
                                'unittest_data')
         self.assertEquals(self.ctr._get_targets_from_xml(xml_dir), XML_TARGETS)
 
-    @mock.patch.object(cli_t.CLITranslator, '_get_targets_from_xml',
-                       return_value=set())
-    def test_generate_build_targets(self, _):
-        """Test _generate_build_targets method."""
-        self.assertEquals(self.ctr._generate_build_targets(MODULE_INFO),
-                          TARGETS)
 
     def test_find_test_by_module_name(self):
         """Test _find_test_by_module_name method."""
@@ -195,14 +202,40 @@ class CLITranslatorUnittests(unittest.TestCase):
         self.assertIsNone(self.ctr._find_test_by_module_name('Not_Module'))
 
     @mock.patch('subprocess.check_output', return_value=FIND_ONE)
-    @mock.patch('os.path.isfile')
-    def test_find_test_by_class_name(self, mock_isfile, mock_checkoutput):
+    @mock.patch('os.path.isfile', side_effect=isfile_side_effect)
+    def test_find_test_by_class_name(self, _, mock_checkoutput):
         """Test _find_test_by_class_name method."""
-        mock_isfile.side_effect = self.isfile_sideffect
         self.assertEquals(self.ctr._find_test_by_class_name(CLASS_NAME),
                           CLASS_INFO)
         mock_checkoutput.return_value = ''
         self.assertIsNone(self.ctr._find_test_by_class_name('Not class'))
+
+    @mock.patch('os.path.realpath', side_effect=realpath_side_effect)
+    @mock.patch('os.path.isfile', side_effect=isfile_side_effect)
+    @mock.patch.object(cli_t.CLITranslator, '_get_module_name',
+                       return_value=MODULE_NAME)
+    @mock.patch.object(cli_t.CLITranslator, '_find_parent_module_dir')
+    @mock.patch('os.path.exists')
+    def test_find_test_by_path(self, mock_pathexists, mock_dir, _name,
+                               _isfile, _real):
+        """Test _find_test_by_path method."""
+        mock_pathexists.return_value = False
+        self.assertEquals(None, self.ctr._find_test_by_path('some/bad/path'))
+        mock_pathexists.return_value = True
+        mock_dir.return_value = None
+        self.assertEquals(None, self.ctr._find_test_by_path('no/module/found'))
+        mock_dir.return_value = MODULE_DIR
+        self.assertEquals(CLASS_INFO,
+                          self.ctr._find_test_by_path('%s.java' % CLASS_NAME))
+        self.assertEquals(MODULE_INFO,
+                          self.ctr._find_test_by_path('/some/dir'))
+
+    @mock.patch.object(cli_t.CLITranslator, '_get_targets_from_xml',
+                       return_value=set())
+    def test_generate_build_targets(self, _):
+        """Test _generate_build_targets method."""
+        self.assertEquals(self.ctr._generate_build_targets(MODULE_INFO),
+                          TARGETS)
 
     def test_generate_run_command(self):
         """Test _generate_run_command method."""
@@ -222,27 +255,20 @@ class CLITranslatorUnittests(unittest.TestCase):
         mock_findbyclass.return_value = None
         self.assertIsNone(ctr._get_test_info(CLASS_NAME, refs))
 
-    def findtest_sideeffect(self, test_name, _):
-        """Mock return values for _get_test_info"""
-        if test_name == MODULE_NAME:
-            return MODULE_INFO
-        if test_name == CLASS_NAME:
-            return CLASS_INFO
-
     @mock.patch.object(cli_t.CLITranslator, '_get_targets_from_xml',
                        return_value=set())
-    def test_translate(self, _):
+    @mock.patch.object(cli_t.CLITranslator, '_get_test_info',
+                       side_effect=findtest_side_effect)
+    def test_translate(self, _info, _xml):
         """Test translate method."""
-        with mock.patch.object(self.ctr, '_get_test_info') as mock_find_test:
-            mock_find_test.side_effect = self.findtest_sideeffect
-            targets, run_cmds = self.ctr.translate([MODULE_NAME, CLASS_NAME])
-            self.assertEquals(targets, set(TARGETS))
-            self.assertEquals(run_cmds, [RUN_CMD, RUN_CMD])
-            targets, run_cmds = self.ctr.translate([CLASS_NAME])
-            self.assertEquals(targets, set(TARGETS))
-            self.assertEquals(run_cmds, [RUN_CMD])
-            self.assertRaises(cli_t.NoTestFoundError, self.ctr.translate,
-                              ['NonExistentClassOrModule'])
+        targets, run_cmds = self.ctr.translate([MODULE_NAME, CLASS_NAME])
+        self.assertEquals(targets, set(TARGETS))
+        self.assertEquals(run_cmds, [RUN_CMD, RUN_CMD])
+        targets, run_cmds = self.ctr.translate([CLASS_NAME])
+        self.assertEquals(targets, set(TARGETS))
+        self.assertEquals(run_cmds, [RUN_CMD])
+        self.assertRaises(cli_t.NoTestFoundError, self.ctr.translate,
+                          ['NonExistentClassOrModule'])
 
 if __name__ == '__main__':
     unittest.main()
