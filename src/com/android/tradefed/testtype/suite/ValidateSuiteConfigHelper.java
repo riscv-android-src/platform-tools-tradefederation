@@ -26,6 +26,8 @@ import com.android.tradefed.result.TextResultReporter;
  */
 public class ValidateSuiteConfigHelper {
 
+    private ValidateSuiteConfigHelper() {}
+
     /**
      * Check that a configuration is properly built to run in a suite.
      *
