@@ -224,10 +224,8 @@ public class TfSuiteRunnerTest {
             assertEquals(3, configMap.size());
             assertTrue(configMap.containsKey("suite/stub1"));
             assertTrue(configMap.containsKey("suite/stub2"));
-            assertTrue(
-                    configMap.containsKey(
-                            FileUtil.getFileForPath(deviceTestDir, "suite/test1.config")
-                                    .getAbsolutePath()));
+            // test1 name was sanitized to look like the included configs.
+            assertTrue(configMap.containsKey("suite/test1"));
             EasyMock.verify(deviceBuildInfo);
         } finally {
             FileUtil.recursiveDelete(deviceTestDir);
