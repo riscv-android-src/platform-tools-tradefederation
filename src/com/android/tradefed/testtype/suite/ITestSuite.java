@@ -508,7 +508,7 @@ public abstract class ITestSuite
     @Override
     public long getRuntimeHint() {
         if (mDirectModule != null) {
-            CLog.e(
+            CLog.d(
                     "    %s: %s",
                     mDirectModule.getId(),
                     TimeUtil.formatElapsedTime(mDirectModule.getRuntimeHint()));

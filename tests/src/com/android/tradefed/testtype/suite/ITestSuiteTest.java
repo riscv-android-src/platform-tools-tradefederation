@@ -386,4 +386,18 @@ public class ITestSuiteTest {
             assertTrue(test instanceof TestSuiteImpl);
         }
     }
+
+    /** Test that after being sharded, ITestSuite shows the module runtime that it holds. */
+    @Test
+    public void testGetRuntimeHint() {
+        // default runtime hint is 0, it is only meant to be used for sharding.
+        assertEquals(0l, mTestSuite.getRuntimeHint());
+        mTestSuite = new TestSuiteImpl(5);
+        Collection<IRemoteTest> tests = mTestSuite.split(3);
+        for (IRemoteTest test : tests) {
+            assertTrue(test instanceof TestSuiteImpl);
+            // once sharded modules from the shard start reporting their runtime.
+            assertEquals(60000l, ((TestSuiteImpl) test).getRuntimeHint());
+        }
+    }
 }
