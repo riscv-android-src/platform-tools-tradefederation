@@ -73,7 +73,6 @@ public class TestSuiteInfo {
     /**
      * Retrieves the singleton instance, which also triggers loading of the related test suite info
      * from embedded resource files
-     * @return
      */
     public static TestSuiteInfo getInstance() {
         if (sInstance == null) {
@@ -108,9 +107,7 @@ public class TestSuiteInfo {
     }
 
     /**
-     * Retrieves test information keyed with the provided name
-     * @param name
-     * @return
+     * Retrieves test information keyed with the provided name. Or null if not property associated.
      */
     public String get(String name) {
         return mTestSuiteInfo.getProperty(name);
