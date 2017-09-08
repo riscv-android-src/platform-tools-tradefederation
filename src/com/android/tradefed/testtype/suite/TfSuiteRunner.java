@@ -34,6 +34,7 @@ import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.List;
 
@@ -121,7 +122,8 @@ public class TfSuiteRunner extends ITestSuite {
                         ConfigurationUtil.getConfigNamesFromDirs(mSuitePrefix, extraTestCasesDirs));
             }
         }
-
+        // Sort configs to ensure they are always evaluated and added in the same order.
+        Collections.sort(configs);
         for (String configName : configs) {
             try {
                 IConfiguration testConfig =
