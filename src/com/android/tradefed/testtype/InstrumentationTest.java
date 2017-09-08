@@ -1076,20 +1076,26 @@ public class InstrumentationTest implements IDeviceTest, IResumableTest, ITestCo
         }
 
         private void captureLog(TestIdentifier test) {
-            InputStreamSource logSource = null;
             // if we can, capture starting the beginning of the test only to be more precise
             long startTime = 0;
             if (mMapStartTime.containsKey(test)) {
                 startTime = mMapStartTime.remove(test);
             }
             if (startTime != 0) {
-                logSource = mDevice.getLogcatSince(startTime);
+                try (InputStreamSource logSource = mDevice.getLogcatSince(startTime)) {
+                    super.testLog(
+                            String.format("logcat-%s_%s", test.getClassName(), test.getTestName()),
+                            LogDataType.TEXT,
+                            logSource);
+                }
             } else {
-                logSource = mDevice.getLogcat(mNumLogcatBytes);
+                try (InputStreamSource logSource = mDevice.getLogcat(mNumLogcatBytes)) {
+                    super.testLog(
+                            String.format("logcat-%s_%s", test.getClassName(), test.getTestName()),
+                            LogDataType.TEXT,
+                            logSource);
+                }
             }
-            super.testLog(String.format("logcat-%s_%s", test.getClassName(), test.getTestName()),
-                    LogDataType.TEXT, logSource);
-            StreamUtil.cancel(logSource);
         }
     }
 

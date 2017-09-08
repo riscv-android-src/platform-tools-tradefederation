@@ -19,6 +19,7 @@ import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.result.ITestInvocationListener;
+import com.android.tradefed.result.InputStreamSource;
 import com.android.tradefed.testtype.IDeviceTest;
 import com.android.tradefed.testtype.IRemoteTest;
 import com.android.tradefed.util.RunUtil;
@@ -100,9 +101,10 @@ public class VellamoBenchmark implements IDeviceTest, IRemoteTest {
             isTimedOut = (System.currentTimeMillis() - benchmarkStartTime >= TIMEOUT_MS);
 
             // get the logcat and parse
-            try (BufferedReader logcat =
-                    new BufferedReader(
-                            new InputStreamReader(device.getLogcat().createInputStream()))) {
+            try (InputStreamSource logcatSource = device.getLogcat();
+                    BufferedReader logcat =
+                            new BufferedReader(
+                                    new InputStreamReader(logcatSource.createInputStream()))) {
                 while ((line = logcat.readLine()) != null) {
                     // filter only output from the Vellamo process
                     if (!line.contains(LOGTAG)) {

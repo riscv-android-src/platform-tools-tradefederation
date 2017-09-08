@@ -91,9 +91,8 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
-/**
- * Unit tests for {@link TestInvocation}.
- */
+/** Unit tests for {@link TestInvocation}. */
+@SuppressWarnings("MustBeClosedChecker")
 public class TestInvocationTest extends TestCase {
 
     private static final String SERIAL = "serial";

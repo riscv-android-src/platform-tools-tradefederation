@@ -317,12 +317,10 @@ public class AppTransitionTests implements IRemoteTest, IDeviceTest {
      * @param logReceiver
      */
     private void stopEventsLogs(LogcatReceiver logReceiver,String launchDesc) {
-        InputStreamSource logcatData = logReceiver.getLogcatData();
-        try {
+        try (InputStreamSource logcatData = logReceiver.getLogcatData()) {
             mListener.testLog(
                     String.format("%s-%s", EVENTS_LOG, launchDesc), LogDataType.TEXT, logcatData);
         } finally {
-            StreamUtil.cancel(logcatData);
             logReceiver.stop();
         }
     }
@@ -398,18 +396,14 @@ public class AppTransitionTests implements IRemoteTest, IDeviceTest {
      */
     private List<TransitionDelayItem> parseTransitionDelayInfo() {
         List<TransitionDelayItem> transitionDelayItems = null;
-        InputStreamSource logcatData = mLaunchEventsLogs.getLogcatData();
-        InputStream logcatStream = logcatData.createInputStream();
-        InputStreamReader streamReader = new InputStreamReader(logcatStream);
-        try (BufferedReader reader = new BufferedReader(streamReader)) {
+        try (InputStreamSource logcatData = mLaunchEventsLogs.getLogcatData();
+                InputStream logcatStream = logcatData.createInputStream();
+                InputStreamReader streamReader = new InputStreamReader(logcatStream);
+                BufferedReader reader = new BufferedReader(streamReader)) {
             transitionDelayItems = mEventsLogParser.parseTransitionDelayInfo(reader);
         } catch (IOException e) {
             CLog.e("Problem in parsing the transition delay items from events log");
             CLog.e(e);
-        } finally {
-            StreamUtil.cancel(logcatData);
-            StreamUtil.close(logcatStream);
-            StreamUtil.close(streamReader);
         }
         return transitionDelayItems;
     }
@@ -419,18 +413,14 @@ public class AppTransitionTests implements IRemoteTest, IDeviceTest {
      */
     private List<LatencyItem> parseLatencyInfo() {
         List<LatencyItem> latencyItems = null;
-        InputStreamSource logcatData = mLaunchEventsLogs.getLogcatData();
-        InputStream logcatStream = logcatData.createInputStream();
-        InputStreamReader streamReader = new InputStreamReader(logcatStream);
-        try (BufferedReader reader = new BufferedReader(streamReader)) {
+        try (InputStreamSource logcatData = mLaunchEventsLogs.getLogcatData();
+                InputStream logcatStream = logcatData.createInputStream();
+                InputStreamReader streamReader = new InputStreamReader(logcatStream);
+                BufferedReader reader = new BufferedReader(streamReader)) {
             latencyItems = mEventsLogParser.parseLatencyInfo(reader);
         } catch (IOException e) {
             CLog.e("Problem in parsing the latency items from events log");
             CLog.e(e);
-        } finally {
-            StreamUtil.cancel(logcatData);
-            StreamUtil.close(logcatStream);
-            StreamUtil.close(streamReader);
         }
         return latencyItems;
     }

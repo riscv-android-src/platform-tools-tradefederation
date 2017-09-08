@@ -1835,10 +1835,9 @@ public class NativeDevice implements IManagedTestDevice {
         }
     }
 
-    /**
-     * {@inheritDoc}
-     */
+    /** {@inheritDoc} */
     @Override
+    @SuppressWarnings("MustBeClosedChecker")
     public InputStreamSource getLogcat() {
         if (mLogcatReceiver == null) {
             CLog.w("Not capturing logcat for %s in background, returning a logcat dump",
@@ -1849,9 +1848,8 @@ public class NativeDevice implements IManagedTestDevice {
         }
     }
 
-    /**
-     * {@inheritDoc}
-     */
+    /** {@inheritDoc} */
+    @SuppressWarnings("MustBeClosedChecker")
     @Override
     public InputStreamSource getLogcat(int maxBytes) {
         if (mLogcatReceiver == null) {
