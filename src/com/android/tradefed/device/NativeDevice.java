@@ -156,7 +156,6 @@ public class NativeDevice implements IManagedTestDevice {
     static final String MAC_ADDRESS_PATTERN = "([0-9a-fA-F]{2}:){5}[0-9a-fA-F]{2}";
     static final String MAC_ADDRESS_COMMAND = "su root cat /sys/class/net/wlan0/address";
 
-
     /** The network monitoring interval in ms. */
     private static final int NETWORK_MONITOR_INTERVAL = 10 * 1000;
 
@@ -3842,5 +3841,34 @@ public class NativeDevice implements IManagedTestDevice {
             CLog.w(e);
             return null;
         }
+    }
+
+    @Override
+    public File dumpHeap(String process, String devicePath) throws DeviceNotAvailableException {
+        throw new UnsupportedOperationException("dumpHeap is not supported.");
+    }
+
+    @Override
+    public String getProcessPid(String process) throws DeviceNotAvailableException {
+        String output = executeShellCommand(String.format("pidof %s", process)).trim();
+        if (checkValidPid(output)) {
+            return output;
+        }
+        CLog.e("Failed to find a valid pid for process.");
+        return null;
+    }
+
+    /** Validate that pid is an integer and not empty. */
+    private boolean checkValidPid(String output) {
+        if (output.isEmpty()) {
+            return false;
+        }
+        try {
+            Integer.parseInt(output);
+        } catch (NumberFormatException e) {
+            CLog.e(e);
+            return false;
+        }
+        return true;
     }
 }
