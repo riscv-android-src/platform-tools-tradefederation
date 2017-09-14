@@ -205,7 +205,7 @@ public abstract class ITestSuite
         TestFailureListener failureListener =
                 new TestFailureListener(
                         listener,
-                        getDevice(),
+                        mContext.getDevices(),
                         mBugReportOnFailure,
                         mLogcatOnFailure,
                         mScreenshotOnFailure,
