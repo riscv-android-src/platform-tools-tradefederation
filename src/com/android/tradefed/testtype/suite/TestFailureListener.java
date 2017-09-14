@@ -44,7 +44,7 @@ public class TestFailureListener implements ITestInvocationListener {
     private static final String LOGCAT_ON_FAILURE_SIZE_OPTION = "logcat-on-failure-size";
     private static final long LOGCAT_CAPTURE_TIMEOUT = 2 * 60 * 1000;
 
-    private ITestDevice mDevice;
+    private List<ITestDevice> mListDevice;
     private ITestInvocationListener mListener;
     private boolean mBugReportOnFailure;
     private boolean mLogcatOnFailure;
@@ -54,11 +54,16 @@ public class TestFailureListener implements ITestInvocationListener {
     private Map<TestIdentifier, Long> mTrackStartTime = new HashMap<>();
     private List<Thread> mLogcatThreads = new ArrayList<>();
 
-    public TestFailureListener(ITestInvocationListener listener, ITestDevice device,
-            boolean bugReportOnFailure, boolean logcatOnFailure, boolean screenshotOnFailure,
-            boolean rebootOnFailure, int maxLogcatBytes) {
+    public TestFailureListener(
+            ITestInvocationListener listener,
+            List<ITestDevice> devices,
+            boolean bugReportOnFailure,
+            boolean logcatOnFailure,
+            boolean screenshotOnFailure,
+            boolean rebootOnFailure,
+            int maxLogcatBytes) {
         mListener = listener;
-        mDevice = device;
+        mListDevice = devices;
         mBugReportOnFailure = bugReportOnFailure;
         mLogcatOnFailure = logcatOnFailure;
         mScreenshotOnFailure = screenshotOnFailure;
@@ -84,7 +89,7 @@ public class TestFailureListener implements ITestInvocationListener {
     public void testStarted(TestIdentifier test) {
         if (mLogcatOnFailure) {
             try {
-                mTrackStartTime.put(test, mDevice.getDeviceDate());
+                mTrackStartTime.put(test, mListDevice.get(0).getDeviceDate());
             } catch (DeviceNotAvailableException e) {
                 CLog.e(e);
                 // we fall back to logcat dump on null.
@@ -110,25 +115,32 @@ public class TestFailureListener implements ITestInvocationListener {
     public void testFailed(TestIdentifier test, String trace) {
         CLog.i("FailureListener.testFailed %s %b %b %b", test.toString(), mBugReportOnFailure,
                 mLogcatOnFailure, mScreenshotOnFailure);
+        for (ITestDevice device : mListDevice) {
+            captureFailure(device, test);
+        }
+    }
+
+    /** Capture the appropriate logs for one device for one test failure. */
+    private void captureFailure(ITestDevice device, TestIdentifier test) {
+        String serial = device.getSerialNumber();
         if (mScreenshotOnFailure) {
             try {
-                try (InputStreamSource screenSource = mDevice.getScreenshot()) {
+                try (InputStreamSource screenSource = device.getScreenshot()) {
                     testLog(
-                            String.format("%s-screenshot", test.toString()),
+                            String.format("%s-%s-screenshot", test.toString(), serial),
                             LogDataType.PNG,
                             screenSource);
                 }
             } catch (DeviceNotAvailableException e) {
                 CLog.e(e);
-                CLog.e("Device %s became unavailable while capturing screenshot",
-                    mDevice.getSerialNumber());
+                CLog.e("Device %s became unavailable while capturing screenshot", serial);
             }
         }
         if (mBugReportOnFailure) {
-            try (InputStreamSource bugSource = mDevice.getBugreportz()) {
+            try (InputStreamSource bugSource = device.getBugreportz()) {
                 testLog(
-                        String.format("%s-bugreport", test.toString()),
-                        LogDataType.BUGREPORT,
+                        String.format("%s-%s-bugreport", test.toString(), serial),
+                        LogDataType.BUGREPORTZ,
                         bugSource);
             }
         }
@@ -140,15 +152,15 @@ public class TestFailureListener implements ITestInvocationListener {
                             InputStreamSource logSource = null;
                             Long startTime = mTrackStartTime.remove(test);
                             if (startTime != null) {
-                                logSource = mDevice.getLogcatSince(startTime);
+                                logSource = device.getLogcatSince(startTime);
                             } else {
                                 // sleep 2s to ensure test failure stack trace makes it into the
                                 // logcat capture
                                 getRunUtil().sleep(2 * 1000);
-                                logSource = mDevice.getLogcat(mMaxLogcatBytes);
+                                logSource = device.getLogcat(mMaxLogcatBytes);
                             }
                             testLog(
-                                    String.format("%s-logcat", test.toString()),
+                                    String.format("%s-%s-logcat", test.toString(), serial),
                                     LogDataType.LOGCAT,
                                     logSource);
                             logSource.close();
@@ -169,16 +181,15 @@ public class TestFailureListener implements ITestInvocationListener {
             try {
                 // Rebooting on all failures can hide legitimate issues and platform instabilities,
                 // therefore only allowed on "user-debug" and "eng" builds.
-                if ("user".equals(mDevice.getProperty("ro.build.type"))) {
+                if ("user".equals(device.getProperty("ro.build.type"))) {
                     CLog.e("Reboot-on-failure should only be used during development," +
                             " this is a\" user\" build device");
                 } else {
-                    mDevice.reboot();
+                    device.reboot();
                 }
             } catch (DeviceNotAvailableException e) {
                 CLog.e(e);
-                CLog.e("Device %s became unavailable while rebooting",
-                        mDevice.getSerialNumber());
+                CLog.e("Device %s became unavailable while rebooting", serial);
             }
         }
     }
