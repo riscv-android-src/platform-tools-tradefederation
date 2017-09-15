@@ -25,7 +25,9 @@ import com.android.tradefed.result.CollectingTestListener;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.InputStreamSource;
 import com.android.tradefed.result.LogDataType;
+import com.android.tradefed.util.TimeUtil;
 
+import java.util.Collection;
 import java.util.Map;
 
 /**
@@ -51,10 +53,8 @@ public class ShardListener extends CollectingTestListener {
 
     /**
      * {@inheritDoc}
-     * @deprecated use {@link #invocationStarted(IInvocationContext)} instead.
      */
     @Override
-    @Deprecated
     public void invocationStarted(IInvocationContext context) {
         super.invocationStarted(context);
         synchronized (mMasterListener) {
@@ -112,6 +112,7 @@ public class ShardListener extends CollectingTestListener {
     public void invocationEnded(long elapsedTime) {
         super.invocationEnded(elapsedTime);
         synchronized (mMasterListener) {
+            logShardContent(getRunResults());
             for (TestRunResult runResult : getRunResults()) {
                 mMasterListener.testRunStarted(runResult.getName(), runResult.getNumTests());
                 forwardTestResults(runResult.getTestResults());
@@ -149,5 +150,19 @@ public class ShardListener extends CollectingTestListener {
                         testEntry.getValue().getMetrics());
             }
         }
+    }
+
+    /** Log the content of the shard for easier debugging. */
+    private void logShardContent(Collection<TestRunResult> listResults) {
+        CLog.d("=================================================");
+        CLog.d(
+                "========== Shard Primary Device %s ==========",
+                getInvocationContext().getDevices().get(0).getSerialNumber());
+        for (TestRunResult runRes : listResults) {
+            CLog.d(
+                    "\tRan '%s' in %s",
+                    runRes.getName(), TimeUtil.formatElapsedTime(runRes.getElapsedTime()));
+        }
+        CLog.d("=================================================");
     }
 }

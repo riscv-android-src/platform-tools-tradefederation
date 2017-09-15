@@ -20,6 +20,7 @@ import com.android.ddmlib.Log.LogLevel;
 import com.android.tradefed.build.BuildRetrievalError;
 import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.build.IBuildProvider;
+import com.android.tradefed.build.IDeviceBuildInfo;
 import com.android.tradefed.build.IDeviceBuildProvider;
 import com.android.tradefed.command.CommandRunner.ExitCode;
 import com.android.tradefed.config.GlobalConfiguration;
@@ -59,13 +60,16 @@ import com.android.tradefed.testtype.IMultiDeviceTest;
 import com.android.tradefed.testtype.IRemoteTest;
 import com.android.tradefed.testtype.IResumableTest;
 import com.android.tradefed.testtype.IRetriableTest;
+import com.android.tradefed.util.FileUtil;
 import com.android.tradefed.util.IRunUtil;
 import com.android.tradefed.util.RunInterruptedException;
 import com.android.tradefed.util.RunUtil;
 import com.android.tradefed.util.StreamUtil;
+import com.android.tradefed.util.SystemUtil;
 
 import com.google.common.annotations.VisibleForTesting;
 
+import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -87,7 +91,7 @@ import java.util.concurrent.TimeUnit;
 public class TestInvocation implements ITestInvocation {
 
     /**
-     * Format of the key in {@link IInvocationContext} to log the battery level for each step of the
+     * Format of the key in {@link IBuildInfo} to log the battery level for each step of the
      * invocation. (Setup, test, tear down).
      */
     private static final String BATTERY_ATTRIBUTE_FORMAT_KEY = "%s-battery-%s";
@@ -207,6 +211,30 @@ public class TestInvocation implements ITestInvocation {
             CLog.w("Using the test-tag from the build_provider. Consider updating your config to"
                     + " have no alias/namespace in front of test-tag.");
         }
+
+        // Load environment tests dir.
+        if (info instanceof IDeviceBuildInfo) {
+            File testsDir = ((IDeviceBuildInfo) info).getTestsDir();
+            if (testsDir != null && testsDir.exists()) {
+                for (File externalTestDir : getExternalTestCasesDirs()) {
+                    try {
+                        File subDir = new File(testsDir, externalTestDir.getName());
+                        FileUtil.recursiveSimlink(externalTestDir, subDir);
+                    } catch (IOException e) {
+                        CLog.e(
+                                "Failed to load external test dir %s. Ignoring it.",
+                                externalTestDir);
+                        CLog.e(e);
+                    }
+                }
+            }
+        }
+    }
+
+    /** Returns the list of external directories to Tradefed coming from the environment. */
+    @VisibleForTesting
+    List<File> getExternalTestCasesDirs() {
+        return SystemUtil.getExternalTestCasesDirs();
     }
 
     /**
@@ -295,6 +323,8 @@ public class TestInvocation implements ITestInvocation {
         ITestDevice badDevice = null;
 
         startInvocation(config, context, listener);
+        // Ensure that no unexpected attributes are added afterward
+        ((InvocationContext) context).lockAttributes();
         try {
             logDeviceBatteryLevel(context, "initial");
             prepareAndRun(config, context, listener);
@@ -539,7 +569,9 @@ public class TestInvocation implements ITestInvocation {
                 }
             }
             // Extra tear down step for the device
-            device.postInvocationTearDown();
+            if (!config.getCommandOptions().shouldSkipPreDeviceSetup()) {
+                device.postInvocationTearDown();
+            }
         }
 
         if (throwable != null) {
@@ -786,10 +818,13 @@ public class TestInvocation implements ITestInvocation {
             try {
                 Integer batteryLevel = device.getBattery(500, TimeUnit.MILLISECONDS).get();
                 CLog.v("%s - %s - %d%%", BATT_TAG, event, batteryLevel);
-                context.addInvocationAttribute(
-                        String.format(
-                                BATTERY_ATTRIBUTE_FORMAT_KEY, testDevice.getSerialNumber(), event),
-                        batteryLevel.toString());
+                context.getBuildInfo(testDevice)
+                        .addBuildAttribute(
+                                String.format(
+                                        BATTERY_ATTRIBUTE_FORMAT_KEY,
+                                        testDevice.getSerialNumber(),
+                                        event),
+                                batteryLevel.toString());
                 continue;
             } catch (InterruptedException | ExecutionException e) {
                 // fall through
