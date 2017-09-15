@@ -504,41 +504,6 @@ public class HostTestTest extends TestCase {
 
     /**
      * Test success case for {@link HostTest#run(ITestInvocationListener)}, where test to run is a
-     * {@link MetricTestCase} and where an option is set to get extra metrics.
-     */
-    public void testRun_MetricTestCase_withOption() throws Exception {
-        OptionSetter setter = new OptionSetter(mHostTest);
-        setter.setOptionValue("set-option", "test-option:test");
-        // List option can take several values.
-        setter.setOptionValue("set-option", "list-option:test1");
-        setter.setOptionValue("set-option", "list-option:test2");
-        // Map option
-        setter.setOptionValue("set-option", "map-option:key=value");
-        mHostTest.setClassName(TestMetricTestCase.class.getName());
-        TestIdentifier test1 = new TestIdentifier(TestMetricTestCase.class.getName(), "testPass");
-        TestIdentifier test2 = new TestIdentifier(TestMetricTestCase.class.getName(), "testPass2");
-        mListener.testRunStarted((String) EasyMock.anyObject(), EasyMock.eq(2));
-        mListener.testStarted(EasyMock.eq(test1));
-        // test1 should only have its metrics
-        Map<String, String> metric1 = new HashMap<>();
-        metric1.put("key1", "metric1");
-        mListener.testEnded(test1, metric1);
-        // test2 should only have its metrics
-        mListener.testStarted(EasyMock.eq(test2));
-        Map<String, String> metric2 = new HashMap<>();
-        metric2.put("key2", "metric2");
-        metric2.put("test-option", "test");
-        metric2.put("list-option", "[test1, test2]");
-        metric2.put("map-option", "{key=value}");
-        mListener.testEnded(test2, metric2);
-        mListener.testRunEnded(EasyMock.anyLong(), (Map<String, String>) EasyMock.anyObject());
-        EasyMock.replay(mListener);
-        mHostTest.run(mListener);
-        EasyMock.verify(mListener);
-    }
-
-    /**
-     * Test success case for {@link HostTest#run(ITestInvocationListener)}, where test to run is a
      * {@link TestSuite}.
      */
     public void testRun_testSuite() throws Exception {
