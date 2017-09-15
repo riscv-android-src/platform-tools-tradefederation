@@ -85,10 +85,15 @@ public class HostTest
             importance = Importance.IF_UNSET)
     private String mMethodName;
 
-    @Option(name = "set-option", description = "Options to be passed down to the class "
-            + "under test, key and value should be separated by colon \":\"; for example, if class "
-            + "under test supports \"--iteration 1\" from a command line, it should be passed in as"
-            + " \"--set-option iteration:1\"; escaping of \":\" is currently not supported")
+    public static final String SET_OPTION_NAME = "set-option";
+    public static final String SET_OPTION_DESC =
+            "Options to be passed down to the class under test, key and value should be "
+                    + "separated by colon \":\"; for example, if class under test supports "
+                    + "\"--iteration 1\" from a command line, it should be passed in as"
+                    + " \"--set-option iteration:1\" or \"--set-option iteration:key=value\" for "
+                    + "passing options to map; escaping of \":\" \"=\" is currently not supported";
+
+    @Option(name = SET_OPTION_NAME, description = SET_OPTION_DESC)
     private List<String> mKeyValueOptions = new ArrayList<>();
 
     @Option(name = "include-annotation",
@@ -329,6 +334,17 @@ public class HostTest
         if (testObj instanceof IAbiReceiver) {
             ((IAbiReceiver)testObj).setAbi(mAbi);
         }
+        // managed runner should have the same set-option to pass option too.
+        if (testObj instanceof ISetOptionReceiver) {
+            try {
+                OptionSetter setter = new OptionSetter(testObj);
+                for (String item : mKeyValueOptions) {
+                    setter.setOptionValue(SET_OPTION_NAME, item);
+                }
+            } catch (ConfigurationException e) {
+                throw new RuntimeException(e);
+            }
+        }
     }
 
     /**
@@ -549,24 +565,7 @@ public class HostTest
         try {
             Object testObj = classObj.newInstance();
             // set options
-            if (!mKeyValueOptions.isEmpty()) {
-                try {
-                    OptionSetter setter = new OptionSetter(testObj);
-                    for (String item : mKeyValueOptions) {
-                        String[] fields = item.split(":");
-                        if (fields.length == 2) {
-                            setter.setOptionValue(fields[0], fields[1]);
-                        } else if (fields.length == 3) {
-                            setter.setOptionValue(fields[0], fields[1], fields[2]);
-                        } else {
-                            throw new RuntimeException(
-                                String.format("invalid option spec \"%s\"", item));
-                        }
-                    }
-                } catch (ConfigurationException ce) {
-                    throw new RuntimeException("error passing options down to test class", ce);
-                }
-            }
+            setOptionToLoadedObject(testObj, mKeyValueOptions);
             // Set the test information if needed.
             if (setInfo) {
                 setTestObjectInformation(testObj);
@@ -578,6 +577,43 @@ public class HostTest
         } catch (IllegalAccessException e) {
             throw new IllegalArgumentException(String.format("Could not load Test class %s",
                     className), e);
+        }
+    }
+
+    /**
+     * Helper for Device Runners to use to set options the same way as HostTest, from set-option.
+     *
+     * @param testObj the object that will receive the options.
+     * @param keyValueOptions the list of options formatted as HostTest set-option requires.
+     */
+    public static void setOptionToLoadedObject(Object testObj, List<String> keyValueOptions) {
+        if (!keyValueOptions.isEmpty()) {
+            try {
+                OptionSetter setter = new OptionSetter(testObj);
+                for (String item : keyValueOptions) {
+                    String[] fields = item.split(":");
+                    if (fields.length == 2) {
+                        if (fields[1].contains("=")) {
+                            String[] values = fields[1].split("=");
+                            if (values.length != 2) {
+                                throw new RuntimeException(
+                                        String.format(
+                                                "set-option provided '%s' format is invalid. Only one "
+                                                        + "'=' is allowed",
+                                                item));
+                            }
+                            setter.setOptionValue(fields[0], values[0], values[1]);
+                        } else {
+                            setter.setOptionValue(fields[0], fields[1]);
+                        }
+                    } else {
+                        throw new RuntimeException(
+                                String.format("invalid option spec \"%s\"", item));
+                    }
+                }
+            } catch (ConfigurationException ce) {
+                throw new RuntimeException("error passing options down to test class", ce);
+            }
         }
     }
 
