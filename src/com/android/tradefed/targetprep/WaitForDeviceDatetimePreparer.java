@@ -81,6 +81,13 @@ public class WaitForDeviceDatetimePreparer implements ITargetPreparer {
     }
 
     /**
+     * Sets the boolean for forcing a {@link TargetSetupError} if the datetime is not set correctly.
+     */
+    public void setForceSetupError(boolean forceSetupError) {
+        mForceSetupError = forceSetupError;
+    }
+
+    /**
      * Waits for a correct datetime on device, optionally force host datetime onto device
      * @param forceDatetime
      * @return <code>true</code> if datetime is correct or forced, <code>false</code> otherwise
