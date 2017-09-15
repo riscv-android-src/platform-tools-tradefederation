@@ -31,8 +31,9 @@ import java.io.Writer;
  */
 public class RunUtilFuncTest extends TestCase {
 
-    private static final long VERY_SHORT_TIMEOUT_MS = 10;
-    private static final long SHORT_TIMEOUT_MS = 500;
+    private static final long VERY_SHORT_TIMEOUT_MS = 10l;
+    private static final long SHORT_TIMEOUT_MS = 500l;
+    private static final long LONG_TIMEOUT_MS = 5000l;
 
     private abstract class MyRunnable implements IRunUtil.IRunnableResult {
         boolean mCanceled = false;
@@ -97,8 +98,8 @@ public class RunUtilFuncTest extends TestCase {
      */
     public void testRunTimedCmd_repeatedOutput() {
         for (int i = 0; i < 1000; i++) {
-            CommandResult result = RunUtil.getDefault().runTimedCmd(SHORT_TIMEOUT_MS, "echo",
-                    "hello");
+            CommandResult result =
+                    RunUtil.getDefault().runTimedCmd(LONG_TIMEOUT_MS, "echo", "hello");
             assertTrue("Failed at iteration " + i,
                     CommandStatus.SUCCESS.equals(result.getStatus()));
             CLog.d(result.getStdout());
@@ -123,12 +124,17 @@ public class RunUtilFuncTest extends TestCase {
             }
             s.close();
 
-            final long timeOut = 5000;
             // FIXME: this test case is not ideal, as it will only work on platforms that support
             // cat command.
-            CommandResult result = RunUtil.getDefault().runTimedCmd(timeOut, "cat",
-                    f.getAbsolutePath());
-            assertTrue(result.getStatus() == CommandStatus.SUCCESS);
+            CommandResult result =
+                    RunUtil.getDefault()
+                            .runTimedCmd(3 * LONG_TIMEOUT_MS, "cat", f.getAbsolutePath());
+            assertEquals(
+                    String.format(
+                            "We expected SUCCESS but got %s, with stdout: '%s'\nstderr: %s",
+                            result.getStatus(), result.getStdout(), result.getStderr()),
+                    CommandStatus.SUCCESS,
+                    result.getStatus());
             assertTrue(result.getStdout().length() == dataSize);
         } finally {
             f.delete();
@@ -146,7 +152,12 @@ public class RunUtilFuncTest extends TestCase {
         // printenv
         CommandResult result =
                 runUtil.runTimedCmdRetry(SHORT_TIMEOUT_MS, SHORT_TIMEOUT_MS, 3, "printenv", "bar");
-        assertEquals(CommandStatus.SUCCESS, result.getStatus());
+        assertEquals(
+                String.format(
+                        "We expected SUCCESS but got %s, with stdout: '%s'\nstderr: %s",
+                        result.getStatus(), result.getStdout(), result.getStderr()),
+                CommandStatus.SUCCESS,
+                result.getStatus());
         assertEquals("foo", result.getStdout().trim());
 
         // remove env variable
@@ -165,7 +176,12 @@ public class RunUtilFuncTest extends TestCase {
         RunUtil runUtil = new RunUtil();
         String[] command = {"sleep", "10000"};
         CommandResult result = runUtil.runTimedCmd(VERY_SHORT_TIMEOUT_MS, command);
-        assertEquals(CommandStatus.TIMED_OUT, result.getStatus());
+        assertEquals(
+                String.format(
+                        "We expected TIMED_OUT but got %s, with stdout: '%s'\nstderr: %s",
+                        result.getStatus(), result.getStdout(), result.getStderr()),
+                CommandStatus.TIMED_OUT,
+                result.getStatus());
         assertEquals("", result.getStdout());
         assertEquals("", result.getStderr());
         // We give it some times to clean up the process

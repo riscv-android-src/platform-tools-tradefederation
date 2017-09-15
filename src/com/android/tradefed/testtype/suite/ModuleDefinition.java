@@ -41,6 +41,7 @@ import com.android.tradefed.targetprep.TargetSetupError;
 import com.android.tradefed.testtype.IBuildReceiver;
 import com.android.tradefed.testtype.IDeviceTest;
 import com.android.tradefed.testtype.IRemoteTest;
+import com.android.tradefed.testtype.IRuntimeHintProvider;
 import com.android.tradefed.testtype.ITestCollector;
 import com.android.tradefed.util.StreamUtil;
 
@@ -135,6 +136,23 @@ public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestColl
             IRemoteTest test = mTests.iterator().next();
             mTests.remove(test);
             return test;
+        }
+    }
+
+    /**
+     * Add some {@link IRemoteTest} to be executed as part of the module. Used when merging two
+     * modules.
+     */
+    void addTests(List<IRemoteTest> test) {
+        synchronized (mTests) {
+            mTests.addAll(test);
+        }
+    }
+
+    /** Returns the current number of {@link IRemoteTest} waiting to be executed. */
+    public int numTests() {
+        synchronized (mTests) {
+            return mTests.size();
         }
     }
 
@@ -262,6 +280,7 @@ public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestColl
                     CLog.e("Module '%s' - test '%s' threw exception:", getId(), test.getClass());
                     CLog.e(re);
                     CLog.e("Proceeding to the next test.");
+                    reportFailure(new ResultForwarder(currentTestListener), re.getMessage());
                 } catch (DeviceUnresponsiveException due) {
                     // being able to catch a DeviceUnresponsiveException here implies that
                     // recovery was successful, and test execution should proceed to next
@@ -271,6 +290,7 @@ public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestColl
                                     + "successful, proceeding with next module. Stack trace:");
                     CLog.w(due);
                     CLog.w("Proceeding to the next test.");
+                    reportFailure(new ResultForwarder(currentTestListener), due.getMessage());
                 } catch (DeviceNotAvailableException dnae) {
                     // We do special logging of some information in Context of the module for easier
                     // debugging.
@@ -311,6 +331,10 @@ public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestColl
                 }
             }
         }
+    }
+
+    private void reportFailure(ITestInvocationListener listener, String errorMessage) {
+        listener.testRunFailed(errorMessage);
     }
 
     /** Helper to log the device events. */
@@ -435,6 +459,19 @@ public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestColl
     @Override
     public String toString() {
         return getId();
+    }
+
+    /** Returns the approximate time to run all the tests in the module. */
+    public long getRuntimeHint() {
+        long hint = 0l;
+        for (IRemoteTest test : mTests) {
+            if (test instanceof IRuntimeHintProvider) {
+                hint += ((IRuntimeHintProvider) test).getRuntimeHint();
+            } else {
+                hint += 60000;
+            }
+        }
+        return hint;
     }
 
     /** Returns the list of {@link ITargetPreparer} defined for this module. */

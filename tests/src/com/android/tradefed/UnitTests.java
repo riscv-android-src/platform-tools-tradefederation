@@ -15,6 +15,7 @@
  */
 package com.android.tradefed;
 
+import com.android.tradefed.build.BootstrapBuildProviderTest;
 import com.android.tradefed.build.BuildInfoTest;
 import com.android.tradefed.build.DeviceBuildDescriptorTest;
 import com.android.tradefed.build.DeviceBuildInfoTest;
@@ -105,6 +106,7 @@ import com.android.tradefed.targetprep.DeviceFlashPreparerTest;
 import com.android.tradefed.targetprep.DeviceSetupTest;
 import com.android.tradefed.targetprep.FastbootDeviceFlasherTest;
 import com.android.tradefed.targetprep.FlashingResourcesParserTest;
+import com.android.tradefed.targetprep.InstallAllTestZipAppsSetupTest;
 import com.android.tradefed.targetprep.InstallApkSetupTest;
 import com.android.tradefed.targetprep.InstrumentationPreparerTest;
 import com.android.tradefed.targetprep.KernelFlashPreparerTest;
@@ -152,6 +154,7 @@ import com.android.tradefed.testtype.suite.ITestSuiteIntegrationTest;
 import com.android.tradefed.testtype.suite.ITestSuiteTest;
 import com.android.tradefed.testtype.suite.ModuleDefinitionTest;
 import com.android.tradefed.testtype.suite.ModuleListenerTest;
+import com.android.tradefed.testtype.suite.ModuleMergerTest;
 import com.android.tradefed.testtype.suite.ModuleSplitterTest;
 import com.android.tradefed.testtype.suite.TestFailureListenerTest;
 import com.android.tradefed.testtype.suite.TfSuiteRunnerTest;
@@ -227,6 +230,7 @@ import org.junit.runners.Suite.SuiteClasses;
 @SuiteClasses({
 
     // build
+    BootstrapBuildProviderTest.class,
     BuildInfoTest.class,
     DeviceBuildInfoTest.class,
     DeviceBuildDescriptorTest.class,
@@ -336,6 +340,7 @@ import org.junit.runners.Suite.SuiteClasses;
     DeviceSetupTest.class,
     FastbootDeviceFlasherTest.class,
     FlashingResourcesParserTest.class,
+    InstallAllTestZipAppsSetupTest.class,
     InstallApkSetupTest.class,
     InstrumentationPreparerTest.class,
     KernelFlashPreparerTest.class,
@@ -394,6 +399,7 @@ import org.junit.runners.Suite.SuiteClasses;
     ITestSuiteTest.class,
     ModuleDefinitionTest.class,
     ModuleListenerTest.class,
+    ModuleMergerTest.class,
     ModuleSplitterTest.class,
     TestFailureListenerTest.class,
     TfSuiteRunnerTest.class,

@@ -59,9 +59,13 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
+import java.util.regex.Pattern;
 
 @OptionClass(alias = "dmgr", global_namespace = false)
 public class DeviceManager implements IDeviceManager {
+
+    /** Display string for unknown properties */
+    public static final String UNKNOWN_DISPLAY_STRING = "unknown";
 
     /** max wait time in ms for fastboot devices command to complete */
     private static final long FASTBOOT_CMD_TIMEOUT = 1 * 60 * 1000;
@@ -84,6 +88,17 @@ public class DeviceManager implements IDeviceManager {
     private static final String NULL_DEVICE_SERIAL_PREFIX = "null-device";
     private static final String EMULATOR_SERIAL_PREFIX = "emulator";
     private static final String TCP_DEVICE_SERIAL_PREFIX = "tcp-device";
+
+    /**
+     * Pattern for a device listed by 'adb devices':
+     *
+     * <p>List of devices attached
+     *
+     * <p>serial1 device
+     *
+     * <p>serial2 device
+     */
+    private static final String DEVICE_LIST_PATTERN = "(.*)(\n)(%s)(\\s+)(device)(.*?)";
 
     protected DeviceMonitorMultiplexer mDvcMon = new DeviceMonitorMultiplexer();
 
@@ -528,17 +543,28 @@ public class DeviceManager implements IDeviceManager {
     /**
      * Helper method to convert from a {@link com.android.tradefed.device.FreeDeviceState} to a
      * {@link com.android.tradefed.device.DeviceEvent}
+     *
      * @param managedDevice
      */
-    static DeviceEvent getEventFromFree(IManagedTestDevice managedDevice, FreeDeviceState deviceState) {
+    private DeviceEvent getEventFromFree(
+            IManagedTestDevice managedDevice, FreeDeviceState deviceState) {
         switch (deviceState) {
             case UNRESPONSIVE:
                 return DeviceEvent.FREE_UNRESPONSIVE;
             case AVAILABLE:
                 return DeviceEvent.FREE_AVAILABLE;
             case UNAVAILABLE:
-                if (managedDevice.getDeviceState() == TestDeviceState.NOT_AVAILABLE) {
-                    return DeviceEvent.FREE_UNKNOWN;
+                // We double check if device is still showing in adb or not to confirm the
+                // connection is gone.
+                if (TestDeviceState.NOT_AVAILABLE.equals(managedDevice.getDeviceState())) {
+                    String devices = executeGlobalAdbCommand("devices");
+                    Pattern p =
+                            Pattern.compile(
+                                    String.format(
+                                            DEVICE_LIST_PATTERN, managedDevice.getSerialNumber()));
+                    if (devices == null || !p.matcher(devices).find()) {
+                        return DeviceEvent.FREE_UNKNOWN;
+                    }
                 }
                 return DeviceEvent.FREE_UNAVAILABLE;
             case IGNORE:
@@ -883,7 +909,8 @@ public class DeviceManager implements IDeviceManager {
                             d.getDeviceClass(),
                             getDisplay(d.getMacAddress()),
                             getDisplay(d.getSimState()),
-                            getDisplay(d.getSimOperator())));
+                            getDisplay(d.getSimOperator()),
+                            idevice));
         }
         return serialStates;
     }
@@ -956,7 +983,7 @@ public class DeviceManager implements IDeviceManager {
      * Return the displayable string for given object
      */
     private String getDisplay(Object o) {
-        return o == null ? "unknown" : o.toString();
+        return o == null ? UNKNOWN_DISPLAY_STRING : o.toString();
     }
 
     /**

@@ -88,7 +88,9 @@ public class ModuleSplitter {
             boolean dynamicModule) {
         // If this particular configuration module is declared as 'not shardable' we take it whole
         // but still split the individual IRemoteTest in a pool.
-        if (config.getConfigurationDescription().isNotShardable()) {
+        if (config.getConfigurationDescription().isNotShardable()
+                || (!dynamicModule
+                        && config.getConfigurationDescription().isNotStrictShardable())) {
             for (int i = 0; i < config.getTests().size(); i++) {
                 if (dynamicModule) {
                     ModuleDefinition module =

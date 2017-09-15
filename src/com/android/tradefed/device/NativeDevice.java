@@ -131,10 +131,6 @@ public class NativeDevice implements IManagedTestDevice {
     private static final int ENCRYPTION_INPLACE_TIMEOUT_MIN = 2 * 60;
     /** Encrypting with wipe can take up to 20 minutes. */
     private static final long ENCRYPTION_WIPE_TIMEOUT_MIN = 20;
-    /** Beginning of the string returned by vdc for "vdc cryptfs enablecrypto". */
-    private static final String ENCRYPTION_SUPPORTED_CODE = "500";
-    /** Message in the string returned by vdc for "vdc cryptfs enablecrypto". */
-    private static final String ENCRYPTION_SUPPORTED_USAGE = "Usage: ";
 
     /** The time in ms to wait before starting logcat for a device */
     private int mLogStartDelay = 5*1000;
@@ -883,11 +879,19 @@ public class NativeDevice implements IManagedTestDevice {
                             status = true;
                         } catch (SyncException e) {
                             CLog.w(
-                                    "Failed to push %s to %s on device %s. Message %s",
+                                    "Failed to push %s to %s on device %s. Message: '%s'. "
+                                            + "Error code: %s",
                                     localFile.getAbsolutePath(),
                                     remoteFilePath,
                                     getSerialNumber(),
-                                    e.getMessage());
+                                    e.getMessage(),
+                                    e.getErrorCode());
+                            // TODO: check if ddmlib can report a better error
+                            if (SyncError.TRANSFER_PROTOCOL_ERROR.equals(e.getErrorCode())) {
+                                if (e.getMessage().contains("Permission denied")) {
+                                    return false;
+                                }
+                            }
                             throw e;
                         } finally {
                             if (syncService != null) {
@@ -2626,6 +2630,9 @@ public class NativeDevice implements IManagedTestDevice {
         // if its necessary or not
         if (isAdbRoot()) {
             CLog.i("adb is already running as root on %s", getSerialNumber());
+            // Still check for online, in some case we could see the root, but device could be
+            // very early in its cycle.
+            waitForDeviceOnline();
             return true;
         }
         // Don't enable root if user requested no root
@@ -2943,8 +2950,10 @@ public class NativeDevice implements IManagedTestDevice {
         }
         enableAdbRoot();
         String output = executeShellCommand("vdc cryptfs enablecrypto").trim();
-        mIsEncryptionSupported = (output != null && output.startsWith(ENCRYPTION_SUPPORTED_CODE) &&
-                output.contains(ENCRYPTION_SUPPORTED_USAGE));
+
+        mIsEncryptionSupported =
+                (output != null
+                        && Pattern.matches("(500)(\\s+)(\\d+)(\\s+)(Usage)(.*)(:)(.*)", output));
         return mIsEncryptionSupported;
     }
 
@@ -3179,7 +3188,8 @@ public class NativeDevice implements IManagedTestDevice {
                         getSerialNumber());
             } else {
                 try {
-                    return new SnapshotInputStreamSource(mEmulatorOutput.getData());
+                    return new SnapshotInputStreamSource(
+                            "getEmulatorOutput", mEmulatorOutput.getData());
                 } catch (IOException e) {
                     CLog.e("Failed to get %s data.", getSerialNumber());
                     CLog.e(e);
