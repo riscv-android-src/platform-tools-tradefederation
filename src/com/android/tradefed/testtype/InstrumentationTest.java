@@ -118,6 +118,15 @@ public class InstrumentationTest implements IDeviceTest, IResumableTest, ITestCo
                     + "the next test. For no timeout, set to 0.")
     private int mTestTimeout = 5 * 60 * 1000;  // default to 5 minutes
 
+    @Option(
+        name = "max-timeout",
+        description =
+                "Sets the max timeout for the instrumentation to terminate. "
+                        + "For no timeout, set to 0.",
+        isTimeVal = true
+    )
+    private long mMaxTimeout = 0l;
+
     @Option(name = "size",
             description="Restrict test to a specific test size.")
     private String mTestSize = null;
@@ -440,6 +449,11 @@ public class InstrumentationTest implements IDeviceTest, IResumableTest, ITestCo
         return mTestTimeout;
     }
 
+    /** Returns the max timeout set for the instrumentation. */
+    public long getMaxTimeout() {
+        return mMaxTimeout;
+    }
+
     /**
      * Set the optional file to install that contains the tests.
      *
@@ -692,6 +706,7 @@ public class InstrumentationTest implements IDeviceTest, IResumableTest, ITestCo
                     mTestTimeout, mShellTimeout));
         }
         runner.setMaxTimeToOutputResponse(mShellTimeout, TimeUnit.MILLISECONDS);
+        runner.setMaxTimeout(mMaxTimeout, TimeUnit.MILLISECONDS);
         addInstrumentationArg(TEST_TIMEOUT_INST_ARGS_KEY, Long.toString(mTestTimeout));
     }
 
