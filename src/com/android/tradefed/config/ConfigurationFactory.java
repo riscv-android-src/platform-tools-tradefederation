@@ -193,8 +193,8 @@ public class ConfigurationFactory implements IConfigurationFactory {
      *     on the value of environment variables.
      */
     @VisibleForTesting
-    List<File> getTestCasesDirs() {
-        return SystemUtil.getTestCasesDirs();
+    List<File> getExternalTestCasesDirs() {
+        return SystemUtil.getExternalTestCasesDirs();
     }
 
     /**
@@ -216,7 +216,7 @@ public class ConfigurationFactory implements IConfigurationFactory {
     @VisibleForTesting
     File getTestCaseConfigPath(String name) {
         String[] possibleConfigFileNames = {name + ".xml", name + ".config"};
-        for (File testCasesDir : getTestCasesDirs()) {
+        for (File testCasesDir : getExternalTestCasesDirs()) {
             for (String configFileName : possibleConfigFileNames) {
                 File config = FileUtil.findFile(testCasesDir, configFileName);
                 if (config != null) {
@@ -623,7 +623,7 @@ public class ConfigurationFactory implements IConfigurationFactory {
      */
     @VisibleForTesting
     Set<String> getConfigNamesFromTestCases(String subPath) {
-        return ConfigurationUtil.getConfigNamesFromDirs(subPath, getTestCasesDirs());
+        return ConfigurationUtil.getConfigNamesFromDirs(subPath, getExternalTestCasesDirs());
     }
 
     /**

@@ -44,17 +44,6 @@ public interface ICommandScheduler {
          * Callback when entire invocation has completed, including all
          * {@link ITestInvocationListener#invocationEnded(long)} events.
          *
-         * @param device
-         * @param deviceState
-         * @deprecated use {@link #invocationComplete(IInvocationContext, Map)}.
-         */
-        @Deprecated
-        public void invocationComplete(ITestDevice device, FreeDeviceState deviceState);
-
-        /**
-         * Callback when entire invocation has completed, including all
-         * {@link ITestInvocationListener#invocationEnded(long)} events.
-         *
          * @param metadata
          * @param devicesStates
          */
@@ -202,8 +191,15 @@ public interface ICommandScheduler {
     public void join() throws InterruptedException;
 
     /**
-     * Waits for scheduler to start running, including waiting for handover from old TF to
-     * complete if applicable.
+     * Waits for scheduler to complete or timeout after the duration specified in milliseconds.
+     *
+     * @see Thread#join(long)
+     */
+    public void join(long millis) throws InterruptedException;
+
+    /**
+     * Waits for scheduler to start running, including waiting for handover from old TF to complete
+     * if applicable.
      */
     public void await() throws InterruptedException;
 
@@ -291,4 +287,7 @@ public interface ICommandScheduler {
      * and a stack trace that can be returned.
      */
     public void setLastInvocationExitCode(ExitCode code, Throwable stack);
+
+    /** Returns the number of Commands in ready state in the queue. */
+    public int getReadyCommandCount();
 }

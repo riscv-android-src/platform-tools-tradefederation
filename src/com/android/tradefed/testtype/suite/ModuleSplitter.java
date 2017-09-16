@@ -88,12 +88,17 @@ public class ModuleSplitter {
             boolean dynamicModule) {
         // If this particular configuration module is declared as 'not shardable' we take it whole
         // but still split the individual IRemoteTest in a pool.
-        if (config.getConfigurationDescription().isNotShardable()) {
+        if (config.getConfigurationDescription().isNotShardable()
+                || (!dynamicModule
+                        && config.getConfigurationDescription().isNotStrictShardable())) {
             for (int i = 0; i < config.getTests().size(); i++) {
                 if (dynamicModule) {
                     ModuleDefinition module =
                             new ModuleDefinition(
-                                    moduleName, config.getTests(), clonePreparers(config));
+                                    moduleName,
+                                    config.getTests(),
+                                    clonePreparers(config),
+                                    config.getConfigurationDescription());
                     currentList.add(module);
                 } else {
                     addModuleToListFromSingleTest(
@@ -114,7 +119,10 @@ public class ModuleSplitter {
                         for (int i = 0; i < shardCount; i++) {
                             ModuleDefinition module =
                                     new ModuleDefinition(
-                                            moduleName, shardedTests, clonePreparers(config));
+                                            moduleName,
+                                            shardedTests,
+                                            clonePreparers(config),
+                                            config.getConfigurationDescription());
                             currentList.add(module);
                         }
                     } else {
@@ -144,7 +152,11 @@ public class ModuleSplitter {
         List<IRemoteTest> testList = new ArrayList<>();
         testList.add(test);
         ModuleDefinition module =
-                new ModuleDefinition(moduleName, testList, clonePreparers(config));
+                new ModuleDefinition(
+                        moduleName,
+                        testList,
+                        clonePreparers(config),
+                        config.getConfigurationDescription());
         currentList.add(module);
     }
 

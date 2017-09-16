@@ -22,9 +22,12 @@ import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.testtype.IBuildReceiver;
 import com.android.tradefed.testtype.IDeviceTest;
 import com.android.tradefed.testtype.IRemoteTest;
+import com.android.tradefed.testtype.IRuntimeHintProvider;
 import com.android.tradefed.testtype.IShardableTest;
 import com.android.tradefed.testtype.IStrictShardableTest;
 import com.android.tradefed.testtype.suite.ITestSuite;
+import com.android.tradefed.testtype.suite.ModuleMerger;
+import com.android.tradefed.util.TimeUtil;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -53,7 +56,17 @@ public class StrictShardHelper extends ShardHelper {
             updateConfigIfSharded(config, shardCount, shardIndex);
         } else {
             List<IRemoteTest> listAllTests = getAllTests(config, shardCount, context);
-            config.setTests(splitTests(listAllTests, shardCount, shardIndex));
+            // We cannot shuffle to get better average results
+            normalizeDistribution(listAllTests, shardCount);
+            List<IRemoteTest> splitList;
+            if (shardCount == 1) {
+                // not sharded
+                splitList = listAllTests;
+            } else {
+                splitList = splitTests(listAllTests, shardCount, shardIndex);
+            }
+            aggregateSuiteModules(splitList);
+            config.setTests(splitList);
         }
         return false;
     }
@@ -135,19 +148,93 @@ public class StrictShardHelper extends ShardHelper {
      */
     private List<IRemoteTest> splitTests(
             List<IRemoteTest> fullList, int shardCount, int shardIndex) {
-        if (shardCount == 1) {
-            // Not sharded
-            return fullList;
+        List<List<IRemoteTest>> shards = new ArrayList<>();
+
+        // Generate all the shards
+        for (int i = 0; i < shardCount; i++) {
+            List<IRemoteTest> shardList;
+            if (i >= fullList.size()) {
+                // Return empty list when we don't have enough tests for all the shards.
+                shardList = new ArrayList<IRemoteTest>();
+                shards.add(shardList);
+                continue;
+            }
+            int numPerShard = (int) Math.ceil(fullList.size() / (float) shardCount);
+            if (i == shardCount - 1) {
+                // last shard take everything remaining.
+                shardList = fullList.subList(i * numPerShard, fullList.size());
+                shards.add(shardList);
+                continue;
+            }
+            shardList = fullList.subList(i * numPerShard, numPerShard + (i * numPerShard));
+            shards.add(shardList);
         }
-        if (shardIndex >= fullList.size()) {
-            // Return empty list when we don't have enough tests for all the shards.
-            return new ArrayList<IRemoteTest>();
+
+        // do last minute rebalancing
+        topBottom(shards);
+        return shards.get(shardIndex);
+    }
+
+    /**
+     * Move around predictably the tests in order to have a better uniformization of the tests in
+     * each shard.
+     */
+    private void normalizeDistribution(List<IRemoteTest> listAllTests, int shardCount) {
+        final int numRound = shardCount;
+        final int distance = shardCount + 1;
+        for (int i = 0; i < numRound; i++) {
+            for (int j = 0; j < listAllTests.size(); j = j + distance) {
+                // Push the test at the end
+                IRemoteTest push = listAllTests.remove(j);
+                listAllTests.add(push);
+            }
         }
-        int numPerShard = (int) Math.ceil(fullList.size() / (float) shardCount);
-        if (shardIndex == shardCount - 1) {
-            // last shard take everything remaining.
-            return fullList.subList(shardIndex * numPerShard, fullList.size());
+    }
+
+    /**
+     * Special handling for suite from {@link ITestSuite}. We aggregate the tests in the same shard
+     * in order to optimize target_preparation step.
+     *
+     * @param tests the {@link List} of {@link IRemoteTest} for that shard.
+     */
+    private void aggregateSuiteModules(List<IRemoteTest> tests) {
+        List<IRemoteTest> dupList = new ArrayList<>(tests);
+        for (int i = 0; i < dupList.size(); i++) {
+            if (dupList.get(i) instanceof ITestSuite) {
+                // We iterate the other tests to see if we can find another from the same module.
+                for (int j = i + 1; j < dupList.size(); j++) {
+                    // If the test was not already merged
+                    if (tests.contains(dupList.get(j))) {
+                        if (dupList.get(j) instanceof ITestSuite) {
+                            if (ModuleMerger.arePartOfSameSuite(
+                                    (ITestSuite) dupList.get(i), (ITestSuite) dupList.get(j))) {
+                                ModuleMerger.mergeSplittedITestSuite(
+                                        (ITestSuite) dupList.get(i), (ITestSuite) dupList.get(j));
+                                tests.remove(dupList.get(j));
+                            }
+                        }
+                    }
+                }
+            }
         }
-        return fullList.subList(shardIndex * numPerShard, numPerShard + (shardIndex * numPerShard));
+    }
+
+    private void topBottom(List<List<IRemoteTest>> allShards) {
+        // Generate approximate RuntimeHint for each shard
+        int index = 0;
+        CLog.e("============================");
+        for (List<IRemoteTest> shard : allShards) {
+            long aggTime = 0l;
+            CLog.e("++++++++++++++++++ SHARD %s +++++++++++++++", index);
+            for (IRemoteTest test : shard) {
+                if (test instanceof IRuntimeHintProvider) {
+                    aggTime += ((IRuntimeHintProvider) test).getRuntimeHint();
+                }
+            }
+            CLog.e("Shard %s approximate time: %s", index, TimeUtil.formatElapsedTime(aggTime));
+            index++;
+            CLog.e("+++++++++++++++++++++++++++++++++++++++++++");
+        }
+        CLog.e("============================");
     }
 }

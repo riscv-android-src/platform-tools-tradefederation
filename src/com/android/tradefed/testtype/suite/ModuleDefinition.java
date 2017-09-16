@@ -20,10 +20,12 @@ import com.android.ddmlib.testrunner.TestIdentifier;
 import com.android.ddmlib.testrunner.TestResult;
 import com.android.ddmlib.testrunner.TestRunResult;
 import com.android.tradefed.build.IBuildInfo;
+import com.android.tradefed.config.ConfigurationDescriptor;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.DeviceUnresponsiveException;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.invoker.IInvocationContext;
+import com.android.tradefed.invoker.InvocationContext;
 import com.android.tradefed.log.ILogRegistry.EventType;
 import com.android.tradefed.log.ITestLogger;
 import com.android.tradefed.log.LogRegistry;
@@ -39,6 +41,7 @@ import com.android.tradefed.targetprep.TargetSetupError;
 import com.android.tradefed.testtype.IBuildReceiver;
 import com.android.tradefed.testtype.IDeviceTest;
 import com.android.tradefed.testtype.IRemoteTest;
+import com.android.tradefed.testtype.IRuntimeHintProvider;
 import com.android.tradefed.testtype.ITestCollector;
 import com.android.tradefed.util.StreamUtil;
 
@@ -61,6 +64,8 @@ public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestColl
     /** key names used for saving module info into {@link IInvocationContext} */
     public static final String MODULE_NAME = "module-name";
     public static final String MODULE_ABI = "module-abi";
+
+    private final IInvocationContext mModuleInvocationContext;
 
     private final String mId;
     private Collection<IRemoteTest> mTests = null;
@@ -90,11 +95,25 @@ public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestColl
      * @param name unique name of the test configuration.
      * @param tests list of {@link IRemoteTest} that needs to run.
      * @param preparers list of {@link ITargetPreparer} to be used to setup the device.
+     * @param configDescriptor the {@link ConfigurationDescriptor} of the underlying module config.
      */
     public ModuleDefinition(
-            String name, Collection<IRemoteTest> tests, List<ITargetPreparer> preparers) {
+            String name,
+            Collection<IRemoteTest> tests,
+            List<ITargetPreparer> preparers,
+            ConfigurationDescriptor configDescriptor) {
         mId = name;
         mTests = tests;
+
+        mModuleInvocationContext = new InvocationContext();
+        mModuleInvocationContext.setConfigurationDescriptor(configDescriptor);
+        mModuleInvocationContext.addInvocationAttribute(MODULE_NAME, mId);
+        // If available in the suite, add the abi name
+        if (configDescriptor.getAbi() != null) {
+            mModuleInvocationContext.addInvocationAttribute(
+                    MODULE_ABI, configDescriptor.getAbi().getName());
+        }
+
         for (ITargetPreparer preparer : preparers) {
             mPreparers.add(preparer);
             if (preparer instanceof ITargetCleaner) {
@@ -117,6 +136,23 @@ public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestColl
             IRemoteTest test = mTests.iterator().next();
             mTests.remove(test);
             return test;
+        }
+    }
+
+    /**
+     * Add some {@link IRemoteTest} to be executed as part of the module. Used when merging two
+     * modules.
+     */
+    void addTests(List<IRemoteTest> test) {
+        synchronized (mTests) {
+            mTests.addAll(test);
+        }
+    }
+
+    /** Returns the current number of {@link IRemoteTest} waiting to be executed. */
+    public int numTests() {
+        synchronized (mTests) {
+            return mTests.size();
         }
     }
 
@@ -244,6 +280,7 @@ public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestColl
                     CLog.e("Module '%s' - test '%s' threw exception:", getId(), test.getClass());
                     CLog.e(re);
                     CLog.e("Proceeding to the next test.");
+                    reportFailure(new ResultForwarder(currentTestListener), re.getMessage());
                 } catch (DeviceUnresponsiveException due) {
                     // being able to catch a DeviceUnresponsiveException here implies that
                     // recovery was successful, and test execution should proceed to next
@@ -253,6 +290,7 @@ public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestColl
                                     + "successful, proceeding with next module. Stack trace:");
                     CLog.w(due);
                     CLog.w("Proceeding to the next test.");
+                    reportFailure(new ResultForwarder(currentTestListener), due.getMessage());
                 } catch (DeviceNotAvailableException dnae) {
                     // We do special logging of some information in Context of the module for easier
                     // debugging.
@@ -293,6 +331,10 @@ public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestColl
                 }
             }
         }
+    }
+
+    private void reportFailure(ITestInvocationListener listener, String errorMessage) {
+        listener.testRunFailed(errorMessage);
     }
 
     /** Helper to log the device events. */
@@ -419,6 +461,19 @@ public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestColl
         return getId();
     }
 
+    /** Returns the approximate time to run all the tests in the module. */
+    public long getRuntimeHint() {
+        long hint = 0l;
+        for (IRemoteTest test : mTests) {
+            if (test instanceof IRuntimeHintProvider) {
+                hint += ((IRuntimeHintProvider) test).getRuntimeHint();
+            } else {
+                hint += 60000;
+            }
+        }
+        return hint;
+    }
+
     /** Returns the list of {@link ITargetPreparer} defined for this module. */
     @VisibleForTesting
     List<ITargetPreparer> getTargetPreparers() {
@@ -429,5 +484,10 @@ public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestColl
     @VisibleForTesting
     List<IRemoteTest> getTests() {
         return new ArrayList<>(mTests);
+    }
+
+    /** Returns the {@link IInvocationContext} associated with the module. */
+    public IInvocationContext getModuleInvocationContext() {
+        return mModuleInvocationContext;
     }
 }

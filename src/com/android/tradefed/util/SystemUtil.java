@@ -16,6 +16,8 @@
 
 package com.android.tradefed.util;
 
+import com.android.tradefed.build.IBuildInfo;
+import com.android.tradefed.build.IDeviceBuildInfo;
 import com.android.tradefed.log.LogUtil.CLog;
 
 import com.google.common.annotations.VisibleForTesting;
@@ -42,6 +44,9 @@ public class SystemUtil {
 
     static final String ENV_ANDROID_PRODUCT_OUT = "ANDROID_PRODUCT_OUT";
 
+    private static final String HOST_TESTCASES = "host/testcases";
+    private static final String TARGET_TESTCASES = "target/testcases";
+
     /**
      * Get the value of an environment variable.
      *
@@ -55,13 +60,8 @@ public class SystemUtil {
         return System.getenv(name);
     }
 
-    /**
-     * Get a list of {@link File} of the test cases directories
-     *
-     * @return a list of {@link File} of directories of the test cases folder of build output, based
-     *     on the value of environment variables.
-     */
-    public static List<File> getTestCasesDirs() {
+    /** Get a list of {@link File} pointing to tests directories external to Tradefed. */
+    public static List<File> getExternalTestCasesDirs() {
         List<File> testCasesDirs = new ArrayList<File>();
         // TODO(b/36782030): Add ENV_ANDROID_HOST_OUT_TESTCASES back to the list.
         Set<String> testCasesDirNames =
@@ -80,6 +80,38 @@ public class SystemUtil {
                 }
             }
         }
+        return testCasesDirs;
+    }
+
+    /**
+     * Get a list of {@link File} of the test cases directories
+     *
+     * @param buildInfo the build artifact information. Set it to null if build info is not
+     *     available or there is no need to get test cases directories from build info.
+     * @return a list of {@link File} of directories of the test cases folder of build output, based
+     *     on the value of environment variables and the given build info.
+     */
+    public static List<File> getTestCasesDirs(IBuildInfo buildInfo) {
+        List<File> testCasesDirs = new ArrayList<File>();
+        testCasesDirs.addAll(getExternalTestCasesDirs());
+
+        // TODO: Remove this logic after Versioned TF V2 is implemented, in which staging build
+        // artifact will be done by the parent process, and the test cases dirs will be set by
+        // environment variables.
+        // Add tests dir from build info.
+        if (buildInfo instanceof IDeviceBuildInfo) {
+            IDeviceBuildInfo deviceBuildInfo = (IDeviceBuildInfo) buildInfo;
+            File testsDir = deviceBuildInfo.getTestsDir();
+            // Add all possible paths to the testcases directory list.
+            if (testsDir != null) {
+                testCasesDirs.addAll(
+                        Arrays.asList(
+                                testsDir,
+                                FileUtil.getFileForPath(testsDir, HOST_TESTCASES),
+                                FileUtil.getFileForPath(testsDir, TARGET_TESTCASES)));
+            }
+        }
+
         return testCasesDirs;
     }
 
