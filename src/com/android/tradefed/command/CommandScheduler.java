@@ -36,6 +36,7 @@ import com.android.tradefed.config.IConfigurationFactory;
 import com.android.tradefed.config.IDeviceConfiguration;
 import com.android.tradefed.config.IGlobalConfiguration;
 import com.android.tradefed.config.Option;
+import com.android.tradefed.config.SandboxConfigurationFactory;
 import com.android.tradefed.device.DeviceAllocationState;
 import com.android.tradefed.device.DeviceManager;
 import com.android.tradefed.device.DeviceNotAvailableException;
@@ -60,7 +61,6 @@ import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.ResultForwarder;
 import com.android.tradefed.sandbox.ISandbox;
-import com.android.tradefed.sandbox.SandboxConfigUtil;
 import com.android.tradefed.sandbox.TradefedSandbox;
 import com.android.tradefed.util.ArrayUtil;
 import com.android.tradefed.util.FileUtil;
@@ -1122,8 +1122,8 @@ public class CommandScheduler extends Thread implements ICommandScheduler, IComm
         if (isCommandSandboxed(args)) {
             // Create an sandboxed configuration based on the sandbox of the scheduler.
             ISandbox sandbox = createSandbox();
-            return SandboxConfigUtil.createSandboxConfiguration(
-                    args, sandbox, getConfigFactory(), getKeyStoreClient());
+            return SandboxConfigurationFactory.getInstance()
+                    .createConfigurationFromArgs(args, getKeyStoreClient(), sandbox, new RunUtil());
         }
         return getConfigFactory().createConfigurationFromArgs(args, null, getKeyStoreClient());
     }
