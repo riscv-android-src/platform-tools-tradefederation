@@ -21,7 +21,9 @@ import static org.junit.Assert.fail;
 import com.android.ddmlib.testrunner.TestIdentifier;
 import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.command.remote.DeviceDescriptor;
+import com.android.tradefed.config.Configuration;
 import com.android.tradefed.config.ConfigurationDescriptor;
+import com.android.tradefed.config.IConfiguration;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.invoker.IInvocationContext;
@@ -35,6 +37,7 @@ import com.android.tradefed.testtype.Abi;
 import com.android.tradefed.testtype.IBuildReceiver;
 import com.android.tradefed.testtype.IDeviceTest;
 import com.android.tradefed.testtype.IRemoteTest;
+import com.android.tradefed.testtype.suite.module.IModuleController;
 
 import org.easymock.EasyMock;
 import org.junit.Before;
@@ -44,6 +47,7 @@ import org.junit.runners.JUnit4;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
 
 /** Unit tests for {@link ModuleDefinition} */
@@ -128,7 +132,7 @@ public class ModuleDefinitionTest {
                         mTestList,
                         mTargetPrepList,
                         mMultiTargetPrepList,
-                        new ConfigurationDescriptor());
+                        new Configuration("", ""));
     }
 
     /**
@@ -208,7 +212,7 @@ public class ModuleDefinitionTest {
                         mTestList,
                         mTargetPrepList,
                         mMultiTargetPrepList,
-                        new ConfigurationDescriptor());
+                        new Configuration("", ""));
         mMockCleaner.tearDown(EasyMock.eq(mMockDevice), EasyMock.eq(mMockBuildInfo),
                 EasyMock.isNull());
         mMockListener.testRunStarted(EasyMock.eq(MODULE_NAME), EasyMock.eq(1));
@@ -238,7 +242,7 @@ public class ModuleDefinitionTest {
                         testList,
                         mTargetPrepList,
                         mMultiTargetPrepList,
-                        new ConfigurationDescriptor());
+                        new Configuration("", ""));
         mModule.setBuild(mMockBuildInfo);
         mModule.setDevice(mMockDevice);
         mMockPrep.setUp(EasyMock.eq(mMockDevice), EasyMock.eq(mMockBuildInfo));
@@ -274,7 +278,7 @@ public class ModuleDefinitionTest {
                         testList,
                         mTargetPrepList,
                         mMultiTargetPrepList,
-                        new ConfigurationDescriptor());
+                        new Configuration("", ""));
         mModule.setBuild(mMockBuildInfo);
         mModule.setDevice(mMockDevice);
         mMockPrep.setUp(EasyMock.eq(mMockDevice), EasyMock.eq(mMockBuildInfo));
@@ -311,20 +315,103 @@ public class ModuleDefinitionTest {
      * IInvocationContext} of the module is properly populated.
      */
     @Test
-    public void testAbiSetting() {
+    public void testAbiSetting() throws Exception {
         final int testCount = 5;
+        IConfiguration config = new Configuration("", "");
         ConfigurationDescriptor descriptor = new ConfigurationDescriptor();
         descriptor.setAbi(new Abi("arm", "32"));
+        config.setConfigurationObject(
+                Configuration.CONFIGURATION_DESCRIPTION_TYPE_NAME, descriptor);
         List<IRemoteTest> testList = new ArrayList<>();
         testList.add(new TestObject("run1", testCount, false));
         mModule =
                 new ModuleDefinition(
-                        MODULE_NAME, testList, mTargetPrepList, mMultiTargetPrepList, descriptor);
+                        MODULE_NAME, testList, mTargetPrepList, mMultiTargetPrepList, config);
         // Check that the invocation module created has expected informations
         IInvocationContext moduleContext = mModule.getModuleInvocationContext();
         assertEquals(
                 MODULE_NAME,
                 moduleContext.getAttributes().get(ModuleDefinition.MODULE_NAME).get(0));
         assertEquals("arm", moduleContext.getAttributes().get(ModuleDefinition.MODULE_ABI).get(0));
+    }
+
+    /**
+     * Test running a module when the configuration has a module controller object that force a full
+     * bypass of the module.
+     */
+    @Test
+    public void testModuleController_fullBypass() throws Exception {
+        IConfiguration config = new Configuration("", "");
+        IModuleController moduleConfig =
+                new IModuleController() {
+                    @Override
+                    public RunStrategy shouldRunModule(IInvocationContext context) {
+                        return RunStrategy.FULL_MODULE_BYPASS;
+                    }
+                };
+        config.setConfigurationObject(ModuleDefinition.MODULE_CONTROLLER, moduleConfig);
+        List<IRemoteTest> testList = new ArrayList<>();
+        testList.add(
+                new IRemoteTest() {
+                    @Override
+                    public void run(ITestInvocationListener listener)
+                            throws DeviceNotAvailableException {
+                        listener.testRunStarted("test", 1);
+                        listener.testFailed(
+                                new TestIdentifier("failedclass", "failedmethod"), "trace");
+                    }
+                });
+        mTargetPrepList.clear();
+        mModule =
+                new ModuleDefinition(
+                        MODULE_NAME, testList, mTargetPrepList, mMultiTargetPrepList, config);
+        // module is completely skipped, no tests is recorded.
+        replayMocks();
+        mModule.run(mMockListener, null);
+        verifyMocks();
+    }
+
+    /**
+     * Test running a module when the configuration has a module controller object that force to
+     * skip all the module test cases.
+     */
+    @Test
+    public void testModuleController_skipTestCases() throws Exception {
+        IConfiguration config = new Configuration("", "");
+        IModuleController moduleConfig =
+                new IModuleController() {
+                    @Override
+                    public RunStrategy shouldRunModule(IInvocationContext context) {
+                        return RunStrategy.SKIP_MODULE_TESTCASES;
+                    }
+                };
+        config.setConfigurationObject(ModuleDefinition.MODULE_CONTROLLER, moduleConfig);
+        List<IRemoteTest> testList = new ArrayList<>();
+        testList.add(
+                new IRemoteTest() {
+                    @Override
+                    public void run(ITestInvocationListener listener)
+                            throws DeviceNotAvailableException {
+                        TestIdentifier tid = new TestIdentifier("class", "method");
+                        listener.testRunStarted("test", 1);
+                        listener.testStarted(tid);
+                        listener.testFailed(tid, "I failed");
+                        listener.testEnded(tid, new HashMap<>());
+                        listener.testRunEnded(0, new HashMap<>());
+                    }
+                });
+        mTargetPrepList.clear();
+        mModule =
+                new ModuleDefinition(
+                        MODULE_NAME, testList, mTargetPrepList, mMultiTargetPrepList, config);
+        // expect the module to run but tests to be ignored
+        mMockListener.testRunStarted(EasyMock.anyObject(), EasyMock.anyInt());
+        mMockListener.testStarted(EasyMock.anyObject(), EasyMock.anyLong());
+        mMockListener.testIgnored(EasyMock.anyObject());
+        mMockListener.testEnded(EasyMock.anyObject(), EasyMock.anyLong(), EasyMock.anyObject());
+        mMockListener.testRunEnded(EasyMock.anyLong(), EasyMock.anyObject());
+        replayMocks();
+        mModule.run(mMockListener, null);
+        verifyMocks();
     }
 }

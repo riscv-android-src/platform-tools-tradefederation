@@ -100,7 +100,7 @@ public class ModuleSplitter {
                                     config.getTests(),
                                     clonePreparers(config.getTargetPreparers()),
                                     clonePreparers(config.getMultiTargetPreparers()),
-                                    config.getConfigurationDescription());
+                                    config);
                     currentList.add(module);
                 } else {
                     addModuleToListFromSingleTest(
@@ -125,7 +125,7 @@ public class ModuleSplitter {
                                             shardedTests,
                                             clonePreparers(config.getTargetPreparers()),
                                             clonePreparers(config.getMultiTargetPreparers()),
-                                            config.getConfigurationDescription());
+                                            config);
                             currentList.add(module);
                         }
                     } else {
@@ -160,7 +160,7 @@ public class ModuleSplitter {
                         testList,
                         clonePreparers(config.getTargetPreparers()),
                         clonePreparers(config.getMultiTargetPreparers()),
-                        config.getConfigurationDescription());
+                        config);
         currentList.add(module);
     }
 

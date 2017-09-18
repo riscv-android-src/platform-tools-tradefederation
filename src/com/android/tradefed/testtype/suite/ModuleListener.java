@@ -33,6 +33,7 @@ public class ModuleListener extends CollectingTestListener {
 
     private ITestInvocationListener mListener;
     private int mExpectedTestCount = 0;
+    private boolean mSkip = false;
 
     /** Constructor. Accept the original listener to forward testLog callback. */
     public ModuleListener(ITestInvocationListener listener) {
@@ -70,11 +71,17 @@ public class ModuleListener extends CollectingTestListener {
     public void testStarted(TestIdentifier test, long startTime) {
         CLog.d("ModuleListener.testStarted(%s)", test.toString());
         super.testStarted(test, startTime);
+        if (mSkip) {
+            super.testIgnored(test);
+        }
     }
 
     /** {@inheritDoc} */
     @Override
     public void testFailed(TestIdentifier test, String trace) {
+        if (mSkip) {
+            return;
+        }
         CLog.logAndDisplay(
                 LogLevel.INFO, "ModuleListener.testFailed(%s, %s)", test.toString(), trace);
         super.testFailed(test, trace);
@@ -84,5 +91,10 @@ public class ModuleListener extends CollectingTestListener {
     @Override
     public int getNumTotalTests() {
         return mExpectedTestCount;
+    }
+
+    /** Whether or not to mark all the test cases skipped. */
+    public void setMarkTestsSkipped(boolean skip) {
+        mSkip = skip;
     }
 }
