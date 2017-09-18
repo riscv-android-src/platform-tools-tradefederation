@@ -1535,8 +1535,9 @@ public class TestInvocationTest extends TestCase {
                 (InputStreamSource) EasyMock.anyObject());
 
         EasyMock.replay(device1, listener, mMockPreparer);
-        mTestInvocation.doSetup(context, mStubConfiguration, listener);
+        new InvocationExecution().doSetup(context, mStubConfiguration, listener);
         EasyMock.verify(device1, listener, mMockPreparer);
+
     }
 
     /**
@@ -1568,7 +1569,7 @@ public class TestInvocationTest extends TestCase {
                 (InputStreamSource) EasyMock.anyObject());
 
         EasyMock.replay(device1, listener, mMockPreparer);
-        mTestInvocation.doSetup(context, mStubConfiguration, listener);
+        new InvocationExecution().doSetup(context, mStubConfiguration, listener);
         EasyMock.verify(device1, listener, mMockPreparer);
     }
 
@@ -1704,7 +1705,8 @@ public class TestInvocationTest extends TestCase {
         Capture<Map<String, String>> captured = new Capture<>();
         mMockTestListener.testRunEnded(EasyMock.anyLong(), EasyMock.capture(captured));
         EasyMock.replay(mMockTestListener);
-        mTestInvocation.runTests(mStubInvocationMetadata, configuration, mMockTestListener);
+        new InvocationExecution()
+                .runTests(mStubInvocationMetadata, configuration, mMockTestListener);
         EasyMock.verify(mMockTestListener);
         // The collectors are called in sequence
         List<String> listKeys = new ArrayList<>(captured.getValue().keySet());
