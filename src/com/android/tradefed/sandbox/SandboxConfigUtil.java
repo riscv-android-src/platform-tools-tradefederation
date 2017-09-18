@@ -15,18 +15,13 @@
  */
 package com.android.tradefed.sandbox;
 
-import com.android.tradefed.config.Configuration;
 import com.android.tradefed.config.ConfigurationException;
 import com.android.tradefed.config.IConfiguration;
-import com.android.tradefed.config.IConfigurationFactory;
-import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.sandbox.SandboxConfigDump.DumpCmd;
 import com.android.tradefed.util.CommandResult;
 import com.android.tradefed.util.CommandStatus;
 import com.android.tradefed.util.FileUtil;
 import com.android.tradefed.util.IRunUtil;
-import com.android.tradefed.util.RunUtil;
-import com.android.tradefed.util.keystore.IKeyStoreClient;
 
 import java.io.File;
 import java.io.IOException;
@@ -74,45 +69,5 @@ public class SandboxConfigUtil {
         }
         FileUtil.deleteFile(destination);
         throw new ConfigurationException(result.getStderr());
-    }
-
-    /**
-     * Create a {@link IConfiguration} based on the command line and sandbox provided.
-     *
-     * @param args the command line for the run.
-     * @param sandbox the {@link ISandbox} used for the run.
-     * @param configFactory the {@link IConfigurationFactory} used to load the config on parent side
-     * @param keystore the {@link IKeyStoreClient} where to load the key from.
-     * @return a {@link IConfiguration} valid for the sandbox.
-     * @throws ConfigurationException
-     */
-    public static IConfiguration createSandboxConfiguration(
-            String args[],
-            ISandbox sandbox,
-            IConfigurationFactory configFactory,
-            IKeyStoreClient keystore)
-            throws ConfigurationException {
-        IConfiguration config = null;
-        File xmlConfig = null;
-        try {
-            File tfDir = sandbox.getTradefedEnvironment(args);
-            xmlConfig =
-                    dumpConfigForVersion(tfDir, new RunUtil(), args, DumpCmd.NON_VERSIONED_CONFIG);
-            // Get the non version part of the configuration in order to do proper allocation
-            // of devices and such.
-            config =
-                    configFactory.createConfigurationFromArgs(
-                            new String[] {xmlConfig.getAbsolutePath()}, null, keystore);
-            // Reset the command line to the original one.
-            config.setCommandLine(args);
-            config.setConfigurationObject(Configuration.SANDBOX_TYPE_NAME, sandbox);
-        } catch (ConfigurationException e) {
-            CLog.e(e);
-            sandbox.tearDown();
-            throw e;
-        } finally {
-            FileUtil.deleteFile(xmlConfig);
-        }
-        return config;
     }
 }
