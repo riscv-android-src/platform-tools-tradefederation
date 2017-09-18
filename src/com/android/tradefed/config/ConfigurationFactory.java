@@ -414,13 +414,14 @@ public class ConfigurationFactory implements IConfigurationFactory {
     /**
      * Retrieve the {@link ConfigurationDef} for the given name
      *
-     * @param name the name of a built-in configuration to load or a file path
-     *            to configuration xml to load
+     * @param name the name of a built-in configuration to load or a file path to configuration xml
+     *     to load
      * @return {@link ConfigurationDef}
      * @throws ConfigurationException if an error occurred loading the config
      */
-    private ConfigurationDef getConfigurationDef(String name, boolean isGlobal,
-            Map<String, String> templateMap) throws ConfigurationException {
+    ConfigurationDef getConfigurationDef(
+            String name, boolean isGlobal, Map<String, String> templateMap)
+            throws ConfigurationException {
         return new ConfigLoader(isGlobal).getConfigurationDef(name, templateMap);
     }
 
