@@ -37,7 +37,15 @@ EXPECTED_VARS = frozenset([
 EXIT_CODE_ENV_NOT_SETUP = 1
 EXIT_CODE_BUILD_FAILURE = 2
 BUILD_CMD = ['make', '-j', '-C', os.environ.get(ANDROID_BUILD_TOP)]
+TESTS_HELP_TEXT = '''Tests to run.
 
+Ways to identify a test:
+MODULE NAME    Examples: CtsJankDeviceTestCases
+CLASS NAME     Examples: CtsDeviceJankUi, android.jank.cts.ui.CtsDeviceJankUi
+FILE PATH      Examples: ., <rel_or_abs_path>/jank, <rel_or_abs_path>/CtsDeviceJankUi.java
+
+NOTE: CLASS NAME and FILE PATH currently will run the entire module, not just the class.
+'''
 
 def _parse_args(argv):
     """Parse command line arguments.
@@ -50,12 +58,10 @@ def _parse_args(argv):
     """
     import argparse
     parser = argparse.ArgumentParser(
-        description='atest: Build and run Android tests locally.')
-    parser.add_argument('tests', nargs='+',
-                        help='Tests to run. Can be reference to the Module, '
-                             'Class, Package, Suite name, Integration name or '
-                             'some combination of these.')
-    parser.add_argument('--verbose', '-v', action='store_true',
+        description='Build and run Android tests locally.',
+        formatter_class=argparse.RawTextHelpFormatter)
+    parser.add_argument('tests', nargs='+', help=TESTS_HELP_TEXT)
+    parser.add_argument('-v', '--verbose', action='store_true',
                         help='Display DEBUG level logging.')
     return parser.parse_args(argv)
 
