@@ -443,11 +443,11 @@ public class AppTransitionTests implements IRemoteTest, IDeviceTest {
     private void analyzeColdLaunchDelay(List<TransitionDelayItem> transitionDelayItems) {
         Map<String, String> cmpNameAppMap = reverseAppCmpInfoMap(getAppComponentInfoMap());
         Map<String, List<Long>> appKeyTransitionDelayMap = new HashMap<>();
-        //Handle launcher to cold app launch transition
+        // Handle launcher to cold app launch transition
         for (TransitionDelayItem delayItem : transitionDelayItems) {
             if (cmpNameAppMap.containsKey(delayItem.getComponentName())) {
                 String appName = cmpNameAppMap.get(delayItem.getComponentName());
-                if (delayItem.getStartingWindowDelay() != -1) {
+                if (delayItem.getStartingWindowDelay() != null) {
                     if (appKeyTransitionDelayMap.containsKey(appName)) {
                         appKeyTransitionDelayMap.get(appName).add(
                                 delayItem.getStartingWindowDelay());
@@ -495,7 +495,7 @@ public class AppTransitionTests implements IRemoteTest, IDeviceTest {
             // Handle launcher to hot app launch transition
             if (cmpNameAppMap.containsKey(delayItem.getComponentName())) {
                 // Not to consider the first cold launch for the app.
-                if (delayItem.getTransitionDelay() == -1) {
+                if (delayItem.getStartingWindowDelay() != null) {
                     continue;
                 }
                 String appName = cmpNameAppMap.get(delayItem.getComponentName());
@@ -531,7 +531,6 @@ public class AppTransitionTests implements IRemoteTest, IDeviceTest {
         Long prevTransitionDelay = -1L;
         for (TransitionDelayItem delayItem : transitionDelayItems) {
             if (delayItem.getComponentName().contains(mRecentsActivity)) {
-                //Consider the previous app only if it is cold launch
                 if (prevTransitionDelay != -1) {
                     if (appKeyTransitionDelayMap.containsKey(prevAppName)) {
                         appKeyTransitionDelayMap.get(prevAppName).add(
@@ -576,7 +575,7 @@ public class AppTransitionTests implements IRemoteTest, IDeviceTest {
                 continue;
             }
             if (isRecentsBefore && cmpNameAppMap.containsKey(delayItem.getComponentName())) {
-                if (delayItem.getTransitionDelay() == -1) {
+                if (delayItem.getStartingWindowDelay() != null) {
                     continue;
                 }
                 String appName = cmpNameAppMap.get(delayItem.getComponentName());
