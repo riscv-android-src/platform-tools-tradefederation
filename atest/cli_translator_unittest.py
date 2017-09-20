@@ -26,40 +26,35 @@ import cli_translator as cli_t
 ROOT = '/'
 MODULE_NAME = 'CtsJankDeviceTestCases'
 CLASS_NAME = 'CtsDeviceJankUi'
-MODULE_DIR = 'cts/tests/jank'
-CLASS_DIR = 'cts/tests/jank/src/android/jank/cts/ui'
+MODULE_DIR = 'foo/bar/jank'
+CLASS_DIR = 'foo/bar/jank/src/android/jank/cts/ui'
 QUALIFIED_CLASS_NAME = 'android.jank.cts.ui.CtsDeviceJankUi'
+INTEGRATION_NAME = 'example/reboot'
+INTEGRATION_DIR = 'tf/contrib/res/config'
 REF_TYPE = cli_t.REFERENCE_TYPE
-MODULE_INFO = cli_t.TestInfo(MODULE_NAME, MODULE_DIR, None)
-CLASS_INFO = cli_t.TestInfo(MODULE_NAME, MODULE_DIR, CLASS_NAME)
+CONFIG_FILE = os.path.join(MODULE_DIR, cli_t.MODULE_CONFIG)
+MODULE_INFO = cli_t.TestInfo(CONFIG_FILE, MODULE_NAME, None, None)
+CLASS_INFO = cli_t.TestInfo(CONFIG_FILE, MODULE_NAME, None, CLASS_NAME)
+INT_CONFIG = os.path.join(INTEGRATION_DIR, INTEGRATION_NAME + '.xml')
+INTEGRATION_INFO = cli_t.TestInfo(INT_CONFIG, None, INTEGRATION_NAME, None)
 TARGETS = {'tradefed-all', 'MODULES-IN-%s' % MODULE_DIR.replace('/', '-')}
 RUN_CMD = cli_t.RUN_CMD % MODULE_NAME
 PRODUCT = 'bullhead'
 OUT = '/android/master/out/target/product/%s' % PRODUCT
-INFO_JSON = {
-    'AmSlam':{
-        'class': ['APPS'],
-        'path': ['frameworks/base/tests/AmSlam'],
-        'tags': ['tests'],
-        'installed': ['out/target/product/bullhead/data/app/AmSlam/'
-                      'AmSlam.apk']},
-    "CtsJankDeviceTestCases": {
-        "class": ["APPS"],
-        "path": ["cts/tests/jank"],
-        "tags": ["optional"],
-        "installed": ["out/target/product/bullhead/data/app/"
-                      "CtsJankDeviceTestCases/CtsJankDeviceTestCases.apk"]}
-}
-FIND_ONE = ROOT + 'cts/tests/jank/src/android/jank/cts/ui/CtsDeviceJankUi.java\n'
+FIND_ONE = ROOT + 'foo/bar/jank/src/android/jank/cts/ui/CtsDeviceJankUi.java\n'
 FIND_TWO = ROOT + 'other/dir/test.java\n' + FIND_ONE
-FIND_OVER_MAX = FIND_ONE * (cli_t.MAX_TEST_CHOICES_FOR_USER_INPUT + 1)
 XML_TARGETS = {'CtsUiDeviceTestCases', 'CtsJankDeviceTestCases'}
+TEST_DATA_DIR = 'unittest_data'
+JSON_FILE = 'module-info.json'
+INFO_JSON = json.load(open(os.path.join(TEST_DATA_DIR, JSON_FILE)))
 
 def isfile_side_effect(value):
     """Mock return values for os.path.isfile"""
-    if value == '/%s/%s' % (MODULE_DIR, cli_t.TEST_CONFIG):
+    if value == '/%s/%s' % (MODULE_DIR, cli_t.MODULE_CONFIG):
         return True
     if value.endswith('.java'):
+        return True
+    if value == os.path.join(ROOT, INTEGRATION_DIR, INTEGRATION_NAME + '.xml'):
         return True
     return False
 
@@ -70,9 +65,10 @@ def findtest_side_effect(test_name, _):
     if test_name == CLASS_NAME:
         return CLASS_INFO
 
+
 def realpath_side_effect(path):
     """Mock return values for os.path.realpath."""
-    return path
+    return os.path.join(ROOT, path)
 
 #pylint: disable=protected-access
 #pylint: disable=no-self-use
@@ -94,13 +90,11 @@ class CLITranslatorUnittests(unittest.TestCase):
         for _, patch in self.patches.iteritems():
             patch.stop()
 
-    @mock.patch('os.environ.get', side_effects=[OUT, PRODUCT])
+    @mock.patch('os.environ.get', return_value=TEST_DATA_DIR)
     @mock.patch('os.path.isfile', return_value=True)
-    @mock.patch('__builtin__.open', new_callable=mock.mock_open,
-                read_data=json.dumps(INFO_JSON))
     @mock.patch('subprocess.check_output')
-    def test_load_module_info(self, _checkout, _open, mock_isfile, _envget):
-        """Test _load_module_info loads module_info correctly"""
+    def test_load_module_info(self, _checkout, mock_isfile, _envget):
+        """Test _load_module_info loads module-info.json correctly"""
         # stop patch and instantiate new cli_t, because this is mocked in setup.
         self.patches['load_module_info'].stop()
         del self.patches['load_module_info']
@@ -115,15 +109,15 @@ class CLITranslatorUnittests(unittest.TestCase):
         """Test _get_test_reference_types parses reference types correctly."""
         self.assertEquals(
             self.ctr._get_test_reference_types('moduleOrClassName'),
-            [REF_TYPE.MODULE, REF_TYPE.CLASS]
+            [REF_TYPE.INTEGRATION, REF_TYPE.MODULE, REF_TYPE.CLASS]
         )
         self.assertEquals(
             self.ctr._get_test_reference_types('module_or_class_name'),
-            [REF_TYPE.MODULE, REF_TYPE.CLASS]
+            [REF_TYPE.INTEGRATION, REF_TYPE.MODULE, REF_TYPE.CLASS]
         )
         self.assertEquals(
             self.ctr._get_test_reference_types('class.name.or.package'),
-            [REF_TYPE.CLASS, REF_TYPE.PACKAGE]
+            [REF_TYPE.FILE_PATH, REF_TYPE.QUALIFIED_CLASS, REF_TYPE.PACKAGE]
         )
         self.assertEquals(
             self.ctr._get_test_reference_types('module:class'),
@@ -147,11 +141,11 @@ class CLITranslatorUnittests(unittest.TestCase):
         )
         self.assertEquals(
             self.ctr._get_test_reference_types('rel/path/to/test'),
-            [REF_TYPE.FILE_PATH, REF_TYPE.INTEGRATION, REF_TYPE.SUITE]
+            [REF_TYPE.FILE_PATH, REF_TYPE.INTEGRATION]
         )
         self.assertEquals(
             self.ctr._get_test_reference_types('/abs/path/to/test'),
-            [REF_TYPE.FILE_PATH, REF_TYPE.INTEGRATION, REF_TYPE.SUITE]
+            [REF_TYPE.FILE_PATH]
         )
 
     def test_is_equal_or_sub_dir(self):
@@ -172,14 +166,12 @@ class CLITranslatorUnittests(unittest.TestCase):
                           MODULE_DIR)
 
     @mock.patch('__builtin__.raw_input', return_value='1')
-    def test_extract_test_dir(self, _):
+    def test_extract_test_path(self, _):
         """Test _extract_test_dir method."""
-        self.assertEquals(self.ctr._extract_test_dir(FIND_ONE),
-                          ROOT + CLASS_DIR)
-        self.assertEquals(self.ctr._extract_test_dir(FIND_TWO),
-                          ROOT + CLASS_DIR)
-        self.assertRaises(cli_t.TooManyTestsFoundError,
-                          self.ctr._extract_test_dir, FIND_OVER_MAX)
+        self.assertEquals(self.ctr._extract_test_path(FIND_ONE),
+                          os.path.join(ROOT, CLASS_DIR, CLASS_NAME + '.java'))
+        self.assertEquals(self.ctr._extract_test_path(FIND_TWO),
+                          os.path.join(ROOT, CLASS_DIR, CLASS_NAME + '.java'))
 
     def test_get_module_name(self):
         """Test _get_module_name method."""
@@ -190,9 +182,10 @@ class CLITranslatorUnittests(unittest.TestCase):
     def test_get_targets_from_xml(self):
         """Test _get_targets_from_xml method."""
         # Mocking Etree is near impossible, so use a real file.
-        xml_dir = os.path.join(os.path.dirname(os.path.realpath(__file__)),
-                               'unittest_data')
-        self.assertEquals(self.ctr._get_targets_from_xml(xml_dir), XML_TARGETS)
+        xml_file = os.path.join(
+            os.path.dirname(os.path.realpath(__file__)), 'unittest_data',
+            cli_t.MODULE_CONFIG)
+        self.assertEquals(self.ctr._get_targets_from_xml(xml_file), XML_TARGETS)
 
 
     def test_find_test_by_module_name(self):
@@ -209,6 +202,18 @@ class CLITranslatorUnittests(unittest.TestCase):
                           CLASS_INFO)
         mock_checkoutput.return_value = ''
         self.assertIsNone(self.ctr._find_test_by_class_name('Not class'))
+
+    @mock.patch('subprocess.check_output')
+    @mock.patch('os.path.exists', return_value=True)
+    def test_find_test_by_integration_name(self, _, mock_find):
+        """Test _find_test_by_integration_name method"""
+        mock_find.return_value = os.path.join(ROOT, INTEGRATION_DIR,
+                                              INTEGRATION_NAME + '.xml')
+        self.assertEquals(
+            self.ctr._find_test_by_integration_name(INTEGRATION_NAME),
+            INTEGRATION_INFO)
+        mock_find.return_value = ''
+        self.assertIsNone(self.ctr._find_test_by_integration_name('NotIntName'))
 
     @mock.patch('os.path.realpath', side_effect=realpath_side_effect)
     @mock.patch('os.path.isfile', side_effect=isfile_side_effect)
@@ -229,6 +234,8 @@ class CLITranslatorUnittests(unittest.TestCase):
                           self.ctr._find_test_by_path('%s.java' % CLASS_NAME))
         self.assertEquals(MODULE_INFO,
                           self.ctr._find_test_by_path('/some/dir'))
+        path = os.path.join(INTEGRATION_DIR, INTEGRATION_NAME + '.xml')
+        self.assertEquals(INTEGRATION_INFO, self.ctr._find_test_by_path(path))
 
     @mock.patch.object(cli_t.CLITranslator, '_get_targets_from_xml',
                        return_value=set())
