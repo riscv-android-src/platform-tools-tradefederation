@@ -3293,4 +3293,68 @@ public class TestDeviceTest extends TestCase {
         assertFalse(mTestDevice.isEncryptionSupported());
         EasyMock.verify(mMockIDevice, mMockStateMonitor, mMockDvcMonitor);
     }
+
+    /** Test when getting the heapdump is successful. */
+    public void testGetHeapDump() throws Exception {
+        mTestDevice =
+                new TestableTestDevice() {
+                    @Override
+                    public File pullFile(String remoteFilePath) throws DeviceNotAvailableException {
+                        return new File("test");
+                    }
+                };
+        injectShellResponse("pidof system_server", "929");
+        injectShellResponse("am dumpheap 929 /data/dump.hprof", "");
+        injectShellResponse("ls \"/data/dump.hprof\"", "/data/dump.hprof");
+        injectShellResponse("rm /data/dump.hprof", "");
+        EasyMock.replay(mMockIDevice, mMockRunUtil);
+        File res = mTestDevice.dumpHeap("system_server", "/data/dump.hprof");
+        assertNotNull(res);
+        EasyMock.verify(mMockIDevice, mMockRunUtil);
+    }
+
+    /** Test when we fail to get the process pid. */
+    public void testGetHeapDump_nopid() throws Exception {
+        injectShellResponse("pidof system_server", "\n");
+        EasyMock.replay(mMockIDevice, mMockRunUtil);
+        File res = mTestDevice.dumpHeap("system_server", "/data/dump.hprof");
+        assertNull(res);
+        EasyMock.verify(mMockIDevice, mMockRunUtil);
+    }
+
+    public void testGetHeapDump_nullPath() throws DeviceNotAvailableException {
+        try {
+            mTestDevice.dumpHeap("system_server", null);
+            fail("Should have thrown an exception");
+        } catch (IllegalArgumentException expected) {
+            // expected
+        }
+    }
+
+    public void testGetHeapDump_emptyPath() throws DeviceNotAvailableException {
+        try {
+            mTestDevice.dumpHeap("system_server", "");
+            fail("Should have thrown an exception");
+        } catch (IllegalArgumentException expected) {
+            // expected
+        }
+    }
+
+    public void testGetHeapDump_nullService() throws DeviceNotAvailableException {
+        try {
+            mTestDevice.dumpHeap(null, "/data/hprof");
+            fail("Should have thrown an exception");
+        } catch (IllegalArgumentException expected) {
+            // expected
+        }
+    }
+
+    public void testGetHeapDump_emptyService() throws DeviceNotAvailableException {
+        try {
+            mTestDevice.dumpHeap("", "/data/hprof");
+            fail("Should have thrown an exception");
+        } catch (IllegalArgumentException expected) {
+            // expected
+        }
+    }
 }
