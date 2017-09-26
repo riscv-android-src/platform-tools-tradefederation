@@ -140,6 +140,16 @@ public class StreamUtil {
     }
 
     /**
+     * Return a BuffferedReader to read the contents from the given InputstreamSource.
+     *
+     * @param stream the {@link InputStreamSource}
+     * @return a BuffferedReader
+     */
+    public static BufferedReader getBufferedReaderFromStreamSrc(InputStreamSource stream) {
+        return new BufferedReader(new InputStreamReader(stream.createInputStream()));
+    }
+
+    /**
      * Copies contents of origStream to destStream.
      * <p/>
      * Recommended to provide a buffered stream for input and output
