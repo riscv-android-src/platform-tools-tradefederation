@@ -220,6 +220,14 @@ public class InstrumentationTest implements IDeviceTest, IResumableTest, ITestCo
     private boolean mDebug = false;
 
     @Option(
+        name = "coverage",
+        description =
+                "Collect code coverage for this test run. Note that the build under test must be a "
+                        + "coverage build or else this will fail."
+    )
+    private boolean mCoverage = false;
+
+    @Option(
         name = "enforce-ajur-format",
         description = "Whether or not enforcing the AJUR instrumentation output format"
     )
@@ -537,26 +545,38 @@ public class InstrumentationTest implements IDeviceTest, IResumableTest, ITestCo
         return mForceAbi;
     }
 
+    /** Sets the --screenshot-on-failure option. */
     public void setScreenshotOnFailure(boolean screenshotOnFailure) {
         mScreenshotOnFailure = screenshotOnFailure;
     }
 
+    /** Sets the --logcat-on-failure option. */
     public void setLogcatOnFailure(boolean logcatOnFailure) {
         mLogcatOnFailure = logcatOnFailure;
     }
 
+    /** Sets the --logcat-on-failure-size option. */
     public void setLogcatOnFailureSize(int logcatOnFailureSize) {
         mMaxLogcatBytes = logcatOnFailureSize;
     }
 
+    /** Sets the --coverage option for testing. */
+    @VisibleForTesting
+    void setCoverage(boolean coverageEnabled) {
+        mCoverage = coverageEnabled;
+    }
+
+    /** Sets the --rerun-from-file option. */
     public void setReRunUsingTestFile(boolean reRunUsingTestFile) {
         mReRunUsingTestFile = reRunUsingTestFile;
     }
 
+    /** Sets the --fallback-to-serial-rerun option. */
     public void setFallbackToSerialRerun(boolean reRunSerially) {
         mFallbackToSerialRerun = reRunSerially;
     }
 
+    /** Sets the --reboot-before-rerun option. */
     public void setRebootBeforeReRun(boolean rebootBeforeReRun) {
         mRebootBeforeReRun = rebootBeforeReRun;
     }
@@ -750,9 +770,13 @@ public class InstrumentationTest implements IDeviceTest, IResumableTest, ITestCo
         if (mDebug) {
             mRunner.setDebug(true);
         }
+        if (mCoverage) {
+            mRunner.addInstrumentationArg("coverage", "true");
+        }
         listener = addBugreportListenerIfEnabled(listener);
         listener = addLogcatListenerIfEnabled(listener);
         listener = addScreenshotListenerIfEnabled(listener);
+        listener = addCoverageListenerIfEnabled(listener);
 
         if (mRemainingTests == null) {
             // Failed to collect the tests or collection is off. Just try to run them all.
@@ -800,6 +824,17 @@ public class InstrumentationTest implements IDeviceTest, IResumableTest, ITestCo
     ITestInvocationListener addLogcatListenerIfEnabled(ITestInvocationListener listener) {
         if (mLogcatOnFailure) {
             listener = new FailedTestLogcatGenerator(listener, getDevice(), mMaxLogcatBytes);
+        }
+        return listener;
+    }
+
+    /**
+     * Returns a listener that will collect coverage measurements, or the original {@code listener}
+     * if this feature is disabled.
+     */
+    ITestInvocationListener addCoverageListenerIfEnabled(ITestInvocationListener listener) {
+        if (mCoverage) {
+            listener = new CodeCoverageListener(getDevice(), listener);
         }
         return listener;
     }
@@ -1005,10 +1040,9 @@ public class InstrumentationTest implements IDeviceTest, IResumableTest, ITestCo
         return null;
     }
 
-    /**
-     * A {@link ResultForwarder} that will forward a screenshot on test failures.
-     */
-    private static class FailedTestScreenshotGenerator extends ResultForwarder {
+    /** A {@link ResultForwarder} that will forward a screenshot on test failures. */
+    @VisibleForTesting
+    static class FailedTestScreenshotGenerator extends ResultForwarder {
         private ITestDevice mDevice;
 
         public FailedTestScreenshotGenerator(ITestInvocationListener listener,
@@ -1034,10 +1068,9 @@ public class InstrumentationTest implements IDeviceTest, IResumableTest, ITestCo
         }
     }
 
-    /**
-     * A {@link ResultForwarder} that will forward a logcat snapshot on each failed test.
-     */
-    private static class FailedTestLogcatGenerator extends ResultForwarder {
+    /** A {@link ResultForwarder} that will forward a logcat snapshot on each failed test. */
+    @VisibleForTesting
+    static class FailedTestLogcatGenerator extends ResultForwarder {
         private ITestDevice mDevice;
         private int mNumLogcatBytes;
         private Map<TestIdentifier, Long> mMapStartTime = new HashMap<TestIdentifier, Long>();
@@ -1047,6 +1080,10 @@ public class InstrumentationTest implements IDeviceTest, IResumableTest, ITestCo
             super(listener);
             mDevice = device;
             mNumLogcatBytes = maxLogcatBytes;
+        }
+
+        int getMaxSize() {
+            return mNumLogcatBytes;
         }
 
         @Override
