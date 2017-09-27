@@ -1282,8 +1282,7 @@ public class CommandScheduler extends Thread implements ICommandScheduler, IComm
      */
     private void addNewExecCommandToQueue(CommandTracker commandTracker) {
         try {
-            IConfiguration config = getConfigFactory().createConfigurationFromArgs(
-                    commandTracker.getArgs(), null, getKeyStoreClient());
+            IConfiguration config = createConfiguration(commandTracker.getArgs());
             ExecutableCommand execCmd = createExecutableCommand(commandTracker, config, false);
             addExecCommandToQueue(execCmd, config.getCommandOptions().getLoopTime());
         } catch (ConfigurationException e) {
@@ -1343,8 +1342,7 @@ public class CommandScheduler extends Thread implements ICommandScheduler, IComm
         assertStarted();
         IDeviceManager manager = getDeviceManager();
         CommandTracker cmdTracker = createCommandTracker(args, null);
-        IConfiguration config = getConfigFactory().createConfigurationFromArgs(
-                cmdTracker.getArgs(), null, getKeyStoreClient());
+        IConfiguration config = createConfiguration(cmdTracker.getArgs());
         config.validateOptions();
 
         ExecutableCommand execCmd = createExecutableCommand(cmdTracker, config, false);
