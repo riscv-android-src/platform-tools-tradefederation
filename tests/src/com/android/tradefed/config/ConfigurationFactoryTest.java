@@ -16,6 +16,7 @@
 package com.android.tradefed.config;
 
 import com.android.ddmlib.Log.LogLevel;
+import com.android.tradefed.build.LocalDeviceBuildProvider;
 import com.android.tradefed.config.ConfigurationFactory.ConfigId;
 import com.android.tradefed.log.ILeveledLogOutput;
 import com.android.tradefed.log.LogUtil.CLog;
@@ -1237,6 +1238,39 @@ public class ConfigurationFactoryTest extends TestCase {
         StubTargetPreparer deviceSetup2 = (StubTargetPreparer) device2.getTargetPreparers().get(0);
         assertFalse(deviceSetup2.getTestBooleanOption());
         assertTrue(deviceSetup2.getTestBooleanOptionFalse());
+    }
+
+    /** Test that when an <include> tag is used inside a <device> tag we correctly resolve it. */
+    public void testCreateConfiguration_includeInDevice() throws Exception {
+        IConfiguration config =
+                mFactory.createConfigurationFromArgs(
+                        new String[] {"test-config-multi-include", "--test-dir", "faketestdir"});
+        assertEquals(2, config.getDeviceConfig().size());
+        IDeviceConfiguration device1 = config.getDeviceConfigByName("device1");
+        assertTrue(device1.getTargetPreparers().get(0) instanceof StubTargetPreparer);
+        // The included config in device2 loads a different build_provider
+        IDeviceConfiguration device2 = config.getDeviceConfigByName("device2");
+        assertTrue(device2.getBuildProvider() instanceof LocalDeviceBuildProvider);
+        LocalDeviceBuildProvider provider = (LocalDeviceBuildProvider) device2.getBuildProvider();
+        // command line options are properly propagated to the included object in device tag.
+        assertEquals("faketestdir", provider.getTestDir().getName());
+    }
+
+    /**
+     * Test when an <include> tag tries to load a <device> tag inside another <device> tag. This
+     * should throw an exception.
+     */
+    public void testCreateConfiguration_includeInDevice_inDevice() throws Exception {
+        try {
+            mFactory.createConfigurationFromArgs(
+                    new String[] {
+                        "multi-device-incorrect-include",
+                    });
+            fail("Should have thrown an exception.");
+        } catch (ConfigurationException expected) {
+            assertEquals(
+                    "<device> tag cannot be included inside another device", expected.getMessage());
+        }
     }
 
     /** Test that {@link ConfigurationFactory#reorderArgs(String[])} is properly reordering args. */
