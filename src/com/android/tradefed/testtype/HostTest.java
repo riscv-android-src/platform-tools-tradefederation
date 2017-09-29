@@ -688,7 +688,7 @@ public class HostTest
      * Load the class object and set the test info if requested.
      *
      * @param classObj the class object to be loaded.
-     * @param setInfo True the the test infos need to be set.
+     * @param setInfo True the test infos need to be set.
      * @return The loaded object from the class.
      */
     private Object loadObject(Class<?> classObj, boolean setInfo) throws IllegalArgumentException {

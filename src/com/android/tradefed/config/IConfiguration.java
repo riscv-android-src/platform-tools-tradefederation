@@ -490,7 +490,7 @@ public interface IConfiguration {
     public void setCommandLine(String[] arrayArgs);
 
     /**
-     * Gets the the command line used to create this {@link IConfiguration}.
+     * Gets the command line used to create this {@link IConfiguration}.
      *
      * @return the command line used to create this {@link IConfiguration}.
      */

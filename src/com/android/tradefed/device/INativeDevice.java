@@ -1028,7 +1028,7 @@ public interface INativeDevice {
      *
      * @param dataName name under which the bugreport will be reported.
      * @param listener an {@link ITestLogger} to log the bugreport.
-     * @return True if the logging was sucessful, false otherwise.
+     * @return True if the logging was successful, false otherwise.
      */
     public boolean logBugreport(String dataName, ITestLogger listener);
 
