@@ -170,12 +170,22 @@ public class PythonUnitTestResultParser extends MultiLineReceiver {
         }
     }
 
+    /**
+     * Create a new {@link PythonUnitTestResultParser} that reports to the given {@link
+     * ITestRunListener}s.
+     */
     public PythonUnitTestResultParser(Collection<ITestRunListener> listeners, String runName) {
         mListeners = listeners;
         mRunName = runName;
         mTestResultCache = new HashMap<>();
     }
 
+    /**
+     * Process Python unittest output and report parsed results.
+     *
+     * <p>This method should be called only once with the full output, unlike the base method in
+     * {@link MultiLineReceiver}.
+     */
     @Override
     public void processNewLines(String[] lines) {
         try {
@@ -197,6 +207,7 @@ public class PythonUnitTestResultParser extends MultiLineReceiver {
         }
     }
 
+    /** Parse the next result line according to current parser state. */
     void parse(String line) throws PythonUnitTestParseException {
         switch (mCurrentParseState) {
             case TEST_CASE:
@@ -216,6 +227,7 @@ public class PythonUnitTestResultParser extends MultiLineReceiver {
         }
     }
 
+    /** Process a test case line and collect the test name, class, and status. */
     void processTestCase(String line) throws PythonUnitTestParseException {
         if (isEqualLine(line)) {
             // equal line before fail message
@@ -237,6 +249,7 @@ public class PythonUnitTestResultParser extends MultiLineReceiver {
         }
     }
 
+    /** Process a fail message line and collect the test name, class, and status. */
     void processFailMessage(String line) throws PythonUnitTestParseException {
         if (isDashLine(line)) {
             // dash line before traceback
@@ -250,6 +263,7 @@ public class PythonUnitTestResultParser extends MultiLineReceiver {
         // optional docstring - do nothing
     }
 
+    /** Process a traceback line and append it to the full traceback message. */
     void processTraceback(String line) throws PythonUnitTestParseException {
         if (isDashLine(line)) {
             // dash line before run summary
@@ -264,6 +278,7 @@ public class PythonUnitTestResultParser extends MultiLineReceiver {
         }
     }
 
+    /** Process the run summary line and collect the test count and run time. */
     void processRunSummary(String line) throws PythonUnitTestParseException {
         if (lineMatchesPattern(line, PATTERN_RUN_SUMMARY)) {
             mTotalTestCount = Integer.parseInt(mCurrentMatcher.group(1));
@@ -295,6 +310,7 @@ public class PythonUnitTestResultParser extends MultiLineReceiver {
     }
 
     //TODO(ghliu): report test results on the fly
+    /** Send recorded test results to all listeners. */
     private void reportToListeners() throws PythonUnitTestParseException {
         String failReason = String.format("Failed %d tests", mFailedTestCount);
         for (ITestRunListener listener : mListeners) {
@@ -319,6 +335,7 @@ public class PythonUnitTestResultParser extends MultiLineReceiver {
     }
 
     //TODO(ghliu): report test results on the fly
+    /** Record a non-failure test case. */
     private void reportNonFailureTestResult() throws PythonUnitTestParseException {
         TestIdentifier testId = new TestIdentifier(mCurrentTestClass, mCurrentTestName);
         if (PATTERN_TEST_SUCCESS.matcher(mCurrentTestStatus).matches()) {
@@ -336,6 +353,7 @@ public class PythonUnitTestResultParser extends MultiLineReceiver {
     }
 
     //TODO(ghliu): report test results on the fly
+    /** Record a failed test case and its traceback message. */
     private void reportFailureTestResult() {
         TestIdentifier testId = new TestIdentifier(mCurrentTestClass, mCurrentTestName);
         mTestResultCache.put(testId, mCurrentTraceback.toString());

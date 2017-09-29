@@ -21,6 +21,7 @@ import com.android.ddmlib.testrunner.TestResult;
 import com.android.ddmlib.testrunner.TestRunResult;
 import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.config.ConfigurationDescriptor;
+import com.android.tradefed.config.IConfiguration;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.DeviceUnresponsiveException;
 import com.android.tradefed.device.ITestDevice;
@@ -46,6 +47,8 @@ import com.android.tradefed.testtype.IMultiDeviceTest;
 import com.android.tradefed.testtype.IRemoteTest;
 import com.android.tradefed.testtype.IRuntimeHintProvider;
 import com.android.tradefed.testtype.ITestCollector;
+import com.android.tradefed.testtype.suite.module.IModuleController;
+import com.android.tradefed.testtype.suite.module.IModuleController.RunStrategy;
 import com.android.tradefed.util.StreamUtil;
 
 import com.google.common.annotations.VisibleForTesting;
@@ -67,8 +70,10 @@ public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestColl
     /** key names used for saving module info into {@link IInvocationContext} */
     public static final String MODULE_NAME = "module-name";
     public static final String MODULE_ABI = "module-abi";
+    public static final String MODULE_CONTROLLER = "module_controller";
 
     private final IInvocationContext mModuleInvocationContext;
+    private final IConfiguration mModuleConfiguration;
 
     private final String mId;
     private Collection<IRemoteTest> mTests = null;
@@ -100,17 +105,18 @@ public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestColl
      * @param name unique name of the test configuration.
      * @param tests list of {@link IRemoteTest} that needs to run.
      * @param preparers list of {@link ITargetPreparer} to be used to setup the device.
-     * @param configDescriptor the {@link ConfigurationDescriptor} of the underlying module config.
+     * @param moduleConfig the {@link IConfiguration} of the underlying module config.
      */
     public ModuleDefinition(
             String name,
             Collection<IRemoteTest> tests,
             List<ITargetPreparer> preparers,
             List<IMultiTargetPreparer> multiPreparers,
-            ConfigurationDescriptor configDescriptor) {
+            IConfiguration moduleConfig) {
         mId = name;
         mTests = tests;
-
+        mModuleConfiguration = moduleConfig;
+        ConfigurationDescriptor configDescriptor = moduleConfig.getConfigurationDescription();
         mModuleInvocationContext = new InvocationContext();
         mModuleInvocationContext.setConfigurationDescriptor(configDescriptor);
         mModuleInvocationContext.addInvocationAttribute(MODULE_NAME, mId);
@@ -228,6 +234,18 @@ public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestColl
      */
     public void run(ITestInvocationListener listener, TestFailureListener failureListener)
             throws DeviceNotAvailableException {
+        // Load extra configuration for the module from module_controller
+        // TODO: make module_controller a full TF object
+        boolean skipTestCases = false;
+        RunStrategy rs = applyConfigurationControl(failureListener);
+        if (RunStrategy.FULL_MODULE_BYPASS.equals(rs)) {
+            CLog.d("module_controller applied and module %s should not run.", getId());
+            return;
+        } else if (RunStrategy.SKIP_MODULE_TESTCASES.equals(rs)) {
+            CLog.d("All tests cases for %s will be marked skipped.", getId());
+            skipTestCases = true;
+        }
+
         CLog.d("Running module %s", getId());
         Exception preparationException = null;
         // Setup
@@ -299,12 +317,16 @@ public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestColl
                     ((ISystemStatusCheckerReceiver) test).setSystemStatusChecker(new ArrayList<>());
                 }
                 if (test instanceof ITestCollector) {
+                    if (skipTestCases) {
+                        mCollectTestsOnly = true;
+                    }
                     ((ITestCollector) test).setCollectTestsOnly(mCollectTestsOnly);
                 }
 
                 // Run the test, only in case of DeviceNotAvailable we exit the module
                 // execution in order to execute as much as possible.
                 ModuleListener moduleListener = new ModuleListener(listener);
+                moduleListener.setMarkTestsSkipped(skipTestCases);
                 List<ITestInvocationListener> currentTestListener = new ArrayList<>();
                 if (failureListener != null) {
                     currentTestListener.add(failureListener);
@@ -551,5 +573,20 @@ public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestColl
     /** Returns the {@link IInvocationContext} associated with the module. */
     public IInvocationContext getModuleInvocationContext() {
         return mModuleInvocationContext;
+    }
+
+    /**
+     * Allow to load a module_controller object to tune how should a particular module run.
+     *
+     * @param failureListener The {@link TestFailureListener} taking actions on tests failures.
+     * @return The strategy to use to run the tests.
+     */
+    private RunStrategy applyConfigurationControl(TestFailureListener failureListener) {
+        Object ctrlObject = mModuleConfiguration.getConfigurationObject(MODULE_CONTROLLER);
+        if (ctrlObject != null) {
+            IModuleController controller = (IModuleController) ctrlObject;
+            return controller.shouldRunModule(mModuleInvocationContext);
+        }
+        return RunStrategy.RUN;
     }
 }

@@ -85,9 +85,14 @@ public class StreamUtilTest extends TestCase {
      */
     public void testGetBufferedReaderFromInputStream() throws Exception {
         final String contents = "this is a string";
+        BufferedReader output = null;
         try (InputStreamSource source = new ByteArrayInputStreamSource(contents.getBytes())) {
-            BufferedReader output = StreamUtil.getBufferedReaderFromStreamSrc(source);
+            output = StreamUtil.getBufferedReaderFromStreamSrc(source);
             assertEquals(contents, output.readLine());
+        } finally {
+            if (null != output) {
+                output.close();
+            }
         }
     }
 

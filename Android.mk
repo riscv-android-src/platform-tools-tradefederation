@@ -64,27 +64,7 @@ $(LOCAL_INSTALLED_MODULE) : $(foreach m, $(LOCAL_JAVA_LIBRARIES), $(HOST_OUT)/tr
 # Enable the build process to generate javadoc
 # We need to reference symbols in the jar built above.
 
-# ==== docs for legacy sac app engine
-#LOCAL_MODULE = tradefed-sac-deprecated
-LOCAL_JAVA_LIBRARIES += tradefed
-LOCAL_IS_HOST_MODULE:=true
-LOCAL_MODULE_CLASS := JAVA_LIBRARIES
-LOCAL_ADDITIONAL_DEPENDENCIES := tradefed
-LOCAL_DROIDDOC_CUSTOM_TEMPLATE_DIR:=build/tools/droiddoc/templates-sac
-LOCAL_DROIDDOC_OPTIONS:= \
-        -package \
-        -toroot / \
-        -hdf android.whichdoc online \
-        -hdf sac true \
-        -hdf devices true \
-        -showAnnotationOverridesVisibility \
-        -showAnnotation com.android.tradefed.config.OptionClass \
-        -showAnnotation com.android.tradefed.config.Option \
-
-include $(BUILD_DROIDDOC)
-
-# ==== docs for the web (on the devsite app engine server)
-LOCAL_MODULE = tradefed-ds
+# ==== tradefed-docs: devsite-compatible reference docs for source.android.com
 LOCAL_JAVA_LIBRARIES += tradefed
 LOCAL_IS_HOST_MODULE := true
 LOCAL_MODULE_CLASS := JAVA_LIBRARIES
