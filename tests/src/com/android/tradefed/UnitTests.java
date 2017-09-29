@@ -64,6 +64,7 @@ import com.android.tradefed.device.TopHelperTest;
 import com.android.tradefed.device.WaitDeviceRecoveryTest;
 import com.android.tradefed.device.WifiHelperTest;
 import com.android.tradefed.invoker.InvocationContextTest;
+import com.android.tradefed.invoker.ShardListenerTest;
 import com.android.tradefed.invoker.TestInvocationMultiTest;
 import com.android.tradefed.invoker.TestInvocationTest;
 import com.android.tradefed.invoker.shard.ShardHelperTest;
@@ -299,6 +300,7 @@ import org.junit.runners.Suite.SuiteClasses;
 
     // invoker
     InvocationContextTest.class,
+    ShardListenerTest.class,
     TestInvocationMultiTest.class,
     TestInvocationTest.class,
 
