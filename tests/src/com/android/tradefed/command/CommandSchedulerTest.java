@@ -27,6 +27,7 @@ import com.android.tradefed.config.IConfiguration;
 import com.android.tradefed.config.IConfigurationFactory;
 import com.android.tradefed.config.IDeviceConfiguration;
 import com.android.tradefed.config.IGlobalConfiguration;
+import com.android.tradefed.config.OptionSetter;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.DeviceSelectionOptions;
 import com.android.tradefed.device.FreeDeviceState;
@@ -41,6 +42,7 @@ import com.android.tradefed.device.TestDeviceState;
 import com.android.tradefed.invoker.IInvocationContext;
 import com.android.tradefed.invoker.IRescheduler;
 import com.android.tradefed.invoker.ITestInvocation;
+import com.android.tradefed.invoker.InvocationContext;
 import com.android.tradefed.log.ILogRegistry.EventType;
 import com.android.tradefed.log.ITerribleFailureHandler;
 import com.android.tradefed.log.LogUtil.CLog;
@@ -86,6 +88,7 @@ public class CommandSchedulerTest extends TestCase {
     private CommandFileParser mMockCmdFileParser;
     private List<IDeviceConfiguration> mMockDeviceConfig;
     private ConfigurationDescriptor mMockConfigDescriptor;
+    private IInvocationContext mContext;
 
     /**
      * {@inheritDoc}
@@ -102,6 +105,7 @@ public class CommandSchedulerTest extends TestCase {
         mDeviceOptions = new DeviceSelectionOptions();
         mMockDeviceConfig = new ArrayList<IDeviceConfiguration>();
         mMockConfigDescriptor = new ConfigurationDescriptor();
+        mContext = new InvocationContext();
 
         mScheduler =
                 new CommandScheduler() {
@@ -119,6 +123,11 @@ public class CommandSchedulerTest extends TestCase {
                     @Override
                     protected IConfigurationFactory getConfigFactory() {
                         return mMockConfigFactory;
+                    }
+
+                    @Override
+                    protected IInvocationContext createInvocationContext() {
+                        return mContext;
                     }
 
                     @Override
@@ -1066,5 +1075,42 @@ public class CommandSchedulerTest extends TestCase {
         mScheduler.shutdownOnEmpty();
         mScheduler.join(2 * 1000);
         verifyMocks(mockListener);
+    }
+
+    /**
+     * Test that when a command runs in the versioned subprocess with --invocation-data option we do
+     * not add the attributes again
+     */
+    public void testExecCommand_versioning() throws Throwable {
+        String[] args =
+                new String[] {
+                    "foo", "--invocation-data", "test",
+                };
+        setCreateConfigExpectations(args, 1);
+        OptionSetter setter = new OptionSetter(mCommandOptions);
+        // If invocation-data are added and we are in a versioned invocation, the data should not
+        // be added again.
+        setter.setOptionValue("invocation-data", "key", "value");
+        mMockConfigDescriptor.setSandboxed(true);
+        setExpectedInvokeCalls(1);
+        mMockConfiguration.validateOptions();
+        IDevice mockIDevice = EasyMock.createMock(IDevice.class);
+        ITestDevice mockDevice = EasyMock.createMock(ITestDevice.class);
+        EasyMock.expect(mockDevice.getSerialNumber()).andStubReturn("serial");
+        EasyMock.expect(mockDevice.getDeviceState()).andStubReturn(TestDeviceState.ONLINE);
+        mockDevice.setRecoveryMode(EasyMock.eq(RecoveryMode.AVAILABLE));
+        EasyMock.expect(mockDevice.getIDevice()).andStubReturn(mockIDevice);
+        IScheduledInvocationListener mockListener =
+                EasyMock.createMock(IScheduledInvocationListener.class);
+        mockListener.invocationComplete(
+                (IInvocationContext) EasyMock.anyObject(), EasyMock.anyObject());
+        EasyMock.expect(mockDevice.waitForDeviceShell(EasyMock.anyLong())).andReturn(true);
+        replayMocks(mockDevice, mockListener);
+        mScheduler.start();
+        mScheduler.execCommand(mockListener, mockDevice, args);
+        mScheduler.shutdownOnEmpty();
+        mScheduler.join(2 * 1000);
+        verifyMocks(mockListener);
+        assertTrue(mContext.getAttributes().isEmpty());
     }
 }
