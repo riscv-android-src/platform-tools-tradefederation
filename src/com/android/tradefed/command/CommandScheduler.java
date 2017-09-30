@@ -540,15 +540,14 @@ public class CommandScheduler extends Thread implements ICommandScheduler, IComm
             ITestInvocation instance = getInvocation();
             IConfiguration config = mCmd.getConfiguration();
 
-            // Copy the command options invocation attributes to the invocation.
-            // TODO: Implement a locking/read-only mechanism to prevent unwanted attributes to be
-            // added during the invocation.
-            if (!config.getCommandOptions().getInvocationData().isEmpty()) {
-                mInvocationContext.addInvocationAttributes(
-                        config.getCommandOptions().getInvocationData());
-            }
-
             try {
+                // Copy the command options invocation attributes to the invocation if it has not
+                // been already done.
+                if (!config.getConfigurationDescription().shouldUseSandbox()
+                        && !config.getCommandOptions().getInvocationData().isEmpty()) {
+                    mInvocationContext.addInvocationAttributes(
+                            config.getCommandOptions().getInvocationData());
+                }
                 mCmd.commandStarted();
                 long invocTimeout = config.getCommandOptions().getInvocationTimeout();
                 if (invocTimeout > 0) {
@@ -1428,10 +1427,15 @@ public class CommandScheduler extends Thread implements ICommandScheduler, IComm
         synchronized(this) {
             mExecutingCommands.add(execCmd);
         }
-        IInvocationContext context = new InvocationContext();
+        IInvocationContext context = createInvocationContext();
         context.setConfigurationDescriptor(config.getConfigurationDescription());
         context.addAllocatedDevice(config.getDeviceConfig().get(0).getDeviceName(), device);
         startInvocation(context, execCmd, listener);
+    }
+
+    @VisibleForTesting
+    protected IInvocationContext createInvocationContext() {
+        return new InvocationContext();
     }
 
     /** Optional initialization step before test invocation starts */

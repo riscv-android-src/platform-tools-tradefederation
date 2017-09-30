@@ -111,7 +111,7 @@ public class ITestSuiteMultiTest {
         mTestSuite.setInvocationContext(mContext);
 
         mTestSuite.setSystemStatusChecker(new ArrayList<>());
-
+        mMockListener.testModuleStarted(EasyMock.anyObject());
         mMockListener.testRunStarted("test1", 2);
         TestIdentifier test1 =
                 new TestIdentifier(MultiDeviceStubTest.class.getSimpleName(), "test0");
@@ -122,7 +122,7 @@ public class ITestSuiteMultiTest {
         mMockListener.testStarted(test2, 0l);
         mMockListener.testEnded(test2, 5l, Collections.emptyMap());
         mMockListener.testRunEnded(EasyMock.anyLong(), EasyMock.anyObject());
-
+        mMockListener.testModuleEnded();
         EasyMock.replay(
                 mMockListener, mMockBuildInfo1, mMockBuildInfo2, mMockDevice1, mMockDevice2);
         mTestSuite.run(mMockListener);
