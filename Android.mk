@@ -37,7 +37,7 @@ LOCAL_JAVACFLAGS += -g -Xlint
 LOCAL_MODULE := tradefed
 
 LOCAL_MODULE_TAGS := optional
-LOCAL_STATIC_JAVA_LIBRARIES := junit-host kxml2-2.3.0 jline-1.0 tf-remote-client commons-compress-prebuilt host-libprotobuf-java-full tradefed-protos
+LOCAL_STATIC_JAVA_LIBRARIES := junit-host kxml2-2.3.0 jline-1.0 tf-remote-client commons-compress-prebuilt host-libprotobuf-java-full tradefed-protos error_prone_annotations-2.0.18
 # emmalib is only a runtime dependency if generating code coverage reporters,
 # not a compile time dependency
 LOCAL_JAVA_LIBRARIES := emmalib jack-jacoco-reporter loganalysis tools-common-prebuilt

@@ -27,6 +27,7 @@ LOCAL_ERROR_PRONE_FLAGS:= -XDandroidCompatible=false \
                           -Xep:JUnitAmbiguousTestClass:ERROR \
                           -Xep:MissingFail:ERROR \
                           -Xep:MissingOverride:ERROR \
+                          -Xep:MustBeClosedChecker:ERROR \
                           -Xep:Overrides:ERROR \
                           -Xep:PackageLocation:ERROR \
                           -Xep:ReferenceEquality:ERROR \
