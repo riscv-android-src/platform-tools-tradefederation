@@ -671,30 +671,25 @@ public class TestInvocation implements ITestInvocation {
     }
 
     private void reportLogs(ITestDevice device, ITestInvocationListener listener, Stage stage) {
-        InputStreamSource logcatSource = null;
-        InputStreamSource emulatorOutput = null;
-        try {
-            // only get logcat if we have an actual device available to avoid empty logs.
-            if (device != null && !(device.getIDevice() instanceof StubDevice)) {
-                logcatSource = device.getLogcat();
+        if (device == null) {
+            return;
+        }
+        // non stub device
+        if (!(device.getIDevice() instanceof StubDevice)) {
+            try (InputStreamSource logcatSource = device.getLogcat()) {
                 device.clearLogcat();
-                if (device.getIDevice() != null && device.getIDevice().isEmulator()) {
-                    emulatorOutput = device.getEmulatorOutput();
-                    // TODO: Clear the emulator log
-                }
-            }
-            if (logcatSource != null) {
                 String name = getDeviceLogName(stage);
                 listener.testLog(name, LogDataType.LOGCAT, logcatSource);
             }
-            if (emulatorOutput != null) {
+        }
+        // emulator logs
+        if (device.getIDevice() != null && device.getIDevice().isEmulator()) {
+            try (InputStreamSource emulatorOutput = device.getEmulatorOutput()) {
+                // TODO: Clear the emulator log
                 String name = getEmulatorLogName(stage);
                 listener.testLog(name, LogDataType.TEXT, emulatorOutput);
             }
-        } finally {
-            // Clean up after our ISSen
-            StreamUtil.cancel(logcatSource);
-            StreamUtil.cancel(emulatorOutput);
+
         }
     }
 

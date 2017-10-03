@@ -31,6 +31,8 @@ import com.android.tradefed.util.CommandResult;
 import com.android.tradefed.util.ProcessInfo;
 import com.android.tradefed.util.TimeUtil;
 
+import com.google.errorprone.annotations.MustBeClosed;
+
 import java.io.File;
 import java.io.InputStream;
 import java.util.Collection;
@@ -622,22 +624,26 @@ public interface INativeDevice {
 
     /**
      * Grabs a snapshot stream of the logcat data.
-     * <p/>
-     * Works in two modes:
-     * <li>If the logcat is currently being captured in the background, will return up to
-     * {@link TestDeviceOptions#getMaxLogcatDataSize()} bytes of the current
-     * contents of the background logcat capture
+     *
+     * <p>Works in two modes:
+     * <li>If the logcat is currently being captured in the background, will return up to {@link
+     *     TestDeviceOptions#getMaxLogcatDataSize()} bytes of the current contents of the background
+     *     logcat capture
      * <li>Otherwise, will return a static dump of the logcat data if device is currently responding
      */
+    @MustBeClosed
     public InputStreamSource getLogcat();
 
     /**
-     * Grabs a snapshot stream of captured logcat data starting the date provided.
-     * The time on the device should be used {@link #getDeviceDate}.
-     * <p/>
-     * @param date in epoch format of when to start the snapshot until present. (can be
-     *        be obtained using 'date +%s')
+     * Grabs a snapshot stream of captured logcat data starting the date provided. The time on the
+     * device should be used {@link #getDeviceDate}.
+     *
+     * <p>
+     *
+     * @param date in epoch format of when to start the snapshot until present. (can be be obtained
+     *     using 'date +%s')
      */
+    @MustBeClosed
     public InputStreamSource getLogcatSince(long date);
 
     /**

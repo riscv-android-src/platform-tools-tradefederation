@@ -149,21 +149,27 @@ public class TestFailureListener implements ITestInvocationListener {
                     new Runnable() {
                         @Override
                         public void run() {
-                            InputStreamSource logSource = null;
                             Long startTime = mTrackStartTime.remove(test);
                             if (startTime != null) {
-                                logSource = device.getLogcatSince(startTime);
+                                try (InputStreamSource logSource =
+                                        device.getLogcatSince(startTime)) {
+                                    testLog(
+                                            String.format("%s-%s-logcat", test.toString(), serial),
+                                            LogDataType.LOGCAT,
+                                            logSource);
+                                }
                             } else {
                                 // sleep 2s to ensure test failure stack trace makes it into the
                                 // logcat capture
                                 getRunUtil().sleep(2 * 1000);
-                                logSource = device.getLogcat(mMaxLogcatBytes);
+                                try (InputStreamSource logSource =
+                                        device.getLogcat(mMaxLogcatBytes)) {
+                                    testLog(
+                                            String.format("%s-%s-logcat", test.toString(), serial),
+                                            LogDataType.LOGCAT,
+                                            logSource);
+                                }
                             }
-                            testLog(
-                                    String.format("%s-%s-logcat", test.toString(), serial),
-                                    LogDataType.LOGCAT,
-                                    logSource);
-                            logSource.close();
                         }
                     };
             if (mRebootOnFailure) {

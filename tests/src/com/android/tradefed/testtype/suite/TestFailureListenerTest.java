@@ -55,10 +55,9 @@ public class TestFailureListenerTest {
                 new TestFailureListener(mMockListener, mListDevice, true, true, true, true, -1);
     }
 
-    /**
-     * Test that on testFailed all the collection are triggered.
-     */
+    /** Test that on testFailed all the collection are triggered. */
     @Test
+    @SuppressWarnings("MustBeClosedChecker")
     public void testTestFailed() throws Exception {
         TestIdentifier testId = new TestIdentifier("com.fake", "methodfake");
         final String trace = "oups it failed";
@@ -96,10 +95,11 @@ public class TestFailureListenerTest {
     }
 
     /**
-     * Test that testFailed behave properly when device is unavailable: collection is attempted
-     * and properly handled.
+     * Test that testFailed behave properly when device is unavailable: collection is attempted and
+     * properly handled.
      */
     @Test
+    @SuppressWarnings("MustBeClosedChecker")
     public void testTestFailed_notAvailable() throws Exception {
         mFailureListener =
                 new TestFailureListener(mMockListener, mListDevice, false, true, true, true, -1) {
