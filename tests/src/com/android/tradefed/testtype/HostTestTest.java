@@ -1634,7 +1634,7 @@ public class HostTestTest extends TestCase {
     }
 
     /**
-     * Test that a method annotated and overriden is not included because the child method is not
+     * Test that a method annotated and overridden is not included because the child method is not
      * annotated (annotation are not inherited).
      */
     public void testMethodAnnotation_inherited() throws Exception {
@@ -1654,7 +1654,7 @@ public class HostTestTest extends TestCase {
     }
 
     /**
-     * Test that a method annotated and overriden is not excluded if the child method does not have
+     * Test that a method annotated and overridden is not excluded if the child method does not have
      * the annotation.
      */
     public void testMethodAnnotation_inherited_exclude() throws Exception {

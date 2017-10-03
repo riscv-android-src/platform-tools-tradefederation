@@ -414,7 +414,7 @@ public interface ITestDevice extends INativeDevice {
      * Remove a given user from the device.
      *
      * @param userId of the user to remove
-     * @return true if we were succesful in removing the user, false otherwise.
+     * @return true if we were successful in removing the user, false otherwise.
      * @throws DeviceNotAvailableException
      */
     public boolean removeUser(int userId) throws DeviceNotAvailableException;
