@@ -37,7 +37,7 @@ TF_TARGETS = frozenset(['tradefed', 'tradefed-contrib'])
 GTF_TARGETS = frozenset(['google-tradefed', 'google-tradefed-contrib'])
 # There are no restrictions on the apk file name. So just avoid "/".
 APK_RE = re.compile(r'^[^/]+\.apk$', re.I)
-INT_NAME_ROOT = 'res/config'
+INT_NAME_RE = re.compile(r'^.*\/res\/config\/(?P<int_name>.*).xml$')
 
 
 class TooManyTestsFoundError(Exception):
@@ -374,10 +374,18 @@ class CLITranslator(object):
             if test_file:
                 # Don't use names that simply match the path,
                 # must be the actual name used by TF to run the test.
-                int_name_root = os.path.join(abs_path, INT_NAME_ROOT)
-                if os.path.relpath(test_file, int_name_root) == name + '.xml':
-                    rel_config = os.path.relpath(test_file, self.root_dir)
-                    return TestInfo(rel_config, None, name, None)
+                match = INT_NAME_RE.match(test_file)
+                if not match:
+                    logging.error('Integration test outside config dir: %s',
+                                  test_file)
+                    return None
+                int_name = match.group('int_name')
+                if int_name != name:
+                    logging.warn('Input (%s) not valid integration name, '
+                                 'did you mean: %s?', name, int_name)
+                    return None
+                rel_config = os.path.relpath(test_file, self.root_dir)
+                return TestInfo(rel_config, None, name, None)
         return None
 
     def _find_test_by_path(self, path):
@@ -428,12 +436,12 @@ class CLITranslator(object):
                              int_dir, path, path)
                 return None
             rel_config = os.path.relpath(path, self.root_dir)
-            rel_dir = os.path.relpath(dir_path, os.path.join(int_dir,
-                                                             INT_NAME_ROOT))
-            if rel_dir == '.':
-                int_name = file_basename
-            else:
-                int_name = os.path.join(rel_dir, file_basename)
+            match = INT_NAME_RE.match(rel_config)
+            if not match:
+                logging.error('Integration test outside config dir: %s',
+                              rel_config)
+                return None
+            int_name = match.group('int_name')
             return TestInfo(rel_config, None, int_name, None)
 
         # Module/Class
