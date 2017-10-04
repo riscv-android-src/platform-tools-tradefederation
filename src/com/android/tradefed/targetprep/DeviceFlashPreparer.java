@@ -84,7 +84,7 @@ public abstract class DeviceFlashPreparer implements ITargetCleaner {
 
     @Option(name = "concurrent-flasher-limit", description =
         "The maximum number of concurrent flashers (may be useful to avoid memory constraints)" +
-        "This will be overriden if one is set in the host options.")
+        "This will be overridden if one is set in the host options.")
     private Integer mConcurrentFlasherLimit = null;
 
     @Option(name = "skip-post-flashing-setup",

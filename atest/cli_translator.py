@@ -29,20 +29,15 @@ from collections import namedtuple
 
 RUN_CMD = ('atest_tradefed.sh run commandAndExit template/local_min '
            '--template:map test=%s')
-TestInfo = namedtuple('TestInfo', ['module_name', 'rel_module_dir',
-                                   'class_name'])
-MAX_TEST_CHOICES_FOR_USER_INPUT = 5
+TestInfo = namedtuple('TestInfo', ['rel_config', 'module_name',
+                                   'integrated_name', 'class_name'])
 MODULES_IN = 'MODULES-IN-%s'
-# Unix find commands for searching for test files based on test type input.
-FIND_CMDS = {
-    'class': r'find %s -type d -name .git -prune -o -type f '
-             r'-name %s.java -print',
-    'qualified_class': r'find %s -type d -name .git -prune -o -wholename '
-                       r'*%s.java -print'
-}
-TEST_CONFIG = 'AndroidTest.xml'
+MODULE_CONFIG = 'AndroidTest.xml'
+TF_TARGETS = frozenset(['tradefed', 'tradefed-contrib'])
+GTF_TARGETS = frozenset(['google-tradefed', 'google-tradefed-contrib'])
 # There are no restrictions on the apk file name. So just avoid "/".
 APK_RE = re.compile(r'^[^/]+\.apk$', re.I)
+INT_NAME_ROOT = 'res/config'
 
 
 class TooManyTestsFoundError(Exception):
@@ -71,9 +66,20 @@ class Enum(tuple):
 # 5. INTEGRATION: xml file name in one of the 4 integration config directories.
 # 6. SUITE: Value of the "run-suite-tag" in xml config file in 4 config dirs.
 #           Same as value of "test-suite-tag" in AndroidTest.xml files.
-REFERENCE_TYPE = Enum(['MODULE', 'CLASS', 'MODULE_CLASS', 'PACKAGE',
-                       'MODULE_PACKAGE', 'FILE_PATH', 'INTEGRATION',
+REFERENCE_TYPE = Enum(['MODULE', 'CLASS', 'QUALIFIED_CLASS', 'MODULE_CLASS',
+                       'PACKAGE', 'MODULE_PACKAGE', 'FILE_PATH', 'INTEGRATION',
                        'SUITE'])
+
+# Unix find commands for searching for test files based on test type input.
+# Note: Find (unlike grep) exits with status 0 if nothing found.
+FIND_CMDS = {
+    REFERENCE_TYPE.CLASS : r"find %s -type d -name .git -prune -o -type f "
+                           r"-name '%s.java' -print",
+    REFERENCE_TYPE.QUALIFIED_CLASS: r"find %s -type d -name .git -prune -o "
+                                    r"-wholename '*%s.java' -print",
+    REFERENCE_TYPE.INTEGRATION: r"find %s -type d -name .git -prune -o "
+                                r"-wholename '*%s.xml' -print"
+}
 
 #pylint: disable=no-self-use
 class CLITranslator(object):
@@ -100,9 +106,13 @@ class CLITranslator(object):
         self.ref_type_to_func_map = {
             REFERENCE_TYPE.MODULE: self._find_test_by_module_name,
             REFERENCE_TYPE.CLASS: self._find_test_by_class_name,
+            REFERENCE_TYPE.QUALIFIED_CLASS: self._find_test_by_class_name,
             REFERENCE_TYPE.FILE_PATH: self._find_test_by_path,
+            REFERENCE_TYPE.INTEGRATION: self._find_test_by_integration_name,
         }
         self.module_info = self._load_module_info()
+        self.tf_dirs, self.gtf_dirs = self._get_integration_dirs()
+        self.integration_dirs = self.tf_dirs + self.gtf_dirs
 
     def _load_module_info(self):
         """Make (if not exists) and load into memory module-info.json file
@@ -122,7 +132,17 @@ class CLITranslator(object):
         with open(file_path) as json_file:
             return json.load(json_file)
 
-    def _get_test_reference_types(self, test_reference):
+    def _get_integration_dirs(self):
+        """Get integration dirs from module-info.json based on targets.
+
+        Returns:
+            A tuple of lists of strings of integration dir rel to repo root.
+        """
+        tf_dirs = filter(None, [self._get_module_path(x) for x in TF_TARGETS])
+        gtf_dirs = filter(None, [self._get_module_path(x) for x in GTF_TARGETS])
+        return tf_dirs, gtf_dirs
+
+    def _get_test_reference_types(self, ref):
         """Determine type of test reference based on the content of string.
 
         Examples:
@@ -133,25 +153,37 @@ class CLITranslator(object):
             or Suite reference.
 
         Args:
-            test_reference: A string referencing a test.
+            ref: A string referencing a test.
 
         Returns:
             A list of possible REFERENCE_TYPEs (ints) for reference string.
         """
-        if test_reference.startswith('.'):
+        if ref.startswith('.'):
             return [REFERENCE_TYPE.FILE_PATH]
-        if '/' in test_reference:
+        if '/' in ref:
+            if ref.startswith('/') or '.' in ref:
+                return [REFERENCE_TYPE.FILE_PATH]
             return [REFERENCE_TYPE.FILE_PATH,
                     REFERENCE_TYPE.INTEGRATION,
-                    REFERENCE_TYPE.SUITE]
-        if ':' in test_reference:
-            if '.' in test_reference:
+                    # Comment in SUITE when it's supported
+                    # REFERENCE_TYPE.SUITE
+                   ]
+        if ':' in ref:
+            if '.' in ref:
                 return [REFERENCE_TYPE.MODULE_CLASS,
                         REFERENCE_TYPE.MODULE_PACKAGE]
             return [REFERENCE_TYPE.MODULE_CLASS]
-        if '.'  in test_reference:
-            return [REFERENCE_TYPE.CLASS, REFERENCE_TYPE.PACKAGE]
-        return [REFERENCE_TYPE.MODULE, REFERENCE_TYPE.CLASS]
+        if '.' in ref:
+            return [REFERENCE_TYPE.FILE_PATH,
+                    REFERENCE_TYPE.QUALIFIED_CLASS,
+                    REFERENCE_TYPE.PACKAGE]
+        # Note: We assume that if you're referencing a file in your cwd,
+        # that file must have a '.' in its name, i.e. foo.java, foo.xml.
+        # If this ever becomes not the case, then we need to include path below.
+        return [REFERENCE_TYPE.INTEGRATION,
+                # Comment in SUITE when it's supported
+                # REFERENCE_TYPE.SUITE,
+                REFERENCE_TYPE.MODULE, REFERENCE_TYPE.CLASS]
 
     def _is_equal_or_sub_dir(self, sub_dir, parent_dir):
         """Return True sub_dir is sub dir or equal to parent_dir.
@@ -188,13 +220,13 @@ class CLITranslator(object):
             raise ValueError('%s not in repo %s' % (start_dir, self.root_dir))
         current_dir = start_dir
         while current_dir != self.root_dir:
-            if os.path.isfile(os.path.join(current_dir, TEST_CONFIG)):
+            if os.path.isfile(os.path.join(current_dir, MODULE_CONFIG)):
                 return os.path.relpath(current_dir, self.root_dir)
             current_dir = os.path.dirname(current_dir)
         raise TestWithNoModuleError('No Parent Module Dir for: %s' % start_dir)
 
-    def _extract_test_dir(self, output):
-        """Extract the test dir from the output of a unix 'find' command.
+    def _extract_test_path(self, output):
+        """Extract the test path from the output of a unix 'find' command.
 
         Example of find output for CLASS find cmd:
         /<some_root>/cts/tests/jank/src/android/jank/cts/ui/CtsDeviceJankUi.java
@@ -203,22 +235,18 @@ class CLITranslator(object):
             output: A string output of a unix 'find' command.
 
         Returns:
-            A string of the test dir path.
-
-        Exceptions:
-            TooManyTestsFoundError.
+            A string of the test path or None if output is '' or None.
         """
+        if not output:
+            return None
         tests = output.strip('\n').split('\n')
         count = len(tests)
-        if count > MAX_TEST_CHOICES_FOR_USER_INPUT:
-            raise TooManyTestsFoundError('%s tests:\n%s' % (count, output))
-        if count == 1:
-            test_index = 0
-        else:
+        test_index = 0
+        if count > 1:
             numbered_list = ['%s: %s' % (i, t) for i, t in enumerate(tests)]
             print 'Multiple tests found:\n%s' % '\n'.join(numbered_list)
             test_index = int(raw_input("Please enter number of test to use:"))
-        return os.path.dirname(tests[test_index])
+        return tests[test_index]
 
     def _get_module_name(self, rel_module_path):
         """Get the name of a module given its dir relative to repo root.
@@ -248,25 +276,38 @@ class CLITranslator(object):
         raise UnregisteredModuleError('%s not in module-info.json' %
                                       rel_module_path)
 
-    def _get_targets_from_xml(self, rel_module_path):
-        """Parse any .apk files listed in the AndroidTest.xml file.
+    def _get_module_path(self, module_name):
+        """Get path from module-info.json given a module name.
 
         Args:
-            rel_module_path: path to module directory relative to repo root.
+            module_name: A string of the module name.
+
+        Returns:
+            A string of path to the module, else None if no module found.
+        """
+        info = self.module_info.get(module_name)
+        if info:
+            return info.get('path', [])[0]
+        return None
+
+    def _get_targets_from_xml(self, xml_file):
+        """Parse any .apk files listed in the config file.
+
+        Args:
+            xml_file: abs path to xml file.
 
         Returns:
             A set of build targets based on the .apks found in the xml file.
         """
         targets = set()
-        file_path = os.path.join(self.root_dir, rel_module_path, TEST_CONFIG)
-        tree = ET.parse(file_path)
+        tree = ET.parse(xml_file)
         root = tree.getroot()
         option_tags = root.findall('.//option')
         for tag in option_tags:
             value = tag.attrib['value'].strip()
             if APK_RE.match(value):
                 targets.add(value[:-len('.apk')])
-        logging.debug('Found targets in %s: %s', TEST_CONFIG, targets)
+        logging.debug('Targets found in config file: %s', targets)
         return targets
 
     def _find_test_by_module_name(self, module_name):
@@ -281,7 +322,8 @@ class CLITranslator(object):
         info = self.module_info.get(module_name)
         if info:
             # path is a list with only 1 element.
-            return TestInfo(module_name, info['path'][0], None)
+            rel_config = os.path.join(info['path'][0], MODULE_CONFIG)
+            return TestInfo(rel_config, module_name, None, None)
 
     def _find_test_by_class_name(self, class_name):
         """Find test files given a class name.
@@ -293,26 +335,50 @@ class CLITranslator(object):
             A populated TestInfo namedtuple if test found, else None.
         """
         if '.' in class_name:
-            path = class_name.replace('.', '/')
-            find_cmd = FIND_CMDS['qualified_class'] % (self.root_dir, path)
+            find_cmd = FIND_CMDS[REFERENCE_TYPE.QUALIFIED_CLASS] % (
+                self.root_dir, class_name.replace('.', '/'))
         else:
-            find_cmd = FIND_CMDS['class'] % (self.root_dir, class_name)
-        try:
-            start = time.time()
+            find_cmd = FIND_CMDS[REFERENCE_TYPE.CLASS] % (
+                self.root_dir, class_name)
+        # TODO: Pull out common find cmd and timing code.
+        start = time.time()
+        logging.debug('Executing: %s', find_cmd)
+        out = subprocess.check_output(find_cmd, shell=True)
+        logging.debug('Find completed in %ss', time.time() - start)
+        logging.debug('Class - Find Cmd Out: %s', out)
+        test_path = self._extract_test_path(out)
+        if not test_path:
+            return None
+        test_dir = os.path.dirname(test_path)
+        rel_module_dir = self._find_parent_module_dir(test_dir)
+        rel_config = os.path.join(rel_module_dir, MODULE_CONFIG)
+        module_name = self._get_module_name(rel_module_dir)
+        return TestInfo(rel_config, module_name, None, class_name)
+
+    def _find_test_by_integration_name(self, name):
+        """Find test info given an integration name.
+
+        Args:
+            name: A string of integration name as seen in tf's list configs.
+
+        Returns:
+            A populated TestInfo namedtuple if test found, else None
+        """
+        for integration_dir in self.integration_dirs:
+            abs_path = os.path.join(self.root_dir, integration_dir)
+            find_cmd = FIND_CMDS[REFERENCE_TYPE.INTEGRATION] % (abs_path, name)
             logging.debug('Executing: %s', find_cmd)
             out = subprocess.check_output(find_cmd, shell=True)
-            end = time.time()
-            logging.debug('Find completed in %ss', end - start)
-            logging.debug('Find Cmd Out: %s', out)
-            test_dir = self._extract_test_dir(out)
-            if not test_dir:
-                return None
-        except subprocess.CalledProcessError:
-            logging.info('Class (%s) not in %s', class_name, self.root_dir)
-            return None
-        rel_module_dir = self._find_parent_module_dir(test_dir)
-        module_name = self._get_module_name(rel_module_dir)
-        return TestInfo(module_name, rel_module_dir, class_name)
+            logging.debug('Integration - Find Cmd Out: %s', out)
+            test_file = self._extract_test_path(out)
+            if test_file:
+                # Don't use names that simply match the path,
+                # must be the actual name used by TF to run the test.
+                int_name_root = os.path.join(abs_path, INT_NAME_ROOT)
+                if os.path.relpath(test_file, int_name_root) == name + '.xml':
+                    rel_config = os.path.relpath(test_file, self.root_dir)
+                    return TestInfo(rel_config, None, name, None)
+        return None
 
     def _find_test_by_path(self, path):
         """Find test info given a path.
@@ -322,7 +388,10 @@ class CLITranslator(object):
                                                     at the moment though)
             path_to_module_dir -> Resolve to MODULE
             path_to_class_dir --> Resolve to MODULE (TODO: Maybe all classes)
+            path_to_integration_file --> Resolve to INTEGRATION
             path_to_random_dir --> try to resolve to MODULE
+            # TODO:
+            path_to_dir_with_integration_files --> Resolve to ALL Integrations
 
         Args:
             path: A string of the test's path.
@@ -338,12 +407,45 @@ class CLITranslator(object):
             dir_path, file_name = os.path.split(path)
         else:
             dir_path, file_name = path, None
-        class_name = os.path.splitext(file_name)[0] if file_name else None
+        file_basename = os.path.splitext(file_name)[0] if file_name else None
+
+        # Integration/Suite
+        int_dir = None
+        for possible_dir in self.integration_dirs:
+            abs_int_dir = os.path.join(self.root_dir, possible_dir)
+            if self._is_equal_or_sub_dir(dir_path, abs_int_dir):
+                int_dir = abs_int_dir
+                break
+        if int_dir:
+            if not file_name:
+                logging.warn('Found dir (%s) matching input (%s).'
+                             ' Referencing an entire Integration/Suite dir'
+                             ' is not supported. If you are trying to reference'
+                             ' a test by its path, please input the path to'
+                             ' the integration/suite config file itself.'
+                             ' Continuing to try to resolve input (%s)'
+                             ' as a non-path reference...',
+                             int_dir, path, path)
+                return None
+            rel_config = os.path.relpath(path, self.root_dir)
+            rel_dir = os.path.relpath(dir_path, os.path.join(int_dir,
+                                                             INT_NAME_ROOT))
+            if rel_dir == '.':
+                int_name = file_basename
+            else:
+                int_name = os.path.join(rel_dir, file_basename)
+            return TestInfo(rel_config, None, int_name, None)
+
+        # Module/Class
         rel_module_dir = self._find_parent_module_dir(dir_path)
         if not rel_module_dir:
             return None
         module_name = self._get_module_name(rel_module_dir)
-        return TestInfo(module_name, rel_module_dir, class_name)
+        rel_config = os.path.join(rel_module_dir, MODULE_CONFIG)
+        class_name = None
+        if file_name and file_name.endswith('.java'):
+            class_name = file_basename
+        return TestInfo(rel_config, module_name, None, class_name)
 
     def  _generate_build_targets(self, test_info):
         """Generate a list of build targets for a test.
@@ -354,9 +456,16 @@ class CLITranslator(object):
         Returns:
             A set of strings of the build targets.
         """
-        targets = {'tradefed-all',
-                   MODULES_IN % test_info.rel_module_dir.replace('/', '-')}
-        targets |= self._get_targets_from_xml(test_info.rel_module_dir)
+        config_file = os.path.join(self.root_dir, test_info.rel_config)
+        targets = self._get_targets_from_xml(config_file)
+        if test_info.integrated_name:
+            if os.path.commonprefix(self.gtf_dirs) in test_info.rel_config:
+                targets |= {'google-tradefed-all'}
+            else:
+                targets |= {'tradefed-all'}
+        else:
+            mod_dir = os.path.dirname(test_info.rel_config).replace('/', '-')
+            targets |= {'tradefed-all', MODULES_IN % mod_dir}
         return targets
 
     def _generate_run_command(self, test_info, filters=None, annotations=None):
@@ -372,7 +481,8 @@ class CLITranslator(object):
         """
         if filters or annotations:
             logging.warn('Filters and Annotations are currently not supported.')
-        return RUN_CMD % test_info.module_name
+        test_name = test_info.module_name or test_info.integrated_name
+        return RUN_CMD % test_name
 
     def _get_test_info(self, test_name, reference_types):
         """Tries to find directory containing test files else returns None
@@ -424,6 +534,7 @@ class CLITranslator(object):
             possible_reference_types = self._get_test_reference_types(test)
             test_info = self._get_test_info(test, possible_reference_types)
             if not test_info:
+                # TODO: Should we raise here, or just stdout a message?
                 raise NoTestFoundError('No test found for: %s' % test)
             build_targets |= self._generate_build_targets(test_info)
             run_commands.append(self._generate_run_command(test_info))

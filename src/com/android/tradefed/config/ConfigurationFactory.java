@@ -655,7 +655,7 @@ public class ConfigurationFactory implements IConfigurationFactory {
         PrintStream ps = new PrintStream(baos);
         boolean failed = false;
         Set<String> configNames = getConfigSetFromClasspath(null);
-        // TODO: split the the configs into two lists, one from the jar packages and one from test
+        // TODO: split the configs into two lists, one from the jar packages and one from test
         // cases directories.
         configNames.addAll(getConfigNamesFromTestCases(null));
         for (String configName : configNames) {

@@ -41,7 +41,7 @@ public interface ISandbox {
             ITestInvocationListener listener);
 
     /**
-     * Run the sandbox with the enviroment that was set.
+     * Run the sandbox with the environment that was set.
      *
      * @param configuration the {@link IConfiguration} for the command to run.
      * @return a {@link CommandResult} with the status of the sandbox run and logs.
