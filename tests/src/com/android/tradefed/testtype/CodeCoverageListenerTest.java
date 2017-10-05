@@ -16,6 +16,7 @@
 
 package com.android.tradefed.testtype;
 
+import static org.junit.Assert.fail;
 import static org.mockito.Mockito.any;
 import static org.mockito.Mockito.anyString;
 import static org.mockito.Mockito.doReturn;
@@ -28,6 +29,7 @@ import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.result.InputStreamSource;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.LogDataType;
+import com.google.common.base.VerifyException;
 import com.google.common.collect.ImmutableMap;
 import com.google.protobuf.ByteString;
 
@@ -100,6 +102,9 @@ public class CodeCoverageListenerTest {
         mCodeCoverageListener.testRunStarted(RUN_NAME, TEST_COUNT);
         mCodeCoverageListener.testRunEnded(ELAPSED_TIME, ImmutableMap.of());
 
+        // Verify that the test run is marked as a failure.
+        verify(mFakeListener).testRunFailed(anyString());
+
         // Verify testLog(..) was not called.
         verify(mFakeListener, never())
                 .testLog(anyString(), eq(LogDataType.COVERAGE), any(InputStreamSource.class));
@@ -112,8 +117,13 @@ public class CodeCoverageListenerTest {
 
         // Simulate a test run.
         mCodeCoverageListener.testRunStarted(RUN_NAME, TEST_COUNT);
-        mCodeCoverageListener.testRunEnded(
-                ELAPSED_TIME, ImmutableMap.of("coverageFilePath", DEVICE_PATH));
+
+        try {
+            mCodeCoverageListener.testRunEnded(
+                    ELAPSED_TIME, ImmutableMap.of("coverageFilePath", DEVICE_PATH));
+            fail("Exception not thrown");
+        } catch (VerifyException expected) {
+        }
 
         // Verify testLog(..) was not called.
         verify(mFakeListener, never())
