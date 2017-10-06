@@ -46,16 +46,16 @@ public interface ISandbox {
      * @param configuration the {@link IConfiguration} for the command to run.
      * @return a {@link CommandResult} with the status of the sandbox run and logs.
      */
-    public CommandResult run(IConfiguration configuration);
+    public CommandResult run(IConfiguration configuration) throws Throwable;
 
     /** Clean up any states, files or environment that may have been changed. */
     public void tearDown();
 
     /**
-     * Returns the environment TF to be used based on the command line arguments.
+     * Returns the sandbox environment TF to be used based on the command line arguments.
      *
      * @param args the command line arguments.
-     * @return a {@link File} directory containing the TF environment jars.
+     * @return a {@link File} directory containing the TF sandbox environment jars.
      */
-    public File getTradefedEnvironment(String[] args) throws ConfigurationException;
+    public File getTradefedSandboxEnvironment(String[] args) throws ConfigurationException;
 }

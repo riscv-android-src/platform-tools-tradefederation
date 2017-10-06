@@ -16,7 +16,9 @@
 package com.android.tradefed.config;
 
 import static org.easymock.EasyMock.eq;
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.fail;
 
 import com.android.tradefed.sandbox.ISandbox;
 import com.android.tradefed.sandbox.SandboxConfigDump;
@@ -47,6 +49,7 @@ public class SandboxConfigurationFactoryTest {
     private File mTmpEnvDir;
     private ISandbox mFakeSandbox;
     private IRunUtil mMockRunUtil;
+    private String mProperty;
 
     @Before
     public void setUp() throws IOException {
@@ -55,12 +58,18 @@ public class SandboxConfigurationFactoryTest {
         mTmpEnvDir = FileUtil.createTempDir("sandbox-tmp-dir");
         mFakeSandbox = EasyMock.createMock(ISandbox.class);
         mMockRunUtil = EasyMock.createMock(IRunUtil.class);
+        mProperty = System.getProperty("TF_JAR_DIR");
+        System.setProperty("TF_JAR_DIR", mTmpEnvDir.getAbsolutePath());
     }
 
     @After
     public void tearDown() {
         FileUtil.recursiveDelete(mTmpEnvDir);
         FileUtil.deleteFile(mConfig);
+        if (mProperty != null) {
+            System.setProperty("TF_JAR_DIR", mProperty);
+            mProperty = null;
+        }
     }
 
     private void expectDumpCmd(CommandResult res) {
@@ -94,8 +103,6 @@ public class SandboxConfigurationFactoryTest {
     @Test
     public void testCreateConfigurationFromArgs() throws ConfigurationException {
         String[] args = new String[] {mConfig.getAbsolutePath()};
-        EasyMock.expect(mFakeSandbox.getTradefedEnvironment(EasyMock.anyObject()))
-                .andReturn(mTmpEnvDir);
         mMockRunUtil.unsetEnvVariable(GlobalConfiguration.GLOBAL_CONFIG_VARIABLE);
         CommandResult results = new CommandResult();
         results.setStatus(CommandStatus.SUCCESS);
@@ -111,10 +118,8 @@ public class SandboxConfigurationFactoryTest {
 
     /** Test that when the dump config failed, we throw a ConfigurationException. */
     @Test
-    public void testCreateConfigurationFromArgs_fail() throws ConfigurationException {
+    public void testCreateConfigurationFromArgs_fail() {
         String[] args = new String[] {mConfig.getAbsolutePath()};
-        EasyMock.expect(mFakeSandbox.getTradefedEnvironment(EasyMock.anyObject()))
-                .andReturn(mTmpEnvDir);
         mMockRunUtil.unsetEnvVariable(GlobalConfiguration.GLOBAL_CONFIG_VARIABLE);
         CommandResult results = new CommandResult();
         results.setStatus(CommandStatus.FAILED);

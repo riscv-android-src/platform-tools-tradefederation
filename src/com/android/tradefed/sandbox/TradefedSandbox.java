@@ -31,11 +31,14 @@ import com.android.tradefed.util.SerializationUtil;
 import com.android.tradefed.util.StreamUtil;
 import com.android.tradefed.util.SubprocessTestResultsParser;
 
+import com.google.common.base.Joiner;
+
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 
 /**
  * Sandbox container that can run a Trade Federation invocation. TODO: Allow Options to be passed to
@@ -63,12 +66,16 @@ public class TradefedSandbox implements ISandbox {
     private IRunUtil mRunUtil;
 
     @Override
-    public CommandResult run(IConfiguration config) {
+    public CommandResult run(IConfiguration config) throws Throwable {
         List<String> mCmdArgs = new ArrayList<>();
         mCmdArgs.add("java");
         mCmdArgs.add(String.format("-Djava.io.tmpdir=%s", mSandboxTmpFolder.getAbsolutePath()));
         mCmdArgs.add("-cp");
-        mCmdArgs.add(new File(mRootFolder, "*").getAbsolutePath());
+        // include all jars on the classpath
+        String classpath = "";
+        Set<String> jarFiles = FileUtil.findFiles(mRootFolder, ".*.jar");
+        classpath = Joiner.on(":").join(jarFiles);
+        mCmdArgs.add(classpath);
         mCmdArgs.add(TradefedSanboxRunner.class.getCanonicalName());
         mCmdArgs.add(mSerializedContext.getAbsolutePath());
         mCmdArgs.add(mSerializedConfiguration.getAbsolutePath());
@@ -122,7 +129,7 @@ public class TradefedSandbox implements ISandbox {
 
         try {
             mRootFolder =
-                    getTradefedEnvironment(
+                    getTradefedSandboxEnvironment(
                             QuotationAwareTokenizer.tokenizeLine(config.getCommandLine()));
         } catch (ConfigurationException e) {
             return e;
@@ -157,7 +164,7 @@ public class TradefedSandbox implements ISandbox {
     }
 
     @Override
-    public File getTradefedEnvironment(String[] args) throws ConfigurationException {
+    public File getTradefedSandboxEnvironment(String[] args) throws ConfigurationException {
         String tfDir = System.getProperty("TF_JAR_DIR");
         if (tfDir == null || tfDir.isEmpty()) {
             throw new ConfigurationException(
