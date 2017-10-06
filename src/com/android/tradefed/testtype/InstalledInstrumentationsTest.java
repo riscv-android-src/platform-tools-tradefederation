@@ -154,6 +154,13 @@ public class InstalledInstrumentationsTest
             "Disable the test by setting this flag to true.")
     private boolean mDisable = false;
 
+    @Option(
+        name = "coverage",
+        description =
+                "Collect code coverage for this test run. Note that the build under test must be a "
+                        + "coverage build or else this will fail."
+    )
+    private boolean mCoverage = false;
 
     private int mTotalShards = 0;
     private int mShardIndex = 0;
