@@ -1849,8 +1849,8 @@ public class NativeDevice implements IManagedTestDevice {
     }
 
     /** {@inheritDoc} */
-    @SuppressWarnings("MustBeClosedChecker")
     @Override
+    @SuppressWarnings("MustBeClosedChecker")
     public InputStreamSource getLogcat(int maxBytes) {
         if (mLogcatReceiver == null) {
             CLog.w("Not capturing logcat for %s in background, returning a logcat dump "
