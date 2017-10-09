@@ -60,7 +60,7 @@ import java.util.regex.Pattern;
 public class SubprocessTestResultsParser implements Closeable {
 
     private ITestInvocationListener mListener;
-    private TestIdentifier currentTest = null;
+    private TestIdentifier mCurrentTest = null;
     private Pattern mPattern = null;
     private Map<String, EventHandler> mHandlerMap = null;
     private EventReceiverThread mEventReceiver = null;
@@ -284,8 +284,8 @@ public class SubprocessTestResultsParser implements Closeable {
     }
 
     private void checkCurrentTestId(String className, String testName) {
-        if (currentTest == null) {
-            currentTest = new TestIdentifier(className, testName);
+        if (mCurrentTest == null) {
+            mCurrentTest = new TestIdentifier(className, testName);
             CLog.w("Calling a test event without having called testStarted.");
         }
     }
@@ -320,7 +320,7 @@ public class SubprocessTestResultsParser implements Closeable {
                 TestRunEndedEventInfo rei = new TestRunEndedEventInfo(new JSONObject(eventJson));
                 mListener.testRunEnded(rei.mTime, rei.mRunMetrics);
             } finally {
-                currentTest = null;
+                mCurrentTest = null;
             }
         }
     }
@@ -338,11 +338,11 @@ public class SubprocessTestResultsParser implements Closeable {
         @Override
         public void handleEvent(String eventJson) throws JSONException {
             TestStartedEventInfo bti = new TestStartedEventInfo(new JSONObject(eventJson));
-            currentTest = new TestIdentifier(bti.mClassName, bti.mTestName);
+            mCurrentTest = new TestIdentifier(bti.mClassName, bti.mTestName);
             if (bti.mStartTime != null) {
-                mListener.testStarted(currentTest, bti.mStartTime);
+                mListener.testStarted(mCurrentTest, bti.mStartTime);
             } else {
-                mListener.testStarted(currentTest);
+                mListener.testStarted(mCurrentTest);
             }
         }
     }
@@ -352,7 +352,7 @@ public class SubprocessTestResultsParser implements Closeable {
         public void handleEvent(String eventJson) throws JSONException {
             FailedTestEventInfo fti = new FailedTestEventInfo(new JSONObject(eventJson));
             checkCurrentTestId(fti.mClassName, fti.mTestName);
-            mListener.testFailed(currentTest, fti.mTrace);
+            mListener.testFailed(mCurrentTest, fti.mTrace);
         }
     }
 
@@ -363,12 +363,12 @@ public class SubprocessTestResultsParser implements Closeable {
                 TestEndedEventInfo tei = new TestEndedEventInfo(new JSONObject(eventJson));
                 checkCurrentTestId(tei.mClassName, tei.mTestName);
                 if (tei.mEndTime != null) {
-                    mListener.testEnded(currentTest, tei.mEndTime, tei.mRunMetrics);
+                    mListener.testEnded(mCurrentTest, tei.mEndTime, tei.mRunMetrics);
                 } else {
-                    mListener.testEnded(currentTest, tei.mRunMetrics);
+                    mListener.testEnded(mCurrentTest, tei.mRunMetrics);
                 }
             } finally {
-                currentTest = null;
+                mCurrentTest = null;
             }
         }
     }
@@ -378,7 +378,7 @@ public class SubprocessTestResultsParser implements Closeable {
         public void handleEvent(String eventJson) throws JSONException {
             BaseTestEventInfo baseTestIgnored = new BaseTestEventInfo(new JSONObject(eventJson));
             checkCurrentTestId(baseTestIgnored.mClassName, baseTestIgnored.mTestName);
-            mListener.testIgnored(currentTest);
+            mListener.testIgnored(mCurrentTest);
         }
     }
 
@@ -388,7 +388,7 @@ public class SubprocessTestResultsParser implements Closeable {
             FailedTestEventInfo FailedAssumption =
                     new FailedTestEventInfo(new JSONObject(eventJson));
             checkCurrentTestId(FailedAssumption.mClassName, FailedAssumption.mTestName);
-            mListener.testAssumptionFailure(currentTest, FailedAssumption.mTrace);
+            mListener.testAssumptionFailure(mCurrentTest, FailedAssumption.mTrace);
         }
     }
 
@@ -424,5 +424,10 @@ public class SubprocessTestResultsParser implements Closeable {
      */
     public Long getStartTime() {
         return mStartTime;
+    }
+
+    /** Returns the test that is currently in progress. */
+    public TestIdentifier getCurrentTest() {
+        return mCurrentTest;
     }
 }
