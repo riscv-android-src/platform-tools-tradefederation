@@ -71,12 +71,9 @@ public class TestFailureListenerTest {
                 EasyMock.eq(testId.toString() + "-SERIAL-screenshot"),
                 EasyMock.eq(LogDataType.PNG),
                 EasyMock.eq(fakeSource));
-        // Bugreport routine
-        EasyMock.expect(mMockDevice.getBugreportz()).andReturn(fakeSource);
-        mMockListener.testLog(
-                EasyMock.eq(testId.toString() + "-SERIAL-bugreport"),
-                EasyMock.eq(LogDataType.BUGREPORTZ),
-                EasyMock.eq(fakeSource));
+        // Bugreport routine - testLog is internal to it.
+        EasyMock.expect(mMockDevice.logBugreport(EasyMock.anyObject(), EasyMock.anyObject()))
+                .andReturn(true);
         // logcat routine
         EasyMock.expect(mMockDevice.getLogcatSince(EasyMock.eq(startDate))).andReturn(fakeSource);
         mMockListener.testLog(
