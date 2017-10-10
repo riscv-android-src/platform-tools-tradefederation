@@ -785,12 +785,18 @@ public class NativeDeviceTest extends TestCase {
     public void testTestLogBugreport() {
         final String dataName = "test";
         final InputStreamSource stream = new ByteArrayInputStreamSource(null);
-        mTestDevice = new TestableAndroidNativeDevice() {
-            @Override
-            public InputStreamSource getBugreportz() {
-                return stream;
-            }
-        };
+        mTestDevice =
+                new TestableAndroidNativeDevice() {
+                    @Override
+                    public InputStreamSource getBugreportz() {
+                        return stream;
+                    }
+
+                    @Override
+                    public int getApiLevel() throws DeviceNotAvailableException {
+                        return 24;
+                    }
+                };
         ITestLogger listener = EasyMock.createMock(ITestLogger.class);
         listener.testLog(dataName, LogDataType.BUGREPORTZ, stream);
         EasyMock.replay(listener);
@@ -804,17 +810,25 @@ public class NativeDeviceTest extends TestCase {
     public void testTestLogBugreport_oldDevice() {
         final String dataName = "test";
         final InputStreamSource stream = new ByteArrayInputStreamSource(null);
-        mTestDevice = new TestableAndroidNativeDevice() {
-            @Override
-            public InputStreamSource getBugreportz() {
-                // Older device do not support bugreportz and return null
-                return null;
-            }
-            @Override
-            public InputStreamSource getBugreport() {
-                return stream;
-            }
-        };
+        mTestDevice =
+                new TestableAndroidNativeDevice() {
+                    @Override
+                    public InputStreamSource getBugreportz() {
+                        // Older device do not support bugreportz and return null
+                        return null;
+                    }
+
+                    @Override
+                    public InputStreamSource getBugreportInternal() {
+                        return stream;
+                    }
+
+                    @Override
+                    public int getApiLevel() throws DeviceNotAvailableException {
+                        // no bugreportz support
+                        return 23;
+                    }
+                };
         ITestLogger listener = EasyMock.createMock(ITestLogger.class);
         listener.testLog(dataName, LogDataType.BUGREPORT, stream);
         EasyMock.replay(listener);
@@ -826,16 +840,23 @@ public class NativeDeviceTest extends TestCase {
      * Unit test for {@link NativeDevice#logBugreport(String, ITestLogger)}.
      */
     public void testTestLogBugreport_fail() {
-        mTestDevice = new TestableAndroidNativeDevice() {
-            @Override
-            public InputStreamSource getBugreportz() {
-                return null;
-            }
-            @Override
-            public InputStreamSource getBugreport() {
-                return null;
-            }
-        };
+        mTestDevice =
+                new TestableAndroidNativeDevice() {
+                    @Override
+                    public InputStreamSource getBugreportz() {
+                        return null;
+                    }
+
+                    @Override
+                    protected InputStreamSource getBugreportInternal() {
+                        return null;
+                    }
+
+                    @Override
+                    public int getApiLevel() throws DeviceNotAvailableException {
+                        return 23;
+                    }
+                };
         ITestLogger listener = EasyMock.createMock(ITestLogger.class);
         EasyMock.replay(listener);
         assertFalse(mTestDevice.logBugreport("test", listener));
@@ -1055,12 +1076,23 @@ public class NativeDeviceTest extends TestCase {
      * Unit test for {@link NativeDevice#getBugreportz()}.
      */
     public void testGetBugreportz_fails() {
-        mTestDevice = new TestableAndroidNativeDevice() {
-            @Override
-            public int getApiLevel() throws DeviceNotAvailableException {
-                return 24;
-            }
-        };
+        mTestDevice =
+                new TestableAndroidNativeDevice() {
+                    @Override
+                    public int getApiLevel() throws DeviceNotAvailableException {
+                        return 24;
+                    }
+
+                    @Override
+                    protected File getBugreportzInternal() {
+                        return null;
+                    }
+
+                    @Override
+                    public IFileEntry getFileEntry(String path) throws DeviceNotAvailableException {
+                        return null;
+                    }
+                };
         FileInputStreamSource f = null;
         try {
             f = (FileInputStreamSource) mTestDevice.getBugreportz();

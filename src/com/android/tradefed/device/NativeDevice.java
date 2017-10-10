@@ -58,7 +58,6 @@ import com.android.tradefed.util.ZipUtil2;
 
 import org.apache.commons.compress.archivers.zip.ZipFile;
 
-import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.io.FilenameFilter;
 import java.io.IOException;
@@ -1953,73 +1952,59 @@ public class NativeDevice implements IManagedTestDevice {
      */
     @Override
     public InputStreamSource getBugreport() {
-        int apiLevel;
-        try {
-            apiLevel = getApiLevel();
-        } catch (DeviceNotAvailableException e) {
-            CLog.e("Device became unavailable while checking API level.");
-            CLog.e(e);
-            return null;
+        if (getApiLevelSafe() < 24) {
+            InputStreamSource bugreport = getBugreportInternal();
+            if (bugreport == null) {
+                // Safe call so we don't return null but an empty resource.
+                return new ByteArrayInputStreamSource("".getBytes());
+            }
+            return bugreport;
         }
-
-        if (apiLevel < 24) {
-            CollectingByteOutputReceiver receiver = new CollectingByteOutputReceiver();
-            try {
-                executeShellCommand(BUGREPORT_CMD, receiver,
-                        BUGREPORT_TIMEOUT, TimeUnit.MILLISECONDS, 0 /* don't retry */);
-            } catch (DeviceNotAvailableException e) {
-                // Log, but don't throw, so the caller can get the bugreport contents even
-                // if the device goes away
-                CLog.e("Device %s became unresponsive while retrieving bugreport",
-                        getSerialNumber());
+        CLog.d("Api level above 24, using bugreportz instead.");
+        File mainEntry = null;
+        File bugreportzFile = null;
+        try {
+            bugreportzFile = getBugreportzInternal();
+            if (bugreportzFile == null) {
+                bugreportzFile = bugreportzFallback();
             }
-            return new ByteArrayInputStreamSource(receiver.getOutput());
-        } else {
-            CLog.d("Api level above 24, using bugreportz instead.");
-            File mainEntry = null;
-            File bugreportzFile = null;
-            try {
-                bugreportzFile = getBugreportzInternal();
-                if (bugreportzFile == null) {
-                    CLog.w("Fail to collect the bugreportz.");
-                    return bugreportzFallback();
-                }
-                try (ZipFile zip = new ZipFile(bugreportzFile)) {
-                    // We get the main_entry.txt that contains the bugreport name.
-                    mainEntry = ZipUtil2.extractFileFromZip(zip, "main_entry.txt");
-                    String bugreportName = FileUtil.readStringFromFile(mainEntry).trim();
-                    CLog.d("bugreport name: '%s'", bugreportName);
-                    File bugreport = ZipUtil2.extractFileFromZip(zip, bugreportName);
-                    return new FileInputStreamSource(bugreport, true);
-                }
-            } catch (IOException e) {
-                CLog.e("Error while unzipping bugreportz");
-                CLog.e(e);
-                return bugreportzFallback();
-            } finally {
-                FileUtil.deleteFile(bugreportzFile);
-                FileUtil.deleteFile(mainEntry);
+            if (bugreportzFile == null) {
+                // return empty buffer
+                return new ByteArrayInputStreamSource("".getBytes());
             }
+            try (ZipFile zip = new ZipFile(bugreportzFile)) {
+                // We get the main_entry.txt that contains the bugreport name.
+                mainEntry = ZipUtil2.extractFileFromZip(zip, "main_entry.txt");
+                String bugreportName = FileUtil.readStringFromFile(mainEntry).trim();
+                CLog.d("bugreport name: '%s'", bugreportName);
+                File bugreport = ZipUtil2.extractFileFromZip(zip, bugreportName);
+                return new FileInputStreamSource(bugreport, true);
+            }
+        } catch (IOException e) {
+            CLog.e("Error while unzipping bugreportz");
+            CLog.e(e);
+            return new ByteArrayInputStreamSource("corrupted bugreport.".getBytes());
+        } finally {
+            FileUtil.deleteFile(bugreportzFile);
+            FileUtil.deleteFile(mainEntry);
         }
     }
 
     /**
-     * If first bugreportz collection was interrupted for any reasons, the temporary file where
-     * the dumpstate is redirected could exists if it started. We attempt to get it to have some
-     * partial data.
+     * If first bugreportz collection was interrupted for any reasons, the temporary file where the
+     * dumpstate is redirected could exists if it started. We attempt to get it to have some partial
+     * data.
      */
-    private InputStreamSource bugreportzFallback() {
+    private File bugreportzFallback() {
         try {
             IFileEntry entries = getFileEntry(BUGREPORTZ_TMP_PATH);
             if (entries != null) {
                 for (IFileEntry f : entries.getChildren(false)) {
                     String name = f.getName();
                     CLog.d("bugreport entry: %s", name);
-                    if (name.endsWith(".tmp") || name.endsWith(".zip")) {
-                        File tmpBugreport = pullFile(BUGREPORTZ_TMP_PATH + name);
-                        if (tmpBugreport != null) {
-                            return new FileInputStreamSource(tmpBugreport, true);
-                        }
+                    // Only get left-over zipped data to avoid confusing data types.
+                    if (name.endsWith(".zip")) {
+                        return pullFile(BUGREPORTZ_TMP_PATH + name);
                     }
                 }
                 CLog.w("Could not find a tmp bugreport file in the directory.");
@@ -2029,7 +2014,7 @@ public class NativeDevice implements IManagedTestDevice {
         } catch (DeviceNotAvailableException e) {
             CLog.e(e);
         }
-        return new ByteArrayInputStreamSource(new byte[] {});
+        return null;
     }
 
     /**
@@ -2037,13 +2022,18 @@ public class NativeDevice implements IManagedTestDevice {
      */
     @Override
     public boolean logBugreport(String dataName, ITestLogger listener) {
-        InputStreamSource bugreport = getBugreportz();
-        LogDataType type = LogDataType.BUGREPORTZ;
+        InputStreamSource bugreport = null;
+        LogDataType type = null;
         try {
+            bugreport = getBugreportz();
+            type = LogDataType.BUGREPORTZ;
+
             if (bugreport == null) {
-                bugreport = getBugreport();
+                CLog.d("Bugreportz failed, attempting bugreport collection instead.");
+                bugreport = getBugreportInternal();
                 type = LogDataType.BUGREPORT;
             }
+            // log what we managed to capture.
             if (bugreport != null) {
                 listener.testLog(dataName, type, bugreport);
                 return true;
@@ -2051,8 +2041,10 @@ public class NativeDevice implements IManagedTestDevice {
         } finally {
             StreamUtil.cancel(bugreport);
         }
-        CLog.d("takeBugreport() was not successful in collecting and logging the bugreport "
-                + "for device %s", getSerialNumber());
+        CLog.d(
+                "logBugreport() was not successful in collecting and logging the bugreport "
+                        + "for device %s",
+                getSerialNumber());
         return false;
     }
 
@@ -2061,43 +2053,34 @@ public class NativeDevice implements IManagedTestDevice {
      */
     @Override
     public Bugreport takeBugreport() {
-        int apiLevel;
-        try {
-            apiLevel = getApiLevel();
-        } catch (DeviceNotAvailableException e) {
-            CLog.e("Device became unavailable while checking API level.");
-            CLog.e(e);
+        File bugreportFile = null;
+        int apiLevel = getApiLevelSafe();
+        if (apiLevel == UNKNOWN_API_LEVEL) {
             return null;
         }
-        File bugreportFile = null;
-        if (apiLevel < 24) {
-            CollectingByteOutputReceiver receiver = new CollectingByteOutputReceiver();
-            try {
-                executeShellCommand(BUGREPORT_CMD, receiver,
-                        BUGREPORT_TIMEOUT, TimeUnit.MILLISECONDS, 0 /* don't retry */);
-                bugreportFile = FileUtil.createTempFile("bugreport", ".txt");
-                FileUtil.writeToFile(new ByteArrayInputStream(receiver.getOutput()), bugreportFile);
-                return new Bugreport(bugreportFile, false);
-            } catch (DeviceNotAvailableException e) {
-                // Log, but don't throw, so the caller can get the bugreport contents even
-                // if the device goes away
-                CLog.e("Device %s became unresponsive while retrieving bugreport",
-                        getSerialNumber());
-            } catch (IOException e) {
-                CLog.e("Error when writing the bugreport file");
-                CLog.e(e);
-            }
-            return null;
-        } else {
-            CLog.d("Api level above 24, using bugreportz instead.");
+        if (apiLevel >= 24) {
+            CLog.d("Api level above 24, using bugreportz.");
             bugreportFile = getBugreportzInternal();
             if (bugreportFile != null) {
                 return new Bugreport(bugreportFile, true);
-            } else {
-                CLog.w("Error when collecting the bugreportz.");
-                return null;
             }
+            return null;
         }
+        // fall back to regular bugreport
+        InputStreamSource bugreport = getBugreportInternal();
+        if (bugreport == null) {
+            CLog.e("Error when collecting the bugreport.");
+            return null;
+        }
+        try {
+            bugreportFile = FileUtil.createTempFile("bugreport", ".txt");
+            FileUtil.writeToFile(bugreport.createInputStream(), bugreportFile);
+            return new Bugreport(bugreportFile, false);
+        } catch (IOException e) {
+            CLog.e("Error when writing the bugreport file");
+            CLog.e(e);
+        }
+        return null;
     }
 
     /**
@@ -2105,15 +2088,15 @@ public class NativeDevice implements IManagedTestDevice {
      */
     @Override
     public InputStreamSource getBugreportz() {
-        try {
-            checkApiLevelAgainst("getBugreportz", 24);
-            File bugreportZip = getBugreportzInternal();
-            if (bugreportZip != null) {
-                return new FileInputStreamSource(bugreportZip, true);
-            }
-        } catch (IllegalArgumentException e) {
-            CLog.e("API level error when checking bugreportz support.");
-            CLog.e(e);
+        if (getApiLevelSafe() < 24) {
+            return null;
+        }
+        File bugreportZip = getBugreportzInternal();
+        if (bugreportZip == null) {
+            bugreportZip = bugreportzFallback();
+        }
+        if (bugreportZip != null) {
+            return new FileInputStreamSource(bugreportZip, true);
         }
         return null;
     }
@@ -2163,6 +2146,24 @@ public class NativeDevice implements IManagedTestDevice {
             CLog.e(e);
         }
         return null;
+    }
+
+    protected InputStreamSource getBugreportInternal() {
+        CollectingByteOutputReceiver receiver = new CollectingByteOutputReceiver();
+        try {
+            executeShellCommand(
+                    BUGREPORT_CMD,
+                    receiver,
+                    BUGREPORT_TIMEOUT,
+                    TimeUnit.MILLISECONDS,
+                    0 /* don't retry */);
+        } catch (DeviceNotAvailableException e) {
+            // Log, but don't throw, so the caller can get the bugreport contents even
+            // if the device goes away
+            CLog.e("Device %s became unresponsive while retrieving bugreport", getSerialNumber());
+            return null;
+        }
+        return new ByteArrayInputStreamSource(receiver.getOutput());
     }
 
     /**
@@ -3300,6 +3301,15 @@ public class NativeDevice implements IManagedTestDevice {
             // ignore, return unknown instead
         }
         return apiLevel;
+    }
+
+    private int getApiLevelSafe() {
+        try {
+            return getApiLevel();
+        } catch (DeviceNotAvailableException e) {
+            CLog.e(e);
+            return UNKNOWN_API_LEVEL;
+        }
     }
 
     @Override
