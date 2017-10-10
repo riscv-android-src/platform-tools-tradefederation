@@ -1226,22 +1226,13 @@ public class TestInvocationTest extends TestCase {
             // Handle build error bugreport listeners
             if (throwable instanceof BuildError) {
                 EasyMock.expect(
-                                mMockLogSaver.saveLogData(
+                                mMockDevice.logBugreport(
                                         EasyMock.eq(
                                                 TestInvocation.BUILD_ERROR_BUGREPORT_NAME
                                                         + "_"
                                                         + SERIAL),
-                                        EasyMock.eq(LogDataType.BUGREPORT),
-                                        (InputStream) EasyMock.anyObject()))
-                        .andReturn(new LogFile(PATH, URL, false /* compressed */, true /* text */));
-                mMockTestListener.testLog(
-                        EasyMock.eq(TestInvocation.BUILD_ERROR_BUGREPORT_NAME + "_" + SERIAL),
-                        EasyMock.eq(LogDataType.BUGREPORT),
-                        (InputStreamSource) EasyMock.anyObject());
-                mMockSummaryListener.testLog(
-                        EasyMock.eq(TestInvocation.BUILD_ERROR_BUGREPORT_NAME + "_" + SERIAL),
-                        EasyMock.eq(LogDataType.BUGREPORT),
-                        (InputStreamSource) EasyMock.anyObject());
+                                        EasyMock.anyObject()))
+                        .andReturn(true);
             }
             // Handle teardown logcat listeners
             EasyMock.expect(

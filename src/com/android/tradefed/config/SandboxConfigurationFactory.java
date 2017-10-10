@@ -68,11 +68,13 @@ public class SandboxConfigurationFactory extends ConfigurationFactory {
         File xmlConfig = null;
         try {
             runUtil.unsetEnvVariable(GlobalConfiguration.GLOBAL_CONFIG_VARIABLE);
-            File tfDir = sandbox.getTradefedEnvironment(args);
+            // Dump the NON_VERSIONED part of the configuration against the current TF and not the
+            // sandboxed environment.
+            File currentTfDir = getCurrentTradefedDirectory();
             // TODO: dump using the keystore too
             xmlConfig =
                     SandboxConfigUtil.dumpConfigForVersion(
-                            tfDir, runUtil, args, DumpCmd.NON_VERSIONED_CONFIG);
+                            currentTfDir, runUtil, args, DumpCmd.NON_VERSIONED_CONFIG);
             // Get the non version part of the configuration in order to do proper allocation
             // of devices and such.
             config =
@@ -89,5 +91,19 @@ public class SandboxConfigurationFactory extends ConfigurationFactory {
             FileUtil.deleteFile(xmlConfig);
         }
         return config;
+    }
+
+    /**
+     * Returns the running TF directory containing all the jar files for it.
+     *
+     * @return A {@link File} directory containing all the currently running TF jars.
+     */
+    private File getCurrentTradefedDirectory() throws ConfigurationException {
+        String tfDir = System.getProperty("TF_JAR_DIR");
+        if (tfDir == null || tfDir.isEmpty()) {
+            throw new ConfigurationException(
+                    "Could not read TF_JAR_DIR to get current Tradefed instance.");
+        }
+        return new File(tfDir);
     }
 }

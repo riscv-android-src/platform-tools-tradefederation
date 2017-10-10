@@ -137,11 +137,9 @@ public class TestFailureListener implements ITestInvocationListener {
             }
         }
         if (mBugReportOnFailure) {
-            try (InputStreamSource bugSource = device.getBugreportz()) {
-                testLog(
-                        String.format("%s-%s-bugreport", test.toString(), serial),
-                        LogDataType.BUGREPORTZ,
-                        bugSource);
+            if (!device.logBugreport(
+                    String.format("%s-%s-bugreport", test.toString(), serial), mListener)) {
+                CLog.e("Failed to capture bugreport for %s failure on %s.", test, serial);
             }
         }
         if (mLogcatOnFailure) {

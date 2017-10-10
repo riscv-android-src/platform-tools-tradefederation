@@ -25,6 +25,6 @@ public enum UpdaterEventType {
     UPDATE_VERIFIER_COMPLETE,
     D2O_COMPLETE,
     UPDATE_COMPLETE,
-    ERROR
+    ERROR, // error indicated by logcat output
+    INFRA_TIMEOUT, // TradeFed test timed out waiting for event
 }
-
