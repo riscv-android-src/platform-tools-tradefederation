@@ -18,6 +18,7 @@ package com.android.tradefed.testtype;
 import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.config.Option;
 import com.android.tradefed.device.ITestDevice;
+import com.android.tradefed.invoker.IInvocationContext;
 import com.android.tradefed.result.InputStreamSource;
 import com.android.tradefed.result.LogDataType;
 import com.android.tradefed.testtype.MetricTestCase.LogHolder;
@@ -40,10 +41,15 @@ import java.util.Map;
  * with the RunWith annotation.
  */
 public class DeviceJUnit4ClassRunner extends BlockJUnit4ClassRunner
-        implements IDeviceTest, IBuildReceiver, IAbiReceiver, ISetOptionReceiver {
+        implements IDeviceTest,
+                IBuildReceiver,
+                IAbiReceiver,
+                ISetOptionReceiver,
+                IInvocationContextReceiver {
     private ITestDevice mDevice;
     private IBuildInfo mBuildInfo;
     private IAbi mAbi;
+    private IInvocationContext mContext;
 
     @Option(name = HostTest.SET_OPTION_NAME, description = HostTest.SET_OPTION_DESC)
     private List<String> mKeyValueOptions = new ArrayList<>();
@@ -74,6 +80,9 @@ public class DeviceJUnit4ClassRunner extends BlockJUnit4ClassRunner
         if (testObj instanceof IAbiReceiver) {
             ((IAbiReceiver) testObj).setAbi(mAbi);
         }
+        if (testObj instanceof IInvocationContextReceiver) {
+            ((IInvocationContextReceiver) testObj).setInvocationContext(mContext);
+        }
         // Set options of test object
         HostTest.setOptionToLoadedObject(testObj, mKeyValueOptions);
         return testObj;
@@ -102,6 +111,11 @@ public class DeviceJUnit4ClassRunner extends BlockJUnit4ClassRunner
     @Override
     public void setBuild(IBuildInfo buildInfo) {
         mBuildInfo = buildInfo;
+    }
+
+    @Override
+    public void setInvocationContext(IInvocationContext invocationContext) {
+        mContext = invocationContext;
     }
 
     /**
