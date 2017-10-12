@@ -104,6 +104,12 @@ FIND_ONE = ROOT + 'foo/bar/jank/src/android/jank/cts/ui/CtsDeviceJankUi.java\n'
 FIND_TWO = ROOT + 'other/dir/test.java\n' + FIND_ONE
 XML_TARGETS = {'CtsUiDeviceTestCases', 'CtsJankDeviceTestCases', 'VtsTarget'}
 
+# TEST_MAPPING related consts
+TEST_MAPPING_DIR_INCLUDE_PARENT = os.path.join(
+    os.path.dirname(__file__), TEST_DATA_DIR, 'test_mapping', 'folder1')
+TEST_MAPPING_DIR_NOT_INCLUDE_PARENT = os.path.join(
+    os.path.dirname(__file__), TEST_DATA_DIR, 'test_mapping', 'folder2')
+
 def isfile_side_effect(value):
     """Mock return values for os.path.isfile"""
     if value == '/%s/%s' % (MODULE_DIR, cli_t.MODULE_CONFIG):
@@ -541,6 +547,19 @@ class CLITranslatorUnittests(unittest.TestCase):
         self.assertStrictEqual(run_cmds, [GTF_RUN_CMD])
         self.assertRaises(cli_t.NoTestFoundError, self.ctr.translate,
                           ['NonExistentClassOrModule'])
+
+    @mock.patch.object(cli_t.CLITranslator, '_find_test_by_module_name',
+                       side_effect=[MODULE_INFO, CLASS_INFO, INT_INFO])
+    def test_find_tests_by_test_mapping(self, mock_findbymodule):
+        """Test _find_tests_by_test_mapping method."""
+        test_infos = self.ctr._find_tests_by_test_mapping(
+            TEST_MAPPING_DIR_INCLUDE_PARENT)
+        self.assertStrictEqual(test_infos, set([MODULE_INFO, CLASS_INFO]))
+
+        test_infos = self.ctr._find_tests_by_test_mapping(
+            TEST_MAPPING_DIR_NOT_INCLUDE_PARENT)
+        self.assertStrictEqual(test_infos, set([INT_INFO]))
+
 
 if __name__ == '__main__':
     unittest.main()

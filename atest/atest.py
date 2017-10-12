@@ -81,7 +81,7 @@ def _parse_args(argv):
     parser = argparse.ArgumentParser(
         description=HELP_DESC,
         formatter_class=argparse.RawTextHelpFormatter)
-    parser.add_argument('tests', nargs='+', help=HELP_TESTS)
+    parser.add_argument('tests', nargs='*', help=HELP_TESTS)
     parser.add_argument('-b', '--build', action='append_const', dest='steps',
                         const=BUILD_STEP, help='Run a build.')
     parser.add_argument('-t', '--test', action='append_const', dest='steps',
