@@ -124,6 +124,56 @@ public class DeviceSetupTest extends TestCase {
         EasyMock.verify(mMockDevice);
     }
 
+    public void testSetup_data_on() throws DeviceNotAvailableException, TargetSetupError {
+        doSetupExpectations();
+        doCheckExternalStoreSpaceExpectations();
+        doSettingExpectations("global", "mobile_data", "1");
+        doCommandsExpectations("svc data enable");
+        EasyMock.replay(mMockDevice);
+
+        mDeviceSetup.setData(BinaryState.ON);
+        mDeviceSetup.setUp(mMockDevice, mMockBuildInfo);
+
+        EasyMock.verify(mMockDevice);
+    }
+
+    public void testSetup_data_off() throws DeviceNotAvailableException, TargetSetupError {
+        doSetupExpectations();
+        doCheckExternalStoreSpaceExpectations();
+        doSettingExpectations("global", "mobile_data", "0");
+        doCommandsExpectations("svc data disable");
+        EasyMock.replay(mMockDevice);
+
+        mDeviceSetup.setData(BinaryState.OFF);
+        mDeviceSetup.setUp(mMockDevice, mMockBuildInfo);
+
+        EasyMock.verify(mMockDevice);
+    }
+
+    public void testSetup_cell_on() throws DeviceNotAvailableException, TargetSetupError {
+        doSetupExpectations();
+        doCheckExternalStoreSpaceExpectations();
+        doSettingExpectations("global", "cell_on", "1");
+        EasyMock.replay(mMockDevice);
+
+        mDeviceSetup.setCell(BinaryState.ON);
+        mDeviceSetup.setUp(mMockDevice, mMockBuildInfo);
+
+        EasyMock.verify(mMockDevice);
+    }
+
+    public void testSetup_cell_off() throws DeviceNotAvailableException, TargetSetupError {
+        doSetupExpectations();
+        doCheckExternalStoreSpaceExpectations();
+        doSettingExpectations("global", "cell_on", "0");
+        EasyMock.replay(mMockDevice);
+
+        mDeviceSetup.setCell(BinaryState.OFF);
+        mDeviceSetup.setUp(mMockDevice, mMockBuildInfo);
+
+        EasyMock.verify(mMockDevice);
+    }
+
     public void testSetup_wifi_on() throws DeviceNotAvailableException, TargetSetupError {
         doSetupExpectations();
         doCheckExternalStoreSpaceExpectations();

@@ -27,6 +27,8 @@ import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.util.BinaryState;
 import com.android.tradefed.util.MultiMap;
 
+import com.google.common.annotations.VisibleForTesting;
+
 import java.io.File;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -54,8 +56,19 @@ public class DeviceSetup implements ITargetPreparer, ITargetCleaner {
     // OFF: settings put global airplane_mode_on 0
     //      am broadcast -a android.intent.action.AIRPLANE_MODE --ez state false
 
-    @Option(name = "wifi",
-            description = "Turn wifi on or off")
+    @Option(name = "data", description = "Turn mobile data on or off")
+    protected BinaryState mData = BinaryState.IGNORE;
+    // ON:  settings put global mobile_data 1
+    //      svc data enable
+    // OFF: settings put global mobile_data 0
+    //      svc data disable
+
+    @Option(name = "cell", description = "Turn cellular radio on or off")
+    protected BinaryState mCell = BinaryState.IGNORE;
+    // ON:  settings put global cell_on 1
+    // OFF: settings put global cell_on 0
+
+    @Option(name = "wifi", description = "Turn wifi on or off")
     protected BinaryState mWifi = BinaryState.IGNORE;
     // ON:  settings put global wifi_on 1
     //      svc wifi enable
@@ -493,9 +506,15 @@ public class DeviceSetup implements ITargetPreparer, ITargetCleaner {
      */
     public void processOptions(ITestDevice device) throws DeviceNotAvailableException,
             TargetSetupError {
+        setSettingForBinaryState(mData, mGlobalSettings, "mobile_data", "1", "0");
+        setCommandForBinaryState(
+                mData, mRunCommandAfterSettings, "svc data enable", "svc data disable");
+
+        setSettingForBinaryState(mCell, mGlobalSettings, "cell_on", "1", "0");
+
         setSettingForBinaryState(mWifi, mGlobalSettings, "wifi_on", "1", "0");
-        setCommandForBinaryState(mWifi, mRunCommandAfterSettings,
-                "svc wifi enable", "svc wifi disable");
+        setCommandForBinaryState(
+                mWifi, mRunCommandAfterSettings, "svc wifi enable", "svc wifi disable");
 
         setSettingForBinaryState(mWifiWatchdog, mGlobalSettings, "wifi_watchdog", "1", "0");
 
@@ -912,6 +931,18 @@ public class DeviceSetup implements ITargetPreparer, ITargetCleaner {
      */
     protected void setAirplaneMode(BinaryState airplaneMode) {
         mAirplaneMode = airplaneMode;
+    }
+
+    /* Exposed for unit testing */
+    @VisibleForTesting
+    protected void setData(BinaryState data) {
+        mData = data;
+    }
+
+    /* Exposed for unit testing */
+    @VisibleForTesting
+    protected void setCell(BinaryState cell) {
+        mCell = cell;
     }
 
     /**
