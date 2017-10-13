@@ -16,12 +16,14 @@
 package com.android.tradefed.sandbox;
 
 import com.android.tradefed.config.ConfigurationException;
+import com.android.tradefed.config.GlobalConfiguration;
 import com.android.tradefed.config.IConfiguration;
 import com.android.tradefed.sandbox.SandboxConfigDump.DumpCmd;
 import com.android.tradefed.util.CommandResult;
 import com.android.tradefed.util.CommandStatus;
 import com.android.tradefed.util.FileUtil;
 import com.android.tradefed.util.IRunUtil;
+import com.android.tradefed.util.IRunUtil.EnvPriority;
 
 import java.io.File;
 import java.io.IOException;
@@ -41,16 +43,25 @@ public class SandboxConfigUtil {
      * @param runUtil the {@link IRunUtil} to use to run the command.
      * @param args the command line args.
      * @param dump the {@link DumpCmd} driving some of the outputs.
+     * @param globalConfig the file describing the global configuration to be used.
      * @return A {@link File} containing the xml dump from the command line.
      * @throws ConfigurationException if the dump is not successful.
      */
     public static File dumpConfigForVersion(
-            File rootDir, IRunUtil runUtil, String[] args, DumpCmd dump)
+            File rootDir, IRunUtil runUtil, String[] args, DumpCmd dump, File globalConfig)
             throws ConfigurationException {
-        File destination;
+        runUtil.unsetEnvVariable(GlobalConfiguration.GLOBAL_CONFIG_VARIABLE);
+        File destination = null;
         try {
             destination = FileUtil.createTempFile("config-container", ".xml");
+            if (globalConfig != null) {
+                runUtil.setEnvVariable(
+                        GlobalConfiguration.GLOBAL_CONFIG_VARIABLE, globalConfig.getAbsolutePath());
+                runUtil.setEnvVariablePriority(EnvPriority.SET);
+            }
         } catch (IOException e) {
+            FileUtil.deleteFile(globalConfig);
+            FileUtil.deleteFile(destination);
             throw new ConfigurationException(e.getMessage());
         }
         List<String> mCmdArgs = new ArrayList<>();
@@ -67,7 +78,20 @@ public class SandboxConfigUtil {
         if (CommandStatus.SUCCESS.equals(result.getStatus())) {
             return destination;
         }
+        FileUtil.deleteFile(globalConfig);
         FileUtil.deleteFile(destination);
         throw new ConfigurationException(result.getStderr());
+    }
+
+    /** Create a global config with only the keystore to make it available in subprocess. */
+    public static File dumpFilteredGlobalConfig() throws IOException {
+        String[] configs =
+                new String[] {
+                    GlobalConfiguration.DEVICE_MANAGER_TYPE_NAME,
+                    GlobalConfiguration.KEY_STORE_TYPE_NAME
+                };
+        File filteredGlobalConfig = FileUtil.createTempFile("filtered_global_config", ".config");
+        GlobalConfiguration.getInstance().cloneConfigWithFilter(filteredGlobalConfig, configs);
+        return filteredGlobalConfig;
     }
 }

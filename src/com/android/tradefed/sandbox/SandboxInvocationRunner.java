@@ -39,7 +39,7 @@ public class SandboxInvocationRunner {
             throw res;
         }
         try {
-            CommandResult result = sandbox.run(config);
+            CommandResult result = sandbox.run(config, listener);
             if (!CommandStatus.SUCCESS.equals(result.getStatus())) {
                 throw new RuntimeException(result.getStderr());
             }
