@@ -172,6 +172,11 @@ public class LogcatUpdaterEventParser implements Closeable {
                 "update_engine_client",
                 "onPayloadApplicationComplete(ErrorCode::kSuccess (0))",
                 UpdaterEventType.UPDATE_COMPLETE);
+        // kNewRootfsVerificationError is often caused by flaky flashing - b/66996067 (#6)
+        registerEventTrigger(
+                "update_engine_client",
+                "onPayloadApplicationComplete(ErrorCode::kNewRootfsVerificationError (15))",
+                UpdaterEventType.ERROR_FLAKY);
         registerEventTrigger(
                 "update_engine_client",
                 "onPayloadApplicationComplete(ErrorCode",

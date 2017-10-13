@@ -159,6 +159,7 @@ import com.android.tradefed.testtype.PythonUnitTestResultParserTest;
 import com.android.tradefed.testtype.PythonUnitTestRunnerTest;
 import com.android.tradefed.testtype.TfTestLauncherTest;
 import com.android.tradefed.testtype.VersionedTfLauncherTest;
+import com.android.tradefed.testtype.python.PythonBinaryHostTestTest;
 import com.android.tradefed.testtype.suite.ITestSuiteIntegrationTest;
 import com.android.tradefed.testtype.suite.ITestSuiteMultiTest;
 import com.android.tradefed.testtype.suite.ITestSuiteTest;
@@ -416,6 +417,9 @@ import org.junit.runners.Suite.SuiteClasses;
     PythonUnitTestRunnerTest.class,
     TfTestLauncherTest.class,
     VersionedTfLauncherTest.class,
+
+    // testtype/python
+    PythonBinaryHostTestTest.class,
 
     // testtype/suite
     ITestSuiteIntegrationTest.class,
