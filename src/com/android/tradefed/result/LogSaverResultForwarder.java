@@ -65,7 +65,12 @@ public class LogSaverResultForwarder extends ResultForwarder {
     public void invocationEnded(long elapsedTime) {
         InvocationSummaryHelper.reportInvocationEnded(getListeners(), elapsedTime);
         // Intentionally call invocationEnded for the log saver last.
-        mLogSaver.invocationEnded(elapsedTime);
+        try {
+            mLogSaver.invocationEnded(elapsedTime);
+        } catch (RuntimeException e) {
+            CLog.e("Caught runtime exception from log saver: %s", mLogSaver.getClass().getName());
+            CLog.e(e);
+        }
     }
 
     /**
@@ -87,7 +92,7 @@ public class LogSaverResultForwarder extends ResultForwarder {
                             dataStream, logFile);
                 }
             }
-        } catch (IOException e) {
+        } catch (RuntimeException | IOException e) {
             CLog.e("Failed to save log data");
             CLog.e(e);
         }
