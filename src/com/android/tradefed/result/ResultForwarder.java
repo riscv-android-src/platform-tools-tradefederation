@@ -301,14 +301,24 @@ public class ResultForwarder implements ITestInvocationListener {
     @Override
     public void testModuleStarted(IInvocationContext moduleContext) {
         for (ITestInvocationListener listener : mListeners) {
-            listener.testModuleStarted(moduleContext);
+            try {
+                listener.testModuleStarted(moduleContext);
+            } catch (RuntimeException e) {
+                CLog.e("RuntimeException while invoking testModuleStarted");
+                CLog.e(e);
+            }
         }
     }
 
     @Override
     public void testModuleEnded() {
         for (ITestInvocationListener listener : mListeners) {
-            listener.testModuleEnded();
+            try {
+                listener.testModuleEnded();
+            } catch (RuntimeException e) {
+                CLog.e("RuntimeException while invoking testModuleEnded");
+                CLog.e(e);
+            }
         }
     }
 }
