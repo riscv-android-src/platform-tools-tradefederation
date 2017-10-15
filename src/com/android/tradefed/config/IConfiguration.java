@@ -22,6 +22,7 @@ import com.android.tradefed.config.ConfigurationDef.OptionDef;
 import com.android.tradefed.device.IDeviceRecovery;
 import com.android.tradefed.device.IDeviceSelection;
 import com.android.tradefed.device.TestDeviceOptions;
+import com.android.tradefed.device.metric.IMetricCollector;
 import com.android.tradefed.log.ILeveledLogOutput;
 import com.android.tradefed.profiler.ITestProfiler;
 import com.android.tradefed.result.ILogSaver;
@@ -128,6 +129,9 @@ public interface IConfiguration {
      * @return the {@link ITestProfiler} provided in the configuration.
      */
     public ITestProfiler getProfiler();
+
+    /** Gets the {@link IMetricCollector}s from the configuration. */
+    public List<IMetricCollector> getMetricCollectors();
 
     /**
      * Gets the {@link ICommandOptions} to use from the configuration.
@@ -345,6 +349,9 @@ public interface IConfiguration {
      * @param listener
      */
     public void setTestInvocationListener(ITestInvocationListener listener);
+
+    /** Set the list of {@link IMetricCollector}s, replacing any existing values. */
+    public void setDeviceMetricCollectors(List<IMetricCollector> collectors);
 
     /**
      * Set the {@link ITestProfiler}, replacing any existing values
