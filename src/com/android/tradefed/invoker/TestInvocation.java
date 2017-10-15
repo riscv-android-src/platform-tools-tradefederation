@@ -32,6 +32,7 @@ import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.device.ITestDevice.RecoveryMode;
 import com.android.tradefed.device.StubDevice;
 import com.android.tradefed.device.TestDeviceState;
+import com.android.tradefed.device.metric.IMetricCollector;
 import com.android.tradefed.invoker.shard.IShardHelper;
 import com.android.tradefed.invoker.shard.ShardBuildCloner;
 import com.android.tradefed.log.ILeveledLogOutput;
@@ -743,8 +744,15 @@ public class TestInvocation implements ITestInvocation {
      * @param listener the {@link ITestInvocationListener} of test results
      * @throws DeviceNotAvailableException
      */
-    private void runTests(IInvocationContext context, IConfiguration config,
-            ITestInvocationListener listener) throws DeviceNotAvailableException {
+    @VisibleForTesting
+    void runTests(
+            IInvocationContext context, IConfiguration config, ITestInvocationListener listener)
+            throws DeviceNotAvailableException {
+        // Wrap collectors in each other and collection will be sequential
+        for (IMetricCollector collector : config.getMetricCollectors()) {
+            listener = collector.init(context, listener);
+        }
+
         for (IRemoteTest test : config.getTests()) {
             // For compatibility of those receivers, they are assumed to be single device alloc.
             if (test instanceof IDeviceTest) {

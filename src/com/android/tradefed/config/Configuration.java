@@ -24,6 +24,7 @@ import com.android.tradefed.config.OptionSetter.FieldDef;
 import com.android.tradefed.device.IDeviceRecovery;
 import com.android.tradefed.device.IDeviceSelection;
 import com.android.tradefed.device.TestDeviceOptions;
+import com.android.tradefed.device.metric.IMetricCollector;
 import com.android.tradefed.log.ILeveledLogOutput;
 import com.android.tradefed.log.StdoutLogger;
 import com.android.tradefed.profiler.ITestProfiler;
@@ -87,6 +88,7 @@ public class Configuration implements IConfiguration {
     public static final String CONFIGURATION_DESCRIPTION_TYPE_NAME = "config_desc";
     public static final String DEVICE_NAME = "device";
     public static final String TEST_PROFILER_TYPE_NAME = "test_profiler";
+    public static final String DEVICE_METRICS_COLLECTOR_TYPE_NAME = "metrics_collector";
     public static final String SANDBOX_TYPE_NAME = "sandbox";
 
     private static Map<String, ObjTypeInfo> sObjTypeMap = null;
@@ -161,6 +163,9 @@ public class Configuration implements IConfiguration {
                     CONFIGURATION_DESCRIPTION_TYPE_NAME,
                     new ObjTypeInfo(ConfigurationDescriptor.class, false));
             sObjTypeMap.put(TEST_PROFILER_TYPE_NAME, new ObjTypeInfo(ITestProfiler.class, false));
+            sObjTypeMap.put(
+                    DEVICE_METRICS_COLLECTOR_TYPE_NAME,
+                    new ObjTypeInfo(IMetricCollector.class, true));
         }
         return sObjTypeMap;
     }
@@ -211,6 +216,7 @@ public class Configuration implements IConfiguration {
         setSystemStatusCheckers(new ArrayList<ISystemStatusChecker>());
         setConfigurationDescriptor(new ConfigurationDescriptor());
         setProfiler(new StubTestProfiler());
+        setDeviceMetricCollectors(new ArrayList<>());
     }
 
     /**
@@ -347,6 +353,13 @@ public class Configuration implements IConfiguration {
     public List<ITestInvocationListener> getTestInvocationListeners() {
         return (List<ITestInvocationListener>) getConfigurationObjectList(
                 RESULT_REPORTER_TYPE_NAME);
+    }
+
+    @SuppressWarnings("unchecked")
+    @Override
+    public List<IMetricCollector> getMetricCollectors() {
+        return (List<IMetricCollector>)
+                getConfigurationObjectList(DEVICE_METRICS_COLLECTOR_TYPE_NAME);
     }
 
     /** {@inheritDoc} */
@@ -640,6 +653,11 @@ public class Configuration implements IConfiguration {
     @Override
     public void setTestInvocationListeners(List<ITestInvocationListener> listeners) {
         setConfigurationObjectListNoThrow(RESULT_REPORTER_TYPE_NAME, listeners);
+    }
+
+    @Override
+    public void setDeviceMetricCollectors(List<IMetricCollector> collectors) {
+        setConfigurationObjectListNoThrow(DEVICE_METRICS_COLLECTOR_TYPE_NAME, collectors);
     }
 
     /**
