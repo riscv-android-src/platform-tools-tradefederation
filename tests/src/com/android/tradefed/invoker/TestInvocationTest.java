@@ -1673,7 +1673,8 @@ public class TestInvocationTest extends TestCase {
         }
 
         @Override
-        public void onTestRunEnd(DeviceMetricData runData) {
+        public void onTestRunEnd(
+                DeviceMetricData runData, final Map<String, String> currentRunMetrics) {
             runData.addStringMetric(mName, mName);
         }
     }
