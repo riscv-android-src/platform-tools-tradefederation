@@ -67,7 +67,7 @@ import com.android.tradefed.util.IRunUtil;
 import com.android.tradefed.util.RunInterruptedException;
 import com.android.tradefed.util.RunUtil;
 import com.android.tradefed.util.SystemUtil;
-
+import com.android.tradefed.util.TimeUtil;
 import com.google.common.annotations.VisibleForTesting;
 
 import java.io.File;
@@ -475,6 +475,7 @@ public class TestInvocation implements ITestInvocation {
             IConfiguration config,
             final ITestInvocationListener listener)
             throws TargetSetupError, BuildError, DeviceNotAvailableException {
+        long start = System.currentTimeMillis();
         // TODO: evaluate doing device setup in parallel
         for (String deviceName : context.getDeviceConfigNames()) {
             ITestDevice device = context.getDevice(deviceName);
@@ -513,6 +514,11 @@ public class TestInvocation implements ITestInvocation {
         if (config.getProfiler() != null) {
             config.getProfiler().setUp(context);
         }
+        // Setup timing metric. It does not include flashing time on boot tests.
+        long setupDuration = System.currentTimeMillis() - start;
+        context.addInvocationTimingMetric(IInvocationContext.TimingEvent.SETUP, setupDuration);
+        CLog.d("Setup duration: %s'", TimeUtil.formatElapsedTime(setupDuration));
+
         // Upload setup logcat after setup is complete
         for (String deviceName : context.getDeviceConfigNames()) {
             reportLogs(context.getDevice(deviceName), listener, Stage.SETUP);
@@ -946,7 +952,12 @@ public class TestInvocation implements ITestInvocation {
                 CLog.i("Invocation was started with cmd: %s", cmdLineArgs);
             }
 
+            long start = System.currentTimeMillis();
             boolean providerSuccess = fetchBuild(context, config, rescheduler, listener);
+            long fetchBuildDuration = System.currentTimeMillis() - start;
+            context.addInvocationTimingMetric(IInvocationContext.TimingEvent.FETCH_BUILD,
+                    fetchBuildDuration);
+            CLog.d("Fetch build duration: %s", TimeUtil.formatElapsedTime(fetchBuildDuration));
             if (!providerSuccess) {
                 return;
             }
