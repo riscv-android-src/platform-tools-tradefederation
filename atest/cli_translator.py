@@ -28,7 +28,7 @@ from collections import namedtuple
 
 
 RUN_CMD = ('atest_tradefed.sh run commandAndExit template/local_min '
-           '--template:map test=%s')
+           '--template:map test=atest %s')
 TestInfo = namedtuple('TestInfo', ['rel_config', 'module_name',
                                    'integrated_name', 'class_name'])
 MODULES_IN = 'MODULES-IN-%s'
@@ -271,7 +271,8 @@ class CLITranslator(object):
             UnregisteredModuleError: Raised if module not in module-info.json.
         """
         for name, info in self.module_info.iteritems():
-            if rel_module_path == info.get('path', [])[0]:
+            if (rel_module_path == info.get('path', [])[0] and
+                    info.get('installed')):
                 return name
         raise UnregisteredModuleError('%s not in module-info.json' %
                                       rel_module_path)
@@ -320,7 +321,7 @@ class CLITranslator(object):
             A populated TestInfo namedtuple if found, else None.
         """
         info = self.module_info.get(module_name)
-        if info:
+        if info and info.get('installed'):
             # path is a list with only 1 element.
             rel_config = os.path.join(info['path'][0], MODULE_CONFIG)
             return TestInfo(rel_config, module_name, None, None)
@@ -466,21 +467,19 @@ class CLITranslator(object):
         """
         config_file = os.path.join(self.root_dir, test_info.rel_config)
         targets = self._get_targets_from_xml(config_file)
-        if test_info.integrated_name:
-            if os.path.commonprefix(self.gtf_dirs) in test_info.rel_config:
-                targets |= {'google-tradefed-all'}
-            else:
-                targets |= {'tradefed-all'}
+        if (test_info.integrated_name and
+                os.path.commonprefix(self.gtf_dirs) in test_info.rel_config):
+            targets.add('google-tradefed-all')
         else:
             mod_dir = os.path.dirname(test_info.rel_config).replace('/', '-')
             targets |= {'tradefed-all', MODULES_IN % mod_dir}
         return targets
 
-    def _generate_run_command(self, test_info, filters=None, annotations=None):
+    def _generate_run_command(self, test_infos, filters=None, annotations=None):
         """Generate a list of run commands for a test.
 
         Args:
-            test_info: A TestInfo namedtuple.
+            test_infos: A list of TestInfo namedtuples.
             filters: A set of filters.
             annotations: A set of annotations.
 
@@ -489,8 +488,15 @@ class CLITranslator(object):
         """
         if filters or annotations:
             logging.warn('Filters and Annotations are currently not supported.')
-        test_name = test_info.module_name or test_info.integrated_name
-        return RUN_CMD % test_name
+        if logging.getLogger().isEnabledFor(logging.DEBUG):
+            log_level = 'VERBOSE'
+        else:
+            log_level = 'WARN'
+        args = ['--log-level', log_level]
+        for test_info in test_infos:
+            test_name = test_info.module_name or test_info.integrated_name
+            args.extend(['--test-info', test_name])
+        return RUN_CMD % ' '.join(args)
 
     def _get_test_info(self, test_name, reference_types):
         """Tries to find directory containing test files else returns None
@@ -534,18 +540,20 @@ class CLITranslator(object):
         """
         logging.info('Finding tests: %s', tests)
         start = time.time()
-        build_targets = set()
+        test_infos = []
         # TODO: Should we make this also a set to dedupe run cmds? What would a
         # user expect if they listed the same test twice?
-        run_commands = []
         for test in tests:
             possible_reference_types = self._get_test_reference_types(test)
             test_info = self._get_test_info(test, possible_reference_types)
             if not test_info:
                 # TODO: Should we raise here, or just stdout a message?
                 raise NoTestFoundError('No test found for: %s' % test)
-            build_targets |= self._generate_build_targets(test_info)
-            run_commands.append(self._generate_run_command(test_info))
+            test_infos.append(test_info)
+        build_targets = set()
+        for test_info in test_infos:
+          build_targets |= self._generate_build_targets(test_info)
+        run_command = self._generate_run_command(test_infos)
         end = time.time()
         logging.info('Found tests in %ss', end - start)
-        return build_targets, run_commands
+        return build_targets, [run_command]
