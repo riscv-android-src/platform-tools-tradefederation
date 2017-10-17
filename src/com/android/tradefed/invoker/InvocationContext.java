@@ -47,6 +47,7 @@ public class InvocationContext implements IInvocationContext {
     private Map<String, IBuildInfo> mNameAndBuildinfoMap;
     private final UniqueMultiMap<String, String> mInvocationAttributes =
             new UniqueMultiMap<String, String>();
+    private final Map<IInvocationContext.TimingEvent, Long> mInvocationTimingMetrics;
     /** Invocation test-tag **/
     private String mTestTag;
     /** configuration descriptor */
@@ -60,6 +61,7 @@ public class InvocationContext implements IInvocationContext {
      * Creates a {@link BuildInfo} using default attribute values.
      */
     public InvocationContext() {
+        mInvocationTimingMetrics = new LinkedHashMap<>();
         mAllocatedDeviceAndBuildMap = new LinkedHashMap<ITestDevice, IBuildInfo>();
         // Use LinkedHashMap to ensure key ordering by insertion order
         mNameAndDeviceMap = new LinkedHashMap<String, ITestDevice>();
@@ -209,6 +211,22 @@ public class InvocationContext implements IInvocationContext {
         UniqueMultiMap<String, String> copy = new UniqueMultiMap<>();
         copy.putAll(mInvocationAttributes);
         return copy;
+    }
+
+
+    /** {@inheritDoc} */
+    @Override
+    public Map<IInvocationContext.TimingEvent, Long> getInvocationTimingMetrics() {
+        return mInvocationTimingMetrics;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void addInvocationTimingMetric(IInvocationContext.TimingEvent timingEvent,
+            Long durationMillis) {
+        mInvocationTimingMetrics.put(timingEvent, durationMillis);
     }
 
     /**
