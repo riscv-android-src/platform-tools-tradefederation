@@ -21,6 +21,9 @@ import com.android.ddmlib.testrunner.TestRunResult;
 import com.android.tradefed.invoker.IInvocationContext;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.result.CollectingTestListener;
+import com.android.tradefed.result.TestSummary;
+import com.android.tradefed.result.TestSummary.Type;
+import com.android.tradefed.result.TestSummary.TypedString;
 import com.android.tradefed.testtype.suite.ITestSuite;
 import com.android.tradefed.testtype.suite.ModuleDefinition;
 import com.android.tradefed.util.TimeUtil;
@@ -36,6 +39,8 @@ import java.util.Map.Entry;
 
 /** Collect test results for an entire suite invocation and output the final results. */
 public class SuiteResultReporter extends CollectingTestListener {
+
+    public static final String SUITE_REPORTER_SOURCE = SuiteResultReporter.class.getName();
 
     private long startTime = 0l;
     private long mElapsedTime = 0l;
@@ -54,10 +59,13 @@ public class SuiteResultReporter extends CollectingTestListener {
     // Map holding the preparation time for each Module.
     private Map<String, ModulePrepTimes> mPreparationMap = new HashMap<>();
 
+    private StringBuilder mSummary;
+
     public SuiteResultReporter() {
         super();
         // force aggregate true to get full metrics.
         setIsAggregrateMetrics(true);
+        mSummary = new StringBuilder();
     }
 
     @Override
@@ -122,42 +130,42 @@ public class SuiteResultReporter extends CollectingTestListener {
             }
         }
         // print a short report summary
-        CLog.logAndDisplay(LogLevel.INFO, "============================================");
-        CLog.logAndDisplay(LogLevel.INFO, "================= Results ==================");
+        mSummary.append("\n============================================\n");
+        mSummary.append("================= Results ==================\n");
         printModuleTestTime(results);
         printTopSlowModules(results);
         printPreparationMetrics(mPreparationMap);
         printModuleCheckersMetric(moduleCheckers);
-        CLog.logAndDisplay(LogLevel.INFO, "=============== Summary ===============");
-        CLog.logAndDisplay(
-                LogLevel.INFO, "Total Run time: %s", TimeUtil.formatElapsedTime(mElapsedTime));
-        CLog.logAndDisplay(
-                LogLevel.INFO, "%s/%s modules completed", mCompleteModules, mTotalModules);
+        mSummary.append("=============== Summary ===============\n");
+        mSummary.append(
+                String.format("Total Run time: %s\n", TimeUtil.formatElapsedTime(mElapsedTime)));
+        mSummary.append(
+                String.format("%s/%s modules completed\n", mCompleteModules, mTotalModules));
         if (!mFailedModule.isEmpty()) {
-            CLog.logAndDisplay(LogLevel.WARN, "Module(s) with run failure(s):");
+            mSummary.append("Module(s) with run failure(s):\n");
             for (Entry<String, String> e : mFailedModule.entrySet()) {
-                CLog.logAndDisplay(LogLevel.WARN, "    %s: %s", e.getKey(), e.getValue());
+                mSummary.append(String.format("    %s: %s\n", e.getKey(), e.getValue()));
             }
         }
-        CLog.logAndDisplay(LogLevel.INFO, "Total Tests       : %s", mTotalTests);
-        CLog.logAndDisplay(LogLevel.INFO, "PASSED            : %s", mPassedTests);
-        CLog.logAndDisplay(LogLevel.INFO, "FAILED            : %s", mFailedTests);
+        mSummary.append(String.format("Total Tests       : %s\n", mTotalTests));
+        mSummary.append(String.format("PASSED            : %s\n", mPassedTests));
+        mSummary.append(String.format("FAILED            : %s\n", mFailedTests));
 
         if (mSkippedTests > 0l) {
-            CLog.logAndDisplay(LogLevel.INFO, "IGNORED           : %s", mSkippedTests);
+            mSummary.append(String.format("IGNORED           : %s\n", mSkippedTests));
         }
         if (mAssumeFailureTests > 0l) {
-            CLog.logAndDisplay(LogLevel.INFO, "ASSUMPTION_FAILURE: %s", mAssumeFailureTests);
+            mSummary.append(String.format("ASSUMPTION_FAILURE: %s\n", mAssumeFailureTests));
         }
 
         if (mCompleteModules != mTotalModules) {
-            CLog.logAndDisplay(
-                    LogLevel.ERROR,
-                    "IMPORTANT: Some modules failed to run to completion, tests counts may be"
-                            + " inaccurate.");
+            mSummary.append(
+                    "IMPORTANT: Some modules failed to run to completion, tests counts "
+                            + "may be inaccurate.\n");
         }
-        CLog.logAndDisplay(LogLevel.INFO, "============== End of Results ==============");
-        CLog.logAndDisplay(LogLevel.INFO, "============================================");
+        mSummary.append("============== End of Results ==============\n");
+        mSummary.append("============================================\n");
+        CLog.logAndDisplay(LogLevel.INFO, mSummary.toString());
     }
 
     /** Displays the time consumed by each module to run. */
@@ -173,19 +181,19 @@ public class SuiteResultReporter extends CollectingTestListener {
                     }
                 });
         long totalRunTime = 0l;
-        CLog.logAndDisplay(LogLevel.INFO, "=============== Consumed Time ==============");
+        mSummary.append("=============== Consumed Time ==============\n");
         for (int i = 0; i < moduleTime.size(); i++) {
-            CLog.logAndDisplay(
-                    LogLevel.INFO,
-                    "    %s: %s",
-                    moduleTime.get(i).getName(),
-                    TimeUtil.formatElapsedTime(moduleTime.get(i).getElapsedTime()));
+            mSummary.append(
+                    String.format(
+                            "    %s: %s\n",
+                            moduleTime.get(i).getName(),
+                            TimeUtil.formatElapsedTime(moduleTime.get(i).getElapsedTime())));
             totalRunTime += moduleTime.get(i).getElapsedTime();
         }
-        CLog.logAndDisplay(
-                LogLevel.INFO,
-                "Total aggregated tests run time: %s",
-                TimeUtil.formatElapsedTime(totalRunTime));
+        mSummary.append(
+                String.format(
+                        "Total aggregated tests run time: %s\n",
+                        TimeUtil.formatElapsedTime(totalRunTime)));
     }
 
     /**
@@ -216,19 +224,18 @@ public class SuiteResultReporter extends CollectingTestListener {
         if (maxModuleDisplay == 0) {
             return;
         }
-        CLog.logAndDisplay(
-                LogLevel.INFO,
-                "============== TOP %s Slow Modules ==============",
-                maxModuleDisplay);
+        mSummary.append(
+                String.format(
+                        "============== TOP %s Slow Modules ==============\n", maxModuleDisplay));
         for (int i = 0; i < maxModuleDisplay; i++) {
-            CLog.logAndDisplay(
-                    LogLevel.INFO,
-                    "    %s: %.02f tests/sec [%s tests / %s msec]",
-                    moduleTime.get(i).getName(),
-                    (moduleTime.get(i).getNumTests()
-                            / (moduleTime.get(i).getElapsedTime() / 1000f)),
-                    moduleTime.get(i).getNumTests(),
-                    moduleTime.get(i).getElapsedTime());
+            mSummary.append(
+                    String.format(
+                            "    %s: %.02f tests/sec [%s tests / %s msec]\n",
+                            moduleTime.get(i).getName(),
+                            (moduleTime.get(i).getNumTests()
+                                    / (moduleTime.get(i).getElapsedTime() / 1000f)),
+                            moduleTime.get(i).getNumTests(),
+                            moduleTime.get(i).getElapsedTime()));
         }
     }
 
@@ -237,45 +244,42 @@ public class SuiteResultReporter extends CollectingTestListener {
         if (metrics.isEmpty()) {
             return;
         }
-        CLog.logAndDisplay(
-                LogLevel.INFO, "============== Modules Preparation Times ==============");
+        mSummary.append("============== Modules Preparation Times ==============\n");
         long totalPrep = 0l;
         long totalTear = 0l;
 
         for (String moduleName : metrics.keySet()) {
-            CLog.logAndDisplay(
-                    LogLevel.INFO, "    %s => %s", moduleName, metrics.get(moduleName).toString());
+            mSummary.append(
+                    String.format(
+                            "    %s => %s\n", moduleName, metrics.get(moduleName).toString()));
             totalPrep += metrics.get(moduleName).mPrepTime;
             totalTear += metrics.get(moduleName).mTearDownTime;
         }
-        CLog.logAndDisplay(
-                LogLevel.INFO,
-                "Total preparation time: %s  ||  Total tear down time: %s",
-                TimeUtil.formatElapsedTime(totalPrep),
-                TimeUtil.formatElapsedTime(totalTear));
-        CLog.logAndDisplay(
-                LogLevel.INFO, "=======================================================");
+        mSummary.append(
+                String.format(
+                        "Total preparation time: %s  ||  Total tear down time: %s\n",
+                        TimeUtil.formatElapsedTime(totalPrep),
+                        TimeUtil.formatElapsedTime(totalTear)));
+        mSummary.append("=======================================================\n");
     }
 
     private void printModuleCheckersMetric(List<TestRunResult> moduleCheckerResults) {
         if (moduleCheckerResults.isEmpty()) {
             return;
         }
-        CLog.logAndDisplay(LogLevel.INFO, "============== Modules Checkers Times ==============");
+        mSummary.append("============== Modules Checkers Times ==============\n");
         long totalTime = 0l;
         for (TestRunResult t : moduleCheckerResults) {
-            CLog.logAndDisplay(
-                    LogLevel.INFO,
-                    "    %s: %s",
-                    t.getName(),
-                    TimeUtil.formatElapsedTime(t.getElapsedTime()));
+            mSummary.append(
+                    String.format(
+                            "    %s: %s\n",
+                            t.getName(), TimeUtil.formatElapsedTime(t.getElapsedTime())));
             totalTime += t.getElapsedTime();
         }
-        CLog.logAndDisplay(
-                LogLevel.INFO,
-                "Total module checkers time: %s",
-                TimeUtil.formatElapsedTime(totalTime));
-        CLog.logAndDisplay(LogLevel.INFO, "====================================================");
+        mSummary.append(
+                String.format(
+                        "Total module checkers time: %s\n", TimeUtil.formatElapsedTime(totalTime)));
+        mSummary.append("====================================================\n");
     }
 
     public int getTotalModules() {
@@ -313,5 +317,12 @@ public class SuiteResultReporter extends CollectingTestListener {
         public String toString() {
             return String.format("prep = %s ms || clean = %s ms", mPrepTime, mTearDownTime);
         }
+    }
+
+    @Override
+    public TestSummary getSummary() {
+        TestSummary summary = new TestSummary(new TypedString(mSummary.toString(), Type.TEXT));
+        summary.setSource(SUITE_REPORTER_SOURCE);
+        return summary;
     }
 }

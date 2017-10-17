@@ -227,6 +227,7 @@ public class ITestSuiteIntegrationTest {
         assertEquals(6, mListener.getTotalTests());
         assertEquals(5, mListener.getPassedTests());
         assertEquals(1, mListener.getFailedTests());
+        assertEquals(SuiteResultReporter.SUITE_REPORTER_SOURCE, mListener.getSummary().getSource());
     }
 
     /**
