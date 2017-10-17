@@ -101,7 +101,7 @@ def build_tests(build_targets, verbose=False):
     Returns:
         Boolean of whether build command was successful.
     """
-    logging.info('Building tests')
+    logging.info('Building test targets: %s', ' '.join(build_targets))
     cmd = BUILD_CMD + list(build_targets)
     logging.debug('Executing command: %s', cmd)
     try:
