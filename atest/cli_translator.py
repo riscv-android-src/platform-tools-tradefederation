@@ -17,6 +17,7 @@
 Command Line Translator for atest.
 """
 
+import itertools
 import json
 import logging
 import os
@@ -29,16 +30,20 @@ from collections import namedtuple
 
 RUN_CMD = ('atest_tradefed.sh run commandAndExit template/local_min '
            '--template:map test=atest %s')
-TestInfo = namedtuple('TestInfo', ['rel_config', 'module_name',
-                                   'integrated_name', 'class_name'])
 MODULES_IN = 'MODULES-IN-%s'
 MODULE_CONFIG = 'AndroidTest.xml'
 TF_TARGETS = frozenset(['tradefed', 'tradefed-contrib'])
 GTF_TARGETS = frozenset(['google-tradefed', 'google-tradefed-contrib'])
-# There are no restrictions on the apk file name. So just avoid "/".
-APK_RE = re.compile(r'^[^/]+\.apk$', re.I)
-INT_NAME_RE = re.compile(r'^.*\/res\/config\/(?P<int_name>.*).xml$')
 
+# Helps find apk files listed in a test config (AndroidTest.xml) file.
+# Matches "filename.apk" in <option name="foo", value="bar/filename.apk" />
+APK_RE = re.compile(r'^[^/]+\.apk$', re.I)
+# Find integration name based on file path of integration config xml file.
+# Group matches "foo/bar" given "blah/res/config/blah/res/config/foo/bar.xml
+INT_NAME_RE = re.compile(r'^.*\/res\/config\/(?P<int_name>.*).xml$')
+# Parse package name from the package declaration line of a java file.
+# Group matches "foo.bar" of line "package foo.bar;"
+PACKAGE_RE = re.compile(r'\s*package\s+(?P<package>[^;]+)\s*;\s*', re.I)
 
 class TooManyTestsFoundError(Exception):
     """Raised when unix find command finds too many tests."""
@@ -50,7 +55,10 @@ class TestWithNoModuleError(Exception):
     """Raised when test files have no parent module directory."""
 
 class UnregisteredModuleError(Exception):
-    """Raised when module is not in module-info.json"""
+    """Raised when module is not in module-info.json."""
+
+class MissingPackageName(Exception):
+    """Raised when the test class java file does not contain a package name."""
 
 class Enum(tuple):
     """enum library isn't a Python 2.7 built-in, so roll our own."""
@@ -80,6 +88,21 @@ FIND_CMDS = {
     REFERENCE_TYPE.INTEGRATION: r"find %s -type d -name .git -prune -o "
                                 r"-wholename '*%s.xml' -print"
 }
+
+TestInfoBase = namedtuple('TestInfo', ['rel_config', 'module_name',
+                                       'integrated_name', 'filters'])
+class TestInfo(TestInfoBase):
+    """Information needed to identify and run a test."""
+
+    def paramify(self):
+        """Return string suitable for --test-info tradefed param."""
+        if self.integrated_name:
+            return self.integrated_name
+        # TODO(b/68205177): Support method filters.
+        if self.filters:
+            filter_str = ','.join(self.filters)
+            return '%s:%s' % (self.module_name, filter_str)
+        return self.module_name
 
 #pylint: disable=no-self-use
 class CLITranslator(object):
@@ -311,6 +334,24 @@ class CLITranslator(object):
         logging.debug('Targets found in config file: %s', targets)
         return targets
 
+    def _get_fully_qualified_class_name(self, test_path):
+        """Parse the fully qualified name from the class java file.
+
+        Args:
+            test_path: A string of absolute path to the java class file.
+
+        Returns:
+            A string of the fully qualified class name.
+        """
+        with open(test_path) as class_file:
+            for line in class_file:
+                match = PACKAGE_RE.match(line)
+                if match:
+                    package = match.group('package')
+                    cls = os.path.splitext(os.path.split(test_path)[1])[0]
+                    return '%s.%s' % (package, cls)
+        raise MissingPackageName(test_path)
+
     def _find_test_by_module_name(self, module_name):
         """Find test files given a module name.
 
@@ -348,13 +389,14 @@ class CLITranslator(object):
         logging.debug('Find completed in %ss', time.time() - start)
         logging.debug('Class - Find Cmd Out: %s', out)
         test_path = self._extract_test_path(out)
+        full_class_name = self._get_fully_qualified_class_name(test_path)
         if not test_path:
             return None
         test_dir = os.path.dirname(test_path)
         rel_module_dir = self._find_parent_module_dir(test_dir)
         rel_config = os.path.join(rel_module_dir, MODULE_CONFIG)
         module_name = self._get_module_name(rel_module_dir)
-        return TestInfo(rel_config, module_name, None, class_name)
+        return TestInfo(rel_config, module_name, None, {full_class_name})
 
     def _find_test_by_integration_name(self, name):
         """Find test info given an integration name.
@@ -408,6 +450,7 @@ class CLITranslator(object):
         Returns:
             A populated TestInfo namedtuple if test found, else None
         """
+        # TODO: See if this can be generalized and shared with methods above.
         # create absolute path from cwd and remove symbolic links
         path = os.path.realpath(path)
         if not os.path.exists(path):
@@ -416,7 +459,6 @@ class CLITranslator(object):
             dir_path, file_name = os.path.split(path)
         else:
             dir_path, file_name = path, None
-        file_basename = os.path.splitext(file_name)[0] if file_name else None
 
         # Integration/Suite
         int_dir = None
@@ -453,11 +495,41 @@ class CLITranslator(object):
         rel_config = os.path.join(rel_module_dir, MODULE_CONFIG)
         class_name = None
         if file_name and file_name.endswith('.java'):
-            class_name = file_basename
-        return TestInfo(rel_config, module_name, None, class_name)
+            class_name = self._get_fully_qualified_class_name(path)
+        return TestInfo(rel_config, module_name, None,
+                        {class_name} if class_name else None)
 
-    def  _generate_build_targets(self, test_info):
-        """Generate a list of build targets for a test.
+    def _flatten_by_module(self, test_infos):
+        """Flatten a list of TestInfos so only one TestInfo per module in list.
+
+        Args:
+            test_infos: A list of TestInfo namedtuples.
+
+        Returns:
+            A list of TestInfo namedtuples flattened by module.
+        """
+        result = []
+        group_func = lambda x: x.module_name
+        for module, group in itertools.groupby(test_infos, group_func):
+            # module is a string, group is a generator of grouped TestInfos.
+            if module is None:
+                result.extend(group)
+                continue
+            # Else flatten the TestInfos in the group to one TestInfo.
+            filters = set()
+            rel_config = None
+            for test_info in group:
+                # rel_config should be same for all, so just take last.
+                rel_config = test_info.rel_config
+                if not test_info.filters:
+                    filters = None
+                    break
+                filters |= test_info.filters
+            result.append(TestInfo(rel_config, module, None, filters))
+        return result
+
+    def  _parse_build_targets(self, test_info):
+        """Parse a list of build targets from a single TestInfo.
 
         Args:
             test_info: A TestInfo namedtuple.
@@ -467,36 +539,48 @@ class CLITranslator(object):
         """
         config_file = os.path.join(self.root_dir, test_info.rel_config)
         targets = self._get_targets_from_xml(config_file)
-        if (test_info.integrated_name and
-                os.path.commonprefix(self.gtf_dirs) in test_info.rel_config):
+        if os.path.commonprefix(self.gtf_dirs) in test_info.rel_config:
             targets.add('google-tradefed-all')
         else:
+            targets.add('tradefed-all')
+        if test_info.module_name:
             mod_dir = os.path.dirname(test_info.rel_config).replace('/', '-')
-            targets |= {'tradefed-all', MODULES_IN % mod_dir}
+            targets.add(MODULES_IN % mod_dir)
         return targets
 
-    def _generate_run_command(self, test_infos, filters=None, annotations=None):
-        """Generate a list of run commands for a test.
+
+    def _generate_build_targets(self, test_infos):
+        """Generate a set of build targets for a list of test_infos.
 
         Args:
             test_infos: A list of TestInfo namedtuples.
-            filters: A set of filters.
-            annotations: A set of annotations.
 
         Returns:
-            A string of the TradeFederation run command.
+            A set of strings of build targets.
+
         """
-        if filters or annotations:
-            logging.warn('Filters and Annotations are currently not supported.')
+        build_targets = set()
+        for test_info in test_infos:
+            build_targets |= self._parse_build_targets(test_info)
+        return build_targets
+
+    def _generate_run_commands(self, test_infos):
+        """Generate a list of run commands from TestInfos.
+
+        Args:
+            test_infos: A list of TestInfo namedtuples.
+
+        Returns:
+            A list of strings of the TradeFederation run commands.
+        """
         if logging.getLogger().isEnabledFor(logging.DEBUG):
             log_level = 'VERBOSE'
         else:
             log_level = 'WARN'
         args = ['--log-level', log_level]
         for test_info in test_infos:
-            test_name = test_info.module_name or test_info.integrated_name
-            args.extend(['--test-info', test_name])
-        return RUN_CMD % ' '.join(args)
+            args.extend(['--test-info', test_info.paramify()])
+        return [RUN_CMD % ' '.join(args)]
 
     def _get_test_info(self, test_name, reference_types):
         """Tries to find directory containing test files else returns None
@@ -550,10 +634,9 @@ class CLITranslator(object):
                 # TODO: Should we raise here, or just stdout a message?
                 raise NoTestFoundError('No test found for: %s' % test)
             test_infos.append(test_info)
-        build_targets = set()
-        for test_info in test_infos:
-          build_targets |= self._generate_build_targets(test_info)
-        run_command = self._generate_run_command(test_infos)
+        test_infos = self._flatten_by_module(test_infos)
+        build_targets = self._generate_build_targets(test_infos)
+        run_commands = self._generate_run_commands(test_infos)
         end = time.time()
         logging.info('Found tests in %ss', end - start)
-        return build_targets, [run_command]
+        return build_targets, run_commands

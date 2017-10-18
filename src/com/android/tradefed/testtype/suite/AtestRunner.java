@@ -24,12 +24,15 @@ import com.android.tradefed.config.IConfigurationFactory;
 import com.android.tradefed.config.Option;
 import com.android.tradefed.log.LogUtil.CLog;
 
+import com.android.tradefed.testtype.IRemoteTest;
+import com.android.tradefed.testtype.ITestFilterReceiver;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.io.File;
 import java.util.Arrays;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
+import java.util.HashMap;
 import java.util.List;
 
 /** Implementation of {@link ITestSuite} */
@@ -40,10 +43,6 @@ public class AtestRunner extends ITestSuite {
 
     @Option(name = "test-info", description = "Test info of the test to run.")
     private List<String> mTestInfo = new ArrayList<>();
-
-    public IConfigurationFactory loadConfigFactory() {
-        return ConfigurationFactory.getInstance();
-    }
 
     @Override
     public LinkedHashMap<String, IConfiguration> loadTests() {
@@ -68,15 +67,20 @@ public class AtestRunner extends ITestSuite {
             }
         }
         CLog.d("Tests: %s", String.join(" ", mTestInfo));
-        for (String testInfo : mTestInfo) {
-            if (configs.contains(testInfo)) {
-                CLog.d("Found %s", testInfo);
+        for (String testInfoString : mTestInfo) {
+            HashMap<String, List<String>> testInfo = parseTestInfoParam(testInfoString);
+            // "name" has value that is a list of one element.
+            String name = testInfo.get("name").get(0);
+            if (configs.contains(name)) {
                 try {
                     IConfiguration testConfig =
-                            configFactory.createConfigurationFromArgs(new String[] {testInfo});
-                    configMap.put(testInfo, testConfig);
+                            configFactory.createConfigurationFromArgs(new String[] {name});
+                    for (String filter : testInfo.get("filters")) {
+                        addFilter(testConfig, filter);
+                    }
+                    configMap.put(name, testConfig);
                 } catch (ConfigurationException | NoClassDefFoundError e) {
-                    // Do not print the stack it's too verbose.
+                    CLog.e(e);
                     CLog.e("Configuration '%s' cannot be loaded, ignoring.", testInfo);
                 }
             }
@@ -88,11 +92,60 @@ public class AtestRunner extends ITestSuite {
      * Non-integrated modules have full file paths as their name, .e.g /foo/bar/name.config, but all
      * we want is the name.
      */
-    private String canonicalizeConfigName(String originalName) {
+    public String canonicalizeConfigName(String originalName) {
         Matcher match = CONFIG_RE.matcher(originalName);
         if (match.find()) {
             return match.group("config");
         }
         return originalName;
+    }
+
+    /** Return a ConfigurationFactory instance. Organized this way for testing purposes. */
+    public IConfigurationFactory loadConfigFactory() {
+        return ConfigurationFactory.getInstance();
+    }
+
+    /**
+     * Parse the test-info parameter into config name and filters.
+     *
+     * @param testInfoString The value of the test-info parameter, of form:
+     *     module_name:class#method,class#method
+     * @return HashMap with keys "name" and "filters"
+     */
+    public HashMap<String, List<String>> parseTestInfoParam(String testInfoString) {
+        CLog.d("Parsing param: %s", testInfoString);
+        HashMap<String, List<String>> testInfoMap = new HashMap<>();
+        String[] infoParts = testInfoString.split(":");
+        testInfoMap.put("name", Arrays.asList(infoParts[0]));
+        testInfoMap.put("filters", new ArrayList<>());
+        if (infoParts.length > 1) {
+            for (String filter : infoParts[1].split(",")) {
+                testInfoMap.get("filters").add(filter);
+            }
+        }
+        return testInfoMap;
+    }
+
+    /**
+     * Add filter to the tests in an IConfiguration.
+     *
+     * @param testConfig The configuration containing tests to filter.
+     * @param filter The filter to add to the tests in the testConfig.
+     * @return HashMap with keys "name" and "filters"
+     */
+    public void addFilter(IConfiguration testConfig, String filter) {
+        List<IRemoteTest> tests = testConfig.getTests();
+        for (IRemoteTest test : tests) {
+            if (test instanceof ITestFilterReceiver) {
+                CLog.d("Applying filter: %s", filter);
+                ((ITestFilterReceiver) test).addIncludeFilter(filter);
+            } else {
+                CLog.e(
+                        "Test Class (%s) does not support filtering. Cannot apply filter: %s.\n"
+                                + "Please update test to use a class that implements ITestFilterReceiver. Running entire"
+                                + "test module instead.",
+                        test.getClass().getSimpleName(), filter);
+            }
+        }
     }
 }
