@@ -19,7 +19,11 @@ import com.android.annotations.VisibleForTesting;
 import com.android.tradefed.config.ConfigurationException;
 import com.android.tradefed.config.IConfiguration;
 import com.android.tradefed.invoker.IInvocationContext;
+import com.android.tradefed.log.ITestLogger;
+import com.android.tradefed.result.FileInputStreamSource;
 import com.android.tradefed.result.ITestInvocationListener;
+import com.android.tradefed.result.InputStreamSource;
+import com.android.tradefed.result.LogDataType;
 import com.android.tradefed.sandbox.SandboxConfigDump.DumpCmd;
 import com.android.tradefed.util.CommandResult;
 import com.android.tradefed.util.CommandStatus;
@@ -58,6 +62,7 @@ public class TradefedSandbox implements ISandbox {
 
     private File mSandboxTmpFolder = null;
     private File mRootFolder = null;
+    private File mGlobalConfig = null;
     private File mSerializedContext = null;
     private File mSerializedConfiguration = null;
 
@@ -66,7 +71,7 @@ public class TradefedSandbox implements ISandbox {
     private IRunUtil mRunUtil;
 
     @Override
-    public CommandResult run(IConfiguration config) throws Throwable {
+    public CommandResult run(IConfiguration config, ITestLogger logger) throws Throwable {
         List<String> mCmdArgs = new ArrayList<>();
         mCmdArgs.add("java");
         mCmdArgs.add(String.format("-Djava.io.tmpdir=%s", mSandboxTmpFolder.getAbsolutePath()));
@@ -85,6 +90,13 @@ public class TradefedSandbox implements ISandbox {
         long timeout = config.getCommandOptions().getInvocationTimeout();
         CommandResult result =
                 mRunUtil.runTimedCmd(timeout, mStdout, mStderr, mCmdArgs.toArray(new String[0]));
+        // Log stdout and stderr
+        try (InputStreamSource sourceStdOut = new FileInputStreamSource(mStdoutFile)) {
+            logger.testLog("sandbox-stdout", LogDataType.TEXT, sourceStdOut);
+        }
+        try (InputStreamSource sourceStdErr = new FileInputStreamSource(mStderrFile)) {
+            logger.testLog("sandbox-stderr", LogDataType.TEXT, sourceStdErr);
+        }
 
         boolean failedStatus = false;
         if (!CommandStatus.SUCCESS.equals(result.getStatus())) {
@@ -161,6 +173,7 @@ public class TradefedSandbox implements ISandbox {
         FileUtil.recursiveDelete(mSandboxTmpFolder);
         FileUtil.deleteFile(mSerializedContext);
         FileUtil.deleteFile(mSerializedConfiguration);
+        FileUtil.deleteFile(mGlobalConfig);
     }
 
     @Override
@@ -188,9 +201,10 @@ public class TradefedSandbox implements ISandbox {
             // TODO: add option to disable the streaming back of results.
             mEventParser = new SubprocessTestResultsParser(listener, true, context);
             String[] args = QuotationAwareTokenizer.tokenizeLine(config.getCommandLine());
+            mGlobalConfig = SandboxConfigUtil.dumpFilteredGlobalConfig();
             mSerializedConfiguration =
                     SandboxConfigUtil.dumpConfigForVersion(
-                            mRootFolder, mRunUtil, args, DumpCmd.RUN_CONFIG);
+                            mRootFolder, mRunUtil, args, DumpCmd.RUN_CONFIG, mGlobalConfig);
         } catch (ConfigurationException | IOException e) {
             return e;
         }

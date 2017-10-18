@@ -21,6 +21,7 @@ import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
 import com.android.tradefed.config.ConfigurationException;
+import com.android.tradefed.config.GlobalConfiguration;
 import com.android.tradefed.config.IConfiguration;
 import com.android.tradefed.invoker.IInvocationContext;
 import com.android.tradefed.invoker.InvocationContext;
@@ -29,6 +30,7 @@ import com.android.tradefed.util.CommandResult;
 import com.android.tradefed.util.CommandStatus;
 import com.android.tradefed.util.FileUtil;
 import com.android.tradefed.util.IRunUtil;
+import com.android.tradefed.util.IRunUtil.EnvPriority;
 
 import org.easymock.EasyMock;
 import org.junit.After;
@@ -72,6 +74,11 @@ public class TradefedSandboxTest {
             mCachedProperty = System.getProperty(TF_JAR_DIR);
         }
         System.setProperty(TF_JAR_DIR, mTmpFolder.getAbsolutePath());
+        try {
+            GlobalConfiguration.createGlobalConfiguration(new String[] {});
+        } catch (IllegalStateException ignore) {
+            // ignore the global config re-init
+        }
     }
 
     @After
@@ -91,6 +98,10 @@ public class TradefedSandboxTest {
     @Test
     public void testPrepareEnvironment() throws Exception {
         mMockRunUtil.unsetEnvVariable(TradefedSandbox.TF_GLOBAL_CONFIG);
+        EasyMock.expectLastCall().times(2);
+        mMockRunUtil.setEnvVariable(
+                EasyMock.eq(GlobalConfiguration.GLOBAL_CONFIG_VARIABLE), EasyMock.anyObject());
+        mMockRunUtil.setEnvVariablePriority(EnvPriority.SET);
         CommandResult result = new CommandResult();
         result.setStatus(CommandStatus.SUCCESS);
         EasyMock.expect(
@@ -122,6 +133,10 @@ public class TradefedSandboxTest {
     @Test
     public void testPrepareEnvironment_dumpConfigFail() throws Exception {
         mMockRunUtil.unsetEnvVariable(TradefedSandbox.TF_GLOBAL_CONFIG);
+        EasyMock.expectLastCall().times(2);
+        mMockRunUtil.setEnvVariable(
+                EasyMock.eq(GlobalConfiguration.GLOBAL_CONFIG_VARIABLE), EasyMock.anyObject());
+        mMockRunUtil.setEnvVariablePriority(EnvPriority.SET);
         CommandResult result = new CommandResult();
         result.setStatus(CommandStatus.FAILED);
         result.setStderr("Ouch I failed.");
