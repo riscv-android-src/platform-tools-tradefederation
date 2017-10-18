@@ -36,6 +36,7 @@ public class SandboxInvocationRunner {
         Exception res = sandbox.prepareEnvironment(context, config, listener);
         if (res != null) {
             CLog.w("Sandbox prepareEnvironment threw an Exception.");
+            sandbox.tearDown();
             throw res;
         }
         try {

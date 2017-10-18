@@ -192,6 +192,7 @@ public class TradefedSandbox implements ISandbox {
                     SandboxConfigUtil.dumpConfigForVersion(
                             mRootFolder, mRunUtil, args, DumpCmd.RUN_CONFIG);
         } catch (ConfigurationException | IOException e) {
+            StreamUtil.close(mEventParser);
             return e;
         }
         return null;
