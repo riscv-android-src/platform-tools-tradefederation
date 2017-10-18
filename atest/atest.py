@@ -63,6 +63,8 @@ def _parse_args(argv):
     parser.add_argument('tests', nargs='+', help=TESTS_HELP_TEXT)
     parser.add_argument('-v', '--verbose', action='store_true',
                         help='Display DEBUG level logging.')
+    parser.add_argument('-s', '--skip-build', action='store_true',
+                        help='Skip the build step.')
     return parser.parse_args(argv)
 
 
@@ -145,7 +147,7 @@ def main(argv):
     repo_root = os.environ.get(ANDROID_BUILD_TOP)
     translator = cli_translator.CLITranslator(root_dir=repo_root)
     build_targets, run_commands = translator.translate(args.tests)
-    if not build_tests(build_targets, args.verbose):
+    if not args.skip_build and not build_tests(build_targets, args.verbose):
         return EXIT_CODE_BUILD_FAILURE
     run_tests(run_commands)
 
