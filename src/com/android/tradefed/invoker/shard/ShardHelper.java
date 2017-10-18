@@ -15,6 +15,7 @@
  */
 package com.android.tradefed.invoker.shard;
 
+import com.android.tradefed.config.Configuration;
 import com.android.tradefed.config.ConfigurationException;
 import com.android.tradefed.config.ConfigurationFactory;
 import com.android.tradefed.config.IConfiguration;
@@ -40,6 +41,17 @@ import java.util.concurrent.CountDownLatch;
 
 /** Helper class that handles creating the shards and scheduling them for an invocation. */
 public class ShardHelper implements IShardHelper {
+
+    /**
+     * List of the list configuration obj that should be clone to each shard in order to avoid state
+     * issues.
+     */
+    private static final List<String> CONFIG_OBJ_TO_CLONE = new ArrayList<>();
+
+    static {
+        CONFIG_OBJ_TO_CLONE.add(Configuration.SYSTEM_STATUS_CHECKER_TYPE_NAME);
+        CONFIG_OBJ_TO_CLONE.add(Configuration.DEVICE_METRICS_COLLECTOR_TYPE_NAME);
+    }
 
     /**
      * Attempt to shard the configuration into sub-configurations, to be re-scheduled to run on
@@ -124,7 +136,7 @@ public class ShardHelper implements IShardHelper {
             IInvocationContext context,
             IRescheduler rescheduler,
             ShardMasterResultForwarder resultCollector) {
-        cloneStatusChecker(config, shardConfig);
+        cloneConfigObject(config, shardConfig);
         ShardBuildCloner.cloneBuildInfos(config, shardConfig, context);
 
         shardConfig.setTestInvocationListeners(
@@ -138,14 +150,17 @@ public class ShardHelper implements IShardHelper {
     /**
      * Helper to clone {@link ISystemStatusChecker}s from the original config to the clonedConfig.
      */
-    private static void cloneStatusChecker(IConfiguration oriConfig, IConfiguration clonedConfig) {
+    private static void cloneConfigObject(IConfiguration oriConfig, IConfiguration clonedConfig) {
         try {
             IConfiguration deepCopy =
                     ConfigurationFactory.getInstance()
                             .createConfigurationFromArgs(
                                     QuotationAwareTokenizer.tokenizeLine(
                                             oriConfig.getCommandLine()));
-            clonedConfig.setSystemStatusCheckers(deepCopy.getSystemStatusCheckers());
+            for (String objType : CONFIG_OBJ_TO_CLONE) {
+                clonedConfig.setConfigurationObjectList(
+                        objType, deepCopy.getConfigurationObjectList(objType));
+            }
         } catch (ConfigurationException e) {
             // should not happen
             throw new RuntimeException("failed to deep copy a configuration", e);
