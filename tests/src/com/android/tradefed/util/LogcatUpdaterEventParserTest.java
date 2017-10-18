@@ -49,7 +49,8 @@ public class LogcatUpdaterEventParserTest extends TestCase {
         "11-11 00:00:00.001  123 321 I update_engine: "
                 + "ActionProcessor: Aborting processing due to failure.\n",
     };
-    private static final long SMALL_WAIT_TIME_MS = 1000L;
+    private static final long EVENT_TIMEOUT_MS = 5 * 1000L;
+    private static final long THREAD_TIMEOUT_MS = 5 * 1000L;
 
     private ILogcatReceiver mMockReceiver = null;
     private LogcatUpdaterEventParser mParser = null;
@@ -146,95 +147,53 @@ public class LogcatUpdaterEventParserTest extends TestCase {
         assertEquals(UpdaterEventType.PATCH_COMPLETE, mParser.parseEventType(notError));
     }
 
-    /** Helper class for testing waitForEvent */
-    private class WaitForEventHelper implements Runnable {
-        UpdaterEventType mReturnedEvent;
-        UpdaterEventType mExpectedEvent;
-        long mTimeoutMs;
-
-        public WaitForEventHelper(UpdaterEventType expectedEvent, long timeoutMs) {
-            mExpectedEvent = expectedEvent;
-            mTimeoutMs = timeoutMs;
-        }
-
-        @Override
-        public void run() {
-            mReturnedEvent = mParser.waitForEvent(mExpectedEvent, mTimeoutMs);
-        }
-
-        public UpdaterEventType getResult() {
-            return mReturnedEvent;
-        }
-    }
-
     /** Test that waitForEvent returns once it sees a specific expect event. */
     public void testWaitForEvent() throws Exception {
-        WaitForEventHelper waitTask =
-                new WaitForEventHelper(UpdaterEventType.UPDATE_COMPLETE, 60 * 1000);
-        Thread waitThread = new Thread(waitTask);
-        waitThread.start();
         feedMockPipe(LOGS_UPDATE_COMPLETE);
-        waitThread.join(SMALL_WAIT_TIME_MS);
-        assertEquals(Thread.State.TERMINATED, waitThread.getState());
-        assertEquals(UpdaterEventType.UPDATE_COMPLETE, waitTask.getResult());
+        UpdaterEventType result =
+                mParser.waitForEvent(UpdaterEventType.UPDATE_COMPLETE, EVENT_TIMEOUT_MS);
+        assertEquals(UpdaterEventType.UPDATE_COMPLETE, result);
     }
 
     /** Test that waitForEvent returns when it sees an update error. */
     public void testWaitForEventError() throws Exception {
-        WaitForEventHelper waitTask =
-                new WaitForEventHelper(UpdaterEventType.UPDATE_COMPLETE, 60 * 1000);
-        Thread waitThread = new Thread(waitTask);
-        waitThread.start();
         feedMockPipe(LOGS_ERROR);
-        waitThread.join(SMALL_WAIT_TIME_MS);
-        assertEquals(Thread.State.TERMINATED, waitThread.getState());
-        assertEquals(UpdaterEventType.ERROR, waitTask.getResult());
+        UpdaterEventType event =
+                mParser.waitForEvent(UpdaterEventType.UPDATE_COMPLETE, EVENT_TIMEOUT_MS);
+        assertEquals(UpdaterEventType.ERROR, event);
     }
 
     /** Test that waitForEvent honors the timeout. */
     public void testWaitForEventTimeout() throws Exception {
-        WaitForEventHelper waitTask = new WaitForEventHelper(UpdaterEventType.UPDATE_COMPLETE, 0);
-        Thread waitThread = new Thread(waitTask);
-        waitThread.start();
         feedMockPipe(LOGS_UPDATE_COMPLETE);
-        waitThread.join(SMALL_WAIT_TIME_MS);
-        assertEquals(Thread.State.TERMINATED, waitThread.getState());
-        assertEquals(UpdaterEventType.INFRA_TIMEOUT, waitTask.getResult());
+        UpdaterEventType event = mParser.waitForEvent(UpdaterEventType.UPDATE_COMPLETE, 0);
+        assertEquals(UpdaterEventType.INFRA_TIMEOUT, event);
     }
 
     /** Test that waitForEventAsync completes when it sees a specific expect event. */
     public void testWaitForEventAsync() throws Exception {
         AsyncUpdaterEvent event =
-                mParser.waitForEventAsync(UpdaterEventType.UPDATE_COMPLETE, 60 * 1000);
+                mParser.waitForEventAsync(UpdaterEventType.UPDATE_COMPLETE, EVENT_TIMEOUT_MS);
         feedMockPipe(LOGS_UPDATE_COMPLETE);
-        synchronized (event) {
-            event.wait(SMALL_WAIT_TIME_MS);
-            assertTrue(event.isCompleted());
-            assertEquals(UpdaterEventType.UPDATE_COMPLETE, event.getResult());
-        }
+        event.waitUntilCompleted(THREAD_TIMEOUT_MS);
+        assertEquals(UpdaterEventType.UPDATE_COMPLETE, event.getResult());
     }
 
     /** Test that waitForEventAsync completes when it sees an update error. */
     public void testWaitForEventAsyncError() throws Exception {
         AsyncUpdaterEvent event =
-                mParser.waitForEventAsync(UpdaterEventType.UPDATE_COMPLETE, 60 * 1000);
+                mParser.waitForEventAsync(UpdaterEventType.UPDATE_COMPLETE, EVENT_TIMEOUT_MS);
         feedMockPipe(LOGS_ERROR);
-        synchronized (event) {
-            event.wait(SMALL_WAIT_TIME_MS);
-            assertTrue(event.isCompleted());
-            assertEquals(UpdaterEventType.ERROR, event.getResult());
-        }
+        event.waitUntilCompleted(THREAD_TIMEOUT_MS);
+        assertEquals(UpdaterEventType.ERROR, event.getResult());
     }
 
     /** Test that waitForEventAsync honors the timeout. */
     public void testWaitForEventAsyncTimeout() throws Exception {
         AsyncUpdaterEvent event = mParser.waitForEventAsync(UpdaterEventType.UPDATE_COMPLETE, 0);
         feedMockPipe(LOGS_UPDATE_COMPLETE);
-        synchronized (event) {
-            event.wait(SMALL_WAIT_TIME_MS);
-            assertTrue(event.isCompleted());
-            assertEquals(UpdaterEventType.INFRA_TIMEOUT, event.getResult());
-        }
+        event.waitUntilCompleted(THREAD_TIMEOUT_MS);
+        assertEquals(UpdaterEventType.INFRA_TIMEOUT, event.getResult());
     }
 
     private void feedMockPipe(String[] logLines) {

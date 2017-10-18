@@ -90,46 +90,39 @@ public class LogcatUpdaterEventParser implements Closeable {
     public class AsyncUpdaterEvent {
 
         private boolean mIsCompleted;
-        private boolean mIsWaiting;
         private UpdaterEventType mResult;
 
         public AsyncUpdaterEvent() {
             mIsCompleted = false;
-            mIsWaiting = false;
         }
 
-        public boolean isCompleted() {
-            synchronized(this) {
-                return mIsCompleted;
+        public synchronized boolean isCompleted() {
+            return mIsCompleted;
+        }
+
+        public synchronized void setCompleted(UpdaterEventType result) {
+            if (isCompleted()) {
+                throw new IllegalStateException("Wait thread already completed!");
             }
+            mIsCompleted = true;
+            mResult = result;
         }
 
-        public void setCompleted(boolean isCompleted, UpdaterEventType result) {
-            synchronized(this) {
-                mIsCompleted = isCompleted;
-                mResult = result;
-            }
-        }
-
-        public boolean isWaiting() {
-            synchronized(this) {
-                return mIsWaiting;
-            }
-        }
-
-        public void setWaiting(boolean isWaiting) {
-            synchronized(this) {
-                mIsWaiting = isWaiting;
-            }
-        }
-
-        public UpdaterEventType getResult() {
-            synchronized (this) {
-                if (!isCompleted()) {
-                    throw new IllegalStateException("Wait thread not yet complete.");
+        public synchronized void waitUntilCompleted(long timeoutMs) {
+            try {
+                while (!isCompleted()) {
+                    wait(timeoutMs);
                 }
-                return mResult;
+            } catch (InterruptedException e) {
+                throw new RuntimeException(e);
             }
+        }
+
+        public synchronized UpdaterEventType getResult() {
+            if (!isCompleted()) {
+                throw new IllegalStateException("Wait thread not yet completed.");
+            }
+            return mResult;
         }
     }
 
@@ -252,22 +245,19 @@ public class LogcatUpdaterEventParser implements Closeable {
 
         Thread waitThread =
                 new Thread(
-                        new Runnable() {
-                            @Override
-                            public void run() {
-                                UpdaterEventType result = UpdaterEventType.INFRA_TIMEOUT;
-                                try {
-                                    result = internalWaitForEvent(expectedEvent, timeoutMs);
-                                } catch (IOException e) {
-                                    // Unblock calling thread
-                                    callingThread.interrupt();
-                                    throw new RuntimeException(e);
-                                } finally {
-                                    // ensure that the waiting thread drops out of the wait loop
-                                    synchronized (event) {
-                                        event.setCompleted(true, result);
-                                        event.notifyAll();
-                                    }
+                        () -> {
+                            UpdaterEventType result = UpdaterEventType.INFRA_TIMEOUT;
+                            try {
+                                result = internalWaitForEvent(expectedEvent, timeoutMs);
+                            } catch (IOException e) {
+                                // Unblock calling thread
+                                callingThread.interrupt();
+                                throw new RuntimeException(e);
+                            } finally {
+                                // ensure that the waiting thread drops out of the wait loop
+                                synchronized (event) {
+                                    event.setCompleted(result);
+                                    event.notifyAll();
                                 }
                             }
                         });

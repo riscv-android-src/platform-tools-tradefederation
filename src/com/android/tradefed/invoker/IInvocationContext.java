@@ -34,6 +34,11 @@ import java.util.Map;
  */
 public interface IInvocationContext extends Serializable {
 
+    public enum TimingEvent {
+        FETCH_BUILD,
+        SETUP;
+    }
+
     /**
      * Return the number of devices allocated for the invocation.
      */
@@ -124,6 +129,12 @@ public interface IInvocationContext extends Serializable {
 
     /** Returns a copy of the map containing all the invocation attributes. */
     public MultiMap<String, String> getAttributes();
+
+    /** Add a invocation timing metric. */
+    public void addInvocationTimingMetric(TimingEvent timingEvent, Long durationMillis);
+
+    /** Returns the map containing the invocation timing metrics. */
+    public Map<TimingEvent, Long> getInvocationTimingMetrics();
 
     /** Sets the descriptor associated with the test configuration that launched the invocation */
     public void setConfigurationDescriptor(ConfigurationDescriptor configurationDescriptor);
