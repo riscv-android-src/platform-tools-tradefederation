@@ -231,6 +231,13 @@ public class TestAppInstallSetup implements ITargetCleaner, IAbiReceiver {
         mAltDirs.add(altDir);
     }
 
+    /**
+     * Set an alternate directory behaviors.
+     */
+    public void setAltDirBehavior(AltDirBehavior altDirBehavior) {
+        mAltDirBehavior = altDirBehavior;
+    }
+
     /** Attempt to install a package on the device. */
     private String installPackage(ITestDevice device, File testAppFile)
             throws DeviceNotAvailableException {
