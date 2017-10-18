@@ -476,52 +476,54 @@ public class TestInvocation implements ITestInvocation {
             final ITestInvocationListener listener)
             throws TargetSetupError, BuildError, DeviceNotAvailableException {
         long start = System.currentTimeMillis();
-        // TODO: evaluate doing device setup in parallel
-        for (String deviceName : context.getDeviceConfigNames()) {
-            ITestDevice device = context.getDevice(deviceName);
-            CLog.d("Starting setup for device: '%s'", device.getSerialNumber());
-            if (device instanceof ITestLoggerReceiver) {
-                ((ITestLoggerReceiver) context.getDevice(deviceName))
-                        .setTestLogger(listener);
-            }
-            if (!config.getCommandOptions().shouldSkipPreDeviceSetup()) {
-                device.preInvocationSetup(context.getBuildInfo(deviceName));
-            }
-            for (ITargetPreparer preparer : config.getDeviceConfigByName(deviceName)
-                    .getTargetPreparers()) {
-                if (preparer instanceof ITestLoggerReceiver) {
-                    ((ITestLoggerReceiver) preparer).setTestLogger(listener);
+        try {
+            // TODO: evaluate doing device setup in parallel
+            for (String deviceName : context.getDeviceConfigNames()) {
+                ITestDevice device = context.getDevice(deviceName);
+                CLog.d("Starting setup for device: '%s'", device.getSerialNumber());
+                if (device instanceof ITestLoggerReceiver) {
+                    ((ITestLoggerReceiver) context.getDevice(deviceName)).setTestLogger(listener);
                 }
-                CLog.d(
-                        "starting preparer '%s' on device: '%s'",
-                        preparer, device.getSerialNumber());
-                preparer.setUp(device, context.getBuildInfo(deviceName));
-                CLog.d(
-                        "done with preparer '%s' on device: '%s'",
-                        preparer, device.getSerialNumber());
+                if (!config.getCommandOptions().shouldSkipPreDeviceSetup()) {
+                    device.preInvocationSetup(context.getBuildInfo(deviceName));
+                }
+                for (ITargetPreparer preparer :
+                        config.getDeviceConfigByName(deviceName).getTargetPreparers()) {
+                    if (preparer instanceof ITestLoggerReceiver) {
+                        ((ITestLoggerReceiver) preparer).setTestLogger(listener);
+                    }
+                    CLog.d(
+                            "starting preparer '%s' on device: '%s'",
+                            preparer, device.getSerialNumber());
+                    preparer.setUp(device, context.getBuildInfo(deviceName));
+                    CLog.d(
+                            "done with preparer '%s' on device: '%s'",
+                            preparer, device.getSerialNumber());
+                }
+                CLog.d("Done with setup of device: '%s'", device.getSerialNumber());
             }
-            CLog.d("Done with setup of device: '%s'", device.getSerialNumber());
-        }
-        // After all the individual setup, make the multi-devices setup
-        for (IMultiTargetPreparer multipreparer : config.getMultiTargetPreparers()) {
-            if (multipreparer instanceof ITestLoggerReceiver) {
-                ((ITestLoggerReceiver) multipreparer).setTestLogger(listener);
+            // After all the individual setup, make the multi-devices setup
+            for (IMultiTargetPreparer multipreparer : config.getMultiTargetPreparers()) {
+                if (multipreparer instanceof ITestLoggerReceiver) {
+                    ((ITestLoggerReceiver) multipreparer).setTestLogger(listener);
+                }
+                CLog.d("Starting multi target preparer '%s'", multipreparer);
+                multipreparer.setUp(context);
+                CLog.d("done with multi target preparer '%s'", multipreparer);
             }
-            CLog.d("Starting multi target preparer '%s'", multipreparer);
-            multipreparer.setUp(context);
-            CLog.d("done with multi target preparer '%s'", multipreparer);
-        }
-        if (config.getProfiler() != null) {
-            config.getProfiler().setUp(context);
-        }
-        // Setup timing metric. It does not include flashing time on boot tests.
-        long setupDuration = System.currentTimeMillis() - start;
-        context.addInvocationTimingMetric(IInvocationContext.TimingEvent.SETUP, setupDuration);
-        CLog.d("Setup duration: %s'", TimeUtil.formatElapsedTime(setupDuration));
-
-        // Upload setup logcat after setup is complete
-        for (String deviceName : context.getDeviceConfigNames()) {
-            reportLogs(context.getDevice(deviceName), listener, Stage.SETUP);
+            if (config.getProfiler() != null) {
+                config.getProfiler().setUp(context);
+            }
+        } finally {
+            // Note: These metrics are handled in a try in case of a kernel reset or device issue.
+            // Setup timing metric. It does not include flashing time on boot tests.
+            long setupDuration = System.currentTimeMillis() - start;
+            context.addInvocationTimingMetric(IInvocationContext.TimingEvent.SETUP, setupDuration);
+            CLog.d("Setup duration: %s'", TimeUtil.formatElapsedTime(setupDuration));
+            // Upload the setup logcat after setup is complete.
+            for (String deviceName : context.getDeviceConfigNames()) {
+                reportLogs(context.getDevice(deviceName), listener, Stage.SETUP);
+            }
         }
     }
 
