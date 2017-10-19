@@ -230,6 +230,9 @@ public class AppTransitionTests implements IRemoteTest, IDeviceTest {
                 analyzeLatencyInfo(parseLatencyInfo());
             } finally {
                 stopEventsLogs(mLaunchEventsLogs, TEST_LATENCY);
+                if (isTraceDirEnabled()) {
+                    uploadTraceFiles(listener, TEST_LATENCY);
+                }
             }
         }
 
