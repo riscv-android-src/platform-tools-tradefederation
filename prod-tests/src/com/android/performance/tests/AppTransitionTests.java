@@ -298,8 +298,9 @@ public class AppTransitionTests implements IRemoteTest, IDeviceTest {
         runner.addInstrumentationArg("iteration_count", Integer.toString(mLatencyIteration));
         if (isTraceDirEnabled()) {
             mDevice.executeShellCommand(String.format("rm -rf %s/%s", mTraceDirectory,
-                    "LatencyTests"));
-            runner.addInstrumentationArg("trace_directory", mTraceDirectory);
+                    TEST_LATENCY));
+            runner.addInstrumentationArg("trace_directory",
+                    String.format("%s/%s", mTraceDirectory, TEST_LATENCY));
         }
         return runner;
     }
