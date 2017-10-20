@@ -25,6 +25,7 @@ import com.android.tradefed.config.OptionCopier;
 import com.android.tradefed.config.OptionSetter;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
+import com.android.tradefed.invoker.IInvocationContext;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.JUnit4ResultForwarder;
 import com.android.tradefed.util.JUnit4TestFilter;
@@ -75,7 +76,8 @@ public class HostTest
                 IAbiReceiver,
                 IShardableTest,
                 IStrictShardableTest,
-                IRuntimeHintProvider {
+                IRuntimeHintProvider,
+                IInvocationContextReceiver {
 
 
     @Option(name = "class", description = "The JUnit test classes to run, in the format "
@@ -132,6 +134,7 @@ public class HostTest
     private ITestDevice mDevice;
     private IBuildInfo mBuildInfo;
     private IAbi mAbi;
+    private IInvocationContext mContext;
     private TestFilterHelper mFilterHelper;
     private boolean mSkipTestClassCheck = false;
 
@@ -195,6 +198,11 @@ public class HostTest
      */
     protected IBuildInfo getBuild() {
         return mBuildInfo;
+    }
+
+    @Override
+    public void setInvocationContext(IInvocationContext invocationContext) {
+        mContext = invocationContext;
     }
 
     /**
@@ -359,6 +367,9 @@ public class HostTest
         // We are more flexible about abi info since not always available.
         if (testObj instanceof IAbiReceiver) {
             ((IAbiReceiver)testObj).setAbi(mAbi);
+        }
+        if (testObj instanceof IInvocationContextReceiver) {
+            ((IInvocationContextReceiver) testObj).setInvocationContext(mContext);
         }
         // managed runner should have the same set-option to pass option too.
         if (testObj instanceof ISetOptionReceiver) {

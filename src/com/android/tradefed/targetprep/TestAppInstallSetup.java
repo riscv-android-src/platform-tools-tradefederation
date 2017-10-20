@@ -92,6 +92,8 @@ public class TestAppInstallSetup implements ITargetCleaner, IAbiReceiver {
     private AltDirBehavior mAltDirBehavior = AltDirBehavior.FALLBACK;
 
     private IAbi mAbi = null;
+    private Integer mUserId = null;
+    private Boolean mGrantPermission = null;
 
     private List<String> mPackagesInstalled = null;
 
@@ -107,6 +109,28 @@ public class TestAppInstallSetup implements ITargetCleaner, IAbiReceiver {
     /** Returns a copy of the list of specified test apk names. */
     public List<String> getTestsFileName() {
         return new ArrayList<String>(mTestFileNames);
+    }
+
+    /** Sets whether or not the installed apk should be cleaned on tearDown */
+    public void setCleanApk(boolean shouldClean) {
+        mCleanup = shouldClean;
+    }
+
+    /**
+     * If the apk should be installed for a particular user, sets the id of the user to install for.
+     */
+    public void setUserId(int userId) {
+        mUserId = userId;
+    }
+
+    /** If a userId is provided, grantPermission can be set for the apk installation. */
+    public void setShouldGrantPermission(boolean shouldGrant) {
+        mGrantPermission = shouldGrant;
+    }
+
+    /** Adds one apk installation arg to be used. */
+    public void addInstallArg(String arg) {
+        mInstallArgs.add(arg);
     }
 
     /**
@@ -241,7 +265,20 @@ public class TestAppInstallSetup implements ITargetCleaner, IAbiReceiver {
     /** Attempt to install a package on the device. */
     private String installPackage(ITestDevice device, File testAppFile)
             throws DeviceNotAvailableException {
-        return device.installPackage(testAppFile, true, mInstallArgs.toArray(new String[] {}));
+        // Handle the different install use cases (with or without a user)
+        if (mUserId == null) {
+            return device.installPackage(testAppFile, true, mInstallArgs.toArray(new String[] {}));
+        } else if (mGrantPermission != null) {
+            return device.installPackageForUser(
+                    testAppFile,
+                    true,
+                    mGrantPermission,
+                    mUserId,
+                    mInstallArgs.toArray(new String[] {}));
+        } else {
+            return device.installPackageForUser(
+                    testAppFile, true, mUserId, mInstallArgs.toArray(new String[] {}));
+        }
     }
 
     /** Attempt to remove the package from the device. */
