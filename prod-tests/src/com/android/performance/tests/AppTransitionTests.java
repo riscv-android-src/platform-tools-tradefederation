@@ -230,6 +230,9 @@ public class AppTransitionTests implements IRemoteTest, IDeviceTest {
                 analyzeLatencyInfo(parseLatencyInfo());
             } finally {
                 stopEventsLogs(mLaunchEventsLogs, TEST_LATENCY);
+                if (isTraceDirEnabled()) {
+                    uploadTraceFiles(listener, TEST_LATENCY);
+                }
             }
         }
 
@@ -293,6 +296,11 @@ public class AppTransitionTests implements IRemoteTest, IDeviceTest {
             runner.setClassNames(mClasses.toArray(new String[] {}));
         }
         runner.addInstrumentationArg("iteration_count", Integer.toString(mLatencyIteration));
+        if (isTraceDirEnabled()) {
+            mDevice.executeShellCommand(String.format("rm -rf %s/%s", mTraceDirectory,
+                    "LatencyTests"));
+            runner.addInstrumentationArg("trace_directory", mTraceDirectory);
+        }
         return runner;
     }
 

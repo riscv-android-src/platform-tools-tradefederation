@@ -1173,7 +1173,7 @@ public class TestInvocationTest extends TestCase {
         mMockTestListener.invocationStarted(mStubInvocationMetadata);
         mMockSummaryListener.invocationStarted(mStubInvocationMetadata);
 
-        if (!(throwable instanceof BuildRetrievalError || throwable instanceof BuildError)) {
+        if (!(throwable instanceof BuildRetrievalError)) {
             EasyMock.expect(
                             mMockLogSaver.saveLogData(
                                     EasyMock.eq(LOGCAT_NAME_SETUP),

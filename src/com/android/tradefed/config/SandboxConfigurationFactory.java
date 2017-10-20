@@ -24,6 +24,7 @@ import com.android.tradefed.util.IRunUtil;
 import com.android.tradefed.util.keystore.IKeyStoreClient;
 
 import java.io.File;
+import java.io.IOException;
 import java.util.Map;
 
 /** Special Configuration factory to handle creation of configurations for Sandboxing purpose. */
@@ -66,15 +67,20 @@ public class SandboxConfigurationFactory extends ConfigurationFactory {
             throws ConfigurationException {
         IConfiguration config = null;
         File xmlConfig = null;
+        File globalConfig = null;
         try {
             runUtil.unsetEnvVariable(GlobalConfiguration.GLOBAL_CONFIG_VARIABLE);
             // Dump the NON_VERSIONED part of the configuration against the current TF and not the
             // sandboxed environment.
             File currentTfDir = getCurrentTradefedDirectory();
-            // TODO: dump using the keystore too
+            globalConfig = SandboxConfigUtil.dumpFilteredGlobalConfig();
             xmlConfig =
                     SandboxConfigUtil.dumpConfigForVersion(
-                            currentTfDir, runUtil, args, DumpCmd.NON_VERSIONED_CONFIG);
+                            currentTfDir,
+                            runUtil,
+                            args,
+                            DumpCmd.NON_VERSIONED_CONFIG,
+                            globalConfig);
             // Get the non version part of the configuration in order to do proper allocation
             // of devices and such.
             config =
@@ -83,11 +89,16 @@ public class SandboxConfigurationFactory extends ConfigurationFactory {
             // Reset the command line to the original one.
             config.setCommandLine(args);
             config.setConfigurationObject(Configuration.SANDBOX_TYPE_NAME, sandbox);
+        } catch (IOException e) {
+            CLog.e(e);
+            sandbox.tearDown();
+            throw new ConfigurationException("Failed to dump global config.", e);
         } catch (ConfigurationException e) {
             CLog.e(e);
             sandbox.tearDown();
             throw e;
         } finally {
+            FileUtil.deleteFile(globalConfig);
             FileUtil.deleteFile(xmlConfig);
         }
         return config;

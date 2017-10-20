@@ -18,6 +18,7 @@ package com.android.tradefed.sandbox;
 import com.android.tradefed.config.ConfigurationException;
 import com.android.tradefed.config.IConfiguration;
 import com.android.tradefed.invoker.IInvocationContext;
+import com.android.tradefed.log.ITestLogger;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.util.CommandResult;
 
@@ -44,9 +45,10 @@ public interface ISandbox {
      * Run the sandbox with the environment that was set.
      *
      * @param configuration the {@link IConfiguration} for the command to run.
+     * @param logger an {@link ITestLogger} where we can log files.
      * @return a {@link CommandResult} with the status of the sandbox run and logs.
      */
-    public CommandResult run(IConfiguration configuration) throws Throwable;
+    public CommandResult run(IConfiguration configuration, ITestLogger logger) throws Throwable;
 
     /** Clean up any states, files or environment that may have been changed. */
     public void tearDown();

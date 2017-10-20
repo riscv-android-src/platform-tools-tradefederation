@@ -27,6 +27,7 @@ import com.android.tradefed.util.CommandResult;
 import com.android.tradefed.util.CommandStatus;
 import com.android.tradefed.util.FileUtil;
 import com.android.tradefed.util.IRunUtil;
+import com.android.tradefed.util.IRunUtil.EnvPriority;
 import com.android.tradefed.util.keystore.StubKeyStoreClient;
 
 import org.easymock.EasyMock;
@@ -52,7 +53,7 @@ public class SandboxConfigurationFactoryTest {
     private String mProperty;
 
     @Before
-    public void setUp() throws IOException {
+    public void setUp() throws IOException, ConfigurationException {
         mFactory = SandboxConfigurationFactory.getInstance();
         mConfig = FileUtil.createTempFile("sandbox-config-test", ".xml");
         mTmpEnvDir = FileUtil.createTempDir("sandbox-tmp-dir");
@@ -60,6 +61,11 @@ public class SandboxConfigurationFactoryTest {
         mMockRunUtil = EasyMock.createMock(IRunUtil.class);
         mProperty = System.getProperty("TF_JAR_DIR");
         System.setProperty("TF_JAR_DIR", mTmpEnvDir.getAbsolutePath());
+        try {
+            GlobalConfiguration.createGlobalConfiguration(new String[] {});
+        } catch (IllegalStateException ignore) {
+            // ignore the global config re-init
+        }
     }
 
     @After
@@ -104,6 +110,10 @@ public class SandboxConfigurationFactoryTest {
     public void testCreateConfigurationFromArgs() throws ConfigurationException {
         String[] args = new String[] {mConfig.getAbsolutePath()};
         mMockRunUtil.unsetEnvVariable(GlobalConfiguration.GLOBAL_CONFIG_VARIABLE);
+        EasyMock.expectLastCall().times(2);
+        mMockRunUtil.setEnvVariable(
+                EasyMock.eq(GlobalConfiguration.GLOBAL_CONFIG_VARIABLE), EasyMock.anyObject());
+        mMockRunUtil.setEnvVariablePriority(EnvPriority.SET);
         CommandResult results = new CommandResult();
         results.setStatus(CommandStatus.SUCCESS);
         expectDumpCmd(results);
@@ -121,6 +131,10 @@ public class SandboxConfigurationFactoryTest {
     public void testCreateConfigurationFromArgs_fail() {
         String[] args = new String[] {mConfig.getAbsolutePath()};
         mMockRunUtil.unsetEnvVariable(GlobalConfiguration.GLOBAL_CONFIG_VARIABLE);
+        EasyMock.expectLastCall().times(2);
+        mMockRunUtil.setEnvVariable(
+                EasyMock.eq(GlobalConfiguration.GLOBAL_CONFIG_VARIABLE), EasyMock.anyObject());
+        mMockRunUtil.setEnvVariablePriority(EnvPriority.SET);
         CommandResult results = new CommandResult();
         results.setStatus(CommandStatus.FAILED);
         results.setStderr("I failed");

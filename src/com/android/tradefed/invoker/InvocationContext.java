@@ -47,7 +47,7 @@ public class InvocationContext implements IInvocationContext {
     private Map<String, IBuildInfo> mNameAndBuildinfoMap;
     private final UniqueMultiMap<String, String> mInvocationAttributes =
             new UniqueMultiMap<String, String>();
-    private final Map<IInvocationContext.TimingEvent, Long> mInvocationTimingMetrics;
+    private Map<IInvocationContext.TimingEvent, Long> mInvocationTimingMetrics;
     /** Invocation test-tag **/
     private String mTestTag;
     /** configuration descriptor */
@@ -317,5 +317,9 @@ public class InvocationContext implements IInvocationContext {
         // now we are a "live" object again, so let's init the transient field
         mAllocatedDeviceAndBuildMap = new LinkedHashMap<ITestDevice, IBuildInfo>();
         mNameAndDeviceMap = new LinkedHashMap<String, ITestDevice>();
+        // For compatibility, when parent TF does not have the invocation timing yet.
+        if (mInvocationTimingMetrics == null) {
+            mInvocationTimingMetrics = new LinkedHashMap<>();
+        }
     }
 }

@@ -46,7 +46,7 @@ public class SandboxConfigUtilTest {
 
     /**
      * Test {@link com.android.tradefed.sandbox.SandboxConfigUtil#dumpConfigForVersion(File,
-     * IRunUtil, String[], DumpCmd)} for a success case when the command returns a valid file.
+     * IRunUtil, String[], DumpCmd, File)} for a success case when the command returns a valid file.
      */
     @Test
     public void testDumpVersion() throws Exception {
@@ -57,7 +57,11 @@ public class SandboxConfigUtilTest {
         try {
             res =
                     SandboxConfigUtil.dumpConfigForVersion(
-                            new File(""), mMockRunUtil, new String[] {"empty"}, DumpCmd.FULL_XML);
+                            new File(""),
+                            mMockRunUtil,
+                            new String[] {"empty"},
+                            DumpCmd.FULL_XML,
+                            null);
             assertNotNull(res);
         } finally {
             FileUtil.deleteFile(res);
@@ -66,7 +70,7 @@ public class SandboxConfigUtilTest {
 
     /**
      * Test {@link com.android.tradefed.sandbox.SandboxConfigUtil#dumpConfigForVersion(File,
-     * IRunUtil, String[], DumpCmd)} for a failure case, the command throws an exception.
+     * IRunUtil, String[], DumpCmd, File)} for a failure case, the command throws an exception.
      */
     @Test
     public void testDumpVersion_failed() throws Exception {
@@ -76,7 +80,7 @@ public class SandboxConfigUtilTest {
         doReturn(result).when(mMockRunUtil).runTimedCmd(Mockito.anyLong(), Mockito.any());
         try {
             SandboxConfigUtil.dumpConfigForVersion(
-                    new File(""), mMockRunUtil, new String[] {"empty"}, DumpCmd.FULL_XML);
+                    new File(""), mMockRunUtil, new String[] {"empty"}, DumpCmd.FULL_XML, null);
             fail("Should have thrown an exception.");
         } catch (ConfigurationException expected) {
             assertEquals("Ouch I failed", expected.getMessage());
