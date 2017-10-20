@@ -17,6 +17,8 @@ package com.android.tradefed.device;
 
 import com.android.ddmlib.IDevice;
 import com.android.tradefed.config.ArgsOptionParser;
+import com.android.tradefed.config.OptionSetter;
+
 import com.google.common.util.concurrent.SettableFuture;
 
 import junit.framework.TestCase;
@@ -426,6 +428,18 @@ public class DeviceSelectionOptionsTest extends TestCase {
                 .andStubReturn("blargh");
         EasyMock.replay(mMockDevice, mMockEmulatorDevice);
         assertFalse(options.matches(mMockDevice));
+    }
+
+    /**
+     * Test that min-battery is not used to check non physical devices otherwise they will never
+     * match.
+     */
+    public void testStubDevice_minBattery() throws Exception {
+        DeviceSelectionOptions options = new DeviceSelectionOptions();
+        OptionSetter setter = new OptionSetter(options);
+        setter.setOptionValue("min-battery", "20");
+        setter.setOptionValue("null-device", "true");
+        assertTrue(options.matches(new NullDevice("test")));
     }
 
     private void mockBatteryCheck(Integer battery) {
