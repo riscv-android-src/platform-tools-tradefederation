@@ -714,10 +714,9 @@ public class TestDeviceFuncTest implements IDeviceTest {
         }
         // sleep a small amount of time to ensure last log message makes it into capture
         RunUtil.getDefault().sleep(500);
-        InputStreamSource source = getDevice().getLogcatDump();
-        assertNotNull(source);
         File tmpTxtFile = FileUtil.createTempFile("logcat", ".txt");
-        try {
+        try (InputStreamSource source = getDevice().getLogcatDump()) {
+            assertNotNull(source);
             FileUtil.writeToFile(source.createInputStream(), tmpTxtFile);
             CLog.i("Created file at %s", tmpTxtFile.getAbsolutePath());
             // Check we have at least our 100 lines.
@@ -729,7 +728,6 @@ public class TestDeviceFuncTest implements IDeviceTest {
                     s.contains("testGetLogcat_size log dump 99"));
         } finally {
             FileUtil.deleteFile(tmpTxtFile);
-            source.close();
         }
     }
 
