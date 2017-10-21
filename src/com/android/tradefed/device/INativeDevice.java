@@ -648,25 +648,27 @@ public interface INativeDevice {
 
     /**
      * Grabs a snapshot stream of the last <code>maxBytes</code> of captured logcat data.
-     * <p/>
-     * Useful for cases when you want to capture frequent snapshots of the captured logcat data
-     * without incurring the potentially big disk space penalty of getting the entire
-     * {@link #getLogcat()} snapshot.
+     *
+     * <p>Useful for cases when you want to capture frequent snapshots of the captured logcat data
+     * without incurring the potentially big disk space penalty of getting the entire {@link
+     * #getLogcat()} snapshot.
      *
      * @param maxBytes the maximum amount of data to return. Should be an amount that can
-     *            comfortably fit in memory
+     *     comfortably fit in memory
      */
+    @MustBeClosed
     public InputStreamSource getLogcat(int maxBytes);
 
     /**
-    * Get a dump of the current logcat for device. Unlike {@link #getLogcat()}, this method will
-    * always return a static dump of the logcat.
-    * <p/>
-    * Has the disadvantage that nothing will be returned if device is not reachable.
-    *
-    * @return a {@link InputStreamSource} of the logcat data. An empty stream is returned if fail to
-    *         capture logcat data.
-    */
+     * Get a dump of the current logcat for device. Unlike {@link #getLogcat()}, this method will
+     * always return a static dump of the logcat.
+     *
+     * <p>Has the disadvantage that nothing will be returned if device is not reachable.
+     *
+     * @return a {@link InputStreamSource} of the logcat data. An empty stream is returned if fail
+     *     to capture logcat data.
+     */
+    @MustBeClosed
     public InputStreamSource getLogcatDump();
 
     /**

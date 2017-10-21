@@ -39,6 +39,7 @@ public class GoogleBenchmarkTest implements IDeviceTest, IRemoteTest {
     static final String DEFAULT_TEST_PATH = "/data/benchmarktest";
 
     private static final String GBENCHMARK_JSON_OUTPUT_FORMAT = "--benchmark_format=json";
+    private static final String GBENCHMARK_LIST_TESTS_OPTION = "--benchmark_list_tests=true";
 
     @Option(name = "file-exclusion-filter-regex",
             description = "Regex to exclude certain files from executing. Can be repeated")
@@ -155,10 +156,13 @@ public class GoogleBenchmarkTest implements IDeviceTest, IRemoteTest {
             }
             long startTime = System.currentTimeMillis();
 
+            // Count expected number of tests
+            int numTests = countExpectedTests(testDevice, root);
+
             Map<String, String> metricMap = new HashMap<String, String>();
             CollectingOutputReceiver outputCollector = createOutputCollector();
             GoogleBenchmarkResultParser resultParser = createResultParser(runName, listener);
-            listener.testRunStarted(runName, 0);
+            listener.testRunStarted(runName, numTests);
             try {
                 String cmd = String.format("%s %s", root, GBENCHMARK_JSON_OUTPUT_FORMAT);
                 CLog.i(String.format("Running google benchmark test on %s: %s",
@@ -166,11 +170,21 @@ public class GoogleBenchmarkTest implements IDeviceTest, IRemoteTest {
                 testDevice.executeShellCommand(cmd, outputCollector,
                         mMaxRunTime, TimeUnit.MILLISECONDS, 0);
                 metricMap = resultParser.parse(outputCollector);
+            } catch (DeviceNotAvailableException e) {
+                listener.testRunFailed(e.getMessage());
+                throw e;
             } finally {
                 final long elapsedTime = System.currentTimeMillis() - startTime;
                 listener.testRunEnded(elapsedTime, metricMap);
             }
         }
+    }
+
+    private int countExpectedTests(ITestDevice testDevice, String fullBinaryPath)
+            throws DeviceNotAvailableException {
+        String cmd = String.format("%s %s", fullBinaryPath, GBENCHMARK_LIST_TESTS_OPTION);
+        String list = testDevice.executeShellCommand(cmd);
+        return list.split("\n").length;
     }
 
     /**
