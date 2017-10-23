@@ -21,8 +21,8 @@ import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.config.ConfigurationException;
 import com.android.tradefed.config.IConfiguration;
 import com.android.tradefed.config.Option;
-import com.android.tradefed.config.OptionCopier;
 import com.android.tradefed.config.Option.Importance;
+import com.android.tradefed.config.OptionCopier;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.invoker.IInvocationContext;
@@ -45,12 +45,14 @@ import com.android.tradefed.testtype.IShardableTest;
 import com.android.tradefed.testtype.ITestCollector;
 import com.android.tradefed.util.AbiFormatter;
 import com.android.tradefed.util.AbiUtils;
+import com.android.tradefed.util.MultiMap;
 import com.android.tradefed.util.TimeUtil;
 
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -150,6 +152,29 @@ public abstract class ITestSuite
     )
     private boolean mPrimaryAbiRun = false;
 
+    @Option(
+        name = "module-metadata-include-filter",
+        description =
+                "Include modules for execution based on matching of metadata fields: for any of "
+                        + "the specified filter name and value, if a module has a metadata field "
+                        + "with the same name and value, it will be included. When both module "
+                        + "inclusion and exclusion rules are applied, inclusion rules will be "
+                        + "evaluated first. Using this together with test filter inclusion rules "
+                        + "may result in no tests to execute if the rules don't overlap."
+    )
+    private MultiMap<String, String> mModuleMetadataIncludeFilter = new MultiMap<>();
+
+    @Option(
+        name = "module-metadata-exclude-filter",
+        description =
+                "Exclude modules for execution based on matching of metadata fields: for any of "
+                        + "the specified filter name and value, if a module has a metadata field "
+                        + "with the same name and value, it will be excluded. When both module "
+                        + "inclusion and exclusion rules are applied, inclusion rules will be "
+                        + "evaluated first."
+    )
+    private MultiMap<String, String> mModuleMetadataExcludeFilter = new MultiMap<>();
+
     private ITestDevice mDevice;
     private IBuildInfo mBuildInfo;
     private List<ISystemStatusChecker> mSystemStatusCheckers;
@@ -177,6 +202,31 @@ public abstract class ITestSuite
         }
     }
 
+    private LinkedHashMap<String, IConfiguration> loadAndFilter() {
+        LinkedHashMap<String, IConfiguration> runConfig = loadTests();
+        if (runConfig.isEmpty()) {
+            CLog.i("No config were loaded. Nothing to run.");
+            return runConfig;
+        }
+        if (mModuleMetadataIncludeFilter.isEmpty() && mModuleMetadataExcludeFilter.isEmpty()) {
+            return runConfig;
+        }
+        LinkedHashMap<String, IConfiguration> filteredConfig = new LinkedHashMap<>();
+        for (Entry<String, IConfiguration> config : runConfig.entrySet()) {
+            if (!filterByConfigMetadata(
+                    config.getValue(),
+                    mModuleMetadataIncludeFilter,
+                    mModuleMetadataExcludeFilter)) {
+                // if the module config did not pass the metadata filters, it's excluded
+                // from execution
+                continue;
+            }
+            filteredConfig.put(config.getKey(), config.getValue());
+        }
+        runConfig.clear();
+        return filteredConfig;
+    }
+
     /** Helper that creates and returns the list of {@link ModuleDefinition} to be executed. */
     private List<ModuleDefinition> createExecutionList() {
         List<ModuleDefinition> runModules = new ArrayList<>();
@@ -189,7 +239,7 @@ public abstract class ITestSuite
             return runModules;
         }
 
-        LinkedHashMap<String, IConfiguration> runConfig = loadTests();
+        LinkedHashMap<String, IConfiguration> runConfig = loadAndFilter();
         if (runConfig.isEmpty()) {
             CLog.i("No config were loaded. Nothing to run.");
             return runModules;
@@ -432,7 +482,7 @@ public abstract class ITestSuite
             return null;
         }
 
-        LinkedHashMap<String, IConfiguration> runConfig = loadTests();
+        LinkedHashMap<String, IConfiguration> runConfig = loadAndFilter();
         if (runConfig.isEmpty()) {
             CLog.i("No config were loaded. Nothing to run.");
             return null;
@@ -629,5 +679,56 @@ public abstract class ITestSuite
     /** Returns the abi requested with the option -a or --abi. */
     public final String getRequestedAbi() {
         return mAbiName;
+    }
+
+    /**
+     * Apply the metadata filter to the config and see if the config should run.
+     *
+     * @param config The {@link IConfiguration} being evaluated.
+     * @param include the metadata include filter
+     * @param exclude the metadata exclude filter
+     * @return True if the module should run, false otherwise.
+     */
+    @VisibleForTesting
+    protected boolean filterByConfigMetadata(
+            IConfiguration config,
+            MultiMap<String, String> include,
+            MultiMap<String, String> exclude) {
+        MultiMap<String, String> metadata = config.getConfigurationDescription().getAllMetaData();
+        boolean shouldInclude = false;
+        for (String key : include.keySet()) {
+            Set<String> filters = new HashSet<>(include.get(key));
+            if (metadata.containsKey(key)) {
+                filters.retainAll(metadata.get(key));
+                if (!filters.isEmpty()) {
+                    // inclusion filter is not empty and there's at least one matching inclusion
+                    // rule so there's no need to match other inclusion rules
+                    shouldInclude = true;
+                    break;
+                }
+            }
+        }
+        if (!include.isEmpty() && !shouldInclude) {
+            // if inclusion filter is not empty and we didn't find a match, the module will not be
+            // included
+            return false;
+        }
+        // Now evaluate exclusion rules, this ordering also means that exclusion rules may override
+        // inclusion rules: a config already matched for inclusion may still be excluded if matching
+        // rules exist
+        for (String key : exclude.keySet()) {
+            Set<String> filters = new HashSet<>(exclude.get(key));
+            if (metadata.containsKey(key)) {
+                filters.retainAll(metadata.get(key));
+                if (!filters.isEmpty()) {
+                    // we found at least one matching exclusion rules, so we are excluding this
+                    // this module
+                    return false;
+                }
+            }
+        }
+        // we've matched at least one inclusion rule (if there's any) AND we didn't match any of the
+        // exclusion rules (if there's any)
+        return true;
     }
 }
