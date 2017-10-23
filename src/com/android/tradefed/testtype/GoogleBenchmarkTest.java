@@ -184,7 +184,7 @@ public class GoogleBenchmarkTest implements IDeviceTest, IRemoteTest {
             throws DeviceNotAvailableException {
         String cmd = String.format("%s %s", fullBinaryPath, GBENCHMARK_LIST_TESTS_OPTION);
         String list = testDevice.executeShellCommand(cmd);
-        return list.split("\n").length;
+        return list.trim().split("\n").length;
     }
 
     /**
