@@ -15,12 +15,14 @@
  */
 package com.android.tradefed.testtype.suite;
 
+import com.android.annotations.VisibleForTesting;
 import com.android.ddmlib.Log.LogLevel;
 import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.config.ConfigurationException;
 import com.android.tradefed.config.IConfiguration;
 import com.android.tradefed.config.Option;
 import com.android.tradefed.config.OptionCopier;
+import com.android.tradefed.config.Option.Importance;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.invoker.IInvocationContext;
@@ -31,6 +33,8 @@ import com.android.tradefed.result.InputStreamSource;
 import com.android.tradefed.result.LogDataType;
 import com.android.tradefed.suite.checker.ISystemStatusChecker;
 import com.android.tradefed.suite.checker.ISystemStatusCheckerReceiver;
+import com.android.tradefed.testtype.Abi;
+import com.android.tradefed.testtype.IAbi;
 import com.android.tradefed.testtype.IBuildReceiver;
 import com.android.tradefed.testtype.IDeviceTest;
 import com.android.tradefed.testtype.IInvocationContextReceiver;
@@ -39,14 +43,19 @@ import com.android.tradefed.testtype.IRemoteTest;
 import com.android.tradefed.testtype.IRuntimeHintProvider;
 import com.android.tradefed.testtype.IShardableTest;
 import com.android.tradefed.testtype.ITestCollector;
+import com.android.tradefed.util.AbiFormatter;
+import com.android.tradefed.util.AbiUtils;
 import com.android.tradefed.util.TimeUtil;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map.Entry;
+import java.util.Set;
 
 /**
  * Abstract class used to run Test Suite. This class provide the base of how the Suite will be run.
@@ -64,6 +73,10 @@ public abstract class ITestSuite
 
     public static final String MODULE_CHECKER_PRE = "PreModuleChecker";
     public static final String MODULE_CHECKER_POST = "PostModuleChecker";
+    public static final String ABI_OPTION = "abi";
+    public static final String SKIP_HOST_ARCH_CHECK = "skip-host-arch-check";
+    public static final String PRIMARY_ABI_RUN = "primary-abi-only";
+    private static final String PRODUCT_CPU_ABI_KEY = "ro.product.cpu.abi";
 
     // Options for test failure case
     @Option(
@@ -113,6 +126,29 @@ public abstract class ITestSuite
                         + "actually carried out."
     )
     private boolean mCollectTestsOnly = false;
+
+    // Abi related options
+    @Option(
+        name = ABI_OPTION,
+        shortName = 'a',
+        description = "the abi to test. For example: 'arm64-v8a'.",
+        importance = Importance.IF_UNSET
+    )
+    private String mAbiName = null;
+
+    @Option(
+        name = SKIP_HOST_ARCH_CHECK,
+        description = "Whether host architecture check should be skipped."
+    )
+    private boolean mSkipHostArchCheck = false;
+
+    @Option(
+        name = PRIMARY_ABI_RUN,
+        description =
+                "Whether to run tests with only the device primary abi. "
+                        + "This will override the --abi option."
+    )
+    private boolean mPrimaryAbiRun = false;
 
     private ITestDevice mDevice;
     private IBuildInfo mBuildInfo;
@@ -523,5 +559,75 @@ public abstract class ITestSuite
      */
     public ModuleDefinition getDirectModule() {
         return mDirectModule;
+    }
+
+    /**
+     * Gets the set of ABIs supported by both Compatibility testing {@link
+     * AbiUtils#getAbisSupportedByCompatibility()} and the device under test.
+     *
+     * @return The set of ABIs to run the tests on
+     * @throws DeviceNotAvailableException
+     */
+    public final Set<IAbi> getAbis(ITestDevice device) throws DeviceNotAvailableException {
+        Set<IAbi> abis = new LinkedHashSet<>();
+        Set<String> archAbis = getAbisForBuildTargetArch();
+        if (mPrimaryAbiRun) {
+            if (mAbiName == null) {
+                // Get the primary from the device and make it the --abi to run.
+                mAbiName = device.getProperty(PRODUCT_CPU_ABI_KEY).trim();
+            } else {
+                CLog.d(
+                        "Option --%s supersedes the option --%s, using abi: %s",
+                        ABI_OPTION, PRIMARY_ABI_RUN, mAbiName);
+            }
+        }
+        if (mAbiName != null) {
+            // A particular abi was requested, it still needs to be supported by the build.
+            if ((!mSkipHostArchCheck && !archAbis.contains(mAbiName))
+                    || !AbiUtils.isAbiSupportedByCompatibility(mAbiName)) {
+                throw new IllegalArgumentException(
+                        String.format(
+                                "Your tests suite hasn't been built with "
+                                        + "abi '%s' support, this suite currently supports '%s'.",
+                                mAbiName, archAbis));
+            } else {
+                abis.add(new Abi(mAbiName, AbiUtils.getBitness(mAbiName)));
+                return abis;
+            }
+        } else {
+            // Run on all abi in common between the device and suite builds.
+            List<String> deviceAbis = Arrays.asList(AbiFormatter.getSupportedAbis(device, ""));
+            for (String abi : deviceAbis) {
+                if ((mSkipHostArchCheck || archAbis.contains(abi))
+                        && AbiUtils.isAbiSupportedByCompatibility(abi)) {
+                    abis.add(new Abi(abi, AbiUtils.getBitness(abi)));
+                } else {
+                    CLog.d(
+                            "abi '%s' is supported by device but not by this suite build (%s), "
+                                    + "tests will not run against it.",
+                            abi, archAbis);
+                }
+            }
+            if (abis.isEmpty()) {
+                throw new IllegalArgumentException(
+                        String.format(
+                                "None of the abi supported by this tests suite build ('%s') are "
+                                        + "supported by the device ('%s').",
+                                archAbis, deviceAbis));
+            }
+            return abis;
+        }
+    }
+
+    /** Return the abis supported by the Host build target architecture. Exposed for testing. */
+    @VisibleForTesting
+    protected Set<String> getAbisForBuildTargetArch() {
+        // If TestSuiteInfo does not exists, the stub arch will be replaced by all possible abis.
+        return AbiUtils.getAbisForArch(TestSuiteInfo.getInstance().getTargetArch());
+    }
+
+    /** Returns the abi requested with the option -a or --abi. */
+    public final String getRequestedAbi() {
+        return mAbiName;
     }
 }
