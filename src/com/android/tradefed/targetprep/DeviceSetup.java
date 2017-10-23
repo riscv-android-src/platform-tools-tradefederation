@@ -226,18 +226,20 @@ public class DeviceSetup implements ITargetPreparer, ITargetCleaner {
     @Option(name = "auto-update-time",
             description = "Turn auto update time on or off")
     protected BinaryState mAutoUpdateTime = BinaryState.IGNORE;
-    // ON:  settings put system auto_time 1
-    // OFF: settings put system auto_time 0
+    // ON:  settings put global auto_time 1
+    // OFF: settings put global auto_time 0
 
-    @Option(name = "auto-update-timezone",
-            description = "Turn auto update timezone on or off")
+    @Option(name = "auto-update-timezone", description = "Turn auto update timezone on or off")
     protected BinaryState mAutoUpdateTimezone = BinaryState.IGNORE;
-    // ON:  settings put system auto_timezone 1
-    // OFF: settings put system auto_timezone 0
+    // ON:  settings put global auto_timezone 1
+    // OFF: settings put global auto_timezone 0
 
-    @Option(name = "set-timezone",
-            description = "Set timezone property by TZ name " +
-            "(http://en.wikipedia.org/wiki/List_of_tz_database_time_zones)")
+    @Option(
+        name = "set-timezone",
+        description =
+                "Set timezone property by TZ name "
+                        + "(http://en.wikipedia.org/wiki/List_of_tz_database_time_zones)"
+    )
     protected String mTimezone = null;
 
     // Calling
@@ -308,6 +310,15 @@ public class DeviceSetup implements ITargetPreparer, ITargetCleaner {
             "the last value for a given key will be set.")
     protected Map<String, String> mSetProps = new HashMap<>();
 
+    @Option(
+        name = "restore-properties",
+        description =
+                "Restore previous /data/local.prop on tear down, restoring any properties DeviceSetup changed by modifying /data/local.prop."
+    )
+    protected boolean mRestoreProperties = false;
+
+    protected File mPreviousProperties;
+
     @Option(name = "set-system-setting",
             description = "Change a system (non-secure) setting. Option may be repeated and all " +
             "key/value pairs will be set in order.")
@@ -325,6 +336,16 @@ public class DeviceSetup implements ITargetPreparer, ITargetCleaner {
             "pairs will be set in order.")
     // Use a Multimap since it is possible for a setting to have multiple values for the same key
     protected MultiMap<String, String> mGlobalSettings = new MultiMap<>();
+
+    @Option(
+        name = "restore-settings",
+        description = "Restore settings modified by this preparer on tear down."
+    )
+    protected boolean mRestoreSettings = false;
+
+    private Map<String, String> mPreviousSystemSettings = new HashMap<>();
+    private Map<String, String> mPreviousSecureSettings = new HashMap<>();
+    private Map<String, String> mPreviousGlobalSettings = new HashMap<>();
 
     protected List<String> mRunCommandBeforeSettings = new ArrayList<>();
 
@@ -449,6 +470,27 @@ public class DeviceSetup implements ITargetPreparer, ITargetCleaner {
                         device.getSerialNumber());
             } else {
                 CLog.w("Failed to disconnect from wifi network on %s", device.getSerialNumber());
+            }
+        }
+
+        if (mRestoreProperties) {
+            if (mPreviousProperties != null) {
+                device.pushFile(mPreviousProperties, "/data/local.prop");
+            } else {
+                device.executeShellCommand("rm -f /data/local.prop");
+            }
+            device.reboot();
+        }
+
+        if (mRestoreSettings) {
+            for (Map.Entry<String, String> entry : mPreviousSystemSettings.entrySet()) {
+                device.setSetting("system", entry.getKey(), entry.getValue());
+            }
+            for (Map.Entry<String, String> entry : mPreviousGlobalSettings.entrySet()) {
+                device.setSetting("global", entry.getKey(), entry.getValue());
+            }
+            for (Map.Entry<String, String> entry : mPreviousSecureSettings.entrySet()) {
+                device.setSetting("secure", entry.getKey(), entry.getValue());
             }
         }
     }
@@ -593,9 +635,9 @@ public class DeviceSetup implements ITargetPreparer, ITargetCleaner {
             mRunCommandAfterSettings.add("dumpsys deviceidle disable");
         }
 
-        setSettingForBinaryState(mAutoUpdateTime, mSystemSettings, "auto_time", "1", "0");
+        setSettingForBinaryState(mAutoUpdateTime, mGlobalSettings, "auto_time", "1", "0");
 
-        setSettingForBinaryState(mAutoUpdateTimezone, mSystemSettings, "auto_timezone", "1", "0");
+        setSettingForBinaryState(mAutoUpdateTimezone, mGlobalSettings, "auto_timezone", "1", "0");
 
         if (mTimezone != null) {
             mSetProps.put("persist.sys.timezone", mTimezone);
@@ -661,6 +703,9 @@ public class DeviceSetup implements ITargetPreparer, ITargetCleaner {
             return;
         }
 
+        if (mRestoreProperties) {
+            mPreviousProperties = device.pullFile("/data/local.prop");
+        }
         CLog.d("Pushing the following properties to /data/local.prop:\n%s", sb.toString());
         boolean result = device.pushString(sb.toString(), "/data/local.prop");
         if (!result) {
@@ -755,12 +800,20 @@ public class DeviceSetup implements ITargetPreparer, ITargetCleaner {
 
         for (String key : mSystemSettings.keySet()) {
             for (String value : mSystemSettings.get(key)) {
+                if (mRestoreSettings) {
+                    String previousSetting = device.getSetting("system", key);
+                    mPreviousSystemSettings.put(key, previousSetting);
+                }
                 CLog.d("Changing system setting %s to %s", key, value);
                 device.setSetting("system", key, value);
             }
         }
         for (String key : mSecureSettings.keySet()) {
             for (String value : mSecureSettings.get(key)) {
+                if (mRestoreSettings) {
+                    String previousSetting = device.getSetting("secure", key);
+                    mPreviousSecureSettings.put(key, previousSetting);
+                }
                 CLog.d("Changing secure setting %s to %s", key, value);
                 device.setSetting("secure", key, value);
             }
@@ -768,6 +821,10 @@ public class DeviceSetup implements ITargetPreparer, ITargetCleaner {
 
         for (String key : mGlobalSettings.keySet()) {
             for (String value : mGlobalSettings.get(key)) {
+                if (mRestoreSettings) {
+                    String previousSetting = device.getSetting("global", key);
+                    mPreviousGlobalSettings.put(key, previousSetting);
+                }
                 CLog.d("Changing global setting %s to %s", key, value);
                 device.setSetting("global", key, value);
             }
@@ -1202,6 +1259,31 @@ public class DeviceSetup implements ITargetPreparer, ITargetCleaner {
      */
     protected void setProperty(String key, String value) {
         mSetProps.put(key, value);
+    }
+
+    /** Exposed for unit testing */
+    public void setGlobalSetting(String key, String value) {
+        mGlobalSettings.put(key, value);
+    }
+
+    /** Exposed for unit testing */
+    public void setSecureSetting(String key, String value) {
+        mSecureSettings.put(key, value);
+    }
+
+    /** Exposed for unit testing */
+    public void setSystemSetting(String key, String value) {
+        mSystemSettings.put(key, value);
+    }
+
+    /** Exposed for unit testing */
+    protected void setRestoreProperties(boolean restoreProperties) {
+        mRestoreProperties = restoreProperties;
+    }
+
+    /** Exposed for unit testing */
+    protected void setRestoreSettings(boolean restoreSettings) {
+        mRestoreSettings = restoreSettings;
     }
 
     /**

@@ -692,7 +692,7 @@ public class DeviceSetupTest extends TestCase {
     public void testSetup_update_time_on() throws DeviceNotAvailableException, TargetSetupError {
         doSetupExpectations();
         doCheckExternalStoreSpaceExpectations();
-        doSettingExpectations("system", "auto_time", "1");
+        doSettingExpectations("global", "auto_time", "1");
         EasyMock.replay(mMockDevice);
 
         mDeviceSetup.setAutoUpdateTime(BinaryState.ON);
@@ -704,7 +704,7 @@ public class DeviceSetupTest extends TestCase {
     public void testSetup_update_time_off() throws DeviceNotAvailableException, TargetSetupError {
         doSetupExpectations();
         doCheckExternalStoreSpaceExpectations();
-        doSettingExpectations("system", "auto_time", "0");
+        doSettingExpectations("global", "auto_time", "0");
         EasyMock.replay(mMockDevice);
 
         mDeviceSetup.setAutoUpdateTime(BinaryState.OFF);
@@ -717,7 +717,7 @@ public class DeviceSetupTest extends TestCase {
             TargetSetupError {
         doSetupExpectations();
         doCheckExternalStoreSpaceExpectations();
-        doSettingExpectations("system", "auto_timezone", "1");
+        doSettingExpectations("global", "auto_timezone", "1");
         EasyMock.replay(mMockDevice);
 
         mDeviceSetup.setAutoUpdateTimezone(BinaryState.ON);
@@ -730,7 +730,7 @@ public class DeviceSetupTest extends TestCase {
             TargetSetupError {
         doSetupExpectations();
         doCheckExternalStoreSpaceExpectations();
-        doSettingExpectations("system", "auto_timezone", "0");
+        doSettingExpectations("global", "auto_timezone", "0");
         EasyMock.replay(mMockDevice);
 
         mDeviceSetup.setAutoUpdateTimezone(BinaryState.OFF);
@@ -984,6 +984,79 @@ public class DeviceSetupTest extends TestCase {
         } catch (TargetSetupError e) {
             // Expected
         }
+    }
+
+    public void test_restore_properties_previous_exists()
+            throws DeviceNotAvailableException, TargetSetupError {
+        File f = new File("");
+        doSetupExpectations();
+        doCheckExternalStoreSpaceExpectations();
+        EasyMock.expect(mMockDevice.pullFile("/data/local.prop")).andReturn(f).once();
+        EasyMock.expect(mMockDevice.pushFile(f, "/data/local.prop")).andReturn(true).once();
+        mMockDevice.reboot();
+        EasyMock.expectLastCall().once();
+
+        EasyMock.replay(mMockDevice);
+
+        mDeviceSetup.setRestoreProperties(true);
+        mDeviceSetup.setProperty("key", "value");
+        mDeviceSetup.setUp(mMockDevice, mMockBuildInfo);
+        mDeviceSetup.tearDown(mMockDevice, mMockBuildInfo, null);
+
+        EasyMock.verify(mMockDevice);
+    }
+
+    public void test_restore_properties_previous_doesnt_exists()
+            throws DeviceNotAvailableException, TargetSetupError {
+        doSetupExpectations();
+        doCheckExternalStoreSpaceExpectations();
+        EasyMock.expect(mMockDevice.pullFile("/data/local.prop")).andReturn(null).once();
+        EasyMock.expect(mMockDevice.executeShellCommand("rm -f /data/local.prop"))
+                .andReturn(null)
+                .once();
+        mMockDevice.reboot();
+        EasyMock.expectLastCall().once();
+
+        EasyMock.replay(mMockDevice);
+
+        mDeviceSetup.setRestoreProperties(true);
+        mDeviceSetup.setProperty("key", "value");
+        mDeviceSetup.setUp(mMockDevice, mMockBuildInfo);
+        mDeviceSetup.tearDown(mMockDevice, mMockBuildInfo, null);
+
+        EasyMock.verify(mMockDevice);
+    }
+
+    public void test_restore_settings() throws DeviceNotAvailableException, TargetSetupError {
+        doSetupExpectations();
+        doCheckExternalStoreSpaceExpectations();
+        EasyMock.expect(mMockDevice.getApiLevel()).andStubReturn(23);
+        EasyMock.expect(mMockDevice.getSetting("system", "key")).andReturn("orig").once();
+        mMockDevice.setSetting("system", "key", "value");
+        EasyMock.expectLastCall().once();
+        EasyMock.expect(mMockDevice.getSetting("global", "key2")).andReturn("orig2").once();
+        mMockDevice.setSetting("global", "key2", "value2");
+        EasyMock.expectLastCall().once();
+        EasyMock.expect(mMockDevice.getSetting("secure", "key3")).andReturn("orig3").once();
+        mMockDevice.setSetting("secure", "key3", "value3");
+        EasyMock.expectLastCall().once();
+        mMockDevice.setSetting("system", "key", "orig");
+        EasyMock.expectLastCall().once();
+        mMockDevice.setSetting("global", "key2", "orig2");
+        EasyMock.expectLastCall().once();
+        mMockDevice.setSetting("secure", "key3", "orig3");
+        EasyMock.expectLastCall().once();
+
+        EasyMock.replay(mMockDevice);
+
+        mDeviceSetup.setRestoreSettings(true);
+        mDeviceSetup.setSystemSetting("key", "value");
+        mDeviceSetup.setGlobalSetting("key2", "value2");
+        mDeviceSetup.setSecureSetting("key3", "value3");
+        mDeviceSetup.setUp(mMockDevice, mMockBuildInfo);
+        mDeviceSetup.tearDown(mMockDevice, mMockBuildInfo, null);
+
+        EasyMock.verify(mMockDevice);
     }
 
     public void testTearDown() throws Exception {

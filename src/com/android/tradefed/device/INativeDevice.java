@@ -565,6 +565,15 @@ public interface INativeDevice {
     public long getExternalStoreFreeSpace() throws DeviceNotAvailableException;
 
     /**
+     * Helper method to determine amount of free space on device partition.
+     *
+     * @return the amount of free space in KB
+     * @throws DeviceNotAvailableException if connection with device is lost and cannot be
+     *     recovered.
+     */
+    public long getPartitionFreeSpace(String partition) throws DeviceNotAvailableException;
+
+    /**
      * Returns a mount point.
      * <p/>
      * Queries the device directly if the cached info in {@link IDevice} is not available.
