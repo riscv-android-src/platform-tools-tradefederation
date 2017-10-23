@@ -179,7 +179,7 @@ public class GoogleBenchmarkTestTest extends TestCase {
                         mMockITestDevice.executeShellCommand(
                                 String.format(
                                         "%s/test1 --benchmark_list_tests=true", nativeTestPath)))
-                .andReturn("method1\nmethod2\nmethod3");
+                .andReturn("\nmethod1\nmethod2\nmethod3\n\n");
         EasyMock.expect(
                         mMockITestDevice.executeShellCommand(
                                 String.format(
