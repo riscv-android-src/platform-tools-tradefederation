@@ -94,6 +94,27 @@ def _missing_environment_variables():
     return missing
 
 
+def _is_missing_adb(root_dir=''):
+    """Check if system built adb is available.
+
+    TF requires adb and we want to make sure we use the latest built adb (vs.
+    system adb that might be too old).
+
+    Args:
+        root_dir: A String. Path to the root dir that adb should live in.
+
+    Returns:
+        True if adb is missing, False otherwise.
+    """
+    try:
+        output = subprocess.check_output(['which', 'adb'])
+    except subprocess.CalledProcessError:
+        return True
+    # TODO: Check if there is a clever way to determine if system adb is good
+    # enough.
+    return os.path.commonprefix([output, root_dir]) != root_dir
+
+
 def build_tests(build_targets, verbose=False):
     """Shell out and make build_targets.
 
@@ -147,6 +168,8 @@ def main(argv):
     repo_root = os.environ.get(ANDROID_BUILD_TOP)
     translator = cli_translator.CLITranslator(root_dir=repo_root)
     build_targets, run_commands = translator.translate(args.tests)
+    if _is_missing_adb(root_dir=repo_root):
+        build_targets.add('adb')
     if not args.skip_build and not build_tests(build_targets, args.verbose):
         return EXIT_CODE_BUILD_FAILURE
     run_tests(run_commands)
