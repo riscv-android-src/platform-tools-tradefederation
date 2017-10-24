@@ -25,6 +25,7 @@ import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.result.ITestInvocationListener;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -183,8 +184,10 @@ public class GoogleBenchmarkTest implements IDeviceTest, IRemoteTest {
     private int countExpectedTests(ITestDevice testDevice, String fullBinaryPath)
             throws DeviceNotAvailableException {
         String cmd = String.format("%s %s", fullBinaryPath, GBENCHMARK_LIST_TESTS_OPTION);
-        String list = testDevice.executeShellCommand(cmd);
-        return list.trim().split("\n").length;
+        String list_output = testDevice.executeShellCommand(cmd);
+        String[] list = list_output.trim().split("\n");
+        CLog.d("List that will be used: %s", Arrays.asList(list));
+        return list.length;
     }
 
     /**
