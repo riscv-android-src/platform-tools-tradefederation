@@ -90,9 +90,11 @@ public class WifiStressTest implements IRemoteTest, IDeviceTest {
         }
     }
 
-    @Option(name="ap-iteration",
-            description="The number of iterations to run soft ap stress test")
-    private String mApIteration = "100";
+    @Option(
+        name = "ap-iteration",
+        description = "The number of iterations to run soft ap stress test"
+    )
+    private String mApIteration = "0";
 
     @Option(name="idle-time",
         description="The device idle time after screen off")
@@ -139,21 +141,8 @@ public class WifiStressTest implements IRemoteTest, IDeviceTest {
         }
         mTestList = new ArrayList<>(3);
 
-        // Add WiFi AP stress test
-        TestInfo t = new TestInfo();
-        t.mTestName = "WifiAPStress";
-        t.mTestClass = "com.android.connectivitymanagertest.stress.WifiApStress";
-        t.mTestMethod = "testWifiHotSpot";
-        t.mTestMetricsName = "wifi_stress";
-        t.mTestTimer = AP_TEST_TIMER;
-        t.mPatternMap = new RegexTrie<>();
-        t.mPatternMap.put("wifi_ap_stress", ITERATION_PATTERN);
-        if (mTetherTestFlag) {
-            mTestList.add(t);
-        }
-
         // Add WiFi scanning test
-        t = new TestInfo();
+        TestInfo t = new TestInfo();
         t.mTestName = "WifiScanning";
         t.mTestClass = "com.android.connectivitymanagertest.stress.WifiStressTest";
         t.mTestMethod = "testWifiScanning";
