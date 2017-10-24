@@ -19,7 +19,6 @@
 shdir=`dirname $0`/
 
 source "${shdir}/script_help.sh"
-checkpath adb
 
 # TODO b/63295046 (sbasi) - Remove this when LOCAL_JAVA_LIBRARIES includes
 # installation.
