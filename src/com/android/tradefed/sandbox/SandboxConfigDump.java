@@ -76,6 +76,10 @@ public class SandboxConfigDump {
                 config.getCommandOptions().setShouldUseSandboxing(false);
                 config.getConfigurationDescription().setSandboxed(true);
                 config.setTestInvocationListener(new SubprocessResultsReporter());
+                // Turn off some of the invocation level options that would be duplicated in the
+                // parent.
+                config.getCommandOptions().setBugreportOnInvocationEnded(false);
+                config.getCommandOptions().setBugreportzOnInvocationEnded(false);
             }
             pw = new PrintWriter(resFile);
             if (DumpCmd.NON_VERSIONED_CONFIG.equals(cmd)) {
