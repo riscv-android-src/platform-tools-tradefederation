@@ -309,7 +309,6 @@ public class PythonUnitTestResultParser extends MultiLineReceiver {
         return mCurrentMatcher.matches();
     }
 
-    //TODO(ghliu): report test results on the fly
     /** Send recorded test results to all listeners. */
     private void reportToListeners() throws PythonUnitTestParseException {
         String failReason = String.format("Failed %d tests", mFailedTestCount);
@@ -334,7 +333,6 @@ public class PythonUnitTestResultParser extends MultiLineReceiver {
 
     }
 
-    //TODO(ghliu): report test results on the fly
     /** Record a non-failure test case. */
     private void reportNonFailureTestResult() throws PythonUnitTestParseException {
         TestIdentifier testId = new TestIdentifier(mCurrentTestClass, mCurrentTestName);
@@ -352,7 +350,6 @@ public class PythonUnitTestResultParser extends MultiLineReceiver {
         }
     }
 
-    //TODO(ghliu): report test results on the fly
     /** Record a failed test case and its traceback message. */
     private void reportFailureTestResult() {
         TestIdentifier testId = new TestIdentifier(mCurrentTestClass, mCurrentTestName);

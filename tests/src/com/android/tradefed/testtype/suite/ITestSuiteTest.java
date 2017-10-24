@@ -17,6 +17,7 @@ package com.android.tradefed.testtype.suite;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 
 import com.android.ddmlib.testrunner.TestIdentifier;
 import com.android.tradefed.build.IBuildInfo;
@@ -35,8 +36,10 @@ import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.InputStreamSource;
 import com.android.tradefed.result.LogDataType;
 import com.android.tradefed.suite.checker.ISystemStatusChecker;
+import com.android.tradefed.testtype.IAbi;
 import com.android.tradefed.testtype.IRemoteTest;
 import com.android.tradefed.testtype.StubTest;
+import com.android.tradefed.util.AbiUtils;
 
 import org.easymock.EasyMock;
 import org.junit.Before;
@@ -47,8 +50,10 @@ import org.junit.runners.JUnit4;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Set;
 
 /**
  * Unit tests for {@link ITestSuite}
@@ -58,6 +63,7 @@ public class ITestSuiteTest {
 
     private static final String EMPTY_CONFIG = "empty";
     private static final String TEST_CONFIG_NAME = "test";
+    private static final String FAKE_HOST_ARCH = "arm";
 
     private TestSuiteImpl mTestSuite;
     private ITestInvocationListener mMockListener;
@@ -100,6 +106,11 @@ public class ITestSuiteTest {
                 throw new RuntimeException(e);
             }
             return testConfig;
+        }
+
+        @Override
+        protected Set<String> getAbisForBuildTargetArch() {
+            return AbiUtils.getAbisForArch(FAKE_HOST_ARCH);
         }
     }
 
@@ -405,5 +416,132 @@ public class ITestSuiteTest {
             // once sharded modules from the shard start reporting their runtime.
             assertEquals(60000l, ((TestSuiteImpl) test).getRuntimeHint());
         }
+    }
+
+    /**
+     * Test that {@link ITestSuite#getAbis(ITestDevice)} is returning a proper intersection of CTS
+     * supported architectures and Device supported architectures.
+     */
+    @Test
+    public void testGetAbis() throws DeviceNotAvailableException {
+        EasyMock.expect(mMockDevice.getProperty(EasyMock.eq("ro.product.cpu.abilist")))
+                .andReturn("arm64-v8a,armeabi-v7a,armeabi");
+        Set<String> expectedAbis = new HashSet<>();
+        expectedAbis.add("arm64-v8a");
+        expectedAbis.add("armeabi-v7a");
+        EasyMock.replay(mMockDevice);
+        Set<IAbi> res = mTestSuite.getAbis(mMockDevice);
+        assertEquals(2, res.size());
+        for (IAbi abi : res) {
+            assertTrue(expectedAbis.contains(abi.getName()));
+        }
+        EasyMock.verify(mMockDevice);
+    }
+
+    /**
+     * Test that {@link ITestSuite#getAbis(ITestDevice)} is throwing an exception when none of the
+     * CTS build supported abi match the device abi.
+     */
+    @Test
+    public void testGetAbis_notSupported() throws DeviceNotAvailableException {
+        EasyMock.expect(mMockDevice.getProperty(EasyMock.eq("ro.product.cpu.abilist")))
+                .andReturn("armeabi");
+        EasyMock.replay(mMockDevice);
+        try {
+            mTestSuite.getAbis(mMockDevice);
+            fail("Should have thrown an exception");
+        } catch (IllegalArgumentException e) {
+            assertEquals(
+                    "None of the abi supported by this tests suite build "
+                            + "('[armeabi-v7a, arm64-v8a]')"
+                            + " are supported by the device ('[armeabi]').",
+                    e.getMessage());
+        }
+        EasyMock.verify(mMockDevice);
+    }
+
+    /**
+     * Test that {@link ITestSuite#getAbis(ITestDevice)} is returning only the device primary abi.
+     */
+    @Test
+    public void testGetAbis_primaryAbiOnly() throws Exception {
+        OptionSetter setter = new OptionSetter(mTestSuite);
+        setter.setOptionValue(ITestSuite.PRIMARY_ABI_RUN, "true");
+        EasyMock.expect(mMockDevice.getProperty(EasyMock.eq("ro.product.cpu.abi")))
+                .andReturn("arm64-v8a");
+        Set<String> expectedAbis = new HashSet<>();
+        expectedAbis.add("arm64-v8a");
+        EasyMock.replay(mMockDevice);
+        Set<IAbi> res = mTestSuite.getAbis(mMockDevice);
+        assertEquals(1, res.size());
+        for (IAbi abi : res) {
+            assertTrue(expectedAbis.contains(abi.getName()));
+        }
+        EasyMock.verify(mMockDevice);
+    }
+
+    /**
+     * Test that {@link ITestSuite#getAbis(ITestDevice)} is throwing an exception if the primary abi
+     * is not supported.
+     */
+    @Test
+    public void testGetAbis_primaryAbiOnly_NotSupported() throws Exception {
+        OptionSetter setter = new OptionSetter(mTestSuite);
+        setter.setOptionValue(ITestSuite.PRIMARY_ABI_RUN, "true");
+        EasyMock.expect(mMockDevice.getProperty(EasyMock.eq("ro.product.cpu.abi")))
+                .andReturn("armeabi");
+        EasyMock.replay(mMockDevice);
+        try {
+            mTestSuite.getAbis(mMockDevice);
+            fail("Should have thrown an exception");
+        } catch (IllegalArgumentException e) {
+            assertEquals(
+                    "Your tests suite hasn't been built with abi 'armeabi' support, "
+                            + "this suite currently supports '[armeabi-v7a, arm64-v8a]'.",
+                    e.getMessage());
+        }
+        EasyMock.verify(mMockDevice);
+    }
+
+    /**
+     * Test that {@link ITestSuite#getAbis(ITestDevice)} is returning the list of abi supported by
+     * Compatibility and the device, and not the particular CTS build.
+     */
+    @Test
+    public void testGetAbis_skipCtsArchCheck() throws Exception {
+        OptionSetter setter = new OptionSetter(mTestSuite);
+        setter.setOptionValue(ITestSuite.SKIP_HOST_ARCH_CHECK, "true");
+        EasyMock.expect(mMockDevice.getProperty(EasyMock.eq("ro.product.cpu.abilist")))
+                .andReturn("x86_64,x86,armeabi");
+        Set<String> expectedAbis = new HashSet<>();
+        expectedAbis.add("x86_64");
+        expectedAbis.add("x86");
+        EasyMock.replay(mMockDevice);
+        Set<IAbi> res = mTestSuite.getAbis(mMockDevice);
+        assertEquals(2, res.size());
+        for (IAbi abi : res) {
+            assertTrue(expectedAbis.contains(abi.getName()));
+        }
+        EasyMock.verify(mMockDevice);
+    }
+
+    /**
+     * Test {@link ITestSuite#getAbis(ITestDevice)} when we skip the Cts side architecture check and
+     * want to run x86 abi.
+     */
+    @Test
+    public void testGetAbis_skipCtsArchCheck_abiSpecified() throws Exception {
+        OptionSetter setter = new OptionSetter(mTestSuite);
+        setter.setOptionValue(ITestSuite.SKIP_HOST_ARCH_CHECK, "true");
+        setter.setOptionValue(ITestSuite.ABI_OPTION, "x86");
+        Set<String> expectedAbis = new HashSet<>();
+        expectedAbis.add("x86");
+        EasyMock.replay(mMockDevice);
+        Set<IAbi> res = mTestSuite.getAbis(mMockDevice);
+        assertEquals(1, res.size());
+        for (IAbi abi : res) {
+            assertTrue(expectedAbis.contains(abi.getName()));
+        }
+        EasyMock.verify(mMockDevice);
     }
 }
