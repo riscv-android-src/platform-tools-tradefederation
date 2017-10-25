@@ -159,6 +159,10 @@ public class GoogleBenchmarkTest implements IDeviceTest, IRemoteTest {
 
             // Count expected number of tests
             int numTests = countExpectedTests(testDevice, root);
+            if (numTests == 0) {
+                CLog.d("No tests to run.");
+                return;
+            }
 
             Map<String, String> metricMap = new HashMap<String, String>();
             CollectingOutputReceiver outputCollector = createOutputCollector();
@@ -185,6 +189,11 @@ public class GoogleBenchmarkTest implements IDeviceTest, IRemoteTest {
             throws DeviceNotAvailableException {
         String cmd = String.format("%s %s", fullBinaryPath, GBENCHMARK_LIST_TESTS_OPTION);
         String list_output = testDevice.executeShellCommand(cmd);
+        String success = testDevice.executeShellCommand("$?");
+        if (!"0".equals(success.trim())) {
+            CLog.d("Could not get a list of tests for %s", fullBinaryPath);
+            return 0;
+        }
         String[] list = list_output.trim().split("\n");
         CLog.d("List that will be used: %s", Arrays.asList(list));
         return list.length;
