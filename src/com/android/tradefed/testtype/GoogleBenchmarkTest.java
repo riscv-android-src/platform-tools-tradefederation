@@ -187,13 +187,13 @@ public class GoogleBenchmarkTest implements IDeviceTest, IRemoteTest {
 
     private int countExpectedTests(ITestDevice testDevice, String fullBinaryPath)
             throws DeviceNotAvailableException {
-        String cmd = String.format("%s %s", fullBinaryPath, GBENCHMARK_LIST_TESTS_OPTION);
-        String list_output = testDevice.executeShellCommand(cmd);
-        String success = testDevice.executeShellCommand("$?");
-        if (!"0".equals(success.trim())) {
-            CLog.d("Could not get a list of tests for %s", fullBinaryPath);
+        String exec = testDevice.executeShellCommand(String.format("file %s", fullBinaryPath));
+        if (!exec.contains("executable")) {
+            CLog.d("%s does not look like an executable", fullBinaryPath);
             return 0;
         }
+        String cmd = String.format("%s %s", fullBinaryPath, GBENCHMARK_LIST_TESTS_OPTION);
+        String list_output = testDevice.executeShellCommand(cmd);
         String[] list = list_output.trim().split("\n");
         CLog.d("List that will be used: %s", Arrays.asList(list));
         return list.length;
