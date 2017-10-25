@@ -28,17 +28,20 @@ MODULE_NAME = 'CtsJankDeviceTestCases'
 CLASS_NAME = 'CtsDeviceJankUi'
 MODULE_DIR = 'foo/bar/jank'
 CLASS_DIR = 'foo/bar/jank/src/android/jank/cts/ui'
-QUALIFIED_CLASS_NAME = 'android.jank.cts.ui.CtsDeviceJankUi'
+FULL_CLASS_NAME = 'android.jank.cts.ui.CtsDeviceJankUi'
 INTEGRATION_NAME = 'example/reboot'
 INTEGRATION_DIR = 'tf/contrib/res/config'
 REF_TYPE = cli_t.REFERENCE_TYPE
 CONFIG_FILE = os.path.join(MODULE_DIR, cli_t.MODULE_CONFIG)
 MODULE_INFO = cli_t.TestInfo(CONFIG_FILE, MODULE_NAME, None, None)
-CLASS_INFO = cli_t.TestInfo(CONFIG_FILE, MODULE_NAME, None, CLASS_NAME)
+CLASS_INFO = cli_t.TestInfo(CONFIG_FILE, MODULE_NAME, None,
+                            {FULL_CLASS_NAME})
 INT_CONFIG = os.path.join(INTEGRATION_DIR, INTEGRATION_NAME + '.xml')
 INTEGRATION_INFO = cli_t.TestInfo(INT_CONFIG, None, INTEGRATION_NAME, None)
 TARGETS = {'tradefed-all', 'MODULES-IN-%s' % MODULE_DIR.replace('/', '-')}
-RUN_CMD = cli_t.RUN_CMD % MODULE_NAME
+RUN_CMD = cli_t.RUN_CMD % '--log-level WARN --test-info %s'
+MODULE_RUN_CMD = RUN_CMD % MODULE_NAME
+CLASS_RUN_CMD = RUN_CMD % ('%s:%s' % (MODULE_NAME, FULL_CLASS_NAME))
 PRODUCT = 'bullhead'
 OUT = '/android/master/out/target/product/%s' % PRODUCT
 FIND_ONE = ROOT + 'foo/bar/jank/src/android/jank/cts/ui/CtsDeviceJankUi.java\n'
@@ -195,8 +198,10 @@ class CLITranslatorUnittests(unittest.TestCase):
         self.assertIsNone(self.ctr._find_test_by_module_name('Not_Module'))
 
     @mock.patch('subprocess.check_output', return_value=FIND_ONE)
+    @mock.patch.object(cli_t.CLITranslator, '_get_fully_qualified_class_name',
+                       return_value=FULL_CLASS_NAME)
     @mock.patch('os.path.isfile', side_effect=isfile_side_effect)
-    def test_find_test_by_class_name(self, _, mock_checkoutput):
+    def test_find_test_by_class_name(self, _isfile, _class, mock_checkoutput):
         """Test _find_test_by_class_name method."""
         self.assertEquals(self.ctr._find_test_by_class_name(CLASS_NAME),
                           CLASS_INFO)
@@ -215,6 +220,8 @@ class CLITranslatorUnittests(unittest.TestCase):
         mock_find.return_value = ''
         self.assertIsNone(self.ctr._find_test_by_integration_name('NotIntName'))
 
+    @mock.patch.object(cli_t.CLITranslator, '_get_fully_qualified_class_name',
+                       return_value=FULL_CLASS_NAME)
     @mock.patch('os.path.realpath', side_effect=realpath_side_effect)
     @mock.patch('os.path.isfile', side_effect=isfile_side_effect)
     @mock.patch.object(cli_t.CLITranslator, '_get_module_name',
@@ -222,7 +229,7 @@ class CLITranslatorUnittests(unittest.TestCase):
     @mock.patch.object(cli_t.CLITranslator, '_find_parent_module_dir')
     @mock.patch('os.path.exists')
     def test_find_test_by_path(self, mock_pathexists, mock_dir, _name,
-                               _isfile, _real):
+                               _isfile, _real, _class):
         """Test _find_test_by_path method."""
         mock_pathexists.return_value = False
         self.assertEquals(None, self.ctr._find_test_by_path('some/bad/path'))
@@ -241,12 +248,13 @@ class CLITranslatorUnittests(unittest.TestCase):
                        return_value=set())
     def test_generate_build_targets(self, _):
         """Test _generate_build_targets method."""
-        self.assertEquals(self.ctr._generate_build_targets(MODULE_INFO),
+        self.assertEquals(self.ctr._generate_build_targets([MODULE_INFO]),
                           TARGETS)
 
-    def test_generate_run_command(self):
+    def test_generate_run_commands(self):
         """Test _generate_run_command method."""
-        self.assertEquals(self.ctr._generate_run_command(MODULE_INFO), RUN_CMD)
+        self.assertEquals(self.ctr._generate_run_commands([MODULE_INFO]),
+                          [MODULE_RUN_CMD])
 
     @mock.patch.object(cli_t.CLITranslator, '_find_test_by_module_name')
     @mock.patch.object(cli_t.CLITranslator, '_find_test_by_class_name')
@@ -270,10 +278,10 @@ class CLITranslatorUnittests(unittest.TestCase):
         """Test translate method."""
         targets, run_cmds = self.ctr.translate([MODULE_NAME, CLASS_NAME])
         self.assertEquals(targets, set(TARGETS))
-        self.assertEquals(run_cmds, [RUN_CMD, RUN_CMD])
+        self.assertEquals(run_cmds, [MODULE_RUN_CMD])
         targets, run_cmds = self.ctr.translate([CLASS_NAME])
         self.assertEquals(targets, set(TARGETS))
-        self.assertEquals(run_cmds, [RUN_CMD])
+        self.assertEquals(run_cmds, [CLASS_RUN_CMD])
         self.assertRaises(cli_t.NoTestFoundError, self.ctr.translate,
                           ['NonExistentClassOrModule'])
 
