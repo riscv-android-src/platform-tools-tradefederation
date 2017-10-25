@@ -111,6 +111,14 @@ public class AndroidJUnitTest extends InstrumentationTest implements IRuntimeHin
     )
     private Integer mMaxShard = null;
 
+    @Option(
+        name = "device-listeners",
+        description =
+                "Specify a device side instrumentation listener to be added for the run. "
+                        + "Can be repeated."
+    )
+    private List<String> mExtraDeviceListener = new ArrayList<>();
+
     private String mDeviceIncludeFile = null;
     private String mDeviceExcludeFile = null;
     private int mTotalShards = 0;
@@ -310,6 +318,8 @@ public class AndroidJUnitTest extends InstrumentationTest implements IRuntimeHin
             runner.addInstrumentationArg(SHARD_INDEX_INST_ARGS_KEY, Integer.toString(mShardIndex));
             runner.addInstrumentationArg(NUM_SHARD_INST_ARGS_KEY, Integer.toString(mTotalShards));
         }
+        // Add the listeners received from Options
+        addDeviceListener(mExtraDeviceListener);
     }
 
     /**

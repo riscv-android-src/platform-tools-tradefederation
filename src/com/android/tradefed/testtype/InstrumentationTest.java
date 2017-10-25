@@ -38,6 +38,7 @@ import com.android.tradefed.result.InputStreamSource;
 import com.android.tradefed.result.LogDataType;
 import com.android.tradefed.result.ResultForwarder;
 import com.android.tradefed.util.AbiFormatter;
+import com.android.tradefed.util.ArrayUtil;
 import com.android.tradefed.util.ListInstrumentationParser;
 import com.android.tradefed.util.ListInstrumentationParser.InstrumentationTarget;
 import com.android.tradefed.util.StreamUtil;
@@ -51,6 +52,7 @@ import java.io.File;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
@@ -248,6 +250,8 @@ public class InstrumentationTest implements IDeviceTest, IResumableTest, ITestCo
     private String mTestFilePathOnDevice = null;
 
     private ListInstrumentationParser mListInstrumentationParser = null;
+
+    private List<String> mExtraDeviceListener = new ArrayList<>();
 
     /**
      * {@inheritDoc}
@@ -581,6 +585,11 @@ public class InstrumentationTest implements IDeviceTest, IResumableTest, ITestCo
         mRebootBeforeReRun = rebootBeforeReRun;
     }
 
+    /** Allows to add more custom listeners to the runner */
+    public void addDeviceListener(List<String> extraListeners) {
+        mExtraDeviceListener.addAll(extraListeners);
+    }
+
     /**
      * @return the {@link IRemoteAndroidTestRunner} to use.
      * @throws DeviceNotAvailableException
@@ -777,6 +786,10 @@ public class InstrumentationTest implements IDeviceTest, IResumableTest, ITestCo
         listener = addLogcatListenerIfEnabled(listener);
         listener = addScreenshotListenerIfEnabled(listener);
         listener = addCoverageListenerIfEnabled(listener);
+        // Add the extra listeners only to the actual run and not the --collect-test-only one
+        if (!mExtraDeviceListener.isEmpty()) {
+            mRunner.addInstrumentationArg("listener", ArrayUtil.join(",", mExtraDeviceListener));
+        }
 
         if (mRemainingTests == null) {
             // Failed to collect the tests or collection is off. Just try to run them all.
