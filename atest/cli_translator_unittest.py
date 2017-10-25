@@ -49,7 +49,8 @@ FIND_TWO = ROOT + 'other/dir/test.java\n' + FIND_ONE
 XML_TARGETS = {'CtsUiDeviceTestCases', 'CtsJankDeviceTestCases'}
 TEST_DATA_DIR = 'unittest_data'
 JSON_FILE = 'module-info.json'
-INFO_JSON = json.load(open(os.path.join(TEST_DATA_DIR, JSON_FILE)))
+JSON_FILE_PATH = os.path.join(os.path.dirname(__file__), TEST_DATA_DIR)
+INFO_JSON = json.load(open(os.path.join(JSON_FILE_PATH, JSON_FILE)))
 
 def isfile_side_effect(value):
     """Mock return values for os.path.isfile"""
@@ -93,7 +94,7 @@ class CLITranslatorUnittests(unittest.TestCase):
         for _, patch in self.patches.iteritems():
             patch.stop()
 
-    @mock.patch('os.environ.get', return_value=TEST_DATA_DIR)
+    @mock.patch('os.environ.get', return_value=JSON_FILE_PATH)
     @mock.patch('os.path.isfile', return_value=True)
     @mock.patch('subprocess.check_output')
     def test_load_module_info(self, _checkout, mock_isfile, _envget):
