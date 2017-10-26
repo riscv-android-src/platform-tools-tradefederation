@@ -142,7 +142,7 @@ public class TradefedSandbox implements ISandbox {
         try {
             mRootFolder =
                     getTradefedSandboxEnvironment(
-                            QuotationAwareTokenizer.tokenizeLine(config.getCommandLine()));
+                            config, QuotationAwareTokenizer.tokenizeLine(config.getCommandLine()));
         } catch (ConfigurationException e) {
             return e;
         }
@@ -177,7 +177,8 @@ public class TradefedSandbox implements ISandbox {
     }
 
     @Override
-    public File getTradefedSandboxEnvironment(String[] args) throws ConfigurationException {
+    public File getTradefedSandboxEnvironment(IConfiguration nonVersionedConfig, String[] args)
+            throws ConfigurationException {
         String tfDir = System.getProperty("TF_JAR_DIR");
         if (tfDir == null || tfDir.isEmpty()) {
             throw new ConfigurationException(
@@ -206,6 +207,7 @@ public class TradefedSandbox implements ISandbox {
                     SandboxConfigUtil.dumpConfigForVersion(
                             mRootFolder, mRunUtil, args, DumpCmd.RUN_CONFIG, mGlobalConfig);
         } catch (ConfigurationException | IOException e) {
+            StreamUtil.close(mEventParser);
             return e;
         }
         return null;
