@@ -11,4 +11,10 @@
     <option name="package" value="android.jank.cts" />
     <option name="runtime-hint" value="11m20s" />
   </test>
+  <option name="test-module-name" value="VtsTarget" />
+  <!--
+       This option should get parsed but skipped since it doesn't live in
+       module-info.json
+  -->
+  <option name="test-module-name" value="BuildTargetThatShouldBeSkipped" />
 </configuration>
