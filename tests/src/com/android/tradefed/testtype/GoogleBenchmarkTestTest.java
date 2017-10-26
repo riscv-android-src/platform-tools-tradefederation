@@ -104,9 +104,17 @@ public class GoogleBenchmarkTestTest extends TestCase {
                 EasyMock.anyLong(), (TimeUnit)EasyMock.anyObject(), EasyMock.anyInt());
         EasyMock.expect(
                         mMockITestDevice.executeShellCommand(
+                                String.format("file %s/test1", nativeTestPath)))
+                .andReturn("ELF executable\n");
+        EasyMock.expect(
+                        mMockITestDevice.executeShellCommand(
                                 String.format(
                                         "%s/test1 --benchmark_list_tests=true", nativeTestPath)))
                 .andReturn("method1\nmethod2\nmethod3");
+        EasyMock.expect(
+                        mMockITestDevice.executeShellCommand(
+                                String.format("file %s/test2", nativeTestPath)))
+                .andReturn("ELF executable\n");
         EasyMock.expect(
                         mMockITestDevice.executeShellCommand(
                                 String.format(
@@ -177,9 +185,17 @@ public class GoogleBenchmarkTestTest extends TestCase {
                 EasyMock.anyLong(), (TimeUnit)EasyMock.anyObject(), EasyMock.anyInt());
         EasyMock.expect(
                         mMockITestDevice.executeShellCommand(
+                                String.format("file %s/test1", nativeTestPath)))
+                .andReturn("ELF executable\n");
+        EasyMock.expect(
+                        mMockITestDevice.executeShellCommand(
                                 String.format(
                                         "%s/test1 --benchmark_list_tests=true", nativeTestPath)))
                 .andReturn("\nmethod1\nmethod2\nmethod3\n\n");
+        EasyMock.expect(
+                        mMockITestDevice.executeShellCommand(
+                                String.format("file %s/test2", nativeTestPath)))
+                .andReturn("ELF executable\n");
         EasyMock.expect(
                         mMockITestDevice.executeShellCommand(
                                 String.format(
@@ -215,6 +231,10 @@ public class GoogleBenchmarkTestTest extends TestCase {
                 EasyMock.anyLong(), (TimeUnit)EasyMock.anyObject(), EasyMock.anyInt());
         EasyMock.expect(
                         mMockITestDevice.executeShellCommand(
+                                String.format("file %s/test1", nativeTestPath)))
+                .andReturn("ELF executable\n");
+        EasyMock.expect(
+                        mMockITestDevice.executeShellCommand(
                                 String.format(
                                         "%s/test1 --benchmark_list_tests=true", nativeTestPath)))
                 .andReturn("method1\nmethod2\nmethod3");
@@ -245,6 +265,10 @@ public class GoogleBenchmarkTestTest extends TestCase {
         mMockITestDevice.executeShellCommand(EasyMock.contains(test1), EasyMock.same(mMockReceiver),
                 EasyMock.anyLong(), (TimeUnit)EasyMock.anyObject(), EasyMock.anyInt());
         EasyMock.expectLastCall().andThrow(new DeviceNotAvailableException("dnae", "serial"));
+        EasyMock.expect(
+                        mMockITestDevice.executeShellCommand(
+                                String.format("file %s/test1", nativeTestPath)))
+                .andReturn("ELF executable\n");
         EasyMock.expect(
                         mMockITestDevice.executeShellCommand(
                                 String.format(
