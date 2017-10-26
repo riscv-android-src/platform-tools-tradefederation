@@ -104,16 +104,22 @@ public class GoogleBenchmarkTestTest extends TestCase {
                 EasyMock.anyLong(), (TimeUnit)EasyMock.anyObject(), EasyMock.anyInt());
         EasyMock.expect(
                         mMockITestDevice.executeShellCommand(
+                                String.format("file %s/test1", nativeTestPath)))
+                .andReturn("ELF executable\n");
+        EasyMock.expect(
+                        mMockITestDevice.executeShellCommand(
                                 String.format(
                                         "%s/test1 --benchmark_list_tests=true", nativeTestPath)))
                 .andReturn("method1\nmethod2\nmethod3");
-        EasyMock.expect(mMockITestDevice.executeShellCommand("$?")).andReturn("0");
+        EasyMock.expect(
+                        mMockITestDevice.executeShellCommand(
+                                String.format("file %s/test2", nativeTestPath)))
+                .andReturn("ELF executable\n");
         EasyMock.expect(
                         mMockITestDevice.executeShellCommand(
                                 String.format(
                                         "%s/test2 --benchmark_list_tests=true", nativeTestPath)))
                 .andReturn("method1\nmethod2\n");
-        EasyMock.expect(mMockITestDevice.executeShellCommand("$?")).andReturn("0");
         mMockInvocationListener.testRunStarted(test1, 3);
         mMockInvocationListener.testRunStarted(test2, 2);
         mMockInvocationListener.testRunEnded(EasyMock.anyLong(), EasyMock.anyObject());
@@ -179,16 +185,22 @@ public class GoogleBenchmarkTestTest extends TestCase {
                 EasyMock.anyLong(), (TimeUnit)EasyMock.anyObject(), EasyMock.anyInt());
         EasyMock.expect(
                         mMockITestDevice.executeShellCommand(
+                                String.format("file %s/test1", nativeTestPath)))
+                .andReturn("ELF executable\n");
+        EasyMock.expect(
+                        mMockITestDevice.executeShellCommand(
                                 String.format(
                                         "%s/test1 --benchmark_list_tests=true", nativeTestPath)))
                 .andReturn("\nmethod1\nmethod2\nmethod3\n\n");
-        EasyMock.expect(mMockITestDevice.executeShellCommand("$?")).andReturn("0");
+        EasyMock.expect(
+                        mMockITestDevice.executeShellCommand(
+                                String.format("file %s/test2", nativeTestPath)))
+                .andReturn("ELF executable\n");
         EasyMock.expect(
                         mMockITestDevice.executeShellCommand(
                                 String.format(
                                         "%s/test2 --benchmark_list_tests=true", nativeTestPath)))
                 .andReturn("method1\nmethod2\n");
-        EasyMock.expect(mMockITestDevice.executeShellCommand("$?")).andReturn("0");
         mMockInvocationListener.testRunStarted(test1, 3);
         mMockInvocationListener.testRunStarted(test2, 2);
         mMockInvocationListener.testRunEnded(EasyMock.anyLong(), EasyMock.anyObject());
@@ -219,10 +231,13 @@ public class GoogleBenchmarkTestTest extends TestCase {
                 EasyMock.anyLong(), (TimeUnit)EasyMock.anyObject(), EasyMock.anyInt());
         EasyMock.expect(
                         mMockITestDevice.executeShellCommand(
+                                String.format("file %s/test1", nativeTestPath)))
+                .andReturn("ELF executable\n");
+        EasyMock.expect(
+                        mMockITestDevice.executeShellCommand(
                                 String.format(
                                         "%s/test1 --benchmark_list_tests=true", nativeTestPath)))
                 .andReturn("method1\nmethod2\nmethod3");
-        EasyMock.expect(mMockITestDevice.executeShellCommand("$?")).andReturn("0");
         // Expect reportName instead of test name
         mMockInvocationListener.testRunStarted(reportName, 3);
         mMockInvocationListener.testRunEnded(EasyMock.anyLong(), EasyMock.anyObject());
@@ -252,10 +267,13 @@ public class GoogleBenchmarkTestTest extends TestCase {
         EasyMock.expectLastCall().andThrow(new DeviceNotAvailableException("dnae", "serial"));
         EasyMock.expect(
                         mMockITestDevice.executeShellCommand(
+                                String.format("file %s/test1", nativeTestPath)))
+                .andReturn("ELF executable\n");
+        EasyMock.expect(
+                        mMockITestDevice.executeShellCommand(
                                 String.format(
                                         "%s/test1 --benchmark_list_tests=true", nativeTestPath)))
                 .andReturn("method1\nmethod2\nmethod3");
-        EasyMock.expect(mMockITestDevice.executeShellCommand("$?")).andReturn("0");
         mMockInvocationListener.testRunStarted(test1, 3);
         mMockInvocationListener.testRunFailed(EasyMock.anyObject());
         // Even with exception testrunEnded is expected.
