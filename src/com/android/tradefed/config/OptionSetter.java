@@ -16,13 +16,13 @@
 
 package com.android.tradefed.config;
 
-import com.google.common.base.Objects;
-
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.util.ArrayUtil;
 import com.android.tradefed.util.MultiMap;
 import com.android.tradefed.util.TimeVal;
 import com.android.tradefed.util.keystore.IKeyStoreClient;
+
+import com.google.common.base.Objects;
 
 import java.io.File;
 import java.lang.reflect.Field;
@@ -445,13 +445,22 @@ public class OptionSetter {
                     throw new ConfigurationException(String.format(
                             "Unable to add value to field '%s'. Field is null.", field.getName()));
                 }
+                ParameterizedType pType = (ParameterizedType) field.getGenericType();
+                Type fieldType = pType.getActualTypeArguments()[0];
                 if (value instanceof Collection) {
                     collection.addAll((Collection)value);
+                } else if (!((Class<?>) fieldType).isInstance(value)) {
+                    // Ensure that the value being copied is of the right type for the collection.
+                    throw new ConfigurationException(
+                            String.format(
+                                    "Value '%s' is not of type '%s' like the Collection.",
+                                    value, fieldType));
                 } else {
                     collection.add(value);
                 }
             } else if (Map.class.isAssignableFrom(field.getType())) {
-                Map map = (Map)field.get(optionSource);
+                // TODO: check if type of the value can be added safely to the Map.
+                Map map = (Map) field.get(optionSource);
                 if (map == null) {
                     throw new ConfigurationException(String.format(
                             "Unable to add value to field '%s'. Field is null.", field.getName()));
