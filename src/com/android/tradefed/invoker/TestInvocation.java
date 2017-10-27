@@ -489,6 +489,11 @@ public class TestInvocation implements ITestInvocation {
                 }
                 for (ITargetPreparer preparer :
                         config.getDeviceConfigByName(deviceName).getTargetPreparers()) {
+                    // do not call the preparer if it was disabled
+                    if (preparer.isDisabled()) {
+                        CLog.d("%s has been disabled. skipping.", preparer);
+                        continue;
+                    }
                     if (preparer instanceof ITestLoggerReceiver) {
                         ((ITestLoggerReceiver) preparer).setTestLogger(listener);
                     }
@@ -504,6 +509,11 @@ public class TestInvocation implements ITestInvocation {
             }
             // After all the individual setup, make the multi-devices setup
             for (IMultiTargetPreparer multipreparer : config.getMultiTargetPreparers()) {
+                // do not call the preparer if it was disabled
+                if (multipreparer.isDisabled()) {
+                    CLog.d("%s has been disabled. skipping.", multipreparer);
+                    continue;
+                }
                 if (multipreparer instanceof ITestLoggerReceiver) {
                     ((ITestLoggerReceiver) multipreparer).setTestLogger(listener);
                 }
@@ -553,6 +563,11 @@ public class TestInvocation implements ITestInvocation {
                 ITargetPreparer preparer = itr.previous();
                 if(preparer instanceof ITargetCleaner) {
                     ITargetCleaner cleaner = (ITargetCleaner) preparer;
+                    // do not call the cleaner if it was disabled
+                    if (cleaner.isDisabled()) {
+                        CLog.d("%s has been disabled. skipping.", cleaner);
+                        continue;
+                    }
                     if (cleaner != null) {
                         try {
                             CLog.d("starting tearDown '%s' on device: '%s'", preparer,

@@ -34,14 +34,9 @@ import com.android.tradefed.util.RunUtil;
 import java.util.HashMap;
 import java.util.Map;
 
-/**
- * A {@link ITargetPreparer} that runs instrumentation
- */
+/** A {@link ITargetPreparer} that runs instrumentation */
 @OptionClass(alias = "instrumentation-preparer")
-public class InstrumentationPreparer implements ITargetPreparer {
-
-    @Option(name = "disable", description = "disables the instrumentation runner")
-    private boolean mDisable = false;
+public class InstrumentationPreparer extends BaseTargetPreparer {
 
     @Option(name = "package", shortName = 'p',
             description="The manifest package name of the Android test application to run.",
@@ -100,7 +95,7 @@ public class InstrumentationPreparer implements ITargetPreparer {
     @Override
     public void setUp(ITestDevice device, IBuildInfo buildInfo) throws TargetSetupError, BuildError,
             DeviceNotAvailableException {
-        if (mDisable) {
+        if (isDisabled()) {
             return;
         }
 

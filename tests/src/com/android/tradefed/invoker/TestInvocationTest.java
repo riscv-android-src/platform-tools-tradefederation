@@ -46,8 +46,8 @@ import com.android.tradefed.device.ITestDevice.RecoveryMode;
 import com.android.tradefed.device.StubDevice;
 import com.android.tradefed.device.TestDeviceOptions;
 import com.android.tradefed.device.metric.BaseDeviceMetricCollector;
-import com.android.tradefed.device.metric.IMetricCollector;
 import com.android.tradefed.device.metric.DeviceMetricData;
+import com.android.tradefed.device.metric.IMetricCollector;
 import com.android.tradefed.invoker.shard.IShardHelper;
 import com.android.tradefed.invoker.shard.ShardHelper;
 import com.android.tradefed.invoker.shard.StrictShardHelper;
@@ -164,6 +164,8 @@ public class TestInvocationTest extends TestCase {
         mStubConfiguration.setDeviceRecovery(mMockRecovery);
         mStubConfiguration.setTargetPreparer(mMockPreparer);
         mStubConfiguration.setBuildProvider(mMockBuildProvider);
+
+        EasyMock.expect(mMockPreparer.isDisabled()).andStubReturn(false);
 
         List<IDeviceConfiguration> deviceConfigs = new ArrayList<IDeviceConfiguration>();
         IDeviceConfiguration device1 =
@@ -673,6 +675,7 @@ public class TestInvocationTest extends TestCase {
     public void testInvoke_tearDown() throws Throwable {
          IRemoteTest test = EasyMock.createNiceMock(IRemoteTest.class);
          ITargetCleaner mockCleaner = EasyMock.createMock(ITargetCleaner.class);
+        EasyMock.expect(mockCleaner.isDisabled()).andReturn(false).times(2);
          mockCleaner.setUp(mMockDevice, mMockBuildInfo);
          mockCleaner.tearDown(mMockDevice, mMockBuildInfo, null);
          mStubConfiguration.getTargetPreparers().add(mockCleaner);
@@ -696,6 +699,7 @@ public class TestInvocationTest extends TestCase {
         test.run((ITestInvocationListener)EasyMock.anyObject());
         EasyMock.expectLastCall().andThrow(exception);
         ITargetCleaner mockCleaner = EasyMock.createMock(ITargetCleaner.class);
+        EasyMock.expect(mockCleaner.isDisabled()).andReturn(false).times(2);
         mockCleaner.setUp(mMockDevice, mMockBuildInfo);
         EasyMock.expectLastCall();
         mockCleaner.tearDown(mMockDevice, mMockBuildInfo, exception);
@@ -729,6 +733,7 @@ public class TestInvocationTest extends TestCase {
         test.run((ITestInvocationListener)EasyMock.anyObject());
         EasyMock.expectLastCall().andThrow(exception);
         ITargetCleaner mockCleaner = EasyMock.createMock(ITargetCleaner.class);
+        EasyMock.expect(mockCleaner.isDisabled()).andReturn(false).times(2);
         mockCleaner.setUp(mMockDevice, mMockBuildInfo);
         // tearDown should be called
         mockCleaner.tearDown(mMockDevice, mMockBuildInfo, exception);
@@ -1521,15 +1526,17 @@ public class TestInvocationTest extends TestCase {
         setter.setOptionValue("skip-pre-device-setup", "false");
         mStubConfiguration.setCommandOptions(commandOption);
 
+        EasyMock.expect(mMockPreparer.isDisabled()).andReturn(true);
+
         ITestInvocationListener listener = EasyMock.createStrictMock(ITestInvocationListener.class);
         listener.testLog(
                 EasyMock.eq(LOGCAT_NAME_SETUP),
                 EasyMock.eq(LogDataType.LOGCAT),
                 (InputStreamSource) EasyMock.anyObject());
 
-        EasyMock.replay(device1, listener);
+        EasyMock.replay(device1, listener, mMockPreparer);
         mTestInvocation.doSetup(context, mStubConfiguration, listener);
-        EasyMock.verify(device1, listener);
+        EasyMock.verify(device1, listener, mMockPreparer);
     }
 
     /**
@@ -1552,15 +1559,17 @@ public class TestInvocationTest extends TestCase {
         setter.setOptionValue("skip-pre-device-setup", "true");
         mStubConfiguration.setCommandOptions(commandOption);
 
+        EasyMock.expect(mMockPreparer.isDisabled()).andReturn(true);
+
         ITestInvocationListener listener = EasyMock.createStrictMock(ITestInvocationListener.class);
         listener.testLog(
                 EasyMock.eq(LOGCAT_NAME_SETUP),
                 EasyMock.eq(LogDataType.LOGCAT),
                 (InputStreamSource) EasyMock.anyObject());
 
-        EasyMock.replay(device1, listener);
+        EasyMock.replay(device1, listener, mMockPreparer);
         mTestInvocation.doSetup(context, mStubConfiguration, listener);
-        EasyMock.verify(device1, listener);
+        EasyMock.verify(device1, listener, mMockPreparer);
     }
 
     /**
@@ -1571,6 +1580,7 @@ public class TestInvocationTest extends TestCase {
         mMockBuildInfo = EasyMock.createMock(IDeviceBuildInfo.class);
         IRemoteTest test = EasyMock.createNiceMock(IRemoteTest.class);
         ITargetCleaner mockCleaner = EasyMock.createMock(ITargetCleaner.class);
+        EasyMock.expect(mockCleaner.isDisabled()).andReturn(false).times(2);
         mockCleaner.setUp(mMockDevice, mMockBuildInfo);
         mockCleaner.tearDown(mMockDevice, mMockBuildInfo, null);
         mStubConfiguration.getTargetPreparers().add(mockCleaner);
@@ -1626,6 +1636,7 @@ public class TestInvocationTest extends TestCase {
             mMockBuildInfo = EasyMock.createMock(IDeviceBuildInfo.class);
             IRemoteTest test = EasyMock.createNiceMock(IRemoteTest.class);
             ITargetCleaner mockCleaner = EasyMock.createMock(ITargetCleaner.class);
+            EasyMock.expect(mockCleaner.isDisabled()).andReturn(false).times(2);
             mockCleaner.setUp(mMockDevice, mMockBuildInfo);
             mockCleaner.tearDown(mMockDevice, mMockBuildInfo, null);
             mStubConfiguration.getTargetPreparers().add(mockCleaner);

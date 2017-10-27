@@ -33,7 +33,7 @@ import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
 @OptionClass(alias = "run-command")
-public class RunCommandTargetPreparer implements ITargetCleaner {
+public class RunCommandTargetPreparer extends BaseTargetPreparer implements ITargetCleaner {
 
     @Option(name = "run-command", description = "adb shell command to run")
     private List<String> mCommands = new ArrayList<String>();
@@ -48,9 +48,6 @@ public class RunCommandTargetPreparer implements ITargetCleaner {
 
     @Option(name = "teardown-command", description = "adb shell command to run at teardown time")
     private List<String> mTeardownCommands = new ArrayList<String>();
-
-    @Option(name = "disable", description = "Disable this preparer")
-    private boolean mDisable = false;
 
     @Option(name = "delay-after-commands",
             description = "Time to delay after running commands, in msecs")
@@ -70,8 +67,7 @@ public class RunCommandTargetPreparer implements ITargetCleaner {
     @Override
     public void setUp(ITestDevice device, IBuildInfo buildInfo) throws TargetSetupError,
             DeviceNotAvailableException {
-        if (mDisable)
-            return;
+        if (isDisabled()) return;
 
         for (String bgCmd : mBgCommands) {
             CollectingOutputReceiver receiver = new CollectingOutputReceiver();
@@ -103,8 +99,7 @@ public class RunCommandTargetPreparer implements ITargetCleaner {
     @Override
     public void tearDown(ITestDevice device, IBuildInfo buildInfo, Throwable e)
             throws DeviceNotAvailableException {
-        if (mDisable)
-            return;
+        if (isDisabled()) return;
 
         for (Map.Entry<BackgroundDeviceAction, CollectingOutputReceiver> bgAction :
                 mBgDeviceActionsMap.entrySet()) {
