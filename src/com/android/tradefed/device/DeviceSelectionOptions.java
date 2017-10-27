@@ -370,18 +370,19 @@ public class DeviceSelectionOptions implements IDeviceSelection {
             return false;
         }
         if ((mMinSdk != null) || (mMaxSdk != null)) {
-          int deviceSdkLevel = getDeviceSdkLevel(device);
-          if (deviceSdkLevel < 0) {
-              return false;
-          }
-          if (mMinSdk != null && deviceSdkLevel < mMinSdk) {
-              return false;
-          }
-          if (mMaxSdk != null && mMaxSdk < deviceSdkLevel) {
-              return false;
-          }
+            int deviceSdkLevel = getDeviceSdkLevel(device);
+            if (deviceSdkLevel < 0) {
+                return false;
+            }
+            if (mMinSdk != null && deviceSdkLevel < mMinSdk) {
+                return false;
+            }
+            if (mMaxSdk != null && mMaxSdk < deviceSdkLevel) {
+                return false;
+            }
         }
-        if ((mMinBattery != null) || (mMaxBattery != null)) {
+        if (((mMinBattery != null) || (mMaxBattery != null)) && !(device instanceof StubDevice)) {
+            // Only check battery on physical device.
             Integer deviceBattery = getBatteryLevel(device);
             if (mRequireBatteryCheck && (deviceBattery == null)) {
                 // Couldn't determine battery level when that check is required; reject device
