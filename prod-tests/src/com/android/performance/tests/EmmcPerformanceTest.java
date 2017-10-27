@@ -349,6 +349,9 @@ public class EmmcPerformanceTest implements IDeviceTest, IRemoteTest {
      * Setup the device for tests by unmounting partitions and maxing the cpu speed.
      */
     private void setUp() throws DeviceNotAvailableException {
+        if (mAutoDiscoverCacheInfo) {
+            discoverCacheInfo();
+        }
         mTestDevice.executeShellCommand("umount /sdcard");
         mTestDevice.executeShellCommand("umount /data");
         mTestDevice.executeShellCommand("umount /cache");
@@ -365,51 +368,52 @@ public class EmmcPerformanceTest implements IDeviceTest, IRemoteTest {
             }
             mSpUtil.setArgumentList(mSimpleperfArgu);
         }
+    }
 
-        if (mAutoDiscoverCacheInfo) {
-            // Attempt to detect cache path automatically
-            // Expected output look similar to the following:
-            //
-            // > ... vdc dump | grep cache
-            // 0 4123 /dev/block/platform/soc/7824900.sdhci/by-name/cache /cache ext4 rw, \
-            // seclabel,nosuid,nodev,noatime,discard,data=ordered 0 0
-            if (mTestDevice.enableAdbRoot()) {
-                String output = mTestDevice.executeShellCommand("vdc dump | grep cache");
-                CLog.d("Output from shell command 'vdc dump | grep cache': %s", output);
-                String[] segments = output.split("\\s+");
-                if (segments.length >= 3) {
-                    mCache = segments[2];
-                } else {
-                    CLog.w("Fail to detect cache path. Fall back to use '%s'", mCache);
-                }
+    /**
+     * Attempt to detect cache path and cache partition size automatically
+     */
+    private void discoverCacheInfo() throws DeviceNotAvailableException {
+        // Expected output look similar to the following:
+        //
+        // > ... vdc dump | grep cache
+        // 0 4123 /dev/block/platform/soc/7824900.sdhci/by-name/cache /cache ext4 rw, \
+        // seclabel,nosuid,nodev,noatime,discard,data=ordered 0 0
+        if (mTestDevice.enableAdbRoot()) {
+            String output = mTestDevice.executeShellCommand("vdc dump | grep cache");
+            CLog.d("Output from shell command 'vdc dump | grep cache':\n%s", output);
+            String[] segments = output.split("\\s+");
+            if (segments.length >= 3) {
+                mCache = segments[2];
             } else {
-                CLog.d("Cannot get cache path because device %s is not rooted.",
-                        mTestDevice.getSerialNumber());
+                CLog.w("Fail to detect cache path. Fall back to use '%s'", mCache);
             }
+        } else {
+            CLog.d("Cannot get cache path because device %s is not rooted.",
+                    mTestDevice.getSerialNumber());
+        }
 
-            // Attempt to detect cache partition size automatically
-            // Expected output looks similar to the following:
-            //
-            // > ... df cache
-            // Filesystem            1K-blocks Used Available Use% Mounted on
-            // /dev/block/mmcblk0p34     60400   56     60344   1% /cache
-            String output = mTestDevice.executeShellCommand("df cache");
-            CLog.d(String.format("Output from shell command 'df cache':\n%s", output));
-            String[] lines = output.split("\r?\n");
-            if (lines.length >= 2) {
-                String[] segments = lines[1].split("\\s+");
-                if (segments.length >= 2) {
-                    if (lines[0].toLowerCase().contains("1k-blocks")) {
-                        mCachePartitionSize = Integer.parseInt(segments[1]) / 1024;
-                    } else {
-                        throw new IllegalArgumentException("Unknown unit for the cache size.");
-                    }
+        // Expected output looks similar to the following:
+        //
+        // > ... df cache
+        // Filesystem            1K-blocks Used Available Use% Mounted on
+        // /dev/block/mmcblk0p34     60400   56     60344   1% /cache
+        String output = mTestDevice.executeShellCommand("df cache");
+        CLog.d(String.format("Output from shell command 'df cache':\n%s", output));
+        String[] lines = output.split("\r?\n");
+        if (lines.length >= 2) {
+            String[] segments = lines[1].split("\\s+");
+            if (segments.length >= 2) {
+                if (lines[0].toLowerCase().contains("1k-blocks")) {
+                    mCachePartitionSize = Integer.parseInt(segments[1]) / 1024;
+                } else {
+                    throw new IllegalArgumentException("Unknown unit for the cache size.");
                 }
             }
-
-            CLog.d("cache-device is set to %s ...", mCache);
-            CLog.d("cache-partition-size is set to %d ...", mCachePartitionSize);
         }
+
+        CLog.d("cache-device is set to %s ...", mCache);
+        CLog.d("cache-partition-size is set to %d ...", mCachePartitionSize);
     }
 
     /**
