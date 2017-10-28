@@ -33,7 +33,6 @@ import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.result.CollectingTestListener;
 import com.android.tradefed.targetprep.TargetSetupError;
 import com.android.tradefed.targetprep.suite.SuiteApkInstaller;
-import com.android.tradefed.testtype.DeviceJUnit4ClassRunner;
 import com.android.tradefed.testtype.IAbi;
 import com.android.tradefed.testtype.IAbiReceiver;
 import com.android.tradefed.testtype.IBuildReceiver;
@@ -42,7 +41,6 @@ import com.android.tradefed.testtype.IInvocationContextReceiver;
 
 import org.junit.After;
 import org.junit.Assume;
-import org.junit.runner.RunWith;
 
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -55,7 +53,6 @@ import java.util.concurrent.TimeUnit;
  * Should be the single source of truth to run instrumentation tests from host side in order to
  * avoid duplicated utility and base class.
  */
-@RunWith(DeviceJUnit4ClassRunner.class)
 public abstract class BaseHostJUnit4Test
         implements IAbiReceiver, IBuildReceiver, IDeviceTest, IInvocationContextReceiver {
 
