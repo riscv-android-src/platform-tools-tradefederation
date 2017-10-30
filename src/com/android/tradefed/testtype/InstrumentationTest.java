@@ -116,7 +116,7 @@ public class InstrumentationTest implements IDeviceTest, IResumableTest, ITestCo
                         + "timeout the TF run terminates. For no timeout, set to 0.",
         isTimeVal = true
     )
-    private long mShellTimeout = 10 * 60 * 1000; // default to 10 minutes
+    private long mShellTimeout = 10 * 60 * 1000L; // default to 10 minutes
 
     @Option(
         name = "test-timeout",
@@ -126,7 +126,7 @@ public class InstrumentationTest implements IDeviceTest, IResumableTest, ITestCo
                         + "next test. For no timeout, set to 0.",
         isTimeVal = true
     )
-    private long mTestTimeout = 5 * 60 * 1000; // default to 5 minutes
+    private long mTestTimeout = 5 * 60 * 1000L; // default to 5 minutes
 
     @Option(
         name = "max-timeout",
@@ -397,10 +397,8 @@ public class InstrumentationTest implements IDeviceTest, IResumableTest, ITestCo
         mShellTimeout = timeout;
     }
 
-    /**
-     * Optionally, set the maximum time (in milliseconds) for each individual test run.
-     */
-    public void setTestTimeout(int timeout) {
+    /** Optionally, set the maximum time (in milliseconds) for each individual test run. */
+    public void setTestTimeout(long timeout) {
         mTestTimeout = timeout;
     }
 
