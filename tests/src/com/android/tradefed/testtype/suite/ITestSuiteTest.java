@@ -16,11 +16,14 @@
 package com.android.tradefed.testtype.suite;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 import com.android.ddmlib.testrunner.TestIdentifier;
 import com.android.tradefed.build.IBuildInfo;
+import com.android.tradefed.config.Configuration;
+import com.android.tradefed.config.ConfigurationDescriptor;
 import com.android.tradefed.config.ConfigurationException;
 import com.android.tradefed.config.ConfigurationFactory;
 import com.android.tradefed.config.IConfiguration;
@@ -40,6 +43,7 @@ import com.android.tradefed.testtype.IAbi;
 import com.android.tradefed.testtype.IRemoteTest;
 import com.android.tradefed.testtype.StubTest;
 import com.android.tradefed.util.AbiUtils;
+import com.android.tradefed.util.MultiMap;
 
 import org.easymock.EasyMock;
 import org.junit.Before;
@@ -61,6 +65,8 @@ import java.util.Set;
 @RunWith(JUnit4.class)
 public class ITestSuiteTest {
 
+    private static final MultiMap<String, String> METADATA_INCLUDES = new MultiMap<>();
+    private static final MultiMap<String, String> METADATA_EXCLUDES = new MultiMap<>();
     private static final String EMPTY_CONFIG = "empty";
     private static final String TEST_CONFIG_NAME = "test";
     private static final String FAKE_HOST_ARCH = "arm";
@@ -543,5 +549,259 @@ public class ITestSuiteTest {
             assertTrue(expectedAbis.contains(abi.getName()));
         }
         EasyMock.verify(mMockDevice);
+    }
+
+    /** When there are no metadata based filters specified, config should be included. */
+    @Test
+    public void testMetadataFilter_emptyFilters() throws Exception {
+        IConfiguration config = new Configuration("foo", "bar");
+        assertTrue(
+                "config not included when metadata filters are empty",
+                mTestSuite.filterByConfigMetadata(config, METADATA_INCLUDES, METADATA_EXCLUDES));
+    }
+
+    /** When inclusion filter is specified, config matching the filter is included. */
+    @Test
+    public void testMetadataFilter_matchInclude() throws Exception {
+        IConfiguration config = new Configuration("foo", "bar");
+        ConfigurationDescriptor desc = config.getConfigurationDescription();
+        MultiMap<String, String> metadata = new MultiMap<>();
+        metadata.put("component", "foo");
+        desc.setMetaData(metadata);
+        MultiMap<String, String> includeFilter = new MultiMap<>();
+        includeFilter.put("component", "foo");
+        assertTrue(
+                "config not included with matching inclusion filter",
+                mTestSuite.filterByConfigMetadata(config, includeFilter, METADATA_EXCLUDES));
+    }
+
+    /** When inclusion filter is specified, config not matching the filter is excluded */
+    @Test
+    public void testMetadataFilter_noMatchInclude_mismatchValue() throws Exception {
+        IConfiguration config = new Configuration("foo", "bar");
+        ConfigurationDescriptor desc = config.getConfigurationDescription();
+        MultiMap<String, String> metadata = new MultiMap<>();
+        metadata.put("component", "foo");
+        desc.setMetaData(metadata);
+        MultiMap<String, String> includeFilter = new MultiMap<>();
+        includeFilter.put("component", "bar");
+        assertFalse(
+                "config not excluded with mismatching inclusion filter",
+                mTestSuite.filterByConfigMetadata(config, includeFilter, METADATA_EXCLUDES));
+    }
+
+    /** When inclusion filter is specified, config not matching the filter is excluded. */
+    @Test
+    public void testMetadataFilter_noMatchInclude_mismatchKey() throws Exception {
+        IConfiguration config = new Configuration("foo", "bar");
+        ConfigurationDescriptor desc = config.getConfigurationDescription();
+        MultiMap<String, String> metadata = new MultiMap<>();
+        metadata.put("component", "foo");
+        desc.setMetaData(metadata);
+        MultiMap<String, String> includeFilter = new MultiMap<>();
+        includeFilter.put("group", "bar");
+        assertFalse(
+                "config not excluded with mismatching inclusion filter",
+                mTestSuite.filterByConfigMetadata(config, includeFilter, METADATA_EXCLUDES));
+    }
+
+    /** When exclusion filter is specified, config matching the filter is excluded. */
+    @Test
+    public void testMetadataFilter_matchExclude() throws Exception {
+        IConfiguration config = new Configuration("foo", "bar");
+        ConfigurationDescriptor desc = config.getConfigurationDescription();
+        MultiMap<String, String> metadata = new MultiMap<>();
+        metadata.put("component", "foo");
+        desc.setMetaData(metadata);
+        MultiMap<String, String> excludeFilter = new MultiMap<>();
+        excludeFilter.put("component", "foo");
+        assertFalse(
+                "config not excluded with matching exclusion filter",
+                mTestSuite.filterByConfigMetadata(config, METADATA_INCLUDES, excludeFilter));
+    }
+
+    /** When exclusion filter is specified, config not matching the filter is included. */
+    @Test
+    public void testMetadataFilter_noMatchExclude_mismatchKey() throws Exception {
+        IConfiguration config = new Configuration("foo", "bar");
+        ConfigurationDescriptor desc = config.getConfigurationDescription();
+        MultiMap<String, String> metadata = new MultiMap<>();
+        metadata.put("component", "foo");
+        desc.setMetaData(metadata);
+        MultiMap<String, String> excludeFilter = new MultiMap<>();
+        excludeFilter.put("component", "bar");
+        assertTrue(
+                "config not included with mismatching exclusion filter",
+                mTestSuite.filterByConfigMetadata(config, METADATA_INCLUDES, excludeFilter));
+    }
+
+    /** When exclusion filter is specified, config not matching the filter is included. */
+    @Test
+    public void testMetadataFilter_noMatchExclude_mismatchValue() throws Exception {
+        IConfiguration config = new Configuration("foo", "bar");
+        ConfigurationDescriptor desc = config.getConfigurationDescription();
+        MultiMap<String, String> metadata = new MultiMap<>();
+        metadata.put("component", "foo");
+        desc.setMetaData(metadata);
+        MultiMap<String, String> excludeFilter = new MultiMap<>();
+        excludeFilter.put("group", "bar");
+        assertTrue(
+                "config not included with mismatching exclusion filter",
+                mTestSuite.filterByConfigMetadata(config, METADATA_INCLUDES, excludeFilter));
+    }
+
+    /**
+     * When inclusion filter is specified, config with one of the metadata field matching the filter
+     * is included.
+     */
+    @Test
+    public void testMetadataFilter_matchInclude_multipleMetadataField() throws Exception {
+        IConfiguration config = new Configuration("foo", "bar");
+        ConfigurationDescriptor desc = config.getConfigurationDescription();
+        MultiMap<String, String> metadata = new MultiMap<>();
+        metadata.put("component", "foo");
+        metadata.put("component", "bar");
+        desc.setMetaData(metadata);
+        MultiMap<String, String> includeFilter = new MultiMap<>();
+        includeFilter.put("component", "foo");
+        assertTrue(
+                "config not included with matching inclusion filter",
+                mTestSuite.filterByConfigMetadata(config, includeFilter, METADATA_EXCLUDES));
+    }
+
+    /**
+     * When exclusion filter is specified, config with one of the metadata field matching the filter
+     * is excluded.
+     */
+    @Test
+    public void testMetadataFilter_matchExclude_multipleMetadataField() throws Exception {
+        IConfiguration config = new Configuration("foo", "bar");
+        ConfigurationDescriptor desc = config.getConfigurationDescription();
+        MultiMap<String, String> metadata = new MultiMap<>();
+        metadata.put("component", "foo");
+        metadata.put("component", "bar");
+        desc.setMetaData(metadata);
+        MultiMap<String, String> excludeFilter = new MultiMap<>();
+        excludeFilter.put("component", "foo");
+        assertFalse(
+                "config not excluded with matching exclusion filter",
+                mTestSuite.filterByConfigMetadata(config, METADATA_INCLUDES, excludeFilter));
+    }
+
+    /**
+     * When inclusion filters are specified, config with metadata field matching one of the filter
+     * is included.
+     */
+    @Test
+    public void testMetadataFilter_matchInclude_multipleFilters() throws Exception {
+        IConfiguration config = new Configuration("foo", "bar");
+        ConfigurationDescriptor desc = config.getConfigurationDescription();
+        MultiMap<String, String> metadata = new MultiMap<>();
+        metadata.put("component", "foo");
+        desc.setMetaData(metadata);
+        MultiMap<String, String> includeFilter = new MultiMap<>();
+        includeFilter.put("component", "foo");
+        includeFilter.put("component", "bar");
+        assertTrue(
+                "config not included with matching inclusion filter",
+                mTestSuite.filterByConfigMetadata(config, includeFilter, METADATA_EXCLUDES));
+    }
+
+    /**
+     * When exclusion filters are specified, config with metadata field matching one of the filter
+     * is excluded.
+     */
+    @Test
+    public void testMetadataFilter_matchExclude_multipleFilters() throws Exception {
+        IConfiguration config = new Configuration("foo", "bar");
+        ConfigurationDescriptor desc = config.getConfigurationDescription();
+        MultiMap<String, String> metadata = new MultiMap<>();
+        metadata.put("component", "foo");
+        desc.setMetaData(metadata);
+        MultiMap<String, String> excludeFilter = new MultiMap<>();
+        excludeFilter.put("component", "foo");
+        excludeFilter.put("component", "bar");
+        assertFalse(
+                "config not excluded with matching exclusion filter",
+                mTestSuite.filterByConfigMetadata(config, METADATA_INCLUDES, excludeFilter));
+    }
+
+    /**
+     * When inclusion filters are specified, config with metadata field matching one of the filter
+     * is included.
+     */
+    @Test
+    public void testMetadataFilter_matchInclude_multipleMetadataAndFilters() throws Exception {
+        IConfiguration config = new Configuration("foo", "bar");
+        ConfigurationDescriptor desc = config.getConfigurationDescription();
+        MultiMap<String, String> metadata = new MultiMap<>();
+        metadata.put("component", "foo1");
+        metadata.put("group", "bar1");
+        desc.setMetaData(metadata);
+        MultiMap<String, String> includeFilter = new MultiMap<>();
+        includeFilter.put("component", "foo1");
+        includeFilter.put("group", "bar2");
+        assertTrue(
+                "config not included with matching inclusion filter",
+                mTestSuite.filterByConfigMetadata(config, includeFilter, METADATA_EXCLUDES));
+    }
+
+    /**
+     * When exclusion filters are specified, config with metadata field matching one of the filter
+     * is excluded.
+     */
+    @Test
+    public void testMetadataFilter_matchExclude_multipleMetadataAndFilters() throws Exception {
+        IConfiguration config = new Configuration("foo", "bar");
+        ConfigurationDescriptor desc = config.getConfigurationDescription();
+        MultiMap<String, String> metadata = new MultiMap<>();
+        metadata.put("component", "foo1");
+        metadata.put("group", "bar1");
+        desc.setMetaData(metadata);
+        MultiMap<String, String> excludeFilter = new MultiMap<>();
+        excludeFilter.put("component", "foo1");
+        excludeFilter.put("group", "bar2");
+        assertFalse(
+                "config not excluded with matching exclusion filter",
+                mTestSuite.filterByConfigMetadata(config, METADATA_INCLUDES, excludeFilter));
+    }
+
+    /**
+     * When inclusion and exclusion filters are both specified, config can pass through the filters
+     * as expected.
+     */
+    @Test
+    public void testMetadataFilter_includeAndExclude() throws Exception {
+        IConfiguration config = new Configuration("foo", "bar");
+        ConfigurationDescriptor desc = config.getConfigurationDescription();
+        MultiMap<String, String> metadata = new MultiMap<>();
+        metadata.put("component", "foo");
+        metadata.put("group", "bar1");
+        desc.setMetaData(metadata);
+        MultiMap<String, String> includeFilter = new MultiMap<>();
+        includeFilter.put("component", "foo");
+        MultiMap<String, String> excludeFilter = new MultiMap<>();
+        excludeFilter.put("group", "bar2");
+        assertTrue(
+                "config not included with matching inclusion and mismatching exclusion filters",
+                mTestSuite.filterByConfigMetadata(config, includeFilter, excludeFilter));
+    }
+
+    /** When inclusion and exclusion filters are both specified, config be excluded as specified */
+    @Test
+    public void testMetadataFilter_includeThenExclude() throws Exception {
+        IConfiguration config = new Configuration("foo", "bar");
+        ConfigurationDescriptor desc = config.getConfigurationDescription();
+        MultiMap<String, String> metadata = new MultiMap<>();
+        metadata.put("component", "foo");
+        metadata.put("group", "bar");
+        desc.setMetaData(metadata);
+        MultiMap<String, String> includeFilter = new MultiMap<>();
+        includeFilter.put("component", "foo");
+        MultiMap<String, String> excludeFilter = new MultiMap<>();
+        excludeFilter.put("group", "bar");
+        assertFalse(
+                "config not excluded with matching inclusion and exclusion filters",
+                mTestSuite.filterByConfigMetadata(config, includeFilter, excludeFilter));
     }
 }
