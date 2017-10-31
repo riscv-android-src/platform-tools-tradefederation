@@ -54,6 +54,11 @@ public class InvocationContext implements IInvocationContext {
     private ConfigurationDescriptor mConfigurationDescriptor;
     /** module invocation context (when running as part of a {@link ITestSuite} */
     private IInvocationContext mModuleContext;
+    /**
+     * List of map the device serials involved in the sharded invocation, empty if not a sharded
+     * invocation.
+     */
+    private Map<Integer, List<String>> mShardSerials;
 
     private boolean mLocked;
 
@@ -66,6 +71,7 @@ public class InvocationContext implements IInvocationContext {
         // Use LinkedHashMap to ensure key ordering by insertion order
         mNameAndDeviceMap = new LinkedHashMap<String, ITestDevice>();
         mNameAndBuildinfoMap = new LinkedHashMap<String, IBuildInfo>();
+        mShardSerials = new LinkedHashMap<Integer, List<String>>();
     }
 
     /**
@@ -308,6 +314,22 @@ public class InvocationContext implements IInvocationContext {
     /** Lock the context to prevent more invocation attributes to be added. */
     public void lockAttributes() {
         mLocked = true;
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public void addSerialsFromShard(Integer index, List<String> serials) {
+        if (mLocked) {
+            throw new IllegalStateException(
+                    "Attempting to add serial from shard attribute during a test.");
+        }
+        mShardSerials.put(index, serials);
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public Map<Integer, List<String>> getShardsSerials() {
+        return new LinkedHashMap<>(mShardSerials);
     }
 
     /** Special java method that allows for custom deserialization. */
