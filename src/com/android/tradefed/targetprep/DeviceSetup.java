@@ -68,6 +68,11 @@ public class DeviceSetup implements ITargetPreparer, ITargetCleaner {
     // ON:  settings put global cell_on 1
     // OFF: settings put global cell_on 0
 
+    @Option(name = "cell-auto-setting", description = "Turn wear cellular mediator on or off")
+    protected BinaryState mCellAutoSetting = BinaryState.IGNORE;
+    // ON:  settings put global clockwork_cell_auto_setting 1
+    // OFF: settings put global clockwork_cell_auto_setting 0
+
     @Option(name = "wifi", description = "Turn wifi on or off")
     protected BinaryState mWifi = BinaryState.IGNORE;
     // ON:  settings put global wifi_on 1
@@ -90,8 +95,15 @@ public class DeviceSetup implements ITargetPreparer, ITargetCleaner {
     // ON:  settings put global wifi_watchdog 1
     // OFF: settings put global wifi_watchdog 0
 
-    @Option(name = "wifi-scan-always-enabled",
-            description = "Turn wifi scan always enabled on or off")
+    @Option(name = "disable-cw-wifi-mediator", description = "Turn wifi mediator on or off")
+    protected BinaryState mDisableCwWifiMediator = BinaryState.IGNORE;
+    // ON:  settings put global cw_disable_wifimediator 1
+    // OFF: settings put global cw_disable_wifimediator 0
+
+    @Option(
+        name = "wifi-scan-always-enabled",
+        description = "Turn wifi scan always enabled on or off"
+    )
     protected BinaryState mWifiScanAlwaysEnabled = BinaryState.IGNORE;
     // ON:  settings put global wifi_scan_always_enabled 1
     // OFF: settings put global wifi_scan_always_enabled 0
@@ -511,12 +523,16 @@ public class DeviceSetup implements ITargetPreparer, ITargetCleaner {
                 mData, mRunCommandAfterSettings, "svc data enable", "svc data disable");
 
         setSettingForBinaryState(mCell, mGlobalSettings, "cell_on", "1", "0");
+        setSettingForBinaryState(
+                mCellAutoSetting, mGlobalSettings, "clockwork_cell_auto_setting", "1", "0");
 
         setSettingForBinaryState(mWifi, mGlobalSettings, "wifi_on", "1", "0");
         setCommandForBinaryState(
                 mWifi, mRunCommandAfterSettings, "svc wifi enable", "svc wifi disable");
 
         setSettingForBinaryState(mWifiWatchdog, mGlobalSettings, "wifi_watchdog", "1", "0");
+        setSettingForBinaryState(
+                mDisableCwWifiMediator, mGlobalSettings, "cw_disable_wifimediator", "1", "0");
 
         setSettingForBinaryState(mWifiScanAlwaysEnabled, mGlobalSettings,
                 "wifi_scan_always_enabled", "1", "0");
@@ -945,6 +961,12 @@ public class DeviceSetup implements ITargetPreparer, ITargetCleaner {
         mCell = cell;
     }
 
+    /* Exposed for unit testing */
+    @VisibleForTesting
+    protected void setCellAutoSetting(BinaryState cellAutoSetting) {
+        mCellAutoSetting = cellAutoSetting;
+    }
+
     /**
      * Exposed for unit testing
      */
@@ -964,6 +986,12 @@ public class DeviceSetup implements ITargetPreparer, ITargetCleaner {
      */
     protected void setWifiWatchdog(BinaryState wifiWatchdog) {
         mWifiWatchdog = wifiWatchdog;
+    }
+
+    /* Exposed for unit testing */
+    @VisibleForTesting
+    protected void setDisableCwWifiMediator(BinaryState disableCwWifiMediator) {
+        mDisableCwWifiMediator = disableCwWifiMediator;
     }
 
     /**
