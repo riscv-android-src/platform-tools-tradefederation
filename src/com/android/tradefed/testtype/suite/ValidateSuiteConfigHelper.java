@@ -18,7 +18,12 @@ package com.android.tradefed.testtype.suite;
 import com.android.tradefed.build.StubBuildProvider;
 import com.android.tradefed.config.IConfiguration;
 import com.android.tradefed.config.IDeviceConfiguration;
+import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.result.TextResultReporter;
+import com.android.tradefed.targetprep.ITargetPreparer;
+import com.android.tradefed.targetprep.multi.IMultiTargetPreparer;
+
+import java.util.List;
 
 /**
  * This class will help validating that the {@link IConfiguration} loaded for the suite are meeting
@@ -46,6 +51,9 @@ public class ValidateSuiteConfigHelper {
                     .isAssignableFrom(StubBuildProvider.class)) {
                 return false;
             }
+            if (!checkTargetPrep(config.getTargetPreparers())) {
+                return false;
+            }
         }
         if (config.getTestInvocationListeners().size() != 1) {
             return false;
@@ -55,6 +63,29 @@ public class ValidateSuiteConfigHelper {
                 .getClass()
                 .isAssignableFrom(TextResultReporter.class)) {
             return false;
+        }
+        // Check target preparers
+        if (!checkTargetPrep(config.getTargetPreparers())) {
+            return false;
+        }
+        if (!checkTargetPrep(config.getMultiTargetPreparers())) {
+            return false;
+        }
+        return true;
+    }
+
+    /**
+     * Check target_preparer and multi_target_preparer to ensure they do not extends each other as
+     * it could lead to some issues.
+     */
+    private static boolean checkTargetPrep(List<?> targetPrepList) {
+        for (Object o : targetPrepList) {
+            if (o instanceof ITargetPreparer && o instanceof IMultiTargetPreparer) {
+                CLog.d(
+                        "%s is extending both target_preparer and multi_target_preparer",
+                        o.getClass().getCanonicalName());
+                return false;
+            }
         }
         return true;
     }
