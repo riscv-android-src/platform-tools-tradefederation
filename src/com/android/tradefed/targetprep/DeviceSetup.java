@@ -38,14 +38,13 @@ import java.util.Map;
 
 /**
  * A {@link ITargetPreparer} that configures a device for testing based on provided {@link Option}s.
- * <p>
- * Requires a device where 'adb root' is possible, typically a userdebug build type.
- * </p><p>
- * Should be performed <strong>after</strong> a new build is flashed.
- * </p>
+ *
+ * <p>Requires a device where 'adb root' is possible, typically a userdebug build type.
+ *
+ * <p>Should be performed <strong>after</strong> a new build is flashed.
  */
 @OptionClass(alias = "device-setup")
-public class DeviceSetup implements ITargetPreparer, ITargetCleaner {
+public class DeviceSetup extends BaseTargetPreparer implements ITargetCleaner {
 
     // Networking
     @Option(name = "airplane-mode",
@@ -271,11 +270,6 @@ public class DeviceSetup implements ITargetPreparer, ITargetCleaner {
     protected boolean mDisableAudio = DEFAULT_DISABLE_AUDIO;
     // setprop ro.audio.silent 1"
 
-    // Test harness
-    @Option(name = "disable",
-            description = "Disable the device setup")
-    protected boolean mDisable = false;
-
     @Option(name = "force-skip-system-props",
             description = "Force setup to not modify any device system properties. All other " +
             "system property options will be ignored")
@@ -387,7 +381,7 @@ public class DeviceSetup implements ITargetPreparer, ITargetCleaner {
     @Override
     public void setUp(ITestDevice device, IBuildInfo buildInfo) throws DeviceNotAvailableException,
             TargetSetupError {
-        if (mDisable) {
+        if (isDisabled()) {
             return;
         }
 
@@ -429,7 +423,7 @@ public class DeviceSetup implements ITargetPreparer, ITargetCleaner {
     public void tearDown(ITestDevice device, IBuildInfo buildInfo, Throwable e)
             throws DeviceNotAvailableException {
         // ignore tearDown if it's a stub device, since there is no real device to clean.
-        if (mDisable || device.getIDevice() instanceof StubDevice) {
+        if (isDisabled() || device.getIDevice() instanceof StubDevice) {
             return;
         }
 
