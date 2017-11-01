@@ -15,7 +15,12 @@
 #
 
 import android_device
+import json
 import unittest
+
+_DATA_NAME = 'dataName'
+_DATA_TYPE = 'dataType'
+_DATA_FILE = 'dataFile'
 
 class _TradefedTestClass(unittest.TestCase):
     """ A base test class to extends to receive a device object for testing in python
@@ -23,11 +28,26 @@ class _TradefedTestClass(unittest.TestCase):
         All tests should extends this class to be properly supported by Tradefed.
     """
 
-    def setUpDevice(self, serial):
+    def setUpDevice(self, serial, stream, options):
         """ Setter method that will allow the test to receive the device object
 
         Args:
             serial: The serial of the device allocated for the test.
+            stream: The output stream.
+            options: Additional options given to the tests that can be used.
         """
         self.serial = serial
-        self.android_device = android_device.AndroidTestDevice(serial)
+        self.stream = stream
+        self.extra_options = options
+        self.android_device = android_device.AndroidTestDevice(serial, stream)
+
+    def logFileToTradefed(self, name, filePath, fileType):
+        """ Callback to log a file that will be picked up by Tradefed.
+
+        Args:
+            name: The name under which log the particular data.
+            filePath: Absolute file path of the file to be logged.
+            fileType: The type of the file. (TEXT, PNG, etc.)
+        """
+        resp = {_DATA_NAME: name, _DATA_TYPE: fileType, _DATA_FILE: filePath}
+        self.stream.write('TEST_LOG %s\n' % json.dumps(resp))
