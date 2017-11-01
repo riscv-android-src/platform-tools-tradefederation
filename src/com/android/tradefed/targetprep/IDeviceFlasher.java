@@ -116,7 +116,6 @@ public interface IDeviceFlasher {
      * <p>
      * Note that if system partitions are not flashed (system already has the build to be flashed)
      * the command status may be <code>null</code>
-     * @return
      */
     public CommandStatus getSystemFlashingStatus();
 }
