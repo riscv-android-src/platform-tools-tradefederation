@@ -27,6 +27,7 @@ import com.android.tradefed.device.StubDevice;
 import com.android.tradefed.invoker.IInvocationContext;
 import com.android.tradefed.result.CollectingTestListener;
 import com.android.tradefed.result.ITestInvocationListener;
+import com.android.tradefed.testtype.DeviceJUnit4ClassRunner;
 import com.android.tradefed.testtype.HostTest;
 
 import org.easymock.EasyMock;
@@ -44,6 +45,7 @@ import java.util.Collections;
 public class BaseHostJUnit4TestTest {
 
     /** An implementation of the base class for testing purpose. */
+    @RunWith(DeviceJUnit4ClassRunner.class)
     public static class TestableHostJUnit4Test extends BaseHostJUnit4Test {
         @Test
         public void testPass() {
