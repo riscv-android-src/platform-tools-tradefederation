@@ -24,10 +24,10 @@ import com.android.tradefed.device.ITestDevice;
  * <p/>
  * For example, installs software, tweaks env settings for testing, launches targets etc.
  * <p/>
- * Note that multiple {@link ITargetPreparer} can specified in a configuration. It is recommended
- * that each ITargetPreparer clearly document its expected environment pre-setup and post-setUp.
- * e.g. a ITargetPreparer that configures a device for testing must be run after the ITargetPreparer
- * that installs software.
+ * Note that multiple {@link ITargetPreparer}s can be specified in a configuration. It is
+ * recommended that each ITargetPreparer clearly document its expected environment pre-setup and
+ * post-setUp.  e.g. a ITargetPreparer that configures a device for testing must be run after the
+ * ITargetPreparer that installs software.
  */
 public interface ITargetPreparer {
 

@@ -24,7 +24,7 @@ import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.result.CollectingTestListener;
 
-import junit.framework.Assert;
+import org.junit.Assert;
 
 import java.io.File;
 import java.util.Map;
@@ -115,7 +115,7 @@ public class PackageManagerHostTestUtils extends Assert {
      *            the device to be run
      * @param params (optional) Any additional parameters to pass into the Test
      *            Runner
-     * @return the {@link CollectingTestRunListener}
+     * @return the {@link CollectingTestListener}
      * @throws DeviceNotAvailableException
      */
     private CollectingTestListener doRunTests(String pkgName, String className,
@@ -179,7 +179,7 @@ public class PackageManagerHostTestUtils extends Assert {
      * Helper method to install a file
      *
      * @param localFile the {@link File} to install
-     * @param reinstall set to <code>true</code> if re-install of app should be
+     * @param replace set to <code>true</code> if re-install of app should be
      *            performed
      * @throws DeviceNotAvailableException
      */
@@ -287,9 +287,9 @@ public class PackageManagerHostTestUtils extends Assert {
      * <p/>
      * Assumes adb is running as root in device under test.
      *
-     * @param the path of the apk to install
-     * @param the name of the package
-     * @param <code>true</code> if the app should be overwritten,
+     * @param apkPath the path of the apk to install
+     * @param pkgName the name of the package
+     * @param overwrite <code>true</code> if the app should be overwritten,
      *        <code>false</code> otherwise
      * @throws DeviceNotAvailableException
      */
@@ -319,8 +319,8 @@ public class PackageManagerHostTestUtils extends Assert {
      * Assumes adb is running as root in device under test.
      *
      * @param apkFile the {@link File} of the apk to install
-     * @param the name of the package
-     * @param <code>true</code> if the app should be overwritten,
+     * @param pkgName the name of the package
+     * @param overwrite <code>true</code> if the app should be overwritten,
      *        <code>false</code> otherwise
      * @throws DeviceNotAvailableException
      */

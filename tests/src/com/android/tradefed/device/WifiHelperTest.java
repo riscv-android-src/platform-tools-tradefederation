@@ -15,32 +15,35 @@
  */
 package com.android.tradefed.device;
 
+import static org.junit.Assert.*;
+
 import com.android.tradefed.util.IRunUtil;
 
-import junit.framework.TestCase;
-
 import org.easymock.EasyMock;
+import org.junit.Before;
+import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.junit.runners.JUnit4;
 
 import java.io.File;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 
-/**
- * Unit tests for {@link WifiHelper}.
- */
-public class WifiHelperTest extends TestCase {
+/** Unit tests for {@link WifiHelper}. */
+@RunWith(JUnit4.class)
+public class WifiHelperTest {
 
     private ITestDevice mMockDevice;
 
-    @Override
-    protected void setUp() throws Exception {
-        super.setUp();
+    @Before
+    public void setUp() throws Exception {
         mMockDevice = EasyMock.createMock(ITestDevice.class);
         EasyMock.expect(mMockDevice.executeShellCommand(WifiHelper.CHECK_PACKAGE_CMD))
                 .andReturn(String.format("versionCode=%d", WifiHelper.PACKAGE_VERSION_CODE));
     }
 
     // tests for reimplementation
+    @Test
     public void testBuildCommand_simple() {
         final String expected = "am instrument -e method \"meth\" -w " +
                 WifiHelper.FULL_INSTRUMENTATION_NAME;
@@ -48,6 +51,7 @@ public class WifiHelperTest extends TestCase {
         assertEquals(expected, cmd);
     }
 
+    @Test
     public void testBuildCommand_oneArg() {
         final String start = "am instrument ";
         final String piece1 = "-e method \"meth\" ";
@@ -62,6 +66,7 @@ public class WifiHelperTest extends TestCase {
         assertTrue(cmd.endsWith(end));
     }
 
+    @Test
     public void testBuildCommand_withSpace() {
         final String start = "am instrument ";
         final String piece1 = "-e method \"addWpaPskNetwork\" ";
@@ -80,9 +85,10 @@ public class WifiHelperTest extends TestCase {
     }
 
     /**
-     * Test {@link WifiHelper#waitForIp()} that gets invalid data on first attempt, but then
+     * Test {@link WifiHelper#waitForIp(long)} that gets invalid data on first attempt, but then
      * succeeds on second.
      */
+    @Test
     public void testWaitForIp_failThenPass() throws Exception {
         MockTestDeviceHelper.injectShellResponse(mMockDevice, null, 5, TimeUnit.MINUTES, 0, "",
                 false);
@@ -100,6 +106,7 @@ public class WifiHelperTest extends TestCase {
         EasyMock.verify(mMockDevice);
     }
 
+    @Test
     public void testStartMonitor() throws Exception {
         final long interval = 30 * 1000;
         final String urlToCheck = "urlToCheck";
@@ -114,6 +121,7 @@ public class WifiHelperTest extends TestCase {
         EasyMock.verify(mMockDevice);
     }
 
+    @Test
     public void testStopMonitor() throws Exception {
         MockTestDeviceHelper.injectShellResponse(mMockDevice, null, 5, TimeUnit.MINUTES, 0,
                 "INSTRUMENTATION_RESULT: result=1,2,3,4,", false);
@@ -125,6 +133,7 @@ public class WifiHelperTest extends TestCase {
         EasyMock.verify(mMockDevice);
     }
 
+    @Test
     public void testStopMonitor_nullResult() throws Exception {
         MockTestDeviceHelper.injectShellResponse(mMockDevice, null, 5, TimeUnit.MINUTES, 0,
                 "INSTRUMENTATION_RESULT: result=null", false);
@@ -136,6 +145,7 @@ public class WifiHelperTest extends TestCase {
         EasyMock.verify(mMockDevice);
     }
 
+    @Test
     public void testEnsureDeviceSetup_alternateVersionPattern() throws Exception {
         EasyMock.reset(mMockDevice);
         EasyMock.expect(mMockDevice.executeShellCommand(WifiHelper.CHECK_PACKAGE_CMD))
@@ -146,6 +156,7 @@ public class WifiHelperTest extends TestCase {
         EasyMock.verify(mMockDevice);
     }
 
+    @Test
     public void testEnsureDeviceSetup_lowerVersion() throws Exception {
         EasyMock.reset(mMockDevice);
         EasyMock.expect(mMockDevice.executeShellCommand(WifiHelper.CHECK_PACKAGE_CMD))
@@ -154,6 +165,47 @@ public class WifiHelperTest extends TestCase {
                 .andReturn(null);
         EasyMock.replay(mMockDevice);
         new WifiHelper(mMockDevice);
+        EasyMock.verify(mMockDevice);
+    }
+
+    @Test
+    public void testEnsureDeviceSetup_alternateWifiUtilAPKPath() throws Exception {
+        final String apkPath = "/path/to/WifiUtil.APK";
+        EasyMock.reset(mMockDevice);
+        EasyMock.expect(mMockDevice.executeShellCommand(WifiHelper.CHECK_PACKAGE_CMD))
+                .andReturn(String.format("versionCode=%d", WifiHelper.PACKAGE_VERSION_CODE - 1));
+        EasyMock.expect(mMockDevice.installPackage(EasyMock.<File>anyObject(), EasyMock.eq(true)))
+                .andReturn(null);
+        EasyMock.replay(mMockDevice);
+        WifiHelper wifiHelper = new WifiHelper(mMockDevice, apkPath);
+        File wifiUtilApkFile = wifiHelper.getWifiUtilApkFile();
+        assertEquals(wifiUtilApkFile.getPath(), apkPath);
+        EasyMock.verify(mMockDevice);
+    }
+
+    @Test
+    public void testEnsureDeviceSetup_deleteAPK() throws Exception {
+        EasyMock.reset(mMockDevice);
+        EasyMock.expect(mMockDevice.executeShellCommand(WifiHelper.CHECK_PACKAGE_CMD))
+                .andReturn(String.format("versionCode=%d", WifiHelper.PACKAGE_VERSION_CODE - 1));
+        EasyMock.expect(mMockDevice.installPackage(EasyMock.<File>anyObject(), EasyMock.eq(true)))
+                .andReturn(null);
+        EasyMock.replay(mMockDevice);
+        WifiHelper wifiHelper = new WifiHelper(mMockDevice);
+        File wifiUtilApkFile = wifiHelper.getWifiUtilApkFile();
+        assertFalse(wifiUtilApkFile.exists());
+        EasyMock.verify(mMockDevice);
+    }
+
+    /** Test that {@link WifiHelper#cleanUp()} calls uninstall on the instrumentation package. */
+    @Test
+    public void testCleanPackage() throws Exception {
+        EasyMock.expect(mMockDevice.uninstallPackage(WifiHelper.INSTRUMENTATION_PKG))
+                .andReturn(null);
+        EasyMock.replay(mMockDevice);
+        WifiHelper wifiHelper = new WifiHelper(mMockDevice);
+        wifiHelper.cleanUp();
+        // verify that executeCommand attempt were made
         EasyMock.verify(mMockDevice);
     }
 }

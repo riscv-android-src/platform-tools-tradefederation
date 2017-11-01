@@ -34,7 +34,7 @@ public class AbiFormatter {
 
     /**
      * Special marker to be used as a placeholder in strings, that can be then
-     * replaced with the help of {@link formatCmdForAbi}.
+     * replaced with the help of {@link #formatCmdForAbi}.
      */
     static final String ABI_REGEX = "\\|#ABI(\\d*)#\\|";
 
@@ -87,7 +87,7 @@ public class AbiFormatter {
     /**
      * Helper method to get the list of supported abis for the given bitness
      * @param device
-     * @param bitness, 32 or 64
+     * @param bitness 32 or 64
      * @return the supported abi list of that bitness
      * @throws DeviceNotAvailableException
      */

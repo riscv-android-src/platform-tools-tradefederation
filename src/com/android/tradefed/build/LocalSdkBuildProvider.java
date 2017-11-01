@@ -46,7 +46,7 @@ public class LocalSdkBuildProvider implements IBuildProvider {
      */
     @Override
     public IBuildInfo getBuild() throws BuildRetrievalError {
-        ISdkBuildInfo sdkBuild = new SdkBuildInfo("0", "local-sdk", "sdk");
+        ISdkBuildInfo sdkBuild = new SdkBuildInfo("0", "sdk");
         if (mLocalSdkPath == null) {
             throw new IllegalArgumentException(String.format("missing --%s option",
                     SDK_OPTION_NAME));
@@ -88,7 +88,7 @@ public class LocalSdkBuildProvider implements IBuildProvider {
      * <i>
      * ${ANDROID_BUILD_TOP}/out/host/{os.name}-x86/sdk/android-sdk_eng.{user.name}_{os.name}-x86
      * </i>
-     * @return
+     * @return the {@link File} to the output sdk location.
      */
     private File getSdkFromBuildEnv() {
         String buildRoot = System.getenv("ANDROID_BUILD_TOP");

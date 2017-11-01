@@ -22,20 +22,19 @@ import com.android.tradefed.config.Option.Importance;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.log.LogUtil.CLog;
+import com.android.tradefed.result.FileInputStreamSource;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.InputStreamSource;
 import com.android.tradefed.result.LogDataType;
-import com.android.tradefed.result.SnapshotInputStreamSource;
 import com.android.tradefed.testtype.IDeviceTest;
 import com.android.tradefed.testtype.IRemoteTest;
 import com.android.tradefed.util.FileUtil;
 import com.android.tradefed.util.StreamUtil;
 
-import junit.framework.Assert;
+import org.junit.Assert;
 
 import java.io.BufferedReader;
 import java.io.File;
-import java.io.FileInputStream;
 import java.io.FileReader;
 import java.io.IOException;
 import java.util.HashMap;
@@ -155,7 +154,7 @@ public class SmsStressTest implements IRemoteTest, IDeviceTest {
             if (outputFile != null) {
                 CLog.d("Sending %d byte file %s into the logosphere!",
                         outputFile.length(), outputFile);
-                outputSource = new SnapshotInputStreamSource(new FileInputStream(outputFile));
+                outputSource = new FileInputStreamSource(outputFile);
                 listener.testLog("sms_stress_output", LogDataType.TEXT, outputSource);
 
                 outputReader = new BufferedReader(new FileReader(outputFile));
@@ -172,11 +171,12 @@ public class SmsStressTest implements IRemoteTest, IDeviceTest {
                 }
             }
 
-            Map<String, String> metrics = new HashMap<String, String>();
+            Map<String, String> metrics = new HashMap<>();
             metrics.put(ITEM_KEY, Integer.toString(iterations == null ? 0 : iterations + 1));
             reportMetrics(METRICS_NAME, listener, metrics);
         } catch (IOException e) {
-            CLog.e("IOException parsing output file: %s", e);
+            CLog.e("IOException parsing output file");
+            CLog.e(e);
             Assert.fail("IOException parsing output file");
         } finally {
             FileUtil.deleteFile(outputFile);

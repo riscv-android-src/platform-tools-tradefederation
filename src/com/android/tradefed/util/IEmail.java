@@ -95,7 +95,7 @@ public interface IEmail {
         }
         /**
          * Set the recipients. All previously added recipients will be replaced.
-         * {@see #addTo(String)} to append to the recipients list.
+         * {@link #addTo(String)} to append to the recipients list.
          *
          * @param recipients an array of recipient email addresses
          */

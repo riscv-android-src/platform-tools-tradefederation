@@ -53,7 +53,7 @@ public class LogUtil {
      * is specifically useful because it includes the day and month (to differentiate times for
      * long-running TF instances), and also uses 24-hour time to disambiguate morning from evening.
      * <p/>
-     * {@see Log#getLogFormatString()}
+     * @see Log#getLogFormatString(LogLevel, String, String)
      */
     public static String getLogFormatString(LogLevel logLevel, String tag, String message) {
         SimpleDateFormat formatter = new SimpleDateFormat("MM-dd HH:mm:ss");
@@ -147,6 +147,17 @@ public class LogUtil {
         }
 
         /**
+         * A variation of {@link Log#w(String, String)}, where the stack trace of provided
+         * {@link Throwable} is formatted and logged.
+         *
+         * @param t The {@link Throwable} to log
+         */
+        public static void w(Throwable t) {
+            // frame 2: skip frames 0 (#getClassName) and 1 (this method)
+            Log.w(getClassName(2), getStackTraceString(t));
+        }
+
+        /**
          * The shim version of {@link Log#w(String, String)}.  Also calls String.format for
          * convenience.
          *
@@ -188,6 +199,17 @@ public class LogUtil {
         public static void e(Throwable t) {
             // frame 2: skip frames 0 (#getClassName) and 1 (this method)
             Log.e(getClassName(2), t);
+        }
+
+        /**
+         * The shim version of {@link Log#logAndDisplay(LogLevel, String, String)}.
+         *
+         * @param logLevel the {@link LogLevel}
+         * @param message The {@code String} to log
+         */
+        public static void logAndDisplay(LogLevel logLevel, String message) {
+            // frame 2: skip frames 0 (#getClassName) and 1 (this method)
+            Log.logAndDisplay(logLevel, getClassName(2), message);
         }
 
         /**

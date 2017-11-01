@@ -15,9 +15,18 @@
  */
 package com.android.tradefed.util;
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotEquals;
+import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertTrue;
+
 import com.android.tradefed.util.RegexTrie.CompPattern;
 
-import junit.framework.TestCase;
+import org.junit.Before;
+import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.junit.runners.JUnit4;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -25,30 +34,26 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.regex.Pattern;
 
-/**
- * Set of unit tests to verify the behavior of the RegexTrie
- */
-public class RegexTrieTest extends TestCase {
+/** Set of unit tests to verify the behavior of the RegexTrie */
+@RunWith(JUnit4.class)
+public class RegexTrieTest {
     private RegexTrie<Integer> mTrie = null;
     private static final Integer STORED_VAL = 42;
     private static final List<String> NULL_LIST = Arrays.asList((String)null);
 
-    @Override
+    @Before
     public void setUp() throws Exception {
         mTrie = new RegexTrie<Integer>();
     }
 
-    @SuppressWarnings("rawtypes")
-    private void dumpTrie(RegexTrie trie) {
-        System.err.format("Trie is '%s'\n", trie.toString());
-    }
-
+    @Test
     public void testStringPattern() {
         mTrie.put(STORED_VAL, "[p]art1", "[p]art2", "[p]art3");
         Integer retrieved = mTrie.retrieve("part1", "part2", "part3");
         assertEquals(STORED_VAL, retrieved);
     }
 
+    @Test
     public void testAlternation_single() {
         mTrie.put(STORED_VAL, "alpha|beta");
         Integer retrieved;
@@ -64,6 +69,7 @@ public class RegexTrieTest extends TestCase {
         assertNull(retrieved);
     }
 
+    @Test
     public void testAlternation_multiple() {
         mTrie.put(STORED_VAL, "a|alpha", "b|beta");
         Integer retrieved;
@@ -84,6 +90,7 @@ public class RegexTrieTest extends TestCase {
         assertNull(retrieved);
     }
 
+    @Test
     public void testGroups_fullMatch() {
         mTrie.put(STORED_VAL, "a|(alpha)", "b|(beta)");
         Integer retrieved;
@@ -114,6 +121,7 @@ public class RegexTrieTest extends TestCase {
         assertEquals(Arrays.asList("beta"), groups.get(1));
     }
 
+    @Test
     public void testGroups_partialMatch() {
         mTrie.put(STORED_VAL, "a|(alpha)", "b|(beta)");
         Integer retrieved;
@@ -145,9 +153,8 @@ public class RegexTrieTest extends TestCase {
         assertEquals(Arrays.asList("beta"), groups.get(1));
     }
 
-    /**
-     * Make sure that the wildcard functionality works
-     */
+    /** Make sure that the wildcard functionality works */
+    @Test
     public void testWildcard() {
         mTrie.put(STORED_VAL, "a", null);
         Integer retrieved;
@@ -170,6 +177,7 @@ public class RegexTrieTest extends TestCase {
      * Make sure that if a wildcard and a more specific match could both match, that the more
      * specific match takes precedence
      */
+    @Test
     public void testWildcard_precedence() {
         // Do one before and one after the wildcard to check for ordering effects
         mTrie.put(STORED_VAL + 1, "a", "(b)");
@@ -201,6 +209,7 @@ public class RegexTrieTest extends TestCase {
      * Verify a bugfix: make sure that no NPE results from calling #retrieve with a wildcard but
      * without a place to retrieve captures.
      */
+    @Test
     public void testWildcard_noCapture() throws NullPointerException {
         mTrie.put(STORED_VAL, "a", null);
         String[] key = new String[] {"a", "b", "c"};
@@ -210,10 +219,10 @@ public class RegexTrieTest extends TestCase {
         // test passes if no exceptions were thrown
     }
 
+    @Test
     public void testMultiChild() {
         mTrie.put(STORED_VAL + 1, "a", "b");
         mTrie.put(STORED_VAL + 2, "a", "c");
-        dumpTrie(mTrie);
 
         Object retrieved;
         retrieved = mTrie.retrieve("a", "b");
@@ -223,8 +232,9 @@ public class RegexTrieTest extends TestCase {
     }
 
     /**
-     * Make sure that {@link CompPattern#equals} works as expected.  Shake a proverbial fist at Java
+     * Make sure that {@link CompPattern#equals} works as expected. Shake a proverbial fist at Java
      */
+    @Test
     public void testCompPattern_equality() {
         String regex = "regex";
         Pattern p1 = Pattern.compile(regex);
@@ -235,19 +245,20 @@ public class RegexTrieTest extends TestCase {
         CompPattern cpOther = new CompPattern(pOther);
 
         // This is the problem with Pattern as implemented
-        assertFalse(p1.equals(p2));
-        assertFalse(p2.equals(p1));
+        assertNotEquals(p1, p2);
+        assertNotEquals(p2, p1);
 
         // Make sure that wrapped patterns with the same regex are considered equivalent
-        assertTrue(cp2.equals(p1));
-        assertTrue(cp2.equals(p2));
-        assertTrue(cp2.equals(cp1));
+        assertEquals(cp2, p1);
+        assertEquals(cp2, p1);
+        assertEquals(cp2, cp1);
 
         // And make sure that wrapped patterns with different regexen are still considered different
-        assertFalse(cp2.equals(pOther));
-        assertFalse(cp2.equals(cpOther));
+        assertNotEquals(cp2, pOther);
+        assertNotEquals(cp2, cpOther);
     }
 
+    @Test
     public void testCompPattern_hashmap() {
         HashMap<CompPattern, Integer> map = new HashMap<CompPattern, Integer>();
         String regex = "regex";

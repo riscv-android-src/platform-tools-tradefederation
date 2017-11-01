@@ -17,6 +17,7 @@
 package com.android.tradefed.util;
 
 import com.android.ddmlib.testrunner.TestIdentifier;
+import com.android.ddmlib.testrunner.XmlTestRunListener;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.util.xml.AbstractXmlParser;
 
@@ -30,7 +31,7 @@ import java.util.Collections;
  * Parser that extracts test result data from JUnit results stored in ant's XMLJUnitResultFormatter
  * and forwards it to a ITestInvocationListener.
  * <p/>
- * @see ddmlib's XmlTestRunListener
+ * @see XmlTestRunListener
  */
 public class JUnitXmlParser extends AbstractXmlParser {
     private final ITestInvocationListener mTestListener;

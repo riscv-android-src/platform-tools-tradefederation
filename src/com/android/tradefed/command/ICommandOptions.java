@@ -16,6 +16,8 @@
 
 package com.android.tradefed.command;
 
+import com.android.tradefed.util.UniqueMultiMap;
+
 /**
  *  Container for execution options for commands.
  */
@@ -74,8 +76,24 @@ public interface ICommandOptions {
     public void setLoopMode(boolean loopMode);
 
     /**
+     * Return the test-tag for the invocation. Default is 'stub' if unspecified.
+     */
+    public String getTestTag();
+
+    /**
+     * Sets the test-tag for the invocation.
+     *
+     * @param testTag
+     */
+    public void setTestTag(String testTag);
+
+    /**
+     * Return the test-tag suffix, appended to test-tag to represents some variants of one test.
+     */
+    public String getTestTagSuffix();
+
+    /**
      * Creates a copy of the {@link ICommandOptions} object.
-     * @return
      */
     public ICommandOptions clone();
 
@@ -89,4 +107,51 @@ public interface ICommandOptions {
      */
     public boolean takeBugreportOnInvocationEnded();
 
+    /**
+     * Return true if a bugreportz should be taken instead of bugreport during the test invocation
+     * final bugreport.
+     */
+    public boolean takeBugreportzOnInvocationEnded();
+
+    /**
+     * Return the invocation timeout specified. 0 if no timeout to be used.
+     */
+    public long getInvocationTimeout();
+
+    /**
+     * Set the invocation timeout. 0 if no timeout to be used.
+     */
+    public void setInvocationTimeout(Long mInvocationTimeout);
+
+    /**
+     * Return the total shard count for the command.
+     */
+    public Integer getShardCount();
+
+    /**
+     * Sets the shard count for the command.
+     */
+    public void setShardCount(Integer shardCount);
+
+    /**
+     * Return the shard index for the command.
+     */
+    public Integer getShardIndex();
+
+    /**
+     * Sets the shard index for the command.
+     */
+    public void setShardIndex(Integer shardIndex);
+
+    /** Return true if the test should skip device setup during TestInvocation setup. */
+    public boolean shouldSkipPreDeviceSetup();
+
+    /** Returns if we should use dynamic sharding or not */
+    public boolean shouldUseDynamicSharding();
+
+    /** Returns the data passed to the invocation to describe it */
+    public UniqueMultiMap<String, String> getInvocationData();
+
+    /** Returns true if we should use Tf new sharding logic */
+    public boolean shouldUseTfSharding();
 }

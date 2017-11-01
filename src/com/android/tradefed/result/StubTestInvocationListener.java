@@ -15,49 +15,17 @@
  */
 package com.android.tradefed.result;
 
-import com.android.tradefed.build.IBuildInfo;
-
+/**
+ * This class used to provide stub implementations for each {@link ITestInvocationListener} method.
+ * With the arrival of default methods for interface definitions in Java 8, this class is no longer
+ * needed. The stubs have been moved to {@link ITestInvocationListener}, but this class is kept for
+ * backwards compatibility.
+ *
+ * @deprecated Classes should implement ITestInvocationListener directly.
+ */
+@Deprecated
 public class StubTestInvocationListener extends StubTestRunListener
         implements ITestInvocationListener {
 
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public void invocationStarted(IBuildInfo buildInfo) {
-        // ignore
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public void testLog(String dataName, LogDataType dataType, InputStreamSource dataStream) {
-        // ignore
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public void invocationEnded(long elapsedTime) {
-        // ignore
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public void invocationFailed(Throwable cause) {
-        // ignore
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public TestSummary getSummary() {
-        return null;
-    }
 }
 

@@ -32,6 +32,7 @@ import com.android.tradefed.result.InputStreamSource;
 import com.android.tradefed.result.LogDataType;
 import com.android.tradefed.testtype.IDeviceTest;
 import com.android.tradefed.testtype.IRemoteTest;
+import com.android.tradefed.util.FileUtil;
 import com.android.tradefed.util.IRunUtil.IRunnableResult;
 import com.android.tradefed.util.MultiMap;
 import com.android.tradefed.util.RunUtil;
@@ -40,7 +41,7 @@ import com.android.tradefed.util.net.HttpHelper;
 import com.android.tradefed.util.net.IHttpHelper;
 import com.android.tradefed.util.net.IHttpHelper.DataSizeException;
 
-import junit.framework.Assert;
+import org.junit.Assert;
 
 import java.io.BufferedWriter;
 import java.io.File;
@@ -323,7 +324,7 @@ public class BandwidthMicroBenchMarkTest implements IDeviceTest, IRemoteTest {
      *
      * @param key {@link String} to search for in the log
      * @param log obtained from adb logcat -b events
-     * @param stats Map to write the stats to
+     * @param listener the {@link ITestInvocationListener} where to report results.
      */
     private boolean evaluateStats(String key, String log, ITestInvocationListener listener) {
         File filteredEventLog = null;
@@ -350,12 +351,8 @@ public class BandwidthMicroBenchMarkTest implements IDeviceTest, IRemoteTest {
         } catch (IOException e) {
             CLog.w("Could not save event log file: %s", e.getMessage());
         } finally {
-            if (out != null) {
-                StreamUtil.close(out);
-            }
-            if (filteredEventLog != null) {
-                filteredEventLog.delete();
-            }
+            StreamUtil.close(out);
+            FileUtil.deleteFile(filteredEventLog);
         }
         return false;
     }
@@ -401,7 +398,7 @@ public class BandwidthMicroBenchMarkTest implements IDeviceTest, IRemoteTest {
      * @param compactRuKey key to use when posting to rdb.
      * @param utils data parsed from the kernel.
      * @param instrumentationData data reported by the test.
-     * @param serverDate data reported by the server.
+     * @param serverData data reported by the server.
      * @throws DeviceNotAvailableException
      */
     private void reportPassFail(ITestInvocationListener listener, String compactRuKey,

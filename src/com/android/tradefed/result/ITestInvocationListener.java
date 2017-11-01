@@ -16,7 +16,12 @@
 package com.android.tradefed.result;
 
 import com.android.ddmlib.testrunner.ITestRunListener;
-import com.android.tradefed.build.IBuildInfo;
+import com.android.ddmlib.testrunner.TestIdentifier;
+import com.android.tradefed.command.ICommandScheduler;
+import com.android.tradefed.invoker.IInvocationContext;
+import com.android.tradefed.log.ITestLogger;
+
+import java.util.Map;
 
 /**
  * Listener for test results from the test invocation.
@@ -24,7 +29,7 @@ import com.android.tradefed.build.IBuildInfo;
  * A test invocation can itself include multiple test runs, so the sequence of calls will be
  * <ul>
  * <li>invocationStarted(BuildInfo)</li>
- * <li>testRunStarted>/li>
+ * <li>testRunStarted</li>
  * <li>testStarted</li>
  * <li>[testFailed]</li>
  * <li>testEnded</li>
@@ -43,35 +48,17 @@ import com.android.tradefed.build.IBuildInfo;
  * Note that this is re-using the {@link com.android.ddmlib.testrunner.ITestRunListener}
  * because it's a generic interface. The results being reported are not necessarily device specific.
  */
-public interface ITestInvocationListener extends ITestRunListener {
+public interface ITestInvocationListener extends ITestRunListener, ITestLogger {
 
     /**
      * Reports the start of the test invocation.
-     * <p/>
-     * Will be automatically called by the TradeFederation framework.
      *
-     * @param buildInfo information about the build being tested
-     */
-    public void invocationStarted(IBuildInfo buildInfo);
-
-    /**
-     * Provides the associated log or debug data from the test invocation.
-     * <p/>
-     * Must be called before {@link #invocationFailed(Throwable)} or {@link #invocationEnded(long)}
-     * <p/>
-     * The TradeFederation framework will automatically call this method, providing the host log
-     * and if applicable, the device logcat.
+     * <p>Will be automatically called by the TradeFederation framework. Reporters need to override
+     * this method to support multiple devices reporting.
      *
-     * @param dataName a {@link String} descriptive name of the data. e.g. "device_logcat". Note
-     *            dataName may not be unique per invocation. ie implementers must be able to handle
-     *            multiple calls with same dataName
-     * @param dataType the {@link LogDataType} of the data
-     * @param dataStream the {@link InputStreamSource} of the data. Implementers should call
-     *        createInputStream to start reading the data, and ensure to close the resulting
-     *        InputStream when complete. Callers should ensure the source of the data remains
-     *        present and accessible until the testLog method completes.
+     * @param context information about the invocation
      */
-    public void testLog(String dataName, LogDataType dataType, InputStreamSource dataStream);
+    public default void invocationStarted(IInvocationContext context) {}
 
     /**
      * Reports that the invocation has terminated, whether successfully or due to some error
@@ -81,7 +68,7 @@ public interface ITestInvocationListener extends ITestRunListener {
      *
      * @param elapsedTime the elapsed time of the invocation in ms
      */
-    public void invocationEnded(long elapsedTime);
+    default public void invocationEnded(long elapsedTime) { }
 
     /**
      * Reports an incomplete invocation due to some error condition.
@@ -90,13 +77,85 @@ public interface ITestInvocationListener extends ITestRunListener {
      *
      * @param cause the {@link Throwable} cause of the failure
      */
-    public void invocationFailed(Throwable cause);
+    default public void invocationFailed(Throwable cause) { }
 
     /**
      * Allows the InvocationListener to return a summary.
      *
      * @return A {@link TestSummary} summarizing the run, or null
      */
-    public TestSummary getSummary();
+    default public TestSummary getSummary() { return null; }
 
+    /**
+     * Called on {@link ICommandScheduler#shutdown()}, gives the invocation the opportunity to do
+     * something before terminating.
+     */
+    default public void invocationInterrupted() {
+        // do nothing in default implementation.
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    default public void testEnded(TestIdentifier test, Map<String, String> testMetrics) { }
+
+    /** {@inheritDoc} */
+    @Override
+    public default void testEnded(
+            TestIdentifier test, long endTime, Map<String, String> testMetrics) {
+        testEnded(test, testMetrics);
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public default void testFailed(TestIdentifier test, String trace) {}
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    default public void testAssumptionFailure(TestIdentifier test, String trace) { }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    default public void testIgnored(TestIdentifier test) { }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    default public void testRunEnded(long elapsedTimeMillis, Map<String, String> runMetrics) { }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    default public void testRunFailed(String errorMessage) { }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    default public void testRunStarted(String runName, int testCount) { }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    default public void testRunStopped(long elapsedTime) { }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    default public void testStarted(TestIdentifier test) { }
+
+    /** {@inheritDoc} */
+    @Override
+    default void testStarted(TestIdentifier test, long startTime) {
+        testStarted(test);
+    }
 }

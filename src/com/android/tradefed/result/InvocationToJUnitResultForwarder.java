@@ -17,17 +17,15 @@ package com.android.tradefed.result;
 
 import com.android.ddmlib.Log;
 import com.android.ddmlib.testrunner.TestIdentifier;
-import com.android.tradefed.build.IBuildInfo;
+import com.android.tradefed.invoker.IInvocationContext;
 
 import junit.framework.AssertionFailedError;
 import junit.framework.Test;
 import junit.framework.TestListener;
 import junit.framework.TestResult;
 
-import org.junit.internal.AssumptionViolatedException;
+import org.junit.AssumptionViolatedException;
 
-import java.io.PrintStream;
-import java.io.PrintWriter;
 import java.util.Map;
 
 /**
@@ -175,53 +173,6 @@ import java.util.Map;
     }
 
     /**
-     * Class that can represent a remote {@link String} stack trace as a {@link Throwable} or
-     * for display purposes.
-     */
-    private static class RemoteException extends Throwable  {
-        private static final long serialVersionUID = 8510440697482917390L;
-
-        private final String mStackTrace;
-
-        RemoteException(String stack) {
-            mStackTrace = stack;
-        }
-
-        @Override
-        public void   printStackTrace() {
-            System.err.print(mStackTrace);
-        }
-
-        @Override
-        public void   printStackTrace(PrintStream s) {
-            s.print(mStackTrace);
-        }
-
-        @Override
-        public void   printStackTrace(PrintWriter s) {
-            s.print(mStackTrace);
-        }
-
-        @Override
-        public void   setStackTrace(StackTraceElement[] stackTrace) {
-            // Force exception to be thrown here. don't want parent to override the data.
-            // alternatively could make this a no-op
-            throw new UnsupportedOperationException();
-        }
-
-
-        @Override
-        public String toString() {
-            return mStackTrace;
-        }
-
-        @Override
-        public Throwable fillInStackTrace() {
-            return this;
-        }
-    }
-
-    /**
      * {@inheritDoc}
      */
     @Override
@@ -250,7 +201,7 @@ import java.util.Map;
      * {@inheritDoc}
      */
     @Override
-    public void invocationStarted(IBuildInfo buildInfo) {
+    public void invocationStarted(IInvocationContext context) {
         // ignore
     }
 

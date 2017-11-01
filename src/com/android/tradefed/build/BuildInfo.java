@@ -15,10 +15,13 @@
  */
 package com.android.tradefed.build;
 
+import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.util.FileUtil;
 import com.android.tradefed.util.MultiMap;
 import com.android.tradefed.util.UniqueMultiMap;
+
+import com.google.common.base.MoreObjects;
 import com.google.common.base.Objects;
 
 import java.io.File;
@@ -28,9 +31,13 @@ import java.util.Hashtable;
 import java.util.Map;
 
 /**
- * Generic implementation of a {@link IBuildInfo}.
+ * Generic implementation of a {@link IBuildInfo} that should be associated
+ * with a {@link ITestDevice}.
  */
 public class BuildInfo implements IBuildInfo {
+    private static final long serialVersionUID = BuildSerializedVersion.VERSION;
+    private static final String BUILD_ALIAS_KEY = "build_alias";
+
     private String mBuildId = UNKNOWN_BUILD_ID;
     private String mTestTag = "stub";
     private String mBuildTargetName = "stub";
@@ -52,9 +59,24 @@ public class BuildInfo implements IBuildInfo {
      * Creates a {@link BuildInfo}
      *
      * @param buildId the build id
-     * @param testTag the test tag name
      * @param buildTargetName the build target name
      */
+    public BuildInfo(String buildId, String buildTargetName) {
+        mBuildId = buildId;
+        mBuildTargetName = buildTargetName;
+        mVersionedFileMap = new Hashtable<String, VersionedFile>();
+    }
+
+    /**
+     * Creates a {@link BuildInfo}
+     *
+     * @param buildId the build id
+     * @param testTag the test tag name
+     * @param buildTargetName the build target name
+     * @deprecated use {@link #BuildInfo(String, String)} instead. test-tag should not be mandatory
+     * when instantiating the build info.
+     */
+    @Deprecated
     public BuildInfo(String buildId, String testTag, String buildTargetName) {
         mBuildId = buildId;
         mTestTag = testTag;
@@ -68,7 +90,7 @@ public class BuildInfo implements IBuildInfo {
      * @param buildToCopy
      */
     BuildInfo(BuildInfo buildToCopy) {
-        this(buildToCopy.getBuildId(), buildToCopy.getTestTag(), buildToCopy.getBuildTargetName());
+        this(buildToCopy.getBuildId(), buildToCopy.getBuildTargetName());
         addAllBuildAttributes(buildToCopy);
         try {
             addAllFiles(buildToCopy);
@@ -91,6 +113,14 @@ public class BuildInfo implements IBuildInfo {
     @Override
     public void setBuildId(String buildId) {
         mBuildId = buildId;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void setTestTag(String testTag) {
+        mTestTag = testTag;
     }
 
     /**
@@ -140,6 +170,7 @@ public class BuildInfo implements IBuildInfo {
         mBuildAttributes.putAll(build.getAttributesMultiMap());
         setBuildFlavor(build.getBuildFlavor());
         setBuildBranch(build.getBuildBranch());
+        setTestTag(build.getTestTag());
     }
 
     protected MultiMap<String, String> getAttributesMultiMap() {
@@ -238,7 +269,7 @@ public class BuildInfo implements IBuildInfo {
      */
     @Override
     public IBuildInfo clone() {
-        BuildInfo copy = new BuildInfo(mBuildId, mTestTag, mBuildTargetName);
+        BuildInfo copy = new BuildInfo(mBuildId, mBuildTargetName);
         copy.addAllBuildAttributes(this);
         try {
             copy.addAllFiles(this);
@@ -322,5 +353,21 @@ public class BuildInfo implements IBuildInfo {
                 Objects.equal(mBuildTargetName, other.mBuildTargetName) &&
                 Objects.equal(mTestTag, other.mTestTag) &&
                 Objects.equal(mDeviceSerial, other.mDeviceSerial);
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public String toString() {
+        return MoreObjects.toStringHelper(this.getClass())
+                .omitNullValues()
+                .add("build_alias", getBuildAttributes().get(BUILD_ALIAS_KEY))
+                .add("bid", mBuildId)
+                .add("target", mBuildTargetName)
+                .add("build_flavor", mBuildFlavor)
+                .add("branch", mBuildBranch)
+                .add("serial", mDeviceSerial)
+                .toString();
     }
 }

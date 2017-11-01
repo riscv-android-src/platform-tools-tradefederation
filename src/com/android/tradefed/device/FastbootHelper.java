@@ -35,17 +35,22 @@ public class FastbootHelper {
     private static final long FASTBOOT_CMD_TIMEOUT = 1 * 60 * 1000;
 
     private IRunUtil mRunUtil;
+    private String mFastbootPath = "fastboot";
 
     /**
      * Constructor.
      *
      * @param runUtil a {@link IRunUtil}.
      */
-    public FastbootHelper(final IRunUtil runUtil) {
+    public FastbootHelper(final IRunUtil runUtil, final String fastbootPath) {
         if (runUtil == null) {
             throw new IllegalArgumentException("runUtil cannot be null");
         }
+        if (fastbootPath == null || fastbootPath.isEmpty()) {
+            throw new IllegalArgumentException("fastboot cannot be null or empty");
+        }
         mRunUtil = runUtil;
+        mFastbootPath = fastbootPath;
     }
 
     /**
@@ -54,7 +59,7 @@ public class FastbootHelper {
     public boolean isFastbootAvailable() {
         // Run "fastboot help" to check the existence and the version of fastboot
         // (Old versions do not support "help" command).
-        CommandResult fastbootResult = mRunUtil.runTimedCmdSilently(5000, "fastboot", "help");
+        CommandResult fastbootResult = mRunUtil.runTimedCmdSilently(5000, mFastbootPath, "help");
         if (fastbootResult.getStatus() == CommandStatus.SUCCESS) {
             return true;
         }
@@ -71,13 +76,13 @@ public class FastbootHelper {
 
 
     /**
-     * Returns a set of device serials in fastboot mode.
+     * Returns a set of device serials in fastboot mode or an empty set if no fastboot devices.
      *
      * @return a set of device serials.
      */
     public Set<String> getDevices() {
         CommandResult fastbootResult = mRunUtil.runTimedCmd(FASTBOOT_CMD_TIMEOUT,
-                "fastboot", "devices");
+                mFastbootPath, "devices");
         if (fastbootResult.getStatus().equals(CommandStatus.SUCCESS)) {
             CLog.v("fastboot devices returned\n %s",
                     fastbootResult.getStdout());
@@ -86,7 +91,7 @@ public class FastbootHelper {
             CLog.w("'fastboot devices' failed. Result: %s, stderr: %s", fastbootResult.getStatus(),
                     fastbootResult.getStderr());
         }
-        return null;
+        return new HashSet<String>();
     }
 
     /**
@@ -98,7 +103,7 @@ public class FastbootHelper {
      */
     Set<String> parseDevices(String fastbootOutput) {
         Set<String> serials = new HashSet<String>();
-        Pattern fastbootPattern = Pattern.compile("([\\w\\d]+)\\s+fastboot\\s*");
+        Pattern fastbootPattern = Pattern.compile("([\\w\\d-]+)\\s+fastboot\\s*");
         Matcher fastbootMatcher = fastbootPattern.matcher(fastbootOutput);
         while (fastbootMatcher.find()) {
             serials.add(fastbootMatcher.group(1));
@@ -115,7 +120,7 @@ public class FastbootHelper {
      */
     public String executeCommand(String serial, String command) {
         final CommandResult fastbootResult = mRunUtil.runTimedCmd(FASTBOOT_CMD_TIMEOUT,
-                "fastboot", "-s", serial, command);
+                mFastbootPath, "-s", serial, command);
         if (fastbootResult.getStatus() != CommandStatus.SUCCESS) {
             CLog.w("'fastboot -s %s %s' failed. Result: %s, stderr: %s", serial, command,
                     fastbootResult.getStatus(), fastbootResult.getStderr());

@@ -18,28 +18,31 @@ package com.android.media.tests;
 
 import com.android.ddmlib.CollectingOutputReceiver;
 import com.android.ddmlib.testrunner.TestIdentifier;
+import com.android.tradefed.config.IConfiguration;
+import com.android.tradefed.config.IConfigurationReceiver;
 import com.android.tradefed.config.Option;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.result.ByteArrayInputStreamSource;
 import com.android.tradefed.result.CollectingTestListener;
+import com.android.tradefed.result.FileInputStreamSource;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.InputStreamSource;
 import com.android.tradefed.result.LogDataType;
-import com.android.tradefed.result.SnapshotInputStreamSource;
 import com.android.tradefed.testtype.IDeviceTest;
 import com.android.tradefed.testtype.IRemoteTest;
 import com.android.tradefed.testtype.InstrumentationTest;
 import com.android.tradefed.util.FileUtil;
+import com.android.tradefed.util.IRunUtil;
+import com.android.tradefed.util.RunUtil;
+import com.android.tradefed.util.StreamUtil;
 
-import junit.framework.Assert;
+import org.junit.Assert;
 
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
 import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileNotFoundException;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.io.StringReader;
@@ -57,16 +60,15 @@ import java.util.concurrent.TimeUnit;
  * Camera2StressTest, CameraStartupTest, Camera2LatencyTest and CameraPerformanceTest use this base
  * class for Camera ivvavik and later.
  */
-public class CameraTestBase implements IDeviceTest, IRemoteTest {
+public class CameraTestBase implements IDeviceTest, IRemoteTest, IConfigurationReceiver {
 
-    private static final String LOG_TAG = CameraTestBase.class.getSimpleName();
     private static final long SHELL_TIMEOUT_MS = 60 * 1000;  // 1 min
     private static final int SHELL_MAX_ATTEMPTS = 3;
-    private static final String PROCESS_CAMERA_DAEMON = "mm-qcamera-daemon";
-    private static final String PROCESS_MEDIASERVER = "mediaserver";
-    private static final String PROCESS_CAMERA_APP = "com.google.android.GoogleCamera";
-    private static final String DUMP_ION_HEAPS_COMMAND = "cat /d/ion/heaps/system";
-    private static final String ARGUMENT_TEST_ITERATIONS = "iterations";
+    protected static final String PROCESS_CAMERA_DAEMON = "mm-qcamera-daemon";
+    protected static final String PROCESS_MEDIASERVER = "mediaserver";
+    protected static final String PROCESS_CAMERA_APP = "com.google.android.GoogleCamera";
+    protected static final String DUMP_ION_HEAPS_COMMAND = "cat /d/ion/heaps/system";
+    protected static final String ARGUMENT_TEST_ITERATIONS = "iterations";
 
     @Option(name = "test-package", description = "Test package to run.")
     private String mTestPackage = "com.google.android.camera";
@@ -75,7 +77,7 @@ public class CameraTestBase implements IDeviceTest, IRemoteTest {
     private String mTestClass = null;
 
     @Option(name = "test-methods", description = "Test method to run. May be repeated.")
-    private Collection<String> mTestMethods = new ArrayList<String>();
+    private Collection<String> mTestMethods = new ArrayList<>();
 
     @Option(name = "test-runner", description = "Test runner for test instrumentation.")
     private String mTestRunner = "android.test.InstrumentationTestRunner";
@@ -97,9 +99,11 @@ public class CameraTestBase implements IDeviceTest, IRemoteTest {
             "take a logcat snapshot on every test failure.")
     private boolean mLogcatOnFailure = false;
 
-    @Option(name = "instrumentation-arg",
-            description = "Additional instrumentation arguments to provide.")
-    private Map<String, String> mInstrArgMap = new HashMap<String, String>();
+    @Option(
+        name = "instrumentation-arg",
+        description = "Additional instrumentation arguments to provide."
+    )
+    private Map<String, String> mInstrArgMap = new HashMap<>();
 
     @Option(name = "dump-meminfo", description =
             "take a dumpsys meminfo at a given interval time.")
@@ -136,6 +140,8 @@ public class CameraTestBase implements IDeviceTest, IRemoteTest {
 
     private MeminfoTimer mMeminfoTimer = null;
     private ThreadTrackerTimer mThreadTrackerTimer = null;
+
+    protected IConfiguration mConfiguration;
 
     /**
      * {@inheritDoc}
@@ -227,8 +233,8 @@ public class CameraTestBase implements IDeviceTest, IRemoteTest {
     protected abstract class AbstractCollectingListener extends CollectingTestListener {
 
         private ITestInvocationListener mListener = null;
-        private Map<String, String> mMetrics = new HashMap<String, String>();
-        private Map<String, String> mFatalErrors = new HashMap<String, String>();
+        private Map<String, String> mMetrics = new HashMap<>();
+        private Map<String, String> mFatalErrors = new HashMap<>();
 
         private static final String INCOMPLETE_TEST_ERR_MSG_PREFIX =
                 "Test failed to run to completion. Reason: 'Instrumentation run failed";
@@ -267,26 +273,25 @@ public class CameraTestBase implements IDeviceTest, IRemoteTest {
 
         /**
          * Report the end of an individual camera test and delegate handling the collected metrics
-         * to subclasses.
-         * Do not override testEnded to manipulate the test metrics after each test. Instead,
-         * use handleMetricsOnTestEnded.
+         * to subclasses. Do not override testEnded to manipulate the test metrics after each test.
+         * Instead, use handleMetricsOnTestEnded.
          *
          * @param test identifies the test
          * @param testMetrics a {@link Map} of the metrics emitted
          */
         @Override
-        public void testEnded(TestIdentifier test, Map<String, String> testMetrics) {
-            super.testEnded(test, testMetrics);
+        public void testEnded(TestIdentifier test, long endTime, Map<String, String> testMetrics) {
+            super.testEnded(test, endTime, testMetrics);
             handleMetricsOnTestEnded(test, testMetrics);
             stopDumping(test);
-            mListener.testEnded(test, testMetrics);
+            mListener.testEnded(test, endTime, testMetrics);
         }
 
         @Override
-        public void testStarted(TestIdentifier test) {
-            super.testStarted(test);
+        public void testStarted(TestIdentifier test, long startTime) {
+            super.testStarted(test, startTime);
             startDumping(test);
-            mListener.testStarted(test);
+            mListener.testStarted(test, startTime);
         }
 
         @Override
@@ -299,6 +304,12 @@ public class CameraTestBase implements IDeviceTest, IRemoteTest {
                 CLog.d("Test (%s) failed due to fatal error : %s", test.getTestName(), trace);
             }
             mListener.testFailed(test, trace);
+        }
+
+        @Override
+        public void testRunFailed(String errorMessage) {
+            super.testRunFailed(errorMessage);
+            mFatalErrors.put(getRuKey(), errorMessage);
         }
 
         @Override
@@ -344,32 +355,22 @@ public class CameraTestBase implements IDeviceTest, IRemoteTest {
                 // Grab a snapshot of meminfo file and post it to dashboard.
                 try {
                     outputFile = mMeminfoTimer.getOutputFile();
-                    outputSource = new SnapshotInputStreamSource(new FileInputStream(outputFile));
+                    outputSource = new FileInputStreamSource(outputFile, true /* delete */);
                     String logName = String.format("meminfo_%s", test.getTestName());
                     mListener.testLog(logName, LogDataType.TEXT, outputSource);
-                    outputFile.delete();
-                } catch (FileNotFoundException e) {
-                    CLog.w("Failed to read meminfo log %s: %s", outputFile, e);
                 } finally {
-                    if (outputSource != null) {
-                        outputSource.cancel();
-                    }
+                    StreamUtil.cancel(outputSource);
                 }
             }
             if (shouldDumpThreadCount()) {
                 mThreadTrackerTimer.stop();
                 try {
                     outputFile = mThreadTrackerTimer.getOutputFile();
-                    outputSource = new SnapshotInputStreamSource(new FileInputStream(outputFile));
+                    outputSource = new FileInputStreamSource(outputFile, true /* delete */);
                     String logName = String.format("ps_%s", test.getTestName());
                     mListener.testLog(logName, LogDataType.TEXT, outputSource);
-                    outputFile.delete();
-                } catch (FileNotFoundException e) {
-                    CLog.w("Failed to read thread count log %s: %s", outputFile, e);
                 } finally {
-                    if (outputSource != null) {
-                        outputSource.cancel();
-                    }
+                    StreamUtil.cancel(outputSource);
                 }
             }
         }
@@ -413,6 +414,7 @@ public class CameraTestBase implements IDeviceTest, IRemoteTest {
             super(listener);
         }
 
+        @Override
         public void handleMetricsOnTestEnded(TestIdentifier test, Map<String, String> testMetrics) {
             if (testMetrics == null) {
                 return; // No-op if there is nothing to post.
@@ -420,6 +422,7 @@ public class CameraTestBase implements IDeviceTest, IRemoteTest {
             getAggregatedMetrics().putAll(testMetrics);
         }
 
+        @Override
         public void handleTestRunEnded(ITestInvocationListener listener, long elapsedTime,
                 Map<String, String> runMetrics) {
             // Post aggregated metrics at the end of test run.
@@ -430,15 +433,16 @@ public class CameraTestBase implements IDeviceTest, IRemoteTest {
     // TODO: Leverage AUPT to collect system logs (meminfo, ION allocations and processes/threads)
     private class MeminfoTimer {
 
-        private final String LOG_HEADER =
+        private static final String LOG_HEADER =
                 "uptime,pssCameraDaemon,pssCameraApp,ramTotal,ramFree,ramUsed";
-        private final String DUMPSYS_MEMINFO_COMMAND = "dumpsys meminfo -c | grep -w -e ^ram " +
-                "-e ^time";
-        private final String[] DUMPSYS_MEMINFO_PROC = {
-                PROCESS_CAMERA_DAEMON, PROCESS_CAMERA_APP, PROCESS_MEDIASERVER };
-        private final int STATE_STOPPED = 0;
-        private final int STATE_SCHEDULED = 1;
-        private final int STATE_RUNNING = 2;
+        private static final String DUMPSYS_MEMINFO_COMMAND =
+                "dumpsys meminfo -c | grep -w -e " + "^ram -e ^time";
+        private String[] mDumpsysMemInfoProc = {
+            PROCESS_CAMERA_DAEMON, PROCESS_CAMERA_APP, PROCESS_MEDIASERVER
+        };
+        private static final int STATE_STOPPED = 0;
+        private static final int STATE_SCHEDULED = 1;
+        private static final int STATE_RUNNING = 2;
 
         private int mState = STATE_STOPPED;
         private Timer mTimer = new Timer(true); // run as a daemon thread
@@ -451,7 +455,7 @@ public class CameraTestBase implements IDeviceTest, IRemoteTest {
             mDelayMs = delayMs;
             mPeriodMs = periodMs;
             mCommand = DUMPSYS_MEMINFO_COMMAND;
-            for (String process : DUMPSYS_MEMINFO_PROC) {
+            for (String process : mDumpsysMemInfoProc) {
                 mCommand += " -e " + process;
             }
         }
@@ -499,7 +503,8 @@ public class CameraTestBase implements IDeviceTest, IRemoteTest {
                 writer.flush();
                 writer.close();
             } catch (IOException e) {
-                CLog.w("Failed to create meminfo log file %s: %s", mOutputFile.getAbsolutePath(), e);
+                CLog.w("Failed to create meminfo log file %s:", mOutputFile.getAbsolutePath());
+                CLog.e(e);
                 return null;
             }
             return mOutputFile;
@@ -514,7 +519,8 @@ public class CameraTestBase implements IDeviceTest, IRemoteTest {
                     SHELL_TIMEOUT_MS, TimeUnit.MILLISECONDS, SHELL_MAX_ATTEMPTS);
             printMeminfo(outputFile, receiver.getOutput());
         } catch (DeviceNotAvailableException e) {
-            CLog.w("Failed to dump meminfo: %s", e);
+            CLog.w("Failed to dump meminfo:");
+            CLog.e(e);
         }
     }
 
@@ -565,15 +571,10 @@ public class CameraTestBase implements IDeviceTest, IRemoteTest {
             writer.newLine();
             writer.flush();
         } catch (IOException e) {
-            CLog.w("Failed to print meminfo to %s: %s", outputFile.getAbsolutePath(), e);
+            CLog.w("Failed to print meminfo to %s:", outputFile.getAbsolutePath());
+            CLog.e(e);
         } finally {
-            if (writer != null) {
-                try {
-                    writer.close();
-                } catch (IOException e) {
-                    CLog.w("Failed to close %s: %s", outputFile.getAbsolutePath(), e);
-                }
-            }
+            StreamUtil.close(writer);
         }
     }
 
@@ -590,11 +591,11 @@ public class CameraTestBase implements IDeviceTest, IRemoteTest {
         //    1 pool-6-thread-1
         // FIXME: Resolve the error "sh: syntax error: '|' unexpected" using the command below
         // $ /system/bin/ps -t -p %s | tr -s ' ' | cut -d' ' -f13- | sort | uniq -c | sort -nr"
-        private final String PS_COMMAND_FORMAT = "/system/bin/ps -t -p %s";
-        private final String PGREP_COMMAND_FORMAT = "pgrep %s";
-        private final int STATE_STOPPED = 0;
-        private final int STATE_SCHEDULED = 1;
-        private final int STATE_RUNNING = 2;
+        private static final String PS_COMMAND_FORMAT = "/system/bin/ps -t -p %s";
+        private static final String PGREP_COMMAND_FORMAT = "pgrep %s";
+        private static final int STATE_STOPPED = 0;
+        private static final int STATE_SCHEDULED = 1;
+        private static final int STATE_RUNNING = 2;
 
         private int mState = STATE_STOPPED;
         private Timer mTimer = new Timer(true); // run as a daemon thread
@@ -646,8 +647,9 @@ public class CameraTestBase implements IDeviceTest, IRemoteTest {
                         String.format("ps_%s", test.getTestName()), "txt");
                 new BufferedWriter(new FileWriter(mOutputFile, false)).close();
             } catch (IOException e) {
-                CLog.w("Failed to create processes and threads file %s: %s",
-                        mOutputFile.getAbsolutePath(), e);
+                CLog.w("Failed to create processes and threads file %s:",
+                        mOutputFile.getAbsolutePath());
+                CLog.e(e);
                 return null;
             }
             return mOutputFile;
@@ -659,7 +661,8 @@ public class CameraTestBase implements IDeviceTest, IRemoteTest {
                 result = getDevice().executeShellCommand(String.format(PGREP_COMMAND_FORMAT,
                         processName));
             } catch (DeviceNotAvailableException e) {
-                CLog.w("Failed to get pid %s: %s", processName, e);
+                CLog.w("Failed to get pid %s:", processName);
+                CLog.e(e);
             }
             return result;
         }
@@ -693,10 +696,9 @@ public class CameraTestBase implements IDeviceTest, IRemoteTest {
                 writer.newLine();
                 writer.flush();
                 writer.close();
-            } catch (DeviceNotAvailableException e) {
-                CLog.w("Failed to dump thread count: %s", e);
-            } catch (IOException e) {
-                CLog.w("Failed to dump thread count: %s", e);
+            } catch (DeviceNotAvailableException | IOException e) {
+                CLog.w("Failed to dump thread count:");
+                CLog.e(e);
             }
         }
     }
@@ -715,7 +717,8 @@ public class CameraTestBase implements IDeviceTest, IRemoteTest {
                         new ByteArrayInputStreamSource(result.getBytes()));
             }
         } catch (DeviceNotAvailableException e) {
-            CLog.w("Failed to dump ION heaps: %s", e);
+            CLog.w("Failed to dump ION heaps:");
+            CLog.e(e);
         }
     }
 
@@ -733,6 +736,23 @@ public class CameraTestBase implements IDeviceTest, IRemoteTest {
     @Override
     public ITestDevice getDevice() {
         return mDevice;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void setConfiguration(IConfiguration configuration) {
+        mConfiguration = configuration;
+    }
+
+    /**
+     * Get the {@link IRunUtil} instance to use.
+     * <p/>
+     * Exposed so unit tests can mock.
+     */
+    IRunUtil getRunUtil() {
+        return RunUtil.getDefault();
     }
 
     /**

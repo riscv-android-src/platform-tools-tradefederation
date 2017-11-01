@@ -15,20 +15,30 @@
  */
 package com.android.tradefed.command;
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
+
 import com.android.tradefed.command.Console.CaptureList;
 import com.android.tradefed.util.RegexTrie;
-
-import junit.framework.TestCase;
+import com.android.tradefed.util.RunUtil;
 
 import org.easymock.EasyMock;
+import org.junit.After;
+import org.junit.Before;
+import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.junit.runners.JUnit4;
 
+import java.io.IOException;
 import java.util.Arrays;
 import java.util.List;
 
-/**
- * Unit tests for {@link Console}.
- */
-public class ConsoleTest extends TestCase {
+/** Unit tests for {@link Console}. */
+@RunWith(JUnit4.class)
+public class ConsoleTest {
 
     private ICommandScheduler mMockScheduler;
     private Console mConsole;
@@ -50,12 +60,8 @@ public class ConsoleTest extends TestCase {
         }
     }
 
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    protected void setUp() throws Exception {
-        super.setUp();
+    @Before
+    public void setUp() throws Exception {
         mMockScheduler = EasyMock.createStrictMock(ICommandScheduler.class);
         mIsConsoleFunctional = false;
         /**
@@ -73,12 +79,20 @@ public class ConsoleTest extends TestCase {
         mConsole.setCommandScheduler(mMockScheduler);
         mProxyExceptionHandler = new ProxyExceptionHandler();
         mConsole.setUncaughtExceptionHandler(mProxyExceptionHandler);
-     }
+    }
 
-    /**
-     * Test normal Console run when system console is available
-     */
+    @After
+    public void tearDown() {
+        if (mConsole != null) {
+            mConsole.exitConsole();
+            mConsole.interrupt();
+        }
+    }
+
+    /** Test normal Console run when system console is available */
+    @Test
     public void testRun_withConsole() throws Throwable {
+        mConsole.setName("testRun_withConsole");
         mIsConsoleFunctional = true;
 
         mMockScheduler.start();
@@ -97,15 +111,94 @@ public class ConsoleTest extends TestCase {
     }
 
     /**
-     * Test normal Console run when system console is _not_ available
+     * Test that an interactive console does return and doesn't not stay up when started with
+     * 'help'.
      */
+    @Test
+    public void testRun_withConsoleInteractiveHelp() throws Throwable {
+        mConsole = new Console() {
+            @Override
+            boolean isConsoleFunctional() {
+                return mIsConsoleFunctional;
+            }
+        };
+        mConsole.setName("testRun_withConsoleInteractiveHelp");
+        mConsole.setCommandScheduler(mMockScheduler);
+        mProxyExceptionHandler = new ProxyExceptionHandler();
+        mConsole.setUncaughtExceptionHandler(mProxyExceptionHandler);
+        mIsConsoleFunctional = true;
+
+        mMockScheduler.start();
+        mMockScheduler.await();
+        EasyMock.expectLastCall().anyTimes();
+        mMockScheduler.shutdown();  // after we discover that it was started with help
+        EasyMock.replay(mMockScheduler);
+
+        mConsole.setArgs(Arrays.asList("help"));
+        mConsole.start();
+        // join has a timeout otherwise it may hang forever.
+        mConsole.join(2000);
+        assertFalse(mConsole.isAlive());
+        mProxyExceptionHandler.verify();
+        EasyMock.verify(mMockScheduler);
+    }
+
+    /**
+     * Test that an interactive console stays up when started without 'help' and scheduler does not
+     * shutdown.
+     */
+    @Test
+    public void testRun_withConsoleInteractive_noHelp() throws Throwable {
+        mConsole =
+                new Console() {
+                    @Override
+                    boolean isConsoleFunctional() {
+                        return mIsConsoleFunctional;
+                    }
+
+                    @Override
+                    String getConsoleInput() throws IOException {
+                        return "test";
+                    }
+                };
+        mConsole.setName("testRun_withConsoleInteractive_noHelp");
+        mConsole.setCommandScheduler(mMockScheduler);
+        mProxyExceptionHandler = new ProxyExceptionHandler();
+        mConsole.setUncaughtExceptionHandler(mProxyExceptionHandler);
+        mIsConsoleFunctional = true;
+
+        mMockScheduler.start();
+        mMockScheduler.await();
+        EasyMock.expectLastCall().anyTimes();
+        // No scheduler shutdown is expected.
+        EasyMock.replay(mMockScheduler);
+        try {
+            mConsole.start();
+            // join has a timeout otherwise it hangs forever.
+            mConsole.join(100);
+            assertTrue(mConsole.isAlive());
+            mProxyExceptionHandler.verify();
+            EasyMock.verify(mMockScheduler);
+        } finally {
+            mConsole.exitConsole();
+            RunUtil.getDefault().interrupt(mConsole, "interrupting");
+            mConsole.interrupt();
+            mConsole.join(2000);
+        }
+        assertFalse("Console thread has not stopped.", mConsole.isAlive());
+    }
+
+    /** Test normal Console run when system console is _not_ available */
+    @Test
     public void testRun_noConsole() throws Throwable {
+        mConsole.setName("testRun_noConsole");
         mIsConsoleFunctional = false;
 
         mMockScheduler.start();
         mMockScheduler.await();
         EasyMock.expectLastCall().anyTimes();
-        mMockScheduler.shutdown();  // after we run the initial command and then immediately quit.
+        // after we run the initial command and then immediately quit.
+        mMockScheduler.shutdown();
 
         EasyMock.replay(mMockScheduler);
 
@@ -117,10 +210,10 @@ public class ConsoleTest extends TestCase {
         EasyMock.verify(mMockScheduler);
     }
 
-    /**
-     * Make sure that "run command foo config.xml" works properly.
-     */
+    /** Make sure that "run command foo config.xml" works properly. */
+    @Test
     public void testRunCommand() throws Exception {
+        mConsole.setName("testRunCommand");
         String[] command = new String[] {"run", "command", "--arg", "value", "config.xml"};
         String[] expected = new String[] {"--arg", "value", "config.xml"};
         CaptureList captures = new CaptureList();
@@ -137,10 +230,10 @@ public class ConsoleTest extends TestCase {
         EasyMock.verify(mMockScheduler);
     }
 
-    /**
-     * Make sure that the "run foo config.xml" shortcut works properly.
-     */
+    /** Make sure that the "run foo config.xml" shortcut works properly. */
+    @Test
     public void testRunCommand_shortcut() throws Exception {
+        mConsole.setName("testRunCommand_shortcut");
         String[] command = new String[] {"run", "--arg", "value", "config.xml"};
         String[] expected = new String[] {"--arg", "value", "config.xml"};
         CaptureList captures = new CaptureList();
@@ -161,7 +254,9 @@ public class ConsoleTest extends TestCase {
      * Make sure that the command "run command command foo config.xml" properly considers the second
      * "command" to be the first token of the command to be executed.
      */
+    @Test
     public void testRunCommand_startsWithCommand() throws Exception {
+        mConsole.setName("testRunCommand_startsWithCommand");
         String[] command = new String[] {"run", "command", "command", "--arg", "value",
                 "config.xml"};
         String[] expected = new String[] {"command", "--arg", "value", "config.xml"};
@@ -179,9 +274,8 @@ public class ConsoleTest extends TestCase {
         EasyMock.verify(mMockScheduler);
     }
 
-    /**
-     * Make sure that {@link Console#getFlatArgs} works as expected.
-     */
+    /** Make sure that {@link Console#getFlatArgs} works as expected. */
+    @Test
     public void testFlatten() throws Exception {
         CaptureList cl = new CaptureList();
         cl.add(Arrays.asList("run", null));
@@ -193,9 +287,8 @@ public class ConsoleTest extends TestCase {
         assertEquals("beta", flat.get(1));
     }
 
-    /**
-     * Make sure that {@link Console#getFlatArgs} throws an exception when argIdx is wrong.
-     */
+    /** Make sure that {@link Console#getFlatArgs} throws an exception when argIdx is wrong. */
+    @Test
     public void testFlatten_wrongArgIdx() throws Exception {
         CaptureList cl = new CaptureList();
         cl.add(Arrays.asList("run", null));
@@ -210,9 +303,8 @@ public class ConsoleTest extends TestCase {
         }
     }
 
-    /**
-     * Make sure that {@link Console#getFlatArgs} throws an exception when argIdx is OOB.
-     */
+    /** Make sure that {@link Console#getFlatArgs} throws an exception when argIdx is OOB. */
+    @Test
     public void testFlatten_argIdxOOB() throws Exception {
         CaptureList cl = new CaptureList();
         cl.add(Arrays.asList("run", null));

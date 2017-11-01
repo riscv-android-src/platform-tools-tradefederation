@@ -24,18 +24,21 @@ import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.result.BugreportCollector;
+import com.android.tradefed.result.FileInputStreamSource;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.InputStreamSource;
 import com.android.tradefed.result.LogDataType;
-import com.android.tradefed.result.SnapshotInputStreamSource;
 import com.android.tradefed.testtype.IDeviceTest;
 import com.android.tradefed.testtype.IRemoteTest;
+import com.android.tradefed.util.FileUtil;
 import com.android.tradefed.util.RegexTrie;
 import com.android.tradefed.util.RunUtil;
 import com.android.tradefed.util.SimpleStats;
+import com.android.tradefed.util.StreamUtil;
 
-import junit.framework.Assert;
 import junit.framework.TestCase;
+
+import org.junit.Assert;
 
 import java.io.BufferedReader;
 import java.io.ByteArrayInputStream;
@@ -67,9 +70,9 @@ public class OpenGlPerformanceTest implements IDeviceTest, IRemoteTest {
     private static final int TEST_TIMER = 60 * 60 *1000; // test running timer 1 hour
     private static final long START_TIMER = 2 * 60 * 1000; // 2 minutes
 
-    private final RegexTrie<String> mPatternMap = new RegexTrie<String>();
-    private Map<String, String[]> mKeyMap = new HashMap<String, String[]>();
-    private Map<String, Double[]> mTestResults = new HashMap<String, Double[]>();
+    private final RegexTrie<String> mPatternMap = new RegexTrie<>();
+    private Map<String, String[]> mKeyMap = new HashMap<>();
+    private Map<String, Double[]> mTestResults = new HashMap<>();
 
     @Option(name="iterations",
             description="The number of iterations to run benchmark tests.")
@@ -181,7 +184,6 @@ public class OpenGlPerformanceTest implements IDeviceTest, IRemoteTest {
     /**
      * Collect test results, report test results to test listener.
      *
-     * @param test
      * @param listener
      */
     private void logOutputFile(ITestInvocationListener listener)
@@ -205,31 +207,27 @@ public class OpenGlPerformanceTest implements IDeviceTest, IRemoteTest {
                     // Save a copy of the output file
                     CLog.d("Sending %d byte file %s into the logosphere!",
                             resFile.length(), resFile);
-                    outputSource = new SnapshotInputStreamSource(new FileInputStream(resFile));
+                    outputSource = new FileInputStreamSource(resFile);
                     listener.testLog(outputFileName, LogDataType.TEXT,
                             outputSource);
 
                     // Parse the results file and report results to dash board
-                    parseOutputFile(new FileInputStream(resFile), i, listener);
+                    parseOutputFile(new FileInputStream(resFile), i);
                 } else {
                     CLog.v("File %s doesn't exist or pulling the file failed", outputFileName);
                 }
             } catch (IOException e) {
                 CLog.e("IOException while reading outputfile %s", outputFileName);
             } finally {
-                if (resFile != null) {
-                    resFile.delete();
-                }
-                if (outputSource != null) {
-                    outputSource.cancel();
-                }
+                FileUtil.deleteFile(resFile);
+                StreamUtil.cancel(outputSource);
             }
         }
 
         printTestResults();
         printKeyMap();
 
-        Map<String, String> runMetrics = new HashMap<String,String>();
+        Map<String, String> runMetrics = new HashMap<>();
 
         // After processing the output file, calculate average data and report data
         // Find the RU-ITEM keys mapping for data posting
@@ -254,13 +252,12 @@ public class OpenGlPerformanceTest implements IDeviceTest, IRemoteTest {
     }
 
     // Parse one result file and save test name and fps value
-    private void parseOutputFile(InputStream dataInputStream, int iterationId,
-            ITestInvocationListener listener) {
+    private void parseOutputFile(InputStream dataInputStream, int iterationId) {
         try {
             BufferedReader br= new BufferedReader(new InputStreamReader(dataInputStream));
             String line = null;
             while ((line = br.readLine()) != null) {
-                List<List<String>> capture = new ArrayList<List<String>>(1);
+                List<List<String>> capture = new ArrayList<>(1);
                 String key = mPatternMap.retrieve(capture, line);
 
                 if (key != null) {
@@ -282,7 +279,8 @@ public class OpenGlPerformanceTest implements IDeviceTest, IRemoteTest {
                 }
             }
         } catch (IOException e) {
-            CLog.e("IOException while reading from data stream: %s", e);
+            CLog.e("IOException while reading from data stream");
+            CLog.e(e);
             return;
         }
     }
@@ -400,7 +398,7 @@ public class OpenGlPerformanceTest implements IDeviceTest, IRemoteTest {
                     "UI test with live wallpaper, 38.197098,");
 
             InputStream inputStream = new ByteArrayInputStream(output.getBytes());
-            mTestInstance.parseOutputFile(inputStream, 0, null);
+            mTestInstance.parseOutputFile(inputStream, 0);
             assertNotNull(mTestInstance.mTestResults);
 
             // 3 tests, RenderScript Text Rendering
@@ -493,10 +491,10 @@ public class OpenGlPerformanceTest implements IDeviceTest, IRemoteTest {
                     "UI test with live wallpaper, 38.05175,");
 
             InputStream inputStream = new ByteArrayInputStream(output1.getBytes());
-            mTestInstance.parseOutputFile(inputStream, 0, null);
+            mTestInstance.parseOutputFile(inputStream, 0);
             //mTestInstance.printTestResults();
             inputStream = new ByteArrayInputStream(output2.getBytes());
-            mTestInstance.parseOutputFile(inputStream, 1, null);
+            mTestInstance.parseOutputFile(inputStream, 1);
             assertNotNull(mTestInstance.mTestResults);
 
             assertEquals("97.65624", mTestInstance.mTestResults.get("text1")[0].toString());

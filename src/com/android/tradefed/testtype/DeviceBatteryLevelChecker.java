@@ -28,7 +28,7 @@ import com.android.tradefed.targetprep.ITargetPreparer;
 import com.android.tradefed.util.IRunUtil;
 import com.android.tradefed.util.RunUtil;
 
-import junit.framework.Assert;
+import org.junit.Assert;
 
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
@@ -74,7 +74,11 @@ public class DeviceBatteryLevelChecker implements IDeviceTest, IRemoteTest {
     @Option(name = "stop-runtime", description = "Whether to stop runtime.")
     private boolean mStopRuntime = false;
 
-    Integer checkBatteryLevel(ITestDevice device) throws DeviceNotAvailableException {
+    @Option(name = "stop-logcat", description = "Whether to stop logcat during the recharge. "
+            + "this option is enabled by default.")
+    private boolean mStopLogcat = true;
+
+    Integer checkBatteryLevel(ITestDevice device) {
         try {
             IDevice idevice = device.getIDevice();
             // Force a synchronous check, which will also tell us if the device is still alive
@@ -84,7 +88,7 @@ public class DeviceBatteryLevelChecker implements IDeviceTest, IRemoteTest {
         }
     }
 
-    private void stopRuntime(ITestDevice device) throws DeviceNotAvailableException {
+    private void stopDeviceRuntime() throws DeviceNotAvailableException {
         getDevice().executeShellCommand("stop");
     }
 
@@ -123,12 +127,17 @@ public class DeviceBatteryLevelChecker implements IDeviceTest, IRemoteTest {
         turnScreenOff(mTestDevice);
 
         if (mStopRuntime) {
-            stopRuntime(mTestDevice);
+            stopDeviceRuntime();
+        }
+        // Stop our logcat receiver
+        if (mStopLogcat) {
+            getDevice().stopLogcat();
         }
 
         // If we're down here, it's time to hold the device until it reaches mResumeLevel
         Long lastReportTime = System.currentTimeMillis();
         Integer newLevel = checkBatteryLevel(mTestDevice);
+
         while (batteryLevel != null && batteryLevel < mResumeLevel) {
             if (System.currentTimeMillis() - lastReportTime > mLoggingPollTime * 60 * 1000) {
                 // Log the battery level status every mLoggingPollTime minutes
@@ -185,6 +194,10 @@ public class DeviceBatteryLevelChecker implements IDeviceTest, IRemoteTest {
     @Override
     public ITestDevice getDevice() {
         return mTestDevice;
+    }
+
+    protected void setResumeLevel(int level) {
+        mResumeLevel = level;
     }
 }
 

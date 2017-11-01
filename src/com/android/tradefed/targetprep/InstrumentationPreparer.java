@@ -60,6 +60,9 @@ public class InstrumentationPreparer implements ITargetPreparer {
             description="The test method name to run.")
     private String mMethodName = null;
 
+    /**
+     * @deprecated use shell-timeout or test-timeout option instead.
+     */
     @Deprecated
     @Option(name = "timeout",
             description="Deprecated - Use \"shell-timeout\" or \"test-timeout\" instead.")
@@ -98,7 +101,7 @@ public class InstrumentationPreparer implements ITargetPreparer {
             return;
         }
 
-        BuildError e = new BuildError("unknown error");
+        BuildError e = new BuildError("unknown error", device.getDeviceDescriptor());
         for (int i = 0; i < mAttempts; i++) {
             try {
                 runInstrumentation(device);
@@ -139,7 +142,7 @@ public class InstrumentationPreparer implements ITargetPreparer {
             String msg = String.format("Failed to run instrumentation %s on %s. failed tests = %s",
                     mPackageName, device.getSerialNumber(), getFailedTestNames(listener));
             CLog.w(msg);
-            throw new BuildError(msg);
+            throw new BuildError(msg, device.getDeviceDescriptor());
         }
     }
 
@@ -184,7 +187,7 @@ public class InstrumentationPreparer implements ITargetPreparer {
     }
 
     /**
-     * @Deprecated Use {@link #setShellTimeout(long)} or {@link #setTestTimeout(int)}
+     * @deprecated Use {@link #setShellTimeout(long)} or {@link #setTestTimeout(int)}
      */
     @Deprecated
     void setTimeout(int timeout) {

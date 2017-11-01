@@ -15,9 +15,12 @@
  */
 package com.android.tradefed.result;
 
+import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.config.OptionClass;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.log.LogUtil.CLog;
+
+import com.google.common.annotations.VisibleForTesting;
 
 import java.net.InetAddress;
 import java.net.UnknownHostException;
@@ -38,24 +41,29 @@ public class DeviceUnavailEmailResultReporter extends EmailResultReporter {
 
     @Override
     protected String generateEmailSubject() {
-        String buildAlias = getBuildInfo().getBuildAttributes().get("build_alias");
-        if (buildAlias == null){
-            //If build alias is null, use the build id instead.
-            buildAlias = getBuildInfo().getBuildId();
+        StringBuilder subj = new StringBuilder();
+        subj.append("Device unavailable ");
+        for (IBuildInfo build : getInvocationContext().getBuildInfos()) {
+            subj.append(build.toString());
         }
-
-        String hostName = null;
-        try {
-            hostName = InetAddress.getLocalHost().getHostName();
-        } catch (UnknownHostException e) {
-            hostName = "Unknown";
-            CLog.e(e);
-        }
+        subj.append(" ");
+        subj.append(String.format("hostname %s", getHostname()));
 
         // Sample email subject: Device unavailable: mantaray-user JDQ39
         // 015d172c980c2208 atl-034.mtv.corp.google.com
-        return String.format("Device unavailable: %s %s %s %s",
-                getBuildInfo().getBuildFlavor(), buildAlias,
-                getBuildInfo().getDeviceSerial(), hostName);
+        return subj.toString();
+    }
+
+    /**
+     * Fetch the hostname and returns it, or returns "Unknown" if an error occurs.
+     */
+    @VisibleForTesting
+    String getHostname() {
+        try {
+            return InetAddress.getLocalHost().getHostName();
+        } catch (UnknownHostException e) {
+            CLog.e(e);
+            return "Unknown";
+        }
     }
 }

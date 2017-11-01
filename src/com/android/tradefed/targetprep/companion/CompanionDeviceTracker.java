@@ -43,7 +43,6 @@ public class CompanionDeviceTracker {
 
     /**
      * Retrieves singleton instance of the tracker
-     * @return
      */
     public static CompanionDeviceTracker getInstance() {
         if (sInst == null) {
@@ -57,7 +56,6 @@ public class CompanionDeviceTracker {
      *
      * @param device the primary device. used to identify the companion device
      * @param opt selection criteria
-     * @param timeout time to wait before giving up on allocation
      * @return the device allocated or <code>null</code> if none available
      */
     public ITestDevice allocateCompanionDevice(ITestDevice device, DeviceSelectionOptions opt) {

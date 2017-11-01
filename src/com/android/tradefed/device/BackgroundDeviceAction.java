@@ -45,7 +45,6 @@ public class BackgroundDeviceAction extends Thread {
     private IShellOutputReceiver mReceiver;
     private ITestDevice mTestDevice;
     private String mCommand;
-    private String mSerialNumber;
     private String mDescriptor;
     private boolean mIsCancelled;
     private int mLogStartDelay;
@@ -61,9 +60,9 @@ public class BackgroundDeviceAction extends Thread {
      */
     public BackgroundDeviceAction(String command, String descriptor, ITestDevice device,
             IShellOutputReceiver receiver, int startDelay) {
+        super("BackgroundDeviceAction-" + command);
         mCommand = command;
         mDescriptor = descriptor;
-        mSerialNumber = device.getSerialNumber();
         mTestDevice = device;
         mReceiver = receiver;
         mLogStartDelay = startDelay;
@@ -80,11 +79,11 @@ public class BackgroundDeviceAction extends Thread {
     @Override
     public void run() {
         String separator = String.format(
-                "========== beginning of new [%s] output ==========\n", mDescriptor);
+                "\n========== beginning of new [%s] output ==========\n", mDescriptor);
         while (!isCancelled()) {
             if (mLogStartDelay > 0) {
                 CLog.d("Sleep for %d before starting %s for %s.", mLogStartDelay, mDescriptor,
-                        mSerialNumber);
+                        mTestDevice.getSerialNumber());
                 getRunUtil().sleep(mLogStartDelay);
             }
             blockUntilOnlineNoThrow();
@@ -92,41 +91,27 @@ public class BackgroundDeviceAction extends Thread {
             if (isCancelled()) {
                 break;
             }
-            CLog.d("Starting %s for %s.", mDescriptor, mSerialNumber);
+            CLog.d("Starting %s for %s.", mDescriptor, mTestDevice.getSerialNumber());
             mReceiver.addOutput(separator.getBytes(), 0, separator.length());
             try {
                 mTestDevice.getIDevice().executeShellCommand(mCommand, mReceiver,
                         0, TimeUnit.MILLISECONDS);
-            } catch (TimeoutException e) {
-                recoverDevice(e.getClass().getName());
-            } catch (AdbCommandRejectedException e) {
-                recoverDevice(e.getClass().getName());
-            } catch (ShellCommandUnresponsiveException e) {
-                recoverDevice(e.getClass().getName());
-            } catch (IOException e) {
-                recoverDevice(e.getClass().getName());
+            } catch (AdbCommandRejectedException | IOException |
+                    ShellCommandUnresponsiveException | TimeoutException e) {
+                waitForDeviceRecovery(e.getClass().getName());
             }
         }
     }
 
-    private void recoverDevice(String exceptionType) {
+    /**
+     * If device goes offline for any reason, the recovery will be triggered from the main
+     * so we just have to block until it recovers or invocation fails for device unavailable.
+     * @param exceptionType
+     */
+    protected void waitForDeviceRecovery(String exceptionType) {
         CLog.d("%s while running %s on %s. May see duplicated content in log.", exceptionType,
-                mDescriptor, mSerialNumber);
-
-        // Make sure we haven't been cancelled before we sleep for a long time
-        if (isCancelled()) {
-            return;
-        }
-
-        // sleep a small amount for device to settle
-        getRunUtil().sleep(5 * 1000);
-
-        // wait a long time for device to be online
-        try {
-            mTestDevice.waitForDeviceOnline(10 * 60 * 1000);
-        } catch (DeviceNotAvailableException e) {
-            CLog.w("Device %s not online", mSerialNumber);
-        }
+                mDescriptor, mTestDevice.getSerialNumber());
+        blockUntilOnlineNoThrow();
     }
 
     /**
@@ -154,12 +139,14 @@ public class BackgroundDeviceAction extends Thread {
     }
 
     private void blockUntilOnlineNoThrow() {
-        CLog.d("Waiting for device %s online before starting.", mSerialNumber);
+        CLog.d("Waiting for device %s online before starting.", mTestDevice.getSerialNumber());
         while (!isCancelled()) {
-            if (!TestDeviceState.ONLINE.equals(mTestDevice.getDeviceState())) {
+            // For stub device we wait no matter what to avoid flooding with logs.
+            if ((mTestDevice.getIDevice() instanceof StubDevice)
+                    || !TestDeviceState.ONLINE.equals(mTestDevice.getDeviceState())) {
                 getRunUtil().sleep(ONLINE_POLL_INTERVAL_MS);
             } else {
-                CLog.d("Device %s now online.", mSerialNumber);
+                CLog.d("Device %s now online.", mTestDevice.getSerialNumber());
                 break;
             }
         }

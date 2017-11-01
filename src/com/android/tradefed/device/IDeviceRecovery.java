@@ -52,4 +52,12 @@ public interface IDeviceRecovery {
     public void recoverDeviceBootloader(IDeviceStateMonitor monitor)
             throws DeviceNotAvailableException;
 
+    /**
+     * Sets the path to the fastboot binary to be used.
+     *
+     * @param fastbootPath a {@link String} defining the path to the fastboot binary.
+     */
+    public default void setFastbootPath(String fastbootPath) {
+        // empty by default for implementation that do not require fastboot.
+    }
 }

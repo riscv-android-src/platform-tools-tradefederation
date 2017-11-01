@@ -15,19 +15,21 @@
  */
 package com.android.tradefed.util;
 
+import com.android.tradefed.build.BuildSerializedVersion;
+
 import com.google.common.base.Objects;
 
+import java.io.Serializable;
 import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-/**
- * A {@link Map} that supports multiple values per key.
- */
-public class MultiMap<K, V> {
+/** A {@link Map} that supports multiple values per key. */
+public class MultiMap<K, V> implements Serializable {
 
+    private static final long serialVersionUID = BuildSerializedVersion.VERSION;
     private final Map<K, List<V>> mInternalMap;
 
     public MultiMap() {
@@ -44,7 +46,7 @@ public class MultiMap<K, V> {
     /**
      * Checks whether the map contains the specified key.
      *
-     * @see {@link Map#containsKey()}
+     * @see Map#containsKey(Object)
      */
     public boolean containsKey(K key) {
         return mInternalMap.containsKey(key);
@@ -53,7 +55,7 @@ public class MultiMap<K, V> {
     /**
      * Checks whether the map contains the specified value.
      *
-     * @see {@link Map#containsValue()}
+     * @see Map#containsValue(Object)
      */
     public boolean containsValue(V value) {
         for (List<V> valueList : mInternalMap.values()) {
@@ -72,7 +74,7 @@ public class MultiMap<K, V> {
     }
 
     /**
-     * @see {@link Map#isEmpty()}
+     * @see Map#isEmpty()
      */
     public boolean isEmpty() {
         return mInternalMap.isEmpty();
@@ -88,7 +90,7 @@ public class MultiMap<K, V> {
     /**
      * Adds the value to the list associated with a key.
      *
-     * @see {@link Map#put()}
+     * @see Map#put(Object, Object)
      */
     public V put(K key, V value) {
         List<V> valueList = mInternalMap.get(key);

@@ -48,7 +48,7 @@ public class TimeVal extends Number implements Comparable<Long> {
     /**
      * Constructs a newly allocated TimeVal object that represents the <emph>timestamp</emph>
      * indicated by the String parameter.  The string is converted to a TimeVal in exactly the
-     * manner used by the {@see fromString(String)} method.
+     * manner used by the {@link #fromString(String)} method.
      */
     public TimeVal(String value) throws NumberFormatException {
         mValue = fromString(value);
@@ -120,7 +120,6 @@ public class TimeVal extends Number implements Comparable<Long> {
         if (str == null) return 0;
 
         Long value = Long.parseLong(str);
-        if (value == null) return 0;
         return value;
     }
 

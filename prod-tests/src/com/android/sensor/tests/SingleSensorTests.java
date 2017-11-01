@@ -17,20 +17,17 @@ package com.android.sensor.tests;
 
 import com.android.tradefed.config.Option;
 import com.android.tradefed.device.DeviceNotAvailableException;
-import com.android.tradefed.log.LogUtil.CLog;
+import com.android.tradefed.result.FileInputStreamSource;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.InputStreamSource;
 import com.android.tradefed.result.LogDataType;
-import com.android.tradefed.result.SnapshotInputStreamSource;
 import com.android.tradefed.testtype.InstrumentationTest;
 import com.android.tradefed.util.FileUtil;
 import com.android.tradefed.util.StreamUtil;
 
-import junit.framework.Assert;
+import org.junit.Assert;
 
 import java.io.File;
-import java.io.FileInputStream;
-import java.io.IOException;
 
 /**
  * Run the sensor test instrumentation.
@@ -97,12 +94,9 @@ public class SingleSensorTests extends InstrumentationTest {
         try {
             outputFile = getDevice().pullFile(filePath);
             if (outputFile != null) {
-                outputSource = new SnapshotInputStreamSource(new FileInputStream(outputFile));
+                outputSource = new FileInputStreamSource(outputFile);
                 listener.testLog(report_key, LogDataType.TEXT, outputSource);
             }
-        } catch (IOException e) {
-            // Log and ignore
-            CLog.w("Error while pulling and uploading the error: %s", e.getMessage());
         } finally {
             FileUtil.deleteFile(outputFile);
             StreamUtil.cancel(outputSource);

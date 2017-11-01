@@ -22,12 +22,9 @@ import com.android.tradefed.device.ITestDevice;
 /**
  * Cleans up the target device after the test run has finished.
  * <p/>
- * For example, installs software, tweaks env settings for testing, launches targets etc.
+ * For example, removes software, collects metrics, remove temporary files etc.
  * <p/>
- * Note that multiple {@link ITargetPreparer} can specified in a configuration. It is recommended
- * that each ITargetPreparer clearly document its expected environment pre-setup and post-setUp.
- * e.g. a ITargetPreparer that configures a device for testing must be run after the ITargetPreparer
- * that installs software.
+ * Note that multiple {@link ITargetCleaner}s can be specified in a configuration.
  */
 public interface ITargetCleaner extends ITargetPreparer {
 

@@ -83,8 +83,8 @@ public interface IDeviceManager {
      * Attempts to return a device that hasn't been previously allocated will be ignored.
      *
      * @param device the {@link ITestDevice} to free
-     * @param state the {@link IDeviceManager.FreeDeviceState}. Used to control if device is
-     *            returned to available device pool.
+     * @param state the {@link com.android.tradefed.device.FreeDeviceState}. Used to control if
+     *        device is returned to available device pool.
      */
     public void freeDevice(ITestDevice device, FreeDeviceState state);
 
@@ -148,7 +148,7 @@ public interface IDeviceManager {
      * @return the newly allocated {@link ITestDevice} in tcp mode or <code>null</code> if a tcp
      *         connection could not be formed
      * @throws DeviceNotAvailableException if the connection with <var>usbDevice</var> was lost and
-     *             could not be recovered
+     *         could not be recovered
      */
     public ITestDevice reconnectDeviceToTcp(ITestDevice usbDevice)
             throws DeviceNotAvailableException;
@@ -162,14 +162,29 @@ public interface IDeviceManager {
      */
     public void terminate();
 
-    /**
-     * Like {@link #terminate()}, but attempts to forcefully shut down adb as well.
-     */
+    /** Stops the device recovery thread. */
+    public void terminateDeviceRecovery();
+
+    /** Stop the Device Monitors. */
+    public void terminateDeviceMonitor();
+
+    /** Like {@link #terminate()}, but attempts to forcefully shut down adb as well. */
     public void terminateHard();
+
+    /** Stop adb bridge and services depend on adb connections. */
+    public void stopAdbBridge();
+
+    /**
+     * Restart (if {@link #stopAdbBridge()} was called) adb bridge and services depend on adb
+     * connections.
+     */
+    public void restartAdbBridge();
 
     /**
      * Returns a map of all known devices and their state
-     * @return a list of device serials and their {@link DeviceAllocationState}
+     *
+     * @return a list of device serials and their {@link
+     *     com.android.tradefed.device.DeviceAllocationState}
      */
     public List<DeviceDescriptor> listAllDevices();
 
@@ -219,4 +234,16 @@ public interface IDeviceManager {
      */
     public void removeDeviceMonitor(IDeviceMonitor mon);
 
+    /**
+     * Returns the path to the fastboot binary path to use.
+     */
+    public String getFastbootPath();
+
+    /**
+     * Wait until a first physical device is connected. If a device was connected before, it
+     * returns directly True. If no device was added, it returns false after timeout.
+     *
+     * @param timeout time to wait in millisecond before returning false.
+     */
+    public boolean waitForFirstDeviceAdded(long timeout);
 }

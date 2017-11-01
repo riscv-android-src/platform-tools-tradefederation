@@ -16,16 +16,19 @@
 
 package com.android.tradefed.command;
 
+import com.android.tradefed.command.CommandRunner.ExitCode;
 import com.android.tradefed.config.ConfigurationException;
 import com.android.tradefed.config.IConfigurationFactory;
 import com.android.tradefed.device.FreeDeviceState;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.device.NoDeviceException;
+import com.android.tradefed.invoker.IInvocationContext;
 import com.android.tradefed.invoker.ITestInvocation;
 import com.android.tradefed.result.ITestInvocationListener;
 
 import java.io.PrintWriter;
 import java.util.List;
+import java.util.Map;
 
 /**
  * A scheduler for running TradeFederation commands.
@@ -34,17 +37,18 @@ public interface ICommandScheduler {
 
     /**
     * Listener for invocation events when invocation completes.
-    * @see execCommand()
+    * @see #execCommand(IScheduledInvocationListener, String[])
     */
     public static interface IScheduledInvocationListener extends ITestInvocationListener {
         /**
          * Callback when entire invocation has completed, including all
          * {@link ITestInvocationListener#invocationEnded(long)} events.
          *
-         * @param device
-         * @param deviceState
+         * @param metadata
+         * @param devicesStates
          */
-        public void invocationComplete(ITestDevice device, FreeDeviceState deviceState);
+        public void invocationComplete(IInvocationContext metadata,
+                Map<ITestDevice, FreeDeviceState> devicesStates);
     }
 
     /**
@@ -60,7 +64,7 @@ public interface ICommandScheduler {
      * @return <code>true</code> if command was added successfully
      * @throws ConfigurationException if command could not be parsed
      *
-     * @see {@link IConfigurationFactory#createConfigurationFromArgs(String[])}
+     * @see IConfigurationFactory#createConfigurationFromArgs(String[])
      */
     public boolean addCommand(String[] args) throws ConfigurationException;
 
@@ -71,7 +75,7 @@ public interface ICommandScheduler {
      * @param extraArgs a {@link List} of {@link String} arguments to append to each command parsed
      *            from file. Can be empty but should not be null.
      * @throws ConfigurationException if command file could not be parsed
-     * @see {@link CommandFileParser}
+     * @see CommandFileParser
      */
     public void addCommandFile(String cmdFile, List<String> extraArgs)
             throws ConfigurationException;
@@ -92,7 +96,7 @@ public interface ICommandScheduler {
     /**
      * Directly allocates a device and executes a command without adding it to the command queue.
      *
-     * @param listener the {@link IScheduledInvocationListener} to be informed
+     * @param listener the {@link ICommandScheduler.IScheduledInvocationListener} to be informed
      * @param args the command arguments
      *
      * @throws ConfigurationException if command was invalid
@@ -104,7 +108,7 @@ public interface ICommandScheduler {
     /**
      * Directly execute command on already allocated device.
      *
-     * @param listener the {@link IScheduledInvocationListener} to be informed
+     * @param listener the {@link ICommandScheduler.IScheduledInvocationListener} to be informed
      * @param device the {@link ITestDevice} to use
      * @param args the command arguments
      *
@@ -182,13 +186,20 @@ public interface ICommandScheduler {
     /**
      * Waits for scheduler to complete.
      *
-     * @see {@link Thread#join()}.
+     * @see Thread#join()
      */
     public void join() throws InterruptedException;
 
     /**
-     * Waits for scheduler to start running, including waiting for handover from old TF to
-     * complete if applicable.
+     * Waits for scheduler to complete or timeout after the duration specified in milliseconds.
+     *
+     * @see Thread#join(long)
+     */
+    public void join(long millis) throws InterruptedException;
+
+    /**
+     * Waits for scheduler to start running, including waiting for handover from old TF to complete
+     * if applicable.
      */
     public void await() throws InterruptedException;
 
@@ -203,9 +214,25 @@ public interface ICommandScheduler {
      * Stop a running invocation.
      *
      * @return true if the invocation was stopped, false otherwise
-     * @throws {@link UnsupportedOperationException} if the implementation doesn't support this
+     * @throws UnsupportedOperationException if the implementation doesn't support this
      */
     public boolean stopInvocation(ITestInvocation invocation) throws UnsupportedOperationException;
+
+    /**
+     * Stop a running invocation by specifying it's id.
+     *
+     * @return true if the invocation was stopped, false otherwise
+     * @throws UnsupportedOperationException if the implementation doesn't support this
+     */
+    public boolean stopInvocation(int invocationId) throws UnsupportedOperationException;
+
+    /**
+     * Return the information on an invocation bu specifying the invocation id.
+     *
+     * @param invocationId the tracking id of the invocation.
+     * @return A {@link String} containing information about the invocation.
+     */
+    public String getInvocationInfo(int invocationId);
 
     /**
      * Output a list of current commands.
@@ -242,4 +269,25 @@ public interface ICommandScheduler {
      * Return true if we need to shutdown the scheduler on a command errors
      */
     public boolean shouldShutdownOnCmdfileError();
+
+    /**
+     * Return the error code of the last invocation that ran.
+     * Return 0 (no error), if no invocation has ran yet.
+     */
+    public ExitCode getLastInvocationExitCode();
+
+    /**
+     * Return the {@link Throwable} from the last invocation that ran.
+     * Return null, if no throwable is available.
+     */
+    public Throwable getLastInvocationThrowable();
+
+    /**
+     * Helper method, when running inside a {@link CommandRunner} context, set an exit error code
+     * and a stack trace that can be returned.
+     */
+    public void setLastInvocationExitCode(ExitCode code, Throwable stack);
+
+    /** Returns the number of Commands in ready state in the queue. */
+    public int getReadyCommandCount();
 }

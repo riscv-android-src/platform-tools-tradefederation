@@ -15,6 +15,16 @@
 LOCAL_PATH := $(call my-dir)
 
 include $(CLEAR_VARS)
+# Module to compile protos for tradefed
+LOCAL_MODULE := tradefed-protos
+LOCAL_SRC_FILES := $(call all-proto-files-under, proto)
+LOCAL_JAVA_LIBRARIES := host-libprotobuf-java-full
+LOCAL_SOURCE_FILES_ALL_GENERATED := true
+LOCAL_MODULE_TAGS := optional
+
+include $(BUILD_HOST_JAVA_LIBRARY)
+
+include $(CLEAR_VARS)
 
 # Only compile source java files in this lib.
 LOCAL_SRC_FILES := $(call all-java-files-under, src)
@@ -22,14 +32,19 @@ LOCAL_SRC_FILES := $(call all-java-files-under, src)
 LOCAL_JAVA_RESOURCE_DIRS := res
 
 LOCAL_JAVACFLAGS += -g -Xlint
+ifeq ($(EXPERIMENTAL_USE_OPENJDK9),true)
+LOCAL_JAVACFLAGS += --add-modules=java.xml.bind
+endif
+
+-include tools/tradefederation/core/error_prone_rules.mk
 
 LOCAL_MODULE := tradefed
 
 LOCAL_MODULE_TAGS := optional
-LOCAL_STATIC_JAVA_LIBRARIES := junit-host kxml2-2.3.0 jline-1.0 tf-remote-client
+LOCAL_STATIC_JAVA_LIBRARIES := junit-host kxml2-2.3.0 jline-1.0 tf-remote-client commons-compress-prebuilt host-libprotobuf-java-full tradefed-protos
 # emmalib is only a runtime dependency if generating code coverage reporters,
 # not a compile time dependency
-LOCAL_JAVA_LIBRARIES := emmalib tools-common-prebuilt loganalysis
+LOCAL_JAVA_LIBRARIES := emmalib jack-jacoco-reporter loganalysis tools-common-prebuilt
 
 LOCAL_JAR_MANIFEST := MANIFEST.mf
 
@@ -41,14 +56,20 @@ DEST_JAR := $(HOST_OUT)/tradefed/$(LOCAL_MODULE).jar
 $(DEST_JAR): $(LOCAL_BUILT_MODULE)
 	$(copy-file-to-new-target)
 
+$(HOST_OUT)/tradefed/%.jar : $(HOST_OUT_JAVA_LIBRARIES)/%.jar
+	$(copy-file-to-new-target)
+
 # this dependency ensure the above rule will be executed if jar is built
 $(LOCAL_INSTALLED_MODULE) : $(DEST_JAR)
+$(LOCAL_INSTALLED_MODULE) : $(foreach m, $(LOCAL_JAVA_LIBRARIES), $(HOST_OUT)/tradefed/$(m).jar)
 
 #######################################################
 # intentionally skipping CLEAR_VARS
-
 # Enable the build process to generate javadoc
 # We need to reference symbols in the jar built above.
+
+# ==== docs for legacy sac app engine
+#LOCAL_MODULE = tradefed-sac-deprecated
 LOCAL_JAVA_LIBRARIES += tradefed
 LOCAL_IS_HOST_MODULE:=true
 LOCAL_MODULE_CLASS := JAVA_LIBRARIES
@@ -66,6 +87,27 @@ LOCAL_DROIDDOC_OPTIONS:= \
 
 include $(BUILD_DROIDDOC)
 
+# ==== docs for the web (on the devsite app engine server)
+LOCAL_MODULE = tradefed-ds
+LOCAL_JAVA_LIBRARIES += tradefed
+LOCAL_IS_HOST_MODULE := true
+LOCAL_MODULE_CLASS := JAVA_LIBRARIES
+LOCAL_ADDITIONAL_DEPENDENCIES := tradefed
+LOCAL_DROIDDOC_CUSTOM_TEMPLATE_DIR := external/doclava/res/assets/templates-sdk
+LOCAL_DROIDDOC_OPTIONS := \
+        -hdf sac true \
+        -hdf devices true \
+        -hdf android.whichdoc online \
+        -hdf css.path /reference/assets/css/doclava-devsite.css \
+        -hdf book.root toc \
+        -yaml _toc.yaml \
+        -apidocsdir reference/tradefed/ \
+        -werror \
+        -package \
+        -devsite \
+
+include $(BUILD_DROIDDOC)
+
 #######################################################
 include $(CLEAR_VARS)
 
@@ -73,7 +115,7 @@ include $(CLEAR_VARS)
 # Note that this is incompatible with `make dist`.  If you want to make
 # the distribution, you must run `tapas` with the individual target names.
 .PHONY: tradefed-all
-tradefed-all: tradefed tradefed-tests tf-prod-tests tf-prod-metatests tradefed_win script_help verify
+tradefed-all: tradefed tradefed-tests tf-prod-tests tf-prod-metatests tradefed_win script_help verify tradefed-contrib
 
 # ====================================
 include $(CLEAR_VARS)
@@ -81,7 +123,7 @@ include $(CLEAR_VARS)
 
 LOCAL_MODULE_TAGS := optional
 
-LOCAL_PREBUILT_EXECUTABLES := tradefed.sh tradefed_win.bat script_help.sh verify.sh
+LOCAL_PREBUILT_EXECUTABLES := tradefed.sh tradefed_win.bat script_help.sh verify.sh run_tf_cmd.sh
 include $(BUILD_HOST_PREBUILT)
 
 # Build all sub-directories
@@ -91,10 +133,10 @@ include $(call all-makefiles-under,$(LOCAL_PATH))
 # Zip up the built files and dist it as tradefed.zip
 ifneq (,$(filter tradefed tradefed-all, $(TARGET_BUILD_APPS)))
 
-tradefed_dist_host_jars := tradefed tradefed-tests tf-prod-tests emmalib loganalysis loganalysis-tests tf-remote-client
+tradefed_dist_host_jars := tradefed tradefed-tests tf-prod-tests emmalib jack-jacoco-reporter loganalysis loganalysis-tests tf-remote-client tradefed-contrib
 tradefed_dist_host_jar_files := $(foreach m, $(tradefed_dist_host_jars), $(HOST_OUT_JAVA_LIBRARIES)/$(m).jar)
 
-tradefed_dist_host_exes := tradefed.sh tradefed_win.bat script_help.sh verify.sh
+tradefed_dist_host_exes := tradefed.sh tradefed_win.bat script_help.sh verify.sh run_tf_cmd.sh
 tradefed_dist_host_exe_files := $(foreach m, $(tradefed_dist_host_exes), $(BUILD_OUT_EXECUTABLES)/$(m))
 
 tradefed_dist_test_apks := TradeFedUiTestApp TradeFedTestApp DeviceSetupUtil

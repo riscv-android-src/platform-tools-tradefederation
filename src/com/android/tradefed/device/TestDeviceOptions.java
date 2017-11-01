@@ -32,9 +32,6 @@ public class TestDeviceOptions {
             description = "attempt to disable keyguard once boot is complete.")
     private boolean mDisableKeyguard = true;
 
-    @Option(name = "disable-keyguard-cmd", description = "shell command to disable keyguard.")
-    private String mDisableKeyguardCmd = "input keyevent 82";
-
     @Option(name = "enable-logcat", description =
             "Enable background logcat capture when invocation is running.")
     private boolean mEnableLogcat = true;
@@ -70,17 +67,12 @@ public class TestDeviceOptions {
     private int mUnencryptRebootTimeout = 0;
 
     @Option(name = "online-timeout", description = "default time in ms to wait for the device to "
-            + "be visible on adb.")
+            + "be visible on adb.", isTimeVal = true)
     private long mOnlineTimeout = 1 * 60 * 1000;
 
     @Option(name = "available-timeout", description = "default time in ms to wait for the device "
             + "to be available aka fully boot.")
     private long mAvailableTimeout = 6 * 60 * 1000;
-
-    @Deprecated
-    @Option(name = "ping-ip-or-host", description = "default ip or host to ping during "
-            + "connectivity checks; [deprecated] use --ping-url instead.")
-    private String mPingIpOrHost = "www.google.com";
 
     @Option(name = "conn-check-url",
             description = "default URL to be used for connectivity checks.")
@@ -95,9 +87,21 @@ public class TestDeviceOptions {
             + "The actual wait time would be a multiple of this value.")
     private int mWifiRetryWaitTime = 60 * 1000;
 
+    @Option(name = "wifi-exponential-retry",
+            description = "Change the wifi connection retry strategy from a linear wait time into"
+                    + " a binary exponential back-offs when retrying.")
+    private boolean mWifiExpoRetryEnabled = true;
+
+    @Option(name = "wifiutil-apk-path", description = "path to the wifiutil APK file")
+    private String mWifiUtilAPKPath = null;
+
     @Option(name = "post-boot-command",
             description = "shell command to run after reboots during invocation")
     private List<String> mPostBootCommands = new ArrayList<String>();
+
+    @Option(name = "disable-reboot",
+            description = "disables device reboots globally, making them no-ops")
+    private boolean mDisableReboot = false;
 
     @Option(name = "cutoff-battery", description =
             "the minimum battery level required to continue the invocation. Scale: 0-100")
@@ -129,20 +133,6 @@ public class TestDeviceOptions {
      */
     public void setDisableKeyguard(boolean disableKeyguard) {
         mDisableKeyguard = disableKeyguard;
-    }
-
-    /**
-     * Fetch the command to disable the keyguard
-     */
-    public String getDisableKeyguardCmd() {
-        return mDisableKeyguardCmd;
-    }
-
-    /**
-     * Set the command to be used to disable the keyguard
-     */
-    public void setDisableKeyguardCmd(String disableKeyguardCmd) {
-        mDisableKeyguardCmd = disableKeyguardCmd;
     }
 
     /**
@@ -251,17 +241,6 @@ public class TestDeviceOptions {
     }
 
     /**
-     * @return the default ip or hostname to ping during connectivity tests.
-     */
-    public String getPingIpOrHost() {
-        return mPingIpOrHost;
-    }
-
-    public void setPingIpOrHost(String ipOrHost) {
-      mPingIpOrHost = ipOrHost;
-    }
-
-    /**
      * @return the default URL to be used for connectivity tests.
      */
     public String getConnCheckUrl() {
@@ -312,6 +291,18 @@ public class TestDeviceOptions {
     }
 
     /**
+     * set the minimum battery level to continue the invocation.
+     */
+    public void setCutoffBattery(int cutoffBattery) {
+        if (cutoffBattery < 0 || cutoffBattery > 100) {
+            // Prevent impossible value.
+            throw new RuntimeException(String.format("Battery cutoff wasn't changed,"
+                    + "the value %s isn't within possible range (0-100).", cutoffBattery));
+        }
+        mCutoffBattery = cutoffBattery;
+    }
+
+    /**
      * @return the configured logcat options
      */
     public String getLogcatOptions() {
@@ -321,7 +312,26 @@ public class TestDeviceOptions {
     /**
      * Set the options to be passed down to logcat
      */
-    public void setmLogcatOptions(String logcatOptions) {
+    public void setLogcatOptions(String logcatOptions) {
         mLogcatOptions = logcatOptions;
+    }
+
+    /**
+     * @return if device reboot should be disabled
+     */
+    public boolean shouldDisableReboot() {
+        return mDisableReboot;
+    }
+
+    /**
+     * @return if the exponential retry strategy should be used.
+     */
+    public boolean isWifiExpoRetryEnabled() {
+        return mWifiExpoRetryEnabled;
+    }
+
+    /** @return the wifiutil apk path */
+    public String getWifiUtilAPKPath() {
+        return mWifiUtilAPKPath;
     }
 }

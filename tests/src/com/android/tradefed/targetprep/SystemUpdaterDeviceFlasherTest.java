@@ -53,6 +53,7 @@ public class SystemUpdaterDeviceFlasherTest extends TestCase {
         mMockDeviceBuild = mControl.createMock(IDeviceBuildInfo.class);
         EasyMock.expect(mMockDevice.getSerialNumber()).andStubReturn(TEST_STRING);
         EasyMock.expect(mMockDevice.getProductType()).andStubReturn(TEST_STRING);
+        EasyMock.expect(mMockDevice.getDeviceDescriptor()).andStubReturn(null);
     }
 
     public void testFlash() throws DeviceNotAvailableException, TargetSetupError {
@@ -74,7 +75,7 @@ public class SystemUpdaterDeviceFlasherTest extends TestCase {
         mControl.verify();
     }
 
-    public void testFlash_noOta() throws DeviceNotAvailableException, TargetSetupError {
+    public void testFlash_noOta() throws DeviceNotAvailableException {
         yieldDifferentBuilds(true);
         EasyMock.expect(mMockDeviceBuild.getOtaPackageFile()).andReturn(null);
 

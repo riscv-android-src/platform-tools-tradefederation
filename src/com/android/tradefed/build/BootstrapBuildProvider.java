@@ -21,8 +21,10 @@ import com.android.tradefed.config.OptionClass;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.log.LogUtil.CLog;
+import com.android.tradefed.util.FileUtil;
 
 import java.io.File;
+import java.io.IOException;
 
 /**
  * A {@link IDeviceBuildProvider} that bootstraps build info from the test device
@@ -50,9 +52,6 @@ import java.io.File;
 @OptionClass(alias = "bootstrap-build")
 public class BootstrapBuildProvider implements IDeviceBuildProvider {
 
-    @Option(name="test-tag", description="test tag name to supply.")
-    private String mTestTag = "stub";
-
     @Option(name="build-target", description="build target name to supply.")
     private String mBuildTargetName = "bootstrapped";
 
@@ -67,6 +66,8 @@ public class BootstrapBuildProvider implements IDeviceBuildProvider {
     @Option(name="tests-dir", description="Path to top directory of expanded tests zip")
     private File mTestsDir = null;
 
+    private boolean mCreatedTestDir = false;
+
     @Override
     public IBuildInfo getBuild() throws BuildRetrievalError {
         throw new UnsupportedOperationException("Call getBuild(ITestDevice)");
@@ -80,18 +81,21 @@ public class BootstrapBuildProvider implements IDeviceBuildProvider {
 
     @Override
     public void cleanUp(IBuildInfo info) {
-        // no op
+        // If we created the tests dir, we delete it.
+        if (mCreatedTestDir) {
+            FileUtil.recursiveDelete(((IDeviceBuildInfo) info).getTestsDir());
+        }
     }
 
     @Override
     public IBuildInfo getBuild(ITestDevice device) throws BuildRetrievalError,
             DeviceNotAvailableException {
         String buildId = device.getBuildId();
-        IBuildInfo info = new DeviceBuildInfo(buildId, mTestTag, mBuildTargetName);
+        IBuildInfo info = new DeviceBuildInfo(buildId, mBuildTargetName);
         if (!device.waitForDeviceShell(mShellAvailableTimeout * 1000)) {
             throw new DeviceNotAvailableException(
                     String.format("Shell did not become available in %d seconds",
-                            mShellAvailableTimeout));
+                            mShellAvailableTimeout), device.getSerialNumber());
         }
         if (mBranch == null) {
             mBranch = String.format("%s-%s-%s-%s",
@@ -105,6 +109,16 @@ public class BootstrapBuildProvider implements IDeviceBuildProvider {
         info.addBuildAttribute("build_alias", device.getBuildAlias());
         if (mTestsDir != null && mTestsDir.isDirectory()) {
             info.setFile("testsdir", mTestsDir, buildId);
+        }
+        // Avoid tests dir being null, by creating a temporary dir.
+        if (mTestsDir == null) {
+            mCreatedTestDir = true;
+            try {
+                mTestsDir = FileUtil.createTempDir("bootstrap-test-dir");
+            } catch (IOException e) {
+                throw new BuildRetrievalError(e.getMessage(), e);
+            }
+            ((IDeviceBuildInfo) info).setTestsDir(mTestsDir, "1");
         }
         return info;
     }

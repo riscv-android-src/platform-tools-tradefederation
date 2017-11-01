@@ -29,8 +29,9 @@ import com.android.tradefed.result.InputStreamSource;
 import com.android.tradefed.result.LogDataType;
 import com.android.tradefed.testtype.IDeviceTest;
 import com.android.tradefed.testtype.IRemoteTest;
+import com.android.tradefed.util.StreamUtil;
 
-import junit.framework.Assert;
+import org.junit.Assert;
 
 import java.io.BufferedReader;
 import java.io.File;
@@ -65,7 +66,7 @@ public class CameraSettingsTest implements IDeviceTest, IRemoteTest {
     private static final String TEST_RU = "CameraApplicationStress";
 
     private final String mOutputPath = "cameraStressOutput.txt";
-    private final int MAX_TIME_OUT = 90 * 60 * 1000; //90 mins
+    private static final int MAX_TIME_OUT = 90 * 60 * 1000; //90 mins
 
     @Option(name="testMethodName", description="Used to specify a specific test method to run")
     private String mTestMethodName = null;
@@ -150,20 +151,14 @@ public class CameraSettingsTest implements IDeviceTest, IRemoteTest {
             reader = new BufferedReader(new FileReader(outputFile));
 
             while ((line = reader.readLine()) != null) {
-                if (line != "") {
+                if (!line.isEmpty()) {
                     lines.add(line);
                 }
             }
         } catch (IOException e) {
             CLog.e(String.format("IOException reading from file: %s", e.toString()));
         } finally {
-            if (reader != null) {
-                try {
-                    reader.close();
-                } catch (IOException e) {
-                    CLog.e(String.format("IOException closing file: %s", e.toString()));
-                }
-            }
+            StreamUtil.close(reader);
         }
 
         // Output file looks like:
@@ -185,14 +180,14 @@ public class CameraSettingsTest implements IDeviceTest, IRemoteTest {
 
             Matcher expectedMatcher = EXPECTED_LOOP_COUNT_PATTERN.matcher(line);
             if (expectedMatcher.matches()) {
-                expectedCount = new Integer(expectedMatcher.group(3));
+                expectedCount = Integer.valueOf(expectedMatcher.group(3));
                 CLog.d(String.format("Found expected count for key \"%s\": %s",
                         key, expectedCount));
             }
 
             Matcher actualMatcher = ACTUAL_LOOP_COUNT_PATTERN.matcher(line);
             if (actualMatcher.matches()) {
-                actualCount = 1 + new Integer(actualMatcher.group(3));
+                actualCount = 1 + Integer.valueOf(actualMatcher.group(3));
                 CLog.d(String.format("Found actual count for key \"%s\": %s", key, actualCount));
             }
 

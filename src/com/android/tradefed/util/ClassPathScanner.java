@@ -119,7 +119,9 @@ public class ClassPathScanner {
             if (filter.accept(entryName)) {
                 entryNames.add(filter.transform(entryName));
             }
+            entryName = null;
         }
+        jarFile.close();
         return entryNames;
     }
 
@@ -177,7 +179,7 @@ public class ClassPathScanner {
      *
      * @param rootPath the root path in {@link List} form
      * @param fileName the file name
-     * @return
+     * @return the relative classpath path
      */
     private String constructPath(List<String> rootPath, String fileName) {
         StringBuilder pathBuilder = new StringBuilder();

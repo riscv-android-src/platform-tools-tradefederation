@@ -40,7 +40,7 @@ public class Alarm extends Thread {
      * @throws IllegalArgumentException if {@code timeout <= 0}.
      */
     public Alarm(long timeout) {
-        super();
+        setName(getClass().getCanonicalName());
         setDaemon(true);
 
         if (timeout <= 0) {

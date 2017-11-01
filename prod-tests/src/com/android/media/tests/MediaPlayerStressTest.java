@@ -28,16 +28,17 @@ import com.android.tradefed.result.BugreportCollector;
 import com.android.tradefed.result.BugreportCollector.Freq;
 import com.android.tradefed.result.BugreportCollector.Noun;
 import com.android.tradefed.result.BugreportCollector.Relation;
+import com.android.tradefed.result.FileInputStreamSource;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.InputStreamSource;
 import com.android.tradefed.result.LogDataType;
-import com.android.tradefed.result.SnapshotInputStreamSource;
 import com.android.tradefed.testtype.IDeviceTest;
 import com.android.tradefed.testtype.IRemoteTest;
+import com.android.tradefed.util.FileUtil;
 import com.android.tradefed.util.RegexTrie;
 import com.android.tradefed.util.StreamUtil;
 
-import junit.framework.Assert;
+import org.junit.Assert;
 
 import java.io.File;
 import java.io.FileInputStream;
@@ -78,7 +79,7 @@ public class MediaPlayerStressTest implements IDeviceTest, IRemoteTest {
     private static final String TEST_PACKAGE_NAME = "com.android.mediaframeworktest";
     private static final String TEST_RUNNER_NAME = ".MediaPlayerStressTestRunner";
 
-    public RegexTrie<String> mPatternMap = new RegexTrie<String>();
+    public RegexTrie<String> mPatternMap = new RegexTrie<>();
 
     public MediaPlayerStressTest() {
         mPatternMap.put("PlaybackPass", "^Total Complete: (\\d+)");
@@ -136,7 +137,7 @@ public class MediaPlayerStressTest implements IDeviceTest, IRemoteTest {
             // Upload a verbatim copy of the output file
             Log.d(LOG_TAG, String.format("Sending %d byte file %s into the logosphere!",
                     outputFile.length(), outputFile));
-            outputSource = new SnapshotInputStreamSource(new FileInputStream(outputFile));
+            outputSource = new FileInputStreamSource(outputFile);
             listener.testLog(mOutputPath, LogDataType.TEXT, outputSource);
             // Parse the output file to upload aggregated metrics
             parseOutputFile(new FileInputStream(outputFile), listener);
@@ -144,12 +145,8 @@ public class MediaPlayerStressTest implements IDeviceTest, IRemoteTest {
             Log.e(LOG_TAG, String.format(
                 "IOException while reading or parsing output file: %s", e));
         } finally {
-            if (outputFile != null) {
-                outputFile.delete();
-            }
-            if (outputSource != null) {
-                outputSource.cancel();
-            }
+            FileUtil.deleteFile(outputFile);
+            StreamUtil.cancel(outputSource);
         }
     }
 
@@ -158,7 +155,7 @@ public class MediaPlayerStressTest implements IDeviceTest, IRemoteTest {
      */
     private void parseOutputFile(InputStream dataStream,
             ITestInvocationListener listener) {
-        Map<String, String> runMetrics = new HashMap<String, String>();
+        Map<String, String> runMetrics = new HashMap<>();
 
         // try to parse it
         String contents;
@@ -175,7 +172,7 @@ public class MediaPlayerStressTest implements IDeviceTest, IRemoteTest {
         String line;
         while (lineIter.hasNext()) {
             line = lineIter.next();
-            List<List<String>> capture = new ArrayList<List<String>>(1);
+            List<List<String>> capture = new ArrayList<>(1);
             String key = mPatternMap.retrieve(capture, line);
             if (key != null) {
                 Log.d(LOG_TAG, String.format("Got '%s' and captures '%s'",

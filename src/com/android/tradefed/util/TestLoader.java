@@ -18,12 +18,16 @@ package com.android.tradefed.util;
 import com.android.ddmlib.Log;
 import com.android.tradefed.util.ClassPathScanner.ExternalClassNameFilter;
 
+import junit.framework.JUnit4TestAdapter;
 import junit.framework.Test;
 import junit.framework.TestCase;
 import junit.framework.TestSuite;
 
+import org.junit.runners.Suite.SuiteClasses;
+
 import java.io.File;
 import java.io.IOException;
+import java.lang.reflect.Method;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.net.URLClassLoader;
@@ -80,14 +84,33 @@ public class TestLoader {
                 Class<?> testClass = Class.forName(className, true, classLoader);
                 if (TestCase.class.isAssignableFrom(testClass)) {
                     testSuite.addTestSuite((Class<? extends TestCase>)testClass);
+                } else if (hasJUnit4Annotation(testClass)) {
+                    testSuite.addTest(new JUnit4TestAdapter(testClass));
                 }
+            } catch (NoClassDefFoundError e) {
+                Log.e(LOG_TAG, e);
             } catch (ClassNotFoundException e) {
-                // ignore for now
+                Log.e(LOG_TAG, e);
             } catch (RuntimeException e) {
                 // catch this to prevent one bad test from stopping run
                 Log.e(LOG_TAG, e);
             }
         }
         return testSuite;
+    }
+
+    /**
+     * Helper to device if a class should be loaded as JUnit4.
+     */
+    private boolean hasJUnit4Annotation(Class<?> classObj) {
+        if (classObj.isAnnotationPresent(SuiteClasses.class)) {
+            return true;
+        }
+        for (Method m : classObj.getMethods()) {
+            if (m.isAnnotationPresent(org.junit.Test.class)) {
+                return true;
+            }
+        }
+        return false;
     }
 }

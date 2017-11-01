@@ -369,7 +369,8 @@ public class DeviceSelectionOptions implements IDeviceSelection {
         if (nullDeviceRequested() != (device instanceof NullDevice)) {
             return false;
         }
-        if (tcpDeviceRequested() != (device instanceof TcpDevice)) {
+        if (tcpDeviceRequested() != (TcpDevice.class.equals(device.getClass()))) {
+            // We only match an exact TcpDevice here, no child class.
             return false;
         }
         if ((mMinSdk != null) || (mMaxSdk != null)) {
@@ -400,6 +401,15 @@ public class DeviceSelectionOptions implements IDeviceSelection {
             }
         }
 
+        return extraMatching(device);
+    }
+
+    /** Extra validation step that maybe overriden if it does not make sense. */
+    protected boolean extraMatching(IDevice device) {
+        // Any device that extends TcpDevice and is not a TcpDevice will be rejected.
+        if (device instanceof TcpDevice && !device.getClass().isAssignableFrom(TcpDevice.class)) {
+            return false;
+        }
         return true;
     }
 
@@ -479,7 +489,7 @@ public class DeviceSelectionOptions implements IDeviceSelection {
     /**
      * Get the device's supported API level or -1 if it cannot be retrieved
      * @param device
-     * @return
+     * @return the device's supported API level.
      */
     private int getDeviceSdkLevel(IDevice device) {
         int apiLevel = -1;

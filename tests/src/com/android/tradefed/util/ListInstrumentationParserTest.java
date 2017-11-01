@@ -40,9 +40,16 @@ public class ListInstrumentationParserTest extends TestCase {
     private static final String LIST_INSTRUMENTATION_OUTPUT_2 =
             "instrumentation:com.foobar.test/android.support.test.runner.AndroidJUnitRunner (target=com.example2)";
 
+    private static final String EXAMPLE_TEST_PACKAGE_3 = "com.example.test";
+    private static final String EXAMPLE_TARGET_3 = "com.example";
+    private static final String EXAMPLE_RUNNER_3 = "android.support.test.runner.AndroidJUnitRunner";
+    private static final String LIST_INSTRUMENTATION_OUTPUT_3 =
+            "instrumentation:com.example.test/android.support.test.runner.AndroidJUnitRunner (target=com.example)";
+
 
     private ListInstrumentationParser mParser;
 
+    @Override
     public void setUp() {
         mParser = new ListInstrumentationParser();
     }
@@ -62,7 +69,8 @@ public class ListInstrumentationParserTest extends TestCase {
         // Build example `pm list instrumentation` output and send it to the parser
         String[] pmListOutput = {
             LIST_INSTRUMENTATION_OUTPUT_1,
-            LIST_INSTRUMENTATION_OUTPUT_2
+            LIST_INSTRUMENTATION_OUTPUT_2,
+            LIST_INSTRUMENTATION_OUTPUT_3
         };
         mParser.processNewLines(pmListOutput);
 
@@ -71,11 +79,18 @@ public class ListInstrumentationParserTest extends TestCase {
                 EXAMPLE_TEST_PACKAGE_1, EXAMPLE_RUNNER_1, EXAMPLE_TARGET_1);
         InstrumentationTarget target2 = new InstrumentationTarget(
                 EXAMPLE_TEST_PACKAGE_2, EXAMPLE_RUNNER_2, EXAMPLE_TARGET_2);
-        List<InstrumentationTarget> expectedTargets = Lists.newArrayList(target1, target2);
+        InstrumentationTarget target3 = new InstrumentationTarget(
+                EXAMPLE_TEST_PACKAGE_3, EXAMPLE_RUNNER_3, EXAMPLE_TARGET_3);
+
+        // Targets should be alphabetized by test package name, runner name, target name.
+        List<InstrumentationTarget> expectedTargets = Lists.newArrayList(target1, target3, target2);
 
         // Get the parsed targets and make sure they contain the expected targets
         List<InstrumentationTarget> parsedTargets = mParser.getInstrumentationTargets();
         validateInstrumentationTargets(expectedTargets, parsedTargets);
+
+        assertFalse("Nonshardable targets treated as shardable", target1.isShardable());
+        assertTrue("Shardable targets not treated as shardable", target2.isShardable());
     }
 
     /**
@@ -93,7 +108,8 @@ public class ListInstrumentationParserTest extends TestCase {
             // Must equal one of the expected targets
             boolean matched = false;
             for (InstrumentationTarget expectedTarget : expectedTargets) {
-                if (matched = areTargetsEqual(expectedTarget, actualTarget)) {
+                matched = areTargetsEqual(expectedTarget, actualTarget);
+                if (matched) {
                     expectedTargets.remove(expectedTarget);
                     break;
                 }

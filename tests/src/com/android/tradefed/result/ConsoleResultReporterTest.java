@@ -16,6 +16,7 @@
 package com.android.tradefed.result;
 
 import com.android.ddmlib.testrunner.TestIdentifier;
+import com.android.tradefed.invoker.IInvocationContext;
 
 import junit.framework.TestCase;
 
@@ -28,13 +29,16 @@ import java.util.Map;
  */
 public class ConsoleResultReporterTest extends TestCase {
     private static final Map<String, String> EMPTY_MAP = Collections.emptyMap();
+    // Regex to match the TestResult run time format, examples: (10ms)  (5ms)
+    private static final String RUN_TIME_MS_REGEX = "\\((\\d+)ms\\)";
 
     /**
      * Test the results printed for an empty invocation
      */
     public void testGetInvocationSummary_empty() {
         ConsoleResultReporter reporter = new ConsoleResultReporter();
-        reporter.invocationStarted(null);
+        IInvocationContext nullContext = null;
+        reporter.invocationStarted(nullContext);
         reporter.invocationEnded(0);
         assertEquals("No test results\n", reporter.getInvocationSummary());
     }
@@ -44,7 +48,8 @@ public class ConsoleResultReporterTest extends TestCase {
      */
     public void testGetInvocationSummary_test_run_metrics() {
         ConsoleResultReporter reporter = new ConsoleResultReporter();
-        reporter.invocationStarted(null);
+        IInvocationContext nullContext = null;
+        reporter.invocationStarted(nullContext);
         reporter.testRunStarted("Test Run", 0);
         Map<String, String> metrics = new HashMap<>();
         metrics.put("key2", "value2");
@@ -64,7 +69,8 @@ public class ConsoleResultReporterTest extends TestCase {
      */
     public void testGetInvocationSummary_test_metrics() {
         ConsoleResultReporter reporter = new ConsoleResultReporter();
-        reporter.invocationStarted(null);
+        IInvocationContext nullContext = null;
+        reporter.invocationStarted(nullContext);
         reporter.testRunStarted("Test Run", 1);
         TestIdentifier testId = new TestIdentifier("class", "method");
         reporter.testStarted(testId);
@@ -74,13 +80,15 @@ public class ConsoleResultReporterTest extends TestCase {
         reporter.testEnded(testId, metrics);
         reporter.testRunEnded(0, EMPTY_MAP);
         reporter.invocationEnded(0);
-        assertEquals(
-                "Test results:\n" +
-                "Test Run: 1 Test, 1 Passed, 0 Failed, 0 Ignored\n" +
-                "  class#method: PASSED (0ms)\n" +
-                "    key1: value1\n" +
-                "    key2: value2\n",
-                reporter.getInvocationSummary());
+
+        StringBuilder expected = new StringBuilder();
+        expected.append("Test results:\n");
+        expected.append("Test Run: 1 Test, 1 Passed, 0 Failed, 0 Ignored\n");
+        expected.append("  class#method: PASSED " + RUN_TIME_MS_REGEX + "\n");
+        expected.append("    key1: value1\n");
+        expected.append("    key2: value2\n");
+
+        assertTrue(reporter.getInvocationSummary().matches(expected.toString()));
     }
 
     /**
@@ -88,9 +96,12 @@ public class ConsoleResultReporterTest extends TestCase {
      */
     public void testGetInvocationSummary_logs() {
         ConsoleResultReporter reporter = new ConsoleResultReporter();
-        reporter.invocationStarted(null);
-        reporter.testLogSaved(null, null, null, new LogFile("/path/to/log1", "http://log1"));
-        reporter.testLogSaved(null, null, null, new LogFile("/path/to/log2", null));
+        IInvocationContext nullContext = null;
+        reporter.invocationStarted(nullContext);
+        reporter.testLogSaved(null, null, null, new LogFile(
+                "/path/to/log1", "http://log1", false /* compressed */, true /* text */));
+        reporter.testLogSaved(null, null, null, new LogFile(
+                "/path/to/log2", null, false /* compressed */, true /* text */));
         reporter.invocationEnded(0);
         assertEquals(
                 "Test results:\n" +
@@ -106,7 +117,8 @@ public class ConsoleResultReporterTest extends TestCase {
      */
     public void testGetInvocationSummary_all() {
         ConsoleResultReporter reporter = new ConsoleResultReporter();
-        reporter.invocationStarted(null);
+        IInvocationContext nullContext = null;
+        reporter.invocationStarted(nullContext);
 
         reporter.testRunStarted("Test Run 1", 3);
 
@@ -173,48 +185,52 @@ public class ConsoleResultReporterTest extends TestCase {
         reporter.testRunStarted("Test Run 4", 0);
         reporter.testRunEnded(0, EMPTY_MAP);
 
-        reporter.testLogSaved(null, null, null, new LogFile("/path/to/log1", "http://log1"));
-        reporter.testLogSaved(null, null, null, new LogFile("/path/to/log2", null));
+        reporter.testLogSaved(null, null, null, new LogFile(
+                "/path/to/log1", "http://log1", false /* compressed */, true /* text */));
+        reporter.testLogSaved(null, null, null, new LogFile(
+                "/path/to/log2", null, false /* compressed */, true /* text */));
         reporter.invocationEnded(0);
-        assertEquals(
-                "Test results:\n" +
-                "Test Run 1: 4 Tests, 1 Passed, 1 Failed, 1 Ignored\n" +
-                "  class1#method1: FAILURE (0ms)\n" +
-                "  stack=\n" +
-                "    trace\n" +
-                "    run1_test1_key1: run1_test1_value1\n" +
-                "    run1_test1_key2: run1_test1_value2\n" +
-                "  class1#method2: PASSED (0ms)\n" +
-                "    run1_test2_key1: run1_test2_value1\n" +
-                "    run1_test2_key2: run1_test2_value2\n" +
-                "  class1#method3: ASSUMPTION_FAILURE (0ms)\n" +
-                "  stack=\n" +
-                "    trace\n" +
-                "    run1_test3_key1: run1_test3_value1\n" +
-                "    run1_test3_key2: run1_test3_value2\n" +
-                "  class1#method4: IGNORED (0ms)\n" +
-                "  run1_key1: run1_value2\n" +
-                "  run1_key2: run1_value1\n" +
-                "\n" +
-                "Test Run 2: 4 Tests, 1 Passed, 1 Failed, 1 Ignored\n" +
-                "  class2#method1: FAILURE (0ms)\n" +
-                "  stack=\n" +
-                "    trace\n" +
-                "  class2#method2: PASSED (0ms)\n" +
-                "  class2#method3: ASSUMPTION_FAILURE (0ms)\n" +
-                "  stack=\n" +
-                "    trace\n" +
-                "  class2#method4: IGNORED (0ms)\n" +
-                "\n" +
-                "Test Run 3:\n" +
-                "  run3_key1: run3_value1\n" +
-                "  run3_key2: run3_value2\n" +
-                "\n" +
-                "Test Run 4: No results\n" +
-                "\n" +
-                "Log Files:\n" +
-                "  http://log1\n" +
-                "  /path/to/log2\n",
-                reporter.getInvocationSummary());
+
+        StringBuilder expected = new StringBuilder();
+        expected.append("Test results:\n");
+        expected.append("Test Run 1: 4 Tests, 1 Passed, 1 Failed, 1 Ignored\n");
+        expected.append("  class1#method1: FAILURE " + RUN_TIME_MS_REGEX + "\n");
+        expected.append("  stack=\n");
+        expected.append("    trace\n");
+        expected.append("    run1_test1_key1: run1_test1_value1\n");
+        expected.append("    run1_test1_key2: run1_test1_value2\n");
+        expected.append("  class1#method2: PASSED " + RUN_TIME_MS_REGEX + "\n");
+        expected.append("    run1_test2_key1: run1_test2_value1\n");
+        expected.append("    run1_test2_key2: run1_test2_value2\n");
+        expected.append("  class1#method3: ASSUMPTION_FAILURE " + RUN_TIME_MS_REGEX + "\n");
+        expected.append("  stack=\n");
+        expected.append("    trace\n");
+        expected.append("    run1_test3_key1: run1_test3_value1\n");
+        expected.append("    run1_test3_key2: run1_test3_value2\n");
+        expected.append("  class1#method4: IGNORED " + RUN_TIME_MS_REGEX + "\n");
+        expected.append("  run1_key1: run1_value2\n");
+        expected.append("  run1_key2: run1_value1\n");
+        expected.append("\n");
+        expected.append("Test Run 2: 4 Tests, 1 Passed, 1 Failed, 1 Ignored\n");
+        expected.append("  class2#method1: FAILURE " + RUN_TIME_MS_REGEX + "\n");
+        expected.append("  stack=\n");
+        expected.append("    trace\n");
+        expected.append("  class2#method2: PASSED " + RUN_TIME_MS_REGEX + "\n");
+        expected.append("  class2#method3: ASSUMPTION_FAILURE " + RUN_TIME_MS_REGEX + "\n");
+        expected.append("  stack=\n");
+        expected.append("    trace\n");
+        expected.append("  class2#method4: IGNORED " + RUN_TIME_MS_REGEX + "\n");
+        expected.append("\n");
+        expected.append("Test Run 3:\n");
+        expected.append("  run3_key1: run3_value1\n");
+        expected.append("  run3_key2: run3_value2\n");
+        expected.append("\n");
+        expected.append("Test Run 4: No results\n");
+        expected.append("\n");
+        expected.append("Log Files:\n");
+        expected.append("  http://log1\n");
+        expected.append("  /path/to/log2\n");
+
+        assertTrue(reporter.getInvocationSummary().matches(expected.toString()));
     }
 }

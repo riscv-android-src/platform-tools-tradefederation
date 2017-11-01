@@ -19,18 +19,32 @@ package com.android.tradefed.targetprep;
 import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.config.Option;
 import com.android.tradefed.config.OptionClass;
+import com.android.tradefed.device.BackgroundDeviceAction;
+import com.android.tradefed.device.CollectingOutputReceiver;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.util.RunUtil;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.concurrent.TimeUnit;
 
 @OptionClass(alias = "run-command")
 public class RunCommandTargetPreparer implements ITargetCleaner {
+
     @Option(name = "run-command", description = "adb shell command to run")
     private List<String> mCommands = new ArrayList<String>();
+
+    @Option(name = "run-bg-command", description = "Command to run repeatedly in the"
+            + " device background. Can be repeated to run multiple commands"
+            + " in the background.")
+    private List<String> mBgCommands = new ArrayList<String>();
+
+    @Option(name = "hide-bg-output", description = "if true, don't log background command output")
+    private boolean mHideBgOutput = false;
 
     @Option(name = "teardown-command", description = "adb shell command to run at teardown time")
     private List<String> mTeardownCommands = new ArrayList<String>();
@@ -42,18 +56,41 @@ public class RunCommandTargetPreparer implements ITargetCleaner {
             description = "Time to delay after running commands, in msecs")
     private long mDelayMsecs = 0;
 
+    @Option(name = "run-command-timeout",
+            description = "Timeout for execute shell command",
+            isTimeVal = true)
+    private long mRunCmdTimeout = 0;
+
+    private Map<BackgroundDeviceAction, CollectingOutputReceiver> mBgDeviceActionsMap =
+            new HashMap<>();
+
     /**
      * {@inheritDoc}
      */
     @Override
     public void setUp(ITestDevice device, IBuildInfo buildInfo) throws TargetSetupError,
             DeviceNotAvailableException {
-        if (mDisable) return;
+        if (mDisable)
+            return;
+
+        for (String bgCmd : mBgCommands) {
+            CollectingOutputReceiver receiver = new CollectingOutputReceiver();
+            BackgroundDeviceAction mBgDeviceAction =
+                    new BackgroundDeviceAction(bgCmd, bgCmd, device, receiver, 0);
+            mBgDeviceAction.start();
+            mBgDeviceActionsMap.put(mBgDeviceAction, receiver);
+        }
+
         for (String cmd : mCommands) {
-            // If the command had any output, the executeShellCommand method will log it at the
-            // VERBOSE level; so no need to do any logging from here.
             CLog.d("About to run setup command on device %s: %s", device.getSerialNumber(), cmd);
-            device.executeShellCommand(cmd);
+            if (mRunCmdTimeout > 0) {
+                CollectingOutputReceiver receiver = new CollectingOutputReceiver();
+                device.executeShellCommand(cmd, receiver, mRunCmdTimeout, TimeUnit.MILLISECONDS, 0);
+                CLog.v("cmd: '%s', returned:\n%s", cmd, receiver.getOutput());
+            } else {
+                String output = device.executeShellCommand(cmd);
+                CLog.v("cmd: '%s', returned:\n%s", cmd, output);
+            }
         }
 
         CLog.d("Sleeping %d msecs on device %s", mDelayMsecs, device.getSerialNumber());
@@ -66,13 +103,24 @@ public class RunCommandTargetPreparer implements ITargetCleaner {
     @Override
     public void tearDown(ITestDevice device, IBuildInfo buildInfo, Throwable e)
             throws DeviceNotAvailableException {
-        if (mDisable) return;
-        for (String cmd : mTeardownCommands) {
-            // If the command had any output, the executeShellCommand method will log it at the
-            // VERBOSE level; so no need to do any logging from here.
-            CLog.d("About to run tearDown command on device %s: %s", device.getSerialNumber(), cmd);
-            device.executeShellCommand(cmd);
+        if (mDisable)
+            return;
+
+        for (Map.Entry<BackgroundDeviceAction, CollectingOutputReceiver> bgAction :
+                mBgDeviceActionsMap.entrySet()) {
+            if (!mHideBgOutput) {
+                CLog.d("Background command output : %s", bgAction.getValue().getOutput());
+            }
+            bgAction.getKey().cancel();
         }
+
+        for (String cmd : mTeardownCommands) {
+            CLog.d("About to run tearDown command on device %s: %s", device.getSerialNumber(),
+                    cmd);
+            String output = device.executeShellCommand(cmd);
+            CLog.v("tearDown cmd: '%s', returned:\n%s", cmd, output);
+        }
+
     }
 }
 

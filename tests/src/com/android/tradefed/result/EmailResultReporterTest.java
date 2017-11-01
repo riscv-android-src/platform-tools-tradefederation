@@ -16,6 +16,9 @@
 package com.android.tradefed.result;
 
 import com.android.tradefed.build.BuildInfo;
+import com.android.tradefed.device.ITestDevice;
+import com.android.tradefed.invoker.IInvocationContext;
+import com.android.tradefed.invoker.InvocationContext;
 import com.android.tradefed.util.IEmail;
 import com.android.tradefed.util.IEmail.Message;
 
@@ -46,12 +49,38 @@ public class EmailResultReporterTest extends TestCase {
     public void testInvocationEnded() throws IllegalArgumentException, IOException {
         mMockMailer.send(EasyMock.<Message>anyObject());
         EasyMock.replay(mMockMailer);
-        mEmailReporter.invocationStarted(new BuildInfo("888", "mytest", "mybuild"));
+        IInvocationContext context = new InvocationContext();
+        context.addDeviceBuildInfo("fakeDevice", new BuildInfo("888", "mybuild"));
+        context.setTestTag("mytest");
+        mEmailReporter.invocationStarted(context);
         mEmailReporter.addDestination("foo");
         mEmailReporter.invocationEnded(0);
         EasyMock.verify(mMockMailer);
 
-        assertEquals("Tradefed result for mytest  on build 888: SUCCESS",
+        assertEquals("Tradefed result for mytest  on BuildInfo{bid=888, target=mybuild}: SUCCESS",
+                mEmailReporter.generateEmailSubject());
+    }
+
+    /**
+     * Test normal success case for {@link EmailResultReporter#invocationEnded(long)} with multiple
+     * builds.
+     */
+    public void testInvocationEnded_multiBuild() throws IllegalArgumentException, IOException {
+        mMockMailer.send(EasyMock.<Message>anyObject());
+        EasyMock.replay(mMockMailer);
+        IInvocationContext context = new InvocationContext();
+        context.addAllocatedDevice("fakeDevice", EasyMock.createMock(ITestDevice.class));
+        context.addDeviceBuildInfo("fakeDevice", new BuildInfo("888", "mybuild"));
+        context.addAllocatedDevice("fakeDevice2", EasyMock.createMock(ITestDevice.class));
+        context.addDeviceBuildInfo("fakeDevice2", new BuildInfo("999", "mybuild2"));
+        context.setTestTag("mytest");
+        mEmailReporter.invocationStarted(context);
+        mEmailReporter.addDestination("foo");
+        mEmailReporter.invocationEnded(0);
+        EasyMock.verify(mMockMailer);
+
+        assertEquals("Tradefed result for mytest  on BuildInfo{bid=888, target=mybuild}"
+                + "BuildInfo{bid=999, target=mybuild2}: SUCCESS",
                 mEmailReporter.generateEmailSubject());
     }
 
@@ -61,14 +90,15 @@ public class EmailResultReporterTest extends TestCase {
     public void testNullFlavorAndBranch() throws Exception {
         mMockMailer.send(EasyMock.<Message>anyObject());
         EasyMock.replay(mMockMailer);
-
-        mEmailReporter.invocationStarted(new BuildInfo("888", null, null));
+        IInvocationContext context = new InvocationContext();
+        context.addDeviceBuildInfo("fakeDevice", new BuildInfo("888", null));
+        mEmailReporter.invocationStarted(context);
         mEmailReporter.addDestination("foo");
         mEmailReporter.invocationEnded(0);
 
         EasyMock.verify(mMockMailer);
 
-        assertEquals("Tradefed result for (unknown suite) on build 888: SUCCESS",
+        assertEquals("Tradefed result for (unknown suite) on BuildInfo{bid=888}: SUCCESS",
                 mEmailReporter.generateEmailSubject());
     }
 }

@@ -22,6 +22,7 @@ import com.android.tradefed.config.Option;
 import com.android.tradefed.config.OptionClass;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
+import com.android.tradefed.device.StubDevice;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.util.BinaryState;
 import com.android.tradefed.util.MultiMap;
@@ -94,6 +95,12 @@ public class DeviceSetup implements ITargetPreparer, ITargetCleaner {
     // ON:  service call bluetooth_manager 6
     // OFF: service call bluetooth_manager 8
 
+    @Option(name = "nfc",
+            description = "Turn nfc on or off")
+    protected BinaryState mNfc = BinaryState.IGNORE;
+    // ON:  svc nfc enable
+    // OFF: svc nfc disable
+
     // Screen
     @Option(name = "screen-adaptive-brightness",
             description = "Turn screen adaptive brightness on or off")
@@ -154,10 +161,10 @@ public class DeviceSetup implements ITargetPreparer, ITargetCleaner {
             description = "Trigger a MEDIA_MOUNTED broadcast")
     protected boolean mTriggerMediaMounted = false;
     // am broadcast -a android.intent.action.MEDIA_MOUNTED -d file://${EXTERNAL_STORAGE}
+    // --receiver-include-background
 
     // Location
-    @Option(name = "location-gps",
-            description = "Turn the GPS location on or off")
+    @Option(name = "location-gps", description = "Turn the GPS location on or off")
     protected BinaryState mLocationGps = BinaryState.IGNORE;
     // ON:  settings put secure location_providers_allowed +gps
     // OFF: settings put secure location_providers_allowed -gps
@@ -333,17 +340,26 @@ public class DeviceSetup implements ITargetPreparer, ITargetCleaner {
     protected String mRemoteDataPath = null;
 
     // Deprecated options follow
+    /**
+     * @deprecated use min-external-storage-kb instead.
+     */
     @Option(name = "min-external-store-space",
             description = "deprecated, use option min-external-storage-kb. The minimum amount of " +
             "free space in KB that must be present on device's external storage.")
     @Deprecated
     private long mDeprecatedMinExternalStoreSpace = DEFAULT_MIN_EXTERNAL_STORAGE_KB;
 
+    /**
+     * @deprecated use option disable-audio instead.
+     */
     @Option(name = "audio-silent",
             description = "deprecated, use option disable-audio. set ro.audio.silent on boot.")
     @Deprecated
     private boolean mDeprecatedSetAudioSilent = DEFAULT_DISABLE_AUDIO;
 
+    /**
+     * @deprecated use option set-property instead.
+     */
     @Option(name = "setprop",
             description = "deprecated, use option set-property. set the specified property on " +
             "boot. Format: --setprop key=value. May be repeated.")
@@ -364,13 +380,13 @@ public class DeviceSetup implements ITargetPreparer, ITargetCleaner {
 
         CLog.i("Performing setup on %s", device.getSerialNumber());
 
-        if (!device.enableAdbRoot()) {
+        if (device.getOptions().isEnableAdbRoot() && !device.enableAdbRoot()) {
             throw new TargetSetupError(String.format("Failed to enable adb root on %s",
-                    device.getSerialNumber()));
+                    device.getSerialNumber()), device.getDeviceDescriptor());
         }
 
         // Convert deprecated options into current options
-        processDeprecatedOptions();
+        processDeprecatedOptions(device);
         // Convert options into settings and run commands
         processOptions(device);
         // Change system props (will reboot device)
@@ -399,7 +415,8 @@ public class DeviceSetup implements ITargetPreparer, ITargetCleaner {
     @Override
     public void tearDown(ITestDevice device, IBuildInfo buildInfo, Throwable e)
             throws DeviceNotAvailableException {
-        if (mDisable) {
+        // ignore tearDown if it's a stub device, since there is no real device to clean.
+        if (mDisable || device.getIDevice() instanceof StubDevice) {
             return;
         }
 
@@ -432,11 +449,11 @@ public class DeviceSetup implements ITargetPreparer, ITargetCleaner {
      * </p>
      * @throws TargetSetupError if there is a conflict
      */
-    public void processDeprecatedOptions() throws TargetSetupError {
+    public void processDeprecatedOptions(ITestDevice device) throws TargetSetupError {
         if (mDeprecatedMinExternalStoreSpace != DEFAULT_MIN_EXTERNAL_STORAGE_KB) {
             if (mMinExternalStorageKb != DEFAULT_MIN_EXTERNAL_STORAGE_KB) {
                 throw new TargetSetupError("Deprecated option min-external-store-space conflicts " +
-                        "with option min-external-storage-kb");
+                        "with option min-external-storage-kb", device.getDeviceDescriptor());
             }
             mMinExternalStorageKb = mDeprecatedMinExternalStoreSpace;
         }
@@ -444,7 +461,7 @@ public class DeviceSetup implements ITargetPreparer, ITargetCleaner {
         if (mDeprecatedSetAudioSilent != DEFAULT_DISABLE_AUDIO) {
             if (mDisableAudio != DEFAULT_DISABLE_AUDIO) {
                 throw new TargetSetupError("Deprecated option audio-silent conflicts with " +
-                        "option disable-audio");
+                        "option disable-audio", device.getDeviceDescriptor());
             }
             mDisableAudio = mDeprecatedSetAudioSilent;
         }
@@ -452,7 +469,7 @@ public class DeviceSetup implements ITargetPreparer, ITargetCleaner {
         if (!mDeprecatedSetProps.isEmpty()) {
             if (!mSetProps.isEmpty()) {
                 throw new TargetSetupError("Deprecated option setprop conflicts with option " +
-                        "set-property ");
+                        "set-property ", device.getDeviceDescriptor());
             }
             for (String prop : mDeprecatedSetProps) {
                 String[] parts = prop.split("=", 2);
@@ -491,9 +508,12 @@ public class DeviceSetup implements ITargetPreparer, ITargetCleaner {
         setCommandForBinaryState(mBluetooth, mRunCommandAfterSettings,
                 "service call bluetooth_manager 6", "service call bluetooth_manager 8");
 
+        setCommandForBinaryState(mNfc, mRunCommandAfterSettings,
+                "svc nfc enable", "svc nfc disable");
+
         if (mScreenBrightness != null && BinaryState.ON.equals(mScreenAdaptiveBrightness)) {
             throw new TargetSetupError("Option screen-brightness cannot be set when " +
-                    "screen-adaptive-brightness is set to ON");
+                    "screen-adaptive-brightness is set to ON", device.getDeviceDescriptor());
         }
 
         setSettingForBinaryState(mScreenAdaptiveBrightness, mSystemSettings,
@@ -520,8 +540,9 @@ public class DeviceSetup implements ITargetPreparer, ITargetCleaner {
                 "install_non_market_apps", "1", "0");
 
         if (mTriggerMediaMounted) {
-            mRunCommandAfterSettings.add("am broadcast -a android.intent.action.MEDIA_MOUNTED -d " +
-                    "file://${EXTERNAL_STORAGE}");
+            mRunCommandAfterSettings.add(
+                    "am broadcast -a android.intent.action.MEDIA_MOUNTED -d "
+                            + "file://${EXTERNAL_STORAGE} --receiver-include-background");
         }
 
         setSettingForBinaryState(mLocationGps, mSecureSettings,
@@ -624,7 +645,7 @@ public class DeviceSetup implements ITargetPreparer, ITargetCleaner {
         boolean result = device.pushString(sb.toString(), "/data/local.prop");
         if (!result) {
             throw new TargetSetupError(String.format("Failed to push /data/local.prop to %s",
-                    device.getSerialNumber()));
+                    device.getSerialNumber()), device.getDeviceDescriptor());
         }
         // Set reasonable permissions for /data/local.prop
         device.executeShellCommand("chmod 644 /data/local.prop");
@@ -686,7 +707,7 @@ public class DeviceSetup implements ITargetPreparer, ITargetCleaner {
 
         if (device.getApiLevel() < 22) {
             throw new TargetSetupError(String.format("Changing setting not supported on %s, " +
-                    "must be API 22+", device.getSerialNumber()));
+                    "must be API 22+", device.getSerialNumber()), device.getDeviceDescriptor());
         }
 
         // Special case airplane mode since it needs to be set before other connectivity settings
@@ -695,14 +716,14 @@ public class DeviceSetup implements ITargetPreparer, ITargetCleaner {
         switch (mAirplaneMode) {
             case ON:
                 CLog.d("Changing global setting airplane_mode_on to 1");
-                device.executeShellCommand("settings put global \"airplane_mode_on\" \"1\"");
+                device.setSetting("global", "airplane_mode_on", "1");
                 if (!mForceSkipRunCommands) {
                     device.executeShellCommand(String.format(command, "true"));
                 }
                 break;
             case OFF:
                 CLog.d("Changing global setting airplane_mode_on to 0");
-                device.executeShellCommand("settings put global \"airplane_mode_on\" \"0\"");
+                device.setSetting("global", "airplane_mode_on", "0");
                 if (!mForceSkipRunCommands) {
                     device.executeShellCommand(String.format(command, "false"));
                 }
@@ -712,24 +733,23 @@ public class DeviceSetup implements ITargetPreparer, ITargetCleaner {
                 break;
         }
 
-        String settingCommand = "settings put %s \"%s\" \"%s\"";
         for (String key : mSystemSettings.keySet()) {
             for (String value : mSystemSettings.get(key)) {
                 CLog.d("Changing system setting %s to %s", key, value);
-                device.executeShellCommand(String.format(settingCommand, "system", key, value));
+                device.setSetting("system", key, value);
             }
         }
         for (String key : mSecureSettings.keySet()) {
             for (String value : mSecureSettings.get(key)) {
                 CLog.d("Changing secure setting %s to %s", key, value);
-                device.executeShellCommand(String.format(settingCommand, "secure", key, value));
+                device.setSetting("secure", key, value);
             }
         }
 
         for (String key : mGlobalSettings.keySet()) {
             for (String value : mGlobalSettings.get(key)) {
                 CLog.d("Changing global setting %s to %s", key, value);
-                device.executeShellCommand(String.format(settingCommand, "global", key, value));
+                device.setSetting("global", key, value);
             }
         }
     }
@@ -772,7 +792,7 @@ public class DeviceSetup implements ITargetPreparer, ITargetCleaner {
             if (!device.connectToWifiNetwork(mWifiSsid, mWifiPsk)) {
                 throw new TargetSetupError(String.format(
                         "Failed to connect to wifi network %s on %s", mWifiSsid,
-                        device.getSerialNumber()));
+                        device.getSerialNumber()), device.getDeviceDescriptor());
             }
         }
     }
@@ -792,12 +812,14 @@ public class DeviceSetup implements ITargetPreparer, ITargetCleaner {
 
         if (!mLocalDataFile.exists() || !mLocalDataFile.isDirectory()) {
             throw new TargetSetupError(String.format(
-                    "local-data-path %s is not a directory", mLocalDataFile.getAbsolutePath()));
+                    "local-data-path %s is not a directory", mLocalDataFile.getAbsolutePath()),
+                    device.getDeviceDescriptor());
         }
         String fullRemotePath = device.getIDevice().getMountPoint(IDevice.MNT_EXTERNAL_STORAGE);
         if (fullRemotePath == null) {
             throw new TargetSetupError(String.format(
-                    "failed to get external storage path on device %s", device.getSerialNumber()));
+                    "failed to get external storage path on device %s", device.getSerialNumber()),
+                    device.getDeviceDescriptor());
         }
         if (mRemoteDataPath != null) {
             fullRemotePath = String.format("%s/%s", fullRemotePath, mRemoteDataPath);
@@ -807,7 +829,8 @@ public class DeviceSetup implements ITargetPreparer, ITargetCleaner {
             // TODO: get exact error code and respond accordingly
             throw new TargetSetupError(String.format(
                     "failed to sync test data from local-data-path %s to %s on device %s",
-                    mLocalDataFile.getAbsolutePath(), fullRemotePath, device.getSerialNumber()));
+                    mLocalDataFile.getAbsolutePath(), fullRemotePath, device.getSerialNumber()),
+                    device.getDeviceDescriptor());
         }
     }
 
@@ -827,7 +850,8 @@ public class DeviceSetup implements ITargetPreparer, ITargetCleaner {
         if (freeSpace < mMinExternalStorageKb) {
             throw new DeviceNotAvailableException(String.format(
                     "External store free space %dK is less than required %dK for device %s",
-                    freeSpace , mMinExternalStorageKb, device.getSerialNumber()));
+                    freeSpace , mMinExternalStorageKb, device.getSerialNumber()),
+                    device.getSerialNumber());
         }
     }
 
@@ -929,6 +953,13 @@ public class DeviceSetup implements ITargetPreparer, ITargetCleaner {
      */
     protected void setBluetooth(BinaryState bluetooth) {
         mBluetooth = bluetooth;
+    }
+
+    /**
+     * Exposed for unit testing
+     */
+    protected void setNfc(BinaryState nfc) {
+        mNfc = nfc;
     }
 
     /**
@@ -1143,6 +1174,7 @@ public class DeviceSetup implements ITargetPreparer, ITargetCleaner {
 
     /**
      * Exposed for unit testing
+     * @deprecated use {@link #setMinExternalStorageKb(long)} instead.
      */
     @Deprecated
     protected void setDeprecatedMinExternalStoreSpace(long storeSpace) {
@@ -1151,6 +1183,7 @@ public class DeviceSetup implements ITargetPreparer, ITargetCleaner {
 
     /**
      * Exposed for unit testing
+     * @deprecated use {@link #setDisableAudio(boolean)} instead.
      */
     @Deprecated
     protected void setDeprecatedAudioSilent(boolean silent) {
@@ -1159,6 +1192,7 @@ public class DeviceSetup implements ITargetPreparer, ITargetCleaner {
 
     /**
      * Exposed for unit testing
+     * @deprecated use {@link #setProperty(String, String)} instead.
      */
     @Deprecated
     protected void setDeprecatedSetProp(String prop) {

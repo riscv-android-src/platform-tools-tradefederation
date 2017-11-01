@@ -17,9 +17,9 @@ package com.android.tradefed.result;
 
 import com.android.ddmlib.testrunner.TestIdentifier;
 import com.android.ddmlib.testrunner.TestRunResult;
-import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
+import com.android.tradefed.invoker.IInvocationContext;
 import com.android.tradefed.log.LogUtil.CLog;
 
 import java.util.ArrayList;
@@ -285,11 +285,8 @@ public class BugreportCollector implements ITestInvocationListener {
                 CLog.e(e);
             }
         }
-        InputStreamSource bugreport = mTestDevice.getBugreport();
-        try {
+        try (InputStreamSource bugreport = mTestDevice.getBugreport()) {
             mListener.testLog(logName, LogDataType.BUGREPORT, bugreport);
-        } finally {
-            bugreport.cancel();
         }
     }
 
@@ -354,8 +351,10 @@ public class BugreportCollector implements ITestInvocationListener {
                             applicableFreqs.add(Freq.FIRST);
                         }
                         break;
+                    default:
+                        break;
                 }
-                break;  // case AFTER
+                break; // case AFTER
 
             case AT_START_OF:
                 switch (noun) {
@@ -370,8 +369,10 @@ public class BugreportCollector implements ITestInvocationListener {
                             applicableFreqs.add(Freq.FIRST);
                         }
                         break;
+                    default:
+                        break;
                 }
-                break;  // case AT_START_OF
+                break; // case AT_START_OF
         }
 
         Predicate storedP = search(relation, applicableFreqs, noun);
@@ -394,6 +395,9 @@ public class BugreportCollector implements ITestInvocationListener {
                     case FAILED_TESTCASE:
                         // bug-FAILED-FooBarTest#testMethodName
                         desc = String.format("FAILED-%s", testName);
+                        break;
+
+                    default:
                         break;
                 }
             }
@@ -512,15 +516,14 @@ public class BugreportCollector implements ITestInvocationListener {
         check(Relation.AT_START_OF, Noun.TESTCASE, test);
     }
 
-
     // Methods from the {@link ITestInvocationListener} interface
     /**
      * {@inheritDoc}
      */
     @Override
-    public void invocationStarted(IBuildInfo buildInfo) {
-        mListener.invocationStarted(buildInfo);
-        mCollector.invocationStarted(buildInfo);
+    public void invocationStarted(IInvocationContext context) {
+        mListener.invocationStarted(context);
+        mCollector.invocationStarted(context);
         check(Relation.AT_START_OF, Noun.INVOCATION);
     }
 

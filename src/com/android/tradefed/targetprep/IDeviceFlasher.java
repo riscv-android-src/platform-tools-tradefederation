@@ -71,7 +71,7 @@ public interface IDeviceFlasher {
 
     /**
      * Sets the list of paths under {@code /data} to avoid clearing when using
-     * {@link ITestsZipInsaller}
+     * {@link ITestsZipInstaller}
      * <p />
      * Note that the granularity of the skip list is direct children of {@code /data}.
      */
@@ -83,6 +83,11 @@ public interface IDeviceFlasher {
      * @return Whether the user data image should be flashed, wiped, or retained
      */
     public UserDataFlashOption getUserDataFlashOption();
+
+    /**
+     * Set the timeout for wiping the data.
+     */
+    public void setWipeTimeout(long timeout);
 
     /**
      * Sets if system should always be flashed even if running current build

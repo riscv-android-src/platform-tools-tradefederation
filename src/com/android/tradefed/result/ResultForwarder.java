@@ -16,9 +16,8 @@
 package com.android.tradefed.result;
 
 import com.android.ddmlib.testrunner.TestIdentifier;
-import com.android.tradefed.build.IBuildInfo;
+import com.android.tradefed.invoker.IInvocationContext;
 import com.android.tradefed.log.LogUtil.CLog;
-
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
@@ -88,10 +87,10 @@ public class ResultForwarder implements ITestInvocationListener {
      * {@inheritDoc}
      */
     @Override
-    public void invocationStarted(IBuildInfo buildInfo) {
+    public void invocationStarted(IInvocationContext context) {
         for (ITestInvocationListener listener : mListeners) {
             try {
-                listener.invocationStarted(buildInfo);
+                listener.invocationStarted(context);
             } catch (RuntimeException e) {
                 CLog.e("RuntimeException while invoking %s#invocationStarted",
                         listener.getClass().getName());
@@ -218,20 +217,25 @@ public class ResultForwarder implements ITestInvocationListener {
      */
     @Override
     public void testStarted(TestIdentifier test) {
+        testStarted(test, System.currentTimeMillis());
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public void testStarted(TestIdentifier test, long startTime) {
         for (ITestInvocationListener listener : mListeners) {
             try {
-                listener.testStarted(test);
+                listener.testStarted(test, startTime);
             } catch (RuntimeException e) {
-                CLog.e("RuntimeException while invoking %s#testStarted",
+                CLog.e(
+                        "RuntimeException while invoking %s#testStarted",
                         listener.getClass().getName());
                 CLog.e(e);
             }
         }
     }
 
-    /**
-     * {@inheritDoc}
-     */
+    /** {@inheritDoc} */
     @Override
     public void testFailed(TestIdentifier test, String trace) {
         for (ITestInvocationListener listener : mListeners) {
@@ -250,11 +254,18 @@ public class ResultForwarder implements ITestInvocationListener {
      */
     @Override
     public void testEnded(TestIdentifier test, Map<String, String> testMetrics) {
+        testEnded(test, System.currentTimeMillis(), testMetrics);
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public void testEnded(TestIdentifier test, long endTime, Map<String, String> testMetrics) {
         for (ITestInvocationListener listener : mListeners) {
             try {
-                listener.testEnded(test, testMetrics);
+                listener.testEnded(test, endTime, testMetrics);
             } catch (RuntimeException e) {
-                CLog.e("RuntimeException while invoking %s#testEnded",
+                CLog.e(
+                        "RuntimeException while invoking %s#testEnded",
                         listener.getClass().getName());
                 CLog.e(e);
             }

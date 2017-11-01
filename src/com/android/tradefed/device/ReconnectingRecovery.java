@@ -53,12 +53,12 @@ public class ReconnectingRecovery implements IDeviceRecovery {
         // occasionally device is erroneously reported as online - double check
         // that we can shell into device
         if (!monitor.waitForDeviceShell(10 * 1000)) {
-            throw new DeviceUnresponsiveException(errMsg);
+            throw new DeviceUnresponsiveException(errMsg, serial);
         }
 
         if (!recoverUntilOnline) {
             if (monitor.waitForDeviceAvailable() == null) {
-                throw new DeviceUnresponsiveException(errMsg);
+                throw new DeviceUnresponsiveException(errMsg, serial);
             }
         }
 

@@ -31,7 +31,7 @@ import com.android.tradefed.testtype.InstrumentationTest;
 import com.android.tradefed.util.AaptParser;
 import com.android.tradefed.util.FileUtil;
 
-import junit.framework.Assert;
+import org.junit.Assert;
 
 import java.io.File;
 import java.util.Collections;

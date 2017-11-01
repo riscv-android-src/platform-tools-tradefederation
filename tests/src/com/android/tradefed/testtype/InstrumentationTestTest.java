@@ -18,18 +18,22 @@ package com.android.tradefed.testtype;
 import com.android.ddmlib.IDevice;
 import com.android.ddmlib.testrunner.IRemoteAndroidTestRunner;
 import com.android.ddmlib.testrunner.ITestRunListener;
+import com.android.ddmlib.testrunner.InstrumentationResultParser;
 import com.android.ddmlib.testrunner.TestIdentifier;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.result.ITestInvocationListener;
+import com.android.tradefed.util.ListInstrumentationParser;
 
 import junit.framework.TestCase;
 
 import org.easymock.EasyMock;
 import org.easymock.IAnswer;
 
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
@@ -46,7 +50,6 @@ public class InstrumentationTestTest extends TestCase {
     private static final TestIdentifier TEST2 = new TestIdentifier("Test", "test2");
     private static final String RUN_ERROR_MSG = "error";
     private static final Map<String, String> EMPTY_STRING_MAP = Collections.emptyMap();
-    private static final int COLLECT_TESTS_SHELL_TIMEOUT = 1;
 
     /** The {@link InstrumentationTest} under test, with all dependencies mocked out */
     private InstrumentationTest mInstrumentationTest;
@@ -56,6 +59,7 @@ public class InstrumentationTestTest extends TestCase {
     private ITestDevice mMockTestDevice;
     private IRemoteAndroidTestRunner mMockRemoteRunner;
     private ITestInvocationListener mMockListener;
+    private ListInstrumentationParser mMockListInstrumentationParser;
 
     /**
      * Helper class for providing an EasyMock {@link IAnswer} to a
@@ -100,6 +104,19 @@ public class InstrumentationTestTest extends TestCase {
         EasyMock.expect(mMockTestDevice.getSerialNumber()).andStubReturn("serial");
         mMockRemoteRunner = EasyMock.createMock(IRemoteAndroidTestRunner.class);
         mMockListener = EasyMock.createMock(ITestInvocationListener.class);
+        mMockListInstrumentationParser = new ListInstrumentationParser() {
+            @Override
+            public List<InstrumentationTarget> getInstrumentationTargets() {
+                InstrumentationTarget target1 = new InstrumentationTarget(
+                        TEST_PACKAGE_VALUE, "runner1", "target1");
+                InstrumentationTarget target2 = new InstrumentationTarget(
+                        "package2", "runner2", "target2");
+                List<InstrumentationTarget> targets = new ArrayList<>(2);
+                targets.add(target1);
+                targets.add(target2);
+                return targets;
+            }
+        };
 
         mInstrumentationTest = new InstrumentationTest() {
             @Override
@@ -111,15 +128,16 @@ public class InstrumentationTestTest extends TestCase {
         mInstrumentationTest.setPackageName(TEST_PACKAGE_VALUE);
         mInstrumentationTest.setRunnerName(TEST_RUNNER_VALUE);
         mInstrumentationTest.setDevice(mMockTestDevice);
+        mInstrumentationTest.setListInstrumentationParser(mMockListInstrumentationParser);
         // default to no rerun, for simplicity
         mInstrumentationTest.setRerunMode(false);
         // default to no timeout for simplicity
         mInstrumentationTest.setTestTimeout(TEST_TIMEOUT);
         mInstrumentationTest.setShellTimeout(SHELL_TIMEOUT);
         mMockRemoteRunner.setMaxTimeToOutputResponse(SHELL_TIMEOUT, TimeUnit.MILLISECONDS);
+        mMockRemoteRunner.setMaxTimeout(0L, TimeUnit.MILLISECONDS);
         mMockRemoteRunner.addInstrumentationArg(InstrumentationTest.TEST_TIMEOUT_INST_ARGS_KEY,
                 Long.toString(SHELL_TIMEOUT));
-        mInstrumentationTest.setCollectsTestsShellTimeout(COLLECT_TESTS_SHELL_TIMEOUT);
     }
 
     /**
@@ -139,6 +157,31 @@ public class InstrumentationTestTest extends TestCase {
         mMockListener.testRunStarted("run", 1);
         EasyMock.replay(mMockRemoteRunner, mMockTestDevice);
         mInstrumentationTest.run(mMockListener);
+    }
+
+    public void testRun_bothAbi() throws DeviceNotAvailableException {
+        mInstrumentationTest = new InstrumentationTest();
+        mInstrumentationTest.setPackageName(TEST_PACKAGE_VALUE);
+        mInstrumentationTest.setRunnerName(TEST_RUNNER_VALUE);
+        mInstrumentationTest.setDevice(mMockTestDevice);
+        mInstrumentationTest.setAbi(new IAbi() {
+            @Override
+            public String getName() {
+                return null;
+            }
+            @Override
+            public String getBitness() {
+                return null;
+            }
+        });
+        mInstrumentationTest.setForceAbi("test");
+        try {
+            mInstrumentationTest.run(mMockListener);
+        } catch (IllegalArgumentException e) {
+            // expected
+            return;
+        }
+        fail("Should have thrown an exception.");
     }
 
     /**
@@ -233,6 +276,7 @@ public class InstrumentationTestTest extends TestCase {
         mInstrumentationTest.setRerunMode(true);
         // expect test collection mode run first to collect tests
         mMockRemoteRunner.setTestCollection(true);
+        mMockRemoteRunner.setDebug(false);
         // collect tests run
         CollectTestAnswer collectTestResponse = new CollectTestAnswer() {
             @Override
@@ -245,6 +289,7 @@ public class InstrumentationTestTest extends TestCase {
         setCollectTestsExpectations(collectTestResponse);
         // expect normal mode to be turned back on
         mMockRemoteRunner.setMaxTimeToOutputResponse(TEST_TIMEOUT, TimeUnit.MILLISECONDS);
+        mMockRemoteRunner.setMaxTimeout(0L, TimeUnit.MILLISECONDS);
         mMockRemoteRunner.setTestCollection(false);
 
         // note: expect run to not be reported
@@ -321,6 +366,7 @@ public class InstrumentationTestTest extends TestCase {
         };
         setRerunExpectations(firstRunResponse, false);
         mMockRemoteRunner.setMaxTimeToOutputResponse(SHELL_TIMEOUT, TimeUnit.MILLISECONDS);
+        mMockRemoteRunner.setMaxTimeout(0L, TimeUnit.MILLISECONDS);
         mMockRemoteRunner.addInstrumentationArg(InstrumentationTest.TEST_TIMEOUT_INST_ARGS_KEY,
                 Long.toString(SHELL_TIMEOUT));
         EasyMock.replay(mMockRemoteRunner, mMockTestDevice, mMockListener);
@@ -360,6 +406,7 @@ public class InstrumentationTestTest extends TestCase {
         mInstrumentationTest.setRerunMode(true);
         // expect test collection mode run first to collect tests
         mMockRemoteRunner.setTestCollection(true);
+        mMockRemoteRunner.setDebug(false);
         CollectTestAnswer collectTestAnswer = new CollectTestAnswer() {
             @Override
             public Boolean answer(IRemoteAndroidTestRunner runner, ITestRunListener listener) {
@@ -377,6 +424,7 @@ public class InstrumentationTestTest extends TestCase {
 
         // now expect second run with test collection mode off
         mMockRemoteRunner.setMaxTimeToOutputResponse(TEST_TIMEOUT, TimeUnit.MILLISECONDS);
+        mMockRemoteRunner.setMaxTimeout(0L, TimeUnit.MILLISECONDS);
         mMockRemoteRunner.setTestCollection(false);
         setRunTestExpectations(firstRunAnswer);
 
@@ -404,13 +452,15 @@ public class InstrumentationTestTest extends TestCase {
 
         // expect both TEST1 and TEST2 to be executed
         mMockListener.testRunStarted(TEST_PACKAGE_VALUE, 2);
-        mMockListener.testStarted(TEST1);
-        mMockListener.testEnded(TEST1, EMPTY_STRING_MAP);
+        mMockListener.testStarted(EasyMock.eq(TEST1), EasyMock.anyLong());
+        mMockListener.testEnded(
+                EasyMock.eq(TEST1), EasyMock.anyLong(), EasyMock.eq(EMPTY_STRING_MAP));
         mMockListener.testRunFailed(RUN_ERROR_MSG);
         mMockListener.testRunEnded(1, EMPTY_STRING_MAP);
         mMockListener.testRunStarted(TEST_PACKAGE_VALUE, 1);
-        mMockListener.testStarted(TEST2);
-        mMockListener.testEnded(TEST2, EMPTY_STRING_MAP);
+        mMockListener.testStarted(EasyMock.eq(TEST2), EasyMock.anyLong());
+        mMockListener.testEnded(
+                EasyMock.eq(TEST2), EasyMock.anyLong(), EasyMock.eq(EMPTY_STRING_MAP));
         mMockListener.testRunEnded(1, EMPTY_STRING_MAP);
     }
 
@@ -428,11 +478,167 @@ public class InstrumentationTestTest extends TestCase {
         }
     }
 
+    public void testQueryRunnerName() throws Exception {
+        String queriedRunner = mInstrumentationTest.queryRunnerName();
+        assertEquals("runner1", queriedRunner);
+    }
+
+    public void testQueryRunnerName_noMatch() throws Exception {
+        mInstrumentationTest.setPackageName("noMatchPackage");
+        String queriedRunner = mInstrumentationTest.queryRunnerName();
+        assertNull(queriedRunner);
+    }
+
+    public void testRun_noMatchingRunner() throws Exception {
+        mInstrumentationTest.setPackageName("noMatchPackage");
+        mInstrumentationTest.setRunnerName(null);
+        try {
+            mInstrumentationTest.run(mMockListener);
+        } catch (IllegalArgumentException e) {
+            // expected
+            return;
+        }
+        fail("Should have thrown an exception.");
+    }
+
+    /**
+     * Test for {@link InstrumentationTest#collectTestsAndRetry(IRemoteAndroidTestRunner,
+     * ITestInvocationListener)} when the collection fails.
+     */
+    public void testCollectTestsAndRetry_Failure() throws Exception {
+        mMockRemoteRunner = EasyMock.createMock(IRemoteAndroidTestRunner.class);
+        CollectTestAnswer collectTestAnswer =
+                new CollectTestAnswer() {
+                    @Override
+                    public Boolean answer(
+                            IRemoteAndroidTestRunner runner, ITestRunListener listener) {
+                        listener.testRunStarted("fakeName", 0);
+                        listener.testRunFailed(InstrumentationResultParser.INVALID_OUTPUT_ERR_MSG);
+                        listener.testRunEnded(0, Collections.emptyMap());
+                        return true;
+                    }
+                };
+        mInstrumentationTest.setEnforceFormat(true);
+        setCollectTestsExpectations(collectTestAnswer);
+        EasyMock.replay(mMockRemoteRunner, mMockListener, mMockTestDevice);
+        try {
+            mInstrumentationTest.collectTestsAndRetry(mMockRemoteRunner, null);
+            fail("Should have thrown an exception");
+        } catch (RuntimeException expected) {
+            // expected.
+        }
+        EasyMock.verify(mMockRemoteRunner, mMockListener, mMockTestDevice);
+    }
+
+    /**
+     * Test for {@link InstrumentationTest#collectTestsAndRetry(IRemoteAndroidTestRunner,
+     * ITestInvocationListener)} when the tests collection fails but we do not enforce the format,
+     * so we don't throw an exception.
+     */
+    public void testCollectTestsAndRetry_notEnforced() throws Exception {
+        mMockRemoteRunner = EasyMock.createMock(IRemoteAndroidTestRunner.class);
+        CollectTestAnswer collectTestAnswer =
+                new CollectTestAnswer() {
+                    @Override
+                    public Boolean answer(
+                            IRemoteAndroidTestRunner runner, ITestRunListener listener) {
+                        listener.testRunStarted("fakeName", 0);
+                        listener.testRunFailed(InstrumentationResultParser.INVALID_OUTPUT_ERR_MSG);
+                        listener.testRunEnded(0, Collections.emptyMap());
+                        return true;
+                    }
+                };
+        setCollectTestsExpectations(collectTestAnswer);
+        EasyMock.replay(mMockRemoteRunner, mMockListener, mMockTestDevice);
+        mInstrumentationTest.setEnforceFormat(false);
+        Collection<TestIdentifier> res =
+                mInstrumentationTest.collectTestsAndRetry(mMockRemoteRunner, null);
+        assertNull(res);
+        EasyMock.verify(mMockRemoteRunner, mMockListener, mMockTestDevice);
+    }
+
+    /**
+     * Test that if we successfully collect a list of tests and the run crash and try to report 0 we
+     * instead do report the number of collected test to get an appropriate count.
+     */
+    public void testCollectWorks_RunCrash() throws Exception {
+        mInstrumentationTest =
+                new InstrumentationTest() {
+                    @Override
+                    IRemoteAndroidTestRunner createRemoteAndroidTestRunner(
+                            String packageName, String runnerName, IDevice device) {
+                        return mMockRemoteRunner;
+                    }
+
+                    @Override
+                    void reRunTestsSerially(ITestInvocationListener listener)
+                            throws DeviceNotAvailableException {
+                        // ignore serial re-run
+                    }
+                };
+        mInstrumentationTest.setPackageName(TEST_PACKAGE_VALUE);
+        mInstrumentationTest.setRunnerName(TEST_RUNNER_VALUE);
+        mInstrumentationTest.setDevice(mMockTestDevice);
+        mInstrumentationTest.setListInstrumentationParser(mMockListInstrumentationParser);
+        // default to no timeout for simplicity
+        mInstrumentationTest.setTestTimeout(TEST_TIMEOUT);
+        mInstrumentationTest.setShellTimeout(SHELL_TIMEOUT);
+        mInstrumentationTest.setRerunMode(true);
+        mMockRemoteRunner.setTestCollection(true);
+        mMockRemoteRunner.setDebug(false);
+        // expect normal mode to be turned back on
+        mMockRemoteRunner.setMaxTimeToOutputResponse(TEST_TIMEOUT, TimeUnit.MILLISECONDS);
+        mMockRemoteRunner.setMaxTimeout(0L, TimeUnit.MILLISECONDS);
+        mMockRemoteRunner.setTestCollection(false);
+        // We collect successfully 5 tests
+        CollectTestAnswer collectTestAnswer =
+                new CollectTestAnswer() {
+                    @Override
+                    public Boolean answer(
+                            IRemoteAndroidTestRunner runner, ITestRunListener listener) {
+                        listener.testRunStarted("fakeName", 5);
+                        for (int i = 0; i < 5; i++) {
+                            TestIdentifier tid = new TestIdentifier("fakeclass", "fakemethod" + i);
+                            listener.testStarted(tid, 5);
+                            listener.testEnded(tid, 15, Collections.emptyMap());
+                        }
+                        listener.testRunEnded(500, Collections.emptyMap());
+                        return true;
+                    }
+                };
+        setCollectTestsExpectations(collectTestAnswer);
+        // We attempt to run and crash
+        RunTestAnswer secondRunAnswer =
+                new RunTestAnswer() {
+                    @Override
+                    public Boolean answer(
+                            IRemoteAndroidTestRunner runner, ITestRunListener listener) {
+                        listener.testRunStarted("fakeName", 0);
+                        listener.testRunFailed(
+                                "Instrumentation run failed due to 'Process crashed.'");
+                        listener.testRunEnded(1, EMPTY_STRING_MAP);
+                        return true;
+                    }
+                };
+        setRunTestExpectations(secondRunAnswer);
+
+        // The reported number of tests is the one from the collected output
+        mMockListener.testRunStarted("fakeName", 5);
+        mMockListener.testRunFailed("Instrumentation run failed due to 'Process crashed.'");
+        mMockListener.testRunEnded(1, EMPTY_STRING_MAP);
+
+        EasyMock.replay(mMockRemoteRunner, mMockTestDevice, mMockListener);
+        mInstrumentationTest.run(mMockListener);
+        EasyMock.verify(mMockRemoteRunner, mMockTestDevice, mMockListener);
+    }
+
     private void setCollectTestsExpectations(CollectTestAnswer collectTestAnswer)
             throws DeviceNotAvailableException {
         EasyMock.expect(
                 mMockTestDevice.runInstrumentationTests(EasyMock.eq(mMockRemoteRunner),
                         (ITestRunListener)EasyMock.anyObject())).andAnswer(collectTestAnswer);
+        mMockRemoteRunner.setMaxTimeToOutputResponse(
+                InstrumentationTest.TEST_COLLECTION_TIMEOUT_MS, TimeUnit.MILLISECONDS);
     }
 
     private void setRunTestExpectations(RunTestAnswer secondRunAnswer)

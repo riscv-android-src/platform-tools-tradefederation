@@ -149,8 +149,7 @@ public class TerribleFailureEmailHandler implements ITerribleFailureHandler {
     }
 
     /**
-     * A method to generate the body for WTF email reports. Will not be called
-     * if {@link #shouldSendMessage()} returns {@code false}.
+     * A method to generate the body for WTF email reports.
      *
      * @param message summary of the terrible failure
      * @param cause throwable containing stack trace information

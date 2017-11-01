@@ -23,8 +23,8 @@ import junit.framework.TestCase;
 import org.easymock.EasyMock;
 
 import java.io.File;
-import java.io.IOException;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -64,12 +64,13 @@ public class DeviceFileReporterTest extends TestCase {
         EasyMock.expect(mDevice.getSerialNumber()).andStubReturn("serial");
 
         mListener = EasyMock.createMock(ITestInvocationListener.class);
-        dfr = new DeviceFileReporter(mDevice, mListener) {
-            @Override
-            InputStreamSource createIssForFile(File file) throws IOException {
-                return mDfrIss;
-            }
-        };
+        dfr =
+                new DeviceFileReporter(mDevice, mListener) {
+                    @Override
+                    InputStreamSource createIssForFile(File file) {
+                        return mDfrIss;
+                    }
+                };
     }
 
     public void testSimple() throws Exception {
@@ -78,8 +79,8 @@ public class DeviceFileReporterTest extends TestCase {
         final String tombstone = "What do you want on your tombstone?";
         dfr.addPatterns("/data/tombstones/*");
 
-        EasyMock.expect(mDevice.executeShellCommand((String)EasyMock.anyObject()))
-                .andReturn(result);
+        EasyMock.expect(mDevice.executeShellCommand(EasyMock.eq("ls /data/tombstones/*")))
+          .andReturn(result);
         // This gets passed verbatim to createIssForFile above
         EasyMock.expect(mDevice.pullFile(EasyMock.eq(filename)))
                 .andReturn(new FakeFile(filename, tombstone.length()));
@@ -91,6 +92,31 @@ public class DeviceFileReporterTest extends TestCase {
 
         replayMocks();
         dfr.run();
+        verifyMocks();
+    }
+
+    // Files' paths should be trimmed to remove white spaces at the end of the lines.
+    public void testTrim() throws Exception {
+        // Result with trailing white spaces.
+        final String result = "/data/tombstones/tombstone_00  \r\n";
+
+        final String filename = "/data/tombstones/tombstone_00";
+        final String tombstone = "What do you want on your tombstone?";
+        dfr.addPatterns("/data/tombstones/*");
+
+        EasyMock.expect(mDevice.executeShellCommand(EasyMock.eq("ls /data/tombstones/*")))
+            .andReturn(result);
+        // This gets passed verbatim to createIssForFile above
+        EasyMock.expect(mDevice.pullFile(EasyMock.eq(filename)))
+            .andReturn(new FakeFile(filename, tombstone.length()));
+
+        mDfrIss = new ByteArrayInputStreamSource(tombstone.getBytes());
+        mListener.testLog(EasyMock.eq(filename), EasyMock.eq(LogDataType.UNKNOWN),
+            EasyMock.eq(mDfrIss));
+
+        replayMocks();
+        List<String> filenames = dfr.run();
+        assertEquals(filename, filenames.get(0));
         verifyMocks();
     }
 
@@ -165,17 +191,18 @@ public class DeviceFileReporterTest extends TestCase {
         final InputStreamSource pngIss = new ByteArrayInputStreamSource(pngContents.getBytes());
         final InputStreamSource xmlIss = new ByteArrayInputStreamSource(xmlContents.getBytes());
 
-        dfr = new DeviceFileReporter(mDevice, mListener) {
-            @Override
-            InputStreamSource createIssForFile(File file) throws IOException {
-                if (file.toString().endsWith(".png")) {
-                    return pngIss;
-                } else if (file.toString().endsWith(".xml")) {
-                    return xmlIss;
-                }
-                throw new IOException ("unknown fake file");
-            }
-        };
+        dfr =
+                new DeviceFileReporter(mDevice, mListener) {
+                    @Override
+                    InputStreamSource createIssForFile(File file) {
+                        if (file.toString().endsWith(".png")) {
+                            return pngIss;
+                        } else if (file.toString().endsWith(".xml")) {
+                            return xmlIss;
+                        }
+                        return null;
+                    }
+                };
         dfr.addPatterns(patMap);
         dfr.setInferUnknownDataTypes(false);
 
@@ -219,17 +246,18 @@ public class DeviceFileReporterTest extends TestCase {
         final InputStreamSource pngIss = new ByteArrayInputStreamSource(pngContents.getBytes());
         final InputStreamSource xmlIss = new ByteArrayInputStreamSource(xmlContents.getBytes());
 
-        dfr = new DeviceFileReporter(mDevice, mListener) {
-            @Override
-            InputStreamSource createIssForFile(File file) throws IOException {
-                if (file.toString().endsWith(".png")) {
-                    return pngIss;
-                } else if (file.toString().endsWith(".xml")) {
-                    return xmlIss;
-                }
-                throw new IOException ("unknown fake file");
-            }
-        };
+        dfr =
+                new DeviceFileReporter(mDevice, mListener) {
+                    @Override
+                    InputStreamSource createIssForFile(File file) {
+                        if (file.toString().endsWith(".png")) {
+                            return pngIss;
+                        } else if (file.toString().endsWith(".xml")) {
+                            return xmlIss;
+                        }
+                        return null;
+                    }
+                };
         dfr.addPatterns(patMap);
         dfr.setInferUnknownDataTypes(false);
         // this should cause us to see three pulls instead of two

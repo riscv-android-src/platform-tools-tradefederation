@@ -18,7 +18,7 @@ package com.android.tradefed.command.remote;
 import com.android.tradefed.command.ICommandScheduler.IScheduledInvocationListener;
 import com.android.tradefed.device.FreeDeviceState;
 import com.android.tradefed.device.ITestDevice;
-import com.android.tradefed.result.StubTestInvocationListener;
+import com.android.tradefed.invoker.IInvocationContext;
 
 import com.google.common.collect.ImmutableMap;
 
@@ -27,8 +27,7 @@ import java.io.PrintStream;
 import java.util.HashMap;
 import java.util.Map;
 
-class ExecCommandTracker extends StubTestInvocationListener implements
-        IScheduledInvocationListener {
+class ExecCommandTracker implements IScheduledInvocationListener {
 
     private CommandResult.Status mStatus = CommandResult.Status.EXECUTING;
     private String mErrorDetails = null;
@@ -45,8 +44,10 @@ class ExecCommandTracker extends StubTestInvocationListener implements
     }
 
     @Override
-    public void invocationComplete(ITestDevice device, FreeDeviceState deviceState) {
-        mState = deviceState;
+    public void invocationComplete(IInvocationContext metadata,
+            Map<ITestDevice, FreeDeviceState> devicesStates) {
+        // FIXME: CommandTracker should handle multiple device states.
+        mState = devicesStates.get(metadata.getDevices().get(0));
         if (mErrorDetails != null) {
             mStatus = CommandResult.Status.INVOCATION_ERROR;
         } else {
@@ -60,8 +61,7 @@ class ExecCommandTracker extends StubTestInvocationListener implements
     }
 
     /**
-     * Returns the current state as a {@link CommandResult}.
-     * @return
+     * Returns the current state as a {@link com.android.tradefed.command.remote.CommandResult}.
      */
     CommandResult getCommandResult() {
         return new CommandResult(mStatus, mErrorDetails, mState,

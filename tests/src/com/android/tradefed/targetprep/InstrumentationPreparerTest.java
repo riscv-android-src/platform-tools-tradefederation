@@ -19,6 +19,8 @@ package com.android.tradefed.targetprep;
 import com.android.ddmlib.testrunner.TestIdentifier;
 import com.android.tradefed.build.DeviceBuildInfo;
 import com.android.tradefed.build.IDeviceBuildInfo;
+import com.android.tradefed.command.remote.DeviceDescriptor;
+import com.android.tradefed.device.DeviceAllocationState;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.testtype.InstrumentationTest;
@@ -44,7 +46,7 @@ public class InstrumentationPreparerTest extends TestCase {
         super.setUp();
         mMockDevice = EasyMock.createMock(ITestDevice.class);
         EasyMock.expect(mMockDevice.getSerialNumber()).andReturn("foo").anyTimes();
-        mMockBuildInfo = new DeviceBuildInfo("0", "", "");
+        mMockBuildInfo = new DeviceBuildInfo("0","");
     }
 
     @Override
@@ -70,8 +72,12 @@ public class InstrumentationPreparerTest extends TestCase {
                 return mMockITest;
             }
         };
+        EasyMock.expect(mMockDevice.getDeviceDescriptor()).andReturn(new DeviceDescriptor("SERIAL",
+                false, DeviceAllocationState.Available, "unknown", "unknown", "unknown", "unknown",
+                "unknown"));
         EasyMock.replay(mMockDevice);
         mInstrumentationPreparer.setUp(mMockDevice, mMockBuildInfo);
+        EasyMock.verify(mMockDevice);
     }
 
     public void testRun_testFailed() throws Exception {
@@ -93,6 +99,9 @@ public class InstrumentationPreparerTest extends TestCase {
                 return mMockITest;
             }
         };
+        EasyMock.expect(mMockDevice.getDeviceDescriptor()).andStubReturn(new DeviceDescriptor(
+                "SERIAL", false, DeviceAllocationState.Available, "unknown", "unknown", "unknown",
+                "unknown", "unknown"));
         EasyMock.replay(mMockDevice);
         try {
             mInstrumentationPreparer.setUp(mMockDevice, mMockBuildInfo);
@@ -102,5 +111,6 @@ public class InstrumentationPreparerTest extends TestCase {
                     e.getMessage().contains(test.toString()));
             // expected
         }
+        EasyMock.verify(mMockDevice);
     }
 }

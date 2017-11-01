@@ -28,7 +28,7 @@ import com.android.tradefed.testtype.IDeviceTest;
 import com.android.tradefed.testtype.IRemoteTest;
 import com.android.tradefed.util.RunUtil;
 
-import junit.framework.Assert;
+import org.junit.Assert;
 
 import java.util.concurrent.TimeUnit;
 

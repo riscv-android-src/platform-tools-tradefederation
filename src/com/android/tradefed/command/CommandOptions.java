@@ -21,6 +21,7 @@ import com.android.tradefed.config.Option.Importance;
 import com.android.tradefed.config.OptionCopier;
 import com.android.tradefed.config.OptionUpdateRule;
 import com.android.tradefed.log.LogUtil.CLog;
+import com.android.tradefed.util.UniqueMultiMap;
 
 /**
  * Implementation of {@link ICommandOptions}.
@@ -39,10 +40,15 @@ public class CommandOptions implements ICommandOptions {
     @Option(name = "json-help", description = "display the full help in json format.")
     private boolean mJsonHelpMode = false;
 
-    @Option(name = "dry-run",
-            description = "build but don't actually run the command.  Intended as a quick check " +
-                    "to ensure that a command is runnable.",
-            importance = Importance.ALWAYS)
+    public static final String DRY_RUN_OPTION = "dry-run";
+
+    @Option(
+        name = DRY_RUN_OPTION,
+        description =
+                "build but don't actually run the command.  Intended as a quick check "
+                        + "to ensure that a command is runnable.",
+        importance = Importance.ALWAYS
+    )
     private boolean mDryRunMode = false;
 
     @Option(name = "noisy-dry-run",
@@ -62,6 +68,13 @@ public class CommandOptions implements ICommandOptions {
             updateRule = OptionUpdateRule.LEAST)
     private Long mMaxRandomLoopTime = null;
 
+    @Option(name = "test-tag", description = "Identifier for the invocation during reporting.")
+    private String mTestTag = "stub";
+
+    @Option(name = "test-tag-suffix", description = "suffix for test-tag. appended to test-tag to "
+            + "represents some variants of one test.")
+    private String mTestTagSuffix = null;
+
     @Option(name = "loop", description = "keep running continuously.",
             importance = Importance.ALWAYS)
     private boolean mLoopMode = false;
@@ -73,6 +86,56 @@ public class CommandOptions implements ICommandOptions {
     @Option(name = "bugreport-on-invocation-ended", description =
             "take a bugreport when the test invocation has ended")
     private boolean mTakeBugreportOnInvocationEnded = false;
+
+    @Option(name = "bugreportz-on-invocation-ended", description = "Attempt to take a bugreportz "
+            + "instead of bugreport during the test invocation final bugreport.")
+    private boolean mTakeBugreportzOnInvocationEnded = false;
+
+    @Option(name = "invocation-timeout", description =
+            "the maximum time to wait for an invocation to terminate before attempting to force"
+            + "stop it.", isTimeVal = true)
+    private long mInvocationTimeout = 0;
+
+    @Option(name = "shard-count", description =
+            "the number of total shards to run. Without --shard-index option, this will cause " +
+            "the command to spawn multiple shards in the current TF instance. With --shard-index " +
+            "option, it will cause the command to run a single shard of tests only.")
+    private Integer mShardCount;
+
+    @Option(name = "shard-index", description =
+            "the index of shard to run. Only set if shard-count > 1 and the value is in range " +
+            "[0, shard-count)")
+    private Integer mShardIndex;
+
+    @Option(
+        name = "skip-pre-device-setup",
+        description =
+                "allow TestInvocation to skip calling device.preInvocationSetup. This is for "
+                        + "delaying device setup when the test runs with VersionedTfLauncher."
+    )
+    private boolean mSkipPreDeviceSetup = false;
+
+    @Option(
+        name = "dynamic-sharding",
+        description =
+                "Allow to dynamically move IRemoteTest from one shard to another. Only for local "
+                        + "sharding."
+    )
+    private boolean mDynamicSharding = true;
+
+    @Option(
+        name = "invocation-data",
+        description =
+                "A map of values that describe the invocation, these values will be added to the "
+                        + "invocation context."
+    )
+    private UniqueMultiMap<String, String> mInvocationData = new UniqueMultiMap<>();
+
+    @Option(
+        name = "disable-strict-sharding",
+        description = "Temporary option to disable the new sharding logic while being tested."
+    )
+    private boolean mUseTfSharding = false;
 
     /**
      * Set the help mode for the config.
@@ -111,6 +174,7 @@ public class CommandOptions implements ICommandOptions {
     /**
      * {@inheritDoc}
      */
+    @Override
     public boolean isJsonHelpMode() {
         return mJsonHelpMode;
     }
@@ -167,6 +231,7 @@ public class CommandOptions implements ICommandOptions {
 
     /**
      * {@inheritDoc}
+     * @deprecated use {@link #getLoopTime()} instead
      */
     @Deprecated
     @Override
@@ -217,5 +282,110 @@ public class CommandOptions implements ICommandOptions {
     @Override
     public boolean takeBugreportOnInvocationEnded() {
         return mTakeBugreportOnInvocationEnded;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public boolean takeBugreportzOnInvocationEnded() {
+        return mTakeBugreportzOnInvocationEnded;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public long getInvocationTimeout() {
+        return mInvocationTimeout;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void setInvocationTimeout(Long invocationTimeout) {
+        mInvocationTimeout = invocationTimeout;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public Integer getShardCount() {
+        return mShardCount;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void setShardCount(Integer shardCount) {
+        mShardCount = shardCount;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public Integer getShardIndex() {
+        return mShardIndex;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void setShardIndex(Integer shardIndex) {
+        mShardIndex = shardIndex;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void setTestTag(String testTag) {
+       mTestTag = testTag;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public String getTestTag() {
+        return mTestTag;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public String getTestTagSuffix() {
+        return mTestTagSuffix;
+    }
+
+    /** {@inheritDoc} */
+    @Override
+
+    public boolean shouldSkipPreDeviceSetup() {
+        return mSkipPreDeviceSetup;
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public boolean shouldUseDynamicSharding() {
+        return mDynamicSharding;
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public UniqueMultiMap<String, String> getInvocationData() {
+        return mInvocationData;
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public boolean shouldUseTfSharding() {
+        return mUseTfSharding;
     }
 }

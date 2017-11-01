@@ -67,12 +67,21 @@ public class TestFilePushSetup implements ITargetPreparer {
     /**
      * Adds a file to the list of items to push
      *
-     * Used for unit testing
-     *
      * @param fileName
      */
-    void addTestFileName(String fileName) {
+    protected void addTestFileName(String fileName) {
         mTestPaths.add(fileName);
+    }
+
+    /**
+     * Retrieves the list of files to be pushed from test zip onto device
+     */
+    protected Collection<String> getTestFileNames() {
+        return mTestPaths;
+    }
+
+    protected void clearTestFileName() {
+        mTestPaths.clear();
     }
 
     /**
@@ -82,8 +91,8 @@ public class TestFilePushSetup implements ITargetPreparer {
      * @param fileName filename of artifacts to push
      * @return a {@link File} representing the physical file/path on host
      */
-    protected File getLocalPathForFilename(IBuildInfo buildInfo, String fileName)
-            throws TargetSetupError {
+    protected File getLocalPathForFilename(IBuildInfo buildInfo, String fileName,
+            ITestDevice device) throws TargetSetupError {
         List<File> dirs = new ArrayList<>();
         for (File dir : mAltDirs) {
             dirs.add(dir);
@@ -106,12 +115,13 @@ public class TestFilePushSetup implements ITargetPreparer {
         } else if (mAltDirBehavior == AltDirBehavior.OVERRIDE) {
             dirs.addAll(expandedTestDirs);
         } else {
-            throw new TargetSetupError("Missing handler for alt-dir-behavior: " + mAltDirBehavior);
+            throw new TargetSetupError("Missing handler for alt-dir-behavior: " + mAltDirBehavior,
+                    device.getDeviceDescriptor());
         }
         if (dirs.isEmpty()) {
             throw new TargetSetupError(
                     "Provided buildInfo does not contain a valid tests directory and no " +
-                    "alternative directories were provided");
+                    "alternative directories were provided", device.getDeviceDescriptor());
         }
 
         for (File dir : dirs) {
@@ -139,13 +149,17 @@ public class TestFilePushSetup implements ITargetPreparer {
         }
         int filePushed = 0;
         for (String fileName : mTestPaths) {
-            File localFile = getLocalPathForFilename(buildInfo, fileName);
+            File localFile = getLocalPathForFilename(buildInfo, fileName, device);
             if (localFile == null) {
                 if (mThrowIfNoFile) {
                     throw new TargetSetupError(String.format(
                             "Could not find test file %s directory in extracted tests.zip",
-                            localFile));
+                            fileName), device.getDeviceDescriptor());
                 } else {
+                    CLog.w(String.format(
+                            "Could not find test file %s directory in extracted tests.zip, but" +
+                            "will continue test setup as throw-if-not-found is set to false",
+                            fileName));
                     continue;
                 }
             }
@@ -160,23 +174,27 @@ public class TestFilePushSetup implements ITargetPreparer {
             device.executeShellCommand(String.format("chown system.system %s", remoteFileName));
             filePushed++;
         }
-        if (filePushed == 0) {
-            throw new TargetSetupError("No file is pushed from tests.zip");
+        if (filePushed == 0 && mThrowIfNoFile) {
+            throw new TargetSetupError("No file is pushed from tests.zip",
+                    device.getDeviceDescriptor());
         }
     }
 
+    protected void setThrowIfNoFile(boolean throwIfNoFile) {
+        mThrowIfNoFile = throwIfNoFile;
+    }
+
     /**
-     * Set an alternate directory.
+     * Set an alternate directory. Exposed for testing.
      */
-    public void setAltDir(File altDir) {
+    protected void setAltDir(File altDir) {
         mAltDirs.add(altDir);
     }
 
     /**
-     * Set the alternative directory search beahvior
-     * @param behavior
+     * Set the alternative directory search behavior. Exposed for testing.
      */
-    public void setAltDirBehavior(AltDirBehavior behavior) {
+    protected void setAltDirBehavior(AltDirBehavior behavior) {
         mAltDirBehavior = behavior;
     }
 

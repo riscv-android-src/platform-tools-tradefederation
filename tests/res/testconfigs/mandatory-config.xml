@@ -15,7 +15,6 @@
 -->
 <configuration
     description="test fixture to help test mandatory options">
-
-    <test class="com.android.tradefed.config.StubMandatoryTest" />
+    <build_provider class="com.android.tradefed.build.LocalDeviceBuildProvider" />
 
 </configuration>

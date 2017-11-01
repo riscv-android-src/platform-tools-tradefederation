@@ -38,8 +38,21 @@ public class CompanionRunCommandTargetPreparer extends RunCommandTargetPreparer 
         ITestDevice companion = CompanionDeviceTracker.getInstance().getCompanionDevice(device);
         if (companion == null) {
             throw new TargetSetupError(String.format("no companion device allocated for %s",
-                    device.getSerialNumber()));
+                    device.getSerialNumber()), device.getDeviceDescriptor());
         }
         super.setUp(companion, buildInfo);
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void tearDown(ITestDevice device, IBuildInfo buildInfo, Throwable e)
+            throws DeviceNotAvailableException {
+        // get companion device first
+        ITestDevice companion = CompanionDeviceTracker.getInstance().getCompanionDevice(device);
+        if (companion != null) {
+            super.tearDown(companion, buildInfo, e);
+        }
     }
 }

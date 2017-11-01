@@ -22,16 +22,15 @@ import com.android.tradefed.config.Option;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.log.LogUtil.CLog;
+import com.android.tradefed.result.FileInputStreamSource;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.LogDataType;
-import com.android.tradefed.result.SnapshotInputStreamSource;
 import com.android.tradefed.testtype.IDeviceTest;
 import com.android.tradefed.testtype.IRemoteTest;
 import com.android.tradefed.util.RunUtil;
 
 import java.io.BufferedReader;
 import java.io.File;
-import java.io.FileInputStream;
 import java.io.FileReader;
 import java.io.IOException;
 import java.util.Collections;
@@ -80,27 +79,29 @@ public class AudioLoopbackTest implements IDeviceTest, IRemoteTest {
     @Option(name = "key-prefix", description = "Key Prefix for reporting")
     private String mKeyPrefix = "48000_Mic3_";
 
-    private final String DEVICE_TEMP_DIR_PATH = "/sdcard/";
-    private final String OUTPUT_FILENAME = "output_" + System.currentTimeMillis();
-    private final String OUTPUT_RESULT_TXT_PATH = DEVICE_TEMP_DIR_PATH + OUTPUT_FILENAME + ".txt";
-    private final String OUTPUT_PNG_PATH = DEVICE_TEMP_DIR_PATH + OUTPUT_FILENAME + ".png";
-    private final String OUTPUT_WAV_PATH = DEVICE_TEMP_DIR_PATH + OUTPUT_FILENAME + ".wav";
-    private final String OUTPUT_PLAYER_BUFFER_PATH =
+    private static final String DEVICE_TEMP_DIR_PATH = "/sdcard/";
+    private static final String OUTPUT_FILENAME = "output_" + System.currentTimeMillis();
+    private static final String OUTPUT_RESULT_TXT_PATH =
+            DEVICE_TEMP_DIR_PATH + OUTPUT_FILENAME + ".txt";
+    private static final String OUTPUT_PNG_PATH = DEVICE_TEMP_DIR_PATH + OUTPUT_FILENAME + ".png";
+    private static final String OUTPUT_WAV_PATH = DEVICE_TEMP_DIR_PATH + OUTPUT_FILENAME + ".wav";
+    private static final String OUTPUT_PLAYER_BUFFER_PATH =
             DEVICE_TEMP_DIR_PATH + OUTPUT_FILENAME + "_playerBufferPeriod.txt";
-    private final String OUTPUT_PLAYER_BUFFER_PNG_PATH =
+    private static final String OUTPUT_PLAYER_BUFFER_PNG_PATH =
             DEVICE_TEMP_DIR_PATH + OUTPUT_FILENAME + "_playerBufferPeriod.png";
-    private final String OUTPUT_RECORDER_BUFFER_PATH =
+    private static final String OUTPUT_RECORDER_BUFFER_PATH =
             DEVICE_TEMP_DIR_PATH + OUTPUT_FILENAME + "_recorderBufferPeriod.txt";
-    private final String OUTPUT_RECORDER_BUFFER_PNG_PATH =
+    private static final String OUTPUT_RECORDER_BUFFER_PNG_PATH =
             DEVICE_TEMP_DIR_PATH + OUTPUT_FILENAME + "_recorderBufferPeriod.png";
-    private final String OUTPUT_GLITCH_PATH =
+    private static final String OUTPUT_GLITCH_PATH =
             DEVICE_TEMP_DIR_PATH + OUTPUT_FILENAME + "_glitchMillis.txt";
-    private final String AM_CMD = "am start -n org.drrickorang.loopback/.LoopbackActivity" +
-            " --ei SF %s --es FileName %s --ei MicSource %s --ei AudioThread %s" +
-            " --ei AudioLevel %s --ei TestType %s --ei BufferTestDuration %s";
+    private static final String AM_CMD =
+            "am start -n org.drrickorang.loopback/.LoopbackActivity"
+                    + " --ei SF %s --es FileName %s --ei MicSource %s --ei AudioThread %s"
+                    + " --ei AudioLevel %s --ei TestType %s --ei BufferTestDuration %s";
 
     private static Map<String, String> createMetricsKeyMap() {
-        Map<String, String> result = new HashMap<String, String>();
+        Map<String, String> result = new HashMap<>();
         result.put("LatencyMs", "latency_ms");
         result.put("LatencyConfidence", "latency_confidence");
         result.put("Recorder Benchmark", "recorder_benchmark");
@@ -144,7 +145,7 @@ public class AudioLoopbackTest implements IDeviceTest, IRemoteTest {
         listener.testStarted(testId);
 
         long testStartTime = System.currentTimeMillis();
-        Map<String, String> metrics = new HashMap<String, String>();
+        Map<String, String> metrics = new HashMap<>();
 
         // start measurement and wait for result file
         CollectingOutputReceiver receiver = new CollectingOutputReceiver();
@@ -186,36 +187,48 @@ public class AudioLoopbackTest implements IDeviceTest, IRemoteTest {
                 return;
             }
             metrics = loopbackResult;
-            listener.testLog(mKeyPrefix + "result", LogDataType.TEXT,
-                    new SnapshotInputStreamSource(new FileInputStream(loopbackReport)));
+            listener.testLog(
+                    mKeyPrefix + "result",
+                    LogDataType.TEXT,
+                    new FileInputStreamSource(loopbackReport));
             File loopbackGraphFile = device.pullFile(OUTPUT_PNG_PATH);
-            listener.testLog(mKeyPrefix + "graph", LogDataType.PNG,
-                    new SnapshotInputStreamSource(new FileInputStream(loopbackGraphFile)));
+            listener.testLog(
+                    mKeyPrefix + "graph",
+                    LogDataType.PNG,
+                    new FileInputStreamSource(loopbackGraphFile));
             File loopbackWaveFile = device.pullFile(OUTPUT_WAV_PATH);
-            listener.testLog(mKeyPrefix + "wave", LogDataType.UNKNOWN,
-                    new SnapshotInputStreamSource(new FileInputStream(loopbackWaveFile)));
+            listener.testLog(
+                    mKeyPrefix + "wave",
+                    LogDataType.UNKNOWN,
+                    new FileInputStreamSource(loopbackWaveFile));
             if (mTestType.equals(TESTTYPE_BUFFER)) {
                 File loopbackPlayerBuffer = device.pullFile(OUTPUT_PLAYER_BUFFER_PATH);
-                listener.testLog(mKeyPrefix + "player_buffer", LogDataType.TEXT,
-                        new SnapshotInputStreamSource(
-                                new FileInputStream(loopbackPlayerBuffer)));
+                listener.testLog(
+                        mKeyPrefix + "player_buffer",
+                        LogDataType.TEXT,
+                        new FileInputStreamSource(loopbackPlayerBuffer));
                 File loopbackPlayerBufferPng = device.pullFile(OUTPUT_PLAYER_BUFFER_PNG_PATH);
-                listener.testLog(mKeyPrefix + "player_buffer_histogram", LogDataType.PNG,
-                    new SnapshotInputStreamSource(new FileInputStream(loopbackPlayerBufferPng)));
+                listener.testLog(
+                        mKeyPrefix + "player_buffer_histogram",
+                        LogDataType.PNG,
+                        new FileInputStreamSource(loopbackPlayerBufferPng));
 
                 File loopbackRecorderBuffer = device.pullFile(OUTPUT_RECORDER_BUFFER_PATH);
-                listener.testLog(mKeyPrefix + "recorder_buffer", LogDataType.TEXT,
-                        new SnapshotInputStreamSource(new FileInputStream(
-                                loopbackRecorderBuffer)));
+                listener.testLog(
+                        mKeyPrefix + "recorder_buffer",
+                        LogDataType.TEXT,
+                        new FileInputStreamSource(loopbackRecorderBuffer));
                 File loopbackRecorderBufferPng = device.pullFile(OUTPUT_RECORDER_BUFFER_PNG_PATH);
-                listener.testLog(mKeyPrefix + "recorder_buffer_histogram", LogDataType.PNG,
-                    new SnapshotInputStreamSource(new FileInputStream(
-                                loopbackRecorderBufferPng)));
+                listener.testLog(
+                        mKeyPrefix + "recorder_buffer_histogram",
+                        LogDataType.PNG,
+                        new FileInputStreamSource(loopbackRecorderBufferPng));
 
                 File loopbackGlitch = device.pullFile(OUTPUT_GLITCH_PATH);
-                listener.testLog(mKeyPrefix + "glitches_millis", LogDataType.TEXT,
-                        new SnapshotInputStreamSource(new FileInputStream(
-                                loopbackGlitch)));
+                listener.testLog(
+                        mKeyPrefix + "glitches_millis",
+                        LogDataType.TEXT,
+                        new FileInputStreamSource(loopbackGlitch));
             }
         } catch (IOException ioe) {
             CLog.e(ioe.getMessage());
@@ -252,7 +265,7 @@ public class AudioLoopbackTest implements IDeviceTest, IRemoteTest {
      * @throws IOException
      */
     private Map<String, String> parseResult(File result) throws IOException {
-        Map<String, String> resultMap = new HashMap<String, String>();
+        Map<String, String> resultMap = new HashMap<>();
         BufferedReader br = new BufferedReader(new FileReader(result));
         try {
             String line = br.readLine();

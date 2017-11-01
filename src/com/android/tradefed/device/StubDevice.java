@@ -15,6 +15,8 @@
  */
 package com.android.tradefed.device;
 
+import com.google.common.util.concurrent.SettableFuture;
+
 import com.android.ddmlib.AdbCommandRejectedException;
 import com.android.ddmlib.Client;
 import com.android.ddmlib.FileListingService;
@@ -28,8 +30,9 @@ import com.android.ddmlib.SyncException;
 import com.android.ddmlib.SyncService;
 import com.android.ddmlib.TimeoutException;
 import com.android.ddmlib.log.LogReceiver;
-import com.google.common.util.concurrent.SettableFuture;
+import com.android.sdklib.AndroidVersion;
 
+import java.io.File;
 import java.io.IOException;
 import java.util.Collections;
 import java.util.List;
@@ -49,7 +52,7 @@ public class StubDevice implements IDevice {
         this(serial, false);
     }
 
-    StubDevice(String serial, boolean isEmulator) {
+    public StubDevice(String serial, boolean isEmulator) {
         mSerial = serial;
         mIsEmulator = isEmulator;
     }
@@ -80,6 +83,7 @@ public class StubDevice implements IDevice {
 
     /**
      * {@inheritDoc}
+     * @deprecated use {@link #executeShellCommand(String, IShellOutputReceiver, long, TimeUnit)}.
      */
     @Deprecated
     @Override
@@ -139,6 +143,7 @@ public class StubDevice implements IDevice {
 
     /**
      * {@inheritDoc}
+     * @deprecated use {@link #getSystemProperty(String)} instead.
      */
     @Override
     @Deprecated
@@ -156,6 +161,7 @@ public class StubDevice implements IDevice {
 
     /**
      * {@inheritDoc}
+     * @deprecated deprecated in ddmlib with "implementation detail" as reason.
      */
     @Override
     @Deprecated
@@ -177,8 +183,7 @@ public class StubDevice implements IDevice {
      */
     @Override
     public RawImage getScreenshot(long timeout, TimeUnit unit)
-        throws TimeoutException, AdbCommandRejectedException, IOException {
-
+            throws TimeoutException, AdbCommandRejectedException, IOException {
         throw new IOException("stub");
     }
 
@@ -219,17 +224,17 @@ public class StubDevice implements IDevice {
      * {@inheritDoc}
      */
     @Override
-    public String installPackage(String packageFilePath, boolean reinstall, String... extraArgs)
+    public void installPackage(String packageFilePath, boolean reinstall, String... extraArgs)
             throws InstallException {
         throw new InstallException(new IOException("stub"));
     }
 
     /**
      * {@inheritDoc}
-     */
+     **/
     @Override
-    public void installPackages(List<String> apkFilePaths, int timeOutInMs, boolean reinstall,
-            String... extraArgs) throws InstallException {
+    public void installPackages(List<File> apkFilePaths, boolean reinstall, List<String> extraArgs,
+            long timeOutInMs, TimeUnit timeunit) throws InstallException {
         throw new InstallException(new IOException("stub"));
     }
 
@@ -237,7 +242,7 @@ public class StubDevice implements IDevice {
      * {@inheritDoc}
      */
     @Override
-    public String installRemotePackage(String remoteFilePath, boolean reinstall,
+    public void installRemotePackage(String remoteFilePath, boolean reinstall,
             String... extraArgs) throws InstallException {
         throw new InstallException(new IOException("stub"));
     }
@@ -355,6 +360,7 @@ public class StubDevice implements IDevice {
 
     /**
      * {@inheritDoc}
+     * @deprecated use {@link #getProperty(String)} instead.
      */
     @Override
     @Deprecated
@@ -373,6 +379,7 @@ public class StubDevice implements IDevice {
 
     /**
      * {@inheritDoc}
+     * @deprecated use {@link #getProperty(String)} instead.
      */
     @Override
     @Deprecated
@@ -383,6 +390,7 @@ public class StubDevice implements IDevice {
 
     /**
      * {@inheritDoc}
+     * @deprecated use {@link #getBattery()} instead.
      */
     @Override
     @Deprecated
@@ -393,6 +401,7 @@ public class StubDevice implements IDevice {
 
     /**
      * {@inheritDoc}
+     * @deprecated use {@link #getBattery(long, TimeUnit)} instead.
      */
     @Override
     @Deprecated
@@ -437,6 +446,19 @@ public class StubDevice implements IDevice {
             long maxTimeToOutputResponse, TimeUnit maxTimeUnits)
             throws TimeoutException, AdbCommandRejectedException,
             ShellCommandUnresponsiveException, IOException {
+        throw new IOException("stub");
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public void executeShellCommand(
+            String command,
+            IShellOutputReceiver receiver,
+            long maxTimeout,
+            long maxTimeToOutputResponse,
+            TimeUnit maxTimeUnits)
+            throws TimeoutException, AdbCommandRejectedException, ShellCommandUnresponsiveException,
+                    IOException {
         throw new IOException("stub");
     }
 
@@ -530,8 +552,27 @@ public class StubDevice implements IDevice {
      * {@inheritDoc}
      */
     @Override
-    public int getApiLevel() {
-        // TODO Auto-generated method stub
-        return -1;
+    public AndroidVersion getVersion() {
+        return null;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public boolean isRoot()
+            throws TimeoutException, AdbCommandRejectedException, IOException,
+            ShellCommandUnresponsiveException {
+        throw new IOException("stub");
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public boolean root()
+            throws TimeoutException, AdbCommandRejectedException, IOException,
+            ShellCommandUnresponsiveException {
+        throw new IOException("stub");
     }
 }

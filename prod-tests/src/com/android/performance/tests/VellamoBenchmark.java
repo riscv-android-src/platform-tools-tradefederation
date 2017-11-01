@@ -38,6 +38,7 @@ public class VellamoBenchmark implements IDeviceTest, IRemoteTest {
 
     private static final String LOGTAG = "VAUTOMATIC";
     private static final String RUN_KEY = "vellamobenchmark-3202";
+    private static final String PACKAGE_NAME = "com.quicinc.vellamo";
     private static final long TIMEOUT_MS = 30 * 60 * 1000;
     private static final long POLLING_INTERVAL_MS = 10 * 1000;
     private static final int INDEX_NAME = 0;
@@ -77,7 +78,6 @@ public class VellamoBenchmark implements IDeviceTest, IRemoteTest {
         String errMsg = null;
 
         boolean isTimedOut = false;
-        boolean isRunningBenchmark = false;
         boolean isResultGenerated = false;
         boolean hasScore = false;
         double sumScore = 0;
@@ -94,13 +94,10 @@ public class VellamoBenchmark implements IDeviceTest, IRemoteTest {
         device.executeShellCommand("am start -a com.quicinc.vellamo.AUTOMATIC"
                 + " -e w com.quicinc.skunkworks.wvb" // use System WebView
                 + " -n com.quicinc.vellamo/.main.MainActivity");
-        isRunningBenchmark = true;
         String line;
-        while (isRunningBenchmark && !isResultGenerated && !isTimedOut) {
+        while (!isResultGenerated && !isTimedOut) {
             RunUtil.getDefault().sleep(POLLING_INTERVAL_MS);
             isTimedOut = (System.currentTimeMillis() - benchmarkStartTime >= TIMEOUT_MS);
-            isRunningBenchmark = device.executeShellCommand("ps | grep com.quicinc.vellamo")
-                    .contains("com.quicinc.vellamo");
 
             // get the logcat and parse
             BufferedReader logcat =
@@ -116,7 +113,7 @@ public class VellamoBenchmark implements IDeviceTest, IRemoteTest {
                     // we need to see if the score is generated since there are some
                     // cases the result with </automatic> tag is generated but no score is included
                     if (line.contains("</automatic>")) {
-                        if(hasScore){
+                        if (hasScore) {
                             isResultGenerated = true;
                             break;
                         }
@@ -138,6 +135,10 @@ public class VellamoBenchmark implements IDeviceTest, IRemoteTest {
                 }
             } catch (IOException e) {
                 CLog.e(e);
+            }
+
+            if (null == device.getProcessByName(PACKAGE_NAME)) {
+                break;
             }
         }
 

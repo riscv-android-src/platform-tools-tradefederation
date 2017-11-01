@@ -15,18 +15,42 @@
  */
 package com.android.tradefed.targetprep;
 
+import com.android.tradefed.command.remote.DeviceDescriptor;
+
 /**
  * Thrown if the provided build fails to run.
  */
 @SuppressWarnings("serial")
 public class BuildError extends Exception {
 
+    private DeviceDescriptor mDescriptor = null;
+
     /**
      * Constructs a new (@link BuildError} with a detailed error message.
      *
      * @param reason an error message giving more details on the build error
+     * @param descriptor the descriptor of the device concerned
      */
+    public BuildError(String reason, DeviceDescriptor descriptor) {
+        super(reason + " " + descriptor);
+        mDescriptor = descriptor;
+    }
+
+    /**
+     * Constructs a new (@link BuildError} with a detailed error message.
+     *
+     * @param reason an error message giving more details on the build error
+     * @deprecated use {@link #BuildError(String, DeviceDescriptor)} instead.
+     */
+    @Deprecated
     public BuildError(String reason) {
         super(reason);
+    }
+
+    /**
+     * Return the descriptor of the device associated with exception.
+     */
+    public DeviceDescriptor getDeviceDescriptor() {
+        return mDescriptor;
     }
 }

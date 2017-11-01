@@ -265,10 +265,9 @@ public class GLBenchmarkTest implements IDeviceTest, IRemoteTest {
     /**
      * Get value in the first matching tag under the element
      *
-     * @param node the parent {@link Element} of the tag
+     * @param element the parent {@link Element} of the tag
      * @param tag {@link String} of the tag name
-     * @return a {@link String} that contains the value in the tag; returns null
-     *         if not found.
+     * @return a {@link String} that contains the value in the tag; returns null if not found.
      */
     private String getData(Element element, String tag) {
         NodeList tagNodes = element.getElementsByTagName(tag);

@@ -50,6 +50,7 @@ public class InstrumentationFileTestTest extends TestCase {
 
     private ITestDevice mMockTestDevice;
     private ITestInvocationListener mMockListener;
+    private InstrumentationTest mMockITest;
 
     private File mTestFile;
 
@@ -65,13 +66,23 @@ public class InstrumentationFileTestTest extends TestCase {
 
         EasyMock.expect(mMockTestDevice.getIDevice()).andStubReturn(mockIDevice);
         EasyMock.expect(mMockTestDevice.getSerialNumber()).andStubReturn("serial");
+
+        // mock out InstrumentationTest that will be used to create InstrumentationFileTest
+        mMockITest = new InstrumentationTest() {
+            @Override
+            protected String queryRunnerName() {
+                return "runner";
+            }
+        };
+        mMockITest.setDevice(mMockTestDevice);
+        mMockITest.setPackageName(TEST_PACKAGE_VALUE);
     }
 
     /**
      * Test normal run scenario with a single test.
      */
     @SuppressWarnings("unchecked")
-    public void testRun_singleSuccessfulTest() throws DeviceNotAvailableException, IOException,
+    public void testRun_singleSuccessfulTest() throws DeviceNotAvailableException,
             ConfigurationException {
         final Collection<TestIdentifier> testsList = new ArrayList<>(1);
         final TestIdentifier test = new TestIdentifier("ClassFoo", "methodBar");
@@ -90,16 +101,10 @@ public class InstrumentationFileTestTest extends TestCase {
             }
         };
         setRunTestExpectations(runTestResponse);
-
-        // mock out InstrumentationTest that will be used to create InstrumentationFileTest
-        final InstrumentationTest mockITest = new InstrumentationTest();
-        mockITest.setDevice(mMockTestDevice);
-        mockITest.setPackageName(TEST_PACKAGE_VALUE);
-
-        mInstrumentationFileTest = new InstrumentationFileTest(mockITest, testsList, true, -1) {
+        mInstrumentationFileTest = new InstrumentationFileTest(mMockITest, testsList, true, -1) {
             @Override
             InstrumentationTest createInstrumentationTest() {
-                return mockITest;
+                return mMockITest;
             }
             @Override
             boolean pushFileToTestDevice(File file, String destinationPath)
@@ -118,13 +123,14 @@ public class InstrumentationFileTestTest extends TestCase {
 
         // mock successful test run lifecycle
         mMockListener.testRunStarted(TEST_PACKAGE_VALUE, 1);
-        mMockListener.testStarted(test);
-        mMockListener.testEnded(test, Collections.EMPTY_MAP);
+        mMockListener.testStarted(EasyMock.eq(test), EasyMock.anyLong());
+        mMockListener.testEnded(
+                EasyMock.eq(test), EasyMock.anyLong(), EasyMock.eq(Collections.EMPTY_MAP));
         mMockListener.testRunEnded(0, Collections.EMPTY_MAP);
 
         EasyMock.replay(mMockListener, mMockTestDevice);
         mInstrumentationFileTest.run(mMockListener);
-        assertEquals(mMockTestDevice, mockITest.getDevice());
+        assertEquals(mMockTestDevice, mMockITest.getDevice());
     }
 
     /**
@@ -132,7 +138,7 @@ public class InstrumentationFileTestTest extends TestCase {
      */
     @SuppressWarnings("unchecked")
     public void testRun_reRunOneFailedToCompleteTest()
-            throws DeviceNotAvailableException, IOException, ConfigurationException {
+            throws DeviceNotAvailableException, ConfigurationException {
         final Collection<TestIdentifier> testsList = new ArrayList<>(1);
         final TestIdentifier test1 = new TestIdentifier("ClassFoo1", "methodBar1");
         final TestIdentifier test2 = new TestIdentifier("ClassFoo2", "methodBar2");
@@ -174,16 +180,10 @@ public class InstrumentationFileTestTest extends TestCase {
             }
         };
         setRunTestExpectations(secondRunAnswer);
-
-        // mock out InstrumentationTest that will be used to create InstrumentationFileTest
-        final InstrumentationTest mockITest = new InstrumentationTest();
-        mockITest.setDevice(mMockTestDevice);
-        mockITest.setPackageName(TEST_PACKAGE_VALUE);
-
-        mInstrumentationFileTest = new InstrumentationFileTest(mockITest, testsList, true, -1) {
+        mInstrumentationFileTest = new InstrumentationFileTest(mMockITest, testsList, true, -1) {
             @Override
             InstrumentationTest createInstrumentationTest() {
-                return mockITest;
+                return mMockITest;
             }
             @Override
             boolean pushFileToTestDevice(File file, String destinationPath)
@@ -203,25 +203,28 @@ public class InstrumentationFileTestTest extends TestCase {
         // First run:
         mMockListener.testRunStarted(TEST_PACKAGE_VALUE, 2);
         // expect test1 to start and finish successfully
-        mMockListener.testStarted(test1);
-        mMockListener.testEnded(test1, Collections.EMPTY_MAP);
+        mMockListener.testStarted(EasyMock.eq(test1), EasyMock.anyLong());
+        mMockListener.testEnded(
+                EasyMock.eq(test1), EasyMock.anyLong(), EasyMock.eq(Collections.EMPTY_MAP));
         mMockListener.testRunEnded(1, Collections.EMPTY_MAP);
         // expect test2 to start but never finish
-        mMockListener.testStarted(test2);
+        mMockListener.testStarted(EasyMock.eq(test2), EasyMock.anyLong());
         // Second run:
         mMockListener.testRunStarted(TEST_PACKAGE_VALUE, 2);
         // expect test3 to start and finish successfully
-        mMockListener.testStarted(test3);
-        mMockListener.testEnded(test3, Collections.EMPTY_MAP);
+        mMockListener.testStarted(EasyMock.eq(test3), EasyMock.anyLong());
+        mMockListener.testEnded(
+                EasyMock.eq(test3), EasyMock.anyLong(), EasyMock.eq(Collections.EMPTY_MAP));
         mMockListener.testRunEnded(1, Collections.EMPTY_MAP);
         // expect to rerun test2 successfully
-        mMockListener.testStarted(test2);
-        mMockListener.testEnded(test2, Collections.EMPTY_MAP);
+        mMockListener.testStarted(EasyMock.eq(test2), EasyMock.anyLong());
+        mMockListener.testEnded(
+                EasyMock.eq(test2), EasyMock.anyLong(), EasyMock.eq(Collections.EMPTY_MAP));
         mMockListener.testRunEnded(1, Collections.EMPTY_MAP);
 
         EasyMock.replay(mMockListener, mMockTestDevice);
         mInstrumentationFileTest.run(mMockListener);
-        assertEquals(mMockTestDevice, mockITest.getDevice());
+        assertEquals(mMockTestDevice, mMockITest.getDevice());
     }
 
     /**
@@ -229,7 +232,7 @@ public class InstrumentationFileTestTest extends TestCase {
      */
     @SuppressWarnings("unchecked")
     public void testRun_serialReRunOfTwoFailedToCompleteTests()
-            throws DeviceNotAvailableException, IOException, ConfigurationException {
+            throws DeviceNotAvailableException, ConfigurationException {
         final Collection<TestIdentifier> testsList = new ArrayList<>(1);
         final TestIdentifier test1 = new TestIdentifier("ClassFoo1", "methodBar1");
         final TestIdentifier test2 = new TestIdentifier("ClassFoo2", "methodBar2");
@@ -279,15 +282,10 @@ public class InstrumentationFileTestTest extends TestCase {
         };
         setRunTestExpectations(secdondSerialRunAnswer);
 
-        // mock out InstrumentationTest that will be used to create InstrumentationFileTest
-        final InstrumentationTest mockITest = new InstrumentationTest();
-        mockITest.setDevice(mMockTestDevice);
-        mockITest.setPackageName(TEST_PACKAGE_VALUE);
-
-        mInstrumentationFileTest = new InstrumentationFileTest(mockITest, testsList, true, -1) {
+        mInstrumentationFileTest = new InstrumentationFileTest(mMockITest, testsList, true, -1) {
             @Override
             InstrumentationTest createInstrumentationTest() {
-                return mockITest;
+                return mMockITest;
             }
             @Override
             boolean pushFileToTestDevice(File file, String destinationPath)
@@ -305,28 +303,30 @@ public class InstrumentationFileTestTest extends TestCase {
         // First run:
         mMockListener.testRunStarted(TEST_PACKAGE_VALUE, 2);
         // expect test1 and test 2 to start but never finish
-        mMockListener.testStarted(test1);
-        mMockListener.testStarted(test2);
+        mMockListener.testStarted(EasyMock.eq(test1), EasyMock.anyLong());
+        mMockListener.testStarted(EasyMock.eq(test2), EasyMock.anyLong());
 
         // re-run test1 and test2 serially
         // first serial re-run:
         mMockListener.testRunStarted(TEST_PACKAGE_VALUE, 1);
         // expect test1 to start and finish successfully
-        mMockListener.testStarted(test1);
-        mMockListener.testEnded(test1, Collections.EMPTY_MAP);
+        mMockListener.testStarted(EasyMock.eq(test1), EasyMock.anyLong());
+        mMockListener.testEnded(
+                EasyMock.eq(test1), EasyMock.anyLong(), EasyMock.eq(Collections.EMPTY_MAP));
         mMockListener.testRunEnded(1, Collections.EMPTY_MAP);
         // first serial re-run:
         mMockListener.testRunStarted(TEST_PACKAGE_VALUE, 1);
         // expect test2 to start and finish successfully
-        mMockListener.testStarted(test2);
-        mMockListener.testEnded(test2, Collections.EMPTY_MAP);
+        mMockListener.testStarted(EasyMock.eq(test2), EasyMock.anyLong());
+        mMockListener.testEnded(
+                EasyMock.eq(test2), EasyMock.anyLong(), EasyMock.eq(Collections.EMPTY_MAP));
         mMockListener.testRunEnded(1, Collections.EMPTY_MAP);
 
         EasyMock.replay(mMockListener, mMockTestDevice);
         mInstrumentationFileTest.run(mMockListener);
-        assertEquals(mMockTestDevice, mockITest.getDevice());
+        assertEquals(mMockTestDevice, mMockITest.getDevice());
         // test file is expected to be null since we defaulted to serial test execution
-        assertEquals(null, mockITest.getTestFilePathOnDevice());
+        assertEquals(null, mMockITest.getTestFilePathOnDevice());
     }
 
     /**
@@ -334,7 +334,7 @@ public class InstrumentationFileTestTest extends TestCase {
      */
     @SuppressWarnings("unchecked")
     public void testRun_noSerialReRun()
-            throws DeviceNotAvailableException, IOException, ConfigurationException {
+            throws DeviceNotAvailableException, ConfigurationException {
         final Collection<TestIdentifier> testsList = new ArrayList<>(1);
         final TestIdentifier test1 = new TestIdentifier("ClassFoo1", "methodBar1");
         final TestIdentifier test2 = new TestIdentifier("ClassFoo2", "methodBar2");
@@ -356,15 +356,10 @@ public class InstrumentationFileTestTest extends TestCase {
         };
         setRunTestExpectations(firstRunAnswer);
 
-        // mock out InstrumentationTest that will be used to create InstrumentationFileTest
-        final InstrumentationTest mockITest = new InstrumentationTest();
-        mockITest.setDevice(mMockTestDevice);
-        mockITest.setPackageName(TEST_PACKAGE_VALUE);
-
-        mInstrumentationFileTest = new InstrumentationFileTest(mockITest, testsList, false, -1) {
+        mInstrumentationFileTest = new InstrumentationFileTest(mMockITest, testsList, false, -1) {
             @Override
             InstrumentationTest createInstrumentationTest() {
-                return mockITest;
+                return mMockITest;
             }
             @Override
             boolean pushFileToTestDevice(File file, String destinationPath)
@@ -382,12 +377,12 @@ public class InstrumentationFileTestTest extends TestCase {
         // First run:
         mMockListener.testRunStarted(TEST_PACKAGE_VALUE, 2);
         // expect test1 and test 2 to start but never finish
-        mMockListener.testStarted(test1);
-        mMockListener.testStarted(test2);
+        mMockListener.testStarted(EasyMock.eq(test1), EasyMock.anyLong());
+        mMockListener.testStarted(EasyMock.eq(test2), EasyMock.anyLong());
 
         EasyMock.replay(mMockListener, mMockTestDevice);
         mInstrumentationFileTest.run(mMockListener);
-        assertEquals(mMockTestDevice, mockITest.getDevice());
+        assertEquals(mMockTestDevice, mMockITest.getDevice());
     }
 
     /**
@@ -395,7 +390,7 @@ public class InstrumentationFileTestTest extends TestCase {
      */
     @SuppressWarnings("unchecked")
     public void testRun_exceedMaxAttempts()
-            throws DeviceNotAvailableException, IOException, ConfigurationException {
+            throws DeviceNotAvailableException, ConfigurationException {
         final ArrayList<TestIdentifier> testsList = new ArrayList<>(1);
         final TestIdentifier test1 = new TestIdentifier("ClassFoo1", "methodBar1");
         final TestIdentifier test2 = new TestIdentifier("ClassFoo2", "methodBar2");
@@ -467,15 +462,10 @@ public class InstrumentationFileTestTest extends TestCase {
         };
         setRunTestExpectations(thirdRunAnswer);
 
-        // mock out InstrumentationTest that will be used to create InstrumentationFileTest
-        final InstrumentationTest mockITest = new InstrumentationTest();
-        mockITest.setDevice(mMockTestDevice);
-        mockITest.setPackageName(TEST_PACKAGE_VALUE);
-
-        mInstrumentationFileTest = new InstrumentationFileTest(mockITest, testsList, false, 3) {
+        mInstrumentationFileTest = new InstrumentationFileTest(mMockITest, testsList, false, 3) {
             @Override
             InstrumentationTest createInstrumentationTest() {
-                return mockITest;
+                return mMockITest;
             }
             @Override
             boolean pushFileToTestDevice(File file, String destinationPath)
@@ -492,30 +482,33 @@ public class InstrumentationFileTestTest extends TestCase {
 
         // First run:
         mMockListener.testRunStarted(TEST_PACKAGE_VALUE, 6);
-        mMockListener.testStarted(test1);
-        mMockListener.testEnded(test1, Collections.EMPTY_MAP);
+        mMockListener.testStarted(EasyMock.eq(test1), EasyMock.anyLong());
+        mMockListener.testEnded(
+                EasyMock.eq(test1), EasyMock.anyLong(), EasyMock.eq(Collections.EMPTY_MAP));
         mMockListener.testRunEnded(1, Collections.EMPTY_MAP);
-        mMockListener.testStarted(test2);
+        mMockListener.testStarted(EasyMock.eq(test2), EasyMock.anyLong());
 
         // Second run:
         mMockListener.testRunStarted(TEST_PACKAGE_VALUE, 5);
-        mMockListener.testStarted(test2);
-        mMockListener.testEnded(test2, Collections.EMPTY_MAP);
+        mMockListener.testStarted(EasyMock.eq(test2), EasyMock.anyLong());
+        mMockListener.testEnded(
+                EasyMock.eq(test2), EasyMock.anyLong(), EasyMock.eq(Collections.EMPTY_MAP));
         mMockListener.testRunEnded(1, Collections.EMPTY_MAP);
-        mMockListener.testStarted(test3);
+        mMockListener.testStarted(EasyMock.eq(test3), EasyMock.anyLong());
 
         // Third run:
         mMockListener.testRunStarted(TEST_PACKAGE_VALUE, 4);
-        mMockListener.testStarted(test3);
-        mMockListener.testEnded(test3, Collections.EMPTY_MAP);
+        mMockListener.testStarted(EasyMock.eq(test3), EasyMock.anyLong());
+        mMockListener.testEnded(
+                EasyMock.eq(test3), EasyMock.anyLong(), EasyMock.eq(Collections.EMPTY_MAP));
         mMockListener.testRunEnded(1, Collections.EMPTY_MAP);
-        mMockListener.testStarted(test4);
+        mMockListener.testStarted(EasyMock.eq(test4), EasyMock.anyLong());
 
         // MAX_ATTEMPTS is 3, so there will be no forth run.
 
         EasyMock.replay(mMockListener, mMockTestDevice);
         mInstrumentationFileTest.run(mMockListener);
-        assertEquals(mMockTestDevice, mockITest.getDevice());
+        assertEquals(mMockTestDevice, mMockITest.getDevice());
     }
 
     /**

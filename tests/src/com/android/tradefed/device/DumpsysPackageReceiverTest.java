@@ -16,8 +16,6 @@
 
 package com.android.tradefed.device;
 
-import com.android.tradefed.device.DumpsysPackageReceiver.ParseException;
-
 import junit.framework.TestCase;
 
 /**
@@ -89,7 +87,7 @@ public class DumpsysPackageReceiverTest extends TestCase {
     /**
      * Verifies parse handles empty input
      */
-    public void testParse_empty() throws ParseException {
+    public void testParse_empty() {
         DumpsysPackageReceiver parser = new DumpsysPackageReceiver();
         assertEquals(0,  parser.getPackages().size());
     }

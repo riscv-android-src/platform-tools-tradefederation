@@ -36,7 +36,7 @@ public interface IRescheduler {
     /**
      * Reschedule the command for future execution.
      *<p>
-     * The command should respect {@link ICommandOptions#getMinLoopTime()} and schedule the command
+     * The command should respect {@link ICommandOptions#getLoopTime()} and schedule the command
      * with the appropriate delay.
      *</p>
      * @return <code>true</code> if command was successfully rescheduled. <code>false</code>

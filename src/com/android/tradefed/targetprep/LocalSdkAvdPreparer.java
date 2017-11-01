@@ -65,8 +65,8 @@ public class LocalSdkAvdPreparer extends SdkAvdPreparer {
         mSdkBuildInfo.setSdkDir(mLocalSdkPath);
         mSdkBuildInfo.setTestsDir(null);
         if (mLocalSdkPath == null) {
-            throw new TargetSetupError(
-                    "Please set the path of the sdk using --local-sdk-path.");
+            throw new TargetSetupError("Please set the path of the sdk using --local-sdk-path.",
+                    device.getDeviceDescriptor());
         }
         launchEmulatorForAvd(mSdkBuildInfo, device, createAvd(mSdkBuildInfo));
     }

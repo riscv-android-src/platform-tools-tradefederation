@@ -73,8 +73,8 @@ public class TemperatureThrottlingWaiter implements ITargetPreparer {
                 CLog.d("Temperature is still high actual %d/expected %d",
                         deviceTemperature, mTargetTemperature);
             } else {
-                CLog.i("Total time elapsed to get to %dc : %ds",
-                    mTargetTemperature, (System.currentTimeMillis() - start) / 1000);
+                CLog.i("Total time elapsed to get to %dc : %ds", mTargetTemperature,
+                        (System.currentTimeMillis() - start) / 1000);
                 break; // while loop
             }
             if ((System.currentTimeMillis() - start) > maxWaitMs) {
@@ -82,7 +82,8 @@ public class TemperatureThrottlingWaiter implements ITargetPreparer {
                         deviceTemperature, mTargetTemperature, maxWaitMs);
                 if (mAbortOnTimeout) {
                     throw new TargetSetupError(String.format("Temperature is still high after wait "
-                        + "timeout; actual %d/expected %d", deviceTemperature, mTargetTemperature));
+                            + "timeout; actual %d/expected %d", deviceTemperature,
+                            mTargetTemperature), device.getDeviceDescriptor());
                 }
                 break; // while loop
             }
@@ -107,17 +108,18 @@ public class TemperatureThrottlingWaiter implements ITargetPreparer {
         CLog.i(String.format("Temperature file output : %s", result));
         // example output : Result:30 Raw:7f6f
         if (result == null || result.contains("No such file or directory")) {
-            throw new TargetSetupError(String.format(
-                    "File %s doesn't exist", fileName));
+            throw new TargetSetupError(String.format("File %s doesn't exist", fileName),
+                    device.getDeviceDescriptor());
         } else if (!result.toLowerCase().startsWith("result:")) {
-            throw new TargetSetupError(String.format(
-                    "file content is not as expected. Content : ", result));
+            throw new TargetSetupError(
+                    String.format("file content is not as expected. Content : %s", result),
+                    device.getDeviceDescriptor());
         }
 
         try {
             deviceTemp = Integer.parseInt(result.split(" ")[0].split(":")[1].trim());
         } catch (NumberFormatException numEx) {
-            CLog.e(String.format("Temperature is not of right format + ", numEx.getMessage()));
+            CLog.e(String.format("Temperature is not of right format %s", numEx.getMessage()));
             throw numEx;
         }
 

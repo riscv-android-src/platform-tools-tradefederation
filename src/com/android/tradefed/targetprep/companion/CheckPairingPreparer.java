@@ -45,7 +45,7 @@ public class CheckPairingPreparer extends CompanionAwarePreparer {
         if (!primaryHasCompanion || !companionHasPrimary) {
             throw new TargetSetupError(String.format(
                     "device bonding error: primaryHasCompanion=%s, companionHasPrimary=%s",
-                    primaryHasCompanion, companionHasPrimary));
+                    primaryHasCompanion, companionHasPrimary), device.getDeviceDescriptor());
         }
     }
 }

@@ -15,9 +15,9 @@
  */
 package com.android.tradefed.build;
 
-import com.android.ddmlib.Log;
 import com.android.tradefed.config.Option;
 import com.android.tradefed.config.OptionClass;
+import com.android.tradefed.log.LogUtil.CLog;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -33,9 +33,6 @@ public class StubBuildProvider implements IBuildProvider {
     @Option(name="build-id", description="build id to supply.")
     private String mBuildId = "0";
 
-    @Option(name="test-tag", description="test tag name to supply.")
-    private String mTestTag = "stub";
-
     @Option(name="build-target", description="build target name to supply.")
     private String mBuildTargetName = "stub";
 
@@ -48,13 +45,32 @@ public class StubBuildProvider implements IBuildProvider {
     @Option(name="build-attribute", description="build attributes to supply.")
     private Map<String, String> mBuildAttributes = new HashMap<String,String>();
 
+    @Option(
+        name = "return-null",
+        description = "force the stub provider to return a null build. Used for testing."
+    )
+    private boolean mReturnNull = false;
+
+    @Option(
+        name = "throw-build-error",
+        description = "force the stub provider to throw a BuildRetrievalError. Used for testing."
+    )
+    private boolean mThrowError = false;
+
     /**
      * {@inheritDoc}
      */
     @Override
     public IBuildInfo getBuild() throws BuildRetrievalError {
-        Log.d("BuildProvider", "skipping build provider step");
-        BuildInfo stubBuild = new BuildInfo(mBuildId, mTestTag, mBuildTargetName);
+        if (mReturnNull) {
+            CLog.d("Returning a null build.");
+            return null;
+        }
+        if (mThrowError) {
+            throw new BuildRetrievalError("stub failed to get build.");
+        }
+        CLog.d("skipping build provider step");
+        BuildInfo stubBuild = new BuildInfo(mBuildId, mBuildTargetName);
         stubBuild.setBuildBranch(mBranch);
         stubBuild.setBuildFlavor(mBuildFlavor);
         for (Map.Entry<String, String> attributeEntry : mBuildAttributes.entrySet()) {

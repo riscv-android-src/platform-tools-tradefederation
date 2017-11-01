@@ -35,7 +35,7 @@ import java.util.TimerTask;
  */
 public class DeviceUtilStatsMonitor implements IDeviceMonitor {
 
-    private static final int mInitialDelayMs = 5000;
+    private static final int INITIAL_DELAY_MS = 5000;
 
     /**
      * Enum for configuring treatment of stub devices when calculating average host utilization
@@ -219,7 +219,15 @@ public class DeviceUtilStatsMonitor implements IDeviceMonitor {
     public void run() {
         calculateMaxSamples();
         mTimer  = new Timer();
-        mTimer.scheduleAtFixedRate(mSamplingTask, mInitialDelayMs, mSamplingIntervalSec * 1000);
+        mTimer.scheduleAtFixedRate(mSamplingTask, INITIAL_DELAY_MS, mSamplingIntervalSec * 1000);
+    }
+
+    @Override
+    public void stop() {
+        if (mTimer != null) {
+            mTimer.cancel();
+            mTimer.purge();
+        }
     }
 
     @Override

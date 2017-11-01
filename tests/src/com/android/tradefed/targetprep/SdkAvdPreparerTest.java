@@ -18,12 +18,15 @@ package com.android.tradefed.targetprep;
 import com.android.ddmlib.IDevice;
 import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.build.ISdkBuildInfo;
+import com.android.tradefed.command.remote.DeviceDescriptor;
+import com.android.tradefed.device.DeviceAllocationState;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.IDeviceManager;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.device.TestDeviceState;
 import com.android.tradefed.util.CommandResult;
 import com.android.tradefed.util.CommandStatus;
+import com.android.tradefed.util.FileUtil;
 import com.android.tradefed.util.IRunUtil;
 
 import junit.framework.TestCase;
@@ -46,12 +49,22 @@ public class SdkAvdPreparerTest extends TestCase {
     private ISdkBuildInfo mMockBuildInfo;
     private ITestDevice mMockDevice;
     private IDevice mMockIDevice;
+    private File mParentFolder;
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     protected void setUp() throws Exception {
         mMockRunUtil = EasyMock.createMock(IRunUtil.class);
         mMockDeviceManager = EasyMock.createMock(IDeviceManager.class);
-        mPreparer = new SdkAvdPreparer(mMockRunUtil, mMockDeviceManager);
+        mParentFolder = FileUtil.createTempDir("sdk-avd-preparer");
+        mPreparer = new SdkAvdPreparer(mMockRunUtil, mMockDeviceManager) {
+            @Override
+            File createParentSdkHome() throws java.io.IOException {
+                return mParentFolder;
+            }
+        };
         mMockBuildInfo = EasyMock.createMock(ISdkBuildInfo.class);
         mMockDevice = EasyMock.createMock(ITestDevice.class);
         mMockIDevice = EasyMock.createMock(IDevice.class);
@@ -62,6 +75,16 @@ public class SdkAvdPreparerTest extends TestCase {
         EasyMock.expect(mMockBuildInfo.getSdkDir()).andStubReturn(new File("sdk"));
         EasyMock.expect(mMockDevice.getIDevice()).andStubReturn(mMockIDevice);
         EasyMock.expect(mMockDevice.getSerialNumber()).andStubReturn("serial");
+        EasyMock.expect(mMockDevice.getDeviceDescriptor()).andStubReturn(null);
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    protected void tearDown() throws Exception {
+        FileUtil.recursiveDelete(mParentFolder);
+        super.tearDown();
     }
 
     /**
@@ -128,7 +151,9 @@ public class SdkAvdPreparerTest extends TestCase {
         EasyMock.expectLastCall().times(3);
         // expect an avd name == target name
         EasyMock.expect(mMockIDevice.getAvdName()).andReturn("").times(2);
-
+        EasyMock.expect(mMockDevice.getDeviceDescriptor()).andReturn(new DeviceDescriptor("SERIAL",
+                false, DeviceAllocationState.Available, "unknown", "unknown", "unknown", "unknown",
+                "unknown"));
         replayMocks();
         try {
             mPreparer.setUp(mMockDevice, mMockBuildInfo);
@@ -155,7 +180,9 @@ public class SdkAvdPreparerTest extends TestCase {
                 EasyMock.eq(mMockRunUtil), (List<String>)EasyMock.anyObject());
         EasyMock.expectLastCall().andThrow(new DeviceNotAvailableException());
         mMockDeviceManager.killEmulator(EasyMock.eq(mMockDevice));
-
+        EasyMock.expect(mMockDevice.getDeviceDescriptor()).andReturn(new DeviceDescriptor("SERIAL",
+                false, DeviceAllocationState.Available, "unknown", "unknown", "unknown", "unknown",
+                "unknown"));
         replayMocks();
         try {
             mPreparer.setUp(mMockDevice, mMockBuildInfo);
@@ -179,6 +206,9 @@ public class SdkAvdPreparerTest extends TestCase {
         result.setStdout("");
         result.setStderr("Error: avd cannot be created due to a mysterious error");
         setCreateAvdResponse(result);
+        EasyMock.expect(mMockDevice.getDeviceDescriptor()).andReturn(new DeviceDescriptor("SERIAL",
+                false, DeviceAllocationState.Available, "unknown", "unknown", "unknown", "unknown",
+                "unknown"));
         replayMocks();
         try {
             mPreparer.setUp(mMockDevice, mMockBuildInfo);

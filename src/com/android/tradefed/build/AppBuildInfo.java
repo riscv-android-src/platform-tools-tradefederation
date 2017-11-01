@@ -28,21 +28,21 @@ import java.util.List;
  */
 public class AppBuildInfo extends BuildInfo implements IAppBuildInfo {
 
+    private static final long serialVersionUID = BuildSerializedVersion.VERSION;
     private List<VersionedFile> mAppPackageFiles = new ArrayList<VersionedFile>();
 
     /**
      * Creates a {@link AppBuildInfo}.
      *
      * @param buildId the unique build id
-     * @param testTarget the test target name
      * @param buildName the build name
      */
-    public AppBuildInfo(String buildId, String testTarget, String buildName) {
-        super(buildId, testTarget, buildName);
+    public AppBuildInfo(String buildId, String buildName) {
+        super(buildId, buildName);
     }
 
     /**
-     * @see {@link BuildInfo#BuildInfo(BuildInfo)}
+     * @see BuildInfo#BuildInfo(BuildInfo)
      */
     public AppBuildInfo(BuildInfo buildToCopy) {
         super(buildToCopy);
@@ -82,7 +82,7 @@ public class AppBuildInfo extends BuildInfo implements IAppBuildInfo {
      */
     @Override
     public IBuildInfo clone() {
-        AppBuildInfo copy = new AppBuildInfo(getBuildId(), getTestTag(), getBuildTargetName());
+        AppBuildInfo copy = new AppBuildInfo(getBuildId(), getBuildTargetName());
         copy.addAllBuildAttributes(this);
         try {
             for (VersionedFile origVerFile : mAppPackageFiles) {

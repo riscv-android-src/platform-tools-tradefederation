@@ -16,11 +16,13 @@
 
 package com.android.tradefed.config;
 
+import com.google.common.base.Objects;
+
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.util.ArrayUtil;
 import com.android.tradefed.util.MultiMap;
 import com.android.tradefed.util.TimeVal;
-import com.google.common.base.Objects;
+import com.android.tradefed.util.keystore.IKeyStoreClient;
 
 import java.io.File;
 import java.lang.reflect.Field;
@@ -36,6 +38,7 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.regex.Pattern;
 
 /**
  * Populates {@link Option} fields.
@@ -56,7 +59,7 @@ import java.util.Map;
  * <p/>
  *
  * ported from dalvik.runner.OptionParser
- * @see {@link ArgsOptionParser}
+ * @see ArgsOptionParser
  */
 @SuppressWarnings("rawtypes")
 public class OptionSetter {
@@ -64,6 +67,8 @@ public class OptionSetter {
     static final String BOOL_FALSE_PREFIX = "no-";
     private static final HashMap<Class<?>, Handler> handlers = new HashMap<Class<?>, Handler>();
     static final char NAMESPACE_SEPARATOR = ':';
+    static final Pattern USE_KEYSTORE_REGEX = Pattern.compile("USE_KEYSTORE@(.*)");
+    private IKeyStoreClient mKeyStoreClient = null;
 
     static {
         handlers.put(boolean.class, new BooleanHandler());
@@ -100,6 +105,7 @@ public class OptionSetter {
             this.key = key;
         }
 
+        @Override
         public boolean equals(Object obj) {
             if (obj == this) {
                 return true;
@@ -115,6 +121,7 @@ public class OptionSetter {
             return false;
         }
 
+        @Override
         public int hashCode() {
             return Objects.hashCode(object, field, key);
         }
@@ -188,7 +195,7 @@ public class OptionSetter {
 
     /**
      * Does some magic to distinguish TimeVal long field from normal long fields, then calls
-     * {@see #getHandler(Type)} in the appropriate manner.
+     * {@link #getHandler(Type)} in the appropriate manner.
      */
     private Handler getHandlerOrTimeVal(Field field, Object optionSource)
             throws ConfigurationException {
@@ -247,7 +254,7 @@ public class OptionSetter {
             if (size() > 0) {
                 Handler existingFieldHandler = getHandler(getFirstField().getGenericType());
                 Handler newFieldHandler = getHandler(field.getGenericType());
-                if (!existingFieldHandler.equals(newFieldHandler)) {
+                if (!existingFieldHandler.getClass().equals(newFieldHandler.getClass())) {
                     throw new ConfigurationException(String.format(
                             "@Option field with name '%s' in class '%s' is defined with a " +
                             "different type than same option in class '%s'",
@@ -303,6 +310,14 @@ public class OptionSetter {
     public OptionSetter(Collection<Object> optionSources) throws ConfigurationException {
         mOptionSources = optionSources;
         mOptionMap = makeOptionMap();
+    }
+
+    public void setKeyStore(IKeyStoreClient keyStore) {
+        mKeyStoreClient = keyStore;
+    }
+
+    public IKeyStoreClient getKeyStore() {
+        return mKeyStoreClient;
     }
 
     private OptionFieldsForName fieldsForArg(String name) throws ConfigurationException {
@@ -402,7 +417,7 @@ public class OptionSetter {
     /**
      * Sets the given {@link Option} field's value.
      *
-     * @param optionName the {@link Option#name()}
+     * @param optionName the name specified in {@link Option}
      * @param optionSource the {@link Object} to set
      * @param field the {@link Field}
      * @param key the key to an entry in a {@link Map} or {@link MultiMap} field or null.
@@ -512,7 +527,7 @@ public class OptionSetter {
     /**
      * Sets the given {@link Option} fields value.
      *
-     * @param optionName the {@link Option#name()}
+     * @param optionName the name specified in {@link Option}
      * @param optionSource the {@link Object} to set
      * @param field the {@link Field}
      * @param value the value to set
@@ -527,7 +542,7 @@ public class OptionSetter {
     /**
      * Cache the available options and report any problems with the options themselves right away.
      *
-     * @return a {@link Map} of {@link Option} field name to {@link OptionField}s
+     * @return a {@link Map} of {@link Option} field name to {@link OptionFieldsForName}s
      * @throws ConfigurationException if any {@link Option} are incorrectly specified
      */
     private Map<String, OptionFieldsForName> makeOptionMap() throws ConfigurationException {
@@ -545,8 +560,22 @@ public class OptionSetter {
             Integer index = freqMap.get(className);
             index = index == null ? 1 : index + 1;
             freqMap.put(className, index);
+            addOptionsForObject(objectSource, optionMap, index, null);
 
-            addOptionsForObject(objectSource, optionMap, index);
+            if (objectSource instanceof IDeviceConfiguration) {
+                for (Object deviceObject : ((IDeviceConfiguration)objectSource).getAllObjects()) {
+                    index = freqMap.get(deviceObject.getClass().getName());
+                    index = index == null ? 1 : index + 1;
+                    freqMap.put(deviceObject.getClass().getName(), index);
+                    Integer tracked =
+                            ((IDeviceConfiguration) objectSource).getFrequency(deviceObject);
+                    if (tracked != null && !index.equals(tracked)) {
+                        index = tracked;
+                    }
+                    addOptionsForObject(deviceObject, optionMap, index,
+                            ((IDeviceConfiguration)objectSource).getDeviceName());
+                }
+            }
         }
         return optionMap;
     }
@@ -554,15 +583,23 @@ public class OptionSetter {
     /**
      * Adds all option fields (both declared and inherited) to the <var>optionMap</var> for
      * provided <var>optionClass</var>.
+     * <p>
+     * Also adds option fields with all the alias namespaced from the class they are found in, and
+     * their child classes.
+     * <p>
+     * For example:
+     * if class1(@alias1) extends class2(@alias2), all the option from class2 will be available
+     * with the alias1 and alias2. All the option from class1 are available with alias1 only.
      *
      * @param optionSource
      * @param optionMap
      * @param index The unique index of this instance of the optionSource class.  Should equal the
      *              number of instances of this class that we've already seen, plus 1.
+     * @param deviceName the Configuration Device Name that this attributes belong to. can be null.
      * @throws ConfigurationException
      */
     private void addOptionsForObject(Object optionSource,
-            Map<String, OptionFieldsForName> optionMap, Integer index)
+            Map<String, OptionFieldsForName> optionMap, Integer index, String deviceName)
             throws ConfigurationException {
         Collection<Field> optionFields = getOptionFieldsForClass(optionSource.getClass());
         for (Field field : optionFields) {
@@ -608,23 +645,34 @@ public class OptionSetter {
 
             if (addToGlobalNamespace) {
                 addNameToMap(optionMap, optionSource, option.name(), field);
+                if (deviceName != null) {
+                    addNameToMap(optionMap, optionSource,
+                            String.format("{%s}%s", deviceName, option.name()), field);
+                }
             }
-            addNamespacedOptionToMap(optionMap, optionSource, option.name(), field, index);
+            addNamespacedOptionToMap(optionMap, optionSource, option.name(), field, index,
+                    deviceName);
             if (option.shortName() != Option.NO_SHORT_NAME) {
                 if (addToGlobalNamespace) {
+                    // Note that shortName is not supported with device specified, full name needs
+                    // to be use
                     addNameToMap(optionMap, optionSource, String.valueOf(option.shortName()),
                             field);
                 }
                 addNamespacedOptionToMap(optionMap, optionSource,
-                        String.valueOf(option.shortName()), field, index);
+                        String.valueOf(option.shortName()), field, index, deviceName);
             }
             if (isBooleanField(field)) {
                 // add the corresponding "no" option to make boolean false
                 if (addToGlobalNamespace) {
                     addNameToMap(optionMap, optionSource, BOOL_FALSE_PREFIX + option.name(), field);
+                    if (deviceName != null) {
+                        addNameToMap(optionMap, optionSource, String.format("{%s}%s", deviceName,
+                                        BOOL_FALSE_PREFIX + option.name()), field);
+                    }
                 }
                 addNamespacedOptionToMap(optionMap, optionSource, BOOL_FALSE_PREFIX + option.name(),
-                        field, index);
+                        field, index, deviceName);
             }
         }
     }
@@ -825,33 +873,26 @@ public class OptionSetter {
         fields.addField(name, optionSource, field);
         if (getHandler(field.getGenericType()) == null) {
             throw new ConfigurationException(String.format(
-                    "Option name '%s' in class '%s' is invalid. Unsupported @Option field type '%s'",
-                    name, optionSource.getClass().getName(), field.getType()));
+                    "Option name '%s' in class '%s' is invalid. Unsupported @Option field type "
+                    + "'%s'", name, optionSource.getClass().getName(), field.getType()));
         }
     }
 
     /**
      * Adds the namespaced versions of the option to the map
      *
-     * @see {@link #makeOptionMap()} for details on the enumeration scheme
+     * See {@link #makeOptionMap()} for details on the enumeration scheme
      */
     private void addNamespacedOptionToMap(Map<String, OptionFieldsForName> optionMap,
-            Object optionSource, String name, Field field, int index)
+            Object optionSource, String name, Field field, int index, String deviceName)
             throws ConfigurationException {
         final String className = optionSource.getClass().getName();
 
         if (optionSource.getClass().isAnnotationPresent(OptionClass.class)) {
             final OptionClass classAnnotation = optionSource.getClass().getAnnotation(
                     OptionClass.class);
-            addNameToMap(optionMap, optionSource, String.format("%s%c%s", classAnnotation.alias(),
-                    NAMESPACE_SEPARATOR, name), field);
-
-            // Allows use of an enumerated namespace, to enable options to map to specific instances
-            // of a class alias, rather than just to all instances of that particular alias.
-            // Example option name: alias:2:option-name
-            addNameToMap(optionMap, optionSource, String.format("%s%c%d%c%s",
-                    classAnnotation.alias(), NAMESPACE_SEPARATOR, index, NAMESPACE_SEPARATOR, name),
-                    field);
+            addNamespacedAliasOptionToMap(optionMap, optionSource, name, field, index, deviceName,
+                    classAnnotation.alias());
         }
 
         // Allows use of a className-delimited namespace.
@@ -864,6 +905,51 @@ public class OptionSetter {
         // Example option name: com.fully.qualified.ClassName:2:option-name
         addNameToMap(optionMap, optionSource, String.format("%s%c%d%c%s",
                 className, NAMESPACE_SEPARATOR, index, NAMESPACE_SEPARATOR, name), field);
+
+        if (deviceName != null) {
+            // Example option name: {device1}com.fully.qualified.ClassName:option-name
+            addNameToMap(optionMap, optionSource, String.format("{%s}%s%c%s",
+                    deviceName, className, NAMESPACE_SEPARATOR, name), field);
+
+            // Allows use of an enumerated namespace, to enable options to map to specific
+            // instances of a className inside a device configuration holder,
+            // rather than just to all instances of that particular className.
+            // Example option name: {device1}com.fully.qualified.ClassName:2:option-name
+            addNameToMap(optionMap, optionSource, String.format("{%s}%s%c%d%c%s",
+                    deviceName, className, NAMESPACE_SEPARATOR, index, NAMESPACE_SEPARATOR, name),
+                    field);
+        }
+    }
+
+    /**
+     * Adds the alias namespaced versions of the option to the map
+     *
+     * See {@link #makeOptionMap()} for details on the enumeration scheme
+     */
+    private void addNamespacedAliasOptionToMap(Map<String, OptionFieldsForName> optionMap,
+            Object optionSource, String name, Field field, int index, String deviceName,
+            String alias) throws ConfigurationException {
+        addNameToMap(optionMap, optionSource, String.format("%s%c%s", alias,
+                NAMESPACE_SEPARATOR, name), field);
+
+        // Allows use of an enumerated namespace, to enable options to map to specific instances
+        // of a class alias, rather than just to all instances of that particular alias.
+        // Example option name: alias:2:option-name
+        addNameToMap(optionMap, optionSource, String.format("%s%c%d%c%s",
+                alias, NAMESPACE_SEPARATOR, index, NAMESPACE_SEPARATOR, name),
+                field);
+
+        if (deviceName != null) {
+            addNameToMap(optionMap, optionSource, String.format("{%s}%s%c%s", deviceName,
+                    alias, NAMESPACE_SEPARATOR, name), field);
+            // Allows use of an enumerated namespace, to enable options to map to specific
+            // instances of a class alias inside a device configuration holder,
+            // rather than just to all instances of that particular alias.
+            // Example option name: {device1}alias:2:option-name
+            addNameToMap(optionMap, optionSource, String.format("{%s}%s%c%d%c%s",
+                    deviceName, alias, NAMESPACE_SEPARATOR, index,
+                    NAMESPACE_SEPARATOR, name), field);
+        }
     }
 
     private abstract static class Handler {
@@ -1011,7 +1097,7 @@ public class OptionSetter {
     }
 
     /**
-     * A {@see Handler} to handle values for Map fields.  The {@code Object} returned is a
+     * A {@link Handler} to handle values for Map fields.  The {@code Object} returned is a
      * MapEntry
      */
     private static class MapHandler extends Handler {

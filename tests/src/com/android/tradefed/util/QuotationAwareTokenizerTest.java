@@ -25,8 +25,9 @@ import java.util.Arrays;
  */
 public class QuotationAwareTokenizerTest extends TestCase {
 
-    private static void verify(String input, String[] expected) throws IllegalArgumentException {
-        String[] observed = QuotationAwareTokenizer.tokenizeLine(input);
+    private static void verify(String input, String[] expected, String delimiter)
+            throws IllegalArgumentException {
+        String[] observed = QuotationAwareTokenizer.tokenizeLine(input, delimiter);
 
         if (expected.length != observed.length) {
             fail(String.format("Expected and observed arrays are different lengths: expected %s " +
@@ -34,9 +35,17 @@ public class QuotationAwareTokenizerTest extends TestCase {
         }
 
         for (int i = 0; i < expected.length; ++i) {
-            assertEquals(String.format("Array compare failed at element %d:", i, expected[i],
-                    observed[i]), expected[i], observed[i]);
+            assertEquals(
+                    String.format(
+                            "Array compare failed at element %d: %s vs %s",
+                            i, expected[i], observed[i]),
+                    expected[i],
+                    observed[i]);
         }
+    }
+
+    private static void verify(String input, String[] expected) throws IllegalArgumentException {
+        verify(input, expected, " ");
     }
 
     /**
@@ -62,7 +71,34 @@ public class QuotationAwareTokenizerTest extends TestCase {
     }
 
     /**
-     * Inverse of {@link testTokenizeLine_whitespace}.
+     * Tokenize a line with comma as delimiter
+     */
+    public void testTokenizeLine_comma() throws IllegalArgumentException {
+        String input = "--foo,bar";
+        String[] expected = new String[] {"--foo", "bar"};
+        verify(input, expected, ",");
+    }
+
+    /**
+     * Delimiter (using comma) inside of the quoted section should be preserved.
+     */
+    public void testTokenizeLine_commaAndQuote() throws IllegalArgumentException {
+        String input = "--foo,\"a,config\"";
+        String[] expected = new String[] {"--foo", "a,config"};
+        verify(input, expected, ",");
+    }
+
+    /**
+     * Tokenizing line with whitespace, using command as delimiter.
+     */
+    public void testTokenizeLine_commaAndWhitespace() throws IllegalArgumentException {
+        String input = "--foo,this is a,config";
+        String[] expected = new String[] {"--foo", "this is a", "config"};
+        verify(input, expected, ",");
+    }
+
+    /**
+     * Inverse of {@link #testTokenizeLine_whitespace}.
      */
     public void testCombineTokens_whitespace() throws IllegalArgumentException {
         assertEquals("--foo \"this is a config\"", QuotationAwareTokenizer.combineTokens("--foo",
@@ -80,7 +116,7 @@ public class QuotationAwareTokenizerTest extends TestCase {
     }
 
     /**
-     * Inverse of {@link testTokenizeLine_whitespace}.
+     * Inverse of {@link #testTokenizeLine_escapedQuotation}.
      */
     public void testCombineTokens_escapedQuotation() throws IllegalArgumentException {
         assertEquals("--bar \"escap\\\\ed \\\" quotation\"", QuotationAwareTokenizer.combineTokens(

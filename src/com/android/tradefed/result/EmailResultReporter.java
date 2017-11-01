@@ -15,12 +15,15 @@
  */
 package com.android.tradefed.result;
 
+import com.android.ddmlib.testrunner.TestIdentifier;
+import com.android.ddmlib.testrunner.TestResult;
 import com.android.ddmlib.testrunner.TestResult.TestStatus;
 import com.android.ddmlib.testrunner.TestRunResult;
 import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.config.Option;
 import com.android.tradefed.config.Option.Importance;
 import com.android.tradefed.config.OptionClass;
+import com.android.tradefed.invoker.IInvocationContext;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.targetprep.BuildError;
 import com.android.tradefed.util.Email;
@@ -46,6 +49,7 @@ import java.util.Map;
 public class EmailResultReporter extends CollectingTestListener implements
         ITestSummaryListener {
     private static final String DEFAULT_SUBJECT_TAG = "Tradefed";
+    private static final String TEST_FAILURE_STATUS = "FAILED";
 
     @Option(name = "sender", description = "The envelope-sender address to use for the messages.",
             importance = Importance.IF_UNSET)
@@ -58,6 +62,11 @@ public class EmailResultReporter extends CollectingTestListener implements
     @Option(name = "subject-tag",
             description = "The tag to be added to the beginning of the email subject.")
     private String mSubjectTag = DEFAULT_SUBJECT_TAG;
+
+    @Option(name = "include-test-failures", description = "If there are some test failures, "
+            + "this option allows to add them to the email body."
+            + "To be used with care, as it could be pretty big with traces.")
+    private boolean mIncludeTestFailures = false;
 
     private List<TestSummary> mSummaries = null;
     private Throwable mInvocationThrowable = null;
@@ -133,25 +142,22 @@ public class EmailResultReporter extends CollectingTestListener implements
      *         report
      */
     protected String generateEmailSubject() {
-        final IBuildInfo build = getBuildInfo();  // for convenience
+        final IInvocationContext context = getInvocationContext();
         final StringBuilder subj = new StringBuilder(mSubjectTag);
 
         subj.append(" result for ");
 
-        if (!appendUnlessNull(subj, build.getTestTag())) {
+        if (!appendUnlessNull(subj, context.getTestTag())) {
             subj.append("(unknown suite)");
         }
 
         subj.append(" on ");
-        appendUnlessNull(subj, build.getBuildFlavor());
-        appendUnlessNull(subj, build.getBuildBranch());
-        if (!appendUnlessNull(subj, build.getBuildAttributes().get("build_alias"))) {
-            subj.append("build ");
-            subj.append(build.getBuildId());
+        for (IBuildInfo build : context.getBuildInfos()) {
+            subj.append(build.toString());
         }
 
         subj.append(": ");
-        subj.append(getInvocationStatus());
+        subj.append(getInvocationOrTestStatus());
         return subj.toString();
     }
 
@@ -167,6 +173,23 @@ public class EmailResultReporter extends CollectingTestListener implements
             builder.append(" ");
             return true;
         }
+    }
+
+    protected String getInvocationOrTestStatus() {
+        InvocationStatus invStatus = getInvocationStatus();
+        // if invocation status is not success, report invocation status
+        if (!InvocationStatus.SUCCESS.equals(invStatus)) {
+            // special-case invocation failure and report as "ERROR" to avoid confusion with
+            // test failures
+            if (InvocationStatus.FAILED.equals(invStatus)) {
+                return "ERROR";
+            }
+            return invStatus.toString();
+        }
+        if (hasFailedTests()) {
+            return TEST_FAILURE_STATUS;
+        }
+        return invStatus.toString(); // should be success at this point
     }
 
     /**
@@ -198,11 +221,14 @@ public class EmailResultReporter extends CollectingTestListener implements
     protected String generateEmailBody() {
         StringBuilder bodyBuilder = new StringBuilder();
 
-        for (Map.Entry<String, String> buildAttr : getBuildInfo().getBuildAttributes().entrySet()) {
-            bodyBuilder.append(buildAttr.getKey());
-            bodyBuilder.append(": ");
-            bodyBuilder.append(buildAttr.getValue());
-            bodyBuilder.append("\n");
+        for (IBuildInfo build : getInvocationContext().getBuildInfos()) {
+            bodyBuilder.append(String.format("Device %s:\n", build.getDeviceSerial()));
+            for (Map.Entry<String, String> buildAttr : build.getBuildAttributes().entrySet()) {
+                bodyBuilder.append(buildAttr.getKey());
+                bodyBuilder.append(": ");
+                bodyBuilder.append(buildAttr.getValue());
+                bodyBuilder.append("\n");
+            }
         }
         bodyBuilder.append("host: ");
         try {
@@ -220,10 +246,19 @@ public class EmailResultReporter extends CollectingTestListener implements
         }
         bodyBuilder.append(String.format("Test results:  %d passed, %d failed\n\n",
                 getNumTestsInState(TestStatus.PASSED), getNumAllFailedTests()));
-        for (TestRunResult result : getRunResults()) {
-            if (!result.getRunMetrics().isEmpty()) {
-                bodyBuilder.append(String.format("'%s' test run metrics: %s\n", result.getName(),
-                        result.getRunMetrics()));
+
+        // During a Test Failure, the current run results will not appear in getRunResults()
+        // This may be fairly big and we are not sure of email body max size, so limiting usage
+        // with the option.
+        if (hasFailedTests() && mIncludeTestFailures) {
+            TestRunResult res = getCurrentRunResults();
+            for (TestIdentifier tid : res.getTestResults().keySet()) {
+                TestResult tr = res.getTestResults().get(tid);
+                if (TestStatus.FAILURE.equals(tr.getStatus())) {
+                    bodyBuilder.append(String.format("Test Identifier: %s\nStack: %s", tid,
+                            tr.getStackTrace()));
+                    bodyBuilder.append("\n");
+                }
             }
         }
         bodyBuilder.append("\n");
@@ -272,7 +307,7 @@ public class EmailResultReporter extends CollectingTestListener implements
         }
 
         if (mDestinations.isEmpty()) {
-            CLog.e("Failed to send email because no destination addresses were set.");
+            CLog.i("No destinations set, not sending any emails");
             return;
         }
 

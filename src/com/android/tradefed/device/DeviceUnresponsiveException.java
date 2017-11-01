@@ -33,7 +33,10 @@ public class DeviceUnresponsiveException extends DeviceNotAvailableException {
      * Creates a {@link DeviceUnresponsiveException}.
      *
      * @param msg a descriptive message.
+     *
+     * @deprecated use {@link #DeviceUnresponsiveException(String msg, String serial)} instead
      */
+    @Deprecated
     public DeviceUnresponsiveException(String msg) {
         super(msg);
     }
@@ -42,9 +45,32 @@ public class DeviceUnresponsiveException extends DeviceNotAvailableException {
      * Creates a {@link DeviceUnresponsiveException}.
      *
      * @param msg a descriptive message.
-     * @param cause the root {@link Throwable} that caused the device to become unavailable.
      */
+    public DeviceUnresponsiveException(String msg, String serial) {
+        super(msg, serial);
+    }
+
+    /**
+     * Creates a {@link DeviceUnresponsiveException}.
+     *
+     * @param msg a descriptive message.
+     * @param cause the root {@link Throwable} that caused the device to become unavailable.
+     *
+     * @deprecated use
+     * {@link #DeviceUnresponsiveException(String msg, Throwable cause, String serial)} instead
+     */
+    @Deprecated
     public DeviceUnresponsiveException(String msg, Throwable cause) {
         super(msg, cause);
+    }
+
+    /**
+     * Creates a {@link DeviceUnresponsiveException}.
+     *
+     * @param msg a descriptive message.
+     * @param cause the root {@link Throwable} that caused the device to become unavailable.
+     */
+    public DeviceUnresponsiveException(String msg, Throwable cause, String serial) {
+        super(msg, cause, serial);
     }
 }

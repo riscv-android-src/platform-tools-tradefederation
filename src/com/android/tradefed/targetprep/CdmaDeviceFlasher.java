@@ -23,11 +23,12 @@ import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.util.FileUtil;
 import com.android.tradefed.util.IRunUtil;
 import com.android.tradefed.util.RunUtil;
-import com.android.tradefed.util.ZipUtil;
+import com.android.tradefed.util.ZipUtil2;
+
+import org.apache.commons.compress.archivers.zip.ZipFile;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.zip.ZipFile;
 
 /**
  * A class that flashes an image on a physical Android device with a CDMA radio.
@@ -141,7 +142,7 @@ public class CdmaDeviceFlasher extends FastbootDeviceFlasher {
     protected File extractSystemZip(IDeviceBuildInfo deviceBuild) throws IOException {
         File updateDir = FileUtil.createTempDir(LOG_TAG);
         ZipFile updater = new ZipFile(deviceBuild.getDeviceImageFile().getAbsolutePath());
-        ZipUtil.extractZip(updater, updateDir);
+        ZipUtil2.extractZip(updater, updateDir);
         return updateDir;
     }
 
@@ -165,7 +166,8 @@ public class CdmaDeviceFlasher extends FastbootDeviceFlasher {
                 flashNamedPartition(device, updateDir, "recovery");
                 flashNamedPartition(device, updateDir, "system");
             } catch (IOException e) {
-                throw new TargetSetupError(String.format("Got IOException: %s", e.getMessage()));
+                throw new TargetSetupError(String.format("Got IOException: %s", e.getMessage()),
+                        device.getDeviceDescriptor());
             } finally {
                 if (updateDir != null) {
                     FileUtil.recursiveDelete(updateDir);
@@ -199,6 +201,7 @@ public class CdmaDeviceFlasher extends FastbootDeviceFlasher {
      * <p/>
      * Exposed for unit testing.
      */
+    @Override
     protected IRunUtil getRunUtil() {
         return RunUtil.getDefault();
     }

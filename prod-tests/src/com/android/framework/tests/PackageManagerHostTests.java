@@ -16,22 +16,14 @@
 
 package com.android.framework.tests;
 
-import com.android.ddmlib.AdbCommandRejectedException;
-import com.android.ddmlib.InstallException;
 import com.android.ddmlib.Log;
-import com.android.ddmlib.ShellCommandUnresponsiveException;
-import com.android.ddmlib.SyncException;
-import com.android.ddmlib.TimeoutException;
 import com.android.tradefed.config.Option;
 import com.android.tradefed.config.Option.Importance;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.testtype.DeviceTestCase;
 import com.android.tradefed.util.FileUtil;
 
-import junit.framework.Assert;
-
 import java.io.File;
-import java.io.IOException;
 
 /**
  * Set of tests that verify host side install cases

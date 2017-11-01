@@ -27,15 +27,16 @@ import com.android.tradefed.result.BugreportCollector;
 import com.android.tradefed.result.BugreportCollector.Freq;
 import com.android.tradefed.result.BugreportCollector.Noun;
 import com.android.tradefed.result.BugreportCollector.Relation;
+import com.android.tradefed.result.FileInputStreamSource;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.InputStreamSource;
 import com.android.tradefed.result.LogDataType;
-import com.android.tradefed.result.SnapshotInputStreamSource;
 import com.android.tradefed.testtype.IDeviceTest;
 import com.android.tradefed.testtype.IRemoteTest;
+import com.android.tradefed.util.FileUtil;
 import com.android.tradefed.util.StreamUtil;
 
-import junit.framework.Assert;
+import org.junit.Assert;
 
 import java.io.File;
 import java.io.FileInputStream;
@@ -77,7 +78,7 @@ public class MediaMemoryTest implements IDeviceTest, IRemoteTest {
     //Max test timeout - 4 hrs
     private static final int MAX_TEST_TIMEOUT = 4 * 60 * 60 * 1000;
 
-    public Map<String, String> mPatternMap = new HashMap<String, String>();
+    public Map<String, String> mPatternMap = new HashMap<>();
     private static final Pattern TOTAL_MEM_DIFF_PATTERN =
             Pattern.compile("^The total diff = (\\d+)");
 
@@ -88,7 +89,7 @@ public class MediaMemoryTest implements IDeviceTest, IRemoteTest {
     private boolean mGetProcMem = false;
 
     @Option(name = "testName", description = "Test name to run. May be repeated.")
-    private Collection<String> mTests = new LinkedList<String>();
+    private Collection<String> mTests = new LinkedList<>();
 
     public MediaMemoryTest() {
         mPatternMap.put("testCameraPreviewMemoryUsage", "CameraPreview");
@@ -164,20 +165,11 @@ public class MediaMemoryTest implements IDeviceTest, IRemoteTest {
                 if (outputFile == null) {
                     continue;
                 }
-                outputSource = new SnapshotInputStreamSource(
-                        new FileInputStream(outputFile));
-                listener.testLog(heapFile, LogDataType.TEXT,
-                        outputSource);
-            } catch (IOException e) {
-                CLog.e("IOException while reading or parsing output file: %s",
-                        e.getMessage());
+                outputSource = new FileInputStreamSource(outputFile);
+                listener.testLog(heapFile, LogDataType.TEXT, outputSource);
             } finally {
-                if (outputFile != null) {
-                    outputFile.delete();
-                }
-                if (outputSource != null) {
-                    outputSource.cancel();
-                }
+                FileUtil.deleteFile(outputFile);
+                StreamUtil.cancel(outputSource);
             }
         }
     }
@@ -206,7 +198,7 @@ public class MediaMemoryTest implements IDeviceTest, IRemoteTest {
                 // Upload a verbatim copy of the output file
                 CLog.d("Sending %d byte file %s into the logosphere!",
                         outputFile.length(), outputFile);
-                outputSource = new SnapshotInputStreamSource(new FileInputStream(outputFile));
+                outputSource = new FileInputStreamSource(outputFile);
                 listener.testLog(outputPath, LogDataType.TEXT, outputSource);
 
                 // Parse the output file to upload aggregated metrics
@@ -215,12 +207,8 @@ public class MediaMemoryTest implements IDeviceTest, IRemoteTest {
                 CLog.e("IOException while reading or parsing output file: %s",
                        e.getMessage());
             } finally {
-                if (outputFile != null) {
-                    outputFile.delete();
-                }
-                if (outputSource != null) {
-                    outputSource.cancel();
-                }
+                FileUtil.deleteFile(outputFile);
+                StreamUtil.cancel(outputSource);
             }
         }
     }
@@ -231,7 +219,7 @@ public class MediaMemoryTest implements IDeviceTest, IRemoteTest {
     private void parseOutputFile(InputStream dataStream,
             ITestInvocationListener listener) {
 
-        Map<String, String> runMetrics = new HashMap<String, String>();
+        Map<String, String> runMetrics = new HashMap<>();
 
         // try to parse it
         String contents;

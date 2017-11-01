@@ -20,8 +20,7 @@ import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.log.LogUtil.CLog;
 
-import junit.framework.Assert;
-
+import org.junit.Assert;
 import org.w3c.dom.Document;
 import org.w3c.dom.Node;
 
@@ -207,7 +206,7 @@ public class PackageManagerOTATestUtils {
     /**
      * Check if a given package has the said permission.
      * @param packageName {@link String} the package in question
-     * @param permission {@link String} the permission to look for
+     * @param flag {@link String} the permission to look for
      *
      * @return true if the permission exists, false otherwise
      *

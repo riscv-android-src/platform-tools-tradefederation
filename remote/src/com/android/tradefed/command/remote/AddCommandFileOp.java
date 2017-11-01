@@ -71,8 +71,7 @@ class AddCommandFileOp extends RemoteOperation<Void> {
     }
 
     /**
-     * Get the extra arguments to add to each command parsed from command file
-     * @return
+     * Returns the extra arguments to add to each command parsed from command file
      */
     public List<String> getExtraArgs() {
         return mExtraArgs;

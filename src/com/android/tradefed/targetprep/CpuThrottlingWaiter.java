@@ -93,7 +93,8 @@ public class CpuThrottlingWaiter implements ITargetPreparer {
                         "cat /sys/devices/system/cpu/*/cpufreq/cpuinfo_max_freq");
                 CLog.w("Current CPU frequencies:\n%s", result);
                 if (mAbortOnTimeout) {
-                    throw new TargetSetupError("cores are still throttled after wait timeout");
+                    throw new TargetSetupError("cores are still throttled after wait timeout",
+                            device.getDeviceDescriptor());
                 }
                 break; // while loop
             }

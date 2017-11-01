@@ -19,7 +19,6 @@ package com.android.tradefed.command;
 import com.android.tradefed.config.ArgsOptionParser;
 import com.android.tradefed.config.ConfigurationException;
 import com.android.tradefed.config.Option;
-import com.android.tradefed.log.LogUtil.CLog;
 
 import java.io.File;
 import java.io.IOException;
@@ -57,8 +56,7 @@ public class Verify {
     /**
      * Program main entrypoint
      */
-    public static void main(final String[] mainArgs) throws InterruptedException,
-            ConfigurationException {
+    public static void main(final String[] mainArgs) throws ConfigurationException {
         try {
             Verify verify = new Verify();
             ArgsOptionParser optionSetter = new ArgsOptionParser(verify);

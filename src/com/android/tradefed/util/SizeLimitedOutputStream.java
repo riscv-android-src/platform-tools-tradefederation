@@ -17,7 +17,6 @@
 
 package com.android.tradefed.util;
 
-import com.android.tradefed.log.LogUtil.CLog;
 import com.google.common.io.CountingOutputStream;
 
 import java.io.BufferedOutputStream;
@@ -147,16 +146,8 @@ public class SizeLimitedOutputStream extends OutputStream {
      */
     @Override
     public synchronized void close() {
-        try {
-            if (mCurrentOutputStream != null) {
-                mCurrentOutputStream.flush();
-                mCurrentOutputStream.close();
-                mCurrentOutputStream = null;
-            }
-
-        } catch (IOException e) {
-            CLog.w("failed to close %s stream", e);
-        }
+        StreamUtil.flushAndCloseStream(mCurrentOutputStream);
+        mCurrentOutputStream = null;
     }
 
     /**
@@ -172,9 +163,7 @@ public class SizeLimitedOutputStream extends OutputStream {
         // close current stream
         close();
         mCurrentFilePos = getNextIndex(mCurrentFilePos);
-        if (mFiles[mCurrentFilePos] != null) {
-            mFiles[mCurrentFilePos].delete();
-        }
+        FileUtil.deleteFile(mFiles[mCurrentFilePos]);
         mFiles[mCurrentFilePos] = FileUtil.createTempFile(mTempFilePrefix, mTempFileSuffix);
         mCurrentOutputStream = new CountingOutputStream(new BufferedOutputStream(
                 new FileOutputStream(mFiles[mCurrentFilePos]), BUFF_SIZE));
@@ -182,8 +171,6 @@ public class SizeLimitedOutputStream extends OutputStream {
 
     /**
      * Gets the next index to use for <var>mFiles</var>, treating it as a circular list.
-     *
-     * @return
      */
     private int getNextIndex(int i) {
         return (i + 1) % mFiles.length;

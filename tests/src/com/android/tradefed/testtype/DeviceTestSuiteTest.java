@@ -24,27 +24,32 @@ import junit.framework.TestCase;
 import org.easymock.EasyMock;
 
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.Map;
 
 /**
- * Unit tests for {@link DeviceSuiteCase}.
+ * Unit tests for {@link DeviceTestSuite}.
  */
 public class DeviceTestSuiteTest extends TestCase {
 
     public static class MockTest extends DeviceTestCase {
 
-        public void test1() {};
-        public void test2() {};
+        public void test1() {
+            // Metrics are also available for test within Suite
+            addTestMetric("key1", "metric1");
+        }
+        public void test2() {}
     }
 
     public static class MockAbortTest extends DeviceTestCase {
 
         private static final String EXCEP_MSG = "failed";
+        private static final String FAKE_SERIAL = "fakeserial";
 
         public void test1() throws DeviceNotAvailableException {
-            throw new DeviceNotAvailableException(EXCEP_MSG);
+            throw new DeviceNotAvailableException(EXCEP_MSG, FAKE_SERIAL);
         }
-    };
+    }
 
     /**
      * Verify that calling run on a DeviceTestSuite will run all test methods.
@@ -59,7 +64,9 @@ public class DeviceTestSuiteTest extends TestCase {
         final TestIdentifier test1 = new TestIdentifier(MockTest.class.getName(), "test1");
         final TestIdentifier test2 = new TestIdentifier(MockTest.class.getName(), "test2");
         listener.testStarted(test1);
-        listener.testEnded(test1, Collections.EMPTY_MAP);
+        Map<String, String> metrics = new HashMap<>();
+        metrics.put("key1", "metric1");
+        listener.testEnded(test1, metrics);
         listener.testStarted(test2);
         listener.testEnded(test2, Collections.EMPTY_MAP);
         listener.testRunEnded(EasyMock.anyLong(), (Map<String, String>) EasyMock.anyObject());

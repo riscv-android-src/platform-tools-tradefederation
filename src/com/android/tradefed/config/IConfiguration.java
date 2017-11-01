@@ -23,10 +23,14 @@ import com.android.tradefed.device.IDeviceRecovery;
 import com.android.tradefed.device.IDeviceSelection;
 import com.android.tradefed.device.TestDeviceOptions;
 import com.android.tradefed.log.ILeveledLogOutput;
+import com.android.tradefed.profiler.ITestProfiler;
 import com.android.tradefed.result.ILogSaver;
 import com.android.tradefed.result.ITestInvocationListener;
+import com.android.tradefed.suite.checker.ISystemStatusChecker;
 import com.android.tradefed.targetprep.ITargetPreparer;
+import com.android.tradefed.targetprep.multi.IMultiTargetPreparer;
 import com.android.tradefed.testtype.IRemoteTest;
+import com.android.tradefed.util.keystore.IKeyStoreClient;
 
 import org.json.JSONArray;
 import org.json.JSONException;
@@ -44,6 +48,9 @@ import java.util.List;
  * {@link Option}'s
  */
 public interface IConfiguration {
+
+    /** Returns the name of the configuration. */
+    public String getName();
 
     /**
      * Gets the {@link IBuildProvider} from the configuration.
@@ -102,11 +109,35 @@ public interface IConfiguration {
     public ILogSaver getLogSaver();
 
     /**
+     * Gets the {@link IMultiTargetPreparer}s from the configuration.
+     *
+     * @return the {@link IMultiTargetPreparer}s provided in order in the configuration
+     */
+    public List<IMultiTargetPreparer> getMultiTargetPreparers();
+
+    /**
+     * Gets the {@link ISystemStatusChecker}s from the configuration.
+     *
+     * @return the {@link ISystemStatusChecker}s provided in order in the configuration
+     */
+    public List<ISystemStatusChecker> getSystemStatusCheckers();
+
+    /**
+     * Gets the {@link ITestProfiler} from the configuration.
+     *
+     * @return the {@link ITestProfiler} provided in the configuration.
+     */
+    public ITestProfiler getProfiler();
+
+    /**
      * Gets the {@link ICommandOptions} to use from the configuration.
      *
      * @return the {@link ICommandOptions} provided in the configuration.
      */
     public ICommandOptions getCommandOptions();
+
+    /** Returns the {@link ConfigurationDescriptor} provided in the configuration. */
+    public ConfigurationDescriptor getConfigurationDescription();
 
     /**
      * Gets the {@link IDeviceSelection} to use from the configuration.
@@ -135,6 +166,18 @@ public interface IConfiguration {
      * given name does not exist.
      */
     public List<?> getConfigurationObjectList(String typeName);
+
+    /**
+     * Gets the {@link IDeviceConfiguration}s from the configuration.
+     *
+     * @return the {@link IDeviceConfiguration}s provided in order in the configuration
+     */
+    public List<IDeviceConfiguration> getDeviceConfig();
+
+    /**
+     * Return the {@link IDeviceConfiguration} associated to the name provided, null if not found.
+     */
+    public IDeviceConfiguration getDeviceConfigByName(String nameDevice);
 
     /**
      * Inject a option value into the set of configuration objects.
@@ -173,7 +216,7 @@ public interface IConfiguration {
      * @throws ConfigurationException if failed to set the option's value
      */
     public void injectOptionValueWithSource(String optionName, String optionKey, String optionValue,
-            String source) throws ConfigurationException;
+            String optionSource) throws ConfigurationException;
 
     /**
      * Inject multiple option values into the set of configuration objects.
@@ -228,6 +271,20 @@ public interface IConfiguration {
     public void setTargetPreparer(ITargetPreparer preparer);
 
     /**
+     * Set a {@link IDeviceConfiguration}, replacing any existing value.
+     *
+     * @param deviceConfig
+     */
+    public void setDeviceConfig(IDeviceConfiguration deviceConfig);
+
+    /**
+     * Set the {@link IDeviceConfiguration}s, replacing any existing value.
+     *
+     * @param deviceConfigs
+     */
+    public void setDeviceConfigList(List<IDeviceConfiguration> deviceConfigs);
+
+    /**
      * Convenience method to set a single {@link IRemoteTest} in this configuration, replacing any
      * existing values
      *
@@ -244,6 +301,38 @@ public interface IConfiguration {
     public void setTests(List<IRemoteTest> tests);
 
     /**
+     * Set the list of {@link IMultiTargetPreparer}s in this configuration, replacing any
+     * existing values
+     *
+     * @param multiTargPreps
+     */
+    public void setMultiTargetPreparers(List<IMultiTargetPreparer> multiTargPreps);
+
+    /**
+     * Convenience method to set a single {@link IMultiTargetPreparer} in this configuration,
+     * replacing any existing values
+     *
+     * @param multiTargPrep
+     */
+    public void setMultiTargetPreparer(IMultiTargetPreparer multiTargPrep);
+
+    /**
+     * Set the list of {@link ISystemStatusChecker}s in this configuration, replacing any
+     * existing values
+     *
+     * @param systemCheckers
+     */
+    public void setSystemStatusCheckers(List<ISystemStatusChecker> systemCheckers);
+
+    /**
+     * Convenience method to set a single {@link ISystemStatusChecker} in this configuration,
+     * replacing any existing values
+     *
+     * @param systemChecker
+     */
+    public void setSystemStatusChecker(ISystemStatusChecker systemChecker);
+
+    /**
      * Set the list of {@link ITestInvocationListener}s, replacing any existing values
      *
      * @param listeners
@@ -256,6 +345,13 @@ public interface IConfiguration {
      * @param listener
      */
     public void setTestInvocationListener(ITestInvocationListener listener);
+
+    /**
+     * Set the {@link ITestProfiler}, replacing any existing values
+     *
+     * @param profiler
+     */
+    public void setProfiler(ITestProfiler profiler);
 
     /**
      * Set the {@link ICommandOptions}, replacing any existing values
@@ -300,12 +396,25 @@ public interface IConfiguration {
     /**
      * Set the config {@link Option} fields with given set of command line arguments
      * <p/>
-     * @see {@link ArgsOptionParser} for expected format
+     * {@link ArgsOptionParser} for expected format
      *
      * @param listArgs the command line arguments
      * @return the unconsumed arguments
      */
     public List<String> setOptionsFromCommandLineArgs(List<String> listArgs)
+            throws ConfigurationException;
+
+    /**
+     * Set the config {@link Option} fields with given set of command line arguments
+     * <p/>
+     * See {@link ArgsOptionParser} for expected format
+     *
+     * @param listArgs the command line arguments
+     * @param keyStoreClient {@link IKeyStoreClient} to use.
+     * @return the unconsumed arguments
+     */
+    public List<String> setOptionsFromCommandLineArgs(List<String> listArgs,
+            IKeyStoreClient keyStoreClient)
             throws ConfigurationException;
 
     /**

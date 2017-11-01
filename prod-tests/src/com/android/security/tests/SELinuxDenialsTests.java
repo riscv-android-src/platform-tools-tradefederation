@@ -33,7 +33,7 @@ import com.android.tradefed.result.LogDataType;
 import com.android.tradefed.testtype.IDeviceTest;
 import com.android.tradefed.testtype.IRemoteTest;
 
-import junit.framework.Assert;
+import org.junit.Assert;
 
 import java.io.BufferedReader;
 import java.io.FileReader;
@@ -158,12 +158,11 @@ public class SELinuxDenialsTests implements IRemoteTest, IDeviceTest {
      * Reads in all of the SELinux domains from the file specified. Every line in the file that
      * contains text, and doesn't start with '#', is assumed to be the name of an SELinux domain.
      *
-     * @param file A (@see String} containing the path to the file to be parsed.
+     * @param filepath A (@see String} containing the path to the file to be parsed.
      * @return a list containing all selinux domains
-     * @throws FileNotFoundException, IOException
+     * @throws IOException
      */
-    private static List<String> getSELinuxDomainNames(String filepath)
-                throws IOException {
+    private static List<String> getSELinuxDomainNames(String filepath) throws IOException {
         List<String> domains = new ArrayList<String>();
         BufferedReader fileReader = new BufferedReader(new FileReader(filepath));
         String line = null;

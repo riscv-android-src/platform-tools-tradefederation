@@ -28,9 +28,10 @@ import com.android.tradefed.testtype.IDeviceTest;
 import com.android.tradefed.testtype.IRemoteTest;
 import com.android.tradefed.util.IRunUtil;
 import com.android.tradefed.util.RunUtil;
+
 import com.google.common.collect.ImmutableMap;
 
-import junit.framework.Assert;
+import org.junit.Assert;
 
 import java.util.ArrayList;
 import java.util.Collection;

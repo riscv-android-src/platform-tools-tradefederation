@@ -68,12 +68,20 @@ public class BuildTestsZipUtils {
 
         List<File> expandedTestDirs = new ArrayList<>();
         if (buildInfo != null && buildInfo instanceof IDeviceBuildInfo) {
-            File testsDir = ((IDeviceBuildInfo)buildInfo).getTestsDir();
+            File testsDir = ((IDeviceBuildInfo) buildInfo).getTestsDir();
             if (testsDir != null && testsDir.exists()) {
                 expandedTestDirs.add(FileUtil.getFileForPath(testsDir, "DATA", "app"));
                 expandedTestDirs.add(FileUtil.getFileForPath(testsDir, "DATA", "app", apkBase));
-                expandedTestDirs.add(FileUtil.getFileForPath(
-                    testsDir, "DATA", "priv-app", apkBase));
+                expandedTestDirs.add(
+                        FileUtil.getFileForPath(testsDir, "DATA", "priv-app", apkBase));
+                expandedTestDirs.add(FileUtil.getFileForPath(testsDir, apkBase));
+
+                // Files in testcases directory imported from env. variable can have a folder
+                // hierarchy, so we search for folder.
+                File testcasesSubDir = FileUtil.findFile(testsDir, apkBase);
+                if (testcasesSubDir != null) {
+                    expandedTestDirs.add(testcasesSubDir);
+                }
             }
         }
         if (altDirBehavior == null) {
@@ -95,8 +103,9 @@ public class BuildTestsZipUtils {
         }
 
         for (File dir : dirs) {
-            File testAppFile = new File(dir, apkFileName);
-            if (testAppFile.exists()) {
+            // Recursively search each folder
+            File testAppFile = FileUtil.findFile(dir, apkFileName);
+            if (testAppFile != null && testAppFile.exists()) {
                 return testAppFile;
             }
         }
@@ -121,6 +130,8 @@ public class BuildTestsZipUtils {
                 apkTempFile.deleteOnExit();
                 return apkTempFile;
             }
+            // If we couldn't find a resource, we delete the tmp file
+            FileUtil.deleteFile(apkTempFile);
         }
         return null;
     }

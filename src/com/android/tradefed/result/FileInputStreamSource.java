@@ -15,6 +15,8 @@
  */
 package com.android.tradefed.result;
 
+import com.android.tradefed.util.FileUtil;
+
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
@@ -22,16 +24,29 @@ import java.io.InputStream;
 
 /**
  * A {@link InputStreamSource} that takes an input file.
- * <p/>
- * Caller is responsible for deleting the file
+ *
+ * <p>Caller is responsible for deleting the file
  */
 public class FileInputStreamSource implements InputStreamSource {
 
     private final File mFile;
     private boolean mIsCancelled = false;
+    private boolean mDeleteOnCancel = false;
 
     public FileInputStreamSource(File file) {
         mFile = file;
+    }
+
+    /**
+     * Ctor
+     *
+     * @param file {@link File} containing the data to be streamed
+     * @param deleteFileOnCancel if true, the file associated will be deleted when {@link #close()}
+     *     is called
+     */
+    public FileInputStreamSource(File file, boolean deleteFileOnCancel) {
+        mFile = file;
+        mDeleteOnCancel = deleteFileOnCancel;
     }
 
     /**
@@ -49,12 +64,13 @@ public class FileInputStreamSource implements InputStreamSource {
         }
     }
 
-    /**
-     * {@inheritDoc}
-     */
+    /** {@inheritDoc} */
     @Override
-    public synchronized void cancel() {
+    public synchronized void close() {
         mIsCancelled = true;
+        if (mDeleteOnCancel) {
+            cleanFile();
+        }
     }
 
     /**
@@ -63,6 +79,13 @@ public class FileInputStreamSource implements InputStreamSource {
     @Override
     public long size() {
         return mFile.length();
+    }
+
+    /**
+     * Convenience method to delete the file associated with the FileInputStreamSource. Not safe.
+     */
+    public void cleanFile() {
+        FileUtil.deleteFile(mFile);
     }
 }
 

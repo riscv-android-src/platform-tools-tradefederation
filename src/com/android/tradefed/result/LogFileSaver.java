@@ -30,6 +30,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.util.ArrayList;
+import java.util.List;
 import java.util.zip.GZIPOutputStream;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
@@ -38,11 +39,11 @@ import java.util.zip.ZipOutputStream;
 /**
  * A helper for {@link ITestInvocationListener}'s that will save log data to a file
  */
-// TODO: Evaluate if this class can be deleted.
 public class LogFileSaver {
 
     private static final int BUFFER_SIZE = 64 * 1024;
-    private File mRootDir;
+    private File mInvLogDir;
+    private List<String> mInvLogPathSegments;
 
     /**
      * Creates a {@link LogFileSaver}.
@@ -58,21 +59,12 @@ public class LogFileSaver {
      *            scripts can use this file to determine when to delete log directories.
      */
     public LogFileSaver(IBuildInfo buildInfo, File rootDir, Integer logRetentionDays) {
-        File buildDir = createBuildDir(buildInfo, rootDir);
-        // now create unique directory within the buildDir
-        try {
-            mRootDir = FileUtil.createTempDir("inv_", buildDir);
-            if (logRetentionDays != null && logRetentionDays > 0) {
-                new RetentionFileSaver().writeRetentionFile(mRootDir, logRetentionDays);
-            }
-        } catch (IOException e) {
-            CLog.e("Unable to create unique directory in %s. Attempting to use tmp dir instead",
-                    buildDir.getAbsolutePath());
-            CLog.e(e);
-            // try to create one in a tmp location instead
-            mRootDir = createTempDir();
-        }
-        CLog.i("Using log file directory %s", mRootDir.getAbsolutePath());
+        List<String> testArtifactPathSegments = generateTestArtifactPath(buildInfo);
+        File buildDir = createBuildDir(testArtifactPathSegments, rootDir);
+        mInvLogDir = createInvLogDir(buildDir, logRetentionDays);
+        String invLogDirName = mInvLogDir.getName();
+        mInvLogPathSegments = new ArrayList<>(testArtifactPathSegments);
+        mInvLogPathSegments.add(invLogDirName);
     }
 
     private File createTempDir() {
@@ -103,7 +95,7 @@ public class LogFileSaver {
      * @param rootDir
      */
     public LogFileSaver(File rootDir) {
-        mRootDir = rootDir;
+        this(null, rootDir, null);
     }
 
     /**
@@ -112,25 +104,45 @@ public class LogFileSaver {
      * @return the {@link File} directory
      */
     public File getFileDir() {
-        return mRootDir;
+        return mInvLogDir;
+    }
+
+    /**
+     * Create unique invocation log directory.
+     * @param buildDir the build directory
+     * @param logRetentionDays
+     * @return the create invocation directory
+     */
+    File createInvLogDir(File buildDir, Integer logRetentionDays) {
+        // now create unique directory within the buildDir
+        File invocationDir = null;
+        try {
+            invocationDir = FileUtil.createTempDir("inv_", buildDir);
+            if (logRetentionDays != null && logRetentionDays > 0) {
+                new RetentionFileSaver().writeRetentionFile(invocationDir, logRetentionDays);
+            }
+        } catch (IOException e) {
+            CLog.e("Unable to create unique directory in %s. Attempting to use tmp dir instead",
+                    buildDir.getAbsolutePath());
+            CLog.e(e);
+            // try to create one in a tmp location instead
+            invocationDir = createTempDir();
+        }
+        CLog.i("Using log file directory %s", invocationDir.getAbsolutePath());
+        return invocationDir;
     }
 
     /**
      * Attempt to create a folder to store log's for given build info.
      *
-     * @param buildInfo the {@link IBuildInfo}
+     * @param buildPathSegments build path segments
      * @param rootDir the root file system path to create directory from
      * @return a {@link File} pointing to the directory to store log files in
      */
-    private File createBuildDir(IBuildInfo buildInfo, File rootDir) {
+    File createBuildDir(List<String> buildPathSegments, File rootDir) {
         File buildReportDir;
-        ArrayList<String> pathSegments = new ArrayList<String>();
-        if (buildInfo.getBuildBranch() != null) {
-            pathSegments.add(buildInfo.getBuildBranch());
-        }
-        pathSegments.add(buildInfo.getBuildId());
-        pathSegments.add(buildInfo.getTestTag());
-        buildReportDir = FileUtil.getFileForPath(rootDir, pathSegments.toArray(new String[] {}));
+        buildReportDir = FileUtil.getFileForPath(rootDir,
+                buildPathSegments.toArray(new String[] {}));
 
         // if buildReportDir already exists and is a directory - use it.
         if (buildReportDir.exists()) {
@@ -148,7 +160,25 @@ public class LogFileSaver {
                         buildReportDir.getAbsolutePath());
             }
         }
-        return rootDir;
+        return buildReportDir;
+    }
+
+    /**
+     * A helper to create test artifact path segments based on the build info.
+     * <p />
+     * {@code [branch/]build-id/test-tag}
+     */
+    List<String> generateTestArtifactPath(IBuildInfo buildInfo) {
+        final List<String> pathSegments = new ArrayList<String>();
+        if (buildInfo == null) {
+            return pathSegments;
+        }
+        if (buildInfo.getBuildBranch() != null) {
+            pathSegments.add(buildInfo.getBuildBranch());
+        }
+        pathSegments.add(buildInfo.getBuildId());
+        pathSegments.add(buildInfo.getTestTag());
+        return pathSegments;
     }
 
     /**
@@ -169,21 +199,66 @@ public class LogFileSaver {
      */
     public File saveLogData(String dataName, LogDataType dataType, InputStream dataStream)
             throws IOException {
+        return saveLogDataRaw(dataName, dataType.getFileExt(), dataStream);
+    }
+
+    /**
+     * Save raw data to a file
+     * @param dataName a {@link String} descriptive name of the data. e.g. "dev
+     * @param ext the extension of the date
+     * @param dataStream the {@link InputStream} of the data.
+     * @return the file of the generated data
+     * @throws IOException if log file could not be generated
+     */
+    public File saveLogDataRaw(String dataName, String ext, InputStream dataStream)
+            throws IOException {
         final String saneDataName = sanitizeFilename(dataName);
         // add underscore to end of data name to make generated name more readable
-        File logFile = FileUtil.createTempFile(saneDataName + "_", "." + dataType.getFileExt(),
-                mRootDir);
+        File logFile = FileUtil.createTempFile(saneDataName + "_", "." + ext,
+                mInvLogDir);
         FileUtil.writeToFile(dataStream, logFile);
         CLog.i("Saved log file %s", logFile.getAbsolutePath());
         return logFile;
     }
 
     /**
+     * Save and compress, if necessary, the log data to a gzip file
+     *
+     * @param dataName a {@link String} descriptive name of the data. e.g. "dev
+     * @param dataType the {@link LogDataType} of the file. Log data which is a (ie
+     *            {@link LogDataType#isCompressed()} is <code>true</code>)
+     * @param dataStream the {@link InputStream} of the data.
+     * @return the file of the generated data
+     * @throws IOException if log file could not be generated
+     */
+    public File saveAndGZipLogData(String dataName, LogDataType dataType, InputStream dataStream)
+            throws IOException {
+        if (dataType.isCompressed()) {
+            CLog.d("Log data for %s is already compressed, skipping compression", dataName);
+            return saveLogData(dataName, dataType, dataStream);
+        }
+        BufferedInputStream bufInput = null;
+        OutputStream outStream = null;
+        try {
+            final String saneDataName = sanitizeFilename(dataName);
+            File logFile = createCompressedLogFile(saneDataName, dataType);
+            bufInput = new BufferedInputStream(dataStream);
+            outStream = createGZipLogStream(logFile);
+            StreamUtil.copyStreams(bufInput, outStream);
+            CLog.i("Saved log file %s", logFile.getAbsolutePath());
+            return logFile;
+        } finally {
+            StreamUtil.close(bufInput);
+            StreamUtil.close(outStream);
+        }
+    }
+
+    /**
      * Save and compress, if necessary, the log data to a zip file
      *
      * @param dataName a {@link String} descriptive name of the data. e.g. "dev
-     * @param dataType the {@link LogDataType} of the file. Log data which is a
-     *            (ie {@link LogDataType#isCompressed()} is <code>true</code>)
+     * @param dataType the {@link LogDataType} of the file. Log data which is a (ie
+     *            {@link LogDataType#isCompressed()} is <code>true</code>)
      * @param dataStream the {@link InputStream} of the data.
      * @return the file of the generated data
      * @throws IOException if log file could not be generated
@@ -200,7 +275,7 @@ public class LogFileSaver {
             final String saneDataName = sanitizeFilename(dataName);
             // add underscore to end of data name to make generated name more readable
             File logFile = FileUtil.createTempFile(saneDataName + "_", "."
-                    + LogDataType.ZIP.getFileExt(), mRootDir);
+                    + LogDataType.ZIP.getFileExt(), mInvLogDir);
             bufInput = new BufferedInputStream(dataStream);
             outStream = new ZipOutputStream(new BufferedOutputStream(new FileOutputStream(
                     logFile), BUFFER_SIZE));
@@ -211,7 +286,6 @@ public class LogFileSaver {
         } finally {
             StreamUtil.close(bufInput);
             StreamUtil.closeZipStream(outStream);
-
         }
     }
 
@@ -221,23 +295,21 @@ public class LogFileSaver {
      * @param dataName a {@link String} descriptive name of the data to be stor
      *            "device_logcat"
      * @param origDataType the type of {@link LogDataType} to be stored
-     * @param compressedType the {@link LogDataType} representing the compressi
-     *            {@link LogDataType#GZIP} or {@link LogDataType#ZIP}
      * @return a {@link File}
      * @throws IOException if log file could not be created
      */
-    public File createCompressedLogFile(String dataName, LogDataType origDataType,
-            LogDataType compressedType) throws IOException {
+    public File createCompressedLogFile(String dataName, LogDataType origDataType)
+            throws IOException {
         // add underscore to end of data name to make generated name more readable
         return FileUtil.createTempFile(dataName + "_",
                 String.format(".%s.%s", origDataType.getFileExt(), LogDataType.GZIP.getFileExt()),
-                mRootDir);
+                mInvLogDir);
     }
 
     /**
      * Creates a output stream to write GZIP-compressed data to a file
      *
-     * @param dataFile the {@link File} to write to
+     * @param logFile the {@link File} to write to
      * @return the {@link OutputStream} to compress and write data to the file.
      *         this stream when complete
      * @throws IOException if stream could not be generated
@@ -260,5 +332,13 @@ public class LogFileSaver {
      */
     public InputStream createInputStreamFromFile(File logFile) throws IOException {
         return new BufferedInputStream(new FileInputStream(logFile), BUFFER_SIZE);
+    }
+
+    /**
+     *
+     * @return the unique invocation log path segments.
+     */
+    public List<String> getInvocationLogPathSegments() {
+        return new ArrayList<>(mInvLogPathSegments);
     }
 }

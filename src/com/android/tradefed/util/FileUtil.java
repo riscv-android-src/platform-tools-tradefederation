@@ -19,6 +19,7 @@ import com.android.ddmlib.Log;
 import com.android.tradefed.command.FatalHostError;
 import com.android.tradefed.config.Option;
 import com.android.tradefed.log.LogUtil.CLog;
+import com.android.tradefed.result.LogDataType;
 
 import java.io.BufferedInputStream;
 import java.io.BufferedOutputStream;
@@ -31,10 +32,16 @@ import java.io.FilenameFilter;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.nio.file.Files;
+import java.nio.file.Paths;
+import java.nio.file.attribute.PosixFilePermission;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.EnumSet;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.zip.ZipFile;
 
@@ -57,6 +64,32 @@ public class FileUtil {
     private static final char[] SIZE_SPECIFIERS = {
             ' ', 'K', 'M', 'G', 'T'
     };
+
+    private static String sChmod = "chmod";
+
+    /** A map of {@link PosixFilePermission} to its corresponding Unix file mode */
+    private static final Map<PosixFilePermission, Integer> PERM_MODE_MAP = new HashMap<>();
+    static {
+        PERM_MODE_MAP.put(PosixFilePermission.OWNER_READ,     0b100000000);
+        PERM_MODE_MAP.put(PosixFilePermission.OWNER_WRITE,    0b010000000);
+        PERM_MODE_MAP.put(PosixFilePermission.OWNER_EXECUTE,  0b001000000);
+        PERM_MODE_MAP.put(PosixFilePermission.GROUP_READ,     0b000100000);
+        PERM_MODE_MAP.put(PosixFilePermission.GROUP_WRITE,    0b000010000);
+        PERM_MODE_MAP.put(PosixFilePermission.GROUP_EXECUTE,  0b000001000);
+        PERM_MODE_MAP.put(PosixFilePermission.OTHERS_READ,    0b000000100);
+        PERM_MODE_MAP.put(PosixFilePermission.OTHERS_WRITE,   0b000000010);
+        PERM_MODE_MAP.put(PosixFilePermission.OTHERS_EXECUTE, 0b000000001);
+    }
+
+    public static final int FILESYSTEM_FILENAME_MAX_LENGTH = 255;
+
+    /**
+     * Exposed for testing. Allows to modify the chmod binary name we look for, in order to tests
+     * system with no chmod support.
+     */
+    protected static void setChmodBinary(String chmodName) {
+        sChmod = chmodName;
+    }
 
     /**
      * Thrown if usable disk space is below minimum threshold.
@@ -137,8 +170,8 @@ public class FileUtil {
     public static boolean chmod(File file, String perms) {
         Log.d(LOG_TAG, String.format("Attempting to chmod %s to %s",
                 file.getAbsolutePath(), perms));
-        CommandResult result = RunUtil.getDefault().runTimedCmd(10 * 1000, "chmod", perms,
-                file.getAbsolutePath());
+        CommandResult result =
+                RunUtil.getDefault().runTimedCmd(10 * 1000, sChmod, perms, file.getAbsolutePath());
         return result.getStatus().equals(CommandStatus.SUCCESS);
     }
 
@@ -156,11 +189,16 @@ public class FileUtil {
      *         otherwise
      */
     public static boolean chmodGroupRW(File file) {
-        if (chmod(file, "ug+rw")) {
-            return true;
+        if (chmodExists()) {
+            if (chmod(file, "ug+rw")) {
+                return true;
+            } else {
+                Log.d(LOG_TAG, String.format("Failed chmod on %s", file.getAbsolutePath()));
+                return false;
+            }
         } else {
-            Log.d(LOG_TAG, String.format("Failed chmod; attempting to set %s globally RW",
-                    file.getAbsolutePath()));
+            Log.d(LOG_TAG, String.format("chmod not available; "
+                    + "attempting to set %s globally RW", file.getAbsolutePath()));
             return file.setWritable(true, false /* false == writable for all */) &&
                     file.setReadable(true, false /* false == readable for all */);
         }
@@ -176,15 +214,35 @@ public class FileUtil {
      * @return <code>true</code> if permissions were set successfully, <code>false</code> otherwise
      */
     public static boolean chmodGroupRWX(File file) {
-        if (chmod(file, "ug+rwx")) {
-            return true;
+        if (chmodExists()) {
+            if (chmod(file, "ug+rwx")) {
+                return true;
+            } else {
+                Log.d(LOG_TAG, String.format("Failed chmod on %s", file.getAbsolutePath()));
+                return false;
+            }
         } else {
-            Log.d(LOG_TAG, String.format("Failed chmod; attempting to set %s globally RWX",
-                    file.getAbsolutePath()));
+            Log.d(LOG_TAG, String.format("chmod not available; "
+                    + "attempting to set %s globally RWX", file.getAbsolutePath()));
             return file.setExecutable(true, false /* false == executable for all */) &&
                     file.setWritable(true, false /* false == writable for all */) &&
                     file.setReadable(true, false /* false == readable for all */);
         }
+    }
+
+    /**
+     * Internal helper to determine if 'chmod' is available on the system OS.
+     */
+    protected static boolean chmodExists() {
+        // Silence the scary process exception when chmod is missing, we will log instead.
+        CommandResult result = RunUtil.getDefault().runTimedCmdSilently(10 * 1000, sChmod);
+        // We expect a status fail because 'chmod' requires arguments.
+        if (CommandStatus.FAILED.equals(result.getStatus()) &&
+                result.getStderr().contains("chmod: missing operand")) {
+            return true;
+        }
+        CLog.w("Chmod is not supported by this OS.");
+        return false;
     }
 
     /**
@@ -227,6 +285,10 @@ public class FileUtil {
      */
     public static File createTempDir(String prefix, File parentDir) throws IOException {
         // create a temp file with unique name, then make it a directory
+        if (parentDir != null) {
+            CLog.d("Creating temp directory at %s with prefix \"%s\"",
+              parentDir.getAbsolutePath(), prefix);
+        }
         File tmpDir = File.createTempFile(prefix, "", parentDir);
         return deleteFileAndCreateDirWithSameName(tmpDir);
     }
@@ -264,26 +326,62 @@ public class FileUtil {
      * Helper wrapper function around {@link File#createTempFile(String, String)} that audits for
      * potential out of disk space scenario.
      *
-     * @see {@link File#createTempFile(String, String)}
+     * @see File#createTempFile(String, String)
      * @throws LowDiskSpaceException if disk space on temporary partition is lower than minimum
      *             allowed
      */
     public static File createTempFile(String prefix, String suffix) throws IOException {
-        File returnFile = File.createTempFile(prefix, suffix);
-        verifyDiskSpace(returnFile);
-        return returnFile;
+        return internalCreateTempFile(prefix, suffix, null);
     }
 
     /**
-     * Helper wrapper function around {@link File#createTempFile(String, String, File parentDir)}
+     * Helper wrapper function around {@link File#createTempFile(String, String, File)}
      * that audits for potential out of disk space scenario.
      *
-     * @see {@link File#createTempFile(String, String, File)}
+     * @see File#createTempFile(String, String, File)
      * @throws LowDiskSpaceException if disk space on partition is lower than minimum allowed
      */
     public static File createTempFile(String prefix, String suffix, File parentDir)
             throws IOException {
-        File returnFile = File.createTempFile(prefix, suffix, parentDir);
+        return internalCreateTempFile(prefix, suffix, parentDir);
+    }
+
+    /**
+     * Internal helper to create a temporary file.
+     */
+    private static File internalCreateTempFile(String prefix, String suffix, File parentDir)
+            throws IOException {
+        // File.createTempFile add an additional random long in the name so we remove the length.
+        int overflowLength = prefix.length() + 19 - FILESYSTEM_FILENAME_MAX_LENGTH;
+        if (suffix != null) {
+            // suffix may be null
+            overflowLength += suffix.length();
+        }
+        if (overflowLength > 0) {
+            CLog.w("Filename for prefix: %s and suffix: %s, would be too long for FileSystem,"
+                    + "truncating it.", prefix, suffix);
+            // We truncate from suffix in priority because File.createTempFile wants prefix to be
+            // at least 3 characters.
+            if (suffix.length() >= overflowLength) {
+                int temp = overflowLength;
+                overflowLength -= suffix.length();
+                suffix = suffix.substring(temp, suffix.length());
+            } else {
+                overflowLength -= suffix.length();
+                suffix = "";
+            }
+            if (overflowLength > 0) {
+                // Whatever remaining to remove after suffix has been truncating should be inside
+                // prefix, otherwise there would not be overflow.
+                prefix = prefix.substring(0, prefix.length() - overflowLength);
+            }
+        }
+        File returnFile = null;
+        if (parentDir != null) {
+            CLog.d("Creating temp file at %s with prefix \"%s\" suffix \"%s\"",
+                    parentDir.getAbsolutePath(), prefix, suffix);
+        }
+        returnFile = File.createTempFile(prefix, suffix, parentDir);
         verifyDiskSpace(returnFile);
         return returnFile;
     }
@@ -296,20 +394,49 @@ public class FileUtil {
      * @throws IOException if failed to hardlink file
      */
     public static void hardlinkFile(File origFile, File destFile) throws IOException {
-        if (!origFile.exists()) {
-            throw new IOException(String.format("Cannot hardlink %s. File does not exist",
-                    origFile.getAbsolutePath()));
-        }
         // `ln src dest` will create a hardlink (note: not `ln -s src dest`, which creates symlink)
         // note that this will fail across filesystem boundaries
         // FIXME: should probably just fall back to normal copy if this fails
-        CommandResult result = RunUtil.getDefault().runTimedCmd(10 * 1000, "ln",
-                origFile.getAbsolutePath(), destFile.getAbsolutePath());
+        CommandResult result = linkFile(origFile, destFile, false);
         if (!result.getStatus().equals(CommandStatus.SUCCESS)) {
             throw new IOException(String.format(
                     "Failed to hardlink %s to %s.  Across filesystem boundary?",
                     origFile.getAbsolutePath(), destFile.getAbsolutePath()));
         }
+    }
+
+    /**
+     * A helper method that simlinks a file to another file
+     *
+     * @param origFile the original file
+     * @param destFile the destination file
+     * @throws IOException if failed to simlink file
+     */
+    public static void simlinkFile(File origFile, File destFile) throws IOException {
+        CommandResult res = linkFile(origFile, destFile, true);
+        if (!CommandStatus.SUCCESS.equals(res.getStatus())) {
+            throw new IOException("Error trying to simlink: " + res.getStderr());
+        }
+    }
+
+    private static CommandResult linkFile(File origFile, File destFile, boolean simlink)
+            throws IOException {
+        if (!origFile.exists()) {
+            String link = simlink ? "simlink" : "hardlink";
+            throw new IOException(
+                    String.format(
+                            "Cannot %s %s. File does not exist", link, origFile.getAbsolutePath()));
+        }
+        List<String> cmd = new ArrayList<>();
+        cmd.add("ln");
+        if (simlink) {
+            cmd.add("-s");
+        }
+        cmd.add(origFile.getAbsolutePath());
+        cmd.add(destFile.getAbsolutePath());
+        CommandResult result =
+                RunUtil.getDefault().runTimedCmd(10 * 1000, cmd.toArray(new String[0]));
+        return result;
     }
 
     /**
@@ -333,6 +460,31 @@ public class FileUtil {
                 recursiveHardlink(childFile, destChild);
             } else if (childFile.isFile()) {
                 hardlinkFile(childFile, destChild);
+            }
+        }
+    }
+
+    /**
+     * Recursively simlink folder contents.
+     *
+     * <p>Only supports copying of files and directories - symlinks are not copied. If the
+     * destination directory does not exist, it will be created.
+     *
+     * @param sourceDir the folder that contains the files to copy
+     * @param destDir the destination folder
+     * @throws IOException
+     */
+    public static void recursiveSimlink(File sourceDir, File destDir) throws IOException {
+        if (!destDir.isDirectory() && !destDir.mkdir()) {
+            throw new IOException(
+                    String.format("Could not create directory %s", destDir.getAbsolutePath()));
+        }
+        for (File childFile : sourceDir.listFiles()) {
+            File destChild = new File(destDir, childFile.getName());
+            if (childFile.isDirectory()) {
+                recursiveSimlink(childFile, destChild);
+            } else if (childFile.isFile()) {
+                simlinkFile(childFile, destChild);
             }
         }
     }
@@ -401,24 +553,48 @@ public class FileUtil {
      * A helper method for writing string data to file
      *
      * @param inputString the input {@link String}
-     * @param destFile the dest file to write to
+     * @param destFile the destination file to write to
      */
     public static void writeToFile(String inputString, File destFile) throws IOException {
-        writeToFile(new ByteArrayInputStream(inputString.getBytes()), destFile);
+        writeToFile(inputString, destFile, false);
+    }
+
+    /**
+     * A helper method for writing or appending string data to file
+     *
+     * @param inputString the input {@link String}
+     * @param destFile the destination file to write or append to
+     * @param append append to end of file if true, overwrite otherwise
+     */
+    public static void writeToFile(String inputString, File destFile, boolean append)
+            throws IOException {
+        writeToFile(new ByteArrayInputStream(inputString.getBytes()), destFile, append);
     }
 
     /**
      * A helper method for writing stream data to file
      *
      * @param input the unbuffered input stream
-     * @param destFile the dest file to write to
+     * @param destFile the destination file to write to
      */
     public static void writeToFile(InputStream input, File destFile) throws IOException {
+        writeToFile(input, destFile, false);
+    }
+
+    /**
+     * A helper method for writing stream data to file
+     *
+     * @param input the unbuffered input stream
+     * @param destFile the destination file to write or append to
+     * @param append append to end of file if true, overwrite otherwise
+     */
+    public static void writeToFile(
+            InputStream input, File destFile, boolean append) throws IOException {
         InputStream origStream = null;
         OutputStream destStream = null;
         try {
             origStream = new BufferedInputStream(input);
-            destStream = new BufferedOutputStream(new FileOutputStream(destFile));
+            destStream = new BufferedOutputStream(new FileOutputStream(destFile, append));
             StreamUtil.copyStreams(origStream, destStream);
         } finally {
             StreamUtil.close(origStream);
@@ -548,7 +724,9 @@ public class FileUtil {
 
     /**
      * Try to delete a file. Intended for use when cleaning up
-     * in {@code finally} stanzas. {@param file} may be null.
+     * in {@code finally} stanzas.
+     *
+     * @param file may be null.
      */
     public static void deleteFile(File file) {
         if (file != null) {
@@ -655,8 +833,8 @@ public class FileUtil {
             }
             size /= 1024f;
         }
-        throw new IllegalArgumentException(String.format(
-                "Passed a file size of %d, I cannot count that high", size));
+        throw new IllegalArgumentException(
+                String.format("Passed a file size of %.2f, I cannot count that high", size));
     }
 
     /**
@@ -810,5 +988,54 @@ public class FileUtil {
     public static String calculateMd5(File file) throws IOException {
         FileInputStream inputSource = new FileInputStream(file);
         return StreamUtil.calculateMd5(inputSource);
+    }
+
+    /**
+     * Converts an integer representing unix mode to a set of {@link PosixFilePermission}s
+     */
+    public static Set<PosixFilePermission> unixModeToPosix(int mode) {
+        Set<PosixFilePermission> result = EnumSet.noneOf(PosixFilePermission.class);
+        for (PosixFilePermission pfp : EnumSet.allOf(PosixFilePermission.class)) {
+            int m = PERM_MODE_MAP.get(pfp);
+            if ((m & mode) == m) {
+                result.add(pfp);
+            }
+        }
+        return result;
+    }
+
+    /**
+     * Get all file paths of files in the given directory with name matching the given filter
+     *
+     * @param dir {@link File} object of the directory to search for files recursively
+     * @param filter {@link String} of the regex to match file names
+     * @return a set of {@link String} of the file paths
+     */
+    public static Set<String> findFiles(File dir, String filter) throws IOException {
+        Set<String> files = new HashSet<String>();
+        Files.walk(Paths.get(dir.getAbsolutePath()))
+                .filter(path -> new File(path.toString()).getName().matches(filter))
+                .forEach(path -> files.add(path.toString()));
+        return files;
+    }
+
+    /**
+     * Get file's content type based it's extension.
+     * @param filePath the file path
+     * @return content type
+     */
+    public static String getContentType(String filePath) {
+        int index = filePath.lastIndexOf('.');
+        String ext = "";
+        if (index >= 0) {
+            ext = filePath.substring(index + 1);
+        }
+        LogDataType[] dataTypes = LogDataType.values();
+        for (LogDataType dataType: dataTypes) {
+            if (ext.equals(dataType.getFileExt())) {
+                return dataType.getContentType();
+            }
+        }
+        return LogDataType.UNKNOWN.getContentType();
     }
 }

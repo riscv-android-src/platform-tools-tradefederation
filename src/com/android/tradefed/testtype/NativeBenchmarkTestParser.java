@@ -108,7 +108,7 @@ public class NativeBenchmarkTestParser extends MultiLineReceiver {
     }
 
     /**
-     * @return
+     * @return The name of the Test Run.
      */
     public String getRunName() {
         return mTestRunName;

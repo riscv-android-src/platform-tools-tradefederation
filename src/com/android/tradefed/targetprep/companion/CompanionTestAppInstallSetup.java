@@ -35,16 +35,29 @@ import com.android.tradefed.targetprep.TestAppInstallSetup;
  */
 @OptionClass(alias = "companion-tests-zip-app")
 public class CompanionTestAppInstallSetup extends TestAppInstallSetup {
+    ITestDevice mCompanion;
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public void setUp(ITestDevice device, IBuildInfo buildInfo) throws TargetSetupError,
             DeviceNotAvailableException {
         // get companion device first
-        ITestDevice companion = CompanionDeviceTracker.getInstance().getCompanionDevice(device);
-        if (companion == null) {
+        mCompanion = CompanionDeviceTracker.getInstance().getCompanionDevice(device);
+        if (mCompanion == null) {
             throw new TargetSetupError(String.format("no companion device allocated for %s",
-                    device.getSerialNumber()));
+                    device.getSerialNumber()), device.getDeviceDescriptor());
         }
-        super.setUp(companion, buildInfo);
+        super.setUp(mCompanion, buildInfo);
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void tearDown(ITestDevice device, IBuildInfo buildInfo, Throwable e)
+            throws DeviceNotAvailableException {
+        super.tearDown(mCompanion, buildInfo, e);
     }
 }

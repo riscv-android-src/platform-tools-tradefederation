@@ -24,17 +24,19 @@ import com.android.tradefed.config.Option;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.result.CollectingTestListener;
+import com.android.tradefed.result.FileInputStreamSource;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.InputStreamSource;
 import com.android.tradefed.result.LogDataType;
-import com.android.tradefed.result.SnapshotInputStreamSource;
 import com.android.tradefed.testtype.IDeviceTest;
 import com.android.tradefed.testtype.IRemoteTest;
+import com.android.tradefed.util.FileUtil;
 import com.android.tradefed.util.RegexTrie;
 import com.android.tradefed.util.StreamUtil;
 
-import junit.framework.Assert;
 import junit.framework.TestCase;
+
+import org.junit.Assert;
 
 import java.io.ByteArrayInputStream;
 import java.io.File;
@@ -72,10 +74,10 @@ public class CameraStressTest implements IDeviceTest, IRemoteTest {
 
     /**
      * Stores the test cases that we should consider running.
-     * <p/>
-     * This currently consists of "startup" and "latency"
+     *
+     * <p>This currently consists of "startup" and "latency"
      */
-    private List<TestInfo> mTestCases = new ArrayList<TestInfo>();
+    private List<TestInfo> mTestCases = new ArrayList<>();
 
     // Options for the running the gCam test
     @Option(name = "gCam", description = "Run gCam back image capture test")
@@ -88,8 +90,8 @@ public class CameraStressTest implements IDeviceTest, IRemoteTest {
         public String mTestName = null;
         public String mClassName = null;
         public String mTestMetricsName = null;
-        public Map<String, String> mInstrumentationArgs = new HashMap<String, String>();
-        public RegexTrie<String> mPatternMap = new RegexTrie<String>();
+        public Map<String, String> mInstrumentationArgs = new HashMap<>();
+        public RegexTrie<String> mPatternMap = new RegexTrie<>();
 
         @Override
         public String toString() {
@@ -104,7 +106,7 @@ public class CameraStressTest implements IDeviceTest, IRemoteTest {
      * Exposed for unit meta-testing
      */
     static RegexTrie<String> getPatternMap() {
-        RegexTrie<String> patMap = new RegexTrie<String>();
+        RegexTrie<String> patMap = new RegexTrie<>();
         patMap.put("SwitchPreview", "^Camera Switch Mode:");
 
         // For versions of the on-device test that don't differentiate between front and back camera
@@ -241,7 +243,7 @@ public class CameraStressTest implements IDeviceTest, IRemoteTest {
             // Upload a verbatim copy of the output file
             Log.d(LOG_TAG, String.format("Sending %d byte file %s into the logosphere!",
                     outputFile.length(), outputFile));
-            outputSource = new SnapshotInputStreamSource(new FileInputStream(outputFile));
+            outputSource = new FileInputStreamSource(outputFile);
             listener.testLog(String.format("output-%s.txt", test.mTestName), LogDataType.TEXT,
                     outputSource);
 
@@ -250,12 +252,8 @@ public class CameraStressTest implements IDeviceTest, IRemoteTest {
         } catch (IOException e) {
             Log.e(LOG_TAG, String.format("IOException while reading or parsing output file: %s", e));
         } finally {
-            if (outputFile != null) {
-                outputFile.delete();
-            }
-            if (outputSource != null) {
-                outputSource.cancel();
-            }
+            FileUtil.deleteFile(outputFile);
+            StreamUtil.cancel(outputSource);
         }
     }
 
@@ -264,7 +262,7 @@ public class CameraStressTest implements IDeviceTest, IRemoteTest {
      */
     private void parseOutputFile(TestInfo test, InputStream dataStream,
             ITestInvocationListener listener) {
-        Map<String, String> runMetrics = new HashMap<String, String>();
+        Map<String, String> runMetrics = new HashMap<>();
 
         String contents;
         try {
@@ -284,7 +282,7 @@ public class CameraStressTest implements IDeviceTest, IRemoteTest {
         String line;
         while (lineIter.hasNext()) {
             line = lineIter.next();
-            List<List<String>> capture = new ArrayList<List<String>>(1);
+            List<List<String>> capture = new ArrayList<>(1);
             String pattern = test.mPatternMap.retrieve(capture, line);
             if (pattern != null) {
                 if ("loopCount".equals(pattern)) {

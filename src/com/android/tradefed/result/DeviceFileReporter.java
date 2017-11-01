@@ -19,12 +19,9 @@ import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.util.FileUtil;
+import com.android.tradefed.util.StreamUtil;
 
-import java.io.BufferedInputStream;
 import java.io.File;
-import java.io.FileInputStream;
-import java.io.IOException;
-import java.io.InputStream;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -39,14 +36,14 @@ import java.util.Set;
  * {@link ITestInvocationListener#testLog(String, LogDataType, InputStreamSource)} if found.
  */
 public class DeviceFileReporter {
-    private final Map<String, LogDataType> mFilePatterns = new LinkedHashMap<String, LogDataType>();
+    private final Map<String, LogDataType> mFilePatterns = new LinkedHashMap<>();
     private final ITestInvocationListener mListener;
     private final ITestDevice mDevice;
 
     /** Whether to ignore files that have already been captured by a prior Pattern */
     private boolean mSkipRepeatFiles = true;
     /** The files which have already been reported */
-    private Set<String> mReportedFiles = new HashSet<String>();
+    private Set<String> mReportedFiles = new HashSet<>();
 
     /** Whether to attempt to infer data types for patterns with {@code UNKNOWN} data type */
     private boolean mInferDataTypes = true;
@@ -116,7 +113,7 @@ public class DeviceFileReporter {
      * Set the default log data type set for patterns that don't have an associated type.
      *
      * @param type the {@link LogDataType}
-     * @see addPatterns(List<String>)
+     * @see #addPatterns(List)
      */
     public void setDefaultLogDataType(LogDataType type) {
         if (type == null) {
@@ -129,7 +126,7 @@ public class DeviceFileReporter {
      * Whether or not to skip files which have already been reported.  This is only relevant when
      * multiple patterns are being used, and two or more of those patterns match the same file.
      * <p />
-     * Note that this <emph>must only</emph> be called prior to calling {@see #run()}.  Doing
+     * Note that this <emph>must only</emph> be called prior to calling {@link #run()}. Doing
      * otherwise will cause undefined behavior.
      */
     public void setSkipRepeatFiles(boolean skip) {
@@ -154,12 +151,14 @@ public class DeviceFileReporter {
      * {@link ITestInvocationListener#testLog} if found
      */
     public List<String> run() throws DeviceNotAvailableException {
-        List<String> filenames = new LinkedList<String>();
+        List<String> filenames = new LinkedList<>();
+        CLog.d(String.format("Analyzing %d patterns.", mFilePatterns.size()));
         for (Map.Entry<String, LogDataType> pat : mFilePatterns.entrySet()) {
-            final String searchCmd = String.format("ls '%s'", pat.getKey());
+            final String searchCmd = String.format("ls %s", pat.getKey());
             final String fileList = mDevice.executeShellCommand(searchCmd);
 
             for (String filename : fileList.split("\r?\n")) {
+                filename = filename.trim();
                 if (filename.isEmpty() || filename.endsWith(": No such file or directory")) {
                     continue;
                 }
@@ -171,22 +170,19 @@ public class DeviceFileReporter {
                 File file = null;
                 InputStreamSource iss = null;
                 try {
-                    CLog.v("Trying to pull file %s from device %s", filename,
-                            mDevice.getSerialNumber());
+                    CLog.d("Trying to pull file '%s' from device %s", filename,
+                        mDevice.getSerialNumber());
                     file = mDevice.pullFile(filename);
-                    CLog.v("Local file %s has size %d", file, file.length());
                     iss = createIssForFile(file);
                     final LogDataType type = getDataType(filename, pat.getValue());
+                    CLog.d("Local file %s has size %d and type %s", file, file.length(),
+                        type.getFileExt());
                     mListener.testLog(filename, type, iss);
                     filenames.add(filename);
                     mReportedFiles.add(filename);
-                } catch (IOException e) {
-                    CLog.w("Failed to log file %s: %s", filename, e.getMessage());
                 } finally {
-                    if (iss != null) {
-                        iss.cancel();
-                        iss = null;
-                    }
+                    StreamUtil.cancel(iss);
+                    iss = null;
                     FileUtil.deleteFile(file);
                 }
             }
@@ -222,11 +218,10 @@ public class DeviceFileReporter {
 
     /**
      * Create an {@link InputStreamSource} for a file
-     * <p />
-     * Exposed for unit testing
+     *
+     * <p>Exposed for unit testing
      */
-    InputStreamSource createIssForFile(File file) throws IOException {
-        InputStream bufStr = new BufferedInputStream(new FileInputStream(file));
-        return new SnapshotInputStreamSource(bufStr);
+    InputStreamSource createIssForFile(File file) {
+        return new FileInputStreamSource(file);
     }
 }

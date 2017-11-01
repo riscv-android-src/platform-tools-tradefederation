@@ -25,6 +25,9 @@ import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
 
+/**
+ * Test {@link FakeTestsZipFolder}
+ */
 public class FakeTestsZipFolderTest extends TestCase {
 
     private Map<String, ItemType> mFiles;

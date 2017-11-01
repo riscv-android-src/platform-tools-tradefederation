@@ -31,7 +31,7 @@ import java.io.File;
 public class AdditionalFilesInstaller implements ITargetPreparer, ITargetCleaner {
 
     // TODO: make this an option
-    private final String DEST_PATH = "/data/local/tmp/";
+    private static final String DEST_PATH = "/data/local/tmp/";
 
     @Option(name = "uninstall", description = "remove all contents after test completes.")
     private boolean mUninstall = true;
@@ -52,7 +52,7 @@ public class AdditionalFilesInstaller implements ITargetPreparer, ITargetCleaner
             CLog.d("Pushing %s to %s", file.getName(), remotePath);
             if (!device.pushFile(file, remotePath)) {
                 throw new TargetSetupError(String.format("Failed to push %s to %s",
-                        file.getName(), remotePath));
+                        file.getName(), remotePath), device.getDeviceDescriptor());
             }
         }
     }
@@ -87,7 +87,8 @@ public class AdditionalFilesInstaller implements ITargetPreparer, ITargetCleaner
                     return;
                 }
             }
-            throw new TargetSetupError(String.format("failed to remove files from %s", DEST_PATH));
+            throw new TargetSetupError(String.format("failed to remove files from %s", DEST_PATH),
+                    device.getDeviceDescriptor());
         }
     }
 

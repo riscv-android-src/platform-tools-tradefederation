@@ -229,7 +229,7 @@ public class CommandFileParser {
      * Checks if a line should be parsed or ignored.  Basically, ignore if the line is commented
      * or is empty.
      *
-     * @param line A {@see String} containing the line of input to check
+     * @param line A {@link String} containing the line of input to check
      * @return {@code true} if we should parse the line, {@code false} if we should ignore it.
      */
     private static boolean shouldParseLine(String line) {
@@ -346,7 +346,7 @@ public class CommandFileParser {
      * Parses the commands contained in {@code file}, doing macro expansions as necessary
      *
      * @param file the {@link File} to parse
-     * @returns the list of parsed commands
+     * @return the list of parsed commands
      * @throws IOException if failed to read file
      * @throws ConfigurationException if content of file could not be parsed
      */
