@@ -16,6 +16,9 @@
 package com.android.tradefed.build;
 
 import java.io.File;
+import java.util.Collection;
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * A {@link IDeviceBuildInfo} that also contains other build artifacts contained in a directory on
@@ -23,14 +26,15 @@ import java.io.File;
  */
 public class DeviceFolderBuildInfo extends BuildInfo implements IDeviceBuildInfo, IFolderBuildInfo {
 
+    private static final long serialVersionUID = BuildSerializedVersion.VERSION;
     private IDeviceBuildInfo mDeviceBuild;
     private IFolderBuildInfo mFolderBuild;
 
     /**
-     * @see DeviceBuildInfo#DeviceBuildInfo(String, String, String)
+     * @see DeviceBuildInfo#DeviceBuildInfo(String, String)
      */
-    public DeviceFolderBuildInfo(String buildId, String testTarget, String buildName) {
-        super(buildId, testTarget, buildName);
+    public DeviceFolderBuildInfo(String buildId, String buildName) {
+        super(buildId, buildName);
     }
 
     /**
@@ -45,6 +49,14 @@ public class DeviceFolderBuildInfo extends BuildInfo implements IDeviceBuildInfo
     @Override
     public String getDeviceBuildId() {
         return mDeviceBuild.getDeviceBuildId();
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public String getDeviceBuildFlavor() {
+        return mDeviceBuild.getDeviceBuildFlavor();
     }
 
     /**
@@ -239,7 +251,16 @@ public class DeviceFolderBuildInfo extends BuildInfo implements IDeviceBuildInfo
         mDeviceBuild.setRamdiskFile(ramdisk, version);
     }
 
-
+    /** {@inheritDoc} */
+    @Override
+    public Collection<VersionedFile> getFiles() {
+        Collection<VersionedFile> rootFiles = super.getFiles();
+        Collection<VersionedFile> deviceFiles = mDeviceBuild.getFiles();
+        List<VersionedFile> combinedFiles = new ArrayList<VersionedFile>();
+        combinedFiles.addAll(rootFiles);
+        combinedFiles.addAll(deviceFiles);
+        return combinedFiles;
+    }
 
     /**
      * {@inheritDoc}
@@ -286,8 +307,7 @@ public class DeviceFolderBuildInfo extends BuildInfo implements IDeviceBuildInfo
      */
     @Override
     public IBuildInfo clone() {
-        DeviceFolderBuildInfo copy = new DeviceFolderBuildInfo(getBuildId(), getTestTag(),
-                getBuildTargetName());
+        DeviceFolderBuildInfo copy = new DeviceFolderBuildInfo(getBuildId(), getBuildTargetName());
         copy.addAllBuildAttributes(this);
         IDeviceBuildInfo deviceBuildClone = (IDeviceBuildInfo)mDeviceBuild.clone();
         copy.setDeviceBuild(deviceBuildClone);

@@ -111,7 +111,7 @@ public interface IDeviceStateMonitor {
      * Waits for the device to be in the 'adb recovery' state
      *
      * @param waitTime the maximum time in ms to wait
-     * @return
+     * @return True if the device is in Recovery before the timeout, False otherwise.
      */
     public boolean waitForDeviceInRecovery(long waitTime);
 
@@ -143,7 +143,7 @@ public interface IDeviceStateMonitor {
      *
      * @param mountName the name of the mount point
      * @return the mount point or <code>null</code>
-     * @see {@link IDevice#getMountPoint(String)}
+     * @see IDevice#getMountPoint(String)
      */
     public String getMountPoint(String mountName);
 
@@ -152,7 +152,7 @@ public interface IDeviceStateMonitor {
      *
      * @param device
      *
-     * @see {@link IManagedTestDevice#setIDevice(IDevice)}
+     * @see IManagedTestDevice#setIDevice(IDevice)
      */
     public void setIDevice(IDevice device);
 

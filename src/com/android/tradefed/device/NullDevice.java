@@ -21,9 +21,9 @@ import com.android.ddmlib.IDevice;
  * A placeholder {@link IDevice} used by {@link DeviceManager} to allocate when
  * {@link IDeviceSelection#nullDeviceRequested()} is <code>true</code>
  */
-class NullDevice extends StubDevice {
+public class NullDevice extends StubDevice {
 
-    NullDevice(String serial) {
+    public NullDevice(String serial) {
         super(serial, false);
     }
 }

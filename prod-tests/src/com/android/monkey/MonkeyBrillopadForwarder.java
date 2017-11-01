@@ -31,9 +31,10 @@ import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.InputStreamSource;
 import com.android.tradefed.result.LogDataType;
 import com.android.tradefed.result.ResultForwarder;
+
 import com.google.common.base.Throwables;
 
-import junit.framework.Assert;
+import org.junit.Assert;
 
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -42,7 +43,7 @@ import java.util.HashMap;
 import java.util.Map;
 
 /**
- * A {@link ResultForwarded} that intercepts monkey and bug report logs, extracts relevant metrics
+ * A {@link ResultForwarder} that intercepts monkey and bug report logs, extracts relevant metrics
  * from them using brillopad, and forwards the results to the specified
  * {@link ITestInvocationListener}.
  */
@@ -65,10 +66,7 @@ public class MonkeyBrillopadForwarder extends ResultForwarder {
             mDescription = desc;
         }
 
-        /**
-         * A User friendly description of the status
-         * @return
-         */
+        /** Returns a User friendly description of the status. */
         String getDescription() {
             return mDescription;
         }

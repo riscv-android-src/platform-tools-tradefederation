@@ -30,7 +30,8 @@ class DeviceTracker {
 
     /**
     * Use on demand holder idiom
-    * @see http://en.wikipedia.org/wiki/Singleton_pattern#The_solution_of_Bill_Pugh
+    * @see <a href="http://en.wikipedia.org/wiki/Singleton_pattern#The_solution_of_Bill_Pugh">
+    * http://en.wikipedia.org/wiki/Singleton_pattern#The_solution_of_Bill_Pugh</a>
     */
     private static class SingletonHolder {
         public static final DeviceTracker cInstance = new DeviceTracker();

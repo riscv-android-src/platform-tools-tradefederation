@@ -107,8 +107,6 @@ public class FakeTestsZipFolder {
     /**
      * Returns the base of the fake unzipped folder This would be a replacement
      * of root folder where a real tests zip is expanded
-     *
-     * @return
      */
     public File getBasePath() {
         return mBase;

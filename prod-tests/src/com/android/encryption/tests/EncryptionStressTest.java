@@ -25,7 +25,7 @@ import com.android.tradefed.testtype.IDeviceTest;
 import com.android.tradefed.testtype.IRemoteTest;
 import com.android.tradefed.util.SimpleStats;
 
-import junit.framework.Assert;
+import org.junit.Assert;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -57,7 +57,7 @@ public class EncryptionStressTest implements IDeviceTest, IRemoteTest {
             String message = String.format("Failed to unencrypt device %s",
                     mTestDevice.getSerialNumber());
             CLog.e(message);
-            throw new DeviceNotAvailableException(message);
+            throw new DeviceNotAvailableException(message, mTestDevice.getSerialNumber());
         }
 
         long start = System.currentTimeMillis();
@@ -67,7 +67,7 @@ public class EncryptionStressTest implements IDeviceTest, IRemoteTest {
             String message = String.format("Failed to unencrypt device %s",
                     mTestDevice.getSerialNumber());
             CLog.e(message);
-            throw new DeviceNotAvailableException(message);
+            throw new DeviceNotAvailableException(message, mTestDevice.getSerialNumber());
         }
 
         mEncryptionStats.add((System.currentTimeMillis() - start) / 1000.0);
@@ -76,7 +76,7 @@ public class EncryptionStressTest implements IDeviceTest, IRemoteTest {
             String message = String.format("Failed to unencrypt device %s",
                     mTestDevice.getSerialNumber());
             CLog.e(message);
-            throw new DeviceNotAvailableException(message);
+            throw new DeviceNotAvailableException(message, mTestDevice.getSerialNumber());
         }
 
         mTestDevice.waitForDeviceAvailable();
@@ -87,7 +87,7 @@ public class EncryptionStressTest implements IDeviceTest, IRemoteTest {
             String message = String.format("Failed to unencrypt device %s",
                     mTestDevice.getSerialNumber());
             CLog.e(message);
-            throw new DeviceNotAvailableException(message);
+            throw new DeviceNotAvailableException(message, mTestDevice.getSerialNumber());
         }
     }
 
@@ -98,9 +98,7 @@ public class EncryptionStressTest implements IDeviceTest, IRemoteTest {
     public void run(ITestInvocationListener listener) throws DeviceNotAvailableException {
         Assert.assertNotNull(mTestDevice);
 
-        String key = String.format("EncryptionStressTest", mTestDevice.getSerialNumber());
-
-        listener.testRunStarted(key, 0);
+        listener.testRunStarted("EncryptionStressTest", 0);
 
         for (int i = 0; i < mIterations; i++) {
             CLog.i("Starting encryption stress iteration %d of %d on device %s", i + 1, mIterations,
@@ -109,8 +107,9 @@ public class EncryptionStressTest implements IDeviceTest, IRemoteTest {
         }
 
         Map<String, String> metrics = new HashMap<String, String>(2);
-        metrics.put(mTestDevice.getSerialNumber() + "_iterations",
-                new Integer(mEncryptionStats.size()).toString());
+        metrics.put(
+                mTestDevice.getSerialNumber() + "_iterations",
+                Integer.valueOf(mEncryptionStats.size()).toString());
         metrics.put(mTestDevice.getSerialNumber() + "_mean", mEncryptionStats.mean().toString());
 
         listener.testRunEnded(0, metrics);

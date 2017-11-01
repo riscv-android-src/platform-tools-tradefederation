@@ -27,14 +27,22 @@ import java.util.List;
  */
 public class AppDeviceBuildInfo extends BuildInfo implements IDeviceBuildInfo, IAppBuildInfo {
 
+    private static final long serialVersionUID = BuildSerializedVersion.VERSION;
     private IDeviceBuildInfo mDeviceBuild;
     private IAppBuildInfo mAppBuildInfo;
 
     /**
      * @see DeviceBuildInfo#DeviceBuildInfo(String, String, String)
      */
-    public AppDeviceBuildInfo(String buildId, String testTarget, String buildName) {
+    /*public AppDeviceBuildInfo(String buildId, String testTarget, String buildName) {
         super(buildId, testTarget, buildName);
+    }*/
+
+    /**
+     * @see DeviceBuildInfo#DeviceBuildInfo(String, String)
+     */
+    public AppDeviceBuildInfo(String buildId, String buildName) {
+        super(buildId, buildName);
     }
 
     /**
@@ -59,6 +67,13 @@ public class AppDeviceBuildInfo extends BuildInfo implements IDeviceBuildInfo, I
         return mDeviceBuild.getDeviceBuildId();
     }
 
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public String getDeviceBuildFlavor() {
+        return mDeviceBuild.getDeviceBuildFlavor();
+    }
     /**
      * {@inheritDoc}
      */
@@ -336,14 +351,12 @@ public class AppDeviceBuildInfo extends BuildInfo implements IDeviceBuildInfo, I
         }
     }
 
-
     /**
      * {@inheritDoc}
      */
     @Override
     public IBuildInfo clone() {
-        AppDeviceBuildInfo copy = new AppDeviceBuildInfo(getBuildId(), getTestTag(),
-                getBuildTargetName());
+        AppDeviceBuildInfo copy = new AppDeviceBuildInfo(getBuildId(), getBuildTargetName());
         copy.addAllBuildAttributes(this);
         IDeviceBuildInfo deviceBuildClone = (IDeviceBuildInfo) mDeviceBuild.clone();
         copy.setDeviceBuild(deviceBuildClone);

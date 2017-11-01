@@ -42,9 +42,8 @@ interface IConfigDefLoader {
      * @param def the {@link ConfigurationDef} to load the data into
      * @param parentName the name of the parent config
      * @param name the name of config to include
-     * @return {@link ConfigurationDef}
      * @throws ConfigurationException if an error occurred loading the config
      */
-    void loadIncludedConfiguration(ConfigurationDef def, String parentName, String name)
-            throws ConfigurationException;
+    void loadIncludedConfiguration(ConfigurationDef def, String parentName, String name,
+            Map<String, String> templateMap) throws ConfigurationException;
 }

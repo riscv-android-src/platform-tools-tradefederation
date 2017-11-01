@@ -16,6 +16,12 @@
 
 package com.android.tradefed.config;
 
+import com.android.tradefed.build.IBuildInfo;
+import com.android.tradefed.device.DeviceNotAvailableException;
+import com.android.tradefed.device.ITestDevice;
+import com.android.tradefed.targetprep.BuildError;
+import com.android.tradefed.targetprep.ITargetPreparer;
+import com.android.tradefed.targetprep.TargetSetupError;
 import com.android.tradefed.util.FileUtil;
 import com.android.tradefed.util.MultiMap;
 import com.android.tradefed.util.TimeVal;
@@ -179,18 +185,41 @@ public class OptionSetterTest extends TestCase {
                 new ArrayList<DefaultEnumClass>();
     }
 
-    private static class ParentOptionSource {
-        @Option(name = "string")
+    @OptionClass(alias = "parent")
+    private static class ParentOptionSource implements ITargetPreparer {
+        @Option(name = "string", shortName = 's')
         private String mString = null;
+
+        @Option(name = "boolean")
+        private boolean mBoolean = false;
 
         protected String getParentString() {
             return mString;
         }
+
+        @Override
+        public void setUp(ITestDevice device, IBuildInfo buildInfo)
+                throws TargetSetupError, BuildError, DeviceNotAvailableException {
+            // empty on purpose
+        }
     }
 
+    @OptionClass(alias = "child")
     private static class ChildOptionSource extends ParentOptionSource {
-        @Option(name = "child-string")
+        @Option(name = "child-string", shortName = 'c')
         private String mChildString = null;
+
+        @Option(name = "child-boolean")
+        private boolean mChildBoolean = false;
+    }
+
+    /**
+     * This class will throw an exception since it has the same alias as its parent
+     */
+    @OptionClass(alias = "child")
+    private static class GrandChildOptionSource extends ChildOptionSource {
+        @Option(name = "gran-child-string")
+        private String mGranChildString = null;
     }
 
     /**
@@ -317,7 +346,7 @@ public class OptionSetterTest extends TestCase {
     /**
      * Test that multiple options with same name must have the same type.
      */
-    public void testOptionSetter_sharedOptionsDiffType() throws ConfigurationException {
+    public void testOptionSetter_sharedOptionsDiffType() {
         try {
             new OptionSetter(new AllTypesOptionSource(), new SharedOptionWrongTypeSource());
             fail("ConfigurationException not thrown");
@@ -350,6 +379,29 @@ public class OptionSetterTest extends TestCase {
         setter.setOptionValue("shared:string", "sharedtest");
         assertEquals("alltest", object1.mString);
         assertEquals("sharedtest", object2.mMyOption);
+    }
+
+    /**
+     * Test creating an {@link OptionSetter} with a {@link IDeviceConfiguration} and ensure that
+     * frequencies are still correctly incremented.
+     */
+    public void testOptionSetter_frequencyForDeviceObject() throws ConfigurationException {
+        ParentOptionSource object_base = new ParentOptionSource();
+        ParentOptionSource object1 = new ParentOptionSource();
+        ParentOptionSource object2 = new ParentOptionSource();
+        IDeviceConfiguration configHolder = new DeviceConfigurationHolder("default");
+        configHolder.addSpecificConfig(object1);
+        configHolder.addSpecificConfig(object2);
+        OptionSetter setter = new OptionSetter(object_base, configHolder);
+        setter.setOptionValue(
+                "com.android.tradefed.config.OptionSetterTest$ParentOptionSource:1:string", "one");
+        setter.setOptionValue(
+                "com.android.tradefed.config.OptionSetterTest$ParentOptionSource:2:string", "two");
+        setter.setOptionValue(
+                "com.android.tradefed.config.OptionSetterTest$ParentOptionSource:3:string", "3");
+        assertEquals(object_base.mString, "one");
+        assertEquals(object1.mString, "two");
+        assertEquals(object2.mString, "3");
     }
 
     /**
@@ -391,7 +443,7 @@ public class OptionSetterTest extends TestCase {
     /**
      * Test that options with {@link OptionSetter#NAMESPACE_SEPARATOR} are rejected
      */
-    public void testOptionSetter_badOptionName() throws ConfigurationException {
+    public void testOptionSetter_badOptionName() {
         try {
             new OptionSetter(new BadOptionNameSource());
             fail("ConfigurationException not thrown");
@@ -490,7 +542,7 @@ public class OptionSetterTest extends TestCase {
     /**
      * Test {@link OptionSetter#setOptionValue(String, String)} for a Collection.
      */
-    public void testSetOptionValue_collection() throws ConfigurationException, IOException {
+    public void testSetOptionValue_collection() throws ConfigurationException {
         AllTypesOptionSource optionSource = new AllTypesOptionSource();
         final String expectedValue = "stringvalue";
         assertSetOptionValue(optionSource, "string_collection", expectedValue);
@@ -501,7 +553,7 @@ public class OptionSetterTest extends TestCase {
     /**
      * Test {@link OptionSetter#setOptionValue(String, String)} for a Map.
      */
-    public void testSetOptionValue_map() throws ConfigurationException, IOException {
+    public void testSetOptionValue_map() throws ConfigurationException {
         AllTypesOptionSource optionSource = new AllTypesOptionSource();
         final String expectedKey = "stringkey";
         final String expectedValue = "stringvalue";
@@ -518,7 +570,7 @@ public class OptionSetterTest extends TestCase {
     /**
      * Test {@link OptionSetter#setOptionValue(String, String)} for a MultiMap.
      */
-    public void testSetOptionValue_multimap() throws ConfigurationException, IOException {
+    public void testSetOptionValue_multimap() throws ConfigurationException {
         AllTypesOptionSource optionSource = new AllTypesOptionSource();
         final String expectedKey = "stringkey";
         final String expectedValue1 = "stringvalue1";
@@ -551,7 +603,7 @@ public class OptionSetterTest extends TestCase {
      * Test {@link OptionSetter#setOptionValue(String, String)} for a boolean for a non-boolean
      * value.
      */
-    public void testSetOptionValue_booleanInvalid() throws ConfigurationException {
+    public void testSetOptionValue_booleanInvalid() {
         AllTypesOptionSource optionSource = new AllTypesOptionSource();
         assertSetOptionValueInvalid(optionSource, "boolean", "blah");
     }
@@ -577,7 +629,7 @@ public class OptionSetterTest extends TestCase {
     /**
      * Test {@link OptionSetter#setOptionValue(String, String)} for a byte for an invalid value.
      */
-    public void testSetOptionValue_byteInvalid() throws ConfigurationException {
+    public void testSetOptionValue_byteInvalid() {
         AllTypesOptionSource optionSource = new AllTypesOptionSource();
         assertSetOptionValueInvalid(optionSource, "byte", "blah");
     }
@@ -612,7 +664,7 @@ public class OptionSetterTest extends TestCase {
     /**
      * Test {@link OptionSetter#setOptionValue(String, String)} for a short for an invalid value.
      */
-    public void testSetOptionValue_shortInvalid() throws ConfigurationException {
+    public void testSetOptionValue_shortInvalid() {
         AllTypesOptionSource optionSource = new AllTypesOptionSource();
         assertSetOptionValueInvalid(optionSource, "short", "blah");
     }
@@ -638,7 +690,7 @@ public class OptionSetterTest extends TestCase {
     /**
      * Test {@link OptionSetter#setOptionValue(String, String)} for a int for an invalid value.
      */
-    public void testSetOptionValue_intInvalid() throws ConfigurationException {
+    public void testSetOptionValue_intInvalid() {
         AllTypesOptionSource optionSource = new AllTypesOptionSource();
         assertSetOptionValueInvalid(optionSource, "int", "blah");
     }
@@ -664,7 +716,7 @@ public class OptionSetterTest extends TestCase {
     /**
      * Test {@link OptionSetter#setOptionValue(String, String)} for a long for an invalid value.
      */
-    public void testSetOptionValue_longInvalid() throws ConfigurationException {
+    public void testSetOptionValue_longInvalid() {
         AllTypesOptionSource optionSource = new AllTypesOptionSource();
         assertSetOptionValueInvalid(optionSource, "long", "blah");
     }
@@ -725,7 +777,7 @@ public class OptionSetterTest extends TestCase {
     /**
      * Test {@link OptionSetter#setOptionValue(String, String)} for a float for an invalid value.
      */
-    public void testSetOptionValue_floatInvalid() throws ConfigurationException {
+    public void testSetOptionValue_floatInvalid() {
         AllTypesOptionSource optionSource = new AllTypesOptionSource();
         assertSetOptionValueInvalid(optionSource, "float", "blah");
     }
@@ -751,7 +803,7 @@ public class OptionSetterTest extends TestCase {
     /**
      * Test {@link OptionSetter#setOptionValue(String, String)} for a double for an invalid value.
      */
-    public void testSetOptionValue_doubleInvalid() throws ConfigurationException {
+    public void testSetOptionValue_doubleInvalid() {
         AllTypesOptionSource optionSource = new AllTypesOptionSource();
         assertSetOptionValueInvalid(optionSource, "double", "blah");
     }
@@ -766,7 +818,7 @@ public class OptionSetterTest extends TestCase {
             assertSetOptionValue(optionSource, "file", tmpFile.getAbsolutePath());
             assertEquals(tmpFile.getAbsolutePath(), optionSource.mFile.getAbsolutePath());
         } finally {
-            tmpFile.delete();
+            FileUtil.deleteFile(tmpFile);
         }
     }
 
@@ -842,7 +894,7 @@ public class OptionSetterTest extends TestCase {
     /**
      * Test {@link OptionSetter#setOptionValue(String, String)} for an Enum.
      */
-    public void testSetOptionValue_enumBadValue() throws ConfigurationException {
+    public void testSetOptionValue_enumBadValue() {
         AllTypesOptionSource optionSource = new AllTypesOptionSource();
         try {
             assertSetOptionValue(optionSource, "enum", "noexist");
@@ -867,7 +919,7 @@ public class OptionSetterTest extends TestCase {
     /**
      * Test {@link OptionSetter} for a final field
      */
-    public void testOptionSetter_finalField() throws ConfigurationException {
+    public void testOptionSetter_finalField() {
         FinalOption optionSource = new FinalOption();
         try {
             new OptionSetter(optionSource);

@@ -70,8 +70,8 @@ public class TestSystemAppInstallSetup implements ITargetPreparer {
         }
         File testsDir = ((IDeviceBuildInfo)buildInfo).getTestsDir();
         if (testsDir == null || !testsDir.exists()) {
-            throw new TargetSetupError(
-                    "Provided buildInfo does not contain a valid tests directory");
+            throw new TargetSetupError("Provided buildInfo does not contain a valid tests "
+                    + "directory", device.getDeviceDescriptor());
         }
         device.remountSystemWritable();
         device.setRecoveryMode(RecoveryMode.ONLINE);
@@ -80,9 +80,8 @@ public class TestSystemAppInstallSetup implements ITargetPreparer {
         for (String testAppName : mTestFileNames) {
             File testAppFile = FileUtil.getFileForPath(testsDir, "DATA", "app", testAppName);
             if (!testAppFile.exists()) {
-                throw new TargetSetupError(
-                    String.format("Could not find test app %s directory in extracted tests.zip",
-                            testAppFile));
+                throw new TargetSetupError(String.format("Could not find test app %s directory in "
+                        + "extracted tests.zip", testAppFile), device.getDeviceDescriptor());
             }
             device.pushFile(testAppFile,  String.format("/system/app/%s", testAppName));
         }

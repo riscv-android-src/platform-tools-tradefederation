@@ -18,7 +18,6 @@ package com.android.tradefed.invoker;
 
 import com.android.tradefed.config.IConfiguration;
 import com.android.tradefed.device.DeviceNotAvailableException;
-import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.result.ITestInvocationListener;
 
 /**
@@ -29,18 +28,19 @@ public interface ITestInvocation {
     /**
      * Perform the test invocation.
      *
-     * @param device the {@link ITestDevice} to perform tests. May be <code>null</code> if tests to
-     *            run are not dependent on a device
+     * @param metadata the {@link IInvocationContext} to perform tests.
      * @param config the {@link IConfiguration} of this test run.
      * @param rescheduler the {@link IRescheduler}, for rescheduling portions of the invocation for
-     *            execution on another resource(s)
+     *        execution on another resource(s)
      * @param extraListeners {@link ITestInvocationListener}s to notify, in addition to those in
-     *            <var>config</var>
+     *        <var>config</var>
      * @throws DeviceNotAvailableException if communication with device was lost
      * @throws Throwable
      */
-    public void invoke(ITestDevice device, IConfiguration config, IRescheduler rescheduler,
-            ITestInvocationListener... extraListeners) throws DeviceNotAvailableException,
-            Throwable;
+    public void invoke(IInvocationContext metadata, IConfiguration config,
+            IRescheduler rescheduler, ITestInvocationListener... extraListeners)
+            throws DeviceNotAvailableException, Throwable;
 
+    /** Notify the {@link TestInvocation} that TradeFed has been requested to stop. */
+    public default void notifyInvocationStopped() {}
 }

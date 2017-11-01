@@ -26,17 +26,18 @@ import java.io.IOException;
  */
 public class FolderBuildInfo extends BuildInfo implements IFolderBuildInfo {
 
+    private static final long serialVersionUID = BuildSerializedVersion.VERSION;
     private File mRootDir;
 
     /**
-     * @see {@link BuildInfo#BuildInfo(String, String, String)}
+     * @see BuildInfo#BuildInfo(String, String)
      */
-    public FolderBuildInfo(String buildId, String testTarget, String buildName) {
-        super(buildId, testTarget, buildName);
+    public FolderBuildInfo(String buildId, String buildName) {
+        super(buildId, buildName);
     }
 
     /**
-     * @see {@link BuildInfo#BuildInfo(BuildInfo)}
+     * @see BuildInfo#BuildInfo(BuildInfo)
      */
     FolderBuildInfo(BuildInfo buildToCopy) {
         super(buildToCopy);
@@ -67,11 +68,12 @@ public class FolderBuildInfo extends BuildInfo implements IFolderBuildInfo {
             FileUtil.recursiveDelete(mRootDir);
         }
         mRootDir = null;
+        super.cleanUp();
     }
 
     @Override
     public IBuildInfo clone() {
-        FolderBuildInfo copy = new FolderBuildInfo(getBuildId(), getTestTag(), getBuildTargetName());
+        FolderBuildInfo copy = new FolderBuildInfo(getBuildId(), getBuildTargetName());
         copy.addAllBuildAttributes(this);
         try {
             File copyDir = FileUtil.createTempDir("foldercopy");

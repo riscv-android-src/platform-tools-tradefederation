@@ -16,12 +16,21 @@
 package com.android.tradefed.testtype;
 
 import com.android.tradefed.device.DeviceNotAvailableException;
+import com.android.tradefed.result.JUnitToInvocationResultForwarder;
+import com.android.tradefed.testtype.MetricTestCase.LogHolder;
+import com.android.tradefed.util.StreamUtil;
 
 import junit.framework.AssertionFailedError;
 import junit.framework.Protectable;
 import junit.framework.Test;
 import junit.framework.TestCase;
+import junit.framework.TestListener;
 import junit.framework.TestResult;
+
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 /**
  * An specialization of {@link junit.framework.TestResult} that will abort when a
@@ -86,5 +95,49 @@ public class DeviceTestResult extends TestResult {
         } finally {
             endTest(test);
         }
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public void endTest(Test test) {
+        Map<String, String> metrics = new HashMap<>();
+        if (test instanceof MetricTestCase) {
+            MetricTestCase metricTest = (MetricTestCase) test;
+            metrics.putAll(metricTest.mMetrics);
+            // reset the metric for next test.
+            metricTest.mMetrics = new HashMap<String, String>();
+
+            // testLog the log files
+            for (TestListener each : cloneListeners()) {
+                for (LogHolder log : metricTest.mLogs) {
+                    if (each instanceof JUnitToInvocationResultForwarder) {
+                        ((JUnitToInvocationResultForwarder) each)
+                                .testLog(log.mDataName, log.mDataType, log.mDataStream);
+                    }
+                    StreamUtil.cancel(log.mDataStream);
+                }
+            }
+            metricTest.mLogs.clear();
+        }
+
+        for (TestListener each : cloneListeners()) {
+            // when possible pass the metrics collected from the tests to our reporters.
+            if (!metrics.isEmpty() && each instanceof JUnitToInvocationResultForwarder) {
+                ((JUnitToInvocationResultForwarder) each).endTest(test, metrics);
+            } else {
+                each.endTest(test);
+            }
+        }
+    }
+
+    /**
+     * Returns a copy of the listeners. Copied from {@link TestResult} to enable overriding {@link
+     * #endTest(Test)} in a similar way. This allows to override {@link #endTest(Test)} and report
+     * our metrics.
+     */
+    private synchronized List<TestListener> cloneListeners() {
+        List<TestListener> result = new ArrayList<TestListener>();
+        result.addAll(fListeners);
+        return result;
     }
 }

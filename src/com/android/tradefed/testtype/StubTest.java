@@ -17,13 +17,16 @@
 package com.android.tradefed.testtype;
 
 import com.android.ddmlib.Log.LogLevel;
+import com.android.ddmlib.testrunner.TestIdentifier;
 import com.android.tradefed.config.Option;
 import com.android.tradefed.device.DeviceNotAvailableException;
+import com.android.tradefed.device.DeviceUnresponsiveException;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.result.ITestInvocationListener;
 
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.List;
 
 /**
@@ -36,13 +39,60 @@ public class StubTest implements IShardableTest {
             description = "Shard this test into given number of separately runnable chunks")
     private int mNumShards = 1;
 
+    @Option(
+        name = "test-throw-runtime",
+        description =
+                "test option to force the stub test to throw a runtime exception."
+                        + "Used for testing."
+    )
+    private boolean mThrowRuntime = false;
+
+    @Option(
+        name = "test-throw-not-available",
+        description =
+                "test option to force the stub test to throw a DeviceNotAvailable "
+                        + "exception. Used for testing."
+    )
+    private boolean mThrowNotAvailable = false;
+
+    @Option(
+        name = "test-throw-unresponsive",
+        description =
+                "test option to force the stub test to throw a DeviceUnresponsive "
+                        + "exception. Used for testing."
+    )
+    private boolean mThrowUnresponsive = false;
+
+    @Option(
+        name = "run-a-test",
+        description =
+                "Test option to make the stub test trigger some test callbacks on the invocation."
+    )
+    private boolean mRunTest = false;
+
     /**
      * {@inheritDoc}
      */
     @Override
     public void run(ITestInvocationListener listener) throws DeviceNotAvailableException {
-        CLog.i("nothing to test!");
-
+        if (mThrowRuntime) {
+            throw new RuntimeException("StubTest RuntimeException");
+        }
+        if (mThrowNotAvailable) {
+            throw new DeviceNotAvailableException("StubTest DeviceNotAvailableException", "serial");
+        }
+        if (mThrowUnresponsive) {
+            throw new DeviceUnresponsiveException("StubTest DeviceUnresponsiveException", "serial");
+        }
+        if (!mRunTest) {
+            CLog.i("nothing to test!");
+        } else {
+            listener.testRunStarted("TestStub", 1);
+            TestIdentifier testId = new TestIdentifier("StubTest", "StubMethod");
+            listener.testStarted(testId);
+            listener.testEnded(testId, Collections.emptyMap());
+            listener.testRunEnded(500, Collections.emptyMap());
+        }
     }
 
     @Override

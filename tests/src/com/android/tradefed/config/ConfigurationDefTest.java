@@ -16,8 +16,6 @@
 package com.android.tradefed.config;
 
 import com.android.tradefed.build.StubBuildProvider;
-import com.android.tradefed.testtype.HostTest;
-import com.android.tradefed.testtype.InstrumentationTest;
 
 import junit.framework.TestCase;
 
@@ -97,6 +95,22 @@ public class ConfigurationDefTest extends TestCase {
         mConfigDef.addOptionDef(OPTION_NAME, null, OPTION_VALUE, CONFIG_NAME);
         IConfiguration config = mConfigDef.createConfiguration();
         OptionTest test = (OptionTest)config.getBuildProvider();
+        assertEquals(OPTION_VALUE, test.mOption);
+    }
+
+    /**
+     * Test {@link ConfigurationDef#createConfiguration()} for a String field.
+     */
+    public void testCreateConfiguration_withDeviceHolder() throws ConfigurationException {
+        mConfigDef = new ConfigurationDef(CONFIG_NAME);
+        mConfigDef.setMultiDeviceMode(true);
+        mConfigDef.setDescription(CONFIG_DESCRIPTION);
+        mConfigDef.addConfigObjectDef("device1:" + Configuration.BUILD_PROVIDER_TYPE_NAME,
+                OptionTest.class.getName());
+        mConfigDef.addOptionDef(OPTION_NAME, null, OPTION_VALUE, CONFIG_NAME);
+        IConfiguration config = mConfigDef.createConfiguration();
+        OptionTest test = (OptionTest)config.getDeviceConfigByName("device1")
+                .getBuildProvider();
         assertEquals(OPTION_VALUE, test.mOption);
     }
 }

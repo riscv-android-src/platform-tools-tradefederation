@@ -26,6 +26,8 @@ import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.util.AaptParser;
 
+import com.google.common.annotations.VisibleForTesting;
+
 import java.io.File;
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -72,6 +74,10 @@ public class AppSetup implements ITargetPreparer, ITargetCleaner {
             "DeviceUnresponsiveException will be thrown if it is timed out.")
     private long mPostInstallCmdTimeout = 2 * 60 * 1000;  // default to 2 minutes
 
+    @Option(name = "check-min-sdk", description =
+            "check app's min sdk prior to install and skip if device api level is too low.")
+    private boolean mCheckMinSdk = false;
+
     /** contains package names of installed apps. Used for uninstall */
     private Set<String> mInstalledPkgs = new HashSet<String>();
 
@@ -93,11 +99,27 @@ public class AppSetup implements ITargetPreparer, ITargetCleaner {
             // of service
             // TODO: in future, consider doing more sophisticated recovery operations
             throw new DeviceNotAvailableException(String.format(
-                    "Failed to uninstall apps on %s", device.getSerialNumber()));
+                    "Failed to uninstall apps on %s", device.getSerialNumber()),
+                    device.getSerialNumber());
         }
 
         if (mInstall) {
             for (VersionedFile apkFile : appBuild.getAppPackageFiles()) {
+                if (mCheckMinSdk) {
+                    AaptParser aaptParser = doAaptParse(apkFile.getFile());
+                    if (aaptParser == null) {
+                        throw new TargetSetupError(
+                                String.format("Failed to extract info from '%s' using aapt",
+                                        apkFile.getFile().getName()), device.getDeviceDescriptor());
+                    }
+                    if (device.getApiLevel() < aaptParser.getSdkVersion()) {
+                        CLog.w("Skipping installing apk %s on device %s because " +
+                                "SDK level require is %d, but device SDK level is %d",
+                                apkFile.toString(), device.getSerialNumber(),
+                                aaptParser.getSdkVersion(), device.getApiLevel());
+                        continue;
+                    }
+                }
                 String result = device.installPackage(apkFile.getFile(), true,
                         mInstallFlags.toArray(new String[mInstallFlags.size()]));
                 if (result != null) {
@@ -106,15 +128,16 @@ public class AppSetup implements ITargetPreparer, ITargetCleaner {
                     // devicenotavail depending on error code
                     throw new BuildError(String.format(
                             "Failed to install %s on %s. Reason: %s",
-                            apkFile.getFile().getName(), device.getSerialNumber(), result));
+                            apkFile.getFile().getName(), device.getSerialNumber(), result),
+                            device.getDeviceDescriptor());
                 }
                 if (mUninstall && !mUninstallAll) {
-                    addPackageNameToUninstall(apkFile.getFile());
+                    addPackageNameToUninstall(apkFile.getFile(), device);
                 }
             }
         }
 
-       if (mPostInstallCmds != null && !mPostInstallCmds.isEmpty()){
+       if (!mPostInstallCmds.isEmpty()){
            for (String cmd : mPostInstallCmds) {
                // If the command had any output, the executeShellCommand method will log it at the
                // VERBOSE level; so no need to do any logging from here.
@@ -125,15 +148,25 @@ public class AppSetup implements ITargetPreparer, ITargetCleaner {
        }
     }
 
-    private void addPackageNameToUninstall(File apkFile) throws TargetSetupError {
-        AaptParser aaptParser = AaptParser.parse(apkFile);
+    /**
+     * Helper to parse an apk file with aapt.
+     */
+    @VisibleForTesting
+    AaptParser doAaptParse(File apkFile) {
+        return AaptParser.parse(apkFile);
+    }
+
+    private void addPackageNameToUninstall(File apkFile, ITestDevice device)
+            throws TargetSetupError {
+        AaptParser aaptParser = doAaptParse(apkFile);
         if (aaptParser == null) {
             throw new TargetSetupError(String.format("Failed to extract info from '%s' using aapt",
-                    apkFile.getAbsolutePath()));
+                    apkFile.getAbsolutePath()), device.getDeviceDescriptor());
         }
         if (aaptParser.getPackageName() == null) {
             throw new TargetSetupError(String.format(
-                    "Failed to find package name for '%s' using aapt", apkFile.getAbsolutePath()));
+                    "Failed to find package name for '%s' using aapt", apkFile.getAbsolutePath()),
+                    device.getDeviceDescriptor());
         }
         mInstalledPkgs.add(aaptParser.getPackageName());
     }
@@ -165,7 +198,8 @@ public class AppSetup implements ITargetPreparer, ITargetCleaner {
             // of service
             // TODO: in future, consider doing more sophisticated recovery operations
             throw new DeviceNotAvailableException(String.format(
-                    "Failed to uninstall apps on %s", device.getSerialNumber()));
+                    "Failed to uninstall apps on %s", device.getSerialNumber()),
+                    device.getSerialNumber());
         }
     }
 

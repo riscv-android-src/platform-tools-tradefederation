@@ -18,6 +18,8 @@ package com.android.tradefed.util;
 
 import com.android.tradefed.log.LogUtil.CLog;
 
+import com.google.common.annotations.VisibleForTesting;
+
 import java.io.BufferedOutputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
@@ -30,6 +32,8 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.Timer;
+import java.util.TimerTask;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 
@@ -38,13 +42,18 @@ import java.util.concurrent.TimeUnit;
  */
 public class RunUtil implements IRunUtil {
 
+    public static final String RUNNABLE_NOTIFIER_NAME = "RunnableNotifier";
+    public static final String INHERITIO_PREFIX = "inheritio-";
+
     private static final int POLL_TIME_INCREASE_FACTOR = 4;
     private static final long THREAD_JOIN_POLL_INTERVAL = 30 * 1000;
+    private static final long IO_THREAD_JOIN_INTERVAL = 5 * 1000;
     private static final long PROCESS_DESTROY_TIMEOUT_SEC = 2;
     private static IRunUtil sDefaultInstance = null;
     private File mWorkingDir = null;
     private Map<String, String> mEnvVariables = new HashMap<String, String>();
     private Set<String> mUnsetEnvVariables = new HashSet<String>();
+    private EnvPriority mEnvVariablePriority = EnvPriority.UNSET;
     private ThreadLocal<Boolean> mIsInterruptAllowed = new ThreadLocal<Boolean>() {
         @Override
         protected Boolean initialValue() {
@@ -52,6 +61,8 @@ public class RunUtil implements IRunUtil {
         }
     };
     private Map<Long, String> mInterruptThreads = new HashMap<>();
+    private ThreadLocal<Timer> mWatchdogInterrupt = null;
+    private boolean mInterruptibleGlobal = false;
 
     /**
      * Create a new {@link RunUtil} object to use.
@@ -102,7 +113,7 @@ public class RunUtil implements IRunUtil {
      * the environment variable from {@link ProcessBuilder#environment()}
      *
      * @param key the variable name
-     * @see {@link ProcessBuilder#environment()}
+     * @see ProcessBuilder#environment()
      */
     @Override
     public synchronized void unsetEnvVariable(String key) {
@@ -117,20 +128,52 @@ public class RunUtil implements IRunUtil {
      */
     @Override
     public CommandResult runTimedCmd(final long timeout, final String... command) {
-        final CommandResult result = new CommandResult();
-        IRunUtil.IRunnableResult osRunnable = new RunnableResult(result, null,
-                createProcessBuilder(command));
-        CommandStatus status = runTimed(timeout, osRunnable, true);
-        result.setStatus(status);
-        return result;
+        return runTimedCmd(timeout, null, null, true, command);
     }
 
     /**
      * {@inheritDoc}
      */
     @Override
-    public CommandResult runTimedCmdRetry(long timeout, long retryInterval, int attempts,
+    public CommandResult runTimedCmd(final long timeout, OutputStream stdout,
+            OutputStream stderr, final String... command) {
+        return runTimedCmd(timeout, stdout, stderr, false, command);
+    }
+
+    /**
+     * Helper method to do a runTimeCmd call with or without outputStream specified.
+     *
+     * @return a {@CommandResult} containing results from command
+     */
+    private CommandResult runTimedCmd(final long timeout, OutputStream stdout,
+            OutputStream stderr, boolean closeStreamAfterRun, final String... command) {
+        final CommandResult result = new CommandResult();
+        IRunUtil.IRunnableResult osRunnable =
+                createRunnableResult(result, stdout, stderr, closeStreamAfterRun, command);
+        CommandStatus status = runTimed(timeout, osRunnable, true);
+        result.setStatus(status);
+        return result;
+    }
+
+    /**
+     * Create a {@link com.android.tradefed.util.IRunUtil.IRunnableResult} that will run the
+     * command.
+     */
+    @VisibleForTesting
+    IRunUtil.IRunnableResult createRunnableResult(
+            CommandResult result,
+            OutputStream stdout,
+            OutputStream stderr,
+            boolean closeStreamAfterRun,
             String... command) {
+        return new RunnableResult(
+                result, null, createProcessBuilder(command), stdout, stderr, closeStreamAfterRun);
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public CommandResult runTimedCmdRetry(
+            long timeout, long retryInterval, int attempts, String... command) {
         CommandResult result = null;
         int counter = 0;
         while (counter < attempts) {
@@ -153,12 +196,24 @@ public class RunUtil implements IRunUtil {
         if (mWorkingDir != null) {
             processBuilder.directory(mWorkingDir);
         }
-        if (!mEnvVariables.isEmpty()) {
-            processBuilder.environment().putAll(mEnvVariables);
-        }
-        if (!mUnsetEnvVariables.isEmpty()) {
-            // in this implementation, the unsetEnv's priority is higher than set.
-            processBuilder.environment().keySet().removeAll(mUnsetEnvVariables);
+        // By default unset an env. for process has higher priority, but in some case we might want
+        // the 'set' to have priority.
+        if (EnvPriority.UNSET.equals(mEnvVariablePriority)) {
+            if (!mEnvVariables.isEmpty()) {
+                processBuilder.environment().putAll(mEnvVariables);
+            }
+            if (!mUnsetEnvVariables.isEmpty()) {
+                // in this implementation, the unsetEnv's priority is higher than set.
+                processBuilder.environment().keySet().removeAll(mUnsetEnvVariables);
+            }
+        } else {
+            if (!mUnsetEnvVariables.isEmpty()) {
+                processBuilder.environment().keySet().removeAll(mUnsetEnvVariables);
+            }
+            if (!mEnvVariables.isEmpty()) {
+                // in this implementation, the setEnv's priority is higher than set.
+                processBuilder.environment().putAll(mEnvVariables);
+            }
         }
         return processBuilder.command(commandList);
     }
@@ -245,11 +300,16 @@ public class RunUtil implements IRunUtil {
             throws IOException {
         CLog.v("Running %s", command);
         Process process = createProcessBuilder(command).start();
-        inheritIO(process.getInputStream(), output);
-        inheritIO(process.getErrorStream(), output);
+        inheritIO(
+                process.getInputStream(),
+                output,
+                String.format(INHERITIO_PREFIX + "stdout-%s", command));
+        inheritIO(
+                process.getErrorStream(),
+                output,
+                String.format(INHERITIO_PREFIX + "stderr-%s", command));
         return process;
     }
-
 
     /**
      * {@inheritDoc}
@@ -259,11 +319,16 @@ public class RunUtil implements IRunUtil {
             boolean logErrors) {
         checkInterrupted();
         RunnableNotifier runThread = new RunnableNotifier(runnable, logErrors);
-        CLog.d("Running command with timeout: %dms", timeout);
+        if (timeout > 0l) {
+            CLog.d("Running command with timeout: %dms", timeout);
+        } else {
+            CLog.d("Running command without timeout.");
+        }
         runThread.start();
         long startTime = System.currentTimeMillis();
         long pollIterval = 0;
-        if (timeout < THREAD_JOIN_POLL_INTERVAL) {
+        if (timeout > 0l && timeout < THREAD_JOIN_POLL_INTERVAL) {
+            // only set the pollInterval if we have a timeout
             pollIterval = timeout;
         } else {
             pollIterval = THREAD_JOIN_POLL_INTERVAL;
@@ -280,15 +345,18 @@ public class RunUtil implements IRunUtil {
                     CLog.i("runTimed: received an interrupt but uninterruptible mode, ignoring");
                 }
             }
-        } while ((System.currentTimeMillis() - startTime) < timeout && runThread.isAlive());
-
-        if (runThread.getStatus() == CommandStatus.TIMED_OUT
-                || runThread.getStatus() == CommandStatus.EXCEPTION) {
-            CLog.i("runTimed: Calling interrupt, status is %s", runThread.getStatus());
-            runThread.interrupt();
+            checkInterrupted();
+        } while ((timeout == 0l || (System.currentTimeMillis() - startTime) < timeout)
+                && runThread.isAlive());
+        // Snapshot the status when out of the run loop because thread may terminate and return a
+        // false FAILED instead of TIMED_OUT.
+        CommandStatus status = runThread.getStatus();
+        if (CommandStatus.TIMED_OUT.equals(status) || CommandStatus.EXCEPTION.equals(status)) {
+            CLog.i("runTimed: Calling interrupt, status is %s", status);
+            runThread.cancel();
         }
         checkInterrupted();
-        return runThread.getStatus();
+        return status;
     }
 
     /**
@@ -391,6 +459,34 @@ public class RunUtil implements IRunUtil {
     public void allowInterrupt(boolean allow) {
         CLog.d("run interrupt allowed: %s", allow);
         mIsInterruptAllowed.set(allow);
+        checkInterrupted();
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public boolean isInterruptAllowed() {
+        return mIsInterruptAllowed.get();
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void setInterruptibleInFuture(Thread thread, final long timeMs) {
+        if (mWatchdogInterrupt == null) {
+            mWatchdogInterrupt = new ThreadLocal<Timer>() {
+                @Override
+                protected Timer initialValue() {
+                    return new Timer(true);
+                }
+            };
+            CLog.w("Setting future interruption in %s ms", timeMs);
+            mWatchdogInterrupt.get().schedule(new InterruptTask(thread), timeMs);
+        } else {
+            CLog.w("Future interruptible state already set.");
+        }
     }
 
     /**
@@ -406,9 +502,16 @@ public class RunUtil implements IRunUtil {
 
     private synchronized void checkInterrupted() {
         final long threadId = Thread.currentThread().getId();
-        if (mIsInterruptAllowed.get()) {
+        if (mInterruptibleGlobal) {
+            // If the global flag is on, meaning everything must terminate.
+            if (!isInterruptAllowed()) {
+                allowInterrupt(true);
+            }
+        }
+        if (isInterruptAllowed()) {
             final String message = mInterruptThreads.remove(threadId);
             if (message != null) {
+                Thread.currentThread().interrupt();
                 throw new RunInterruptedException(message);
             }
         }
@@ -426,6 +529,7 @@ public class RunUtil implements IRunUtil {
         RunnableNotifier(IRunUtil.IRunnableResult runnable, boolean logErrors) {
             // Set this thread to be a daemon so that it does not prevent
             // TF from shutting down.
+            setName(RUNNABLE_NOTIFIER_NAME);
             setDaemon(true);
             mRunnable = runnable;
             mLogErrors = logErrors;
@@ -451,8 +555,7 @@ public class RunUtil implements IRunUtil {
             }
         }
 
-        @Override
-        public void interrupt() {
+        public void cancel() {
             mRunnable.cancel();
         }
 
@@ -461,55 +564,129 @@ public class RunUtil implements IRunUtil {
         }
     }
 
-    private class RunnableResult implements IRunUtil.IRunnableResult {
+    class RunnableResult implements IRunUtil.IRunnableResult {
         private final ProcessBuilder mProcessBuilder;
         private final CommandResult mCommandResult;
         private final String mInput;
         private Process mProcess = null;
         private CountDownLatch mCountDown = null;
         private Thread mExecutionThread;
+        private OutputStream stdOut = null;
+        private OutputStream stdErr = null;
+        private final boolean mCloseStreamAfterRun;
+        private Object mLock = new Object();
+        private boolean mCancelled = false;
 
         RunnableResult(final CommandResult result, final String input,
                 final ProcessBuilder processBuilder) {
+            this(result, input, processBuilder, null, null, false);
+            stdOut = new ByteArrayOutputStream();
+            stdErr = new ByteArrayOutputStream();
+        }
+
+        /**
+         * Alternative constructor that allows redirecting the output to any Outputstream.
+         * Stdout and stderr can be independently redirected to different Outputstream
+         * implementations.
+         * If streams are null, default behavior of using a buffer will be used.
+         */
+        RunnableResult(final CommandResult result, final String input,
+                final ProcessBuilder processBuilder, OutputStream stdoutStream,
+                OutputStream stderrStream, boolean closeStreamAfterRun) {
+            mCloseStreamAfterRun = closeStreamAfterRun;
             mProcessBuilder = processBuilder;
             mInput = input;
             mCommandResult = result;
+            // Ensure the outputs are never null
+            mCommandResult.setStdout("");
+            mCommandResult.setStderr("");
             mCountDown = new CountDownLatch(1);
+            // Redirect IO, so that the outputstream for the spawn process does not fill up
+            // and cause deadlock.
+            if (stdoutStream != null) {
+                stdOut = stdoutStream;
+            } else {
+                stdOut = new ByteArrayOutputStream();
+            }
+            if (stderrStream != null) {
+                stdErr = stderrStream;
+            } else {
+                stdErr = new ByteArrayOutputStream();
+            }
+        }
+
+        /** Start a {@link Process} based on the {@link ProcessBuilder}. */
+        @VisibleForTesting
+        Process startProcess() throws IOException {
+            return mProcessBuilder.start();
         }
 
         @Override
         public boolean run() throws Exception {
-            mExecutionThread = Thread.currentThread();
-            CLog.d("Running %s", mProcessBuilder.command());
-            mProcess = mProcessBuilder.start();
-            if (mInput != null) {
-                BufferedOutputStream processStdin = new BufferedOutputStream(
-                        mProcess.getOutputStream());
-                processStdin.write(mInput.getBytes("UTF-8"));
-                processStdin.flush();
-                processStdin.close();
+            Thread stdoutThread = null;
+            Thread stderrThread = null;
+            synchronized (mLock) {
+                if (mCancelled == true) {
+                    // if cancel() was called before run() took the lock, we do not even attempt
+                    // to run.
+                    return false;
+                }
+                mExecutionThread = Thread.currentThread();
+                CLog.d("Running %s", mProcessBuilder.command());
+                mProcess = startProcess();
+                if (mInput != null) {
+                    BufferedOutputStream processStdin =
+                            new BufferedOutputStream(mProcess.getOutputStream());
+                    processStdin.write(mInput.getBytes("UTF-8"));
+                    processStdin.flush();
+                    processStdin.close();
+                }
+                // Log the command for thread tracking purpose.
+                stdoutThread =
+                        inheritIO(
+                                mProcess.getInputStream(),
+                                stdOut,
+                                String.format("inheritio-stdout-%s", mProcessBuilder.command()));
+                stderrThread =
+                        inheritIO(
+                                mProcess.getErrorStream(),
+                                stdErr,
+                                String.format("inheritio-stderr-%s", mProcessBuilder.command()));
             }
-            // Redirect IO, so that the buffer for the spawn process does not fill up and cause
-            // deadlock.
-            ByteArrayOutputStream stdOut = new ByteArrayOutputStream();
-            ByteArrayOutputStream stdErr = new ByteArrayOutputStream();
-            Thread stdoutThread = inheritIO(mProcess.getInputStream(), stdOut);
-            Thread stderrThread = inheritIO(mProcess.getErrorStream(), stdErr);
             // Wait for process to complete.
-            int rc = 1;
+            int rc = Integer.MIN_VALUE;
             try {
                 try {
                     rc = mProcess.waitFor();
                     // wait for stdout and stderr to be read
-                    stdoutThread.join();
-                    stderrThread.join();
-                    // close the buffer that holds stdout/err content
-                    stdOut.close();
-                    stdErr.close();
+                    stdoutThread.join(IO_THREAD_JOIN_INTERVAL);
+                    if (stdoutThread.isAlive()) {
+                        CLog.d("stdout read thread %s still alive.", stdoutThread.toString());
+                    }
+                    stderrThread.join(IO_THREAD_JOIN_INTERVAL);
+                    if (stderrThread.isAlive()) {
+                        CLog.d("stderr read thread %s still alive.", stderrThread.toString());
+                    }
+                    // close the buffer that holds stdout/err content if default stream
+                    // stream specified by caller should be handled by the caller.
+                    if (mCloseStreamAfterRun) {
+                        stdOut.close();
+                        stdErr.close();
+                    }
                 } finally {
                     // Write out the streams to the result.
-                    mCommandResult.setStdout(stdOut.toString("UTF-8"));
-                    mCommandResult.setStderr(stdErr.toString("UTF-8"));
+                    if (stdOut instanceof ByteArrayOutputStream) {
+                        mCommandResult.setStdout(((ByteArrayOutputStream)stdOut).toString("UTF-8"));
+                    } else {
+                        mCommandResult.setStdout("redirected to " +
+                                stdOut.getClass().getSimpleName());
+                    }
+                    if (stdErr instanceof ByteArrayOutputStream) {
+                        mCommandResult.setStderr(((ByteArrayOutputStream)stdErr).toString("UTF-8"));
+                    } else {
+                        mCommandResult.setStderr("redirected to " +
+                                stdErr.getClass().getSimpleName());
+                    }
                 }
             } finally {
                 mCountDown.countDown();
@@ -518,17 +695,20 @@ public class RunUtil implements IRunUtil {
             if (rc == 0) {
                 return true;
             } else {
-                CLog.i("%s command failed. return code %d", mProcessBuilder.command(), rc);
+                CLog.d("%s command failed. return code %d", mProcessBuilder.command(), rc);
             }
             return false;
         }
 
         @Override
         public void cancel() {
-            if (mProcess != null) {
+            mCancelled = true;
+            synchronized (mLock) {
+                if (mProcess == null) {
+                    return;
+                }
                 CLog.i("Cancelling the process execution");
                 mProcess.destroy();
-                mProcess = null;
                 try {
                     // Only allow to continue if the Stdout has been read
                     // RunnableNotifier#Interrupt is the next call and will terminate the thread
@@ -546,10 +726,13 @@ public class RunUtil implements IRunUtil {
 
     /**
      * Helper method to redirect input stream.
+     *
      * @param src {@link InputStream} to inherit/redirect from
      * @param dest {@link BufferedOutputStream} to inherit/redirect to
+     * @param name the name of the thread returned.
+     * @return a {@link Thread} started that receives the IO.
      */
-    private static Thread inheritIO(final InputStream src, final OutputStream dest) {
+    private static Thread inheritIO(final InputStream src, final OutputStream dest, String name) {
         Thread t = new Thread(new Runnable() {
             @Override
             public void run() {
@@ -560,7 +743,47 @@ public class RunUtil implements IRunUtil {
                 }
             }
         });
+        t.setName(name);
         t.start();
         return t;
+    }
+
+    /** Allow to stop the Timer Thread for the run util instance if started. */
+    @VisibleForTesting
+    void terminateTimer() {
+        if (mWatchdogInterrupt.get() != null) {
+            mWatchdogInterrupt.get().purge();
+            mWatchdogInterrupt.get().cancel();
+        }
+    }
+
+    /** Timer that will execute a interrupt on the Thread registered. */
+    private class InterruptTask extends TimerTask {
+
+        private Thread mToInterrupt = null;
+
+        public InterruptTask(Thread t) {
+            mToInterrupt = t;
+        }
+
+        @Override
+        public void run() {
+            if (mToInterrupt != null) {
+                CLog.e("Interrupting with TimerTask");
+                mInterruptibleGlobal = true;
+                mToInterrupt.interrupt();
+            }
+        }
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void setEnvVariablePriority(EnvPriority priority) {
+        if (this.equals(sDefaultInstance)) {
+            throw new UnsupportedOperationException("Cannot setWorkingDir on default RunUtil");
+        }
+        mEnvVariablePriority = priority;
     }
 }

@@ -19,13 +19,16 @@ package com.android.tradefed.targetprep;
 import com.android.ddmlib.IDevice;
 import com.android.ddmlib.Log;
 import com.android.tradefed.build.IBuildInfo;
+import com.android.tradefed.build.IDeviceBuildInfo;
 import com.android.tradefed.config.Option;
 import com.android.tradefed.config.OptionClass;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
+import com.android.tradefed.util.FileUtil;
 
 import java.io.File;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 
 /**
@@ -37,6 +40,9 @@ import java.util.Collection;
 @OptionClass(alias = "push-file")
 public class PushFilePreparer implements ITargetCleaner {
     private static final String LOG_TAG = "PushFilePreparer";
+    private static final String MEDIA_SCAN_INTENT =
+            "am broadcast -a android.intent.action.MEDIA_MOUNTED -d file://%s "
+                    + "--receiver-include-background";
 
     @Option(name="push", description=
             "A push-spec, formatted as '/path/to/srcfile.txt->/path/to/destfile.txt' or " +
@@ -69,33 +75,12 @@ public class PushFilePreparer implements ITargetCleaner {
     private Collection<String> mFilesPushed = null;
 
     /**
-     * Set abort on failure.  Exposed for testing.
-     */
-    void setAbortOnFailure(boolean value) {
-        mAbortOnFailure = value;
-    }
-
-    /**
-     * Set pushspecs.  Exposed for testing.
-     */
-    void setPushSpecs(Collection<String> pushspecs) {
-        mPushSpecs = pushspecs;
-    }
-
-    /**
-     * Set post-push commands.  Exposed for testing.
-     */
-    void setPostPushCommands(Collection<String> commands) {
-        mPostPushCommands = commands;
-    }
-
-    /**
      * Helper method to only throw if mAbortOnFailure is enabled.  Callers should behave as if this
      * method may return.
      */
-    private void fail(String message) throws TargetSetupError {
+    private void fail(String message, ITestDevice device) throws TargetSetupError {
         if (mAbortOnFailure) {
-            throw new TargetSetupError(message);
+            throw new TargetSetupError(message, device.getDeviceDescriptor());
         } else {
             // Log the error and return
             Log.w(LOG_TAG, message);
@@ -103,13 +88,26 @@ public class PushFilePreparer implements ITargetCleaner {
     }
 
     /**
-     * Resolve relative file path via {@link IBuildInfo}
+     * Resolve relative file path via {@link IBuildInfo} and test cases directories.
+     *
      * @param buildInfo the build artifact information
      * @param fileName relative file path to be resolved
-     * @return
+     * @return the file from the build info or test cases directories
      */
     public File resolveRelativeFilePath(IBuildInfo buildInfo, String fileName) {
-        return buildInfo.getFile(fileName);
+        File src = null;
+        if (buildInfo != null) {
+            src = buildInfo.getFile(fileName);
+            if (src != null && src.exists()) {
+                return src;
+            }
+        }
+
+        if (buildInfo instanceof IDeviceBuildInfo) {
+            File testsDir = ((IDeviceBuildInfo) buildInfo).getTestsDir();
+            return FileUtil.findFile(testsDir, fileName);
+        }
+        return null;
     }
 
     /**
@@ -125,7 +123,7 @@ public class PushFilePreparer implements ITargetCleaner {
         for (String pushspec : mPushSpecs) {
             String[] pair = pushspec.split("->");
             if (pair.length != 2) {
-                fail(String.format("Invalid pushspec: '%s'"));
+                fail(String.format("Invalid pushspec: '%s'", Arrays.asList(pair)), device);
                 continue;
             }
             Log.d(LOG_TAG, String.format("Trying to push local '%s' to remote '%s'", pair[0],
@@ -136,13 +134,13 @@ public class PushFilePreparer implements ITargetCleaner {
                 src = resolveRelativeFilePath(buildInfo, pair[0]);
             }
             if (src == null || !src.exists()) {
-                fail(String.format("Local source file '%s' does not exist", pair[0]));
+                fail(String.format("Local source file '%s' does not exist", pair[0]), device);
                 continue;
             }
             if (src.isDirectory()) {
                 if (!device.pushDir(src, pair[1])) {
                     fail(String.format("Failed to push local '%s' to remote '%s'", pair[0],
-                            pair[1]));
+                            pair[1]), device);
                     continue;
                 } else {
                     mFilesPushed.add(pair[1]);
@@ -150,7 +148,7 @@ public class PushFilePreparer implements ITargetCleaner {
             } else {
                 if (!device.pushFile(src, pair[1])) {
                     fail(String.format("Failed to push local '%s' to remote '%s'", pair[0],
-                            pair[1]));
+                            pair[1]), device);
                     continue;
                 } else {
                     mFilesPushed.add(pair[1]);
@@ -163,10 +161,8 @@ public class PushFilePreparer implements ITargetCleaner {
         }
 
         if (mTriggerMediaScan) {
-            // send a MEDIA_MOUNTED broadcast
-            device.executeShellCommand(String.format(
-                    "am broadcast -a android.intent.action.MEDIA_MOUNTED -d file://%s",
-                    device.getMountPoint(IDevice.MNT_EXTERNAL_STORAGE)));
+            String mountPoint = device.getMountPoint(IDevice.MNT_EXTERNAL_STORAGE);
+            device.executeShellCommand(String.format(MEDIA_SCAN_INTENT, mountPoint));
         }
     }
 

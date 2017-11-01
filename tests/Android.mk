@@ -22,11 +22,12 @@ LOCAL_SRC_FILES := $(call all-java-files-under, src)
 LOCAL_JAVA_RESOURCE_DIRS := res
 
 LOCAL_JAVACFLAGS += -g -Xlint
+-include tools/tradefederation/core/error_prone_rules.mk
 
 LOCAL_MODULE := tradefed-tests
 LOCAL_MODULE_TAGS := optional
-LOCAL_STATIC_JAVA_LIBRARIES := easymock
-LOCAL_JAVA_LIBRARIES := tradefed
+LOCAL_STATIC_JAVA_LIBRARIES := easymock objenesis-host mockito-host commons-compress-prebuilt
+LOCAL_JAVA_LIBRARIES := tradefed host-libprotobuf-java-full
 
 LOCAL_JAR_MANIFEST := MANIFEST.mf
 

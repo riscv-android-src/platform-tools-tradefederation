@@ -38,6 +38,13 @@ public class DeviceWiper implements ITargetPreparer {
             "instruct wiper to use fastboot erase instead of format")
     protected boolean mUseErase = false;
 
+    /**
+     * Return True if this target preparer has been disabled and will do nothing. False otherwise.
+     */
+    public boolean isDisabled() {
+        return mDisable;
+    }
+
     @Override
     public void setUp(ITestDevice device, IBuildInfo buildInfo) throws TargetSetupError,
             DeviceNotAvailableException {
@@ -56,8 +63,12 @@ public class DeviceWiper implements ITargetPreparer {
     }
 
     private void doFormat(ITestDevice device) throws DeviceNotAvailableException, TargetSetupError {
-        performFastbootOp(device, "format", "cache");
-        performFastbootOp(device, "format", "userdata");
+        CLog.d("Attempting fastboot wiping");
+        CommandResult r = device.executeLongFastbootCommand("-w");
+        if (r.getStatus() != CommandStatus.SUCCESS) {
+            throw new TargetSetupError(String.format("fastboot wiping failed: %s", r.getStderr()),
+                    device.getDeviceDescriptor());
+        }
     }
 
     private void doErase(ITestDevice device) throws DeviceNotAvailableException, TargetSetupError {
@@ -71,7 +82,7 @@ public class DeviceWiper implements ITargetPreparer {
         CommandResult r = device.executeLongFastbootCommand(op, partition);
         if (r.getStatus() != CommandStatus.SUCCESS) {
             throw new TargetSetupError(String.format("%s %s failed: %s", op, partition,
-                    r.getStderr()));
+                    r.getStderr()), device.getDeviceDescriptor());
         }
     }
 }

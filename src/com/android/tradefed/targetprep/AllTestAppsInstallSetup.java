@@ -57,6 +57,11 @@ public class AllTestAppsInstallSetup implements ITargetCleaner, IAbiReceiver {
                     + "preparer does not verify if the apks are successfully removed.")
     private boolean mCleanup = false;
 
+    @Option(name = "stop-install-on-failure",
+            description = "Whether to stop the preparer by throwing an exception or only log the "
+                    + "error on continue.")
+    private boolean mStopInstallOnFailure = true;
+
     private IAbi mAbi = null;
 
     private List<String> mPackagesInstalled = new ArrayList<>();
@@ -68,12 +73,14 @@ public class AllTestAppsInstallSetup implements ITargetCleaner, IAbiReceiver {
     public void setUp(ITestDevice device, IBuildInfo buildInfo) throws TargetSetupError,
             DeviceNotAvailableException {
         if (!(buildInfo instanceof IDeviceBuildInfo)) {
-            throw new TargetSetupError("Invalid buildInfo, expecting an IDeviceBuildInfo");
+            throw new TargetSetupError("Invalid buildInfo, expecting an IDeviceBuildInfo",
+                    device.getDeviceDescriptor());
         }
         // Locate test dir where the test zip file was unzip to.
         File testsDir = ((IDeviceBuildInfo) buildInfo).getTestsDir();
         if (testsDir == null || !testsDir.exists()) {
-            throw new TargetSetupError("Failed to find a valid test zip directory.");
+            throw new TargetSetupError("Failed to find a valid test zip directory.",
+                    device.getDeviceDescriptor());
         }
         resolveAbi(device);
         installApksRecursively(testsDir, device);
@@ -90,7 +97,7 @@ public class AllTestAppsInstallSetup implements ITargetCleaner, IAbiReceiver {
     void installApksRecursively(File directory, ITestDevice device)
             throws TargetSetupError, DeviceNotAvailableException {
         if (directory == null || !directory.isDirectory()) {
-            throw new TargetSetupError("Invalid test zip directory!");
+            throw new TargetSetupError("Invalid test zip directory!", device.getDeviceDescriptor());
         }
         CLog.d("Installing all apks found in dir %s ...", directory.getAbsolutePath());
         File[] files = directory.listFiles();
@@ -116,21 +123,26 @@ public class AllTestAppsInstallSetup implements ITargetCleaner, IAbiReceiver {
      */
     void installApk(File appFile, ITestDevice device) throws TargetSetupError,
             DeviceNotAvailableException {
-
         CLog.d("Installing apk from %s ...", appFile.getAbsolutePath());
         String result = device.installPackage(appFile, true,
                 mInstallArgs.toArray(new String[] {}));
-        if (result != null) {
-            throw new TargetSetupError(
-                    String.format("Failed to install %s on %s. Reason: '%s'", appFile,
-                            device.getSerialNumber(), result));
-        }
-        if (mCleanup) {
-            AaptParser parser = AaptParser.parse(appFile);
-            if (parser == null) {
-                throw new TargetSetupError("apk installed but AaptParser failed");
+        if (result == null) {
+            // only consider cleanup if install was successful
+            if (mCleanup) {
+                AaptParser parser = AaptParser.parse(appFile);
+                if (parser == null) {
+                    throw new TargetSetupError("apk installed but AaptParser failed",
+                            device.getDeviceDescriptor());
+                }
+                mPackagesInstalled.add(parser.getPackageName());
             }
-            mPackagesInstalled.add(parser.getPackageName());
+        } else if (mStopInstallOnFailure) {
+            // if flag is true, we stop the sequence for an exception.
+            throw new TargetSetupError(String.format("Failed to install %s on %s. Reason: '%s'",
+                    appFile, device.getSerialNumber(), result), device.getDeviceDescriptor());
+        } else {
+            CLog.e("Failed to install %s on %s. Reason: '%s'", appFile,
+                    device.getSerialNumber(), result);
         }
     }
 
@@ -158,6 +170,11 @@ public class AllTestAppsInstallSetup implements ITargetCleaner, IAbiReceiver {
     @Override
     public void setAbi(IAbi abi) {
         mAbi = abi;
+    }
+
+    @Override
+    public IAbi getAbi() {
+        return mAbi;
     }
 
     /**

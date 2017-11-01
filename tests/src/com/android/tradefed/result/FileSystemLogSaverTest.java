@@ -16,6 +16,10 @@
 package com.android.tradefed.result;
 
 import com.android.tradefed.build.IBuildInfo;
+import com.android.tradefed.config.OptionSetter;
+import com.android.tradefed.invoker.IInvocationContext;
+import com.android.tradefed.invoker.InvocationContext;
+import com.android.tradefed.invoker.ShardMasterResultForwarder;
 import com.android.tradefed.util.FileUtil;
 import com.android.tradefed.util.StreamUtil;
 
@@ -32,6 +36,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
+import java.util.ArrayList;
 import java.util.Date;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
@@ -49,6 +54,7 @@ public class FileSystemLogSaverTest extends TestCase {
 
     private File mReportDir;
     private IBuildInfo mMockBuild;
+    private IInvocationContext mContext;
 
     @Override
     protected void setUp() throws Exception {
@@ -60,6 +66,9 @@ public class FileSystemLogSaverTest extends TestCase {
         EasyMock.expect(mMockBuild.getBuildId()).andReturn(BUILD_ID).anyTimes();
         EasyMock.expect(mMockBuild.getTestTag()).andReturn(TEST_TAG).anyTimes();
         EasyMock.replay(mMockBuild);
+        mContext = new InvocationContext();
+        mContext.addDeviceBuildInfo("fakeDevice", mMockBuild);
+        mContext.setTestTag(TEST_TAG);
     }
 
     @Override
@@ -74,7 +83,7 @@ public class FileSystemLogSaverTest extends TestCase {
     public void testGetFileDir() {
         FileSystemLogSaver saver = new FileSystemLogSaver();
         saver.setReportDir(mReportDir);
-        saver.invocationStarted(mMockBuild);
+        saver.invocationStarted(mContext);
 
         File generatedDir = new File(saver.getLogReportDir().getPath());
         File tagDir = generatedDir.getParentFile();
@@ -92,7 +101,7 @@ public class FileSystemLogSaverTest extends TestCase {
         // now create a new log saver,
         FileSystemLogSaver newSaver = new FileSystemLogSaver();
         newSaver.setReportDir(mReportDir);
-        newSaver.invocationStarted(mMockBuild);
+        newSaver.invocationStarted(mContext);
 
         File newGeneratedDir = new File(newSaver.getLogReportDir().getPath());
         // ensure a new dir is created
@@ -111,9 +120,11 @@ public class FileSystemLogSaverTest extends TestCase {
         EasyMock.expect(mockBuild.getBuildId()).andReturn(BUILD_ID).anyTimes();
         EasyMock.expect(mockBuild.getTestTag()).andReturn(TEST_TAG).anyTimes();
         EasyMock.replay(mockBuild);
+        IInvocationContext context = new InvocationContext();
+        context.addDeviceBuildInfo("fakeDevice", mockBuild);
         FileSystemLogSaver saver = new FileSystemLogSaver();
         saver.setReportDir(mReportDir);
-        saver.invocationStarted(mockBuild);
+        saver.invocationStarted(context);
 
         File generatedDir = new File(saver.getLogReportDir().getPath());
         File tagDir = generatedDir.getParentFile();
@@ -134,7 +145,7 @@ public class FileSystemLogSaverTest extends TestCase {
         FileSystemLogSaver saver = new FileSystemLogSaver();
         saver.setReportDir(mReportDir);
         saver.setLogRetentionDays(1);
-        saver.invocationStarted(mMockBuild);
+        saver.invocationStarted(mContext);
 
         File retentionFile = new File(new File(saver.getLogReportDir().getPath()),
                 RetentionFileSaver.RETENTION_FILE_NAME);
@@ -159,7 +170,7 @@ public class FileSystemLogSaverTest extends TestCase {
             // TODO: would be nice to create a mock file output to make this test not use disk I/O
             FileSystemLogSaver saver = new FileSystemLogSaver();
             saver.setReportDir(mReportDir);
-            saver.invocationStarted(mMockBuild);
+            saver.invocationStarted(mContext);
 
             final String testData = "Here's some test data, blah";
             ByteArrayInputStream mockInput = new ByteArrayInputStream(testData.getBytes());
@@ -192,7 +203,7 @@ public class FileSystemLogSaverTest extends TestCase {
             // TODO: would be nice to create a mock file output to make this test not use disk I/O
             FileSystemLogSaver saver = new FileSystemLogSaver();
             saver.setReportDir(mReportDir);
-            saver.invocationStarted(mMockBuild);
+            saver.invocationStarted(mContext);
 
             final String testData = "Here's some test data, blah";
             ByteArrayInputStream mockInput = new ByteArrayInputStream(testData.getBytes());
@@ -219,7 +230,7 @@ public class FileSystemLogSaverTest extends TestCase {
             // TODO: would be nice to create a mock file output to make this test not use disk I/O
             FileSystemLogSaver saver = new FileSystemLogSaver();
             saver.setReportDir(mReportDir);
-            saver.invocationStarted(mMockBuild);
+            saver.invocationStarted(mContext);
 
             final String testData = "Here's some test data, blah";
             ByteArrayInputStream mockInput = new ByteArrayInputStream(testData.getBytes());
@@ -234,5 +245,38 @@ public class FileSystemLogSaverTest extends TestCase {
             StreamUtil.close(logFileReader);
             FileUtil.deleteFile(new File(logFile.getPath()));
         }
+    }
+
+    /**
+     * Test running the log saver in sharded environment, only one reporting folder should be
+     * created.
+     */
+    public void testCreateReportDirectory_sharded() throws Exception {
+        final int shardCount = 5;
+        FileSystemLogSaver saver = new FileSystemLogSaver();
+        OptionSetter setter = new OptionSetter(saver);
+        setter.setOptionValue("log-file-path", mReportDir.getAbsolutePath());
+        saver.invocationStarted(mContext);
+        ShardMasterResultForwarder master =
+                new ShardMasterResultForwarder(
+                        saver, new ArrayList<ITestInvocationListener>(), shardCount);
+        for (int i = 0; i < shardCount; i++) {
+            master.invocationStarted(mContext);
+        }
+        for (int i = 0; i < shardCount; i++) {
+            master.invocationEnded(5);
+        }
+        // only one folder is created under the hierarchy: branch/buildid/testtag/<inv_ folders>
+        assertEquals(1, mReportDir.list().length);
+        assertEquals(BRANCH, mReportDir.list()[0]);
+        assertEquals(1, mReportDir.listFiles()[0].list().length);
+        assertEquals(BUILD_ID, mReportDir.listFiles()[0].list()[0]);
+        assertEquals(1, mReportDir.listFiles()[0].listFiles()[0].list().length);
+        assertEquals(TEST_TAG, mReportDir.listFiles()[0].listFiles()[0].list()[0]);
+        // Only one inv_ folder
+        assertEquals(1, mReportDir.listFiles()[0].listFiles()[0].listFiles()[0].list().length);
+        assertTrue(
+                mReportDir.listFiles()[0].listFiles()[0].listFiles()[0].list()[0].startsWith(
+                        "inv_"));
     }
 }

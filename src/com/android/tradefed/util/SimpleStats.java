@@ -157,7 +157,6 @@ public class SimpleStats {
      * 2.55 50.3 50.4 48.5 50.1 29.8 30 46 48 49
      * average: 40.45, stdev: 15.54
      * average of the values within one stdev is: 44.67
-     * @return
      */
     public Double meanOverOneStandardDeviationRange() {
         if (isEmpty()) {

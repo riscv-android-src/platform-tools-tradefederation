@@ -42,9 +42,9 @@ checkPath java
 
 # check java version
 java_version_string=$(java -version 2>&1)
-JAVA_VERSION=$(echo "$java_version_string" | grep '[ "]1\.[78][\. "$$]')
+JAVA_VERSION=$(echo "$java_version_string" | grep '[ "]1\.[8][\. "$$]')
 if [ "${JAVA_VERSION}" == "" ]; then
-    echo "Wrong java version. 1.7 or 1.8 is required."
+    echo "Wrong java version. 1.8 is required."
     exit
 fi
 
@@ -74,6 +74,15 @@ fi
 if [ -z "${TF_PATH}" ]; then
     echo "ERROR: Could not find tradefed jar files"
     exit
+fi
+
+# include any host-side test jars from suite
+if [ ! -z "${ANDROID_HOST_OUT_TESTCASES}" ]; then
+    for folder in ${ANDROID_HOST_OUT_TESTCASES}/*; do
+        for j in $folder/*.jar; do
+            TF_PATH=${TF_PATH}:$j
+        done
+    done
 fi
 
 # set any host specific options

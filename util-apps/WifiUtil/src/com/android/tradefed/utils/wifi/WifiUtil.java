@@ -15,7 +15,6 @@
  */
 
 package com.android.tradefed.utils.wifi;
-
 import android.app.Activity;
 import android.app.Instrumentation;
 import android.content.Context;
@@ -30,7 +29,7 @@ import com.android.tradefed.utils.wifi.WifiConnector.WifiException;
 /**
  * An instrumentation class to manipulate Wi-Fi services on device.
  * <p/>
- * adb shell am instrument -e method (method name) -e arg1 val1 -e arg2 val2
+ * adb shell am instrument -e method (method name) -e arg1 val1 -e arg2 val2 -e arg3 val3
  * -w com.android.tradefed.utils.wifi/.WifiUtils
  */
 public class WifiUtil extends Instrumentation {
@@ -143,6 +142,14 @@ public class WifiUtil extends Instrumentation {
         }
     }
 
+    private boolean getBoolean(String arg, boolean defaultValue) {
+        try {
+            return Boolean.parseBoolean(expectString(arg));
+        } catch (MissingArgException e) {
+            return defaultValue;
+        }
+    }
+
     @Override
     public void onStart() {
         super.onStart();
@@ -167,14 +174,16 @@ public class WifiUtil extends Instrumentation {
                 result.putBoolean("result", wifiManager.setWifiEnabled(false));
             } else if ("addOpenNetwork".equals(method)) {
                 final String ssid = expectString("ssid");
+                final boolean scanSsid = getBoolean("scan_ssid", false);
 
-                result.putInt("result", connector.addNetwork(ssid, null));
+                result.putInt("result", connector.addNetwork(ssid, null, scanSsid));
 
             } else if ("addWpaPskNetwork".equals(method)) {
                 final String ssid = expectString("ssid");
+                final boolean scanSsid = getBoolean("scan_ssid", false);
                 final String psk = expectString("psk");
 
-                result.putInt("result", connector.addNetwork(ssid, psk));
+                result.putInt("result", connector.addNetwork(ssid, psk, scanSsid));
 
             } else if ("associateNetwork".equals(method)) {
                 final int id = expectInteger("id");
@@ -239,10 +248,11 @@ public class WifiUtil extends Instrumentation {
 
             } else if ("connectToNetwork".equals(method)) {
                 final String ssid = expectString("ssid");
+                final boolean scanSsid = getBoolean("scan_ssid", false);
                 final String psk = getString("psk", null);
                 final String pingUrl = getString("urlToCheck", DEFAULT_URL_TO_CHECK);
                 final long connectTimeout = getInteger("connectTimeout", -1);
-                connector.connectToNetwork(ssid, psk, pingUrl, connectTimeout);
+                connector.connectToNetwork(ssid, psk, pingUrl, connectTimeout, scanSsid);
 
                 result.putBoolean("result", true);
 

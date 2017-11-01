@@ -21,6 +21,8 @@ import org.easymock.EasyMock;
 
 import java.io.ByteArrayInputStream;
 import java.io.InputStream;
+import java.util.Collections;
+import java.util.Map;
 
 /**
  * Unit tests for {@link ConfigurationXmlParser}.
@@ -38,7 +40,8 @@ public class ConfigurationXmlParserTest extends TestCase {
     }
 
     /**
-     * Normal case test for {@link ConfigurationXmlParser#parse(String, InputStream)}.
+     * Normal case test for
+     * {@link ConfigurationXmlParser#parse(ConfigurationDef, String, InputStream, Map)}.
      */
     public void testParse() throws ConfigurationException {
         final String normalConfig =
@@ -52,7 +55,9 @@ public class ConfigurationXmlParserTest extends TestCase {
         xmlParser.parse(configDef, configName, getStringAsStream(normalConfig), null);
         assertEquals(configName, configDef.getName());
         assertEquals("desc", configDef.getDescription());
-        assertEquals("junit.framework.TestCase", configDef.getObjectClassMap().get("test").get(0));
+        assertEquals(
+                "junit.framework.TestCase",
+                configDef.getObjectClassMap().get("test").get(0).mClassName);
         assertEquals("junit.framework.TestCase:1:opName", configDef.getOptionList().get(0).name);
         assertEquals("val", configDef.getOptionList().get(0).value);
     }
@@ -72,7 +77,9 @@ public class ConfigurationXmlParserTest extends TestCase {
         xmlParser.parse(configDef, configName, getStringAsStream(normalConfig), null);
         assertEquals(configName, configDef.getName());
         assertEquals("desc", configDef.getDescription());
-        assertEquals("junit.framework.TestCase", configDef.getObjectClassMap().get("test").get(0));
+        assertEquals(
+                "junit.framework.TestCase",
+                configDef.getObjectClassMap().get("test").get(0).mClassName);
         // the non-namespaced option value should be used
         assertEquals("opName", configDef.getOptionList().get(0).name);
         assertEquals("val", configDef.getOptionList().get(0).value);
@@ -98,11 +105,15 @@ public class ConfigurationXmlParserTest extends TestCase {
         assertEquals(configName, configDef.getName());
         assertEquals("desc", configDef.getDescription());
 
-        assertEquals("com.android.tradefed.testtype.HostTest", configDef.getObjectClassMap().get("test").get(0));
+        assertEquals(
+                "com.android.tradefed.testtype.HostTest",
+                configDef.getObjectClassMap().get("test").get(0).mClassName);
         assertEquals("com.android.tradefed.testtype.HostTest:1:class", configDef.getOptionList().get(0).name);
         assertEquals("val1", configDef.getOptionList().get(0).value);
 
-        assertEquals("com.android.tradefed.testtype.HostTest", configDef.getObjectClassMap().get("test").get(1));
+        assertEquals(
+                "com.android.tradefed.testtype.HostTest",
+                configDef.getObjectClassMap().get("test").get(1).mClassName);
         assertEquals("com.android.tradefed.testtype.HostTest:2:class", configDef.getOptionList().get(1).name);
         assertEquals("val2", configDef.getOptionList().get(1).value);
     }
@@ -143,16 +154,20 @@ public class ConfigurationXmlParserTest extends TestCase {
             "<object type=\"foo\" class=\"junit.framework.TestCase\" />";
         ConfigurationDef configDef = new ConfigurationDef("name");
         xmlParser.parse(configDef, "name", getStringAsStream(config), null);
-        assertEquals("junit.framework.TestCase", configDef.getObjectClassMap().get("foo").get(0));
+        assertEquals(
+                "junit.framework.TestCase",
+                configDef.getObjectClassMap().get("foo").get(0).mClassName);
     }
 
     /**
      * Test parsing a include tag.
      */
+    @SuppressWarnings("unchecked")
     public void testParse_include() throws ConfigurationException {
         String includedName = "includeme";
         ConfigurationDef configDef = new ConfigurationDef("foo");
-        mMockLoader.loadIncludedConfiguration(EasyMock.eq(configDef), EasyMock.eq("foo"), EasyMock.eq(includedName));
+        mMockLoader.loadIncludedConfiguration(EasyMock.eq(configDef), EasyMock.eq("foo"),
+                EasyMock.eq(includedName), (Map<String, String>) EasyMock.anyObject());
         EasyMock.replay(mMockLoader);
         final String config = "<include name=\"includeme\" />";
         xmlParser.parse(configDef, "foo", getStringAsStream(config), null);
@@ -165,7 +180,8 @@ public class ConfigurationXmlParserTest extends TestCase {
         String includedName = "non-existent";
         ConfigurationDef parent = new ConfigurationDef("name");
         ConfigurationException exception = new ConfigurationException("I don't exist");
-        mMockLoader.loadIncludedConfiguration(parent, "name", includedName);
+        mMockLoader.loadIncludedConfiguration(parent, "name", includedName,
+                Collections.<String, String>emptyMap());
         EasyMock.expectLastCall().andThrow(exception);
         EasyMock.replay(mMockLoader);
         final String config = String.format("<include name=\"%s\" />", includedName);
@@ -180,7 +196,7 @@ public class ConfigurationXmlParserTest extends TestCase {
     /**
      * Test parsing a tag whose name is not recognized.
      */
-    public void testParse_badTag() throws ConfigurationException {
+    public void testParse_badTag() {
         final String config = "<blah name=\"foo\" />";
         try {
             xmlParser.parse(new ConfigurationDef("name"), "name", getStringAsStream(config), null);
@@ -193,7 +209,7 @@ public class ConfigurationXmlParserTest extends TestCase {
     /**
      * Test parsing invalid xml.
      */
-    public void testParse_xml() throws ConfigurationException {
+    public void testParse_xml() {
         final String config = "blah";
         try {
             xmlParser.parse(new ConfigurationDef("name"), "name", getStringAsStream(config), null);
@@ -205,5 +221,177 @@ public class ConfigurationXmlParserTest extends TestCase {
 
     private InputStream getStringAsStream(String input) {
         return new ByteArrayInputStream(input.getBytes());
+    }
+
+    /**
+     * Normal case test for
+     * {@link ConfigurationXmlParser#parse(ConfigurationDef, String, InputStream, Map)}. when
+     * presented a device tag.
+     */
+    public void testParse_deviceTag() throws ConfigurationException {
+        final String normalConfig =
+            "<configuration description=\"desc\" >\n" +
+            "  <device name=\"device1\">\n" +
+            "    <option name=\"opName\" value=\"val\" />\n" +
+            "  </device>\n" +
+            "</configuration>";
+        final String configName = "config";
+        ConfigurationDef configDef = new ConfigurationDef(configName);
+        xmlParser.parse(configDef, configName, getStringAsStream(normalConfig), null);
+        assertEquals(configName, configDef.getName());
+        assertEquals("desc", configDef.getDescription());
+        // Option is preprended with the device name.
+        assertEquals("{device1}opName", configDef.getOptionList().get(0).name);
+        assertEquals("val", configDef.getOptionList().get(0).value);
+    }
+
+    /**
+     * Test case for
+     * {@link ConfigurationXmlParser#parse(ConfigurationDef, String, InputStream, Map)}. when
+     * presented a device tag with no name.
+     */
+    public void testParse_deviceTagNoName() {
+        final String normalConfig =
+            "<configuration description=\"desc\" >\n" +
+            "  <device>\n" +
+            "    <option name=\"opName\" value=\"val\" />\n" +
+            "  </device>\n" +
+            "</configuration>";
+        final String configName = "config";
+        ConfigurationDef configDef = new ConfigurationDef(configName);
+        String expectedException = "device tag requires a name value";
+        try {
+            xmlParser.parse(configDef, configName, getStringAsStream(normalConfig), null);
+            fail("An exception should have been thrown.");
+        } catch (ConfigurationException expected) {
+            assertEquals(expectedException, expected.getMessage());
+        }
+    }
+
+    /**
+     * Test case for
+     * {@link ConfigurationXmlParser#parse(ConfigurationDef, String, InputStream, Map)}. when
+     * presented a device tag with a used name, should merge them.
+     */
+    public void testParse_deviceTagSameName() {
+        final String normalConfig =
+            "<configuration description=\"desc\" >\n" +
+            "  <device name=\"device1\">\n" +
+            "    <option name=\"opName\" value=\"val\" />\n" +
+            "  </device>\n" +
+            "  <device name=\"device2\">\n" +
+            "    <option name=\"opName3\" value=\"val3\" />\n" +
+            "  </device>\n" +
+            "  <device name=\"device1\">\n" +
+            "    <option name=\"opName2\" value=\"val2\" />\n" +
+            "  </device>\n" +
+            "</configuration>";
+        final String configName = "config";
+        ConfigurationDef configDef = new ConfigurationDef(configName);
+        try {
+            xmlParser.parse(configDef, configName, getStringAsStream(normalConfig), null);
+            assertTrue(configDef.getObjectClassMap().get(Configuration.DEVICE_NAME).size() == 2);
+            assertTrue("{device1}opName".equals(configDef.getOptionList().get(0).name));
+            assertEquals("{device2}opName3", configDef.getOptionList().get(1).name);
+            assertTrue("{device1}opName2".equals(configDef.getOptionList().get(2).name));
+        } catch(ConfigurationException unExpected) {
+            fail("No exception should have been thrown.");
+        }
+    }
+
+    /**
+     * Test case for
+     * {@link ConfigurationXmlParser#parse(ConfigurationDef, String, InputStream, Map)}. when
+     * presented an object tag outside of the device tag but should be inside.
+     */
+    public void testParse_deviceTagAndObjectOutside() {
+        final String normalConfig =
+            "<configuration description=\"desc\" >\n" +
+            "  <device name=\"device1\">\n" +
+            "    <option name=\"opName\" value=\"val\" />\n" +
+            "  </device>\n" +
+            "  <target_preparer class=\"com.targetprep.class\">\n" +
+            "    <option name=\"opName2\" value=\"val2\" />\n" +
+            "  </target_preparer>\n" +
+            "</configuration>";
+        final String configName = "config";
+        ConfigurationDef configDef = new ConfigurationDef(configName);
+        String expectedException = "Tags [target_preparer] should be included in a <device> tag.";
+        try {
+            xmlParser.parse(configDef, configName, getStringAsStream(normalConfig), null);
+            fail("An exception should have been thrown.");
+        } catch(ConfigurationException expected) {
+            assertEquals(expectedException, expected.getMessage());
+        }
+    }
+
+    /**
+     * Test for
+     * {@link ConfigurationXmlParser#parse(ConfigurationDef, String, InputStream, Map)}.
+     * with a test tag inside a device where it should not be.
+     */
+    public void testParse_withDeviceTag() {
+        final String normalConfig =
+            "<configuration description=\"desc\" >\n" +
+            "  <device name=\"device1\">\n" +
+            "    <option name=\"deviceOp\" value=\"val2\" />\n" +
+            "    <test class=\"junit.framework.TestCase\">\n" +
+            "        <option name=\"opName\" value=\"val\" />\n" +
+            "    </test>\n" +
+            "  </device>\n" +
+            "</configuration>";
+        final String configName = "config";
+        ConfigurationDef configDef = new ConfigurationDef(configName);
+        try {
+            xmlParser.parse(configDef, configName, getStringAsStream(normalConfig), null);
+        } catch(ConfigurationException expected) {
+            return;
+        }
+        fail("An exception should have been thrown.");
+    }
+
+    /**
+     * Test for
+     * {@link ConfigurationXmlParser#parse(ConfigurationDef, String, InputStream, Map)}.
+     * with an invalid name
+     */
+    public void testParse_withDeviceInvalidName() {
+        String expectedException = "device name cannot contain reserved character: ':'";
+        final String normalConfig =
+            "<configuration description=\"desc\" >\n" +
+            "  <device name=\"device:1\">\n" +
+            "  </device>\n" +
+            "</configuration>";
+        final String configName = "config";
+        ConfigurationDef configDef = new ConfigurationDef(configName);
+        try {
+            xmlParser.parse(configDef, configName, getStringAsStream(normalConfig), null);
+            fail("An exception should have been thrown.");
+        } catch(ConfigurationException expected) {
+            assertEquals(expectedException, expected.getMessage());
+        }
+    }
+
+    /**
+     * Test for
+     * {@link ConfigurationXmlParser#parse(ConfigurationDef, String, InputStream, Map)}.
+     * with a reserved name.
+     */
+    public void testParse_withDeviceReservedName() {
+        String expectedException = "device name cannot be reserved name: '" +
+                ConfigurationDef.DEFAULT_DEVICE_NAME + "'";
+        final String normalConfig =
+            "<configuration description=\"desc\" >\n" +
+            "  <device name=\"" + ConfigurationDef.DEFAULT_DEVICE_NAME + "\">\n" +
+            "  </device>\n" +
+            "</configuration>";
+        final String configName = "config";
+        ConfigurationDef configDef = new ConfigurationDef(configName);
+        try {
+            xmlParser.parse(configDef, configName, getStringAsStream(normalConfig), null);
+            fail("An exception should have been thrown.");
+        } catch(ConfigurationException expected) {
+            assertEquals(expectedException, expected.getMessage());
+        }
     }
 }

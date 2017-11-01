@@ -34,8 +34,9 @@ import com.android.tradefed.result.LogDataType;
 import com.android.tradefed.testtype.IDeviceTest;
 import com.android.tradefed.testtype.IRemoteTest;
 import com.android.tradefed.util.FileUtil;
+import com.android.tradefed.util.StreamUtil;
 
-import junit.framework.Assert;
+import org.junit.Assert;
 
 import java.io.BufferedReader;
 import java.io.File;
@@ -63,10 +64,25 @@ import java.util.regex.Pattern;
  */
 public class HermeticLaunchTest implements IRemoteTest, IDeviceTest {
 
-    private static final String BINDAPPLICATION = "bindApplication";
-    private static final String ACTIVITYSTART = "activityStart";
-    private static final String LAYOUT = "layout";
-    private static final String DRAW = "draw";
+    private static enum AtraceSectionOptions {
+        LAYOUT("layout"),
+        DRAW("draw"),
+        BINDAPPLICATION("bindApplication"),
+        ACTIVITYSTART("activityStart"),
+        ONCREATE("onCreate");
+
+        private final String name;
+
+        private AtraceSectionOptions(String s) {
+            this.name = s;
+        }
+
+        @Override
+        public String toString() {
+            return name;
+        }
+    }
+
     private static final String TOTALLAUNCHTIME = "totalLaunchTime";
     private static final String LOGCAT_CMD = "logcat -v threadtime ActivityManager:* *:s";
     private static final String LAUNCH_PREFIX="^\\d*-\\d*\\s*\\d*:\\d*:\\d*.\\d*\\s*\\d*\\s*"
@@ -116,6 +132,10 @@ public class HermeticLaunchTest implements IRemoteTest, IDeviceTest {
     @Option(name = "save-atrace", description = "Upload the atrace file in permanent storage")
     private boolean msaveAtrace = false;
 
+    @Option(name = "atrace-section", description = "Section to be parsed from atrace file. "
+            + "This option can be repeated")
+    private Set<AtraceSectionOptions> mSectionOptionSet = new HashSet<>();
+
     private ITestDevice mDevice = null;
     private IRemoteAndroidTestRunner mRunner;
     private LogcatReceiver mLogcat;
@@ -131,10 +151,21 @@ public class HermeticLaunchTest implements IRemoteTest, IDeviceTest {
         mLogcat = new LogcatReceiver(getDevice(), LOGCAT_CMD, LOGCAT_SIZE, 0);
         mLogcat.start();
         try {
-            mSectionSet.add(BINDAPPLICATION);
-            mSectionSet.add(ACTIVITYSTART);
-            mSectionSet.add(LAYOUT);
-            mSectionSet.add(DRAW);
+            if (mSectionOptionSet.isEmpty()) {
+                // Default sections
+                mSectionOptionSet.add(AtraceSectionOptions.LAYOUT);
+                mSectionOptionSet.add(AtraceSectionOptions.DRAW);
+                mSectionOptionSet.add(AtraceSectionOptions.BINDAPPLICATION);
+                mSectionOptionSet.add(AtraceSectionOptions.ACTIVITYSTART);
+                mSectionOptionSet.add(AtraceSectionOptions.ONCREATE);
+            } else if (mSectionOptionSet.contains(AtraceSectionOptions.LAYOUT)) {
+                // If layout is added, draw should also be included
+                mSectionOptionSet.add(AtraceSectionOptions.DRAW);
+            }
+
+            for (AtraceSectionOptions sectionOption : mSectionOptionSet) {
+                mSectionSet.add(sectionOption.toString());
+            }
 
             //Remove if there is already existing atrace_logs folder
             mDevice.executeShellCommand("rm -rf ${EXTERNAL_STORAGE}/atrace_logs");
@@ -173,7 +204,6 @@ public class HermeticLaunchTest implements IRemoteTest, IDeviceTest {
     /**
      * Report run metrics by creating an empty test run to stick them in.
      * @param listener The {@link ITestInvocationListener} of test results
-     * @param metrics The {@link Map} that contains metrics for the given test
      */
     private void reportMetrics(ITestInvocationListener listener) {
         for (String activityName : mActivityTimeResultMap.keySet()) {
@@ -226,8 +256,8 @@ public class HermeticLaunchTest implements IRemoteTest, IDeviceTest {
         Map<String, List<Integer>> amLaunchTimes = new HashMap<>();
         InputStreamSource input = mLogcat.getLogcatData();
         InputStream inputStream = input.createInputStream();
-        BufferedReader br = new BufferedReader(new InputStreamReader(
-                inputStream));
+        InputStreamReader streamReader = new InputStreamReader(inputStream);
+        BufferedReader br = new BufferedReader(streamReader);
         Map<Pattern, String> activityPatternMap = new HashMap<>();
         Matcher match = null;
         String line;
@@ -274,6 +304,11 @@ public class HermeticLaunchTest implements IRemoteTest, IDeviceTest {
             }
         } catch (IOException io) {
             CLog.e(io);
+        } finally {
+            StreamUtil.cancel(input);
+            StreamUtil.close(inputStream);
+            StreamUtil.close(streamReader);
+            StreamUtil.close(br);
         }
 
         // Verify logcat data
@@ -291,8 +326,7 @@ public class HermeticLaunchTest implements IRemoteTest, IDeviceTest {
             for (Integer launchTime : amLaunchTimes.get(activityName)) {
                 totalTime += launchTime;
             }
-            Double averageTime = new Double(totalTime
-                    / amLaunchTimes.get(activityName).size());
+            Double averageTime = Double.valueOf(totalTime / amLaunchTimes.get(activityName).size());
             if (mActivityTimeResultMap.containsKey(activityName)) {
                 mActivityTimeResultMap.get(activityName).put(TOTALLAUNCHTIME,
                         String.format("%.2f", averageTime));
@@ -474,7 +508,7 @@ public class HermeticLaunchTest implements IRemoteTest, IDeviceTest {
             }
 
         }
-        br.close();
+        StreamUtil.close(br);
         return sectionInfo;
     }
 
@@ -485,10 +519,12 @@ public class HermeticLaunchTest implements IRemoteTest, IDeviceTest {
      */
     public void averageAtraceData(String activityName,
             List<Map<String, List<SectionPeriod>>> mutipleLaunchTraceInfo) {
-        if (!verifyAtraceMapInfo(mutipleLaunchTraceInfo)) {
-            activityErrMsg.put(activityName, "Not all the section info captured for the activity :"
-                    + activityName);
-            return;
+        String verificationResult = verifyAtraceMapInfo(mutipleLaunchTraceInfo);
+        if (verificationResult != null) {
+            CLog.w(
+                    "Not all the section info captured for the activity :%s. Missing: %s. "
+                            + "Please go to atrace file to look for detail.",
+                    activityName, verificationResult);
         }
         Map<String, Double> launchSum = new HashMap<>();
         for (String sectionName : mSectionSet) {
@@ -498,7 +534,7 @@ public class HermeticLaunchTest implements IRemoteTest, IDeviceTest {
             for (String sectionName : singleLaunchInfo.keySet()) {
                 for (SectionPeriod secPeriod : singleLaunchInfo
                         .get(sectionName)) {
-                    if (sectionName.equals(DRAW)) {
+                    if (sectionName.equals(AtraceSectionOptions.DRAW.toString())) {
                         // Get the first draw time for the launch
                         Double currentSum = launchSum.get(sectionName)
                                 + secPeriod.duration;
@@ -506,9 +542,9 @@ public class HermeticLaunchTest implements IRemoteTest, IDeviceTest {
                         break;
                     }
                     //Sum the multiple layout times before the first draw in this launch
-                    if (sectionName.equals(LAYOUT)) {
-                        Double drawStartTime = singleLaunchInfo.get(DRAW)
-                                .get(0).startTime;
+                    if (sectionName.equals(AtraceSectionOptions.LAYOUT.toString())) {
+                        Double drawStartTime = singleLaunchInfo
+                                .get(AtraceSectionOptions.DRAW.toString()).get(0).startTime;
                         if (drawStartTime < secPeriod.startTime) {
                             break;
                         }
@@ -529,17 +565,20 @@ public class HermeticLaunchTest implements IRemoteTest, IDeviceTest {
 
     /**
      * To check if all the section info caught for all the app launches
+     *
      * @param multipleLaunchTraceInfo
-     * @return
+     * @return String: the missing section name, null if no section info missing.
      */
-    public boolean verifyAtraceMapInfo(
+    public String verifyAtraceMapInfo(
             List<Map<String, List<SectionPeriod>>> multipleLaunchTraceInfo) {
         for (Map<String, List<SectionPeriod>> singleLaunchInfo : multipleLaunchTraceInfo) {
-            if (singleLaunchInfo.size() != mSectionSet.size()) {
-                return false;
+            Set<String> testSet = new HashSet<>(mSectionSet);
+            testSet.removeAll(singleLaunchInfo.keySet());
+            if (testSet.size() != 0) {
+                return testSet.toString();
             }
         }
-        return true;
+        return null;
     }
 
 

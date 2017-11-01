@@ -26,6 +26,7 @@ import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.util.AbiFormatter;
+import com.google.common.annotations.VisibleForTesting;
 
 import java.io.File;
 import java.util.ArrayList;
@@ -49,8 +50,8 @@ public class InstallApkSetup implements ITargetPreparer {
     private static final String LOG_TAG = InstallApkSetup.class.getSimpleName();
 
     @Option(name = "apk-path", description =
-        "the filesystem path of the apk to install. Can be repeated.",
-        importance = Importance.IF_UNSET)
+            "the filesystem path of the apk to install. Can be repeated.",
+            importance = Importance.IF_UNSET)
     private Collection<File> mApkPaths = new ArrayList<File>();
 
     @Option(name = AbiFormatter.FORCE_ABI_STRING,
@@ -69,8 +70,12 @@ public class InstallApkSetup implements ITargetPreparer {
 
     @Option(name = "post-install-cmd-timeout", description =
             "max time allowed in ms for a post-install adb shell command." +
-            "DeviceUnresponsiveException will be thrown if it is timed out.")
+                    "DeviceUnresponsiveException will be thrown if it is timed out.")
     private long mPostInstallCmdTimeout = 2 * 60 * 1000;  // default to 2 minutes
+
+    @Option(name = "throw-if-install-fail", description =
+            "Throw exception if the APK installation failed due to any reason.")
+    private boolean mThrowIfInstallFail = false;
 
     /**
      * {@inheritDoc}
@@ -81,7 +86,7 @@ public class InstallApkSetup implements ITargetPreparer {
         for (File apk : mApkPaths) {
             if (!apk.exists()) {
                 throw new TargetSetupError(String.format("%s does not exist",
-                        apk.getAbsolutePath()));
+                        apk.getAbsolutePath()), device.getDeviceDescriptor());
             }
             Log.i(LOG_TAG, String.format("Installing %s on %s", apk.getName(),
                     device.getSerialNumber()));
@@ -93,19 +98,46 @@ public class InstallApkSetup implements ITargetPreparer {
             }
             String result = device.installPackage(apk, true, mInstallArgs.toArray(new String[]{}));
             if (result != null) {
+                if (mThrowIfInstallFail) {
+                    throw new TargetSetupError(String.format(
+                            "Stopping test: failed to install %s on device %s. Reason: %s",
+                            apk.getAbsolutePath(), device.getSerialNumber(), result),
+                            device.getDeviceDescriptor());
+                }
                 Log.e(LOG_TAG, String.format("Failed to install %s on device %s. Reason: %s",
                         apk.getAbsolutePath(), device.getSerialNumber(), result));
             }
         }
 
-        if (mPostInstallCmds != null && !mPostInstallCmds.isEmpty()){
+        if (mPostInstallCmds != null && !mPostInstallCmds.isEmpty()) {
             for (String cmd : mPostInstallCmds) {
                 // If the command had any output, the executeShellCommand method will log it at the
                 // VERBOSE level; so no need to do any logging from here.
-                CLog.d("About to run setup command on device %s: %s", device.getSerialNumber(), cmd);
+                CLog.d("About to run setup command on device %s: %s",
+                        device.getSerialNumber(), cmd);
                 device.executeShellCommand(cmd, new CollectingOutputReceiver(),
                         mPostInstallCmdTimeout, TimeUnit.MILLISECONDS, 1);
             }
         }
+    }
+
+    protected Collection<File> getApkPaths() {
+        return mApkPaths;
+    }
+
+    /**
+     * Sets APK paths. Exposed for testing.
+     */
+    @VisibleForTesting
+    public void setApkPaths(Collection<File> paths) {
+        mApkPaths = paths;
+    }
+
+    /**
+     * Set throw if install fail. Exposed for testing.
+     */
+    @VisibleForTesting
+    public void setThrowIfInstallFail(boolean throwIfInstallFail) {
+        mThrowIfInstallFail = throwIfInstallFail;
     }
 }

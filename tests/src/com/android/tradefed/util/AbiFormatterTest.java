@@ -21,7 +21,7 @@ import junit.framework.TestCase;
 import org.easymock.EasyMock;
 
 /**
- * Unit tests for the {@link StringUtil} utility class
+ * Unit tests for the {@link AbiFormatter} utility class
  */
 public class AbiFormatterTest extends TestCase {
     /**

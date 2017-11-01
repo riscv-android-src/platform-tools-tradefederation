@@ -144,8 +144,8 @@ class InstrumentationSerialTest implements IRemoteTest {
         }
 
         @Override
-        public void testEnded(TestIdentifier test, Map<String, String> testMetrics) {
-            super.testEnded(test, testMetrics);
+        public void testEnded(TestIdentifier test, long endTime, Map<String, String> testMetrics) {
+            super.testEnded(test, endTime, testMetrics);
             if (mExpectedTest.equals(test)) {
                 mDidTestRun  = true;
             } else {
@@ -162,8 +162,13 @@ class InstrumentationSerialTest implements IRemoteTest {
         public void markTestAsFailed() {
             super.testRunStarted(mRunName, 1);
             super.testStarted(mExpectedTest);
-            super.testFailed(mExpectedTest, String.format(
-                    "Test failed to run. Test run failed due to : %s", mRunErrorMsg));
+            String message = mRunErrorMsg;
+            if (!didTestRun() && message == null) {
+                message = "Test wasn't triggered because test runner might have failed to "
+                        + "initialize it.";
+            }
+            super.testFailed(mExpectedTest,
+                    String.format("Test failed to run. Test run failed due to : %s", message));
             if (mRunErrorMsg != null) {
                 super.testRunFailed(mRunErrorMsg);
             }

@@ -94,7 +94,7 @@ public class NativeStressTestParser extends MultiLineReceiver {
     }
 
     /**
-     * @return
+     * @return the name of the test run.
      */
     public String getRunName() {
         return mTestRunName;

@@ -22,8 +22,14 @@ import com.android.tradefed.device.IDeviceManager;
 import com.android.tradefed.device.IDeviceMonitor;
 import com.android.tradefed.device.IDeviceSelection;
 import com.android.tradefed.device.IMultiDeviceRecovery;
+import com.android.tradefed.host.IHostOptions;
+import com.android.tradefed.invoker.shard.IShardHelper;
 import com.android.tradefed.log.ITerribleFailureHandler;
+import com.android.tradefed.util.hostmetric.IHostMonitor;
+import com.android.tradefed.util.keystore.IKeyStoreFactory;
 
+import java.io.File;
+import java.io.IOException;
 import java.util.List;
 
 /**
@@ -31,6 +37,13 @@ import java.util.List;
  * (encompassing any number of invocations of actual configurations).
  */
 public interface IGlobalConfiguration {
+    /**
+     * Gets the {@link IHostOptions} to use from the configuration.
+     *
+     * @return the {@link IDeviceManager} provided in the configuration.
+     */
+    public IHostOptions getHostOptions();
+
     /**
      * Gets the list of {@link IDeviceMonitor} from the global config.
      *
@@ -40,12 +53,28 @@ public interface IGlobalConfiguration {
     public List<IDeviceMonitor> getDeviceMonitors();
 
     /**
+     * Gets the list of {@link IHostMonitor} from the global config.
+     *
+     * @return the list of {@link IHostMonitor} from the global config, or <code>null</code> if none
+     *         was specified.
+     */
+    public List<IHostMonitor> getHostMonitors();
+
+    /**
      * Set the {@link IDeviceMonitor}.
      *
      * @param deviceMonitor The monitor
      * @throws ConfigurationException if an {@link IDeviceMonitor} has already been set.
      */
     public void setDeviceMonitor(IDeviceMonitor deviceMonitor) throws ConfigurationException;
+
+    /**
+     * Set the {@link IHostMonitor} list.
+     *
+     * @param hostMonitors The list of monitors
+     * @throws ConfigurationException if an {@link IHostMonitor} has already been set.
+     */
+    public void setHostMonitors(List<IHostMonitor> hostMonitors) throws ConfigurationException;
 
     /**
      * Set the {@link ITerribleFailureHandler}.
@@ -96,7 +125,7 @@ public interface IGlobalConfiguration {
      * Get a list of option's values.
      *
      * @param optionName the map option name
-     * @returns a list of the given option's values. <code>null</code> if the option name does not
+     * @return a list of the given option's values. <code>null</code> if the option name does not
      *          exist.
      */
     public List<String> getOptionValues(String optionName);
@@ -104,7 +133,7 @@ public interface IGlobalConfiguration {
     /**
      * Set the global config {@link Option} fields with given set of command line arguments
      * <p/>
-     * @see {@link ArgsOptionParser} for expected format
+     * See {@link ArgsOptionParser} for expected format
      *
      * @param listArgs the command line arguments
      * @return the unconsumed arguments
@@ -160,6 +189,24 @@ public interface IGlobalConfiguration {
      */
     public List<IMultiDeviceRecovery> getMultiDeviceRecoveryHandlers();
 
+
+    /**
+     * Gets the {@link IKeyStoreFactory} to use from the configuration.
+     *
+     * @return the {@link IKeyStoreFactory} or null if no key store factory is set.
+     */
+    public IKeyStoreFactory getKeyStoreFactory();
+
+    /** Returns the {@link IShardHelper} that defines the way to shard a configuration. */
+    public IShardHelper getShardingStrategy();
+
+    /**
+     * Set the {@link IHostOptions}, replacing any existing values.
+     *
+     * @param hostOptions
+     */
+    public void setHostOptions(IHostOptions hostOptions);
+
     /**
      * Set the {@link IDeviceManager}, replacing any existing values. This sets the manager
      * for the test devices
@@ -174,6 +221,17 @@ public interface IGlobalConfiguration {
      * @param scheduler
      */
     public void setCommandScheduler(ICommandScheduler scheduler);
+
+
+    /**
+     * Set the {@link IKeyStoreFactory}, replacing any existing values.
+     *
+     * @param factory
+     */
+    public void setKeyStoreFactory(IKeyStoreFactory factory);
+
+    /** Sets the {@link IShardHelper} to be used when sharding a configuration. */
+    public void setShardingStrategy(IShardHelper sharding);
 
     /**
      * Generic method to set the config object with the given name, replacing any existing value.
@@ -192,4 +250,44 @@ public interface IGlobalConfiguration {
      * @return the object or null if object with that name is not found
      */
     public Object getConfigurationObject(String typeName);
+
+    /**
+     * Validate option values.
+     * <p/>
+     * Currently this will just validate that all mandatory options have been set
+     *
+     * @throws ConfigurationException if configuration is missing mandatory fields
+     */
+    public void validateOptions() throws ConfigurationException;
+
+    /**
+     * Filter the GlobalConfiguration based on a white list and output to an XML file.
+     *
+     * <p>For example, for following configuration:
+     * {@code
+     * <xml>
+     *     <configuration>
+     *         <device_monitor class="com.android.tradefed.device.DeviceMonitorMultiplexer" />
+     *         <wtf_handler class="com.android.tradefed.log.TerribleFailureEmailHandler" />
+     *         <key_store class="com.android.tradefed.util.keystore.JSONFileKeyStoreFactory" />
+     *     </configuration>
+     * </xml>
+     * }
+     *
+     * <p>all config except "key_store" will be filtered out, and result a config file with
+     * following content:
+     * {@code
+     * <xml>
+     *     <configuration>
+     *         <key_store class="com.android.tradefed.util.keystore.JSONFileKeyStoreFactory" />
+     *     </configuration>
+     * </xml>
+     * }
+     *
+     * @param outputXml the XML file to write to
+     * @param whitelistConfigs a {@link String} array of configs to be included in the new XML file.
+     *     If it's set to <code>null<code/>, a default list should be used.
+     * @throws IOException
+     */
+    public void cloneConfigWithFilter(File outputXml, String[] whitelistConfigs) throws IOException;
 }

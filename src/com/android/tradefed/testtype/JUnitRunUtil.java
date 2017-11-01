@@ -16,6 +16,7 @@
 package com.android.tradefed.testtype;
 
 import com.android.tradefed.device.DeviceNotAvailableException;
+import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.JUnitToInvocationResultForwarder;
 import com.android.tradefed.testtype.DeviceTestResult.RuntimeDeviceNotAvailableException;
@@ -39,6 +40,10 @@ public class JUnitRunUtil {
 
     public static void runTest(ITestInvocationListener listener, Test junitTest,
             String runName) throws DeviceNotAvailableException {
+        if (junitTest.countTestCases() == 0) {
+            CLog.v("Skipping empty test case %s", runName);
+            return;
+        }
         listener.testRunStarted(runName, junitTest.countTestCases());
         long startTime = System.currentTimeMillis();
         // forward the JUnit results to the invocation listener

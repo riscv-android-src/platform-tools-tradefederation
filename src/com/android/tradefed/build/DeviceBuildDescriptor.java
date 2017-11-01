@@ -43,7 +43,7 @@ public class DeviceBuildDescriptor {
      * Determines if given {@link IBuildInfo} contains device build metadata
      *
      * @param build
-     * @return
+     * @return True if the {@link IBuildInfo} contains the device build metadata, false otherwise
      */
     public static boolean describesDeviceBuild(IBuildInfo build) {
         return build.getBuildAttributes().containsKey(DEVICE_BUILD_ID);
@@ -113,7 +113,7 @@ public class DeviceBuildDescriptor {
      * Google Galaxy Nexus 4.2
      *
      * @param device
-     * @return
+     * @return The device description string
      * @throws DeviceNotAvailableException
      */
     public static String generateDeviceDesc(ITestDevice device)

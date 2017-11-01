@@ -16,6 +16,8 @@
 
 package com.android.tradefed.util;
 
+import com.android.tradefed.command.CommandScheduler;
+
 import java.io.File;
 import java.io.IOException;
 import java.io.OutputStream;
@@ -50,7 +52,7 @@ public interface IRunUtil {
      *
      * @param dir the working directory
      *
-     * @see {@link ProcessBuilder#directory(File)}
+     * @see ProcessBuilder#directory(File)
      */
     public void setWorkingDir(File dir);
 
@@ -60,7 +62,7 @@ public interface IRunUtil {
      * @param key the variable name
      * @param value the variable value
      *
-     * @see {@link ProcessBuilder#environment()}
+     * @see ProcessBuilder#environment()
      *
      */
     public void setEnvVariable(String key, String value);
@@ -70,7 +72,7 @@ public interface IRunUtil {
      *
      * @param key the variable name
      *
-     * @see {@link ProcessBuilder#environment()}
+     * @see ProcessBuilder#environment()
      */
     public void unsetEnvVariable(String key);
 
@@ -78,11 +80,25 @@ public interface IRunUtil {
      * Helper method to execute a system command, and aborting if it takes longer than a specified
      * time.
      *
-     * @param timeout maximum time to wait in ms
+     * @param timeout maximum time to wait in ms. 0 means no timeout.
      * @param command the specified system command and optionally arguments to exec
      * @return a {@link CommandResult} containing result from command run
      */
     public CommandResult runTimedCmd(final long timeout, final String... command);
+
+    /**
+     * Helper method to execute a system command, abort if it takes longer than a specified time,
+     * and redirect output to files if specified. When {@link OutputStream} are provided this way,
+     * they will be left open at the end of the function.
+     *
+     * @param timeout timeout maximum time to wait in ms. 0 means no timeout.
+     * @param stdout {@link OutputStream} where the std output will be redirected. Can be null.
+     * @param stderr {@link OutputStream} where the error output will be redirected. Can be null.
+     * @param command the specified system command and optionally arguments to exec
+     * @return a {@link CommandResult} containing result from command run
+     */
+    public CommandResult runTimedCmd(
+            final long timeout, OutputStream stdout, OutputStream stderr, final String... command);
 
     /**
      * Helper method to execute a system command, and aborting if it takes longer than a specified
@@ -110,8 +126,8 @@ public interface IRunUtil {
 
     /**
      * Helper method to execute a system command, and aborting if it takes longer than a specified
-     * time. Similar to {@link #runTimedCmdRetry(long, String...)}, but does not log any errors on
-     * exception.
+     * time. Similar to {@link #runTimedCmdRetry(long, long, int, String[])},
+     * but does not log any errors on exception.
      *
      * @param timeout maximum time to wait in ms
      * @param command the specified system command and optionally arguments to exec
@@ -246,6 +262,21 @@ public interface IRunUtil {
     public void allowInterrupt(boolean allow);
 
     /**
+     * Give the interrupt status of the RunUtil.
+     * @return true if the Run can be interrupted, false otherwise.
+     */
+    public boolean isInterruptAllowed();
+
+    /**
+     * Set as interruptible after some waiting time.
+     * {@link CommandScheduler#shutdownHard()} to enforce we terminate eventually.
+     *
+     * @param thread the thread that will become interruptible.
+     * @param timeMs time to wait before setting interruptible.
+     */
+    public void setInterruptibleInFuture(Thread thread, long timeMs);
+
+    /**
      * Interrupts the ongoing/forthcoming run operations on the given thread. The run operations on
      * the given thread will throw {@link RunInterruptedException}.
      *
@@ -253,4 +284,21 @@ public interface IRunUtil {
      * @param message the message for {@link RunInterruptedException}.
      */
     public void interrupt(Thread thread, String message);
+
+    /**
+     * Decide whether or not when creating a process, unsetting environment variable is higher
+     * priority than setting them.
+     * By Default, unsetting is higher priority: meaning if an attempt to set a variable with the
+     * same name is made, it won't happen since the variable will be unset.
+     * Cannot be used on the default {@link IRunUtil} instance.
+     */
+    public void setEnvVariablePriority(EnvPriority priority);
+
+    /**
+     * Enum that defines whether setting or unsetting a particular env. variable has priority.
+     */
+    public enum EnvPriority {
+        SET,
+        UNSET
+    }
 }

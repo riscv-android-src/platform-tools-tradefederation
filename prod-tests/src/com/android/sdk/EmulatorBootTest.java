@@ -16,7 +16,6 @@
 
 package com.android.sdk;
 
-import com.android.ddmlib.Log;
 import com.android.ddmlib.testrunner.TestIdentifier;
 import com.android.sdk.tests.EmulatorGpsPreparer;
 import com.android.sdk.tests.EmulatorSmsPreparer;
@@ -41,7 +40,8 @@ import java.util.HashMap;
 /**
  * A class for posting emulator boot result as a test
  */
-public class EmulatorBootTest implements IDeviceTest, IRemoteTest, IBuildReceiver, IConfigurationReceiver {
+public class EmulatorBootTest implements IDeviceTest, IRemoteTest, IBuildReceiver,
+        IConfigurationReceiver {
     private IConfiguration mConfiguration;
     private String mTestLabel = "emulator_boot_test";
     private SdkAvdPreparer mAvdPreparer;
@@ -95,7 +95,8 @@ public class EmulatorBootTest implements IDeviceTest, IRemoteTest, IBuildReceive
      */
     @Override
     public void run(ITestInvocationListener listener) throws DeviceNotAvailableException {
-        TestIdentifier bootTest = new TestIdentifier(EmulatorBootTest.class.getSimpleName(), mTestLabel);
+        TestIdentifier bootTest = new TestIdentifier(EmulatorBootTest.class.getSimpleName(),
+                mTestLabel);
         listener.testRunStarted(EmulatorBootTest.class.getSimpleName(), 1);
         listener.testStarted(bootTest);
         try {
@@ -103,13 +104,13 @@ public class EmulatorBootTest implements IDeviceTest, IRemoteTest, IBuildReceive
             mAvdPreparer.setUp(mDevice, mBuildInfo);
             mSmsPreparer.setUp(mDevice, mBuildInfo);
             mGpsPreparer.setUp(mDevice, mBuildInfo);
-            
             checkLauncherRunningOnEmulator(mDevice);
         }
         catch(BuildError b) {
             listener.testFailed(bootTest, StreamUtil.getStackTrace(b));
             // throw exception to prevent other tests from executing needlessly
-            throw new DeviceUnresponsiveException("The emulator failed to boot", b);
+            throw new DeviceUnresponsiveException("The emulator failed to boot", b,
+                    mDevice.getSerialNumber());
         }
         catch(RuntimeException e) {
             listener.testFailed(bootTest, StreamUtil.getStackTrace(e));
@@ -123,8 +124,9 @@ public class EmulatorBootTest implements IDeviceTest, IRemoteTest, IBuildReceive
             listener.testRunEnded(0, new HashMap<String,String>());
         }
     }
-    
-    private void checkLauncherRunningOnEmulator(ITestDevice device) throws BuildError, DeviceNotAvailableException {
+
+    private void checkLauncherRunningOnEmulator(ITestDevice device) throws BuildError,
+            DeviceNotAvailableException {
         Integer apiLevel = device.getApiLevel();
         String cmd = "ps";
         if (apiLevel >= 21) {
@@ -143,7 +145,8 @@ public class EmulatorBootTest implements IDeviceTest, IRemoteTest, IBuildReceive
             }
         }
         if(i == cmdResultLines.length) {
-            throw new BuildError("The emulator do not have launcher run");
+            throw new BuildError("The emulator do not have launcher run",
+                    device.getDeviceDescriptor());
         }
     }
 }

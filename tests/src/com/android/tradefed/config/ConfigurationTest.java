@@ -16,19 +16,22 @@
 package com.android.tradefed.config;
 
 import com.android.ddmlib.Log.LogLevel;
-import com.android.tradefed.build.BuildInfo;
 import com.android.tradefed.build.BuildRetrievalError;
 import com.android.tradefed.build.IBuildProvider;
+import com.android.tradefed.command.CommandOptions;
 import com.android.tradefed.command.ICommandOptions;
 import com.android.tradefed.config.ConfigurationDef.OptionDef;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.IDeviceRecovery;
 import com.android.tradefed.device.IDeviceSelection;
+import com.android.tradefed.invoker.InvocationContext;
 import com.android.tradefed.log.ILeveledLogOutput;
+import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.TextResultReporter;
 import com.android.tradefed.targetprep.ITargetPreparer;
 import com.android.tradefed.testtype.IRemoteTest;
+import com.android.tradefed.util.FileUtil;
 import com.android.tradefed.util.MultiMap;
 
 import junit.framework.TestCase;
@@ -39,9 +42,11 @@ import org.json.JSONException;
 import org.json.JSONObject;
 
 import java.io.ByteArrayOutputStream;
+import java.io.File;
+import java.io.IOException;
 import java.io.PrintStream;
+import java.io.PrintWriter;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -96,7 +101,7 @@ public class ConfigurationTest extends TestCase {
     }
 
     /**
-     * Test that {@link Configuration#getConfigurationObject(String, Class)} can retrieve
+     * Test that {@link Configuration#getConfigurationObject(String)} can retrieve
      * a previously stored object.
      */
     public void testGetConfigurationObject() throws ConfigurationException {
@@ -171,7 +176,7 @@ public class ConfigurationTest extends TestCase {
     }
 
     /**
-     * Test {@link Configuration#getConfigurationObjectList(String, Class)} when config object
+     * Test {@link Configuration#getConfigurationObjectList(String)} when config object
      * with given name does not exist.
      */
     public void testGetConfigurationObjectList_wrongname() {
@@ -182,7 +187,7 @@ public class ConfigurationTest extends TestCase {
      * Test {@link Configuration#setConfigurationObjectList(String, List)} when config object
      * is the wrong type
      */
-    public void testSetConfigurationObjectList_wrongtype() throws ConfigurationException  {
+    public void testSetConfigurationObjectList_wrongtype() {
         try {
             List<TestConfigObject> myList = new ArrayList<TestConfigObject>(1);
             myList.add(new TestConfigObject());
@@ -195,9 +200,9 @@ public class ConfigurationTest extends TestCase {
     }
 
     /**
-     * Test method for {@link com.android.tradefed.config.Configuration#getBuildProvider()}.
+     * Test method for {@link Configuration#getBuildProvider()}.
      */
-    public void testGetBuildProvider() throws ConfigurationException, BuildRetrievalError {
+    public void testGetBuildProvider() throws BuildRetrievalError {
         // check that the default provider is present and doesn't blow up
         assertNotNull(mConfig.getBuildProvider().getBuild());
         // check set and get
@@ -207,11 +212,11 @@ public class ConfigurationTest extends TestCase {
     }
 
     /**
-     * Test method for {@link Configuration#getTargetPreparer()}.
+     * Test method for {@link Configuration#getTargetPreparers()}.
      */
     public void testGetTargetPreparers() throws Exception {
-        // check that the default preparer is present and doesn't blow up
-        mConfig.getTargetPreparers().get(0).setUp(null, null);
+        // check that the callback is working and doesn't blow up
+        assertEquals(0, mConfig.getTargetPreparers().size());
         // test set and get
         final ITargetPreparer prep = EasyMock.createMock(ITargetPreparer.class);
         mConfig.setTargetPreparer(prep);
@@ -221,7 +226,7 @@ public class ConfigurationTest extends TestCase {
     /**
      * Test method for {@link Configuration#getTests()}.
      */
-    public void testGetTests() throws ConfigurationException, DeviceNotAvailableException {
+    public void testGetTests() throws DeviceNotAvailableException {
         // check that the default test is present and doesn't blow up
         mConfig.getTests().get(0).run(new TextResultReporter());
         IRemoteTest test1 = EasyMock.createMock(IRemoteTest.class);
@@ -232,7 +237,7 @@ public class ConfigurationTest extends TestCase {
     /**
      * Test method for {@link Configuration#getDeviceRecovery()}.
      */
-    public void testGetDeviceRecovery() throws ConfigurationException {
+    public void testGetDeviceRecovery() {
         // check that the default recovery is present
         assertNotNull(mConfig.getDeviceRecovery());
         final IDeviceRecovery recovery = EasyMock.createMock(IDeviceRecovery.class);
@@ -243,7 +248,7 @@ public class ConfigurationTest extends TestCase {
     /**
      * Test method for {@link Configuration#getLogOutput()}.
      */
-    public void testGetLogOutput() throws ConfigurationException {
+    public void testGetLogOutput() {
         // check that the default logger is present and doesn't blow up
         mConfig.getLogOutput().printLog(LogLevel.INFO, "testGetLogOutput", "test");
         final ILeveledLogOutput logger = EasyMock.createMock(ILeveledLogOutput.class);
@@ -258,7 +263,7 @@ public class ConfigurationTest extends TestCase {
     public void testGetTestInvocationListeners() throws ConfigurationException {
         // check that the default listener is present and doesn't blow up
         ITestInvocationListener defaultListener = mConfig.getTestInvocationListeners().get(0);
-        defaultListener.invocationStarted(new BuildInfo());
+        defaultListener.invocationStarted(new InvocationContext());
         defaultListener.invocationEnded(1);
 
         final ITestInvocationListener listener1 = EasyMock.createMock(
@@ -270,7 +275,7 @@ public class ConfigurationTest extends TestCase {
     /**
      * Test method for {@link Configuration#getCommandOptions()}.
      */
-    public void testGetCommandOptions() throws ConfigurationException {
+    public void testGetCommandOptions() {
         // check that the default object is present
         assertNotNull(mConfig.getCommandOptions());
         final ICommandOptions cmdOptions = EasyMock.createMock(ICommandOptions.class);
@@ -281,7 +286,7 @@ public class ConfigurationTest extends TestCase {
     /**
      * Test method for {@link Configuration#getDeviceRequirements()}.
      */
-    public void testGetDeviceRequirements() throws ConfigurationException {
+    public void testGetDeviceRequirements() {
         // check that the default object is present
         assertNotNull(mConfig.getDeviceRequirements());
         final IDeviceSelection deviceSelection = EasyMock.createMock(
@@ -331,7 +336,58 @@ public class ConfigurationTest extends TestCase {
     }
 
     /**
-     * Test {@link Configuration#injectOptionValues(List<OptionDef>))}
+     * Test {@link Configuration#injectOptionValue(String, String)} is throwing an exception
+     * for map options without no map key provided in the option value
+     */
+    public void testInjectParsedMapOptionValueNoKey() throws ConfigurationException {
+        TestConfigObject testConfigObject = new TestConfigObject();
+        mConfig.setConfigurationObject(CONFIG_OBJECT_TYPE_NAME, testConfigObject);
+        assertEquals(0, testConfigObject.getMap().size());
+
+        try {
+            mConfig.injectOptionValue(ALT_OPTION_NAME, "wrong_value");
+            fail("ConfigurationException is not thrown for a map option without retrievable key");
+        } catch (ConfigurationException ignore) {
+            // expected
+        }
+    }
+
+    /**
+     * Test {@link Configuration#injectOptionValue(String, String)} is throwing an exception
+     * for map options with ambiguous map key provided in the option value (multiple equal signs)
+     */
+    public void testInjectParsedMapOptionValueAmbiguousKey() throws ConfigurationException {
+        TestConfigObject testConfigObject = new TestConfigObject();
+        mConfig.setConfigurationObject(CONFIG_OBJECT_TYPE_NAME, testConfigObject);
+        assertEquals(0, testConfigObject.getMap().size());
+
+        try {
+            mConfig.injectOptionValue(ALT_OPTION_NAME, "a=b=c");
+            fail("ConfigurationException is not thrown for a map option with ambiguous key");
+        } catch (ConfigurationException ignore) {
+            // expected
+        }
+    }
+
+    /**
+     * Test {@link Configuration#injectOptionValue(String, String)} is correctly parsing map options
+     */
+    public void testInjectParsedMapOptionValue() throws ConfigurationException {
+        final String key = "hello\\=key";
+
+        TestConfigObject testConfigObject = new TestConfigObject();
+        mConfig.setConfigurationObject(CONFIG_OBJECT_TYPE_NAME, testConfigObject);
+        assertEquals(0, testConfigObject.getMap().size());
+        mConfig.injectOptionValue(ALT_OPTION_NAME, key + "=" + Boolean.toString(true));
+
+        Map<String, Boolean> map = testConfigObject.getMap();
+        assertEquals(1, map.size());
+        assertNotNull(map.get(key));
+        assertTrue(map.get(key));
+    }
+
+    /**
+     * Test {@link Configuration#injectOptionValues(List)}
      */
     public void testInjectOptionValues() throws ConfigurationException {
         final String key = "hello";
@@ -351,7 +407,7 @@ public class ConfigurationTest extends TestCase {
     }
 
     /**
-     * Basic test for {@link Configuration#printCommandUsage(java.io.PrintStream)}.
+     * Basic test for {@link Configuration#printCommandUsage(boolean, java.io.PrintStream)}.
      */
     public void testPrintCommandUsage() throws ConfigurationException {
         TestConfigObject testConfigObject = new TestConfigObject();
@@ -498,5 +554,116 @@ public class ConfigurationTest extends TestCase {
         JSONObject jsonMapValue = jsonMapOption.getJSONObject("value");
         assertEquals(mapOption.get("foo"), jsonMapValue.get("foo"));
         assertEquals(mapOption.get("bar"), jsonMapValue.get("bar"));
+    }
+
+    /**
+     * Test that {@link Configuration#validateOptions()} doesn't throw when all mandatory fields
+     * are set.
+     */
+    public void testValidateOptions() throws ConfigurationException {
+        mConfig.validateOptions();
+    }
+
+    /**
+     * Test that {@link Configuration#validateOptions()} throws a config exception when shard
+     * count is negative number.
+     */
+    public void testValidateOptionsShardException() throws ConfigurationException {
+        ICommandOptions option = new CommandOptions() {
+            @Override
+            public Integer getShardCount() {return -1;}
+        };
+        mConfig.setConfigurationObject(Configuration.CMD_OPTIONS_TYPE_NAME, option);
+        try {
+            mConfig.validateOptions();
+            fail("Should have thrown an exception.");
+        } catch(ConfigurationException expected) {
+            assertEquals("a shard count must be a positive number", expected.getMessage());
+        }
+    }
+
+    /**
+     * Test that {@link Configuration#validateOptions()} throws a config exception when shard
+     * index is not valid.
+     */
+    public void testValidateOptionsShardIndexException() throws ConfigurationException {
+        ICommandOptions option = new CommandOptions() {
+            @Override
+            public Integer getShardIndex() {
+                return -1;
+            }
+        };
+        mConfig.setConfigurationObject(Configuration.CMD_OPTIONS_TYPE_NAME, option);
+        try {
+            mConfig.validateOptions();
+            fail("Should have thrown an exception.");
+        } catch(ConfigurationException expected) {
+            assertEquals("a shard index must be in range [0, shard count)", expected.getMessage());
+        }
+    }
+
+    /**
+     * Test that {@link Configuration#validateOptions()} throws a config exception when shard
+     * index is above the shard count.
+     */
+    public void testValidateOptionsShardIndexAboveShardCount() throws ConfigurationException {
+        ICommandOptions option = new CommandOptions() {
+            @Override
+            public Integer getShardIndex() {
+                return 3;
+            }
+            @Override
+            public Integer getShardCount() {
+                return 2;
+            }
+        };
+        mConfig.setConfigurationObject(Configuration.CMD_OPTIONS_TYPE_NAME, option);
+        try {
+            mConfig.validateOptions();
+            fail("Should have thrown an exception.");
+        } catch(ConfigurationException expected) {
+            assertEquals("a shard index must be in range [0, shard count)", expected.getMessage());
+        }
+    }
+
+    /**
+     * Test that {@link Configuration#dumpXml(PrintWriter)} produce the xml output.
+     */
+    public void testDumpXml() throws IOException {
+        File test = FileUtil.createTempFile("dumpxml", "xml");
+        try {
+            PrintWriter out = new PrintWriter(test);
+            mConfig.dumpXml(out);
+            out.flush();
+            String content = FileUtil.readStringFromFile(test);
+            assertTrue(content.length() > 100);
+            assertTrue(content.contains("<configuration>"));
+            CLog.e("%s", content);
+        } finally {
+            FileUtil.deleteFile(test);
+        }
+    }
+
+    /**
+     * Test that {@link Configuration#dumpXml(PrintWriter)} produce the xml output even for a multi
+     * device situation.
+     */
+    public void testDumpXml_multi_device() throws Exception {
+        List<IDeviceConfiguration> deviceObjectList = new ArrayList<IDeviceConfiguration>();
+        deviceObjectList.add(new DeviceConfigurationHolder("device1"));
+        deviceObjectList.add(new DeviceConfigurationHolder("device2"));
+        mConfig.setConfigurationObjectList(Configuration.DEVICE_NAME, deviceObjectList);
+        File test = FileUtil.createTempFile("dumpxml", "xml");
+        try {
+            PrintWriter out = new PrintWriter(test);
+            mConfig.dumpXml(out);
+            out.flush();
+            String content = FileUtil.readStringFromFile(test);
+            assertTrue(content.length() > 100);
+            assertTrue(content.contains("<device name=\"device1\">"));
+            assertTrue(content.contains("<device name=\"device2\">"));
+        } finally {
+            FileUtil.deleteFile(test);
+        }
     }
 }

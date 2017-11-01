@@ -20,6 +20,7 @@ import com.android.ddmlib.IDevice;
 import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.config.Option;
 import com.android.tradefed.config.OptionClass;
+import com.android.tradefed.invoker.IInvocationContext;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.testtype.CodeCoverageTest;
 import com.android.tradefed.util.CommandResult;
@@ -27,17 +28,16 @@ import com.android.tradefed.util.CommandStatus;
 import com.android.tradefed.util.FileUtil;
 import com.android.tradefed.util.IRunUtil;
 import com.android.tradefed.util.RunUtil;
-import com.android.tradefed.util.ZipUtil;
+import com.android.tradefed.util.ZipUtil2;
 
-import junit.framework.Assert;
-import junit.framework.AssertionFailedError;
+import org.apache.commons.compress.archivers.zip.ZipFile;
+import org.junit.Assert;
 
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
-import java.util.zip.ZipFile;
 
 /**
  * A {@link ITestInvocationListener} that will generate code coverage reports.
@@ -46,7 +46,7 @@ import java.util.zip.ZipFile;
  * is in same filesystem location as ddmlib jar.
  */
 @OptionClass(alias = "code-coverage-reporter")
-public class CodeCoverageReporter extends StubTestInvocationListener {
+public class CodeCoverageReporter implements ITestInvocationListener {
     @Option(name = "coverage-metadata-file-path", description =
             "The path of the Emma coverage meta data file used to generate the report.")
     private String mCoverageMetaFilePath = null;
@@ -64,9 +64,9 @@ public class CodeCoverageReporter extends StubTestInvocationListener {
             "The number of days to keep generated coverage files")
     private Integer mLogRetentionDays = null;
 
-    static private int REPORT_GENERATION_TIMEOUT_MS = 3 * 60 * 1000;
+    private static final int REPORT_GENERATION_TIMEOUT_MS = 3 * 60 * 1000;
 
-    static public String XML_REPORT_NAME = "report.xml";
+    public static final String XML_REPORT_NAME = "report.xml";
 
     private IBuildInfo mBuildInfo;
     private LogFileSaver mLogFileSaver;
@@ -129,12 +129,11 @@ public class CodeCoverageReporter extends StubTestInvocationListener {
         return new File(mReportOutputPath, "index.html");
     }
 
-    /**
-     * {@inheritDoc}
-     */
+    /** {@inheritDoc} */
     @Override
-    public void invocationStarted(IBuildInfo buildInfo) {
-        mBuildInfo = buildInfo;
+    public void invocationStarted(IInvocationContext context) {
+        // FIXME: do code coverage reporting for each different build info (for multi-device case)
+        mBuildInfo = context.getBuildInfos().get(0);
 
         // Append build and branch information to output directory.
         mReportOutputPath = generateReportLocation(mReportRootPath);
@@ -193,7 +192,7 @@ public class CodeCoverageReporter extends StubTestInvocationListener {
         try {
             mLocalTmpDir = FileUtil.createTempDir("emma-meta");
             ZipFile zipFile = new ZipFile(coverageZipFile);
-            ZipUtil.extractZip(zipFile, mLocalTmpDir);
+            ZipUtil2.extractZip(zipFile, mLocalTmpDir);
             File coverageMetaFile;
             if (mCoverageMetaFilePath == null) {
                 coverageMetaFile = FileUtil.findFile(mLocalTmpDir, "coverage.em");
@@ -258,7 +257,7 @@ public class CodeCoverageReporter extends StubTestInvocationListener {
      * Tries to find emma.jar in same location as ddmlib.jar.
      *
      * @return full path to emma jar file
-     * @throws AssertionFailedError if could not find emma jar
+     * @throws AssertionError if could not find emma jar
      */
     String findEmmaJarPath() {
         String ddmlibPath = IDevice.class.getProtectionDomain()

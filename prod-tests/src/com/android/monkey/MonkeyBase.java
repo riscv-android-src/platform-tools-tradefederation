@@ -41,14 +41,18 @@ import com.android.tradefed.testtype.IDeviceTest;
 import com.android.tradefed.testtype.IRemoteTest;
 import com.android.tradefed.testtype.IRetriableTest;
 import com.android.tradefed.util.ArrayUtil;
+import com.android.tradefed.util.Bugreport;
 import com.android.tradefed.util.CircularAtraceUtil;
+import com.android.tradefed.util.FileUtil;
 import com.android.tradefed.util.IRunUtil;
 import com.android.tradefed.util.RunUtil;
 import com.android.tradefed.util.StreamUtil;
 
-import junit.framework.Assert;
+import org.junit.Assert;
 
 import java.io.BufferedReader;
+import java.io.File;
+import java.io.FileReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.util.ArrayList;
@@ -137,25 +141,25 @@ public class MonkeyBase implements IDeviceTest, IRemoteTest, IRetriableTest {
     }
 
     @Option(name = "package", description = "Package name to send events to.  May be repeated.")
-    private Collection<String> mPackages = new LinkedList<String>();
+    private Collection<String> mPackages = new LinkedList<>();
 
     @Option(name = "exclude-package", description = "Substring of package names to exclude from " +
             "the package list. May be repeated.", importance = Importance.IF_UNSET)
-    private Collection<String> mExcludePackages = new HashSet<String>();
+    private Collection<String> mExcludePackages = new HashSet<>();
 
     @Option(name = "category", description = "App Category. May be repeated.")
-    private Collection<String> mCategories = new LinkedList<String>();
+    private Collection<String> mCategories = new LinkedList<>();
 
     @Option(name = "option", description = "Option to pass to monkey command. May be repeated.")
-    private Collection<String> mOptions = new LinkedList<String>();
+    private Collection<String> mOptions = new LinkedList<>();
 
     @Option(name = "launch-extras-int", description = "Launch int extras. May be repeated. " +
             "Format: --launch-extras-i key value. Note: this will be applied to all components.")
-    private Map<String, Integer> mIntegerExtras = new HashMap<String, Integer>();
+    private Map<String, Integer> mIntegerExtras = new HashMap<>();
 
     @Option(name = "launch-extras-str", description = "Launch string extras. May be repeated. " +
             "Format: --launch-extras-s key value. Note: this will be applied to all components.")
-    private Map<String, String> mStringExtras = new HashMap<String, String>();
+    private Map<String, String> mStringExtras = new HashMap<>();
 
     @Option(name = "target-count", description = "Target number of events to send.",
             importance = Importance.ALWAYS)
@@ -185,7 +189,7 @@ public class MonkeyBase implements IDeviceTest, IRemoteTest, IRetriableTest {
 
     @Option(name = "monkey-arg", description = "Extra parameters to pass onto monkey. Key/value " +
             "pairs should be passed as key:value. May be repeated.")
-    private Collection<String> mMonkeyArgs = new LinkedList<String>();
+    private Collection<String> mMonkeyArgs = new LinkedList<>();
 
     @Option(name = "use-pkg-whitelist-file", description = "Whether to use the monkey " +
             "--pkg-whitelist-file option to work around cmdline length limits")
@@ -198,7 +202,7 @@ public class MonkeyBase implements IDeviceTest, IRemoteTest, IRetriableTest {
     @Option(name = "warmup-component", description = "Component name of app to launch for " +
             "\"warming up\" before monkey test, will be used in an intent together with standard " +
             "flags and parameters as launched from Launcher. May be repeated")
-    private List<String> mLaunchComponents = new ArrayList<String>();
+    private List<String> mLaunchComponents = new ArrayList<>();
 
     @Option(name = "retry-on-failure", description = "Retry the test on failure")
     private boolean mRetryOnFailure = false;
@@ -207,7 +211,7 @@ public class MonkeyBase implements IDeviceTest, IRemoteTest, IRetriableTest {
     @Option(name = "upload-file-pattern", description = "File glob of on-device files to upload " +
             "if found. Takes two arguments: the glob, and the file type " +
             "(text/xml/zip/gzip/png/unknown).  May be repeated.")
-    private Map<String, LogDataType> mUploadFilePatterns = new LinkedHashMap<String, LogDataType>();
+    private Map<String, LogDataType> mUploadFilePatterns = new LinkedHashMap<>();
 
     @Option(name = "screenshot", description = "Take a device screenshot on monkey completion")
     private boolean mScreenshot = false;
@@ -220,9 +224,30 @@ public class MonkeyBase implements IDeviceTest, IRemoteTest, IRetriableTest {
             description = "Enable a continuous circular buffer to collect atrace information")
     private boolean mAtraceEnabled = false;
 
+    // options for generating ANR report via post processing script
+    @Option(name = "generate-anr-report", description = "Generate ANR report via post-processing")
+    private boolean mGenerateAnrReport = false;
+
+    @Option(name = "anr-report-script", description = "Path to the script for monkey ANR "
+            + "report generation.")
+    private String mAnrReportScriptPath = null;
+
+    @Option(name = "anr-report-storage-backend-base-path", description = "Base path to the storage "
+            + "backend used for saving the reports")
+    private String mAnrReportBasePath = null;
+
+    @Option(name = "anr-report-storage-backend-url-prefix", description = "URL prefix for the "
+            + "storage backend that would enable web acess to the stored reports.")
+    private String mAnrReportUrlPrefix = null;
+
+    @Option(name = "anr-report-storage-path", description = "Sub path under the base storage "
+            + "location for generated monkey ANR reports.")
+    private String mAnrReportPath = null;
+
     private ITestDevice mTestDevice = null;
     private MonkeyLogItem mMonkeyLog = null;
     private BugreportItem mBugreport = null;
+    private AnrReportGenerator mAnrGen = null;
 
     /**
      * {@inheritDoc}
@@ -313,6 +338,12 @@ public class MonkeyBase implements IDeviceTest, IRemoteTest, IRetriableTest {
             CircularAtraceUtil.startTrace(getDevice(), null, 10);
         }
 
+        if (mGenerateAnrReport) {
+            mAnrGen = new AnrReportGenerator(mAnrReportScriptPath, mAnrReportBasePath,
+                    mAnrReportUrlPrefix, mAnrReportPath, mTestDevice.getBuildId(),
+                    mTestDevice.getBuildFlavor(), mTestDevice.getSerialNumber());
+        }
+
         try {
             onMonkeyStart();
             commandHelper.runCommand(mTestDevice, command, getMonkeyTimeoutMs());
@@ -347,9 +378,22 @@ public class MonkeyBase implements IDeviceTest, IRemoteTest, IRetriableTest {
                         duration / 1000 / 60, duration / 1000 % 60));
                 mMonkeyLog = createMonkeyLog(listener, MONKEY_LOG_NAME, outputBuilder.toString());
 
-                if (mAtraceEnabled && mMonkeyLog.getCrash() instanceof AnrItem) {
+                boolean isAnr = mMonkeyLog.getCrash() instanceof AnrItem;
+                if (mAtraceEnabled && isAnr) {
                     // This was identified as an ANR; post atrace data
                     listener.testLog("circular-atrace", LogDataType.TEXT, atraceStream);
+                }
+                if (mAnrGen != null) {
+                    if (isAnr) {
+                        if (!mAnrGen.genereateAnrReport(listener)) {
+                            CLog.w("Failed to post-process ANR.");
+                        } else {
+                            CLog.i("Successfully post-processed ANR.");
+                        }
+                        mAnrGen.cleanTempFiles();
+                    } else {
+                        CLog.d("ANR post-processing enabled but no ANR detected.");
+                    }
                 }
                 StreamUtil.cancel(atraceStream);
             }
@@ -414,16 +458,33 @@ public class MonkeyBase implements IDeviceTest, IRemoteTest, IRetriableTest {
      * Capture a bugreport and send it to a listener.
      */
     protected BugreportItem takeBugreport(ITestInvocationListener listener, String bugreportName) {
-        InputStreamSource bugreport = mTestDevice.getBugreport();
+        Bugreport bugreport = mTestDevice.takeBugreport();
+        if (bugreport == null) {
+            CLog.e("Could not take bugreport");
+            return null;
+        }
+        bugreport.log(bugreportName, listener);
+        File main = null;
+        InputStreamSource is = null;
         try {
-            listener.testLog(bugreportName, LogDataType.BUGREPORT, bugreport);
-            return new BugreportParser().parse(new BufferedReader(new InputStreamReader(
-                    bugreport.createInputStream())));
+            main = bugreport.getMainFile();
+            if (main == null) {
+                CLog.e("Bugreport has no main file");
+                return null;
+            }
+            if (mAnrGen != null) {
+                is = new FileInputStreamSource(main);
+                mAnrGen.setBugReportInfo(is);
+            }
+            return new BugreportParser().parse(new BufferedReader(new FileReader(main)));
         } catch (IOException e) {
-            CLog.e("Could not parse bugreport");
+            CLog.e("Could not process bugreport");
+            CLog.e(e);
             return null;
         } finally {
-            bugreport.cancel();
+            StreamUtil.close(bugreport);
+            StreamUtil.cancel(is);
+            FileUtil.deleteFile(main);
         }
     }
 
@@ -447,11 +508,15 @@ public class MonkeyBase implements IDeviceTest, IRemoteTest, IRetriableTest {
 
         InputStreamSource source = new ByteArrayInputStreamSource(log.getBytes());
         try {
+            if (mAnrGen != null) {
+                mAnrGen.setMonkeyLogInfo(source);
+            }
             listener.testLog(monkeyLogName, LogDataType.MONKEY_LOG, source);
             return new MonkeyLogParser().parse(new BufferedReader(new InputStreamReader(
                     source.createInputStream())));
         } catch (IOException e) {
-            CLog.e("Could not parse monkey log");
+            CLog.e("Could not process monkey log.");
+            CLog.e(e);
             return null;
         } finally {
             source.cancel();
@@ -469,7 +534,7 @@ public class MonkeyBase implements IDeviceTest, IRemoteTest, IRetriableTest {
      *         order.
      */
     protected String buildMonkeyCommand() {
-        List<String> cmdList = new LinkedList<String>();
+        List<String> cmdList = new LinkedList<>();
         cmdList.add("monkey");
 
         if (!mUseWhitelistFile) {
@@ -580,7 +645,7 @@ public class MonkeyBase implements IDeviceTest, IRemoteTest, IRetriableTest {
             return keep;
         }
 
-        Collection<String> output = new ArrayList<String>(keep);
+        Collection<String> output = new ArrayList<>(keep);
         output.removeAll(exclude);
         return output;
     }

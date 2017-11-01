@@ -25,16 +25,18 @@ import java.io.File;
  */
 public class SdkFolderBuildInfo extends BuildInfo implements ISdkBuildInfo, IFolderBuildInfo {
 
+    private static final long serialVersionUID = BuildSerializedVersion.VERSION;
     private ISdkBuildInfo mSdkBuild;
     private IFolderBuildInfo mFolderBuild;
 
-    public SdkFolderBuildInfo(String buildId, String testTarget, String buildName) {
-        super(buildId, testTarget, buildName);
+    public SdkFolderBuildInfo(String buildId, String buildName) {
+        super(buildId, buildName);
     }
 
     public SdkFolderBuildInfo() {
     }
 
+    @Override
     public void cleanUp() {
         if (mSdkBuild != null) {
             mSdkBuild.cleanUp();
@@ -44,6 +46,7 @@ public class SdkFolderBuildInfo extends BuildInfo implements ISdkBuildInfo, IFol
         }
     }
 
+    @Override
     public File getRootDir() {
         if (mFolderBuild != null) {
             return mFolderBuild.getRootDir();
@@ -51,12 +54,14 @@ public class SdkFolderBuildInfo extends BuildInfo implements ISdkBuildInfo, IFol
         return null;
     }
 
+    @Override
     public void setRootDir(File rootDir) {
         if (mFolderBuild != null) {
             mFolderBuild.setRootDir(rootDir);
         }
     }
 
+    @Override
     public File getSdkDir() {
         if (mSdkBuild != null) {
             return mSdkBuild.getSdkDir();
@@ -64,6 +69,7 @@ public class SdkFolderBuildInfo extends BuildInfo implements ISdkBuildInfo, IFol
         return null;
     }
 
+    @Override
     public File getTestsDir() {
         if (mSdkBuild != null) {
             return mSdkBuild.getTestsDir();
@@ -71,24 +77,28 @@ public class SdkFolderBuildInfo extends BuildInfo implements ISdkBuildInfo, IFol
         return null;
     }
 
+    @Override
     public void setTestsDir(File testsDir) {
         if (mSdkBuild != null) {
             mSdkBuild.setTestsDir(testsDir);
         }
     }
 
+    @Override
     public void setSdkDir(File sdkDir) {
         if (mSdkBuild != null) {
             mSdkBuild.setSdkDir(sdkDir);
         }
     }
 
+    @Override
     public void setSdkDir(File sdkDir, boolean deleteParent) {
         if (mSdkBuild != null) {
             mSdkBuild.setSdkDir(sdkDir, deleteParent);
         }
     }
 
+    @Override
     public String getAndroidToolPath() {
         if (mSdkBuild != null) {
             return mSdkBuild.getAndroidToolPath();
@@ -96,6 +106,7 @@ public class SdkFolderBuildInfo extends BuildInfo implements ISdkBuildInfo, IFol
         return null;
     }
 
+    @Override
     public String getEmulatorToolPath() {
         if (mSdkBuild != null) {
             return mSdkBuild.getEmulatorToolPath();
@@ -103,6 +114,7 @@ public class SdkFolderBuildInfo extends BuildInfo implements ISdkBuildInfo, IFol
         return null;
     }
 
+    @Override
     public String[] getSdkTargets() {
         if (mSdkBuild != null) {
             return mSdkBuild.getSdkTargets();
@@ -110,6 +122,7 @@ public class SdkFolderBuildInfo extends BuildInfo implements ISdkBuildInfo, IFol
         return null;
     }
 
+    @Override
     public void makeToolsExecutable() {
         if (mSdkBuild != null) {
             mSdkBuild.makeToolsExecutable();
@@ -136,8 +149,7 @@ public class SdkFolderBuildInfo extends BuildInfo implements ISdkBuildInfo, IFol
             CLog.w("Invalid SdkFolderBuildInfo to clone.");
             return null;
         }
-        SdkFolderBuildInfo copy = new SdkFolderBuildInfo(getBuildId(), getTestTag(),
-                getBuildTargetName());
+        SdkFolderBuildInfo copy = new SdkFolderBuildInfo(getBuildId(), getBuildTargetName());
         copy.addAllBuildAttributes(this);
         ISdkBuildInfo sdkBuildClone = (ISdkBuildInfo)mSdkBuild.clone();
         sdkBuildClone.makeToolsExecutable();

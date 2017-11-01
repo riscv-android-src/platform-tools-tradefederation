@@ -54,7 +54,7 @@ public class DefaultTestsZipInstallerTest extends TestCase {
         ArrayList<String> skipThis = new ArrayList<String>(Arrays.asList(SKIP_THIS));
         mZipInstaller = new DefaultTestsZipInstaller(skipThis) {
             @Override
-            File[] getTestsZipDataFiles(File hostDir) {
+            File[] getTestsZipDataFiles(File hostDir, ITestDevice device) {
                 return new File[] { new File(TEST_STRING) };
             }
 
@@ -64,7 +64,7 @@ public class DefaultTestsZipInstallerTest extends TestCase {
                 files.add(SOME_PATH_1);
                 files.add(SOME_PATH_2);
                 return files;
-            };
+            }
 
             @Override
             IRunUtil getRunUtil() {
@@ -76,7 +76,9 @@ public class DefaultTestsZipInstallerTest extends TestCase {
         EasyMock.expect(mMockDevice.getSerialNumber()).andStubReturn(TEST_STRING);
         EasyMock.expect(mMockDevice.getProductType()).andStubReturn(TEST_STRING);
         EasyMock.expect(mMockDevice.getBuildId()).andStubReturn("1");
-        mDeviceBuild = new DeviceBuildInfo("1", TEST_STRING, TEST_STRING);
+
+        EasyMock.expect(mMockDevice.getDeviceDescriptor()).andStubReturn(null);
+        mDeviceBuild = new DeviceBuildInfo("1", TEST_STRING);
     }
 
     public void testSkipWipeFileSetup() throws Exception {

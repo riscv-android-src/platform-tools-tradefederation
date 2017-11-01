@@ -20,7 +20,9 @@ package com.android.tradefed.device;
  */
 enum DeviceEvent {
         CONNECTED_ONLINE,
+        CONNECTED_OFFLINE,
         STATE_CHANGE_ONLINE,
+        STATE_CHANGE_OFFLINE,
         DISCONNECTED,
         FORCE_AVAILABLE,
         AVAILABLE_CHECK_PASSED,

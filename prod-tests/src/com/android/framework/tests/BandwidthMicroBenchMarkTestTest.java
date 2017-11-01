@@ -22,7 +22,8 @@ import java.util.Map;
 public class BandwidthMicroBenchMarkTestTest extends TestCase {
 
     /**
-     * Test method for {@link BandwidthMicroBenchMarkTest#parseServerResponse()} on empty response.
+     * Test method for {@link BandwidthMicroBenchMarkTest#parseServerResponse(String)} on empty
+     * response.
      */
     public void testParseNullResponse() throws Exception {
         assertNull(BandwidthMicroBenchMarkTest.parseServerResponse(""));
@@ -30,7 +31,7 @@ public class BandwidthMicroBenchMarkTestTest extends TestCase {
     }
 
     /**
-     * Test method for {@link BandwidthMicroBenchMarkTest#parseServerResponse()} on standard
+     * Test method for {@link BandwidthMicroBenchMarkTest#parseServerResponse(String)} on standard
      * response.
      */
     public void testParseCorrectResponse() throws Exception {

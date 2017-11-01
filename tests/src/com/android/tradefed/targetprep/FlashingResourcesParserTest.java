@@ -45,8 +45,8 @@ public class FlashingResourcesParserTest extends TestCase {
     }
 
     /**
-     * Test that {@link FlashingResourcesParser#parseAndroidInfo(BufferedReader)} parses valid data
-     * correctly.
+     * Test that {@link FlashingResourcesParser#parseAndroidInfo(BufferedReader, Map)} parses valid
+     * data correctly.
      */
     public void testParseAndroidInfo() throws IOException {
         final String validInfoData = "require board=board1|board2\n" + // valid
@@ -67,8 +67,8 @@ public class FlashingResourcesParserTest extends TestCase {
     }
 
     /**
-     * Test that {@link FlashingResourcesParser#parseAndroidInfo(BufferedReader)} parses valid data
-     * correctly.
+     * Test that {@link FlashingResourcesParser#parseAndroidInfo(BufferedReader, Map)} parses valid
+     * data correctly.
      */
     public void testParseAndroidInfo_withConstraint() throws IOException {
         final String validInfoData = "require board=board1|board2\n" +
@@ -95,8 +95,8 @@ public class FlashingResourcesParserTest extends TestCase {
     }
 
     /**
-     * Test that {@link FlashingResourcesParser#parseAndroidInfo(BufferedReader)} parses valid data
-     * correctly.
+     * Test that {@link FlashingResourcesParser#parseAndroidInfo(BufferedReader, Map)} parses valid
+     * data correctly.
      *
      * When both 'require board=foo' and 'require product=bar' lines are present, the board line
      * should supercede the product line
@@ -114,8 +114,8 @@ public class FlashingResourcesParserTest extends TestCase {
     }
 
     /**
-     * Test that {@link FlashingResourcesParser#parseAndroidInfo(BufferedReader)} parses valid data
-     * correctly.
+     * Test that {@link FlashingResourcesParser#parseAndroidInfo(BufferedReader, Map)} parses valid
+     * data correctly.
      */
     public void testParseAndroidInfo_onlyBoard() throws Exception {
         final String validInfoData = "require board=gamma|delta";
@@ -129,8 +129,8 @@ public class FlashingResourcesParserTest extends TestCase {
     }
 
     /**
-     * Test that {@link FlashingResourcesParser#parseAndroidInfo(BufferedReader)} parses valid data
-     * correctly.
+     * Test that {@link FlashingResourcesParser#parseAndroidInfo(BufferedReader, Map)} parses valid
+     * data correctly.
      *
      * When only 'require product=bar' line is present, it should be passed out in lieu of the
      * (missing) board line.
@@ -147,8 +147,8 @@ public class FlashingResourcesParserTest extends TestCase {
     }
 
     /**
-     * Test that {@link FlashingResourcesParser#parseAndroidInfo(BufferedReader)} parses valid data
-     * correctly.
+     * Test that {@link FlashingResourcesParser#parseAndroidInfo(BufferedReader, Map)} parses valid
+     * data correctly.
      *
      * In particular, this tests that the "require-for-product:(productName)" requirement is parsed
      * properly and causes the expected internal state.
@@ -186,8 +186,8 @@ public class FlashingResourcesParserTest extends TestCase {
     }
 
     /**
-     * Test that {@link FlashingResourcesParser#parseAndroidInfo(BufferedReader)} parses valid data
-     * correctly.
+     * Test that {@link FlashingResourcesParser#parseAndroidInfo(BufferedReader, Map)} parses valid
+     * data correctly.
      *
      * In particular, this tests that the "require-for-product:(productName)" requirement is parsed
      * properly and causes the expected internal state.
@@ -207,8 +207,8 @@ public class FlashingResourcesParserTest extends TestCase {
     }
 
     /**
-     * Test {@link FlashingResourcesParser#getBuildRequirements(File)} when passed a file that
-     * is not a zip.
+     * Test {@link FlashingResourcesParser#getBuildRequirements(File, Map)} when passed a
+     * file that is not a zip.
      */
     public void testGetBuildRequirements_notAZip() throws IOException {
         File badFile = FileUtil.createTempFile("foo", ".zip");

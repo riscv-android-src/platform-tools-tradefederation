@@ -72,6 +72,20 @@ interface IWifiHelper {
     boolean addOpenNetwork(String ssid) throws DeviceNotAvailableException;
 
     /**
+     * Adds the open security network identified by ssid.
+     * <p/>
+     * To connect to any wifi network, a network profile must be created in wpa_supplicant
+     * configuration first. This will call wpa_cli to add the open security network identified by
+     * ssid.
+     *
+     * @param ssid the ssid of network to add.
+     * @param scanSsid whether to scan for hidden SSID for this network.
+     * @return <code>true</code> if network was added successfully, <code>false</code> otherwise.
+     * @throws DeviceNotAvailableException
+     */
+    boolean addOpenNetwork(String ssid, boolean scanSsid) throws DeviceNotAvailableException;
+
+    /**
      * Adds the WPA-PSK security network identified by ssid.
      *
      * @param ssid the ssid of network to add.
@@ -80,6 +94,17 @@ interface IWifiHelper {
      * @throws DeviceNotAvailableException
      */
     boolean addWpaPskNetwork(String ssid, String psk) throws DeviceNotAvailableException;
+
+    /**
+     * Adds the WPA-PSK security network identified by ssid.
+     *
+     * @param ssid the ssid of network to add.
+     * @param psk the WPA-PSK passphrase to use
+     * @param scanSsid whether to scan for hidden SSID for this network.
+     * @return <code>true</code> if network was added successfully, <code>false</code> otherwise.
+     * @throws DeviceNotAvailableException
+     */
+    boolean addWpaPskNetwork(String ssid, String psk, boolean scanSsid) throws DeviceNotAvailableException;
 
     /**
      * Wait until an ip address is assigned to wifi adapter.
@@ -100,7 +125,9 @@ interface IWifiHelper {
     /**
      * Gets the service set identifier of the currently connected network.
      *
-     * @see http://developer.android.com/reference/android/net/wifi/WifiInfo.html#getSSID()
+     * @see
+     * <a href="http://developer.android.com/reference/android/net/wifi/WifiInfo.html#getSSID()">
+     * http://developer.android.com/reference/android/net/wifi/WifiInfo.html#getSSID()</a>
      * @throws DeviceNotAvailableException
      */
     String getSSID() throws DeviceNotAvailableException;
@@ -108,7 +135,9 @@ interface IWifiHelper {
     /**
      * Gets the basic service set identifier (BSSID) of the currently access point.
      *
-     * @see http://developer.android.com/reference/android/net/wifi/WifiInfo.html#getBSSID()
+     * @see
+     * <a href="http://developer.android.com/reference/android/net/wifi/WifiInfo.html#getSSID()">
+     * http://developer.android.com/reference/android/net/wifi/WifiInfo.html#getSSID()</a>
      * @throws DeviceNotAvailableException
      */
     String getBSSID() throws DeviceNotAvailableException;
@@ -196,6 +225,19 @@ interface IWifiHelper {
             throws DeviceNotAvailableException;
 
     /**
+     * Connects to a wifi network and check connectivity.
+     *
+     * @param ssid the ssid of network to connect
+     * @param psk the WPA-PSK passphrase to use. This can be null.
+     * @param urlToCheck a destination url for a HTTP request check
+     * @param scanSsid whether to scan for hidden SSID for this network
+     * @return <code>true</code> if the device pass connectivity check.
+     * @throws DeviceNotAvailableException
+     */
+    boolean connectToNetwork(String ssid, String psk, String urlToCheck, boolean scanSsid)
+            throws DeviceNotAvailableException;
+
+    /**
      * Disconnect from the current wifi network and disable wifi.
      *
      * @return <code>true</code> if the operation succeeded.
@@ -223,4 +265,11 @@ interface IWifiHelper {
      * @throws DeviceNotAvailableException
      */
     List<Long> stopMonitor() throws DeviceNotAvailableException;
+
+    /**
+     * Clean up the resources and the wifi helper packaged install.
+     *
+     * @throws DeviceNotAvailableException
+     */
+    void cleanUp() throws DeviceNotAvailableException;
 }

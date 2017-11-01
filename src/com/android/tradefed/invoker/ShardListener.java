@@ -20,13 +20,14 @@ import com.android.ddmlib.testrunner.TestIdentifier;
 import com.android.ddmlib.testrunner.TestResult;
 import com.android.ddmlib.testrunner.TestResult.TestStatus;
 import com.android.ddmlib.testrunner.TestRunResult;
-import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.result.CollectingTestListener;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.InputStreamSource;
 import com.android.tradefed.result.LogDataType;
+import com.android.tradefed.util.TimeUtil;
 
+import java.util.Collection;
 import java.util.Map;
 
 /**
@@ -34,19 +35,19 @@ import java.util.Map;
  * invocation split to run on multiple resources in parallel), and forwards them to another
  * listener.
  */
-class ShardListener extends CollectingTestListener {
+public class ShardListener extends CollectingTestListener {
 
     private ITestInvocationListener mMasterListener;
 
     /**
      * Create a {@link ShardListener}.
      *
-     * @param master the {@link ITestInvocationListener} the results should be forwarded. To
-     *            prevent collisions with other {@link ShardListener}s, this object will synchronize
-     *            on <var>master</var> when forwarding results. And results will only be sent once
-     *            the invocation shard completes.
+     * @param master the {@link ITestInvocationListener} the results should be forwarded. To prevent
+     *     collisions with other {@link ShardListener}s, this object will synchronize on
+     *     <var>master</var> when forwarding results. And results will only be sent once the
+     *     invocation shard completes.
      */
-    ShardListener(ITestInvocationListener master) {
+    public ShardListener(ITestInvocationListener master) {
         mMasterListener = master;
     }
 
@@ -54,10 +55,10 @@ class ShardListener extends CollectingTestListener {
      * {@inheritDoc}
      */
     @Override
-    public void invocationStarted(IBuildInfo buildInfo) {
-        super.invocationStarted(buildInfo);
+    public void invocationStarted(IInvocationContext context) {
+        super.invocationStarted(context);
         synchronized (mMasterListener) {
-            mMasterListener.invocationStarted(buildInfo);
+            mMasterListener.invocationStarted(context);
         }
     }
 
@@ -111,6 +112,7 @@ class ShardListener extends CollectingTestListener {
     public void invocationEnded(long elapsedTime) {
         super.invocationEnded(elapsedTime);
         synchronized (mMasterListener) {
+            logShardContent(getRunResults());
             for (TestRunResult runResult : getRunResults()) {
                 mMasterListener.testRunStarted(runResult.getName(), runResult.getNumTests());
                 forwardTestResults(runResult.getTestResults());
@@ -125,7 +127,7 @@ class ShardListener extends CollectingTestListener {
 
     private void forwardTestResults(Map<TestIdentifier, TestResult> testResults) {
         for (Map.Entry<TestIdentifier, TestResult> testEntry : testResults.entrySet()) {
-            mMasterListener.testStarted(testEntry.getKey());
+            mMasterListener.testStarted(testEntry.getKey(), testEntry.getValue().getStartTime());
             switch (testEntry.getValue().getStatus()) {
                 case FAILURE:
                     mMasterListener.testFailed(testEntry.getKey(),
@@ -138,10 +140,29 @@ class ShardListener extends CollectingTestListener {
                 case IGNORED:
                     mMasterListener.testIgnored(testEntry.getKey());
                     break;
+                default:
+                    break;
             }
             if (!testEntry.getValue().getStatus().equals(TestStatus.INCOMPLETE)) {
-                mMasterListener.testEnded(testEntry.getKey(), testEntry.getValue().getMetrics());
+                mMasterListener.testEnded(
+                        testEntry.getKey(),
+                        testEntry.getValue().getEndTime(),
+                        testEntry.getValue().getMetrics());
             }
         }
+    }
+
+    /** Log the content of the shard for easier debugging. */
+    private void logShardContent(Collection<TestRunResult> listResults) {
+        CLog.d("=================================================");
+        CLog.d(
+                "========== Shard Primary Device %s ==========",
+                getInvocationContext().getDevices().get(0).getSerialNumber());
+        for (TestRunResult runRes : listResults) {
+            CLog.d(
+                    "\tRan '%s' in %s",
+                    runRes.getName(), TimeUtil.formatElapsedTime(runRes.getElapsedTime()));
+        }
+        CLog.d("=================================================");
     }
 }

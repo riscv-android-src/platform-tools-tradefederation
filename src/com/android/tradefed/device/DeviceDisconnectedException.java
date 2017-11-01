@@ -34,7 +34,10 @@ public class DeviceDisconnectedException extends DeviceNotAvailableException {
      * Creates a {@link DeviceDisconnectedException}.
      *
      * @param msg a descriptive message.
+     *
+     * @deprecated use {@link #DeviceDisconnectedException(String msg, String serial)} instead
      */
+    @Deprecated
     public DeviceDisconnectedException(String msg) {
         super(msg);
     }
@@ -43,10 +46,33 @@ public class DeviceDisconnectedException extends DeviceNotAvailableException {
      * Creates a {@link DeviceDisconnectedException}.
      *
      * @param msg a descriptive message.
-     * @param cause the root {@link Throwable} that caused the device to become disconnected.
      */
+    public DeviceDisconnectedException(String msg, String serial) {
+        super(msg, serial);
+    }
+
+    /**
+     * Creates a {@link DeviceDisconnectedException}.
+     *
+     * @param msg a descriptive message.
+     * @param cause the root {@link Throwable} that caused the device to become unavailable.
+     *
+     * @deprecated use
+     * {@link #DeviceDisconnectedException(String msg, Throwable cause, String serial)} instead
+     */
+    @Deprecated
     public DeviceDisconnectedException(String msg, Throwable cause) {
         super(msg, cause);
+    }
+
+    /**
+     * Creates a {@link DeviceDisconnectedException}.
+     *
+     * @param msg a descriptive message.
+     * @param cause the root {@link Throwable} that caused the device to become disconnected.
+     */
+    public DeviceDisconnectedException(String msg, Throwable cause, String serial) {
+        super(msg, cause, serial);
     }
 
 }

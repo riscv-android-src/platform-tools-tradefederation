@@ -19,6 +19,7 @@ import com.android.ddmlib.Log.LogLevel;
 import com.android.tradefed.config.Option;
 import com.android.tradefed.config.Option.Importance;
 import com.android.tradefed.config.OptionClass;
+import com.android.tradefed.config.OptionCopier;
 import com.android.tradefed.result.ByteArrayInputStreamSource;
 import com.android.tradefed.result.InputStreamSource;
 import com.android.tradefed.result.SnapshotInputStreamSource;
@@ -63,6 +64,11 @@ public class FileLogger implements ILeveledLogOutput {
         mLogTagsDisplay.addAll(tags);
     }
 
+    /** Returns the collection of tags to always display on stdout. */
+    Collection<String> getLogTagsDisplay() {
+        return mLogTagsDisplay;
+    }
+
     public FileLogger() {
     }
 
@@ -71,8 +77,18 @@ public class FileLogger implements ILeveledLogOutput {
      */
     @Override
     public void init() throws IOException {
-        mLogStream = new SizeLimitedOutputStream(mMaxLogSizeMbytes * 1024 * 1024,
-                TEMP_FILE_PREFIX, TEMP_FILE_SUFFIX);
+        init(TEMP_FILE_PREFIX, TEMP_FILE_SUFFIX);
+    }
+
+    /**
+     * Alternative to {@link #init()} where we can specify the file name and suffix.
+     *
+     * @param logPrefix the file name where to log without extension.
+     * @param fileSuffix the extension of the file where to log.
+     */
+    protected void init(String logPrefix, String fileSuffix) {
+        mLogStream =
+                new SizeLimitedOutputStream(mMaxLogSizeMbytes * 1024 * 1024, logPrefix, fileSuffix);
     }
 
     /**
@@ -84,9 +100,7 @@ public class FileLogger implements ILeveledLogOutput {
     @Override
     public ILeveledLogOutput clone()  {
         FileLogger logger = new FileLogger();
-        logger.setLogLevelDisplay(mLogLevelDisplay);
-        logger.setLogLevel(mLogLevel);
-        logger.addLogTagsDisplay(mLogTagsDisplay);
+        OptionCopier.copyOptionsNoThrow(this, logger);
         return logger;
     }
 
@@ -173,6 +187,11 @@ public class FileLogger implements ILeveledLogOutput {
         return mLogLevelDisplay;
     }
 
+    /** Returns the max log size of the log in MBytes. */
+    public long getMaxLogSizeMbytes() {
+        return mMaxLogSizeMbytes;
+    }
+
     /**
      * {@inheritDoc}
      */
@@ -182,7 +201,7 @@ public class FileLogger implements ILeveledLogOutput {
             try {
                 // create a InputStream from log file
                 mLogStream.flush();
-                return new SnapshotInputStreamSource(mLogStream.getData());
+                return new SnapshotInputStreamSource("FileLogger", mLogStream.getData());
             } catch (IOException e) {
                 System.err.println("Failed to get log");
                 e.printStackTrace();
@@ -196,30 +215,20 @@ public class FileLogger implements ILeveledLogOutput {
      */
     @Override
     public void closeLog() {
-        try {
-            doCloseLog();
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
+        doCloseLog();
     }
 
     /**
      * Flushes stream and closes log file.
      * <p/>
      * Exposed for unit testing.
-     *
-     * @throws IOException
      */
-    void doCloseLog() throws IOException {
+    void doCloseLog() {
         SizeLimitedOutputStream stream = mLogStream;
         mLogStream = null;
+        StreamUtil.flushAndCloseStream(stream);
         if (stream != null) {
-            try {
-                stream.flush();
-                stream.close();
-            } finally {
-                stream.delete();
-            }
+            stream.delete();
         }
     }
 

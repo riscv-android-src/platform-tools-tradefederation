@@ -26,10 +26,10 @@ import com.android.tradefed.config.OptionClass;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.log.LogUtil.CLog;
+import com.android.tradefed.result.FileInputStreamSource;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.InputStreamSource;
 import com.android.tradefed.result.LogDataType;
-import com.android.tradefed.result.SnapshotInputStreamSource;
 import com.android.tradefed.targetprep.BuildError;
 import com.android.tradefed.targetprep.ITargetPreparer;
 import com.android.tradefed.targetprep.TargetSetupError;
@@ -41,12 +41,11 @@ import com.android.tradefed.testtype.IShardableTest;
 import com.android.tradefed.util.FileUtil;
 import com.android.tradefed.util.IRunUtil;
 import com.android.tradefed.util.RunUtil;
+import com.android.tradefed.util.StreamUtil;
 
-import junit.framework.Assert;
-import junit.framework.AssertionFailedError;
+import org.junit.Assert;
 
 import java.io.File;
-import java.io.FileInputStream;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -57,7 +56,7 @@ import java.util.Map;
  * A test that will flash a build on a device, wait for the device to be OTA-ed to another build,
  * and then repeat N times.
  * <p/>
- * Note: this test assumes that the {@link ITargetPreparers} included in this test's
+ * Note: this test assumes that the {@link ITargetPreparer}s included in this test's
  * {@link IConfiguration} will flash the device back to a baseline build, and prepare the device
  * to receive the OTA to a new build.
  */
@@ -181,7 +180,7 @@ public class OtaStabilityTest implements IDeviceTest, IBuildReceiver, IConfigura
         if (mShards == null || mShards <= 1) {
             return null;
         }
-        Collection<IRemoteTest> shards = new ArrayList<IRemoteTest>(mShards);
+        Collection<IRemoteTest> shards = new ArrayList<>(mShards);
         int remainingIterations = mIterations;
         for (int i = mShards; i > 0; i--) {
             OtaStabilityTest testShard = new OtaStabilityTest();
@@ -221,7 +220,7 @@ public class OtaStabilityTest implements IDeviceTest, IBuildReceiver, IConfigura
                         String.format("Device %s successfully OTA-ed to build %s. Iteration: %d",
                                 mDevice.getSerialNumber(), buildId, actualIterations));
             }
-        } catch (AssertionFailedError error) {
+        } catch (AssertionError error) {
             Log.e(LOG_TAG, error);
         } catch (TargetSetupError e) {
             CLog.i("Encountered TargetSetupError, marking this test as resumable");
@@ -234,7 +233,7 @@ public class OtaStabilityTest implements IDeviceTest, IBuildReceiver, IConfigura
         } catch (ConfigurationException e) {
             Log.e(LOG_TAG, e);
         } finally {
-            Map<String, String> metrics = new HashMap<String, String>(1);
+            Map<String, String> metrics = new HashMap<>(1);
             metrics.put("iterations", Integer.toString(actualIterations));
             long endTime = System.currentTimeMillis() - startTime;
             listener.testRunEnded(endTime, metrics);
@@ -275,17 +274,18 @@ public class OtaStabilityTest implements IDeviceTest, IBuildReceiver, IConfigura
      * @param listener the {@link ITestInvocationListener}
      * @return the build id the device ota-ed to
      * @throws DeviceNotAvailableException
-     * @throws AssertionFailedError
+     * @throws AssertionError
      */
     private String waitForOta(ITestInvocationListener listener)
-            throws DeviceNotAvailableException, AssertionFailedError {
+            throws DeviceNotAvailableException, AssertionError {
         String currentBuildId = mDevice.getBuildId();
         Assert.assertEquals(String.format("device %s does not have expected build id on boot.",
                 mDevice.getSerialNumber()), currentBuildId, mDeviceBuild.getBuildId());
         // give some time for device to settle
         getRunUtil().sleep(5*1000);
         // force a checkin so device downloads OTA immediately
-        mDevice.executeShellCommand("am broadcast -a android.server.checkin.CHECKIN");
+        mDevice.executeShellCommand(
+                "am broadcast -a android.server.checkin.CHECKIN com.google.android.gms");
         Assert.assertTrue(String.format(
                 "Device %s did not enter recovery after %d min.",
                 mDevice.getSerialNumber(), mWaitRecoveryTime),
@@ -309,8 +309,12 @@ public class OtaStabilityTest implements IDeviceTest, IBuildReceiver, IConfigura
         }
         currentBuildId = mDevice.getBuildId();
         // TODO: should exact expected build id be checked?
-        Assert.assertTrue(String.format("Device %s build id did not change after leaving recovery",
-                mDevice.getSerialNumber()), currentBuildId !=  mDeviceBuild.getBuildId());
+        Assert.assertNotEquals(
+                String.format(
+                        "Device %s build id did not change after leaving recovery",
+                        mDevice.getSerialNumber()),
+                currentBuildId,
+                mDeviceBuild.getBuildId());
         return currentBuildId;
     }
 
@@ -323,7 +327,7 @@ public class OtaStabilityTest implements IDeviceTest, IBuildReceiver, IConfigura
             destFile = FileUtil.createTempFile("recovery", "log");
             boolean gotFile = mDevice.pullFile("/tmp/recovery.log", destFile);
             if (gotFile) {
-                destSource = new SnapshotInputStreamSource(new FileInputStream(destFile));
+                destSource = new FileInputStreamSource(destFile);
                 listener.testLog("recovery_log", LogDataType.TEXT, destSource);
             }
         } catch (IOException e) {
@@ -331,12 +335,8 @@ public class OtaStabilityTest implements IDeviceTest, IBuildReceiver, IConfigura
                     mDevice.getSerialNumber()));
             Log.e(LOG_TAG, e);
         } finally {
-            if (destFile != null) {
-                destFile.delete();
-            }
-            if (destSource != null) {
-                destSource.cancel();
-            }
+            FileUtil.deleteFile(destFile);
+            StreamUtil.cancel(destSource);
         }
     }
 

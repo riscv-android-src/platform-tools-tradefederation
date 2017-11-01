@@ -56,13 +56,13 @@ public class KernelFlashPreparer implements ITargetPreparer {
                 device.getBuildId(), kernelBuildInfo.getSha1());
 
         if (kernelBuildInfo.getRamdiskFile() == null) {
-            throw new TargetSetupError("Missing ramdisk file");
+            throw new TargetSetupError("Missing ramdisk file", device.getDeviceDescriptor());
         }
         if (kernelBuildInfo.getMkbootimgFile() == null) {
-            throw new TargetSetupError("Missing mkbootimg file");
+            throw new TargetSetupError("Missing mkbootimg file", device.getDeviceDescriptor());
         }
         if (kernelBuildInfo.getKernelFile() == null) {
-            throw new TargetSetupError("Missing kernel file");
+            throw new TargetSetupError("Missing kernel file", device.getDeviceDescriptor());
         }
 
         kernelBuildInfo.getMkbootimgFile().setExecutable(true);
@@ -72,7 +72,8 @@ public class KernelFlashPreparer implements ITargetPreparer {
             boot = createBootImage(kernelBuildInfo.getMkbootimgFile(),
                     kernelBuildInfo.getKernelFile(), kernelBuildInfo.getRamdiskFile());
         } catch (IOException e) {
-            throw new TargetSetupError("Could not create boot image", e);
+            throw new TargetSetupError("Could not create boot image", e,
+                    device.getDeviceDescriptor());
         }
 
         try {
@@ -88,7 +89,7 @@ public class KernelFlashPreparer implements ITargetPreparer {
         } catch (DeviceUnresponsiveException e) {
             // assume this is a build problem
             throw new BuildError(String.format("Device %s did not become available after " +
-                    "flashing kernel", device.getSerialNumber()));
+                    "flashing kernel", device.getSerialNumber()), device.getDeviceDescriptor());
         }
         device.postBootSetup();
     }

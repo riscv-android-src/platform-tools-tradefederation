@@ -15,6 +15,8 @@
  */
 package com.android.tradefed.targetprep;
 
+import com.android.tradefed.command.remote.DeviceDescriptor;
+
 /**
  * Thrown if a device fails to boot after being flashed with a build.
  */
@@ -25,8 +27,9 @@ public class DeviceFailedToBootError extends BuildError {
      * Constructs a new (@link DeviceFailedToBootError} with a detailed error message.
      *
      * @param reason an error message giving more details about the boot failure
+     * @param descriptor the descriptor of the device concerned by the exception
      */
-    public DeviceFailedToBootError(String reason) {
-        super(reason);
+    public DeviceFailedToBootError(String reason, DeviceDescriptor descriptor) {
+        super(reason, descriptor);
     }
 }

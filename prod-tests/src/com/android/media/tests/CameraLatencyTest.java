@@ -24,17 +24,19 @@ import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.result.CollectingTestListener;
+import com.android.tradefed.result.FileInputStreamSource;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.InputStreamSource;
 import com.android.tradefed.result.LogDataType;
-import com.android.tradefed.result.SnapshotInputStreamSource;
 import com.android.tradefed.testtype.IDeviceTest;
 import com.android.tradefed.testtype.IRemoteTest;
+import com.android.tradefed.util.FileUtil;
 import com.android.tradefed.util.RegexTrie;
 import com.android.tradefed.util.StreamUtil;
 
-import junit.framework.Assert;
 import junit.framework.TestCase;
+
+import org.junit.Assert;
 
 import java.io.ByteArrayInputStream;
 import java.io.File;
@@ -68,10 +70,10 @@ public class CameraLatencyTest implements IDeviceTest, IRemoteTest {
 
     /**
      * Stores the test cases that we should consider running.
-     * <p/>
-     * This currently consists of "startup" and "latency"
+     *
+     * <p>This currently consists of "startup" and "latency"
      */
-    private List<TestInfo> mTestCases = new ArrayList<TestInfo>();
+    private List<TestInfo> mTestCases = new ArrayList<>();
 
     // Options for the running the gCam test
     @Option(name = "gCam", description = "Run gCam startup test")
@@ -85,7 +87,7 @@ public class CameraLatencyTest implements IDeviceTest, IRemoteTest {
         public String mTestName = null;
         public String mClassName = null;
         public String mTestMetricsName = null;
-        public RegexTrie<String> mPatternMap = new RegexTrie<String>();
+        public RegexTrie<String> mPatternMap = new RegexTrie<>();
 
         @Override
         public String toString() {
@@ -205,21 +207,18 @@ public class CameraLatencyTest implements IDeviceTest, IRemoteTest {
 
             // Upload a verbatim copy of the output file
             CLog.d("Sending %d byte file %s into the logosphere!", outputFile.length(), outputFile);
-            outputSource = new SnapshotInputStreamSource(new FileInputStream(outputFile));
+            outputSource = new FileInputStreamSource(outputFile);
             listener.testLog(String.format("output-%s.txt", test.mTestName), LogDataType.TEXT,
                     outputSource);
 
             // Parse the output file to upload aggregated metrics
             parseOutputFile(test, new FileInputStream(outputFile), listener);
         } catch (IOException e) {
-            CLog.e("IOException while reading or parsing output file: %s", e);
+            CLog.e("IOException while reading or parsing output file");
+            CLog.e(e);
         } finally {
-            if (outputFile != null) {
-                outputFile.delete();
-            }
-            if (outputSource != null) {
-                outputSource.cancel();
-            }
+            FileUtil.deleteFile(outputFile);
+            StreamUtil.cancel(outputSource);
         }
     }
 
@@ -228,14 +227,15 @@ public class CameraLatencyTest implements IDeviceTest, IRemoteTest {
      */
     private void parseOutputFile(TestInfo test, InputStream dataStream,
             ITestInvocationListener listener) {
-        Map<String, String> runMetrics = new HashMap<String, String>();
+        Map<String, String> runMetrics = new HashMap<>();
 
         // try to parse it
         String contents;
         try {
             contents = StreamUtil.getStringFromStream(dataStream);
         } catch (IOException e) {
-            CLog.e("Got IOException during %s test processing: %s", test.mTestName, e);
+            CLog.e("Got IOException during %s test processing", test.mTestName);
+            CLog.e(e);
             return;
         }
 
@@ -244,7 +244,7 @@ public class CameraLatencyTest implements IDeviceTest, IRemoteTest {
         String line;
         while (lineIter.hasNext()) {
             line = lineIter.next();
-            List<List<String>> capture = new ArrayList<List<String>>(1);
+            List<List<String>> capture = new ArrayList<>(1);
             String key = test.mPatternMap.retrieve(capture, line);
             if (key != null) {
                 CLog.d("Got %s key '%s' and captures '%s'", test.mTestName, key,

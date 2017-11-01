@@ -58,8 +58,8 @@ public class TestDirForwarder implements ITargetPreparer, IConfigurationReceiver
         try {
             mConfig.injectOptionValue("test-app-path", testAppDir.getAbsolutePath());
         } catch (ConfigurationException e) {
-            throw new TargetSetupError(
-                    "Mis-configuration: no object which consumes test-app-path option", e);
+            throw new TargetSetupError("Mis-configuration: no object which consumes test-app-path "
+                    + "option", e, device.getDeviceDescriptor());
         }
     }
 

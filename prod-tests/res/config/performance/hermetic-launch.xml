@@ -27,8 +27,10 @@
             name="test-file-name"
             value="PerformanceAppTest.apk" />
     </target_preparer>
+    <target_preparer class="com.android.tradefed.targetprep.InstallApkSetup" />
 
     <target_preparer class="com.android.tradefed.targetprep.CpuThrottlingWaiter" />
+    <target_preparer class="com.android.tradefed.targetprep.RunCommandTargetPreparer" />
 
     <test class="com.android.performance.tests.HermeticLaunchTest" >
         <option

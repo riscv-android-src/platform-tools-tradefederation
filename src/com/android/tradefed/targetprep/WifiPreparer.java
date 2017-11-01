@@ -57,12 +57,12 @@ public class WifiPreparer implements ITargetPreparer, ITargetCleaner {
             return;
         }
         if (mWifiNetwork == null) {
-            throw new TargetSetupError("wifi-network not specified");
+            throw new TargetSetupError("wifi-network not specified", device.getDeviceDescriptor());
         }
 
         if (!device.connectToWifiNetworkIfNeeded(mWifiNetwork, mWifiPsk)) {
             throw new TargetSetupError(String.format("Failed to connect to wifi network %s on %s",
-                    mWifiNetwork, device.getSerialNumber()));
+                    mWifiNetwork, device.getSerialNumber()), device.getDeviceDescriptor());
         }
 
         if (mMonitorNetwork) {

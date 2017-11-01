@@ -22,6 +22,7 @@ import java.io.File;
  */
 public class KernelDeviceBuildInfo extends BuildInfo implements IDeviceBuildInfo,
         IKernelBuildInfo {
+    private static final long serialVersionUID = BuildSerializedVersion.VERSION;
     private IDeviceBuildInfo mDeviceBuild = new DeviceBuildInfo();
     private IKernelBuildInfo mKernelBuild = new KernelBuildInfo();
 
@@ -36,11 +37,10 @@ public class KernelDeviceBuildInfo extends BuildInfo implements IDeviceBuildInfo
      * Creates a {@link KernelBuildInfo}.
      *
      * @param buildId the build id as a combination of the kernel build id and the device build id
-     * @param testTarget the test target
      * @param buildName the build name
      */
-    public KernelDeviceBuildInfo(String buildId, String testTarget, String buildName) {
-        super(buildId, testTarget, buildName);
+    public KernelDeviceBuildInfo(String buildId, String buildName) {
+        super(buildId, buildName);
     }
 
     /**
@@ -49,6 +49,14 @@ public class KernelDeviceBuildInfo extends BuildInfo implements IDeviceBuildInfo
     @Override
     public String getDeviceBuildId() {
         return mDeviceBuild.getDeviceBuildId();
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public String getDeviceBuildFlavor() {
+        return mDeviceBuild.getDeviceBuildFlavor();
     }
 
     /**
@@ -343,8 +351,7 @@ public class KernelDeviceBuildInfo extends BuildInfo implements IDeviceBuildInfo
      */
     @Override
     public IBuildInfo clone() {
-        KernelDeviceBuildInfo copy = new KernelDeviceBuildInfo(getBuildId(), getTestTag(),
-                getBuildTargetName());
+        KernelDeviceBuildInfo copy = new KernelDeviceBuildInfo(getBuildId(), getBuildTargetName());
         copy.addAllBuildAttributes(this);
         IDeviceBuildInfo deviceBuildClone = (IDeviceBuildInfo) mDeviceBuild.clone();
         copy.setDeviceBuild(deviceBuildClone);

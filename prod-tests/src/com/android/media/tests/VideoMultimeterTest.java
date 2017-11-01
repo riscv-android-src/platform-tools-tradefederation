@@ -19,24 +19,28 @@ package com.android.media.tests;
 import com.android.ddmlib.testrunner.TestIdentifier;
 import com.android.tradefed.config.Option;
 import com.android.tradefed.config.Option.Importance;
+import com.android.tradefed.device.CollectingOutputReceiver;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.log.LogUtil.CLog;
+import com.android.tradefed.result.ByteArrayInputStreamSource;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.LogDataType;
-import com.android.tradefed.result.SnapshotInputStreamSource;
 import com.android.tradefed.testtype.IDeviceTest;
 import com.android.tradefed.testtype.IRemoteTest;
 import com.android.tradefed.util.CommandResult;
 import com.android.tradefed.util.IRunUtil;
 import com.android.tradefed.util.RunUtil;
 
-import java.io.ByteArrayInputStream;
+import org.junit.Assert;
+
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -51,27 +55,32 @@ public class VideoMultimeterTest implements IDeviceTest, IRemoteTest {
             importance = Importance.ALWAYS)
     String mMeterUtilPath = "/tmp/util.sh";
 
-    static final String START_VIDEO_PLAYER = "am start"
-            + " -a android.intent.action.VIEW -t video/mp4 -d \"file://%s\""
-            + " -n \"com.google.android.apps.photos/.viewintents.ViewIntentHandlerActivity\"";
-    static final String KILL_VIDEO_PLAYER = "am force-stop com.google.android.apps.photos";
+    @Option(name = "start-video-cmd", description = "adb shell command to start video playback; " +
+        "use '%s' as placeholder for media source filename", importance = Importance.ALWAYS)
+    String mCmdStartVideo = "am instrument -w -r -e media-file"
+            + " \"%s\" -e class com.android.mediaframeworktest.stress.MediaPlayerStressTest"
+            + " com.android.mediaframeworktest/.MediaPlayerStressTestRunner";
+
+    @Option(name = "stop-video-cmd", description = "adb shell command to stop video playback",
+            importance = Importance.ALWAYS)
+    String mCmdStopVideo = "am force-stop com.android.mediaframeworktest";
+
+    @Option(name="video-spec", description=
+            "Comma deliminated information for test video files with the following format: " +
+            "video_filename, reporting_key_prefix, fps, duration(in sec) " +
+            "May be repeated for test with multiple files.")
+    private Collection<String> mVideoSpecs = new ArrayList<>();
+
+    @Option(name="wait-time-between-runs", description=
+        "wait time between two test video measurements, in millisecond")
+    private long mWaitTimeBetweenRuns = 3 * 60 * 1000;
+
+    @Option(name="calibration-video", description=
+        "filename of calibration video")
+    private String mCaliVideoDevicePath = "video_cali.mp4";
+
     static final String ROTATE_LANDSCAPE = "content insert --uri content://settings/system"
             + " --bind name:s:user_rotation --bind value:i:1";
-
-    static final String VIDEO_DIR = "/sdcard/DCIM/Camera/";
-
-    static final String CALI_VIDEO_DEVICE_PATH = VIDEO_DIR + "video_cali.mp4";
-
-    // FIXIT: move video path and info to options for flexibility
-    static final String TEST_VIDEO_1_DEVICE_PATH = VIDEO_DIR + "video.mp4";
-    static final String TEST_VIDEO_1_PREFIX = "24fps_";
-    static final float TEST_VIDEO_1_FPS = 24;
-    static final long TEST_VIDEO_1_DURATION = 11 * 60; // in second
-
-    static final String TEST_VIDEO_2_DEVICE_PATH = VIDEO_DIR + "video2.mp4";
-    static final String TEST_VIDEO_2_PREFIX = "60fps_";
-    static final float TEST_VIDEO_2_FPS = 60;
-    static final long TEST_VIDEO_2_DURATION = 5 * 60; // in second
 
     // Max number of trailing frames to trim
     static final int TRAILING_FRAMES_MAX = 3;
@@ -91,6 +100,13 @@ public class VideoMultimeterTest implements IDeviceTest, IRemoteTest {
     static final long CALIBRATION_TIMEOUT_MS = 30 * 1000;
     static final long COMMAND_TIMEOUT_MS = 5 * 1000;
     static final long GETDATA_TIMEOUT_MS = 10 * 60 * 1000;
+
+    // Regex for: "OK (time); (frame duration); (marker color); (total dropped frames)"
+    static final String VIDEO_FRAME_DATA_PATTERN = "OK\\s+\\d+;\\s*(-?\\d+);\\s*[a-z]+;\\s*(\\d+)";
+
+    // Regex for: "OK (time); (frame duration); (marker color); (total dropped frames); (lipsync)"
+    static final String LIPSYNC_DATA_PATTERN =
+        "OK\\s+\\d+;\\s*\\d+;\\s*[a-z]+;\\s*\\d+;\\s*(-?\\d+)";
 
     ITestDevice mDevice;
 
@@ -121,6 +137,22 @@ public class VideoMultimeterTest implements IDeviceTest, IRemoteTest {
         return setupTestEnv(null);
     }
 
+    protected void startPlayback(final String videoPath) {
+        new Thread() {
+            @Override
+            public void run() {
+                try {
+                    CollectingOutputReceiver receiver = new CollectingOutputReceiver();
+                    getDevice().executeShellCommand(String.format(
+                            mCmdStartVideo, videoPath),
+                            receiver, 1L, TimeUnit.SECONDS, 0);
+                } catch (DeviceNotAvailableException e) {
+                    CLog.e(e.getMessage());
+                }
+            }
+        }.start();
+    }
+
     /**
      * Perform calibration process for video multimeter
      *
@@ -129,8 +161,7 @@ public class VideoMultimeterTest implements IDeviceTest, IRemoteTest {
      */
     protected boolean doCalibration() throws DeviceNotAvailableException {
         // play calibration video
-        getDevice().executeShellCommand(String.format(
-                START_VIDEO_PLAYER, CALI_VIDEO_DEVICE_PATH));
+        startPlayback(mCaliVideoDevicePath);
         getRunUtil().sleep(3 * 1000);
         rotateScreen();
         getRunUtil().sleep(1 * 1000);
@@ -156,7 +187,7 @@ public class VideoMultimeterTest implements IDeviceTest, IRemoteTest {
         } else {
             CLog.i("Calibration succeeds.");
         }
-        getDevice().executeShellCommand(KILL_VIDEO_PLAYER);
+        getDevice().executeShellCommand(mCmdStopVideo);
         return isCalibrated;
     }
 
@@ -195,14 +226,16 @@ public class VideoMultimeterTest implements IDeviceTest, IRemoteTest {
         }
     }
 
-    private void doMeasurement(String testVideoPath, long durationSecond)
+    private void doMeasurement(final String testVideoPath, long durationSecond)
             throws DeviceNotAvailableException {
         CommandResult cr;
         getDevice().clearErrorDialogs();
         getDevice().unlockDevice();
+        getRunUtil().sleep(mWaitTimeBetweenRuns);
 
         // play test video
-        getDevice().executeShellCommand(String.format(START_VIDEO_PLAYER, testVideoPath));
+        startPlayback(testVideoPath);
+
         getRunUtil().sleep(3 * 1000);
 
         rotateScreen();
@@ -221,7 +254,7 @@ public class VideoMultimeterTest implements IDeviceTest, IRemoteTest {
             CLog.i("Retry - Stopping measurement: " + cr.getStdout());
         }
 
-        getDevice().executeShellCommand(KILL_VIDEO_PLAYER);
+        getDevice().executeShellCommand(mCmdStopVideo);
         getDevice().clearErrorDialogs();
     }
 
@@ -233,25 +266,55 @@ public class VideoMultimeterTest implements IDeviceTest, IRemoteTest {
         getRunUtil().sleep(5 * 1000);
         cr = getRunUtil().runTimedCmd(COMMAND_TIMEOUT_MS, mMeterUtilPath, CMD_GET_NUM_FRAMES);
         String frameNum = cr.getStdout();
+
+        CLog.i("== Video Multimeter Result '%s' ==", keyprefix);
         CLog.i("Number of results: " + frameNum);
 
-        // get all results and write to output file
+        String nrOfDataPointsStr = extractNumberOfCollectedDataPoints(frameNum);
+        metrics.put(keyprefix + "frame_captured", nrOfDataPointsStr);
+
+        long nrOfDataPoints = Long.parseLong(nrOfDataPointsStr);
+
+        Assert.assertTrue("Multimeter did not collect any data for " + keyprefix,
+                          nrOfDataPoints > 0);
+
+        CLog.i("Captured frames: " + nrOfDataPointsStr);
+
+        // get all results from multimeter and write to output file
         cr = getRunUtil().runTimedCmd(GETDATA_TIMEOUT_MS, mMeterUtilPath, CMD_GET_ALL_DATA);
         String allData = cr.getStdout();
-        listener.testLog(keyprefix, LogDataType.TEXT, new SnapshotInputStreamSource(
-                new ByteArrayInputStream(allData.getBytes())));
+        listener.testLog(
+                keyprefix, LogDataType.TEXT, new ByteArrayInputStreamSource(allData.getBytes()));
 
         // parse results
-        return parseResult(metrics, frameNum, allData, keyprefix, fps, lipsync);
+        return parseResult(metrics, nrOfDataPoints, allData, keyprefix, fps, lipsync);
+    }
+
+    private String extractNumberOfCollectedDataPoints(String numFrames) {
+        // Create pattern that matches string like "OK 14132" capturing the
+        // number of data points.
+        Pattern p = Pattern.compile("OK\\s+(\\d+)$");
+        Matcher m = p.matcher(numFrames.trim());
+
+        String frameCapturedStr = "0";
+        if (m.matches()) {
+            frameCapturedStr = m.group(1);
+        }
+
+        return frameCapturedStr;
     }
 
     protected void runMultimeterTest(ITestInvocationListener listener,
             Map<String,String> metrics) throws DeviceNotAvailableException {
-        doMeasurement(TEST_VIDEO_1_DEVICE_PATH, TEST_VIDEO_1_DURATION);
-        metrics = getResult(listener, metrics, TEST_VIDEO_1_PREFIX, TEST_VIDEO_1_FPS, true);
-
-        doMeasurement(TEST_VIDEO_2_DEVICE_PATH, TEST_VIDEO_2_DURATION);
-        metrics = getResult(listener, metrics, TEST_VIDEO_2_PREFIX, TEST_VIDEO_2_FPS, true);
+        for (String videoSpec : mVideoSpecs) {
+            String[] videoInfo = videoSpec.split(",");
+            String filename = videoInfo[0].trim();
+            String keyPrefix = videoInfo[1].trim();
+            float fps = Float.parseFloat(videoInfo[2].trim());
+            long duration = Long.parseLong(videoInfo[3].trim());
+            doMeasurement(filename, duration);
+            metrics = getResult(listener, metrics, keyPrefix, fps, true);
+        }
     }
 
     /**
@@ -267,7 +330,7 @@ public class VideoMultimeterTest implements IDeviceTest, IRemoteTest {
         listener.testStarted(testId);
 
         long testStartTime = System.currentTimeMillis();
-        Map<String, String> metrics = new HashMap<String, String>();
+        Map<String, String> metrics = new HashMap<>();
 
         if (setupTestEnv()) {
             runMultimeterTest(listener, metrics);
@@ -285,34 +348,15 @@ public class VideoMultimeterTest implements IDeviceTest, IRemoteTest {
      * @return a {@link HashMap} that contains metrics keys and results
      */
     private Map<String, String> parseResult(Map<String, String> metrics,
-            String numFrames, String result, String keyprefix, float fps,
+            long frameCaptured, String result, String keyprefix, float fps,
             boolean lipsync) {
         final int MISSING_FRAME_CEILING = 5; //5+ frames missing count the same
         final double[] MISSING_FRAME_WEIGHT = {0.0, 1.0, 2.5, 5.0, 6.25, 8.0};
 
-        CLog.i("== Video Multimeter Result '%s' ==", keyprefix);
-        Pattern p = Pattern.compile("OK\\s+(\\d+)$");
-        Matcher m = p.matcher(numFrames.trim());
-        String frameCapturedStr = "0";
-        long frameCaptured = 0;
-        if (m.matches()) {
-            frameCapturedStr = m.group(1);
-            metrics.put(keyprefix + "frame_captured", frameCapturedStr);
-            CLog.i("Captured frames: " + frameCapturedStr);
-            frameCaptured = Long.parseLong(frameCapturedStr);
-            if (frameCaptured == 0) {
-                // no frame captured
-                CLog.w("No frame captured for " + keyprefix);
-                return metrics;
-            }
-        } else {
-            CLog.i("Cannot parse result for " + keyprefix);
-            return metrics;
-        }
-
         // Get total captured frames and calculate smoothness and freezing score
         // format: "OK (time); (frame duration); (marker color); (total dropped frames)"
-        p = Pattern.compile("OK\\s+\\d+;\\s*(-?\\d+);\\s*[a-z]+;\\s*(\\d+)");
+        Pattern p = Pattern.compile(VIDEO_FRAME_DATA_PATTERN);
+        Matcher m = null;
         String[] lines = result.split(System.getProperty("line.separator"));
         String totalDropFrame = "-1";
         String lastDropFrame = "0";
@@ -381,9 +425,9 @@ public class VideoMultimeterTest implements IDeviceTest, IRemoteTest {
 
         // parse lipsync results (the audio and video synchronization offset)
         // format: "OK (time); (frame duration); (marker color); (total dropped frames); (lipsync)"
-        p = Pattern.compile("OK\\s+\\d+;\\s*\\d+;\\s*[a-z]+;\\s*\\d+;\\s*(-?\\d+)");
+        p = Pattern.compile(LIPSYNC_DATA_PATTERN);
         if (lipsync) {
-            ArrayList<Integer> lipsyncVals = new ArrayList<Integer>();
+            ArrayList<Integer> lipsyncVals = new ArrayList<>();
             StringBuilder lipsyncValsStr = new StringBuilder("[");
             long lipsyncSum = 0;
             for (int i = 0; i < lines.length; i++) {

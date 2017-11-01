@@ -19,9 +19,13 @@ import com.android.ddmlib.Log.LogLevel;
 import com.android.tradefed.config.ConfigurationFactory.ConfigId;
 import com.android.tradefed.log.ILeveledLogOutput;
 import com.android.tradefed.log.LogUtil.CLog;
+import com.android.tradefed.targetprep.DeviceWiper;
+import com.android.tradefed.targetprep.StubTargetPreparer;
 import com.android.tradefed.util.FileUtil;
 
 import junit.framework.TestCase;
+
+import org.mockito.Mockito;
 
 import java.io.ByteArrayOutputStream;
 import java.io.File;
@@ -29,9 +33,12 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.PrintStream;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 /**
  * Unit tests for {@link ConfigurationFactory}
@@ -39,10 +46,14 @@ import java.util.Map;
 public class ConfigurationFactoryTest extends TestCase {
 
     private ConfigurationFactory mFactory;
+    // Create a real instance for tests that checks the content of our configs. making it static to
+    // reduce the runtime of reloading the config thanks to the caching of configurations.
+    private static ConfigurationFactory mRealFactory = new ConfigurationFactory();
 
     /** the test config name that is built into this jar */
     private static final String TEST_CONFIG = "test-config";
     private static final String GLOBAL_TEST_CONFIG = "global-config";
+    private static final String INCLUDE_CONFIG = "include-config";
 
     /**
      * {@inheritDoc}
@@ -61,21 +72,27 @@ public class ConfigurationFactoryTest extends TestCase {
     /**
      * Sanity test to ensure all config names on classpath are loadable
      */
-    public void disabled__testLoadAllConfigs() throws ConfigurationException {
-        new ConfigurationFactory().loadAllConfigs(false);
+    public void testLoadAllConfigs() throws ConfigurationException {
+        ConfigurationFactory spyFactory = Mockito.spy(mRealFactory);
+        Mockito.doReturn(new HashSet<String>()).when(spyFactory).getConfigNamesFromTestCases(null);
+
+        // we dry-run the templates otherwise it will always fail.
+        spyFactory.loadAllConfigs(false);
+        assertTrue(spyFactory.getMapConfig().size() > 0);
+        Mockito.verify(spyFactory, Mockito.times(1)).getConfigNamesFromTestCases(null);
     }
 
     /**
      * Sanity test to ensure all configs on classpath can be fully loaded and parsed
      */
     public void testLoadAndPrintAllConfigs() throws ConfigurationException {
-        try {
-            new ConfigurationFactory().loadAndPrintAllConfigs();
-        } catch (ConfigurationException e) {
-            // TODO: temporarily suppress this error, until all configs are cleaned up b/14027179
-            CLog.e("Suppressing failed test testLoadAndPrintAllConfigs");
-            CLog.e(e);
-        }
+        ConfigurationFactory spyFactory = Mockito.spy(mRealFactory);
+        Mockito.doReturn(new HashSet<String>()).when(spyFactory).getConfigNamesFromTestCases(null);
+
+        // Printing the help involves more checks since it tries to resolve the config objects.
+        spyFactory.loadAndPrintAllConfigs();
+        assertTrue(spyFactory.getMapConfig().size() > 0);
+        Mockito.verify(spyFactory, Mockito.times(1)).getConfigNamesFromTestCases(null);
     }
 
     /**
@@ -197,7 +214,7 @@ public class ConfigurationFactoryTest extends TestCase {
             // check reading it again - should grab the cached version
             assertConfigValid(tmpFile.getAbsolutePath());
         } finally {
-            tmpFile.delete();
+            FileUtil.deleteFile(tmpFile);
         }
     }
 
@@ -222,7 +239,7 @@ public class ConfigurationFactoryTest extends TestCase {
             // check reading it again - should grab the cached version
             assertGlobalConfigValid(tmpFile.getAbsolutePath());
         } finally {
-            tmpFile.delete();
+            FileUtil.deleteFile(tmpFile);
         }
     }
 
@@ -248,8 +265,8 @@ public class ConfigurationFactoryTest extends TestCase {
     }
 
     /**
-     * Test calling {@link ConfigurationFactory#getConfiguration(String)} with a name that does not
-     * exist.
+     * Test calling {@link ConfigurationFactory#createConfigurationFromArgs(String[])}
+     * with a name that does not exist.
      */
     public void testCreateConfigurationFromArgs_missing()  {
         try {
@@ -261,8 +278,8 @@ public class ConfigurationFactoryTest extends TestCase {
     }
 
     /**
-     * Test calling {@link ConfigurationFactory#getConfiguration(String)} with config that has
-     * unset mandatory options.
+     * Test calling {@link ConfigurationFactory#createConfigurationFromArgs(String[])}
+     * with config that has unset mandatory options.
      * <p/>
      * Expect this to succeed, since mandatory option validation no longer happens at configuration
      * instantiation time.
@@ -299,7 +316,7 @@ public class ConfigurationFactoryTest extends TestCase {
      * Test {@link ConfigurationFactory#createConfigurationFromArgs(String[])} when extra positional
      * arguments are supplied
      */
-    public void testCreateConfigurationFromArgs_unprocessedArgs() throws ConfigurationException {
+    public void testCreateConfigurationFromArgs_unprocessedArgs() {
         try {
             mFactory.createConfigurationFromArgs(new String[] {TEST_CONFIG, "--log-level",
                     LogLevel.VERBOSE.getStringValue(), "blah"});
@@ -310,19 +327,19 @@ public class ConfigurationFactoryTest extends TestCase {
     }
 
     /**
-     * Test {@link ConfigurationFactory#printHelp( PrintStream))}
+     * Test {@link ConfigurationFactory#printHelp(PrintStream)}
      */
     public void testPrintHelp() {
         ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
         PrintStream mockPrintStream = new PrintStream(outputStream);
-        new ConfigurationFactory().printHelp(mockPrintStream);
+        mRealFactory.printHelp(mockPrintStream);
         // verify all the instrument config names are present
         final String usageString = outputStream.toString();
         assertTrue(usageString.contains("instrument"));
     }
 
     /**
-     * Test {@link ConfigurationFactory#printHelpForConfig(String[], boolean, PrintStream))} when
+     * Test {@link ConfigurationFactory#printHelpForConfig(String[], boolean, PrintStream)} when
      * config referenced by args exists
      */
     public void testPrintHelpForConfig_configExists() {
@@ -338,11 +355,40 @@ public class ConfigurationFactoryTest extends TestCase {
     }
 
     /**
+     * Test {@link ConfigurationFactory#getConfigList()}
+     */
+    public void testListAllConfigs() {
+        List<String> listConfigs = mRealFactory.getConfigList();
+        assertTrue(listConfigs.size() != 0);
+        // Check that our basic configs are always here
+        assertTrue(listConfigs.contains("empty"));
+        assertTrue(listConfigs.contains("host"));
+        assertTrue(listConfigs.contains("instrument"));
+    }
+
+    /**
+     * Test {@link ConfigurationFactory#getConfigList(String)} where we list the config in a sub
+     * path only
+     */
+    public void testListSubConfig() {
+        final String subDir = "suite/";
+        List<String> listConfigs = mRealFactory.getConfigList(subDir);
+        assertTrue(listConfigs.size() != 0);
+        // Check that our basic configs are always here
+        assertTrue(listConfigs.contains("suite/stub1"));
+        assertTrue(listConfigs.contains("suite/stub2"));
+        // Validate that all listed config are indeed from the subdir.
+        for (String config : listConfigs) {
+            assertTrue(config.startsWith(subDir));
+        }
+    }
+
+    /**
      * Test loading a config that includes another config.
      */
     public void testCreateConfigurationFromArgs_includeConfig() throws Exception {
         IConfiguration config = mFactory.createConfigurationFromArgs(
-                new String[]{"include-config"});
+                new String[]{INCLUDE_CONFIG});
         assertTrue(config.getTests().get(0) instanceof StubOptionTest);
         assertTrue(config.getTests().get(1) instanceof StubOptionTest);
         StubOptionTest fromTestConfig = (StubOptionTest) config.getTests().get(0);
@@ -397,7 +443,7 @@ public class ConfigurationFactoryTest extends TestCase {
     public void testCreateConfigurationFromArgs_defaultTemplateInclude_alternate() throws Exception {
         IConfiguration config = mFactory.createConfigurationFromArgs(
                 new String[]{"template-include-config-with-default", "--template:map", "target",
-                "include-config"});
+                INCLUDE_CONFIG});
         assertEquals(3, config.getTests().size());
         assertTrue(config.getTests().get(0) instanceof StubOptionTest);
         assertTrue(config.getTests().get(1) instanceof StubOptionTest);
@@ -447,9 +493,13 @@ public class ConfigurationFactoryTest extends TestCase {
             assertTrue(String.format("Error message should help user to resolve the " +
                     "template-include.  msg was: %s", msg),
                     msg.contains(String.format("--template:map %s", "target")));
-            assertTrue(String.format("Error message should mention the ability to specify a " +
-                    "default resolution.  msg was: %s", msg),
-                    msg.contains(String.format("'default'", configName)));
+            CLog.e(msg);
+            assertTrue(
+                    String.format(
+                            "Error message should mention the ability to specify a "
+                                    + "default resolution.  msg was: %s",
+                            msg),
+                    msg.contains("'default'"));
         }
     }
 
@@ -478,18 +528,63 @@ public class ConfigurationFactoryTest extends TestCase {
     }
 
     /**
-     * A limitation of the current implementation is that template args are only passed to the
-     * outermost configuration.  This unit test codifies the expectation that an inner
-     * {@code <template-include>} tag that doesn't have a default resolution set will fail.
+     * Test loading a config that includes a local config.
+     */
+    public void testCreateConfigurationFromArgs_templateInclude_local() throws Exception {
+        final String configName = "template-include-config";
+        InputStream configStream = getClass().getResourceAsStream(
+                String.format("/testconfigs/%s.xml", INCLUDE_CONFIG));
+        File tmpConfig = FileUtil.createTempFile(INCLUDE_CONFIG, ".xml");
+        try {
+            FileUtil.writeToFile(configStream, tmpConfig);
+            final String includeName = tmpConfig.getAbsolutePath();
+            IConfiguration config = mFactory.createConfigurationFromArgs(
+                    new String[]{configName, "--template:map", "target", includeName});
+            assertTrue(config.getTests().get(0) instanceof StubOptionTest);
+            assertTrue(config.getTests().get(1) instanceof StubOptionTest);
+            StubOptionTest fromTestConfig = (StubOptionTest) config.getTests().get(0);
+            StubOptionTest fromIncludeConfig = (StubOptionTest) config.getTests().get(1);
+            assertEquals("valueFromTestConfig", fromTestConfig.mOption);
+            assertEquals("valueFromIncludeConfig", fromIncludeConfig.mOption);
+        } finally {
+            FileUtil.deleteFile(tmpConfig);
+        }
+    }
+
+    /**
+     * This unit test codifies the expectation that an inner {@code <template-include>} tag
+     * is properly found and replaced by a config containing another template that is resolved.
+     * MAIN CONFIG -> Template 1 -> Template 2 = Works!
      */
     public void testCreateConfigurationFromArgs_templateInclude_dependent() throws Exception {
         final String configName = "depend-template-include-config";
         final String depTargetName = "template-include-config";
         final String targetName = "test-config";
+
+        try {
+            IConfiguration config = mFactory.createConfigurationFromArgs(new String[]{configName,
+                    "--template:map", "dep-target", depTargetName,
+                    "--template:map", "target", targetName});
+            assertTrue(config.getTests().get(0) instanceof StubOptionTest);
+            assertTrue(config.getTests().get(1) instanceof StubOptionTest);
+        } catch (ConfigurationException e) {
+            fail(e.getMessage());
+        }
+    }
+
+    /**
+     * This unit test codifies the expectation that an inner {@code <template-include>} tag
+     * replaced by a missing config raise a failure.
+     * MAIN CONFIG -> Template 1 -> Template 2(missing) = error
+     */
+    public void testCreateConfigurationFromArgs_templateInclude_dependent_missing()
+            throws Exception {
+        final String configName = "depend-template-include-config";
+        final String depTargetName = "template-include-config";
+        final String targetName = "test-config-missing";
         final String expError = String.format(
-                "Failed to parse config xml '%s'. Reason: " +
-                ConfigurationXmlParser.ConfigHandler.INNER_TEMPLATE_INCLUDE_ERROR,
-                configName, configName, depTargetName);
+                "Bundled config '%s' is including a config '%s' that's neither local nor bundled.",
+                depTargetName, targetName);
 
         try {
             mFactory.createConfigurationFromArgs(new String[]{configName,
@@ -503,25 +598,75 @@ public class ConfigurationFactoryTest extends TestCase {
     }
 
     /**
-     * A limitation of the current implementation is that template args are only passed to the
-     * outermost configuration.  This unit test codifies the expectation that an inner
-     * {@code <template-include>} tag that doesn't have a default resolution set will fail.
+     * This unit test codifies the expectation that an inner {@code <template-include>} tag
+     * that doesn't have a default attribute will fail because cannot be resolved.
+     * MAIN CONFIG -> Template 1 -> Template 2(no Default, no args override) = error
+     */
+    public void testCreateConfigurationFromArgs_templateInclude_dependent_nodefault()
+            throws Exception {
+        final String configName = "depend-template-include-config";
+        final String depTargetName = "template-include-config";
+        final String expError = String.format(
+                "Failed to parse config xml '%s'. Reason: " +
+                ConfigurationXmlParser.ConfigHandler.INNER_TEMPLATE_INCLUDE_ERROR,
+                configName, configName, depTargetName);
+        try {
+            mFactory.createConfigurationFromArgs(new String[]{configName,
+                    "--template:map", "dep-target", depTargetName});
+            fail ("ConfigurationException not thrown");
+        } catch (ConfigurationException e) {
+            assertEquals(expError, e.getMessage());
+        }
+    }
+
+    /**
+     * This unit test codifies the expectation that an inner {@code <template-include>} tag
+     * that is inside an include tag will be correctly replaced by arguments.
+     * Main Config -> Include 1 -> Template 1 -> test-config.xml
      */
     public void testCreateConfigurationFromArgs_include_dependent() throws Exception {
         final String configName = "include-template-config";
         final String targetName = "test-config";
-        final String failedTargetName = "template-include-config";
+        try {
+            IConfiguration config = mFactory.createConfigurationFromArgs(new String[]{configName,
+                    "--template:map", "target", targetName});
+            assertTrue(config.getTests().get(0) instanceof StubOptionTest);
+            assertTrue(config.getTests().get(1) instanceof StubOptionTest);
+        } catch (ConfigurationException e) {
+            fail(e.getMessage());
+        }
+    }
+
+    /**
+     * This unit test ensure that when a configuration use included configuration the top
+     * configuration description is kept.
+     */
+    public void testTopDescriptionIsPreserved() throws ConfigurationException {
+        final String configName = "top-config";
+        Map<String, String> fakeTemplate = new HashMap<>();
+        fakeTemplate.put("target", "included-config");
+        ConfigurationDef test = mFactory.new ConfigLoader(false)
+                .getConfigurationDef(configName, fakeTemplate);
+        assertEquals("top config description", test.getDescription());
+    }
+
+    /**
+     * This unit test codifies the expectation that an inner {@code <template-include>} tag
+     * that is inside an include tag will be correctly rejected if no arguments can match it and
+     * no default value is present.
+     * Main Config -> Include 1 -> Template 1 (No default, no args override) = error
+     */
+    public void testCreateConfigurationFromArgs_include_dependent_nodefault() throws Exception {
+        final String configName = "include-template-config";
+        final String includeTargetName = "template-include-config";
         final String expError = String.format(
                 "Failed to parse config xml '%s'. Reason: " +
                 ConfigurationXmlParser.ConfigHandler.INNER_TEMPLATE_INCLUDE_ERROR,
-                configName, configName, failedTargetName);
-
+                configName, configName, includeTargetName);
         try {
-            mFactory.createConfigurationFromArgs(new String[]{configName,
-                    "--template:map", "target", targetName});
+            mFactory.createConfigurationFromArgs(new String[]{configName});
             fail ("ConfigurationException not thrown");
         } catch (ConfigurationException e) {
-            // Make sure that we get the expected error message
             assertEquals(expError, e.getMessage());
         }
     }
@@ -539,7 +684,66 @@ public class ConfigurationFactoryTest extends TestCase {
     }
 
     /**
-    * Test loading a config that tries to include a non-bundled config
+     * Test loading a config that tries to replace a template with itself will fail because it
+     * creates a cycle of configuration.
+     */
+    public void testCreateConfigurationFromArgs_recursiveTemplate() throws Exception {
+        final String configName = "depend-template-include-config";
+        final String depTargetName = "depend-template-include-config";
+        final String expError = String.format(
+                "Circular configuration include: config '%s' is already included", depTargetName);
+        try {
+            mFactory.createConfigurationFromArgs(new String[]{configName,
+                    "--template:map", "dep-target", depTargetName});
+            fail ("ConfigurationException not thrown");
+        } catch (ConfigurationException e) {
+            assertEquals(expError, e.getMessage());
+        }
+    }
+
+    /**
+     * Re-apply a template on a lower config level. Should result in a fail to parse because each
+     * template:map can only be applied once. So missing the default will throw exception.
+     */
+    public void testCreateConfigurationFromArgs_template_multilevel() throws Exception {
+        final String configName = "depend-template-include-config";
+        final String depTargetName = "template-include-config";
+        final String depTargetName2 = "template-collision-include-config";
+        final String expError = String.format(
+                "Failed to parse config xml '%s'. Reason: " +
+                ConfigurationXmlParser.ConfigHandler.INNER_TEMPLATE_INCLUDE_ERROR,
+                configName, configName, depTargetName2);
+        try {
+            mFactory.createConfigurationFromArgs(new String[]{configName,
+                    "--template:map", "dep-target", depTargetName,
+                    "--template:map", "target", depTargetName2});
+            fail ("ConfigurationException not thrown");
+        } catch (ConfigurationException e) {
+            assertEquals(expError, e.getMessage());
+        }
+    }
+
+    /**
+     * Re-apply a template twice. Should result in an error only because the configs included have
+     * several build_provider
+     */
+    public void testCreateConfigurationFromArgs_templateCollision() throws Exception {
+        final String configName = "template-collision-include-config";
+        final String depTargetName = "template-include-config-with-default";
+        final String expError =
+                "Only one config object allowed for logger, but multiple were specified.";
+        try {
+            mFactory.createConfigurationFromArgs(new String[]{configName,
+                    "--template:map", "target-col", depTargetName,
+                    "--template:map", "target-col2", depTargetName});
+            fail ("ConfigurationException not thrown");
+        } catch (ConfigurationException e) {
+            assertEquals(expError, e.getMessage());
+        }
+    }
+
+    /**
+    * Test loading a config that tries to include a non-bundled config.
     */
     public void testCreateConfigurationFromArgs_nonBundledInclude() throws Exception {
        try {
@@ -593,7 +797,7 @@ public class ConfigurationFactoryTest extends TestCase {
             test = (StubOptionTest)config.getTests().get(0);
             assertEquals("valueFromUpdatedConfig", test.mOption);
         } finally {
-            localConfigFile.delete();
+            FileUtil.deleteFile(localConfigFile);
         }
     }
 
@@ -606,6 +810,614 @@ public class ConfigurationFactoryTest extends TestCase {
             fail("ConfigurationException not thrown");
         } catch (ConfigurationException e) {
             // expected
+        }
+    }
+
+    /**
+     * If a template:map argument is passed but doesn't match any {@code <template-include>} tag
+     * a configuration exception will be thrown for unmatched arguments.
+     */
+    public void testCreateConfigurationFromArgs_templateName_notExist() throws Exception {
+        final String configName = "include-template-config-with-default";
+        final String targetName = "test-config";
+        final String missingNameTemplate = "NOTEXISTINGNAME";
+        Map<String, String> expected = new HashMap<String,String>();
+        expected.put(missingNameTemplate, targetName);
+        final String expError = String.format(
+                "Unused template:map parameters: %s", expected);
+
+        try {
+            mFactory.createConfigurationFromArgs(new String[]{configName,
+                    "--template:map", missingNameTemplate, targetName});
+            fail ("ConfigurationException not thrown");
+        } catch (ConfigurationException e) {
+            // Make sure that we get the expected error message
+            assertEquals(expError, e.getMessage());
+        }
+    }
+
+    /**
+     * If a configuration is called a second time, ensure that the cached config is also properly
+     * returned, and that template:map did not cause issues.
+     */
+    public void testCreateConfigurationFromArgs_templateName_notExistTest() throws Exception {
+        final String configName = "template-include-config-with-default";
+        final String targetName = "local-config";
+        final String nameTemplate = "target";
+        Map<String, String> expected = new HashMap<String,String>();
+        expected.put(nameTemplate, targetName);
+        IConfiguration tmp = null;
+        try {
+            tmp = mFactory.createConfigurationFromArgs(new String[]{configName,
+                    "--template:map", nameTemplate, targetName});
+        } catch (ConfigurationException e) {
+            fail("ConfigurationException thrown: " + e.getMessage());
+        }
+        assertTrue(tmp.getTests().size() == 2);
+
+        // Call the same config a second time to make sure the cached version works.
+        try {
+            tmp = mFactory.createConfigurationFromArgs(new String[]{configName,
+                    "--template:map", nameTemplate, targetName});
+        } catch (ConfigurationException e) {
+            fail("ConfigurationException thrown: " + e.getMessage());
+        }
+        assertTrue(tmp.getTests().size() == 2);
+    }
+
+    /**
+     * If a configuration is called a second time with bad template name, it should still throw
+     * the unused config template:map
+     */
+    public void testCreateConfigurationFromArgs_templateName_stillThrow() throws Exception {
+        final String configName = "template-include-config-with-default";
+        final String targetName = "local-config";
+        final String nameTemplate = "target_not_exist";
+        try {
+            mFactory.createConfigurationFromArgs(new String[]{configName,
+                    "--template:map", nameTemplate, targetName});
+            fail("ConfigurationException should have been thrown");
+        } catch (ConfigurationException e) {
+            // expected
+        }
+
+        // Call the same config a second time to make sure it is also rejected.
+        try {
+            mFactory.createConfigurationFromArgs(new String[]{configName,
+                    "--template:map", nameTemplate, targetName});
+            fail("ConfigurationException should have been thrown");
+        } catch (ConfigurationException e) {
+            // expected
+        }
+    }
+
+    /**
+     * Parse a config with 3 different device configuration specified.
+     */
+    public void testCreateConfigurationFromArgs_multidevice() throws Exception {
+        IConfiguration config = mFactory.createConfigurationFromArgs(
+                new String[]{"multi-device"});
+        assertEquals(1, config.getTests().size());
+        assertTrue(config.getTests().get(0) instanceof StubOptionTest);
+        // Verify that all attributes are in the right place:
+        assertNotNull(config.getDeviceConfigByName("device1"));
+        assertEquals("10", config.getDeviceConfigByName("device1")
+                .getBuildProvider().getBuild().getBuildId());
+        assertEquals("stub", config.getDeviceConfigByName("device1")
+                .getBuildProvider().getBuild().getTestTag());
+        assertEquals(0, config.getDeviceConfigByName("device1")
+                .getTargetPreparers().size());
+
+        assertNotNull(config.getDeviceConfigByName("device2"));
+        assertEquals("0", config.getDeviceConfigByName("device2")
+                .getBuildProvider().getBuild().getBuildId());
+        assertEquals("stub", config.getDeviceConfigByName("device2")
+                .getBuildProvider().getBuild().getTestTag());
+        assertEquals(1, config.getDeviceConfigByName("device2")
+                .getTargetPreparers().size());
+        assertTrue(config.getDeviceConfigByName("device2")
+                .getTargetPreparers().get(0) instanceof StubTargetPreparer);
+
+        assertNotNull(config.getDeviceConfigByName("device3"));
+        assertEquals("0", config.getDeviceConfigByName("device3")
+                .getBuildProvider().getBuild().getBuildId());
+        assertEquals("build-flavor3", config.getDeviceConfigByName("device3")
+                .getBuildProvider().getBuild().getBuildFlavor());
+        assertEquals(2, config.getDeviceConfigByName("device3")
+                .getTargetPreparers().size());
+        assertTrue(config.getDeviceConfigByName("device3")
+                .getTargetPreparers().get(0) instanceof StubTargetPreparer);
+    }
+
+    /**
+     * Test that if an object inside a <device> tag is implementing {@link IConfigurationReceiver}
+     * it will receives the config properly like non-device object.
+     */
+    public void testCreateConfigurationFromArgs_injectConfiguration() throws Exception {
+        IConfiguration config = mFactory.createConfigurationFromArgs(new String[] {"multi-device"});
+        assertEquals(1, config.getTests().size());
+
+        assertNotNull(config.getDeviceConfigByName("device2"));
+        assertEquals(1, config.getDeviceConfigByName("device2").getTargetPreparers().size());
+        assertTrue(
+                config.getDeviceConfigByName("device2").getTargetPreparers().get(0)
+                        instanceof StubTargetPreparer);
+        StubTargetPreparer stubDevice2 =
+                (StubTargetPreparer)
+                        config.getDeviceConfigByName("device2").getTargetPreparers().get(0);
+        assertEquals(config, stubDevice2.getConfiguration());
+
+        assertNotNull(config.getDeviceConfigByName("device3"));
+        assertEquals(2, config.getDeviceConfigByName("device3").getTargetPreparers().size());
+        assertTrue(
+                config.getDeviceConfigByName("device3").getTargetPreparers().get(0)
+                        instanceof StubTargetPreparer);
+        StubTargetPreparer stubDevice3 =
+                (StubTargetPreparer)
+                        config.getDeviceConfigByName("device3").getTargetPreparers().get(0);
+        assertEquals(config, stubDevice3.getConfiguration());
+    }
+
+    /**
+     * Parse a config with 3 different device configuration specified. And apply a command line to
+     * override some attributes.
+     */
+    public void testCreateConfigurationFromArgs_multidevice_applyCommandLine() throws Exception {
+        IConfiguration config = mFactory.createConfigurationFromArgs(
+                new String[]{"multi-device", "--{device2}build-id","20", "--{device1}null-device",
+                        "--{device3}com.android.tradefed.build.StubBuildProvider:build-id","30"});
+        assertEquals(1, config.getTests().size());
+        assertTrue(config.getTests().get(0) instanceof StubOptionTest);
+        // Verify that all attributes are in the right place:
+        assertNotNull(config.getDeviceConfigByName("device1"));
+        assertEquals("10", config.getDeviceConfigByName("device1")
+                .getBuildProvider().getBuild().getBuildId());
+        assertEquals("stub", config.getDeviceConfigByName("device1")
+                .getBuildProvider().getBuild().getTestTag());
+        assertEquals(0, config.getDeviceConfigByName("device1")
+                .getTargetPreparers().size());
+        assertTrue(config.getDeviceConfigByName("device1")
+                .getDeviceRequirements().nullDeviceRequested());
+
+        assertNotNull(config.getDeviceConfigByName("device2"));
+        // Device2 build provider is modified independently
+        assertEquals("20", config.getDeviceConfigByName("device2")
+                .getBuildProvider().getBuild().getBuildId());
+        assertEquals("stub", config.getDeviceConfigByName("device2")
+                .getBuildProvider().getBuild().getTestTag());
+        assertEquals(1, config.getDeviceConfigByName("device2")
+                .getTargetPreparers().size());
+        assertTrue(config.getDeviceConfigByName("device2")
+                .getTargetPreparers().get(0) instanceof StubTargetPreparer);
+        assertFalse(config.getDeviceConfigByName("device2")
+                .getDeviceRequirements().nullDeviceRequested());
+
+        // Device3 build provider is modified independently
+        assertNotNull(config.getDeviceConfigByName("device3"));
+        assertEquals("30", config.getDeviceConfigByName("device3")
+                .getBuildProvider().getBuild().getBuildId());
+        assertEquals("build-flavor3", config.getDeviceConfigByName("device3")
+                .getBuildProvider().getBuild().getBuildFlavor());
+        assertEquals(2, config.getDeviceConfigByName("device3")
+                .getTargetPreparers().size());
+        assertTrue(config.getDeviceConfigByName("device3")
+                .getTargetPreparers().get(0) instanceof StubTargetPreparer);
+        assertFalse(config.getDeviceConfigByName("device3")
+                .getDeviceRequirements().nullDeviceRequested());
+    }
+
+    /**
+     * Parse a config with 3 different device configuration specified. And apply a command line to
+     * override some attributes.
+     */
+    public void testCreateConfigurationFromArgs_multidevice_singletag() throws Exception {
+        IConfiguration config =
+                mFactory.createConfigurationFromArgs(
+                        new String[] {
+                            "multi-device-empty",
+                            "--{device2}build-id",
+                            "20",
+                            "--{device1}null-device",
+                            "--{device3}com.android.tradefed.build.StubBuildProvider:build-id",
+                            "30"
+                        });
+        assertEquals(1, config.getTests().size());
+        assertTrue(config.getTests().get(0) instanceof StubOptionTest);
+        // Verify that all attributes are in the right place:
+        assertNotNull(config.getDeviceConfigByName("device1"));
+        assertEquals(
+                "0",
+                config.getDeviceConfigByName("device1").getBuildProvider().getBuild().getBuildId());
+        assertEquals(
+                "stub",
+                config.getDeviceConfigByName("device1").getBuildProvider().getBuild().getTestTag());
+        assertEquals(0, config.getDeviceConfigByName("device1").getTargetPreparers().size());
+        assertTrue(
+                config.getDeviceConfigByName("device1")
+                        .getDeviceRequirements()
+                        .nullDeviceRequested());
+
+        assertNotNull(config.getDeviceConfigByName("device2"));
+        // Device2 build provider is modified independently
+        assertEquals(
+                "20",
+                config.getDeviceConfigByName("device2").getBuildProvider().getBuild().getBuildId());
+        assertEquals(
+                "stub",
+                config.getDeviceConfigByName("device2").getBuildProvider().getBuild().getTestTag());
+        assertEquals(0, config.getDeviceConfigByName("device2").getTargetPreparers().size());
+        assertFalse(
+                config.getDeviceConfigByName("device2")
+                        .getDeviceRequirements()
+                        .nullDeviceRequested());
+
+        // Device3 build provider is modified independently
+        assertNotNull(config.getDeviceConfigByName("device3"));
+        assertEquals(
+                "30",
+                config.getDeviceConfigByName("device3").getBuildProvider().getBuild().getBuildId());
+        assertEquals(0, config.getDeviceConfigByName("device3").getTargetPreparers().size());
+        assertFalse(
+                config.getDeviceConfigByName("device3")
+                        .getDeviceRequirements()
+                        .nullDeviceRequested());
+    }
+
+    /**
+     * Parse a config with 3 different device configuration specified. And apply a command line to
+     * override all attributes.
+     */
+    public void testCreateConfigurationFromArgs_multidevice_applyCommandLineGlobal()
+            throws Exception {
+        IConfiguration config = mFactory.createConfigurationFromArgs(
+                new String[]{"multi-device", "--build-id","20"});
+        assertEquals(1, config.getTests().size());
+        assertTrue(config.getTests().get(0) instanceof StubOptionTest);
+        // Verify that all attributes are in the right place:
+        // All build id are now modified since option had a global scope
+        assertNotNull(config.getDeviceConfigByName("device1"));
+        assertEquals("20", config.getDeviceConfigByName("device1")
+                .getBuildProvider().getBuild().getBuildId());
+        assertEquals("stub", config.getDeviceConfigByName("device1")
+                .getBuildProvider().getBuild().getTestTag());
+        assertEquals(0, config.getDeviceConfigByName("device1")
+                .getTargetPreparers().size());
+
+        assertNotNull(config.getDeviceConfigByName("device2"));
+        assertEquals("20", config.getDeviceConfigByName("device2")
+                .getBuildProvider().getBuild().getBuildId());
+        assertEquals("stub", config.getDeviceConfigByName("device2")
+                .getBuildProvider().getBuild().getTestTag());
+        assertEquals(1, config.getDeviceConfigByName("device2")
+                .getTargetPreparers().size());
+        assertTrue(config.getDeviceConfigByName("device2")
+                .getTargetPreparers().get(0) instanceof StubTargetPreparer);
+
+        assertNotNull(config.getDeviceConfigByName("device3"));
+        assertEquals("20", config.getDeviceConfigByName("device3")
+                .getBuildProvider().getBuild().getBuildId());
+        assertEquals("build-flavor3", config.getDeviceConfigByName("device3")
+                .getBuildProvider().getBuild().getBuildFlavor());
+        assertEquals(2, config.getDeviceConfigByName("device3")
+                .getTargetPreparers().size());
+        assertTrue(config.getDeviceConfigByName("device3")
+                .getTargetPreparers().get(0) instanceof StubTargetPreparer);
+    }
+
+    /**
+     * Test that when <device> tags are out of order (device 1 - device 2 - device 1) and an option
+     * is specified in the last device 1 with an increased frequency (a same class object from the
+     * first device 1 or 2), the option is properly found and assigned.
+     */
+    public void testCreateConfigurationFromArgs_frequency() throws Exception {
+        IConfiguration config =
+                mFactory.createConfigurationFromArgs(new String[] {"multi-device-mix"});
+        assertNotNull(config.getDeviceConfigByName("device1"));
+        assertEquals(3, config.getDeviceConfigByName("device1").getTargetPreparers().size());
+        assertTrue(
+                config.getDeviceConfigByName("device1").getTargetPreparers().get(0)
+                        instanceof DeviceWiper);
+        DeviceWiper prep1 =
+                (DeviceWiper) config.getDeviceConfigByName("device1").getTargetPreparers().get(0);
+        assertTrue(prep1.isDisabled());
+        assertTrue(
+                config.getDeviceConfigByName("device1").getTargetPreparers().get(2)
+                        instanceof DeviceWiper);
+        DeviceWiper prep3 =
+                (DeviceWiper) config.getDeviceConfigByName("device1").getTargetPreparers().get(2);
+        assertFalse(prep3.isDisabled());
+
+        assertNotNull(config.getDeviceConfigByName("device2"));
+        assertEquals(1, config.getDeviceConfigByName("device2").getTargetPreparers().size());
+        assertTrue(
+                config.getDeviceConfigByName("device2").getTargetPreparers().get(0)
+                        instanceof DeviceWiper);
+        DeviceWiper prep2 =
+                (DeviceWiper) config.getDeviceConfigByName("device2").getTargetPreparers().get(0);
+        // Only device 1 preparer has been targeted.
+        assertTrue(prep2.isDisabled());
+    }
+
+    /**
+     * Tests a different usage of options for a multi device interleaved config where options are
+     * specified.
+     */
+    public void testCreateConfigurationFromArgs_frequency_withOptionOpen() throws Exception {
+        IConfiguration config =
+                mFactory.createConfigurationFromArgs(new String[] {"multi-device-mix-options"});
+        assertNotNull(config.getDeviceConfigByName("device1"));
+        assertEquals(3, config.getDeviceConfigByName("device1").getTargetPreparers().size());
+        assertTrue(
+                config.getDeviceConfigByName("device1").getTargetPreparers().get(0)
+                        instanceof DeviceWiper);
+        DeviceWiper prep1 =
+                (DeviceWiper) config.getDeviceConfigByName("device1").getTargetPreparers().get(0);
+        assertTrue(prep1.isDisabled());
+        assertTrue(
+                config.getDeviceConfigByName("device1").getTargetPreparers().get(2)
+                        instanceof DeviceWiper);
+        DeviceWiper prep3 =
+                (DeviceWiper) config.getDeviceConfigByName("device1").getTargetPreparers().get(2);
+        assertFalse(prep3.isDisabled());
+
+        assertNotNull(config.getDeviceConfigByName("device2"));
+        assertEquals(1, config.getDeviceConfigByName("device2").getTargetPreparers().size());
+        assertTrue(
+                config.getDeviceConfigByName("device2").getTargetPreparers().get(0)
+                        instanceof DeviceWiper);
+        DeviceWiper prep2 =
+                (DeviceWiper) config.getDeviceConfigByName("device2").getTargetPreparers().get(0);
+        // Only device 1 preparer has been targeted.
+        assertTrue(prep2.isDisabled());
+    }
+
+    /**
+     * Configuration for multi device is wrong since it contains a build_provider tag outside the
+     * devices tags.
+     */
+    public void testCreateConfigurationFromArgs_multidevice_exception() throws Exception {
+        String expectedException = "Tags [build_provider] should be included in a <device> tag.";
+        try {
+            mFactory.createConfigurationFromArgs(new String[]{"multi-device-outside-tag"});
+            fail("Should have thrown a Configuration Exception");
+        } catch(ConfigurationException e) {
+            assertEquals(expectedException, e.getMessage());
+        }
+    }
+
+    /**
+     * Parse a config with no multi device config, and expect the new device holder to still be
+     * there and adding a default device.
+     */
+    public void testCreateConfigurationFromArgs_old_config_with_deviceHolder() throws Exception {
+        IConfiguration config = mFactory.createConfigurationFromArgs(
+                new String[]{"test-config", "--build-id","20", "--serial", "test"});
+        assertEquals(1, config.getTests().size());
+        assertTrue(config.getTests().get(0) instanceof StubOptionTest);
+        // Verify that all attributes are in the right place:
+        // All build id are now modified since option had a global scope
+        assertNotNull(config.getDeviceConfigByName(ConfigurationDef.DEFAULT_DEVICE_NAME));
+        assertEquals("20", config.getDeviceConfigByName(ConfigurationDef.DEFAULT_DEVICE_NAME)
+                .getBuildProvider().getBuild().getBuildId());
+        assertEquals("stub", config.getDeviceConfigByName(ConfigurationDef.DEFAULT_DEVICE_NAME)
+                .getBuildProvider().getBuild().getTestTag());
+        assertEquals(1, config.getDeviceConfigByName(ConfigurationDef.DEFAULT_DEVICE_NAME)
+                .getTargetPreparers().size());
+        List<String> serials = new ArrayList<String>();
+        serials.add("test");
+        assertEquals(serials, config.getDeviceRequirements().getSerials());
+        assertEquals(serials, config.getDeviceConfigByName(ConfigurationDef.DEFAULT_DEVICE_NAME)
+                .getDeviceRequirements().getSerials());
+    }
+
+    /** Test that {@link ConfigurationFactory#reorderArgs(String[])} is properly reordering args. */
+    public void testReorderArgs_check_ordering() throws Throwable {
+        String[] args =
+                new String[] {
+                    "config",
+                    "--option1",
+                    "o1",
+                    "--template:map",
+                    "tm=tm1",
+                    "--option2",
+                    "--option3",
+                    "o3",
+                    "--template:map",
+                    "tm",
+                    "tm2"
+                };
+        String[] wantArgs =
+                new String[] {
+                    "config",
+                    "--template:map",
+                    "tm=tm1",
+                    "--template:map",
+                    "tm",
+                    "tm2",
+                    "--option1",
+                    "o1",
+                    "--option2",
+                    "--option3",
+                    "o3"
+                };
+
+        assertEquals(Arrays.toString(wantArgs), Arrays.toString(mFactory.reorderArgs(args)));
+    }
+
+    /**
+     * Test that {@link ConfigurationFactory#reorderArgs(String[])} properly handles a short arg
+     * after a template arg.
+     */
+    public void testReorderArgs_template_with_short_arg() throws Throwable {
+        String[] args =
+                new String[] {
+                    "config",
+                    "--option1",
+                    "o1",
+                    "--template:map",
+                    "tm=tm1",
+                    "-option2",
+                    "--option3",
+                    "o3",
+                    "--template:map",
+                    "tm",
+                    "tm2"
+                };
+        String[] wantArgs =
+                new String[] {
+                    "config",
+                    "--template:map",
+                    "tm=tm1",
+                    "--template:map",
+                    "tm",
+                    "tm2",
+                    "--option1",
+                    "o1",
+                    "-option2",
+                    "--option3",
+                    "o3"
+                };
+
+        assertEquals(Arrays.toString(wantArgs), Arrays.toString(mFactory.reorderArgs(args)));
+    }
+
+    /**
+     * Test that {@link ConfigurationFactory#reorderArgs(String[])} properly handles a incomplete
+     * template arg.
+     */
+    public void testReorderArgs_incomplete_template_arg() throws Throwable {
+        String[] args =
+                new String[] {
+                    "config",
+                    "--option1",
+                    "o1",
+                    "--template:map",
+                    "tm=tm1",
+                    "-option2",
+                    "--option3",
+                    "o3",
+                    "--template:map",
+                };
+        String[] wantArgs =
+                new String[] {
+                    "config",
+                    "--template:map",
+                    "tm=tm1",
+                    "--template:map",
+                    "--option1",
+                    "o1",
+                    "-option2",
+                    "--option3",
+                    "o3"
+                };
+
+        assertEquals(Arrays.toString(wantArgs), Arrays.toString(mFactory.reorderArgs(args)));
+    }
+
+    /**
+     * Test that when doing a dry-run with keystore arguments, we skip the keystore validation. We
+     * accept the argument, as long as the key exists.
+     */
+    public void testCreateConfigurationFromArgs_dryRun_keystore() throws Exception {
+        IConfiguration res =
+                mFactory.createConfigurationFromArgs(
+                        new String[] {
+                            "test-config",
+                            "--build-id",
+                            "USE_KEYSTORE@test_string",
+                            "--dry-run",
+                            "--online-wait-time=USE_KEYSTORE@test_long",
+                            "--min-battery-after-recovery",
+                            "USE_KEYSTORE@test_int",
+                            "--disable-unresponsive-reboot=USE_KEYSTORE@test_boolean",
+                        });
+        res.validateOptions();
+        // we still throw exception if the option itself doesn't exists.
+        try {
+            mFactory.createConfigurationFromArgs(
+                    new String[] {
+                        "test-config", "--does-not-exists", "USE_KEYSTORE@test_string", "--dry-run"
+                    });
+            fail("Should have thrown an exception.");
+        } catch (ConfigurationException expected) {
+            // expected
+        }
+    }
+
+    /**
+     * Test that when mandatory option are set with a keystore during a dry-run, they can still be
+     * validated.
+     */
+    public void testCreateConfigurationFromArgs_dryRun_keystore_required_arg() throws Exception {
+        IConfiguration res =
+                mFactory.createConfigurationFromArgs(
+                        new String[] {
+                            "mandatory-config",
+                            "--build-dir",
+                            "USE_KEYSTORE@test_string",
+                            "--dry-run",
+                        });
+        // Check that mandatory option was properly set, otherwise it will throw.
+        res.validateOptions();
+    }
+
+    /**
+     * This unit test ensures that the code will search for missing test configs in directories
+     * specified in certain environment variables.
+     */
+    public void testSearchConfigFromEnvVar() throws IOException {
+        File externalConfig = FileUtil.createTempFile("external-config", ".config");
+        String configName = FileUtil.getBaseName(externalConfig.getName());
+        File tmpDir = externalConfig.getParentFile();
+
+        ConfigurationFactory spyFactory = Mockito.spy(mFactory);
+        Mockito.doReturn(Arrays.asList(tmpDir)).when(spyFactory).getExternalTestCasesDirs();
+
+        try {
+            File config = spyFactory.getTestCaseConfigPath(configName);
+            assertEquals(config.getAbsolutePath(), externalConfig.getAbsolutePath());
+        } finally {
+            FileUtil.deleteFile(externalConfig);
+        }
+    }
+
+    /**
+     * This unit test ensures that the code will search for missing test configs in directories
+     * specified in certain environment variables, and fail as the test config still can't be found.
+     */
+    public void testSearchConfigFromEnvVarFailed() throws Exception {
+        File tmpDir = FileUtil.createTempDir("config-check-var");
+        try {
+            ConfigurationFactory spyFactory = Mockito.spy(mFactory);
+            Mockito.doReturn(Arrays.asList(tmpDir)).when(spyFactory).getExternalTestCasesDirs();
+            File config = spyFactory.getTestCaseConfigPath("non-exist");
+            assertNull(config);
+            Mockito.verify(spyFactory, Mockito.times(1)).getExternalTestCasesDirs();
+        } finally {
+            FileUtil.recursiveDelete(tmpDir);
+        }
+    }
+
+    /**
+     * Tests that {@link ConfigurationFactory#getConfigNamesFromTestCases(String)} returns the
+     * proper files of the subpath only.
+     */
+    public void testGetConfigNamesFromTestCases_subpath() throws Exception {
+        File tmpDir = FileUtil.createTempDir("test-config-dir");
+        try {
+            FileUtil.createTempFile("testconfig1", ".config", tmpDir);
+            File subDir = FileUtil.createTempDir("subdir", tmpDir);
+            FileUtil.createTempFile("testconfig2", ".xml", subDir);
+            ConfigurationFactory spyFactory = Mockito.spy(mFactory);
+            Mockito.doReturn(Arrays.asList(tmpDir)).when(spyFactory).getExternalTestCasesDirs();
+            // looking at full path we get both configs
+            Set<String> res = spyFactory.getConfigNamesFromTestCases(null);
+            assertEquals(2, res.size());
+            res = spyFactory.getConfigNamesFromTestCases(subDir.getName());
+            assertEquals(1, res.size());
+            assertTrue(res.iterator().next().contains("testconfig2"));
+        } finally {
+            FileUtil.recursiveDelete(tmpDir);
         }
     }
 }

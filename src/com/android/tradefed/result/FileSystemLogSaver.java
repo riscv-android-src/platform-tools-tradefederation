@@ -19,6 +19,7 @@ import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.command.FatalHostError;
 import com.android.tradefed.config.Option;
 import com.android.tradefed.config.OptionClass;
+import com.android.tradefed.invoker.IInvocationContext;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.util.FileUtil;
 import com.android.tradefed.util.StreamUtil;
@@ -61,16 +62,29 @@ public class FileSystemLogSaver implements ILogSaver {
     private File mLogReportDir = null;
 
     /**
+     * A counter to control access to methods which modify this class's directories. Acting as a
+     * non-blocking reentrant lock, this int blocks access to sharded child invocations from
+     * attempting to create or delete directories.
+     */
+    private int mShardingLock = 0;
+
+    /**
      * {@inheritDoc}
-     * <p>
-     * Also, create a unique file system directory under
-     * {@code report-dir/[branch/]build-id/test-tag/unique_dir} for saving logs.  If the creation
-     * of the directory fails, will write logs to a temporary directory on the local file system.
-     * </p>
+     *
+     * <p>Also, create a unique file system directory under {@code
+     * report-dir/[branch/]build-id/test-tag/unique_dir} for saving logs. If the creation of the
+     * directory fails, will write logs to a temporary directory on the local file system.
      */
     @Override
-    public void invocationStarted(IBuildInfo buildInfo) {
-        mLogReportDir = createLogReportDir(buildInfo, mRootReportDir, mLogRetentionDays);
+    public void invocationStarted(IInvocationContext context) {
+        // Create log directory on first build info
+        IBuildInfo info = context.getBuildInfos().get(0);
+        synchronized (this) {
+            if (mShardingLock == 0) {
+                mLogReportDir = createLogReportDir(info, mRootReportDir, mLogRetentionDays);
+            }
+            mShardingLock++;
+        }
     }
 
     /**
@@ -78,7 +92,15 @@ public class FileSystemLogSaver implements ILogSaver {
      */
     @Override
     public void invocationEnded(long elapsedTime) {
-        // Ignore, no clean up needed.
+        // no clean up needed.
+        synchronized (this) {
+            --mShardingLock;
+            if (mShardingLock < 0) {
+                CLog.w(
+                        "Sharding lock exited more times than entered, possible "
+                                + "unbalanced invocationStarted/Ended calls");
+            }
+        }
     }
 
     /**
@@ -93,7 +115,9 @@ public class FileSystemLogSaver implements ILogSaver {
     public LogFile saveLogData(String dataName, LogDataType dataType, InputStream dataStream)
             throws IOException {
         if (!mCompressFiles || dataType.isCompressed()) {
-            return saveLogDataRaw(dataName, dataType.getFileExt(), dataStream);
+            File log = saveLogDataInternal(dataName, dataType.getFileExt(), dataStream);
+            return new LogFile(log.getAbsolutePath(), getUrl(log), dataType.isCompressed(),
+                    dataType.isText());
         }
         BufferedInputStream bufferedDataStream = null;
         ZipOutputStream outputStream = null;
@@ -113,8 +137,8 @@ public class FileSystemLogSaver implements ILogSaver {
                     BUFFER_SIZE));
             outputStream.putNextEntry(new ZipEntry(saneDataName + "." + dataType.getFileExt()));
             StreamUtil.copyStreams(bufferedDataStream, outputStream);
-            CLog.i("Saved log file %s", log.getAbsolutePath());
-            return new LogFile(log.getAbsolutePath(), getUrl(log));
+            CLog.d("Saved log file %s", log.getAbsolutePath());
+            return new LogFile(log.getAbsolutePath(), getUrl(log), true, dataType.isText());
         } finally {
             StreamUtil.close(bufferedDataStream);
             StreamUtil.close(outputStream);
@@ -127,6 +151,12 @@ public class FileSystemLogSaver implements ILogSaver {
     @Override
     public LogFile saveLogDataRaw(String dataName, String ext, InputStream dataStream)
             throws IOException {
+        File log = saveLogDataInternal(dataName, ext, dataStream);
+        return new LogFile(log.getAbsolutePath(), getUrl(log), false, false);
+    }
+
+    private File saveLogDataInternal(String dataName, String ext, InputStream dataStream)
+            throws IOException {
         final String saneDataName = sanitizeFilename(dataName);
         // add underscore to end of data name to make generated name more readable
         File log = FileUtil.createTempFile(saneDataName + "_", "." + ext, mLogReportDir);
@@ -137,8 +167,8 @@ public class FileSystemLogSaver implements ILogSaver {
         }
 
         FileUtil.writeToFile(dataStream, log);
-        CLog.i("Saved log file %s", log.getAbsolutePath());
-        return new LogFile(log.getAbsolutePath(), getUrl(log));
+        CLog.d("Saved raw log file %s", log.getAbsolutePath());
+        return log;
     }
 
     /**
@@ -146,7 +176,7 @@ public class FileSystemLogSaver implements ILogSaver {
      */
     @Override
     public LogFile getLogReportDir() {
-        return new LogFile(mLogReportDir.getAbsolutePath(), getUrl(mLogReportDir));
+        return new LogFile(mLogReportDir.getAbsolutePath(), getUrl(mLogReportDir), false, false);
     }
 
     /**
@@ -186,7 +216,7 @@ public class FileSystemLogSaver implements ILogSaver {
         if (logRetentionDays != null && logRetentionDays > 0) {
             new RetentionFileSaver().writeRetentionFile(logReportDir, logRetentionDays);
         }
-        CLog.i("Using log file directory %s", logReportDir.getAbsolutePath());
+        CLog.d("Using log file directory %s", logReportDir.getAbsolutePath());
         return logReportDir;
     }
 

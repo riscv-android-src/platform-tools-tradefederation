@@ -39,6 +39,10 @@ import java.util.zip.ZipOutputStream;
  */
 public class ZipUtil {
 
+    private static final String DEFAULT_DIRNAME = "dir";
+    private static final String DEFAULT_FILENAME = "files";
+    private static final String ZIP_EXTENSION = ".zip";
+
     /**
      * Utility method to verify that a zip file is not corrupt.
      *
@@ -54,9 +58,7 @@ public class ZipUtil {
             return false;
         }
 
-        try {
-            final ZipFile z = new ZipFile(zipFile);
-
+        try (ZipFile z = new ZipFile(zipFile)) {
             if (thorough) {
                 // Reading the entire file is the only way to detect CRC errors within the archive
                 final File extractDir = FileUtil.createTempDir("extract-" + zipFile.getName());
@@ -67,8 +69,9 @@ public class ZipUtil {
                 }
             }
         } catch (ZipException e) {
-            // File is likely corrupt
-            CLog.d("Detected corrupt zip file %s: %s", zipFile.getCanonicalPath(), e.getMessage());
+            // File is likely corrupted
+            CLog.d("Detected corrupt zip file %s:", zipFile.getCanonicalPath());
+            CLog.e(e);
             return false;
         }
 
@@ -125,7 +128,20 @@ public class ZipUtil {
      * @throws IOException if failed to create zip file
      */
     public static File createZip(File dir) throws IOException {
-        File zipFile = FileUtil.createTempFile("dir", ".zip");
+        return createZip(dir, DEFAULT_DIRNAME);
+    }
+
+    /**
+     * Utility method to create a temporary zip file containing the given directory and
+     * all its contents.
+     *
+     * @param dir the directory to zip
+     * @param name the base name of the zip file created without the extension.
+     * @return a temporary zip {@link File} containing directory contents
+     * @throws IOException if failed to create zip file
+     */
+    public static File createZip(File dir, String name) throws IOException {
+        File zipFile = FileUtil.createTempFile(name, ZIP_EXTENSION);
         createZip(dir, zipFile);
         return zipFile;
     }
@@ -148,6 +164,54 @@ public class ZipUtil {
             zipFile.delete();
             throw e;
         } catch (RuntimeException e) {
+            zipFile.delete();
+            throw e;
+        } finally {
+            StreamUtil.close(out);
+        }
+    }
+
+    /**
+     * Utility method to create a temporary zip file containing the given files
+     *
+     * @param files list of files to zip
+     * @return a temporary zip {@link File} containing directory contents
+     * @throws IOException if failed to create zip file
+     */
+    public static File createZip(List<File> files) throws IOException {
+        return createZip(files, DEFAULT_FILENAME);
+    }
+
+    /**
+     * Utility method to create a temporary zip file containing the given files.
+     *
+     * @param files list of files to zip
+     * @param name the base name of the zip file created without the extension.
+     * @return a temporary zip {@link File} containing directory contents
+     * @throws IOException if failed to create zip file
+     */
+    public static File createZip(List<File> files, String name) throws IOException {
+        File zipFile = FileUtil.createTempFile(name, ZIP_EXTENSION);
+        createZip(files, zipFile);
+        return zipFile;
+    }
+
+    /**
+     * Utility method to create a zip file containing the given files
+     *
+     * @param files list of files to zip
+     * @param zipFile the zip file to create - it should not already exist
+     * @throws IOException if failed to create zip file
+     */
+    public static void createZip(List<File> files, File zipFile) throws IOException {
+        ZipOutputStream out = null;
+        try {
+            FileOutputStream fileStream = new FileOutputStream(zipFile);
+            out = new ZipOutputStream(new BufferedOutputStream(fileStream));
+            for (File file : files) {
+                addToZip(out, file, new LinkedList<String>());
+            }
+        } catch (IOException|RuntimeException e) {
             zipFile.delete();
             throw e;
         } finally {
@@ -274,7 +338,13 @@ public class ZipUtil {
     public static File extractZipToTemp(File zipFile, String nameHint)
             throws IOException, ZipException {
         File localRootDir = FileUtil.createTempDir(nameHint);
-        extractZip(new ZipFile(zipFile), localRootDir);
-        return localRootDir;
+        try (ZipFile zip = new ZipFile(zipFile)) {
+            extractZip(zip, localRootDir);
+            return localRootDir;
+        } catch (IOException e) {
+            // clean tmp file since we couldn't extract.
+            FileUtil.recursiveDelete(localRootDir);
+            throw e;
+        }
     }
 }

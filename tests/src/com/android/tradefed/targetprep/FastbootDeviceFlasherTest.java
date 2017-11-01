@@ -18,11 +18,16 @@ package com.android.tradefed.targetprep;
 
 import com.android.tradefed.build.DeviceBuildInfo;
 import com.android.tradefed.build.IDeviceBuildInfo;
+import com.android.tradefed.command.remote.DeviceDescriptor;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
+import com.android.tradefed.device.TestDeviceState;
 import com.android.tradefed.targetprep.IDeviceFlasher.UserDataFlashOption;
+import com.android.tradefed.util.ArrayUtil;
 import com.android.tradefed.util.CommandResult;
 import com.android.tradefed.util.CommandStatus;
+import com.android.tradefed.util.FileUtil;
+import com.android.tradefed.util.IRunUtil;
 
 import junit.framework.TestCase;
 
@@ -32,6 +37,7 @@ import java.io.BufferedReader;
 import java.io.File;
 import java.io.IOException;
 import java.io.StringReader;
+import java.util.ArrayList;
 
 /**
  * Unit tests for {@link FastbootDeviceFlasher}.
@@ -45,6 +51,7 @@ public class FastbootDeviceFlasherTest extends TestCase {
     private IDeviceBuildInfo mMockBuildInfo;
     private IFlashingResourcesRetriever mMockRetriever;
     private IFlashingResourcesParser mMockParser;
+    private IRunUtil mMockRunUtil;
 
     /**
      * {@inheritDoc}
@@ -57,17 +64,23 @@ public class FastbootDeviceFlasherTest extends TestCase {
         EasyMock.expect(mMockDevice.getProductType()).andStubReturn(TEST_STRING);
         EasyMock.expect(mMockDevice.getBuildId()).andStubReturn("1");
         EasyMock.expect(mMockDevice.getBuildFlavor()).andStubReturn("test-debug");
-        mMockBuildInfo = new DeviceBuildInfo("0", TEST_STRING, TEST_STRING);
+        EasyMock.expect(mMockDevice.getDeviceDescriptor()).andStubReturn(null);
+        mMockBuildInfo = new DeviceBuildInfo("0", TEST_STRING);
         mMockBuildInfo.setDeviceImageFile(new File(TEST_STRING), "0");
         mMockBuildInfo.setUserDataImageFile(new File(TEST_STRING), "0");
         mMockRetriever = EasyMock.createNiceMock(IFlashingResourcesRetriever.class);
         mMockParser = EasyMock.createNiceMock(IFlashingResourcesParser.class);
+        mMockRunUtil = EasyMock.createMock(IRunUtil.class);
 
         mFlasher = new FastbootDeviceFlasher() {
             @Override
             protected IFlashingResourcesParser createFlashingResourcesParser(
-                    IDeviceBuildInfo localBuild) {
+                    IDeviceBuildInfo localBuild, DeviceDescriptor descriptor) {
                 return mMockParser;
+            }
+            @Override
+            protected IRunUtil getRunUtil() {
+                return mMockRunUtil;
             }
         };
         mFlasher.setFlashingResourcesRetriever(mMockRetriever);
@@ -120,14 +133,57 @@ public class FastbootDeviceFlasherTest extends TestCase {
         fastbootResult.setStdout("");
         EasyMock.expect(mMockDevice.executeFastbootCommand("getvar", "version-bootloader")).
                 andReturn(fastbootResult);
-        EasyMock.replay(mMockDevice);
+        EasyMock.replay(mMockDevice, mMockRunUtil);
         String actualVersion = mFlasher.getImageVersion(mMockDevice, "bootloader");
         assertEquals("1.0.1", actualVersion);
+        EasyMock.verify(mMockDevice, mMockRunUtil);
     }
 
     /**
-     * Test that a fastboot command is retried if it does not output anything.
+     * Test {@link FastbootDeviceFlasher#getCurrentSlot(ITestDevice)} when device is in fastboot.
      */
+    public void testGetCurrentSlot_fastboot() throws DeviceNotAvailableException, TargetSetupError {
+        CommandResult fastbootResult = new CommandResult();
+        fastbootResult.setStatus(CommandStatus.SUCCESS);
+        fastbootResult.setStderr("current-slot: _a\nfinished. total time 0.001s");
+        fastbootResult.setStdout("");
+        EasyMock.expect(mMockDevice.getDeviceState()).andReturn(TestDeviceState.FASTBOOT);
+        EasyMock.expect(mMockDevice.executeFastbootCommand("getvar", "current-slot"))
+                .andReturn(fastbootResult);
+        EasyMock.replay(mMockDevice, mMockRunUtil);
+        String currentSlot = mFlasher.getCurrentSlot(mMockDevice);
+        assertEquals("a", currentSlot);
+        EasyMock.verify(mMockDevice, mMockRunUtil);
+    }
+
+    /** Test {@link FastbootDeviceFlasher#getCurrentSlot(ITestDevice)} when device is in adb. */
+    public void testGetCurrentSlot_adb() throws DeviceNotAvailableException, TargetSetupError {
+        String adbResult = "[ro.boot.slot_suffix]: [_b]\n";
+        EasyMock.expect(mMockDevice.getDeviceState()).andReturn(TestDeviceState.ONLINE);
+        EasyMock.expect(mMockDevice.executeShellCommand("getprop ro.boot.slot_suffix"))
+                .andReturn(adbResult);
+        EasyMock.replay(mMockDevice, mMockRunUtil);
+        String currentSlot = mFlasher.getCurrentSlot(mMockDevice);
+        assertEquals("b", currentSlot);
+        EasyMock.verify(mMockDevice, mMockRunUtil);
+    }
+
+    /**
+     * Test {@link FastbootDeviceFlasher#getCurrentSlot(ITestDevice)} when device does not support
+     * A/B.
+     */
+    public void testGetCurrentSlot_null() throws DeviceNotAvailableException, TargetSetupError {
+        String adbResult = "\n";
+        EasyMock.expect(mMockDevice.getDeviceState()).andReturn(TestDeviceState.ONLINE);
+        EasyMock.expect(mMockDevice.executeShellCommand("getprop ro.boot.slot_suffix"))
+                .andReturn(adbResult);
+        EasyMock.replay(mMockDevice, mMockRunUtil);
+        String currentSlot = mFlasher.getCurrentSlot(mMockDevice);
+        assertNull(currentSlot);
+        EasyMock.verify(mMockDevice, mMockRunUtil);
+    }
+
+    /** Test that a fastboot command is retried if it does not output anything. */
     public void testRetryGetVersionCommand() throws DeviceNotAvailableException, TargetSetupError {
         // The first time command is tried, make it return an empty string.
         CommandResult fastbootInValidResult = new CommandResult();
@@ -146,9 +202,12 @@ public class FastbootDeviceFlasherTest extends TestCase {
                 andReturn(fastbootInValidResult);
         EasyMock.expect(mMockDevice.executeFastbootCommand("getvar", "version-baseband")).
                 andReturn(fastbootValidResult);
+        mMockRunUtil.sleep(EasyMock.anyLong());
+        EasyMock.expectLastCall();
 
-        EasyMock.replay(mMockDevice);
+        EasyMock.replay(mMockDevice, mMockRunUtil);
         String actualVersion = mFlasher.getImageVersion(mMockDevice, "baseband");
+        EasyMock.verify(mMockDevice, mMockRunUtil);
         assertEquals("1.0.1", actualVersion);
     }
 
@@ -156,7 +215,7 @@ public class FastbootDeviceFlasherTest extends TestCase {
      * Test that baseband can be flashed when current baseband version is empty
      */
     public void testFlashBaseband_noVersion()
-            throws DeviceNotAvailableException, TargetSetupError, IOException {
+            throws DeviceNotAvailableException, TargetSetupError {
         final String newBasebandVersion = "1.0.1";
         ITestDevice mockDevice = EasyMock.createMock(ITestDevice.class);
         // expect a fastboot getvar version-baseband command
@@ -165,15 +224,15 @@ public class FastbootDeviceFlasherTest extends TestCase {
         // expect a 'flash radio' command
         setFastbootFlashExpectations(mockDevice, "radio");
         mockDevice.rebootIntoBootloader();
-        EasyMock.replay(mockDevice);
+        EasyMock.replay(mockDevice, mMockRunUtil);
 
         FastbootDeviceFlasher flasher = getFlasherWithParserData(
                 String.format("require version-baseband=%s", newBasebandVersion));
 
-        IDeviceBuildInfo build = new DeviceBuildInfo("1234", "target", "build-name");
+        IDeviceBuildInfo build = new DeviceBuildInfo("1234", "build-name");
         build.setBasebandImage(new File("tmp"), newBasebandVersion);
         flasher.checkAndFlashBaseband(mockDevice, build);
-        EasyMock.verify(mockDevice);
+        EasyMock.verify(mockDevice, mMockRunUtil);
     }
 
     /**
@@ -199,6 +258,135 @@ public class FastbootDeviceFlasherTest extends TestCase {
     }
 
     /**
+     * Verify that correct fastboot command is called with WIPE data option
+     * @throws DeviceNotAvailableException
+     * @throws TargetSetupError
+     */
+    public void testFlashUserData_wipe() throws DeviceNotAvailableException, TargetSetupError {
+        mFlasher.setUserDataFlashOption(UserDataFlashOption.WIPE);
+        doTestFlashWithWipe();
+    }
+
+    /**
+     * Verify that correct fastboot command is called with FORCE_WIPE data option
+     * @throws DeviceNotAvailableException
+     * @throws TargetSetupError
+     */
+    public void testFlashUserData_forceWipe() throws DeviceNotAvailableException, TargetSetupError {
+        mFlasher.setUserDataFlashOption(UserDataFlashOption.FORCE_WIPE);
+        doTestFlashWithWipe();
+    }
+
+    /**
+     * Verify call sequence when wiping cache on devices with cache partition
+     * @throws DeviceNotAvailableException
+     * @throws TargetSetupError
+     */
+    public void testWipeCache_exists() throws DeviceNotAvailableException, TargetSetupError {
+        mFlasher.setUserDataFlashOption(UserDataFlashOption.WIPE);
+        CommandResult fastbootOutput = new CommandResult();
+        fastbootOutput.setStatus(CommandStatus.SUCCESS);
+        fastbootOutput.setStderr("(bootloader) slot-count: not found\n" +
+                "(bootloader) slot-suffixes: not found\n" +
+                "(bootloader) slot-suffixes: not found\n" +
+                "partition-type:cache: ext4\n" +
+                "finished. total time: 0.002s\n");
+        fastbootOutput.setStdout("");
+
+        EasyMock.expect(mMockDevice.executeFastbootCommand("getvar", "partition-type:cache")).
+                andReturn(fastbootOutput);
+        EasyMock.expect(mMockDevice.getUseFastbootErase()).andReturn(false);
+        fastbootOutput = new CommandResult();
+        fastbootOutput.setStatus(CommandStatus.SUCCESS);
+        fastbootOutput.setStderr("Creating filesystem with parameters:\n" +
+                "    Size: 104857600\n" +
+                "    Block size: 4096\n" +
+                "    Blocks per group: 32768\n" +
+                "    Inodes per group: 6400\n" +
+                "    Inode size: 256\n" +
+                "    Journal blocks: 1024\n" +
+                "    Label: \n" +
+                "    Blocks: 25600\n" +
+                "    Block groups: 1\n" +
+                "    Reserved block group size: 7\n" +
+                "Created filesystem with 11/6400 inodes and 1438/25600 blocks\n" +
+                "target reported max download size of 494927872 bytes\n" +
+                "erasing 'cache'...\n" +
+                "OKAY [  0.024s]\n" +
+                "sending 'cache' (5752 KB)...\n" +
+                "OKAY [  0.178s]\n" +
+                "writing 'cache'...\n" +
+                "OKAY [  0.107s]\n" +
+                "finished. total time: 0.309s\n");
+        EasyMock.expect(mMockDevice.fastbootWipePartition("cache")).andReturn(fastbootOutput);
+        EasyMock.replay(mMockDevice);
+        mFlasher.wipeCache(mMockDevice);
+        EasyMock.verify(mMockDevice);
+    }
+
+    /**
+     * Verify call sequence when wiping cache on devices without cache partition
+     * @throws DeviceNotAvailableException
+     * @throws TargetSetupError
+     */
+    public void testWipeCache_not_exists() throws DeviceNotAvailableException, TargetSetupError {
+        mFlasher.setUserDataFlashOption(UserDataFlashOption.WIPE);
+        CommandResult fastbootOutput = new CommandResult();
+        fastbootOutput.setStatus(CommandStatus.SUCCESS);
+        fastbootOutput.setStderr("(bootloader) slot-count: not found\n" +
+                "(bootloader) slot-suffixes: not found\n" +
+                "(bootloader) slot-suffixes: not found\n" +
+                "partition-type:cache: \n" +
+                "finished. total time: 0.002s\n");
+        fastbootOutput.setStdout("");
+
+        EasyMock.expect(mMockDevice.executeFastbootCommand("getvar", "partition-type:cache")).
+                andReturn(fastbootOutput);
+        EasyMock.replay(mMockDevice);
+        mFlasher.wipeCache(mMockDevice);
+        EasyMock.verify(mMockDevice);
+    }
+
+    /**
+     * Verify call sequence when wiping cache on devices without cache partition
+     * @throws DeviceNotAvailableException
+     * @throws TargetSetupError
+     */
+    public void testWipeCache_not_exists_error()
+            throws DeviceNotAvailableException, TargetSetupError {
+        mFlasher.setUserDataFlashOption(UserDataFlashOption.WIPE);
+        CommandResult fastbootOutput = new CommandResult();
+        fastbootOutput.setStatus(CommandStatus.SUCCESS);
+        fastbootOutput.setStderr("getvar:partition-type:cache FAILED (remote: unknown command)\n" +
+                "finished. total time: 0.051s\n");
+        fastbootOutput.setStdout("");
+
+        EasyMock.expect(mMockDevice.executeFastbootCommand("getvar", "partition-type:cache")).
+                andReturn(fastbootOutput);
+        EasyMock.replay(mMockDevice);
+        mFlasher.wipeCache(mMockDevice);
+        EasyMock.verify(mMockDevice);
+    }
+
+    /**
+     * Convenience function to set expectations for `fastboot -w` and execute test
+     * @throws DeviceNotAvailableException
+     * @throws TargetSetupError
+     */
+    private void doTestFlashWithWipe()  throws DeviceNotAvailableException, TargetSetupError {
+        CommandResult result = new CommandResult();
+        result.setStatus(CommandStatus.SUCCESS);
+        result.setStderr("");
+        result.setStdout("");
+        EasyMock.expect(mMockDevice.executeFastbootCommand(EasyMock.anyLong(),
+                EasyMock.eq("-w"))).andReturn(result);
+
+        EasyMock.replay(mMockDevice);
+        mFlasher.handleUserDataFlashing(mMockDevice, mMockBuildInfo);
+        EasyMock.verify(mMockDevice);
+    }
+
+    /**
      * Test doing a user data with with rm
      *
      * @throws TargetSetupError
@@ -213,11 +401,170 @@ public class FastbootDeviceFlasherTest extends TestCase {
         // expect
         mMockDevice.rebootUntilOnline();
         mMockDevice.rebootIntoBootloader();
-        EasyMock.expect(mMockDevice.isEncryptionSupported()).andReturn(Boolean.FALSE);
 
         EasyMock.replay(mMockDevice, mockZipInstaller);
         mFlasher.flashUserData(mMockDevice, mMockBuildInfo);
         EasyMock.verify(mMockDevice, mockZipInstaller);
+    }
+
+    /**
+     * Test that
+     * {@link FastbootDeviceFlasher#downloadFlashingResources(ITestDevice, IDeviceBuildInfo)}
+     * throws an exception when device product is null.
+     */
+    public void testDownloadFlashingResources_nullDeviceProduct() throws Exception {
+        mMockDevice = EasyMock.createMock(ITestDevice.class);
+        EasyMock.expect(mMockDevice.getDeviceDescriptor()).andStubReturn(null);
+        EasyMock.expect(mMockDevice.getProductType()).andReturn(null);
+        EasyMock.expect(mMockDevice.getSerialNumber()).andStubReturn(TEST_STRING);
+        EasyMock.expect(mMockParser.getRequiredBoards()).andReturn(new ArrayList<String>());
+        EasyMock.replay(mMockDevice, mMockParser);
+        try {
+            mFlasher.downloadFlashingResources(mMockDevice, mMockBuildInfo);
+            fail("Should have thrown an exception");
+        } catch (DeviceNotAvailableException expected) {
+            assertEquals(String.format("Could not determine product type for device %s",
+                    TEST_STRING), expected.getMessage());
+        } finally {
+            EasyMock.verify(mMockDevice, mMockParser);
+        }
+    }
+
+    /**
+     * Test that
+     * {@link FastbootDeviceFlasher#downloadFlashingResources(ITestDevice, IDeviceBuildInfo)}
+     * throws an exception when the device product is not found in required board.
+     */
+    public void testDownloadFlashingResources_NotFindBoard() throws Exception {
+        final String boardName = "AWESOME_PRODUCT";
+        mMockDevice = EasyMock.createMock(ITestDevice.class);
+        EasyMock.expect(mMockDevice.getDeviceDescriptor()).andStubReturn(null);
+        EasyMock.expect(mMockDevice.getProductType()).andReturn("NOT_FOUND");
+        EasyMock.expect(mMockDevice.getSerialNumber()).andStubReturn(TEST_STRING);
+        EasyMock.expect(mMockParser.getRequiredBoards()).andStubReturn(ArrayUtil.list(boardName));
+        EasyMock.replay(mMockDevice, mMockParser);
+        try {
+            mFlasher.downloadFlashingResources(mMockDevice, mMockBuildInfo);
+            fail("Should have thrown an exception");
+        } catch (TargetSetupError expected) {
+            assertEquals(String.format("Device %s is NOT_FOUND. Expected %s null",
+                    TEST_STRING, ArrayUtil.list(boardName)), expected.getMessage());
+        } finally {
+            EasyMock.verify(mMockDevice, mMockParser);
+        }
+    }
+
+    /**
+     * Test that
+     * {@link FastbootDeviceFlasher#downloadFlashingResources(ITestDevice, IDeviceBuildInfo)}
+     * proceeds to the end without throwing.
+     */
+    public void testDownloadFlashingResources() throws Exception {
+        final String boardName = "AWESOME_PRODUCT";
+        mMockDevice = EasyMock.createMock(ITestDevice.class);
+        EasyMock.expect(mMockDevice.getDeviceDescriptor()).andStubReturn(null);
+        EasyMock.expect(mMockDevice.getProductType()).andReturn(boardName);
+        EasyMock.expect(mMockDevice.getSerialNumber()).andStubReturn(TEST_STRING);
+        EasyMock.expect(mMockParser.getRequiredBoards()).andStubReturn(ArrayUtil.list(boardName));
+        EasyMock.replay(mMockDevice, mMockParser);
+        mFlasher.downloadFlashingResources(mMockDevice, mMockBuildInfo);
+        EasyMock.verify(mMockDevice, mMockParser);
+    }
+
+    /**
+     * Test that
+     * {@link FastbootDeviceFlasher#checkAndFlashBootloader(ITestDevice, IDeviceBuildInfo)} returns
+     * false because bootloader version is already good.
+     */
+    public void testCheckAndFlashBootloader_SkippingFlashing() throws Exception {
+        final String version = "version 5";
+        mFlasher = new FastbootDeviceFlasher() {
+            @Override
+            protected String getImageVersion(ITestDevice device, String imageName)
+                    throws DeviceNotAvailableException, TargetSetupError {
+                return version;
+            }
+        };
+        IDeviceBuildInfo mockBuild = EasyMock.createMock(IDeviceBuildInfo.class);
+        EasyMock.expect(mockBuild.getBootloaderVersion()).andStubReturn(version);
+        EasyMock.replay(mMockDevice, mockBuild);
+        assertFalse(mFlasher.checkAndFlashBootloader(mMockDevice, mockBuild));
+        EasyMock.verify(mMockDevice, mockBuild);
+    }
+
+    /**
+     * Test that
+     * {@link FastbootDeviceFlasher#checkAndFlashBootloader(ITestDevice, IDeviceBuildInfo)} returns
+     * true after flashing the device bootloader.
+     */
+    public void testCheckAndFlashBootloader() throws Exception {
+        final String version = "version 5";
+        mFlasher = new FastbootDeviceFlasher() {
+            @Override
+            protected String getImageVersion(ITestDevice device, String imageName)
+                    throws DeviceNotAvailableException, TargetSetupError {
+                return "version 6";
+            }
+        };
+        IDeviceBuildInfo mockBuild = EasyMock.createMock(IDeviceBuildInfo.class);
+        EasyMock.expect(mockBuild.getBootloaderVersion()).andStubReturn(version);
+        File bootloaderFake = FileUtil.createTempFile("fakeBootloader", "");
+        try {
+            EasyMock.expect(mockBuild.getBootloaderImageFile()).andReturn(bootloaderFake);
+            CommandResult res = new CommandResult(CommandStatus.SUCCESS);
+            res.setStderr("flashing");
+            EasyMock.expect(mMockDevice.executeFastbootCommand(EasyMock.eq("flash"),
+                    EasyMock.eq("hboot"), EasyMock.eq(bootloaderFake.getAbsolutePath())))
+                    .andReturn(res);
+            mMockDevice.rebootIntoBootloader();
+            EasyMock.expectLastCall();
+            EasyMock.replay(mMockDevice, mockBuild);
+            assertTrue(mFlasher.checkAndFlashBootloader(mMockDevice, mockBuild));
+            EasyMock.verify(mMockDevice, mockBuild);
+        } finally {
+            FileUtil.deleteFile(bootloaderFake);
+        }
+    }
+
+    /**
+     * Test {@link FastbootDeviceFlasher#checkAndFlashSystem(ITestDevice,
+     * String, String, IDeviceBuildInfo)} when there is no need to flash the system.
+     */
+    public void testCheckAndFlashSystem_noFlashing() throws Exception {
+        final String buildId = "systemBuildId";
+        final String buildFlavor = "systemBuildFlavor";
+        IDeviceBuildInfo mockBuild = EasyMock.createMock(IDeviceBuildInfo.class);
+        EasyMock.expect(mockBuild.getDeviceBuildId()).andReturn(buildId);
+        EasyMock.expect(mockBuild.getBuildFlavor()).andReturn(buildFlavor);
+        mMockDevice.rebootUntilOnline();
+        EasyMock.expectLastCall();
+        EasyMock.replay(mMockDevice, mockBuild);
+        assertFalse(mFlasher.checkAndFlashSystem(mMockDevice, buildId, buildFlavor, mockBuild));
+        EasyMock.verify(mMockDevice, mockBuild);
+    }
+
+    /**
+     * Test {@link FastbootDeviceFlasher#checkAndFlashSystem(ITestDevice,
+     * String, String, IDeviceBuildInfo)} when it needs to be flashed.
+     */
+    public void testCheckAndFlashSystem_flashing() throws Exception {
+        final String buildId = "systemBuildId";
+        IDeviceBuildInfo mockBuild = EasyMock.createMock(IDeviceBuildInfo.class);
+        EasyMock.expect(mockBuild.getDeviceBuildId()).andReturn(buildId);
+        File deviceImage = FileUtil.createTempFile("fakeDeviceImage", "");
+        try {
+            EasyMock.expect(mockBuild.getDeviceImageFile()).andStubReturn(deviceImage);
+            CommandResult res = new CommandResult(CommandStatus.SUCCESS);
+            res.setStderr("flashing");
+            EasyMock.expect(mMockDevice.executeLongFastbootCommand(EasyMock.eq("update"),
+                    EasyMock.eq(deviceImage.getAbsolutePath())))
+                    .andReturn(res);
+            EasyMock.replay(mMockDevice, mockBuild);
+            assertTrue(mFlasher.checkAndFlashSystem(mMockDevice, buildId, null, mockBuild));
+            EasyMock.verify(mMockDevice, mockBuild);
+        } finally {
+            FileUtil.deleteFile(deviceImage);
+        }
     }
 
     /**
@@ -254,12 +601,11 @@ public class FastbootDeviceFlasherTest extends TestCase {
                         (String)EasyMock.anyObject())).andReturn(result);
     }
 
-    private FastbootDeviceFlasher getFlasherWithParserData(final String androidInfoData)
-            throws IOException {
+    private FastbootDeviceFlasher getFlasherWithParserData(final String androidInfoData) {
         FastbootDeviceFlasher flasher = new FastbootDeviceFlasher() {
             @Override
             protected IFlashingResourcesParser createFlashingResourcesParser(
-                    IDeviceBuildInfo localBuild) throws TargetSetupError {
+                    IDeviceBuildInfo localBuild, DeviceDescriptor desc) throws TargetSetupError {
                 BufferedReader reader = new BufferedReader(new StringReader(androidInfoData));
                 try {
                     return new FlashingResourcesParser(reader);
@@ -271,7 +617,7 @@ public class FastbootDeviceFlasherTest extends TestCase {
             @Override
             protected void flashBootloader(ITestDevice device, File bootloaderImageFile)
                     throws DeviceNotAvailableException, TargetSetupError {
-                throw new DeviceNotAvailableException("error");
+                throw new DeviceNotAvailableException("error", "fakeserial");
             }
         };
         flasher.setFlashingResourcesRetriever(EasyMock.createNiceMock(

@@ -20,6 +20,9 @@ import com.android.ddmlib.testrunner.TestResult.TestStatus;
 import com.android.ddmlib.testrunner.TestRunResult;
 import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.config.Option;
+import com.android.tradefed.invoker.IInvocationContext;
+
+import com.google.common.annotations.VisibleForTesting;
 
 import java.util.Collection;
 import java.util.Collections;
@@ -52,13 +55,10 @@ public class CollectingTestListener implements ITestInvocationListener {
     private boolean mIsAggregateMetrics = false;
 
     private IBuildInfo mBuildInfo;
+    private IInvocationContext mContext;
 
-    /**
-     * Toggle the 'aggregate metrics' option
-     * <p/>
-     * Exposed for unit testing
-     */
-    void setIsAggregrateMetrics(boolean aggregate) {
+    /** Toggle the 'aggregate metrics' option */
+    protected void setIsAggregrateMetrics(boolean aggregate) {
         mIsAggregateMetrics = aggregate;
     }
 
@@ -66,20 +66,52 @@ public class CollectingTestListener implements ITestInvocationListener {
      * {@inheritDoc}
      */
     @Override
-    public void invocationStarted(IBuildInfo buildInfo) {
-        mBuildInfo = buildInfo;
+    public void invocationStarted(IInvocationContext context) {
+        mContext = context;
+        if (context != null) {
+            mBuildInfo = context.getBuildInfos().get(0);
+        }
     }
 
     /**
-     * Return the build info that was reported via {@link #invocationStarted(IBuildInfo)}
+     * Return the primary build info that was reported via {@link
+     * #invocationStarted(IInvocationContext)}. Primary build is the build returned by the first
+     * build provider of the running configuration. Returns null if there is no context (no build to
+     * test case).
      */
+    public IBuildInfo getPrimaryBuildInfo() {
+        if (mContext == null) {
+            return null;
+        } else {
+            return mContext.getBuildInfos().get(0);
+        }
+    }
+
+    /**
+     * Return the invocation context that was reported via
+     * {@link #invocationStarted(IInvocationContext)}
+     */
+    public IInvocationContext getInvocationContext() {
+        return mContext;
+    }
+
+    /**
+     * Returns the build info.
+     *
+     * @deprecated rely on the {@link IBuildInfo} from {@link #getInvocationContext()}.
+     */
+    @Deprecated
     public IBuildInfo getBuildInfo() {
         return mBuildInfo;
     }
 
     /**
-     * Set the build info.
+     * Set the build info. Should only be used for testing.
+     *
+     * @deprecated Not necessary for testing anymore.
      */
+    @VisibleForTesting
+    @Deprecated
     public void setBuildInfo(IBuildInfo buildInfo) {
         mBuildInfo = buildInfo;
     }
@@ -108,8 +140,14 @@ public class CollectingTestListener implements ITestInvocationListener {
      */
     @Override
     public void testStarted(TestIdentifier test) {
+        testStarted(test, System.currentTimeMillis());
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public void testStarted(TestIdentifier test, long startTime) {
         mIsCountDirty = true;
-        mCurrentResults.testStarted(test);
+        mCurrentResults.testStarted(test, startTime);
     }
 
     /**
@@ -117,13 +155,17 @@ public class CollectingTestListener implements ITestInvocationListener {
      */
     @Override
     public void testEnded(TestIdentifier test, Map<String, String> testMetrics) {
-        mIsCountDirty = true;
-        mCurrentResults.testEnded(test, testMetrics);
+        testEnded(test, System.currentTimeMillis(), testMetrics);
     }
 
-    /**
-     * {@inheritDoc}
-     */
+    /** {@inheritDoc} */
+    @Override
+    public void testEnded(TestIdentifier test, long endTime, Map<String, String> testMetrics) {
+        mIsCountDirty = true;
+        mCurrentResults.testEnded(test, endTime, testMetrics);
+    }
+
+    /** {@inheritDoc} */
     @Override
     public void testFailed(TestIdentifier test, String trace) {
         mIsCountDirty = true;
@@ -190,9 +232,12 @@ public class CollectingTestListener implements ITestInvocationListener {
         return mRunResultsMap.values();
     }
 
-    /**
-     * Gets the total number of complete tests for all runs.
-     */
+    /** Returns True if the result map already has an entry for the run name. */
+    public boolean hasResultFor(String runName) {
+        return mRunResultsMap.containsKey(runName);
+    }
+
+    /** Gets the total number of complete tests for all runs. */
     public int getNumTotalTests() {
         int total = 0;
         // force test count
@@ -208,8 +253,9 @@ public class CollectingTestListener implements ITestInvocationListener {
      */
     public int getNumTestsInState(TestStatus status) {
         if (mIsCountDirty) {
-            for (TestRunResult result : mRunResultsMap.values()) {
-                for (TestStatus s : TestStatus.values()) {
+            for (TestStatus s : TestStatus.values()) {
+                mStatusCounts[s.ordinal()] = 0;
+                for (TestRunResult result : mRunResultsMap.values()) {
                     mStatusCounts[s.ordinal()] += result.getNumTestsInState(s);
                 }
             }
@@ -259,11 +305,10 @@ public class CollectingTestListener implements ITestInvocationListener {
     }
 
     /**
-     * Return total number of tests in a failure state (failed, assumption failure)
-     * @return
+     * Return total number of tests in a failure state (only failed, assumption failures do not
+     * count toward it).
      */
     public int getNumAllFailedTests() {
-        return getNumTestsInState(TestStatus.FAILURE) +
-                getNumTestsInState(TestStatus.ASSUMPTION_FAILURE);
+        return getNumTestsInState(TestStatus.FAILURE);
     }
 }

@@ -81,8 +81,36 @@ public class JUnitToInvocationResultForwarder implements TestListener {
     }
 
     /**
-     * {@inheritDoc}
+     * Callback from JUnit3 tests that can forward metrics.
+     *
+     * @param test The {@link Test} that just finished running.
+     * @param metrics The metrics in a Map format to be passed to the results callback.
      */
+    public void endTest(Test test, Map<String, String> metrics) {
+        for (ITestInvocationListener listener : mInvocationListeners) {
+            listener.testEnded(getTestId(test), metrics);
+        }
+    }
+
+    /**
+     * Callback from JUnit3 forwarder in order to get the logs from a test.
+     *
+     * @param dataName a String descriptive name of the data. e.g. "device_logcat". Note dataName
+     *     may not be unique per invocation. ie implementers must be able to handle multiple calls
+     *     with same dataName
+     * @param dataType the LogDataType of the data
+     * @param dataStream the InputStreamSource of the data. Implementers should call
+     *     createInputStream to start reading the data, and ensure to close the resulting
+     *     InputStream when complete. Callers should ensure the source of the data remains present
+     *     and accessible until the testLog method completes.
+     */
+    public void testLog(String dataName, LogDataType dataType, InputStreamSource dataStream) {
+        for (ITestInvocationListener listener : mInvocationListeners) {
+            listener.testLog(dataName, dataType, dataStream);
+        }
+    }
+
+    /** {@inheritDoc} */
     @Override
     public void startTest(Test test) {
         for (ITestInvocationListener listener : mInvocationListeners) {

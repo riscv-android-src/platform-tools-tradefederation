@@ -17,6 +17,8 @@ package com.android.tradefed.config;
 
 import com.android.ddmlib.Log;
 import com.android.tradefed.util.ArrayUtil;
+import com.android.tradefed.util.keystore.DryRunKeyStore;
+import com.android.tradefed.util.keystore.IKeyStoreClient;
 
 import java.lang.reflect.Field;
 import java.util.ArrayList;
@@ -24,6 +26,7 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
 import java.util.ListIterator;
+import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /**
@@ -34,14 +37,14 @@ import java.util.regex.Pattern;
  * "out.txt" in "-f out.txt"), or a non-option positional argument.
  * <p/>
  * Each option argument must map to one or more {@link Option} fields. A long option maps to the
- * {@link Option#name}, and a short option maps to {@link Option#shortName}. Each
- * {@link Option#name()} and {@link Option#shortName()} must be unique with respect to all other
+ * {@link Option} name, and a short option maps to {@link Option} short name. Each option name and
+ * option short name must be unique with respect to all other
  * {@link Option} fields within the same object.
  * <p/>
  * A single option argument can get mapped to multiple {@link Option} fields with the same name
  * across multiple objects. {@link Option} arguments can be namespaced to uniquely refer to an
  * {@link Option} field within a single object using that object's full class name or its
- * {@link OptionClass#alias()} value separated by ':'. ie
+ * {@link OptionClass} alias value separated by ':'. ie
  *
  * <pre>
  * --classname:optionname optionvalue or
@@ -127,7 +130,7 @@ import java.util.regex.Pattern;
  * (http://www.gnu.org/prep/standards/standards.html#Command_002dLine-Interfaces)
  * </ul>
  *
- * @see {@link OptionSetter}
+ * @see OptionSetter
  */
 public class ArgsOptionParser extends OptionSetter {
     private static final String LOG_TAG = "ArgsOptionParser";
@@ -244,7 +247,7 @@ public class ArgsOptionParser extends OptionSetter {
     }
 
     /**
-     * Validates that all fields marked as {@link Option#mandatory()} have been set.
+     * Validates that all fields marked as mandatory have been set.
      * @throws ConfigurationException
      */
     public void validateMandatoryOptions() throws ConfigurationException {
@@ -324,6 +327,8 @@ public class ArgsOptionParser extends OptionSetter {
                 value = grabNextValue(args, name);
             }
         }
+
+        value = getKeyStoreValueIfNeeded(value, getTypeForOption(name));
         setOptionValue(name, key, value);
     }
 
@@ -350,6 +355,7 @@ public class ArgsOptionParser extends OptionSetter {
                     value = grabNextValue(args, name);
                 }
             }
+            value = getKeyStoreValueIfNeeded(value, getTypeForOption(name));
             setOptionValue(name, value);
         }
     }
@@ -504,5 +510,43 @@ public class ArgsOptionParser extends OptionSetter {
         } else {
             return String.format(" Default: %s.", defaultValue);
         }
+    }
+
+    /**
+     * Replaces value with key store value if needed
+     *
+     * @param valueText the value
+     * @param optionType the type of the value expected in the option.
+     * @return the value or the translated key store value.
+     * @throws ConfigurationException
+     */
+    private String getKeyStoreValueIfNeeded(String valueText, String optionType)
+            throws ConfigurationException {
+        Matcher m = USE_KEYSTORE_REGEX.matcher(valueText);
+        if (m.matches() && m.groupCount() > 0) {
+            IKeyStoreClient c = getKeyStore();
+            if (c == null) {
+                throw new ConfigurationException("Key store is null, but we tried to fetch a key");
+            }
+            if (!c.isAvailable()) {
+                throw new ConfigurationException(String.format("Key store '%s' is unavailable, but "
+                        + "we tried to fetch a key", c.getClass()));
+            }
+            String key = m.group(1);
+            String v = null;
+            // if it's the special dry-run keystore, we use a special handling and don't throw.
+            if (c instanceof DryRunKeyStore) {
+                v = ((DryRunKeyStore) c).fetchKey(key, optionType);
+            } else {
+                v = c.fetchKey(key);
+            }
+            if (v == null) {
+                throw new ConfigurationException(String.format(
+                        "Failed to fetch key %s in keystore", key));
+            }
+            return v;
+        }
+        // Did not match the key store pattern, do nothing.
+        return valueText;
     }
 }

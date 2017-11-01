@@ -37,6 +37,8 @@ import java.util.Collection;
 @OptionClass(alias = "install-apk-from-env")
 public class InstallBuildEnvApkSetup implements ITargetPreparer {
 
+    private static final String APK_SUFFIX = ".apk";
+
     @Option(name = "apk-name", description =
         "the file name of the apk to install. Can be repeated.",
         importance = Importance.IF_UNSET)
@@ -48,30 +50,33 @@ public class InstallBuildEnvApkSetup implements ITargetPreparer {
     @Override
     public void setUp(ITestDevice device, IBuildInfo buildInfo) throws TargetSetupError,
             BuildError, DeviceNotAvailableException {
-        File testAppDir = getDataAppDirFromBuildEnv();
+        File testAppDir = getDataAppDirFromBuildEnv(device);
         for (String apkName : mApkNames) {
-            File apk = new File(testAppDir, apkName);
+            String apkPrimaryFileName = apkName;
+            if (apkName.endsWith(APK_SUFFIX)) {
+                apkPrimaryFileName = apkName.substring(0, apkName.length() - APK_SUFFIX.length());
+            }
+            File apk = FileUtil.getFileForPath(testAppDir, apkPrimaryFileName, apkName);
             CLog.i("Installing %s on %s", apk.getName(), device.getSerialNumber());
             String result = device.installPackage(apk, true);
             if (result != null) {
                 throw new TargetSetupError(String.format(
                         "Failed to install %s on device %s. Reason: %s", apk.getAbsolutePath(),
-                        device.getSerialNumber(), result));
+                        device.getSerialNumber(), result), device.getDeviceDescriptor());
             }
         }
     }
 
-    private File getDataAppDirFromBuildEnv() throws TargetSetupError {
+    private File getDataAppDirFromBuildEnv(ITestDevice device) throws TargetSetupError {
         String buildRoot = System.getenv("ANDROID_PRODUCT_OUT");
         if (buildRoot == null) {
-            throw new TargetSetupError(
-                    "ANDROID_PRODUCT_OUT is not set. Are you in Android build env?");
+            throw new TargetSetupError("ANDROID_PRODUCT_OUT is not set. Are you in Android "
+                    + "build env?", device.getDeviceDescriptor());
         }
         File testAppDir = new File(FileUtil.getPath(buildRoot, "data", "app"));
         if (!testAppDir.exists()) {
-            throw new TargetSetupError(
-                String.format("Could not find test app dir %s", testAppDir.getAbsolutePath()));
-
+            throw new TargetSetupError(String.format("Could not find test app dir %s",
+                    testAppDir.getAbsolutePath()),device.getDeviceDescriptor());
         }
         return testAppDir;
     }

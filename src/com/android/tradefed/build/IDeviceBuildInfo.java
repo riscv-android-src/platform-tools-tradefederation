@@ -30,6 +30,11 @@ public interface IDeviceBuildInfo extends IBuildInfo {
     public String getDeviceBuildId();
 
     /**
+     * Optional method to return the type of the platform build being tested.
+     */
+    public String getDeviceBuildFlavor();
+
+    /**
      * Get the local device image zip file.
      */
     public File getDeviceImageFile();

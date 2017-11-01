@@ -19,12 +19,13 @@ import com.android.ddmlib.Log;
 import com.android.ddmlib.Log.LogLevel;
 import com.android.tradefed.result.InputStreamSource;
 import com.android.tradefed.util.FileUtil;
-import com.android.tradefed.util.StreamUtil;
 
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
+import java.text.SimpleDateFormat;
 import java.util.Collection;
+import java.util.Date;
 import java.util.Hashtable;
 import java.util.Iterator;
 import java.util.Map;
@@ -40,10 +41,12 @@ import java.util.Map;
  */
 public class LogRegistry implements ILogRegistry {
     private static final String LOG_TAG = "LogRegistry";
+    private static final String GLOBAL_LOG_PREFIX = "tradefed_global_log_";
+    private static final String HISTORY_LOG_PREFIX = "tradefed_history_log_";
     private static LogRegistry mLogRegistry = null;
-    private Map<ThreadGroup, ILeveledLogOutput> mLogTable =
-            new Hashtable<ThreadGroup, ILeveledLogOutput>();
+    private Map<ThreadGroup, ILeveledLogOutput> mLogTable = new Hashtable<>();
     private FileLogger mGlobalLogger;
+    private HistoryLogger mHistoryLogger;
 
     /**
      * Package-private constructor; callers should use {@link #getLogRegistry} to get an instance of
@@ -57,7 +60,13 @@ public class LogRegistry implements ILogRegistry {
             System.err.println("Failed to create global logger");
             throw new IllegalStateException(e);
         }
-
+        try {
+            mHistoryLogger = new HistoryLogger();
+            mHistoryLogger.init();
+        } catch (IOException e) {
+            System.err.println("Failed to create history logger");
+            throw new IllegalStateException(e);
+        }
     }
 
     /**
@@ -80,6 +89,7 @@ public class LogRegistry implements ILogRegistry {
     @Override
     public void setGlobalLogDisplayLevel(LogLevel logLevel) {
         mGlobalLogger.setLogLevelDisplay(logLevel);
+        mHistoryLogger.setLogLevel(logLevel);
     }
 
     /**
@@ -88,6 +98,7 @@ public class LogRegistry implements ILogRegistry {
     @Override
     public void setGlobalLogTagDisplay(Collection<String> logTagsDisplay) {
         mGlobalLogger.addLogTagsDisplay(logTagsDisplay);
+        mHistoryLogger.addLogTagsDisplay(logTagsDisplay);
     }
 
     /**
@@ -103,10 +114,12 @@ public class LogRegistry implements ILogRegistry {
      */
     @Override
     public void registerLogger(ILeveledLogOutput log) {
-        ILeveledLogOutput oldValue = mLogTable.put(getCurrentThreadGroup(), log);
-        if (oldValue != null) {
-            Log.e(LOG_TAG, "Registering a new logger when one already exists for this thread!");
-            oldValue.closeLog();
+        synchronized (mLogTable) {
+            ILeveledLogOutput oldValue = mLogTable.put(getCurrentThreadGroup(), log);
+            if (oldValue != null) {
+                Log.e(LOG_TAG, "Registering a new logger when one already exists for this thread!");
+                oldValue.closeLog();
+            }
         }
     }
 
@@ -117,10 +130,12 @@ public class LogRegistry implements ILogRegistry {
     public void unregisterLogger() {
         ThreadGroup currentThreadGroup = getCurrentThreadGroup();
         if (currentThreadGroup != null) {
-            mLogTable.remove(currentThreadGroup);
-        }
-        else {
-          printLog(LogLevel.ERROR, LOG_TAG, "Unregistering when thread has no logger registered.");
+            synchronized (mLogTable) {
+                mLogTable.remove(currentThreadGroup);
+            }
+        } else {
+            printLog(LogLevel.ERROR, LOG_TAG, "Unregistering when thread has no logger "
+                    + "registered.");
         }
     }
 
@@ -129,16 +144,12 @@ public class LogRegistry implements ILogRegistry {
      */
     @Override
     public void dumpToGlobalLog(ILeveledLogOutput log) {
-        InputStreamSource source = log.getLog();
-        try {
-            InputStream stream = source.createInputStream();
+        try (InputStreamSource source = log.getLog();
+                InputStream stream = source.createInputStream()) {
             mGlobalLogger.dumpToLog(stream);
-            StreamUtil.close(stream);
         } catch (IOException e) {
             System.err.println("Failed to dump log");
             e.printStackTrace();
-        } finally {
-            source.cancel();
         }
     }
 
@@ -179,12 +190,14 @@ public class LogRegistry implements ILogRegistry {
      * @return the logger for this thread, or null if one has not been registered.
      */
     ILeveledLogOutput getLogger() {
-        ILeveledLogOutput log = mLogTable.get(getCurrentThreadGroup());
-        if (log == null) {
-            // If there's no logger set for this thread, use global logger
-            log = mGlobalLogger;
+        synchronized (mLogTable) {
+            ILeveledLogOutput log = mLogTable.get(getCurrentThreadGroup());
+            if (log == null) {
+                // If there's no logger set for this thread, use global logger
+                log = mGlobalLogger;
+            }
+            return log;
         }
-        return log;
     }
 
     /**
@@ -192,15 +205,20 @@ public class LogRegistry implements ILogRegistry {
      */
     @Override
     public void closeAndRemoveAllLogs() {
-        Collection<ILeveledLogOutput> allLogs = mLogTable.values();
-        Iterator<ILeveledLogOutput> iter = allLogs.iterator();
-        while (iter.hasNext()) {
-            ILeveledLogOutput log = iter.next();
-            log.closeLog();
-            iter.remove();
+        synchronized (mLogTable) {
+            Collection<ILeveledLogOutput> allLogs = mLogTable.values();
+            Iterator<ILeveledLogOutput> iter = allLogs.iterator();
+            while (iter.hasNext()) {
+                ILeveledLogOutput log = iter.next();
+                log.closeLog();
+                iter.remove();
+            }
         }
         saveGlobalLog();
         mGlobalLogger.closeLog();
+        // TODO: enable saving the history log when TF close
+        // saveHistoryToDirLog();
+        mHistoryLogger.closeLog();
     }
 
     /**
@@ -208,9 +226,38 @@ public class LogRegistry implements ILogRegistry {
      */
     @Override
     public void saveGlobalLog() {
-        InputStreamSource globalLog = mGlobalLogger.getLog();
-        saveLog("tradefed_global_log_", globalLog);
-        globalLog.cancel();
+        saveGlobalLogToDir(null);
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public void logEvent(LogLevel logLevel, EventType event, Map<String, String> args) {
+        // We always add the time of the event
+        SimpleDateFormat sdfDate = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSS Z");
+        args.put("time", sdfDate.format(new Date()));
+        mHistoryLogger.logEvent(logLevel, event, args);
+    }
+
+    /**
+     * Save the global log data to a file in the specified directory.
+     *
+     * @param dir directory to save file, can be null, file will be saved in tmp directory.
+     */
+    private void saveGlobalLogToDir(File dir) {
+        try (InputStreamSource globalLog = mGlobalLogger.getLog()) {
+            saveLog(GLOBAL_LOG_PREFIX, globalLog, dir);
+        }
+    }
+
+    /**
+     * Save the history log data to a file in the specified directory.
+     *
+     * @param dir directory to save file, can be null, file will be saved in tmp directory.
+     */
+    private void saveHistoryLogToDir(File dir) {
+        try (InputStreamSource globalLog = mHistoryLogger.getLog()) {
+            saveLog(HISTORY_LOG_PREFIX, globalLog, dir);
+        }
     }
 
     /**
@@ -219,9 +266,9 @@ public class LogRegistry implements ILogRegistry {
      * @param filePrefix the file name prefix
      * @param logData the textual log data
      */
-    private void saveLog(String filePrefix, InputStreamSource logData) {
+    private void saveLog(String filePrefix, InputStreamSource logData, File parentdir) {
         try {
-            File tradefedLog = FileUtil.createTempFile(filePrefix, ".txt");
+            File tradefedLog = FileUtil.createTempFile(filePrefix, ".txt", parentdir);
             FileUtil.writeToFile(logData.createInputStream(), tradefedLog);
             System.out.println(String.format("Saved log to %s", tradefedLog.getAbsolutePath()));
         } catch (IOException e) {
@@ -234,14 +281,27 @@ public class LogRegistry implements ILogRegistry {
      */
     @Override
     public void dumpLogs() {
-        for (Map.Entry<ThreadGroup, ILeveledLogOutput> logEntry : mLogTable.entrySet()) {
-            // use thread group name as file name - assume its descriptive
-            String filePrefix = String.format("%s_log_", logEntry.getKey().getName());
-            InputStreamSource logSource = logEntry.getValue().getLog();
-            saveLog(filePrefix, logSource);
-            logSource.cancel();
+        dumpLogsToDir(null);
+    }
+
+    /**
+     * Save the log data to files in the specified directory.
+     *
+     * @param dir directory to save file, can be null, file will be saved in tmp directory.
+     */
+    public void dumpLogsToDir(File dir) {
+        synchronized (mLogTable) {
+            for (Map.Entry<ThreadGroup, ILeveledLogOutput> logEntry : mLogTable.entrySet()) {
+                // use thread group name as file name - assume its descriptive
+                String filePrefix = String.format("%s_log_", logEntry.getKey().getName());
+                try (InputStreamSource logSource = logEntry.getValue().getLog()) {
+                    saveLog(filePrefix, logSource, dir);
+                }
+            }
         }
+        // save history log
+        saveHistoryLogToDir(dir);
         // save global log last
-        saveGlobalLog();
+        saveGlobalLogToDir(dir);
     }
 }

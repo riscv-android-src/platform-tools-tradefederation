@@ -16,11 +16,17 @@
 
 package com.android.tradefed.util.net;
 
+import static org.mockito.Mockito.doNothing;
+
+import com.android.tradefed.util.IRunUtil;
 import com.android.tradefed.util.MultiMap;
+import com.android.tradefed.util.RunUtil;
 import com.android.tradefed.util.StreamUtil;
 import com.android.tradefed.util.net.IHttpHelper.DataSizeException;
 
 import junit.framework.TestCase;
+
+import org.mockito.Mockito;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
@@ -128,7 +134,7 @@ public class HttpHelperTest extends TestCase {
     /**
      * Normal case test for {@link HttpHelper#doGet(String, OutputStream)}
      */
-    public void testDoGetStream() throws IOException, DataSizeException {
+    public void testDoGetStream() throws IOException {
         ByteArrayOutputStream out = new ByteArrayOutputStream();
 
         mHelper.doGet(TEST_URL_STRING, out);
@@ -193,19 +199,28 @@ public class HttpHelperTest extends TestCase {
      */
     public void testDoGetWithRetry_retry() throws IOException, DataSizeException {
         mHelper.close();
-        mHelper = new TestHttpHelper() {
-            boolean mExceptionThrown = false;
+        RunUtil mockRunUtil = Mockito.spy(RunUtil.class);
+        mHelper =
+                new TestHttpHelper() {
+                    boolean mExceptionThrown = false;
 
-            @Override
-            public String doGet(String url) throws IOException, DataSizeException {
-                if (!mExceptionThrown) {
-                    mExceptionThrown = true;
-                    throw new IOException();
-                }
-                return super.doGet(url);
-            }
-        };
+                    @Override
+                    public IRunUtil getRunUtil() {
+                        return mockRunUtil;
+                    }
 
+                    @Override
+                    public String doGet(String url) throws IOException, DataSizeException {
+                        if (!mExceptionThrown) {
+                            mExceptionThrown = true;
+                            throw new IOException();
+                        }
+                        return super.doGet(url);
+                    }
+                };
+        mHelper.setMaxTime(5000);
+        // Avoid doing actual sleep in the retry
+        doNothing().when(mockRunUtil).sleep(Mockito.anyLong());
         assertEquals(TEST_DATA, mHelper.doGetWithRetry(TEST_URL_STRING));
     }
 

@@ -17,9 +17,7 @@
 package com.android.tradefed.result;
 
 import com.android.ddmlib.testrunner.TestIdentifier;
-import com.android.tradefed.build.IBuildInfo;
-
-import junit.framework.TestFailure;
+import com.android.tradefed.invoker.IInvocationContext;
 
 import java.util.Map;
 
@@ -37,7 +35,7 @@ public abstract class NameMangleListener implements ITestInvocationListener {
     /**
      * This method is run on all {@link TestIdentifier}s that are passed to the
      * {@link #testStarted(TestIdentifier)},
-     * {@link #testFailed(TestFailure, TestIdentifier, String)}, and
+     * {@link #testFailed(TestIdentifier, String)}, and
      * {@link #testEnded(TestIdentifier, Map)} callbacks.  The method should return a
      * possibly-different {@link TestIdentifier} that will be passed to the downstream
      * {@link ITestInvocationListener} that was specified during construction.
@@ -63,21 +61,6 @@ public abstract class NameMangleListener implements ITestInvocationListener {
     protected String mangleTestRunName(String name) {
         return name;
     }
-
-    /**
-     * This method is run on all {@link IBuildInfo}s that are passed to the
-     * {@link #invocationStarted(IBuildInfo)} callback.  The method should return a
-     * possibly-different {@link IBuildInfo} that will be passed to the downstream
-     * {@link ITestInvocationListener} that was specified during construction.
-     * <p />
-     * The implementation should be careful to not modify the original {@link IBuildInfo}.
-     * <p />
-     * The default implementation passes the incoming IBuildInfo through unmodified.
-     */
-    protected IBuildInfo mangleBuildInfo(IBuildInfo buildInfo) {
-        return buildInfo;
-    }
-
 
     // ITestRunListener methods
     /**
@@ -164,9 +147,8 @@ public abstract class NameMangleListener implements ITestInvocationListener {
      * {@inheritDoc}
      */
     @Override
-    public void invocationStarted(IBuildInfo buildInfo) {
-        final IBuildInfo mangledBuildInfo = mangleBuildInfo(buildInfo);
-        mListener.invocationStarted(mangledBuildInfo);
+    public void invocationStarted(IInvocationContext context) {
+        mListener.invocationStarted(context);
     }
 
     /**

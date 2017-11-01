@@ -20,7 +20,7 @@ import com.android.ddmlib.IDevice;
 /**
  * A ITestDevice whose lifecycle is managed.
  */
-interface IManagedTestDevice extends ITestDevice {
+public interface IManagedTestDevice extends ITestDevice {
 
     /**
      * Container for a response to a {@link IManagedTestDevice#handleAllocationEvent(DeviceEvent)}
@@ -64,6 +64,23 @@ interface IManagedTestDevice extends ITestDevice {
     public void setFastbootEnabled(boolean fastbootEnabled);
 
     /**
+     * Return if fastboot is available for the device.
+     */
+    public boolean isFastbootEnabled();
+
+    /**
+     * Sets the path to the fastboot binary that should be used.
+     * Still requires {@link #isFastbootEnabled()} to be true, to have fastboot functions enabled.
+     */
+    public void setFastbootPath(String fastbootPath);
+
+    /**
+     * Returns the path of the fastboot binary being used.
+     * Still requires {@link #isFastbootEnabled()} to be true, to have fastboot functions enabled.
+     */
+    public String getFastbootPath();
+
+    /**
      * Invoke recovery on the device.
      *
      * @throws DeviceNotAvailableException if recovery was not successful
@@ -88,8 +105,8 @@ interface IManagedTestDevice extends ITestDevice {
     public DeviceAllocationState getAllocationState();
 
     /**
-     * Process the given {@link DeviceEvent}. May transition device to new state.
-     * Will inform the {@link IDeviceMonitor} of any state transitions.
+     * Process the given {@link com.android.tradefed.device.DeviceEvent}. May transition device
+     * to new state. Will inform the {@link IDeviceMonitor} of any state transitions.
      */
     public DeviceEventResponse handleAllocationEvent(DeviceEvent event);
 
@@ -97,4 +114,15 @@ interface IManagedTestDevice extends ITestDevice {
      * Return the {@link IDeviceStateMonitor} associated with device.
      */
     public IDeviceStateMonitor getMonitor();
+
+    /**
+     * Returns the MAC address of the device, null if it fails to query from the device.
+     */
+    public String getMacAddress();
+
+    /** Return the SIM card state or null if device is not available. */
+    public String getSimState();
+
+    /** Return the SIM card operator or null if device is not available. */
+    public String getSimOperator();
 }

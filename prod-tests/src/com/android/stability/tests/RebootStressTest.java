@@ -31,7 +31,7 @@ import com.android.tradefed.util.CommandResult;
 import com.android.tradefed.util.CommandStatus;
 import com.android.tradefed.util.RunUtil;
 
-import junit.framework.Assert;
+import org.junit.Assert;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -44,7 +44,10 @@ import java.util.Map;
 public class RebootStressTest implements IRemoteTest, IDeviceTest, IShardableTest {
 
     private static final String[] LAST_KMSG_PATHS = {
-        "/proc/last_kmsg", "/sys/fs/pstore/console-ramoops"};
+        "/sys/fs/pstore/console-ramoops-0",
+        "/sys/fs/pstore/console-ramoops",
+        "/proc/last_kmsg",
+    };
     // max number of ms to allowed for the post-boot waitForDeviceAvailable check
     private static final long DEVICE_AVAIL_TIME = 3 * 1000;
 
@@ -199,7 +202,7 @@ public class RebootStressTest implements IRemoteTest, IDeviceTest, IShardableTes
                     getDevice().reboot();
                 }
                 getDevice().waitForDeviceAvailable();
-                doWaitAndCheck(listener);
+                doWaitAndCheck();
                 CLog.logAndDisplay(LogLevel.INFO, "Device %s completed %d of %d iterations",
                         getDevice().getSerialNumber(), actualIterations+1, mIterations);
             }
@@ -236,12 +239,11 @@ public class RebootStressTest implements IRemoteTest, IDeviceTest, IShardableTes
     }
 
     /**
-     * Perform wait between reboots. Perform periodic checks on device to ensure is still
-     * available.
+     * Perform wait between reboots. Perform periodic checks on device to ensure is still available.
      *
      * @throws DeviceNotAvailableException
      */
-    private void doWaitAndCheck(ITestInvocationListener listener) throws DeviceNotAvailableException {
+    private void doWaitAndCheck() throws DeviceNotAvailableException {
         long waitTimeMs = mWaitTime * 1000;
         long elapsedTime = 0;
 
@@ -249,7 +251,7 @@ public class RebootStressTest implements IRemoteTest, IDeviceTest, IShardableTes
             long startTime = System.currentTimeMillis();
             // ensure device is still up
             getDevice().waitForDeviceAvailable(DEVICE_AVAIL_TIME);
-            checkForUserDataFailure(listener);
+            checkForUserDataFailure();
             RunUtil.getDefault().sleep(mPollSleepTime * 1000);
             elapsedTime += System.currentTimeMillis() - startTime;
         }
@@ -260,8 +262,7 @@ public class RebootStressTest implements IRemoteTest, IDeviceTest, IShardableTes
      *
      * @throws DeviceNotAvailableException
      */
-    private void checkForUserDataFailure(ITestInvocationListener listener)
-            throws DeviceNotAvailableException {
+    private void checkForUserDataFailure() throws DeviceNotAvailableException {
         for (String path : LAST_KMSG_PATHS) {
             if (getDevice().doesFileExist(path)) {
                 mLastKmsg = getDevice().executeShellCommand("cat " + path);

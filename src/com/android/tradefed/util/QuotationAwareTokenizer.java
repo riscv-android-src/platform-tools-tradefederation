@@ -25,8 +25,8 @@ public class QuotationAwareTokenizer {
     private static final String LOG_TAG = "TOKEN";
 
     /**
-     * Tokenizes the string, splitting on spaces.  Does not split between consecutive, unquoted
-     * double-quote marks.
+     * Tokenizes the string, splitting on specified delimiter.  Does not split between consecutive,
+     * unquoted double-quote marks.
      * <p/>
      * How the tokenizer works:
      * <ol>
@@ -52,7 +52,7 @@ public class QuotationAwareTokenizer {
      * @return A tokenized version of the string
      * @throws IllegalArgumentException if the line cannot be parsed
      */
-    public static String[] tokenizeLine(String line) throws IllegalArgumentException {
+    public static String[] tokenizeLine(String line, String delim) throws IllegalArgumentException {
         if (line == null) {
             throw new IllegalArgumentException("line is null");
         }
@@ -68,9 +68,8 @@ public class QuotationAwareTokenizer {
         Log.d(LOG_TAG, String.format("Trying to tokenize the line '%s'", line));
         while (charMatcher.find()) {
             aChar = charMatcher.group();
-            Log.v(LOG_TAG, String.format("Got a character: '%s'", aChar));
 
-            if (" ".equals(aChar)) {
+            if (delim.equals(aChar)) {
                 if (quotation) {
                     // inside a quotation; treat spaces as part of the token
                     token.append(aChar);
@@ -90,7 +89,6 @@ public class QuotationAwareTokenizer {
                 quotation ^= true;
             } else {
                 // default case: add the character to the token being built
-                Log.v(LOG_TAG, String.format("Adding character '%s' to token '%s'", aChar, token));
                 token.append(aChar);
             }
         }
@@ -113,11 +111,21 @@ public class QuotationAwareTokenizer {
     }
 
     /**
-     * Perform the reverse of {@link tokenizeLine}. <br/>
+     * Tokenizes the string, splitting on spaces.  Does not split between consecutive,
+     * unquoted double-quote marks.
+     * <p>
+     * See also {@link #tokenizeLine(String, String)}
+     */
+    public static String[] tokenizeLine(String line) throws IllegalArgumentException {
+        return tokenizeLine(line, " ");
+    }
+
+    /**
+     * Perform the reverse of {@link #tokenizeLine(String)}. <br/>
      * Given array of tokens, combine them into a single line.
      *
      * @param tokens
-     * @return
+     * @return A {@link String} created from all the tokens.
      */
     public static String combineTokens(String... tokens) {
         final Pattern wsPattern = Pattern.compile("\\s");

@@ -20,6 +20,7 @@ import com.android.ddmlib.IDevice;
 import com.android.ddmlib.Log;
 import com.android.ddmlib.testrunner.IRemoteAndroidTestRunner;
 import com.android.ddmlib.testrunner.IRemoteAndroidTestRunner.TestSize;
+import com.android.ddmlib.testrunner.InstrumentationResultParser;
 import com.android.ddmlib.testrunner.RemoteAndroidTestRunner;
 import com.android.ddmlib.testrunner.TestIdentifier;
 import com.android.ddmlib.testrunner.TestRunResult;
@@ -37,12 +38,17 @@ import com.android.tradefed.result.InputStreamSource;
 import com.android.tradefed.result.LogDataType;
 import com.android.tradefed.result.ResultForwarder;
 import com.android.tradefed.util.AbiFormatter;
-import com.android.tradefed.util.RunUtil;
+import com.android.tradefed.util.ListInstrumentationParser;
+import com.android.tradefed.util.ListInstrumentationParser.InstrumentationTarget;
+import com.android.tradefed.util.StreamUtil;
 import com.android.tradefed.util.StringEscapeUtils;
 
-import junit.framework.Assert;
+import com.google.common.annotations.VisibleForTesting;
+
+import org.junit.Assert;
 
 import java.io.File;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
@@ -52,7 +58,8 @@ import java.util.concurrent.TimeUnit;
  * A Test that runs an instrumentation test package on given device.
  */
 @OptionClass(alias = "instrumentation")
-public class InstrumentationTest implements IDeviceTest, IResumableTest {
+public class InstrumentationTest implements IDeviceTest, IResumableTest, ITestCollector,
+        IAbiReceiver {
 
     private static final String LOG_TAG = "InstrumentationTest";
 
@@ -61,9 +68,11 @@ public class InstrumentationTest implements IDeviceTest, IResumableTest {
     /** instrumentation test runner argument key used for test execution using a file */
     private static final String TEST_FILE_INST_ARGS_KEY = "testFile";
 
-    static final String DELAY_MSEC_ARG = "delay_msec";
     /** instrumentation test runner argument key used for individual test timeout */
     static final String TEST_TIMEOUT_INST_ARGS_KEY = "timeout_msec";
+
+    /** default timeout for tests collection */
+    static final long TEST_COLLECTION_TIMEOUT_MS = 2 * 60 * 1000;
 
     @Option(name = "package", shortName = 'p',
             description="The manifest package name of the Android test application to run.",
@@ -71,8 +80,9 @@ public class InstrumentationTest implements IDeviceTest, IResumableTest {
     private String mPackageName = null;
 
     @Option(name = "runner",
-            description="The instrumentation test runner class name to use.")
-    private String mRunnerName = "android.test.InstrumentationTestRunner";
+            description="The instrumentation test runner class name to use. Will try to determine "
+                    + "automatically if it is not specified.")
+    private String mRunnerName = null;
 
     @Option(name = "class", shortName = 'c',
             description="The test class name to run.")
@@ -87,23 +97,43 @@ public class InstrumentationTest implements IDeviceTest, IResumableTest {
             "Will be ignored if --class is set.")
     private String mTestPackageName = null;
 
+    /**
+     * @deprecated use shell-timeout or test-timeout option instead.
+     */
     @Deprecated
     @Option(name = "timeout",
             description="Deprecated - Use \"shell-timeout\" or \"test-timeout\" instead.")
     private Integer mTimeout = null;
 
-    @Option(name = "shell-timeout",
-            description="The defined timeout (in milliseconds) is used as a maximum waiting time "
-                    + "when expecting the command output from the device. At any time, if the "
-                    + "shell command does not output anything for a period longer than defined "
-                    + "timeout the TF run terminates. For no timeout, set to 0.")
-    private long mShellTimeout = 10 * 60 * 1000;  // default to 10 minutes
+    @Option(
+        name = "shell-timeout",
+        description =
+                "The defined timeout (in milliseconds) is used as a maximum waiting time when "
+                        + "expecting the command output from the device. At any time, if the shell "
+                        + "command does not output anything for a period longer than defined "
+                        + "timeout the TF run terminates. For no timeout, set to 0.",
+        isTimeVal = true
+    )
+    private long mShellTimeout = 10 * 60 * 1000; // default to 10 minutes
 
-    @Option(name = "test-timeout",
-            description="Sets timeout (in milliseconds) that will be applied to each test. In the "
-                    + "event of a test timeout it will log the results and proceed with executing "
-                    + "the next test. For no timeout, set to 0.")
-    private int mTestTimeout = 5 * 60 * 1000;  // default to 5 minutes
+    @Option(
+        name = "test-timeout",
+        description =
+                "Sets timeout (in milliseconds) that will be applied to each test. In the event of "
+                        + "a test timeout, it will log the results and proceed with executing the "
+                        + "next test. For no timeout, set to 0.",
+        isTimeVal = true
+    )
+    private long mTestTimeout = 5 * 60 * 1000; // default to 5 minutes
+
+    @Option(
+        name = "max-timeout",
+        description =
+                "Sets the max timeout for the instrumentation to terminate. "
+                        + "For no timeout, set to 0.",
+        isTimeVal = true
+    )
+    private long mMaxTimeout = 0l;
 
     @Option(name = "size",
             description="Restrict test to a specific test size.")
@@ -118,10 +148,6 @@ public class InstrumentationTest implements IDeviceTest, IResumableTest {
             description = "Schedule unexecuted tests for resumption on another device " +
             "if first device becomes unavailable.")
     private boolean mIsResumeMode = false;
-
-    @Option(name = "log-delay",
-            description="Delay in msec between each test when collecting test information.")
-    private int mTestDelay = 15;
 
     @Option(name = "install-file",
             description="Optional file path to apk file that contains the tests.")
@@ -176,6 +202,33 @@ public class InstrumentationTest implements IDeviceTest, IResumableTest {
             importance = Importance.IF_UNSET)
     private String mForceAbi = null;
 
+    @Option(name = "collect-tests-only",
+            description = "Only invoke the instrumentation to collect list of applicable test "
+                    + "cases. All test run callbacks will be triggered, but test execution will "
+                    + "not be actually carried out.")
+    private boolean mCollectTestsOnly = false;
+
+    @Option(
+        name = "collect-tests-timeout",
+        description = "Timeout for the tests collection operation.",
+        isTimeVal = true
+    )
+    private long mCollectTestTimeout = TEST_COLLECTION_TIMEOUT_MS;
+
+    @Option(name = "debug", description = "Wait for debugger before instrumentation starts. Note "
+            + "that this should only be used for local debugging, not suitable for automated runs.")
+    private boolean mDebug = false;
+
+    @Option(
+        name = "enforce-ajur-format",
+        description = "Whether or not enforcing the AJUR instrumentation output format"
+    )
+    private boolean mShouldEnforceFormat = false;
+
+    private IAbi mAbi = null;
+
+    private Collection<String> mInstallArgs = new ArrayList<>();
+
     private ITestDevice mDevice = null;
 
     private IRemoteAndroidTestRunner mRunner;
@@ -186,14 +239,7 @@ public class InstrumentationTest implements IDeviceTest, IResumableTest {
 
     private String mTestFilePathOnDevice = null;
 
-    /**
-     * Max time in ms to allow for the 'max time to shell output response' when collecting tests.
-     * TODO: currently the collect tests command may take a long time to even start, so this is set
-     * to a overly generous value
-     */
-    private int mCollectTestsShellTimeout = 2 * 60 * 1000;
-
-    private boolean mForceBatchMode = false;
+    private ListInstrumentationParser mListInstrumentationParser = null;
 
     /**
      * {@inheritDoc}
@@ -281,13 +327,9 @@ public class InstrumentationTest implements IDeviceTest, IResumableTest {
      * Set the collection of tests that should be executed by this InstrumentationTest.
      *
      * @param tests the tests to run
-     * @param forceBatchMode if true, the first attempt to run the tests will proceed as normal
-     * with the InstrumentationTest attempting to run all tests in the package. If false, the given
-     * tests will be run one by one with separate adb commands.
      */
-    public void setTestsToRun(Collection<TestIdentifier> tests, boolean forceBatchMode) {
+    public void setTestsToRun(Collection<TestIdentifier> tests) {
         mRemainingTests = tests;
-        mForceBatchMode = forceBatchMode;
     }
 
     /**
@@ -408,18 +450,14 @@ public class InstrumentationTest implements IDeviceTest, IResumableTest {
         return mShellTimeout;
     }
 
-    /**
-     * Get the test timeout in ms.
-     */
-    int getTestTimeout() {
+    /** Get the test timeout in ms. */
+    long getTestTimeout() {
         return mTestTimeout;
     }
 
-    /**
-     * Get the delay in ms between each test when collecting test info.
-     */
-    long getTestDelay() {
-        return mTestDelay;
+    /** Returns the max timeout set for the instrumentation. */
+    public long getMaxTimeout() {
+        return mMaxTimeout;
     }
 
     /**
@@ -438,14 +476,17 @@ public class InstrumentationTest implements IDeviceTest, IResumableTest {
     public ITestDevice getDevice() {
         return mDevice;
     }
+
     /**
      * Set the max time in ms to allow for the 'max time to shell output response' when collecting
      * tests.
      * <p/>
-     * Exposed for testing.
+     * @deprecated This method is a no-op
      */
+    @Deprecated
+    @SuppressWarnings("unused")
     public void setCollectsTestsShellTimeout(int timeout) {
-        mCollectTestsShellTimeout = timeout;
+        // no-op
     }
 
     /**
@@ -461,7 +502,7 @@ public class InstrumentationTest implements IDeviceTest, IResumableTest {
     }
 
     /**
-     * Add an argument to provide when running the instrumentation tests
+     * Add an argument to provide when running the instrumentation tests.
      *
      * @param key the argument name
      * @param value the argument value
@@ -470,6 +511,19 @@ public class InstrumentationTest implements IDeviceTest, IResumableTest {
         mInstrArgMap.put(key, value);
     }
 
+    /**
+     * Retrieve the value of an argument to provide when running the instrumentation tests.
+     *
+     * @param key the argument name
+     * <p/>
+     * Exposed for testing
+     */
+    String getInstrumentationArg(String key) {
+        if (mInstrArgMap.containsKey(key)) {
+            return mInstrArgMap.get(key);
+        }
+        return null;
+    }
 
     /**
      * Sets force-abi option.
@@ -515,16 +569,67 @@ public class InstrumentationTest implements IDeviceTest, IResumableTest {
             IDevice device) throws DeviceNotAvailableException {
         RemoteAndroidTestRunner runner = new RemoteAndroidTestRunner(
                 packageName, runnerName, device);
-        if (mForceAbi != null && !mForceAbi.isEmpty()) {
-            String abi = AbiFormatter.getDefaultAbi(mDevice, mForceAbi);
-            if (abi != null) {
-                runner.setRunOptions(String.format("--abi %s", abi));
-            } else {
+        String abiName = resolveAbiName();
+        if (abiName != null) {
+            mInstallArgs.add(String.format("--abi %s", abiName));
+            runner.setRunOptions(String.format("--abi %s", abiName));
+        }
+        runner.setEnforceTimeStamp(mShouldEnforceFormat);
+        return runner;
+    }
+
+    private String resolveAbiName() throws DeviceNotAvailableException {
+        if (mAbi != null && mForceAbi != null) {
+            throw new IllegalArgumentException("cannot specify both abi flags");
+        }
+        String abiName = null;
+        if (mAbi != null) {
+            abiName = mAbi.getName();
+        } else if (mForceAbi != null && !mForceAbi.isEmpty()) {
+            abiName = AbiFormatter.getDefaultAbi(mDevice, mForceAbi);
+            if (abiName == null) {
                 throw new RuntimeException(
                         String.format("Cannot find abi for force-abi %s", mForceAbi));
             }
         }
-        return runner;
+        return abiName;
+    }
+
+    /**
+     * Set the {@link ListInstrumentationParser}.
+     */
+    @VisibleForTesting
+    void setListInstrumentationParser(ListInstrumentationParser listInstrumentationParser) {
+        mListInstrumentationParser = listInstrumentationParser;
+    }
+
+    /**
+     * Get the {@link ListInstrumentationParser} used to parse 'pm list instrumentation' queries.
+     */
+    protected ListInstrumentationParser getListInstrumentationParser() {
+        if (mListInstrumentationParser == null) {
+            mListInstrumentationParser = new ListInstrumentationParser();
+        }
+        return mListInstrumentationParser;
+    }
+
+    /**
+     * Query the device for a test runner to use.
+     *
+     * @return the first test runner name that matches the package or null if we don't find any.
+     * @throws DeviceNotAvailableException
+     */
+    protected String queryRunnerName() throws DeviceNotAvailableException {
+        ListInstrumentationParser parser = getListInstrumentationParser();
+        getDevice().executeShellCommand("pm list instrumentation", parser);
+
+        for (InstrumentationTarget target : parser.getInstrumentationTargets()) {
+            if (mPackageName.equals(target.packageName)) {
+                return target.runnerName;
+            }
+        }
+        CLog.w("Unable to determine runner name for package: %s", mPackageName);
+        return null;
     }
 
     /**
@@ -539,15 +644,25 @@ public class InstrumentationTest implements IDeviceTest, IResumableTest {
             throw new IllegalArgumentException("Device has not been set");
         }
 
-        mRunner = createRemoteAndroidTestRunner(mPackageName, mRunnerName,
-                mDevice.getIDevice());
+        if (mRunnerName == null) {
+            String runnerName = queryRunnerName();
+            if (runnerName == null) {
+                throw new IllegalArgumentException(
+                        "runner name has not been set and no matching instrumentations were found");
+            }
+            setRunnerName(runnerName);
+            CLog.i("No runner name specified. Using: %s", mRunnerName);
+        }
+
+        mRunner = createRemoteAndroidTestRunner(mPackageName, mRunnerName, mDevice.getIDevice());
         setRunnerArgs(mRunner);
         if (mInstallFile != null) {
-            Assert.assertNull(mDevice.installPackage(mInstallFile, true));
-            doTestRun(listener);
+            Assert.assertNull(mDevice.installPackage(mInstallFile, true,
+                    mInstallArgs.toArray(new String[]{})));
+        }
+        doTestRun(listener);
+        if (mInstallFile != null) {
             mDevice.uninstallPackage(mPackageName);
-        } else {
-            doTestRun(listener);
         }
     }
 
@@ -597,6 +712,7 @@ public class InstrumentationTest implements IDeviceTest, IResumableTest {
                     mTestTimeout, mShellTimeout));
         }
         runner.setMaxTimeToOutputResponse(mShellTimeout, TimeUnit.MILLISECONDS);
+        runner.setMaxTimeout(mMaxTimeout, TimeUnit.MILLISECONDS);
         addInstrumentationArg(TEST_TIMEOUT_INST_ARGS_KEY, Long.toString(mTestTimeout));
     }
 
@@ -609,44 +725,83 @@ public class InstrumentationTest implements IDeviceTest, IResumableTest {
     private void doTestRun(ITestInvocationListener listener)
             throws DeviceNotAvailableException {
 
-        if (mRemainingTests != null && !mForceBatchMode) {
+        if (mRemainingTests != null) {
             // have remaining tests! This must be a rerun - rerun them individually
             rerunTests(listener);
             return;
         }
-        if (mRemainingTests == null) {
-            mRemainingTests = collectTestsToRun(mRunner);
+
+        // If this is a dry-run, just collect the tests and return
+        if (mCollectTestsOnly) {
+            // Use the actual listener to collect the tests, and print a error if this fails
+            Collection<TestIdentifier> collectedTests = collectTestsToRun(mRunner, listener);
+            if (collectedTests == null) {
+                CLog.e("Failed to collect tests for %s", mPackageName);
+            } else {
+                CLog.i("Collected %d tests for %s", collectedTests.size(), mPackageName);
+            }
+            return;
         }
+
+        // Collect the tests to run, but don't notify the listener since it's not a real run
+        mRemainingTests = collectTestsToRun(mRunner, null);
+
+        // only set debug flag after collecting tests
+        if (mDebug) {
+            mRunner.setDebug(true);
+        }
+        listener = addBugreportListenerIfEnabled(listener);
+        listener = addLogcatListenerIfEnabled(listener);
+        listener = addScreenshotListenerIfEnabled(listener);
+
+        if (mRemainingTests == null) {
+            // Failed to collect the tests or collection is off. Just try to run them all.
+            mDevice.runInstrumentationTests(mRunner, listener);
+        } else if (!mRemainingTests.isEmpty()) {
+            runWithRerun(listener, mRemainingTests);
+        } else {
+            CLog.i("No tests expected for %s, skipping", mPackageName);
+        }
+    }
+
+    /**
+     * Returns a listener that will collect bugreports, or the original {@code listener} if this
+     * feature is disabled.
+     */
+    ITestInvocationListener addBugreportListenerIfEnabled(ITestInvocationListener listener) {
         if (mBugreportFrequency != null) {
             // Collect a bugreport after EACH/FIRST failed testcase
             BugreportCollector.Predicate pred = new BugreportCollector.Predicate(
                     BugreportCollector.Relation.AFTER,
                     mBugreportFrequency,
                     BugreportCollector.Noun.FAILED_TESTCASE);
-            BugreportCollector collector  = new BugreportCollector(listener, mDevice);
+            BugreportCollector collector = new BugreportCollector(listener, getDevice());
             collector.addPredicate(pred);
             listener = collector;
         }
+        return listener;
+    }
+
+    /**
+     * Returns a listener that will collect screenshots, or the original {@code listener} if this
+     * feature is disabled.
+     */
+    ITestInvocationListener addScreenshotListenerIfEnabled(ITestInvocationListener listener) {
         if (mScreenshotOnFailure) {
-            FailedTestScreenshotGenerator screenListener = new FailedTestScreenshotGenerator(
-                    listener, getDevice());
-            listener = screenListener;
+            listener = new FailedTestScreenshotGenerator(listener, getDevice());
         }
+        return listener;
+    }
+
+    /**
+     * Returns a listener that will collect logcat logs, or the original {@code listener} if this
+     * feature is disabled.
+     */
+    ITestInvocationListener addLogcatListenerIfEnabled(ITestInvocationListener listener) {
         if (mLogcatOnFailure) {
-            FailedTestLogcatGenerator logcatListener = new FailedTestLogcatGenerator(
-                    listener, getDevice(), mMaxLogcatBytes);
-            listener = logcatListener;
+            listener = new FailedTestLogcatGenerator(listener, getDevice(), mMaxLogcatBytes);
         }
-
-        if (mRemainingTests == null) {
-            // failed to collect the tests or collection is off. Just try to run them all
-            mDevice.runInstrumentationTests(mRunner, listener);
-        } else if (mRemainingTests.size() != 0) {
-            runWithRerun(listener, mRemainingTests);
-
-        } else {
-            Log.i(LOG_TAG, String.format("No tests expected for %s, skipping", mPackageName));
-        }
+        return listener;
     }
 
     /**
@@ -660,7 +815,22 @@ public class InstrumentationTest implements IDeviceTest, IResumableTest {
         CollectingTestListener testTracker = new CollectingTestListener();
         mRemainingTests = expectedTests;
         try {
-            mDevice.runInstrumentationTests(mRunner, new ResultForwarder(listener, testTracker));
+            mDevice.runInstrumentationTests(
+                    mRunner,
+                    new ResultForwarder(listener, testTracker) {
+                        @Override
+                        public void testRunStarted(String runName, int testCount) {
+                            // In case of crash, run will attempt to report with 0
+                            if (testCount == 0 && !expectedTests.isEmpty()) {
+                                CLog.e(
+                                        "Run reported 0 tests while we collected %s",
+                                        expectedTests.size());
+                                super.testRunStarted(runName, expectedTests.size());
+                            } else {
+                                super.testRunStarted(runName, testCount);
+                            }
+                        }
+                    });
         } finally {
             calculateRemainingTests(mRemainingTests, testTracker);
         }
@@ -707,10 +877,9 @@ public class InstrumentationTest implements IDeviceTest, IResumableTest {
         }
     }
 
-    /**
-     * re-runs tests one by one via {@link InstrumentationSerialTest}
-     */
-    private void reRunTestsSerially(final ITestInvocationListener listener)
+    /** re-runs tests one by one via {@link InstrumentationSerialTest} */
+    @VisibleForTesting
+    void reRunTestsSerially(final ITestInvocationListener listener)
             throws DeviceNotAvailableException {
         CLog.i("Running individual tests serially");
         // Since the same runner is reused we must ensure TEST_FILE_INST_ARGS_KEY is not set.
@@ -753,15 +922,17 @@ public class InstrumentationTest implements IDeviceTest, IResumableTest {
      * executed by this run
      * @throws DeviceNotAvailableException
      */
-    private Collection<TestIdentifier> collectTestsToRun(final IRemoteAndroidTestRunner runner)
-            throws DeviceNotAvailableException {
+    private Collection<TestIdentifier> collectTestsToRun(final IRemoteAndroidTestRunner runner,
+            final ITestInvocationListener listener) throws DeviceNotAvailableException {
         if (isRerunMode()) {
             Log.d(LOG_TAG, String.format("Collecting test info for %s on device %s",
                     mPackageName, mDevice.getSerialNumber()));
             runner.setTestCollection(true);
+            // always explicitly set debug to false when collecting tests
+            runner.setDebug(false);
             // try to collect tests multiple times, in case device is temporarily not available
             // on first attempt
-            Collection<TestIdentifier>  tests = collectTestsAndRetry(runner);
+            Collection<TestIdentifier>  tests = collectTestsAndRetry(runner, listener);
             // done with "logOnly" mode, restore proper test timeout before real test execution
             addTimeoutsToRunner(runner);
             runner.setTestCollection(false);
@@ -772,17 +943,29 @@ public class InstrumentationTest implements IDeviceTest, IResumableTest {
 
     /**
      * Performs the actual work of collecting tests, making multiple attempts if necessary
-     * @param runner
+     *
+     * @param runner the {@link IRemoteAndroidTestRunner} that will be used for the instrumentation
+     * @param listener the {ITestInvocationListener} where to report results, can be null if we are
+     *     not reporting the results to the main invocation and simply collecting tests.
      * @return the collection of tests, or <code>null</code> if tests could not be collected
      * @throws DeviceNotAvailableException if communication with the device was lost
      */
-    private Collection<TestIdentifier> collectTestsAndRetry(final IRemoteAndroidTestRunner runner)
+    @VisibleForTesting
+    Collection<TestIdentifier> collectTestsAndRetry(
+            final IRemoteAndroidTestRunner runner, final ITestInvocationListener listener)
             throws DeviceNotAvailableException {
         boolean communicationFailure = false;
         for (int i=0; i < COLLECT_TESTS_ATTEMPTS; i++) {
-            CollectingTestListener listener = new CollectingTestListener();
-            boolean instrResult = mDevice.runInstrumentationTests(runner, listener);
-            TestRunResult runResults = listener.getCurrentRunResults();
+            CollectingTestListener collector = new CollectingTestListener();
+            boolean instrResult = false;
+            // We allow to override the ddmlib default timeout for collection of tests.
+            runner.setMaxTimeToOutputResponse(mCollectTestTimeout, TimeUnit.MILLISECONDS);
+            if (listener == null) {
+                instrResult = mDevice.runInstrumentationTests(runner, collector);
+            } else {
+                instrResult = mDevice.runInstrumentationTests(runner, collector, listener);
+            }
+            TestRunResult runResults = collector.getCurrentRunResults();
             if (!instrResult || !runResults.isRunComplete()) {
                 // communication failure with device, retry
                 Log.w(LOG_TAG, String.format(
@@ -795,6 +978,11 @@ public class InstrumentationTest implements IDeviceTest, IResumableTest {
                 CLog.w("Run failure %s when collecting tests to run for %s on device %s.",
                         runResults.getRunFailureMessage(), mPackageName,
                         mDevice.getSerialNumber());
+                if (mShouldEnforceFormat
+                        && InstrumentationResultParser.INVALID_OUTPUT_ERR_MSG.equals(
+                                runResults.getRunFailureMessage())) {
+                    throw new RuntimeException(InstrumentationResultParser.INVALID_OUTPUT_ERR_MSG);
+                }
                 return null;
             } else {
                 // success!
@@ -831,18 +1019,18 @@ public class InstrumentationTest implements IDeviceTest, IResumableTest {
 
         @Override
         public void testFailed(TestIdentifier test, String trace) {
-            super.testFailed(test, trace);
-
             try {
                 InputStreamSource screenSource = mDevice.getScreenshot();
                 super.testLog(String.format("screenshot-%s_%s", test.getClassName(),
                         test.getTestName()), LogDataType.PNG, screenSource);
-                screenSource.cancel();
+                StreamUtil.cancel(screenSource);
             } catch (DeviceNotAvailableException e) {
                 // TODO: rethrow this somehow
                 CLog.e("Device %s became unavailable while capturing screenshot, %s",
                         mDevice.getSerialNumber(), e.toString());
             }
+
+            super.testFailed(test, trace);
         }
     }
 
@@ -852,12 +1040,27 @@ public class InstrumentationTest implements IDeviceTest, IResumableTest {
     private static class FailedTestLogcatGenerator extends ResultForwarder {
         private ITestDevice mDevice;
         private int mNumLogcatBytes;
+        private Map<TestIdentifier, Long> mMapStartTime = new HashMap<TestIdentifier, Long>();
 
         public FailedTestLogcatGenerator(ITestInvocationListener listener, ITestDevice device,
                 int maxLogcatBytes) {
             super(listener);
             mDevice = device;
             mNumLogcatBytes = maxLogcatBytes;
+        }
+
+        @Override
+        public void testStarted(TestIdentifier test) {
+            super.testStarted(test);
+            // capture the starting date of the tests.
+            try {
+                mMapStartTime.put(test, mDevice.getDeviceDate());
+            } catch (DeviceNotAvailableException e) {
+                // For convenience of interface we catch here, test will mostlikely throw it again
+                // and it will be properly handle (recovery, etc.)
+                CLog.e(e);
+                mMapStartTime.put(test, 0l);
+            }
         }
 
         @Override
@@ -873,13 +1076,43 @@ public class InstrumentationTest implements IDeviceTest, IResumableTest {
         }
 
         private void captureLog(TestIdentifier test) {
-            // sleep a small amount of time to ensure test failure stack trace makes it into logcat
-            // capture
-            RunUtil.getDefault().sleep(10);
-            InputStreamSource logSource = mDevice.getLogcat(mNumLogcatBytes);
+            InputStreamSource logSource = null;
+            // if we can, capture starting the beginning of the test only to be more precise
+            long startTime = 0;
+            if (mMapStartTime.containsKey(test)) {
+                startTime = mMapStartTime.remove(test);
+            }
+            if (startTime != 0) {
+                logSource = mDevice.getLogcatSince(startTime);
+            } else {
+                logSource = mDevice.getLogcat(mNumLogcatBytes);
+            }
             super.testLog(String.format("logcat-%s_%s", test.getClassName(), test.getTestName()),
                     LogDataType.TEXT, logSource);
-            logSource.cancel();
+            StreamUtil.cancel(logSource);
         }
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void setCollectTestsOnly(boolean shouldCollectTest) {
+        mCollectTestsOnly = shouldCollectTest;
+    }
+
+    @Override
+    public void setAbi(IAbi abi) {
+        mAbi = abi;
+    }
+
+    @Override
+    public IAbi getAbi() {
+        return mAbi;
+    }
+
+    /** Set True if we enforce the AJUR output format of instrumentation. */
+    public void setEnforceFormat(boolean enforce) {
+        mShouldEnforceFormat = enforce;
     }
 }

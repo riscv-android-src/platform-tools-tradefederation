@@ -27,13 +27,22 @@ import com.android.tradefed.device.IDeviceManager;
 import com.android.tradefed.log.ConsoleReaderOutputStream;
 import com.android.tradefed.log.LogRegistry;
 import com.android.tradefed.util.ArrayUtil;
+import com.android.tradefed.util.ConfigCompletor;
+import com.android.tradefed.util.FileUtil;
 import com.android.tradefed.util.QuotationAwareTokenizer;
 import com.android.tradefed.util.RegexTrie;
 import com.android.tradefed.util.RunUtil;
+import com.android.tradefed.util.TimeUtil;
 import com.android.tradefed.util.VersionParser;
+import com.android.tradefed.util.ZipUtil;
+import com.android.tradefed.util.keystore.IKeyStoreFactory;
+import com.android.tradefed.util.keystore.KeyStoreException;
+
+import com.google.common.annotations.VisibleForTesting;
 
 import jline.ConsoleReader;
 
+import java.io.File;
 import java.io.IOException;
 import java.io.PrintStream;
 import java.io.PrintWriter;
@@ -63,7 +72,7 @@ import java.util.regex.Pattern;
  */
 public class Console extends Thread {
 
-    private static final String CONSOLE_PROMPT = "tf >";
+    private static final String CONSOLE_PROMPT = "\u001B[0;32mtf >\u001B[0;0m";
 
     protected static final String HELP_PATTERN = "\\?|h|help";
     protected static final String LIST_PATTERN = "l(?:ist)?";
@@ -71,6 +80,7 @@ public class Console extends Thread {
     protected static final String RUN_PATTERN = "r(?:un)?";
     protected static final String EXIT_PATTERN = "(?:q|exit)";
     protected static final String SET_PATTERN = "s(?:et)?";
+    protected static final String INVOC_PATTERN = "i(?:nvocation)?";
     protected static final String VERSION_PATTERN = "version";
     protected static final String REMOVE_PATTERN = "remove";
     protected static final String DEBUG_PATTERN = "debug";
@@ -81,10 +91,12 @@ public class Console extends Thread {
     private static ConsoleReaderOutputStream sConsoleStream = null;
 
     protected ICommandScheduler mScheduler;
+    protected IKeyStoreFactory mKeyStoreFactory;
     protected ConsoleReader mConsoleReader;
     private RegexTrie<Runnable> mCommandTrie = new RegexTrie<Runnable>();
     private boolean mShouldExit = false;
     private List<String> mMainArgs = new ArrayList<String>(0);
+    private long mConsoleStartTime;
 
     /** A convenience type for <code>{@literal List<List<String>>}</code> */
     @SuppressWarnings("serial")
@@ -131,9 +143,11 @@ public class Console extends Thread {
                 if (args.size() >= 2 && !args.get(1).isEmpty()) {
                     List<String> optionArgs = getFlatArgs(1, args);
                     ArgsOptionParser parser = new ArgsOptionParser(this);
+                    if (mKeyStoreFactory != null) {
+                        parser.setKeyStore(mKeyStoreFactory.createKeyStoreClient());
+                    }
                     parser.parse(optionArgs);
                 }
-
                 String exitMode = "invocations";
                 if (mHandoverPort == null) {
                     if (mExitOnEmpty) {
@@ -152,6 +166,8 @@ public class Console extends Thread {
                 printLine(String.format("TF will exit without warning when remaining %s complete.",
                         exitMode));
             } catch (ConfigurationException e) {
+                printLine(e.toString());
+            } catch (KeyStoreException e) {
                 printLine(e.toString());
             }
         }
@@ -185,7 +201,7 @@ public class Console extends Thread {
             if (sConsoleStream == null) {
                 final ConsoleReader reader = new ConsoleReader();
                 sConsoleStream = new ConsoleReaderOutputStream(reader);
-                System.setOut(new PrintStream(sConsoleStream));
+                System.setOut(new PrintStream(sConsoleStream, true));
             }
             return sConsoleStream.getConsoleReader();
         } catch (IOException e) {
@@ -205,8 +221,13 @@ public class Console extends Thread {
      * Exposed for unit testing
      */
     Console(ConsoleReader reader) {
-        super();
+        super("TfConsole");
+        mConsoleStartTime = System.currentTimeMillis();
         mConsoleReader = reader;
+        if (reader != null) {
+            mConsoleReader.addCompletor(
+                    new ConfigCompletor(getConfigurationFactory().getConfigList()));
+        }
 
         List<String> genericHelp = new LinkedList<String>();
         Map<String, String> commandHelp = new LinkedHashMap<String, String>();
@@ -217,6 +238,10 @@ public class Console extends Thread {
 
     void setCommandScheduler(ICommandScheduler scheduler) {
         mScheduler = scheduler;
+    }
+
+    void setKeyStoreFactory(IKeyStoreFactory factory) {
+        mKeyStoreFactory = factory;
     }
 
     /**
@@ -251,7 +276,6 @@ public class Console extends Thread {
     void generateHelpListings(RegexTrie<Runnable> trie, List<String> genericHelp,
             Map<String, String> commandHelp) {
         final String genHelpString = getGenericHelpString(genericHelp);
-        final String helpPattern = "\\?|h|help";
 
         final ArgRunnable<CaptureList> genericHelpRunnable = new ArgRunnable<CaptureList>() {
             @Override
@@ -259,7 +283,7 @@ public class Console extends Thread {
                 printLine(genHelpString);
             }
         };
-        trie.put(genericHelpRunnable, helpPattern);
+        trie.put(genericHelpRunnable, HELP_PATTERN);
 
         StringBuilder allHelpBuilder = new StringBuilder();
 
@@ -273,7 +297,7 @@ public class Console extends Thread {
                     public void run() {
                         printLine(helpText);
                     }
-                }, helpPattern, key);
+                }, HELP_PATTERN, key);
 
             allHelpBuilder.append(helpText);
             allHelpBuilder.append(LINE_SEPARATOR);
@@ -285,7 +309,7 @@ public class Console extends Thread {
                 public void run() {
                     printLine(allHelpText);
                 }
-            }, helpPattern, "all");
+            }, HELP_PATTERN, "all");
 
         // Add a generic "not found" help message for everything else
         trie.put(new ArgRunnable<CaptureList>() {
@@ -298,7 +322,7 @@ public class Console extends Thread {
                                 args.get(1).get(0)));
                         genericHelpRunnable.run(args);
                     }
-                }, helpPattern, null);
+                }, HELP_PATTERN, null);
 
         // Add a fallback input handler
         trie.put(new ArgRunnable<CaptureList>() {
@@ -318,8 +342,8 @@ public class Console extends Thread {
 
     /**
      * Return the generic help string to display
-     * @param genericHelp
-     * @return
+     *
+     * @param genericHelp a list of {@link String} representing the generic help to be aggregated.
      */
     protected String getGenericHelpString(List<String> genericHelp) {
         return ArrayUtil.join(LINE_SEPARATOR, genericHelp);
@@ -397,12 +421,13 @@ public class Console extends Thread {
         genericHelp.add("");
         genericHelp.add("Enter 'help all' to see all embedded documentation at once.");
         genericHelp.add("");
-        genericHelp.add("Enter 'help list'   for help with 'list' commands");
-        genericHelp.add("Enter 'help run'    for help with 'run' commands");
-        genericHelp.add("Enter 'help dump'   for help with 'dump' commands");
-        genericHelp.add("Enter 'help set'    for help with 'set' commands");
-        genericHelp.add("Enter 'help remove' for help with 'remove' commands");
-        genericHelp.add("Enter 'help debug'  for help with 'debug' commands");
+        genericHelp.add("Enter 'help list'       for help with 'list' commands");
+        genericHelp.add("Enter 'help run'        for help with 'run' commands");
+        genericHelp.add("Enter 'help invocation' for help with 'invocation' commands");
+        genericHelp.add("Enter 'help dump'       for help with 'dump' commands");
+        genericHelp.add("Enter 'help set'        for help with 'set' commands");
+        genericHelp.add("Enter 'help remove'     for help with 'remove' commands");
+        genericHelp.add("Enter 'help debug'      for help with 'debug' commands");
         genericHelp.add("Enter 'version'  to get the current version of Tradefed");
 
         commandHelp.put(LIST_PATTERN, String.format(
@@ -420,6 +445,8 @@ public class Console extends Thread {
                 "%s help:" + LINE_SEPARATOR +
                 "\ts[tack]             Dump the stack traces of all threads" + LINE_SEPARATOR +
                 "\tl[ogs]              Dump the logs of all invocations to files" + LINE_SEPARATOR +
+                "\tb[ugreport]         Dump a bugreport for the running Tradefed instance" +
+                LINE_SEPARATOR +
                 "\tc[onfig] <config>   Dump the content of the specified config" + LINE_SEPARATOR +
                 "\tcommandQueue        Dump the contents of the commmand execution queue" +
                 LINE_SEPARATOR +
@@ -428,7 +455,9 @@ public class Console extends Thread {
                 "\tcommands [pattern]  Dump all the config XML for the commands matching the " +
                 "pattern and waiting to be executed" + LINE_SEPARATOR +
                 "\te[nv]               Dump the environment variables available to test harness " +
-                "process" + LINE_SEPARATOR,
+                "process" + LINE_SEPARATOR +
+                "\tu[ptime]            Dump how long the TradeFed process has been running" +
+                LINE_SEPARATOR,
                 DUMP_PATTERN));
 
         commandHelp.put(RUN_PATTERN, String.format(
@@ -460,6 +489,13 @@ public class Console extends Thread {
                 "%s help:" + LINE_SEPARATOR +
                 "\tgc      Attempt to force a GC" + LINE_SEPARATOR,
                 DEBUG_PATTERN));
+
+        commandHelp.put(INVOC_PATTERN, String.format(
+                "%s help:" + LINE_SEPARATOR +
+                "\ti[nvocation] [Command Id]        Information of the invocation thread" +
+                LINE_SEPARATOR +
+                "\ti[nvocation] [Command Id] stop   Notify to stop the invocation" + LINE_SEPARATOR,
+                INVOC_PATTERN));
 
         // Handle quit commands
         trie.put(new QuitRunnable(), EXIT_PATTERN, null);
@@ -499,16 +535,51 @@ public class Console extends Thread {
         trie.put(new Runnable() {
             @Override
             public void run() {
+                printLine("Use 'run command <configuration_name> --help' to get list of options "
+                        + "for a configuration");
+                printLine("Use 'dump config <configuration_name>' to display the configuration's "
+                        + "XML content.");
+                printLine("");
+                printLine("Available configurations include:");
                 getConfigurationFactory().printHelp(System.out);
             }
         }, LIST_PATTERN, "configs");
 
+        // Invocation commands
+        trie.put(new ArgRunnable<CaptureList>() {
+                    @Override
+                    public void run(CaptureList args) {
+                        int invocId = Integer.parseInt(args.get(1).get(0));
+                        String info = mScheduler.getInvocationInfo(invocId);
+                        if (info != null) {
+                            printLine(String.format("invocation %s: %s", invocId, info));
+                        } else {
+                            printLine(String.format("No information found for invocation %s.",
+                                    invocId));
+                        }
+                    }
+        }, INVOC_PATTERN, "([0-9]*)");
+        trie.put(new ArgRunnable<CaptureList>() {
+                    @Override
+                    public void run(CaptureList args) {
+                        int invocId = Integer.parseInt(args.get(1).get(0));
+                        if (mScheduler.stopInvocation(invocId)) {
+                            printLine(String.format("Invocation %s has been requested to stop."
+                                    + " It may take some times.",
+                                    invocId));
+                        } else {
+                            printLine(String.format("Could not stop invocation %s, try 'list "
+                                    + "invocation' or 'invocation %s' for more information.",
+                                    invocId, invocId));
+                        }
+                    }
+        }, INVOC_PATTERN, "([0-9]*)", "stop");
 
         // Dump commands
         trie.put(new Runnable() {
                     @Override
                     public void run() {
-                        dumpStacks();
+                        dumpStacks(System.out);
                     }
                 }, DUMP_PATTERN, "s(?:tacks?)?");
         trie.put(new Runnable() {
@@ -517,6 +588,18 @@ public class Console extends Thread {
                         dumpLogs();
                     }
                 }, DUMP_PATTERN, "l(?:ogs?)?");
+        trie.put(new Runnable() {
+                    @Override
+                    public void run() {
+                        dumpTfBugreport();
+                    }
+        }, DUMP_PATTERN, "b(?:ugreport?)?");
+        trie.put(new Runnable() {
+            @Override
+            public void run() {
+                printElapsedTime();
+            }
+        }, DUMP_PATTERN, "u(?:ptime?)?");
         ArgRunnable<CaptureList> dumpConfigRun = new ArgRunnable<CaptureList>() {
             @Override
             public void run(CaptureList args) {
@@ -718,12 +801,23 @@ public class Console extends Thread {
     }
 
     /**
+     * Print the uptime of the Tradefed process.
+     */
+    private void printElapsedTime() {
+        long elapsedTime = System.currentTimeMillis() - mConsoleStartTime;
+        String elapsed = String.format("TF has been running for %s",
+                TimeUtil.formatElapsedTime(elapsedTime));
+        printLine(elapsed);
+    }
+
+    /**
      * Get input from the console
      *
-     * @return A {@link String} containing the input to parse and run.  Will return {@code null} if
-     *         console is not available or user entered EOF ({@code ^D}).
+     * @return A {@link String} containing the input to parse and run. Will return {@code null} if
+     *     console is not available or user entered EOF ({@code ^D}).
      */
-    private String getConsoleInput() throws IOException {
+    @VisibleForTesting
+    String getConsoleInput() throws IOException {
         if (mConsoleReader != null) {
             if (sConsoleStream != null) {
                 // While we're reading the console, the only tasks which will print to the console
@@ -761,6 +855,15 @@ public class Console extends Thread {
     protected void printLine(String output) {
         System.out.print(output);
         System.out.println();
+    }
+
+    /**
+     * Print the line to a Printwriter
+     * @param output
+     */
+    protected void printLine(String output, PrintStream pw) {
+        pw.print(output);
+        pw.println();
     }
 
     /**
@@ -863,6 +966,10 @@ public class Console extends Thread {
                         mConsoleReader.getHistory().addToHistory(cmd);
                     }
                     tokens = arrrgs.toArray(new String[0]);
+                    if (arrrgs.get(0).matches(HELP_PATTERN)) {
+                        // if started from command line for help, return to shell
+                        mShouldExit = true;
+                    }
                     arrrgs = Collections.emptyList();
                 }
 
@@ -873,7 +980,6 @@ public class Console extends Thread {
                     printLine(String.format(
                             "Unable to handle command '%s'.  Enter 'help' for help.", tokens[0]));
                 }
-
                 RunUtil.getDefault().sleep(100);
             } while (!mShouldExit);
         } catch (Exception e) {
@@ -885,6 +991,14 @@ public class Console extends Thread {
             System.err.flush();
             System.out.flush();
         }
+    }
+
+    /**
+     * set the flag to exit the console.
+     */
+    @VisibleForTesting
+    void exitConsole() {
+        mShouldExit = true;
     }
 
     void awaitScheduler() throws InterruptedException {
@@ -900,19 +1014,19 @@ public class Console extends Thread {
         return ConfigurationFactory.getInstance();
     }
 
-    private void dumpStacks() {
+    private void dumpStacks(PrintStream ps) {
         Map<Thread, StackTraceElement[]> threadMap = Thread.getAllStackTraces();
         for (Map.Entry<Thread, StackTraceElement[]> threadEntry : threadMap.entrySet()) {
-            dumpThreadStack(threadEntry.getKey(), threadEntry.getValue());
+            dumpThreadStack(threadEntry.getKey(), threadEntry.getValue(), ps);
         }
     }
 
-    private void dumpThreadStack(Thread thread, StackTraceElement[] trace) {
-        printLine(String.format("%s", thread));
+    private void dumpThreadStack(Thread thread, StackTraceElement[] trace, PrintStream ps) {
+        printLine(String.format("%s", thread), ps);
         for (int i=0; i < trace.length; i++) {
-            printLine(String.format("\t%s", trace[i]));
+            printLine(String.format("\t%s", trace[i]), ps);
         }
-        printLine("");
+        printLine("", ps);
     }
 
     private void dumpLogs() {
@@ -927,6 +1041,33 @@ public class Console extends Thread {
         Map<String, String> env = new TreeMap<>(System.getenv());
         for (Map.Entry<String, String> entry : env.entrySet()) {
             printLine(String.format("\t%s=%s", entry.getKey(), entry.getValue()));
+        }
+    }
+
+    /**
+     * Dump a Tradefed Bugreport containing the stack traces and logs.
+     */
+    private void dumpTfBugreport() {
+        File tmpBugreportDir = null;
+        PrintStream ps = null;
+        try {
+            // dump stacks
+            tmpBugreportDir = FileUtil.createNamedTempDir("bugreport_tf");
+            File tmpStackFile = FileUtil.createTempFile("dump_stacks_", ".log", tmpBugreportDir);
+            ps = new PrintStream(tmpStackFile);
+            dumpStacks(ps);
+            ps.flush();
+            // dump logs
+            ((LogRegistry)LogRegistry.getLogRegistry()).dumpLogsToDir(tmpBugreportDir);
+            // add them to a zip and log.
+            File zippedBugreport = ZipUtil.createZip(tmpBugreportDir, "tradefed_bugreport_");
+            printLine(String.format("Output bugreport zip in %s",
+                    zippedBugreport.getAbsolutePath()));
+        } catch (IOException io) {
+            printLine("Error when trying to dump bugreport");
+        } finally {
+            ps.close();
+            FileUtil.recursiveDelete(tmpBugreportDir);
         }
     }
 
@@ -946,7 +1087,7 @@ public class Console extends Thread {
     }
 
     /**
-     * Starts the given tradefed console with given args
+     * Starts the given Tradefed console with given args
      *
      * @param console the {@link Console} to start
      * @param args the command line arguments
@@ -957,6 +1098,7 @@ public class Console extends Thread {
 
         console.setArgs(nonGlobalArgs);
         console.setCommandScheduler(GlobalConfiguration.getInstance().getCommandScheduler());
+        console.setKeyStoreFactory(GlobalConfiguration.getInstance().getKeyStoreFactory());
         console.setDaemon(true);
         console.start();
 

@@ -18,6 +18,9 @@ package com.android.tradefed.command;
 
 import com.android.tradefed.config.ConfigurationException;
 import com.android.tradefed.config.GlobalConfiguration;
+import com.android.tradefed.device.NoDeviceException;
+
+import com.google.common.annotations.VisibleForTesting;
 
 /**
  * An alternate TradeFederation entry point that will run command specified in command
@@ -29,10 +32,40 @@ import com.android.tradefed.config.GlobalConfiguration;
  */
 public class CommandRunner {
     private ICommandScheduler mScheduler;
-    private static int mErrorCode = 0;
+    private ExitCode mErrorCode = ExitCode.NO_ERROR;
 
-    CommandRunner() {
+    private static final long CHECK_DEVICE_TIMEOUT = 15000;
 
+    public CommandRunner() {}
+
+    public ExitCode getErrorCode() {
+        return mErrorCode;
+    }
+
+    /**
+     * Initialize the required global configuration.
+     */
+    @VisibleForTesting
+    void initGlobalConfig(String[] args) throws ConfigurationException {
+        GlobalConfiguration.createGlobalConfiguration(args);
+    }
+
+    /** Get the {@link ICommandScheduler} instance from the global configuration. */
+    @VisibleForTesting
+    ICommandScheduler getCommandScheduler() {
+        return GlobalConfiguration.getInstance().getCommandScheduler();
+    }
+
+    /** Prints the exception stack to stderr. */
+    @VisibleForTesting
+    void printStackTrace(Throwable e) {
+        e.printStackTrace();
+    }
+
+    /** Returns the timeout after which to check for the command. */
+    @VisibleForTesting
+    long getCheckDeviceTimeout() {
+        return CHECK_DEVICE_TIMEOUT;
     }
 
     /**
@@ -42,27 +75,69 @@ public class CommandRunner {
      */
     public void run(String[] args) {
         try {
-            GlobalConfiguration.createGlobalConfiguration(args);
-            mScheduler = GlobalConfiguration.getInstance().getCommandScheduler();
+            initGlobalConfig(args);
+            mScheduler = getCommandScheduler();
             mScheduler.start();
             mScheduler.addCommand(args);
         } catch (ConfigurationException e) {
-            e.printStackTrace();
-            mErrorCode = 1;
+            printStackTrace(e);
+            mErrorCode = ExitCode.CONFIG_EXCEPTION;
         } finally {
             mScheduler.shutdownOnEmpty();
         }
         try {
+            mScheduler.join(getCheckDeviceTimeout());
+            // After 15 seconds we check if the command was executed.
+            if (mScheduler.getReadyCommandCount() > 0) {
+                printStackTrace(new NoDeviceException("No device was allocated for the command."));
+                mErrorCode = ExitCode.NO_DEVICE_ALLOCATED;
+                mScheduler.removeAllCommands();
+                mScheduler.shutdown();
+                return;
+            }
             mScheduler.join();
+            // If no error code has been raised yet, we checked the invocation error code.
+            if (ExitCode.NO_ERROR.equals(mErrorCode)) {
+                mErrorCode = mScheduler.getLastInvocationExitCode();
+            }
         } catch (InterruptedException e) {
             e.printStackTrace();
-            mErrorCode = 1;
+            mErrorCode = ExitCode.THROWABLE_EXCEPTION;
+        }
+        if (!ExitCode.NO_ERROR.equals(mErrorCode)
+                && mScheduler.getLastInvocationThrowable() != null) {
+            // Print error to the stderr so that it can be recovered.
+            printStackTrace(mScheduler.getLastInvocationThrowable());
         }
     }
 
     public static void main(final String[] mainArgs) {
         CommandRunner console = new CommandRunner();
         console.run(mainArgs);
-        System.exit(mErrorCode);
+        System.exit(console.getErrorCode().getCodeValue());
+    }
+
+    /**
+     * Error codes that are possible to exit with.
+     */
+    public static enum ExitCode {
+        NO_ERROR(0),
+        CONFIG_EXCEPTION(1),
+        NO_BUILD(2),
+        DEVICE_UNRESPONSIVE(3),
+        DEVICE_UNAVAILABLE(4),
+        FATAL_HOST_ERROR(5),
+        THROWABLE_EXCEPTION(6),
+        NO_DEVICE_ALLOCATED(7);
+
+        private final int mCodeValue;
+
+        ExitCode(int codeValue) {
+            mCodeValue = codeValue;
+        }
+
+        public int getCodeValue() {
+            return mCodeValue;
+        }
     }
 }

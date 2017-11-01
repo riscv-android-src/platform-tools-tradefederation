@@ -15,8 +15,6 @@
  */
 package com.android.tradefed.testtype;
 
-import com.android.ddmlib.IShellOutputReceiver;
-import com.android.ddmlib.MultiLineReceiver;
 import com.android.tradefed.config.ConfigurationException;
 import com.android.tradefed.config.Option;
 import com.android.tradefed.config.Option.Importance;
@@ -38,23 +36,25 @@ import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 /**
  * Runs all instrumentation found on current device.
  */
 @OptionClass(alias = "installed-instrumentation")
-public class InstalledInstrumentationsTest implements IDeviceTest, IResumableTest, IShardableTest {
+public class InstalledInstrumentationsTest
+        implements IDeviceTest, IResumableTest, IShardableTest, IStrictShardableTest {
 
     /** the metric key name for the test coverage target value */
     // TODO: move this to a more generic location
     public static final String COVERAGE_TARGET_KEY = XmlDefsTest.COVERAGE_TARGET_KEY;
-    private static final Pattern LIST_INSTR_PATTERN =
-            Pattern.compile("instrumentation:(.+)/(.+) \\(target=(.+)\\)");
+    private static final String PM_LIST_CMD = "pm list instrumentation";
+    private static final String LINE_SEPARATOR = "\\r?\\n";
 
     private ITestDevice mDevice;
 
+    /**
+     * @deprecated use --shell-timeout or --test-timeout option instead.
+     */
     @Deprecated
     @Option(name = "timeout",
             description="Deprecated - Use \"shell-timeout\" or \"test-timeout\" instead.")
@@ -150,6 +150,11 @@ public class InstalledInstrumentationsTest implements IDeviceTest, IResumableTes
             "Split test run into this many parallel shards")
     private int mShards = 0;
 
+    @Option(name = "disable", description =
+            "Disable the test by setting this flag to true.")
+    private boolean mDisable = false;
+
+
     private int mTotalShards = 0;
     private int mShardIndex = 0;
 
@@ -195,12 +200,34 @@ public class InstalledInstrumentationsTest implements IDeviceTest, IResumableTes
     }
 
     /**
+     * Sets the number of total shards this test should be split into.
+     * <p/>
+     * Exposed for unit testing.
+     */
+    void setTotalShards(int totalShards) {
+        mTotalShards = totalShards;
+    }
+
+    /**
+     * Sets the shard index number of this test.
+     * <p/>
+     * Exposed for unit testing.
+     */
+    void setShardIndex(int shardIndex) {
+        mShardIndex = shardIndex;
+    }
+
+    /**
      * {@inheritDoc}
      */
     @Override
     public void run(ITestInvocationListener listener) throws DeviceNotAvailableException {
         if (getDevice() == null) {
             throw new IllegalArgumentException("Device has not been set");
+        }
+
+        if (mDisable) {
+            return;
         }
         buildTests();
         doRun(listener);
@@ -209,23 +236,35 @@ public class InstalledInstrumentationsTest implements IDeviceTest, IResumableTes
     /**
      * Build the list of tests to run from the device, if not done already. Note: Can be called
      * multiple times in case of resumed runs.
-
      * @throws DeviceNotAvailableException
      */
     private void buildTests() throws DeviceNotAvailableException {
         if (mTests == null) {
+
             ListInstrumentationParser parser = new ListInstrumentationParser();
-            getDevice().executeShellCommand("pm list instrumentation", parser);
+            String pmListOutput = getDevice().executeShellCommand(PM_LIST_CMD);
+            String pmListLines[] = pmListOutput.split(LINE_SEPARATOR);
+            parser.processNewLines(pmListLines);
 
             if (parser.getInstrumentationTargets().isEmpty()) {
                 throw new IllegalArgumentException(String.format(
-                        "No instrumentations were found on device %s",
-                        getDevice().getSerialNumber()));
+                        "No instrumentations were found on device %s - <%s>", getDevice()
+                                .getSerialNumber(), pmListOutput));
             }
 
+            int numUnshardedTests = 0;
             mTests = new LinkedList<InstrumentationTest>();
             for (InstrumentationTarget target : parser.getInstrumentationTargets()) {
                 if (mRunner == null || mRunner.equals(target.runnerName)) {
+                    // Some older instrumentations are not shardable. As a result, we should try to
+                    // shard these instrumentations by APKs, rather than by test methods.
+                    if (mTotalShards > 0 && !target.isShardable()) {
+                        numUnshardedTests += 1;
+                        if ((numUnshardedTests - 1) % mTotalShards != mShardIndex) {
+                            continue;
+                        }
+                    }
+
                     InstrumentationTest t = createInstrumentationTest();
                     try {
                         // Copies all current argument values to the new runner that will be
@@ -238,7 +277,7 @@ public class InstalledInstrumentationsTest implements IDeviceTest, IResumableTes
                     t.setPackageName(target.packageName);
                     t.setRunnerName(target.runnerName);
                     t.setCoverageTarget(target.targetName);
-                    if (mTotalShards > 0) {
+                    if (mTotalShards > 0 && target.isShardable()) {
                         t.addInstrumentationArg("shardIndex", Integer.toString(mShardIndex));
                         t.addInstrumentationArg("numShards", Integer.toString(mTotalShards));
                     }
@@ -303,7 +342,11 @@ public class InstalledInstrumentationsTest implements IDeviceTest, IResumableTes
      * Creates the {@link InstrumentationTest} to use. Exposed for unit testing.
      */
     InstrumentationTest createInstrumentationTest() {
-        return new InstrumentationTest();
+        // We do not know what kind of instrumentation we will find, so we don't enforce the ddmlib
+        // format for AndroidJUnitRunner.
+        InstrumentationTest test = new InstrumentationTest();
+        test.setEnforceFormat(false);
+        return test;
     }
 
     /**
@@ -327,19 +370,27 @@ public class InstalledInstrumentationsTest implements IDeviceTest, IResumableTes
         if (mShards > 1) {
             Collection<IRemoteTest> shards = new ArrayList<>(mShards);
             for (int index = 0; index < mShards; index++) {
-                InstalledInstrumentationsTest shard = new InstalledInstrumentationsTest();
-                try {
-                    OptionCopier.copyOptions(this, shard);
-                } catch (ConfigurationException e) {
-                    CLog.e("failed to copy instrumentation options: %s", e.getMessage());
-                }
-                shard.mShards = 0;
-                shard.mShardIndex = index;
-                shard.mTotalShards = mShards;
-                shards.add(shard);
+                shards.add(getTestShard(mShards, index));
             }
             return shards;
         }
         return null;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public IRemoteTest getTestShard(int shardCount, int shardIndex) {
+        InstalledInstrumentationsTest shard = new InstalledInstrumentationsTest();
+        try {
+            OptionCopier.copyOptions(this, shard);
+        } catch (ConfigurationException e) {
+            CLog.e("failed to copy instrumentation options: %s", e.getMessage());
+        }
+        shard.mShards = 0;
+        shard.mShardIndex = shardIndex;
+        shard.mTotalShards = shardCount;
+        return shard;
     }
 }

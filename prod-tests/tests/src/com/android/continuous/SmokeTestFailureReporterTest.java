@@ -19,6 +19,8 @@ package com.android.continuous;
 import com.android.ddmlib.testrunner.TestIdentifier;
 import com.android.tradefed.build.BuildInfo;
 import com.android.tradefed.build.IBuildInfo;
+import com.android.tradefed.invoker.IInvocationContext;
+import com.android.tradefed.invoker.InvocationContext;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.util.IEmail;
 import com.android.tradefed.util.IEmail.Message;
@@ -31,6 +33,7 @@ import org.easymock.EasyMock;
 import java.util.Collections;
 import java.util.Map;
 
+/** Unit tests for {@link SmokeTestFailureReporter} */
 public class SmokeTestFailureReporterTest extends TestCase {
     private SmokeTestFailureReporter mReporter = null;
     private IEmail mMailer = null;
@@ -48,7 +51,9 @@ public class SmokeTestFailureReporterTest extends TestCase {
     }
 
     public void testSingleFail() throws Exception {
-        final String expSubject = "git_master SmokeFAST failed on generic-userdebug @123456";
+        final String expSubject =
+                "DeviceSmokeTests SmokeFAST failed on: BuildInfo{bid=123456, "
+                        + "target=target?, build_flavor=generic-userdebug, branch=git_master}";
         final String expBodyStart = "FooTest#testFoo failed\nStack trace:\nthis is a trace\n";
 
         final Map<String, String> emptyMap = Collections.emptyMap();
@@ -59,12 +64,15 @@ public class SmokeTestFailureReporterTest extends TestCase {
         mMailer.send(EasyMock.capture(msgCapture));
         EasyMock.replay(mMailer);
 
-        final IBuildInfo build = new BuildInfo(BID, TAG, TARGET);
+        final IBuildInfo build = new BuildInfo(BID, TARGET);
         build.setBuildFlavor(FLAVOR);
         build.setBuildBranch(BRANCH);
+        IInvocationContext context = new InvocationContext();
+        context.addDeviceBuildInfo("serial", build);
+        context.setTestTag(TAG);
 
         mReporter.addDestination("dest.ination@email.com");
-        mReporter.invocationStarted(build);
+        mReporter.invocationStarted(context);
         mReporter.testRunStarted("testrun", 1);
         mReporter.testStarted(testId);
         mReporter.testFailed(testId, trace);
@@ -88,7 +96,9 @@ public class SmokeTestFailureReporterTest extends TestCase {
     }
 
     public void testTwoPassOneFail() throws Exception {
-        final String expSubject = "git_master SmokeFAST failed on generic-userdebug @123456";
+        final String expSubject =
+                "DeviceSmokeTests SmokeFAST failed on: BuildInfo{bid=123456, "
+                        + "target=target?, build_flavor=generic-userdebug, branch=git_master}";
         final String expBodyStart = "FooTest#testFail failed\nStack trace:\nthis is a trace\n";
 
         final Map<String, String> emptyMap = Collections.emptyMap();
@@ -101,12 +111,15 @@ public class SmokeTestFailureReporterTest extends TestCase {
         mMailer.send(EasyMock.capture(msgCapture));
         EasyMock.replay(mMailer);
 
-        IBuildInfo build = new BuildInfo(BID, TAG, TARGET);
+        IBuildInfo build = new BuildInfo(BID, TARGET);
         build.setBuildFlavor(FLAVOR);
         build.setBuildBranch(BRANCH);
+        IInvocationContext context = new InvocationContext();
+        context.addDeviceBuildInfo("serial", build);
+        context.setTestTag(TAG);
 
         mReporter.addDestination("dest.ination@email.com");
-        mReporter.invocationStarted(build);
+        mReporter.invocationStarted(context);
         mReporter.testRunStarted("testrun", 1);
         mReporter.testStarted(testPass1);
         mReporter.testEnded(testPass1, emptyMap);

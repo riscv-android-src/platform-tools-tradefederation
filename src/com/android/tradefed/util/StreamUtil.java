@@ -17,6 +17,8 @@ package com.android.tradefed.util;
 
 import com.android.tradefed.result.InputStreamSource;
 
+import com.google.common.io.ByteStreams;
+
 import java.io.BufferedInputStream;
 import java.io.BufferedReader;
 import java.io.ByteArrayOutputStream;
@@ -66,6 +68,23 @@ public class StreamUtil {
     }
 
     /**
+     * Count number of lines in an {@link InputStreamSource}
+     * @param source the {@link InputStreamSource}
+     * @return number of lines
+     * @throws IOException if failure occurred reading the stream
+     */
+    public static int countLinesFromSource(InputStreamSource source) throws IOException {
+        int lineCount = 0;
+        try (BufferedReader br =
+                new BufferedReader(new InputStreamReader(source.createInputStream()))) {
+            while (br.readLine() != null) {
+                lineCount++;
+            }
+        }
+        return lineCount;
+    }
+
+    /**
      * Retrieves a {@link ByteArrayList} from an {@link InputStreamSource}.
      *
      * @param source the {@link InputStreamSource}
@@ -92,11 +111,12 @@ public class StreamUtil {
      * @throws IOException if failure occurred reading the stream
      */
     public static String getStringFromStream(InputStream stream) throws IOException {
-        Reader ir = new BufferedReader(new InputStreamReader(stream));
         int irChar = -1;
         StringBuilder builder = new StringBuilder();
-        while ((irChar = ir.read()) != -1) {
-            builder.append((char)irChar);
+        try (Reader ir = new BufferedReader(new InputStreamReader(stream))) {
+            while ((irChar = ir.read()) != -1) {
+                builder.append((char) irChar);
+            }
         }
         return builder.toString();
     }
@@ -256,25 +276,15 @@ public class StreamUtil {
      */
     public static void cancel(InputStreamSource outputSource) {
         if (outputSource != null) {
-            outputSource.cancel();
+            outputSource.close();
         }
     }
 
     /**
      * Create a {@link OutputStream} that discards all writes.
-     *
-     * TODO: replace with guava's ByteStreams.nullOutputStream() when guava is updated.
      */
     public static OutputStream nullOutputStream() {
-        return new OutputStream() {
-            /** Discards the specified byte. */
-            @Override public void write(int b) {
-            }
-
-            /** Discards the specified byte array. */
-            @Override public void write(byte[] b, int off, int len) {
-            }
-        };
+        return ByteStreams.nullOutputStream();
     }
 
     /**

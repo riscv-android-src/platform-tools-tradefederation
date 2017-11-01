@@ -16,19 +16,25 @@
 
 package com.android.tradefed.testtype;
 
+import com.google.common.util.concurrent.SettableFuture;
+
 import com.android.ddmlib.IDevice;
 import com.android.tradefed.device.ITestDevice;
+import com.android.tradefed.device.StubDevice;
+import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.util.IRunUtil;
-import com.google.common.util.concurrent.SettableFuture;
 
 import junit.framework.TestCase;
 
 import org.easymock.EasyMock;
 
+import java.util.concurrent.Future;
+
 public class DeviceBatteryLevelCheckerTest extends TestCase {
     private DeviceBatteryLevelChecker mChecker = null;
     ITestDevice mFakeTestDevice = null;
     IDevice mFakeDevice = null;
+    public Integer mBatteryLevel = 10;
 
     @Override
     protected void setUp() throws Exception {
@@ -40,7 +46,14 @@ public class DeviceBatteryLevelCheckerTest extends TestCase {
             }
         };
         mFakeTestDevice = EasyMock.createStrictMock(ITestDevice.class);
-        mFakeDevice = EasyMock.createStrictMock(IDevice.class);
+        mFakeDevice = new StubDevice("serial") {
+            @Override
+            public Future<Integer> getBattery() {
+                SettableFuture<Integer> f = SettableFuture.create();
+                f.set(mBatteryLevel);
+                return f;
+            }
+        };
 
         mChecker.setDevice(mFakeTestDevice);
 
@@ -65,29 +78,90 @@ public class DeviceBatteryLevelCheckerTest extends TestCase {
         verifyDevices();
     }
 
+    /**
+     * Low battery with a resume level very low to check a resume if some level are reached.
+     */
     public void testLow() throws Exception {
+        mFakeTestDevice.stopLogcat();
+        EasyMock.expectLastCall();
         expectBattLevel(5);
-        expectBattLevel(20);
-        expectBattLevel(50);
-        expectBattLevel(90);
+        EasyMock.expect(mFakeTestDevice.executeShellCommand("svc power stayon false"))
+                .andStubReturn("");
+        EasyMock.expect(mFakeTestDevice.executeShellCommand(
+                "settings put system screen_off_timeout 1000")).andStubReturn("");
         replayDevices();
+        mChecker.setResumeLevel(5);
+        mChecker.run(null);
+        verifyDevices();
+    }
 
+    /**
+     * Battery is low, device idles and battery gets high again.
+     */
+    public void testLow_becomeHigh() throws Exception {
+        mFakeTestDevice.stopLogcat();
+        EasyMock.expectLastCall();
+        expectBattLevel(5);
+        EasyMock.expect(mFakeTestDevice.executeShellCommand("svc power stayon false"))
+                .andStubReturn("");
+        EasyMock.expect(mFakeTestDevice.executeShellCommand(
+                "settings put system screen_off_timeout 1000")).andStubReturn("");
+        replayDevices();
+        Thread raise = new Thread(new Runnable() {
+            @Override
+            public void run() {
+                try {
+                    Thread.sleep(100);
+                    expectBattLevel(85);
+                } catch (Exception e) {
+                    CLog.e(e);
+                }
+            }
+        });
+        raise.start();
+        mChecker.run(null);
+        verifyDevices();
+    }
+
+    /**
+     * Battery is low, device idles and battery gets null, break the loop.
+     */
+    public void testLow_becomeNull() throws Exception {
+        mFakeTestDevice.stopLogcat();
+        EasyMock.expectLastCall();
+        expectBattLevel(5);
+        EasyMock.expect(mFakeTestDevice.executeShellCommand("svc power stayon false"))
+                .andStubReturn("");
+        EasyMock.expect(mFakeTestDevice.executeShellCommand(
+                "settings put system screen_off_timeout 1000")).andStubReturn("");
+        replayDevices();
+        Thread raise = new Thread(new Runnable() {
+            @Override
+            public void run() {
+                try {
+                    Thread.sleep(10);
+                    expectBattLevel(null);
+                } catch (Exception e) {
+                    CLog.e(e);
+                }
+            }
+        });
+        raise.start();
         mChecker.run(null);
         verifyDevices();
     }
 
     private void expectBattLevel(Integer level) throws Exception {
-        SettableFuture<Integer> f = SettableFuture.create();
-        f.set(level);
-        EasyMock.expect(mFakeDevice.getBattery()).andReturn(f);
+        mBatteryLevel = level;
+        EasyMock.expect(mFakeDevice.getBattery());
     }
 
     private void replayDevices() {
-        EasyMock.replay(mFakeTestDevice, mFakeDevice);
+        EasyMock.replay(mFakeTestDevice);
     }
 
     private void verifyDevices() {
-        EasyMock.verify(mFakeTestDevice, mFakeDevice);
+        EasyMock.verify(mFakeTestDevice);
     }
 }
 

@@ -15,7 +15,6 @@
  */
 package com.android.tradefed.device;
 
-import com.android.tradefed.command.remote.DeviceDescriptor;
 import com.android.tradefed.config.GlobalConfiguration;
 
 import java.util.List;
@@ -24,7 +23,7 @@ import java.util.List;
  * Interface for recovering multiple offline devices. There are some device recovery methods which
  * can affect multiple devices (ex) restarting adb, resetting usb, ...). We can implement those
  * recovery methods through this interface. Once the implementation is configured through
- * {@link GlobalConfiguration}, {@link #recoverDevices(List<DeviceDescriptor>)} will be called
+ * {@link GlobalConfiguration}, {@link #recoverDevices(List)} will be called
  * periodically from {@link DeviceManager}.
  */
 public interface IMultiDeviceRecovery {
@@ -32,8 +31,15 @@ public interface IMultiDeviceRecovery {
     /**
      * Recovers offline devices on host.
      *
-     * @param managedDevices a list of {@link DeviceDescriptor}s.
+     * @param managedDevices a list of {@link ITestDevice}s.
      */
-    void recoverDevices(List<DeviceDescriptor> managedDevices);
+    void recoverDevices(List<IManagedTestDevice> managedDevices);
 
+    /**
+     * Sets the path to the fastboot binary to be used.
+     */
+    @SuppressWarnings("unused")
+    public default void setFastbootPath(String fastbootPath) {
+        // empty by default for implementation that do not require fastboot.
+    }
 }

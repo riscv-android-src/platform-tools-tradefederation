@@ -17,7 +17,6 @@ package com.android.tradefed.testtype.testdefs;
 
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
-import com.android.tradefed.device.StubTestDevice;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.testtype.InstrumentationTest;
 import com.android.tradefed.testtype.MockInstrumentationTest;
@@ -26,6 +25,7 @@ import junit.framework.TestCase;
 
 import org.easymock.Capture;
 import org.easymock.EasyMock;
+import org.easymock.IAnswer;
 
 import java.io.File;
 import java.io.FileOutputStream;
@@ -33,7 +33,7 @@ import java.io.IOException;
 import java.util.Map;
 
 /**
- * Unit tests for {@link XmlDefTest}.
+ * Unit tests for {@link XmlDefsTest}.
  */
 public class XmlDefsTestTest extends TestCase {
 
@@ -89,14 +89,13 @@ public class XmlDefsTestTest extends TestCase {
         // TODO: it would be nice to mock out the file objects, so this test wouldn't need to do
         // IO
         mMockTestDevice.pullFile(EasyMock.eq(TEST_PATH), (File)EasyMock.anyObject());
-        EasyMock.expectLastCall().andDelegateTo(new StubTestDevice() {
+        EasyMock.expectLastCall().andAnswer(new IAnswer<Object>() {
             @Override
-            public boolean pullFile(String remoteFilePath, File localFile)
-                    throws DeviceNotAvailableException {
-                // simulate the pull file by dumping data into local file
+            public Object answer() throws Throwable {
+             // simulate the pull file by dumping data into local file
                 FileOutputStream outStream;
                 try {
-                    outStream = new FileOutputStream(localFile);
+                    outStream = new FileOutputStream((File)EasyMock.getCurrentArguments()[1]);
                     outStream.write(TEST_DEF_DATA.getBytes());
                     outStream.close();
                     return true;

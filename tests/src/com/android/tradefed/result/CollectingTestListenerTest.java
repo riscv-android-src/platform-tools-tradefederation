@@ -19,6 +19,8 @@ import com.android.ddmlib.testrunner.TestIdentifier;
 import com.android.ddmlib.testrunner.TestResult.TestStatus;
 import com.android.ddmlib.testrunner.TestRunResult;
 import com.android.tradefed.build.BuildInfo;
+import com.android.tradefed.invoker.IInvocationContext;
+import com.android.tradefed.invoker.InvocationContext;
 
 import junit.framework.TestCase;
 
@@ -47,7 +49,9 @@ public class CollectingTestListenerTest extends TestCase {
     protected void setUp() throws Exception {
         super.setUp();
         mCollectingTestListener = new CollectingTestListener();
-        mCollectingTestListener.invocationStarted(new BuildInfo());
+        IInvocationContext context = new InvocationContext();
+        context.addDeviceBuildInfo("fakeDevice", new BuildInfo());
+        mCollectingTestListener.invocationStarted(context);
     }
 
     /**
@@ -206,6 +210,26 @@ public class CollectingTestListenerTest extends TestCase {
         mCollectingTestListener.invocationEnded(0);
         assertEquals("1", mCollectingTestListener.getCurrentRunResults().getRunMetrics().get(
                 RUN_KEY));
+    }
+
+    public void testGetNumTestsInState() {
+        injectTestRun("run", "testFoo1", "1");
+        injectTestRun("run", "testFoo2", "1");
+        int testsPassed = mCollectingTestListener.getNumTestsInState(TestStatus.PASSED);
+        assertEquals(2, testsPassed);
+        injectTestRun("run", "testFoo3", "1");
+        testsPassed = mCollectingTestListener.getNumTestsInState(TestStatus.PASSED);
+        assertEquals(3, testsPassed);
+    }
+
+    public void testGetNumTotalTests() {
+        injectTestRun("run", "testFoo1", "1");
+        injectTestRun("run", "testFoo2", "1");
+        int total = mCollectingTestListener.getNumTotalTests();
+        assertEquals(2, total);
+        injectTestRun("run", "testFoo3", "1", true);
+        total = mCollectingTestListener.getNumTotalTests();
+        assertEquals(3, total);
     }
 
     /**

@@ -25,23 +25,25 @@ import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.device.LargeOutputReceiver;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.result.BugreportCollector;
+import com.android.tradefed.result.FileInputStreamSource;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.InputStreamSource;
 import com.android.tradefed.result.LogDataType;
-import com.android.tradefed.result.SnapshotInputStreamSource;
 import com.android.tradefed.testtype.IDeviceTest;
 import com.android.tradefed.testtype.IRemoteTest;
+import com.android.tradefed.util.BluetoothUtils;
+import com.android.tradefed.util.FileUtil;
 import com.android.tradefed.util.StreamUtil;
 
-import junit.framework.Assert;
 import junit.framework.TestCase;
+
+import org.junit.Assert;
 
 import java.io.BufferedInputStream;
 import java.io.BufferedReader;
 import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.io.FileInputStream;
-import java.io.FileReader;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
@@ -70,8 +72,6 @@ public class BluetoothStressTest implements IDeviceTest, IRemoteTest {
     private static final String HCIDUMP_CMD = "hcidump -Xt";
     private static final String HCIDUMP_DESC = "hcidump";
     private static final long HCIDUMP_LOG_SIZE = 4 * 1024 * 1024; // 4 MB.
-    private static final String BTSNOOP_CONF_FILE = "/etc/bluetooth/bt_stack.conf";
-    private static final String BTSNOOP_LOG_FILE = "btsnoop_hci.log";
 
     /**
      * Generic string for running the instrumentation on the second device. Completed with:
@@ -117,7 +117,7 @@ public class BluetoothStressTest implements IDeviceTest, IRemoteTest {
         public String mTestMethod = null;
         public String mIterKey = null;
         public Integer mIterCount = null;
-        public Set<String> mPerfMetrics = new HashSet<String>();
+        public Set<String> mPerfMetrics = new HashSet<>();
 
         // Arguments for remote device tests
         public boolean mRemoteDeviceTest = false;
@@ -300,7 +300,7 @@ public class BluetoothStressTest implements IDeviceTest, IRemoteTest {
             return;
         }
         // Allocate enough space for all of the TestInfo instances below
-        mTestCases = new ArrayList<TestInfo>(12);
+        mTestCases = new ArrayList<>(12);
 
         TestInfo t = new TestInfo();
         t.mTestName = "discoverable";
@@ -469,7 +469,7 @@ public class BluetoothStressTest implements IDeviceTest, IRemoteTest {
         setupTests();
 
         if (mLogBtsnoop) {
-            if (!enableBtsnoopLogging()) {
+            if (!BluetoothUtils.enableBtsnoopLogging(mTestDevice)) {
                 CLog.e("Unable to enable btsnoop trace logging");
                 throw new DeviceNotAvailableException();
             }
@@ -543,27 +543,7 @@ public class BluetoothStressTest implements IDeviceTest, IRemoteTest {
             // Log the output file
             logOutputFile(t, listener);
             if (mLogBtsnoop) {
-                File logFile = null;
-                InputStreamSource logSource = null;
-                try {
-                    logFile = mTestDevice.pullFileFromExternal(BTSNOOP_LOG_FILE);
-                    if (logFile != null) {
-                        CLog.d("Sending %d byte file %s into the logosphere!", logFile.length(),
-                                logFile);
-                        logSource = new SnapshotInputStreamSource(new FileInputStream(logFile));
-                        listener.testLog(String.format("%s_btsnoop", t.mTestName),
-                                LogDataType.UNKNOWN, logSource);
-                    }
-                } catch (IOException e) {
-                    CLog.e("Got an IO Exception: %s", e);
-                } finally {
-                    if (logFile != null) {
-                        logFile.delete();
-                    }
-                    if (logSource != null) {
-                        logSource.cancel();
-                    }
-                }
+                BluetoothUtils.uploadLogFiles(listener, getDevice(), t.mTestName, 0);
             }
             if (mLogHcidump) {
                 listener.testLog(String.format("%s_hcidump", t.mTestName), LogDataType.TEXT,
@@ -576,45 +556,12 @@ public class BluetoothStressTest implements IDeviceTest, IRemoteTest {
     }
 
     /**
-     * Enable btsnoop logging by changing the BtSnoopLogOutput line in /etc/bluetooth/bt_stack.conf
-     * to true.
-     */
-    private boolean enableBtsnoopLogging() throws DeviceNotAvailableException {
-        File confFile = mTestDevice.pullFile(BTSNOOP_CONF_FILE);
-        if (confFile == null) {
-            return false;
-        }
-
-        BufferedReader confReader = null;
-        try {
-            confReader = new BufferedReader(new FileReader(confFile));
-            StringBuilder newConf = new StringBuilder();
-            String line;
-            while ((line = confReader.readLine()) != null) {
-                if (line.startsWith("BtSnoopLogOutput=")) {
-                    newConf.append("BtSnoopLogOutput=true\n");
-                } else {
-                    newConf.append(line).append("\n");
-                }
-            }
-            mTestDevice.remountSystemWritable();
-            return mTestDevice.pushString(newConf.toString(), BTSNOOP_CONF_FILE);
-        } catch (IOException e) {
-            return false;
-        } finally {
-            confFile.delete();
-            StreamUtil.close(confReader);
-        }
-    }
-
-    /**
      * Clean up the tmp output file from previous test runs
      */
     private void cleanOutputFile() throws DeviceNotAvailableException {
         mTestDevice.executeShellCommand(String.format("rm ${EXTERNAL_STORAGE}/%s", OUTPUT_PATH));
         if (mLogBtsnoop) {
-            mTestDevice.executeShellCommand(String.format("rm ${EXTERNAL_STORAGE}/%s",
-                    BTSNOOP_LOG_FILE));
+            BluetoothUtils.cleanLogFile(mTestDevice);
         }
     }
 
@@ -632,20 +579,16 @@ public class BluetoothStressTest implements IDeviceTest, IRemoteTest {
             if (outputFile != null) {
                 CLog.d("Sending %d byte file %s into the logosphere!",
                         outputFile.length(), outputFile);
-                outputSource = new SnapshotInputStreamSource(new FileInputStream(outputFile));
+                outputSource = new FileInputStreamSource(outputFile);
                 listener.testLog(String.format("%s_output", testInfo.mTestName),
                         LogDataType.TEXT, outputSource);
                 parseOutputFile(testInfo, new FileInputStream(outputFile), listener);
             }
         } catch (IOException e) {
-            CLog.e("Got an IO Exception: %s", e);
+            CLog.e(e);
         } finally {
-            if (outputFile != null) {
-                outputFile.delete();
-            }
-            if (outputSource != null) {
-                outputSource.cancel();
-            }
+            FileUtil.deleteFile(outputFile);
+            StreamUtil.cancel(outputSource);
         }
     }
 
@@ -660,7 +603,8 @@ public class BluetoothStressTest implements IDeviceTest, IRemoteTest {
             dataStream = new BufferedInputStream(dataStream);
             contents = StreamUtil.getStringFromStream(dataStream);
         } catch (IOException e) {
-            CLog.e("Got IOException: %s", e);
+            CLog.e("IOException while parsing the output file:");
+            CLog.e(e);
             return;
         }
 
@@ -668,8 +612,8 @@ public class BluetoothStressTest implements IDeviceTest, IRemoteTest {
         ListIterator<String> lineIter = lines.listIterator();
         String line;
         Integer iterCount = null;
-        Map<String, List<Integer>> perfData = new HashMap<String, List<Integer>>();
-        Map<String, Integer> iterData = new HashMap<String, Integer>();
+        Map<String, List<Integer>> perfData = new HashMap<>();
+        Map<String, Integer> iterData = new HashMap<>();
 
         // Iterate through each line of output
         while (lineIter.hasNext()) {
@@ -711,7 +655,7 @@ public class BluetoothStressTest implements IDeviceTest, IRemoteTest {
             iterCount = 0;
         }
 
-        Map<String, String> runMetrics = new HashMap<String, String>();
+        Map<String, String> runMetrics = new HashMap<>();
         for (String metric : testInfo.mPerfMetrics) {
             if (perfData.containsKey(metric)) {
                 List<Integer> values = perfData.get(metric);

@@ -14,4 +14,11 @@
 	<natures>
 		<nature>org.eclipse.jdt.core.javanature</nature>
 	</natures>
+	<linkedResources>
+		<link>
+			<name>junit</name>
+			<type>2</type>
+			<locationURI>TRADEFED_ROOT/external/junit/src/main/java</locationURI>
+		</link>
+	</linkedResources>
 </projectDescription>

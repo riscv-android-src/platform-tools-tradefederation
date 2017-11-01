@@ -49,7 +49,7 @@ public class InvocationToJUnitResultForwarderTest extends TestCase {
     }
 
     /**
-     * Simple test for {@link InvocationToJUnitResultForwarder#testEnded(TestIdentifier)}.
+     * Simple test for {@link InvocationToJUnitResultForwarder#testEnded(TestIdentifier, Map)}.
      * <p/>
      * Verifies that data put into TestIdentifier is forwarded in correct format
      */

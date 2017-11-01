@@ -48,7 +48,7 @@ public class DeviceConcurrentUtil {
      * @param taskDesc description of task for logging purpose
      * @param task {@link Future} representing the task to join
      * @param timeout timeout for waiting on the task
-     * @return
+     * @return The result of the task with the template type.
      * @throws DeviceNotAvailableException
      * @throws TimeoutException
      */

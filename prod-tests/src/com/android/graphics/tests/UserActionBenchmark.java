@@ -22,16 +22,17 @@ import com.android.ddmlib.NullOutputReceiver;
 import com.android.tradefed.config.Option;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
+import com.android.tradefed.result.FileInputStreamSource;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.InputStreamSource;
 import com.android.tradefed.result.LogDataType;
-import com.android.tradefed.result.SnapshotInputStreamSource;
 import com.android.tradefed.testtype.IDeviceTest;
 import com.android.tradefed.testtype.IRemoteTest;
+import com.android.tradefed.util.FileUtil;
 import com.android.tradefed.util.RunUtil;
 import com.android.tradefed.util.StreamUtil;
 
-import junit.framework.Assert;
+import org.junit.Assert;
 
 import java.io.File;
 import java.io.FileInputStream;
@@ -72,7 +73,7 @@ public class UserActionBenchmark implements IDeviceTest, IRemoteTest {
     private static final Pattern AVERAGE_FPS = Pattern.compile("(.*):(\\d+.\\d+)");
 
     @Option(name = "test-case", description = "The name of test-cases  to run. May be repeated.")
-    private Collection<String> mTestCases = new ArrayList<String>();
+    private Collection<String> mTestCases = new ArrayList<>();
 
     @Option(name = "iteration", description = "Test run iteration")
     private int mIteration = 1;
@@ -135,7 +136,7 @@ public class UserActionBenchmark implements IDeviceTest, IRemoteTest {
             // Upload a verbatim copy of the output file
             Log.d(LOG_TAG, String.format("Sending %d byte file %s into the logosphere!",
                     outputFile.length(), outputFile));
-            outputSource = new SnapshotInputStreamSource(new FileInputStream(outputFile));
+            outputSource = new FileInputStreamSource(outputFile);
             listener.testLog(mDeviceTestOutputFilename, LogDataType.TEXT, outputSource);
 
             // Parse the output file to upload aggregated metrics
@@ -144,12 +145,8 @@ public class UserActionBenchmark implements IDeviceTest, IRemoteTest {
             Log.e(LOG_TAG, String.format(
                             "IOException while reading or parsing output file: %s", e));
         } finally {
-            if (outputFile != null) {
-                outputFile.delete();
-            }
-            if (outputSource != null) {
-                outputSource.cancel();
-            }
+            FileUtil.deleteFile(outputFile);
+            StreamUtil.cancel(outputSource);
         }
     }
 
@@ -160,7 +157,7 @@ public class UserActionBenchmark implements IDeviceTest, IRemoteTest {
     private void parseOutputFile(InputStream dataStream,
             ITestInvocationListener listener) {
 
-        Map<String, String> runMetrics = new HashMap<String, String>();
+        Map<String, String> runMetrics = new HashMap<>();
 
         // try to parse it
         String contents;

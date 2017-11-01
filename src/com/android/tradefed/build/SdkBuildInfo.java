@@ -30,11 +30,13 @@ import java.io.IOException;
  */
 public class SdkBuildInfo extends BuildInfo implements ISdkBuildInfo {
 
+    private static final long serialVersionUID = BuildSerializedVersion.VERSION;
     private File mTestDir = null;
     private File mSdkDir = null;
     private boolean mDeleteSdkDirParent;
-    private static final boolean isWindows = System.getProperty("os.name") != null
-          && System.getProperty("os.name").startsWith("Windows");
+    private static final boolean IS_WINDOWS =
+            System.getProperty("os.name") != null
+                    && System.getProperty("os.name").startsWith("Windows");
 
     private static final int ANDROID_TIMEOUT_MS = 15*1000;
 
@@ -48,11 +50,10 @@ public class SdkBuildInfo extends BuildInfo implements ISdkBuildInfo {
      * Creates a {@link SdkBuildInfo}
      *
      * @param buildId the build id
-     * @param testTarget the test target name
      * @param buildName the build name
      */
-    public SdkBuildInfo(String buildId, String testTarget, String buildName) {
-        super(buildId, testTarget, buildName);
+    public SdkBuildInfo(String buildId, String buildName) {
+        super(buildId, buildName);
     }
 
     /**
@@ -114,7 +115,7 @@ public class SdkBuildInfo extends BuildInfo implements ISdkBuildInfo {
 
     @Override
     public IBuildInfo clone() {
-        SdkBuildInfo cloneBuild = new SdkBuildInfo(getBuildId(), getTestTag(), getBuildTargetName());
+        SdkBuildInfo cloneBuild = new SdkBuildInfo(getBuildId(), getBuildTargetName());
         cloneBuild.addAllBuildAttributes(this);
         try {
             File cloneTestDir = null;
@@ -214,7 +215,7 @@ public class SdkBuildInfo extends BuildInfo implements ISdkBuildInfo {
      * filename based on current OS.
      */
     private String getAndroidExecutableName() {
-        if (isWindows) {
+        if (IS_WINDOWS) {
             return "android.bat";
         }
         return "android";
@@ -225,7 +226,7 @@ public class SdkBuildInfo extends BuildInfo implements ISdkBuildInfo {
      * filename based on current OS.
      */
     private String getEmulatorExecutableName() {
-        if (isWindows) {
+        if (IS_WINDOWS) {
             return "emulator.exe";
         }
         return "emulator";

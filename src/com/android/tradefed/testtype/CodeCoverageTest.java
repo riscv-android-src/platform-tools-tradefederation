@@ -46,7 +46,7 @@ public class CodeCoverageTest extends InstrumentationTest {
                     "If unspecified, will use package name.")
     private String mCoverageFile = null;
 
-    private static final String COVERAGE_REMOTE_FILE_LABEL = "coverageFilePath";
+    public static final String COVERAGE_REMOTE_FILE_LABEL = "coverageFilePath";
 
     @Override
     public void run(final ITestInvocationListener listener) throws DeviceNotAvailableException {
@@ -77,19 +77,23 @@ public class CodeCoverageTest extends InstrumentationTest {
                 coverageFile = getDevice().pullFile(mCoverageFile);
                 if (coverageFile != null) {
                     CLog.d("coverage file from device: %s", coverageFile.getAbsolutePath());
-                    FileInputStreamSource source = new FileInputStreamSource(coverageFile);
-                    listener.testLog(getPackageName() + "_runtime_coverage", LogDataType.COVERAGE,
-                            source);
-                    source.cancel();
+                    try (FileInputStreamSource source = new FileInputStreamSource(coverageFile)) {
+                        listener.testLog(
+                                getPackageName() + "_runtime_coverage",
+                                LogDataType.COVERAGE,
+                                source);
+                    }
                 }
             } else {
                 CLog.w("Missing coverage file %s. Did test crash?", mCoverageFile);
                 RunUtil.getDefault().sleep(2000);
                 // grab logcat snapshot when this happens
-                InputStreamSource s = getDevice().getLogcat(500*1024);
-                listener.testLog(getPackageName() + "_coverage_crash_" + getTestSize(),
-                        LogDataType.LOGCAT, s);
-                s.cancel();
+                try (InputStreamSource s = getDevice().getLogcat(500 * 1024)) {
+                    listener.testLog(
+                            getPackageName() + "_coverage_crash_" + getTestSize(),
+                            LogDataType.LOGCAT,
+                            s);
+                }
             }
         } finally {
             if (coverageFile != null) {
@@ -99,9 +103,7 @@ public class CodeCoverageTest extends InstrumentationTest {
     }
 
     /**
-     * Fetch the runtime coverage file path from instrumentation test metrics.
-     *
-     * @return
+     * Returns the runtime coverage file path from instrumentation test metrics.
      */
     private String fetchCoverageFilePath(CollectingTestListener listener) {
         TestRunResult runResult = listener.getCurrentRunResults();

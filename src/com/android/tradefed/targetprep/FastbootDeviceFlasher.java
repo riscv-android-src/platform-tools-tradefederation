@@ -17,14 +17,19 @@
 package com.android.tradefed.targetprep;
 
 import com.android.tradefed.build.IDeviceBuildInfo;
+import com.android.tradefed.command.remote.DeviceDescriptor;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
+import com.android.tradefed.device.TestDeviceState;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.util.CommandResult;
 import com.android.tradefed.util.CommandStatus;
 import com.android.tradefed.util.FileUtil;
+import com.android.tradefed.util.IRunUtil;
 import com.android.tradefed.util.RunUtil;
-import com.android.tradefed.util.ZipUtil;
+import com.android.tradefed.util.ZipUtil2;
+
+import org.apache.commons.compress.archivers.zip.ZipFile;
 
 import java.io.File;
 import java.io.IOException;
@@ -33,7 +38,6 @@ import java.util.Collection;
 import java.util.Random;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-import java.util.zip.ZipFile;
 
 /**
  * A class that relies on fastboot to flash an image on physical Android hardware.
@@ -43,6 +47,11 @@ public class FastbootDeviceFlasher implements IDeviceFlasher  {
 
     private static final int MAX_RETRY_ATTEMPTS = 3;
     private static final int RETRY_SLEEP = 2 * 1000; // 2s sleep between retries
+
+    private static final String SLOT_PROP = "ro.boot.slot_suffix";
+    private static final String SLOT_VAR = "current-slot";
+
+    private long mWipeTimeout = 4 * 60 * 1000;
 
     private UserDataFlashOption mUserDataFlashOption = UserDataFlashOption.FLASH;
 
@@ -119,12 +128,43 @@ public class FastbootDeviceFlasher implements IDeviceFlasher  {
         device.rebootIntoBootloader();
 
         downloadFlashingResources(device, deviceBuild);
-
+        preFlashSetup(device, deviceBuild);
+        handleUserDataFlashing(device, deviceBuild);
         checkAndFlashBootloader(device, deviceBuild);
         checkAndFlashBaseband(device, deviceBuild);
-        flashUserData(device, deviceBuild);
-        wipeCache(device);
+        flashExtraImages(device, deviceBuild);
         checkAndFlashSystem(device, systemBuildId, systemBuildFlavor, deviceBuild);
+    }
+
+    /**
+     * Perform any additional pre-flashing setup required. No-op unless overridden.
+     *
+     * @param device the {@link ITestDevice} to prepare
+     * @param deviceBuild the {@link IDeviceBuildInfo} containing the build files
+     * @throws DeviceNotAvailableException
+     * @throws TargetSetupError
+     */
+    protected void preFlashSetup(ITestDevice device, IDeviceBuildInfo deviceBuild)
+            throws DeviceNotAvailableException, TargetSetupError {}
+
+    /**
+     * Handle flashing of userdata/cache partition
+     *
+     * @param device the {@link ITestDevice} to flash
+     * @param deviceBuild the {@link IDeviceBuildInfo} that contains the files to flash
+     * @throws DeviceNotAvailableException
+     * @throws TargetSetupError
+     */
+    protected void handleUserDataFlashing(ITestDevice device, IDeviceBuildInfo deviceBuild)
+            throws DeviceNotAvailableException, TargetSetupError {
+        if (UserDataFlashOption.FORCE_WIPE.equals(mUserDataFlashOption) ||
+                UserDataFlashOption.WIPE.equals(mUserDataFlashOption)) {
+            CommandResult result = device.executeFastbootCommand(mWipeTimeout, "-w");
+            handleFastbootResult(device, result, "-w");
+        } else {
+            flashUserData(device, deviceBuild);
+            wipeCache(device);
+        }
     }
 
     /**
@@ -155,6 +195,25 @@ public class FastbootDeviceFlasher implements IDeviceFlasher  {
     }
 
     /**
+     * Checks with the bootloader if the specified partition exists or not
+     *
+     * @param device the {@link ITestDevice} to operate on
+     * @param partition the name of the partition to be checked
+     */
+    protected boolean hasPartition(ITestDevice device, String partition)
+            throws DeviceNotAvailableException {
+        String partitionType = String.format("partition-type:%s", partition);
+        CommandResult result = device.executeFastbootCommand("getvar", partitionType);
+        if (!CommandStatus.SUCCESS.equals(result.getStatus())
+                || result.getStderr().contains("FAILED")) {
+            return false;
+        }
+        Pattern regex = Pattern.compile(String.format("^%s:\\s*\\S+$", partitionType),
+                Pattern.MULTILINE);
+        return regex.matcher(result.getStderr()).find();
+    }
+
+    /**
      * Downloads extra flashing image files needed
      *
      * @param device the {@link ITestDevice} to download resources for
@@ -166,17 +225,19 @@ public class FastbootDeviceFlasher implements IDeviceFlasher  {
      */
     protected void downloadFlashingResources(ITestDevice device, IDeviceBuildInfo localBuild)
             throws TargetSetupError, DeviceNotAvailableException {
-        IFlashingResourcesParser resourceParser = createFlashingResourcesParser(localBuild);
+        IFlashingResourcesParser resourceParser = createFlashingResourcesParser(localBuild,
+                device.getDeviceDescriptor());
 
         if (resourceParser.getRequiredBoards() == null) {
             throw new TargetSetupError(String.format("Build %s is missing required board info.",
-                    localBuild.getDeviceBuildId()));
+                    localBuild.getDeviceBuildId()), device.getDeviceDescriptor());
         }
         String deviceProductType = device.getProductType();
         if (deviceProductType == null) {
             // treat this as a fatal device error
             throw new DeviceNotAvailableException(String.format(
-                    "Could not determine product type for device %s", device.getSerialNumber()));
+                    "Could not determine product type for device %s", device.getSerialNumber()),
+                    device.getSerialNumber());
         }
         verifyRequiredBoards(device, resourceParser, deviceProductType);
 
@@ -213,7 +274,7 @@ public class FastbootDeviceFlasher implements IDeviceFlasher  {
         if (!resourceParser.getRequiredBoards().contains(deviceProductType)) {
             throw new TargetSetupError(String.format("Device %s is %s. Expected %s",
                     device.getSerialNumber(), deviceProductType,
-                    resourceParser.getRequiredBoards()));
+                    resourceParser.getRequiredBoards()), device.getDeviceDescriptor());
         }
     }
 
@@ -236,12 +297,18 @@ public class FastbootDeviceFlasher implements IDeviceFlasher  {
      * Exposed for unit testing.
      *
      * @param localBuild the {@link IDeviceBuildInfo} to parse
-     * @return
+     * @param descriptor the descriptor of the device being flashed.
+     * @return a {@link IFlashingResourcesParser} created by the factory method.
      * @throws TargetSetupError
      */
-    protected IFlashingResourcesParser createFlashingResourcesParser(IDeviceBuildInfo localBuild)
-            throws TargetSetupError {
-        return new FlashingResourcesParser(localBuild.getDeviceImageFile());
+    protected IFlashingResourcesParser createFlashingResourcesParser(IDeviceBuildInfo localBuild,
+            DeviceDescriptor descriptor) throws TargetSetupError {
+        try {
+            return new FlashingResourcesParser(localBuild.getDeviceImageFile());
+        } catch (TargetSetupError e) {
+            // Rethrow with descriptor since FlashingResourceParser doesn't have it.
+            throw new TargetSetupError(e.getMessage(), e, descriptor);
+        }
     }
 
     /**
@@ -369,7 +436,10 @@ public class FastbootDeviceFlasher implements IDeviceFlasher  {
         // only wipe cache if user data is being wiped
         if (!mUserDataFlashOption.equals(UserDataFlashOption.RETAIN)) {
             CLog.i("Wiping cache on %s", device.getSerialNumber());
-            wipePartition(device, "cache");
+            String partition = "cache";
+            if (hasPartition(device, partition)) {
+                wipePartition(device, partition);
+            }
         } else {
             CLog.d("Skipping cache wipe on %s", device.getSerialNumber());
         }
@@ -412,10 +482,6 @@ public class FastbootDeviceFlasher implements IDeviceFlasher  {
 
             case WIPE_RM:
                 device.rebootUntilOnline(); // required to install tests
-                if (device.isEncryptionSupported() && device.isDeviceEncrypted()) {
-                    // TODO: move this logic into rebootUntilOnline
-                    device.unlockDevice();
-                }
                 getTestsZipInstaller().deleteData(device);
                 // Reboot into bootloader to continue the flashing process
                 device.rebootIntoBootloader();
@@ -437,11 +503,11 @@ public class FastbootDeviceFlasher implements IDeviceFlasher  {
             IDeviceBuildInfo deviceBuild) throws DeviceNotAvailableException, TargetSetupError {
         File userdataImg = null;
         try {
-            try {
-                userdataImg = ZipUtil.extractFileFromZip(
-                        new ZipFile(deviceBuild.getDeviceImageFile()), "userdata.img");
+            try (ZipFile zip = new ZipFile(deviceBuild.getDeviceImageFile())) {
+                userdataImg = ZipUtil2.extractFileFromZip(zip, "userdata.img");
             } catch (IOException ioe) {
-                throw new TargetSetupError("failed to extract userdata.img from image file", ioe);
+                throw new TargetSetupError("failed to extract userdata.img from image file", ioe,
+                        device.getDeviceDescriptor());
             }
             CLog.i("Flashing %s with userdata %s", device.getSerialNumber(), userdataImg);
             flashPartition(device, userdataImg, "userdata");
@@ -451,11 +517,23 @@ public class FastbootDeviceFlasher implements IDeviceFlasher  {
     }
 
     /**
+     * Flash any device specific partitions before flashing system and rebooting. No-op unless
+     * overridden.
+     *
+     * @param device the {@link ITestDevice} to flash
+     * @param deviceBuild the {@link IDeviceBuildInfo} containing the build files
+     * @throws DeviceNotAvailableException
+     * @throws TargetSetupError
+     */
+    protected void flashExtraImages(ITestDevice device, IDeviceBuildInfo deviceBuild)
+            throws DeviceNotAvailableException, TargetSetupError {}
+
+    /**
      * If needed, flash the system image on device.
-     * <p/>
-     * Please look at {@link #shouldFlashSystem(String, String, IDeviceBuildInfo)}
-     * <p/>
-     * Regardless of path chosen, after method execution device should be booting into userspace.
+     *
+     * <p>Please look at {@link #shouldFlashSystem(String, String, IDeviceBuildInfo)}
+     *
+     * <p>Regardless of path chosen, after method execution device should be booting into userspace.
      *
      * @param device the {@link ITestDevice} to flash
      * @param systemBuildId the current build id running on the device
@@ -465,9 +543,12 @@ public class FastbootDeviceFlasher implements IDeviceFlasher  {
      * @throws DeviceNotAvailableException if device is not available
      * @throws TargetSetupError if failed to flash bootloader
      */
-    protected boolean checkAndFlashSystem(ITestDevice device, String systemBuildId,
-            String systemBuildFlavor, IDeviceBuildInfo deviceBuild)
-                    throws DeviceNotAvailableException, TargetSetupError {
+    protected boolean checkAndFlashSystem(
+            ITestDevice device,
+            String systemBuildId,
+            String systemBuildFlavor,
+            IDeviceBuildInfo deviceBuild)
+            throws DeviceNotAvailableException, TargetSetupError {
        if (shouldFlashSystem(systemBuildId, systemBuildFlavor, deviceBuild)) {
             CLog.i("Flashing system %s", deviceBuild.getDeviceBuildId());
             flashSystem(device, deviceBuild);
@@ -549,13 +630,47 @@ public class FastbootDeviceFlasher implements IDeviceFlasher  {
                 attempts++;
                 CLog.w("Could not find version for '%s'. Output '%s', retrying.",
                             imageName, queryOutput);
-                RunUtil.getDefault().sleep(RETRY_SLEEP * (attempts - 1)
+                getRunUtil().sleep(RETRY_SLEEP * (attempts - 1)
                         + new Random(System.currentTimeMillis()).nextInt(RETRY_SLEEP));
                 continue;
             }
         }
         throw new TargetSetupError(String.format(
-                "Could not find version for '%s' after %d retry attempts", imageName, attempts));
+                "Could not find version for '%s' after %d retry attempts", imageName, attempts),
+                device.getDeviceDescriptor());
+    }
+
+    /**
+     * Helper method to retrieve the current slot (for A/B capable devices).
+     *
+     * @param device the {@link ITestDevice} to execute command on.
+     * @return "a", "b" or null (if device is not A/B capable)
+     * @throws DeviceNotAvailableException
+     * @throws TargetSetupError
+     */
+    protected String getCurrentSlot(ITestDevice device)
+            throws DeviceNotAvailableException, TargetSetupError {
+        Matcher matcher;
+        if (device.getDeviceState().equals(TestDeviceState.FASTBOOT)) {
+            String queryOutput = executeFastbootCmd(device, "getvar", SLOT_VAR);
+            Pattern outputPattern = Pattern.compile(String.format("^%s: _?([ab])", SLOT_VAR));
+            matcher = outputPattern.matcher(queryOutput);
+        } else {
+            String queryOutput = device.executeShellCommand(String.format("getprop %s", SLOT_PROP));
+            Pattern outputPattern =
+                    Pattern.compile(String.format("^\\[%s\\]: \\[_?([ab])\\]", SLOT_PROP));
+            matcher = outputPattern.matcher(queryOutput);
+        }
+        if (matcher.find()) {
+            return matcher.group(1);
+        } else {
+            return null;
+        }
+    }
+
+    /** Exposed for testing. */
+    protected IRunUtil getRunUtil() {
+        return RunUtil.getDefault();
     }
 
     /**
@@ -614,7 +729,8 @@ public class FastbootDeviceFlasher implements IDeviceFlasher  {
         if (result.getStatus() != CommandStatus.SUCCESS || result.getStderr().contains("FAILED")) {
             throw new TargetSetupError(String.format(
                     "fastboot command %s failed in device %s. stdout: %s, stderr: %s", cmdArgs[0],
-                    device.getSerialNumber(), result.getStdout(), result.getStderr()));
+                    device.getSerialNumber(), result.getStdout(), result.getStderr()),
+                    device.getDeviceDescriptor());
         }
         if (result.getStderr().length() > 0) {
             return result.getStderr();
@@ -653,5 +769,13 @@ public class FastbootDeviceFlasher implements IDeviceFlasher  {
             dataWipeSkipList.add("media");
         }
         mDataWipeSkipList = dataWipeSkipList;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void setWipeTimeout(long timeout) {
+        mWipeTimeout = timeout;
     }
 }

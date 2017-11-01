@@ -13,6 +13,6 @@
      See the License for the specific language governing permissions and
      limitations under the License.
 -->
-<configuration description="Runs a native stress test on an existing device">
+<configuration description="Runs a native benchmark test on an existing device">
     <test class="com.android.tradefed.testtype.NativeBenchmarkTest" />
 </configuration>

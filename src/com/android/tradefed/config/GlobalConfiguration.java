@@ -24,19 +24,29 @@ import com.android.tradefed.device.IDeviceManager;
 import com.android.tradefed.device.IDeviceMonitor;
 import com.android.tradefed.device.IDeviceSelection;
 import com.android.tradefed.device.IMultiDeviceRecovery;
+import com.android.tradefed.host.HostOptions;
+import com.android.tradefed.host.IHostOptions;
+import com.android.tradefed.invoker.shard.IShardHelper;
+import com.android.tradefed.invoker.shard.StrictShardHelper;
 import com.android.tradefed.log.ITerribleFailureHandler;
 import com.android.tradefed.util.ArrayUtil;
 import com.android.tradefed.util.MultiMap;
+import com.android.tradefed.util.hostmetric.IHostMonitor;
+import com.android.tradefed.util.keystore.IKeyStoreFactory;
+import com.android.tradefed.util.keystore.StubKeyStoreFactory;
+
+import org.kxml2.io.KXmlSerializer;
 
 import java.io.File;
+import java.io.IOException;
 import java.io.PrintStream;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+
 
 /**
  * An {@link IGlobalConfiguration} implementation that stores the loaded config objects in a map
@@ -44,12 +54,15 @@ import java.util.Map;
 public class GlobalConfiguration implements IGlobalConfiguration {
     // type names for built in configuration objects
     public static final String DEVICE_MONITOR_TYPE_NAME = "device_monitor";
+    public static final String HOST_MONITOR_TYPE_NAME = "host_monitor";
     public static final String DEVICE_MANAGER_TYPE_NAME = "device_manager";
     public static final String WTF_HANDLER_TYPE_NAME = "wtf_handler";
     public static final String HOST_OPTIONS_TYPE_NAME = "host_options";
     public static final String DEVICE_REQUIREMENTS_TYPE_NAME = "device_requirements";
     public static final String SCHEDULER_TYPE_NAME = "command_scheduler";
     public static final String MULTI_DEVICE_RECOVERY_TYPE_NAME = "multi_device_recovery";
+    public static final String KEY_STORE_TYPE_NAME = "key_store";
+    public static final String SHARDING_STRATEGY_TYPE_NAME = "sharding_strategy";
 
     private static Map<String, ObjTypeInfo> sObjTypeMap = null;
     private static IGlobalConfiguration sInstance = null;
@@ -57,6 +70,13 @@ public class GlobalConfiguration implements IGlobalConfiguration {
 
     private static final String GLOBAL_CONFIG_VARIABLE = "TF_GLOBAL_CONFIG";
     private static final String GLOBAL_CONFIG_FILENAME = "tf_global_config.xml";
+
+    // Empty embedded configuration available by default
+    private static final String DEFAULT_EMPTY_CONFIG_NAME = "empty";
+
+    // Configurations to be passed to subprocess
+    private static final String[] CONFIGS_FOR_SUBPROCESS_WHITE_LIST =
+            new String[] {KEY_STORE_TYPE_NAME};
 
     /** Mapping of config object type name to config objects. */
     private Map<String, List<Object>> mConfigMap;
@@ -68,8 +88,8 @@ public class GlobalConfiguration implements IGlobalConfiguration {
      * Returns a reference to the singleton {@link GlobalConfiguration} instance for this TF
      * instance.
      *
-     * @throws IllegalStateException if {@see createGlobalConfiguration(String[])} has not already
-     *         been called.
+     * @throws IllegalStateException if {@link #createGlobalConfiguration(String[])} has not
+     *         already been called.
      */
     public static IGlobalConfiguration getInstance() {
         if (sInstance == null) {
@@ -82,8 +102,8 @@ public class GlobalConfiguration implements IGlobalConfiguration {
      * Returns a reference to the singleton {@link DeviceManager} instance for this TF
      * instance.
      *
-     * @throws IllegalStateException if {@see createGlobalConfiguration(String[])} has not already
-     *         been called.
+     * @throws IllegalStateException if {@link #createGlobalConfiguration(String[])} has not
+     *         already been called.
      */
     public static IDeviceManager getDeviceManagerInstance() {
         if (sInstance == null) {
@@ -92,9 +112,16 @@ public class GlobalConfiguration implements IGlobalConfiguration {
         return sInstance.getDeviceManager();
     }
 
+    public static List<IHostMonitor> getHostMonitorInstances() {
+        if (sInstance == null) {
+            throw new IllegalStateException("GlobalConfiguration has not yet been initialized!");
+        }
+        return sInstance.getHostMonitors();
+    }
+
     /**
      * Sets up the {@link GlobalConfiguration} singleton for this TF instance.  Must be called
-     * once and only once, before anything attempts to call {@see getInstance()}
+     * once and only once, before anything attempts to call {@link #getInstance()}
      *
      * @throws IllegalStateException if called more than once
      */
@@ -108,17 +135,15 @@ public class GlobalConfiguration implements IGlobalConfiguration {
             List<String> nonGlobalArgs = new ArrayList<String>(args.length);
             IConfigurationFactory configFactory = ConfigurationFactory.getInstance();
             String globalConfigPath = getGlobalConfigPath();
-
-            if (globalConfigPath != null) {
-                // Found a global config file; attempt to parse and use it
-                sInstance = configFactory.createGlobalConfigurationFromArgs(
-                        ArrayUtil.buildArray(new String[] {globalConfigPath}, args), nonGlobalArgs);
-                System.err.format("Success!  Using global config \"%s\"\n", globalConfigPath);
-            } else {
-                // Use default global config
-                sInstance = new GlobalConfiguration();
-                nonGlobalArgs = Arrays.asList(args);
+            sInstance = configFactory.createGlobalConfigurationFromArgs(
+                    ArrayUtil.buildArray(new String[] {globalConfigPath}, args), nonGlobalArgs);
+            if (!DEFAULT_EMPTY_CONFIG_NAME.equals(globalConfigPath)) {
+                // Only print when using different from default
+                System.out.format("Success!  Using global config \"%s\"\n", globalConfigPath);
             }
+
+            // Validate that madatory options have been set
+            sInstance.validateOptions();
             return nonGlobalArgs;
         }
     }
@@ -135,13 +160,14 @@ public class GlobalConfiguration implements IGlobalConfiguration {
      *       lives</li>
      * </ol>
      */
-    private static String getGlobalConfigPath() throws ConfigurationException {
+    private static String getGlobalConfigPath() {
         String path = System.getenv(GLOBAL_CONFIG_VARIABLE);
         if (path != null) {
             // don't actually check for accessibility here, since the variable might be specifying
             // a java resource rather than a filename.  Even so, this can help the user figure out
             // which global config (if any) was picked up by TF.
-            System.err.format("Attempting to use global config \"%s\" from variable $%s.\n",
+            System.out.format(
+                    "Attempting to use global config \"%s\" from variable $%s.\n",
                     path, GLOBAL_CONFIG_VARIABLE);
             return path;
         }
@@ -149,13 +175,14 @@ public class GlobalConfiguration implements IGlobalConfiguration {
         File file = new File(GLOBAL_CONFIG_FILENAME);
         if (file.exists()) {
             path = file.getPath();
-            System.err.format("Attempting to use autodetected global config \"%s\".\n", path);
+            System.out.format("Attempting to use autodetected global config \"%s\".\n", path);
             return path;
         }
 
         // FIXME: search in tradefed.sh launch dir (or classpath?)
 
-        return null;
+        // Use default empty known global config
+        return DEFAULT_EMPTY_CONFIG_NAME;
     }
 
     /**
@@ -185,7 +212,9 @@ public class GlobalConfiguration implements IGlobalConfiguration {
     private static synchronized Map<String, ObjTypeInfo> getObjTypeMap() {
         if (sObjTypeMap == null) {
             sObjTypeMap = new HashMap<String, ObjTypeInfo>();
+            sObjTypeMap.put(HOST_OPTIONS_TYPE_NAME, new ObjTypeInfo(IHostOptions.class, false));
             sObjTypeMap.put(DEVICE_MONITOR_TYPE_NAME, new ObjTypeInfo(IDeviceMonitor.class, true));
+            sObjTypeMap.put(HOST_MONITOR_TYPE_NAME, new ObjTypeInfo(IHostMonitor.class, true));
             sObjTypeMap.put(DEVICE_MANAGER_TYPE_NAME, new ObjTypeInfo(IDeviceManager.class, false));
             sObjTypeMap.put(DEVICE_REQUIREMENTS_TYPE_NAME, new ObjTypeInfo(IDeviceSelection.class,
                     false));
@@ -195,16 +224,13 @@ public class GlobalConfiguration implements IGlobalConfiguration {
                     new ObjTypeInfo(ICommandScheduler.class, false));
             sObjTypeMap.put(MULTI_DEVICE_RECOVERY_TYPE_NAME,
                     new ObjTypeInfo(IMultiDeviceRecovery.class, true));
+            sObjTypeMap.put(KEY_STORE_TYPE_NAME,
+                    new ObjTypeInfo(IKeyStoreFactory.class, false));
+            sObjTypeMap.put(
+                    SHARDING_STRATEGY_TYPE_NAME, new ObjTypeInfo(IShardHelper.class, false));
 
         }
         return sObjTypeMap;
-    }
-
-    /**
-     * Creates a {@link GlobalConfiguration} with default config objects and stock name/description
-     */
-    private GlobalConfiguration() {
-        this("default", "default global configuration");
     }
 
     /**
@@ -215,9 +241,12 @@ public class GlobalConfiguration implements IGlobalConfiguration {
         mDescription = description;
         mConfigMap = new LinkedHashMap<String, List<Object>>();
         mOptionMap = new MultiMap<String, String>();
+        setHostOptions(new HostOptions());
         setDeviceRequirements(new DeviceSelectionOptions());
         setDeviceManager(new DeviceManager());
         setCommandScheduler(new CommandScheduler());
+        setKeyStoreFactory(new StubKeyStoreFactory());
+        setShardingStrategy(new StrictShardHelper());
     }
 
     /**
@@ -238,9 +267,26 @@ public class GlobalConfiguration implements IGlobalConfiguration {
      * {@inheritDoc}
      */
     @Override
+    public IHostOptions getHostOptions() {
+        return (IHostOptions) getConfigurationObject(HOST_OPTIONS_TYPE_NAME);
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
     @SuppressWarnings("unchecked")
     public List<IDeviceMonitor> getDeviceMonitors() {
         return (List<IDeviceMonitor>) getConfigurationObjectList(DEVICE_MONITOR_TYPE_NAME);
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    @SuppressWarnings("unchecked")
+    public List<IHostMonitor> getHostMonitors() {
+        return (List<IHostMonitor>) getConfigurationObjectList(HOST_MONITOR_TYPE_NAME);
     }
 
     /**
@@ -254,6 +300,18 @@ public class GlobalConfiguration implements IGlobalConfiguration {
     /**
      * {@inheritDoc}
      */
+    @Override
+    public IKeyStoreFactory getKeyStoreFactory() {
+        return (IKeyStoreFactory) getConfigurationObject(KEY_STORE_TYPE_NAME);
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public IShardHelper getShardingStrategy() {
+        return (IShardHelper) getConfigurationObject(SHARDING_STRATEGY_TYPE_NAME);
+    }
+
+    /** {@inheritDoc} */
     @Override
     public IDeviceManager getDeviceManager() {
         return (IDeviceManager)getConfigurationObject(DEVICE_MANAGER_TYPE_NAME);
@@ -286,10 +344,9 @@ public class GlobalConfiguration implements IGlobalConfiguration {
     }
 
     /**
-     * {@inheritDoc}
+     * Internal helper to get the list of config object
      */
-//    @Override
-    public List<?> getConfigurationObjectList(String typeName) {
+    private List<?> getConfigurationObjectList(String typeName) {
         return mConfigMap.get(typeName);
     }
 
@@ -304,9 +361,11 @@ public class GlobalConfiguration implements IGlobalConfiguration {
         }
         ObjTypeInfo typeInfo = getObjTypeMap().get(typeName);
         if (typeInfo != null && typeInfo.mIsListSupported) {
-            throw new IllegalStateException(String.format("Wrong method call. " +
-                    "Used getConfigurationObject() for a config object that is stored as a list",
-                        typeName));
+            throw new IllegalStateException(
+                    String.format(
+                            "Wrong method call for type %s. Used getConfigurationObject() for a "
+                                    + "config object that is stored as a list",
+                            typeName));
         }
         if (configObjects.size() != 1) {
             throw new IllegalStateException(String.format(
@@ -364,8 +423,22 @@ public class GlobalConfiguration implements IGlobalConfiguration {
      * {@inheritDoc}
      */
     @Override
+    public void setHostOptions(IHostOptions hostOptions) {
+        setConfigurationObjectNoThrow(HOST_OPTIONS_TYPE_NAME, hostOptions);
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
     public void setDeviceMonitor(IDeviceMonitor monitor) {
         setConfigurationObjectNoThrow(DEVICE_MONITOR_TYPE_NAME, monitor);
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public void setHostMonitors(List<IHostMonitor> hostMonitors) {
+        setConfigurationObjectListNoThrow(HOST_MONITOR_TYPE_NAME, hostMonitors);
     }
 
     /**
@@ -379,6 +452,18 @@ public class GlobalConfiguration implements IGlobalConfiguration {
     /**
      * {@inheritDoc}
      */
+    @Override
+    public void setKeyStoreFactory(IKeyStoreFactory factory) {
+        setConfigurationObjectNoThrow(KEY_STORE_TYPE_NAME, factory);
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public void setShardingStrategy(IShardHelper sharding) {
+        setConfigurationObjectNoThrow(SHARDING_STRATEGY_TYPE_NAME, sharding);
+    }
+
+    /** {@inheritDoc} */
     @Override
     public void setDeviceManager(IDeviceManager manager) {
         setConfigurationObjectNoThrow(DEVICE_MANAGER_TYPE_NAME, manager);
@@ -425,6 +510,22 @@ public class GlobalConfiguration implements IGlobalConfiguration {
         mConfigMap.remove(typeName);
         for (Object configObject : configList) {
             addObject(typeName, configObject);
+        }
+    }
+
+    /**
+     * A wrapper around {@link #setConfigurationObjectList(String, List)} that will not throw {@link
+     * ConfigurationException}.
+     *
+     * <p>Intended to be used in cases where its guaranteed that <var>configObject</var> is the
+     * correct type
+     */
+    private void setConfigurationObjectListNoThrow(String typeName, List<?> configList) {
+        try {
+            setConfigurationObjectList(typeName, configList);
+        } catch (ConfigurationException e) {
+            // should never happen
+            throw new IllegalArgumentException(e);
         }
     }
 
@@ -489,9 +590,8 @@ public class GlobalConfiguration implements IGlobalConfiguration {
      * Outputs a command line usage help text for this configuration to given printStream.
      *
      * @param out the {@link PrintStream} to use.
-     * @throws {@link ConfigurationException}
+     * @throws ConfigurationException
      */
-//    @Override
     public void printCommandUsage(boolean importantOnly, PrintStream out)
             throws ConfigurationException {
         out.println(String.format("'%s' configuration: %s", getName(), getDescription()));
@@ -540,8 +640,24 @@ public class GlobalConfiguration implements IGlobalConfiguration {
     /**
      * {@inheritDoc}
      */
-//    @Override
+    @Override
     public void validateOptions() throws ConfigurationException {
         new ArgsOptionParser(getAllConfigurationObjects()).validateMandatoryOptions();
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public void cloneConfigWithFilter(File outputXml, String[] whitelistConfigs)
+            throws IOException {
+        KXmlSerializer serializer = ConfigurationUtil.createSerializer(outputXml);
+        serializer.startTag(null, ConfigurationUtil.CONFIGURATION_NAME);
+        if (whitelistConfigs == null) {
+            whitelistConfigs = CONFIGS_FOR_SUBPROCESS_WHITE_LIST;
+        }
+        for (String config : whitelistConfigs) {
+            ConfigurationUtil.dumpClassToXml(serializer, config, getConfigurationObject(config));
+        }
+        serializer.endTag(null, ConfigurationUtil.CONFIGURATION_NAME);
+        serializer.endDocument();
     }
 }

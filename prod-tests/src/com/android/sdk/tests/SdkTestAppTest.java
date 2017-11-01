@@ -30,8 +30,7 @@ import com.android.tradefed.util.IRunUtil;
 import com.android.tradefed.util.RunUtil;
 import com.android.tradefed.util.xml.AndroidManifestWriter;
 
-import junit.framework.Assert;
-import junit.framework.AssertionFailedError;
+import org.junit.Assert;
 
 import java.io.BufferedInputStream;
 import java.io.ByteArrayOutputStream;
@@ -169,7 +168,6 @@ public class SdkTestAppTest implements IRemoteTest, IBuildReceiver {
      * @param listener the {@link ITestInvocationListener}
      * @param testAppDir the {@link File} pointing to test app's root directory
      */
-    @SuppressWarnings("unchecked")
     private void buildTestApp(String target, ITestInvocationListener listener, File testAppDir,
             boolean isLibrary) {
         CLog.i("Building %s test-app for target %s", testAppDir.getName(), target);
@@ -179,14 +177,12 @@ public class SdkTestAppTest implements IRemoteTest, IBuildReceiver {
         listener.testStarted(testId);
         try {
             runTestAppTest(target, testAppDir, isLibrary);
-        } catch (AssertionError e) {
-            CLog.w("%s failed. %s", testId, e);
-            listener.testFailed(testId, getThrowableTraceAsString(e));
         } catch (Throwable t) {
-            CLog.w("%s failed. %s", testId, t);
+            CLog.w("%s failed.", testId);
+            CLog.e(t);
             listener.testFailed(testId, getThrowableTraceAsString(t));
         }
-        listener.testEnded(testId, Collections.EMPTY_MAP);
+        listener.testEnded(testId, Collections.emptyMap());
     }
 
     private void runTestAppTest(String target, File testAppDir, boolean isLibrary) {
@@ -234,7 +230,7 @@ public class SdkTestAppTest implements IRemoteTest, IBuildReceiver {
      * @param target the sdk target
      * @param testAppDir the test app directory
      * @param isLibrary <code>true</code> if app is a library project
-     * @throws AssertionFailedError if update project failed
+     * @throws AssertionError if update project failed
      * @return a {@link File} representing the app's build.xml
      */
     private File updateProject(String target, File testAppDir, boolean isLibrary) {

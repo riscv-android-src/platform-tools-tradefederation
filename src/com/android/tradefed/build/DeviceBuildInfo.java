@@ -24,6 +24,7 @@ import java.io.IOException;
  */
 public class DeviceBuildInfo extends BuildInfo implements IDeviceBuildInfo {
 
+    private static final long serialVersionUID = BuildSerializedVersion.VERSION;
     private static final String DEVICE_IMAGE_NAME = "device";
     private static final String USERDATA_IMAGE_NAME = "userdata";
     private static final String TESTDIR_IMAGE_NAME = "testsdir";
@@ -37,6 +38,15 @@ public class DeviceBuildInfo extends BuildInfo implements IDeviceBuildInfo {
         super();
     }
 
+    public DeviceBuildInfo(String buildId, String buildTargetName) {
+        super(buildId, buildTargetName);
+    }
+
+    /**
+     * @deprecated use the constructor without test-tag instead. test-tag is no longer a mandatory
+     * option for build info.
+     */
+    @Deprecated
     public DeviceBuildInfo(String buildId, String testTag, String buildTargetName) {
         super(buildId, testTag, buildTargetName);
     }
@@ -57,6 +67,14 @@ public class DeviceBuildInfo extends BuildInfo implements IDeviceBuildInfo {
     public String getDeviceBuildId() {
         String buildId = getDeviceImageVersion();
         return buildId == null ? UNKNOWN_BUILD_ID : buildId;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public String getDeviceBuildFlavor() {
+        return getBuildFlavor();
     }
 
     /**
@@ -256,8 +274,7 @@ public class DeviceBuildInfo extends BuildInfo implements IDeviceBuildInfo {
      */
     @Override
     public IBuildInfo clone() {
-        DeviceBuildInfo copy = new DeviceBuildInfo(getBuildId(), getTestTag(),
-                getBuildTargetName());
+        DeviceBuildInfo copy = new DeviceBuildInfo(getBuildId(), getBuildTargetName());
         copy.addAllBuildAttributes(this);
         try {
             copy.addAllFiles(this);

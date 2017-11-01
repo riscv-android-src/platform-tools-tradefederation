@@ -176,7 +176,7 @@ public class OptionCopierTest extends TestCase {
     /**
      * Test {@link OptionCopier} when field's to be copied have different types
      */
-    public void testCopyOptions_wrongType() throws ConfigurationException {
+    public void testCopyOptions_wrongType() {
         OptionSource source = new OptionSource();
         OptionWrongTypeDest dest = new OptionWrongTypeDest();
         try {

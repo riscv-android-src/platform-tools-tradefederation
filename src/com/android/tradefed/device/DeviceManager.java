@@ -20,6 +20,7 @@ import com.android.ddmlib.AndroidDebugBridge.IDeviceChangeListener;
 import com.android.ddmlib.DdmPreferences;
 import com.android.ddmlib.EmulatorConsole;
 import com.android.ddmlib.IDevice;
+import com.android.ddmlib.IDevice.DeviceState;
 import com.android.ddmlib.Log.LogLevel;
 import com.android.tradefed.command.remote.DeviceDescriptor;
 import com.android.tradefed.config.GlobalConfiguration;
@@ -28,6 +29,8 @@ import com.android.tradefed.config.Option;
 import com.android.tradefed.config.OptionClass;
 import com.android.tradefed.device.IDeviceMonitor.DeviceLister;
 import com.android.tradefed.device.IManagedTestDevice.DeviceEventResponse;
+import com.android.tradefed.log.ILogRegistry.EventType;
+import com.android.tradefed.log.LogRegistry;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.util.ArrayUtil;
 import com.android.tradefed.util.CommandResult;
@@ -37,6 +40,8 @@ import com.android.tradefed.util.RunUtil;
 import com.android.tradefed.util.SizeLimitedOutputStream;
 import com.android.tradefed.util.StreamUtil;
 import com.android.tradefed.util.TableFormatter;
+import com.android.tradefed.util.hostmetric.IHostMonitor;
+
 import com.google.common.annotations.VisibleForTesting;
 
 import java.io.IOException;
@@ -47,12 +52,20 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
+import java.util.regex.Pattern;
 
 @OptionClass(alias = "dmgr", global_namespace = false)
 public class DeviceManager implements IDeviceManager {
+
+    /** Display string for unknown properties */
+    public static final String UNKNOWN_DISPLAY_STRING = "unknown";
 
     /** max wait time in ms for fastboot devices command to complete */
     private static final long FASTBOOT_CMD_TIMEOUT = 1 * 60 * 1000;
@@ -76,7 +89,18 @@ public class DeviceManager implements IDeviceManager {
     private static final String EMULATOR_SERIAL_PREFIX = "emulator";
     private static final String TCP_DEVICE_SERIAL_PREFIX = "tcp-device";
 
-    private DeviceMonitorMultiplexer mDvcMon = new DeviceMonitorMultiplexer();
+    /**
+     * Pattern for a device listed by 'adb devices':
+     *
+     * <p>List of devices attached
+     *
+     * <p>serial1 device
+     *
+     * <p>serial2 device
+     */
+    private static final String DEVICE_LIST_PATTERN = "(.*)(\n)(%s)(\\s+)(device)(.*?)";
+
+    protected DeviceMonitorMultiplexer mDvcMon = new DeviceMonitorMultiplexer();
 
     private boolean mIsInitialized = false;
 
@@ -84,7 +108,7 @@ public class DeviceManager implements IDeviceManager {
 
     private IAndroidDebugBridge mAdbBridge;
     private ManagedDeviceListener mManagedDeviceListener;
-    private boolean mFastbootEnabled;
+    protected boolean mFastbootEnabled;
     private Set<IFastbootListener> mFastbootListeners;
     private FastbootMonitor mFastbootMonitor;
     private boolean mIsTerminated = false;
@@ -95,7 +119,7 @@ public class DeviceManager implements IDeviceManager {
     private int mNumEmulatorSupported = 1;
     @Option(name = "max-null-devices",
             description = "the maximum number of no device runs that can be allocated at one time.")
-    private int mNumNullDevicesSupported = 1;
+    private int mNumNullDevicesSupported = 5;
     @Option(name = "max-tcp-devices",
             description = "the maximum number of tcp devices that can be allocated at one time")
     private int mNumTcpDevicesSupported = 1;
@@ -103,10 +127,27 @@ public class DeviceManager implements IDeviceManager {
     private boolean mSynchronousMode = false;
 
     @Option(name = "device-recovery-interval",
-            description = "the interval in ms between attempts to recover unavailable devices.")
-    private long mDeviceRecoveryInterval = 10 * 60 * 1000;
+            description = "the interval in ms between attempts to recover unavailable devices.",
+            isTimeVal = true)
+    private long mDeviceRecoveryInterval = 30 * 60 * 1000;
+
+    @Option(name = "adb-path", description = "path of the adb binary to use, "
+            + "default use the one in $PATH.")
+    private String mAdbPath = "adb";
+
+    @Option(name = "fastboot-path", description = "path of the fastboot binary to use, "
+            + "default use the one in $PATH.")
+    private String mFastbootPath = "fastboot";
 
     private DeviceRecoverer mDeviceRecoverer;
+
+    private List<IHostMonitor> mGlobalHostMonitors = null;
+
+    /** Counter to wait for the first physical connection before proceeding **/
+    private CountDownLatch mFirstDeviceAdded = new CountDownLatch(1);
+
+    /** Flag to remember if adb bridge has been disconnected and needs to be reset * */
+    private boolean mAdbBridgeNeedRestart = false;
 
     /**
      * The DeviceManager should be retrieved from the {@link GlobalConfiguration}
@@ -134,7 +175,7 @@ public class DeviceManager implements IDeviceManager {
      * Initialize the device manager. This must be called once and only once before any other
      * methods are called.
      */
-    synchronized void init(IDeviceSelection globalDeviceFilter,
+    public synchronized void init(IDeviceSelection globalDeviceFilter,
             List<IDeviceMonitor> globalDeviceMonitors, IManagedTestDeviceFactory deviceFactory) {
         if (mIsInitialized) {
             throw new IllegalStateException("already initialized");
@@ -148,6 +189,13 @@ public class DeviceManager implements IDeviceManager {
             globalDeviceMonitors = getGlobalConfig().getDeviceMonitors();
         }
 
+        mGlobalHostMonitors = getGlobalConfig().getHostMonitors();
+        if (mGlobalHostMonitors != null) {
+            for (IHostMonitor hm : mGlobalHostMonitors) {
+                hm.start();
+            }
+        }
+
         mIsInitialized = true;
         mGlobalDeviceFilter = globalDeviceFilter;
         if (globalDeviceMonitors != null) {
@@ -155,7 +203,7 @@ public class DeviceManager implements IDeviceManager {
         }
         mManagedDeviceList = new ManagedDeviceList(deviceFactory);
 
-        final FastbootHelper fastboot = new FastbootHelper(getRunUtil());
+        final FastbootHelper fastboot = new FastbootHelper(getRunUtil(), mFastbootPath);
         if (fastboot.isFastbootAvailable()) {
             mFastbootListeners = Collections.synchronizedSet(new HashSet<IFastbootListener>());
             mFastbootMonitor = new FastbootMonitor();
@@ -163,8 +211,8 @@ public class DeviceManager implements IDeviceManager {
             // don't set fastboot enabled bit until mFastbootListeners has been initialized
             mFastbootEnabled = true;
             deviceFactory.setFastbootEnabled(mFastbootEnabled);
-            // TODO: consider only adding fastboot devices if explicit option is set, because
-            // device property selection options won't work properly with a device in fastboot
+            // Populate the fastboot devices
+            // TODO: remove when refactoring fastboot handling
             addFastbootDevices();
         } else {
             CLog.w("Fastboot is not available.");
@@ -175,6 +223,11 @@ public class DeviceManager implements IDeviceManager {
         }
 
         // don't start adding devices until fastboot support has been established
+        startAdbBridgeAndDependentServices();
+    }
+
+    /** Initialize adb connection and services depending on adb connection. */
+    private synchronized void startAdbBridgeAndDependentServices() {
         // TODO: Temporarily increase default timeout as workaround for syncFiles timeouts
         DdmPreferences.setTimeOut(30 * 1000);
         mAdbBridge = createAdbBridge();
@@ -192,16 +245,39 @@ public class DeviceManager implements IDeviceManager {
             mDvcMon.run();
         }
 
-        // assume "adb" is in PATH
-        // TODO: make this configurable
-        mAdbBridge.init(false /* client support */, "adb");
+        mAdbBridge.init(false /* client support */, mAdbPath);
         addEmulators();
         addNullDevices();
         addTcpDevices();
 
         List<IMultiDeviceRecovery> recoverers = getGlobalConfig().getMultiDeviceRecoveryHandlers();
-        mDeviceRecoverer = new DeviceRecoverer(recoverers);
-        startDeviceRecoverer();
+        if (recoverers != null) {
+            for (IMultiDeviceRecovery recoverer : recoverers) {
+                recoverer.setFastbootPath(mFastbootPath);
+            }
+            mDeviceRecoverer = new DeviceRecoverer(recoverers);
+            startDeviceRecoverer();
+        }
+    }
+
+
+    /**
+     * Return if adb bridge has been stopped and needs restart.
+     *
+     * <p>Exposed for unit testing.
+     */
+    @VisibleForTesting
+    boolean shouldAdbBridgeBeRestarted() {
+        return mAdbBridgeNeedRestart;
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public synchronized void restartAdbBridge() {
+        if (mAdbBridgeNeedRestart) {
+            mAdbBridgeNeedRestart = false;
+            startAdbBridgeAndDependentServices();
+        }
     }
 
     /**
@@ -269,11 +345,11 @@ public class DeviceManager implements IDeviceManager {
     /**
      * Asynchronously checks if device is available, and adds to queue
      *
-     * @param device
+     * @param testDevice
      */
     private void checkAndAddAvailableDevice(final IManagedTestDevice testDevice) {
         if (mGlobalDeviceFilter != null && !mGlobalDeviceFilter.matches(testDevice.getIDevice())) {
-            CLog.v("device %s doesn't match global filter, ignoring",
+            CLog.logAndDisplay(LogLevel.INFO, "device %s doesn't match global filter, ignoring",
                     testDevice.getSerialNumber());
             mManagedDeviceList.handleDeviceEvent(testDevice, DeviceEvent.AVAILABLE_CHECK_IGNORED);
             return;
@@ -283,7 +359,8 @@ public class DeviceManager implements IDeviceManager {
         Runnable checkRunnable = new Runnable() {
             @Override
             public void run() {
-                CLog.d("checking new device %s responsiveness", testDevice.getSerialNumber());
+                CLog.d("checking new '%s' '%s' responsiveness", testDevice.getClass().getName(),
+                        testDevice.getSerialNumber());
                 if (testDevice.getMonitor().waitForDeviceShell(CHECK_WAIT_DEVICE_AVAIL_MS)) {
                     DeviceEventResponse r = mManagedDeviceList.handleDeviceEvent(testDevice,
                             DeviceEvent.AVAILABLE_CHECK_PASSED);
@@ -309,6 +386,7 @@ public class DeviceManager implements IDeviceManager {
         } else {
             Thread checkThread = new Thread(checkRunnable, threadName);
             // Device checking threads shouldn't hold the JVM open
+            checkThread.setName("DeviceManager-checkRunnable");
             checkThread.setDaemon(true);
             checkThread.start();
         }
@@ -345,7 +423,7 @@ public class DeviceManager implements IDeviceManager {
         }
     }
 
-    private void addAvailableDevice(IDevice stubDevice) {
+    public void addAvailableDevice(IDevice stubDevice) {
         IManagedTestDevice d = mManagedDeviceList.findOrCreate(stubDevice);
         if (d != null) {
             mManagedDeviceList.handleDeviceEvent(d, DeviceEvent.FORCE_AVAILABLE);
@@ -355,20 +433,18 @@ public class DeviceManager implements IDeviceManager {
     }
 
     private void addFastbootDevices() {
-        final FastbootHelper fastboot = new FastbootHelper(getRunUtil());
+        final FastbootHelper fastboot = new FastbootHelper(getRunUtil(), mFastbootPath);
         Set<String> serials = fastboot.getDevices();
-        if (serials != null) {
-            for (String serial : serials) {
-                FastbootDevice d = new FastbootDevice(serial);
-                if (mGlobalDeviceFilter != null && mGlobalDeviceFilter.matches(d)) {
-                    addAvailableDevice(d);
-                }
+        for (String serial : serials) {
+            FastbootDevice d = new FastbootDevice(serial);
+            if (mGlobalDeviceFilter != null && mGlobalDeviceFilter.matches(d)) {
+                addAvailableDevice(d);
             }
         }
     }
 
-    static class FastbootDevice extends StubDevice {
-        FastbootDevice(String serial) {
+    public static class FastbootDevice extends StubDevice {
+        public FastbootDevice(String serial) {
             super(serial, false);
         }
     }
@@ -419,7 +495,7 @@ public class DeviceManager implements IDeviceManager {
      * Creates the {@link IAndroidDebugBridge} to use.
      * <p/>
      * Exposed so tests can mock this.
-     * @returns the {@link IAndroidDebugBridge}
+     * @return the {@link IAndroidDebugBridge}
      */
     synchronized IAndroidDebugBridge createAdbBridge() {
         return new AndroidDebugBridgeWrapper();
@@ -446,12 +522,16 @@ public class DeviceManager implements IDeviceManager {
                 // when deviceDisconnected event is received
                 ideviceToReturn = new StubDevice(ideviceToReturn.getSerialNumber(), true);
                 deviceState = FreeDeviceState.AVAILABLE;
+                managedDevice.setIDevice(ideviceToReturn);
             } catch (DeviceNotAvailableException e) {
                 CLog.e(e);
                 deviceState = FreeDeviceState.UNAVAILABLE;
             }
         }
-
+        if (ideviceToReturn instanceof TcpDevice) {
+            // Make sure the device goes back to the original state.
+            managedDevice.setDeviceState(TestDeviceState.NOT_AVAILABLE);
+        }
         DeviceEventResponse r = mManagedDeviceList.handleDeviceEvent(managedDevice,
                 getEventFromFree(managedDevice, deviceState));
         if (r != null && !r.stateChanged) {
@@ -461,18 +541,30 @@ public class DeviceManager implements IDeviceManager {
     }
 
     /**
-     * Helper method to convert from a {@link FreeDeviceState} to a {@link DeviceEvent}
+     * Helper method to convert from a {@link com.android.tradefed.device.FreeDeviceState} to a
+     * {@link com.android.tradefed.device.DeviceEvent}
+     *
      * @param managedDevice
      */
-    static DeviceEvent getEventFromFree(IManagedTestDevice managedDevice, FreeDeviceState deviceState) {
+    private DeviceEvent getEventFromFree(
+            IManagedTestDevice managedDevice, FreeDeviceState deviceState) {
         switch (deviceState) {
             case UNRESPONSIVE:
                 return DeviceEvent.FREE_UNRESPONSIVE;
             case AVAILABLE:
                 return DeviceEvent.FREE_AVAILABLE;
             case UNAVAILABLE:
-                if (managedDevice.getDeviceState() == TestDeviceState.NOT_AVAILABLE) {
-                    return DeviceEvent.FREE_UNKNOWN;
+                // We double check if device is still showing in adb or not to confirm the
+                // connection is gone.
+                if (TestDeviceState.NOT_AVAILABLE.equals(managedDevice.getDeviceState())) {
+                    String devices = executeGlobalAdbCommand("devices");
+                    Pattern p =
+                            Pattern.compile(
+                                    String.format(
+                                            DEVICE_LIST_PATTERN, managedDevice.getSerialNumber()));
+                    if (devices == null || !p.matcher(devices).find()) {
+                        return DeviceEvent.FREE_UNKNOWN;
+                    }
                 }
                 return DeviceEvent.FREE_UNAVAILABLE;
             case IGNORE:
@@ -506,19 +598,21 @@ public class DeviceManager implements IDeviceManager {
             Process p = runUtil.runCmdInBackground(fullArgs, emulatorOutput);
             // sleep a small amount to wait for process to start successfully
             getRunUtil().sleep(500);
-            assertEmulatorProcessAlive(p);
+            assertEmulatorProcessAlive(p, device);
             TestDevice testDevice = (TestDevice) device;
             testDevice.setEmulatorProcess(p);
             testDevice.setEmulatorOutputStream(emulatorOutput);
         } catch (IOException e) {
             // TODO: is this the most appropriate exception to throw?
-            throw new DeviceNotAvailableException("Failed to start emulator process", e);
+            throw new DeviceNotAvailableException("Failed to start emulator process", e,
+                    device.getSerialNumber());
         }
 
         device.waitForDeviceAvailable(bootTimeout);
     }
 
-    private void assertEmulatorProcessAlive(Process p) throws DeviceNotAvailableException {
+    private void assertEmulatorProcessAlive(Process p, ITestDevice device)
+            throws DeviceNotAvailableException {
         if (!isProcessRunning(p)) {
             try {
                 CLog.e("Emulator process has died . stdout: '%s', stderr: '%s'",
@@ -527,7 +621,8 @@ public class DeviceManager implements IDeviceManager {
             } catch (IOException e) {
                 // ignore
             }
-            throw new DeviceNotAvailableException("emulator died after launch");
+            throw new DeviceNotAvailableException("emulator died after launch",
+                    device.getSerialNumber());
         }
     }
 
@@ -573,7 +668,7 @@ public class DeviceManager implements IDeviceManager {
         }
         if (!device.waitForDeviceNotAvailable(20 * 1000)) {
             throw new DeviceNotAvailableException(String.format("Failed to kill emulator %s",
-                    device.getSerialNumber()));
+                    device.getSerialNumber()), device.getSerialNumber());
         }
     }
 
@@ -684,7 +779,7 @@ public class DeviceManager implements IDeviceManager {
      * Execute a adb command not targeted to a particular device eg. 'adb connect'
      *
      * @param cmdArgs
-     * @return
+     * @return std output if the command succeedm null otherwise.
      */
     public String executeGlobalAdbCommand(String... cmdArgs) {
         String[] fullCmd = ArrayUtil.buildArray(new String[] {"adb"}, cmdArgs);
@@ -704,20 +799,47 @@ public class DeviceManager implements IDeviceManager {
         checkInit();
         if (!mIsTerminated) {
             mIsTerminated = true;
-            if (mDeviceRecoverer != null) {
-                mDeviceRecoverer.terminate();
-            }
-            mAdbBridge.removeDeviceChangeListener(mManagedDeviceListener);
-            mAdbBridge.terminate();
+            stopAdbBridgeAndDependentServices();
             // We are not terminating mFastbootMonitor here since it is a daemon thread.
             // Early terminating it can cause other threads to be blocked if they check
             // fastboot state of a device.
+            if (mGlobalHostMonitors != null ) {
+                for (IHostMonitor hm : mGlobalHostMonitors) {
+                    hm.terminate();
+                }
+            }
         }
     }
 
-    /**
-     * {@inheritDoc}
-     */
+    /** Stop adb bridge and services depending on adb connection. */
+    private synchronized void stopAdbBridgeAndDependentServices() {
+        terminateDeviceRecovery();
+        mAdbBridge.removeDeviceChangeListener(mManagedDeviceListener);
+        mAdbBridge.terminate();
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public synchronized void stopAdbBridge() {
+        stopAdbBridgeAndDependentServices();
+        mAdbBridgeNeedRestart = true;
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public synchronized void terminateDeviceRecovery() {
+        if (mDeviceRecoverer != null) {
+            mDeviceRecoverer.terminate();
+        }
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public synchronized void terminateDeviceMonitor() {
+        mDvcMon.stop();
+    }
+
+    /** {@inheritDoc} */
     @Override
     public synchronized void terminateHard() {
         checkInit();
@@ -738,7 +860,8 @@ public class DeviceManager implements IDeviceManager {
         @Override
         public void recoverDevice(IDeviceStateMonitor monitor, boolean recoverUntilOnline)
                 throws DeviceNotAvailableException {
-            throw new DeviceNotAvailableException("aborted test session");
+            throw new DeviceNotAvailableException("aborted test session",
+                    monitor.getSerialNumber());
         }
 
         /**
@@ -747,7 +870,8 @@ public class DeviceManager implements IDeviceManager {
         @Override
         public void recoverDeviceBootloader(IDeviceStateMonitor monitor)
                 throws DeviceNotAvailableException {
-            throw new DeviceNotAvailableException("aborted test session");
+            throw new DeviceNotAvailableException("aborted test session",
+                    monitor.getSerialNumber());
         }
 
         /**
@@ -756,7 +880,8 @@ public class DeviceManager implements IDeviceManager {
         @Override
         public void recoverDeviceRecovery(IDeviceStateMonitor monitor)
                 throws DeviceNotAvailableException {
-            throw new DeviceNotAvailableException("aborted test session");
+            throw new DeviceNotAvailableException("aborted test session",
+                    monitor.getSerialNumber());
         }
     }
 
@@ -770,15 +895,22 @@ public class DeviceManager implements IDeviceManager {
         IDeviceSelection selector = getDeviceSelectionOptions();
         for (IManagedTestDevice d : mManagedDeviceList) {
             IDevice idevice = d.getIDevice();
-            serialStates.add(new DeviceDescriptor(idevice.getSerialNumber(),
-                    idevice instanceof StubDevice,
-                    d.getAllocationState(),
-                    getDisplay(selector.getDeviceProductType(idevice)),
-                    getDisplay(selector.getDeviceProductVariant(idevice)),
-                    getDisplay(idevice.getProperty("ro.build.version.sdk")),
-                    getDisplay(idevice.getProperty("ro.build.id")),
-                    getDisplay(selector.getBatteryLevel(idevice)),
-                    d.getDeviceClass()));
+            serialStates.add(
+                    new DeviceDescriptor(
+                            idevice.getSerialNumber(),
+                            idevice instanceof StubDevice,
+                            idevice.getState(),
+                            d.getAllocationState(),
+                            getDisplay(selector.getDeviceProductType(idevice)),
+                            getDisplay(selector.getDeviceProductVariant(idevice)),
+                            getDisplay(idevice.getProperty("ro.build.version.sdk")),
+                            getDisplay(idevice.getProperty("ro.build.id")),
+                            getDisplay(selector.getBatteryLevel(idevice)),
+                            d.getDeviceClass(),
+                            getDisplay(d.getMacAddress()),
+                            getDisplay(d.getSimState()),
+                            getDisplay(d.getSimOperator()),
+                            idevice));
         }
         return serialStates;
     }
@@ -786,8 +918,8 @@ public class DeviceManager implements IDeviceManager {
     @Override
     public void displayDevicesInfo(PrintWriter stream) {
         ArrayList<List<String>> displayRows = new ArrayList<List<String>>();
-        displayRows.add(Arrays.asList("Serial", "State", "Product", "Variant", "Build",
-                "Battery"));
+        displayRows.add(Arrays.asList("Serial", "State", "Allocation", "Product", "Variant",
+                "Build", "Battery"));
         List<DeviceDescriptor> deviceList = listAllDevices();
         sortDeviceList(deviceList);
         addDevicesInfo(displayRows, deviceList);
@@ -795,10 +927,9 @@ public class DeviceManager implements IDeviceManager {
     }
 
     /**
-     * Sorts list by state, then by serial
-     *
-     * @VisibleForTesting
+     * Sorts list by state, then by serial.
      */
+    @VisibleForTesting
     static List<DeviceDescriptor> sortDeviceList(List<DeviceDescriptor> deviceList) {
 
         Comparator<DeviceDescriptor> c = new Comparator<DeviceDescriptor>() {
@@ -838,6 +969,7 @@ public class DeviceManager implements IDeviceManager {
             }
             displayRows.add(Arrays.asList(
                     desc.getSerial(),
+                    desc.getDeviceState().toString(),
                     desc.getState().toString(),
                     desc.getProduct(),
                     desc.getProductVariant(),
@@ -848,12 +980,10 @@ public class DeviceManager implements IDeviceManager {
     }
 
     /**
-     * Gets a displayable string for given object
-     * @param o
-     * @return
+     * Return the displayable string for given object
      */
     private String getDisplay(Object o) {
-        return o == null ? "unknown" : o.toString();
+        return o == null ? UNKNOWN_DISPLAY_STRING : o.toString();
     }
 
     /**
@@ -880,6 +1010,11 @@ public class DeviceManager implements IDeviceManager {
                             DeviceAllocationState.Checking_Availability) {
                         checkAndAddAvailableDevice(testDevice);
                     }
+                } else if (DeviceState.OFFLINE.equals(idevice.getState()) ||
+                        DeviceState.UNAUTHORIZED.equals(idevice.getState())) {
+                    // handle device changing to offline or unauthorized.
+                    mManagedDeviceList.handleDeviceEvent(testDevice,
+                            DeviceEvent.STATE_CHANGE_OFFLINE);
                 }
             }
         }
@@ -908,7 +1043,13 @@ public class DeviceManager implements IDeviceManager {
                         DeviceAllocationState.Checking_Availability) {
                     checkAndAddAvailableDevice(testDevice);
                 }
+                logDeviceEvent(EventType.DEVICE_CONNECTED, testDevice.getSerialNumber());
+            } else if (DeviceState.OFFLINE.equals(idevice.getState()) ||
+                    DeviceState.UNAUTHORIZED.equals(idevice.getState())) {
+                mManagedDeviceList.handleDeviceEvent(testDevice, DeviceEvent.CONNECTED_OFFLINE);
+                logDeviceEvent(EventType.DEVICE_CONNECTED_OFFLINE, testDevice.getSerialNumber());
             }
+            mFirstDeviceAdded.countDown();
         }
 
         /**
@@ -920,7 +1061,26 @@ public class DeviceManager implements IDeviceManager {
             if (d != null) {
                 mManagedDeviceList.handleDeviceEvent(d, DeviceEvent.DISCONNECTED);
                 d.setDeviceState(TestDeviceState.NOT_AVAILABLE);
+                logDeviceEvent(EventType.DEVICE_DISCONNECTED, disconnectedDevice.getSerialNumber());
             }
+        }
+    }
+
+    /** Helper to log the device events. */
+    @VisibleForTesting
+    void logDeviceEvent(EventType event, String serial) {
+        Map<String, String> args = new HashMap<>();
+        args.put("serial", serial);
+        LogRegistry.getLogRegistry().logEvent(LogLevel.DEBUG, event, args);
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public boolean waitForFirstDeviceAdded(long timeout) {
+        try {
+            return mFirstDeviceAdded.await(timeout, TimeUnit.MILLISECONDS);
+        } catch (InterruptedException e) {
+            throw new RuntimeException(e);
         }
     }
 
@@ -960,29 +1120,35 @@ public class DeviceManager implements IDeviceManager {
             setDaemon(true);
         }
 
-        public void terminate() {
+        @Override
+        public void interrupt() {
             mQuit = true;
-            interrupt();
+            super.interrupt();
         }
 
         @Override
         public void run() {
-            final FastbootHelper fastboot = new FastbootHelper(getRunUtil());
+            final FastbootHelper fastboot = new FastbootHelper(getRunUtil(), mFastbootPath);
             while (!mQuit) {
-                // only poll fastboot devices if there are listeners, as polling it
-                // indiscriminately can cause fastboot commands to hang
-                if (!mFastbootListeners.isEmpty()) {
-                    Set<String> serials = fastboot.getDevices();
-                    if (serials != null) {
-                        mManagedDeviceList.updateFastbootStates(serials);
-
-                        // create a copy of listeners for notification to prevent deadlocks
-                        Collection<IFastbootListener> listenersCopy =
-                                new ArrayList<IFastbootListener>(mFastbootListeners.size());
-                        listenersCopy.addAll(mFastbootListeners);
-                        for (IFastbootListener listener : listenersCopy) {
-                            listener.stateUpdated();
+                Set<String> serials = fastboot.getDevices();
+                if (serials != null) {
+                    // Update known fastboot devices state
+                    mManagedDeviceList.updateFastbootStates(serials);
+                    // Add new fastboot devices.
+                    for (String serial : serials) {
+                        FastbootDevice d = new FastbootDevice(serial);
+                        if (mGlobalDeviceFilter != null && mGlobalDeviceFilter.matches(d)) {
+                            addAvailableDevice(d);
                         }
+                    }
+                }
+                if (!mFastbootListeners.isEmpty()) {
+                    // create a copy of listeners for notification to prevent deadlocks
+                    Collection<IFastbootListener> listenersCopy =
+                            new ArrayList<IFastbootListener>(mFastbootListeners.size());
+                    listenersCopy.addAll(mFastbootListeners);
+                    for (IFastbootListener listener : listenersCopy) {
+                        listener.stateUpdated();
                     }
                 }
                 getRunUtil().sleep(FASTBOOT_POLL_WAIT_TIME);
@@ -1001,17 +1167,21 @@ public class DeviceManager implements IDeviceManager {
         public DeviceRecoverer(List<IMultiDeviceRecovery> multiDeviceRecoverers) {
             super("DeviceRecoverer");
             mMultiDeviceRecoverers = multiDeviceRecoverers;
+            // Ensure that this thread doesn't prevent TF from terminating
+            setDaemon(true);
         }
 
         @Override
         public void run() {
             while (!mQuit) {
                 getRunUtil().sleep(mDeviceRecoveryInterval);
+                if (mQuit) {
+                    // After the sleep time, we check if we should run or not.
+                    return;
+                }
                 if (mMultiDeviceRecoverers != null && !mMultiDeviceRecoverers.isEmpty()) {
                     for (IMultiDeviceRecovery m : mMultiDeviceRecoverers) {
-                        // Always fetch a list of devices prior to running the recovery.
-                        List<DeviceDescriptor> devices = listAllDevices();
-                        m.recoverDevices(devices);
+                        m.recoverDevices(getDeviceList());
                     }
                 }
             }
@@ -1061,5 +1231,10 @@ public class DeviceManager implements IDeviceManager {
     @Override
     public void removeDeviceMonitor(IDeviceMonitor mon) {
         mDvcMon.removeMonitor(mon);
+    }
+
+    @Override
+    public String getFastbootPath() {
+        return mFastbootPath;
     }
 }

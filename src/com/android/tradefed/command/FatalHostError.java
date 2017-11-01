@@ -28,7 +28,7 @@ public class FatalHostError extends RuntimeException {
      * @param msg the detailed message
      * @param cause the original cause of the fatal host error.
      *
-     * @see {@link RuntimeException#RuntimeException(String, Throwable)}
+     * @see RuntimeException#RuntimeException(String, Throwable)
      */
     public FatalHostError(String msg, Throwable cause) {
         super(msg, cause);
@@ -39,7 +39,7 @@ public class FatalHostError extends RuntimeException {
      *
      * @param msg the detailed message
      *
-     * @see {@link RuntimeException#RuntimeException(String)}
+     * @see RuntimeException#RuntimeException(String)
      */
     public FatalHostError(String msg) {
         super(msg);

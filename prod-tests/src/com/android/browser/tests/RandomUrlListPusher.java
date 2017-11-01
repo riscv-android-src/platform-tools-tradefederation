@@ -76,7 +76,8 @@ public class RandomUrlListPusher implements ITargetPreparer {
             pw.flush();
             pw.close();
         } catch (IOException ioe) {
-            throw new TargetSetupError("IOException while creating URL list", ioe);
+            throw new TargetSetupError("IOException while creating URL list", ioe,
+                    device.getDeviceDescriptor());
         }
         device.pushFile(tmp, mDeviceLocation);
         if (tmp.exists()) {
