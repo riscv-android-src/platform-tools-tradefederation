@@ -22,6 +22,7 @@ import com.android.tradefed.config.Option;
 import com.android.tradefed.config.OptionClass;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
+import com.android.tradefed.device.StubDevice;
 import com.android.tradefed.invoker.IInvocationContext;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.result.ITestInvocationListener;
@@ -63,7 +64,7 @@ public class PythonBinaryHostTest
         description = "Timeout for a single par file to terminate.",
         isTimeVal = true
     )
-    private long mTestTimeout = 20 * 1000l;
+    private long mTestTimeout = 20 * 1000L;
 
     private ITestDevice mDevice;
     private IBuildInfo mBuildInfo;
@@ -127,12 +128,20 @@ public class PythonBinaryHostTest
         return files;
     }
 
-    private void runSinglePythonFile(ITestInvocationListener listener, File parFile) {
+    private void runSinglePythonFile(ITestInvocationListener listener, File pyFile) {
+        List<String> commandLine = new ArrayList<>();
+        commandLine.add(pyFile.getAbsolutePath());
         // Run with -q (quiet) to avoid extraneous outputs
-        // TODO: add the device info passing once python supports it
+        commandLine.add("-q");
+        // If we have a physical device, pass it to the python test by serial
+        if (!(getDevice().getIDevice() instanceof StubDevice)) {
+            // TODO: support multi-device python tests?
+            commandLine.add("-s");
+            commandLine.add(getDevice().getSerialNumber());
+        }
         CommandResult result =
-                getRunUtil().runTimedCmd(mTestTimeout, parFile.getAbsolutePath(), "-q");
-        PythonForwarder forwarder = new PythonForwarder(listener, parFile.getName());
+                getRunUtil().runTimedCmd(mTestTimeout, commandLine.toArray(new String[0]));
+        PythonForwarder forwarder = new PythonForwarder(listener, pyFile.getName());
         SubprocessTestResultsParser parser = new SubprocessTestResultsParser(forwarder, mContext);
         File resultFile = null;
         try {

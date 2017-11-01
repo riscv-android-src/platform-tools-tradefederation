@@ -28,7 +28,7 @@ class HelloWorldTest(base_test._TradefedTestClass):
     def test_world_failed(self):
         self.assertEqual('world'.upper(), 'WORLD2')
 
-    @unittest.skip("demonstrating skipping")
+    @unittest.skip('demonstrating skipping')
     def test_skipped(self):
         self.fail('should have been skipped')
 
@@ -40,5 +40,13 @@ class HelloWorldTest(base_test._TradefedTestClass):
     def test_failedExpectation(self):
         pass
 
-if __name__ == "__main__":
+    def test_device(self):
+        """If a serial was provided this test will check that we can query the
+        device. It will throw if the serial is invalid.
+        """
+        if self.serial is not None:
+            res = self.android_device.executeShellCommand('id')
+            self.assertTrue('uid' in res)
+
+if __name__ == '__main__':
     tf_main.main()

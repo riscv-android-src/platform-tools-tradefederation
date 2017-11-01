@@ -14,6 +14,7 @@
 # limitations under the License.
 #
 
+import android_device
 import unittest
 
 class _TradefedTestClass(unittest.TestCase):
@@ -22,6 +23,11 @@ class _TradefedTestClass(unittest.TestCase):
         All tests should extends this class to be properly supported by Tradefed.
     """
 
-    def setUpDevices(self):
-        # TODO: Implement the device side and object
-        pass
+    def setUpDevice(self, serial):
+        """ Setter method that will allow the test to receive the device object
+
+        Args:
+            serial: The serial of the device allocated for the test.
+        """
+        self.serial = serial
+        self.android_device = android_device.AndroidTestDevice(serial)

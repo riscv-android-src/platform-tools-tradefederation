@@ -14,23 +14,72 @@
 # limitations under the License.
 #
 
-import sys
+import getopt
 import os
+import sys
 import tf_runner
-import unittest
 from unittest import loader
+import unittest
 
 class TradefedProgram(unittest.TestProgram):
     """ Main Runner Class that should be used to run the tests. This runner ensure that the
     reporting is compatible with Tradefed.
-
     """
 
+    def __init__(self, module='__main__', defaultTest=None,
+                 argv=None, testRunner=None,
+                 testLoader=loader.defaultTestLoader, exit=True,
+                 verbosity=1, failfast=None, catchbreak=None, buffer=None, serial=None):
+      self.serial = None
+      super(TradefedProgram, self).__init__()
+
+    def parseArgs(self, argv):
+        if len(argv) > 1 and argv[1].lower() == 'discover':
+            self._do_discovery(argv[2:])
+            return
+
+        long_opts = ['help', 'verbose', 'quiet', 'failfast', 'catch', 'buffer', 'serial=']
+        try:
+            options, args = getopt.getopt(argv[1:], 'hHvqfcbs:', long_opts)
+            for opt, value in options:
+                if opt in ('-h','-H','--help'):
+                    self.usageExit()
+                if opt in ('-q','--quiet'):
+                    self.verbosity = 0
+                if opt in ('-v','--verbose'):
+                    self.verbosity = 2
+                if opt in ('-f','--failfast'):
+                    if self.failfast is None:
+                        self.failfast = True
+                    # Should this raise an exception if -f is not valid?
+                if opt in ('-c','--catch'):
+                    if self.catchbreak is None and installHandler is not None:
+                        self.catchbreak = True
+                    # Should this raise an exception if -c is not valid?
+                if opt in ('-b','--buffer'):
+                    if self.buffer is None:
+                        self.buffer = True
+                    # Should this raise an exception if -b is not valid?
+                if opt in ('-s', '--serial'):
+                    if self.serial is None:
+                        self.serial = value
+            if len(args) == 0 and self.defaultTest is None:
+                # createTests will load tests from self.module
+                self.testNames = None
+            elif len(args) > 0:
+                self.testNames = args
+                if __name__ == '__main__':
+                    # to support python -m unittest ...
+                    self.module = None
+            else:
+                self.testNames = (self.defaultTest,)
+            self.createTests()
+        except getopt.error, msg:
+            self.usageExit(msg)
+
     def runTests(self):
-        # TODO: Extend the argument parsing to allow Tradefed to pass more
-        # options
         if self.testRunner is None:
-            self.testRunner = tf_runner.TextTestRunner(verbosity=self.verbosity, failfast=self.failfast, buffer=self.buffer, resultclass=tf_runner.TextTestResult)
+            self.testRunner = tf_runner.TfTextTestRunner(verbosity=self.verbosity, failfast=self.failfast, buffer=self.buffer, resultclass=tf_runner.TextTestResult, serial=self.serial)
         super(TradefedProgram, self).runTests()
 
 main = TradefedProgram

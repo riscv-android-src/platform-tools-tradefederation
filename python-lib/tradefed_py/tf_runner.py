@@ -42,21 +42,42 @@ class TextTestResult(unittest.TextTestResult):
         return test._testMethodName
 
     def startTestRun(self, count):
+        """ Callback that marks a test run has started.
+
+        Args:
+            count: The number of expected tests.
+        """
         resp = {_TEST_COUNT_TAG: count, 'runName': 'python-tradefed'}
         self.stream.write('TEST_RUN_STARTED %s\n' % json.dumps(resp))
         super(TextTestResult, self).startTestRun()
 
     def startTest(self, test):
+        """ Callback that marks a test has started to run.
+
+        Args:
+            test: The test that started.
+        """
         resp = {_START_TIME_TAG: time.time(), _CLASSNAME_TAG: self._getClassName(test), _METHOD_NAME_TAG: self._getMethodName(test)}
         self.stream.write('TEST_STARTED %s\n' % json.dumps(resp))
         super(TextTestResult, self).startTest(test)
 
     def addSuccess(self, test):
+        """ Callback that marks a test has finished and passed
+
+        Args:
+            test: The test that passed.
+        """
         resp = {_END_TIME_TAG: time.time(), _CLASSNAME_TAG: self._getClassName(test), _METHOD_NAME_TAG: self._getMethodName(test)}
         self.stream.write('TEST_ENDED %s\n' % json.dumps(resp))
         super(TextTestResult, self).addSuccess(test)
 
     def addFailure(self, test, err):
+        """ Callback that marks a test has failed
+
+        Args:
+            test: The test that failed.
+            err: the error generated that should be reported.
+        """
         resp = {_CLASSNAME_TAG: self._getClassName(test), _METHOD_NAME_TAG: self._getMethodName(test), _TRACE_TAG: '\n'.join(traceback.format_exception(*err))}
         self.stream.write('TEST_FAILED %s\n' % json.dumps(resp))
         resp = {_END_TIME_TAG: time.time(), _CLASSNAME_TAG: self._getClassName(test), _METHOD_NAME_TAG: self._getMethodName(test)}
@@ -64,6 +85,12 @@ class TextTestResult(unittest.TextTestResult):
         super(TextTestResult, self).addFailure(test, err)
 
     def addSkip(self, test, reason):
+        """ Callback that marks a test was being skipped
+
+        Args:
+            test: The test being skipped.
+            reason: the message generated that should be reported.
+        """
         resp = {_CLASSNAME_TAG: self._getClassName(test), _METHOD_NAME_TAG: self._getMethodName(test)}
         self.stream.write('TEST_IGNORED %s\n' % json.dumps(resp))
         resp = {_END_TIME_TAG: time.time(), _CLASSNAME_TAG: self._getClassName(test), _METHOD_NAME_TAG: self._getMethodName(test)}
@@ -71,6 +98,12 @@ class TextTestResult(unittest.TextTestResult):
         super(TextTestResult, self).addSkip(test, reason)
 
     def addExpectedFailure(self, test, err):
+        """ Callback that marks a test was expected to fail and failed.
+
+        Args:
+            test: The test responsible for the error.
+            err: the error generated that should be reported.
+        """
         resp = {_CLASSNAME_TAG: self._getClassName(test), _METHOD_NAME_TAG: self._getMethodName(test), _TRACE_TAG: '\n'.join(traceback.format_exception(*err))}
         self.stream.write('TEST_ASSUMPTION_FAILURE %s\n' % json.dumps(resp))
         resp = {_END_TIME_TAG: time.time(), _CLASSNAME_TAG: self._getClassName(test), _METHOD_NAME_TAG: self._getMethodName(test)}
@@ -78,6 +111,11 @@ class TextTestResult(unittest.TextTestResult):
         super(TextTestResult, self).addExpectedFailure(test, err)
 
     def addUnexpectedSuccess(self, test):
+        """ Callback that marks a test was expected to fail but passed.
+
+        Args:
+            test: The test responsible for the unexpected success.
+        """
         resp = {_CLASSNAME_TAG: self._getClassName(test), _METHOD_NAME_TAG: self._getMethodName(test), _TRACE_TAG: 'Unexpected success'}
         self.stream.write('TEST_ASSUMPTION_FAILURE %s\n' % json.dumps(resp))
         resp = {_END_TIME_TAG: time.time(), _CLASSNAME_TAG: self._getClassName(test), _METHOD_NAME_TAG: self._getMethodName(test)}
@@ -85,17 +123,43 @@ class TextTestResult(unittest.TextTestResult):
         super(TextTestResult, self).addUnexpectedSuccess(test)
 
     def addError(self, test, err):
-        resp = {_REASON_TAG: str(err)}
+        """ Callback that marks a run as failed because of an error.
+
+        Args:
+            test: The test responsible for the error.
+            err: the error generated that should be reported.
+        """
+        resp = {_REASON_TAG: '\n'.join(traceback.format_exception(*err))}
         self.stream.write('TEST_RUN_FAILED %s\n' % json.dumps(resp))
         super(TextTestResult, self).addError(test, err)
 
     def stopTestRun(self, elapsedTime):
+        """ Callback that marks the end of a test run
+
+        Args:
+            elapsedTime: The elapsed time of the run.
+        """
         resp = {_TIME_TAG: elapsedTime}
         self.stream.write('TEST_RUN_ENDED %s\n' % json.dumps(resp))
         super(TextTestResult, self).stopTestRun()
 
-class TextTestRunner(unittest.TextTestRunner):
+class TfTextTestRunner(unittest.TextTestRunner):
     """ Class runner that ensure the callbacks order"""
+
+    def __init__(self, stream=sys.stderr, descriptions=True, verbosity=1,
+                 failfast=False, buffer=False, resultclass=None, serial=None):
+        self.serial = serial
+        unittest.TextTestRunner.__init__(self, stream, descriptions, verbosity, failfast, buffer, resultclass)
+
+    def _injectDevice(self, serial, testSuites):
+        if serial is not None:
+            for testSuite in testSuites:
+                # each test in the test suite
+                for test in testSuite._tests:
+                    try:
+                        test.setUpDevice(serial)
+                    except AttributeError:
+                        self.stream.writeln('Test %s does not implement _TradefedTestClass.' % test)
 
     def run(self, test):
         """ Run the given test case or test suite. Copied from unittest to replace the startTestRun
@@ -104,12 +168,12 @@ class TextTestRunner(unittest.TextTestRunner):
         result.failfast = self.failfast
         result.buffer = self.buffer
         registerResult(result)
-
         startTime = time.time()
         startTestRun = getattr(result, 'startTestRun', None)
         if startTestRun is not None:
             startTestRun(test.countTestCases())
         try:
+            self._injectDevice(self.serial, test)
             test(result)
         finally:
             stopTestRun = getattr(result, 'stopTestRun', None)

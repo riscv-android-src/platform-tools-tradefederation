@@ -17,6 +17,8 @@ package com.android.tradefed.testtype.python;
 
 import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.config.OptionSetter;
+import com.android.tradefed.device.ITestDevice;
+import com.android.tradefed.device.StubDevice;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.util.CommandResult;
 import com.android.tradefed.util.CommandStatus;
@@ -37,6 +39,7 @@ public class PythonBinaryHostTestTest {
     private PythonBinaryHostTest mTest;
     private IRunUtil mMockRunUtil;
     private IBuildInfo mMockBuildInfo;
+    private ITestDevice mMockDevice;
     private ITestInvocationListener mMockListener;
 
     @Before
@@ -44,6 +47,7 @@ public class PythonBinaryHostTestTest {
         mMockRunUtil = EasyMock.createMock(IRunUtil.class);
         mMockBuildInfo = EasyMock.createMock(IBuildInfo.class);
         mMockListener = EasyMock.createMock(ITestInvocationListener.class);
+        mMockDevice = EasyMock.createMock(ITestDevice.class);
         mTest =
                 new PythonBinaryHostTest() {
                     @Override
@@ -52,6 +56,7 @@ public class PythonBinaryHostTestTest {
                     }
                 };
         mTest.setBuild(mMockBuildInfo);
+        mTest.setDevice(mMockDevice);
     }
 
     /** Test that when running a python binary the output is parsed to obtain results. */
@@ -71,9 +76,10 @@ public class PythonBinaryHostTestTest {
                                     EasyMock.eq("-q")))
                     .andReturn(res);
             mMockListener.testRunStarted(binary.getName(), 5);
-            EasyMock.replay(mMockRunUtil, mMockBuildInfo, mMockListener);
+            EasyMock.expect(mMockDevice.getIDevice()).andReturn(new StubDevice("serial"));
+            EasyMock.replay(mMockRunUtil, mMockBuildInfo, mMockListener, mMockDevice);
             mTest.run(mMockListener);
-            EasyMock.verify(mMockRunUtil, mMockBuildInfo, mMockListener);
+            EasyMock.verify(mMockRunUtil, mMockBuildInfo, mMockListener, mMockDevice);
         } finally {
             FileUtil.deleteFile(binary);
         }
