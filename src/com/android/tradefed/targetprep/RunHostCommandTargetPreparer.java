@@ -33,7 +33,7 @@ import java.util.List;
 
 /** Target preparer to run arbitrary host commands before and after running the test. */
 @OptionClass(alias = "run-host-command")
-public class RunHostCommandTargetPreparer implements ITargetCleaner {
+public class RunHostCommandTargetPreparer extends BaseTargetPreparer implements ITargetCleaner {
 
     @Option(
         name = "host-setup-command",
