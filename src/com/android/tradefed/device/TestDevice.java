@@ -712,9 +712,6 @@ public class TestDevice extends NativeDevice {
     @Override
     public ArrayList<Integer> listUsers() throws DeviceNotAvailableException {
         ArrayList<String[]> users = tokenizeListUsers();
-        if (users == null) {
-            return null;
-        }
         ArrayList<Integer> userIds = new ArrayList<Integer>(users.size());
         for (String[] user : users) {
             userIds.add(Integer.parseInt(user[1]));
@@ -734,13 +731,9 @@ public class TestDevice extends NativeDevice {
         String commandOutput = executeShellCommand(command);
         // Extract the id of all existing users.
         String[] lines = commandOutput.split("\\r?\\n");
-        if (lines.length < 1) {
-            CLog.e("%s should contain at least one line", commandOutput);
-            return null;
-        }
         if (!lines[0].equals("Users:")) {
-            CLog.e("%s in not a valid output for 'pm list users'", commandOutput);
-            return null;
+            throw new DeviceRuntimeException(
+                    String.format("'%s' in not a valid output for 'pm list users'", commandOutput));
         }
         ArrayList<String[]> users = new ArrayList<String[]>(lines.length - 1);
         for (int i = 1; i < lines.length; i++) {
@@ -748,8 +741,11 @@ public class TestDevice extends NativeDevice {
             // \tUserInfo{$id$:$name$:$Integer.toHexString(flags)$} [running]
             String[] tokens = lines[i].split("\\{|\\}|:");
             if (tokens.length != 4 && tokens.length != 5) {
-                CLog.e("%s doesn't contain 4 or 5 tokens", lines[i]);
-                return null;
+                throw new DeviceRuntimeException(
+                        String.format(
+                                "device output: '%s' \nline: '%s' was not in the expected "
+                                        + "format for user info.",
+                                commandOutput, lines[i]));
             }
             users.add(tokens);
         }
@@ -886,9 +882,6 @@ public class TestDevice extends NativeDevice {
     @Override
     public Integer getPrimaryUserId() throws DeviceNotAvailableException {
         ArrayList<String[]> users = tokenizeListUsers();
-        if (users == null) {
-            return null;
-        }
         for (String[] user : users) {
             int flag = Integer.parseInt(user[3], 16);
             if ((flag & FLAG_PRIMARY) != 0) {
