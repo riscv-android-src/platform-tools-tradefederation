@@ -217,9 +217,13 @@ public class InstrumentationTest implements IDeviceTest, IResumableTest, ITestCo
     )
     private long mCollectTestTimeout = TEST_COLLECTION_TIMEOUT_MS;
 
-    @Option(name = "debug", description = "Wait for debugger before instrumentation starts. Note "
-            + "that this should only be used for local debugging, not suitable for automated runs.")
-    private boolean mDebug = false;
+    @Option(
+        name = "debug",
+        description =
+                "Wait for debugger before instrumentation starts. Note "
+                        + "that this should only be used for local debugging, not suitable for automated runs."
+    )
+    protected boolean mDebug = false;
 
     @Option(
         name = "coverage",
@@ -1168,5 +1172,23 @@ public class InstrumentationTest implements IDeviceTest, IResumableTest, ITestCo
     /** Set True if we enforce the AJUR output format of instrumentation. */
     public void setEnforceFormat(boolean enforce) {
         mShouldEnforceFormat = enforce;
+    }
+
+    /**
+     * Set the instrumentation debug setting.
+     *
+     * @param debug boolean value to set the instrumentation debug setting to.
+     */
+    public void setDebug(boolean debug) {
+        mDebug = debug;
+    }
+
+    /**
+     * Get the instrumentation debug setting.
+     *
+     * @return The boolean debug setting.
+     */
+    public boolean getDebug() {
+        return mDebug;
     }
 }

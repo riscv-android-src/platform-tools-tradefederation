@@ -22,6 +22,7 @@ import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.when;
 import static org.mockito.Mockito.mock;
 
+import com.android.tradefed.command.ICommandOptions;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.testtype.IRemoteTest;
@@ -29,6 +30,8 @@ import com.android.tradefed.config.IConfiguration;
 import com.android.tradefed.config.Configuration;
 import com.android.tradefed.config.IConfigurationFactory;
 import com.android.tradefed.config.OptionSetter;
+import com.android.tradefed.log.LogUtil.CLog;
+import com.android.tradefed.testtype.InstrumentationTest;
 import com.android.tradefed.testtype.ITestFilterReceiver;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -57,7 +60,7 @@ public class AtestRunnerTest {
     private HashMap<String, String> params = new HashMap<>();
     private IConfiguration mFakeConfig = new Configuration("fake_name", "fake_desc");
 
-    private class FakeTest implements ITestFilterReceiver, IRemoteTest {
+    private class FakeTest extends InstrumentationTest implements ITestFilterReceiver, IRemoteTest {
 
         private List<String> mIncludeFilters = new ArrayList<>();
 
@@ -175,6 +178,19 @@ public class AtestRunnerTest {
         assertTrue(result3.containsKey("filters"));
         assertEquals(Arrays.asList(module1), result3.get("name"));
         assertEquals(Arrays.asList(classA, classB), result3.get("filters"));
+    }
+
+    @Test
+    public void testWaitForDebugger() throws Exception {
+        OptionSetter setter = new OptionSetter(mSpyRunner);
+        setter.setOptionValue("wait-for-debugger", "true");
+        setter.setOptionValue("test-info", params.get("module1"));
+        LinkedHashMap<String, IConfiguration> configMap = mSpyRunner.loadTests();
+        assertEquals(1, configMap.size());
+        IConfiguration config = configMap.get("module1");
+        ICommandOptions options = config.getCommandOptions();
+        CLog.e("options: %s", options.getInvocationData().get("debug"));
+        assertTrue(((FakeTest) mFakeTest).getDebug());
     }
 }
 
