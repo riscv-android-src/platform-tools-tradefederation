@@ -174,6 +174,32 @@ public class DeviceSetupTest extends TestCase {
         EasyMock.verify(mMockDevice);
     }
 
+    public void testSetup_cell_auto_setting_on()
+            throws DeviceNotAvailableException, TargetSetupError {
+        doSetupExpectations();
+        doCheckExternalStoreSpaceExpectations();
+        doSettingExpectations("global", "clockwork_cell_auto_setting", "1");
+        EasyMock.replay(mMockDevice);
+
+        mDeviceSetup.setCellAutoSetting(BinaryState.ON);
+        mDeviceSetup.setUp(mMockDevice, mMockBuildInfo);
+
+        EasyMock.verify(mMockDevice);
+    }
+
+    public void testSetup_cell_auto_setting_off()
+            throws DeviceNotAvailableException, TargetSetupError {
+        doSetupExpectations();
+        doCheckExternalStoreSpaceExpectations();
+        doSettingExpectations("global", "clockwork_cell_auto_setting", "0");
+        EasyMock.replay(mMockDevice);
+
+        mDeviceSetup.setCellAutoSetting(BinaryState.OFF);
+        mDeviceSetup.setUp(mMockDevice, mMockBuildInfo);
+
+        EasyMock.verify(mMockDevice);
+    }
+
     public void testSetup_wifi_on() throws DeviceNotAvailableException, TargetSetupError {
         doSetupExpectations();
         doCheckExternalStoreSpaceExpectations();
@@ -219,6 +245,32 @@ public class DeviceSetupTest extends TestCase {
         EasyMock.replay(mMockDevice);
 
         mDeviceSetup.setWifiWatchdog(BinaryState.OFF);
+        mDeviceSetup.setUp(mMockDevice, mMockBuildInfo);
+
+        EasyMock.verify(mMockDevice);
+    }
+
+    public void testSetup_disable_cw_wifi_mediator_on()
+            throws DeviceNotAvailableException, TargetSetupError {
+        doSetupExpectations();
+        doCheckExternalStoreSpaceExpectations();
+        doSettingExpectations("global", "cw_disable_wifimediator", "1");
+        EasyMock.replay(mMockDevice);
+
+        mDeviceSetup.setDisableCwWifiMediator(BinaryState.ON);
+        mDeviceSetup.setUp(mMockDevice, mMockBuildInfo);
+
+        EasyMock.verify(mMockDevice);
+    }
+
+    public void testSetup_disable_cw_wifi_mediator_off()
+            throws DeviceNotAvailableException, TargetSetupError {
+        doSetupExpectations();
+        doCheckExternalStoreSpaceExpectations();
+        doSettingExpectations("global", "cw_disable_wifimediator", "0");
+        EasyMock.replay(mMockDevice);
+
+        mDeviceSetup.setDisableCwWifiMediator(BinaryState.OFF);
         mDeviceSetup.setUp(mMockDevice, mMockBuildInfo);
 
         EasyMock.verify(mMockDevice);
