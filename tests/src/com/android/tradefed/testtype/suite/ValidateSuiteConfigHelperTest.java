@@ -18,14 +18,24 @@ package com.android.tradefed.testtype.suite;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
+import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.build.LocalFolderBuildProvider;
 import com.android.tradefed.config.Configuration;
 import com.android.tradefed.config.DeviceConfigurationHolder;
 import com.android.tradefed.config.IConfiguration;
 import com.android.tradefed.config.IDeviceConfiguration;
+import com.android.tradefed.device.DeviceNotAvailableException;
+import com.android.tradefed.device.ITestDevice;
+import com.android.tradefed.invoker.IInvocationContext;
 import com.android.tradefed.result.CollectingTestListener;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.TextResultReporter;
+import com.android.tradefed.targetprep.BuildError;
+import com.android.tradefed.targetprep.ITargetPreparer;
+import com.android.tradefed.targetprep.StubTargetPreparer;
+import com.android.tradefed.targetprep.TargetSetupError;
+import com.android.tradefed.targetprep.multi.IMultiTargetPreparer;
+import com.android.tradefed.targetprep.multi.StubMultiTargetPreparer;
 
 import org.junit.Test;
 
@@ -84,5 +94,54 @@ public class ValidateSuiteConfigHelperTest {
         listeners.add(new CollectingTestListener());
         config.setTestInvocationListeners(listeners);
         assertFalse(ValidateSuiteConfigHelper.validateConfig(config));
+    }
+
+    /** Test that a config that contains simple target preparers is allows to run in a suite. */
+    @Test
+    public void testTargetPrep() {
+        IConfiguration config = new Configuration("test", "test description");
+        config.setTargetPreparer(new StubTargetPreparer());
+        config.setMultiTargetPreparer(new StubMultiTargetPreparer());
+        assertTrue(ValidateSuiteConfigHelper.validateConfig(config));
+    }
+
+    /**
+     * Test that a config that contains a target preparer that implements both single and multi
+     * target preparer. It should be rejected.
+     */
+    @Test
+    public void testTargetPrep_badPreparer() {
+        IConfiguration config = new Configuration("test", "test description");
+        config.setTargetPreparer(new BadSingleMultiPreparer());
+        assertFalse(ValidateSuiteConfigHelper.validateConfig(config));
+    }
+
+    /**
+     * Test that a config that contains a multi target preparer that implements both single and
+     * multi target preparer. It should be rejected.
+     */
+    @Test
+    public void testTargetPrep_badMultiPreparer() {
+        IConfiguration config = new Configuration("test", "test description");
+        config.setMultiTargetPreparer(new BadSingleMultiPreparer());
+        assertFalse(ValidateSuiteConfigHelper.validateConfig(config));
+    }
+
+    /**
+     * Test class of a badly implemented preparer that extends both concepts: multiple and single
+     * devices.
+     */
+    public static class BadSingleMultiPreparer implements ITargetPreparer, IMultiTargetPreparer {
+        @Override
+        public void setUp(IInvocationContext context)
+                throws TargetSetupError, BuildError, DeviceNotAvailableException {
+            // ignore
+        }
+
+        @Override
+        public void setUp(ITestDevice device, IBuildInfo buildInfo)
+                throws TargetSetupError, BuildError, DeviceNotAvailableException {
+            // ignore
+        }
     }
 }

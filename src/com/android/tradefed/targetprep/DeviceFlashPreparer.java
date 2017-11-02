@@ -36,10 +36,8 @@ import java.util.Collection;
 import java.util.concurrent.Semaphore;
 import java.util.concurrent.TimeUnit;
 
-/**
- * A {@link ITargetPreparer} that flashes an image on physical Android hardware.
- */
-public abstract class DeviceFlashPreparer implements ITargetCleaner {
+/** A {@link ITargetPreparer} that flashes an image on physical Android hardware. */
+public abstract class DeviceFlashPreparer extends BaseTargetPreparer implements ITargetCleaner {
 
     /**
      * Enum of options for handling the encryption of userdata image
@@ -94,9 +92,6 @@ public abstract class DeviceFlashPreparer implements ITargetCleaner {
     @Option(name = "wipe-timeout",
             description = "the timeout for the command of wiping user data.", isTimeVal = true)
     private long mWipeTimeout = 4 * 60 * 1000;
-
-    @Option(name = "disable", description = "Disable the device flasher.")
-    private boolean mDisable = false;
 
     private static Semaphore sConcurrentFlashLock = null;
 
@@ -240,7 +235,7 @@ public abstract class DeviceFlashPreparer implements ITargetCleaner {
     @Override
     public void setUp(ITestDevice device, IBuildInfo buildInfo) throws TargetSetupError,
             DeviceNotAvailableException, BuildError {
-        if (mDisable) {
+        if (isDisabled()) {
             CLog.i("Skipping device flashing.");
             return;
         }
@@ -485,7 +480,7 @@ public abstract class DeviceFlashPreparer implements ITargetCleaner {
     @Override
     public void tearDown(ITestDevice device, IBuildInfo buildInfo, Throwable e)
             throws DeviceNotAvailableException {
-        if (mDisable) {
+        if (isDisabled()) {
             CLog.i("Skipping device flashing tearDown.");
             return;
         }
