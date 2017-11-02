@@ -33,6 +33,8 @@ import com.android.ddmlib.testrunner.ITestRunListener;
 import com.android.ddmlib.testrunner.RemoteAndroidTestRunner;
 import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.command.remote.DeviceDescriptor;
+import com.android.tradefed.config.GlobalConfiguration;
+import com.android.tradefed.host.IHostOptions;
 import com.android.tradefed.log.ITestLogger;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.result.ByteArrayInputStreamSource;
@@ -1541,12 +1543,20 @@ public class NativeDevice implements IManagedTestDevice {
         }
         final String[] fullCmd = buildFastbootCommand(cmdArgs);
         for (int i = 0; i < MAX_RETRY_ATTEMPTS; i++) {
+            String fastbootTmpDir = getHostOptions().getFastbootTmpDir();
+            IRunUtil runUtil = null;
+            if (fastbootTmpDir != null) {
+                runUtil = new RunUtil();
+                runUtil.setEnvVariable("TMPDIR", fastbootTmpDir);
+            } else {
+                runUtil = getRunUtil();
+            }
             CommandResult result = new CommandResult(CommandStatus.EXCEPTION);
             // block state changes while executing a fastboot command, since
             // device will disappear from fastboot devices while command is being executed
             mFastbootLock.lock();
             try {
-                result = getRunUtil().runTimedCmd(timeout, fullCmd);
+                result = runUtil.runTimedCmd(timeout, fullCmd);
             } finally {
                 mFastbootLock.unlock();
             }
@@ -3878,5 +3888,14 @@ public class NativeDevice implements IManagedTestDevice {
             return false;
         }
         return true;
+    }
+
+    /**
+     * Gets the {@link IHostOptions} instance to use.
+     *
+     * <p>Exposed for unit testing
+     */
+    IHostOptions getHostOptions() {
+        return GlobalConfiguration.getInstance().getHostOptions();
     }
 }

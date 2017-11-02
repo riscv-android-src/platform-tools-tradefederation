@@ -38,6 +38,12 @@ public class HostOptions implements IHostOptions {
     )
     private Integer mConcurrentDownloadLimit = null;
 
+    @Option(
+        name = "fastboot-tmpdir",
+        description = "The location of temporary directory used by fastboot"
+    )
+    private String mFastbootTmpDir = null;
+
     /**
      * {@inheritDoc}
      */
@@ -50,5 +56,11 @@ public class HostOptions implements IHostOptions {
     @Override
     public Integer getConcurrentDownloadLimit() {
         return mConcurrentDownloadLimit;
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public String getFastbootTmpDir() {
+        return mFastbootTmpDir;
     }
 }
