@@ -49,6 +49,7 @@ public enum LogDataType {
     CPU_INFO("txt", "text/plain", false, true),  // dumpsys cpuinfo
     JACOCO_CSV("csv", "text/csv", false, true), // JaCoCo coverage report in CSV format
     JACOCO_XML("xml", "text/xml", false, true), // JaCoCo coverage report in XML format
+    ATRACE("dat", "text/plain", true, false),
     /* Unknown file type */
     UNKNOWN("dat", "text/plain", false, false);
 
