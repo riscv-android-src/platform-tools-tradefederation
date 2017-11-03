@@ -154,4 +154,31 @@ public class BaseHostJUnit4TestTest {
         }
         EasyMock.verify(mMockBuild, mMockDevice, mMockContext);
     }
+
+    /**
+     * Test that {@link BaseHostJUnit4Test#runDeviceTests(DeviceTestRunOptions)} properly trigger an
+     * instrumentation run.
+     */
+    @Test
+    public void testRunDeviceTestsWithOptions() throws Exception {
+        TestableHostJUnit4Test test = new TestableHostJUnit4Test();
+        test.setDevice(mMockDevice);
+        test.setBuild(mMockBuild);
+        test.setInvocationContext(mMockContext);
+        EasyMock.expect(mMockDevice.getIDevice()).andReturn(new StubDevice("serial"));
+        EasyMock.expect(
+                        mMockDevice.runInstrumentationTests(
+                                (IRemoteAndroidTestRunner) EasyMock.anyObject(),
+                                (ITestRunListener) EasyMock.anyObject()))
+                .andReturn(true);
+        EasyMock.replay(mMockBuild, mMockDevice, mMockContext);
+        try {
+            test.runDeviceTests(
+                    new DeviceTestRunOptions("com.package").setTestClassName("testClass"));
+        } catch (AssumptionViolatedException e) {
+            // Ensure that the Assume logic in the test does not make a false pass for the unit test
+            fail("Should not have thrown an Assume exception.");
+        }
+        EasyMock.verify(mMockBuild, mMockDevice, mMockContext);
+    }
 }
