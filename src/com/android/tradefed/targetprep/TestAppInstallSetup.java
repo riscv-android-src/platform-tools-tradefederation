@@ -37,16 +37,16 @@ import java.util.Collection;
 import java.util.List;
 
 /**
- * A {@link ITargetPreparer} that installs one or more apps from a
- * {@link IDeviceBuildInfo#getTestsDir()} folder onto device.
- * <p>
- * This preparer will look in alternate directories if the tests zip does not exist or does not
+ * A {@link ITargetPreparer} that installs one or more apps from a {@link
+ * IDeviceBuildInfo#getTestsDir()} folder onto device.
+ *
+ * <p>This preparer will look in alternate directories if the tests zip does not exist or does not
  * contain the required apk. The search will go in order from the last alternative dir specified to
  * the first.
- * </p>
  */
 @OptionClass(alias = "tests-zip-app")
-public class TestAppInstallSetup implements ITargetCleaner, IAbiReceiver {
+public class TestAppInstallSetup extends BaseTargetPreparer
+        implements ITargetCleaner, IAbiReceiver {
 
     // An error message that occurs when a test APK is already present on the DUT,
     // but cannot be updated. When this occurs, the package is removed from the

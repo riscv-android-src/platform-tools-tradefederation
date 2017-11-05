@@ -37,4 +37,11 @@ public interface IHostOptions {
      * downloads remote builds.
      */
     Integer getConcurrentDownloadLimit();
+
+    /**
+     * Returns the path that fastboot should use as temporary folder
+     *
+     * @return
+     */
+    String getFastbootTmpDir();
 }

@@ -34,11 +34,12 @@ import java.util.Collection;
 /**
  * A {@link ITargetPreparer} that attempts to push any number of files from any host path to any
  * device path.
- * <p />
- * Should be performed *after* a new build is flashed, and *after* DeviceSetup is run (if enabled)
+ *
+ * <p>Should be performed *after* a new build is flashed, and *after* DeviceSetup is run (if
+ * enabled)
  */
 @OptionClass(alias = "push-file")
-public class PushFilePreparer implements ITargetCleaner {
+public class PushFilePreparer extends BaseTargetPreparer implements ITargetCleaner {
     private static final String LOG_TAG = "PushFilePreparer";
     private static final String MEDIA_SCAN_INTENT =
             "am broadcast -a android.intent.action.MEDIA_MOUNTED -d file://%s "
