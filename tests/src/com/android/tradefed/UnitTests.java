@@ -114,6 +114,8 @@ import com.android.tradefed.targetprep.BuildInfoAttributePreparerTest;
 import com.android.tradefed.targetprep.DefaultTestsZipInstallerTest;
 import com.android.tradefed.targetprep.DeviceFlashPreparerTest;
 import com.android.tradefed.targetprep.DeviceSetupTest;
+import com.android.tradefed.targetprep.DeviceStorageFillerTest;
+import com.android.tradefed.targetprep.DeviceStringPusherTest;
 import com.android.tradefed.targetprep.FastbootDeviceFlasherTest;
 import com.android.tradefed.targetprep.FlashingResourcesParserTest;
 import com.android.tradefed.targetprep.InstallAllTestZipAppsSetupTest;
@@ -123,6 +125,10 @@ import com.android.tradefed.targetprep.KernelFlashPreparerTest;
 import com.android.tradefed.targetprep.PreloadedClassesPreparerTest;
 import com.android.tradefed.targetprep.PushFilePreparerTest;
 import com.android.tradefed.targetprep.PythonVirtualenvPreparerTest;
+import com.android.tradefed.targetprep.RebootTargetPreparerTest;
+import com.android.tradefed.targetprep.RestartSystemServerTargetPreparerTest;
+import com.android.tradefed.targetprep.TimeSetterTargetPreparerTest;
+import com.android.tradefed.targetprep.RootTargetPreparerTest;
 import com.android.tradefed.targetprep.RunCommandTargetPreparerTest;
 import com.android.tradefed.targetprep.RunHostCommandTargetPreparerTest;
 import com.android.tradefed.targetprep.SdkAvdPreparerTest;
@@ -363,6 +369,8 @@ import org.junit.runners.Suite.SuiteClasses;
     DefaultTestsZipInstallerTest.class,
     DeviceFlashPreparerTest.class,
     DeviceSetupTest.class,
+    DeviceStorageFillerTest.class,
+    DeviceStringPusherTest.class,
     FastbootDeviceFlasherTest.class,
     FlashingResourcesParserTest.class,
     InstallAllTestZipAppsSetupTest.class,
@@ -372,6 +380,9 @@ import org.junit.runners.Suite.SuiteClasses;
     PreloadedClassesPreparerTest.class,
     PushFilePreparerTest.class,
     PythonVirtualenvPreparerTest.class,
+    RebootTargetPreparerTest.class,
+    RestartSystemServerTargetPreparerTest.class,
+    RootTargetPreparerTest.class,
     RunCommandTargetPreparerTest.class,
     RunHostCommandTargetPreparerTest.class,
     SdkAvdPreparerTest.class,
@@ -379,6 +390,7 @@ import org.junit.runners.Suite.SuiteClasses;
     SystemUpdaterDeviceFlasherTest.class,
     TestAppInstallSetupTest.class,
     TestFilePushSetupTest.class,
+    TimeSetterTargetPreparerTest.class,
 
     // targetprep.suite
     SuiteApkInstallerTest.class,
