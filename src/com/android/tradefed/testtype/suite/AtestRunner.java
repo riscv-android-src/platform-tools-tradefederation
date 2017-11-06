@@ -23,6 +23,7 @@ import com.android.tradefed.config.IConfiguration;
 import com.android.tradefed.config.IConfigurationFactory;
 import com.android.tradefed.config.Option;
 import com.android.tradefed.log.LogUtil.CLog;
+import com.android.tradefed.testtype.InstrumentationTest;
 
 import com.android.tradefed.testtype.IRemoteTest;
 import com.android.tradefed.testtype.ITestFilterReceiver;
@@ -43,6 +44,12 @@ public class AtestRunner extends ITestSuite {
 
     @Option(name = "test-info", description = "Test info of the test to run.")
     private List<String> mTestInfo = new ArrayList<>();
+
+    @Option(
+        name = "wait-for-debugger",
+        description = "For InstrumentationTests, we pass debug to the instrumentation run."
+    )
+    private boolean mDebug = false;
 
     @Override
     public LinkedHashMap<String, IConfiguration> loadTests() {
@@ -77,6 +84,9 @@ public class AtestRunner extends ITestSuite {
                             configFactory.createConfigurationFromArgs(new String[] {name});
                     for (String filter : testInfo.get("filters")) {
                         addFilter(testConfig, filter);
+                    }
+                    if (mDebug) {
+                        addDebugger(testConfig);
                     }
                     configMap.put(name, testConfig);
                 } catch (ConfigurationException | NoClassDefFoundError e) {
@@ -145,6 +155,15 @@ public class AtestRunner extends ITestSuite {
                                 + "Please update test to use a class that implements ITestFilterReceiver. Running entire"
                                 + "test module instead.",
                         test.getClass().getSimpleName(), filter);
+            }
+        }
+    }
+
+    /** Helper to attach the debugger to any Instrumentation tests in the config. */
+    private void addDebugger(IConfiguration testConfig) {
+        for (IRemoteTest test : testConfig.getTests()) {
+            if (test instanceof InstrumentationTest) {
+                ((InstrumentationTest) test).setDebug(true);
             }
         }
     }

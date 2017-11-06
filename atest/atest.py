@@ -64,6 +64,9 @@ def _parse_args(argv):
                         help='Display DEBUG level logging.')
     parser.add_argument('-s', '--skip-build', action='store_true',
                         help='Skip the build step.')
+    parser.add_argument('-w', '--wait-for-debugger', action='store_true',
+                        help='Only for instrumentation tests. Waits for '
+                             'debugger prior to execution.')
     return parser.parse_args(argv)
 
 
@@ -167,6 +170,8 @@ def main(argv):
     repo_root = os.environ.get(ANDROID_BUILD_TOP)
     translator = cli_translator.CLITranslator(root_dir=repo_root)
     build_targets, run_commands = translator.translate(args.tests)
+    if args.wait_for_debugger:
+        run_commands = [cmd + ' --wait-for-debugger' for cmd in run_commands]
     if _is_missing_adb(root_dir=repo_root):
         build_targets.add('adb')
     if not args.skip_build and not build_tests(build_targets, args.verbose):
