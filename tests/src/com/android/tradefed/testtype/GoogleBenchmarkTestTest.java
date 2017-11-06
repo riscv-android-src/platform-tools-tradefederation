@@ -105,7 +105,7 @@ public class GoogleBenchmarkTestTest extends TestCase {
         EasyMock.expect(
                         mMockITestDevice.executeShellCommand(
                                 String.format("file %s/test1", nativeTestPath)))
-                .andReturn("ELF executable\n");
+                .andReturn("ELF whatever, BuildID=blabla\n");
         EasyMock.expect(
                         mMockITestDevice.executeShellCommand(
                                 String.format(
@@ -114,7 +114,7 @@ public class GoogleBenchmarkTestTest extends TestCase {
         EasyMock.expect(
                         mMockITestDevice.executeShellCommand(
                                 String.format("file %s/test2", nativeTestPath)))
-                .andReturn("ELF executable\n");
+                .andReturn("ELF whatever, BuildID=blabla\n");
         EasyMock.expect(
                         mMockITestDevice.executeShellCommand(
                                 String.format(
@@ -186,7 +186,7 @@ public class GoogleBenchmarkTestTest extends TestCase {
         EasyMock.expect(
                         mMockITestDevice.executeShellCommand(
                                 String.format("file %s/test1", nativeTestPath)))
-                .andReturn("ELF executable\n");
+                .andReturn("ELF whatever, BuildID=blabla\n");
         EasyMock.expect(
                         mMockITestDevice.executeShellCommand(
                                 String.format(
@@ -195,7 +195,7 @@ public class GoogleBenchmarkTestTest extends TestCase {
         EasyMock.expect(
                         mMockITestDevice.executeShellCommand(
                                 String.format("file %s/test2", nativeTestPath)))
-                .andReturn("ELF executable\n");
+                .andReturn("ELF whatever, BuildID=blabla\n");
         EasyMock.expect(
                         mMockITestDevice.executeShellCommand(
                                 String.format(
@@ -232,7 +232,7 @@ public class GoogleBenchmarkTestTest extends TestCase {
         EasyMock.expect(
                         mMockITestDevice.executeShellCommand(
                                 String.format("file %s/test1", nativeTestPath)))
-                .andReturn("ELF executable\n");
+                .andReturn("ELF whatever, BuildID=blabla\n");
         EasyMock.expect(
                         mMockITestDevice.executeShellCommand(
                                 String.format(
@@ -268,7 +268,7 @@ public class GoogleBenchmarkTestTest extends TestCase {
         EasyMock.expect(
                         mMockITestDevice.executeShellCommand(
                                 String.format("file %s/test1", nativeTestPath)))
-                .andReturn("ELF executable\n");
+                .andReturn("ELF whatever, BuildID=blabla\n");
         EasyMock.expect(
                         mMockITestDevice.executeShellCommand(
                                 String.format(
