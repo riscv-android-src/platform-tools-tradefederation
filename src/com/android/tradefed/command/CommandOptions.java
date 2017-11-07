@@ -293,12 +293,24 @@ public class CommandOptions implements ICommandOptions {
         return mTakeBugreportOnInvocationEnded;
     }
 
+    /** {@inheritDoc} */
+    @Override
+    public void setBugreportOnInvocationEnded(boolean takeBugreport) {
+        mTakeBugreportOnInvocationEnded = takeBugreport;
+    }
+
     /**
      * {@inheritDoc}
      */
     @Override
     public boolean takeBugreportzOnInvocationEnded() {
         return mTakeBugreportzOnInvocationEnded;
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public void setBugreportzOnInvocationEnded(boolean takeBugreportz) {
+        mTakeBugreportzOnInvocationEnded = takeBugreportz;
     }
 
     /**

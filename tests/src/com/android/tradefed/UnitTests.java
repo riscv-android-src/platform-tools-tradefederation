@@ -63,8 +63,8 @@ import com.android.tradefed.device.TestDeviceTest;
 import com.android.tradefed.device.TopHelperTest;
 import com.android.tradefed.device.WaitDeviceRecoveryTest;
 import com.android.tradefed.device.WifiHelperTest;
-import com.android.tradefed.device.metric.ScheduledDeviceMetricCollectorTest;
 import com.android.tradefed.device.metric.BaseDeviceMetricCollectorTest;
+import com.android.tradefed.device.metric.ScheduledDeviceMetricCollectorTest;
 import com.android.tradefed.invoker.InvocationContextTest;
 import com.android.tradefed.invoker.ShardListenerTest;
 import com.android.tradefed.invoker.TestInvocationMultiTest;
@@ -103,6 +103,7 @@ import com.android.tradefed.result.TestSummaryTest;
 import com.android.tradefed.result.XmlResultReporterTest;
 import com.android.tradefed.sandbox.SandboxConfigDumpTest;
 import com.android.tradefed.sandbox.SandboxConfigUtilTest;
+import com.android.tradefed.sandbox.SandboxInvocationRunnerTest;
 import com.android.tradefed.sandbox.TradefedSandboxTest;
 import com.android.tradefed.suite.checker.ActivityStatusCheckerTest;
 import com.android.tradefed.suite.checker.KeyguardStatusCheckerTest;
@@ -398,6 +399,7 @@ import org.junit.runners.Suite.SuiteClasses;
     // sandbox
     SandboxConfigDumpTest.class,
     SandboxConfigUtilTest.class,
+    SandboxInvocationRunnerTest.class,
     TradefedSandboxTest.class,
 
     // suite/checker

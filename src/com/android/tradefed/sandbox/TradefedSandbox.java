@@ -81,7 +81,7 @@ public class TradefedSandbox implements ISandbox {
         Set<String> jarFiles = FileUtil.findFiles(mRootFolder, ".*.jar");
         classpath = Joiner.on(":").join(jarFiles);
         mCmdArgs.add(classpath);
-        mCmdArgs.add(TradefedSanboxRunner.class.getCanonicalName());
+        mCmdArgs.add(TradefedSandboxRunner.class.getCanonicalName());
         mCmdArgs.add(mSerializedContext.getAbsolutePath());
         mCmdArgs.add(mSerializedConfiguration.getAbsolutePath());
         mCmdArgs.add("--subprocess-report-port");
@@ -99,19 +99,20 @@ public class TradefedSandbox implements ISandbox {
         }
 
         boolean failedStatus = false;
+        String stderrText;
+        try {
+            stderrText = FileUtil.readStringFromFile(mStderrFile);
+        } catch (IOException e) {
+            stderrText = "Could not read the stderr output from process.";
+        }
         if (!CommandStatus.SUCCESS.equals(result.getStatus())) {
             failedStatus = true;
+            result.setStderr(stderrText);
         }
 
         if (!mEventParser.joinReceiver(EVENT_THREAD_JOIN_TIMEOUT_MS)) {
             if (!failedStatus) {
                 result.setStatus(CommandStatus.EXCEPTION);
-            }
-            String stderrText;
-            try {
-                stderrText = FileUtil.readStringFromFile(mStderrFile);
-            } catch (IOException e) {
-                stderrText = "Could not read the stderr output from process.";
             }
             result.setStderr(
                     String.format("Event receiver thread did not complete.:\n%s", stderrText));
