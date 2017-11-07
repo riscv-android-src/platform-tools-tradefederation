@@ -30,15 +30,15 @@ import sys
 import tempfile
 import time
 
+import atest_utils
 import cli_translator
-ANDROID_BUILD_TOP = 'ANDROID_BUILD_TOP'
+
 EXPECTED_VARS = frozenset([
-    ANDROID_BUILD_TOP,
+    atest_utils.ANDROID_BUILD_TOP,
     'ANDROID_TARGET_OUT_TESTCASES',
     'OUT'])
 EXIT_CODE_ENV_NOT_SETUP = 1
 EXIT_CODE_BUILD_FAILURE = 2
-BUILD_CMD = ['make', '-j', '-C', os.environ.get(ANDROID_BUILD_TOP)]
 TEST_RUN_DIR_PREFIX = 'atest_run_%s_'
 TESTS_HELP_TEXT = '''Tests to run.
 
@@ -140,33 +140,6 @@ def make_test_run_dir():
     return tempfile.mkdtemp(prefix=prefix)
 
 
-def build_tests(build_targets, verbose=False):
-    """Shell out and make build_targets.
-
-    Args:
-        build_targets: A set of strings of build targets to make.
-
-    Returns:
-        Boolean of whether build command was successful.
-    """
-    logging.info('Building test targets: %s', ' '.join(build_targets))
-    cmd = BUILD_CMD + list(build_targets)
-    logging.debug('Executing command: %s', cmd)
-    try:
-        if verbose:
-            subprocess.check_call(cmd, stderr=subprocess.STDOUT)
-        else:
-            # TODO: Save output to a log file.
-            subprocess.check_output(cmd, stderr=subprocess.STDOUT)
-        logging.info('Build successful')
-        return True
-    except subprocess.CalledProcessError as err:
-        logging.error('Error building: %s', build_targets)
-        if err.output:
-            logging.error(err.output)
-        return False
-
-
 def run_tests(run_commands):
     """Shell out and execute tradefed run commands.
 
@@ -190,7 +163,7 @@ def main(argv):
     _configure_logging(args.verbose)
     if _missing_environment_variables():
         return EXIT_CODE_ENV_NOT_SETUP
-    repo_root = os.environ.get(ANDROID_BUILD_TOP)
+    repo_root = os.environ.get(atest_utils.ANDROID_BUILD_TOP)
     results_dir = make_test_run_dir()
     translator = cli_translator.CLITranslator(results_dir=results_dir,
                                               root_dir=repo_root)
@@ -199,7 +172,8 @@ def main(argv):
         run_commands = [cmd + ' --wait-for-debugger' for cmd in run_commands]
     if _is_missing_adb(root_dir=repo_root):
         build_targets.add('adb')
-    if not args.skip_build and not build_tests(build_targets, args.verbose):
+    if not args.skip_build and not atest_utils.build(build_targets,
+                                                     args.verbose):
         return EXIT_CODE_BUILD_FAILURE
     run_tests(run_commands)
 

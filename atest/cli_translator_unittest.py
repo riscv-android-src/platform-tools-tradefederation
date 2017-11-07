@@ -82,23 +82,27 @@ INT_CONFIG = os.path.join(INT_DIR, INT_NAME + '.xml')
 GTF_INT_CONFIG = os.path.join(GTF_INT_DIR, GTF_INT_NAME + '.xml')
 INT_INFO = cli_t.TestInfo(INT_CONFIG, None, INT_NAME, frozenset())
 GTF_INT_INFO = cli_t.TestInfo(GTF_INT_CONFIG, None, GTF_INT_NAME, frozenset())
-INT_TARGETS = {'tradefed-all'}
-GTF_INT_TARGETS = {'google-tradefed-all'}
-TARGETS = {'tradefed-all', 'MODULES-IN-%s' % MODULE_DIR.replace('/', '-')}
-GTF_TARGETS = {'google-tradefed-all', 'MODULES-IN-%s' % MODULE_DIR.replace('/', '-')}
+JSON_FILE = 'module-info.json'
+TEST_DATA_DIR = 'unittest_data'
+JSON_FILE_PATH = os.path.join(os.path.dirname(__file__), TEST_DATA_DIR)
+INFO_JSON = json.load(open(os.path.join(JSON_FILE_PATH, JSON_FILE)))
+MODULE_INFO_TARGET = '/out/%s' % JSON_FILE
+INT_TARGETS = {'tradefed-all', MODULE_INFO_TARGET}
+GTF_INT_TARGETS = {'google-tradefed-all', MODULE_INFO_TARGET}
+TARGETS = {'tradefed-all', MODULE_INFO_TARGET,
+           'MODULES-IN-%s' % MODULE_DIR.replace('/', '-')}
+GTF_TARGETS = {'google-tradefed-all', MODULE_INFO_TARGET,
+               'MODULES-IN-%s' % MODULE_DIR.replace('/', '-')}
 RUN_CMD_ARGS = '--test-info-file %s --log-level WARN' % TEST_INFO_FILE
 RUN_CMD = cli_t.RUN_CMD % (cli_t.TF_TEMPLATE, RUN_CMD_ARGS)
-GTF_RUN_CMD_ARGS = RUN_CMD_ARGS + ' --sponge-label %s' % cli_t.ATEST_SPONGE_LABEL
+GTF_RUN_CMD_ARGS = (RUN_CMD_ARGS +
+                    ' --sponge-label %s' % cli_t.ATEST_SPONGE_LABEL)
 GTF_RUN_CMD = cli_t.RUN_CMD % (cli_t.GTF_TEMPLATE, GTF_RUN_CMD_ARGS)
 PRODUCT = 'bullhead'
 OUT = '/android/master/out/target/product/%s' % PRODUCT
 FIND_ONE = ROOT + 'foo/bar/jank/src/android/jank/cts/ui/CtsDeviceJankUi.java\n'
 FIND_TWO = ROOT + 'other/dir/test.java\n' + FIND_ONE
 XML_TARGETS = {'CtsUiDeviceTestCases', 'CtsJankDeviceTestCases', 'VtsTarget'}
-TEST_DATA_DIR = 'unittest_data'
-JSON_FILE = 'module-info.json'
-JSON_FILE_PATH = os.path.join(os.path.dirname(__file__), TEST_DATA_DIR)
-INFO_JSON = json.load(open(os.path.join(JSON_FILE_PATH, JSON_FILE)))
 
 def isfile_side_effect(value):
     """Mock return values for os.path.isfile"""
@@ -142,9 +146,9 @@ class CLITranslatorUnittests(unittest.TestCase):
         """Run before execution of every test"""
         self.patches = {
             'isdir': mock.patch('os.path.isdir', return_value=True),
-            'load_module_info': mock.patch.object(cli_t.CLITranslator,
-                                                  '_load_module_info',
-                                                  return_value=INFO_JSON),
+            'load_module_info': mock.patch.object(
+                    cli_t.CLITranslator, '_load_module_info',
+                    return_value=(MODULE_INFO_TARGET, INFO_JSON)),
         }
         self.mocks = {k: v.start() for k, v in self.patches.iteritems()}
         self.ctr = cli_t.CLITranslator(results_dir=TEST_INFO_DIR)
@@ -176,7 +180,7 @@ class CLITranslatorUnittests(unittest.TestCase):
 
     @mock.patch('os.environ.get', return_value=JSON_FILE_PATH)
     @mock.patch('os.path.isfile', return_value=True)
-    @mock.patch('subprocess.check_output')
+    @mock.patch('atest_utils._run_limited_output')
     def test_load_module_info(self, _checkout, mock_isfile, _envget):
         """Test _load_module_info loads module-info.json correctly"""
         # stop patch and instantiate new cli_t, because this is mocked in setup.
@@ -187,7 +191,7 @@ class CLITranslatorUnittests(unittest.TestCase):
         self.assertStrictEqual(new_ctr.module_info, INFO_JSON)
         # test logic when module-info.json file doesn't exist yet.
         mock_isfile.return_value = False
-        self.assertStrictEqual(new_ctr._load_module_info(), INFO_JSON)
+        self.assertStrictEqual(new_ctr._load_module_info()[1], INFO_JSON)
 
     def test_get_test_reference_types(self):
         """Test _get_test_reference_types parses reference types correctly."""
@@ -259,7 +263,8 @@ class CLITranslatorUnittests(unittest.TestCase):
 
     def test_get_module_name(self):
         """Test _get_module_name method."""
-        self.assertStrictEqual(self.ctr._get_module_name(MODULE_DIR), MODULE_NAME)
+        self.assertStrictEqual(self.ctr._get_module_name(MODULE_DIR),
+                               MODULE_NAME)
         self.assertRaises(cli_t.UnregisteredModuleError,
                           self.ctr._get_module_name, 'bad/path')
 

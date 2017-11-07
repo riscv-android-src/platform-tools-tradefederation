@@ -27,6 +27,7 @@ import time
 import xml.etree.ElementTree as ET
 from collections import namedtuple
 
+import atest_utils
 
 RUN_CMD = ('atest_tradefed.sh run commandAndExit %s --template:map '
            'test=atest %s')
@@ -152,7 +153,7 @@ class CLITranslator(object):
             REFERENCE_TYPE.FILE_PATH: self._find_test_by_path,
             REFERENCE_TYPE.INTEGRATION: self._find_test_by_integration_name,
         }
-        self.module_info = self._load_module_info()
+        self.module_info_target, self.module_info = self._load_module_info()
         self.tf_dirs, self.gtf_dirs = self._get_integration_dirs()
         self.integration_dirs = self.tf_dirs + self.gtf_dirs
 
@@ -160,19 +161,18 @@ class CLITranslator(object):
         """Make (if not exists) and load into memory MODULE_INFO file
 
         Returns:
-             A dict of data about module names and dir locations.
+            A tuple containing the module-info build target and a dict of data
+            about module names and dir locations.
         """
         file_path = os.path.join(self.out_dir, MODULE_INFO)
         # Make target is simply file path relative to root.
-        make_target = os.path.relpath(file_path, self.root_dir)
+        module_info_target = os.path.relpath(file_path, self.root_dir)
         if not os.path.isfile(file_path):
             logging.info('Generating %s - this is required for '
                          'initial runs.', MODULE_INFO)
-            cmd = ['make', '-j', '-C', self.root_dir, make_target]
-            logging.debug('Executing: %s', cmd)
-            subprocess.check_output(cmd, stderr=subprocess.STDOUT)
+            atest_utils.build([module_info_target])
         with open(file_path) as json_file:
-            return json.load(json_file)
+            return (module_info_target, json.load(json_file))
 
     def _get_integration_dirs(self):
         """Get integration dirs from MODULE_INFO based on targets.
@@ -714,6 +714,9 @@ class CLITranslator(object):
         build_targets = set()
         for test_info in test_infos:
             build_targets |= self._parse_build_targets(test_info)
+        # Since we don't initialize module-info if it already exists, add it to
+        # the list of build targets to keep the file up to date.
+        build_targets.add(self.module_info_target)
         return build_targets
 
     def _create_test_info_file(self, test_infos):
