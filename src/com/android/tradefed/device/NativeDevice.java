@@ -1549,11 +1549,11 @@ public class NativeDevice implements IManagedTestDevice {
         }
         final String[] fullCmd = buildFastbootCommand(cmdArgs);
         for (int i = 0; i < MAX_RETRY_ATTEMPTS; i++) {
-            String fastbootTmpDir = getHostOptions().getFastbootTmpDir();
+            File fastbootTmpDir = getHostOptions().getFastbootTmpDir();
             IRunUtil runUtil = null;
             if (fastbootTmpDir != null) {
                 runUtil = new RunUtil();
-                runUtil.setEnvVariable("TMPDIR", fastbootTmpDir);
+                runUtil.setEnvVariable("TMPDIR", fastbootTmpDir.getAbsolutePath());
             } else {
                 runUtil = getRunUtil();
             }

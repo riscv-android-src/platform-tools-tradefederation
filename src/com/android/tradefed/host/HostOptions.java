@@ -19,6 +19,8 @@ package com.android.tradefed.host;
 import com.android.tradefed.config.Option;
 import com.android.tradefed.config.OptionClass;
 
+import java.io.File;
+
 /**
  * Host options holder class.
  * This class is used to store host-wide options.
@@ -42,7 +44,13 @@ public class HostOptions implements IHostOptions {
         name = "fastboot-tmpdir",
         description = "The location of temporary directory used by fastboot"
     )
-    private String mFastbootTmpDir = null;
+    private File mFastbootTmpDir = null;
+
+    @Option(name = "download-cache-dir", description = "the directory for caching downloaded "
+            + "flashing files. Should be on the same filesystem as java.io.tmpdir.  Consider "
+            + "changing the java.io.tmpdir property if you want to move downloads to a different "
+            + "filesystem.")
+    private File mDownloadCacheDir = new File(System.getProperty("java.io.tmpdir"), "lc_cache");
 
     /**
      * {@inheritDoc}
@@ -60,7 +68,12 @@ public class HostOptions implements IHostOptions {
 
     /** {@inheritDoc} */
     @Override
-    public String getFastbootTmpDir() {
+    public File getFastbootTmpDir() {
         return mFastbootTmpDir;
+    }
+
+    @Override
+    public File getDownloadCacheDir() {
+        return mDownloadCacheDir;
     }
 }

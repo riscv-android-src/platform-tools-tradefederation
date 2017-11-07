@@ -19,6 +19,8 @@ package com.android.tradefed.host;
 import com.android.tradefed.build.IBuildProvider;
 import com.android.tradefed.targetprep.DeviceFlashPreparer;
 
+import java.io.File;
+
 /**
  * Host options holder interface.
  * This interface is used to access host-wide options.
@@ -43,5 +45,12 @@ public interface IHostOptions {
      *
      * @return
      */
-    String getFastbootTmpDir();
+    File getFastbootTmpDir();
+
+    /**
+     * Returns the path used for storing downloaded artifacts
+     *
+     * @return
+     */
+    File getDownloadCacheDir();
 }
