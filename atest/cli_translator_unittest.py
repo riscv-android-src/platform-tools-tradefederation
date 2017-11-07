@@ -39,8 +39,16 @@ CLASS_INFO = cli_t.TestInfo(CONFIG_FILE, MODULE_NAME, None,
 INT_CONFIG = os.path.join(INTEGRATION_DIR, INTEGRATION_NAME + '.xml')
 INTEGRATION_INFO = cli_t.TestInfo(INT_CONFIG, None, INTEGRATION_NAME, None)
 TARGETS = {'tradefed-all', 'MODULES-IN-%s' % MODULE_DIR.replace('/', '-')}
-RUN_CMD = cli_t.RUN_CMD % '--log-level WARN --test-info %s'
+INTERNAL_TARGETS = {'google-tradefed-all',
+                    'MODULES-IN-%s' % MODULE_DIR.replace('/', '-')}
+RUN_CMD = cli_t.RUN_CMD % (cli_t.TF_TEMPLATE,
+                           '--log-level WARN --test-info %s')
+INTERNAL_RUN_CMD = cli_t.RUN_CMD % (cli_t.GTF_TEMPLATE,
+                                    '--log-level WARN --test-info %s '
+                                    '--sponge-label ' +
+                                    cli_t.ATEST_SPONGE_LABEL)
 MODULE_RUN_CMD = RUN_CMD % MODULE_NAME
+INTERNAL_MODULE_RUN_CMD = INTERNAL_RUN_CMD % MODULE_NAME
 CLASS_RUN_CMD = RUN_CMD % ('%s:%s' % (MODULE_NAME, FULL_CLASS_NAME))
 PRODUCT = 'bullhead'
 OUT = '/android/master/out/target/product/%s' % PRODUCT
@@ -89,6 +97,9 @@ class CLITranslatorUnittests(unittest.TestCase):
         }
         self.mocks = {k: v.start() for k, v in self.patches.iteritems()}
         self.ctr = cli_t.CLITranslator()
+        # Assume you are running in an AOSP environment.
+        self._gtf_dirs = self.ctr.gtf_dirs
+        self.ctr.gtf_dirs = []
 
     def tearDown(self):
         for _, patch in self.patches.iteritems():
@@ -252,10 +263,24 @@ class CLITranslatorUnittests(unittest.TestCase):
         self.assertEquals(self.ctr._generate_build_targets([MODULE_INFO]),
                           TARGETS)
 
+    @mock.patch.object(cli_t.CLITranslator, '_get_targets_from_xml',
+                       return_value=set())
+    def test_generate_internal_build_targets(self, _):
+        """Test _generate_build_targets method."""
+        self.ctr.gtf_dirs = self._gtf_dirs
+        self.assertEquals(self.ctr._generate_build_targets([MODULE_INFO]),
+                          INTERNAL_TARGETS)
+
     def test_generate_run_commands(self):
         """Test _generate_run_command method."""
         self.assertEquals(self.ctr._generate_run_commands([MODULE_INFO]),
                           [MODULE_RUN_CMD])
+
+    def test_generate_internal_run_commands(self):
+        """Test _generate_run_command method."""
+        self.ctr.gtf_dirs = self._gtf_dirs
+        self.assertEquals(self.ctr._generate_run_commands([MODULE_INFO]),
+                          [INTERNAL_MODULE_RUN_CMD])
 
     @mock.patch.object(cli_t.CLITranslator, '_find_test_by_module_name')
     @mock.patch.object(cli_t.CLITranslator, '_find_test_by_class_name')
