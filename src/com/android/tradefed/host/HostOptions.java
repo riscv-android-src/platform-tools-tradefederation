@@ -28,7 +28,7 @@ public class HostOptions implements IHostOptions {
 
     @Option(name = "concurrent-flasher-limit", description =
             "The maximum number of concurrent flashers (may be useful to avoid memory constraints)")
-    private Integer mConcurrentFlasherLimit = null;
+    private Integer mConcurrentFlasherLimit = 1;
 
     @Option(
         name = "concurrent-download-limit",

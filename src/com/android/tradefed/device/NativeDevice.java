@@ -982,9 +982,15 @@ public class NativeDevice implements IManagedTestDevice {
      */
     @Override
     public long getExternalStoreFreeSpace() throws DeviceNotAvailableException {
-        CLog.i("Checking free space for %s", getSerialNumber());
         String externalStorePath = getMountPoint(IDevice.MNT_EXTERNAL_STORAGE);
-        String output = getDfOutput(externalStorePath);
+        return getPartitionFreeSpace(externalStorePath);
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public long getPartitionFreeSpace(String partition) throws DeviceNotAvailableException {
+        CLog.i("Checking free space for %s on partition %s", getSerialNumber(), partition);
+        String output = getDfOutput(partition);
         // Try coreutils/toybox style output first.
         Long available = parseFreeSpaceFromModernOutput(output);
         if (available != null) {
@@ -995,7 +1001,7 @@ public class NativeDevice implements IManagedTestDevice {
         if (available != null) {
             return available;
         }
-        available = parseFreeSpaceFromFree(externalStorePath, output);
+        available = parseFreeSpaceFromFree(partition, output);
         if (available != null) {
             return available;
         }
