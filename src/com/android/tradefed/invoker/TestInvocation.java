@@ -671,6 +671,12 @@ public class TestInvocation implements ITestInvocation {
     private void reportFailure(Throwable exception, ITestInvocationListener listener,
             IConfiguration config, IInvocationContext context, IRescheduler rescheduler) {
         listener.invocationFailed(exception);
+
+        if (config.getConfigurationDescription().shouldUseSandbox()) {
+            // TODO: move specialized sandbox logic once TestInvocation is refactored.
+            // If we are sandboxed, build reset and reschedule should happen on the parents.
+            return;
+        }
         if (!(exception instanceof BuildError) && !(exception.getCause() instanceof BuildError)) {
             for (String deviceName : context.getDeviceConfigNames()) {
                 config.getDeviceConfigByName(deviceName)
