@@ -118,4 +118,5 @@ public interface IDeviceFlasher {
      * the command status may be <code>null</code>
      */
     public CommandStatus getSystemFlashingStatus();
+
 }
