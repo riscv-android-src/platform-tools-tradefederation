@@ -79,7 +79,9 @@ public class TradefedSandbox implements ISandbox {
         // include all jars on the classpath
         String classpath = "";
         Set<String> jarFiles = FileUtil.findFiles(mRootFolder, ".*.jar");
-        classpath = Joiner.on(":").join(jarFiles);
+        // Device jars should not be loaded since they can mess up the host jar loading.
+        List<String> filteredList = removeDeviceJars(jarFiles);
+        classpath = Joiner.on(":").join(filteredList);
         mCmdArgs.add(classpath);
         mCmdArgs.add(TradefedSandboxRunner.class.getCanonicalName());
         mCmdArgs.add(mSerializedContext.getAbsolutePath());
@@ -228,5 +230,16 @@ public class TradefedSandbox implements ISandbox {
      */
     protected File prepareContext(IInvocationContext context) throws IOException {
         return SerializationUtil.serialize(context);
+    }
+
+    private List<String> removeDeviceJars(Set<String> jars) {
+        List<String> ordered = new ArrayList<>();
+        for (String jar : jars) {
+            if (jar.contains("target/testcases")) {
+                continue;
+            }
+            ordered.add(jar);
+        }
+        return ordered;
     }
 }
