@@ -88,11 +88,11 @@ REFERENCE_TYPE = Enum(['MODULE', 'CLASS', 'QUALIFIED_CLASS', 'MODULE_CLASS',
 # Unix find commands for searching for test files based on test type input.
 # Note: Find (unlike grep) exits with status 0 if nothing found.
 FIND_CMDS = {
-    REFERENCE_TYPE.CLASS : r"find %s -type d -name .git -prune -o -type f "
+    REFERENCE_TYPE.CLASS : r"find %s -type d -name \".*\" -prune -o -type f "
                            r"-name '%s.java' -print",
-    REFERENCE_TYPE.QUALIFIED_CLASS: r"find %s -type d -name .git -prune -o "
+    REFERENCE_TYPE.QUALIFIED_CLASS: r"find %s -type d -name \".*\" -prune -o "
                                     r"-wholename '*%s.java' -print",
-    REFERENCE_TYPE.INTEGRATION: r"find %s -type d -name .git -prune -o "
+    REFERENCE_TYPE.INTEGRATION: r"find %s -type d -name \".*\" -prune -o "
                                 r"-wholename '*%s.xml' -print"
 }
 
