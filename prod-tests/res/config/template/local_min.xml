@@ -20,7 +20,7 @@
         <option name="disable" value="true" />
     </target_preparer>
 
-    <template-include name="test" />
+    <template-include name="test" default="empty" />
 
     <logger class="com.android.tradefed.log.FileLogger">
         <option name="log-level" value="VERBOSE" />
