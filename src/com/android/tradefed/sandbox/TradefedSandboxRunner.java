@@ -25,7 +25,11 @@ import com.android.tradefed.device.FreeDeviceState;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.device.NoDeviceException;
 import com.android.tradefed.invoker.IInvocationContext;
+import com.android.tradefed.util.FileUtil;
 import com.android.tradefed.util.SerializationUtil;
+
+import org.json.JSONException;
+import org.json.JSONObject;
 
 import java.io.File;
 import java.io.IOException;
@@ -35,11 +39,13 @@ import java.util.List;
 import java.util.Map;
 
 /** Runner associated with a {@link TradefedSandbox} that will allow executing the sandbox. */
-public class TradefedSanboxRunner {
+public class TradefedSandboxRunner {
+    public static final String EXCEPTION_KEY = "serialized_exception";
+
     private ICommandScheduler mScheduler;
     private ExitCode mErrorCode = ExitCode.NO_ERROR;
 
-    public TradefedSanboxRunner() {}
+    public TradefedSandboxRunner() {}
 
     public ExitCode getErrorCode() {
         return mErrorCode;
@@ -61,6 +67,15 @@ public class TradefedSanboxRunner {
     @VisibleForTesting
     void printStackTrace(Throwable e) {
         e.printStackTrace();
+        File serializedException = null;
+        try {
+            serializedException = SerializationUtil.serialize(e);
+            JSONObject json = new JSONObject();
+            json.put(EXCEPTION_KEY, serializedException.getAbsolutePath());
+            System.err.println(json.toString());
+        } catch (IOException | JSONException io) {
+            FileUtil.deleteFile(serializedException);
+        }
     }
 
     /**
@@ -122,7 +137,7 @@ public class TradefedSanboxRunner {
     }
 
     public static void main(final String[] mainArgs) {
-        TradefedSanboxRunner console = new TradefedSanboxRunner();
+        TradefedSandboxRunner console = new TradefedSandboxRunner();
         console.run(mainArgs);
         System.exit(console.getErrorCode().getCodeValue());
     }

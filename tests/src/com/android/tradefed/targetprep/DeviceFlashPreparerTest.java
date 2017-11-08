@@ -31,6 +31,7 @@ import com.android.tradefed.device.IDeviceManager;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.device.ITestDevice.RecoveryMode;
 import com.android.tradefed.device.TestDeviceOptions;
+import com.android.tradefed.host.IHostOptions;
 import com.android.tradefed.targetprep.IDeviceFlasher.UserDataFlashOption;
 import com.android.tradefed.util.CommandStatus;
 import com.android.tradefed.util.FileUtil;
@@ -54,6 +55,7 @@ public class DeviceFlashPreparerTest {
     private DeviceFlashPreparer mDeviceFlashPreparer;
     private ITestDevice mMockDevice;
     private IDeviceBuildInfo mMockBuildInfo;
+    private IHostOptions mMockHostOptions;
     private File mTmpDir;
     private boolean mFlashingMetricsReported;
 
@@ -67,6 +69,7 @@ public class DeviceFlashPreparerTest {
         mMockBuildInfo = new DeviceBuildInfo("0", "");
         mMockBuildInfo.setDeviceImageFile(new File("foo"), "0");
         mMockBuildInfo.setBuildFlavor("flavor");
+        mMockHostOptions = EasyMock.createMock(IHostOptions.class);
         mFlashingMetricsReported = false;
         mDeviceFlashPreparer = new DeviceFlashPreparer() {
             @Override
@@ -80,9 +83,13 @@ public class DeviceFlashPreparerTest {
             }
 
             @Override
-
             IDeviceManager getDeviceManager() {
                 return mMockDeviceManager;
+            }
+
+            @Override
+            protected IHostOptions getHostOptions() {
+                return mMockHostOptions;
             }
 
             @Override

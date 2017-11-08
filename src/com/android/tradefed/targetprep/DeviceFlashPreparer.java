@@ -25,6 +25,7 @@ import com.android.tradefed.device.DeviceUnresponsiveException;
 import com.android.tradefed.device.IDeviceManager;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.device.ITestDevice.RecoveryMode;
+import com.android.tradefed.host.IHostOptions;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.targetprep.IDeviceFlasher.UserDataFlashOption;
 import com.android.tradefed.util.CommandStatus;
@@ -131,6 +132,15 @@ public abstract class DeviceFlashPreparer extends BaseTargetPreparer implements 
      */
     IDeviceManager getDeviceManager() {
         return GlobalConfiguration.getDeviceManagerInstance();
+    }
+
+    /**
+     * Gets the {@link IHostOptions} instance to use.
+     * <p/>
+     * Exposed for unit testing
+     */
+    protected IHostOptions getHostOptions() {
+        return GlobalConfiguration.getInstance().getHostOptions();
     }
 
     /**
