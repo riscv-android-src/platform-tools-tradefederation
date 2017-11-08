@@ -17,6 +17,7 @@ package com.android.tradefed.device;
 
 import com.android.ddmlib.IDevice;
 import com.android.tradefed.config.Option;
+import com.android.tradefed.device.DeviceManager.FastbootDevice;
 import com.android.tradefed.log.LogUtil.CLog;
 
 import java.util.ArrayList;
@@ -381,8 +382,14 @@ public class DeviceSelectionOptions implements IDeviceSelection {
                 return false;
             }
         }
-        if (((mMinBattery != null) || (mMaxBattery != null)) && !(device instanceof StubDevice)) {
-            // Only check battery on physical device.
+        if (((mMinBattery != null) || (mMaxBattery != null))
+                && (!(device instanceof StubDevice) || (device instanceof FastbootDevice))) {
+            // Only check battery on physical device. (FastbootDevice placeholder is always for a
+            // physical device
+            if (device instanceof FastbootDevice) {
+                // Ready battery of fastboot device does not work and could lead to weird log.
+                return false;
+            }
             Integer deviceBattery = getBatteryLevel(device);
             if (mRequireBatteryCheck && (deviceBattery == null)) {
                 // Couldn't determine battery level when that check is required; reject device

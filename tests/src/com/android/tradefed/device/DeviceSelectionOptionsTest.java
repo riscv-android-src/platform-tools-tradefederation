@@ -18,6 +18,7 @@ package com.android.tradefed.device;
 import com.android.ddmlib.IDevice;
 import com.android.tradefed.config.ArgsOptionParser;
 import com.android.tradefed.config.OptionSetter;
+import com.android.tradefed.device.DeviceManager.FastbootDevice;
 
 import com.google.common.util.concurrent.SettableFuture;
 
@@ -440,6 +441,25 @@ public class DeviceSelectionOptionsTest extends TestCase {
         setter.setOptionValue("min-battery", "20");
         setter.setOptionValue("null-device", "true");
         assertTrue(options.matches(new NullDevice("test")));
+    }
+
+    /**
+     * A FastbootDevice does not expose a battery level so if a battery is specified we cannot match
+     * it.
+     */
+    public void testFastbootDevice_minBattery() throws Exception {
+        DeviceSelectionOptions options = new DeviceSelectionOptions();
+        OptionSetter setter = new OptionSetter(options);
+        setter.setOptionValue("min-battery", "20");
+        assertFalse(options.matches(new FastbootDevice("serial")));
+    }
+
+    /**
+     * Ensure that a fastboot device without any special condition can be matched for allocation.
+     */
+    public void testFastbootDevice() throws Exception {
+        DeviceSelectionOptions options = new DeviceSelectionOptions();
+        assertTrue(options.matches(new FastbootDevice("serial")));
     }
 
     private void mockBatteryCheck(Integer battery) {
