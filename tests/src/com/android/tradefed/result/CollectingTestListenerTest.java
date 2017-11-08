@@ -73,15 +73,29 @@ public class CollectingTestListenerTest extends TestCase {
     /**
      * Test the listener where test run has failed.
      */
-    @SuppressWarnings("unchecked")
     public void testRunFailed() {
         mCollectingTestListener.testRunStarted("foo", 1);
         mCollectingTestListener.testRunFailed("error");
-        mCollectingTestListener.testRunEnded(0, Collections.EMPTY_MAP);
+        mCollectingTestListener.testRunEnded(0, Collections.emptyMap());
         TestRunResult runResult = mCollectingTestListener.getCurrentRunResults();
         assertTrue(runResult.isRunComplete());
         assertTrue(runResult.isRunFailure());
         assertEquals("error", runResult.getRunFailureMessage());
+    }
+
+    /**
+     * Test the listener where test run has failed.
+     */
+    public void testRunFailed_counting() {
+        mCollectingTestListener.testRunStarted("foo1", 1);
+        mCollectingTestListener.testRunFailed("error1");
+        mCollectingTestListener.testRunEnded(0, Collections.emptyMap());
+        mCollectingTestListener.testRunStarted("foo2", 1);
+        mCollectingTestListener.testRunEnded(0, Collections.emptyMap());
+        mCollectingTestListener.testRunStarted("foo3", 1);
+        mCollectingTestListener.testRunFailed("error3");
+        mCollectingTestListener.testRunEnded(0, Collections.emptyMap());
+        assertEquals(2, mCollectingTestListener.getNumAllFailedTestRuns());
     }
 
     /**
