@@ -420,7 +420,7 @@ public class EmmcPerformanceTest implements IDeviceTest, IRemoteTest {
      * Clean up the device by formatting a new cache partition.
      */
     private void cleanUp() throws DeviceNotAvailableException {
-        mTestDevice.executeShellCommand(String.format("make_ext4fs %s", mCache));
+        mTestDevice.executeShellCommand(String.format("mke2fs %s", mCache));
     }
 
     /**
