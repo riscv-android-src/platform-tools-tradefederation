@@ -53,6 +53,7 @@ public class GoogleBenchmarkResultParser {
         String outputLogs = output.getOutput();
         Map<String, String> results = new HashMap<String, String>();
         JSONObject res = null;
+        outputLogs = sanitizeOutput(outputLogs);
         try {
             res = new JSONObject(outputLogs);
             // Parse context first
@@ -103,5 +104,26 @@ public class GoogleBenchmarkResultParser {
             testResults.put(key, j.get(key).toString());
         }
         return testResults;
+    }
+
+    /**
+     * In some cases a warning is printed before the JSON output. We remove it to avoid parsing
+     * failures.
+     */
+    private String sanitizeOutput(String output) {
+        // If it already looks like a proper JSON.
+        // TODO: Maybe parse first and if it fails sanitize. Could avoid some failures?
+        if (output.startsWith("{")) {
+            return output;
+        }
+        int indexStart = output.indexOf('{');
+        if (indexStart == -1) {
+            // Nothing we can do here, the parsing will most likely fail afterward.
+            CLog.w("Output does not look like a proper JSON.");
+            return output;
+        }
+        String newOuput = output.substring(indexStart);
+        CLog.d("We removed the following from the output: '%s'", output.subSequence(0, indexStart));
+        return newOuput;
     }
 }
