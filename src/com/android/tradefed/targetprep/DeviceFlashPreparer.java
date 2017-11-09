@@ -96,6 +96,12 @@ public abstract class DeviceFlashPreparer extends BaseTargetPreparer implements 
             description = "the timeout for the command of wiping user data.", isTimeVal = true)
     private long mWipeTimeout = 4 * 60 * 1000;
 
+    @Option(
+        name = "fastboot-flash-option",
+        description = "additional options to pass with fastboot flash/update command."
+    )
+    private Collection<String> mFastbootFlashOptions = new ArrayList<>();
+
     /**
      * Sets the device boot time
      * <p/>
@@ -190,6 +196,9 @@ public abstract class DeviceFlashPreparer extends BaseTargetPreparer implements 
                 flasher.setUserDataFlashOption(mUserDataFlashOption);
                 flasher.setForceSystemFlash(mForceSystemFlash);
                 flasher.setDataWipeSkipList(mDataWipeSkipList);
+                if (flasher instanceof FastbootDeviceFlasher) {
+                    ((FastbootDeviceFlasher) flasher).setFlashOptions(mFastbootFlashOptions);
+                }
                 preEncryptDevice(device, flasher);
                 start = System.currentTimeMillis();
                 flasher.flash(device, deviceBuild);

@@ -34,10 +34,13 @@ import org.apache.commons.compress.archivers.zip.ZipFile;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
+import java.util.List;
 import java.util.Random;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
 /**
  * A class that relies on fastboot to flash an image on physical Android hardware.
@@ -58,6 +61,8 @@ public class FastbootDeviceFlasher implements IDeviceFlasher  {
     private IFlashingResourcesRetriever mResourceRetriever;
 
     private ITestsZipInstaller mTestsZipInstaller = null;
+
+    private Collection<String> mFlashOptions = new ArrayList<>();
 
     private Collection<String> mDataWipeSkipList = null;
 
@@ -116,6 +121,17 @@ public class FastbootDeviceFlasher implements IDeviceFlasher  {
     }
 
     /**
+     * Sets a list of options to pass with flash/update commands.
+     *
+     * @param flashOptions
+     */
+    public void setFlashOptions(Collection<String> flashOptions) {
+        // HACK: To workaround TF's command line parsing, options starting with a dash
+        // needs to be prepended with a whitespace and trimmed before they are used.
+        mFlashOptions = flashOptions.stream().map(String::trim).collect(Collectors.toList());
+    }
+
+    /**
      * {@inheritDoc}
      */
     @Override
@@ -138,6 +154,16 @@ public class FastbootDeviceFlasher implements IDeviceFlasher  {
         checkAndFlashBaseband(device, deviceBuild);
         flashExtraImages(device, deviceBuild);
         checkAndFlashSystem(device, systemBuildId, systemBuildFlavor, deviceBuild);
+    }
+
+    private String[] buildFastbootCommand(String action, String... args) {
+        List<String> cmdArgs = new ArrayList<>();
+        if ("flash".equals(action) || "update".equals(action)) {
+            cmdArgs.addAll(mFlashOptions);
+        }
+        cmdArgs.add(action);
+        cmdArgs.addAll(Arrays.asList(args));
+        return cmdArgs.toArray(new String[cmdArgs.size()]);
     }
 
     /**
@@ -181,7 +207,8 @@ public class FastbootDeviceFlasher implements IDeviceFlasher  {
     protected void flashPartition(ITestDevice device, File imgFile, String partition)
             throws DeviceNotAvailableException, TargetSetupError {
         CLog.d("fastboot flash %s %s", partition, imgFile.getAbsolutePath());
-        executeLongFastbootCmd(device, "flash", partition, imgFile.getAbsolutePath());
+        executeLongFastbootCmd(
+                device, buildFastbootCommand("flash", partition, imgFile.getAbsolutePath()));
     }
 
     /**
@@ -351,8 +378,10 @@ public class FastbootDeviceFlasher implements IDeviceFlasher  {
     protected void flashBootloader(ITestDevice device, File bootloaderImageFile)
             throws DeviceNotAvailableException, TargetSetupError {
         // bootloader images are small, and flash quickly. so use the 'normal' timeout
-        executeFastbootCmd(device, "flash", getBootPartitionName(),
-                bootloaderImageFile.getAbsolutePath());
+        executeFastbootCmd(
+                device,
+                buildFastbootCommand(
+                        "flash", getBootPartitionName(), bootloaderImageFile.getAbsolutePath()));
         device.rebootIntoBootloader();
     }
 
@@ -606,8 +635,10 @@ public class FastbootDeviceFlasher implements IDeviceFlasher  {
                 deviceBuild.getDeviceImageFile().getAbsolutePath());
         // give extra time to the update cmd
         try {
-            executeLongFastbootCmd(device, "update",
-                    deviceBuild.getDeviceImageFile().getAbsolutePath());
+            executeLongFastbootCmd(
+                    device,
+                    buildFastbootCommand(
+                            "update", deviceBuild.getDeviceImageFile().getAbsolutePath()));
             // only transfer last fastboot command status over to system flash status after having
             // flashing the system partitions
             mSystemFlashStatus = mFbCmdStatus;

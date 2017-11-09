@@ -27,6 +27,8 @@ import logging
 import os
 import subprocess
 import sys
+import tempfile
+import time
 
 import cli_translator
 ANDROID_BUILD_TOP = 'ANDROID_BUILD_TOP'
@@ -37,7 +39,9 @@ EXPECTED_VARS = frozenset([
 EXIT_CODE_ENV_NOT_SETUP = 1
 EXIT_CODE_BUILD_FAILURE = 2
 BUILD_CMD = ['make', '-j', '-C', os.environ.get(ANDROID_BUILD_TOP)]
+TEST_RUN_DIR_PREFIX = 'atest_run_%s_'
 TESTS_HELP_TEXT = '''Tests to run.
+
 
 Ways to identify a test:
 MODULE NAME       Examples: CtsJankDeviceTestCases
@@ -117,6 +121,17 @@ def _is_missing_adb(root_dir=''):
     return os.path.commonprefix([output, root_dir]) != root_dir
 
 
+def make_test_run_dir():
+    """Make the test run dir in tmp.
+
+    Returns:
+        A string of the dir path.
+    """
+    utc_epoch_time = int(time.time())
+    prefix = TEST_RUN_DIR_PREFIX % utc_epoch_time
+    return tempfile.mkdtemp(prefix=prefix)
+
+
 def build_tests(build_targets, verbose=False):
     """Shell out and make build_targets.
 
@@ -168,7 +183,9 @@ def main(argv):
     if _missing_environment_variables():
         return EXIT_CODE_ENV_NOT_SETUP
     repo_root = os.environ.get(ANDROID_BUILD_TOP)
-    translator = cli_translator.CLITranslator(root_dir=repo_root)
+    results_dir = make_test_run_dir()
+    translator = cli_translator.CLITranslator(results_dir=results_dir,
+                                              root_dir=repo_root)
     build_targets, run_commands = translator.translate(args.tests)
     if args.wait_for_debugger:
         run_commands = [cmd + ' --wait-for-debugger' for cmd in run_commands]
