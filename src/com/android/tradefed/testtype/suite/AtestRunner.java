@@ -27,14 +27,18 @@ import com.android.tradefed.testtype.InstrumentationTest;
 
 import com.android.tradefed.testtype.IRemoteTest;
 import com.android.tradefed.testtype.ITestFilterReceiver;
+import java.io.FileNotFoundException;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.io.File;
+import java.io.FileReader;
 import java.util.Arrays;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
-import java.util.HashMap;
 import java.util.List;
+
+import com.google.gson.Gson;
+
 
 /** Implementation of {@link ITestSuite} */
 public class AtestRunner extends ITestSuite {
@@ -42,8 +46,13 @@ public class AtestRunner extends ITestSuite {
     private static final Pattern CONFIG_RE =
             Pattern.compile(".*/(?<config>[^/]+).config", Pattern.CASE_INSENSITIVE);
 
-    @Option(name = "test-info", description = "Test info of the test to run.")
-    private List<String> mTestInfo = new ArrayList<>();
+    protected class TestInfo {
+        protected String test = null;
+        protected String[] filters = null;
+    }
+
+    @Option(name = "test-info-file", description = "File with info about the tests to run.")
+    private String mTestInfoFile;
 
     @Option(
         name = "wait-for-debugger",
@@ -73,26 +82,22 @@ public class AtestRunner extends ITestSuite {
                 }
             }
         }
-        CLog.d("Tests: %s", String.join(" ", mTestInfo));
-        for (String testInfoString : mTestInfo) {
-            HashMap<String, List<String>> testInfo = parseTestInfoParam(testInfoString);
-            // "name" has value that is a list of one element.
-            String name = testInfo.get("name").get(0);
-            if (configs.contains(name)) {
-                try {
-                    IConfiguration testConfig =
-                            configFactory.createConfigurationFromArgs(new String[] {name});
-                    for (String filter : testInfo.get("filters")) {
-                        addFilter(testConfig, filter);
-                    }
-                    if (mDebug) {
-                        addDebugger(testConfig);
-                    }
-                    configMap.put(name, testConfig);
-                } catch (ConfigurationException | NoClassDefFoundError e) {
-                    CLog.e(e);
-                    CLog.e("Configuration '%s' cannot be loaded, ignoring.", testInfo);
+        TestInfo[] testInfos = loadTestInfoFile(mTestInfoFile);
+        for (TestInfo testInfo : testInfos) {
+            try {
+                CLog.d("Adding testConfig: %s", testInfo.test);
+                IConfiguration testConfig =
+                        configFactory.createConfigurationFromArgs(new String[] {testInfo.test});
+                for (String filter : testInfo.filters) {
+                    addFilter(testConfig, filter);
                 }
+                if (mDebug) {
+                    addDebugger(testConfig);
+                }
+                configMap.put(testInfo.test, testConfig);
+            } catch (ConfigurationException | NoClassDefFoundError e) {
+                CLog.e("Configuration '%s' cannot be loaded, ignoring.", testInfo);
+                CLog.d("Error: %s", e);
             }
         }
         return configMap;
@@ -116,24 +121,22 @@ public class AtestRunner extends ITestSuite {
     }
 
     /**
-     * Parse the test-info parameter into config name and filters.
+     * Load the TestInfo data from the test_info.json file.
      *
-     * @param testInfoString The value of the test-info parameter, of form:
-     *     module_name:class#method,class#method
-     * @return HashMap with keys "name" and "filters"
+     * @param filePath The path to the json file containing test info.
+     * @return Array of TestInfo instances.
      */
-    public HashMap<String, List<String>> parseTestInfoParam(String testInfoString) {
-        CLog.d("Parsing param: %s", testInfoString);
-        HashMap<String, List<String>> testInfoMap = new HashMap<>();
-        String[] infoParts = testInfoString.split(":");
-        testInfoMap.put("name", Arrays.asList(infoParts[0]));
-        testInfoMap.put("filters", new ArrayList<>());
-        if (infoParts.length > 1) {
-            for (String filter : infoParts[1].split(",")) {
-                testInfoMap.get("filters").add(filter);
-            }
+    public TestInfo[] loadTestInfoFile(String filePath) {
+        CLog.d("Loading test info file: %s", filePath);
+        TestInfo[] testInfos = new TestInfo[1];
+        try {
+            Gson gson = new Gson();
+            testInfos = gson.fromJson(new FileReader(filePath), TestInfo[].class);
+        } catch (FileNotFoundException e) {
+            CLog.e("Aborting all tests, could not find test_info file: %s", filePath);
+            CLog.d("Error: %e", e);
         }
-        return testInfoMap;
+        return testInfos;
     }
 
     /**
@@ -147,7 +150,7 @@ public class AtestRunner extends ITestSuite {
         List<IRemoteTest> tests = testConfig.getTests();
         for (IRemoteTest test : tests) {
             if (test instanceof ITestFilterReceiver) {
-                CLog.d("Applying filter: %s", filter);
+                CLog.d("Applying filter to %s: %s", testConfig.getName(), filter);
                 ((ITestFilterReceiver) test).addIncludeFilter(filter);
             } else {
                 CLog.e(
