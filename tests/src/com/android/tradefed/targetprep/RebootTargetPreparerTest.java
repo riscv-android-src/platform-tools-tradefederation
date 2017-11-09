@@ -16,7 +16,6 @@
 package com.android.tradefed.targetprep;
 
 import com.android.tradefed.build.IBuildInfo;
-import com.android.tradefed.config.OptionSetter;
 import com.android.tradefed.device.ITestDevice;
 
 import org.easymock.EasyMock;
@@ -38,16 +37,6 @@ public class RebootTargetPreparerTest {
         mRebootTargetPreparer = new RebootTargetPreparer();
         mMockDevice = EasyMock.createMock(ITestDevice.class);
         mMockBuildInfo = EasyMock.createMock(IBuildInfo.class);
-    }
-
-    @Test
-    public void testDisable() throws Exception {
-        OptionSetter optionSetter = new OptionSetter(mRebootTargetPreparer);
-        optionSetter.setOptionValue("disable", "true");
-        EasyMock.replay(mMockDevice, mMockBuildInfo);
-
-        mRebootTargetPreparer.setUp(mMockDevice, mMockBuildInfo);
-        EasyMock.verify(mMockDevice, mMockBuildInfo);
     }
 
     @Test

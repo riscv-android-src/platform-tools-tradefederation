@@ -16,23 +16,17 @@
 package com.android.tradefed.targetprep;
 
 import com.android.tradefed.build.IBuildInfo;
-import com.android.tradefed.config.Option;
 import com.android.tradefed.config.OptionClass;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
 
 /** Target preparer that reboots the device. */
 @OptionClass(alias = "reboot-preparer")
-public class RebootTargetPreparer implements ITargetPreparer {
-    @Option(name = "disable", description = "Disable this target.")
-    private boolean mDisable = false;
+public class RebootTargetPreparer extends BaseTargetPreparer {
 
     @Override
     public void setUp(ITestDevice device, IBuildInfo buildInfo)
             throws TargetSetupError, BuildError, DeviceNotAvailableException {
-        if (mDisable) {
-            return;
-        }
         device.reboot();
     }
 }

@@ -28,6 +28,7 @@ import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.invoker.IInvocationContext;
 import com.android.tradefed.result.ITestInvocationListener;
+import com.android.tradefed.targetprep.BaseTargetPreparer;
 import com.android.tradefed.targetprep.BuildError;
 import com.android.tradefed.targetprep.ITargetCleaner;
 import com.android.tradefed.targetprep.ITargetPreparer;
@@ -221,14 +222,15 @@ public class ModuleDefinitionTest {
     public void testRun_failPreparation() throws Exception {
         final String exceptionMessage = "ouch I failed";
         mTargetPrepList.clear();
-        mTargetPrepList.add(new ITargetPreparer() {
-            @Override
-            public void setUp(ITestDevice device, IBuildInfo buildInfo)
-                    throws TargetSetupError, BuildError, DeviceNotAvailableException {
-                DeviceDescriptor nullDescriptor = null;
-                throw new TargetSetupError(exceptionMessage, nullDescriptor);
-            }
-        });
+        mTargetPrepList.add(
+                new BaseTargetPreparer() {
+                    @Override
+                    public void setUp(ITestDevice device, IBuildInfo buildInfo)
+                            throws TargetSetupError, BuildError, DeviceNotAvailableException {
+                        DeviceDescriptor nullDescriptor = null;
+                        throw new TargetSetupError(exceptionMessage, nullDescriptor);
+                    }
+                });
         mModule =
                 new ModuleDefinition(
                         MODULE_NAME,

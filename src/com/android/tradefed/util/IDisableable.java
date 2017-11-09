@@ -25,4 +25,14 @@ public interface IDisableable {
     public default boolean isDisabled() {
         return false;
     }
+
+    /**
+     * Sets whether or not the object should be disabled or not. Can be use to make an object
+     * disabled by default in the default constructor.
+     *
+     * @param isDisabled the state the object should be put in.
+     */
+    public default void setDisable(boolean isDisabled) {
+        // TODO: Remove the default empty implementation
+    }
 }

@@ -148,6 +148,11 @@ public class ValidateSuiteConfigHelperTest {
                 throws TargetSetupError, BuildError, DeviceNotAvailableException {
             // ignore
         }
+
+        @Override
+        public void setDisable(boolean isDisabled) {
+            // ignore
+        }
     }
 
     /** Test that metric collectors cannot be specified inside a module for a suite. */
