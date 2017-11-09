@@ -57,6 +57,12 @@ public class TfSuiteRunnerTest {
                     + "    <option name=\"test-suite-tag\" value=\"example-suite\" />\n"
                     + "    <test class=\"com.android.tradefed.testtype.StubTest\" />\n"
                     + "</configuration>";
+    private static final String TEST_CONFIG_MULTI_ABI =
+            "<configuration description=\"Runs a stub tests part of some suite\">\n"
+                    + "    <option name=\"test-suite-tag\" value=\"example-suite2\" />\n"
+                    + "    <test class=\"com.android.tradefed.testtype.AndroidJUnitTest\" />\n"
+                    + "</configuration>";
+    private static final String FAKE_HOST_ARCH = "arm";
 
     private TfSuiteRunner mRunner;
 
@@ -240,5 +246,26 @@ public class TfSuiteRunnerTest {
             FileUtil.recursiveDelete(tmpDir);
             FileUtil.recursiveDelete(additionalTestsZipFile);
         }
+    }
+
+    /**
+     * Test for {@link TfSuiteRunner#loadTests()} that when a test config supports IAbiReceiver,
+     * multiple instances of the config are queued up.
+     */
+    @Test
+    public void testLoadTestsForMultiAbi() throws Exception {
+        ITestDevice mockDevice = EasyMock.createMock(ITestDevice.class);
+        EasyMock.expect(mockDevice.getProperty(EasyMock.eq("ro.product.cpu.abilist")))
+                .andReturn("arm64-v8a,armeabi-v7a");
+        mRunner.setDevice(mockDevice);
+        OptionSetter setter = new OptionSetter(mRunner);
+        setter.setOptionValue("suite-config-prefix", "suite");
+        setter.setOptionValue("run-suite-tag", "example-suite-abi");
+        EasyMock.replay(mockDevice);
+        LinkedHashMap<String, IConfiguration> configMap = mRunner.loadTests();
+        assertEquals(2, configMap.size());
+        assertTrue(configMap.containsKey("arm64-v8a suite/stubAbi"));
+        assertTrue(configMap.containsKey("armeabi-v7a suite/stubAbi"));
+        EasyMock.verify(mockDevice);
     }
 }
