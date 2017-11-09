@@ -42,12 +42,20 @@ BUILD_CMD = ['make', '-j', '-C', os.environ.get(ANDROID_BUILD_TOP)]
 TEST_RUN_DIR_PREFIX = 'atest_run_%s_'
 TESTS_HELP_TEXT = '''Tests to run.
 
-
 Ways to identify a test:
 MODULE NAME       Examples: CtsJankDeviceTestCases
 CLASS NAME        Examples: CtsDeviceJankUi, android.jank.cts.ui.CtsDeviceJankUi
+MODULE:CLASS      Examples: CtsJankDeviceTestCases:CtsDeviceJankUi, CtsJankDeviceTestCase:android.jank.cts.ui.CtsDeviceJankUi
 INTEGRATION NAME  Examples: example/reboot, native-benchmark
 FILE PATH         Examples: ., <rel_or_abs_path>/jank, <rel_or_abs_path>/CtsDeviceJankUi.java
+
+METHODS are specified by appending to class with #.
+
+Method Examples:
+    CtsDeviceJankUi#Method1,Method2
+    android.jank.cts.ui.CtsDeviceJankUi#Method
+    CtsJankDeviceTestCases:CtsDeviceJankUi#Method
+    path/to/CtsDeviceJankUi.java#Method
 '''
 
 def _parse_args(argv):

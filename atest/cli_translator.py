@@ -147,6 +147,7 @@ class CLITranslator(object):
         self.ref_type_to_func_map = {
             REFERENCE_TYPE.MODULE: self._find_test_by_module_name,
             REFERENCE_TYPE.CLASS: self._find_test_by_class_name,
+            REFERENCE_TYPE.MODULE_CLASS: self._find_test_by_module_and_class,
             REFERENCE_TYPE.QUALIFIED_CLASS: self._find_test_by_class_name,
             REFERENCE_TYPE.FILE_PATH: self._find_test_by_path,
             REFERENCE_TYPE.INTEGRATION: self._find_test_by_integration_name,
@@ -421,20 +422,6 @@ class CLITranslator(object):
                 ' argument. Multiple classes should be separated by spaces: '
                 'class#method class#method')
 
-    def _is_in_google_tradefed(self, test_info):
-        """Return Boolean of whether test is inside google tradefed
-
-        Args:
-            test_info: A TestInfo namedtuple.
-
-        Returns:
-            Boolean. True if inside google-tradefed else False.
-        """
-        for gtf_dir in self.gtf_dirs:
-            if os.path.commonprefix([gtf_dir, test_info.rel_config]) == gtf_dir:
-                return True
-        return False
-
     def _find_test_by_module_name(self, module_name):
         """Find test files given a module name.
 
@@ -450,22 +437,31 @@ class CLITranslator(object):
             rel_config = os.path.join(info['path'][0], MODULE_CONFIG)
             return TestInfo(rel_config, module_name, None, frozenset())
 
-    def _find_test_by_class_name(self, class_name):
-        """Find test files given a class name.
+    def _find_test_by_class_name(self, class_name, module_name=None,
+                                 rel_config=None):
+        """Find test files given a class name.  If module_name and rel_config
+        not given it will calculate it determine it by looking up the tree
+        from the class file.
 
         Args:
             class_name: A string of the test's class name.
+            module_name: Optional. A string of the module name to use.
+            rel_config: Optional. A string of module dir relative to repo root.
 
         Returns:
             A populated TestInfo namedtuple if test found, else None.
         """
         class_name, methods = self._split_methods(class_name)
+        if rel_config:
+            search_dir = os.path.join(self.root_dir, os.path.dirname(rel_config))
+        else:
+            search_dir = self.root_dir
         if '.' in class_name:
             find_cmd = FIND_CMDS[REFERENCE_TYPE.QUALIFIED_CLASS] % (
-                self.root_dir, class_name.replace('.', '/'))
+                search_dir, class_name.replace('.', '/'))
         else:
             find_cmd = FIND_CMDS[REFERENCE_TYPE.CLASS] % (
-                self.root_dir, class_name)
+                search_dir, class_name)
         # TODO: Pull out common find cmd and timing code.
         start = time.time()
         logging.debug('Executing: %s', find_cmd)
@@ -475,13 +471,32 @@ class CLITranslator(object):
         test_path = self._extract_test_path(out)
         if not test_path:
             return None
-        test_dir = os.path.dirname(test_path)
-        rel_module_dir = self._find_parent_module_dir(test_dir)
-        rel_config = os.path.join(rel_module_dir, MODULE_CONFIG)
-        module_name = self._get_module_name(rel_module_dir)
         full_class_name = self._get_fully_qualified_class_name(test_path)
         test_filter = TestFilter(full_class_name, methods)
+        if not rel_config:
+            test_dir = os.path.dirname(test_path)
+            rel_module_dir = self._find_parent_module_dir(test_dir)
+            rel_config = os.path.join(rel_module_dir, MODULE_CONFIG)
+        if not module_name:
+            module_name = self._get_module_name(os.path.dirname(rel_config))
         return TestInfo(rel_config, module_name, None, frozenset([test_filter]))
+
+    def _find_test_by_module_and_class(self, module_class):
+        """Find test files given a MODULE:CLASS string.
+
+        Args:
+            module_class: A string of form MODULE:CLASS or MODULE:CLASS#METHOD.
+
+        Returns:
+            A populated TestInfo namedtuple if found, else None.
+        """
+        module_name, class_name = module_class.split(':')
+        module_info = self._find_test_by_module_name(module_name)
+        if not module_info:
+            return None
+        return self._find_test_by_class_name(class_name,
+                                             module_info.module_name,
+                                             module_info.rel_config)
 
     def _find_test_by_integration_name(self, name):
         """Find test info given an integration name.
@@ -755,8 +770,8 @@ class CLITranslator(object):
             try:
                 test_info = self.ref_type_to_func_map[ref_type](test_name)
                 if test_info:
-                    logging.info('Found test for "%s" treating as'
-                                 ' %s reference', test_name, ref_name)
+                    logging.debug('Found test for "%s" treating as'
+                                  ' %s reference', test_name, ref_name)
                     logging.debug('Resolved "%s" to %s', test_name, test_info)
                     return test_info
                 logging.debug('Failed to find %s as %s', test_name, ref_name)
@@ -793,5 +808,5 @@ class CLITranslator(object):
         filepath = self._create_test_info_file(test_infos)
         run_commands = self._generate_run_commands(filepath)
         end = time.time()
-        logging.info('Found tests in %ss', end - start)
+        logging.debug('Found tests in %ss', end - start)
         return build_targets, run_commands

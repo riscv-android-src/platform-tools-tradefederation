@@ -30,8 +30,10 @@ MODULE_NAME = 'CtsJankDeviceTestCases'
 MODULE2_NAME = 'HelloWorldTests'
 CLASS_NAME = 'CtsDeviceJankUi'
 CLASS2_NAME = 'SomeOtherClass'
+MODULE_CLASS = '%s:%s' % (MODULE_NAME, CLASS_NAME)
 METHOD_NAME = 'method1'
 METHOD2_NAME = 'method2'
+MODULE_CLASS_METHOD = '%s#%s' % (MODULE_CLASS, METHOD_NAME)
 MODULE_DIR = 'foo/bar/jank'
 MODULE2_DIR = 'foo/bar/hello'
 CLASS_DIR = 'foo/bar/jank/src/android/jank/cts/ui'
@@ -114,6 +116,8 @@ def findtest_side_effect(test_name, _):
     if test_name == MODULE_NAME:
         return MODULE_INFO
     if test_name == CLASS_NAME:
+        return CLASS_INFO
+    if test_name == MODULE_CLASS:
         return CLASS_INFO
     if test_name == INT_NAME:
         return INT_INFO
@@ -268,18 +272,8 @@ class CLITranslatorUnittests(unittest.TestCase):
         self.assertStrictEqual(self.ctr._get_targets_from_xml(xml_file),
                                XML_TARGETS)
 
-    def test_is_in_google_tradefed(self):
-        """Test _is_in_google_tradefed method."""
-        self.ctr.gtf_dirs = self._gtf_dirs
-        self.assertFalse(self.ctr._is_in_google_tradefed(MODULE_INFO))
-        self.assertFalse(self.ctr._is_in_google_tradefed(INT_INFO))
-        self.assertTrue(self.ctr._is_in_google_tradefed(GTF_INT_INFO))
-
     def test_split_methods(self):
         """Test _split_methods method."""
-        # Technically this class returns frozensets, not sets, but for testing
-        # these will pass assertStrictEqual and it's shorter to just write set here.
-
         # Class
         self.assertStrictEqual(self.ctr._split_methods('Class.Name'),
                                ('Class.Name', set()))
@@ -324,6 +318,25 @@ class CLITranslatorUnittests(unittest.TestCase):
         mock_checkoutput.return_value = ''
         self.assertIsNone(self.ctr._find_test_by_class_name('Not class'))
 
+    @mock.patch('subprocess.check_output', return_value=FIND_ONE)
+    @mock.patch.object(cli_t.CLITranslator, '_get_fully_qualified_class_name',
+                       return_value=FULL_CLASS_NAME)
+    @mock.patch('os.path.isfile', side_effect=isfile_side_effect)
+    def test_find_test_by_module_and_class(self, _isfile, _class,
+                                           mock_checkoutput):
+        """Test _find_test_by_module_and_class method."""
+        test_info = self.ctr._find_test_by_module_and_class(MODULE_CLASS)
+        self.assertStrictEqual(test_info, CLASS_INFO)
+        # with method
+        test_info = self.ctr._find_test_by_module_and_class(MODULE_CLASS_METHOD)
+        self.assertStrictEqual(test_info, METHOD_INFO)
+        # bad module, good class, returns None
+        bad_module = '%s:%s' % ('BadMod', CLASS_NAME)
+        self.assertIsNone(self.ctr._find_test_by_module_and_class(bad_module))
+        # find output fails to find class file
+        mock_checkoutput.return_value = ''
+        bad_class = '%s:%s' % (MODULE_NAME, 'Anything')
+        self.assertIsNone(self.ctr._find_test_by_module_and_class(bad_class))
 
     @mock.patch('subprocess.check_output')
     @mock.patch('os.path.exists', return_value=True)
@@ -467,13 +480,15 @@ class CLITranslatorUnittests(unittest.TestCase):
 
     @mock.patch.object(cli_t.CLITranslator, '_find_test_by_module_name')
     @mock.patch.object(cli_t.CLITranslator, '_find_test_by_class_name')
+    @mock.patch.object(cli_t.CLITranslator, '_find_test_by_module_and_class')
     @mock.patch.object(cli_t.CLITranslator, '_find_test_by_integration_name')
-    def test_get_test_info(self, mock_findbyint, mock_findbyclass,
-                           mock_findbymodule):
+    def test_get_test_info(self, mock_findbyint, mock_findbymc,
+                           mock_findbyclass, mock_findbymodule):
         """Test _find_test method."""
         ctr = cli_t.CLITranslator(results_dir=TEST_INFO_DIR)
         mock_findbymodule.return_value = MODULE_INFO
         mock_findbyclass.return_value = CLASS_INFO
+        mock_findbymc.return_value = CLASS_INFO
         mock_findbyint.return_value = INT_INFO
         refs = [REF_TYPE.INTEGRATION, REF_TYPE.MODULE, REF_TYPE.CLASS]
         self.assertStrictEqual(ctr._get_test_info(INT_NAME, refs), INT_INFO)
@@ -487,6 +502,9 @@ class CLITranslatorUnittests(unittest.TestCase):
         self.assertStrictEqual(ctr._get_test_info(CLASS_NAME, refs), CLASS_INFO)
         mock_findbyclass.return_value = None
         self.assertIsNone(ctr._get_test_info(CLASS_NAME, refs))
+        refs = [REF_TYPE.MODULE_CLASS]
+        self.assertStrictEqual(ctr._get_test_info(MODULE_CLASS, refs),
+                               CLASS_INFO)
 
     @mock.patch.object(cli_t.CLITranslator, '_get_targets_from_xml',
                        side_effect=targetsfromxml_side_effect)
@@ -500,6 +518,9 @@ class CLITranslatorUnittests(unittest.TestCase):
         self.assertStrictEqual(targets, TARGETS)
         self.assertStrictEqual(run_cmds, [RUN_CMD])
         targets, run_cmds = self.ctr.translate([CLASS_NAME])
+        self.assertStrictEqual(targets, TARGETS)
+        self.assertStrictEqual(run_cmds, [RUN_CMD])
+        targets, run_cmds = self.ctr.translate([MODULE_CLASS])
         self.assertStrictEqual(targets, TARGETS)
         self.assertStrictEqual(run_cmds, [RUN_CMD])
         targets, run_cmds = self.ctr.translate([INT_NAME])
