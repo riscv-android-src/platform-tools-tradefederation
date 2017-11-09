@@ -163,6 +163,11 @@ public class SuiteResultReporter extends CollectingTestListener {
                     "IMPORTANT: Some modules failed to run to completion, tests counts "
                             + "may be inaccurate.\n");
         }
+
+        for (Entry<Integer, List<String>> shard :
+                getInvocationContext().getShardsSerials().entrySet()) {
+            mSummary.append(String.format("Shard %s used: %s\n", shard.getKey(), shard.getValue()));
+        }
         mSummary.append("============== End of Results ==============\n");
         mSummary.append("============================================\n");
         CLog.logAndDisplay(LogLevel.INFO, mSummary.toString());

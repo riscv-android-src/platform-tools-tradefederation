@@ -39,6 +39,8 @@ public class ShardMasterResultForwarder extends LogSaverResultForwarder {
     private boolean mStartReported = false;
 
     private long mFirstShardEndTime = 0l;
+    private IInvocationContext mOriginalContext;
+    private int shardIndex = 0;
 
     /**
      * Create a {@link ShardMasterResultForwarder}.
@@ -60,8 +62,13 @@ public class ShardMasterResultForwarder extends LogSaverResultForwarder {
     @Override
     public void invocationStarted(IInvocationContext context) {
         if (!mStartReported) {
+            mOriginalContext = context;
             super.invocationStarted(context);
             mStartReported = true;
+        } else {
+            // Track serials used in each shard.
+            mOriginalContext.addSerialsFromShard(shardIndex, context.getSerials());
+            shardIndex++;
         }
     }
 
