@@ -336,4 +336,17 @@ public class CollectingTestListener implements ITestInvocationListener {
     public int getNumAllFailedTests() {
         return getNumTestsInState(TestStatus.FAILURE);
     }
+
+    /**
+     * Return total number of test runs in a failure state
+     */
+    public int getNumAllFailedTestRuns() {
+        int count = 0;
+        for (Map.Entry<String, TestRunResult> e : mRunResultsMap.entrySet()) {
+            if (e.getValue().isRunFailure()) {
+                count++;
+            }
+        }
+        return count;
+    }
 }
