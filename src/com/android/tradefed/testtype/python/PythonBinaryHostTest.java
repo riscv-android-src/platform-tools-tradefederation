@@ -25,13 +25,16 @@ import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.device.StubDevice;
 import com.android.tradefed.invoker.IInvocationContext;
 import com.android.tradefed.log.LogUtil.CLog;
+import com.android.tradefed.result.FileInputStreamSource;
 import com.android.tradefed.result.ITestInvocationListener;
+import com.android.tradefed.result.LogDataType;
 import com.android.tradefed.result.ResultForwarder;
 import com.android.tradefed.testtype.IBuildReceiver;
 import com.android.tradefed.testtype.IDeviceTest;
 import com.android.tradefed.testtype.IInvocationContextReceiver;
 import com.android.tradefed.testtype.IRemoteTest;
 import com.android.tradefed.util.CommandResult;
+import com.android.tradefed.util.CommandStatus;
 import com.android.tradefed.util.FileUtil;
 import com.android.tradefed.util.IRunUtil;
 import com.android.tradefed.util.RunUtil;
@@ -49,6 +52,8 @@ import java.util.Set;
 @OptionClass(alias = "python-host")
 public class PythonBinaryHostTest
         implements IRemoteTest, IDeviceTest, IBuildReceiver, IInvocationContextReceiver {
+
+    protected static final String PYTHON_OUTPUT = "python-output";
 
     @Option(name = "par-file-name", description = "The binary names inside the build info to run.")
     private Set<String> mBinaryNames = new HashSet<>();
@@ -117,6 +122,7 @@ public class PythonBinaryHostTest
             if (testsDir != null) {
                 res = FileUtil.findFile(testsDir, parFileName);
             }
+
             // TODO: is there other places to search?
             if (res == null) {
                 throw new RuntimeException(
@@ -142,11 +148,25 @@ public class PythonBinaryHostTest
         CommandResult result =
                 getRunUtil().runTimedCmd(mTestTimeout, commandLine.toArray(new String[0]));
         PythonForwarder forwarder = new PythonForwarder(listener, pyFile.getName());
+        if (!CommandStatus.SUCCESS.equals(result.getStatus())) {
+            // If the binary finishes we an error code, it could simply be a test failure, but if
+            // it does not even have a TEST_RUN_STARTED tag, then we probably have binary setup
+            // issue.
+            if (!result.getStderr().contains("TEST_RUN_STARTED")) {
+                throw new RuntimeException(
+                        String.format(
+                                "Something went wrong when running the python binary: %s",
+                                result.getStderr()));
+            }
+        }
         SubprocessTestResultsParser parser = new SubprocessTestResultsParser(forwarder, mContext);
         File resultFile = null;
         try {
             resultFile = FileUtil.createTempFile("python-res", ".txt");
             FileUtil.writeToFile(result.getStderr(), resultFile);
+            try (FileInputStreamSource data = new FileInputStreamSource(resultFile)) {
+                listener.testLog(PYTHON_OUTPUT, LogDataType.TEXT, data);
+            }
             parser.parseFile(resultFile);
         } catch (IOException e) {
             throw new RuntimeException(e);

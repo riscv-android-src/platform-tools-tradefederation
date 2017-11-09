@@ -780,13 +780,15 @@ public class FileUtil {
     public static File findFile(File dir, String fileName) {
         if (dir.listFiles() != null) {
             for (File file : dir.listFiles()) {
-                if (file.getName().equals(fileName)) {
-                    return file;
-                } else if (file.isDirectory()) {
+                if (file.isDirectory()) {
                     File result = findFile(file, fileName);
                     if (result != null) {
                         return result;
                     }
+                }
+                // after exploring the sub-dir, if the dir itself is the only match return it.
+                if (file.getName().equals(fileName)) {
+                    return file;
                 }
             }
         }
