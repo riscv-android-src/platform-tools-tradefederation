@@ -17,6 +17,7 @@ package com.android.tradefed.testtype.suite;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;
+import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.mock;
 
 import com.android.ddmlib.testrunner.TestIdentifier;
@@ -135,6 +136,8 @@ public class ITestSuiteIntegrationTest {
         mContext = new InvocationContext();
         mContext.addAllocatedDevice("device", mMockDevice);
         mContext.addDeviceBuildInfo("device", mMockBuildInfo);
+
+        doReturn("serial").when(mMockDevice).getSerialNumber();
     }
 
     @After
@@ -394,6 +397,8 @@ public class ITestSuiteIntegrationTest {
         assertEquals(6, mListener.getTotalTests());
         assertEquals(5, mListener.getPassedTests());
         assertEquals(1, mListener.getFailedTests());
+        // 2 shards so 2 serials
+        assertEquals(2, mContext.getShardsSerials().size());
     }
 
     /**
@@ -435,6 +440,8 @@ public class ITestSuiteIntegrationTest {
         assertEquals(6, mListener.getTotalTests());
         assertEquals(5, mListener.getPassedTests());
         assertEquals(1, mListener.getFailedTests());
+        // 2 shards so 2 serials
+        assertEquals(2, mContext.getShardsSerials().size());
     }
 
     /**
@@ -488,6 +495,8 @@ public class ITestSuiteIntegrationTest {
         assertEquals(3, mListener.getTotalTests());
         assertEquals(3, mListener.getPassedTests());
         assertEquals(0, mListener.getFailedTests());
+        // Not local sharding so no serial is tracked here.
+        assertEquals(0, mContext.getShardsSerials().size());
     }
 
     /**

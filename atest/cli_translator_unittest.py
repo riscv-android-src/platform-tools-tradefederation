@@ -30,8 +30,10 @@ MODULE_NAME = 'CtsJankDeviceTestCases'
 MODULE2_NAME = 'HelloWorldTests'
 CLASS_NAME = 'CtsDeviceJankUi'
 CLASS2_NAME = 'SomeOtherClass'
+MODULE_CLASS = '%s:%s' % (MODULE_NAME, CLASS_NAME)
 METHOD_NAME = 'method1'
 METHOD2_NAME = 'method2'
+MODULE_CLASS_METHOD = '%s#%s' % (MODULE_CLASS, METHOD_NAME)
 MODULE_DIR = 'foo/bar/jank'
 MODULE2_DIR = 'foo/bar/hello'
 CLASS_DIR = 'foo/bar/jank/src/android/jank/cts/ui'
@@ -80,23 +82,27 @@ INT_CONFIG = os.path.join(INT_DIR, INT_NAME + '.xml')
 GTF_INT_CONFIG = os.path.join(GTF_INT_DIR, GTF_INT_NAME + '.xml')
 INT_INFO = cli_t.TestInfo(INT_CONFIG, None, INT_NAME, frozenset())
 GTF_INT_INFO = cli_t.TestInfo(GTF_INT_CONFIG, None, GTF_INT_NAME, frozenset())
-INT_TARGETS = {'tradefed-all'}
-GTF_INT_TARGETS = {'google-tradefed-all'}
-TARGETS = {'tradefed-all', 'MODULES-IN-%s' % MODULE_DIR.replace('/', '-')}
-GTF_TARGETS = {'google-tradefed-all', 'MODULES-IN-%s' % MODULE_DIR.replace('/', '-')}
+JSON_FILE = 'module-info.json'
+TEST_DATA_DIR = 'unittest_data'
+JSON_FILE_PATH = os.path.join(os.path.dirname(__file__), TEST_DATA_DIR)
+INFO_JSON = json.load(open(os.path.join(JSON_FILE_PATH, JSON_FILE)))
+MODULE_INFO_TARGET = '/out/%s' % JSON_FILE
+INT_TARGETS = {'tradefed-all', MODULE_INFO_TARGET}
+GTF_INT_TARGETS = {'google-tradefed-all', MODULE_INFO_TARGET}
+TARGETS = {'tradefed-all', MODULE_INFO_TARGET,
+           'MODULES-IN-%s' % MODULE_DIR.replace('/', '-')}
+GTF_TARGETS = {'google-tradefed-all', MODULE_INFO_TARGET,
+               'MODULES-IN-%s' % MODULE_DIR.replace('/', '-')}
 RUN_CMD_ARGS = '--test-info-file %s --log-level WARN' % TEST_INFO_FILE
 RUN_CMD = cli_t.RUN_CMD % (cli_t.TF_TEMPLATE, RUN_CMD_ARGS)
-GTF_RUN_CMD_ARGS = RUN_CMD_ARGS + ' --sponge-label %s' % cli_t.ATEST_SPONGE_LABEL
+GTF_RUN_CMD_ARGS = (RUN_CMD_ARGS +
+                    ' --sponge-label %s' % cli_t.ATEST_SPONGE_LABEL)
 GTF_RUN_CMD = cli_t.RUN_CMD % (cli_t.GTF_TEMPLATE, GTF_RUN_CMD_ARGS)
 PRODUCT = 'bullhead'
 OUT = '/android/master/out/target/product/%s' % PRODUCT
 FIND_ONE = ROOT + 'foo/bar/jank/src/android/jank/cts/ui/CtsDeviceJankUi.java\n'
 FIND_TWO = ROOT + 'other/dir/test.java\n' + FIND_ONE
 XML_TARGETS = {'CtsUiDeviceTestCases', 'CtsJankDeviceTestCases', 'VtsTarget'}
-TEST_DATA_DIR = 'unittest_data'
-JSON_FILE = 'module-info.json'
-JSON_FILE_PATH = os.path.join(os.path.dirname(__file__), TEST_DATA_DIR)
-INFO_JSON = json.load(open(os.path.join(JSON_FILE_PATH, JSON_FILE)))
 
 def isfile_side_effect(value):
     """Mock return values for os.path.isfile"""
@@ -114,6 +120,8 @@ def findtest_side_effect(test_name, _):
     if test_name == MODULE_NAME:
         return MODULE_INFO
     if test_name == CLASS_NAME:
+        return CLASS_INFO
+    if test_name == MODULE_CLASS:
         return CLASS_INFO
     if test_name == INT_NAME:
         return INT_INFO
@@ -138,9 +146,9 @@ class CLITranslatorUnittests(unittest.TestCase):
         """Run before execution of every test"""
         self.patches = {
             'isdir': mock.patch('os.path.isdir', return_value=True),
-            'load_module_info': mock.patch.object(cli_t.CLITranslator,
-                                                  '_load_module_info',
-                                                  return_value=INFO_JSON),
+            'load_module_info': mock.patch.object(
+                    cli_t.CLITranslator, '_load_module_info',
+                    return_value=(MODULE_INFO_TARGET, INFO_JSON)),
         }
         self.mocks = {k: v.start() for k, v in self.patches.iteritems()}
         self.ctr = cli_t.CLITranslator(results_dir=TEST_INFO_DIR)
@@ -172,7 +180,7 @@ class CLITranslatorUnittests(unittest.TestCase):
 
     @mock.patch('os.environ.get', return_value=JSON_FILE_PATH)
     @mock.patch('os.path.isfile', return_value=True)
-    @mock.patch('subprocess.check_output')
+    @mock.patch('atest_utils._run_limited_output')
     def test_load_module_info(self, _checkout, mock_isfile, _envget):
         """Test _load_module_info loads module-info.json correctly"""
         # stop patch and instantiate new cli_t, because this is mocked in setup.
@@ -183,7 +191,7 @@ class CLITranslatorUnittests(unittest.TestCase):
         self.assertStrictEqual(new_ctr.module_info, INFO_JSON)
         # test logic when module-info.json file doesn't exist yet.
         mock_isfile.return_value = False
-        self.assertStrictEqual(new_ctr._load_module_info(), INFO_JSON)
+        self.assertStrictEqual(new_ctr._load_module_info()[1], INFO_JSON)
 
     def test_get_test_reference_types(self):
         """Test _get_test_reference_types parses reference types correctly."""
@@ -255,7 +263,8 @@ class CLITranslatorUnittests(unittest.TestCase):
 
     def test_get_module_name(self):
         """Test _get_module_name method."""
-        self.assertStrictEqual(self.ctr._get_module_name(MODULE_DIR), MODULE_NAME)
+        self.assertStrictEqual(self.ctr._get_module_name(MODULE_DIR),
+                               MODULE_NAME)
         self.assertRaises(cli_t.UnregisteredModuleError,
                           self.ctr._get_module_name, 'bad/path')
 
@@ -268,18 +277,8 @@ class CLITranslatorUnittests(unittest.TestCase):
         self.assertStrictEqual(self.ctr._get_targets_from_xml(xml_file),
                                XML_TARGETS)
 
-    def test_is_in_google_tradefed(self):
-        """Test _is_in_google_tradefed method."""
-        self.ctr.gtf_dirs = self._gtf_dirs
-        self.assertFalse(self.ctr._is_in_google_tradefed(MODULE_INFO))
-        self.assertFalse(self.ctr._is_in_google_tradefed(INT_INFO))
-        self.assertTrue(self.ctr._is_in_google_tradefed(GTF_INT_INFO))
-
     def test_split_methods(self):
         """Test _split_methods method."""
-        # Technically this class returns frozensets, not sets, but for testing
-        # these will pass assertStrictEqual and it's shorter to just write set here.
-
         # Class
         self.assertStrictEqual(self.ctr._split_methods('Class.Name'),
                                ('Class.Name', set()))
@@ -324,6 +323,25 @@ class CLITranslatorUnittests(unittest.TestCase):
         mock_checkoutput.return_value = ''
         self.assertIsNone(self.ctr._find_test_by_class_name('Not class'))
 
+    @mock.patch('subprocess.check_output', return_value=FIND_ONE)
+    @mock.patch.object(cli_t.CLITranslator, '_get_fully_qualified_class_name',
+                       return_value=FULL_CLASS_NAME)
+    @mock.patch('os.path.isfile', side_effect=isfile_side_effect)
+    def test_find_test_by_module_and_class(self, _isfile, _class,
+                                           mock_checkoutput):
+        """Test _find_test_by_module_and_class method."""
+        test_info = self.ctr._find_test_by_module_and_class(MODULE_CLASS)
+        self.assertStrictEqual(test_info, CLASS_INFO)
+        # with method
+        test_info = self.ctr._find_test_by_module_and_class(MODULE_CLASS_METHOD)
+        self.assertStrictEqual(test_info, METHOD_INFO)
+        # bad module, good class, returns None
+        bad_module = '%s:%s' % ('BadMod', CLASS_NAME)
+        self.assertIsNone(self.ctr._find_test_by_module_and_class(bad_module))
+        # find output fails to find class file
+        mock_checkoutput.return_value = ''
+        bad_class = '%s:%s' % (MODULE_NAME, 'Anything')
+        self.assertIsNone(self.ctr._find_test_by_module_and_class(bad_class))
 
     @mock.patch('subprocess.check_output')
     @mock.patch('os.path.exists', return_value=True)
@@ -467,13 +485,15 @@ class CLITranslatorUnittests(unittest.TestCase):
 
     @mock.patch.object(cli_t.CLITranslator, '_find_test_by_module_name')
     @mock.patch.object(cli_t.CLITranslator, '_find_test_by_class_name')
+    @mock.patch.object(cli_t.CLITranslator, '_find_test_by_module_and_class')
     @mock.patch.object(cli_t.CLITranslator, '_find_test_by_integration_name')
-    def test_get_test_info(self, mock_findbyint, mock_findbyclass,
-                           mock_findbymodule):
+    def test_get_test_info(self, mock_findbyint, mock_findbymc,
+                           mock_findbyclass, mock_findbymodule):
         """Test _find_test method."""
         ctr = cli_t.CLITranslator(results_dir=TEST_INFO_DIR)
         mock_findbymodule.return_value = MODULE_INFO
         mock_findbyclass.return_value = CLASS_INFO
+        mock_findbymc.return_value = CLASS_INFO
         mock_findbyint.return_value = INT_INFO
         refs = [REF_TYPE.INTEGRATION, REF_TYPE.MODULE, REF_TYPE.CLASS]
         self.assertStrictEqual(ctr._get_test_info(INT_NAME, refs), INT_INFO)
@@ -487,6 +507,9 @@ class CLITranslatorUnittests(unittest.TestCase):
         self.assertStrictEqual(ctr._get_test_info(CLASS_NAME, refs), CLASS_INFO)
         mock_findbyclass.return_value = None
         self.assertIsNone(ctr._get_test_info(CLASS_NAME, refs))
+        refs = [REF_TYPE.MODULE_CLASS]
+        self.assertStrictEqual(ctr._get_test_info(MODULE_CLASS, refs),
+                               CLASS_INFO)
 
     @mock.patch.object(cli_t.CLITranslator, '_get_targets_from_xml',
                        side_effect=targetsfromxml_side_effect)
@@ -500,6 +523,9 @@ class CLITranslatorUnittests(unittest.TestCase):
         self.assertStrictEqual(targets, TARGETS)
         self.assertStrictEqual(run_cmds, [RUN_CMD])
         targets, run_cmds = self.ctr.translate([CLASS_NAME])
+        self.assertStrictEqual(targets, TARGETS)
+        self.assertStrictEqual(run_cmds, [RUN_CMD])
+        targets, run_cmds = self.ctr.translate([MODULE_CLASS])
         self.assertStrictEqual(targets, TARGETS)
         self.assertStrictEqual(run_cmds, [RUN_CMD])
         targets, run_cmds = self.ctr.translate([INT_NAME])
