@@ -31,6 +31,7 @@ import com.android.tradefed.config.IDeviceConfiguration;
 import com.android.tradefed.config.OptionSetter;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
+import com.android.tradefed.device.metric.IMetricCollectorReceiver;
 import com.android.tradefed.invoker.IInvocationContext;
 import com.android.tradefed.invoker.IRescheduler;
 import com.android.tradefed.invoker.InvocationContext;
@@ -301,6 +302,9 @@ public class ITestSuiteIntegrationTest {
                 if (test instanceof IInvocationContextReceiver) {
                     ((IInvocationContextReceiver) test).setInvocationContext(mContext);
                 }
+                if (test instanceof IMetricCollectorReceiver) {
+                    ((IMetricCollectorReceiver) test).setMetricCollectors(new ArrayList<>());
+                }
                 try {
                     test.run(new ResultForwarder(config.getTestInvocationListeners()));
                 } catch (DeviceNotAvailableException e) {
@@ -340,6 +344,10 @@ public class ITestSuiteIntegrationTest {
                                         if (test instanceof IInvocationContextReceiver) {
                                             ((IInvocationContextReceiver) test)
                                                     .setInvocationContext(mContext);
+                                        }
+                                        if (test instanceof IMetricCollectorReceiver) {
+                                            ((IMetricCollectorReceiver) test)
+                                                    .setMetricCollectors(new ArrayList<>());
                                         }
                                         try {
                                             test.run(

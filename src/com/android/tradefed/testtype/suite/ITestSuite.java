@@ -25,6 +25,8 @@ import com.android.tradefed.config.Option.Importance;
 import com.android.tradefed.config.OptionCopier;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
+import com.android.tradefed.device.metric.IMetricCollector;
+import com.android.tradefed.device.metric.IMetricCollectorReceiver;
 import com.android.tradefed.invoker.IInvocationContext;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.result.ITestInvocationListener;
@@ -71,7 +73,8 @@ public abstract class ITestSuite
                 IShardableTest,
                 ITestCollector,
                 IInvocationContextReceiver,
-                IRuntimeHintProvider {
+                IRuntimeHintProvider,
+                IMetricCollectorReceiver {
 
     public static final String MODULE_CHECKER_PRE = "PreModuleChecker";
     public static final String MODULE_CHECKER_POST = "PostModuleChecker";
@@ -179,6 +182,7 @@ public abstract class ITestSuite
     private IBuildInfo mBuildInfo;
     private List<ISystemStatusChecker> mSystemStatusCheckers;
     private IInvocationContext mContext;
+    private List<IMetricCollector> mMetricCollectors;
 
     // Sharding attributes
     private boolean mIsSharded = false;
@@ -377,6 +381,8 @@ public abstract class ITestSuite
         if (mCollectTestsOnly) {
             module.setCollectTestsOnly(mCollectTestsOnly);
         }
+        // Pass the run defined collectors to be used.
+        module.setMetricCollectors(mMetricCollectors);
         // Actually run the module
         module.run(listener, failureListener);
 
@@ -574,6 +580,12 @@ public abstract class ITestSuite
     @Override
     public void setCollectTestsOnly(boolean shouldCollectTest) {
         mCollectTestsOnly = shouldCollectTest;
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public void setMetricCollectors(List<IMetricCollector> collectors) {
+        mMetricCollectors = collectors;
     }
 
     /**
