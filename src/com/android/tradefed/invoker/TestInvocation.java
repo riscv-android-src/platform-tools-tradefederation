@@ -32,7 +32,6 @@ import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.device.ITestDevice.RecoveryMode;
 import com.android.tradefed.device.StubDevice;
 import com.android.tradefed.device.TestDeviceState;
-import com.android.tradefed.invoker.shard.IShardHelper;
 import com.android.tradefed.invoker.shard.ShardBuildCloner;
 import com.android.tradefed.log.ILeveledLogOutput;
 import com.android.tradefed.log.ILogRegistry;
@@ -146,19 +145,6 @@ public class TestInvocation implements ITestInvocation {
         public void invocationEnded(long newElapsedTime) {
             super.invocationEnded(mCurrentElapsedTime + newElapsedTime);
         }
-    }
-
-    @Override
-    public boolean shardConfig(
-            IConfiguration config, IInvocationContext context, IRescheduler rescheduler) {
-        mStatus = "sharding";
-        return createShardHelper().shardConfig(config, context, rescheduler);
-    }
-
-    /** Create an return the {@link IShardHelper} to be used. */
-    @VisibleForTesting
-    protected IShardHelper createShardHelper() {
-        return GlobalConfiguration.getInstance().getShardingStrategy();
     }
 
     /**
@@ -435,7 +421,7 @@ public class TestInvocation implements ITestInvocation {
                     listener.invocationEnded(elapsedTime);
                 }
             } finally {
-                cleanUpBuilds(context, config);
+                invocationPath.cleanUpBuilds(context, config);
             }
         }
         if (tearDownException != null) {
@@ -730,24 +716,6 @@ public class TestInvocation implements ITestInvocation {
         return true;
     }
 
-    @Override
-    public void cleanUpBuilds(IInvocationContext context, IConfiguration config) {
-        // Ensure build infos are always cleaned up at the end of invocation.
-        for (String cleanUpDevice : context.getDeviceConfigNames()) {
-            if (context.getBuildInfo(cleanUpDevice) != null) {
-                try {
-                    config.getDeviceConfigByName(cleanUpDevice)
-                            .getBuildProvider()
-                            .cleanUp(context.getBuildInfo(cleanUpDevice));
-                } catch (RuntimeException e) {
-                    // We catch an simply log exception in cleanUp to avoid missing any final
-                    // step of the invocation.
-                    CLog.e(e);
-                }
-            }
-        }
-    }
-
     /** {@inheritDoc} */
     @Override
     public void invoke(
@@ -798,7 +766,8 @@ public class TestInvocation implements ITestInvocation {
                 return;
             }
 
-            boolean sharding = shardConfig(config, context, rescheduler);
+            mStatus = "sharding";
+            boolean sharding = invocationPath.shardConfig(config, context, rescheduler);
             if (sharding) {
                 CLog.i("Invocation for %s has been sharded, rescheduling", context.getSerials());
                 return;
@@ -816,7 +785,7 @@ public class TestInvocation implements ITestInvocation {
         } finally {
 
             // Ensure build infos are always cleaned up at the end of invocation.
-            cleanUpBuilds(context, config);
+            invocationPath.cleanUpBuilds(context, config);
 
             // ensure we always deregister the logger
             for (String deviceName : context.getDeviceConfigNames()) {
