@@ -20,6 +20,7 @@ package com.android.tradefed.util;
  * Event types for {@link LogcatUpdaterEventParser}.
  */
 public enum UpdaterEventType {
+    UPDATE_START,
     DOWNLOAD_COMPLETE,
     PATCH_COMPLETE,
     UPDATE_VERIFIER_COMPLETE,
