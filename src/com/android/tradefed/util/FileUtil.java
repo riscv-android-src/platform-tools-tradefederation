@@ -415,7 +415,10 @@ public class FileUtil {
     public static void simlinkFile(File origFile, File destFile) throws IOException {
         CommandResult res = linkFile(origFile, destFile, true);
         if (!CommandStatus.SUCCESS.equals(res.getStatus())) {
-            throw new IOException("Error trying to simlink: " + res.getStderr());
+            throw new IOException(
+                    String.format(
+                            "Error trying to simlink: %s\nstdout:%s\nstderr:%s",
+                            res.getStatus(), res.getStdout(), res.getStderr()));
         }
     }
 
@@ -435,7 +438,7 @@ public class FileUtil {
         cmd.add(origFile.getAbsolutePath());
         cmd.add(destFile.getAbsolutePath());
         CommandResult result =
-                RunUtil.getDefault().runTimedCmd(10 * 1000, cmd.toArray(new String[0]));
+                RunUtil.getDefault().runTimedCmdSilently(10 * 1000, cmd.toArray(new String[0]));
         return result;
     }
 

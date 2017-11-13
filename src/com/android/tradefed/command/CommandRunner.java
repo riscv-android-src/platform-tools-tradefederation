@@ -34,7 +34,7 @@ public class CommandRunner {
     private ICommandScheduler mScheduler;
     private ExitCode mErrorCode = ExitCode.NO_ERROR;
 
-    private static final long CHECK_DEVICE_TIMEOUT = 15000;
+    private static final long CHECK_DEVICE_TIMEOUT = 60000;
 
     public CommandRunner() {}
 
@@ -87,7 +87,8 @@ public class CommandRunner {
         }
         try {
             mScheduler.join(getCheckDeviceTimeout());
-            // After 15 seconds we check if the command was executed.
+            // FIXME: if possible make the no_device allocated check deterministic.
+            // After 1 min we check if the command was executed.
             if (mScheduler.getReadyCommandCount() > 0) {
                 printStackTrace(new NoDeviceException("No device was allocated for the command."));
                 mErrorCode = ExitCode.NO_DEVICE_ALLOCATED;
