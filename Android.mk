@@ -95,8 +95,11 @@ include $(CLEAR_VARS)
 # Create a simple alias to build all the TF-related targets
 # Note that this is incompatible with `make dist`.  If you want to make
 # the distribution, you must run `tapas` with the individual target names.
+.PHONY: tradefed-core
+tradefed-core: tradefed atest_tradefed tf-prod-tests tf-prod-metatests tradefed-contrib script_help
+
 .PHONY: tradefed-all
-tradefed-all: tradefed tradefed-tests tf-prod-tests tf-prod-metatests tradefed_win script_help verify tradefed-contrib loganalysis-tests atest_tradefed
+tradefed-all: tradefed-core tradefed-tests tradefed_win verify loganalysis-tests
 
 # ====================================
 include $(CLEAR_VARS)

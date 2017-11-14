@@ -1,4 +1,3 @@
-#
 # Copyright 2017, The Android Open Source Project
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -12,6 +11,11 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+
+"""
+Utility functions for atest.
+"""
+
 import logging
 import os
 import subprocess
@@ -38,7 +42,8 @@ def _run_limited_output(cmd):
             exitcode.
     """
     # Send stderr to stdout so we only have to deal with a single pipe.
-    proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+    proc = subprocess.Popen(cmd, stdout=subprocess.PIPE,
+                            stderr=subprocess.STDOUT)
     sys.stdout.write('\n')
     # Determine the width of the terminal. We'll need to clear this many
     # characters when carriage returning.
@@ -66,13 +71,12 @@ def _run_limited_output(cmd):
     sys.stdout.flush()
     # Wait for the Popen to finish completely before checking the returncode.
     proc.wait()
-    if not proc.returncode == 0:
+    if proc.returncode != 0:
         output = full_output
         if len(output) >= FAILED_OUTPUT_LINE_LIMIT:
             output = output[-FAILED_OUTPUT_LINE_LIMIT:]
         logging.error('Output (may be trimmed):\n%s', ''.join(output))
-        raise subprocess.CalledProcessError("Exit code is non-zero: %s" %
-                                            proc.returncode)
+        raise subprocess.CalledProcessError(proc.returncode, cmd, output)
 
 
 def build(build_targets, verbose=False):

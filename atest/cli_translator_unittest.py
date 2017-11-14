@@ -87,11 +87,11 @@ TEST_DATA_DIR = 'unittest_data'
 JSON_FILE_PATH = os.path.join(os.path.dirname(__file__), TEST_DATA_DIR)
 INFO_JSON = json.load(open(os.path.join(JSON_FILE_PATH, JSON_FILE)))
 MODULE_INFO_TARGET = '/out/%s' % JSON_FILE
-INT_TARGETS = {'tradefed-all', MODULE_INFO_TARGET}
-GTF_INT_TARGETS = {'google-tradefed-all', MODULE_INFO_TARGET}
-TARGETS = {'tradefed-all', MODULE_INFO_TARGET,
+INT_TARGETS = {'tradefed-core', MODULE_INFO_TARGET}
+GTF_INT_TARGETS = {'google-tradefed-core', MODULE_INFO_TARGET}
+TARGETS = {'tradefed-core', MODULE_INFO_TARGET,
            'MODULES-IN-%s' % MODULE_DIR.replace('/', '-')}
-GTF_TARGETS = {'google-tradefed-all', MODULE_INFO_TARGET,
+GTF_TARGETS = {'google-tradefed-core', MODULE_INFO_TARGET,
                'MODULES-IN-%s' % MODULE_DIR.replace('/', '-')}
 RUN_CMD_ARGS = '--test-info-file %s --log-level WARN' % TEST_INFO_FILE
 RUN_CMD = cli_t.RUN_CMD % (cli_t.TF_TEMPLATE, RUN_CMD_ARGS)
@@ -147,8 +147,8 @@ class CLITranslatorUnittests(unittest.TestCase):
         self.patches = {
             'isdir': mock.patch('os.path.isdir', return_value=True),
             'load_module_info': mock.patch.object(
-                    cli_t.CLITranslator, '_load_module_info',
-                    return_value=(MODULE_INFO_TARGET, INFO_JSON)),
+                cli_t.CLITranslator, '_load_module_info',
+                return_value=(MODULE_INFO_TARGET, INFO_JSON)),
         }
         self.mocks = {k: v.start() for k, v in self.patches.iteritems()}
         self.ctr = cli_t.CLITranslator(results_dir=TEST_INFO_DIR)

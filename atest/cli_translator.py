@@ -170,7 +170,8 @@ class CLITranslator(object):
         if not os.path.isfile(file_path):
             logging.info('Generating %s - this is required for '
                          'initial runs.', MODULE_INFO)
-            atest_utils.build([module_info_target])
+            atest_utils.build([module_info_target],
+                              logging.getLogger().isEnabledFor(logging.DEBUG))
         with open(file_path) as json_file:
             return (module_info_target, json.load(json_file))
 
@@ -453,7 +454,8 @@ class CLITranslator(object):
         """
         class_name, methods = self._split_methods(class_name)
         if rel_config:
-            search_dir = os.path.join(self.root_dir, os.path.dirname(rel_config))
+            search_dir = os.path.join(self.root_dir,
+                                      os.path.dirname(rel_config))
         else:
             search_dir = self.root_dir
         if '.' in class_name:
@@ -694,9 +696,9 @@ class CLITranslator(object):
         config_file = os.path.join(self.root_dir, test_info.rel_config)
         targets = self._get_targets_from_xml(config_file)
         if self.gtf_dirs:
-            targets.add('google-tradefed-all')
+            targets.add('google-tradefed-core')
         else:
-            targets.add('tradefed-all')
+            targets.add('tradefed-core')
         if test_info.module_name:
             mod_dir = os.path.dirname(test_info.rel_config).replace('/', '-')
             targets.add(MODULES_IN % mod_dir)
