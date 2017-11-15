@@ -12,15 +12,21 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Base library that should be extended/included to run as part of Tradefed
-python_library_host {
-  name: "tradefed_python_lib",
+// Example hello world test that can run in Tradefed
+python_binary_host {
+  name: "tradefed_hello_world",
+  main: "test_hello_world.py",
   srcs: [
-    "tradefed_py/*.py",
+    "test_hello_world.py",
   ],
+  libs: [
+    "tradefed_python_lib",
+  ],
+  test_suites: ["general-tests"],
   version: {
     py2: {
       enabled: true,
+      embedded_launcher: true,
     },
     py3: {
       enabled: false,
