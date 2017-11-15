@@ -36,6 +36,11 @@ public class TestSuiteInfoTest {
     @Test
     public void testDefaultValues() {
         TestSuiteInfo instance = TestSuiteInfo.getInstance();
+        if (instance.didLoadFromProperties()) {
+            // If a property file was found on the classpath, skip this test as it will probably
+            // fail. This test is meant to check in isolation.
+            return;
+        }
         assertEquals("[stub build number]", instance.getBuildNumber());
         assertEquals("[stub target arch]", instance.getTargetArch());
         assertEquals("[stub name]", instance.getName());
