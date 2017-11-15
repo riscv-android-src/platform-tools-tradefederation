@@ -16,6 +16,7 @@
 package com.android.tradefed.testtype.suite;
 
 import com.android.tradefed.build.StubBuildProvider;
+import com.android.tradefed.config.Configuration;
 import com.android.tradefed.config.IConfiguration;
 import com.android.tradefed.config.IDeviceConfiguration;
 import com.android.tradefed.log.LogUtil.CLog;
@@ -69,6 +70,12 @@ public class ValidateSuiteConfigHelper {
             return false;
         }
         if (!checkTargetPrep(config.getMultiTargetPreparers())) {
+            return false;
+        }
+        if (!config.getMetricCollectors().isEmpty()) {
+            CLog.e(
+                    "Configuration %s contains a %s which is not allowed in module.",
+                    config.getName(), Configuration.DEVICE_METRICS_COLLECTOR_TYPE_NAME);
             return false;
         }
         return true;
