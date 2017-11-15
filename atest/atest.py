@@ -39,8 +39,18 @@ EXPECTED_VARS = frozenset([
     'OUT'])
 EXIT_CODE_ENV_NOT_SETUP = 1
 EXIT_CODE_BUILD_FAILURE = 2
+BUILD_STEP = 'build'
+TEST_STEP = 'test'
 TEST_RUN_DIR_PREFIX = 'atest_run_%s_'
-TESTS_HELP_TEXT = '''Tests to run.
+HELP_DESC = '''Build and run Android tests locally.
+
+The -b and -t options allow you to specify which steps
+you want to run. If none of those options are given, then
+all steps are run. If any of these options are provided
+then only the listed steps are run.
+'''
+
+HELP_TESTS = '''Tests to run.
 
 Ways to identify a test:
 MODULE NAME       Examples: CtsJankDeviceTestCases
@@ -69,16 +79,18 @@ def _parse_args(argv):
     """
     import argparse
     parser = argparse.ArgumentParser(
-        description='Build and run Android tests locally.',
+        description=HELP_DESC,
         formatter_class=argparse.RawTextHelpFormatter)
-    parser.add_argument('tests', nargs='+', help=TESTS_HELP_TEXT)
-    parser.add_argument('-v', '--verbose', action='store_true',
-                        help='Display DEBUG level logging.')
-    parser.add_argument('-s', '--skip-build', action='store_true',
-                        help='Skip the build step.')
+    parser.add_argument('tests', nargs='+', help=HELP_TESTS)
+    parser.add_argument('-b', '--build', action='append_const', dest='steps',
+                        const=BUILD_STEP, help='Run a build.')
+    parser.add_argument('-t', '--test', action='append_const', dest='steps',
+                        const=TEST_STEP, help='Run the tests.')
     parser.add_argument('-w', '--wait-for-debugger', action='store_true',
                         help='Only for instrumentation tests. Waits for '
                              'debugger prior to execution.')
+    parser.add_argument('-v', '--verbose', action='store_true',
+                        help='Display DEBUG level logging.')
     return parser.parse_args(argv)
 
 
@@ -172,10 +184,12 @@ def main(argv):
         run_commands = [cmd + ' --wait-for-debugger' for cmd in run_commands]
     if _is_missing_adb(root_dir=repo_root):
         build_targets.add('adb')
-    if not args.skip_build and not atest_utils.build(build_targets,
-                                                     args.verbose):
-        return EXIT_CODE_BUILD_FAILURE
-    run_tests(run_commands)
+    if not args.steps or BUILD_STEP in args.steps:
+        success = atest_utils.build(build_targets, args.verbose)
+        if not success:
+            return EXIT_CODE_BUILD_FAILURE
+    if not args.steps or TEST_STEP in args.steps:
+        run_tests(run_commands)
 
 
 if __name__ == '__main__':
