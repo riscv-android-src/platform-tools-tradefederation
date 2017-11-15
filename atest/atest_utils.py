@@ -38,7 +38,8 @@ def _run_limited_output(cmd):
             exitcode.
     """
     # Send stderr to stdout so we only have to deal with a single pipe.
-    proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+    proc = subprocess.Popen(cmd, stdout=subprocess.PIPE,
+                            stderr=subprocess.STDOUT)
     sys.stdout.write('\n')
     # Determine the width of the terminal. We'll need to clear this many
     # characters when carriage returning.
@@ -71,8 +72,7 @@ def _run_limited_output(cmd):
         if len(output) >= FAILED_OUTPUT_LINE_LIMIT:
             output = output[-FAILED_OUTPUT_LINE_LIMIT:]
         logging.error('Output (may be trimmed):\n%s', ''.join(output))
-        raise subprocess.CalledProcessError("Exit code is non-zero: %s" %
-                                            proc.returncode)
+        raise subprocess.CalledProcessError(proc.returncode, cmd, output)
 
 
 def build(build_targets, verbose=False):

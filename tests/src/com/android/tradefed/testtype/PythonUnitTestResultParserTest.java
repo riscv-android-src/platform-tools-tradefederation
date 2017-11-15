@@ -29,6 +29,7 @@ import com.android.tradefed.util.ArrayUtil;
 import junit.framework.AssertionFailedError;
 import junit.framework.TestCase;
 
+import java.util.Arrays;
 import java.util.Collections;
 
 /** Unit tests for {@link PythonUnitTestResultParser}. */
@@ -406,6 +407,39 @@ public class PythonUnitTestResultParserTest extends TestCase {
         boolean[] didSkip = {false, false, false, false, false, false, true, false};
         setTestIdChecks(ids, didPass, didSkip);
         setRunListenerChecks(8, 1000, false);
+
+        replay(mMockListener);
+        mParser.processNewLines(output);
+        verify(mMockListener);
+    }
+
+    public void testCaptureMultilineTraceback() {
+        String[] output = {
+                "b (a) ... ERROR",
+                "",
+                PythonUnitTestResultParser.EQUAL_LINE,
+                "ERROR: b (a)",
+                PythonUnitTestResultParser.DASH_LINE,
+                "Traceback (most recent call last):",
+                "  File \"test_rangelib.py\", line 129, in test_reallyfail",
+                "    raise ValueError()",
+                "ValueError",
+                "",
+                PythonUnitTestResultParser.DASH_LINE,
+                "Ran 1 test in 1s",
+                "",
+                "FAILED (errors=1)"
+        };
+        String[] tracebackLines = Arrays.copyOfRange(output, 5, 10);
+        String expectedTrackback = String.join(System.lineSeparator(), tracebackLines);
+
+        mMockListener.testStarted(anyObject());
+        expectLastCall().times(1);
+        mMockListener.testFailed(anyObject(), eq(expectedTrackback));
+        expectLastCall().times(1);
+        mMockListener.testEnded(anyObject(), anyObject());
+        expectLastCall().times(1);
+        setRunListenerChecks(1, 1000, false);
 
         replay(mMockListener);
         mParser.processNewLines(output);

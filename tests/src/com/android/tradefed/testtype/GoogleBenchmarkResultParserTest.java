@@ -15,16 +15,19 @@
  */
 package com.android.tradefed.testtype;
 
+import static org.junit.Assert.*;
+
 import com.android.ddmlib.testrunner.ITestRunListener;
 import com.android.ddmlib.testrunner.TestIdentifier;
 import com.android.tradefed.device.CollectingOutputReceiver;
 import com.android.tradefed.log.LogUtil.CLog;
 
-import junit.framework.TestCase;
-
 import org.easymock.EasyMock;
 import org.json.JSONException;
 import org.json.JSONObject;
+import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.junit.runners.JUnit4;
 
 import java.io.BufferedReader;
 import java.io.File;
@@ -34,16 +37,16 @@ import java.io.InputStreamReader;
 import java.util.HashMap;
 import java.util.Map;
 
-/**
- * Unit tests for {@link GoogleBenchmarkResultParser}.
- */
-public class GoogleBenchmarkResultParserTest extends TestCase {
+/** Unit tests for {@link GoogleBenchmarkResultParser}. */
+@RunWith(JUnit4.class)
+public class GoogleBenchmarkResultParserTest {
 
     private static final String TEST_TYPE_DIR = "testtype";
     private static final String GBENCH_OUTPUT_FILE_1 = "gbench_output1.json";
     private static final String GBENCH_OUTPUT_FILE_2 = "gbench_output2.json";
     private static final String GBENCH_OUTPUT_FILE_3 = "gbench_output3.json";
     private static final String GBENCH_OUTPUT_FILE_4 = "gbench_output4.json";
+    private static final String GBENCH_OUTPUT_FILE_5 = "gbench_output5.json";
 
     private static final String TEST_RUN = "test_run";
 
@@ -74,9 +77,8 @@ public class GoogleBenchmarkResultParserTest extends TestCase {
         return output;
     }
 
-    /**
-     * Tests the parser for a simple test output for 2 tests.
-     */
+    /** Tests the parser for a simple test output for 2 tests. */
+    @Test
     public void testParseSimpleFile() throws Exception {
         ITestRunListener mMockInvocationListener =
                 EasyMock.createMock(ITestRunListener.class);
@@ -121,10 +123,8 @@ public class GoogleBenchmarkResultParserTest extends TestCase {
         EasyMock.verify(mMockInvocationListener);
     }
 
-    /**
-     * Tests the parser for a two simple test with different keys on the second test.
-     */
-    @SuppressWarnings("unchecked")
+    /** Tests the parser for a two simple test with different keys on the second test. */
+    @Test
     public void testParseSimpleFile_twoTests() throws Exception {
         ITestRunListener mMockInvocationListener =
                 EasyMock.createMock(ITestRunListener.class);
@@ -137,8 +137,7 @@ public class GoogleBenchmarkResultParserTest extends TestCase {
         test1.put("iterations", "109451958");
         mMockInvocationListener.testEnded((TestIdentifier)EasyMock.anyObject(),
                 EasyMock.eq(test1));
-        mMockInvocationListener.testEnded((TestIdentifier)EasyMock.anyObject(),
-                (Map<String, String>)EasyMock.anyObject());
+        mMockInvocationListener.testEnded(EasyMock.anyObject(), EasyMock.anyObject());
         EasyMock.replay(mMockInvocationListener);
         CollectingOutputReceiver contents =  readInFile(GBENCH_OUTPUT_FILE_2);
         GoogleBenchmarkResultParser resultParser =
@@ -151,7 +150,7 @@ public class GoogleBenchmarkResultParserTest extends TestCase {
      * Tests the parser with an error in the context, should stop parsing because format is
      * unexpected.
      */
-    @SuppressWarnings("unchecked")
+    @Test
     public void testParse_contextError() throws Exception {
         ITestRunListener mMockInvocationListener =
                 EasyMock.createMock(ITestRunListener.class);
@@ -164,10 +163,8 @@ public class GoogleBenchmarkResultParserTest extends TestCase {
         EasyMock.verify(mMockInvocationListener);
     }
 
-    /**
-     * Tests the parser with an error: context is fine but no benchmark results
-     */
-    @SuppressWarnings("unchecked")
+    /** Tests the parser with an error: context is fine but no benchmark results */
+    @Test
     public void testParse_noBenchmarkResults() throws Exception {
         ITestRunListener mMockInvocationListener =
                 EasyMock.createMock(ITestRunListener.class);
@@ -180,9 +177,8 @@ public class GoogleBenchmarkResultParserTest extends TestCase {
         EasyMock.verify(mMockInvocationListener);
     }
 
-    /**
-     * Test for {@link GoogleBenchmarkResultParser#parseJsonToMap(JSONObject)}
-     */
+    /** Test for {@link GoogleBenchmarkResultParser#parseJsonToMap(JSONObject)} */
+    @Test
     public void testJsonParse() throws JSONException {
         ITestRunListener mMockInvocationListener =
                 EasyMock.createMock(ITestRunListener.class);
@@ -194,5 +190,29 @@ public class GoogleBenchmarkResultParserTest extends TestCase {
         assertEquals(results.get("key1"), "value1");
         assertEquals(results.get("key2"), "2");
         assertEquals(results.get("key3"), "[\"one\",\"two\"]");
+    }
+
+    /**
+     * Test when a warning is printed before the JSON output. As long as the JSON is fine, we should
+     * still parse the output.
+     */
+    @Test
+    public void testParseSimpleFile_withWarning() throws Exception {
+        ITestRunListener mMockInvocationListener = EasyMock.createMock(ITestRunListener.class);
+        mMockInvocationListener.testStarted((TestIdentifier) EasyMock.anyObject());
+        Map<String, String> test1 = new HashMap<String, String>();
+        test1.put("cpu_time", "19361");
+        test1.put("real_time", "44930");
+        test1.put("name", "BM_addInts");
+        test1.put("iterations", "36464");
+        test1.put("time_unit", "ns");
+        mMockInvocationListener.testEnded(
+                (TestIdentifier) EasyMock.anyObject(), EasyMock.eq(test1));
+        EasyMock.replay(mMockInvocationListener);
+        CollectingOutputReceiver contents = readInFile(GBENCH_OUTPUT_FILE_5);
+        GoogleBenchmarkResultParser resultParser =
+                new GoogleBenchmarkResultParser(TEST_RUN, mMockInvocationListener);
+        resultParser.parse(contents);
+        EasyMock.verify(mMockInvocationListener);
     }
 }

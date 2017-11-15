@@ -274,6 +274,9 @@ public class PythonUnitTestResultParser extends MultiLineReceiver {
             mCurrentParseState = ParserState.FAIL_MESSAGE;
             reportFailureTestResult();
         } else {
+            if (mCurrentTraceback.length() > 0) {
+                mCurrentTraceback.append(System.lineSeparator());
+            }
             mCurrentTraceback.append(line);
         }
     }
