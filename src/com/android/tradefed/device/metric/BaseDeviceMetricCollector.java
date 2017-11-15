@@ -28,13 +28,14 @@ import java.util.Map;
 
 /**
  * Base implementation of {@link IMetricCollector} that allows to start and stop collection on
- * {@link #onTestRunStart(DeviceMetricData)} and {@link #onTestRunEnd(DeviceMetricData)}.
+ * {@link #onTestRunStart(DeviceMetricData)} and {@link #onTestRunEnd(DeviceMetricData, Map)}.
  */
 public class BaseDeviceMetricCollector implements IMetricCollector {
 
     private IInvocationContext mContext;
     private ITestInvocationListener mForwarder;
     private DeviceMetricData mRunData;
+    private DeviceMetricData mTestData;
 
     @Override
     public ITestInvocationListener init(
@@ -65,7 +66,19 @@ public class BaseDeviceMetricCollector implements IMetricCollector {
     }
 
     @Override
-    public void onTestRunEnd(DeviceMetricData runData) {
+    public void onTestRunEnd(
+            DeviceMetricData runData, final Map<String, String> currentRunMetrics) {
+        // Does nothing
+    }
+
+    @Override
+    public void onTestStart(DeviceMetricData testData) {
+        // Does nothing
+    }
+
+    @Override
+    public void onTestEnd(
+            DeviceMetricData testData, final Map<String, String> currentTestCaseMetrics) {
         // Does nothing
     }
 
@@ -111,7 +124,7 @@ public class BaseDeviceMetricCollector implements IMetricCollector {
 
     @Override
     public final void testRunEnded(long elapsedTime, Map<String, String> runMetrics) {
-        onTestRunEnd(mRunData);
+        onTestRunEnd(mRunData, runMetrics);
         mRunData.addToMetrics(runMetrics);
         mForwarder.testRunEnded(elapsedTime, runMetrics);
     }
@@ -124,6 +137,8 @@ public class BaseDeviceMetricCollector implements IMetricCollector {
 
     @Override
     public final void testStarted(TestIdentifier test, long startTime) {
+        mTestData = new DeviceMetricData();
+        onTestStart(mTestData);
         mForwarder.testStarted(test, startTime);
     }
 
@@ -140,6 +155,8 @@ public class BaseDeviceMetricCollector implements IMetricCollector {
     @Override
     public final void testEnded(
             TestIdentifier test, long endTime, Map<String, String> testMetrics) {
+        onTestEnd(mTestData, testMetrics);
+        mTestData.addToMetrics(testMetrics);
         mForwarder.testEnded(test, endTime, testMetrics);
     }
 

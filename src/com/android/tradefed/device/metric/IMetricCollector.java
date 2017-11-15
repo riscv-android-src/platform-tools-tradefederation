@@ -15,12 +15,14 @@
  */
 package com.android.tradefed.device.metric;
 
+import com.android.ddmlib.testrunner.TestIdentifier;
 import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.invoker.IInvocationContext;
 import com.android.tradefed.result.ITestInvocationListener;
 
 import java.util.List;
+import java.util.Map;
 
 /**
  * This interface will be added as a decorator when reporting tests results in order to collect
@@ -59,6 +61,26 @@ public interface IMetricCollector extends ITestInvocationListener {
      *
      * @param runData the {@link DeviceMetricData} holding the data for the run. Will be the same
      *     object as during {@link #onTestRunStart(DeviceMetricData)}.
+     * @param currentRunMetrics the current map of metrics passed to {@link #testRunEnded(long,
+     *     Map)}.
      */
-    public void onTestRunEnd(DeviceMetricData runData);
+    public void onTestRunEnd(DeviceMetricData runData, final Map<String, String> currentRunMetrics);
+
+    /**
+     * Callback when a test case is started.
+     *
+     * @param testData the {@link DeviceMetricData} holding the data for the test case.
+     */
+    public void onTestStart(DeviceMetricData testData);
+
+    /**
+     * Callback when a test case is ended. This should be the time for clean up.
+     *
+     * @param testData the {@link DeviceMetricData} holding the data for the test case. Will be the
+     *     same object as during {@link #onTestStart(DeviceMetricData)}.
+     * @param currentTestCaseMetrics the current map of metrics passed to {@link
+     *     #testEnded(TestIdentifier, Map)}.
+     */
+    public void onTestEnd(
+            DeviceMetricData testData, final Map<String, String> currentTestCaseMetrics);
 }

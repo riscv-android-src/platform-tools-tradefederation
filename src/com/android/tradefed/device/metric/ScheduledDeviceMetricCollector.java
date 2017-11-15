@@ -18,6 +18,7 @@ package com.android.tradefed.device.metric;
 import com.android.tradefed.config.Option;
 import com.android.tradefed.log.LogUtil.CLog;
 
+import java.util.Map;
 import java.util.Timer;
 import java.util.TimerTask;
 
@@ -69,7 +70,8 @@ public abstract class ScheduledDeviceMetricCollector extends BaseDeviceMetricCol
     }
 
     @Override
-    public final void onTestRunEnd(DeviceMetricData runData) {
+    public final void onTestRunEnd(
+            DeviceMetricData runData, final Map<String, String> currentRunMetrics) {
         if (timer != null) {
             timer.cancel();
             timer.purge();
