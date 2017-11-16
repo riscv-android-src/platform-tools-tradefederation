@@ -64,6 +64,7 @@ import com.android.tradefed.device.TopHelperTest;
 import com.android.tradefed.device.WaitDeviceRecoveryTest;
 import com.android.tradefed.device.WifiHelperTest;
 import com.android.tradefed.device.metric.BaseDeviceMetricCollectorTest;
+import com.android.tradefed.device.metric.FilePullerDeviceMetricCollectorTest;
 import com.android.tradefed.device.metric.ScheduledDeviceMetricCollectorTest;
 import com.android.tradefed.invoker.InvocationContextTest;
 import com.android.tradefed.invoker.ShardListenerTest;
@@ -128,7 +129,6 @@ import com.android.tradefed.targetprep.PushFilePreparerTest;
 import com.android.tradefed.targetprep.PythonVirtualenvPreparerTest;
 import com.android.tradefed.targetprep.RebootTargetPreparerTest;
 import com.android.tradefed.targetprep.RestartSystemServerTargetPreparerTest;
-import com.android.tradefed.targetprep.TimeSetterTargetPreparerTest;
 import com.android.tradefed.targetprep.RootTargetPreparerTest;
 import com.android.tradefed.targetprep.RunCommandTargetPreparerTest;
 import com.android.tradefed.targetprep.RunHostCommandTargetPreparerTest;
@@ -137,6 +137,7 @@ import com.android.tradefed.targetprep.StopServicesSetupTest;
 import com.android.tradefed.targetprep.SystemUpdaterDeviceFlasherTest;
 import com.android.tradefed.targetprep.TestAppInstallSetupTest;
 import com.android.tradefed.targetprep.TestFilePushSetupTest;
+import com.android.tradefed.targetprep.TimeSetterTargetPreparerTest;
 import com.android.tradefed.targetprep.suite.SuiteApkInstallerTest;
 import com.android.tradefed.testtype.AndroidJUnitTestTest;
 import com.android.tradefed.testtype.CodeCoverageListenerTest;
@@ -313,8 +314,9 @@ import org.junit.runners.Suite.SuiteClasses;
     WifiHelperTest.class,
 
     // device.metric
-    ScheduledDeviceMetricCollectorTest.class,
     BaseDeviceMetricCollectorTest.class,
+    FilePullerDeviceMetricCollectorTest.class,
+    ScheduledDeviceMetricCollectorTest.class,
 
     // invoker
     InvocationContextTest.class,

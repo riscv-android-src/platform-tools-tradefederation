@@ -40,11 +40,13 @@ public class TestSuiteInfo {
 
     private static TestSuiteInfo sInstance;
     private Properties mTestSuiteInfo;
+    private boolean mLoaded = false;
 
     private TestSuiteInfo() {
         try (InputStream is = TestSuiteInfo.class.getResourceAsStream(SUITE_INFO_PROPERTY)) {
             if (is != null) {
                 mTestSuiteInfo = loadSuiteInfo(is);
+                mLoaded = true;
             } else {
                 CLog.w("Unable to load suite info from jar resource %s, using stub info instead",
                         SUITE_INFO_PROPERTY);
@@ -111,5 +113,10 @@ public class TestSuiteInfo {
      */
     public String get(String name) {
         return mTestSuiteInfo.getProperty(name);
+    }
+
+    /** Returns true if the values were loaded from a property file, false otherwise. */
+    public boolean didLoadFromProperties() {
+        return mLoaded;
     }
 }

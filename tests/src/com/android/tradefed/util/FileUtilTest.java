@@ -400,6 +400,40 @@ public class FileUtilTest {
     }
 
     /**
+     * Test {@link FileUtil#findFile(File, String)} when finding a file that has the same name as
+     * its directory, the File should be be returned in that case.
+     */
+    @Test
+    public void testFindFile_sameDirName() throws IOException {
+        File tmpDir = FileUtil.createTempDir("find_file_test");
+        try {
+            File subDir = FileUtil.createTempDir("find_file_file", tmpDir);
+            File subFile = FileUtil.createTempFile("find_file_file", "", subDir);
+            File res = FileUtil.findFile(tmpDir, subFile.getName());
+            assertEquals(subFile.getAbsolutePath(), res.getAbsolutePath());
+        } finally {
+            FileUtil.recursiveDelete(tmpDir);
+        }
+    }
+
+    /**
+     * Test {@link FileUtil#findFile(File, String)} when searching a File, if a directory match the
+     * name, and not child file does, then return the directory matching the file.
+     */
+    @Test
+    public void testFindFile_directory() throws IOException {
+        File tmpDir = FileUtil.createTempDir("find_file_test");
+        try {
+            File subDir = FileUtil.createTempDir("find_file_file", tmpDir);
+            FileUtil.createTempFile("sub_file_file", ".txt", subDir);
+            File res = FileUtil.findFile(tmpDir, subDir.getName());
+            assertEquals(subDir.getAbsolutePath(), res.getAbsolutePath());
+        } finally {
+            FileUtil.recursiveDelete(tmpDir);
+        }
+    }
+
+    /**
      * Test {@link FileUtil#findDirsUnder(File, File)} when root dir is not a directory, it should
      * throw an exception.
      */
