@@ -20,6 +20,7 @@ import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.device.StubDevice;
 import com.android.tradefed.device.metric.IMetricCollector;
+import com.android.tradefed.device.metric.IMetricCollectorReceiver;
 import com.android.tradefed.invoker.TestInvocation.Stage;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.result.ITestInvocationListener;
@@ -196,8 +197,9 @@ public class InvocationExecution implements IInvocationExecution {
             IInvocationContext context, IConfiguration config, ITestInvocationListener listener)
             throws DeviceNotAvailableException {
         // Wrap collectors in each other and collection will be sequential
+        ITestInvocationListener listenerWithCollectors = listener;
         for (IMetricCollector collector : config.getMetricCollectors()) {
-            listener = collector.init(context, listener);
+            listenerWithCollectors = collector.init(context, listenerWithCollectors);
         }
 
         for (IRemoteTest test : config.getTests()) {
@@ -220,7 +222,13 @@ public class InvocationExecution implements IInvocationExecution {
             if (test instanceof IInvocationContextReceiver) {
                 ((IInvocationContextReceiver) test).setInvocationContext(context);
             }
-            test.run(listener);
+            if (test instanceof IMetricCollectorReceiver) {
+                ((IMetricCollectorReceiver) test).setMetricCollectors(config.getMetricCollectors());
+                // If test can receive collectors then let it handle the how to set them up
+                test.run(listener);
+            } else {
+                test.run(listenerWithCollectors);
+            }
         }
     }
 

@@ -31,6 +31,9 @@ import com.android.tradefed.config.OptionSetter;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.DeviceUnresponsiveException;
 import com.android.tradefed.device.ITestDevice;
+import com.android.tradefed.device.metric.BaseDeviceMetricCollector;
+import com.android.tradefed.device.metric.DeviceMetricData;
+import com.android.tradefed.device.metric.IMetricCollector;
 import com.android.tradefed.invoker.IInvocationContext;
 import com.android.tradefed.invoker.InvocationContext;
 import com.android.tradefed.log.LogUtil.CLog;
@@ -45,6 +48,7 @@ import com.android.tradefed.testtype.StubTest;
 import com.android.tradefed.util.AbiUtils;
 import com.android.tradefed.util.MultiMap;
 
+import org.easymock.Capture;
 import org.easymock.EasyMock;
 import org.junit.Before;
 import org.junit.Test;
@@ -54,9 +58,11 @@ import org.junit.runners.JUnit4;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 /**
@@ -77,6 +83,7 @@ public class ITestSuiteTest {
     private IBuildInfo mMockBuildInfo;
     private ISystemStatusChecker mMockSysChecker;
     private IInvocationContext mContext;
+    private List<IMetricCollector> mListCollectors;
 
     /**
      * Very basic implementation of {@link ITestSuite} to test it.
@@ -148,7 +155,7 @@ public class ITestSuiteTest {
                 listener.testStarted(test, 0);
                 listener.testEnded(test, 5, Collections.emptyMap());
             } finally {
-                listener.testRunEnded(0, Collections.emptyMap());
+                listener.testRunEnded(0, new HashMap<String, String>());
             }
         }
     }
@@ -165,6 +172,21 @@ public class ITestSuiteTest {
         mTestSuite.setBuild(mMockBuildInfo);
         mContext = new InvocationContext();
         mTestSuite.setInvocationContext(mContext);
+        mListCollectors = new ArrayList<>();
+        mListCollectors.add(
+                new BaseDeviceMetricCollector() {
+                    @Override
+                    public void onTestRunStart(DeviceMetricData runData) {
+                        runData.addStringMetric("metric1", "value1");
+                    }
+                });
+        mListCollectors.add(
+                new BaseDeviceMetricCollector() {
+                    @Override
+                    public void onTestRunStart(DeviceMetricData runData) {
+                        runData.addStringMetric("metric2", "value2");
+                    }
+                });
     }
 
     /**
@@ -803,5 +825,33 @@ public class ITestSuiteTest {
         assertFalse(
                 "config not excluded with matching inclusion and exclusion filters",
                 mTestSuite.filterByConfigMetadata(config, includeFilter, excludeFilter));
+    }
+
+    /** Test that running a module with {@link IMetricCollector}s properly reports the metrics. */
+    @Test
+    public void testRun_withCollectors() throws Exception {
+        List<ISystemStatusChecker> sysChecker = new ArrayList<ISystemStatusChecker>();
+        sysChecker.add(mMockSysChecker);
+        mTestSuite.setSystemStatusChecker(sysChecker);
+        mTestSuite.setMetricCollectors(mListCollectors);
+        EasyMock.expect(mMockSysChecker.preExecutionCheck(EasyMock.eq(mMockDevice)))
+                .andReturn(true);
+        EasyMock.expect(mMockSysChecker.postExecutionCheck(EasyMock.eq(mMockDevice)))
+                .andReturn(true);
+
+        Capture<Map<String, String>> c = new Capture<>();
+        mMockListener.testModuleStarted(EasyMock.anyObject());
+        mMockListener.testRunStarted(TEST_CONFIG_NAME, 1);
+        TestIdentifier test = new TestIdentifier(EMPTY_CONFIG, EMPTY_CONFIG);
+        mMockListener.testStarted(test, 0);
+        mMockListener.testEnded(test, 5, Collections.emptyMap());
+        mMockListener.testRunEnded(EasyMock.anyLong(), EasyMock.capture(c));
+        mMockListener.testModuleEnded();
+
+        replayMocks();
+        mTestSuite.run(mMockListener);
+        verifyMocks();
+        assertEquals("value1", c.getValue().get("metric1"));
+        assertEquals("value2", c.getValue().get("metric2"));
     }
 }
