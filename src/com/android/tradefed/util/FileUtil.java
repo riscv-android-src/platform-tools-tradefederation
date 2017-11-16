@@ -406,33 +406,33 @@ public class FileUtil {
     }
 
     /**
-     * A helper method that simlinks a file to another file
+     * A helper method that symlinks a file to another file
      *
      * @param origFile the original file
      * @param destFile the destination file
-     * @throws IOException if failed to simlink file
+     * @throws IOException if failed to symlink file
      */
-    public static void simlinkFile(File origFile, File destFile) throws IOException {
+    public static void symlinkFile(File origFile, File destFile) throws IOException {
         CommandResult res = linkFile(origFile, destFile, true);
         if (!CommandStatus.SUCCESS.equals(res.getStatus())) {
             throw new IOException(
                     String.format(
-                            "Error trying to simlink: %s\nstdout:%s\nstderr:%s",
+                            "Error trying to symlink: %s\nstdout:%s\nstderr:%s",
                             res.getStatus(), res.getStdout(), res.getStderr()));
         }
     }
 
-    private static CommandResult linkFile(File origFile, File destFile, boolean simlink)
+    private static CommandResult linkFile(File origFile, File destFile, boolean symlink)
             throws IOException {
         if (!origFile.exists()) {
-            String link = simlink ? "simlink" : "hardlink";
+            String link = symlink ? "symlink" : "hardlink";
             throw new IOException(
                     String.format(
                             "Cannot %s %s. File does not exist", link, origFile.getAbsolutePath()));
         }
         List<String> cmd = new ArrayList<>();
         cmd.add("ln");
-        if (simlink) {
+        if (symlink) {
             cmd.add("-s");
         }
         cmd.add(origFile.getAbsolutePath());
@@ -468,7 +468,7 @@ public class FileUtil {
     }
 
     /**
-     * Recursively simlink folder contents.
+     * Recursively symlink folder contents.
      *
      * <p>Only supports copying of files and directories - symlinks are not copied. If the
      * destination directory does not exist, it will be created.
@@ -477,7 +477,7 @@ public class FileUtil {
      * @param destDir the destination folder
      * @throws IOException
      */
-    public static void recursiveSimlink(File sourceDir, File destDir) throws IOException {
+    public static void recursiveSymlink(File sourceDir, File destDir) throws IOException {
         if (!destDir.isDirectory() && !destDir.mkdir()) {
             throw new IOException(
                     String.format("Could not create directory %s", destDir.getAbsolutePath()));
@@ -485,9 +485,9 @@ public class FileUtil {
         for (File childFile : sourceDir.listFiles()) {
             File destChild = new File(destDir, childFile.getName());
             if (childFile.isDirectory()) {
-                recursiveSimlink(childFile, destChild);
+                recursiveSymlink(childFile, destChild);
             } else if (childFile.isFile()) {
-                simlinkFile(childFile, destChild);
+                symlinkFile(childFile, destChild);
             }
         }
     }
@@ -625,7 +625,8 @@ public class FileUtil {
      */
     public static void recursiveDelete(File rootDir) {
         if (rootDir != null) {
-            if (rootDir.isDirectory()) {
+            // We expand directories if they are not symlink
+            if (rootDir.isDirectory() && !Files.isSymbolicLink(rootDir.toPath())) {
                 File[] childFiles = rootDir.listFiles();
                 if (childFiles != null) {
                     for (File child : childFiles) {
