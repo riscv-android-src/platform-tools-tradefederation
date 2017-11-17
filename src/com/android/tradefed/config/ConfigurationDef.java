@@ -16,6 +16,8 @@
 
 package com.android.tradefed.config;
 
+import com.android.tradefed.device.metric.IMetricCollector;
+
 import java.io.File;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -311,6 +313,7 @@ public class ConfigurationDef {
         try {
             Class<?> objectClass = getClassForObject(objectTypeName, className);
             Object configObject = objectClass.newInstance();
+            checkObjectValid(objectTypeName, configObject);
             return configObject;
         } catch (InstantiationException e) {
             throw new ConfigurationException(String.format(
@@ -340,6 +343,29 @@ public class ConfigurationDef {
             throw new ConfigurationException(
                     String.format("Could not find class %s for config object type %s", className,
                             objectTypeName), e);
+        }
+    }
+
+    /**
+     * Check that the loaded object does not present some incoherence. Some combination should not
+     * be done. For example: metric_collectors does extend ITestInvocationListener and could be
+     * declared as a result_reporter, but we do not allow it because it's not how it should be used
+     * in the invocation.
+     *
+     * @param objectTypeName The type of the object declared in the xml.
+     * @param configObject The instantiated object.
+     * @throws ConfigurationException if we find an incoherence in the object.
+     */
+    private void checkObjectValid(String objectTypeName, Object configObject)
+            throws ConfigurationException {
+        if (Configuration.RESULT_REPORTER_TYPE_NAME.equals(objectTypeName)
+                && configObject instanceof IMetricCollector) {
+            // we do not allow IMetricCollector as result_reporter.
+            throw new ConfigurationException(
+                    String.format(
+                            "Object of type %s was declared as %s.",
+                            Configuration.DEVICE_METRICS_COLLECTOR_TYPE_NAME,
+                            Configuration.RESULT_REPORTER_TYPE_NAME));
         }
     }
 }
