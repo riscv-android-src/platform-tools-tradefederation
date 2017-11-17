@@ -225,8 +225,13 @@ public class TestInvocationTest extends TestCase {
                     }
 
                     @Override
-                    protected IShardHelper createShardHelper() {
-                        return new ShardHelper();
+                    public IInvocationExecution createInvocationExec() {
+                        return new InvocationExecution() {
+                            @Override
+                            protected IShardHelper createShardHelper() {
+                                return new ShardHelper();
+                            }
+                        };
                     }
 
                     @Override
@@ -830,8 +835,13 @@ public class TestInvocationTest extends TestCase {
                     }
 
                     @Override
-                    protected IShardHelper createShardHelper() {
-                        return new StrictShardHelper();
+                    public IInvocationExecution createInvocationExec() {
+                        return new InvocationExecution() {
+                            @Override
+                            protected IShardHelper createShardHelper() {
+                                return new StrictShardHelper();
+                            }
+                        };
                     }
 
                     @Override
@@ -909,8 +919,13 @@ public class TestInvocationTest extends TestCase {
                     }
 
                     @Override
-                    protected IShardHelper createShardHelper() {
-                        return new StrictShardHelper();
+                    public IInvocationExecution createInvocationExec() {
+                        return new InvocationExecution() {
+                            @Override
+                            protected IShardHelper createShardHelper() {
+                                return new StrictShardHelper();
+                            }
+                        };
                     }
 
                     @Override
@@ -1618,8 +1633,13 @@ public class TestInvocationTest extends TestCase {
                         }
 
                         @Override
-                        protected IShardHelper createShardHelper() {
-                            return new ShardHelper();
+                        public IInvocationExecution createInvocationExec() {
+                            return new InvocationExecution() {
+                                @Override
+                                protected IShardHelper createShardHelper() {
+                                    return new ShardHelper();
+                                }
+                            };
                         }
 
                         @Override

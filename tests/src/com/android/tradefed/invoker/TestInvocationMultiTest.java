@@ -80,8 +80,13 @@ public class TestInvocationMultiTest {
                     }
 
                     @Override
-                    protected IShardHelper createShardHelper() {
-                        return new ShardHelper();
+                    public IInvocationExecution createInvocationExec() {
+                        return new InvocationExecution() {
+                            @Override
+                            protected IShardHelper createShardHelper() {
+                                return new ShardHelper();
+                            }
+                        };
                     }
 
                     @Override
