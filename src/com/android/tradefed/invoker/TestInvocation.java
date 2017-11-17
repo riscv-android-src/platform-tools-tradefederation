@@ -185,8 +185,11 @@ public class TestInvocation implements ITestInvocation {
             if (testsDir != null && testsDir.exists()) {
                 for (File externalTestDir : getExternalTestCasesDirs()) {
                     try {
-                        File subDir = new File(testsDir, externalTestDir.getName());
-                        FileUtil.recursiveSimlink(externalTestDir, subDir);
+                        // Avoid conflict by creating a randomized name for the arriving symlink
+                        // file.
+                        File subDir = FileUtil.createTempDir(externalTestDir.getName(), testsDir);
+                        subDir.delete();
+                        FileUtil.symlinkFile(externalTestDir, subDir);
                     } catch (IOException e) {
                         CLog.e(
                                 "Failed to load external test dir %s. Ignoring it.",

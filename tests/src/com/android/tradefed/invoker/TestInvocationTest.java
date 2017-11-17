@@ -1673,8 +1673,9 @@ public class TestInvocationTest extends TestCase {
             verifySummaryListener();
             // Check that the external directory was copied in the testsDir.
             assertTrue(tmpTestsDir.listFiles().length == 1);
-            // external-tf-dir
-            assertEquals(tmpExternalTestsDir.getName(), tmpTestsDir.listFiles()[0].getName());
+            // external-tf-dir - the symlink is the original file name + randomized sequence
+            assertTrue(
+                    tmpTestsDir.listFiles()[0].getName().startsWith(tmpExternalTestsDir.getName()));
             // testsfile.txt
             assertTrue(tmpTestsDir.listFiles()[0].listFiles().length == 1);
             assertEquals(
