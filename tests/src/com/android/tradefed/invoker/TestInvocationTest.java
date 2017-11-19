@@ -225,8 +225,13 @@ public class TestInvocationTest extends TestCase {
                     }
 
                     @Override
-                    protected IShardHelper createShardHelper() {
-                        return new ShardHelper();
+                    public IInvocationExecution createInvocationExec() {
+                        return new InvocationExecution() {
+                            @Override
+                            protected IShardHelper createShardHelper() {
+                                return new ShardHelper();
+                            }
+                        };
                     }
 
                     @Override
@@ -830,8 +835,13 @@ public class TestInvocationTest extends TestCase {
                     }
 
                     @Override
-                    protected IShardHelper createShardHelper() {
-                        return new StrictShardHelper();
+                    public IInvocationExecution createInvocationExec() {
+                        return new InvocationExecution() {
+                            @Override
+                            protected IShardHelper createShardHelper() {
+                                return new StrictShardHelper();
+                            }
+                        };
                     }
 
                     @Override
@@ -909,8 +919,13 @@ public class TestInvocationTest extends TestCase {
                     }
 
                     @Override
-                    protected IShardHelper createShardHelper() {
-                        return new StrictShardHelper();
+                    public IInvocationExecution createInvocationExec() {
+                        return new InvocationExecution() {
+                            @Override
+                            protected IShardHelper createShardHelper() {
+                                return new StrictShardHelper();
+                            }
+                        };
                     }
 
                     @Override
@@ -1618,8 +1633,13 @@ public class TestInvocationTest extends TestCase {
                         }
 
                         @Override
-                        protected IShardHelper createShardHelper() {
-                            return new ShardHelper();
+                        public IInvocationExecution createInvocationExec() {
+                            return new InvocationExecution() {
+                                @Override
+                                protected IShardHelper createShardHelper() {
+                                    return new ShardHelper();
+                                }
+                            };
                         }
 
                         @Override
@@ -1653,8 +1673,9 @@ public class TestInvocationTest extends TestCase {
             verifySummaryListener();
             // Check that the external directory was copied in the testsDir.
             assertTrue(tmpTestsDir.listFiles().length == 1);
-            // external-tf-dir
-            assertEquals(tmpExternalTestsDir.getName(), tmpTestsDir.listFiles()[0].getName());
+            // external-tf-dir - the symlink is the original file name + randomized sequence
+            assertTrue(
+                    tmpTestsDir.listFiles()[0].getName().startsWith(tmpExternalTestsDir.getName()));
             // testsfile.txt
             assertTrue(tmpTestsDir.listFiles()[0].listFiles().length == 1);
             assertEquals(

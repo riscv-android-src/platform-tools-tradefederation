@@ -27,6 +27,10 @@ import java.util.Map;
 /**
  * This interface will be added as a decorator when reporting tests results in order to collect
  * matching metrics.
+ *
+ * <p>This interface cannot be used as a <result_reporter> even it extends {@link
+ * ITestInvocationListener}. The configuration checking will reject it. It must be used as a
+ * "metrics_collector".
  */
 public interface IMetricCollector extends ITestInvocationListener {
 

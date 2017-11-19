@@ -209,6 +209,9 @@ class ConfigurationXmlParser {
                 if (includeName == null) {
                     throwException("Missing 'name' attribute for include");
                 }
+                if (attributes.getLength() > 1) {
+                    throwException("<include> tag only expect a 'name' attribute.");
+                }
                 try {
                     mConfigDefLoader.loadIncludedConfiguration(
                             mConfigDef, mName, includeName, mCurrentDeviceObject, mTemplateMap);

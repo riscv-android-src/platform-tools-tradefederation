@@ -15,12 +15,15 @@
  */
 package com.android.tradefed.invoker;
 
+import com.android.tradefed.config.GlobalConfiguration;
 import com.android.tradefed.config.IConfiguration;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.device.StubDevice;
 import com.android.tradefed.device.metric.IMetricCollector;
+import com.android.tradefed.device.metric.IMetricCollectorReceiver;
 import com.android.tradefed.invoker.TestInvocation.Stage;
+import com.android.tradefed.invoker.shard.IShardHelper;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.ITestLoggerReceiver;
@@ -40,10 +43,47 @@ import com.android.tradefed.testtype.IMultiDeviceTest;
 import com.android.tradefed.testtype.IRemoteTest;
 import com.android.tradefed.util.TimeUtil;
 
+import com.google.common.annotations.VisibleForTesting;
+
 import java.util.List;
 import java.util.ListIterator;
 
+/**
+ * Class that describes all the invocation steps: build download, target_prep, run tests, clean up.
+ * Can be extended to override the default behavior of some steps. Order of the steps is driven by
+ * {@link TestInvocation}.
+ */
 public class InvocationExecution implements IInvocationExecution {
+
+    @Override
+    public void cleanUpBuilds(IInvocationContext context, IConfiguration config) {
+        // Ensure build infos are always cleaned up at the end of invocation.
+        for (String cleanUpDevice : context.getDeviceConfigNames()) {
+            if (context.getBuildInfo(cleanUpDevice) != null) {
+                try {
+                    config.getDeviceConfigByName(cleanUpDevice)
+                            .getBuildProvider()
+                            .cleanUp(context.getBuildInfo(cleanUpDevice));
+                } catch (RuntimeException e) {
+                    // We catch an simply log exception in cleanUp to avoid missing any final
+                    // step of the invocation.
+                    CLog.e(e);
+                }
+            }
+        }
+    }
+
+    @Override
+    public boolean shardConfig(
+            IConfiguration config, IInvocationContext context, IRescheduler rescheduler) {
+        return createShardHelper().shardConfig(config, context, rescheduler);
+    }
+
+    /** Create an return the {@link IShardHelper} to be used. */
+    @VisibleForTesting
+    protected IShardHelper createShardHelper() {
+        return GlobalConfiguration.getInstance().getShardingStrategy();
+    }
 
     @Override
     public void doSetup(
@@ -196,8 +236,9 @@ public class InvocationExecution implements IInvocationExecution {
             IInvocationContext context, IConfiguration config, ITestInvocationListener listener)
             throws DeviceNotAvailableException {
         // Wrap collectors in each other and collection will be sequential
+        ITestInvocationListener listenerWithCollectors = listener;
         for (IMetricCollector collector : config.getMetricCollectors()) {
-            listener = collector.init(context, listener);
+            listenerWithCollectors = collector.init(context, listenerWithCollectors);
         }
 
         for (IRemoteTest test : config.getTests()) {
@@ -220,7 +261,13 @@ public class InvocationExecution implements IInvocationExecution {
             if (test instanceof IInvocationContextReceiver) {
                 ((IInvocationContextReceiver) test).setInvocationContext(context);
             }
-            test.run(listener);
+            if (test instanceof IMetricCollectorReceiver) {
+                ((IMetricCollectorReceiver) test).setMetricCollectors(config.getMetricCollectors());
+                // If test can receive collectors then let it handle the how to set them up
+                test.run(listener);
+            } else {
+                test.run(listenerWithCollectors);
+            }
         }
     }
 

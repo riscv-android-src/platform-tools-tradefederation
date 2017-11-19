@@ -18,7 +18,6 @@ package com.android.tradefed.invoker;
 
 import com.android.tradefed.config.IConfiguration;
 import com.android.tradefed.device.DeviceNotAvailableException;
-import com.android.tradefed.invoker.shard.IShardHelper;
 import com.android.tradefed.result.ITestInvocationListener;
 
 /**
@@ -59,32 +58,6 @@ public interface ITestInvocation {
             IRescheduler rescheduler,
             ITestInvocationListener listener)
             throws DeviceNotAvailableException {
-        return false;
-    }
-
-    /**
-     * Execute the build_provider clean up step. Associated with the build fetching.
-     *
-     * @param context the {@link IInvocationContext} of the invocation.
-     * @param config the {@link IConfiguration} of this test run.
-     */
-    public default void cleanUpBuilds(IInvocationContext context, IConfiguration config) {}
-
-    /**
-     * Attempt to shard the configuration into sub-configurations, to be re-scheduled to run on
-     * multiple resources in parallel.
-     *
-     * <p>If a shard count is greater than 1, it will simply create configs for each shard by
-     * setting shard indices and reschedule them. If a shard count is not set,it would fallback to
-     * {@link IShardHelper#shardConfig}.
-     *
-     * @param config the current {@link IConfiguration}.
-     * @param context the {@link IInvocationContext} holding the info of the tests.
-     * @param rescheduler the {@link IRescheduler}
-     * @return true if test was sharded. Otherwise return <code>false</code>
-     */
-    public default boolean shardConfig(
-            IConfiguration config, IInvocationContext context, IRescheduler rescheduler) {
         return false;
     }
 

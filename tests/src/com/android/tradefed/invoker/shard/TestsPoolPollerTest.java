@@ -25,6 +25,7 @@ import com.android.tradefed.config.OptionSetter;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.DeviceUnresponsiveException;
 import com.android.tradefed.device.ITestDevice;
+import com.android.tradefed.device.metric.IMetricCollector;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.testtype.IRemoteTest;
 import com.android.tradefed.testtype.StubTest;
@@ -45,12 +46,14 @@ public class TestsPoolPollerTest {
 
     private ITestInvocationListener mListener;
     private ITestDevice mDevice;
+    private List<IMetricCollector> mMetricCollectors;
 
     @Before
     public void setUp() {
         mListener = Mockito.mock(ITestInvocationListener.class);
         mDevice = Mockito.mock(ITestDevice.class);
         Mockito.doReturn("serial").when(mDevice).getSerialNumber();
+        mMetricCollectors = new ArrayList<>();
     }
 
     /**
@@ -98,6 +101,7 @@ public class TestsPoolPollerTest {
         }
         CountDownLatch tracker = new CountDownLatch(1);
         TestsPoolPoller poller = new TestsPoolPoller(testsList, tracker);
+        poller.setMetricCollectors(mMetricCollectors);
         poller.run(mListener);
         Mockito.verify(mListener, Mockito.times(numTests))
                 .testRunStarted(Mockito.anyString(), Mockito.anyInt());
@@ -128,6 +132,7 @@ public class TestsPoolPollerTest {
         }
         CountDownLatch tracker = new CountDownLatch(1);
         TestsPoolPoller poller = new TestsPoolPoller(testsList, tracker);
+        poller.setMetricCollectors(mMetricCollectors);
         poller.run(mListener);
         Mockito.verify(mListener, Mockito.times(numTests))
                 .testRunStarted(Mockito.anyString(), Mockito.anyInt());
@@ -158,6 +163,7 @@ public class TestsPoolPollerTest {
         }
         CountDownLatch tracker = new CountDownLatch(1);
         TestsPoolPoller poller = new TestsPoolPoller(testsList, tracker);
+        poller.setMetricCollectors(mMetricCollectors);
         poller.run(mListener);
         Mockito.verify(mListener, Mockito.times(numTests))
                 .testRunStarted(Mockito.anyString(), Mockito.anyInt());
@@ -188,6 +194,7 @@ public class TestsPoolPollerTest {
         }
         CountDownLatch tracker = new CountDownLatch(1);
         TestsPoolPoller poller = new TestsPoolPoller(testsList, tracker);
+        poller.setMetricCollectors(mMetricCollectors);
         poller.setDevice(mDevice);
         try {
             poller.run(mListener);
@@ -225,6 +232,7 @@ public class TestsPoolPollerTest {
         }
         CountDownLatch tracker = new CountDownLatch(3);
         TestsPoolPoller poller = new TestsPoolPoller(testsList, tracker);
+        poller.setMetricCollectors(mMetricCollectors);
         poller.setDevice(mDevice);
 
         poller.run(mListener);
