@@ -288,7 +288,7 @@ class CLITranslator(object):
         if count > 1:
             numbered_list = ['%s: %s' % (i, t) for i, t in enumerate(tests)]
             print 'Multiple tests found:\n%s' % '\n'.join(numbered_list)
-            test_index = int(raw_input("Please enter number of test to use:"))
+            test_index = int(raw_input('Please enter number of test to use:'))
         return tests[test_index]
 
     def _get_module_name(self, rel_module_path):
@@ -424,7 +424,7 @@ class CLITranslator(object):
                 'class#method class#method')
 
     def _find_test_by_module_name(self, module_name):
-        """Find test files given a module name.
+        """Find test for the given module name.
 
         Args:
             module_name: A string of the test's module name.
@@ -484,7 +484,7 @@ class CLITranslator(object):
         return TestInfo(rel_config, module_name, None, frozenset([test_filter]))
 
     def _find_test_by_module_and_class(self, module_class):
-        """Find test files given a MODULE:CLASS string.
+        """Find the test info given a MODULE:CLASS string.
 
         Args:
             module_class: A string of form MODULE:CLASS or MODULE:CLASS#METHOD.
@@ -501,7 +501,7 @@ class CLITranslator(object):
                                              module_info.rel_config)
 
     def _find_test_by_integration_name(self, name):
-        """Find test info given an integration name.
+        """Find the test info matching the given integration name.
 
         Args:
             name: A string of integration name as seen in tf's list configs.
@@ -533,8 +533,50 @@ class CLITranslator(object):
                 return TestInfo(rel_config, None, name, frozenset())
         return None
 
+    def _find_tests_by_test_mapping(self, path=''):
+        """Find test infos defined in TEST_MAPPING of the given path and its
+        parent directories if required.
+
+        Args:
+            path: A string of path in source. Default is set to '', i.e., CWD.
+
+        Returns:
+            A set of populated TestInfo namedtuples that's defined in
+            TEST_MAPPING file of the given path, and its parent directories if
+            TEST_MAPPING in the given directory has `include_parent` set to
+            True.
+        """
+        directory = os.path.realpath(path)
+        if directory == atest_utils.ANDROID_BUILD_TOP or directory == os.sep:
+            return
+        tests = set()
+        test_mapping = None
+        test_mapping_file = os.path.join(directory, 'TEST_MAPPING')
+        if os.path.exists(test_mapping_file):
+            with open(test_mapping_file) as json_file:
+                test_mapping = json.load(json_file)
+            for test in test_mapping.get('presubmit', []):
+                name = test['name']
+                test_info = None
+                # Name referenced in TEST_MAPPING can only be module name or
+                # integration test name.
+                for find_method in [self._find_test_by_module_name,
+                                    self._find_test_by_integration_name]:
+                    test_info = find_method(name)
+                    if test_info:
+                        tests.add(test_info)
+                        break
+                else:
+                    logging.warn('Failed to locate test %s', name)
+        if not test_mapping or test_mapping.get('include_parent'):
+            parent_dir_tests = self._find_tests_by_test_mapping(
+                os.path.dirname(directory))
+            if parent_dir_tests:
+                tests |= parent_dir_tests
+        return tests
+
     def _find_test_by_path(self, path):
-        """Find test info given a path.
+        """Find the first test info matching the given path.
 
         Strategy:
             path_to_java_file --> Resolve to CLASS
@@ -684,7 +726,7 @@ class CLITranslator(object):
             results.add(TestInfo(rel_config, module, None, frozenset(filters)))
         return results
 
-    def  _parse_build_targets(self, test_info):
+    def _parse_build_targets(self, test_info):
         """Parse a list of build targets from a single TestInfo.
 
         Args:
@@ -759,14 +801,14 @@ class CLITranslator(object):
         return [RUN_CMD % (template, ' '.join(args))]
 
     def _get_test_info(self, test_name, reference_types):
-        """Tries to find directory containing test files else returns None
+        """Tries to find a TestInfo matches reference else returns None
 
         Args:
             test_name: A string referencing a test.
             reference_types: A list of TetReferenceTypes (ints).
 
         Returns:
-            TestInfo instance, else None if test files not found.
+            A TestInfo namedtuple, else None if test files not found.
         """
         logging.debug('Finding test for "%s" using reference strategy: %s',
                       test_name, [REFERENCE_TYPE[x] for x in reference_types])
@@ -801,13 +843,20 @@ class CLITranslator(object):
         logging.info('Finding tests: %s', tests)
         start = time.time()
         test_infos = set()
-        for test in tests:
-            possible_reference_types = self._get_test_reference_types(test)
-            test_info = self._get_test_info(test, possible_reference_types)
-            if not test_info:
-                # TODO: Should we raise here, or just stdout a message?
-                raise NoTestFoundError('No test found for: %s' % test)
-            test_infos.add(test_info)
+        if not tests:
+            test_infos = self._find_tests_by_test_mapping()
+            if not test_infos:
+                raise NoTestFoundError(
+                    'Failed to find TEST_MAPPING at %s or its parent '
+                    'directories.' % os.path.realpath(''))
+        else:
+            for test in tests:
+                possible_reference_types = self._get_test_reference_types(test)
+                test_info = self._get_test_info(test, possible_reference_types)
+                if not test_info:
+                    # TODO: Should we raise here, or just stdout a message?
+                    raise NoTestFoundError('No test found for: %s' % test)
+                test_infos.add(test_info)
         test_infos = self._flatten_test_infos(test_infos)
         build_targets = self._generate_build_targets(test_infos)
         filepath = self._create_test_info_file(test_infos)
