@@ -45,9 +45,10 @@ import java.util.Collection;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.TimeUnit;
 
-public class UiAutomatorTest implements IRemoteTest, IDeviceTest {
+public class UiAutomatorTest implements IRemoteTest, IDeviceTest, ITestFilterReceiver {
 
     public enum LoggingOption {
         AFTER_TEST,
@@ -486,5 +487,26 @@ public class UiAutomatorTest implements IRemoteTest, IDeviceTest {
      */
     public List<String> getClassNames() {
         return mClasses;
+    }
+
+    @Override
+    public void addIncludeFilter(String filter) {
+        mClasses.add(filter);
+    }
+
+    @Override
+    public void addAllIncludeFilters(Set<String> filters) {
+        mClasses.addAll(filters);
+
+    }
+
+    @Override
+    public void addExcludeFilter(String filter) {
+        throw new UnsupportedOperationException("Exclude filter is not supported.");
+    }
+
+    @Override
+    public void addAllExcludeFilters(Set<String> filters) {
+        throw new UnsupportedOperationException("Exclude filters is not supported.");
     }
 }
