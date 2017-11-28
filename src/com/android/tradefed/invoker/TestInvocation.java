@@ -80,13 +80,14 @@ import java.util.concurrent.TimeUnit;
  */
 public class TestInvocation implements ITestInvocation {
 
+    /** Key of the command line args attributes */
+    public static final String COMMAND_ARGS_KEY = "command_line_args";
+
     /**
      * Format of the key in {@link IBuildInfo} to log the battery level for each step of the
      * invocation. (Setup, test, tear down).
      */
     private static final String BATTERY_ATTRIBUTE_FORMAT_KEY = "%s-battery-%s";
-    /** Key of the command line args attributes */
-    private static final String COMMAND_ARGS_KEY = "command_line_args";
 
     static final String TRADEFED_LOG_NAME = "host_log";
     static final String DEVICE_LOG_NAME_PREFIX = "device_logcat_";

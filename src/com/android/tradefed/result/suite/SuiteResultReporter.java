@@ -42,7 +42,7 @@ public class SuiteResultReporter extends CollectingTestListener {
 
     public static final String SUITE_REPORTER_SOURCE = SuiteResultReporter.class.getName();
 
-    private long startTime = 0l;
+    private long mStartTime = 0l;
     private long mElapsedTime = 0l;
 
     private int mTotalModules = 0;
@@ -71,7 +71,7 @@ public class SuiteResultReporter extends CollectingTestListener {
     @Override
     public void invocationStarted(IInvocationContext context) {
         super.invocationStarted(context);
-        startTime = System.currentTimeMillis();
+        mStartTime = System.currentTimeMillis();
     }
 
     @Override
@@ -100,7 +100,7 @@ public class SuiteResultReporter extends CollectingTestListener {
     @Override
     public void invocationEnded(long elapsedTime) {
         super.invocationEnded(elapsedTime);
-        mElapsedTime = System.currentTimeMillis() - startTime;
+        mElapsedTime = System.currentTimeMillis() - mStartTime;
 
         // finalize and print results - general
         Collection<TestRunResult> results = getRunResults();
@@ -329,5 +329,15 @@ public class SuiteResultReporter extends CollectingTestListener {
         TestSummary summary = new TestSummary(new TypedString(mSummary.toString(), Type.TEXT));
         summary.setSource(SUITE_REPORTER_SOURCE);
         return summary;
+    }
+
+    /** Returns the start time of the run. */
+    protected long getStartTime() {
+        return mStartTime;
+    }
+
+    /** Returns the elapsed time of the full run. */
+    protected long getElapsedTime() {
+        return mElapsedTime;
     }
 }
