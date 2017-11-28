@@ -264,4 +264,7 @@ public interface IDeviceManager {
      * Restore a flashing permit that we acquired previously
      */
     public void returnFlashingPermit();
+
+    /** Get the adb version currently in use by the device manager. */
+    public String getAdbVersion();
 }

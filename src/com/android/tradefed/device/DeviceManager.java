@@ -1365,4 +1365,10 @@ public class DeviceManager implements IDeviceManager {
             mConcurrentFlashLock.release();
         }
     }
+
+    /** {@inheritDoc} */
+    @Override
+    public String getAdbVersion() {
+        return mAdbBridge.getAdbVersion(mAdbPath);
+    }
 }

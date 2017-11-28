@@ -129,28 +129,38 @@ public class DeviceManagerTest extends TestCase {
         super.setUp();
         mMockAdbBridge = EasyMock.createNiceMock(IAndroidDebugBridge.class);
         mMockAdbBridge.addDeviceChangeListener((IDeviceChangeListener) EasyMock.anyObject());
-        EasyMock.expectLastCall().andDelegateTo(new IAndroidDebugBridge() {
-            @Override
-            public void addDeviceChangeListener(final IDeviceChangeListener listener) {
-                mDeviceListener = listener;
-            }
-            @Override
-            public IDevice[] getDevices() {
-                return null;
-            }
-            @Override
-            public void removeDeviceChangeListener(IDeviceChangeListener listener) {
-            }
-            @Override
-            public void init(boolean clientSupport, String adbOsLocation) {
-            }
-            @Override
-            public void terminate() {
-            }
-            @Override
-            public void disconnectBridge() {
-            }
-        });
+        EasyMock.expectLastCall()
+                .andDelegateTo(
+                        new IAndroidDebugBridge() {
+                            @Override
+                            public void addDeviceChangeListener(
+                                    final IDeviceChangeListener listener) {
+                                mDeviceListener = listener;
+                            }
+
+                            @Override
+                            public IDevice[] getDevices() {
+                                return null;
+                            }
+
+                            @Override
+                            public void removeDeviceChangeListener(
+                                    IDeviceChangeListener listener) {}
+
+                            @Override
+                            public void init(boolean clientSupport, String adbOsLocation) {}
+
+                            @Override
+                            public void terminate() {}
+
+                            @Override
+                            public void disconnectBridge() {}
+
+                            @Override
+                            public String getAdbVersion(String adbOsLocation) {
+                                return null;
+                            }
+                        });
         mMockIDevice = EasyMock.createMock(IDevice.class);
         mMockStateMonitor = EasyMock.createMock(IDeviceStateMonitor.class);
         mMockRunUtil = EasyMock.createMock(IRunUtil.class);
