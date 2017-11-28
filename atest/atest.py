@@ -40,11 +40,13 @@ EXPECTED_VARS = frozenset([
 EXIT_CODE_ENV_NOT_SETUP = 1
 EXIT_CODE_BUILD_FAILURE = 2
 BUILD_STEP = 'build'
+INSTALL_STEP = 'install'
 TEST_STEP = 'test'
+ALL_STEPS = [BUILD_STEP, INSTALL_STEP, TEST_STEP]
 TEST_RUN_DIR_PREFIX = 'atest_run_%s_'
 HELP_DESC = '''Build and run Android tests locally.
 
-The -b and -t options allow you to specify which steps
+The -b, -i and -t options allow you to specify which steps
 you want to run. If none of those options are given, then
 all steps are run. If any of these options are provided
 then only the listed steps are run.
@@ -84,6 +86,8 @@ def _parse_args(argv):
     parser.add_argument('tests', nargs='*', help=HELP_TESTS)
     parser.add_argument('-b', '--build', action='append_const', dest='steps',
                         const=BUILD_STEP, help='Run a build.')
+    parser.add_argument('-i', '--install', action='append_const', dest='steps',
+                        const=INSTALL_STEP, help='Install an APK.')
     parser.add_argument('-t', '--test', action='append_const', dest='steps',
                         const=TEST_STEP, help='Run the tests.')
     parser.add_argument('-w', '--wait-for-debugger', action='store_true',
@@ -184,11 +188,20 @@ def main(argv):
         run_commands = [cmd + ' --wait-for-debugger' for cmd in run_commands]
     if _is_missing_adb(root_dir=repo_root):
         build_targets.add('adb')
-    if not args.steps or BUILD_STEP in args.steps:
+    # args.steps will be None if none of -bit set, else list of params set.
+    steps = args.steps if args.steps else ALL_STEPS
+    if BUILD_STEP in steps:
         success = atest_utils.build(build_targets, args.verbose)
         if not success:
             return EXIT_CODE_BUILD_FAILURE
-    if not args.steps or TEST_STEP in args.steps:
+    if INSTALL_STEP not in steps:
+        run_commands = [cmd + ' --disable-target-preparers'
+                        for cmd in run_commands]
+    elif TEST_STEP not in steps:
+        logging.warn('Install step without test step currently not '
+                     'supported, installing AND testing instead.')
+        steps.append(TEST_STEP)
+    if TEST_STEP in steps:
         run_tests(run_commands)
 
 

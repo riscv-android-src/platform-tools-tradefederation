@@ -22,9 +22,10 @@ import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.when;
 import static org.mockito.Mockito.mock;
 
-import com.android.tradefed.command.ICommandOptions;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.result.ITestInvocationListener;
+import com.android.tradefed.targetprep.ITargetPreparer;
+import com.android.tradefed.targetprep.TestAppInstallSetup;
 import com.android.tradefed.testtype.IRemoteTest;
 import com.android.tradefed.config.IConfiguration;
 import com.android.tradefed.config.Configuration;
@@ -107,6 +108,8 @@ public class AtestRunnerTest {
         IConfiguration fakeConfig = new Configuration("fake_name", "fake_desc");
         IRemoteTest fakeTest = new FakeTest();
         fakeConfig.setTests(Arrays.asList(fakeTest));
+        ITargetPreparer targetPreparer = new TestAppInstallSetup();
+        fakeConfig.setTargetPreparer(targetPreparer);
         return fakeConfig;
     }
 
@@ -281,8 +284,34 @@ public class AtestRunnerTest {
         LinkedHashMap<String, IConfiguration> configMap = mSpyRunner.loadTests();
         assertEquals(1, configMap.size());
         IConfiguration config = configMap.get("module1");
-        ICommandOptions options = config.getCommandOptions();
         IRemoteTest test = config.getTests().get(0);
         assertTrue(((FakeTest) test).getDebug());
+    }
+
+    @Test
+    public void testdisableTargetPreparers() throws Exception {
+        String filePath = truncateAndWrite(mTmpFile, mInfos.get("module1"));
+        OptionSetter setter = new OptionSetter(mSpyRunner);
+        setter.setOptionValue("disable-target-preparers", "true");
+        setter.setOptionValue("test-info-file", filePath);
+        LinkedHashMap<String, IConfiguration> configMap = mSpyRunner.loadTests();
+        assertEquals(1, configMap.size());
+        IConfiguration config = configMap.get("module1");
+        for (ITargetPreparer targetPreparer : config.getTargetPreparers()) {
+            assertTrue(targetPreparer.isDisabled());
+        }
+    }
+
+    @Test
+    public void testdisableTargetPreparersUnset() throws Exception {
+        String filePath = truncateAndWrite(mTmpFile, mInfos.get("module1"));
+        OptionSetter setter = new OptionSetter(mSpyRunner);
+        setter.setOptionValue("test-info-file", filePath);
+        LinkedHashMap<String, IConfiguration> configMap = mSpyRunner.loadTests();
+        assertEquals(1, configMap.size());
+        IConfiguration config = configMap.get("module1");
+        for (ITargetPreparer targetPreparer : config.getTargetPreparers()) {
+            assertTrue(!targetPreparer.isDisabled());
+        }
     }
 }

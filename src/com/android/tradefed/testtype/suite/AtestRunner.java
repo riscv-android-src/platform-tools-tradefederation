@@ -23,6 +23,7 @@ import com.android.tradefed.config.IConfiguration;
 import com.android.tradefed.config.IConfigurationFactory;
 import com.android.tradefed.config.Option;
 import com.android.tradefed.log.LogUtil.CLog;
+import com.android.tradefed.targetprep.ITargetPreparer;
 import com.android.tradefed.testtype.InstrumentationTest;
 
 import com.android.tradefed.testtype.IRemoteTest;
@@ -60,6 +61,12 @@ public class AtestRunner extends ITestSuite {
     )
     private boolean mDebug = false;
 
+    @Option(
+        name = "disable-target-preparers",
+        description = "Skip the target preparer steps enumerated in test config."
+    )
+    private boolean mSkipInstall = false;
+
     @Override
     public LinkedHashMap<String, IConfiguration> loadTests() {
         LinkedHashMap<String, IConfiguration> configMap =
@@ -91,12 +98,15 @@ public class AtestRunner extends ITestSuite {
                 for (String filter : testInfo.filters) {
                     addFilter(testConfig, filter);
                 }
+                if (mSkipInstall) {
+                    disableTargetPreparers(testConfig);
+                }
                 if (mDebug) {
                     addDebugger(testConfig);
                 }
                 configMap.put(testInfo.test, testConfig);
             } catch (ConfigurationException | NoClassDefFoundError e) {
-                CLog.e("Configuration '%s' cannot be loaded, ignoring.", testInfo);
+                CLog.e("Configuration '%s' cannot be loaded, ignoring.", testInfo.test);
                 CLog.d("Error: %s", e);
             }
         }
@@ -150,7 +160,9 @@ public class AtestRunner extends ITestSuite {
         List<IRemoteTest> tests = testConfig.getTests();
         for (IRemoteTest test : tests) {
             if (test instanceof ITestFilterReceiver) {
-                CLog.d("Applying filter to %s: %s", testConfig.getName(), filter);
+                CLog.d(
+                        "%s:%s - Applying filter (%s)",
+                        testConfig.getName(), test.getClass().getSimpleName(), filter);
                 ((ITestFilterReceiver) test).addIncludeFilter(filter);
             } else {
                 CLog.e(
@@ -168,6 +180,16 @@ public class AtestRunner extends ITestSuite {
             if (test instanceof InstrumentationTest) {
                 ((InstrumentationTest) test).setDebug(true);
             }
+        }
+    }
+
+    /** Helper to disable TargetPreparers of a test. */
+    private void disableTargetPreparers(IConfiguration testConfig) {
+        for (ITargetPreparer targetPreparer : testConfig.getTargetPreparers()) {
+            CLog.d(
+                    "%s: Disabling Target Preparer (%s)",
+                    testConfig.getName(), targetPreparer.getClass().getSimpleName());
+            targetPreparer.setDisable(true);
         }
     }
 }
