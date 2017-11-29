@@ -36,6 +36,10 @@ import junit.framework.TestSuite;
 
 import org.easymock.Capture;
 import org.easymock.EasyMock;
+import org.junit.After;
+import org.junit.Assert;
+import org.junit.Assume;
+import org.junit.AssumptionViolatedException;
 import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Ignore;
@@ -230,6 +234,33 @@ public class HostTestTest extends TestCase {
         @Override
         public ITestDevice getDevice() {
             return mDevice;
+        }
+    }
+
+    /**
+     * Test class that run a test throwing an {@link AssumptionViolatedException} which should be
+     * handled as the testAssumptionFailure.
+     */
+    @RunWith(DeviceJUnit4ClassRunner.class)
+    public static class JUnit4TestClassAssume {
+
+        @org.junit.Test
+        public void testPass5() {
+            Assume.assumeTrue(false);
+        }
+    }
+
+    @RunWith(DeviceJUnit4ClassRunner.class)
+    public static class JUnit4TestClassMultiException {
+
+        @org.junit.Test
+        public void testPass5() {
+            Assume.assumeTrue(false);
+        }
+
+        @After
+        public void tearDown() {
+            Assert.assertTrue(false);
         }
     }
 
@@ -986,6 +1017,45 @@ public class HostTestTest extends TestCase {
         mListener.testStarted(EasyMock.eq(test2));
         mListener.testIgnored(EasyMock.eq(test2));
         mListener.testEnded(EasyMock.eq(test2), (Map<String, String>) EasyMock.anyObject());
+        mListener.testRunEnded(EasyMock.anyLong(), (Map<String, String>) EasyMock.anyObject());
+        EasyMock.replay(mListener);
+        mHostTest.run(mListener);
+        EasyMock.verify(mListener);
+    }
+
+    /**
+     * Test for {@link HostTest#run(ITestInvocationListener)}, for test with Junit4 style and
+     * handling of Assume.
+     */
+    public void testRun_junit4style_assumeFailure() throws Exception {
+        mHostTest.setClassName(JUnit4TestClassAssume.class.getName());
+        TestIdentifier test1 =
+                new TestIdentifier(JUnit4TestClassAssume.class.getName(), "testPass5");
+        mListener.testRunStarted((String) EasyMock.anyObject(), EasyMock.eq(1));
+        mListener.testStarted(EasyMock.eq(test1));
+        mListener.testAssumptionFailure(EasyMock.eq(test1), EasyMock.anyObject());
+        mListener.testEnded(EasyMock.eq(test1), (Map<String, String>) EasyMock.anyObject());
+        mListener.testRunEnded(EasyMock.anyLong(), (Map<String, String>) EasyMock.anyObject());
+        EasyMock.replay(mListener);
+        mHostTest.run(mListener);
+        EasyMock.verify(mListener);
+    }
+
+    /**
+     * Test for {@link HostTest#run(ITestInvocationListener)}, for test with Junit4 style and
+     * handling of Multiple exception one from @Test one from @After. Junit replay both as failure.
+     */
+    public void testRun_junit4style_multiException() throws Exception {
+        mListener = EasyMock.createStrictMock(ITestInvocationListener.class);
+        mHostTest.setClassName(JUnit4TestClassMultiException.class.getName());
+        TestIdentifier test1 =
+                new TestIdentifier(JUnit4TestClassMultiException.class.getName(), "testPass5");
+        mListener.testRunStarted((String) EasyMock.anyObject(), EasyMock.eq(1));
+        mListener.testStarted(EasyMock.eq(test1));
+        mListener.testFailed(
+                EasyMock.eq(test1),
+                EasyMock.contains("MultipleFailureException: There were 2 errors:"));
+        mListener.testEnded(EasyMock.eq(test1), (Map<String, String>) EasyMock.anyObject());
         mListener.testRunEnded(EasyMock.anyLong(), (Map<String, String>) EasyMock.anyObject());
         EasyMock.replay(mListener);
         mHostTest.run(mListener);
