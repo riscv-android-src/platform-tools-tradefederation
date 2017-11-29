@@ -43,6 +43,8 @@ INT_NAME = 'example/reboot'
 INT_DIR = 'tf/contrib/res/config'
 GTF_INT_NAME = 'some/gtf_int_test'
 GTF_INT_DIR = 'gtf/core/res/config'
+INT_NAME_CLASS = INT_NAME + ':' + FULL_CLASS_NAME
+INT_NAME_METHOD = INT_NAME_CLASS + '#' + METHOD_NAME
 REF_TYPE = cli_t.REFERENCE_TYPE
 CONFIG_FILE = os.path.join(MODULE_DIR, cli_t.MODULE_CONFIG)
 CONFIG2_FILE = os.path.join(MODULE2_DIR, cli_t.MODULE_CONFIG)
@@ -81,6 +83,10 @@ METHOD_METHOD2_AND_CLASS2_METHOD = cli_t.TestInfo(
 INT_CONFIG = os.path.join(INT_DIR, INT_NAME + '.xml')
 GTF_INT_CONFIG = os.path.join(GTF_INT_DIR, GTF_INT_NAME + '.xml')
 INT_INFO = cli_t.TestInfo(INT_CONFIG, None, INT_NAME, frozenset())
+INT_CLASS_INFO = cli_t.TestInfo(INT_CONFIG, None, INT_NAME,
+                                frozenset([CLASS_FILTER]))
+INT_METHOD_INFO = cli_t.TestInfo(INT_CONFIG, None, INT_NAME,
+                                 frozenset([METHOD_FILTER]))
 GTF_INT_INFO = cli_t.TestInfo(GTF_INT_CONFIG, None, GTF_INT_NAME, frozenset())
 JSON_FILE = 'module-info.json'
 TEST_DATA_DIR = 'unittest_data'
@@ -215,11 +221,12 @@ class CLITranslatorUnittests(unittest.TestCase):
         )
         self.assertStrictEqual(
             self.ctr._get_test_reference_types('module:class'),
-            [REF_TYPE.MODULE_CLASS]
+            [REF_TYPE.MODULE_CLASS, REF_TYPE.INTEGRATION]
         )
         self.assertStrictEqual(
             self.ctr._get_test_reference_types('module:class.or.package'),
-            [REF_TYPE.MODULE_CLASS, REF_TYPE.MODULE_PACKAGE]
+            [REF_TYPE.MODULE_CLASS, REF_TYPE.MODULE_PACKAGE,
+             REF_TYPE.INTEGRATION]
         )
         self.assertStrictEqual(
             self.ctr._get_test_reference_types('.'),
@@ -241,6 +248,24 @@ class CLITranslatorUnittests(unittest.TestCase):
             self.ctr._get_test_reference_types('/abs/path/to/test'),
             [REF_TYPE.FILE_PATH]
         )
+        self.assertStrictEqual(
+            self.ctr._get_test_reference_types('int/test'),
+            [REF_TYPE.FILE_PATH, REF_TYPE.INTEGRATION]
+        )
+        self.assertStrictEqual(
+            self.ctr._get_test_reference_types('int/test:fully.qual.class#m'),
+            [REF_TYPE.FILE_PATH, REF_TYPE.INTEGRATION]
+        )
+        self.assertStrictEqual(
+            self.ctr._get_test_reference_types('int/test:class#method'),
+            [REF_TYPE.FILE_PATH, REF_TYPE.INTEGRATION]
+        )
+        self.assertStrictEqual(
+            self.ctr._get_test_reference_types('int_name_no_slash:class#m'),
+            [REF_TYPE.MODULE_CLASS, REF_TYPE.INTEGRATION]
+        )
+
+
 
     def test_is_equal_or_sub_dir(self):
         """Test _is_equal_or_sub_dir method."""
@@ -349,13 +374,22 @@ class CLITranslatorUnittests(unittest.TestCase):
         bad_class = '%s:%s' % (MODULE_NAME, 'Anything')
         self.assertIsNone(self.ctr._find_test_by_module_and_class(bad_class))
 
+    @mock.patch.object(cli_t.CLITranslator, '_get_fully_qualified_class_name',
+                       return_value=FULL_CLASS_NAME)
     @mock.patch('subprocess.check_output')
     @mock.patch('os.path.exists', return_value=True)
-    def test_find_test_by_integration_name(self, _, mock_find):
+    def test_find_test_by_integration_name(self, _path, mock_find, _class):
         """Test _find_test_by_integration_name method"""
         mock_find.return_value = os.path.join(ROOT, INT_DIR, INT_NAME + '.xml')
         test_info = self.ctr._find_test_by_integration_name(INT_NAME)
-        self.assertTrue(test_info == INT_INFO)
+        self.assertStrictEqual(test_info, INT_INFO)
+        test_info = self.ctr._find_test_by_integration_name(INT_NAME_CLASS)
+        self.assertStrictEqual(test_info, INT_CLASS_INFO)
+        test_info = self.ctr._find_test_by_integration_name(INT_NAME_METHOD)
+        self.assertStrictEqual(test_info, INT_METHOD_INFO)
+        not_fully_qual = INT_NAME + ':' + 'someClass'
+        test_info = self.ctr._find_test_by_integration_name(not_fully_qual)
+        self.assertStrictEqual(test_info, INT_CLASS_INFO)
         mock_find.return_value = os.path.join(ROOT, GTF_INT_DIR,
                                               GTF_INT_NAME + '.xml')
         self.assertStrictEqual(
@@ -416,9 +450,8 @@ class CLITranslatorUnittests(unittest.TestCase):
         self.assertStrictEqual(filters, frozenset([FLAT_METHOD_FILTER]))
         filters = self.ctr._flatten_test_filters({METHOD_FILTER, METHOD2_FILTER,
                                                   CLASS2_METHOD_FILTER,})
-        self.assertStrictEqual(filters,
-                               frozenset([FLAT_METHOD_FILTER,
-                                          CLASS2_METHOD_FILTER]))
+        self.assertStrictEqual(filters, frozenset([FLAT_METHOD_FILTER,
+                                                   CLASS2_METHOD_FILTER]))
 
     def test_flatten_test_infos(self):
         """Test _flatten_test_infos method."""
@@ -550,7 +583,7 @@ class CLITranslatorUnittests(unittest.TestCase):
 
     @mock.patch.object(cli_t.CLITranslator, '_find_test_by_module_name',
                        side_effect=[MODULE_INFO, CLASS_INFO, INT_INFO])
-    def test_find_tests_by_test_mapping(self, mock_findbymodule):
+    def test_find_tests_by_test_mapping(self, _mock_findbymodule):
         """Test _find_tests_by_test_mapping method."""
         test_infos = self.ctr._find_tests_by_test_mapping(
             TEST_MAPPING_DIR_INCLUDE_PARENT)

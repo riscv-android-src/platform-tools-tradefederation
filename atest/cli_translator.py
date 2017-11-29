@@ -201,10 +201,10 @@ class CLITranslator(object):
         Returns:
             A list of possible REFERENCE_TYPEs (ints) for reference string.
         """
-        if ref.startswith('.'):
+        if ref.startswith('.') or '..' in ref:
             return [REFERENCE_TYPE.FILE_PATH]
         if '/' in ref:
-            if ref.startswith('/') or '.' in ref:
+            if ref.startswith('/'):
                 return [REFERENCE_TYPE.FILE_PATH]
             return [REFERENCE_TYPE.FILE_PATH,
                     REFERENCE_TYPE.INTEGRATION,
@@ -214,8 +214,10 @@ class CLITranslator(object):
         if ':' in ref:
             if '.' in ref:
                 return [REFERENCE_TYPE.MODULE_CLASS,
-                        REFERENCE_TYPE.MODULE_PACKAGE]
-            return [REFERENCE_TYPE.MODULE_CLASS]
+                        REFERENCE_TYPE.MODULE_PACKAGE,
+                        REFERENCE_TYPE.INTEGRATION]
+            return [REFERENCE_TYPE.MODULE_CLASS,
+                    REFERENCE_TYPE.INTEGRATION]
         if '.' in ref:
             return [REFERENCE_TYPE.FILE_PATH,
                     REFERENCE_TYPE.QUALIFIED_CLASS,
@@ -438,6 +440,31 @@ class CLITranslator(object):
             rel_config = os.path.join(info['path'][0], MODULE_CONFIG)
             return TestInfo(rel_config, module_name, None, frozenset())
 
+    def _find_class_file(self, class_name, search_dir):
+        """Find a java class file given a class name and search dir.
+
+        Args:
+            class_name: A string of the test's class name.
+            search_dir: A string of the dirpath to search in.
+
+        Return:
+            A string of the path to the java file.
+        """
+        if '.' in class_name:
+            find_cmd = FIND_CMDS[REFERENCE_TYPE.QUALIFIED_CLASS] % (
+                search_dir, class_name.replace('.', '/'))
+        else:
+            find_cmd = FIND_CMDS[REFERENCE_TYPE.CLASS] % (
+                search_dir, class_name)
+        # TODO: Pull out common find cmd and timing code.
+        start = time.time()
+        logging.debug('Executing: %s', find_cmd)
+        out = subprocess.check_output(find_cmd, shell=True)
+        logging.debug('Find completed in %ss', time.time() - start)
+        logging.debug('Class - Find Cmd Out: %s', out)
+        return self._extract_test_path(out)
+
+
     def _find_test_by_class_name(self, class_name, module_name=None,
                                  rel_config=None):
         """Find test files given a class name.  If module_name and rel_config
@@ -458,19 +485,7 @@ class CLITranslator(object):
                                       os.path.dirname(rel_config))
         else:
             search_dir = self.root_dir
-        if '.' in class_name:
-            find_cmd = FIND_CMDS[REFERENCE_TYPE.QUALIFIED_CLASS] % (
-                search_dir, class_name.replace('.', '/'))
-        else:
-            find_cmd = FIND_CMDS[REFERENCE_TYPE.CLASS] % (
-                search_dir, class_name)
-        # TODO: Pull out common find cmd and timing code.
-        start = time.time()
-        logging.debug('Executing: %s', find_cmd)
-        out = subprocess.check_output(find_cmd, shell=True)
-        logging.debug('Find completed in %ss', time.time() - start)
-        logging.debug('Class - Find Cmd Out: %s', out)
-        test_path = self._extract_test_path(out)
+        test_path = self._find_class_file(class_name, search_dir)
         if not test_path:
             return None
         full_class_name = self._get_fully_qualified_class_name(test_path)
@@ -509,6 +524,19 @@ class CLITranslator(object):
         Returns:
             A populated TestInfo namedtuple if test found, else None
         """
+        filters = frozenset()
+        if ':' in name:
+            name, class_name = name.split(':')
+            class_name, methods = self._split_methods(class_name)
+            if '.' not in class_name:
+                logging.warn('Looking up fully qualified class name for: %s.'
+                             'Improve speed by using fully qualified names.',
+                             class_name)
+                path = self._find_class_file(class_name, self.root_dir)
+                if not path:
+                    return None
+                class_name = self._get_fully_qualified_class_name(path)
+            filters = frozenset([TestFilter(class_name, methods)])
         for integration_dir in self.integration_dirs:
             abs_path = os.path.join(self.root_dir, integration_dir)
             find_cmd = FIND_CMDS[REFERENCE_TYPE.INTEGRATION] % (abs_path, name)
@@ -530,7 +558,7 @@ class CLITranslator(object):
                                  'did you mean: %s?', name, int_name)
                     return None
                 rel_config = os.path.relpath(test_file, self.root_dir)
-                return TestInfo(rel_config, None, name, frozenset())
+                return TestInfo(rel_config, None, name, filters)
         return None
 
     def _find_tests_by_test_mapping(self, path=''):
