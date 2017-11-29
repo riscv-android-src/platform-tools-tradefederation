@@ -45,6 +45,7 @@ import com.android.tradefed.config.GlobalConfigurationTest;
 import com.android.tradefed.config.OptionCopierTest;
 import com.android.tradefed.config.OptionSetterTest;
 import com.android.tradefed.config.OptionUpdateRuleTest;
+import com.android.tradefed.config.SandboxConfigurationFactoryTest;
 import com.android.tradefed.device.BackgroundDeviceActionTest;
 import com.android.tradefed.device.CpuStatsCollectorTest;
 import com.android.tradefed.device.DeviceManagerTest;
@@ -62,7 +63,10 @@ import com.android.tradefed.device.TestDeviceTest;
 import com.android.tradefed.device.TopHelperTest;
 import com.android.tradefed.device.WaitDeviceRecoveryTest;
 import com.android.tradefed.device.WifiHelperTest;
+import com.android.tradefed.device.metric.ScheduledDeviceMetricCollectorTest;
+import com.android.tradefed.device.metric.BaseDeviceMetricCollectorTest;
 import com.android.tradefed.invoker.InvocationContextTest;
+import com.android.tradefed.invoker.ShardListenerTest;
 import com.android.tradefed.invoker.TestInvocationMultiTest;
 import com.android.tradefed.invoker.TestInvocationTest;
 import com.android.tradefed.invoker.shard.ShardHelperTest;
@@ -274,6 +278,7 @@ import org.junit.runners.Suite.SuiteClasses;
     OptionCopierTest.class,
     OptionSetterTest.class,
     OptionUpdateRuleTest.class,
+    SandboxConfigurationFactoryTest.class,
 
     // device
     BackgroundDeviceActionTest.class,
@@ -295,8 +300,13 @@ import org.junit.runners.Suite.SuiteClasses;
     WaitDeviceRecoveryTest.class,
     WifiHelperTest.class,
 
+    // device.metric
+    ScheduledDeviceMetricCollectorTest.class,
+    BaseDeviceMetricCollectorTest.class,
+
     // invoker
     InvocationContextTest.class,
+    ShardListenerTest.class,
     TestInvocationMultiTest.class,
     TestInvocationTest.class,
 

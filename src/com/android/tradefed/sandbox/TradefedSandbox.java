@@ -136,7 +136,7 @@ public class TradefedSandbox implements ISandbox {
 
         // Prepare the context
         try {
-            mSerializedContext = SerializationUtil.serialize(context);
+            mSerializedContext = prepareContext(context);
         } catch (IOException e) {
             return e;
         }
@@ -193,5 +193,16 @@ public class TradefedSandbox implements ISandbox {
     @VisibleForTesting
     IRunUtil createRunUtil() {
         return new RunUtil();
+    }
+
+    /**
+     * Prepare and serialize the {@link IInvocationContext}.
+     *
+     * @param context the {@link IInvocationContext} to be prepared.
+     * @return the serialized {@link IInvocationContext}.
+     * @throws IOException
+     */
+    protected File prepareContext(IInvocationContext context) throws IOException {
+        return SerializationUtil.serialize(context);
     }
 }

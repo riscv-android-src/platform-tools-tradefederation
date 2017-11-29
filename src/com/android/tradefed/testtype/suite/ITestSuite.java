@@ -205,7 +205,7 @@ public abstract class ITestSuite
         TestFailureListener failureListener =
                 new TestFailureListener(
                         listener,
-                        getDevice(),
+                        mContext.getDevices(),
                         mBugReportOnFailure,
                         mLogcatOnFailure,
                         mScreenshotOnFailure,
@@ -233,7 +233,7 @@ public abstract class ITestSuite
                 }
 
                 try {
-                    mContext.setModuleInvocationContext(module.getModuleInvocationContext());
+                    listener.testModuleStarted(module.getModuleInvocationContext());
                     // Populate the module context with devices and builds
                     for (String deviceName : mContext.getDeviceConfigNames()) {
                         module.getModuleInvocationContext()
@@ -245,7 +245,7 @@ public abstract class ITestSuite
                 } finally {
                     // clear out module invocation context since we are now done with module
                     // execution
-                    mContext.setModuleInvocationContext(null);
+                    listener.testModuleEnded();
                 }
             }
         } catch (DeviceNotAvailableException e) {
