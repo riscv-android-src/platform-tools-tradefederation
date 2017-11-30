@@ -26,6 +26,8 @@ import com.android.tradefed.config.IConfiguration;
 import com.android.tradefed.config.IDeviceConfiguration;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
+import com.android.tradefed.device.metric.BaseDeviceMetricCollector;
+import com.android.tradefed.device.metric.IMetricCollector;
 import com.android.tradefed.invoker.IInvocationContext;
 import com.android.tradefed.result.CollectingTestListener;
 import com.android.tradefed.result.ITestInvocationListener;
@@ -38,11 +40,14 @@ import com.android.tradefed.targetprep.multi.IMultiTargetPreparer;
 import com.android.tradefed.targetprep.multi.StubMultiTargetPreparer;
 
 import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.junit.runners.JUnit4;
 
 import java.util.ArrayList;
 import java.util.List;
 
 /** Unit tests for {@link ValidateSuiteConfigHelper} */
+@RunWith(JUnit4.class)
 public class ValidateSuiteConfigHelperTest {
 
     /** Test that a config with default value can run as suite. */
@@ -143,5 +148,15 @@ public class ValidateSuiteConfigHelperTest {
                 throws TargetSetupError, BuildError, DeviceNotAvailableException {
             // ignore
         }
+    }
+
+    /** Test that metric collectors cannot be specified inside a module for a suite. */
+    @Test
+    public void testMetricCollectors() {
+        IConfiguration config = new Configuration("test", "test description");
+        List<IMetricCollector> collectors = new ArrayList<>();
+        collectors.add(new BaseDeviceMetricCollector());
+        config.setDeviceMetricCollectors(collectors);
+        assertFalse(ValidateSuiteConfigHelper.validateConfig(config));
     }
 }
