@@ -106,8 +106,7 @@ public class AtestRunner extends ITestSuite {
                 }
                 configMap.put(testInfo.test, testConfig);
             } catch (ConfigurationException | NoClassDefFoundError e) {
-                CLog.e("Configuration '%s' cannot be loaded, ignoring.", testInfo.test);
-                CLog.d("Error: %s", e);
+                CLog.e("Skipping configuration '%s', because of loading ERROR: %s", testInfo, e);
             }
         }
         return configMap;
