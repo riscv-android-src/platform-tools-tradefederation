@@ -264,6 +264,23 @@ public class HostTestTest extends TestCase {
         }
     }
 
+    @RunWith(DeviceJUnit4ClassRunner.class)
+    public static class Junit4TestClassMulti implements IMultiDeviceTest {
+        private Map<ITestDevice, IBuildInfo> mDeviceMap;
+
+        public Junit4TestClassMulti() {}
+
+        @org.junit.Test
+        public void testPass5() {
+            assertNotNull(mDeviceMap);
+        }
+
+        @Override
+        public void setDeviceInfos(Map<ITestDevice, IBuildInfo> deviceInfos) {
+            mDeviceMap = deviceInfos;
+        }
+    }
+
     @RunWith(DeviceSuite.class)
     @SuiteClasses({
         Junit4TestClass.class,
@@ -1055,6 +1072,24 @@ public class HostTestTest extends TestCase {
         mListener.testFailed(
                 EasyMock.eq(test1),
                 EasyMock.contains("MultipleFailureException: There were 2 errors:"));
+        mListener.testEnded(EasyMock.eq(test1), (Map<String, String>) EasyMock.anyObject());
+        mListener.testRunEnded(EasyMock.anyLong(), (Map<String, String>) EasyMock.anyObject());
+        EasyMock.replay(mListener);
+        mHostTest.run(mListener);
+        EasyMock.verify(mListener);
+    }
+
+    /**
+     * Test for {@link HostTest#run(ITestInvocationListener)}, for test with Junit4 style properly
+     * pass to the test the {@link IMultiDeviceTest} information.
+     */
+    public void testRun_junit4style_multiDevice() throws Exception {
+        mHostTest.setClassName(Junit4TestClassMulti.class.getName());
+        mHostTest.setDeviceInfos(new HashMap<>());
+        TestIdentifier test1 =
+                new TestIdentifier(Junit4TestClassMulti.class.getName(), "testPass5");
+        mListener.testRunStarted((String) EasyMock.anyObject(), EasyMock.eq(1));
+        mListener.testStarted(EasyMock.eq(test1));
         mListener.testEnded(EasyMock.eq(test1), (Map<String, String>) EasyMock.anyObject());
         mListener.testRunEnded(EasyMock.anyLong(), (Map<String, String>) EasyMock.anyObject());
         EasyMock.replay(mListener);

@@ -77,6 +77,7 @@ public class HostTest
                 IShardableTest,
                 IStrictShardableTest,
                 IRuntimeHintProvider,
+                IMultiDeviceTest,
                 IInvocationContextReceiver {
 
 
@@ -134,6 +135,7 @@ public class HostTest
     private ITestDevice mDevice;
     private IBuildInfo mBuildInfo;
     private IAbi mAbi;
+    private Map<ITestDevice, IBuildInfo> mDeviceInfos;
     private IInvocationContext mContext;
     private TestFilterHelper mFilterHelper;
     private boolean mSkipTestClassCheck = false;
@@ -198,6 +200,11 @@ public class HostTest
      */
     protected IBuildInfo getBuild() {
         return mBuildInfo;
+    }
+
+    @Override
+    public void setDeviceInfos(Map<ITestDevice, IBuildInfo> deviceInfos) {
+        mDeviceInfos = deviceInfos;
     }
 
     @Override
@@ -367,6 +374,9 @@ public class HostTest
         // We are more flexible about abi info since not always available.
         if (testObj instanceof IAbiReceiver) {
             ((IAbiReceiver)testObj).setAbi(mAbi);
+        }
+        if (testObj instanceof IMultiDeviceTest) {
+            ((IMultiDeviceTest) testObj).setDeviceInfos(mDeviceInfos);
         }
         if (testObj instanceof IInvocationContextReceiver) {
             ((IInvocationContextReceiver) testObj).setInvocationContext(mContext);

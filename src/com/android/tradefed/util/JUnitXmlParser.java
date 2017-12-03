@@ -46,6 +46,7 @@ public class JUnitXmlParser extends AbstractXmlParser {
      */
     private class JUnitXmlHandler extends DefaultHandler {
 
+        private static final String ERROR_TAG = "error";
         private static final String FAILURE_TAG = "failure";
         private static final String TESTSUITE_TAG = "testsuite";
         private static final String TESTCASE_TAG = "testcase";
@@ -74,7 +75,7 @@ public class JUnitXmlParser extends AbstractXmlParser {
                 mCurrentTest = new TestIdentifier(testClassName, methodName);
                 mTestListener.testStarted(mCurrentTest);
             }
-            if (FAILURE_TAG.equalsIgnoreCase(name)) {
+            if (FAILURE_TAG.equalsIgnoreCase(name) || ERROR_TAG.equalsIgnoreCase(name)) {
                 // current testcase has a failure - extract out message and type and store it
                 // detailed stack is CDATA, will be extracted in characters() callback
                 mFailureContent = new StringBuffer();
@@ -113,7 +114,7 @@ public class JUnitXmlParser extends AbstractXmlParser {
             if (TESTCASE_TAG.equalsIgnoreCase(name)) {
                 mTestListener.testEnded(mCurrentTest, Collections.<String, String> emptyMap());
             }
-            if (FAILURE_TAG.equalsIgnoreCase(name)) {
+            if (FAILURE_TAG.equalsIgnoreCase(name) || ERROR_TAG.equalsIgnoreCase(name)) {
                 mTestListener.testFailed(mCurrentTest,
                         mFailureContent.toString());
             }
