@@ -68,6 +68,7 @@ import com.android.tradefed.device.metric.FilePullerDeviceMetricCollectorTest;
 import com.android.tradefed.device.metric.ScheduledDeviceMetricCollectorTest;
 import com.android.tradefed.invoker.InvocationContextTest;
 import com.android.tradefed.invoker.ShardListenerTest;
+import com.android.tradefed.invoker.ShardMasterResultForwarderTest;
 import com.android.tradefed.invoker.TestInvocationMultiTest;
 import com.android.tradefed.invoker.TestInvocationTest;
 import com.android.tradefed.invoker.shard.ShardHelperTest;
@@ -321,6 +322,7 @@ import org.junit.runners.Suite.SuiteClasses;
     // invoker
     InvocationContextTest.class,
     ShardListenerTest.class,
+    ShardMasterResultForwarderTest.class,
     TestInvocationMultiTest.class,
     TestInvocationTest.class,
 
