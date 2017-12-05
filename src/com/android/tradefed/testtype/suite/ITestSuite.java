@@ -58,6 +58,7 @@ import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
 
@@ -68,6 +69,7 @@ import java.util.Set;
 public abstract class ITestSuite
         implements IRemoteTest,
                 IDeviceTest,
+                IMultiDeviceTest,
                 IBuildReceiver,
                 ISystemStatusCheckerReceiver,
                 IShardableTest,
@@ -180,6 +182,7 @@ public abstract class ITestSuite
 
     private ITestDevice mDevice;
     private IBuildInfo mBuildInfo;
+    private Map<ITestDevice, IBuildInfo> mDeviceInfos;
     private List<ISystemStatusChecker> mSystemStatusCheckers;
     private IInvocationContext mContext;
     private List<IMetricCollector> mMetricCollectors;
@@ -238,7 +241,7 @@ public abstract class ITestSuite
             // If we are sharded and already know what to run then we just do it.
             runModules.add(mDirectModule);
             mDirectModule.setDevice(mDevice);
-            mDirectModule.setDeviceInfos(mContext.getDeviceBuildMap());
+            mDirectModule.setDeviceInfos(mDeviceInfos);
             mDirectModule.setBuild(mBuildInfo);
             return runModules;
         }
@@ -265,7 +268,7 @@ public abstract class ITestSuite
                             config.getValue().getMultiTargetPreparers(),
                             config.getValue());
             module.setDevice(mDevice);
-            module.setDeviceInfos(mContext.getDeviceBuildMap());
+            module.setDeviceInfos(mDeviceInfos);
             module.setBuild(mBuildInfo);
             runModules.add(module);
         }
@@ -530,7 +533,10 @@ public abstract class ITestSuite
                     ((IDeviceTest) test).setDevice(mDevice);
                 }
                 if (test instanceof IMultiDeviceTest) {
-                    ((IMultiDeviceTest) test).setDeviceInfos(mContext.getDeviceBuildMap());
+                    ((IMultiDeviceTest) test).setDeviceInfos(mDeviceInfos);
+                }
+                if (test instanceof IInvocationContextReceiver) {
+                    ((IInvocationContextReceiver) test).setInvocationContext(mContext);
                 }
             }
         }
@@ -563,6 +569,12 @@ public abstract class ITestSuite
      */
     public IBuildInfo getBuildInfo() {
         return mBuildInfo;
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public void setDeviceInfos(Map<ITestDevice, IBuildInfo> deviceInfos) {
+        mDeviceInfos = deviceInfos;
     }
 
     /**

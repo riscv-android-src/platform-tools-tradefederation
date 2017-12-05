@@ -21,6 +21,8 @@ import com.android.tradefed.invoker.IRescheduler;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.testtype.IBuildReceiver;
 import com.android.tradefed.testtype.IDeviceTest;
+import com.android.tradefed.testtype.IInvocationContextReceiver;
+import com.android.tradefed.testtype.IMultiDeviceTest;
 import com.android.tradefed.testtype.IRemoteTest;
 import com.android.tradefed.testtype.IRuntimeHintProvider;
 import com.android.tradefed.testtype.IShardableTest;
@@ -112,6 +114,13 @@ public class StrictShardHelper extends ShardHelper {
                 if (test instanceof IDeviceTest) {
                     ((IDeviceTest) test).setDevice(context.getDevices().get(0));
                 }
+                if (test instanceof IMultiDeviceTest) {
+                    ((IMultiDeviceTest) test).setDeviceInfos(context.getDeviceBuildMap());
+                }
+                if (test instanceof IInvocationContextReceiver) {
+                    ((IInvocationContextReceiver) test).setInvocationContext(context);
+                }
+
                 // Handling of the ITestSuite is a special case, we do not allow pool of tests
                 // since each shard needs to be independent.
                 if (test instanceof ITestSuite) {
