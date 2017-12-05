@@ -24,8 +24,11 @@ import com.android.tradefed.result.CollectingTestListener;
 import com.android.tradefed.result.TestSummary;
 import com.android.tradefed.result.TestSummary.Type;
 import com.android.tradefed.result.TestSummary.TypedString;
+import com.android.tradefed.testtype.Abi;
+import com.android.tradefed.testtype.IAbi;
 import com.android.tradefed.testtype.suite.ITestSuite;
 import com.android.tradefed.testtype.suite.ModuleDefinition;
+import com.android.tradefed.util.AbiUtils;
 import com.android.tradefed.util.TimeUtil;
 
 import java.util.ArrayList;
@@ -33,6 +36,7 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
@@ -59,6 +63,8 @@ public class SuiteResultReporter extends CollectingTestListener {
     // Map holding the preparation time for each Module.
     private Map<String, ModulePrepTimes> mPreparationMap = new HashMap<>();
 
+    private Map<String, IAbi> mModuleAbi = new LinkedHashMap<>();
+
     private StringBuilder mSummary;
 
     public SuiteResultReporter() {
@@ -72,6 +78,18 @@ public class SuiteResultReporter extends CollectingTestListener {
     public void invocationStarted(IInvocationContext context) {
         super.invocationStarted(context);
         mStartTime = System.currentTimeMillis();
+    }
+
+    @Override
+    public void testModuleStarted(IInvocationContext moduleContext) {
+        super.testModuleStarted(moduleContext);
+        // Keep track of the module abi if it has one.
+        List<String> abiName = moduleContext.getAttributes().get(ModuleDefinition.MODULE_ABI);
+        if (abiName != null) {
+            IAbi abi = new Abi(abiName.get(0), AbiUtils.getBitness(abiName.get(0)));
+            mModuleAbi.put(
+                    moduleContext.getAttributes().get(ModuleDefinition.MODULE_NAME).get(0), abi);
+        }
     }
 
     @Override
@@ -285,6 +303,11 @@ public class SuiteResultReporter extends CollectingTestListener {
                 String.format(
                         "Total module checkers time: %s\n", TimeUtil.formatElapsedTime(totalTime)));
         mSummary.append("====================================================\n");
+    }
+
+    /** Returns a map of modules abi: <module id, abi>. */
+    public Map<String, IAbi> getModulesAbi() {
+        return mModuleAbi;
     }
 
     public int getTotalModules() {
