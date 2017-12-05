@@ -22,9 +22,10 @@ class AndroidTestDevice(object):
     Each instance represents a different device connected to adb.
     """
 
-    def __init__(self, serial=None):
+    def __init__(self, serial=None, stream=None):
         # TODO: Implement and flesh out the device interface
         self.serial = serial
+        self._logging = stream
         self.adb = adb_handler.AdbHandler(serial)
 
     def executeShellCommand(self, cmd):
@@ -37,3 +38,24 @@ class AndroidTestDevice(object):
             The stdout of the command if succeed. Or raise AdbError if failed.
         """
         return self.adb.exec_shell_command(cmd)
+
+    def getProp(self, name):
+        if not name:
+            raise DeviceCommandError('getProp', 'Name of property cannot be None')
+        out = self.executeShellCommand('getprop %s' % name)
+        return out.strip()
+
+    def _printHostLog(self, message):
+        self._logging.write('%s \n' % message)
+
+class DeviceCommandError(Exception):
+    """ Exception raised when an error is encountered while running a command.
+    """
+
+    def __init__(self, cmd, message):
+        self.cmd = cmd
+        self.message = message
+
+    def __str__(self):
+        return ('Error executing device cmd "%s". message: "%s"'
+                ) % (self.cmd, self.message)
