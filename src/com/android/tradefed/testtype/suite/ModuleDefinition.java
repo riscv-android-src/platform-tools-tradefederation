@@ -389,16 +389,7 @@ public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestColl
             long cleanStartTime = getCurrentTime();
             try {
                 // Tear down
-                List<IMultiTargetPreparer> cleanerList = new ArrayList<>(mMultiPreparers);
-                Collections.reverse(cleanerList);
-                for (IMultiTargetPreparer multiCleaner : cleanerList) {
-                    CLog.d("Multi cleaner: %s", multiCleaner.getClass().getSimpleName());
-                    multiCleaner.tearDown(mModuleInvocationContext, null);
-                }
-                for (ITargetCleaner cleaner : mCleaners) {
-                    CLog.d("Cleaner: %s", cleaner.getClass().getSimpleName());
-                    cleaner.tearDown(mDevice, mBuild, null);
-                }
+                runTearDown();
             } catch (DeviceNotAvailableException tearDownException) {
                 CLog.e(
                         "Module %s failed during tearDown with: %s",
@@ -499,6 +490,10 @@ public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestColl
     /** Run all the prepare steps. */
     private Exception runPreparerSetup(ITargetPreparer preparer, ITestLogger logger)
             throws DeviceNotAvailableException {
+        if (preparer.isDisabled()) {
+            // If disabled skip completely.
+            return null;
+        }
         CLog.d("Preparer: %s", preparer.getClass().getSimpleName());
         try {
             // set the logger in case they need it.
@@ -516,6 +511,10 @@ public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestColl
 
     /** Run all multi target preparer step. */
     private Exception runMultiPreparerSetup(IMultiTargetPreparer preparer, ITestLogger logger) {
+        if (preparer.isDisabled()) {
+            // If disabled skip completely.
+            return null;
+        }
         CLog.d("Multi preparer: %s", preparer.getClass().getSimpleName());
         try {
             // set the logger in case they need it.
@@ -528,6 +527,29 @@ public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestColl
             CLog.e("Unexpected Exception from preparer: %s", preparer.getClass().getName());
             CLog.e(e);
             return e;
+        }
+    }
+
+    /** Run all the tear down steps from preparers. */
+    private void runTearDown() throws DeviceNotAvailableException {
+        // Tear down
+        List<IMultiTargetPreparer> cleanerList = new ArrayList<>(mMultiPreparers);
+        Collections.reverse(cleanerList);
+        for (IMultiTargetPreparer multiCleaner : cleanerList) {
+            if (multiCleaner.isDisabled()) {
+                // If disabled skip completely.
+                continue;
+            }
+            CLog.d("Multi cleaner: %s", multiCleaner.getClass().getSimpleName());
+            multiCleaner.tearDown(mModuleInvocationContext, null);
+        }
+        for (ITargetCleaner cleaner : mCleaners) {
+            if (cleaner.isDisabled()) {
+                // If disabled skip completely.
+                continue;
+            }
+            CLog.d("Cleaner: %s", cleaner.getClass().getSimpleName());
+            cleaner.tearDown(mDevice, mBuild, null);
         }
     }
 
