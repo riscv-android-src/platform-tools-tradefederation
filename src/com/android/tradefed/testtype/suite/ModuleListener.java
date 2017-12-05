@@ -37,6 +37,7 @@ public class ModuleListener extends CollectingTestListener {
     private int mExpectedTestCount = 0;
     private boolean mSkip = false;
     private boolean mTestFailed = false;
+    private int mTestsRan = 1;
 
     /** Constructor. Accept the original listener to forward testLog callback. */
     public ModuleListener(ITestInvocationListener listener) {
@@ -83,8 +84,10 @@ public class ModuleListener extends CollectingTestListener {
     /** Helper to log the test passed if it didn't fail. */
     private void logTestPassed(String testName) {
         if (!mTestFailed) {
-            CLog.logAndDisplay(LogLevel.INFO, "%s pass", testName);
+            CLog.logAndDisplay(
+                    LogLevel.INFO, "[%d/%d] %s pass", mTestsRan, mExpectedTestCount, testName);
         }
+        mTestsRan++;
     }
 
     /** {@inheritDoc} */
@@ -108,7 +111,13 @@ public class ModuleListener extends CollectingTestListener {
         if (mSkip) {
             return;
         }
-        CLog.logAndDisplay(LogLevel.INFO, "%s fail:\n%s", test.toString(), trace);
+        CLog.logAndDisplay(
+                LogLevel.INFO,
+                "[%d/%d] %s fail:\n%s",
+                mTestsRan,
+                mExpectedTestCount,
+                test.toString(),
+                trace);
         mTestFailed = true;
         super.testFailed(test, trace);
     }
