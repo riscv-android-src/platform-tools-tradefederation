@@ -25,6 +25,7 @@ import java.util.List;
  */
 public class TestDeviceOptions {
 
+    /** Do not provide a setter method for that Option as it might be misused. */
     @Option(name = "enable-root", description = "enable adb root on boot.")
     private boolean mEnableAdbRoot = true;
 
@@ -112,13 +113,6 @@ public class TestDeviceOptions {
      */
     public boolean isEnableAdbRoot() {
         return mEnableAdbRoot;
-    }
-
-    /**
-     * Set whether adb root should be enabled on boot for this device
-     */
-    public void setEnableAdbRoot(boolean enableAdbRoot) {
-        mEnableAdbRoot = enableAdbRoot;
     }
 
     /**

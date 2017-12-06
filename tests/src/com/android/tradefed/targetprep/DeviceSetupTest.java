@@ -20,6 +20,8 @@ import com.android.ddmlib.IDevice;
 import com.android.tradefed.build.DeviceBuildInfo;
 import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.build.IDeviceBuildInfo;
+import com.android.tradefed.config.ConfigurationException;
+import com.android.tradefed.config.OptionSetter;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.device.TcpDevice;
@@ -96,7 +98,7 @@ public class DeviceSetupTest extends TestCase {
                 setProp.contains("ro.monkey=1\n"));
     }
 
-    public void testSetup_airplane_mode_on() throws DeviceNotAvailableException, TargetSetupError {
+    public void testSetup_airplane_mode_on() throws Exception {
         doSetupExpectations();
         doCheckExternalStoreSpaceExpectations();
         doSettingExpectations("global", "airplane_mode_on", "1");
@@ -110,7 +112,7 @@ public class DeviceSetupTest extends TestCase {
         EasyMock.verify(mMockDevice);
     }
 
-    public void testSetup_airplane_mode_off() throws DeviceNotAvailableException, TargetSetupError {
+    public void testSetup_airplane_mode_off() throws Exception {
         doSetupExpectations();
         doCheckExternalStoreSpaceExpectations();
         doSettingExpectations("global", "airplane_mode_on", "0");
@@ -124,7 +126,7 @@ public class DeviceSetupTest extends TestCase {
         EasyMock.verify(mMockDevice);
     }
 
-    public void testSetup_data_on() throws DeviceNotAvailableException, TargetSetupError {
+    public void testSetup_data_on() throws Exception {
         doSetupExpectations();
         doCheckExternalStoreSpaceExpectations();
         doSettingExpectations("global", "mobile_data", "1");
@@ -137,7 +139,7 @@ public class DeviceSetupTest extends TestCase {
         EasyMock.verify(mMockDevice);
     }
 
-    public void testSetup_data_off() throws DeviceNotAvailableException, TargetSetupError {
+    public void testSetup_data_off() throws Exception {
         doSetupExpectations();
         doCheckExternalStoreSpaceExpectations();
         doSettingExpectations("global", "mobile_data", "0");
@@ -150,7 +152,7 @@ public class DeviceSetupTest extends TestCase {
         EasyMock.verify(mMockDevice);
     }
 
-    public void testSetup_cell_on() throws DeviceNotAvailableException, TargetSetupError {
+    public void testSetup_cell_on() throws Exception {
         doSetupExpectations();
         doCheckExternalStoreSpaceExpectations();
         doSettingExpectations("global", "cell_on", "1");
@@ -162,7 +164,7 @@ public class DeviceSetupTest extends TestCase {
         EasyMock.verify(mMockDevice);
     }
 
-    public void testSetup_cell_off() throws DeviceNotAvailableException, TargetSetupError {
+    public void testSetup_cell_off() throws Exception {
         doSetupExpectations();
         doCheckExternalStoreSpaceExpectations();
         doSettingExpectations("global", "cell_on", "0");
@@ -174,8 +176,7 @@ public class DeviceSetupTest extends TestCase {
         EasyMock.verify(mMockDevice);
     }
 
-    public void testSetup_cell_auto_setting_on()
-            throws DeviceNotAvailableException, TargetSetupError {
+    public void testSetup_cell_auto_setting_on() throws Exception {
         doSetupExpectations();
         doCheckExternalStoreSpaceExpectations();
         doSettingExpectations("global", "clockwork_cell_auto_setting", "1");
@@ -187,8 +188,7 @@ public class DeviceSetupTest extends TestCase {
         EasyMock.verify(mMockDevice);
     }
 
-    public void testSetup_cell_auto_setting_off()
-            throws DeviceNotAvailableException, TargetSetupError {
+    public void testSetup_cell_auto_setting_off() throws Exception {
         doSetupExpectations();
         doCheckExternalStoreSpaceExpectations();
         doSettingExpectations("global", "clockwork_cell_auto_setting", "0");
@@ -200,7 +200,7 @@ public class DeviceSetupTest extends TestCase {
         EasyMock.verify(mMockDevice);
     }
 
-    public void testSetup_wifi_on() throws DeviceNotAvailableException, TargetSetupError {
+    public void testSetup_wifi_on() throws Exception {
         doSetupExpectations();
         doCheckExternalStoreSpaceExpectations();
         doSettingExpectations("global", "wifi_on", "1");
@@ -213,7 +213,7 @@ public class DeviceSetupTest extends TestCase {
         EasyMock.verify(mMockDevice);
     }
 
-    public void testSetup_wifi_off() throws DeviceNotAvailableException, TargetSetupError {
+    public void testSetup_wifi_off() throws Exception {
         doSetupExpectations();
         doCheckExternalStoreSpaceExpectations();
         doSettingExpectations("global", "wifi_on", "0");
@@ -226,7 +226,7 @@ public class DeviceSetupTest extends TestCase {
         EasyMock.verify(mMockDevice);
     }
 
-    public void testSetup_wifi_watchdog_on() throws DeviceNotAvailableException, TargetSetupError {
+    public void testSetup_wifi_watchdog_on() throws Exception {
         doSetupExpectations();
         doCheckExternalStoreSpaceExpectations();
         doSettingExpectations("global", "wifi_watchdog", "1");
@@ -238,7 +238,7 @@ public class DeviceSetupTest extends TestCase {
         EasyMock.verify(mMockDevice);
     }
 
-    public void testSetup_wifi_watchdog_off() throws DeviceNotAvailableException, TargetSetupError {
+    public void testSetup_wifi_watchdog_off() throws Exception {
         doSetupExpectations();
         doCheckExternalStoreSpaceExpectations();
         doSettingExpectations("global", "wifi_watchdog", "0");
@@ -250,8 +250,7 @@ public class DeviceSetupTest extends TestCase {
         EasyMock.verify(mMockDevice);
     }
 
-    public void testSetup_disable_cw_wifi_mediator_on()
-            throws DeviceNotAvailableException, TargetSetupError {
+    public void testSetup_disable_cw_wifi_mediator_on() throws Exception {
         doSetupExpectations();
         doCheckExternalStoreSpaceExpectations();
         doSettingExpectations("global", "cw_disable_wifimediator", "1");
@@ -263,8 +262,7 @@ public class DeviceSetupTest extends TestCase {
         EasyMock.verify(mMockDevice);
     }
 
-    public void testSetup_disable_cw_wifi_mediator_off()
-            throws DeviceNotAvailableException, TargetSetupError {
+    public void testSetup_disable_cw_wifi_mediator_off() throws Exception {
         doSetupExpectations();
         doCheckExternalStoreSpaceExpectations();
         doSettingExpectations("global", "cw_disable_wifimediator", "0");
@@ -276,7 +274,7 @@ public class DeviceSetupTest extends TestCase {
         EasyMock.verify(mMockDevice);
     }
 
-    public void testSetup_wifi_scan_on() throws DeviceNotAvailableException, TargetSetupError {
+    public void testSetup_wifi_scan_on() throws Exception {
         doSetupExpectations();
         doCheckExternalStoreSpaceExpectations();
         doSettingExpectations("global", "wifi_scan_always_enabled", "1");
@@ -288,7 +286,7 @@ public class DeviceSetupTest extends TestCase {
         EasyMock.verify(mMockDevice);
     }
 
-    public void testSetup_wifi_scan_off() throws DeviceNotAvailableException, TargetSetupError {
+    public void testSetup_wifi_scan_off() throws Exception {
         doSetupExpectations();
         doCheckExternalStoreSpaceExpectations();
         doSettingExpectations("global", "wifi_scan_always_enabled", "0");
@@ -300,7 +298,7 @@ public class DeviceSetupTest extends TestCase {
         EasyMock.verify(mMockDevice);
     }
 
-    public void testSetup_ethernet_on() throws DeviceNotAvailableException, TargetSetupError {
+    public void testSetup_ethernet_on() throws Exception {
         doSetupExpectations();
         doCheckExternalStoreSpaceExpectations();
         doCommandsExpectations("ifconfig eth0 up");
@@ -312,7 +310,7 @@ public class DeviceSetupTest extends TestCase {
         EasyMock.verify(mMockDevice);
     }
 
-    public void testSetup_ethernet_off() throws DeviceNotAvailableException, TargetSetupError {
+    public void testSetup_ethernet_off() throws Exception {
         doSetupExpectations();
         doCheckExternalStoreSpaceExpectations();
         doCommandsExpectations("ifconfig eth0 down");
@@ -324,7 +322,7 @@ public class DeviceSetupTest extends TestCase {
         EasyMock.verify(mMockDevice);
     }
 
-    public void testSetup_bluetooth_on() throws DeviceNotAvailableException, TargetSetupError {
+    public void testSetup_bluetooth_on() throws Exception {
         doSetupExpectations();
         doCheckExternalStoreSpaceExpectations();
         doCommandsExpectations("service call bluetooth_manager 6");
@@ -336,7 +334,7 @@ public class DeviceSetupTest extends TestCase {
         EasyMock.verify(mMockDevice);
     }
 
-    public void testSetup_bluetooth_off() throws DeviceNotAvailableException, TargetSetupError {
+    public void testSetup_bluetooth_off() throws Exception {
         doSetupExpectations();
         doCheckExternalStoreSpaceExpectations();
         doCommandsExpectations("service call bluetooth_manager 8");
@@ -348,7 +346,7 @@ public class DeviceSetupTest extends TestCase {
         EasyMock.verify(mMockDevice);
     }
 
-    public void testSetup_nfc_on() throws DeviceNotAvailableException, TargetSetupError {
+    public void testSetup_nfc_on() throws Exception {
         doSetupExpectations();
         doCheckExternalStoreSpaceExpectations();
         doCommandsExpectations("svc nfc enable");
@@ -360,7 +358,7 @@ public class DeviceSetupTest extends TestCase {
         EasyMock.verify(mMockDevice);
     }
 
-    public void testSetup_nfc_off() throws DeviceNotAvailableException, TargetSetupError {
+    public void testSetup_nfc_off() throws Exception {
         doSetupExpectations();
         doCheckExternalStoreSpaceExpectations();
         doCommandsExpectations("svc nfc disable");
@@ -372,8 +370,7 @@ public class DeviceSetupTest extends TestCase {
         EasyMock.verify(mMockDevice);
     }
 
-    public void testSetup_screen_adaptive_on() throws DeviceNotAvailableException,
-            TargetSetupError {
+    public void testSetup_screen_adaptive_on() throws Exception {
         doSetupExpectations();
         doCheckExternalStoreSpaceExpectations();
         doSettingExpectations("system", "screen_brightness_mode", "1");
@@ -385,8 +382,7 @@ public class DeviceSetupTest extends TestCase {
         EasyMock.verify(mMockDevice);
     }
 
-    public void testSetup_screen_adaptive_off() throws DeviceNotAvailableException,
-            TargetSetupError {
+    public void testSetup_screen_adaptive_off() throws Exception {
         doSetupExpectations();
         doCheckExternalStoreSpaceExpectations();
         doSettingExpectations("system", "screen_brightness_mode", "0");
@@ -398,8 +394,7 @@ public class DeviceSetupTest extends TestCase {
         EasyMock.verify(mMockDevice);
     }
 
-    public void testSetup_screen_brightness() throws DeviceNotAvailableException,
-            TargetSetupError {
+    public void testSetup_screen_brightness() throws Exception {
         doSetupExpectations();
         doCheckExternalStoreSpaceExpectations();
         doSettingExpectations("system", "screen_brightness", "50");
@@ -411,8 +406,7 @@ public class DeviceSetupTest extends TestCase {
         EasyMock.verify(mMockDevice);
     }
 
-    public void testSetup_screen_stayon_default() throws DeviceNotAvailableException,
-            TargetSetupError {
+    public void testSetup_screen_stayon_default() throws Exception {
         doSetupExpectations(false /* Expect no screen on command */, new Capture<String>());
         doCheckExternalStoreSpaceExpectations();
         EasyMock.replay(mMockDevice);
@@ -423,8 +417,7 @@ public class DeviceSetupTest extends TestCase {
         EasyMock.verify(mMockDevice);
     }
 
-    public void testSetup_screen_stayon_off() throws DeviceNotAvailableException,
-            TargetSetupError {
+    public void testSetup_screen_stayon_off() throws Exception {
         doSetupExpectations(false /* Expect no screen on command */, new Capture<String>());
         doCheckExternalStoreSpaceExpectations();
         doCommandsExpectations("svc power stayon false");
@@ -436,8 +429,7 @@ public class DeviceSetupTest extends TestCase {
         EasyMock.verify(mMockDevice);
     }
 
-    public void testSetup_screen_timeout() throws DeviceNotAvailableException,
-            TargetSetupError {
+    public void testSetup_screen_timeout() throws Exception {
         doSetupExpectations(false /* Expect no screen on command */, new Capture<String>());
         doCheckExternalStoreSpaceExpectations();
         doSettingExpectations("system", "screen_off_timeout", "5000");
@@ -450,8 +442,7 @@ public class DeviceSetupTest extends TestCase {
         EasyMock.verify(mMockDevice);
     }
 
-    public void testSetup_screen_ambient_on() throws DeviceNotAvailableException,
-            TargetSetupError {
+    public void testSetup_screen_ambient_on() throws Exception {
         doSetupExpectations();
         doCheckExternalStoreSpaceExpectations();
         doSettingExpectations("secure", "doze_enabled", "1");
@@ -463,8 +454,7 @@ public class DeviceSetupTest extends TestCase {
         EasyMock.verify(mMockDevice);
     }
 
-    public void testSetup_screen_ambient_off() throws DeviceNotAvailableException,
-            TargetSetupError {
+    public void testSetup_screen_ambient_off() throws Exception {
         doSetupExpectations();
         doCheckExternalStoreSpaceExpectations();
         doSettingExpectations("secure", "doze_enabled", "0");
@@ -476,7 +466,7 @@ public class DeviceSetupTest extends TestCase {
         EasyMock.verify(mMockDevice);
     }
 
-    public void testSetup_wake_gesture_on() throws DeviceNotAvailableException, TargetSetupError {
+    public void testSetup_wake_gesture_on() throws Exception {
         doSetupExpectations();
         doCheckExternalStoreSpaceExpectations();
         doSettingExpectations("secure", "wake_gesture_enabled", "1");
@@ -488,7 +478,7 @@ public class DeviceSetupTest extends TestCase {
         EasyMock.verify(mMockDevice);
     }
 
-    public void testSetup_wake_gesture_off() throws DeviceNotAvailableException, TargetSetupError {
+    public void testSetup_wake_gesture_off() throws Exception {
         doSetupExpectations();
         doCheckExternalStoreSpaceExpectations();
         doSettingExpectations("secure", "wake_gesture_enabled", "0");
@@ -500,7 +490,7 @@ public class DeviceSetupTest extends TestCase {
         EasyMock.verify(mMockDevice);
     }
 
-    public void testSetup_screen_saver_on() throws DeviceNotAvailableException, TargetSetupError {
+    public void testSetup_screen_saver_on() throws Exception {
         doSetupExpectations();
         doCheckExternalStoreSpaceExpectations();
         doSettingExpectations("secure", "screensaver_enabled", "1");
@@ -512,7 +502,7 @@ public class DeviceSetupTest extends TestCase {
         EasyMock.verify(mMockDevice);
     }
 
-    public void testSetup_screen_saver_off() throws DeviceNotAvailableException, TargetSetupError {
+    public void testSetup_screen_saver_off() throws Exception {
         doSetupExpectations();
         doCheckExternalStoreSpaceExpectations();
         doSettingExpectations("secure", "screensaver_enabled", "0");
@@ -524,8 +514,7 @@ public class DeviceSetupTest extends TestCase {
         EasyMock.verify(mMockDevice);
     }
 
-    public void testSetup_notification_led_on() throws DeviceNotAvailableException,
-            TargetSetupError {
+    public void testSetup_notification_led_on() throws Exception {
         doSetupExpectations();
         doCheckExternalStoreSpaceExpectations();
         doSettingExpectations("system", "notification_light_pulse", "1");
@@ -537,8 +526,7 @@ public class DeviceSetupTest extends TestCase {
         EasyMock.verify(mMockDevice);
     }
 
-    public void testSetup_notification_led_off() throws DeviceNotAvailableException,
-            TargetSetupError {
+    public void testSetup_notification_led_off() throws Exception {
         doSetupExpectations();
         doCheckExternalStoreSpaceExpectations();
         doSettingExpectations("system", "notification_light_pulse", "0");
@@ -550,8 +538,7 @@ public class DeviceSetupTest extends TestCase {
         EasyMock.verify(mMockDevice);
     }
 
-    public void testInstallNonMarketApps_on() throws DeviceNotAvailableException,
-            TargetSetupError {
+    public void testInstallNonMarketApps_on() throws Exception {
         doSetupExpectations();
         doCheckExternalStoreSpaceExpectations();
         doSettingExpectations("secure", "install_non_market_apps", "1");
@@ -563,8 +550,7 @@ public class DeviceSetupTest extends TestCase {
         EasyMock.verify(mMockDevice);
     }
 
-    public void testInstallNonMarketApps_off() throws DeviceNotAvailableException,
-            TargetSetupError {
+    public void testInstallNonMarketApps_off() throws Exception {
         doSetupExpectations();
         doCheckExternalStoreSpaceExpectations();
         doSettingExpectations("secure", "install_non_market_apps", "0");
@@ -576,8 +562,7 @@ public class DeviceSetupTest extends TestCase {
         EasyMock.verify(mMockDevice);
     }
 
-    public void testSetup_trigger_media_mounted() throws DeviceNotAvailableException,
-            TargetSetupError {
+    public void testSetup_trigger_media_mounted() throws Exception {
         doSetupExpectations();
         doCheckExternalStoreSpaceExpectations();
         doCommandsExpectations(
@@ -591,7 +576,7 @@ public class DeviceSetupTest extends TestCase {
         EasyMock.verify(mMockDevice);
     }
 
-    public void testSetup_location_gps_on() throws DeviceNotAvailableException, TargetSetupError {
+    public void testSetup_location_gps_on() throws Exception {
         doSetupExpectations();
         doCheckExternalStoreSpaceExpectations();
         doSettingExpectations("secure", "location_providers_allowed", "+gps");
@@ -603,7 +588,7 @@ public class DeviceSetupTest extends TestCase {
         EasyMock.verify(mMockDevice);
     }
 
-    public void testSetup_location_gps_off() throws DeviceNotAvailableException, TargetSetupError {
+    public void testSetup_location_gps_off() throws Exception {
         doSetupExpectations();
         doCheckExternalStoreSpaceExpectations();
         doSettingExpectations("secure", "location_providers_allowed", "-gps");
@@ -615,8 +600,7 @@ public class DeviceSetupTest extends TestCase {
         EasyMock.verify(mMockDevice);
     }
 
-    public void testSetup_location_network_on() throws DeviceNotAvailableException,
-            TargetSetupError {
+    public void testSetup_location_network_on() throws Exception {
         doSetupExpectations();
         doCheckExternalStoreSpaceExpectations();
         doSettingExpectations("secure", "location_providers_allowed", "+network");
@@ -628,8 +612,7 @@ public class DeviceSetupTest extends TestCase {
         EasyMock.verify(mMockDevice);
     }
 
-    public void testSetup_location_network_off() throws DeviceNotAvailableException,
-            TargetSetupError {
+    public void testSetup_location_network_off() throws Exception {
         doSetupExpectations();
         doCheckExternalStoreSpaceExpectations();
         doSettingExpectations("secure", "location_providers_allowed", "-network");
@@ -641,7 +624,7 @@ public class DeviceSetupTest extends TestCase {
         EasyMock.verify(mMockDevice);
     }
 
-    public void testSetup_rotate_on() throws DeviceNotAvailableException, TargetSetupError {
+    public void testSetup_rotate_on() throws Exception {
         doSetupExpectations();
         doCheckExternalStoreSpaceExpectations();
         doSettingExpectations("system", "accelerometer_rotation", "1");
@@ -653,7 +636,7 @@ public class DeviceSetupTest extends TestCase {
         EasyMock.verify(mMockDevice);
     }
 
-    public void testSetup_rotate_off() throws DeviceNotAvailableException, TargetSetupError {
+    public void testSetup_rotate_off() throws Exception {
         doSetupExpectations();
         doCheckExternalStoreSpaceExpectations();
         doSettingExpectations("system", "accelerometer_rotation", "0");
@@ -665,7 +648,7 @@ public class DeviceSetupTest extends TestCase {
         EasyMock.verify(mMockDevice);
     }
 
-    public void testSetup_battery_saver_on() throws DeviceNotAvailableException, TargetSetupError {
+    public void testSetup_battery_saver_on() throws Exception {
         doSetupExpectations();
         doCheckExternalStoreSpaceExpectations();
         doSettingExpectations("global", "low_power", "1");
@@ -678,7 +661,7 @@ public class DeviceSetupTest extends TestCase {
         EasyMock.verify(mMockDevice);
     }
 
-    public void testSetup_legacy_battery_saver_on() throws DeviceNotAvailableException, TargetSetupError {
+    public void testSetup_legacy_battery_saver_on() throws Exception {
         doSetupExpectations(21); // API level Lollipop
         doCheckExternalStoreSpaceExpectations();
         doSettingExpectations("global", "low_power", "1");
@@ -691,7 +674,7 @@ public class DeviceSetupTest extends TestCase {
         EasyMock.verify(mMockDevice);
     }
 
-    public void testSetup_battery_saver_off() throws DeviceNotAvailableException, TargetSetupError {
+    public void testSetup_battery_saver_off() throws Exception {
         doSetupExpectations();
         doCheckExternalStoreSpaceExpectations();
         doSettingExpectations("global", "low_power", "0");
@@ -703,8 +686,7 @@ public class DeviceSetupTest extends TestCase {
         EasyMock.verify(mMockDevice);
     }
 
-    public void testSetup_battery_saver_trigger() throws DeviceNotAvailableException,
-            TargetSetupError {
+    public void testSetup_battery_saver_trigger() throws Exception {
         doSetupExpectations();
         doCheckExternalStoreSpaceExpectations();
         doSettingExpectations("global", "low_power_trigger_level", "50");
@@ -716,8 +698,7 @@ public class DeviceSetupTest extends TestCase {
         EasyMock.verify(mMockDevice);
     }
 
-    public void testSetup_enable_full_battery_stats_history() throws DeviceNotAvailableException,
-            TargetSetupError {
+    public void testSetup_enable_full_battery_stats_history() throws Exception {
         doSetupExpectations();
         doCheckExternalStoreSpaceExpectations();
         doCommandsExpectations("dumpsys batterystats --enable full-history");
@@ -729,7 +710,7 @@ public class DeviceSetupTest extends TestCase {
         EasyMock.verify(mMockDevice);
     }
 
-    public void testSetup_disable_doze() throws DeviceNotAvailableException, TargetSetupError {
+    public void testSetup_disable_doze() throws Exception {
         doSetupExpectations();
         doCheckExternalStoreSpaceExpectations();
         doCommandsExpectations("dumpsys deviceidle disable");
@@ -741,7 +722,7 @@ public class DeviceSetupTest extends TestCase {
         EasyMock.verify(mMockDevice);
     }
 
-    public void testSetup_update_time_on() throws DeviceNotAvailableException, TargetSetupError {
+    public void testSetup_update_time_on() throws Exception {
         doSetupExpectations();
         doCheckExternalStoreSpaceExpectations();
         doSettingExpectations("global", "auto_time", "1");
@@ -753,7 +734,7 @@ public class DeviceSetupTest extends TestCase {
         EasyMock.verify(mMockDevice);
     }
 
-    public void testSetup_update_time_off() throws DeviceNotAvailableException, TargetSetupError {
+    public void testSetup_update_time_off() throws Exception {
         doSetupExpectations();
         doCheckExternalStoreSpaceExpectations();
         doSettingExpectations("global", "auto_time", "0");
@@ -765,8 +746,7 @@ public class DeviceSetupTest extends TestCase {
         EasyMock.verify(mMockDevice);
     }
 
-    public void testSetup_update_timezone_on() throws DeviceNotAvailableException,
-            TargetSetupError {
+    public void testSetup_update_timezone_on() throws Exception {
         doSetupExpectations();
         doCheckExternalStoreSpaceExpectations();
         doSettingExpectations("global", "auto_timezone", "1");
@@ -778,8 +758,7 @@ public class DeviceSetupTest extends TestCase {
         EasyMock.verify(mMockDevice);
     }
 
-    public void testSetup_update_timezone_off() throws DeviceNotAvailableException,
-            TargetSetupError {
+    public void testSetup_update_timezone_off() throws Exception {
         doSetupExpectations();
         doCheckExternalStoreSpaceExpectations();
         doSettingExpectations("global", "auto_timezone", "0");
@@ -791,8 +770,7 @@ public class DeviceSetupTest extends TestCase {
         EasyMock.verify(mMockDevice);
     }
 
-    public void testSetup_set_timezone_LA() throws DeviceNotAvailableException,
-            TargetSetupError {
+    public void testSetup_set_timezone_LA() throws Exception {
         doSetupExpectations();
         doCheckExternalStoreSpaceExpectations();
         doCommandsExpectations("setprop \"persist.sys.timezone\" \"America/Los_Angeles\"");
@@ -804,8 +782,7 @@ public class DeviceSetupTest extends TestCase {
         EasyMock.verify(mMockDevice);
     }
 
-    public void testSetup_no_disable_dialing() throws DeviceNotAvailableException,
-            TargetSetupError {
+    public void testSetup_no_disable_dialing() throws Exception {
         Capture<String> setPropCapture = new Capture<>();
         doSetupExpectations(true, setPropCapture);
         doCheckExternalStoreSpaceExpectations();
@@ -820,7 +797,7 @@ public class DeviceSetupTest extends TestCase {
                 setPropCapture.getValue().contains("ro.telephony.disable-call=true\n"));
     }
 
-    public void testSetup_sim_data() throws DeviceNotAvailableException, TargetSetupError {
+    public void testSetup_sim_data() throws Exception {
         doSetupExpectations();
         doCheckExternalStoreSpaceExpectations();
         doSettingExpectations("global", "multi_sim_data_call", "1");
@@ -832,7 +809,7 @@ public class DeviceSetupTest extends TestCase {
         EasyMock.verify(mMockDevice);
     }
 
-    public void testSetup_sim_voice() throws DeviceNotAvailableException, TargetSetupError {
+    public void testSetup_sim_voice() throws Exception {
         doSetupExpectations();
         doCheckExternalStoreSpaceExpectations();
         doSettingExpectations("global", "multi_sim_voice_call", "1");
@@ -844,7 +821,7 @@ public class DeviceSetupTest extends TestCase {
         EasyMock.verify(mMockDevice);
     }
 
-    public void testSetup_sim_sms() throws DeviceNotAvailableException, TargetSetupError {
+    public void testSetup_sim_sms() throws Exception {
         doSetupExpectations();
         doCheckExternalStoreSpaceExpectations();
         doSettingExpectations("global", "multi_sim_sms", "1");
@@ -856,7 +833,7 @@ public class DeviceSetupTest extends TestCase {
         EasyMock.verify(mMockDevice);
     }
 
-    public void testSetup_no_disable_audio() throws DeviceNotAvailableException, TargetSetupError {
+    public void testSetup_no_disable_audio() throws Exception {
         Capture<String> setPropCapture = new Capture<>();
         doSetupExpectations(true, setPropCapture);
         doCheckExternalStoreSpaceExpectations();
@@ -871,7 +848,7 @@ public class DeviceSetupTest extends TestCase {
                 setPropCapture.getValue().contains("ro.audio.silent=1\n"));
     }
 
-    public void testSetup_no_test_harness() throws DeviceNotAvailableException, TargetSetupError {
+    public void testSetup_no_test_harness() throws Exception {
         Capture<String> setPropCapture = new Capture<>();
         doSetupExpectations(true, setPropCapture);
         doCheckExternalStoreSpaceExpectations();
@@ -889,8 +866,7 @@ public class DeviceSetupTest extends TestCase {
                 setProp.contains("ro.monkey=1\n"));
     }
 
-    public void testSetup_disalbe_dalvik_verifier() throws DeviceNotAvailableException,
-            TargetSetupError {
+    public void testSetup_disalbe_dalvik_verifier() throws Exception {
         Capture<String> setPropCapture = new Capture<>();
         doSetupExpectations(true, setPropCapture);
         doCheckExternalStoreSpaceExpectations();
@@ -969,7 +945,7 @@ public class DeviceSetupTest extends TestCase {
     }
 
     @SuppressWarnings("deprecation")
-    public void testSetup_legacy() throws DeviceNotAvailableException, TargetSetupError {
+    public void testSetup_legacy() throws Exception {
         Capture<String> setPropCapture = new Capture<>();
         doSetupExpectations(true, setPropCapture);
         doCheckExternalStoreSpaceExpectations();
@@ -994,7 +970,7 @@ public class DeviceSetupTest extends TestCase {
     }
 
     @SuppressWarnings("deprecation")
-    public void testSetup_legacy_storage_conflict() throws DeviceNotAvailableException {
+    public void testSetup_legacy_storage_conflict() throws Exception {
         doSetupExpectations();
         EasyMock.replay(mMockDevice);
 
@@ -1009,7 +985,7 @@ public class DeviceSetupTest extends TestCase {
     }
 
     @SuppressWarnings("deprecation")
-    public void testSetup_legacy_silent_conflict() throws DeviceNotAvailableException {
+    public void testSetup_legacy_silent_conflict() throws Exception {
         doSetupExpectations();
         EasyMock.replay(mMockDevice);
 
@@ -1024,7 +1000,7 @@ public class DeviceSetupTest extends TestCase {
     }
 
     @SuppressWarnings("deprecation")
-    public void testSetup_legacy_setprop_conflict() throws DeviceNotAvailableException {
+    public void testSetup_legacy_setprop_conflict() throws Exception {
         doSetupExpectations();
         EasyMock.replay(mMockDevice);
 
@@ -1038,8 +1014,7 @@ public class DeviceSetupTest extends TestCase {
         }
     }
 
-    public void test_restore_properties_previous_exists()
-            throws DeviceNotAvailableException, TargetSetupError {
+    public void test_restore_properties_previous_exists() throws Exception {
         File f = new File("");
         doSetupExpectations();
         doCheckExternalStoreSpaceExpectations();
@@ -1058,8 +1033,7 @@ public class DeviceSetupTest extends TestCase {
         EasyMock.verify(mMockDevice);
     }
 
-    public void test_restore_properties_previous_doesnt_exists()
-            throws DeviceNotAvailableException, TargetSetupError {
+    public void test_restore_properties_previous_doesnt_exists() throws Exception {
         doSetupExpectations();
         doCheckExternalStoreSpaceExpectations();
         EasyMock.expect(mMockDevice.pullFile("/data/local.prop")).andReturn(null).once();
@@ -1079,7 +1053,7 @@ public class DeviceSetupTest extends TestCase {
         EasyMock.verify(mMockDevice);
     }
 
-    public void test_restore_settings() throws DeviceNotAvailableException, TargetSetupError {
+    public void test_restore_settings() throws Exception {
         doSetupExpectations();
         doCheckExternalStoreSpaceExpectations();
         EasyMock.expect(mMockDevice.getApiLevel()).andStubReturn(23);
@@ -1155,39 +1129,37 @@ public class DeviceSetupTest extends TestCase {
         }
     }
 
-    /**
-     * Set EasyMock expectations for a normal setup call
-     */
-    private void doSetupExpectations() throws DeviceNotAvailableException {
+    /** Set EasyMock expectations for a normal setup call */
+    private void doSetupExpectations() throws DeviceNotAvailableException, ConfigurationException {
         doSetupExpectations(true /* screen on */, true /* root enabled */, true /* root response */,
                 DEFAULT_API_LEVEL, new Capture<String>());
     }
 
-    /**
-     * Set EasyMock expectations for a normal setup call
-     */
-    private void doSetupExpectations(int apiLevel) throws DeviceNotAvailableException {
+    /** Set EasyMock expectations for a normal setup call */
+    private void doSetupExpectations(int apiLevel)
+            throws DeviceNotAvailableException, ConfigurationException {
         doSetupExpectations(true /* screen on */, true /* root enabled */, true /* root response */,
                 apiLevel, new Capture<String>());
     }
 
-    /**
-     * Set EasyMock expectations for a normal setup call
-     */
+    /** Set EasyMock expectations for a normal setup call */
     private void doSetupExpectations(boolean screenOn, Capture<String> setPropCapture)
-            throws DeviceNotAvailableException {
+            throws DeviceNotAvailableException, ConfigurationException {
         doSetupExpectations(screenOn, true /* root enabled */, true /* root response */,
                 DEFAULT_API_LEVEL, setPropCapture);
     }
 
-    /**
-     * Set EasyMock expectations for a normal setup call
-     */
-    private void doSetupExpectations(boolean screenOn, boolean adbRootEnabled,
-            boolean adbRootResponse, int apiLevel,
-            Capture<String> setPropCapture) throws DeviceNotAvailableException {
+    /** Set EasyMock expectations for a normal setup call */
+    private void doSetupExpectations(
+            boolean screenOn,
+            boolean adbRootEnabled,
+            boolean adbRootResponse,
+            int apiLevel,
+            Capture<String> setPropCapture)
+            throws DeviceNotAvailableException, ConfigurationException {
         TestDeviceOptions options = new TestDeviceOptions();
-        options.setEnableAdbRoot(adbRootEnabled);
+        OptionSetter setter = new OptionSetter(options);
+        setter.setOptionValue("enable-root", Boolean.toString(adbRootEnabled));
         EasyMock.expect(mMockDevice.getOptions()).andReturn(options).once();
         if (adbRootEnabled) {
             EasyMock.expect(mMockDevice.enableAdbRoot()).andReturn(adbRootResponse);
