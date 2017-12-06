@@ -46,6 +46,7 @@ import com.android.tradefed.config.OptionCopierTest;
 import com.android.tradefed.config.OptionSetterTest;
 import com.android.tradefed.config.OptionUpdateRuleTest;
 import com.android.tradefed.config.SandboxConfigurationFactoryTest;
+import com.android.tradefed.device.AndroidDebugBridgeWrapperTest;
 import com.android.tradefed.device.BackgroundDeviceActionTest;
 import com.android.tradefed.device.CpuStatsCollectorTest;
 import com.android.tradefed.device.DeviceManagerTest;
@@ -295,6 +296,7 @@ import org.junit.runners.Suite.SuiteClasses;
     SandboxConfigurationFactoryTest.class,
 
     // device
+    AndroidDebugBridgeWrapperTest.class,
     BackgroundDeviceActionTest.class,
     CpuStatsCollectorTest.class,
     DeviceManagerTest.class,

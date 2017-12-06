@@ -426,4 +426,9 @@ public class MockDeviceManager implements IDeviceManager {
     public void returnFlashingPermit() {
         // ignore
     }
+
+    @Override
+    public String getAdbVersion() {
+        return null;
+    }
 }
