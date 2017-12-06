@@ -147,17 +147,23 @@ class TfTextTestRunner(unittest.TextTestRunner):
     """ Class runner that ensure the callbacks order"""
 
     def __init__(self, stream=sys.stderr, descriptions=True, verbosity=1,
-                 failfast=False, buffer=False, resultclass=None, serial=None):
+                 failfast=False, buffer=False, resultclass=None, serial=None, extra_options=None):
         self.serial = serial
+        self.extra_options = extra_options
         unittest.TextTestRunner.__init__(self, stream, descriptions, verbosity, failfast, buffer, resultclass)
 
-    def _injectDevice(self, serial, testSuites):
-        if serial is not None:
+    def _injectDevice(self, testSuites):
+        """ Method to inject options to the base Python Tradefed class
+
+        Args:
+            testSuites: the current test holder.
+        """
+        if self.serial is not None:
             for testSuite in testSuites:
                 # each test in the test suite
                 for test in testSuite._tests:
                     try:
-                        test.setUpDevice(serial)
+                        test.setUpDevice(self.serial, self.stream, self.extra_options)
                     except AttributeError:
                         self.stream.writeln('Test %s does not implement _TradefedTestClass.' % test)
 
@@ -173,7 +179,7 @@ class TfTextTestRunner(unittest.TextTestRunner):
         if startTestRun is not None:
             startTestRun(test.countTestCases())
         try:
-            self._injectDevice(self.serial, test)
+            self._injectDevice(test)
             test(result)
         finally:
             stopTestRun = getattr(result, 'stopTestRun', None)

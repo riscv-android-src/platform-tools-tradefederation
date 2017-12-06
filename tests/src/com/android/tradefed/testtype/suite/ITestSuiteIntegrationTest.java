@@ -43,6 +43,7 @@ import com.android.tradefed.result.ResultForwarder;
 import com.android.tradefed.result.suite.SuiteResultReporter;
 import com.android.tradefed.suite.checker.ISystemStatusChecker;
 import com.android.tradefed.suite.checker.ISystemStatusCheckerReceiver;
+import com.android.tradefed.testtype.Abi;
 import com.android.tradefed.testtype.IInvocationContextReceiver;
 import com.android.tradefed.testtype.IRemoteTest;
 import com.android.tradefed.util.FileUtil;
@@ -180,6 +181,7 @@ public class ITestSuiteIntegrationTest {
                             ((TestSuiteStub) test).mShardedTestToRun = mTests;
                         }
                     }
+                    config.getConfigurationDescription().setAbi(new Abi("armeabi-v7a", "32"));
                 } catch (ConfigurationException e) {
                     CLog.e(e);
                     throw new RuntimeException(e);
@@ -210,6 +212,10 @@ public class ITestSuiteIntegrationTest {
         assertEquals(6, mListener.getTotalTests());
         assertEquals(6, mListener.getPassedTests());
         assertEquals(0, mListener.getFailedTests());
+        // Ensure that we have correctly kept track of module's abi.
+        assertEquals(2, mListener.getModulesAbi().size());
+        assertEquals("armeabi-v7a", mListener.getModulesAbi().get("module1.config").getName());
+        assertEquals("armeabi-v7a", mListener.getModulesAbi().get("module2.config").getName());
     }
 
     /** Tests that a normal run with 2 modules with 3 tests each, 1 failed test in second module. */

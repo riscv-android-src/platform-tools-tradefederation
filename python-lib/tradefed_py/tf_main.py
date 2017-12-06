@@ -31,6 +31,7 @@ class TradefedProgram(unittest.TestProgram):
                  testLoader=loader.defaultTestLoader, exit=True,
                  verbosity=1, failfast=None, catchbreak=None, buffer=None, serial=None):
       self.serial = None
+      self.extra_options = []
       super(TradefedProgram, self).__init__()
 
     def parseArgs(self, argv):
@@ -38,9 +39,10 @@ class TradefedProgram(unittest.TestProgram):
             self._do_discovery(argv[2:])
             return
 
-        long_opts = ['help', 'verbose', 'quiet', 'failfast', 'catch', 'buffer', 'serial=']
+        long_opts = ['help', 'verbose', 'quiet', 'failfast', 'catch', 'buffer',
+                     'serial=', 'extra_options=']
         try:
-            options, args = getopt.getopt(argv[1:], 'hHvqfcbs:', long_opts)
+            options, args = getopt.getopt(argv[1:], 'hHvqfcbs:e:', long_opts)
             for opt, value in options:
                 if opt in ('-h','-H','--help'):
                     self.usageExit()
@@ -63,6 +65,8 @@ class TradefedProgram(unittest.TestProgram):
                 if opt in ('-s', '--serial'):
                     if self.serial is None:
                         self.serial = value
+                if opt in ('-e', '--extra_options'):
+                    self.extra_options.append(value)
             if len(args) == 0 and self.defaultTest is None:
                 # createTests will load tests from self.module
                 self.testNames = None
@@ -79,7 +83,12 @@ class TradefedProgram(unittest.TestProgram):
 
     def runTests(self):
         if self.testRunner is None:
-            self.testRunner = tf_runner.TfTextTestRunner(verbosity=self.verbosity, failfast=self.failfast, buffer=self.buffer, resultclass=tf_runner.TextTestResult, serial=self.serial)
+            self.testRunner = tf_runner.TfTextTestRunner(verbosity=self.verbosity,
+                                                         failfast=self.failfast,
+                                                         buffer=self.buffer,
+                                                         resultclass=tf_runner.TextTestResult,
+                                                         serial=self.serial,
+                                                         extra_options=self.extra_options)
         super(TradefedProgram, self).runTests()
 
 main = TradefedProgram

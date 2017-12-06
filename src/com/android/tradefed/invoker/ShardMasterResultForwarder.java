@@ -15,6 +15,7 @@
  */
 package com.android.tradefed.invoker;
 
+import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.result.ILogSaver;
 import com.android.tradefed.result.ITestInvocationListener;
@@ -22,7 +23,9 @@ import com.android.tradefed.result.LogSaverResultForwarder;
 import com.android.tradefed.result.ResultForwarder;
 import com.android.tradefed.util.TimeUtil;
 
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Map.Entry;
 
 /**
  * A {@link ResultForwarder} that combines the results of a sharded test invocations. It only
@@ -40,6 +43,7 @@ public class ShardMasterResultForwarder extends LogSaverResultForwarder {
 
     private long mFirstShardEndTime = 0l;
     private IInvocationContext mOriginalContext;
+    private List<IInvocationContext> mShardContextList;
     private int shardIndex = 0;
 
     /**
@@ -54,6 +58,7 @@ public class ShardMasterResultForwarder extends LogSaverResultForwarder {
         super(logSaver, listeners);
         mShardsRemaining = expectedShards;
         mInitCount = expectedShards;
+        mShardContextList = new ArrayList<>();
     }
 
     /**
@@ -68,6 +73,7 @@ public class ShardMasterResultForwarder extends LogSaverResultForwarder {
         } else {
             // Track serials used in each shard.
             mOriginalContext.addSerialsFromShard(shardIndex, context.getSerials());
+            mShardContextList.add(context);
             shardIndex++;
         }
     }
@@ -97,7 +103,35 @@ public class ShardMasterResultForwarder extends LogSaverResultForwarder {
             CLog.i(
                     "There was %s between the first and last shard ended.",
                     TimeUtil.formatElapsedTime(System.currentTimeMillis() - mFirstShardEndTime));
+            copyShardBuildInfoToMain(mOriginalContext, mShardContextList);
             super.invocationEnded(mTotalElapsed);
+        }
+    }
+
+    /**
+     * Copy the build info from the shard builds to the main build in the original invocation
+     * context.
+     *
+     * @param main the original {@link IInvocationContext} from the main invocation.
+     * @param shardContexts the list of {@link IInvocationContext}s, one for each shard invocation.
+     */
+    private void copyShardBuildInfoToMain(
+            IInvocationContext main, List<IInvocationContext> shardContexts) {
+        for (IInvocationContext shard : shardContexts) {
+            for (String deviceName : shard.getDeviceConfigNames()) {
+                IBuildInfo shardBuild = shard.getBuildInfo(deviceName);
+                IBuildInfo mainBuild = main.getBuildInfo(deviceName);
+                if (mainBuild != null) {
+                    for (Entry<String, String> entry : shardBuild.getBuildAttributes().entrySet()) {
+                        mainBuild.addBuildAttribute(entry.getKey(), entry.getValue());
+                    }
+                } else {
+                    // Should not happen
+                    CLog.e(
+                            "Found a device '%s' in shard configuration but not in parent configuration.",
+                            deviceName);
+                }
+            }
         }
     }
 }

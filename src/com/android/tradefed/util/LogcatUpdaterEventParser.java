@@ -134,6 +134,8 @@ public class LogcatUpdaterEventParser implements Closeable {
 
         // events registered first are matched first
         registerEventTrigger(
+                "update_engine", "Using this install plan:", UpdaterEventType.UPDATE_START);
+        registerEventTrigger(
                 "update_engine",
                 "ActionProcessor: Aborting processing due to failure.",
                 UpdaterEventType.ERROR);
