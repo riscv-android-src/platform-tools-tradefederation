@@ -18,6 +18,7 @@ package com.android.tradefed.invoker;
 import static org.mockito.Mockito.doReturn;
 
 import com.android.ddmlib.IDevice;
+import com.android.ddmlib.testrunner.TestIdentifier;
 import com.android.tradefed.build.BuildInfo;
 import com.android.tradefed.build.BuildRetrievalError;
 import com.android.tradefed.build.IBuildInfo;
@@ -44,6 +45,9 @@ import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.device.ITestDevice.RecoveryMode;
 import com.android.tradefed.device.StubDevice;
 import com.android.tradefed.device.TestDeviceOptions;
+import com.android.tradefed.device.metric.BaseDeviceMetricCollector;
+import com.android.tradefed.device.metric.IMetricCollector;
+import com.android.tradefed.device.metric.DeviceMetricData;
 import com.android.tradefed.invoker.shard.IShardHelper;
 import com.android.tradefed.invoker.shard.ShardHelper;
 import com.android.tradefed.invoker.shard.StrictShardHelper;
@@ -72,6 +76,7 @@ import com.android.tradefed.testtype.IResumableTest;
 import com.android.tradefed.testtype.IRetriableTest;
 import com.android.tradefed.testtype.IShardableTest;
 import com.android.tradefed.testtype.IStrictShardableTest;
+import com.android.tradefed.testtype.StubTest;
 import com.android.tradefed.util.FileUtil;
 
 import com.google.common.util.concurrent.SettableFuture;
@@ -1533,7 +1538,7 @@ public class TestInvocationTest extends TestCase {
                 (InputStreamSource) EasyMock.anyObject());
 
         EasyMock.replay(device1, listener);
-        mTestInvocation.doSetup(mStubConfiguration, context, listener);
+        mTestInvocation.doSetup(context, mStubConfiguration, listener);
         EasyMock.verify(device1, listener);
     }
 
@@ -1564,7 +1569,7 @@ public class TestInvocationTest extends TestCase {
                 (InputStreamSource) EasyMock.anyObject());
 
         EasyMock.replay(device1, listener);
-        mTestInvocation.doSetup(mStubConfiguration, context, listener);
+        mTestInvocation.doSetup(context, mStubConfiguration, listener);
         EasyMock.verify(device1, listener);
     }
 
@@ -1656,5 +1661,55 @@ public class TestInvocationTest extends TestCase {
             FileUtil.recursiveDelete(tmpTestsDir);
             FileUtil.recursiveDelete(tmpExternalTestsDir);
         }
+    }
+
+    private class TestableCollector extends BaseDeviceMetricCollector {
+
+        private String mName;
+
+        public TestableCollector(String name) {
+            mName = name;
+        }
+
+        @Override
+        public void onTestRunEnd(DeviceMetricData runData) {
+            runData.addStringMetric(mName, mName);
+        }
+    }
+
+    /**
+     * Test that when {@link IMetricCollector} are used, they wrap and call in sequence the listener
+     * so all metrics end up on the final receiver.
+     */
+    public void testMetricCollectionChain() throws Exception {
+        IConfiguration configuration = new Configuration("test", "description");
+        StubTest test = new StubTest();
+        OptionSetter setter = new OptionSetter(test);
+        setter.setOptionValue("run-a-test", "true");
+        configuration.setTest(test);
+
+        List<IMetricCollector> collectors = new ArrayList<>();
+        collectors.add(new TestableCollector("collector1"));
+        collectors.add(new TestableCollector("collector2"));
+        collectors.add(new TestableCollector("collector3"));
+        collectors.add(new TestableCollector("collector4"));
+        configuration.setDeviceMetricCollectors(collectors);
+
+        mMockTestListener.testRunStarted("TestStub", 1);
+        TestIdentifier testId = new TestIdentifier("StubTest", "StubMethod");
+        mMockTestListener.testStarted(EasyMock.eq(testId), EasyMock.anyLong());
+        mMockTestListener.testEnded(
+                EasyMock.eq(testId), EasyMock.anyLong(), EasyMock.eq(Collections.emptyMap()));
+        Capture<Map<String, String>> captured = new Capture<>();
+        mMockTestListener.testRunEnded(EasyMock.anyLong(), EasyMock.capture(captured));
+        EasyMock.replay(mMockTestListener);
+        mTestInvocation.runTests(mStubInvocationMetadata, configuration, mMockTestListener);
+        EasyMock.verify(mMockTestListener);
+        // The collectors are called in sequence
+        List<String> listKeys = new ArrayList<>(captured.getValue().keySet());
+        assertEquals("collector4", listKeys.get(0));
+        assertEquals("collector3", listKeys.get(1));
+        assertEquals("collector2", listKeys.get(2));
+        assertEquals("collector1", listKeys.get(3));
     }
 }

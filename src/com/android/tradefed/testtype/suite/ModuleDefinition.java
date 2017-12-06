@@ -257,7 +257,10 @@ public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestColl
             if (preparationException != null) {
                 // For reporting purpose we create a failure placeholder with the error stack
                 // similar to InitializationError of JUnit.
-                TestIdentifier testid = new TestIdentifier(getId(), "PreparationError");
+                TestIdentifier testid =
+                        new TestIdentifier(
+                                preparationException.getClass().getCanonicalName(),
+                                "preparationError");
                 listener.testRunStarted(getId(), 1);
                 listener.testStarted(testid);
                 StringWriter sw = new StringWriter();
@@ -363,6 +366,9 @@ public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestColl
                         getId(), StreamUtil.getStackTrace(tearDownException));
                 throw tearDownException;
             } finally {
+                if (failureListener != null) {
+                    failureListener.join();
+                }
                 mElapsedTearDown = getCurrentTime() - cleanStartTime;
                 // finalize results
                 if (preparationException == null) {
