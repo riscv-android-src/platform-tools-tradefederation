@@ -32,6 +32,7 @@ import org.junit.runners.JUnit4;
 import org.mockito.Mockito;
 
 import java.util.Collections;
+import java.util.Map;
 
 /** Unit tests for {@link BaseDeviceMetricCollector}. */
 @RunWith(JUnit4.class)
@@ -61,10 +62,10 @@ public class BaseDeviceMetricCollectorTest {
         mBase.testIgnored(test);
         mBase.testEnded(test, Collections.emptyMap());
         mBase.testRunFailed("test run failed");
-        mBase.testRunStopped(0l);
-        mBase.testRunEnded(0l, Collections.emptyMap());
+        mBase.testRunStopped(0L);
+        mBase.testRunEnded(0L, Collections.emptyMap());
         mBase.invocationFailed(new Throwable());
-        mBase.invocationEnded(0l);
+        mBase.invocationEnded(0L);
 
         Mockito.verify(mMockListener, times(1)).invocationStarted(Mockito.any());
         Mockito.verify(mMockListener, times(1)).testRunStarted("testRun", 1);
@@ -77,10 +78,79 @@ public class BaseDeviceMetricCollectorTest {
         Mockito.verify(mMockListener, times(1))
                 .testEnded(Mockito.eq(test), Mockito.anyLong(), Mockito.eq(Collections.emptyMap()));
         Mockito.verify(mMockListener, times(1)).testRunFailed("test run failed");
-        Mockito.verify(mMockListener, times(1)).testRunStopped(0l);
-        Mockito.verify(mMockListener, times(1)).testRunEnded(0l, Collections.emptyMap());
+        Mockito.verify(mMockListener, times(1)).testRunStopped(0L);
+        Mockito.verify(mMockListener, times(1)).testRunEnded(0L, Collections.emptyMap());
         Mockito.verify(mMockListener, times(1)).invocationFailed(Mockito.any());
-        Mockito.verify(mMockListener, times(1)).invocationEnded(0l);
+        Mockito.verify(mMockListener, times(1)).invocationEnded(0L);
+
+        Assert.assertSame(mMockListener, mBase.getInvocationListener());
+        Assert.assertEquals(0, mBase.getDevices().size());
+        Assert.assertEquals(0, mBase.getBuildInfos().size());
+    }
+
+    /**
+     * Test to ensure that the forwarding of events continues even if an exception occurs in the
+     * collection.
+     */
+    @Test
+    public void testForwarding_withException() {
+        mBase =
+                new BaseDeviceMetricCollector() {
+                    @Override
+                    public void onTestRunStart(DeviceMetricData runData) {
+                        throw new RuntimeException("Failed onTestRunStart.");
+                    }
+
+                    @Override
+                    public void onTestRunEnd(
+                            DeviceMetricData runData, final Map<String, String> currentRunMetrics) {
+                        throw new RuntimeException("Failed onTestRunEnd");
+                    }
+
+                    @Override
+                    public void onTestStart(DeviceMetricData testData) {
+                        throw new RuntimeException("Failed onTestStart");
+                    }
+
+                    @Override
+                    public void onTestEnd(
+                            DeviceMetricData testData,
+                            final Map<String, String> currentTestCaseMetrics) {
+                        throw new RuntimeException("Failed onTestEnd");
+                    }
+                };
+
+        mBase.init(mContext, mMockListener);
+        mBase.invocationStarted(mContext);
+        mBase.testRunStarted("testRun", 1);
+        TestIdentifier test = new TestIdentifier("class", "method");
+        mBase.testStarted(test);
+        mBase.testLog("dataname", LogDataType.TEXT, new ByteArrayInputStreamSource("".getBytes()));
+        mBase.testFailed(test, "trace");
+        mBase.testAssumptionFailure(test, "trace");
+        mBase.testIgnored(test);
+        mBase.testEnded(test, Collections.emptyMap());
+        mBase.testRunFailed("test run failed");
+        mBase.testRunStopped(0L);
+        mBase.testRunEnded(0L, Collections.emptyMap());
+        mBase.invocationFailed(new Throwable());
+        mBase.invocationEnded(0L);
+
+        Mockito.verify(mMockListener, times(1)).invocationStarted(Mockito.any());
+        Mockito.verify(mMockListener, times(1)).testRunStarted("testRun", 1);
+        Mockito.verify(mMockListener, times(1)).testStarted(Mockito.eq(test), Mockito.anyLong());
+        Mockito.verify(mMockListener, times(1))
+                .testLog(Mockito.eq("dataname"), Mockito.eq(LogDataType.TEXT), Mockito.any());
+        Mockito.verify(mMockListener, times(1)).testFailed(test, "trace");
+        Mockito.verify(mMockListener, times(1)).testAssumptionFailure(test, "trace");
+        Mockito.verify(mMockListener, times(1)).testIgnored(test);
+        Mockito.verify(mMockListener, times(1))
+                .testEnded(Mockito.eq(test), Mockito.anyLong(), Mockito.eq(Collections.emptyMap()));
+        Mockito.verify(mMockListener, times(1)).testRunFailed("test run failed");
+        Mockito.verify(mMockListener, times(1)).testRunStopped(0L);
+        Mockito.verify(mMockListener, times(1)).testRunEnded(0L, Collections.emptyMap());
+        Mockito.verify(mMockListener, times(1)).invocationFailed(Mockito.any());
+        Mockito.verify(mMockListener, times(1)).invocationEnded(0L);
 
         Assert.assertSame(mMockListener, mBase.getInvocationListener());
         Assert.assertEquals(0, mBase.getDevices().size());
