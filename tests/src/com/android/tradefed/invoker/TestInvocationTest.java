@@ -1639,19 +1639,19 @@ public class TestInvocationTest extends TestCase {
                                 protected IShardHelper createShardHelper() {
                                     return new ShardHelper();
                                 }
+
+                                @Override
+                                List<File> getExternalTestCasesDirs() {
+                                    List<File> list = new ArrayList<>();
+                                    list.add(tmpExternalTestsDir);
+                                    return list;
+                                }
                             };
                         }
 
                         @Override
                         protected void setExitCode(ExitCode code, Throwable stack) {
                             // empty on purpose
-                        }
-
-                        @Override
-                        List<File> getExternalTestCasesDirs() {
-                            List<File> list = new ArrayList<>();
-                            list.add(tmpExternalTestsDir);
-                            return list;
                         }
                     };
             mMockBuildInfo = EasyMock.createMock(IDeviceBuildInfo.class);

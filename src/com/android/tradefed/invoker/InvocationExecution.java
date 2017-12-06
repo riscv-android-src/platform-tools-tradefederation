@@ -15,8 +15,15 @@
  */
 package com.android.tradefed.invoker;
 
+import com.android.ddmlib.Log.LogLevel;
+import com.android.tradefed.build.BuildRetrievalError;
+import com.android.tradefed.build.IBuildInfo;
+import com.android.tradefed.build.IBuildProvider;
+import com.android.tradefed.build.IDeviceBuildInfo;
+import com.android.tradefed.build.IDeviceBuildProvider;
 import com.android.tradefed.config.GlobalConfiguration;
 import com.android.tradefed.config.IConfiguration;
+import com.android.tradefed.config.IDeviceConfiguration;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.device.StubDevice;
@@ -41,10 +48,14 @@ import com.android.tradefed.testtype.IDeviceTest;
 import com.android.tradefed.testtype.IInvocationContextReceiver;
 import com.android.tradefed.testtype.IMultiDeviceTest;
 import com.android.tradefed.testtype.IRemoteTest;
+import com.android.tradefed.util.FileUtil;
+import com.android.tradefed.util.SystemUtil;
 import com.android.tradefed.util.TimeUtil;
 
 import com.google.common.annotations.VisibleForTesting;
 
+import java.io.File;
+import java.io.IOException;
 import java.util.List;
 import java.util.ListIterator;
 
@@ -54,6 +65,65 @@ import java.util.ListIterator;
  * {@link TestInvocation}.
  */
 public class InvocationExecution implements IInvocationExecution {
+
+    @Override
+    public boolean fetchBuild(
+            IInvocationContext context,
+            IConfiguration config,
+            IRescheduler rescheduler,
+            ITestInvocationListener listener)
+            throws DeviceNotAvailableException, BuildRetrievalError {
+        // If the invocation is currently sandboxed, builds have already been downloaded.
+        // TODO: refactor to be part of new TestInvocation type.
+        if (config.getConfigurationDescription().shouldUseSandbox()) {
+            CLog.d("Skipping download in the sandbox.");
+            return true;
+        }
+        String currentDeviceName = null;
+        try {
+            updateInvocationContext(context, config);
+            // TODO: evaluate fetching build in parallel
+            for (String deviceName : context.getDeviceConfigNames()) {
+                currentDeviceName = deviceName;
+                IBuildInfo info = null;
+                ITestDevice device = context.getDevice(deviceName);
+                IDeviceConfiguration deviceConfig = config.getDeviceConfigByName(deviceName);
+                IBuildProvider provider = deviceConfig.getBuildProvider();
+                // Inject the context to the provider if it can receive it
+                if (provider instanceof IInvocationContextReceiver) {
+                    ((IInvocationContextReceiver) provider).setInvocationContext(context);
+                }
+                // Get the build
+                if (provider instanceof IDeviceBuildProvider) {
+                    // Download a device build if the provider can handle it.
+                    info = ((IDeviceBuildProvider) provider).getBuild(device);
+                } else {
+                    info = provider.getBuild();
+                }
+                if (info != null) {
+                    info.setDeviceSerial(device.getSerialNumber());
+                    context.addDeviceBuildInfo(deviceName, info);
+                    device.setRecovery(deviceConfig.getDeviceRecovery());
+                } else {
+                    CLog.logAndDisplay(
+                            LogLevel.WARN,
+                            "No build found to test for device: %s",
+                            device.getSerialNumber());
+                    return false;
+                }
+                // TODO: remove build update when reporting is done on context
+                updateBuild(info, config);
+            }
+        } catch (BuildRetrievalError e) {
+            CLog.e(e);
+            if (currentDeviceName != null) {
+                context.addDeviceBuildInfo(currentDeviceName, e.getBuildInfo());
+                updateInvocationContext(context, config);
+            }
+            throw e;
+        }
+        return true;
+    }
 
     @Override
     public void cleanUpBuilds(IInvocationContext context, IConfiguration config) {
@@ -291,5 +361,100 @@ public class InvocationExecution implements IInvocationExecution {
                 listener.testLog(name, LogDataType.TEXT, emulatorOutput);
             }
         }
+    }
+
+    /**
+     * Update the {@link IInvocationContext} with additional info from the {@link IConfiguration}.
+     *
+     * @param context the {@link IInvocationContext}
+     * @param config the {@link IConfiguration}
+     */
+    private void updateInvocationContext(IInvocationContext context, IConfiguration config) {
+        // TODO: Once reporting on context is done, only set context attributes
+        if (config.getCommandLine() != null) {
+            // TODO: obfuscate the password if any.
+            context.addInvocationAttribute(
+                    TestInvocation.COMMAND_ARGS_KEY, config.getCommandLine());
+        }
+        if (config.getCommandOptions().getShardCount() != null) {
+            context.addInvocationAttribute(
+                    "shard_count", config.getCommandOptions().getShardCount().toString());
+        }
+        if (config.getCommandOptions().getShardIndex() != null) {
+            context.addInvocationAttribute(
+                    "shard_index", config.getCommandOptions().getShardIndex().toString());
+        }
+        context.setTestTag(getTestTag(config));
+    }
+
+    /** Helper to create the test tag from the configuration. */
+    private String getTestTag(IConfiguration config) {
+        String testTag = config.getCommandOptions().getTestTag();
+        if (config.getCommandOptions().getTestTagSuffix() != null) {
+            testTag =
+                    String.format("%s-%s", testTag, config.getCommandOptions().getTestTagSuffix());
+        }
+        return testTag;
+    }
+
+    /**
+     * Update the {@link IBuildInfo} with additional info from the {@link IConfiguration}.
+     *
+     * @param info the {@link IBuildInfo}
+     * @param config the {@link IConfiguration}
+     */
+    private void updateBuild(IBuildInfo info, IConfiguration config) {
+        if (config.getCommandLine() != null) {
+            // TODO: obfuscate the password if any.
+            info.addBuildAttribute(TestInvocation.COMMAND_ARGS_KEY, config.getCommandLine());
+        }
+        if (config.getCommandOptions().getShardCount() != null) {
+            info.addBuildAttribute(
+                    "shard_count", config.getCommandOptions().getShardCount().toString());
+        }
+        if (config.getCommandOptions().getShardIndex() != null) {
+            info.addBuildAttribute(
+                    "shard_index", config.getCommandOptions().getShardIndex().toString());
+        }
+        // TODO: update all the configs to only use test-tag from CommandOption and not build
+        // providers.
+        // When CommandOption is set, it overrides any test-tag from build_providers
+        if (!"stub".equals(config.getCommandOptions().getTestTag())) {
+            info.setTestTag(getTestTag(config));
+        } else if (info.getTestTag() == null || info.getTestTag().isEmpty()) {
+            // We ensure that that a default test-tag is always available.
+            info.setTestTag("stub");
+        } else {
+            CLog.w(
+                    "Using the test-tag from the build_provider. Consider updating your config to"
+                            + " have no alias/namespace in front of test-tag.");
+        }
+
+        // Load environment tests dir.
+        if (info instanceof IDeviceBuildInfo) {
+            File testsDir = ((IDeviceBuildInfo) info).getTestsDir();
+            if (testsDir != null && testsDir.exists()) {
+                for (File externalTestDir : getExternalTestCasesDirs()) {
+                    try {
+                        // Avoid conflict by creating a randomized name for the arriving symlink
+                        // file.
+                        File subDir = FileUtil.createTempDir(externalTestDir.getName(), testsDir);
+                        subDir.delete();
+                        FileUtil.symlinkFile(externalTestDir, subDir);
+                    } catch (IOException e) {
+                        CLog.e(
+                                "Failed to load external test dir %s. Ignoring it.",
+                                externalTestDir);
+                        CLog.e(e);
+                    }
+                }
+            }
+        }
+    }
+
+    /** Returns the list of external directories to Tradefed coming from the environment. */
+    @VisibleForTesting
+    List<File> getExternalTestCasesDirs() {
+        return SystemUtil.getExternalTestCasesDirs();
     }
 }

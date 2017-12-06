@@ -15,6 +15,7 @@
  */
 package com.android.tradefed.invoker;
 
+import com.android.tradefed.build.BuildRetrievalError;
 import com.android.tradefed.config.IConfiguration;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.invoker.shard.IShardHelper;
@@ -33,6 +34,7 @@ public interface IInvocationExecution {
      *     execution on another resource(s)
      * @param listener the {@link ITestInvocation} to report build download failures.
      * @return True if we successfully downloaded the build, false otherwise.
+     * @throws BuildRetrievalError
      * @throws DeviceNotAvailableException
      */
     public default boolean fetchBuild(
@@ -40,7 +42,7 @@ public interface IInvocationExecution {
             IConfiguration config,
             IRescheduler rescheduler,
             ITestInvocationListener listener)
-            throws DeviceNotAvailableException {
+            throws BuildRetrievalError, DeviceNotAvailableException {
         return false;
     }
 
