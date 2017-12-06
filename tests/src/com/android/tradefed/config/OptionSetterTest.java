@@ -19,8 +19,8 @@ package com.android.tradefed.config;
 import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
+import com.android.tradefed.targetprep.BaseTargetPreparer;
 import com.android.tradefed.targetprep.BuildError;
-import com.android.tradefed.targetprep.ITargetPreparer;
 import com.android.tradefed.targetprep.TargetSetupError;
 import com.android.tradefed.util.FileUtil;
 import com.android.tradefed.util.MultiMap;
@@ -186,7 +186,7 @@ public class OptionSetterTest extends TestCase {
     }
 
     @OptionClass(alias = "parent")
-    private static class ParentOptionSource implements ITargetPreparer {
+    private static class ParentOptionSource extends BaseTargetPreparer {
         @Option(name = "string", shortName = 's')
         private String mString = null;
 

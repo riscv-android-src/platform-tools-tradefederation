@@ -29,7 +29,7 @@ import java.io.File;
  * <p>If the file already exists, this will restore the old version on tear down.
  */
 @OptionClass(alias = "write-file")
-public class DeviceStringPusher implements ITargetCleaner {
+public class DeviceStringPusher extends BaseTargetPreparer implements ITargetCleaner {
     @Option(name = "file-path", description = "Path of file to write")
     private String mFileName;
 
