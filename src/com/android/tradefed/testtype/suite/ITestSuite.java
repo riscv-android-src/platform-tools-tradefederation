@@ -26,6 +26,7 @@ import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.invoker.IInvocationContext;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.result.ITestInvocationListener;
+import com.android.tradefed.result.ITestLoggerReceiver;
 import com.android.tradefed.result.InputStreamSource;
 import com.android.tradefed.result.LogDataType;
 import com.android.tradefed.suite.checker.ISystemStatusChecker;
@@ -193,11 +194,18 @@ public abstract class ITestSuite
             return;
         }
 
+        // Allow checkers to log files for easier debbuging.
+        for (ISystemStatusChecker checker : mSystemStatusCheckers) {
+            if (checker instanceof ITestLoggerReceiver) {
+                ((ITestLoggerReceiver) checker).setTestLogger(listener);
+            }
+        }
+
         /** Setup a special listener to take actions on test failures. */
         TestFailureListener failureListener =
                 new TestFailureListener(
                         listener,
-                        getDevice(),
+                        mContext.getDevices(),
                         mBugReportOnFailure,
                         mLogcatOnFailure,
                         mScreenshotOnFailure,
@@ -225,7 +233,7 @@ public abstract class ITestSuite
                 }
 
                 try {
-                    mContext.setModuleInvocationContext(module.getModuleInvocationContext());
+                    listener.testModuleStarted(module.getModuleInvocationContext());
                     // Populate the module context with devices and builds
                     for (String deviceName : mContext.getDeviceConfigNames()) {
                         module.getModuleInvocationContext()
@@ -237,7 +245,7 @@ public abstract class ITestSuite
                 } finally {
                     // clear out module invocation context since we are now done with module
                     // execution
-                    mContext.setModuleInvocationContext(null);
+                    listener.testModuleEnded();
                 }
             }
         } catch (DeviceNotAvailableException e) {
@@ -500,7 +508,7 @@ public abstract class ITestSuite
     @Override
     public long getRuntimeHint() {
         if (mDirectModule != null) {
-            CLog.e(
+            CLog.d(
                     "    %s: %s",
                     mDirectModule.getId(),
                     TimeUtil.formatElapsedTime(mDirectModule.getRuntimeHint()));

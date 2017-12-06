@@ -229,7 +229,7 @@ public class DeviceManager implements IDeviceManager {
     /** Initialize adb connection and services depending on adb connection. */
     private synchronized void startAdbBridgeAndDependentServices() {
         // TODO: Temporarily increase default timeout as workaround for syncFiles timeouts
-        DdmPreferences.setTimeOut(30 * 1000);
+        DdmPreferences.setTimeOut(120 * 1000);
         mAdbBridge = createAdbBridge();
         mManagedDeviceListener = new ManagedDeviceListener();
         // It's important to add the listener before initializing the ADB bridge to avoid a race
@@ -1026,30 +1026,56 @@ public class DeviceManager implements IDeviceManager {
         public void deviceConnected(IDevice idevice) {
             CLog.d("Detected device connect %s, id %d", idevice.getSerialNumber(),
                     idevice.hashCode());
-            IManagedTestDevice testDevice = mManagedDeviceList.findOrCreate(idevice);
-            if (testDevice == null) {
-                return;
+            String threadName = String.format("Connected device %s", idevice.getSerialNumber());
+            Runnable connectedRunnable =
+                    new Runnable() {
+                        @Override
+                        public void run() {
+                            IManagedTestDevice testDevice =
+                                    mManagedDeviceList.findOrCreate(idevice);
+                            if (testDevice == null) {
+                                return;
+                            }
+                            // DDMS will allocate a new IDevice, so need
+                            // to update the TestDevice record with the new device
+                            CLog.d("Updating IDevice for device %s", idevice.getSerialNumber());
+                            testDevice.setIDevice(idevice);
+                            TestDeviceState newState =
+                                    TestDeviceState.getStateByDdms(idevice.getState());
+                            testDevice.setDeviceState(newState);
+                            if (newState == TestDeviceState.ONLINE) {
+                                DeviceEventResponse r =
+                                        mManagedDeviceList.handleDeviceEvent(
+                                                testDevice, DeviceEvent.CONNECTED_ONLINE);
+                                if (r.stateChanged
+                                        && r.allocationState
+                                                == DeviceAllocationState.Checking_Availability) {
+                                    checkAndAddAvailableDevice(testDevice);
+                                }
+                                logDeviceEvent(
+                                        EventType.DEVICE_CONNECTED, testDevice.getSerialNumber());
+                            } else if (DeviceState.OFFLINE.equals(idevice.getState())
+                                    || DeviceState.UNAUTHORIZED.equals(idevice.getState())) {
+                                mManagedDeviceList.handleDeviceEvent(
+                                        testDevice, DeviceEvent.CONNECTED_OFFLINE);
+                                logDeviceEvent(
+                                        EventType.DEVICE_CONNECTED_OFFLINE,
+                                        testDevice.getSerialNumber());
+                            }
+                            mFirstDeviceAdded.countDown();
+                        }
+                    };
+
+            if (mSynchronousMode) {
+                connectedRunnable.run();
+            } else {
+                // Device creation step can take a little bit of time, so do it in a thread to
+                // avoid blocking following events of new devices
+                Thread checkThread = new Thread(connectedRunnable, threadName);
+                // Device checking threads shouldn't hold the JVM open
+                checkThread.setDaemon(true);
+                checkThread.start();
             }
-            // DDMS will allocate a new IDevice, so need
-            // to update the TestDevice record with the new device
-            CLog.d("Updating IDevice for device %s", idevice.getSerialNumber());
-            testDevice.setIDevice(idevice);
-            TestDeviceState newState = TestDeviceState.getStateByDdms(idevice.getState());
-            testDevice.setDeviceState(newState);
-            if (newState == TestDeviceState.ONLINE) {
-                DeviceEventResponse r = mManagedDeviceList.handleDeviceEvent(testDevice,
-                        DeviceEvent.CONNECTED_ONLINE);
-                if (r.stateChanged && r.allocationState ==
-                        DeviceAllocationState.Checking_Availability) {
-                    checkAndAddAvailableDevice(testDevice);
-                }
-                logDeviceEvent(EventType.DEVICE_CONNECTED, testDevice.getSerialNumber());
-            } else if (DeviceState.OFFLINE.equals(idevice.getState()) ||
-                    DeviceState.UNAUTHORIZED.equals(idevice.getState())) {
-                mManagedDeviceList.handleDeviceEvent(testDevice, DeviceEvent.CONNECTED_OFFLINE);
-                logDeviceEvent(EventType.DEVICE_CONNECTED_OFFLINE, testDevice.getSerialNumber());
-            }
-            mFirstDeviceAdded.countDown();
         }
 
         /**

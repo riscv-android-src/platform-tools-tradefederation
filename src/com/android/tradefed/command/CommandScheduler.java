@@ -36,6 +36,7 @@ import com.android.tradefed.config.IConfigurationFactory;
 import com.android.tradefed.config.IDeviceConfiguration;
 import com.android.tradefed.config.IGlobalConfiguration;
 import com.android.tradefed.config.Option;
+import com.android.tradefed.config.SandboxConfigurationFactory;
 import com.android.tradefed.device.DeviceAllocationState;
 import com.android.tradefed.device.DeviceManager;
 import com.android.tradefed.device.DeviceNotAvailableException;
@@ -59,6 +60,8 @@ import com.android.tradefed.log.LogRegistry;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.ResultForwarder;
+import com.android.tradefed.sandbox.ISandbox;
+import com.android.tradefed.sandbox.TradefedSandbox;
 import com.android.tradefed.util.ArrayUtil;
 import com.android.tradefed.util.FileUtil;
 import com.android.tradefed.util.QuotationAwareTokenizer;
@@ -1099,11 +1102,36 @@ public class CommandScheduler extends Thread implements ICommandScheduler, IComm
         return internalAddCommand(args, totalExecTime, null);
     }
 
+    /** Returns true if {@link CommandOptions#USE_SANDBOX} is part of the command line. */
+    private boolean isCommandSandboxed(String[] args) {
+        for (String arg : args) {
+            if (("--" + CommandOptions.USE_SANDBOX).equals(arg)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /** Create a {@link ISandbox} that the invocation will use to run. */
+    public ISandbox createSandbox() {
+        return new TradefedSandbox();
+    }
+
+    private IConfiguration createConfiguration(String[] args) throws ConfigurationException {
+        // check if the command should be sandboxed
+        if (isCommandSandboxed(args)) {
+            // Create an sandboxed configuration based on the sandbox of the scheduler.
+            ISandbox sandbox = createSandbox();
+            return SandboxConfigurationFactory.getInstance()
+                    .createConfigurationFromArgs(args, getKeyStoreClient(), sandbox, new RunUtil());
+        }
+        return getConfigFactory().createConfigurationFromArgs(args, null, getKeyStoreClient());
+    }
+
     private boolean internalAddCommand(String[] args, long totalExecTime, String cmdFilePath)
             throws ConfigurationException {
         assertStarted();
-        IConfiguration config = getConfigFactory().createConfigurationFromArgs(args, null,
-                getKeyStoreClient());
+        IConfiguration config = createConfiguration(args);
         if (config.getCommandOptions().isHelpMode()) {
             getConfigFactory().printHelpForConfig(args, true, System.out);
         } else if (config.getCommandOptions().isFullHelpMode()) {
@@ -1307,11 +1335,10 @@ public class CommandScheduler extends Thread implements ICommandScheduler, IComm
         return ArrayUtil.join(" ", (Object[])args);
     }
 
-    /**
-     * {@inheritDoc}
-     */
+    /** {@inheritDoc} */
     @Override
-    public void execCommand(IScheduledInvocationListener listener, String[] args)
+    public void execCommand(
+            IInvocationContext context, IScheduledInvocationListener listener, String[] args)
             throws ConfigurationException, NoDeviceException {
         assertStarted();
         IDeviceManager manager = getDeviceManager();
@@ -1321,7 +1348,6 @@ public class CommandScheduler extends Thread implements ICommandScheduler, IComm
         config.validateOptions();
 
         ExecutableCommand execCmd = createExecutableCommand(cmdTracker, config, false);
-        IInvocationContext context = new InvocationContext();
         context.setConfigurationDescriptor(config.getConfigurationDescription());
         Map<String, ITestDevice> devices = allocateDevices(config, manager);
         if (!devices.isEmpty()) {
@@ -1335,6 +1361,13 @@ public class CommandScheduler extends Thread implements ICommandScheduler, IComm
             throw new NoDeviceException(
                     "no devices is available for command: " + Arrays.asList(args));
         }
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public void execCommand(IScheduledInvocationListener listener, String[] args)
+            throws ConfigurationException, NoDeviceException {
+        execCommand(new InvocationContext(), listener, args);
     }
 
     /**
