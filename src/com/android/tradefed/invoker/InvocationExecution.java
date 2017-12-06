@@ -184,19 +184,20 @@ public class InvocationExecution implements IInvocationExecution {
                         CLog.d("%s has been disabled. skipping.", cleaner);
                         continue;
                     }
-                    if (cleaner != null) {
-                        try {
-                            CLog.d(
-                                    "starting tearDown '%s' on device: '%s'",
-                                    preparer, device.getSerialNumber());
-                            cleaner.tearDown(device, context.getBuildInfo(deviceName), exception);
-                            CLog.d(
-                                    "done with tearDown '%s' on device: '%s'",
-                                    preparer, device.getSerialNumber());
-                        } catch (Throwable e) {
-                            // We catch it and rethrow later to allow each targetprep to be attempted.
-                            // Only the last one will be thrown but all should be logged.
-                            CLog.e("Deferring throw for: %s", e);
+                    try {
+                        CLog.d(
+                                "starting tearDown '%s' on device: '%s'",
+                                preparer, device.getSerialNumber());
+                        cleaner.tearDown(device, context.getBuildInfo(deviceName), exception);
+                        CLog.d(
+                                "done with tearDown '%s' on device: '%s'",
+                                preparer, device.getSerialNumber());
+                    } catch (Throwable e) {
+                        // We catch it and rethrow later to allow each targetprep to be attempted.
+                        // Only the first one will be thrown but all should be logged.
+                        CLog.e("Deferring throw for:");
+                        CLog.e(e);
+                        if (throwable == null) {
                             throwable = e;
                         }
                     }
@@ -223,9 +224,11 @@ public class InvocationExecution implements IInvocationExecution {
                 ITargetPreparer preparer = itr.previous();
                 if (preparer instanceof IHostCleaner) {
                     IHostCleaner cleaner = (IHostCleaner) preparer;
-                    if (cleaner != null) {
-                        cleaner.cleanUp(context.getBuildInfo(deviceName), exception);
+                    if (preparer.isDisabled()) {
+                        CLog.d("%s has been disabled. skipping.", cleaner);
+                        continue;
                     }
+                    cleaner.cleanUp(context.getBuildInfo(deviceName), exception);
                 }
             }
         }
