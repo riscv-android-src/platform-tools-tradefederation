@@ -16,7 +16,6 @@
 package com.android.tradefed.targetprep;
 
 import com.android.tradefed.build.IBuildInfo;
-import com.android.tradefed.config.Option;
 import com.android.tradefed.config.OptionClass;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
@@ -27,18 +26,13 @@ import com.android.tradefed.device.ITestDevice;
  * <p>Will restore back to original root state on tear down.
  */
 @OptionClass(alias = "root-preparer")
-public class RootTargetPreparer implements ITargetCleaner {
-    @Option(name = "disable", description = "Disable this target.")
-    private boolean mDisable = false;
+public class RootTargetPreparer extends BaseTargetPreparer implements ITargetCleaner {
 
     private boolean mWasRoot = false;
 
     @Override
     public void setUp(ITestDevice device, IBuildInfo buildInfo)
             throws TargetSetupError, BuildError, DeviceNotAvailableException {
-        if (mDisable) {
-            return;
-        }
         mWasRoot = device.isAdbRoot();
         if (!mWasRoot && !device.enableAdbRoot()) {
             throw new TargetSetupError("Failed to adb root device", device.getDeviceDescriptor());
@@ -48,9 +42,6 @@ public class RootTargetPreparer implements ITargetCleaner {
     @Override
     public void tearDown(ITestDevice device, IBuildInfo buildInfo, Throwable e)
             throws DeviceNotAvailableException {
-        if (mDisable) {
-            return;
-        }
         if (!mWasRoot) {
             device.disableAdbRoot();
         }

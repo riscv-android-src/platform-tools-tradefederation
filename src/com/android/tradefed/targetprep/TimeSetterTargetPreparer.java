@@ -34,7 +34,7 @@ import java.util.concurrent.TimeUnit;
  * before this target preparer ran.
  */
 @OptionClass(alias = "time-setter")
-public class TimeSetterTargetPreparer implements ITargetCleaner {
+public class TimeSetterTargetPreparer extends BaseTargetPreparer implements ITargetCleaner {
     @Option(
         name = "time",
         description = "Time to set (epoch time in milliseconds).",

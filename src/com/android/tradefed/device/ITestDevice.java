@@ -420,10 +420,12 @@ public interface ITestDevice extends INativeDevice {
     public boolean removeUser(int userId) throws DeviceNotAvailableException;
 
     /**
-     * Gets the list of users on the device. Defaults to null.
+     * Gets the list of users on the device. Will throw {@link DeviceRuntimeException} if output
+     * from device is not as expected.
      *
-     * @return the list of user ids or null if there was an error.
+     * @return the list of user ids.
      * @throws DeviceNotAvailableException
+     * @throws DeviceRuntimeException
      */
     ArrayList<Integer> listUsers() throws DeviceNotAvailableException;
 
@@ -469,8 +471,10 @@ public interface ITestDevice extends INativeDevice {
 
     /**
      * Returns the primary user id.
+     *
      * @return the userId of the primary user if there is one, and null if there is no primary user.
      * @throws DeviceNotAvailableException
+     * @throws DeviceRuntimeException if the output from the device is not as expected.
      */
     public Integer getPrimaryUserId() throws DeviceNotAvailableException;
 

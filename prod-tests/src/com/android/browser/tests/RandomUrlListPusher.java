@@ -21,8 +21,8 @@ import com.android.tradefed.config.Option;
 import com.android.tradefed.config.Option.Importance;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
+import com.android.tradefed.targetprep.BaseTargetPreparer;
 import com.android.tradefed.targetprep.BuildError;
-import com.android.tradefed.targetprep.ITargetPreparer;
 import com.android.tradefed.targetprep.TargetSetupError;
 import com.android.tradefed.util.FileUtil;
 
@@ -38,12 +38,12 @@ import java.util.Random;
 /**
  * Generates a list of random URLs for browser stability test and push onto device
  *
- * Two file needs to be specified as URL pools, one for HTTP, the other for HTTPS; also a number
+ * <p>Two file needs to be specified as URL pools, one for HTTP, the other for HTTPS; also a number
  * needs to be provided to indicate that how many URLs shall be randomly drawn from each pool;
  * finally the selected HTTP and HTTPS URLs will be joined alternately to form the final URL list,
  * and pushed to the specified location on device.
  */
-public class RandomUrlListPusher implements ITargetPreparer {
+public class RandomUrlListPusher extends BaseTargetPreparer {
 
     @Option(name = "http-pool", description = "path to the pool of HTTP urls",
             importance = Importance.ALWAYS)

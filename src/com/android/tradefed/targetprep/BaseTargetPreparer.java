@@ -31,4 +31,10 @@ public abstract class BaseTargetPreparer implements ITargetPreparer {
     public final boolean isDisabled() {
         return mDisable;
     }
+
+    /** {@inheritDoc} */
+    @Override
+    public final void setDisable(boolean isDisabled) {
+        mDisable = isDisabled;
+    }
 }

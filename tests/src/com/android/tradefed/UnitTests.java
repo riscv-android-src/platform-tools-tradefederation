@@ -46,6 +46,7 @@ import com.android.tradefed.config.OptionCopierTest;
 import com.android.tradefed.config.OptionSetterTest;
 import com.android.tradefed.config.OptionUpdateRuleTest;
 import com.android.tradefed.config.SandboxConfigurationFactoryTest;
+import com.android.tradefed.device.AndroidDebugBridgeWrapperTest;
 import com.android.tradefed.device.BackgroundDeviceActionTest;
 import com.android.tradefed.device.CpuStatsCollectorTest;
 import com.android.tradefed.device.DeviceManagerTest;
@@ -67,6 +68,7 @@ import com.android.tradefed.device.metric.BaseDeviceMetricCollectorTest;
 import com.android.tradefed.device.metric.FilePullerDeviceMetricCollectorTest;
 import com.android.tradefed.device.metric.ScheduledDeviceMetricCollectorTest;
 import com.android.tradefed.invoker.InvocationContextTest;
+import com.android.tradefed.invoker.InvocationExecutionTest;
 import com.android.tradefed.invoker.ShardListenerTest;
 import com.android.tradefed.invoker.ShardMasterResultForwarderTest;
 import com.android.tradefed.invoker.TestInvocationMultiTest;
@@ -295,6 +297,7 @@ import org.junit.runners.Suite.SuiteClasses;
     SandboxConfigurationFactoryTest.class,
 
     // device
+    AndroidDebugBridgeWrapperTest.class,
     BackgroundDeviceActionTest.class,
     CpuStatsCollectorTest.class,
     DeviceManagerTest.class,
@@ -321,6 +324,7 @@ import org.junit.runners.Suite.SuiteClasses;
 
     // invoker
     InvocationContextTest.class,
+    InvocationExecutionTest.class,
     ShardListenerTest.class,
     ShardMasterResultForwarderTest.class,
     TestInvocationMultiTest.class,
