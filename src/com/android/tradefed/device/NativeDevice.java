@@ -1892,12 +1892,17 @@ public class NativeDevice implements IManagedTestDevice {
             return getLogcatDump();
         }
 
+        // Convert date to format needed by the command:
+        // 'MM-DD hh:mm:ss.mmm' or 'YYYY-MM-DD hh:mm:ss.mmm'
+        SimpleDateFormat format = new SimpleDateFormat("MM-dd hh:mm:ss.mmm");
+        String dateFormatted = format.format(new Date(date));
+
         byte[] output = new byte[0];
         try {
             // use IDevice directly because we don't want callers to handle
             // DeviceNotAvailableException for this method
             CollectingByteOutputReceiver receiver = new CollectingByteOutputReceiver();
-            String command = String.format("%s -t '%s'", LogcatReceiver.LOGCAT_CMD, date);
+            String command = String.format("%s -t '%s'", LogcatReceiver.LOGCAT_CMD, dateFormatted);
             getIDevice().executeShellCommand(command, receiver);
             output = receiver.getOutput();
         } catch (IOException|AdbCommandRejectedException|
@@ -3392,7 +3397,7 @@ public class NativeDevice implements IManagedTestDevice {
             date = new Date();
         }
 
-        offset = date.getTime() - deviceTime * 1000;
+        offset = date.getTime() - deviceTime;
         CLog.d("Time offset = %d ms", offset);
         return offset;
     }
@@ -3438,7 +3443,8 @@ public class NativeDevice implements IManagedTestDevice {
             CLog.i("Invalid device time: \"%s\", ignored.", nfe);
             return 0;
         }
-        return deviceTime;
+        // Convert from seconds to milliseconds
+        return deviceTime * 1000L;
     }
 
     /**
