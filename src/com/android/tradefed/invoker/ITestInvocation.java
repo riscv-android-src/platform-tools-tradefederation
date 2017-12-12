@@ -41,26 +41,6 @@ public interface ITestInvocation {
             IRescheduler rescheduler, ITestInvocationListener... extraListeners)
             throws DeviceNotAvailableException, Throwable;
 
-    /**
-     * Execute the build_provider step of the invocation.
-     *
-     * @param context the {@link IInvocationContext} of the invocation.
-     * @param config the {@link IConfiguration} of this test run.
-     * @param rescheduler the {@link IRescheduler}, for rescheduling portions of the invocation for
-     *     execution on another resource(s)
-     * @param listener the {@link ITestInvocation} to report build download failures.
-     * @return True if we successfully downloaded the build, false otherwise.
-     * @throws DeviceNotAvailableException
-     */
-    public default boolean fetchBuild(
-            IInvocationContext context,
-            IConfiguration config,
-            IRescheduler rescheduler,
-            ITestInvocationListener listener)
-            throws DeviceNotAvailableException {
-        return false;
-    }
-
     /** Notify the {@link TestInvocation} that TradeFed has been requested to stop. */
     public default void notifyInvocationStopped() {}
 }
