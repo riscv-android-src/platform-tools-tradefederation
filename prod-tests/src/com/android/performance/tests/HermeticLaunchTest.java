@@ -133,7 +133,7 @@ public class HermeticLaunchTest implements IRemoteTest, IDeviceTest {
     private int mlaunchCount = 10;
 
     @Option(name = "save-atrace", description = "Upload the atrace file in permanent storage")
-    private boolean msaveAtrace = false;
+    private boolean mSaveAtrace = false;
 
     @Option(name = "atrace-section", description = "Section to be parsed from atrace file. "
             + "This option can be repeated")
@@ -246,6 +246,9 @@ public class HermeticLaunchTest implements IRemoteTest, IDeviceTest {
         runner.addInstrumentationArg("launchcount", mlaunchCount + "");
         if (mactivityNames != null && !mactivityNames.isEmpty()) {
             runner.addInstrumentationArg("activitylist", mactivityNames);
+        }
+        if (!mSaveAtrace) {
+            runner.addInstrumentationArg("recordtrace", "false");
         }
         return runner;
     }
@@ -379,7 +382,7 @@ public class HermeticLaunchTest implements IRemoteTest, IDeviceTest {
                             currentAtraceFile,
                             splitName[splitName.length - 1]);
                     // Upload the file if needed
-                    if (msaveAtrace) {
+                    if (mSaveAtrace) {
                         try (FileInputStreamSource stream =
                                 new FileInputStreamSource(currentAtraceFile)) {
                             listener.testLog(currentAtraceFile.getName(), LogDataType.TEXT, stream);
