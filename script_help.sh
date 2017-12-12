@@ -42,9 +42,9 @@ checkPath java
 
 # check java version
 java_version_string=$(java -version 2>&1)
-JAVA_VERSION=$(echo "$java_version_string" | grep '[ "]1\.[8][\. "$$]')
+JAVA_VERSION=$(echo "$java_version_string" | grep 'version [ "]\(1\.8\|9\).*[ "]')
 if [ "${JAVA_VERSION}" == "" ]; then
-    echo "Wrong java version. 1.8 is required."
+    echo "Wrong java version. 1.8 or 9 is required."
     exit
 fi
 

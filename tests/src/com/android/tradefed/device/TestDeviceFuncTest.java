@@ -691,7 +691,7 @@ public class TestDeviceFuncTest implements IDeviceTest {
             assertTrue(image.getHeight() > 200);
         } finally {
             FileUtil.deleteFile(tmpPngFile);
-            source.cancel();
+            source.close();
         }
     }
 
@@ -724,7 +724,7 @@ public class TestDeviceFuncTest implements IDeviceTest {
                     s.contains("testGetLogcat_size log dump 99"));
         } finally {
             FileUtil.deleteFile(tmpTxtFile);
-            source.cancel();
+            source.close();
         }
     }
 

@@ -45,6 +45,7 @@ import com.android.tradefed.config.GlobalConfigurationTest;
 import com.android.tradefed.config.OptionCopierTest;
 import com.android.tradefed.config.OptionSetterTest;
 import com.android.tradefed.config.OptionUpdateRuleTest;
+import com.android.tradefed.config.SandboxConfigurationFactoryTest;
 import com.android.tradefed.device.BackgroundDeviceActionTest;
 import com.android.tradefed.device.CpuStatsCollectorTest;
 import com.android.tradefed.device.DeviceManagerTest;
@@ -62,7 +63,10 @@ import com.android.tradefed.device.TestDeviceTest;
 import com.android.tradefed.device.TopHelperTest;
 import com.android.tradefed.device.WaitDeviceRecoveryTest;
 import com.android.tradefed.device.WifiHelperTest;
+import com.android.tradefed.device.metric.ScheduledDeviceMetricCollectorTest;
+import com.android.tradefed.device.metric.BaseDeviceMetricCollectorTest;
 import com.android.tradefed.invoker.InvocationContextTest;
+import com.android.tradefed.invoker.ShardListenerTest;
 import com.android.tradefed.invoker.TestInvocationMultiTest;
 import com.android.tradefed.invoker.TestInvocationTest;
 import com.android.tradefed.invoker.shard.ShardHelperTest;
@@ -74,6 +78,7 @@ import com.android.tradefed.log.LogRegistryTest;
 import com.android.tradefed.log.TerribleFailureEmailHandlerTest;
 import com.android.tradefed.profiler.AggregatingProfilerTest;
 import com.android.tradefed.profiler.MetricOutputDataTest;
+import com.android.tradefed.profiler.recorder.NumericAggregateFunctionTest;
 import com.android.tradefed.profiler.recorder.TraceMetricTest;
 import com.android.tradefed.profiler.recorder.TraceMetricsRecorderTest;
 import com.android.tradefed.profiler.recorder.TraceParserTest;
@@ -96,6 +101,10 @@ import com.android.tradefed.result.SubprocessResultsReporterTest;
 import com.android.tradefed.result.TestFailureEmailResultReporterTest;
 import com.android.tradefed.result.TestSummaryTest;
 import com.android.tradefed.result.XmlResultReporterTest;
+import com.android.tradefed.sandbox.SandboxConfigDumpTest;
+import com.android.tradefed.sandbox.SandboxConfigUtilTest;
+import com.android.tradefed.sandbox.TradefedSandboxTest;
+import com.android.tradefed.suite.checker.ActivityStatusCheckerTest;
 import com.android.tradefed.suite.checker.KeyguardStatusCheckerTest;
 import com.android.tradefed.suite.checker.SystemServerFileDescriptorCheckerTest;
 import com.android.tradefed.suite.checker.SystemServerStatusCheckerTest;
@@ -269,6 +278,7 @@ import org.junit.runners.Suite.SuiteClasses;
     OptionCopierTest.class,
     OptionSetterTest.class,
     OptionUpdateRuleTest.class,
+    SandboxConfigurationFactoryTest.class,
 
     // device
     BackgroundDeviceActionTest.class,
@@ -290,8 +300,13 @@ import org.junit.runners.Suite.SuiteClasses;
     WaitDeviceRecoveryTest.class,
     WifiHelperTest.class,
 
+    // device.metric
+    ScheduledDeviceMetricCollectorTest.class,
+    BaseDeviceMetricCollectorTest.class,
+
     // invoker
     InvocationContextTest.class,
+    ShardListenerTest.class,
     TestInvocationMultiTest.class,
     TestInvocationTest.class,
 
@@ -309,6 +324,7 @@ import org.junit.runners.Suite.SuiteClasses;
     // profiler subdirs
     AggregatingProfilerTest.class,
     MetricOutputDataTest.class,
+    NumericAggregateFunctionTest.class,
     TraceMetricsRecorderTest.class,
     TraceMetricTest.class,
     TraceParserTest.class,
@@ -362,7 +378,13 @@ import org.junit.runners.Suite.SuiteClasses;
     // targetprep.suite
     SuiteApkInstallerTest.class,
 
+    // sandbox
+    SandboxConfigDumpTest.class,
+    SandboxConfigUtilTest.class,
+    TradefedSandboxTest.class,
+
     // suite/checker
+    ActivityStatusCheckerTest.class,
     KeyguardStatusCheckerTest.class,
     SystemServerFileDescriptorCheckerTest.class,
     SystemServerStatusCheckerTest.class,

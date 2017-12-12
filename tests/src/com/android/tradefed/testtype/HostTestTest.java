@@ -37,10 +37,12 @@ import junit.framework.TestSuite;
 import org.easymock.Capture;
 import org.easymock.EasyMock;
 import org.junit.Before;
+import org.junit.BeforeClass;
 import org.junit.Ignore;
 import org.junit.Rule;
 import org.junit.runner.RunWith;
 import org.junit.runners.BlockJUnit4ClassRunner;
+import org.junit.runners.JUnit4;
 import org.junit.runners.Suite.SuiteClasses;
 import org.junit.runners.model.InitializationError;
 
@@ -636,17 +638,17 @@ public class HostTestTest extends TestCase {
         TestIdentifier test3 = new TestIdentifier(AnotherTestCase.class.getName(), "testPass3");
         TestIdentifier test4 = new TestIdentifier(AnotherTestCase.class.getName(), "testPass4");
         mListener.testRunStarted((String)EasyMock.anyObject(), EasyMock.eq(2));
-        EasyMock.expectLastCall().times(2);
         mListener.testStarted(EasyMock.eq(test1));
         mListener.testEnded(EasyMock.eq(test1), (Map<String, String>)EasyMock.anyObject());
         mListener.testStarted(EasyMock.eq(test2));
         mListener.testEnded(EasyMock.eq(test2), (Map<String, String>)EasyMock.anyObject());
+        mListener.testRunEnded(EasyMock.anyLong(), (Map<String, String>) EasyMock.anyObject());
+        mListener.testRunStarted((String) EasyMock.anyObject(), EasyMock.eq(2));
         mListener.testStarted(EasyMock.eq(test3));
         mListener.testEnded(EasyMock.eq(test3), (Map<String, String>)EasyMock.anyObject());
         mListener.testStarted(EasyMock.eq(test4));
         mListener.testEnded(EasyMock.eq(test4), (Map<String, String>)EasyMock.anyObject());
         mListener.testRunEnded(EasyMock.anyLong(), (Map<String, String>)EasyMock.anyObject());
-        EasyMock.expectLastCall().times(2);
         EasyMock.replay(mListener);
         mHostTest.run(mListener);
         EasyMock.verify(mListener);
@@ -1893,5 +1895,90 @@ public class HostTestTest extends TestCase {
             test.run(mListener);
         }
         EasyMock.verify(mListener, mMockDevice);
+    }
+
+    /** JUnit 4 class that throws within its @BeforeClass */
+    @RunWith(JUnit4.class)
+    public static class JUnit4FailedBeforeClass {
+        @BeforeClass
+        public static void beforeClass() {
+            throw new RuntimeException();
+        }
+
+        @org.junit.Test
+        public void test1() {}
+    }
+
+    /**
+     * Test that when an exception is thrown from within @BeforeClass, we correctly report a failure
+     * since we cannot run each individual test.
+     */
+    public void testRun_junit4ExceptionBeforeClass() throws Exception {
+        OptionSetter setter = new OptionSetter(mHostTest);
+        setter.setOptionValue("class", JUnit4FailedBeforeClass.class.getName());
+        setter.setOptionValue("class", Junit4TestClass.class.getName());
+        // First class fail with the run failure
+        mListener.testRunStarted(EasyMock.anyObject(), EasyMock.eq(1));
+        mListener.testRunFailed(EasyMock.contains("Failed with trace:"));
+        mListener.testRunEnded(EasyMock.anyLong(), EasyMock.anyObject());
+
+        // Second class run properly
+        mListener.testRunStarted(EasyMock.anyObject(), EasyMock.eq(2));
+        TestIdentifier tid2 = new TestIdentifier(Junit4TestClass.class.getName(), "testPass5");
+        mListener.testStarted(EasyMock.eq(tid2));
+        mListener.testEnded(EasyMock.eq(tid2), EasyMock.anyObject());
+        TestIdentifier tid3 = new TestIdentifier(Junit4TestClass.class.getName(), "testPass6");
+        mListener.testStarted(EasyMock.eq(tid3));
+        mListener.testEnded(EasyMock.eq(tid3), EasyMock.anyObject());
+        mListener.testRunEnded(EasyMock.anyLong(), EasyMock.anyObject());
+
+        EasyMock.replay(mListener);
+        assertEquals(3, mHostTest.countTestCases());
+        mHostTest.run(mListener);
+        EasyMock.verify(mListener);
+    }
+
+    /** JUnit4 class that throws within its @Before */
+    @RunWith(JUnit4.class)
+    public static class JUnit4FailedBefore {
+        @Before
+        public void before() {
+            throw new RuntimeException();
+        }
+
+        @org.junit.Test
+        public void test1() {}
+    }
+
+    /**
+     * Test that when an exception is thrown within @Before, the test are reported and failed with
+     * the exception.
+     */
+    public void testRun_junit4ExceptionBefore() throws Exception {
+        OptionSetter setter = new OptionSetter(mHostTest);
+        setter.setOptionValue("class", JUnit4FailedBefore.class.getName());
+        setter.setOptionValue("class", Junit4TestClass.class.getName());
+        // First class has a test failure because of the @Before
+        mListener.testRunStarted(EasyMock.anyObject(), EasyMock.eq(1));
+        TestIdentifier tid = new TestIdentifier(JUnit4FailedBefore.class.getName(), "test1");
+        mListener.testStarted(EasyMock.eq(tid));
+        mListener.testFailed(EasyMock.eq(tid), EasyMock.anyObject());
+        mListener.testEnded(EasyMock.eq(tid), EasyMock.anyObject());
+        mListener.testRunEnded(EasyMock.anyLong(), EasyMock.anyObject());
+
+        // Second class run properly
+        mListener.testRunStarted(EasyMock.anyObject(), EasyMock.eq(2));
+        TestIdentifier tid2 = new TestIdentifier(Junit4TestClass.class.getName(), "testPass5");
+        mListener.testStarted(EasyMock.eq(tid2));
+        mListener.testEnded(EasyMock.eq(tid2), EasyMock.anyObject());
+        TestIdentifier tid3 = new TestIdentifier(Junit4TestClass.class.getName(), "testPass6");
+        mListener.testStarted(EasyMock.eq(tid3));
+        mListener.testEnded(EasyMock.eq(tid3), EasyMock.anyObject());
+        mListener.testRunEnded(EasyMock.anyLong(), EasyMock.anyObject());
+
+        EasyMock.replay(mListener);
+        assertEquals(3, mHostTest.countTestCases());
+        mHostTest.run(mListener);
+        EasyMock.verify(mListener);
     }
 }
