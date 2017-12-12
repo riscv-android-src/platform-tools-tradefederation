@@ -649,8 +649,8 @@ public interface INativeDevice {
      *
      * <p>
      *
-     * @param date in epoch format of when to start the snapshot until present. (can be be obtained
-     *     using 'date +%s')
+     * @param date in millisecond since epoch format of when to start the snapshot until present.
+     *     (can be be obtained using 'date +%s')
      */
     @MustBeClosed
     public InputStreamSource getLogcatSince(long date);
@@ -994,8 +994,10 @@ public interface INativeDevice {
     public void setDate(Date date) throws DeviceNotAvailableException;
 
     /**
-     * Return the date of the device.
-     * <p/>
+     * Return the date of the device in millisecond since epoch.
+     *
+     * <p>
+     *
      * @return the date of the device in epoch format.
      * @throws DeviceNotAvailableException
      */
