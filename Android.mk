@@ -13,6 +13,8 @@
 # limitations under the License.
 
 LOCAL_PATH := $(call my-dir)
+COMPATIBILITY.tradefed_tests_dir := \
+  $(COMPATIBILITY.tradefed_tests_dir) $(LOCAL_PATH)/res/config $(LOCAL_PATH)/tests/res/config $(LOCAL_PATH)/prod-tests/res/config
 
 include $(CLEAR_VARS)
 # Module to compile protos for tradefed
