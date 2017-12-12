@@ -21,6 +21,7 @@ import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.build.IBuildProvider;
 import com.android.tradefed.command.CommandOptions;
 import com.android.tradefed.command.CommandRunner.ExitCode;
+import com.android.tradefed.config.ConfigurationDescriptor;
 import com.android.tradefed.config.DeviceConfigurationHolder;
 import com.android.tradefed.config.IConfiguration;
 import com.android.tradefed.device.ITestDevice;
@@ -54,6 +55,7 @@ public class TestInvocationMultiTest {
     private ILogSaver mMockLogSaver;
     private ILeveledLogOutput mMockLogger;
     private ILogRegistry mMockLogRegistry;
+    private ConfigurationDescriptor mConfigDesc;
 
     private ITestDevice mDevice1;
     private ITestDevice mDevice2;
@@ -69,6 +71,7 @@ public class TestInvocationMultiTest {
         mMockLogSaver = EasyMock.createMock(ILogSaver.class);
         mMockLogger = EasyMock.createMock(ILeveledLogOutput.class);
         mMockLogRegistry = EasyMock.createMock(ILogRegistry.class);
+        mConfigDesc = new ConfigurationDescriptor();
         mInvocation =
                 new TestInvocation() {
                     @Override
@@ -130,6 +133,7 @@ public class TestInvocationMultiTest {
         EasyMock.expect(mMockConfig.getProfiler()).andReturn(null);
         EasyMock.expect(mMockConfig.getLogSaver()).andReturn(mMockLogSaver);
         EasyMock.expect(mMockConfig.getLogOutput()).andReturn(mMockLogger).times(4);
+        EasyMock.expect(mMockConfig.getConfigurationDescription()).andReturn(mConfigDesc);
         mMockLogger.init();
         mMockLogger.closeLog();
 
@@ -185,6 +189,7 @@ public class TestInvocationMultiTest {
         EasyMock.expect(mMockConfig.getProfiler()).andReturn(null);
         EasyMock.expect(mMockConfig.getLogSaver()).andReturn(mMockLogSaver);
         EasyMock.expect(mMockConfig.getLogOutput()).andStubReturn(mMockLogger);
+        EasyMock.expect(mMockConfig.getConfigurationDescription()).andReturn(mConfigDesc);
         mMockLogger.init();
         EasyMock.expect(mMockLogger.getLog())
                 .andReturn(new ByteArrayInputStreamSource("fake".getBytes()));
@@ -263,6 +268,7 @@ public class TestInvocationMultiTest {
         EasyMock.expect(mMockConfig.getProfiler()).andReturn(null);
         EasyMock.expect(mMockConfig.getLogSaver()).andReturn(mMockLogSaver);
         EasyMock.expect(mMockConfig.getLogOutput()).andStubReturn(mMockLogger);
+        EasyMock.expect(mMockConfig.getConfigurationDescription()).andReturn(mConfigDesc);
         mMockLogger.init();
         EasyMock.expect(mMockLogger.getLog())
                 .andReturn(new ByteArrayInputStreamSource("fake".getBytes()));

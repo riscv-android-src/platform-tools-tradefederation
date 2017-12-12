@@ -32,7 +32,7 @@ LOCAL_SRC_FILES := $(call all-java-files-under, src)
 LOCAL_JAVA_RESOURCE_DIRS := res
 
 LOCAL_JAVACFLAGS += -g -Xlint
-ifeq ($(EXPERIMENTAL_USE_OPENJDK9),true)
+ifdef TARGET_OPENJDK9
 LOCAL_JAVACFLAGS += --add-modules=java.xml.bind
 endif
 
