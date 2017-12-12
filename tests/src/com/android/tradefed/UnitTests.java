@@ -169,6 +169,7 @@ import com.android.tradefed.testtype.PythonUnitTestResultParserTest;
 import com.android.tradefed.testtype.PythonUnitTestRunnerTest;
 import com.android.tradefed.testtype.TfTestLauncherTest;
 import com.android.tradefed.testtype.VersionedTfLauncherTest;
+import com.android.tradefed.testtype.host.CoverageMeasurementForwarderTest;
 import com.android.tradefed.testtype.junit4.BaseHostJUnit4TestTest;
 import com.android.tradefed.testtype.python.PythonBinaryHostTestTest;
 import com.android.tradefed.testtype.suite.AtestRunnerTest;
@@ -414,6 +415,7 @@ import org.junit.runners.Suite.SuiteClasses;
     AndroidJUnitTestTest.class,
     CodeCoverageListenerTest.class,
     CodeCoverageTestBaseTest.class,
+    CoverageMeasurementForwarderTest.class,
     DeviceBatteryLevelCheckerTest.class,
     DeviceSuiteTest.class,
     DeviceTestCaseTest.class,
