@@ -41,6 +41,8 @@ import com.android.tradefed.util.FileUtil;
 import com.android.tradefed.util.IRunUtil;
 import com.android.tradefed.util.StreamUtil;
 
+import com.google.common.util.concurrent.SettableFuture;
+
 import junit.framework.TestCase;
 
 import org.easymock.EasyMock;
@@ -776,7 +778,7 @@ public class NativeDeviceTest extends TestCase {
                 return "21692641\n";
             }
         };
-        assertEquals(21692641, mTestDevice.getDeviceDate());
+        assertEquals(21692641000L, mTestDevice.getDeviceDate());
     }
 
     /**
@@ -1590,12 +1592,13 @@ public class NativeDeviceTest extends TestCase {
      * Test that {@link NativeDevice#getDeviceTimeOffset(Date)} returns the proper offset forward
      */
     public void testGetDeviceTimeOffset() throws DeviceNotAvailableException {
-        mTestDevice = new TestableAndroidNativeDevice() {
-            @Override
-            public long getDeviceDate() throws DeviceNotAvailableException {
-                return 1476958881L;
-            }
-        };
+        mTestDevice =
+                new TestableAndroidNativeDevice() {
+                    @Override
+                    public long getDeviceDate() throws DeviceNotAvailableException {
+                        return 1476958881000L;
+                    }
+                };
         Date date = new Date(1476958891000L);
         assertEquals(10000L, mTestDevice.getDeviceTimeOffset(date));
     }
@@ -1605,13 +1608,14 @@ public class NativeDeviceTest extends TestCase {
      * there is delay.
      */
     public void testGetDeviceTimeOffset_delay() throws DeviceNotAvailableException {
-        mTestDevice = new TestableAndroidNativeDevice() {
-            @Override
-            public long getDeviceDate() throws DeviceNotAvailableException {
-                // DeviceDate is in second
-                return 1476958891L;
-            }
-        };
+        mTestDevice =
+                new TestableAndroidNativeDevice() {
+                    @Override
+                    public long getDeviceDate() throws DeviceNotAvailableException {
+                        // DeviceDate is in second
+                        return 1476958891000L;
+                    }
+                };
         // Date takes millisecond since Epoch
         Date date = new Date(1476958881000L);
         assertEquals(-10000L, mTestDevice.getDeviceTimeOffset(date));
@@ -1960,5 +1964,22 @@ public class NativeDeviceTest extends TestCase {
         EasyMock.replay(mMockIDevice, mMockStateMonitor, mMockDvcMonitor);
         assertNull(mTestDevice.getSimOperator());
         EasyMock.verify(mMockIDevice, mMockStateMonitor, mMockDvcMonitor);
+    }
+
+    /**
+     * Test that when a {@link NativeDevice#getLogcatSince(long)} is requested a matching logcat
+     * command is generated.
+     */
+    public void testGetLogcatSince() throws Exception {
+        long date = 1512990942000L; // 2017-12-11 03:15:42.015
+        EasyMock.expect(mMockIDevice.getState()).andReturn(DeviceState.ONLINE);
+        SettableFuture<String> value = SettableFuture.create();
+        value.set("23");
+        EasyMock.expect(mMockIDevice.getSystemProperty("ro.build.version.sdk")).andReturn(value);
+        mMockIDevice.executeShellCommand(
+                EasyMock.eq("logcat -v threadtime -t '12-11 03:15:42.015'"), EasyMock.anyObject());
+        EasyMock.replay(mMockIDevice);
+        mTestDevice.getLogcatSince(date);
+        EasyMock.verify(mMockIDevice);
     }
 }
