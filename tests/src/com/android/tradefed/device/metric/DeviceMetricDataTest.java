@@ -15,98 +15,90 @@
  */
 package com.android.tradefed.device.metric;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
 
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.UUID;
-import java.util.concurrent.Callable;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.Future;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNull;
+import static org.mockito.Mockito.mock;
+
+import com.android.tradefed.device.ITestDevice;
+import com.android.tradefed.invoker.IInvocationContext;
+import com.android.tradefed.invoker.InvocationContext;
+
+import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
 
-/** Unit test for {@link DeviceMetricData} * */
+import java.util.HashMap;
+import java.util.Map;
+
+/** Unit tests for {@link DeviceMetricData}. */
 @RunWith(JUnit4.class)
 public class DeviceMetricDataTest {
+    private DeviceMetricData mData;
+    private IInvocationContext mContext;
+    private ITestDevice mDevice1;
 
+    @Before
+    public void setUp() {
+        mContext = new InvocationContext();
+        mDevice1 = mock(ITestDevice.class);
+        mContext.addAllocatedDevice("device1", mDevice1);
+        mData = new DeviceMetricData(mContext);
+    }
+
+    /**
+     * Test that when adding metrics, if only a single device is available the metrics are left
+     * untouched.
+     */
     @Test
-    public void testAddStringMetric_success() {
-        DeviceMetricData deviceMetricData = new DeviceMetricData();
-        deviceMetricData.addStringMetric("key", "value");
-
-        Map<String, String> actualData = new HashMap<>();
-        deviceMetricData.addToMetrics(actualData);
-
-        assertEquals(1, actualData.size());
-        assertTrue(actualData.containsKey("key"));
-        assertEquals(actualData.get("key"), "value");
+    public void testSingleDeviceAdd() {
+        mData.addStringMetric("test", "testValue");
+        Map<String, String> resMetrics = new HashMap<>();
+        mData.addToMetrics(resMetrics);
+        assertEquals("testValue", resMetrics.get("test"));
     }
 
-    @Test(expected = NullPointerException.class)
-    public void testAddToMetrics_Fail() {
-        DeviceMetricData deviceMetricData = new DeviceMetricData();
-        deviceMetricData.addStringMetric("key", "value");
-
-        // Let the asked data to remain null which should cause the Preconditions check to fail.
-        Map<String, String> actualData = null;
-        deviceMetricData.addToMetrics(actualData);
-    }
-
+    /**
+     * Test that when adding metrics, if the device is specified but there is only one device, we do
+     * not modify the key to be unique.
+     */
     @Test
-    public void testAddToMetricsMultiThreaded_success()
-            throws InterruptedException, ExecutionException {
-        // Incrementing threadCounts in steps and then testing makes sure that there is no
-        // flakyness, sticking to one value of threadCount will cause flakyness.
-        for (int threadCount = 10; threadCount <= 200; threadCount += 10) {
-            testAddToMetricsMultiThreaded(threadCount);
-        }
+    public void testSingleDeviceAddToDevice() {
+        mData.addStringMetricForDevice(mDevice1, "test", "testValue");
+        Map<String, String> resMetrics = new HashMap<>();
+        mData.addToMetrics(resMetrics);
+        assertEquals("testValue", resMetrics.get("test"));
     }
 
-    private void testAddToMetricsMultiThreaded(int threadCount)
-            throws InterruptedException, ExecutionException {
-        // Create the object to test.
-        DeviceMetricData deviceMetricData = new DeviceMetricData();
+    /**
+     * Test that when adding metrics, if multiple devices are available, the metrics are associated
+     * with the first device by default.
+     */
+    @Test
+    public void testMultiDeviceAdd() {
+        mContext.addAllocatedDevice("device2", mock(ITestDevice.class));
+        mData.addStringMetric("test", "testValue");
+        Map<String, String> resMetrics = new HashMap<>();
+        mData.addToMetrics(resMetrics);
+        assertNull(resMetrics.get("test"));
+        // Metric key was associated with the device name.
+        assertEquals("testValue", resMetrics.get("{device1}:test"));
+    }
 
-        // Create a callable wrapper of DeviceMetricData#addStringMetric and
-        // DeviceMetricData#addToMetrics which will add a metric and then try to retrieve it.
-        Callable<Map<String, String>> task =
-                new Callable<Map<String, String>>() {
-
-                    @Override
-                    public Map<String, String> call() throws Exception {
-                        deviceMetricData.addStringMetric(UUID.randomUUID().toString(), "value");
-                        Map<String, String> data = new HashMap<>();
-                        deviceMetricData.addToMetrics(data);
-                        return data;
-                    }
-                };
-        // Create a copy of this callable for every thread.
-        List<Callable<Map<String, String>>> tasks = Collections.nCopies(threadCount, task);
-
-        // Create a thread pool to execute the tasks.
-        ExecutorService executorService = Executors.newFixedThreadPool(threadCount);
-
-        // Invoke the tasks. The call to ExecutorService#invokeAll blocks until all the threads are
-        // done.
-        List<Future<Map<String, String>>> futures = executorService.invokeAll(tasks);
-
-        // Store the results from all the tasks in a common data structure.
-        Map<String, String> metricsData = new HashMap<String, String>(futures.size());
-        for (Future<Map<String, String>> future : futures) {
-            metricsData.putAll(future.get());
-        }
-
-        // assert that the number of metrics out is equal to number of metrics in.
-        assertEquals(threadCount, metricsData.size());
-
-        // discard all the threads.
-        executorService.shutdownNow();
+    /**
+     * Test that when adding metrics, if multiple devices are available, metric is associated with
+     * the requested device.
+     */
+    @Test
+    public void testMultiDeviceAdd_forDevice() {
+        ITestDevice device2 = mock(ITestDevice.class);
+        mContext.addAllocatedDevice("device2", device2);
+        mData.addStringMetricForDevice(device2, "test", "testValue");
+        Map<String, String> resMetrics = new HashMap<>();
+        mData.addToMetrics(resMetrics);
+        assertNull(resMetrics.get("test"));
+        // Metric key was associated with the device name.
+        assertEquals("testValue", resMetrics.get("{device2}:test"));
     }
 }
