@@ -16,8 +16,8 @@
 package com.android.tradefed.testtype;
 
 import com.android.ddmlib.MultiLineReceiver;
-import com.android.ddmlib.testrunner.ITestRunListener;
 import com.android.ddmlib.testrunner.TestIdentifier;
+import com.android.tradefed.result.ITestInvocationListener;
 
 import java.util.Collection;
 import java.util.Collections;
@@ -28,85 +28,58 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /**
- * Interprets the output of tests run with Python's unittest framework and translates it into
- * calls on a series of {@link ITestRunListener}s. Output from these tests follows this
- * EBNF grammar:
+ * Interprets the output of tests run with Python's unittest framework and translates it into calls
+ * on a series of {@link ITestInvocationListener}s. Output from these tests follows this EBNF
+ * grammar:
  *
- * TestReport   ::= TestResult* Line TimeMetric [FailMessage*] Status.
- * TestResult   ::= string “(“string”)” “…” SingleStatus.
- * FailMessage  ::= EqLine “ERROR:” string “(“string”)” Line Traceback Line.
- * SingleStatus ::= “ok” | “ERROR”.
- * TimeMetric   ::= “Ran” integer “tests in” float ”s”.
- * Status       ::= “OK” | “FAILED (errors=” int “)”.
- * Traceback    ::= string+.
+ * <p>TestReport ::= TestResult* Line TimeMetric [FailMessage*] Status. TestResult ::= string
+ * “(“string”)” “…” SingleStatus. FailMessage ::= EqLine “ERROR:” string “(“string”)” Line Traceback
+ * Line. SingleStatus ::= “ok” | “ERROR”. TimeMetric ::= “Ran” integer “tests in” float ”s”. Status
+ * ::= “OK” | “FAILED (errors=” int “)”. Traceback ::= string+.
  *
- * Example output (passing):
- * test_size (test_rangelib.RangeSetTest) ... ok
- * test_str (test_rangelib.RangeSetTest) ... ok
- * test_subtract (test_rangelib.RangeSetTest) ... ok
- * test_to_string_raw (test_rangelib.RangeSetTest) ... ok
- * test_union (test_rangelib.RangeSetTest) ... ok
+ * <p>Example output (passing): test_size (test_rangelib.RangeSetTest) ... ok test_str
+ * (test_rangelib.RangeSetTest) ... ok test_subtract (test_rangelib.RangeSetTest) ... ok
+ * test_to_string_raw (test_rangelib.RangeSetTest) ... ok test_union (test_rangelib.RangeSetTest)
+ * ... ok
  *
- * ----------------------------------------------------------------------
- * Ran 5 tests in 0.002s
+ * <p>---------------------------------------------------------------------- Ran 5 tests in 0.002s
  *
- * OK
+ * <p>OK
  *
- * Example output (failed)
- * test_size (test_rangelib.RangeSetTest) ... ERROR
+ * <p>Example output (failed) test_size (test_rangelib.RangeSetTest) ... ERROR
  *
- * ======================================================================
- * ERROR: test_size (test_rangelib.RangeSetTest)
- * ----------------------------------------------------------------------
- * Traceback (most recent call last):
- *     File "test_rangelib.py", line 129, in test_rangelib
- *         raise ValueError()
- *     ValueError
- * ----------------------------------------------------------------------
- * Ran 1 test in 0.001s
+ * <p>====================================================================== ERROR: test_size
+ * (test_rangelib.RangeSetTest)
+ * ---------------------------------------------------------------------- Traceback (most recent
+ * call last): File "test_rangelib.py", line 129, in test_rangelib raise ValueError() ValueError
+ * ---------------------------------------------------------------------- Ran 1 test in 0.001s
  * FAILED (errors=1)
  *
- * Example output with several edge cases (failed):
- * testError (foo.testFoo) ... ERROR
- * testExpectedFailure (foo.testFoo) ... expected failure
- * testFail (foo.testFoo) ... FAIL
- * testFailWithDocString (foo.testFoo)
- * foo bar ... FAIL
- * testOk (foo.testFoo) ... ok
- * testOkWithDocString (foo.testFoo)
- * foo bar ... ok
- * testSkipped (foo.testFoo) ... skipped 'reason foo'
- * testUnexpectedSuccess (foo.testFoo) ... unexpected success
+ * <p>Example output with several edge cases (failed): testError (foo.testFoo) ... ERROR
+ * testExpectedFailure (foo.testFoo) ... expected failure testFail (foo.testFoo) ... FAIL
+ * testFailWithDocString (foo.testFoo) foo bar ... FAIL testOk (foo.testFoo) ... ok
+ * testOkWithDocString (foo.testFoo) foo bar ... ok testSkipped (foo.testFoo) ... skipped 'reason
+ * foo' testUnexpectedSuccess (foo.testFoo) ... unexpected success
  *
- * ======================================================================
- * ERROR: testError (foo.testFoo)
- * ----------------------------------------------------------------------
- * Traceback (most recent call last):
- * File "foo.py", line 11, in testError
- * self.assertEqual(2+2, 5/0)
+ * <p>====================================================================== ERROR: testError
+ * (foo.testFoo) ---------------------------------------------------------------------- Traceback
+ * (most recent call last): File "foo.py", line 11, in testError self.assertEqual(2+2, 5/0)
  * ZeroDivisionError: integer division or modulo by zero
  *
- * ======================================================================
- * FAIL: testFail (foo.testFoo)
- * ----------------------------------------------------------------------
- * Traceback (most recent call last):
- * File "foo.py", line 8, in testFail
- * self.assertEqual(2+2, 5)
+ * <p>====================================================================== FAIL: testFail
+ * (foo.testFoo) ---------------------------------------------------------------------- Traceback
+ * (most recent call last): File "foo.py", line 8, in testFail self.assertEqual(2+2, 5)
  * AssertionError: 4 != 5
  *
- * ======================================================================
- * FAIL: testFailWithDocString (foo.testFoo)
- * foo bar
- * ----------------------------------------------------------------------
- * Traceback (most recent call last):
- * File "foo.py", line 31, in testFailWithDocString
- * self.assertEqual(2+2, 5)
+ * <p>====================================================================== FAIL:
+ * testFailWithDocString (foo.testFoo) foo bar
+ * ---------------------------------------------------------------------- Traceback (most recent
+ * call last): File "foo.py", line 31, in testFailWithDocString self.assertEqual(2+2, 5)
  * AssertionError: 4 != 5
  *
- * ----------------------------------------------------------------------
- * Ran 8 tests in 0.001s
+ * <p>---------------------------------------------------------------------- Ran 8 tests in 0.001s
  *
- * FAILED (failures=2, errors=1, skipped=1, expected failures=1, unexpected successes=1)
+ * <p>FAILED (failures=2, errors=1, skipped=1, expected failures=1, unexpected successes=1)
  */
 public class PythonUnitTestResultParser extends MultiLineReceiver {
 
@@ -122,7 +95,7 @@ public class PythonUnitTestResultParser extends MultiLineReceiver {
     private int mFailedTestCount;
 
     // General state
-    private final Collection<ITestRunListener> mListeners;
+    private final Collection<ITestInvocationListener> mListeners;
     private final String mRunName;
     private Map<TestIdentifier, String> mTestResultCache;
     // Use a special entry to mark skipped test in mTestResultCache
@@ -172,9 +145,10 @@ public class PythonUnitTestResultParser extends MultiLineReceiver {
 
     /**
      * Create a new {@link PythonUnitTestResultParser} that reports to the given {@link
-     * ITestRunListener}s.
+     * ITestInvocationListener}s.
      */
-    public PythonUnitTestResultParser(Collection<ITestRunListener> listeners, String runName) {
+    public PythonUnitTestResultParser(
+            Collection<ITestInvocationListener> listeners, String runName) {
         mListeners = listeners;
         mRunName = runName;
         mTestResultCache = new HashMap<>();
@@ -250,7 +224,7 @@ public class PythonUnitTestResultParser extends MultiLineReceiver {
     }
 
     /** Process a fail message line and collect the test name, class, and status. */
-    void processFailMessage(String line) throws PythonUnitTestParseException {
+    void processFailMessage(String line) {
         if (isDashLine(line)) {
             // dash line before traceback
             mCurrentParseState = ParserState.TRACEBACK;
@@ -264,7 +238,7 @@ public class PythonUnitTestResultParser extends MultiLineReceiver {
     }
 
     /** Process a traceback line and append it to the full traceback message. */
-    void processTraceback(String line) throws PythonUnitTestParseException {
+    void processTraceback(String line) {
         if (isDashLine(line)) {
             // dash line before run summary
             mCurrentParseState = ParserState.SUMMARY;
@@ -282,7 +256,7 @@ public class PythonUnitTestResultParser extends MultiLineReceiver {
     }
 
     /** Process the run summary line and collect the test count and run time. */
-    void processRunSummary(String line) throws PythonUnitTestParseException {
+    void processRunSummary(String line) {
         if (lineMatchesPattern(line, PATTERN_RUN_SUMMARY)) {
             mTotalTestCount = Integer.parseInt(mCurrentMatcher.group(1));
             double timeInSeconds = Double.parseDouble(mCurrentMatcher.group(2));
@@ -313,9 +287,9 @@ public class PythonUnitTestResultParser extends MultiLineReceiver {
     }
 
     /** Send recorded test results to all listeners. */
-    private void reportToListeners() throws PythonUnitTestParseException {
+    private void reportToListeners() {
         String failReason = String.format("Failed %d tests", mFailedTestCount);
-        for (ITestRunListener listener : mListeners) {
+        for (ITestInvocationListener listener : mListeners) {
             listener.testRunStarted(mRunName, mTotalTestCount);
 
             for (Entry<TestIdentifier, String> test : mTestResultCache.entrySet()) {

@@ -15,12 +15,12 @@
  */
 package com.android.tradefed.testtype;
 
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertEquals;
 
-import com.android.ddmlib.testrunner.ITestRunListener;
 import com.android.ddmlib.testrunner.TestIdentifier;
 import com.android.tradefed.device.CollectingOutputReceiver;
 import com.android.tradefed.log.LogUtil.CLog;
+import com.android.tradefed.result.ITestInvocationListener;
 
 import org.easymock.EasyMock;
 import org.json.JSONException;
@@ -80,8 +80,8 @@ public class GoogleBenchmarkResultParserTest {
     /** Tests the parser for a simple test output for 2 tests. */
     @Test
     public void testParseSimpleFile() throws Exception {
-        ITestRunListener mMockInvocationListener =
-                EasyMock.createMock(ITestRunListener.class);
+        ITestInvocationListener mMockInvocationListener =
+                EasyMock.createMock(ITestInvocationListener.class);
         mMockInvocationListener.testStarted((TestIdentifier)EasyMock.anyObject());
         EasyMock.expectLastCall().times(3);
         Map<String, String> test1 = new HashMap<String, String>();
@@ -126,8 +126,8 @@ public class GoogleBenchmarkResultParserTest {
     /** Tests the parser for a two simple test with different keys on the second test. */
     @Test
     public void testParseSimpleFile_twoTests() throws Exception {
-        ITestRunListener mMockInvocationListener =
-                EasyMock.createMock(ITestRunListener.class);
+        ITestInvocationListener mMockInvocationListener =
+                EasyMock.createMock(ITestInvocationListener.class);
         mMockInvocationListener.testStarted((TestIdentifier)EasyMock.anyObject());
         EasyMock.expectLastCall().times(2);
         Map<String, String> test1 = new HashMap<String, String>();
@@ -152,8 +152,8 @@ public class GoogleBenchmarkResultParserTest {
      */
     @Test
     public void testParse_contextError() throws Exception {
-        ITestRunListener mMockInvocationListener =
-                EasyMock.createMock(ITestRunListener.class);
+        ITestInvocationListener mMockInvocationListener =
+                EasyMock.createMock(ITestInvocationListener.class);
         mMockInvocationListener.testRunFailed((String)EasyMock.anyObject());
         EasyMock.replay(mMockInvocationListener);
         CollectingOutputReceiver contents =  readInFile(GBENCH_OUTPUT_FILE_3);
@@ -166,8 +166,8 @@ public class GoogleBenchmarkResultParserTest {
     /** Tests the parser with an error: context is fine but no benchmark results */
     @Test
     public void testParse_noBenchmarkResults() throws Exception {
-        ITestRunListener mMockInvocationListener =
-                EasyMock.createMock(ITestRunListener.class);
+        ITestInvocationListener mMockInvocationListener =
+                EasyMock.createMock(ITestInvocationListener.class);
         mMockInvocationListener.testRunFailed((String)EasyMock.anyObject());
         EasyMock.replay(mMockInvocationListener);
         CollectingOutputReceiver contents =  readInFile(GBENCH_OUTPUT_FILE_4);
@@ -180,8 +180,8 @@ public class GoogleBenchmarkResultParserTest {
     /** Test for {@link GoogleBenchmarkResultParser#parseJsonToMap(JSONObject)} */
     @Test
     public void testJsonParse() throws JSONException {
-        ITestRunListener mMockInvocationListener =
-                EasyMock.createMock(ITestRunListener.class);
+        ITestInvocationListener mMockInvocationListener =
+                EasyMock.createMock(ITestInvocationListener.class);
         String jsonTest = "{ \"key1\": \"value1\", \"key2\": 2, \"key3\": [\"one\", \"two\"]}";
         JSONObject test = new JSONObject(jsonTest);
         GoogleBenchmarkResultParser resultParser =
@@ -198,7 +198,8 @@ public class GoogleBenchmarkResultParserTest {
      */
     @Test
     public void testParseSimpleFile_withWarning() throws Exception {
-        ITestRunListener mMockInvocationListener = EasyMock.createMock(ITestRunListener.class);
+        ITestInvocationListener mMockInvocationListener =
+                EasyMock.createMock(ITestInvocationListener.class);
         mMockInvocationListener.testStarted((TestIdentifier) EasyMock.anyObject());
         Map<String, String> test1 = new HashMap<String, String>();
         test1.put("cpu_time", "19361");

@@ -15,8 +15,8 @@
  */
 package com.android.tradefed.testtype;
 
-import com.android.ddmlib.testrunner.ITestRunListener;
 import com.android.ddmlib.testrunner.TestIdentifier;
+import com.android.tradefed.result.ITestInvocationListener;
 
 import org.easymock.EasyMock;
 
@@ -35,7 +35,8 @@ public class GTestResultParserTest extends GTestParserTestBase {
     @SuppressWarnings("unchecked")
     public void testParseSimpleFile() throws Exception {
         String[] contents =  readInFile(GTEST_OUTPUT_FILE_1);
-        ITestRunListener mockRunListener = EasyMock.createMock(ITestRunListener.class);
+        ITestInvocationListener mockRunListener =
+                EasyMock.createMock(ITestInvocationListener.class);
         mockRunListener.testRunStarted(TEST_MODULE_NAME, 11);
         // 11 passing test cases in this run
         for (int i=0; i<11; ++i) {
@@ -59,7 +60,8 @@ public class GTestResultParserTest extends GTestParserTestBase {
     @SuppressWarnings("unchecked")
     public void testParseSimpleFileNoTimes() throws Exception {
         String[] contents =  readInFile(GTEST_OUTPUT_FILE_2);
-        ITestRunListener mockRunListener = EasyMock.createMock(ITestRunListener.class);
+        ITestInvocationListener mockRunListener =
+                EasyMock.createMock(ITestInvocationListener.class);
         mockRunListener.testRunStarted(TEST_MODULE_NAME, 53);
         // 53 passing test cases in this run
         for (int i=0; i<53; ++i) {
@@ -83,7 +85,8 @@ public class GTestResultParserTest extends GTestParserTestBase {
     public void testParseNoTests() throws Exception {
         String[] contents =  readInFile(GTEST_OUTPUT_FILE_3);
         Map<String, String> expected = new HashMap<>();
-        ITestRunListener mockRunListener = EasyMock.createMock(ITestRunListener.class);
+        ITestInvocationListener mockRunListener =
+                EasyMock.createMock(ITestInvocationListener.class);
         mockRunListener.testRunStarted(TEST_MODULE_NAME, 0);
         mockRunListener.testRunEnded(EasyMock.anyLong(), EasyMock.eq(expected));
         EasyMock.replay(mockRunListener);
@@ -99,7 +102,8 @@ public class GTestResultParserTest extends GTestParserTestBase {
     @SuppressWarnings("unchecked")
     public void testParseLargerFile() throws Exception {
         String[] contents =  readInFile(GTEST_OUTPUT_FILE_4);
-        ITestRunListener mockRunListener = EasyMock.createMock(ITestRunListener.class);
+        ITestInvocationListener mockRunListener =
+                EasyMock.createMock(ITestInvocationListener.class);
         mockRunListener.testRunStarted(TEST_MODULE_NAME, 268);
         // 268 passing test cases in this run
         for (int i=0; i<268; ++i) {
@@ -125,7 +129,8 @@ public class GTestResultParserTest extends GTestParserTestBase {
         String MESSAGE_OUTPUT =
                 "This is some random text that should get captured by the parser.";
         String[] contents =  readInFile(GTEST_OUTPUT_FILE_5);
-        ITestRunListener mockRunListener = EasyMock.createMock(ITestRunListener.class);
+        ITestInvocationListener mockRunListener =
+                EasyMock.createMock(ITestInvocationListener.class);
         // 13 test cases in this run
         mockRunListener.testRunStarted(TEST_MODULE_NAME, 13);
         mockRunListener.testStarted((TestIdentifier)EasyMock.anyObject());
@@ -179,7 +184,8 @@ public class GTestResultParserTest extends GTestParserTestBase {
     @SuppressWarnings("unchecked")
     public void testParseWithErrors() throws Exception {
         String[] contents =  readInFile(GTEST_OUTPUT_FILE_6);
-        ITestRunListener mockRunListener = EasyMock.createMock(ITestRunListener.class);
+        ITestInvocationListener mockRunListener =
+                EasyMock.createMock(ITestInvocationListener.class);
         // 10 test cases in this run
         mockRunListener.testRunStarted(TEST_MODULE_NAME, 10);
         mockRunListener.testStarted((TestIdentifier)EasyMock.anyObject());
@@ -226,7 +232,8 @@ public class GTestResultParserTest extends GTestParserTestBase {
     @SuppressWarnings("unchecked")
     public void testParseNonAlignedTag() throws Exception {
         String[] contents =  readInFile(GTEST_OUTPUT_FILE_7);
-        ITestRunListener mockRunListener = EasyMock.createMock(ITestRunListener.class);
+        ITestInvocationListener mockRunListener =
+                EasyMock.createMock(ITestInvocationListener.class);
         mockRunListener.testRunStarted(TEST_MODULE_NAME, 11);
         // 11 passing test cases in this run
         for (int i=0; i<11; ++i) {
@@ -250,7 +257,8 @@ public class GTestResultParserTest extends GTestParserTestBase {
     @SuppressWarnings("unchecked")
     public void testParseSimpleFile_AltFormat() throws Exception {
         String[] contents =  readInFile(GTEST_OUTPUT_FILE_8);
-        ITestRunListener mockRunListener = EasyMock.createMock(ITestRunListener.class);
+        ITestInvocationListener mockRunListener =
+                EasyMock.createMock(ITestInvocationListener.class);
         mockRunListener.testRunStarted(TEST_MODULE_NAME, 18);
         // 14 passing tests
         for (int i=0; i<14; ++i) {
@@ -292,7 +300,8 @@ public class GTestResultParserTest extends GTestParserTestBase {
     /** Tests the parser for a simple test run output with a link error. */
     public void testParseSimpleFile_LinkError() throws Exception {
         String[] contents = readInFile(GTEST_OUTPUT_FILE_9);
-        ITestRunListener mockRunListener = EasyMock.createMock(ITestRunListener.class);
+        ITestInvocationListener mockRunListener =
+                EasyMock.createMock(ITestInvocationListener.class);
         mockRunListener.testRunStarted(TEST_MODULE_NAME, 0);
         mockRunListener.testRunFailed(
                 "CANNOT LINK EXECUTABLE \"/data/installd_cache_test\": "

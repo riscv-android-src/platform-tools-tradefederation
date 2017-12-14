@@ -15,10 +15,10 @@
  */
 package com.android.tradefed.testtype;
 
-import com.android.ddmlib.testrunner.ITestRunListener;
 import com.android.ddmlib.testrunner.TestIdentifier;
 import com.android.tradefed.device.CollectingOutputReceiver;
 import com.android.tradefed.log.LogUtil.CLog;
+import com.android.tradefed.result.ITestInvocationListener;
 
 import org.json.JSONArray;
 import org.json.JSONException;
@@ -35,9 +35,9 @@ import java.util.Map;
 public class GoogleBenchmarkResultParser {
 
     private String mTestClassName;
-    private final ITestRunListener mTestListener;
+    private final ITestInvocationListener mTestListener;
 
-    public GoogleBenchmarkResultParser(String testClassName, ITestRunListener listener) {
+    public GoogleBenchmarkResultParser(String testClassName, ITestInvocationListener listener) {
         mTestClassName = testClassName;
         mTestListener = listener;
     }

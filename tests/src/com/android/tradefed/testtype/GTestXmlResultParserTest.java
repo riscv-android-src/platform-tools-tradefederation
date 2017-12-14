@@ -15,10 +15,10 @@
  */
 package com.android.tradefed.testtype;
 
-import com.android.ddmlib.testrunner.ITestRunListener;
 import com.android.ddmlib.testrunner.TestIdentifier;
 import com.android.tradefed.device.CollectingOutputReceiver;
 import com.android.tradefed.log.LogUtil.CLog;
+import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.util.FileUtil;
 
 import junit.framework.TestCase;
@@ -76,7 +76,8 @@ public class GTestXmlResultParserTest extends TestCase {
     public void testParseSimpleFile() throws Exception {
         File contents =  readInFile(GTEST_OUTPUT_FILE_1);
         try {
-            ITestRunListener mockRunListener = EasyMock.createMock(ITestRunListener.class);
+            ITestInvocationListener mockRunListener =
+                    EasyMock.createMock(ITestInvocationListener.class);
             mockRunListener.testRunStarted(TEST_MODULE_NAME, 6);
             // 6 passing test cases in this run
             for (int i=0; i<6; ++i) {
@@ -103,7 +104,8 @@ public class GTestXmlResultParserTest extends TestCase {
     public void testParseLargerFile() throws Exception {
         File contents =  readInFile(GTEST_OUTPUT_FILE_2);
         try {
-            ITestRunListener mockRunListener = EasyMock.createMock(ITestRunListener.class);
+            ITestInvocationListener mockRunListener =
+                    EasyMock.createMock(ITestInvocationListener.class);
             mockRunListener.testRunStarted(TEST_MODULE_NAME, 84);
             // 84 passing test cases in this run
             for (int i=0; i<84; ++i) {
@@ -132,7 +134,8 @@ public class GTestXmlResultParserTest extends TestCase {
 
         File contents =  readInFile(GTEST_OUTPUT_FILE_3);
         try {
-            ITestRunListener mockRunListener = EasyMock.createMock(ITestRunListener.class);
+            ITestInvocationListener mockRunListener =
+                    EasyMock.createMock(ITestInvocationListener.class);
             mockRunListener.testRunStarted(TEST_MODULE_NAME, 7);
             // 6 passing test cases in this run
             for (int i=0; i<6; ++i) {
@@ -167,7 +170,8 @@ public class GTestXmlResultParserTest extends TestCase {
 
         File contents = FileUtil.createTempFile("test", ".xml");
         try {
-            ITestRunListener mockRunListener = EasyMock.createMock(ITestRunListener.class);
+            ITestInvocationListener mockRunListener =
+                    EasyMock.createMock(ITestInvocationListener.class);
             mockRunListener.testRunStarted(TEST_MODULE_NAME, 0);
             mockRunListener.testRunFailed(expected);
             mockRunListener.testRunEnded(EasyMock.anyLong(),
@@ -190,7 +194,8 @@ public class GTestXmlResultParserTest extends TestCase {
         String expected = "Test run incomplete. Expected 7 tests, received 6";
         File contents =  readInFile(GTEST_OUTPUT_FILE_4);
         try {
-            ITestRunListener mockRunListener = EasyMock.createMock(ITestRunListener.class);
+            ITestInvocationListener mockRunListener =
+                    EasyMock.createMock(ITestInvocationListener.class);
             mockRunListener.testRunStarted(TEST_MODULE_NAME, 7);
             // 6 passing test cases in this run
             for (int i=0; i<6; ++i) {
@@ -220,7 +225,8 @@ public class GTestXmlResultParserTest extends TestCase {
         String expected = "Test run incomplete. Expected 6 tests, received 3";
         File contents =  readInFile(GTEST_OUTPUT_FILE_5);
         try {
-            ITestRunListener mockRunListener = EasyMock.createMock(ITestRunListener.class);
+            ITestInvocationListener mockRunListener =
+                    EasyMock.createMock(ITestInvocationListener.class);
             mockRunListener.testRunStarted(TEST_MODULE_NAME, 6);
             // 6 passing test cases in this run
             for (int i=0; i<3; ++i) {
@@ -258,7 +264,8 @@ public class GTestXmlResultParserTest extends TestCase {
 
         File contents = FileUtil.createTempFile("test", ".xml");
         try {
-            ITestRunListener mockRunListener = EasyMock.createMock(ITestRunListener.class);
+            ITestInvocationListener mockRunListener =
+                    EasyMock.createMock(ITestInvocationListener.class);
             mockRunListener.testRunStarted(TEST_MODULE_NAME, 0);
             mockRunListener.testRunFailed(expected);
             mockRunListener.testRunEnded(EasyMock.anyLong(),

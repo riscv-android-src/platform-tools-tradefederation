@@ -19,7 +19,6 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;
 
 import com.android.ddmlib.FileListingService;
-import com.android.ddmlib.testrunner.ITestRunListener;
 import com.android.tradefed.config.OptionSetter;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.IFileEntry;
@@ -98,14 +97,17 @@ public class NativeBenchmarkTestTest {
 
     @Test
     public void testRun_setMaxFrequency() throws Exception {
-        mBenchmark = new NativeBenchmarkTest() {
-            @Override
-            protected void doRunAllTestsInSubdirectory(
-                    IFileEntry rootEntry, ITestDevice testDevice, ITestRunListener listener)
-                    throws DeviceNotAvailableException {
-                // empty on purpose
-            }
-        };
+        mBenchmark =
+                new NativeBenchmarkTest() {
+                    @Override
+                    protected void doRunAllTestsInSubdirectory(
+                            IFileEntry rootEntry,
+                            ITestDevice testDevice,
+                            ITestInvocationListener listener)
+                            throws DeviceNotAvailableException {
+                        // empty on purpose
+                    }
+                };
         mBenchmark.setDevice(mDevice);
         OptionSetter setter = new OptionSetter(mBenchmark);
         setter.setOptionValue("max-cpu-freq", "true");

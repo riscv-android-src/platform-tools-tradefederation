@@ -17,9 +17,9 @@ package com.android.tradefed.testtype;
 
 import com.android.ddmlib.IShellOutputReceiver;
 import com.android.ddmlib.MultiLineReceiver;
-import com.android.ddmlib.testrunner.ITestRunListener;
 import com.android.ddmlib.testrunner.TestIdentifier;
 import com.android.tradefed.log.LogUtil.CLog;
+import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.testtype.testdefs.XmlDefsTest;
 
 import java.util.ArrayList;
@@ -32,7 +32,8 @@ import java.util.regex.Pattern;
 
 /**
  * Parses the 'raw output mode' results of native tests using GTest that run from shell, and informs
- * a ITestRunListener of the results.
+ * a ITestInvocationListener of the results.
+ *
  * <p>Sample format of output expected:
  *
  * <pre>
@@ -72,6 +73,7 @@ import java.util.regex.Pattern;
  * </pre>
  *
  * <p>where the following tags are used to signal certain events:
+ *
  * <pre>
  * [==========]: the first occurrence indicates a new run started, including the number of tests
  *                  to be expected in this run
@@ -95,7 +97,7 @@ public class GTestResultParser extends MultiLineReceiver {
     private boolean mTestInProgress = false;
     private boolean mTestRunInProgress = false;
     private final String mTestRunName;
-    private final Collection<ITestRunListener> mTestListeners;
+    private final Collection<ITestInvocationListener> mTestListeners;
 
     /** True if start of test has already been reported to listener. */
     private boolean mTestRunStartReported = false;
@@ -210,11 +212,11 @@ public class GTestResultParser extends MultiLineReceiver {
     /**
      * Creates the GTestResultParser.
      *
-     * @param testRunName the test run name to provide to
-     *            {@link ITestRunListener#testRunStarted(String, int)}
+     * @param testRunName the test run name to provide to {@link
+     *     ITestInvocationListener#testRunStarted(String, int)}
      * @param listeners informed of test results as the tests are executing
      */
-    public GTestResultParser(String testRunName, Collection<ITestRunListener> listeners) {
+    public GTestResultParser(String testRunName, Collection<ITestInvocationListener> listeners) {
         mTestRunName = testRunName;
         mTestListeners = new ArrayList<>(listeners);
     }
@@ -222,11 +224,11 @@ public class GTestResultParser extends MultiLineReceiver {
     /**
      * Creates the GTestResultParser for a single listener.
      *
-     * @param testRunName the test run name to provide to
-     *            {@link ITestRunListener#testRunStarted(String, int)}
+     * @param testRunName the test run name to provide to {@link
+     *     ITestInvocationListener#testRunStarted(String, int)}
      * @param listener informed of test results as the tests are executing
      */
-    public GTestResultParser(String testRunName, ITestRunListener listener) {
+    public GTestResultParser(String testRunName, ITestInvocationListener listener) {
         mTestRunName = testRunName;
         mTestListeners = new ArrayList<>(1);
         mTestListeners.add(listener);
@@ -262,7 +264,7 @@ public class GTestResultParser extends MultiLineReceiver {
                 // in verbose mode, dump all adb output to log
                 CLog.v(line);
             }
-            for (ITestRunListener listener : mTestListeners) {
+            for (ITestInvocationListener listener : mTestListeners) {
                 listener.testRunStarted(mTestRunName, 0);
                 listener.testRunFailed(lines[0]);
                 listener.testRunEnded(0, Collections.emptyMap());
@@ -411,7 +413,7 @@ public class GTestResultParser extends MultiLineReceiver {
     private void reportTestRunStarted() {
         // if start test run not reported yet
         if (!mTestRunStartReported) {
-            for (ITestRunListener listener : mTestListeners) {
+            for (ITestInvocationListener listener : mTestListeners) {
                 listener.testRunStarted(mTestRunName, mNumTestsExpected);
             }
             mTestRunStartReported = true;
@@ -422,7 +424,7 @@ public class GTestResultParser extends MultiLineReceiver {
      * Reports the end of a test run, and resets that test
      */
     private void reportTestRunEnded() {
-        for (ITestRunListener listener : mTestListeners) {
+        for (ITestInvocationListener listener : mTestListeners) {
             listener.testRunEnded(mTotalRunTime, getRunMetrics());
         }
         mTestRunStartReported = false;
@@ -562,7 +564,7 @@ public class GTestResultParser extends MultiLineReceiver {
             return;
         }
 
-        for (ITestRunListener listener : mTestListeners) {
+        for (ITestInvocationListener listener : mTestListeners) {
             listener.testStarted(testId);
         }
         setTestStarted();
@@ -628,19 +630,19 @@ public class GTestResultParser extends MultiLineReceiver {
         if (encounteredUnexpectedTest) {
             // If the test name of the result changed from what we started with, report that
             // the last known test failed, regardless of whether we received a pass or fail tag.
-            for (ITestRunListener listener : mTestListeners) {
+            for (ITestInvocationListener listener : mTestListeners) {
                 listener.testFailed(testId, mCurrentTestResult.getTrace());
             }
         }
         else if (!testPassed) {  // test failed
-            for (ITestRunListener listener : mTestListeners) {
+            for (ITestInvocationListener listener : mTestListeners) {
                 listener.testFailed(testId, mCurrentTestResult.getTrace());
             }
         }
         // For all cases (pass or fail), we ultimately need to report test has ended
         Map <String, String> emptyMap = Collections.emptyMap();
-        for (ITestRunListener listener : mTestListeners) {
-            // @TODO: Add reporting of test run time to ITestRunListener
+        for (ITestInvocationListener listener : mTestListeners) {
+            // @TODO: Add reporting of test run time to ITestInvocationListener
             listener.testEnded(testId, emptyMap);
         }
 
@@ -707,7 +709,7 @@ public class GTestResultParser extends MultiLineReceiver {
             if (mCurrentTestResult.hasStackTrace()) {
                 testRunStackTrace = mCurrentTestResult.getTrace();
             }
-            for (ITestRunListener listener : mTestListeners) {
+            for (ITestInvocationListener listener : mTestListeners) {
                 listener.testFailed(testId,
                         "No test results.\r\n" + testRunStackTrace);
                 listener.testEnded(testId, emptyMap);
@@ -715,7 +717,7 @@ public class GTestResultParser extends MultiLineReceiver {
             clearCurrentTestResult();
         }
         // Report the test run failed
-        for (ITestRunListener listener : mTestListeners) {
+        for (ITestInvocationListener listener : mTestListeners) {
             listener.testRunFailed(errorMsg);
             listener.testRunEnded(mTotalRunTime, getRunMetrics());
         }
