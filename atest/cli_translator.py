@@ -181,6 +181,7 @@ class CLITranslator(object):
         Returns:
             A tuple of lists of strings of integration dir rel to repo root.
         """
+        #pylint: disable=bad-builtin
         tf_dirs = filter(None, [self._get_module_path(x) for x in TF_TARGETS])
         gtf_dirs = filter(None, [self._get_module_path(x) for x in GTF_TARGETS])
         return tf_dirs, gtf_dirs
@@ -674,6 +675,7 @@ class CLITranslator(object):
                         if test_filter else frozenset())
 
     def _sort_and_group(self, iterable, key):
+        """Sort and group helper function."""
         return itertools.groupby(sorted(iterable, key=key), key=key)
 
     def _flatten_test_filters(self, filters):

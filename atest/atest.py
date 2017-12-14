@@ -112,6 +112,7 @@ def _missing_environment_variables():
     Returns:
         List of strings of any missing environment variables.
     """
+    #pylint: disable=bad-builtin
     missing = filter(None, [x for x in EXPECTED_VARS if not os.environ.get(x)])
     if missing:
         logging.error('Local environment doesn\'t appear to have been '
