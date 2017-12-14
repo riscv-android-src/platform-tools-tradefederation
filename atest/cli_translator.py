@@ -181,7 +181,6 @@ class CLITranslator(object):
         Returns:
             A tuple of lists of strings of integration dir rel to repo root.
         """
-        #pylint: disable=bad-builtin
         tf_dirs = filter(None, [self._get_module_path(x) for x in TF_TARGETS])
         gtf_dirs = filter(None, [self._get_module_path(x) for x in GTF_TARGETS])
         return tf_dirs, gtf_dirs
