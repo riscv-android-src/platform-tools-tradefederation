@@ -25,6 +25,7 @@ import com.android.ddmlib.TimeoutException;
 import com.android.ddmlib.testrunner.IRemoteAndroidTestRunner;
 import com.android.ddmlib.testrunner.ITestRunListener;
 import com.android.ddmlib.testrunner.RemoteAndroidTestRunner;
+import com.android.tradefed.config.OptionSetter;
 import com.android.tradefed.device.ITestDevice.MountPointInfo;
 import com.android.tradefed.device.ITestDevice.RecoveryMode;
 import com.android.tradefed.host.HostOptions;
@@ -186,9 +187,13 @@ public class TestDeviceTest extends TestCase {
      */
     public void testEnableAdbRoot_noEnableRoot() throws Exception {
         boolean enableRoot = mTestDevice.getOptions().isEnableAdbRoot();
-        mTestDevice.getOptions().setEnableAdbRoot(false);
-        assertFalse(mTestDevice.enableAdbRoot());
-        mTestDevice.getOptions().setEnableAdbRoot(enableRoot);
+        OptionSetter setter = new OptionSetter(mTestDevice.getOptions());
+        setter.setOptionValue("enable-root", "false");
+        try {
+            assertFalse(mTestDevice.enableAdbRoot());
+        } finally {
+            setter.setOptionValue("enable-root", Boolean.toString(enableRoot));
+        }
     }
 
     /**
