@@ -22,12 +22,18 @@ import com.android.tradefed.config.ConfigurationUtil;
 import com.android.tradefed.config.IConfiguration;
 import com.android.tradefed.config.IConfigurationFactory;
 import com.android.tradefed.config.Option;
+import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.targetprep.ITargetPreparer;
+import com.android.tradefed.testtype.Abi;
+import com.android.tradefed.testtype.IAbi;
+import com.android.tradefed.testtype.IAbiReceiver;
 import com.android.tradefed.testtype.InstrumentationTest;
-
 import com.android.tradefed.testtype.IRemoteTest;
 import com.android.tradefed.testtype.ITestFilterReceiver;
+import com.android.tradefed.util.AbiFormatter;
+import com.android.tradefed.util.AbiUtils;
+
 import java.io.FileNotFoundException;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -67,6 +73,13 @@ public class AtestRunner extends ITestSuite {
     )
     private boolean mSkipInstall = false;
 
+    @Option(
+        name = "abi-name",
+        description =
+                "Abi to pass to tests that require an ABI. The device default will be used if not specified."
+    )
+    private String mabiName;
+
     @Override
     public LinkedHashMap<String, IConfiguration> loadTests() {
         LinkedHashMap<String, IConfiguration> configMap =
@@ -90,6 +103,7 @@ public class AtestRunner extends ITestSuite {
             }
         }
         TestInfo[] testInfos = loadTestInfoFile(mTestInfoFile);
+        IAbi abi = getAbi();
         for (TestInfo testInfo : testInfos) {
             try {
                 CLog.d("Adding testConfig: %s", testInfo.test);
@@ -104,6 +118,7 @@ public class AtestRunner extends ITestSuite {
                 if (mDebug) {
                     addDebugger(testConfig);
                 }
+                setTestAbi(testConfig, abi);
                 configMap.put(testInfo.test, testConfig);
             } catch (ConfigurationException | NoClassDefFoundError e) {
                 CLog.e("Skipping configuration '%s', because of loading ERROR: %s", testInfo, e);
@@ -153,7 +168,6 @@ public class AtestRunner extends ITestSuite {
      *
      * @param testConfig The configuration containing tests to filter.
      * @param filter The filter to add to the tests in the testConfig.
-     * @return HashMap with keys "name" and "filters"
      */
     public void addFilter(IConfiguration testConfig, String filter) {
         List<IRemoteTest> tests = testConfig.getTests();
@@ -169,6 +183,43 @@ public class AtestRunner extends ITestSuite {
                                 + "Please update test to use a class that implements ITestFilterReceiver. Running entire"
                                 + "test module instead.",
                         test.getClass().getSimpleName(), filter);
+            }
+        }
+    }
+
+    /**
+     * Helper to create the IAbi instance to pass to tests that implement IAbiReceiver.
+     *
+     * @return IAbi instance to use, may be null if not provided and device is unreachable.
+     */
+    private IAbi getAbi() {
+        if (mabiName == null) {
+            if (getDevice() == null) {
+                return null;
+            }
+            try {
+                mabiName = AbiFormatter.getDefaultAbi(getDevice(), "");
+            } catch (DeviceNotAvailableException e) {
+                return null;
+            }
+        }
+        return new Abi(mabiName, AbiUtils.getBitness(mabiName));
+    }
+
+    /**
+     * Add device ABI to tests that expect an ABI to be set.
+     *
+     * @param testConfig The configuration to supply an ABI for.
+     * @param abi The IAbi instance to pass to the test configurations.
+     */
+    private void setTestAbi(IConfiguration testConfig, IAbi abi) {
+        if (abi == null) {
+            return;
+        }
+        List<IRemoteTest> tests = testConfig.getTests();
+        for (IRemoteTest test : tests) {
+            if (test instanceof IAbiReceiver) {
+                ((IAbiReceiver) test).setAbi(abi);
             }
         }
     }
