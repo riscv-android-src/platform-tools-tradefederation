@@ -17,12 +17,12 @@ package com.android.tradefed.testtype;
 
 import static org.junit.Assert.assertEquals;
 
-import com.android.ddmlib.testrunner.TestIdentifier;
 import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.config.Option;
 import com.android.tradefed.config.OptionSetter;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.result.ITestInvocationListener;
+import com.android.tradefed.result.TestDescription;
 import com.android.tradefed.testtype.DeviceJUnit4ClassRunner.TestMetrics;
 
 import org.easymock.EasyMock;
@@ -30,6 +30,7 @@ import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.runner.RunWith;
+import org.junit.runners.JUnit4;
 import org.junit.runners.Suite.SuiteClasses;
 
 import java.lang.annotation.Retention;
@@ -38,9 +39,8 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 
-/**
- * Unit Tests for {@link DeviceSuite}
- */
+/** Unit Tests for {@link DeviceSuite}. */
+@RunWith(JUnit4.class)
 public class DeviceSuiteTest {
 
     // We use HostTest as a runner for JUnit4 Suite
@@ -130,10 +130,10 @@ public class DeviceSuiteTest {
         mListener.testRunStarted(
                 EasyMock.eq("com.android.tradefed.testtype.DeviceSuiteTest$Junit4DeviceSuite"),
                 EasyMock.eq(2));
-        TestIdentifier test1 = new TestIdentifier(Junit4DeviceTestclass.class.getName(),
-                "testPass1");
-        TestIdentifier test2 = new TestIdentifier(Junit4DeviceTestclass.class.getName(),
-                "testPass2");
+        TestDescription test1 =
+                new TestDescription(Junit4DeviceTestclass.class.getName(), "testPass1");
+        TestDescription test2 =
+                new TestDescription(Junit4DeviceTestclass.class.getName(), "testPass2");
         mListener.testStarted(EasyMock.eq(test1));
         mListener.testEnded(EasyMock.eq(test1), EasyMock.eq(Collections.emptyMap()));
         mListener.testStarted(EasyMock.eq(test2));
@@ -159,8 +159,8 @@ public class DeviceSuiteTest {
         mListener.testRunStarted(
                 EasyMock.eq("com.android.tradefed.testtype.DeviceSuiteTest$Junit4DeviceSuite"),
                 EasyMock.eq(1));
-        TestIdentifier test1 =
-                new TestIdentifier(Junit4DeviceTestclass.class.getName(), "testPass1");
+        TestDescription test1 =
+                new TestDescription(Junit4DeviceTestclass.class.getName(), "testPass1");
         mListener.testStarted(EasyMock.eq(test1));
         mListener.testEnded(EasyMock.eq(test1), EasyMock.eq(Collections.emptyMap()));
         mListener.testRunEnded(EasyMock.anyLong(), EasyMock.eq(Collections.emptyMap()));
@@ -178,10 +178,10 @@ public class DeviceSuiteTest {
         mListener.testRunStarted(
                 EasyMock.eq("com.android.tradefed.testtype.DeviceSuiteTest$Junit4DeviceSuite"),
                 EasyMock.eq(2));
-        TestIdentifier test1 =
-                new TestIdentifier(Junit4DeviceTestclass.class.getName(), "testPass1");
-        TestIdentifier test2 =
-                new TestIdentifier(Junit4DeviceTestclass.class.getName(), "testPass2");
+        TestDescription test1 =
+                new TestDescription(Junit4DeviceTestclass.class.getName(), "testPass1");
+        TestDescription test2 =
+                new TestDescription(Junit4DeviceTestclass.class.getName(), "testPass2");
         mListener.testStarted(EasyMock.eq(test1));
         Map<String, String> expected = new HashMap<>();
         expected.put("option", "value_test");

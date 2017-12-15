@@ -27,6 +27,7 @@ import com.android.tradefed.device.StubDevice;
 import com.android.tradefed.invoker.IInvocationContext;
 import com.android.tradefed.result.CollectingTestListener;
 import com.android.tradefed.result.ITestInvocationListener;
+import com.android.tradefed.result.TestDescription;
 import com.android.tradefed.testtype.DeviceJUnit4ClassRunner;
 import com.android.tradefed.testtype.HostTest;
 
@@ -93,7 +94,7 @@ public class BaseHostJUnit4TestTest {
         OptionSetter setter = new OptionSetter(mHostTest);
         setter.setOptionValue("class", CLASSNAME);
         mMockListener.testRunStarted(EasyMock.anyObject(), EasyMock.eq(1));
-        TestIdentifier tid = new TestIdentifier(CLASSNAME, "testPass");
+        TestDescription tid = new TestDescription(CLASSNAME, "testPass");
         mMockListener.testStarted(tid);
         mMockListener.testEnded(tid, Collections.emptyMap());
         mMockListener.testRunEnded(EasyMock.anyLong(), EasyMock.anyObject());

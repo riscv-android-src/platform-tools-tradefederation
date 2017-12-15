@@ -16,8 +16,6 @@
 
 package com.android.tradefed.result;
 
-import com.android.ddmlib.testrunner.TestIdentifier;
-
 import junit.framework.AssertionFailedError;
 import junit.framework.Test;
 import junit.framework.TestCase;
@@ -119,18 +117,18 @@ public class JUnitToInvocationResultForwarder implements TestListener {
     }
 
     /**
-     * Return the {@link TestIdentifier} equivalent for the {@link Test}.
+     * Return the {@link TestDescription} equivalent for the {@link Test}.
      *
      * @param test the {@link Test} to convert
-     * @return the {@link TestIdentifier}
+     * @return the {@link TestDescription}
      */
-    private TestIdentifier getTestId(Test test) {
+    private TestDescription getTestId(Test test) {
         final String className = test.getClass().getName();
         String testName = "";
         if (test instanceof TestCase) {
             testName = ((TestCase)test).getName();
         }
-        return new TestIdentifier(className, testName);
+        return new TestDescription(className, testName);
     }
 
     /**
