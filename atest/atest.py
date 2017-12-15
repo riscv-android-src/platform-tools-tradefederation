@@ -37,6 +37,7 @@ EXPECTED_VARS = frozenset([
     atest_utils.ANDROID_BUILD_TOP,
     'ANDROID_TARGET_OUT_TESTCASES',
     'OUT'])
+EXIT_CODE_SUCCESS = 0
 EXIT_CODE_ENV_NOT_SETUP = 1
 EXIT_CODE_BUILD_FAILURE = 2
 BUILD_STEP = 'build'
@@ -293,6 +294,9 @@ def main(argv):
 
     Args:
         argv: A list of arguments.
+
+    Returns:
+        Exit code.
     """
     args = _parse_args(argv)
     _configure_logging(args.verbose)
@@ -322,6 +326,7 @@ def main(argv):
         steps.append(TEST_STEP)
     if TEST_STEP in steps:
         run_tests(run_commands)
+    return EXIT_CODE_SUCCESS
 
 
 if __name__ == '__main__':

@@ -117,7 +117,7 @@ TEST_MAPPING_DIR_NOT_INCLUDE_PARENT = os.path.join(
     os.path.dirname(__file__), TEST_DATA_DIR, 'test_mapping', 'folder2')
 
 def isfile_side_effect(value):
-    """Mock return values for os.path.isfile"""
+    """Mock return values for os.path.isfile."""
     if value == '/%s/%s' % (MODULE_DIR, cli_t.MODULE_CONFIG):
         return True
     if value.endswith('.java'):
@@ -126,9 +126,10 @@ def isfile_side_effect(value):
         return True
     if value.endswith(GTF_INT_NAME + '.xml'):
         return True
+    return False
 
 def findtest_side_effect(test_name, _):
-    """Mock return values for _get_test_info"""
+    """Mock return values for _get_test_info."""
     if test_name == MODULE_NAME:
         return MODULE_INFO
     if test_name == CLASS_NAME:
@@ -139,6 +140,7 @@ def findtest_side_effect(test_name, _):
         return INT_INFO
     if test_name == GTF_INT_NAME:
         return GTF_INT_INFO
+    return None
 
 def targetsfromxml_side_effect(_):
     """Mock return values for _get_targets_from_xml"""
