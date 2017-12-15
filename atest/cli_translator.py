@@ -40,6 +40,7 @@ MODULE_INFO = 'module-info.json'
 TF_TARGETS = frozenset(['tradefed', 'tradefed-contrib'])
 GTF_TARGETS = frozenset(['google-tradefed', 'google-tradefed-contrib'])
 ATEST_SPONGE_LABEL = 'atest'
+PERF_SETUP_LABEL = 'perf-setup.sh'
 
 # Helps find apk files listed in a test config (AndroidTest.xml) file.
 # Matches "filename.apk" in <option name="foo", value="bar/filename.apk" />
@@ -361,6 +362,8 @@ class CLITranslator(object):
                 target_to_add = value[:-len('.apk')]
             elif name == TEST_MODULE_NAME:
                 target_to_add = value
+	    elif PERF_SETUP_LABEL in value:
+                target_to_add = PERF_SETUP_LABEL
 
             # Let's make sure we can actually build the target.
             if target_to_add and target_to_add in self.module_info:
