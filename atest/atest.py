@@ -60,7 +60,7 @@ IDENTIFYING TESTS
     Usage Template: atest <reference_to_test_1> <reference_to_test_2>
 
     A <reference_to_test> can be satisfied by the test's MODULE NAME,
-    TF INTEGRATION TEST, MODULE:CLASS, CLASS NAME or FILE PATH. Explanations
+    MODULE:CLASS, CLASS NAME, TF INTEGRATION TEST or FILE PATH. Explanations
     and examples of each follow.
 
 
@@ -76,17 +76,6 @@ IDENTIFYING TESTS
         Examples:
             atest FrameworksServicesTests
             atest CtsJankDeviceTestCases
-
-
-    < TF INTEGRATION TEST >
-
-        To run tests that are integrated directly into TradeFed (non-modules),
-        input the name as it appears in the output of the "tradefed.sh list
-        configs" cmd.
-
-        Examples:
-           atest example/reboot
-           atest native-benchmark
 
 
     < MODULE:CLASS >
@@ -114,6 +103,17 @@ IDENTIFYING TESTS
             atest ScreenDecorWindowTests
             atest com.google.android.battery.pts.BatteryTest
             atest CtsDeviceJankUi
+
+
+    < TF INTEGRATION TEST >
+
+        To run tests that are integrated directly into TradeFed (non-modules),
+        input the name as it appears in the output of the "tradefed.sh list
+        configs" cmd.
+
+        Examples:
+           atest example/reboot
+           atest native-benchmark
 
 
     < FILE PATH >
