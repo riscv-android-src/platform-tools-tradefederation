@@ -116,8 +116,6 @@ TARGETS = {'tradefed-core', MODULE_INFO_TARGET,
            'MODULES-IN-%s' % MODULE_DIR.replace('/', '-')}
 GTF_TARGETS = {'google-tradefed-core', MODULE_INFO_TARGET,
                'MODULES-IN-%s' % MODULE_DIR.replace('/', '-')}
-RUN_CMD_ARGS = '--test-info-file %s --log-level WARN' % TEST_INFO_FILE
-RUN_CMD = cli_t.RUN_CMD % (cli_t.TF_TEMPLATE, RUN_CMD_ARGS)
 PRODUCT = 'bullhead'
 OUT = '/android/master/out/target/product/%s' % PRODUCT
 FIND_ONE = ROOT + 'foo/bar/jank/src/android/jank/cts/ui/CtsDeviceJankUi.java\n'
