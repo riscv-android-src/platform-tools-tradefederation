@@ -117,7 +117,7 @@ TEST_MAPPING_DIR_NOT_INCLUDE_PARENT = os.path.join(
     os.path.dirname(__file__), TEST_DATA_DIR, 'test_mapping', 'folder2')
 
 def isfile_side_effect(value):
-    """Mock return values for os.path.isfile"""
+    """Mock return values for os.path.isfile."""
     if value == '/%s/%s' % (MODULE_DIR, cli_t.MODULE_CONFIG):
         return True
     if value.endswith('.java'):
@@ -126,9 +126,10 @@ def isfile_side_effect(value):
         return True
     if value.endswith(GTF_INT_NAME + '.xml'):
         return True
+    return False
 
 def findtest_side_effect(test_name, _):
-    """Mock return values for _get_test_info"""
+    """Mock return values for _get_test_info."""
     if test_name == MODULE_NAME:
         return MODULE_INFO
     if test_name == CLASS_NAME:
@@ -139,6 +140,7 @@ def findtest_side_effect(test_name, _):
         return INT_INFO
     if test_name == GTF_INT_NAME:
         return GTF_INT_INFO
+    return None
 
 def targetsfromxml_side_effect(_):
     """Mock return values for _get_targets_from_xml"""
@@ -193,6 +195,7 @@ class CLITranslatorUnittests(unittest.TestCase):
     @mock.patch('os.environ.get', return_value=JSON_FILE_PATH)
     @mock.patch('os.path.isfile', return_value=True)
     @mock.patch('atest_utils._run_limited_output')
+    #pylint: disable=unused-argument
     def test_load_module_info(self, _checkout, mock_isfile, _envget):
         """Test _load_module_info loads module-info.json correctly"""
         # stop patch and instantiate new cli_t, because this is mocked in setup.
@@ -311,23 +314,31 @@ class CLITranslatorUnittests(unittest.TestCase):
     def test_split_methods(self):
         """Test _split_methods method."""
         # Class
-        self.assertStrictEqual(self.ctr._split_methods('Class.Name'),
-                               ('Class.Name', set()))
-        self.assertStrictEqual(self.ctr._split_methods('Class.Name#Method'),
-                               ('Class.Name', {'Method'}))
-        self.assertStrictEqual(self.ctr._split_methods('Class.Name#Method,Method2'),
-                               ('Class.Name', {'Method', 'Method2'}))
-        self.assertStrictEqual(self.ctr._split_methods('Class.Name#Method,Method2'),
-                               ('Class.Name', {'Method', 'Method2'}))
-        self.assertStrictEqual(self.ctr._split_methods('Class.Name#Method,Method2'),
-                               ('Class.Name', {'Method', 'Method2'}))
-        self.assertRaises(cli_t.TooManyMethodsError, self.ctr._split_methods,
-                          'class.name#Method,class.name.2#method')
+        self.assertStrictEqual(
+            self.ctr._split_methods('Class.Name'),
+            ('Class.Name', set()))
+        self.assertStrictEqual(
+            self.ctr._split_methods('Class.Name#Method'),
+            ('Class.Name', {'Method'}))
+        self.assertStrictEqual(
+            self.ctr._split_methods('Class.Name#Method,Method2'),
+            ('Class.Name', {'Method', 'Method2'}))
+        self.assertStrictEqual(
+            self.ctr._split_methods('Class.Name#Method,Method2'),
+            ('Class.Name', {'Method', 'Method2'}))
+        self.assertStrictEqual(
+            self.ctr._split_methods('Class.Name#Method,Method2'),
+            ('Class.Name', {'Method', 'Method2'}))
+        self.assertRaises(
+            cli_t.TooManyMethodsError, self.ctr._split_methods,
+            'class.name#Method,class.name.2#method')
         # Path
-        self.assertStrictEqual(self.ctr._split_methods('foo/bar/class.java'),
-                               ('foo/bar/class.java', set()))
-        self.assertStrictEqual(self.ctr._split_methods('foo/bar/class.java#Method'),
-                               ('foo/bar/class.java', {'Method'}))
+        self.assertStrictEqual(
+            self.ctr._split_methods('foo/bar/class.java'),
+            ('foo/bar/class.java', set()))
+        self.assertStrictEqual(
+            self.ctr._split_methods('foo/bar/class.java#Method'),
+            ('foo/bar/class.java', {'Method'}))
 
     def test_find_test_by_module_name(self):
         """Test _find_test_by_module_name method."""
@@ -339,14 +350,16 @@ class CLITranslatorUnittests(unittest.TestCase):
     @mock.patch.object(cli_t.CLITranslator, '_get_fully_qualified_class_name',
                        return_value=FULL_CLASS_NAME)
     @mock.patch('os.path.isfile', side_effect=isfile_side_effect)
+    #pylint: disable=unused-argument
     def test_find_test_by_class_name(self, _isfile, _class, mock_checkoutput):
         """Test _find_test_by_class_name method."""
         self.assertStrictEqual(self.ctr._find_test_by_class_name(CLASS_NAME),
                                CLASS_INFO)
         # with method
         class_with_method = '%s#%s' % (CLASS_NAME, METHOD_NAME)
-        self.assertStrictEqual(self.ctr._find_test_by_class_name(class_with_method),
-                               METHOD_INFO)
+        self.assertStrictEqual(
+            self.ctr._find_test_by_class_name(class_with_method),
+            METHOD_INFO)
         class_methods = '%s,%s' % (class_with_method, METHOD2_NAME)
         self.assertStrictEqual(self.ctr._find_test_by_class_name(class_methods),
                                FLAT_METHOD_INFO)
@@ -358,6 +371,7 @@ class CLITranslatorUnittests(unittest.TestCase):
     @mock.patch.object(cli_t.CLITranslator, '_get_fully_qualified_class_name',
                        return_value=FULL_CLASS_NAME)
     @mock.patch('os.path.isfile', side_effect=isfile_side_effect)
+    #pylint: disable=unused-argument
     def test_find_test_by_module_and_class(self, _isfile, _class,
                                            mock_checkoutput):
         """Test _find_test_by_module_and_class method."""
@@ -378,6 +392,7 @@ class CLITranslatorUnittests(unittest.TestCase):
                        return_value=FULL_CLASS_NAME)
     @mock.patch('subprocess.check_output')
     @mock.patch('os.path.exists', return_value=True)
+    #pylint: disable=unused-argument
     def test_find_test_by_integration_name(self, _path, mock_find, _class):
         """Test _find_test_by_integration_name method"""
         mock_find.return_value = os.path.join(ROOT, INT_DIR, INT_NAME + '.xml')
@@ -406,6 +421,7 @@ class CLITranslatorUnittests(unittest.TestCase):
                        return_value=MODULE_NAME)
     @mock.patch.object(cli_t.CLITranslator, '_find_parent_module_dir')
     @mock.patch('os.path.exists')
+    #pylint: disable=unused-argument
     def test_find_test_by_path(self, mock_pathexists, mock_dir, _name,
                                _isfile, _real, _class):
         """Test _find_test_by_path method."""
@@ -556,6 +572,7 @@ class CLITranslatorUnittests(unittest.TestCase):
                        side_effect=findtest_side_effect)
     @mock.patch.object(cli_t.CLITranslator, '_create_test_info_file',
                        return_value=TEST_INFO_FILE)
+    #pylint: disable=unused-argument
     def test_translate(self, _filepath, _info, _xml):
         """Test translate method."""
         targets, run_cmds = self.ctr.translate([MODULE_NAME, CLASS_NAME])
@@ -583,6 +600,7 @@ class CLITranslatorUnittests(unittest.TestCase):
 
     @mock.patch.object(cli_t.CLITranslator, '_find_test_by_module_name',
                        side_effect=[MODULE_INFO, CLASS_INFO, INT_INFO])
+    #pylint: disable=unused-argument
     def test_find_tests_by_test_mapping(self, _mock_findbymodule):
         """Test _find_tests_by_test_mapping method."""
         test_infos = self.ctr._find_tests_by_test_mapping(

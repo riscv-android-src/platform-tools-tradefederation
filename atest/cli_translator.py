@@ -439,6 +439,7 @@ class CLITranslator(object):
             # path is a list with only 1 element.
             rel_config = os.path.join(info['path'][0], MODULE_CONFIG)
             return TestInfo(rel_config, module_name, None, frozenset())
+        return None
 
     def _find_class_file(self, class_name, search_dir):
         """Find a java class file given a class name and search dir.
@@ -576,7 +577,7 @@ class CLITranslator(object):
         """
         directory = os.path.realpath(path)
         if directory == atest_utils.ANDROID_BUILD_TOP or directory == os.sep:
-            return
+            return None
         tests = set()
         test_mapping = None
         test_mapping_file = os.path.join(directory, 'TEST_MAPPING')
@@ -674,6 +675,7 @@ class CLITranslator(object):
                         if test_filter else frozenset())
 
     def _sort_and_group(self, iterable, key):
+        """Sort and group helper function."""
         return itertools.groupby(sorted(iterable, key=key), key=key)
 
     def _flatten_test_filters(self, filters):
@@ -857,6 +859,7 @@ class CLITranslator(object):
                              'supports identifying a test by its: %s',
                              test_name, REFERENCE_TYPE[ref_type],
                              supported)
+        return None
 
     def translate(self, tests):
         """Translate atest command line into build targets and run commands.

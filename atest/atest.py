@@ -37,36 +37,157 @@ EXPECTED_VARS = frozenset([
     atest_utils.ANDROID_BUILD_TOP,
     'ANDROID_TARGET_OUT_TESTCASES',
     'OUT'])
+EXIT_CODE_SUCCESS = 0
 EXIT_CODE_ENV_NOT_SETUP = 1
 EXIT_CODE_BUILD_FAILURE = 2
 BUILD_STEP = 'build'
+INSTALL_STEP = 'install'
 TEST_STEP = 'test'
+ALL_STEPS = [BUILD_STEP, INSTALL_STEP, TEST_STEP]
 TEST_RUN_DIR_PREFIX = 'atest_run_%s_'
-HELP_DESC = '''Build and run Android tests locally.
+HELP_DESC = '''Build, install and run Android tests locally.'''
 
-The -b and -t options allow you to specify which steps
-you want to run. If none of those options are given, then
-all steps are run. If any of these options are provided
-then only the listed steps are run.
+EPILOG_TEXT = '''
+
+
+- - - - - - - - -
+IDENTIFYING TESTS
+- - - - - - - - -
+
+    The positional argument <tests> should be a reference to one or more of the
+    tests you'd like to run. Multiple tests can be run in one command by
+    separating test references with spaces.
+
+    Usage Template: atest <reference_to_test_1> <reference_to_test_2>
+
+    A <reference_to_test> can be satisfied by the test's MODULE NAME,
+    TF INTEGRATION TEST, MODULE:CLASS, CLASS NAME or FILE PATH. Explanations
+    and examples of each follow.
+
+
+    < MODULE NAME >
+
+        Identifying a test by its module name will run the entire module. Input
+        the name as it appears in the LOCAL_MODULE or LOCAL_PACKAGE_NAME
+        variables in that test's Android.mk or Android.bp file.
+
+        Note: Use < TF INTEGRATION TEST > to run non-module tests integrated
+        directly into TradeFed.
+
+        Examples:
+            atest FrameworksServicesTests
+            atest CtsJankDeviceTestCases
+
+
+    < TF INTEGRATION TEST >
+
+        To run tests that are integrated directly into TradeFed (non-modules),
+        input the name as it appears in the output of the "tradefed.sh list
+        configs" cmd.
+
+        Examples:
+           atest example/reboot
+           atest native-benchmark
+
+
+    < MODULE:CLASS >
+
+        Identifying a test by its class name will run just the tests in that
+        class and not the whole module. MODULE:CLASS is the preferred way to run
+        a single class. MODULE is the same as described above. CLASS is the
+        name of the test class in the .java file. It can either be the fully
+        qualified class name or just the basic name.
+
+        Examples:
+            atest PtsBatteryTestCases:BatteryTest
+            atest PtsBatteryTestCases:com.google.android.battery.pts.BatteryTest
+            atest CtsJankDeviceTestCases:CtsDeviceJankUi
+
+
+    < CLASS NAME >
+
+        A single class can also be run by referencing the class name without
+        the module name. However, this will take more time than the equivalent
+        MODULE:CLASS reference, so we suggest using a MODULE:CLASS reference
+        whenever possible.
+
+        Examples:
+            atest ScreenDecorWindowTests
+            atest com.google.android.battery.pts.BatteryTest
+            atest CtsDeviceJankUi
+
+
+    < FILE PATH >
+
+        Both module-based tests and integration-based tests can be run by
+        inputting the path to their test file or dir as appropriate. A single
+        class can also be run by inputting the path to the class's java file.
+        Both relative and absolute paths are supported.
+
+        Example - run module from android repo root:
+            atest cts/tests/jank/jank
+
+        Example - same module but from <repo root>/cts/tests/jank:
+            atest .
+
+        Example - run just class from android repo root:
+            atest cts/tests/jank/src/android/jank/cts/ui/CtsDeviceJankUi.java
+
+        Example - run tf integration test from android repo root:
+            atest tools/tradefederation/contrib/res/config/example/reboot.xml
+
+
+- - - - - - - - - - - - - - - - - - - - - - - - - -
+SPECIFYING INDIVIDUAL STEPS: BUILD, INSTALL OR RUN
+- - - - - - - - - - - - - - - - - - - - - - - - - -
+
+    The -b, -i and -t options allow you to specify which steps you want to run.
+    If none of those options are given, then all steps are run. If any of these
+    options are provided then only the listed steps are run.
+
+    Note: -i alone is not currently support and can only be included with -t.
+    Both -b and -t can be run alone.
+
+    Examples:
+        atest -b <test>     (just build targets)
+        atest -bt <test>    (build targets, run tests, but skip installing apk)
+        atest -t <test>     (just run test, skip build/install)
+        atest -it <test>    (install and run tests, skip building)
+
+
+- - - - - - - - - - - - -
+RUNNING SPECIFIC METHODS
+- - - - - - - - - - - - -
+
+    It is possible to run only specific methods within a test class. To run
+    only specific methods, identify the class in any of the ways supported
+    for identifying a class (MODULE:CLASS, FILE PATH, etc) and then append the
+    name of the method or method using the following template:
+
+    <reference_to_class>#<method1>,<method2>,<method3>...
+
+    Examples:
+        FrameworksServicesTests:ScreenDecorWindowTests#testFlagChange,testRemoval
+        com.google.android.battery.pts.BatteryTest#testDischarge
+
+
+- - - - - - - - - - - - -
+RUNNING MULTIPLE CLASSES
+- - - - - - - - - - - - -
+
+    To run multiple classes, deliminate them with spaces just like you would
+    if running multiple tests.  Atest will automatically build and run
+    multiple classes in the most efficient way possible.
+
+
+    Example - two classes in same module:
+        atest FrameworksServicesTests:ScreenDecorWindowTests FrameworksServicesTest:DimmerTests
+
+    Example - two classes, different modules:
+        atest FrameworksServicesTests:ScreenDecorWindowTests CtsJankDeviceTestCases:CtsDeviceJankUi
+
 '''
 
-HELP_TESTS = '''Tests to run.
-
-Ways to identify a test:
-MODULE NAME       Examples: CtsJankDeviceTestCases
-CLASS NAME        Examples: CtsDeviceJankUi, android.jank.cts.ui.CtsDeviceJankUi
-MODULE:CLASS      Examples: CtsJankDeviceTestCases:CtsDeviceJankUi, CtsJankDeviceTestCase:android.jank.cts.ui.CtsDeviceJankUi
-INTEGRATION NAME  Examples: example/reboot, native-benchmark
-FILE PATH         Examples: ., <rel_or_abs_path>/jank, <rel_or_abs_path>/CtsDeviceJankUi.java
-
-METHODS are specified by appending to class with #.
-
-Method Examples:
-    CtsDeviceJankUi#Method1,Method2
-    android.jank.cts.ui.CtsDeviceJankUi#Method
-    CtsJankDeviceTestCases:CtsDeviceJankUi#Method
-    path/to/CtsDeviceJankUi.java#Method
-'''
 
 def _parse_args(argv):
     """Parse command line arguments.
@@ -80,10 +201,13 @@ def _parse_args(argv):
     import argparse
     parser = argparse.ArgumentParser(
         description=HELP_DESC,
+        epilog=EPILOG_TEXT,
         formatter_class=argparse.RawTextHelpFormatter)
-    parser.add_argument('tests', nargs='*', help=HELP_TESTS)
+    parser.add_argument('tests', nargs='*', help='Tests to build and/or run.')
     parser.add_argument('-b', '--build', action='append_const', dest='steps',
                         const=BUILD_STEP, help='Run a build.')
+    parser.add_argument('-i', '--install', action='append_const', dest='steps',
+                        const=INSTALL_STEP, help='Install an APK.')
     parser.add_argument('-t', '--test', action='append_const', dest='steps',
                         const=TEST_STEP, help='Run the tests.')
     parser.add_argument('-w', '--wait-for-debugger', action='store_true',
@@ -170,6 +294,9 @@ def main(argv):
 
     Args:
         argv: A list of arguments.
+
+    Returns:
+        Exit code.
     """
     args = _parse_args(argv)
     _configure_logging(args.verbose)
@@ -184,12 +311,22 @@ def main(argv):
         run_commands = [cmd + ' --wait-for-debugger' for cmd in run_commands]
     if _is_missing_adb(root_dir=repo_root):
         build_targets.add('adb')
-    if not args.steps or BUILD_STEP in args.steps:
+    # args.steps will be None if none of -bit set, else list of params set.
+    steps = args.steps if args.steps else ALL_STEPS
+    if BUILD_STEP in steps:
         success = atest_utils.build(build_targets, args.verbose)
         if not success:
             return EXIT_CODE_BUILD_FAILURE
-    if not args.steps or TEST_STEP in args.steps:
+    if INSTALL_STEP not in steps:
+        run_commands = [cmd + ' --disable-target-preparers'
+                        for cmd in run_commands]
+    elif TEST_STEP not in steps:
+        logging.warn('Install step without test step currently not '
+                     'supported, installing AND testing instead.')
+        steps.append(TEST_STEP)
+    if TEST_STEP in steps:
         run_tests(run_commands)
+    return EXIT_CODE_SUCCESS
 
 
 if __name__ == '__main__':
