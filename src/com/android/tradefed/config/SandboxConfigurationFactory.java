@@ -72,11 +72,10 @@ public class SandboxConfigurationFactory extends ConfigurationFactory {
             runUtil.unsetEnvVariable(GlobalConfiguration.GLOBAL_CONFIG_VARIABLE);
             // Dump the NON_VERSIONED part of the configuration against the current TF and not the
             // sandboxed environment.
-            File currentTfDir = getCurrentTradefedDirectory();
             globalConfig = SandboxConfigUtil.dumpFilteredGlobalConfig();
             xmlConfig =
                     SandboxConfigUtil.dumpConfigForVersion(
-                            currentTfDir,
+                            createClasspath(),
                             runUtil,
                             args,
                             DumpCmd.NON_VERSIONED_CONFIG,
@@ -104,17 +103,14 @@ public class SandboxConfigurationFactory extends ConfigurationFactory {
         return config;
     }
 
-    /**
-     * Returns the running TF directory containing all the jar files for it.
-     *
-     * @return A {@link File} directory containing all the currently running TF jars.
-     */
-    private File getCurrentTradefedDirectory() throws ConfigurationException {
-        String tfDir = System.getProperty("TF_JAR_DIR");
-        if (tfDir == null || tfDir.isEmpty()) {
+    /** Returns the classpath of the current running Tradefed. */
+    private String createClasspath() throws ConfigurationException {
+        // Get the classpath property.
+        String classpathStr = System.getProperty("java.class.path");
+        if (classpathStr == null) {
             throw new ConfigurationException(
-                    "Could not read TF_JAR_DIR to get current Tradefed instance.");
+                    "Could not find the classpath property: java.class.path");
         }
-        return new File(tfDir);
+        return classpathStr;
     }
 }
