@@ -20,6 +20,9 @@ import logging
 import os
 import subprocess
 import sys
+import urllib2
+
+import constants
 
 ANDROID_BUILD_TOP = 'ANDROID_BUILD_TOP'
 BUILD_CMD = ['make', '-j', '-C', os.environ.get(ANDROID_BUILD_TOP)]
@@ -106,3 +109,22 @@ def build(build_targets, verbose=False):
         if err.output:
             logging.error(err.output)
         return False
+
+
+def _can_upload_to_result_server():
+    """Return Boolean if we can talk to result server."""
+    # TODO: Also check if we have a slow connection to result server.
+    try:
+        if constants.RESULT_SERVER:
+            urllib2.urlopen(constants.RESULT_SERVER, timeout=1).close()
+            return True
+    except (urllib2.HTTPError, urllib2.URLError):
+        pass
+    return False
+
+
+def get_result_server_args():
+    """Return list of args for communication with result server."""
+    if _can_upload_to_result_server():
+        return constants.RESULT_SERVER_ARGS
+    return []

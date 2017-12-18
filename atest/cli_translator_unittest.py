@@ -101,9 +101,6 @@ GTF_TARGETS = {'google-tradefed-core', MODULE_INFO_TARGET,
                'MODULES-IN-%s' % MODULE_DIR.replace('/', '-')}
 RUN_CMD_ARGS = '--test-info-file %s --log-level WARN' % TEST_INFO_FILE
 RUN_CMD = cli_t.RUN_CMD % (cli_t.TF_TEMPLATE, RUN_CMD_ARGS)
-GTF_RUN_CMD_ARGS = (RUN_CMD_ARGS +
-                    ' --sponge-label %s' % cli_t.ATEST_SPONGE_LABEL)
-GTF_RUN_CMD = cli_t.RUN_CMD % (cli_t.GTF_TEMPLATE, GTF_RUN_CMD_ARGS)
 PRODUCT = 'bullhead'
 OUT = '/android/master/out/target/product/%s' % PRODUCT
 FIND_ONE = ROOT + 'foo/bar/jank/src/android/jank/cts/ui/CtsDeviceJankUi.java\n'
@@ -528,15 +525,18 @@ class CLITranslatorUnittests(unittest.TestCase):
         self.assertStrictEqual(self.ctr._generate_build_targets([GTF_INT_INFO]),
                                GTF_INT_TARGETS)
 
-    def test_generate_run_commands(self):
+    @mock.patch('atest_utils.get_result_server_args')
+    def test_generate_run_commands(self, mock_resultargs):
         """Test _generate_run_command method."""
         # AOSP Run Cmd
+        mock_resultargs.return_value = []
         self.assertStrictEqual(self.ctr._generate_run_commands(TEST_INFO_FILE),
                                [RUN_CMD])
-        # Internal Run Cmd
-        self.ctr.gtf_dirs = self._gtf_dirs
-        self.assertEquals(self.ctr._generate_run_commands(TEST_INFO_FILE),
-                          [GTF_RUN_CMD])
+        # AOSP Run Cmd with result args
+        result_arg = '--result_arg'
+        mock_resultargs.return_value = [result_arg]
+        self.assertStrictEqual(self.ctr._generate_run_commands(TEST_INFO_FILE),
+                               [RUN_CMD + ' ' + result_arg])
 
     @mock.patch.object(cli_t.CLITranslator, '_find_test_by_module_name')
     @mock.patch.object(cli_t.CLITranslator, '_find_test_by_class_name')
@@ -566,6 +566,7 @@ class CLITranslatorUnittests(unittest.TestCase):
         self.assertStrictEqual(ctr._get_test_info(MODULE_CLASS, refs),
                                CLASS_INFO)
 
+    @mock.patch('atest_utils.get_result_server_args')
     @mock.patch.object(cli_t.CLITranslator, '_get_targets_from_xml',
                        side_effect=targetsfromxml_side_effect)
     @mock.patch.object(cli_t.CLITranslator, '_get_test_info',
@@ -573,8 +574,9 @@ class CLITranslatorUnittests(unittest.TestCase):
     @mock.patch.object(cli_t.CLITranslator, '_create_test_info_file',
                        return_value=TEST_INFO_FILE)
     #pylint: disable=unused-argument
-    def test_translate(self, _filepath, _info, _xml):
+    def test_translate(self, _filepath, _info, _xml, mock_resultargs):
         """Test translate method."""
+        mock_resultargs.return_value = []
         targets, run_cmds = self.ctr.translate([MODULE_NAME, CLASS_NAME])
         self.assertStrictEqual(targets, TARGETS)
         self.assertStrictEqual(run_cmds, [RUN_CMD])
@@ -591,10 +593,10 @@ class CLITranslatorUnittests(unittest.TestCase):
         self.ctr.gtf_dirs = self._gtf_dirs
         targets, run_cmds = self.ctr.translate([MODULE_NAME, CLASS_NAME])
         self.assertStrictEqual(targets, GTF_TARGETS)
-        self.assertStrictEqual(run_cmds, [GTF_RUN_CMD])
+        self.assertStrictEqual(run_cmds, [RUN_CMD])
         targets, run_cmds = self.ctr.translate([GTF_INT_NAME])
         self.assertStrictEqual(targets, GTF_INT_TARGETS)
-        self.assertStrictEqual(run_cmds, [GTF_RUN_CMD])
+        self.assertStrictEqual(run_cmds, [RUN_CMD])
         self.assertRaises(cli_t.NoTestFoundError, self.ctr.translate,
                           ['NonExistentClassOrModule'])
 
