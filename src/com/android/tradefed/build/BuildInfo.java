@@ -179,12 +179,11 @@ public class BuildInfo implements IBuildInfo {
 
     /**
      * Helper method to copy all files from the other build.
-     * <p>
-     * Creates new hardlinks to the files so that each build will have a unique file path to the
-     * file.
-     * </p>
      *
-     * @throws IOException if an exception is thrown when creating the hardlinks.
+     * <p>Creates new hardlinks to the files so that each build will have a unique file path to the
+     * file.
+     *
+     * @throws IOException if an exception is thrown when creating the hardlink.
      */
     protected void addAllFiles(BuildInfo build) throws IOException {
         for (Map.Entry<String, VersionedFile> fileEntry : build.getVersionedFileMap().entrySet()) {
