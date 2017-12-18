@@ -22,10 +22,10 @@ public class DeviceTestRunOptions {
     private ITestDevice mDevice; // optional
     private String mRunner = BaseHostJUnit4Test.AJUR_RUNNER; // optional
     private final String mPackageName; // required
+
     private String mTestClassName; // optional
     private String mTestMethodName; // optional
     private Integer mUserId; // optional
-
     private Long mTestTimeoutMs = BaseHostJUnit4Test.DEFAULT_TEST_TIMEOUT_MS; // optional
     private Long mMaxTimeToOutputMs; // optional
     private Long mMaxInstrumentationTimeoutMs; // optional
@@ -47,6 +47,10 @@ public class DeviceTestRunOptions {
         return mRunner;
     }
 
+    /**
+     * Sets the instrumentation runner that should be used to run the instrumentation. Default
+     * runner is 'android.support.test.runner.AndroidJUnitRunner'. Optional.
+     */
     public DeviceTestRunOptions setRunner(String runner) {
         this.mRunner = runner;
         return this;
@@ -60,6 +64,10 @@ public class DeviceTestRunOptions {
         return mTestClassName;
     }
 
+    /**
+     * Sets the classname that the instrumentation should run. The instrumentation will be filtered
+     * to only run the class. Can be used with {@link #setTestMethodName(String)}. Optional.
+     */
     public DeviceTestRunOptions setTestClassName(String testClassName) {
         this.mTestClassName = testClassName;
         return this;
@@ -69,6 +77,10 @@ public class DeviceTestRunOptions {
         return mTestMethodName;
     }
 
+    /**
+     * Sets the method name that the instrumentation should run. Requires {@link
+     * #setTestClassName(String)} to be set in order to work properly. Optional.
+     */
     public DeviceTestRunOptions setTestMethodName(String testMethodName) {
         this.mTestMethodName = testMethodName;
         return this;
@@ -78,6 +90,7 @@ public class DeviceTestRunOptions {
         return mUserId;
     }
 
+    /** Sets the user id against which the instrumentation should run. Optional. */
     public DeviceTestRunOptions setUserId(Integer userId) {
         this.mUserId = userId;
         return this;
@@ -87,6 +100,10 @@ public class DeviceTestRunOptions {
         return mTestTimeoutMs;
     }
 
+    /**
+     * Sets the maximum time (in milliseconds) a test can run before being interrupted. Set to 0 for
+     * no timeout. Optional.
+     */
     public DeviceTestRunOptions setTestTimeoutMs(Long testTimeoutMs) {
         this.mTestTimeoutMs = testTimeoutMs;
         return this;
@@ -96,6 +113,10 @@ public class DeviceTestRunOptions {
         return mMaxTimeToOutputMs;
     }
 
+    /**
+     * Sets the maximum time (in milliseconds) the instrumentation can stop outputting before being
+     * stopped. Set to 0 for no timeout. Optional.
+     */
     public DeviceTestRunOptions setMaxTimeToOutputMs(Long maxTimeToOutputMs) {
         this.mMaxTimeToOutputMs = maxTimeToOutputMs;
         return this;
@@ -105,6 +126,10 @@ public class DeviceTestRunOptions {
         return mMaxInstrumentationTimeoutMs;
     }
 
+    /**
+     * Sets the maximum time (in milliseconds) the complete instrumentation will have to run and
+     * complete. Set to 0 for no timeout. Optional.
+     */
     public DeviceTestRunOptions setMaxInstrumentationTimeoutMs(Long maxInstrumentationTimeoutMs) {
         this.mMaxInstrumentationTimeoutMs = maxInstrumentationTimeoutMs;
         return this;
