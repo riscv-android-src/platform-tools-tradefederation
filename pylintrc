@@ -20,3 +20,8 @@ max-public-methods=40
 
 # Maximum number of attributes for a class (see R0902).
 max-attributes=20
+
+[SIMILARITIES]
+
+# Ignore similar imports.
+ignore-imports=y

@@ -5,16 +5,13 @@
   <target_preparer class="com.android.tradefed.targetprep.suite.SuiteApkInstaller">
     <option name="cleanup-apks" value="true" />
     <option name="test-file-name" value="CtsJankDeviceTestCases.apk" />
+    <option name="test-file-name" value="is_not_module.apk" />
   </target_preparer>
   <include name="CtsUiDeviceTestCases"/>
   <test class="com.android.tradefed.testtype.AndroidJUnitTest" >
     <option name="package" value="android.jank.cts" />
     <option name="runtime-hint" value="11m20s" />
   </test>
-  <option name="test-module-name" value="VtsTarget" />
-  <!--
-       This option should get parsed but skipped since it doesn't live in
-       module-info.json
-  -->
-  <option name="test-module-name" value="BuildTargetThatShouldBeSkipped" />
+  <option name="perf_arg" value="perf-setup.sh" />
+  <test class="com.android.compatibility.class.for.test" />
 </configuration>

@@ -37,3 +37,18 @@ EXIT_CODE_ENV_NOT_SETUP = 1
 EXIT_CODE_BUILD_FAILURE = 2
 EXIT_CODE_ERROR = 3
 EXIT_CODE_TEST_NOT_FOUND = 4
+
+# Test finder constants.
+MODULE_CONFIG = 'AndroidTest.xml'
+
+# Env constants
+ANDROID_BUILD_TOP = 'ANDROID_BUILD_TOP'
+ANDROID_OUT = 'OUT'
+
+# Test Info data keys
+TI_FILTER = 'filter'
+TI_REL_CONFIG = 'rel_config'
+
+# Google TF
+GTF_MODULE = 'google-tradefed'
+GTF_TARGET = 'google-tradefed-core'

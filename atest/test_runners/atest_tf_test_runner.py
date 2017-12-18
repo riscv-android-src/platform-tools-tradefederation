@@ -24,6 +24,7 @@ import subprocess
 # pylint: disable=import-error
 import atest_utils
 import constants
+from test_finders import test_info
 import test_runner_base
 
 
@@ -36,9 +37,10 @@ class AtestTradefedTestRunner(test_runner_base.TestRunnerBase):
                 'test=atest {args}')
     _BUILD_REQ = {'tradefed-core'}
 
-    def __init__(self, results_dir):
+    def __init__(self, results_dir, module_info=None, **kwargs):
         """Init stuff for base class."""
         super(AtestTradefedTestRunner, self).__init__(results_dir)
+        self.module_info = module_info
         self.run_cmd_dict = {'exe': self.EXECUTABLE,
                              'template': self._TF_TEMPLATE,
                              'args': ''}
@@ -90,7 +92,7 @@ class AtestTradefedTestRunner(test_runner_base.TestRunnerBase):
             return True
         # TODO: Check if there is a clever way to determine if system adb is
         # good enough.
-        root_dir = os.environ.get(atest_utils.ANDROID_BUILD_TOP)
+        root_dir = os.environ.get(constants.ANDROID_BUILD_TOP)
         return os.path.commonprefix([output, root_dir]) != root_dir
 
     def get_test_runner_build_reqs(self):
@@ -100,6 +102,9 @@ class AtestTradefedTestRunner(test_runner_base.TestRunnerBase):
             Set of build targets.
         """
         build_req = self._BUILD_REQ
+        # Use different base build requirements if google-tf is around.
+        if self.module_info.is_module(constants.GTF_MODULE):
+            build_req = {constants.GTF_TARGET}
         # Add adb if we can't find it.
         if self._is_missing_adb():
             build_req.add('adb')
@@ -157,6 +162,103 @@ class AtestTradefedTestRunner(test_runner_base.TestRunnerBase):
         self.run_cmd_dict['args'] = ' '.join(args)
         return self._RUN_CMD.format(**self.run_cmd_dict)
 
+    @staticmethod
+    def _testinfo_to_tf_dict(t_info):
+        """Return dict representation of TestInfo suitable to be saved
+        to test_info.json file and loaded by TradeFed's AtestRunner."""
+        filters = set()
+        for test_filter in t_info.data.get(constants.TI_FILTER, []):
+            filters.update(test_filter.to_set_of_tf_strings())
+        return {'test': t_info.test_name, 'filters': list(filters)}
+
+    def _flatten_test_infos(self, test_infos):
+        """Sort and group test_infos by module_name and sort and group filters
+        by class name.
+
+            Example of three test_infos in a set:
+                Module1, {(classA, {})}
+                Module1, {(classB, {Method1})}
+                Module1, {(classB, {Method2}}
+            Becomes a set with one element:
+                Module1, {(ClassA, {}), (ClassB, {Method1, Method2})}
+            Where:
+                  Each line is a test_info namedtuple
+                  {} = Frozenset
+                  () = TestFilter namedtuple
+
+        Args:
+            test_infos: A set of TestInfo namedtuples.
+
+        Returns:
+            A set of TestInfos flattened.
+        """
+        results = set()
+        key = lambda x: x.test_name
+        for module, group in atest_utils.sort_and_group(test_infos, key):
+            # module is a string, group is a generator of grouped TestInfos.
+            # Module Test, so flatten test_infos:
+            no_filters = False
+            filters = set()
+            test_runner = None
+            build_targets = set()
+            data = {}
+            for test_info_i in group:
+                # We can overwrite existing data since it'll mostly just
+                # comprise of filters and relative configs.
+                data.update(test_info_i.data)
+                test_runner = test_info_i.test_runner
+                build_targets |= test_info_i.build_targets
+                test_filters = test_info_i.data.get(constants.TI_FILTER)
+                if not test_filters or no_filters:
+                    # test_info wants whole module run, so hardcode no filters.
+                    no_filters = True
+                    filters = set()
+                    continue
+                filters |= test_filters
+            data[constants.TI_FILTER] = self._flatten_test_filters(filters)
+            results.add(
+                test_info.TestInfo(test_name=module,
+                                   test_runner=test_runner,
+                                   build_targets=build_targets,
+                                   data=data))
+        return results
+
+    @staticmethod
+    def _flatten_test_filters(filters):
+        """Sort and group test_filters by class_name.
+
+            Example of three test_filters in a frozenset:
+                classA, {}
+                classB, {Method1}
+                classB, {Method2}
+            Becomes a frozenset with these elements:
+                classA, {}
+                classB, {Method1, Method2}
+            Where:
+                Each line is a TestFilter namedtuple
+                {} = Frozenset
+
+        Args:
+            filters: A frozenset of test_filters.
+
+        Returns:
+            A frozenset of test_filters flattened.
+        """
+        results = set()
+        key = lambda x: x.class_name
+        for class_name, group in atest_utils.sort_and_group(filters, key):
+            # class_name is a string, group is a generator of TestFilters
+            assert class_name is not None
+            methods = set()
+            for test_filter in group:
+                if not test_filter.methods:
+                    # Whole class should be run
+                    methods = set()
+                    break
+                methods |= test_filter.methods
+            results.add(test_info.TestFilter(class_name, frozenset(methods)))
+        return frozenset(results)
+
     def _create_test_info_file(self, test_infos):
         """
 
@@ -165,8 +267,9 @@ class AtestTradefedTestRunner(test_runner_base.TestRunnerBase):
 
         Returns: A string of the filepath.
         """
+        test_infos = self._flatten_test_infos(test_infos)
         filepath = os.path.join(self.results_dir, 'test_info.json')
-        infos = [test_info.to_tf_dict() for test_info in test_infos]
+        infos = [self._testinfo_to_tf_dict(t_info) for t_info in test_infos]
         logging.debug('Test info: %s', infos)
         logging.info('Writing test info to: %s', filepath)
         with open(filepath, 'w') as test_info_file:

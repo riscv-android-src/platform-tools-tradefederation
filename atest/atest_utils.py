@@ -16,6 +16,7 @@
 Utility functions for atest.
 """
 
+import itertools
 import logging
 import os
 import subprocess
@@ -24,14 +25,13 @@ import urllib2
 
 import constants
 
-ANDROID_BUILD_TOP = 'ANDROID_BUILD_TOP'
-BUILD_CMD = ['make', '-j', '-C', os.environ.get(ANDROID_BUILD_TOP)]
-BASH_RESET_CODE = '\033[0m\n'
+_BUILD_CMD = ['make', '-j', '-C', os.environ.get(constants.ANDROID_BUILD_TOP)]
+_BASH_RESET_CODE = '\033[0m\n'
 # Arbitrary number to limit stdout for failed runs in _run_limited_output.
 # Reason for its use is that the make command itself has its own carriage
 # return output mechanism that when collected line by line causes the streaming
 # full_output list to be extremely large.
-FAILED_OUTPUT_LINE_LIMIT = 100
+_FAILED_OUTPUT_LINE_LIMIT = 100
 
 
 def _run_limited_output(cmd):
@@ -70,14 +70,14 @@ def _run_limited_output(cmd):
         sys.stdout.write('%s' % line.strip())
         sys.stdout.flush()
     # Reset stdout (on bash) to remove any custom formatting and newline.
-    sys.stdout.write(BASH_RESET_CODE)
+    sys.stdout.write(_BASH_RESET_CODE)
     sys.stdout.flush()
     # Wait for the Popen to finish completely before checking the returncode.
     proc.wait()
     if proc.returncode != 0:
         output = full_output
-        if len(output) >= FAILED_OUTPUT_LINE_LIMIT:
-            output = output[-FAILED_OUTPUT_LINE_LIMIT:]
+        if len(output) >= _FAILED_OUTPUT_LINE_LIMIT:
+            output = output[-_FAILED_OUTPUT_LINE_LIMIT:]
         logging.error('Output (may be trimmed):\n%s', ''.join(output))
         raise subprocess.CalledProcessError(proc.returncode, cmd, output)
 
@@ -94,7 +94,7 @@ def build(build_targets, verbose=False):
         Boolean of whether build command was successful.
     """
     logging.info('Building targets: %s', ' '.join(build_targets))
-    cmd = BUILD_CMD + list(build_targets)
+    cmd = _BUILD_CMD + list(build_targets)
     logging.debug('Executing command: %s', cmd)
     try:
         if verbose:
@@ -130,3 +130,8 @@ def get_result_server_args():
     if _can_upload_to_result_server():
         return constants.RESULT_SERVER_ARGS
     return []
+
+
+def sort_and_group(iterable, key):
+    """Sort and group helper function."""
+    return itertools.groupby(sorted(iterable, key=key), key=key)
