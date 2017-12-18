@@ -32,6 +32,7 @@ import java.io.FilenameFilter;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.nio.file.FileVisitOption;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.nio.file.attribute.PosixFilePermission;
@@ -1019,7 +1020,7 @@ public class FileUtil {
      */
     public static Set<String> findFiles(File dir, String filter) throws IOException {
         Set<String> files = new HashSet<String>();
-        Files.walk(Paths.get(dir.getAbsolutePath()))
+        Files.walk(Paths.get(dir.getAbsolutePath()), FileVisitOption.FOLLOW_LINKS)
                 .filter(path -> new File(path.toString()).getName().matches(filter))
                 .forEach(path -> files.add(path.toString()));
         return files;
