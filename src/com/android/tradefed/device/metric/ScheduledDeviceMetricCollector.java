@@ -15,15 +15,20 @@
  */
 package com.android.tradefed.device.metric;
 
+import com.android.annotations.VisibleForTesting;
 import com.android.tradefed.config.Option;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.log.LogUtil.CLog;
+import com.android.tradefed.util.FileUtil;
 import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.text.SimpleDateFormat;
+import java.util.Date;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Timer;
 import java.util.TimerTask;
@@ -130,5 +135,27 @@ public abstract class ScheduledDeviceMetricCollector extends BaseDeviceMetricCol
                 writer.write(output);
             }
         }
+    }
+
+    /**
+     * Create a suffix string to be appended at the end of each metric file to keep the name unique
+     * at each run.
+     *
+     * @return suffix string in the format year-month-date-hour-minute-seconds-milliseconds.
+     */
+    @VisibleForTesting
+    String getFileSuffix() {
+        return new SimpleDateFormat("yyyy-MM-dd-HH-mm-ss-SSS", Locale.US).format(new Date());
+    }
+
+    /**
+     * Creates temporary directory to store the metric files.
+     *
+     * @return {@link File} directory with 'tmp' prefixed to its name to signify that its temporary.
+     * @throws IOException
+     */
+    @VisibleForTesting
+    File createTempDir() throws IOException {
+        return FileUtil.createTempDir(String.format("tmp_%s", getTag()));
     }
 }
