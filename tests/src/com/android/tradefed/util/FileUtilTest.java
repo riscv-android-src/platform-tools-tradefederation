@@ -15,7 +15,10 @@
  */
 package com.android.tradefed.util;
 
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.result.LogDataType;
@@ -346,6 +349,33 @@ public class FileUtilTest {
             assertEquals(matchFiles.size(), 2);
         } finally {
             FileUtil.recursiveDelete(tmpDir);
+        }
+    }
+
+    /**
+     * Test that using {@link FileUtil#findFiles(File, String)} works when one of the directory is a
+     * symlink.
+     */
+    @Test
+    public void testFindFilesSuccess_symlink() throws IOException {
+        File tmpDir = FileUtil.createTempDir("find_files_test");
+        File subDir = FileUtil.createTempDir("subfolder");
+        try {
+            File matchFile1 = FileUtil.createTempFile("test", ".config", tmpDir);
+            File matchFile2 = FileUtil.createTempFile("test", ".config", subDir);
+            File destLink = new File(tmpDir, "subFolder");
+            FileUtil.symlinkFile(subDir, destLink);
+            FileUtil.createTempFile("test", ".xml", subDir);
+            Set<String> matchFiles = FileUtil.findFiles(tmpDir, ".*.config");
+            assertTrue(matchFiles.contains(matchFile1.getAbsolutePath()));
+            // The file is returned under the directory of the symlink not the original location.
+            assertTrue(
+                    matchFiles.contains(
+                            new File(destLink, matchFile2.getName()).getAbsolutePath()));
+            assertEquals(matchFiles.size(), 2);
+        } finally {
+            FileUtil.recursiveDelete(tmpDir);
+            FileUtil.recursiveDelete(subDir);
         }
     }
 
