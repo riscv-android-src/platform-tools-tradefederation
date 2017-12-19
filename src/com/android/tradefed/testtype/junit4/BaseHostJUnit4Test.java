@@ -406,6 +406,13 @@ public abstract class BaseHostJUnit4Test
                 maxInstrumentationTimeoutMs);
     }
 
+    /**
+     * Runs the instrumentation base on the information in {@link DeviceTestRunOptions}.
+     *
+     * @param options the {@link DeviceTestRunOptions} driving the instrumentation setup.
+     * @return True if it succeeded without failure. False otherwise.
+     * @throws DeviceNotAvailableException
+     */
     public final boolean runDeviceTests(DeviceTestRunOptions options)
             throws DeviceNotAvailableException {
         return runDeviceTests(
@@ -432,7 +439,7 @@ public abstract class BaseHostJUnit4Test
      * @param testTimeoutMs the timeout in millisecond to be applied to each test case.
      * @param maxTimeToOutputMs the max timeout the test has to start outputting something.
      * @param maxInstrumentationTimeoutMs the max timeout the full instrumentation has to complete.
-     * @return True if it succeed without failure. False otherwise.
+     * @return True if it succeeded without failure. False otherwise.
      */
     public final boolean runDeviceTests(
             ITestDevice device,
