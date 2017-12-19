@@ -3,7 +3,7 @@
 Atest is a command line tool that allows users to build, install and run Android tests locally.
 
 This markdown will explain how to use atest on the commandline to run android tests.
-If you're looking to write a test module, [go here](https://android.googlesource.com/platform/platform_testing/+/master/docs/index.md), instead.
+**For instructions on writing tests [go here](https://android.googlesource.com/platform/platform_testing/+/master/docs/index.md).**
 
 ##### Table of Contents
 1. [Environment Setup](#environment-setup)
