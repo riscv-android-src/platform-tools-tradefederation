@@ -72,7 +72,7 @@ More information about **-b**, **-i** and **-t** can be found below under [Speci
 
 ## <a name="identifying-tests">Identifying Tests</a>
 
-  You can identify a test by inputting it's **Module Name**, **TF Integration Test**, **Module:Class**, **Class Name** or **File Path**.
+  You can identify a test by inputting it's **Module Name**, **Module:Class**, **Class Name**, **TF Integration Test** or **File Path**.
 
   #### Module Name
 
@@ -87,16 +87,6 @@ More information about **-b**, **-i** and **-t** can be found below under [Speci
       &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;`atest CtsJankDeviceTestCases`<br>
 
 
-   #### TF Integration Test
-
-  To run tests that are integrated directly into TradeFed (non-modules),
-  input the name as it appears in the output of the "tradefed.sh list
-  configs" cmd.
-
-  Example:<br>
-     &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;`atest example/reboot` &nbsp;(runs [this test](https://android.googlesource.com/platform/tools/tradefederation/contrib/+/master/res/config/example/reboot.xml))<br>
-     &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;`atest native-benchmark` &nbsp;(runs [this test](https://android.googlesource.com/platform/tools/tradefederation/+/master/res/config/native-benchmark.xml))<br>
-
   #### Module:Class
 
   Identifying a test by its class name will run just the tests in that
@@ -110,6 +100,7 @@ More information about **-b**, **-i** and **-t** can be found below under [Speci
        &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;`atest PtsBatteryTestCases:com.google.android.battery.pts.BatteryTest`<br>
        &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;`atest CtsJankDeviceTestCases:CtsDeviceJankUi`<br>
 
+
   #### Class Name
 
   A single class can also be run by referencing the class name without
@@ -121,6 +112,17 @@ More information about **-b**, **-i** and **-t** can be found below under [Speci
       &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;`atest ScreenDecorWindowTests`<br>
       &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;`atest com.google.android.battery.pts.BatteryTest`<br>
       &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;`atest CtsDeviceJankUi`<br>
+
+
+  #### TF Integration Test
+
+  To run tests that are integrated directly into TradeFed (non-modules),
+  input the name as it appears in the output of the "tradefed.sh list
+  configs" cmd.
+
+  Example:<br>
+     &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;`atest example/reboot` &nbsp;(runs [this test](https://android.googlesource.com/platform/tools/tradefederation/contrib/+/master/res/config/example/reboot.xml))<br>
+     &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;`atest native-benchmark` &nbsp;(runs [this test](https://android.googlesource.com/platform/tools/tradefederation/+/master/res/config/native-benchmark.xml))<br>
 
 
   #### File Path
@@ -136,10 +138,10 @@ More information about **-b**, **-i** and **-t** can be found below under [Speci
   3. From \<android root>/cts/tests/jank: `atest .`
   4. Atest can resolve a module from anywhere inside that module's tree, so from \<android root>/cts/tests/jank/src/android: `atest .`
 
-  Example - run a specific class within `CtsJankDeviceTestCases` module via path:<p>
+  Example - run a specific class within `CtsJankDeviceTestCases` module via path:<br>
   &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;From android repo root: `atest cts/tests/jank/src/android/jank/cts/ui/CtsDeviceJankUi.java`
 
-  Example - run an integration test via path:<p>
+  Example - run an integration test via path:<br>
   &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;From android repo root: `atest tools/tradefederation/contrib/res/config/example/reboot.xml`
 
 
@@ -196,5 +198,5 @@ allows atest to find the test much faster:
 1. `atest FrameworksServicesTests:ScreenDecorWindowTests#testFlagChange`
 2. From android repo root: `atest frameworks/base/services/tests/servicestests/src/com/android/server/wm/ScreenDecorWindowTests.java#testFlagChange`
 
-Here we run multiple methods from different classes and modules:<p>
+Here we run multiple methods from different classes and modules.<br>
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;`atest FrameworksServicesTests:ScreenDecorWindowTests#testFlagChange,testRemoval PtsBatteryTestCases:BatteryTest#testDischarge`
