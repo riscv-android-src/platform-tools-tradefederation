@@ -121,7 +121,9 @@ public class AtestRunner extends ITestSuite {
                 setTestAbi(testConfig, abi);
                 configMap.put(testInfo.test, testConfig);
             } catch (ConfigurationException | NoClassDefFoundError e) {
-                CLog.e("Skipping configuration '%s', because of loading ERROR: %s", testInfo, e);
+                CLog.e(
+                        "Skipping configuration '%s', because of loading ERROR: %s",
+                        testInfo.test, e);
             }
         }
         return configMap;
@@ -207,10 +209,10 @@ public class AtestRunner extends ITestSuite {
     }
 
     /**
-     * Add device ABI to tests that expect an ABI to be set.
+     * Set ABI of tests and target preparers that require it to default ABI of device.
      *
-     * @param testConfig The configuration to supply an ABI for.
-     * @param abi The IAbi instance to pass to the test configurations.
+     * @param testConfig The configuration to set the ABI for.
+     * @param abi The IAbi instance to pass to setAbi() of tests and target preparers.
      */
     private void setTestAbi(IConfiguration testConfig, IAbi abi) {
         if (abi == null) {
@@ -220,6 +222,11 @@ public class AtestRunner extends ITestSuite {
         for (IRemoteTest test : tests) {
             if (test instanceof IAbiReceiver) {
                 ((IAbiReceiver) test).setAbi(abi);
+            }
+        }
+        for (ITargetPreparer targetPreparer : testConfig.getTargetPreparers()) {
+            if (targetPreparer instanceof IAbiReceiver) {
+                ((IAbiReceiver) targetPreparer).setAbi(abi);
             }
         }
     }
