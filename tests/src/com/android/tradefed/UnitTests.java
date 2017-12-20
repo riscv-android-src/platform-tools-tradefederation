@@ -64,8 +64,10 @@ import com.android.tradefed.device.TestDeviceTest;
 import com.android.tradefed.device.TopHelperTest;
 import com.android.tradefed.device.WaitDeviceRecoveryTest;
 import com.android.tradefed.device.WifiHelperTest;
+import com.android.tradefed.device.metric.AtraceCollectorTest;
 import com.android.tradefed.device.metric.BaseDeviceMetricCollectorTest;
 import com.android.tradefed.device.metric.FilePullerDeviceMetricCollectorTest;
+import com.android.tradefed.device.metric.ScheduleMultipleDeviceMetricCollectorTest;
 import com.android.tradefed.device.metric.ScheduledDeviceMetricCollectorTest;
 import com.android.tradefed.invoker.InvocationContextTest;
 import com.android.tradefed.invoker.InvocationExecutionTest;
@@ -319,9 +321,11 @@ import org.junit.runners.Suite.SuiteClasses;
     WifiHelperTest.class,
 
     // device.metric
+    AtraceCollectorTest.class,
     BaseDeviceMetricCollectorTest.class,
     FilePullerDeviceMetricCollectorTest.class,
     ScheduledDeviceMetricCollectorTest.class,
+    ScheduleMultipleDeviceMetricCollectorTest.class,
 
     // invoker
     InvocationContextTest.class,

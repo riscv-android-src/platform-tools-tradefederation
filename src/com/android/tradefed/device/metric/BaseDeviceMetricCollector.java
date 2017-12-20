@@ -23,7 +23,6 @@ import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.InputStreamSource;
 import com.android.tradefed.result.LogDataType;
-
 import java.util.List;
 import java.util.Map;
 
@@ -37,9 +36,10 @@ public class BaseDeviceMetricCollector implements IMetricCollector {
     private ITestInvocationListener mForwarder;
     private DeviceMetricData mRunData;
     private DeviceMetricData mTestData;
+    private String mTag;
 
     @Override
-    public final ITestInvocationListener init(
+    public ITestInvocationListener init(
             IInvocationContext context, ITestInvocationListener listener) {
         mContext = context;
         mForwarder = listener;
@@ -189,5 +189,24 @@ public class BaseDeviceMetricCollector implements IMetricCollector {
     @Override
     public final void testIgnored(TestIdentifier test) {
         mForwarder.testIgnored(test);
+    }
+
+    /**
+     * Sets the {@code mTag} of the collector. It can be used to specify the interval of the
+     * collector.
+     *
+     * @param tag the unique identifier of the collector.
+     */
+    public void setTag(String tag) {
+        mTag = tag;
+    }
+
+    /**
+     * Returns the identifier {@code mTag} of the collector.
+     *
+     * @return mTag, the unique identifier of the collector.
+     */
+    public String getTag() {
+        return mTag;
     }
 }

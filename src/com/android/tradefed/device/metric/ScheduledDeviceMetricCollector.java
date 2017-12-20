@@ -16,8 +16,14 @@
 package com.android.tradefed.device.metric;
 
 import com.android.tradefed.config.Option;
+import com.android.tradefed.device.DeviceNotAvailableException;
+import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.log.LogUtil.CLog;
-
+import java.io.BufferedWriter;
+import java.io.File;
+import java.io.FileWriter;
+import java.io.IOException;
+import java.util.List;
 import java.util.Map;
 import java.util.Timer;
 import java.util.TimerTask;
@@ -44,7 +50,7 @@ public abstract class ScheduledDeviceMetricCollector extends BaseDeviceMetricCol
 
     @Override
     public final void onTestRunStart(DeviceMetricData runData) {
-        CLog.d("starting");
+        CLog.d("starting with interval = %s", mIntervalMs);
         onStart(runData);
         timer = new Timer();
         TimerTask timerTask =
@@ -104,5 +110,25 @@ public abstract class ScheduledDeviceMetricCollector extends BaseDeviceMetricCol
      */
     void onEnd(DeviceMetricData runData) {
         // Does nothing.
+    }
+
+    /**
+     * Send all the output of a process from all the devices to a file.
+     *
+     * <p>Please note, metric collections should not overlap.
+     *
+     * @throws DeviceNotAvailableException
+     * @throws IOException
+     */
+    void saveProcessOutput(String command, File outputFile)
+            throws DeviceNotAvailableException, IOException {
+        List<ITestDevice> testDevices = getDevices();
+
+        for (ITestDevice testDevice : testDevices) {
+            String output = testDevice.executeShellCommand(command);
+            try (BufferedWriter writer = new BufferedWriter(new FileWriter(outputFile))) {
+                writer.write(output);
+            }
+        }
     }
 }
