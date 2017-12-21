@@ -53,6 +53,9 @@ INT_NAME_RE = re.compile(r'^.*\/res\/config\/(?P<int_name>.*).xml$')
 PACKAGE_RE = re.compile(r'\s*package\s+(?P<package>[^;]+)\s*;\s*', re.I)
 TEST_MODULE_NAME = 'test-module-name'
 
+COMPATIBILITY_PACKAGE_PREFIX = "com.android.compatibility"
+CTS_JAR = "cts-tradefed"
+
 class NoTestFoundError(Exception):
     """Raised when no tests are found."""
 
@@ -374,6 +377,13 @@ class CLITranslator(object):
                 logging.warning('Build target (%s) parsed out of %s but not '
                                 'present in %s, skipping build', target_to_add,
                                 xml_file, MODULE_INFO)
+        # TODO (b/70813166): Remove this lookup once all runtime dependencies
+        # can belisted as a build dependencies or are in the base test harness.
+        nodes_with_class = root.findall(".//*[@class]")
+        for class_attr in nodes_with_class:
+            fqcn = class_attr.attrib['class'].strip()
+            if fqcn.startswith(COMPATIBILITY_PACKAGE_PREFIX):
+                targets.add(CTS_JAR)
         logging.debug('Targets found in config file: %s', targets)
         return targets
 
