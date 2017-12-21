@@ -177,6 +177,7 @@ import com.android.tradefed.testtype.TfTestLauncherTest;
 import com.android.tradefed.testtype.VersionedTfLauncherTest;
 import com.android.tradefed.testtype.host.CoverageMeasurementForwarderTest;
 import com.android.tradefed.testtype.junit4.BaseHostJUnit4TestTest;
+import com.android.tradefed.testtype.junit4.LongevityHostRunnerTest;
 import com.android.tradefed.testtype.python.PythonBinaryHostTestTest;
 import com.android.tradefed.testtype.suite.AtestRunnerTest;
 import com.android.tradefed.testtype.suite.ITestSuiteIntegrationTest;
@@ -248,7 +249,6 @@ import com.android.tradefed.util.net.XmlRpcHelperTest;
 import com.android.tradefed.util.sl4a.Sl4aClientTest;
 import com.android.tradefed.util.sl4a.Sl4aEventDispatcherTest;
 import com.android.tradefed.util.xml.AndroidManifestWriterTest;
-
 import org.junit.runner.RunWith;
 import org.junit.runners.Suite;
 import org.junit.runners.Suite.SuiteClasses;
@@ -457,6 +457,7 @@ import org.junit.runners.Suite.SuiteClasses;
 
     // testtype/junit4
     BaseHostJUnit4TestTest.class,
+    LongevityHostRunnerTest.class,
 
     // testtype/python
     PythonBinaryHostTestTest.class,
