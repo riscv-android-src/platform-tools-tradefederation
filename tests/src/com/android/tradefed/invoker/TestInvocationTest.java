@@ -1593,6 +1593,34 @@ public class TestInvocationTest extends TestCase {
      * directories when there is none coming from environment.
      */
     public void testInvoke_deviceInfoBuild_noEnv() throws Throwable {
+        mTestInvocation =
+                new TestInvocation() {
+                    @Override
+                    ILogRegistry getLogRegistry() {
+                        return mMockLogRegistry;
+                    }
+
+                    @Override
+                    public IInvocationExecution createInvocationExec() {
+                        return new InvocationExecution() {
+                            @Override
+                            protected IShardHelper createShardHelper() {
+                                return new ShardHelper();
+                            }
+
+                            @Override
+                            List<File> getExternalTestCasesDirs() {
+                                // Return empty list to ensure we do not have any environment loaded
+                                return new ArrayList<>();
+                            }
+                        };
+                    }
+
+                    @Override
+                    protected void setExitCode(ExitCode code, Throwable stack) {
+                        // empty on purpose
+                    }
+                };
         mMockBuildInfo = EasyMock.createMock(IDeviceBuildInfo.class);
         IRemoteTest test = EasyMock.createNiceMock(IRemoteTest.class);
         ITargetCleaner mockCleaner = EasyMock.createMock(ITargetCleaner.class);
@@ -1662,6 +1690,10 @@ public class TestInvocationTest extends TestCase {
             mockCleaner.tearDown(mMockDevice, mMockBuildInfo, null);
             mStubConfiguration.getTargetPreparers().add(mockCleaner);
 
+            mMockBuildInfo.setFile(
+                    EasyMock.contains(tmpExternalTestsDir.getName()),
+                    EasyMock.anyObject(),
+                    EasyMock.eq("v1"));
             EasyMock.expect(((IDeviceBuildInfo) mMockBuildInfo).getTestsDir())
                     .andReturn(tmpTestsDir);
 
