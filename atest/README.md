@@ -1,9 +1,11 @@
 # ATEST
 
 Atest is a command line tool that allows users to build, install and run Android tests locally.
+This markdown will explain how to use atest on the commandline to run android tests.<br>
 
-This markdown will explain how to use atest on the commandline to run android tests.
 **For instructions on writing tests [go here](https://android.googlesource.com/platform/platform_testing/+/master/docs/index.md).**
+Importantly, when writing your test's build script file (Android.mk), make sure to include
+the variable `LOCAL_COMPATIBILITY_SUITE`.  A good default to use for it is `device-test`.
 
 ##### Table of Contents
 1. [Environment Setup](#environment-setup)
