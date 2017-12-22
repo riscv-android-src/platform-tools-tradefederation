@@ -335,8 +335,24 @@ class CLITranslator(object):
         """
         info = self.module_info.get(module_name)
         if info:
-            return info.get('path', [])[0]
+            path = info.get('path', [])
+            return path[0] if path else None
         return None
+
+    def _is_auto_gen_test_config(self, module_name):
+        """Check if the test config file will be generated automatically.
+
+        Args:
+            module_name: A string of the module name.
+
+        Returns:
+            True if the test config file will be generated automatically.
+        """
+        info = self.module_info.get(module_name)
+        if info:
+            auto_test_config = info.get('auto_test_config', [])
+            return auto_test_config and auto_test_config[0]
+        return False
 
     def _get_targets_from_xml(self, xml_file):
         """Retrieve build targets from the given xml.
@@ -778,7 +794,10 @@ class CLITranslator(object):
             A set of strings of the build targets.
         """
         config_file = os.path.join(self.root_dir, test_info.rel_config)
-        targets = self._get_targets_from_xml(config_file)
+        if self._is_auto_gen_test_config(test_info.module_name):
+            targets = set()
+        else:
+            targets = self._get_targets_from_xml(config_file)
         if self.gtf_dirs:
             targets.add('google-tradefed-core')
         else:
