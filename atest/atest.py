@@ -32,6 +32,9 @@ import time
 
 import atest_utils
 import cli_translator
+# pylint: disable=import-error
+import constants
+import test_runner_handler
 
 EXPECTED_VARS = frozenset([
     atest_utils.ANDROID_BUILD_TOP,
@@ -61,7 +64,7 @@ IDENTIFYING TESTS
     Usage Template: atest <reference_to_test_1> <reference_to_test_2>
 
     A <reference_to_test> can be satisfied by the test's MODULE NAME,
-    TF INTEGRATION TEST, MODULE:CLASS, CLASS NAME or FILE PATH. Explanations
+    MODULE:CLASS, CLASS NAME, TF INTEGRATION TEST or FILE PATH. Explanations
     and examples of each follow.
 
 
@@ -77,17 +80,6 @@ IDENTIFYING TESTS
         Examples:
             atest FrameworksServicesTests
             atest CtsJankDeviceTestCases
-
-
-    < TF INTEGRATION TEST >
-
-        To run tests that are integrated directly into TradeFed (non-modules),
-        input the name as it appears in the output of the "tradefed.sh list
-        configs" cmd.
-
-        Examples:
-           atest example/reboot
-           atest native-benchmark
 
 
     < MODULE:CLASS >
@@ -115,6 +107,17 @@ IDENTIFYING TESTS
             atest ScreenDecorWindowTests
             atest com.google.android.battery.pts.BatteryTest
             atest CtsDeviceJankUi
+
+
+    < TF INTEGRATION TEST >
+
+        To run tests that are integrated directly into TradeFed (non-modules),
+        input the name as it appears in the output of the "tradefed.sh list
+        configs" cmd.
+
+        Examples:
+           atest example/reboot
+           atest native-benchmark
 
 
     < FILE PATH >
@@ -244,27 +247,6 @@ def _missing_environment_variables():
     return missing
 
 
-def _is_missing_adb(root_dir=''):
-    """Check if system built adb is available.
-
-    TF requires adb and we want to make sure we use the latest built adb (vs.
-    system adb that might be too old).
-
-    Args:
-        root_dir: A String. Path to the root dir that adb should live in.
-
-    Returns:
-        True if adb is missing, False otherwise.
-    """
-    try:
-        output = subprocess.check_output(['which', 'adb'])
-    except subprocess.CalledProcessError:
-        return True
-    # TODO: Check if there is a clever way to determine if system adb is good
-    # enough.
-    return os.path.commonprefix([output, root_dir]) != root_dir
-
-
 def make_test_run_dir():
     """Make the test run dir in tmp.
 
@@ -289,6 +271,24 @@ def run_tests(run_commands):
         subprocess.check_call(run_command, shell=True, stderr=subprocess.STDOUT)
 
 
+def get_extra_args(args):
+    """Get extra args for test runners.
+
+    Args:
+        args: arg parsed object.
+
+    Returns:
+        Dict of extra args for test runners to utilize.
+    """
+    extra_args = {}
+    if args.wait_for_debugger:
+        extra_args[constants.WAIT_FOR_DEBUGGER] = None
+    steps = args.steps or ALL_STEPS
+    if INSTALL_STEP not in steps:
+        extra_args[constants.DISABLE_INSTALL] = None
+    return extra_args
+
+
 def main(argv):
     """Entry point of atest script.
 
@@ -306,26 +306,21 @@ def main(argv):
     results_dir = make_test_run_dir()
     translator = cli_translator.CLITranslator(results_dir=results_dir,
                                               root_dir=repo_root)
-    build_targets, run_commands = translator.translate(args.tests)
-    if args.wait_for_debugger:
-        run_commands = [cmd + ' --wait-for-debugger' for cmd in run_commands]
-    if _is_missing_adb(root_dir=repo_root):
-        build_targets.add('adb')
+    build_targets, test_infos = translator.translate(args.tests)
+    build_targets |= test_runner_handler.get_test_runner_reqs(test_infos)
+    extra_args = get_extra_args(args)
     # args.steps will be None if none of -bit set, else list of params set.
     steps = args.steps if args.steps else ALL_STEPS
     if BUILD_STEP in steps:
         success = atest_utils.build(build_targets, args.verbose)
         if not success:
             return EXIT_CODE_BUILD_FAILURE
-    if INSTALL_STEP not in steps:
-        run_commands = [cmd + ' --disable-target-preparers'
-                        for cmd in run_commands]
     elif TEST_STEP not in steps:
         logging.warn('Install step without test step currently not '
                      'supported, installing AND testing instead.')
         steps.append(TEST_STEP)
     if TEST_STEP in steps:
-        run_tests(run_commands)
+        test_runner_handler.run_all_tests(results_dir, test_infos, extra_args)
     return EXIT_CODE_SUCCESS
 
 

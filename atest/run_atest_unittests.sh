@@ -19,10 +19,21 @@
 #   1. User wants to invoke this script by itself.
 #   2. PREUPLOAD hook invokes this script.
 
-ATEST_DIR=`dirname $0`/..
+ATEST_DIR=`dirname $0`/
 PREUPLOAD_FILES=$@
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+NC='\033[0m' # No Color
+
+function set_pythonpath() {
+  local path_to_check=`realpath $ATEST_DIR`
+  if ! echo $PYTHONPATH | grep -q $path_to_check; then
+    PYTHONPATH=$path_to_check:$PYTHONPATH
+  fi
+}
 
 function run_atest_unittests() {
+  set_pythonpath
   local rc=0
   for test_file in $(find $ATEST_DIR -name "*_unittest.py");
   do
@@ -30,6 +41,13 @@ function run_atest_unittests() {
       rc=1
     fi
   done
+
+  echo
+  if [[ $rc -eq 0 ]]; then
+    echo -e "${GREEN}All unittests pass${NC}!"
+  else
+    echo -e "${RED}There was a unittest failure${NC}"
+  fi
   return $rc
 }
 

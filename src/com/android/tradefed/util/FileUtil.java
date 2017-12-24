@@ -32,6 +32,7 @@ import java.io.FilenameFilter;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.nio.file.FileSystemException;
 import java.nio.file.FileVisitOption;
 import java.nio.file.Files;
 import java.nio.file.Paths;
@@ -388,21 +389,23 @@ public class FileUtil {
     }
 
     /**
-     * A helper method that hardlinks a file to another file
+     * A helper method that hardlinks a file to another file. Fallback to copy in case of cross
+     * partition linking.
      *
      * @param origFile the original file
      * @param destFile the destination file
      * @throws IOException if failed to hardlink file
      */
     public static void hardlinkFile(File origFile, File destFile) throws IOException {
-        // `ln src dest` will create a hardlink (note: not `ln -s src dest`, which creates symlink)
-        // note that this will fail across filesystem boundaries
-        // FIXME: should probably just fall back to normal copy if this fails
-        CommandResult result = linkFile(origFile, destFile, false);
-        if (!result.getStatus().equals(CommandStatus.SUCCESS)) {
-            throw new IOException(String.format(
-                    "Failed to hardlink %s to %s.  Across filesystem boundary?",
-                    origFile.getAbsolutePath(), destFile.getAbsolutePath()));
+        try {
+            Files.createLink(Paths.get(destFile.toURI()), Paths.get(origFile.toURI()));
+        } catch (FileSystemException e) {
+            if (e.getMessage().contains("Invalid cross-device link")) {
+                CLog.d("Hardlink failed: '%s', falling back to copy.", e.getMessage());
+                copyFile(origFile, destFile);
+                return;
+            }
+            throw e;
         }
     }
 

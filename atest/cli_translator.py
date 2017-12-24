@@ -28,6 +28,7 @@ import xml.etree.ElementTree as ET
 from collections import namedtuple
 
 import atest_utils
+from test_runners import atest_tf_test_runner
 
 RUN_CMD = ('atest_tradefed.sh run commandAndExit %s --template:map '
            'test=atest %s')
@@ -51,6 +52,9 @@ INT_NAME_RE = re.compile(r'^.*\/res\/config\/(?P<int_name>.*).xml$')
 # Group matches "foo.bar" of line "package foo.bar;"
 PACKAGE_RE = re.compile(r'\s*package\s+(?P<package>[^;]+)\s*;\s*', re.I)
 TEST_MODULE_NAME = 'test-module-name'
+
+COMPATIBILITY_PACKAGE_PREFIX = "com.android.compatibility"
+CTS_JAR = "cts-tradefed"
 
 class NoTestFoundError(Exception):
     """Raised when no tests are found."""
@@ -97,7 +101,8 @@ FIND_CMDS = {
 }
 
 TestInfoBase = namedtuple('TestInfo', ['rel_config', 'module_name',
-                                       'integrated_name', 'filters'])
+                                       'integrated_name', 'filters',
+                                       'test_runner'])
 class TestInfo(TestInfoBase):
     """Information needed to identify and run a test."""
 
@@ -333,8 +338,24 @@ class CLITranslator(object):
         """
         info = self.module_info.get(module_name)
         if info:
-            return info.get('path', [])[0]
+            path = info.get('path', [])
+            return path[0] if path else None
         return None
+
+    def _is_auto_gen_test_config(self, module_name):
+        """Check if the test config file will be generated automatically.
+
+        Args:
+            module_name: A string of the module name.
+
+        Returns:
+            True if the test config file will be generated automatically.
+        """
+        info = self.module_info.get(module_name)
+        if info:
+            auto_test_config = info.get('auto_test_config', [])
+            return auto_test_config and auto_test_config[0]
+        return False
 
     def _get_targets_from_xml(self, xml_file):
         """Retrieve build targets from the given xml.
@@ -361,7 +382,7 @@ class CLITranslator(object):
                 target_to_add = value[:-len('.apk')]
             elif name == TEST_MODULE_NAME:
                 target_to_add = value
-	    elif PERF_SETUP_LABEL in value:
+            elif PERF_SETUP_LABEL in value:
                 target_to_add = PERF_SETUP_LABEL
 
             # Let's make sure we can actually build the target.
@@ -372,6 +393,13 @@ class CLITranslator(object):
                 logging.warning('Build target (%s) parsed out of %s but not '
                                 'present in %s, skipping build', target_to_add,
                                 xml_file, MODULE_INFO)
+        # TODO (b/70813166): Remove this lookup once all runtime dependencies
+        # can belisted as a build dependencies or are in the base test harness.
+        nodes_with_class = root.findall(".//*[@class]")
+        for class_attr in nodes_with_class:
+            fqcn = class_attr.attrib['class'].strip()
+            if fqcn.startswith(COMPATIBILITY_PACKAGE_PREFIX):
+                targets.add(CTS_JAR)
         logging.debug('Targets found in config file: %s', targets)
         return targets
 
@@ -440,7 +468,8 @@ class CLITranslator(object):
         if info and info.get('installed'):
             # path is a list with only 1 element.
             rel_config = os.path.join(info['path'][0], MODULE_CONFIG)
-            return TestInfo(rel_config, module_name, None, frozenset())
+            return TestInfo(rel_config, module_name, None, frozenset(),
+                            atest_tf_test_runner.AtestTradefedTestRunner.NAME)
         return None
 
     def _find_class_file(self, class_name, search_dir):
@@ -499,7 +528,8 @@ class CLITranslator(object):
             rel_config = os.path.join(rel_module_dir, MODULE_CONFIG)
         if not module_name:
             module_name = self._get_module_name(os.path.dirname(rel_config))
-        return TestInfo(rel_config, module_name, None, frozenset([test_filter]))
+        return TestInfo(rel_config, module_name, None, frozenset([test_filter]),
+                        atest_tf_test_runner.AtestTradefedTestRunner.NAME)
 
     def _find_test_by_module_and_class(self, module_class):
         """Find the test info given a MODULE:CLASS string.
@@ -561,7 +591,9 @@ class CLITranslator(object):
                                  'did you mean: %s?', name, int_name)
                     return None
                 rel_config = os.path.relpath(test_file, self.root_dir)
-                return TestInfo(rel_config, None, name, filters)
+                return TestInfo(
+                    rel_config, None, name, filters,
+                    atest_tf_test_runner.AtestTradefedTestRunner.NAME)
         return None
 
     def _find_tests_by_test_mapping(self, path=''):
@@ -660,7 +692,8 @@ class CLITranslator(object):
                               rel_config)
                 return None
             int_name = match.group('int_name')
-            return TestInfo(rel_config, None, int_name, frozenset())
+            return TestInfo(rel_config, None, int_name, frozenset(),
+                            atest_tf_test_runner.AtestTradefedTestRunner.NAME)
 
         # Module/Class
         rel_module_dir = self._find_parent_module_dir(dir_path)
@@ -674,7 +707,8 @@ class CLITranslator(object):
             test_filter = TestFilter(full_class_name, methods)
         return TestInfo(rel_config, module_name, None,
                         frozenset([test_filter])
-                        if test_filter else frozenset())
+                        if test_filter else frozenset(),
+                        atest_tf_test_runner.AtestTradefedTestRunner.NAME)
 
     def _sort_and_group(self, iterable, key):
         """Sort and group helper function."""
@@ -755,7 +789,9 @@ class CLITranslator(object):
                     break
                 filters |= test_info.filters
             filters = self._flatten_test_filters(filters)
-            results.add(TestInfo(rel_config, module, None, frozenset(filters)))
+            results.add(
+                TestInfo(rel_config, module, None, frozenset(filters),
+                         atest_tf_test_runner.AtestTradefedTestRunner.NAME))
         return results
 
     def _parse_build_targets(self, test_info):
@@ -768,7 +804,10 @@ class CLITranslator(object):
             A set of strings of the build targets.
         """
         config_file = os.path.join(self.root_dir, test_info.rel_config)
-        targets = self._get_targets_from_xml(config_file)
+        if self._is_auto_gen_test_config(test_info.module_name):
+            targets = set()
+        else:
+            targets = self._get_targets_from_xml(config_file)
         if self.gtf_dirs:
             targets.add('google-tradefed-core')
         else:
@@ -794,40 +833,6 @@ class CLITranslator(object):
         # the list of build targets to keep the file up to date.
         build_targets.add(self.module_info_target)
         return build_targets
-
-    def _create_test_info_file(self, test_infos):
-        """Create the test info file.
-
-        Args:
-            test_infos: A set of TestInfo instances.
-
-        Returns:
-            A string of the filepath.
-        """
-        filepath = os.path.join(self.results_dir, 'test_info.json')
-        infos = [test_info.to_tf_dict() for test_info in test_infos]
-        logging.debug('Test info: %s', infos)
-        logging.info('Writing test info to: %s', filepath)
-        with open(filepath, 'w') as test_info_file:
-            json.dump(infos, test_info_file)
-        return filepath
-
-    def _generate_run_commands(self, filepath):
-        """Generate a list of run commands from TestInfos.
-
-        Args:
-            filepath: A string of the filepath to the test_info file.
-
-        Returns:
-            A list of strings of the TradeFederation run commands.
-        """
-        if logging.getLogger().isEnabledFor(logging.DEBUG):
-            log_level = 'VERBOSE'
-        else:
-            log_level = 'WARN'
-        args = ['--test-info-file', filepath, '--log-level', log_level]
-        args.extend(atest_utils.get_result_server_args())
-        return [RUN_CMD % (TF_TEMPLATE, ' '.join(args))]
 
     def _get_test_info(self, test_name, reference_types):
         """Tries to find a TestInfo matches reference else returns None
@@ -867,8 +872,7 @@ class CLITranslator(object):
             tests: A list of strings referencing the tests to run.
 
         Returns:
-            A tuple with set of build_target strings and list of run command
-            strings.
+            A tuple with set of build_target strings and list of TestInfos.
         """
         logging.info('Finding tests: %s', tests)
         start = time.time()
@@ -889,8 +893,6 @@ class CLITranslator(object):
                 test_infos.add(test_info)
         test_infos = self._flatten_test_infos(test_infos)
         build_targets = self._generate_build_targets(test_infos)
-        filepath = self._create_test_info_file(test_infos)
-        run_commands = self._generate_run_commands(filepath)
         end = time.time()
         logging.debug('Found tests in %ss', end - start)
-        return build_targets, run_commands
+        return build_targets, test_infos

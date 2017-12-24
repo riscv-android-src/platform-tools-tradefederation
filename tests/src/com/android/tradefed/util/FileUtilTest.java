@@ -25,6 +25,8 @@ import com.android.tradefed.result.LogDataType;
 
 import org.junit.Before;
 import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.junit.runners.JUnit4;
 
 import java.io.ByteArrayInputStream;
 import java.io.File;
@@ -34,6 +36,7 @@ import java.nio.file.attribute.PosixFilePermission;
 import java.util.Set;
 
 /** Unit tests for {@link FileUtil} */
+@RunWith(JUnit4.class)
 public class FileUtilTest {
 
     @Before

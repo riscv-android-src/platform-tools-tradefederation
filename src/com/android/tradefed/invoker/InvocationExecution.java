@@ -444,6 +444,12 @@ public class InvocationExecution implements IInvocationExecution {
                         File subDir = FileUtil.createTempDir(externalTestDir.getName(), testsDir);
                         subDir.delete();
                         FileUtil.symlinkFile(externalTestDir, subDir);
+                        // Tag the dir in the build info to be possibly cleaned.
+                        info.setFile(
+                                subDir.getName(),
+                                subDir,
+                                /** version */
+                                "v1");
                     } catch (IOException e) {
                         CLog.e(
                                 "Failed to load external test dir %s. Ignoring it.",
