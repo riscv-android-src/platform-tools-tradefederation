@@ -56,8 +56,8 @@ import java.util.concurrent.TimeUnit;
 public abstract class BaseHostJUnit4Test
         implements IAbiReceiver, IBuildReceiver, IDeviceTest, IInvocationContextReceiver {
 
-    private static final String AJUR_RUNNER = "android.support.test.runner.AndroidJUnitRunner";
-    private static final long DEFAULT_TEST_TIMEOUT_MS = 10 * 60 * 1000L;
+    static final String AJUR_RUNNER = "android.support.test.runner.AndroidJUnitRunner";
+    static final long DEFAULT_TEST_TIMEOUT_MS = 10 * 60 * 1000L;
     private static final long DEFAULT_MAX_TIMEOUT_TO_OUTPUT_MS = 10 * 60 * 1000L; //10min
 
     private ITestDevice mDevice;
@@ -406,6 +406,20 @@ public abstract class BaseHostJUnit4Test
                 maxInstrumentationTimeoutMs);
     }
 
+    public final boolean runDeviceTests(DeviceTestRunOptions options)
+            throws DeviceNotAvailableException {
+        return runDeviceTests(
+                options.getDevice() == null ? getDevice() : options.getDevice(),
+                options.getRunner(),
+                options.getPackageName(),
+                options.getTestClassName(),
+                options.getTestMethodName(),
+                options.getUserId(),
+                options.getTestTimeoutMs(),
+                options.getMaxTimeToOutputMs(),
+                options.getMaxInstrumentationTimeoutMs());
+    }
+
     /**
      * Method to run an installed instrumentation package. Use {@link #getLastDeviceRunResults()}
      * right after to get the details of results.
@@ -567,4 +581,9 @@ public abstract class BaseHostJUnit4Test
         }
         return false;
     }
+
+    public boolean hasDeviceFeature(String feature) throws DeviceNotAvailableException {
+        return getDevice().hasFeature("feature:" + feature);
+    }
+
 }
