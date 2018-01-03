@@ -436,6 +436,7 @@ class CLITranslatorUnittests(unittest.TestCase):
         mock_find.return_value = ''
         self.assertIsNone(self.ctr._find_test_by_integration_name('NotIntName'))
 
+    @mock.patch.object(cli_t.CLITranslator, '_is_auto_gen_test_config')
     @mock.patch.object(cli_t.CLITranslator, '_get_fully_qualified_class_name',
                        return_value=FULL_CLASS_NAME)
     @mock.patch('os.path.realpath', side_effect=realpath_side_effect)
@@ -446,7 +447,7 @@ class CLITranslatorUnittests(unittest.TestCase):
     @mock.patch('os.path.exists')
     #pylint: disable=unused-argument
     def test_find_test_by_path(self, mock_pathexists, mock_dir, _name,
-                               _isfile, _real, _class):
+                               _isfile, _real, _class, _is_auto_gen):
         """Test _find_test_by_path method."""
         mock_pathexists.return_value = False
         unittest_utils.assert_strict_equal(
@@ -455,6 +456,13 @@ class CLITranslatorUnittests(unittest.TestCase):
         mock_dir.return_value = None
         unittest_utils.assert_strict_equal(
             self, None, self.ctr._find_test_by_path('no/module'))
+
+        mock_dir.side_effect = [cli_t.TestWithNoModuleError(), MODULE_DIR]
+        _is_auto_gen.return_value = True
+        unittest_utils.assert_strict_equal(
+            self, MODULE_INFO, self.ctr._find_test_by_path('no/test/config'))
+        mock_dir.side_effect = None
+
         mock_dir.return_value = MODULE_DIR
         class_path = '%s.java' % CLASS_NAME
         unittest_utils.assert_strict_equal(
