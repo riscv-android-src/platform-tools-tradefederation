@@ -60,26 +60,26 @@ public class InstrumentationPreparer implements ITargetPreparer {
             description="The test method name to run.")
     private String mMethodName = null;
 
-    /**
-     * @deprecated use shell-timeout or test-timeout option instead.
-     */
-    @Deprecated
-    @Option(name = "timeout",
-            description="Deprecated - Use \"shell-timeout\" or \"test-timeout\" instead.")
-    private Integer mTimeout = null;
+    @Option(
+        name = "shell-timeout",
+        description =
+                "The defined timeout (in milliseconds) is used as a maximum waiting time "
+                        + "when expecting the command output from the device. At any time, if the "
+                        + "shell command does not output anything for a period longer than defined "
+                        + "timeout the TF run terminates. For no timeout, set to 0.",
+        isTimeVal = true
+    )
+    private long mShellTimeout = 10 * 60 * 1000L; // default to 10 minutes
 
-    @Option(name = "shell-timeout",
-            description="The defined timeout (in milliseconds) is used as a maximum waiting time "
-                    + "when expecting the command output from the device. At any time, if the "
-                    + "shell command does not output anything for a period longer than defined "
-                    + "timeout the TF run terminates. For no timeout, set to 0.")
-    private long mShellTimeout = 10 * 60 * 1000;  // default to 10 minutes
-
-    @Option(name = "test-timeout",
-            description="Sets timeout (in milliseconds) that will be applied to each test. In the "
-                    + "event of a test timeout it will log the results and proceed with executing "
-                    + "the next test. For no timeout, set to 0.")
-    private int mTestTimeout = 10 * 60 * 1000;  // default to 10 minutes
+    @Option(
+        name = "test-timeout",
+        description =
+                "Sets timeout (in milliseconds) that will be applied to each test. In the "
+                        + "event of a test timeout it will log the results and proceed with executing "
+                        + "the next test. For no timeout, set to 0.",
+        isTimeVal = true
+    )
+    private long mTestTimeout = 10 * 60 * 1000L; // default to 10 minutes
 
     @Option(name = "instrumentation-arg",
             description = "Instrumentation arguments to provide.")
@@ -90,9 +90,12 @@ public class InstrumentationPreparer implements ITargetPreparer {
             "The max number of attempts to make to run the instrumentation successfully.")
     private int mAttempts = 1;
 
-    @Option(name = "delay-before-retry",
-            description = "Time to delay before retrying another instrumentation attempt, in msecs")
-    private long mRetryDelayMs = 0;
+    @Option(
+        name = "delay-before-retry",
+        description = "Time to delay before retrying another instrumentation attempt.",
+        isTimeVal = true
+    )
+    private long mRetryDelayMs = 0L;
 
     @Override
     public void setUp(ITestDevice device, IBuildInfo buildInfo) throws TargetSetupError, BuildError,
@@ -125,11 +128,6 @@ public class InstrumentationPreparer implements ITargetPreparer {
         test.setRunnerName(mRunnerName);
         test.setClassName(mClassName);
         test.setMethodName(mMethodName);
-        if (mTimeout != null) {
-            CLog.w("\"timeout\" argument is deprecated and should not be used! \"shell-timeout\""
-                    + " argument value is overwritten with %d ms", mTimeout);
-            setShellTimeout(mTimeout);
-        }
         test.setShellTimeout(mShellTimeout);
         test.setTestTimeout(mTestTimeout);
         for (Map.Entry<String, String> entry : mInstrArgMap.entrySet()) {
