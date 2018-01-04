@@ -50,9 +50,11 @@ class AtestTradefedTestRunner(test_runner_base.TestRunnerBase):
             test_infos: List of TestInfo.
             extra_args: Dict of extra args to add to test run.
         """
+        iterations = extra_args.pop(constants.ITERATIONS, 1)
         filepath = self._create_test_info_file(test_infos)
         run_cmd = self._generate_run_commands(filepath, extra_args)
-        super(AtestTradefedTestRunner, self).run(run_cmd)
+        for _ in xrange(iterations):
+            super(AtestTradefedTestRunner, self).run(run_cmd)
 
     def host_env_check(self):
         """Check that host env has everything we need.
@@ -126,7 +128,8 @@ class AtestTradefedTestRunner(test_runner_base.TestRunnerBase):
         Returns:
             A string that contains the atest tradefed run command.
         """
-        args = ['--test-info-file', filepath]
+        metrics_folder = os.path.join(self.results_dir, 'metrics')
+        args = ['--test-info-file', filepath, '--metrics-folder', metrics_folder]
         if logging.getLogger().isEnabledFor(logging.DEBUG):
             log_level = 'VERBOSE'
         else:

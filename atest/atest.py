@@ -43,6 +43,7 @@ EXPECTED_VARS = frozenset([
 EXIT_CODE_SUCCESS = 0
 EXIT_CODE_ENV_NOT_SETUP = 1
 EXIT_CODE_BUILD_FAILURE = 2
+EXIT_CODE_ERROR = 3
 BUILD_STEP = 'build'
 INSTALL_STEP = 'install'
 TEST_STEP = 'test'
@@ -189,6 +190,7 @@ RUNNING MULTIPLE CLASSES
     Example - two classes, different modules:
         atest FrameworksServicesTests:ScreenDecorWindowTests CtsJankDeviceTestCases:CtsDeviceJankUi
 
+
 '''
 
 
@@ -218,6 +220,12 @@ def _parse_args(argv):
                              'debugger prior to execution.')
     parser.add_argument('-v', '--verbose', action='store_true',
                         help='Display DEBUG level logging.')
+    parser.add_argument('--generate-baseline', nargs='?', type=int, const=5, default=0,
+                        help='Generate baseline metrics, run 5 iterations by default. '
+                             'Provide an int argument to specify # iterations.')
+    parser.add_argument('--generate-new-metrics', nargs='?', type=int, const=5, default=0,
+                        help='Generate new metrics, run 5 iterations by default. '
+                             'Provide an int argument to specify # iterations.')
     return parser.parse_args(argv)
 
 
@@ -286,6 +294,10 @@ def get_extra_args(args):
     steps = args.steps or ALL_STEPS
     if INSTALL_STEP not in steps:
         extra_args[constants.DISABLE_INSTALL] = None
+    if args.generate_baseline:
+        extra_args[constants.ITERATIONS] = args.generate_baseline
+    if args.generate_new_metrics:
+        extra_args[constants.ITERATIONS] = args.generate_new_metrics
     return extra_args
 
 
@@ -302,6 +314,9 @@ def main(argv):
     _configure_logging(args.verbose)
     if _missing_environment_variables():
         return EXIT_CODE_ENV_NOT_SETUP
+    if args.generate_baseline and args.generate_new_metrics:
+        logging.error('Cannot collect both baseline and new metrics at the same time.')
+        return EXIT_CODE_ERROR
     repo_root = os.environ.get(atest_utils.ANDROID_BUILD_TOP)
     results_dir = make_test_run_dir()
     translator = cli_translator.CLITranslator(results_dir=results_dir,
@@ -322,7 +337,6 @@ def main(argv):
     if TEST_STEP in steps:
         test_runner_handler.run_all_tests(results_dir, test_infos, extra_args)
     return EXIT_CODE_SUCCESS
-
 
 if __name__ == '__main__':
     sys.exit(main(sys.argv[1:]))
