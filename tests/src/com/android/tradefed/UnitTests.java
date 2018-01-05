@@ -68,6 +68,7 @@ import com.android.tradefed.device.metric.AtraceCollectorTest;
 import com.android.tradefed.device.metric.BaseDeviceMetricCollectorTest;
 import com.android.tradefed.device.metric.DeviceMetricDataTest;
 import com.android.tradefed.device.metric.MemInfoMetricCollectorTest;
+import com.android.tradefed.device.metric.BugreportzMetricCollectorTest;
 import com.android.tradefed.device.metric.FilePullerDeviceMetricCollectorTest;
 import com.android.tradefed.device.metric.BuddyInfoMetricCollectorTest;
 import com.android.tradefed.device.metric.IonHeapInfoMetricCollectorTest;
@@ -329,6 +330,7 @@ import org.junit.runners.Suite.SuiteClasses;
     AtraceCollectorTest.class,
     BaseDeviceMetricCollectorTest.class,
     BuddyInfoMetricCollectorTest.class,
+    BugreportzMetricCollectorTest.class,
     DeviceMetricDataTest.class,
     FilePullerDeviceMetricCollectorTest.class,
     GfxInfoMetricCollectorTest.class,
