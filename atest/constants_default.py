@@ -21,6 +21,7 @@ MODE = 'DEFAULT'
 # Result server constants for atest_utils.
 RESULT_SERVER = ''
 RESULT_SERVER_ARGS = []
+RESULT_SERVER_TIMEOUT = 5
 
 # Arg constants.
 WAIT_FOR_DEBUGGER = 'WAIT_FOR_DEBUGGER'
