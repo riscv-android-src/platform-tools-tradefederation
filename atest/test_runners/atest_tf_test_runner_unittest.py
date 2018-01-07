@@ -28,7 +28,9 @@ import atest_tf_test_runner as atf_tr
 #pylint: disable=invalid-name
 TEST_INFO_DIR = '/tmp/atest_run_1510085893_pi_Nbi'
 TEST_INFO_FILE = '%s/test_info.json' % TEST_INFO_DIR
-RUN_CMD_ARGS = '--test-info-file %s --log-level WARN' % TEST_INFO_FILE
+METRICS_DIR = '%s/metrics' % TEST_INFO_DIR
+RUN_CMD_ARGS = '--test-info-file %s --metrics-folder %s --log-level WARN' \
+               % (TEST_INFO_FILE, METRICS_DIR)
 RUN_CMD = atf_tr.AtestTradefedTestRunner._RUN_CMD.format(
     exe=atf_tr.AtestTradefedTestRunner.EXECUTABLE,
     template=atf_tr.AtestTradefedTestRunner._TF_TEMPLATE,

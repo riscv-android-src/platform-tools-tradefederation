@@ -116,7 +116,8 @@ def _can_upload_to_result_server():
     # TODO: Also check if we have a slow connection to result server.
     if constants.RESULT_SERVER:
         try:
-            urllib2.urlopen(constants.RESULT_SERVER, timeout=1).close()
+            urllib2.urlopen(constants.RESULT_SERVER,
+                            timeout=constants.RESULT_SERVER_TIMEOUT).close()
             return True
         # pylint: disable=broad-except
         except Exception as err:
