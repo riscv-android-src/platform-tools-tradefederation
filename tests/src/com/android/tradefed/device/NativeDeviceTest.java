@@ -1982,4 +1982,29 @@ public class NativeDeviceTest extends TestCase {
         mTestDevice.getLogcatSince(date);
         EasyMock.verify(mMockIDevice);
     }
+
+    public void testGetProductVariant() throws Exception {
+        EasyMock.expect(mMockIDevice.getProperty(DeviceProperties.VARIANT)).andReturn("variant");
+
+        EasyMock.replay(mMockIDevice);
+        assertEquals("variant", mTestDevice.getProductVariant());
+        EasyMock.verify(mMockIDevice);
+    }
+
+    public void testGetProductVariant_legacy() throws Exception {
+        TestableAndroidNativeDevice testDevice =
+                new TestableAndroidNativeDevice() {
+                    @Override
+                    protected String internalGetProperty(
+                            String propName, String fastbootVar, String description)
+                            throws DeviceNotAvailableException, UnsupportedOperationException {
+                        if (DeviceProperties.VARIANT_LEGACY.equals(propName)) {
+                            return "legacy";
+                        }
+                        return null;
+                    }
+                };
+
+        assertEquals("legacy", testDevice.getProductVariant());
+    }
 }

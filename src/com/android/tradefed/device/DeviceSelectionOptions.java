@@ -477,6 +477,9 @@ public class DeviceSelectionOptions implements IDeviceSelection {
     @Override
     public String getDeviceProductVariant(IDevice device) {
         String prop = getProperty(device, DeviceProperties.VARIANT);
+        if (prop == null) {
+            prop = getProperty(device, DeviceProperties.VARIANT_LEGACY);
+        }
         if (prop != null) {
             prop = prop.toLowerCase();
         }

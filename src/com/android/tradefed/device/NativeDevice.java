@@ -336,17 +336,16 @@ public class NativeDevice implements IManagedTestDevice {
     }
 
     /**
-     * Fetch a device property, from the ddmlib cache by default, and falling back to either
-     * `adb shell getprop` or `fastboot getvar` depending on whether the device is in Fastboot or
-     * not.
+     * Fetch a device property, from the ddmlib cache by default, and falling back to either `adb
+     * shell getprop` or `fastboot getvar` depending on whether the device is in Fastboot or not.
      *
      * @param propName The name of the device property as returned by `adb shell getprop`
      * @param fastbootVar The name of the equivalent fastboot variable to query. if {@code null},
-     * fastboot query will not be attempted
-     * @param description A simple description of the variable.  First letter should be capitalized.
+     *     fastboot query will not be attempted
+     * @param description A simple description of the variable. First letter should be capitalized.
      * @return A string, possibly {@code null} or empty, containing the value of the given property
      */
-    private String internalGetProperty(String propName, String fastbootVar, String description)
+    protected String internalGetProperty(String propName, String fastbootVar, String description)
             throws DeviceNotAvailableException, UnsupportedOperationException {
         String propValue = getIDevice().getProperty(propName);
         if (propValue != null) {
@@ -476,7 +475,12 @@ public class NativeDevice implements IManagedTestDevice {
      */
     @Override
     public String getProductVariant() throws DeviceNotAvailableException {
-        String prop = internalGetProperty("ro.product.device", "variant", "Product variant");
+        String prop = internalGetProperty(DeviceProperties.VARIANT, "variant", "Product variant");
+        if (prop == null) {
+            prop =
+                    internalGetProperty(
+                            DeviceProperties.VARIANT_LEGACY, "variant", "Product variant");
+        }
         if (prop != null) {
             prop = prop.toLowerCase();
         }
