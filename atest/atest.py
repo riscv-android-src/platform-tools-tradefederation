@@ -44,12 +44,14 @@ EXIT_CODE_SUCCESS = 0
 EXIT_CODE_ENV_NOT_SETUP = 1
 EXIT_CODE_BUILD_FAILURE = 2
 EXIT_CODE_ERROR = 3
+EXIT_CODE_TEST_NOT_FOUND = 4
 BUILD_STEP = 'build'
 INSTALL_STEP = 'install'
 TEST_STEP = 'test'
 ALL_STEPS = [BUILD_STEP, INSTALL_STEP, TEST_STEP]
 TEST_RUN_DIR_PREFIX = 'atest_run_%s_'
 HELP_DESC = '''Build, install and run Android tests locally.'''
+REBUILD_MODULE_INFO_FLAG = '--rebuild-module-info'
 
 EPILOG_TEXT = '''
 
@@ -215,6 +217,10 @@ def _parse_args(argv):
                         const=INSTALL_STEP, help='Install an APK.')
     parser.add_argument('-t', '--test', action='append_const', dest='steps',
                         const=TEST_STEP, help='Run the tests.')
+    parser.add_argument('-m', REBUILD_MODULE_INFO_FLAG, action='store_true',
+                        help='Forces a rebuild of the module-info.json file. '
+                             'This may be necessary following a repo sync or '
+                             'when writing a new test.')
     parser.add_argument('-w', '--wait-for-debugger', action='store_true',
                         help='Only for instrumentation tests. Waits for '
                              'debugger prior to execution.')
@@ -319,9 +325,17 @@ def main(argv):
         return EXIT_CODE_ERROR
     repo_root = os.environ.get(atest_utils.ANDROID_BUILD_TOP)
     results_dir = make_test_run_dir()
-    translator = cli_translator.CLITranslator(results_dir=results_dir,
-                                              root_dir=repo_root)
-    build_targets, test_infos = translator.translate(args.tests)
+    translator = cli_translator.CLITranslator(
+        results_dir=results_dir, root_dir=repo_root,
+        force_init=args.rebuild_module_info)
+    try:
+        build_targets, test_infos = translator.translate(args.tests)
+    except cli_translator.TestDiscoveryException:
+        logging.exception('Error occured in test discovery:')
+        logging.info('This can happen after a repo sync or if the test is '
+                     'new. Running: with "%s"  may resolve the issue.',
+                     REBUILD_MODULE_INFO_FLAG)
+        return EXIT_CODE_TEST_NOT_FOUND
     build_targets |= test_runner_handler.get_test_runner_reqs(test_infos)
     extra_args = get_extra_args(args)
     # args.steps will be None if none of -bit set, else list of params set.

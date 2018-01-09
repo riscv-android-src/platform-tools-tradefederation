@@ -57,13 +57,16 @@ TEST_MODULE_NAME = 'test-module-name'
 COMPATIBILITY_PACKAGE_PREFIX = "com.android.compatibility"
 CTS_JAR = "cts-tradefed"
 
-class NoTestFoundError(Exception):
+class TestDiscoveryException(Exception):
+    """Base Exception for CLITranslator issues with test discovery."""
+
+class NoTestFoundError(TestDiscoveryException):
     """Raised when no tests are found."""
 
-class TestWithNoModuleError(Exception):
+class TestWithNoModuleError(TestDiscoveryException):
     """Raised when test files have no parent module directory."""
 
-class UnregisteredModuleError(Exception):
+class UnregisteredModuleError(TestDiscoveryException):
     """Raised when module is not in module-info.json."""
 
 class MissingPackageNameError(Exception):
@@ -145,7 +148,15 @@ class CLITranslator(object):
         3. If test files found, generate Build Targets and the Run Command.
     """
 
-    def __init__(self, results_dir, root_dir='/'):
+    def __init__(self, results_dir, root_dir='/', force_init=False):
+        """CLITranslator constructor
+
+        Args:
+            results_dir: Directory to save results to.
+            root_dir: Android repo root.
+            force_init: Force any initialize steps that may be skipped for
+                        speed on non-initial runs.
+        """
         if not os.path.isdir(root_dir):
             raise ValueError('%s is not valid dir.' % root_dir)
         self.results_dir = results_dir
@@ -159,13 +170,17 @@ class CLITranslator(object):
             REFERENCE_TYPE.FILE_PATH: self._find_test_by_path,
             REFERENCE_TYPE.INTEGRATION: self._find_test_by_integration_name,
         }
-        self.module_info_target, self.module_info = self._load_module_info()
+        self.module_info_target, self.module_info = self._load_module_info(
+            force_build=force_init)
         self.tf_dirs, self.gtf_dirs = self._get_integration_dirs()
         self.integration_dirs = self.tf_dirs + self.gtf_dirs
 
-    def _load_module_info(self):
+    def _load_module_info(self, force_build=False):
         """Make (if not exists) and load into memory MODULE_INFO file
 
+        Args:
+            force_build: Boolean to force a build of module-info even if it
+                         already exists. Defaults to False.
         Returns:
             A tuple containing the module-info build target and a dict of data
             about module names and dir locations.
@@ -173,7 +188,7 @@ class CLITranslator(object):
         file_path = os.path.join(self.out_dir, MODULE_INFO)
         # Make target is simply file path relative to root.
         module_info_target = os.path.relpath(file_path, self.root_dir)
-        if not os.path.isfile(file_path):
+        if not os.path.isfile(file_path) or force_build:
             logging.info('Generating %s - this is required for '
                          'initial runs.', MODULE_INFO)
             atest_utils.build([module_info_target],
