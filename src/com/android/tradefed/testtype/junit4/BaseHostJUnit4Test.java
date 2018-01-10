@@ -218,7 +218,8 @@ public abstract class BaseHostJUnit4Test
                 null,
                 testTimeoutMs,
                 DEFAULT_MAX_TIMEOUT_TO_OUTPUT_MS,
-                0L);
+                0L,
+                true);
     }
 
     /**
@@ -243,7 +244,8 @@ public abstract class BaseHostJUnit4Test
                 userId,
                 testTimeoutMs,
                 DEFAULT_MAX_TIMEOUT_TO_OUTPUT_MS,
-                0L);
+                0L,
+                true);
     }
 
     /**
@@ -282,7 +284,8 @@ public abstract class BaseHostJUnit4Test
                 null,
                 DEFAULT_TEST_TIMEOUT_MS,
                 DEFAULT_MAX_TIMEOUT_TO_OUTPUT_MS,
-                0L);
+                0L,
+                true);
     }
 
     /**
@@ -307,7 +310,8 @@ public abstract class BaseHostJUnit4Test
                 null,
                 DEFAULT_TEST_TIMEOUT_MS,
                 DEFAULT_MAX_TIMEOUT_TO_OUTPUT_MS,
-                0L);
+                0L,
+                true);
     }
 
     /**
@@ -337,7 +341,8 @@ public abstract class BaseHostJUnit4Test
                 null,
                 testTimeoutMs,
                 DEFAULT_MAX_TIMEOUT_TO_OUTPUT_MS,
-                0L);
+                0L,
+                true);
     }
 
     /**
@@ -369,7 +374,8 @@ public abstract class BaseHostJUnit4Test
                 userId,
                 testTimeoutMs,
                 DEFAULT_MAX_TIMEOUT_TO_OUTPUT_MS,
-                0L);
+                0L,
+                true);
     }
 
     /**
@@ -403,7 +409,8 @@ public abstract class BaseHostJUnit4Test
                 null,
                 testTimeoutMs,
                 maxTimeToOutputMs,
-                maxInstrumentationTimeoutMs);
+                maxInstrumentationTimeoutMs,
+                true);
     }
 
     /**
@@ -424,7 +431,8 @@ public abstract class BaseHostJUnit4Test
                 options.getUserId(),
                 options.getTestTimeoutMs(),
                 options.getMaxTimeToOutputMs(),
-                options.getMaxInstrumentationTimeoutMs());
+                options.getMaxInstrumentationTimeoutMs(),
+                options.shouldCheckResults());
     }
 
     /**
@@ -450,7 +458,8 @@ public abstract class BaseHostJUnit4Test
             Integer userId,
             Long testTimeoutMs,
             Long maxTimeToOutputMs,
-            Long maxInstrumentationTimeoutMs)
+            Long maxInstrumentationTimeoutMs,
+            boolean checkResults)
             throws DeviceNotAvailableException {
         TestRunResult runResult =
                 doRunTests(
@@ -469,6 +478,31 @@ public abstract class BaseHostJUnit4Test
         Assume.assumeTrue(
                 runResult.getNumTests()
                         != runResult.getNumTestsInState(TestStatus.ASSUMPTION_FAILURE));
+        if (checkResults) {
+            if (runResult.isRunFailure()) {
+                throw new AssertionError(
+                        "Failed to successfully run device tests for "
+                                + runResult.getName()
+                                + ": "
+                                + runResult.getRunFailureMessage());
+            }
+            if (runResult.getNumTests() == 0) {
+                throw new AssertionError("No tests were run on the device");
+            }
+            if (runResult.hasFailedTests()) {
+                // build a meaningful error message
+                StringBuilder errorBuilder = new StringBuilder("on-device tests failed:\n");
+                for (Map.Entry<TestIdentifier, TestResult> resultEntry :
+                        runResult.getTestResults().entrySet()) {
+                    if (!TestStatus.PASSED.equals(resultEntry.getValue().getStatus())) {
+                        errorBuilder.append(resultEntry.getKey().toString());
+                        errorBuilder.append(":\n");
+                        errorBuilder.append(resultEntry.getValue().getStackTrace());
+                    }
+                }
+                throw new AssertionError(errorBuilder.toString());
+            }
+        }
         return !runResult.hasFailedTests() && runResult.getNumTests() > 0;
     }
 
