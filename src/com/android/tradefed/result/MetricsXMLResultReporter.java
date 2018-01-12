@@ -188,7 +188,7 @@ public class MetricsXMLResultReporter extends CollectingTestListener {
     }
 
     @VisibleForTesting
-    OutputStream createOutputStream() throws IOException {
+    public OutputStream createOutputStream() throws IOException {
         if (!mFolder.exists() && !mFolder.mkdirs()) {
             throw new IOException(String.format("Unable to create metrics directory: %s", mFolder));
         }
@@ -203,7 +203,7 @@ public class MetricsXMLResultReporter extends CollectingTestListener {
 
     /** Return the current timestamp as a {@link String}. */
     @VisibleForTesting
-    String getTimeStamp() {
+    public String getTimeStamp() {
         SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss");
         dateFormat.setTimeZone(TimeZone.getTimeZone("UTC"));
         dateFormat.setLenient(true);

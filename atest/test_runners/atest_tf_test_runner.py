@@ -28,7 +28,7 @@ import test_runner_base
 
 
 class AtestTradefedTestRunner(test_runner_base.TestRunnerBase):
-    """Base Test Runner class."""
+    """TradeFed Test Runner class."""
     NAME = 'AtestTradefedTestRunner'
     EXECUTABLE = 'atest_tradefed.sh'
     _TF_TEMPLATE = 'template/local_min'
@@ -50,11 +50,20 @@ class AtestTradefedTestRunner(test_runner_base.TestRunnerBase):
             test_infos: List of TestInfo.
             extra_args: Dict of extra args to add to test run.
         """
-        iterations = extra_args.pop(constants.ITERATIONS, 1)
+        iterations = 1
+        metrics_folder = ''
+        if extra_args.get(constants.PRE_PATCH_ITERATIONS):
+            iterations = extra_args.pop(constants.PRE_PATCH_ITERATIONS)
+            metrics_folder = os.path.join(self.results_dir, 'baseline-metrics')
+        elif extra_args.get(constants.POST_PATCH_ITERATIONS):
+            iterations = extra_args.pop(constants.POST_PATCH_ITERATIONS)
+            metrics_folder = os.path.join(self.results_dir, 'new-metrics')
         filepath = self._create_test_info_file(test_infos)
-        run_cmd = self._generate_run_commands(filepath, extra_args)
+        run_cmd = self._generate_run_commands(filepath, extra_args, metrics_folder)
         for _ in xrange(iterations):
             super(AtestTradefedTestRunner, self).run(run_cmd)
+        if metrics_folder:
+            logging.info('Saved metrics in: %s', metrics_folder)
 
     def host_env_check(self):
         """Check that host env has everything we need.
@@ -118,18 +127,20 @@ class AtestTradefedTestRunner(test_runner_base.TestRunnerBase):
             args_not_supported.append(arg)
         return args_to_append, args_not_supported
 
-    def _generate_run_commands(self, filepath, extra_args):
+    def _generate_run_commands(self, filepath, extra_args, metrics_folder):
         """Generate a list of run commands from TestInfos.
 
         Args:
             filepath: A string of the filepath to the test_info file.
             extra_Args: A Dict of extra args to append.
+            metrics_folder: A string of the filepath to put metrics.
 
         Returns:
             A string that contains the atest tradefed run command.
         """
-        metrics_folder = os.path.join(self.results_dir, 'metrics')
-        args = ['--test-info-file', filepath, '--metrics-folder', metrics_folder]
+        args = ['--test-info-file', filepath]
+        if metrics_folder:
+            args.extend(['--metrics-folder', metrics_folder])
         if logging.getLogger().isEnabledFor(logging.DEBUG):
             log_level = 'VERBOSE'
         else:

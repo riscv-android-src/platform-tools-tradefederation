@@ -14,7 +14,8 @@ the variable `LOCAL_COMPATIBILITY_SUITE`.  A good default to use for it is `devi
 4. [Specifying Steps: Build, Install or Run](#specifying-steps)
 5. [Running Specific Methods](#running-specific-methods)
 6. [Running Multiple Classes](#running-multiple-classes)
-7. [Additional Examples](#additional-examples)
+7. [Detecting Metrics Regression](#detecting-metrics-regression)
+8. [Additional Examples](#additional-examples)
 
 
 ## <a name="environment-setup">Environment Setup</a>
@@ -189,6 +190,38 @@ a subset of classes in a module will improve performance over running the whole 
 Examples:<br>
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;`atest FrameworksServicesTests:ScreenDecorWindowTests FrameworksServicesTest:DimmerTests` <br>
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;`atest FrameworksServicesTests:ScreenDecorWindowTests CtsJankDeviceTestCases:CtsDeviceJankUi`
+
+
+## <a name="detecting-metrics-regression">Detecting Metrics Regression</a>
+
+Generate pre-patch or post-patch metrics without running regression detection:
+
+Example:<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;`atest <test> --generate-baseline <optional iter>` <br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;`atest <test> --generate-new-metrics <optional iter>`
+
+Local regression detection can be run in three options:
+
+1) Provide a folder containing baseline (pre-patch) metrics (generated previously). Atest will run
+   the tests n (default 5) iterations, generate a new set of post-patch metrics, and compare those
+   against existing metrics.
+
+   Example:<br>
+   &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;`atest <test> --detect-regression </path/to/baseline> --generate-new-metrics <optional iter>`
+
+2) Provide a folder containing post-patch metrics (generated previously). Atest will run the tests
+   n (default 5) iterations, generate a new set of pre-patch metrics, and compare those against
+   those provided. Note: the developer needs to revert the device/tests to pre-patch state to
+   generate baseline metrics.
+
+   Example:<br>
+   &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;`atest <test> --detect-regression </path/to/new> --generate-baseline <optional iter>`
+
+3) Provide 2 folders containing both pre-patch and post-patch metrics. Atest will run no tests but
+   the regression detection algorithm.
+
+   Example:<br>
+   &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;`atest --detect-regression </path/to/baseline> </path/to/new>`
 
 
 ## <a name="additional-examples">Additional Examples</a>

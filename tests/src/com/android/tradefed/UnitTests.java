@@ -183,6 +183,8 @@ import com.android.tradefed.testtype.VersionedTfLauncherTest;
 import com.android.tradefed.testtype.host.CoverageMeasurementForwarderTest;
 import com.android.tradefed.testtype.junit4.BaseHostJUnit4TestTest;
 import com.android.tradefed.testtype.junit4.LongevityHostRunnerTest;
+import com.android.tradefed.testtype.metricregression.DetectRegressionTest;
+import com.android.tradefed.testtype.metricregression.MetricsTest;
 import com.android.tradefed.testtype.python.PythonBinaryHostTestTest;
 import com.android.tradefed.testtype.suite.AtestRunnerTest;
 import com.android.tradefed.testtype.suite.BaseTestSuiteTest;
@@ -222,6 +224,7 @@ import com.android.tradefed.util.JUnitXmlParserTest;
 import com.android.tradefed.util.KeyguardControllerStateTest;
 import com.android.tradefed.util.ListInstrumentationParserTest;
 import com.android.tradefed.util.LogcatUpdaterEventParserTest;
+import com.android.tradefed.util.MetricsXmlParserTest;
 import com.android.tradefed.util.MultiMapTest;
 import com.android.tradefed.util.NullUtilTest;
 import com.android.tradefed.util.PairTest;
@@ -238,6 +241,7 @@ import com.android.tradefed.util.SizeLimitedOutputStreamTest;
 import com.android.tradefed.util.StreamUtilTest;
 import com.android.tradefed.util.StringEscapeUtilsTest;
 import com.android.tradefed.util.SubprocessTestResultsParserTest;
+import com.android.tradefed.util.TableBuilderTest;
 import com.android.tradefed.util.TableFormatterTest;
 import com.android.tradefed.util.TarUtilTest;
 import com.android.tradefed.util.TestLoaderTest;
@@ -472,6 +476,10 @@ import org.junit.runners.Suite.SuiteClasses;
     BaseHostJUnit4TestTest.class,
     LongevityHostRunnerTest.class,
 
+    // testtype/metricregression
+    DetectRegressionTest.class,
+    MetricsTest.class,
+
     // testtype/python
     PythonBinaryHostTestTest.class,
 
@@ -519,6 +527,7 @@ import org.junit.runners.Suite.SuiteClasses;
     KeyguardControllerStateTest.class,
     ListInstrumentationParserTest.class,
     LogcatUpdaterEventParserTest.class,
+    MetricsXmlParserTest.class,
     MultiMapTest.class,
     NullUtilTest.class,
     PairTest.class,
@@ -534,6 +543,7 @@ import org.junit.runners.Suite.SuiteClasses;
     StreamUtilTest.class,
     StringEscapeUtilsTest.class,
     SubprocessTestResultsParserTest.class,
+    TableBuilderTest.class,
     TableFormatterTest.class,
     TarUtilTest.class,
     TestLoaderTest.class,
