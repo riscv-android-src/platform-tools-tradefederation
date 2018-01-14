@@ -15,7 +15,9 @@
  */
 package com.android.tradefed.device.metric;
 
+import com.google.common.base.Preconditions;
 import java.io.Serializable;
+import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
@@ -27,10 +29,13 @@ public class DeviceMetricData implements Serializable {
     private static final long serialVersionUID = 1;
 
     // TODO: expend type supports to more complex type: Object, File, etc.
-    private LinkedHashMap<String, String> mCurrentStringMetrics = new LinkedHashMap<>();
+    private Map<String, String> mCurrentStringMetrics =
+            Collections.synchronizedMap(new LinkedHashMap<String, String>());
 
     public void addStringMetric(String key, String value) {
-        mCurrentStringMetrics.put(key, value);
+        synchronized (mCurrentStringMetrics) {
+            mCurrentStringMetrics.put(key, value);
+        }
     }
 
     /**
@@ -40,7 +45,10 @@ public class DeviceMetricData implements Serializable {
      * @param metrics The metrics currently available.
      */
     public void addToMetrics(Map<String, String> metrics) {
+        Preconditions.checkNotNull(metrics);
         // TODO: dump all the metrics collected to the map of metrics to be reported.
-        metrics.putAll(mCurrentStringMetrics);
+        synchronized (mCurrentStringMetrics) {
+            metrics.putAll(mCurrentStringMetrics);
+        }
     }
 }
