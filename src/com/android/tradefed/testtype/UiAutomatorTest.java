@@ -333,12 +333,17 @@ public class UiAutomatorTest implements IRemoteTest, IDeviceTest, ITestFilterRec
                                     "Not able to pull the trace file from test device");
                         }
                     }
+                    File atraceZip = ZipUtil.createZip(testTmpDirectory);
+                    try (FileInputStreamSource streamSource =
+                            new FileInputStreamSource(atraceZip)) {
+                        listener.testLog(String.format("atrace_%s", testTmpDirectory.getName()),
+                                LogDataType.ZIP, streamSource);
+                    } finally {
+                        if (atraceZip != null) {
+                            atraceZip.delete();
+                        }
+                    }
                 }
-                File atraceZip = ZipUtil.createZip(tmpDestDir);
-                FileInputStreamSource streamSource = new FileInputStreamSource(atraceZip);
-                listener.testLog(tmpDestDir.getName(), LogDataType.ZIP, streamSource);
-                StreamUtil.cancel(streamSource);
-                atraceZip.delete();
             }
         } finally {
             if (tmpDestDir != null) {
