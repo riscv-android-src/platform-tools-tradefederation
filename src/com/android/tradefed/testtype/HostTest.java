@@ -15,7 +15,6 @@
  */
 package com.android.tradefed.testtype;
 
-import com.android.ddmlib.testrunner.TestIdentifier;
 import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.config.ConfigurationException;
 import com.android.tradefed.config.Option;
@@ -28,6 +27,7 @@ import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.invoker.IInvocationContext;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.JUnit4ResultForwarder;
+import com.android.tradefed.result.TestDescription;
 import com.android.tradefed.util.JUnit4TestFilter;
 import com.android.tradefed.util.TestFilterHelper;
 
@@ -496,8 +496,7 @@ public class HostTest
                 // Test does not have a getName method.
                 // using the toString format instead: <testName>(className)
                 String testName = t.toString().split("\\(")[0];
-                TestIdentifier testId =
-                        new TestIdentifier(t.getClass().getName(), testName);
+                TestDescription testId = new TestDescription(t.getClass().getName(), testName);
                 listener.testStarted(testId);
                 listener.testEnded(testId, empty);
             }

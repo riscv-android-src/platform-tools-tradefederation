@@ -48,7 +48,7 @@ public class JUnitRunUtil {
         long startTime = System.currentTimeMillis();
         // forward the JUnit results to the invocation listener
         JUnitToInvocationResultForwarder resultForwarder =
-            new JUnitToInvocationResultForwarder(listener);
+                new JUnitToInvocationResultForwarder(listener);
         DeviceTestResult result = new DeviceTestResult();
         result.addListener(resultForwarder);
         try {

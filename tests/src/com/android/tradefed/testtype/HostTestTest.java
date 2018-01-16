@@ -15,7 +15,6 @@
  */
 package com.android.tradefed.testtype;
 
-import com.android.ddmlib.testrunner.TestIdentifier;
 import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.config.ConfigurationException;
 import com.android.tradefed.config.Option;
@@ -26,6 +25,7 @@ import com.android.tradefed.result.ByteArrayInputStreamSource;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.InputStreamSource;
 import com.android.tradefed.result.LogDataType;
+import com.android.tradefed.result.TestDescription;
 import com.android.tradefed.testtype.DeviceJUnit4ClassRunner.TestLogData;
 import com.android.tradefed.testtype.DeviceJUnit4ClassRunner.TestMetrics;
 import com.android.tradefed.util.StreamUtil;
@@ -454,8 +454,8 @@ public class HostTestTest extends TestCase {
      */
     public void testRun_testcase() throws Exception {
         mHostTest.setClassName(SuccessTestCase.class.getName());
-        TestIdentifier test1 = new TestIdentifier(SuccessTestCase.class.getName(), "testPass");
-        TestIdentifier test2 = new TestIdentifier(SuccessTestCase.class.getName(), "testPass2");
+        TestDescription test1 = new TestDescription(SuccessTestCase.class.getName(), "testPass");
+        TestDescription test2 = new TestDescription(SuccessTestCase.class.getName(), "testPass2");
         mListener.testRunStarted((String)EasyMock.anyObject(), EasyMock.eq(2));
         mListener.testStarted(EasyMock.eq(test1));
         mListener.testEnded(EasyMock.eq(test1), (Map<String, String>)EasyMock.anyObject());
@@ -473,8 +473,9 @@ public class HostTestTest extends TestCase {
      */
     public void testRun_MetricTestCase() throws Exception {
         mHostTest.setClassName(TestMetricTestCase.class.getName());
-        TestIdentifier test1 = new TestIdentifier(TestMetricTestCase.class.getName(), "testPass");
-        TestIdentifier test2 = new TestIdentifier(TestMetricTestCase.class.getName(), "testPass2");
+        TestDescription test1 = new TestDescription(TestMetricTestCase.class.getName(), "testPass");
+        TestDescription test2 =
+                new TestDescription(TestMetricTestCase.class.getName(), "testPass2");
         mListener.testRunStarted((String) EasyMock.anyObject(), EasyMock.eq(2));
         mListener.testStarted(EasyMock.eq(test1));
         // test1 should only have its metrics
@@ -498,8 +499,8 @@ public class HostTestTest extends TestCase {
      */
     public void testRun_LogMetricTestCase() throws Exception {
         mHostTest.setClassName(LogMetricTestCase.class.getName());
-        TestIdentifier test1 = new TestIdentifier(LogMetricTestCase.class.getName(), "testPass");
-        TestIdentifier test2 = new TestIdentifier(LogMetricTestCase.class.getName(), "testPass2");
+        TestDescription test1 = new TestDescription(LogMetricTestCase.class.getName(), "testPass");
+        TestDescription test2 = new TestDescription(LogMetricTestCase.class.getName(), "testPass2");
         mListener.testRunStarted((String) EasyMock.anyObject(), EasyMock.eq(2));
         mListener.testStarted(EasyMock.eq(test1));
         // test1 should only have its metrics
@@ -530,8 +531,9 @@ public class HostTestTest extends TestCase {
         // Map option
         setter.setOptionValue("set-option", "map-option:key=value");
         mHostTest.setClassName(TestMetricTestCase.class.getName());
-        TestIdentifier test1 = new TestIdentifier(TestMetricTestCase.class.getName(), "testPass");
-        TestIdentifier test2 = new TestIdentifier(TestMetricTestCase.class.getName(), "testPass2");
+        TestDescription test1 = new TestDescription(TestMetricTestCase.class.getName(), "testPass");
+        TestDescription test2 =
+                new TestDescription(TestMetricTestCase.class.getName(), "testPass2");
         mListener.testRunStarted((String) EasyMock.anyObject(), EasyMock.eq(2));
         mListener.testStarted(EasyMock.eq(test1));
         // test1 should only have its metrics
@@ -558,8 +560,8 @@ public class HostTestTest extends TestCase {
      */
     public void testRun_testSuite() throws Exception {
         mHostTest.setClassName(SuccessTestSuite.class.getName());
-        TestIdentifier test1 = new TestIdentifier(SuccessTestCase.class.getName(), "testPass");
-        TestIdentifier test2 = new TestIdentifier(SuccessTestCase.class.getName(), "testPass2");
+        TestDescription test1 = new TestDescription(SuccessTestCase.class.getName(), "testPass");
+        TestDescription test2 = new TestDescription(SuccessTestCase.class.getName(), "testPass2");
         mListener.testRunStarted((String)EasyMock.anyObject(), EasyMock.eq(2));
         mListener.testStarted(EasyMock.eq(test1));
         mListener.testEnded(EasyMock.eq(test1), (Map<String, String>)EasyMock.anyObject());
@@ -577,8 +579,8 @@ public class HostTestTest extends TestCase {
      */
     public void testRun_testHierarchySuite() throws Exception {
         mHostTest.setClassName(SuccessHierarchySuite.class.getName());
-        TestIdentifier test1 = new TestIdentifier(SuccessTestCase.class.getName(), "testPass");
-        TestIdentifier test2 = new TestIdentifier(SuccessTestCase.class.getName(), "testPass2");
+        TestDescription test1 = new TestDescription(SuccessTestCase.class.getName(), "testPass");
+        TestDescription test2 = new TestDescription(SuccessTestCase.class.getName(), "testPass2");
         mListener.testRunStarted((String)EasyMock.anyObject(), EasyMock.eq(2));
         mListener.testStarted(EasyMock.eq(test1));
         mListener.testEnded(EasyMock.eq(test1), (Map<String, String>)EasyMock.anyObject());
@@ -597,7 +599,7 @@ public class HostTestTest extends TestCase {
     public void testRun_testMethod() throws Exception {
         mHostTest.setClassName(SuccessTestCase.class.getName());
         mHostTest.setMethodName("testPass");
-        TestIdentifier test1 = new TestIdentifier(SuccessTestCase.class.getName(), "testPass");
+        TestDescription test1 = new TestDescription(SuccessTestCase.class.getName(), "testPass");
         mListener.testRunStarted((String)EasyMock.anyObject(), EasyMock.eq(1));
         mListener.testStarted(EasyMock.eq(test1));
         mListener.testEnded(EasyMock.eq(test1), (Map<String, String>)EasyMock.anyObject());
@@ -681,10 +683,10 @@ public class HostTestTest extends TestCase {
         OptionSetter setter = new OptionSetter(mHostTest);
         setter.setOptionValue("class", SuccessTestCase.class.getName());
         setter.setOptionValue("class", AnotherTestCase.class.getName());
-        TestIdentifier test1 = new TestIdentifier(SuccessTestCase.class.getName(), "testPass");
-        TestIdentifier test2 = new TestIdentifier(SuccessTestCase.class.getName(), "testPass2");
-        TestIdentifier test3 = new TestIdentifier(AnotherTestCase.class.getName(), "testPass3");
-        TestIdentifier test4 = new TestIdentifier(AnotherTestCase.class.getName(), "testPass4");
+        TestDescription test1 = new TestDescription(SuccessTestCase.class.getName(), "testPass");
+        TestDescription test2 = new TestDescription(SuccessTestCase.class.getName(), "testPass2");
+        TestDescription test3 = new TestDescription(AnotherTestCase.class.getName(), "testPass3");
+        TestDescription test4 = new TestDescription(AnotherTestCase.class.getName(), "testPass4");
         mListener.testRunStarted((String)EasyMock.anyObject(), EasyMock.eq(2));
         mListener.testStarted(EasyMock.eq(test1));
         mListener.testEnded(EasyMock.eq(test1), (Map<String, String>)EasyMock.anyObject());
@@ -729,7 +731,7 @@ public class HostTestTest extends TestCase {
         OptionSetter setter = new OptionSetter(mHostTest);
         setter.setOptionValue("set-option", "option:value");
 
-        TestIdentifier test1 = new TestIdentifier(SuccessDeviceTest.class.getName(), "testPass");
+        TestDescription test1 = new TestDescription(SuccessDeviceTest.class.getName(), "testPass");
         mListener.testRunStarted((String)EasyMock.anyObject(), EasyMock.eq(1));
         mListener.testStarted(EasyMock.eq(test1));
         Map<String, String> expected = new HashMap<>();
@@ -837,8 +839,8 @@ public class HostTestTest extends TestCase {
     public void testRun_testcaseAnnotationFiltering() throws Exception {
         mHostTest.setClassName(SuccessTestCase.class.getName());
         mHostTest.addIncludeAnnotation("com.android.tradefed.testtype.HostTestTest$MyAnnotation");
-        TestIdentifier test1 = new TestIdentifier(SuccessTestCase.class.getName(), "testPass");
-        TestIdentifier test2 = new TestIdentifier(SuccessTestCase.class.getName(), "testPass2");
+        TestDescription test1 = new TestDescription(SuccessTestCase.class.getName(), "testPass");
+        TestDescription test2 = new TestDescription(SuccessTestCase.class.getName(), "testPass2");
         mListener.testRunStarted((String)EasyMock.anyObject(), EasyMock.eq(2));
         mListener.testStarted(EasyMock.eq(test1));
         mListener.testEnded(EasyMock.eq(test1), (Map<String, String>)EasyMock.anyObject());
@@ -857,7 +859,7 @@ public class HostTestTest extends TestCase {
     public void testRun_testcaseNotAnnotationFiltering() throws Exception {
         mHostTest.setClassName(SuccessTestCase.class.getName());
         mHostTest.addExcludeAnnotation("com.android.tradefed.testtype.HostTestTest$MyAnnotation2");
-        TestIdentifier test1 = new TestIdentifier(SuccessTestCase.class.getName(), "testPass");
+        TestDescription test1 = new TestDescription(SuccessTestCase.class.getName(), "testPass");
         // Only test1 will run, test2 should be filtered out.
         mListener.testRunStarted((String)EasyMock.anyObject(), EasyMock.eq(1));
         mListener.testStarted(EasyMock.eq(test1));
@@ -876,7 +878,7 @@ public class HostTestTest extends TestCase {
         mHostTest.setClassName(AnotherTestCase.class.getName());
         mHostTest.addIncludeAnnotation("com.android.tradefed.testtype.HostTestTest$MyAnnotation");
         mHostTest.addExcludeAnnotation("com.android.tradefed.testtype.HostTestTest$MyAnnotation2");
-        TestIdentifier test4 = new TestIdentifier(AnotherTestCase.class.getName(), "testPass4");
+        TestDescription test4 = new TestDescription(AnotherTestCase.class.getName(), "testPass4");
         // Only a test with MyAnnotation and Without MyAnnotation2 will run. Here testPass4
         mListener.testRunStarted((String)EasyMock.anyObject(), EasyMock.eq(1));
         mListener.testStarted(EasyMock.eq(test4));
@@ -895,7 +897,7 @@ public class HostTestTest extends TestCase {
         mHostTest.setClassName(AnotherTestCase.class.getName());
         mHostTest.addIncludeAnnotation("com.android.tradefed.testtype.HostTestTest$MyAnnotation");
         mHostTest.addIncludeAnnotation("com.android.tradefed.testtype.HostTestTest$MyAnnotation2");
-        TestIdentifier test3 = new TestIdentifier(AnotherTestCase.class.getName(), "testPass3");
+        TestDescription test3 = new TestDescription(AnotherTestCase.class.getName(), "testPass3");
         // Only a test with MyAnnotation and with MyAnnotation2 will run. Here testPass3
         mListener.testRunStarted((String)EasyMock.anyObject(), EasyMock.eq(1));
         mListener.testStarted(EasyMock.eq(test3));
@@ -964,12 +966,12 @@ public class HostTestTest extends TestCase {
         mHostTest.setClassName(SuccessTestCase.class.getName());
         mHostTest.setCollectTestsOnly(true);
         mListener.testRunStarted((String)EasyMock.anyObject(), EasyMock.eq(2));
-        mListener.testStarted((TestIdentifier) EasyMock.anyObject());
-        mListener.testEnded((TestIdentifier) EasyMock.anyObject(),
-                (Map<String, String>)EasyMock.anyObject());
-        mListener.testStarted((TestIdentifier) EasyMock.anyObject());
-        mListener.testEnded((TestIdentifier) EasyMock.anyObject(),
-                (Map<String, String>)EasyMock.anyObject());
+        mListener.testStarted((TestDescription) EasyMock.anyObject());
+        mListener.testEnded(
+                (TestDescription) EasyMock.anyObject(), (Map<String, String>) EasyMock.anyObject());
+        mListener.testStarted((TestDescription) EasyMock.anyObject());
+        mListener.testEnded(
+                (TestDescription) EasyMock.anyObject(), (Map<String, String>) EasyMock.anyObject());
         mListener.testRunEnded(EasyMock.anyLong(), (Map<String, String>)EasyMock.anyObject());
         EasyMock.replay(mListener);
         mHostTest.run(mListener);
@@ -1000,8 +1002,8 @@ public class HostTestTest extends TestCase {
      */
     public void testRun_junit4style() throws Exception {
         mHostTest.setClassName(Junit4TestClass.class.getName());
-        TestIdentifier test1 = new TestIdentifier(Junit4TestClass.class.getName(), "testPass5");
-        TestIdentifier test2 = new TestIdentifier(Junit4TestClass.class.getName(), "testPass6");
+        TestDescription test1 = new TestDescription(Junit4TestClass.class.getName(), "testPass5");
+        TestDescription test2 = new TestDescription(Junit4TestClass.class.getName(), "testPass6");
         mListener.testRunStarted((String)EasyMock.anyObject(), EasyMock.eq(2));
         mListener.testStarted(EasyMock.eq(test1));
         Map<String, String> metrics = new HashMap<>();
@@ -1024,10 +1026,10 @@ public class HostTestTest extends TestCase {
      */
     public void testRun_junit4style_ignored() throws Exception {
         mHostTest.setClassName(Junit4TestClassWithIgnore.class.getName());
-        TestIdentifier test1 =
-                new TestIdentifier(Junit4TestClassWithIgnore.class.getName(), "testPass5");
-        TestIdentifier test2 =
-                new TestIdentifier(Junit4TestClassWithIgnore.class.getName(), "testPass6");
+        TestDescription test1 =
+                new TestDescription(Junit4TestClassWithIgnore.class.getName(), "testPass5");
+        TestDescription test2 =
+                new TestDescription(Junit4TestClassWithIgnore.class.getName(), "testPass6");
         mListener.testRunStarted((String) EasyMock.anyObject(), EasyMock.eq(2));
         mListener.testStarted(EasyMock.eq(test1));
         mListener.testEnded(EasyMock.eq(test1), (Map<String, String>) EasyMock.anyObject());
@@ -1046,8 +1048,8 @@ public class HostTestTest extends TestCase {
      */
     public void testRun_junit4style_assumeFailure() throws Exception {
         mHostTest.setClassName(JUnit4TestClassAssume.class.getName());
-        TestIdentifier test1 =
-                new TestIdentifier(JUnit4TestClassAssume.class.getName(), "testPass5");
+        TestDescription test1 =
+                new TestDescription(JUnit4TestClassAssume.class.getName(), "testPass5");
         mListener.testRunStarted((String) EasyMock.anyObject(), EasyMock.eq(1));
         mListener.testStarted(EasyMock.eq(test1));
         mListener.testAssumptionFailure(EasyMock.eq(test1), EasyMock.anyObject());
@@ -1065,8 +1067,8 @@ public class HostTestTest extends TestCase {
     public void testRun_junit4style_multiException() throws Exception {
         mListener = EasyMock.createStrictMock(ITestInvocationListener.class);
         mHostTest.setClassName(JUnit4TestClassMultiException.class.getName());
-        TestIdentifier test1 =
-                new TestIdentifier(JUnit4TestClassMultiException.class.getName(), "testPass5");
+        TestDescription test1 =
+                new TestDescription(JUnit4TestClassMultiException.class.getName(), "testPass5");
         mListener.testRunStarted((String) EasyMock.anyObject(), EasyMock.eq(1));
         mListener.testStarted(EasyMock.eq(test1));
         mListener.testFailed(
@@ -1086,8 +1088,8 @@ public class HostTestTest extends TestCase {
     public void testRun_junit4style_multiDevice() throws Exception {
         mHostTest.setClassName(Junit4TestClassMulti.class.getName());
         mHostTest.setDeviceInfos(new HashMap<>());
-        TestIdentifier test1 =
-                new TestIdentifier(Junit4TestClassMulti.class.getName(), "testPass5");
+        TestDescription test1 =
+                new TestDescription(Junit4TestClassMulti.class.getName(), "testPass5");
         mListener.testRunStarted((String) EasyMock.anyObject(), EasyMock.eq(1));
         mListener.testStarted(EasyMock.eq(test1));
         mListener.testEnded(EasyMock.eq(test1), (Map<String, String>) EasyMock.anyObject());
@@ -1103,7 +1105,7 @@ public class HostTestTest extends TestCase {
      */
     public void testRun_junit4_withMethodFilter() throws Exception {
         mHostTest.setClassName(Junit4TestClass.class.getName());
-        TestIdentifier test2 = new TestIdentifier(Junit4TestClass.class.getName(), "testPass6");
+        TestDescription test2 = new TestDescription(Junit4TestClass.class.getName(), "testPass6");
         mHostTest.setMethodName("testPass6");
         mListener.testRunStarted((String)EasyMock.anyObject(), EasyMock.eq(1));
         mListener.testStarted(EasyMock.eq(test2));
@@ -1162,10 +1164,10 @@ public class HostTestTest extends TestCase {
      */
     private void runMixJunitTest(HostTest hostTest, int expectedTest, int expectedRun)
             throws Exception {
-        TestIdentifier test1 = new TestIdentifier(SuccessTestCase.class.getName(), "testPass");
-        TestIdentifier test2 = new TestIdentifier(SuccessTestCase.class.getName(), "testPass2");
-        TestIdentifier test3 = new TestIdentifier(Junit4TestClass.class.getName(), "testPass5");
-        TestIdentifier test4 = new TestIdentifier(Junit4TestClass.class.getName(), "testPass6");
+        TestDescription test1 = new TestDescription(SuccessTestCase.class.getName(), "testPass");
+        TestDescription test2 = new TestDescription(SuccessTestCase.class.getName(), "testPass2");
+        TestDescription test3 = new TestDescription(Junit4TestClass.class.getName(), "testPass5");
+        TestDescription test4 = new TestDescription(Junit4TestClass.class.getName(), "testPass6");
         mListener.testRunStarted((String)EasyMock.anyObject(), EasyMock.eq(expectedTest));
         EasyMock.expectLastCall().times(expectedRun);
         mListener.testStarted(EasyMock.eq(test1));
@@ -1192,7 +1194,7 @@ public class HostTestTest extends TestCase {
         mHostTest.addExcludeAnnotation("com.android.tradefed.testtype.HostTestTest$MyAnnotation2");
         OptionSetter setter = new OptionSetter(mHostTest);
         setter.setOptionValue("set-option", "junit4-option:true");
-        TestIdentifier test1 = new TestIdentifier(Junit4TestClass.class.getName(), "testPass6");
+        TestDescription test1 = new TestDescription(Junit4TestClass.class.getName(), "testPass6");
         // Only test1 will run, test2 should be filtered out.
         mListener.testRunStarted((String)EasyMock.anyObject(), EasyMock.eq(1));
         mListener.testStarted(EasyMock.eq(test1));
@@ -1227,10 +1229,10 @@ public class HostTestTest extends TestCase {
     public void testRun_Junit4Test_malformed() throws Exception {
         mHostTest.setClassName(Junit4MalformedTestClass.class.getName());
         mListener.testRunStarted((String)EasyMock.anyObject(), EasyMock.eq(1));
-        Capture<TestIdentifier> captured = new Capture<>();
+        Capture<TestDescription> captured = new Capture<>();
         mListener.testStarted(EasyMock.capture(captured));
-        mListener.testFailed((TestIdentifier)EasyMock.anyObject(), (String)EasyMock.anyObject());
-        mListener.testEnded((TestIdentifier)EasyMock.anyObject(), EasyMock.anyObject());
+        mListener.testFailed((TestDescription) EasyMock.anyObject(), (String) EasyMock.anyObject());
+        mListener.testEnded((TestDescription) EasyMock.anyObject(), EasyMock.anyObject());
         mListener.testRunEnded(EasyMock.anyLong(), (Map<String, String>)EasyMock.anyObject());
         EasyMock.replay(mListener);
         mHostTest.run(mListener);
@@ -1265,8 +1267,8 @@ public class HostTestTest extends TestCase {
      */
     private void runMixJunitTestWithFilter(HostTest hostTest) throws Exception {
         hostTest.addExcludeAnnotation("com.android.tradefed.testtype.HostTestTest$MyAnnotation2");
-        TestIdentifier test1 = new TestIdentifier(SuccessTestCase.class.getName(), "testPass");
-        TestIdentifier test4 = new TestIdentifier(Junit4TestClass.class.getName(), "testPass6");
+        TestDescription test1 = new TestDescription(SuccessTestCase.class.getName(), "testPass");
+        TestDescription test4 = new TestDescription(Junit4TestClass.class.getName(), "testPass6");
         mListener.testRunStarted((String)EasyMock.anyObject(), EasyMock.eq(2));
         EasyMock.expectLastCall().times(1);
         mListener.testStarted(EasyMock.eq(test1));
@@ -1306,10 +1308,10 @@ public class HostTestTest extends TestCase {
         mListener.testRunStarted(
                 EasyMock.eq("com.android.tradefed.testtype.HostTestTest$Junit4SuiteClass"),
                 EasyMock.eq(4));
-        TestIdentifier test1 = new TestIdentifier(Junit4TestClass.class.getName(), "testPass5");
-        TestIdentifier test2 = new TestIdentifier(SuccessTestCase.class.getName(), "testPass");
-        TestIdentifier test3 = new TestIdentifier(SuccessTestCase.class.getName(), "testPass2");
-        TestIdentifier test4 = new TestIdentifier(Junit4TestClass.class.getName(), "testPass6");
+        TestDescription test1 = new TestDescription(Junit4TestClass.class.getName(), "testPass5");
+        TestDescription test2 = new TestDescription(SuccessTestCase.class.getName(), "testPass");
+        TestDescription test3 = new TestDescription(SuccessTestCase.class.getName(), "testPass2");
+        TestDescription test4 = new TestDescription(Junit4TestClass.class.getName(), "testPass6");
         mListener.testStarted(test1);
         mListener.testEnded(EasyMock.eq(test1), (Map<String, String>)EasyMock.anyObject());
         mListener.testStarted(EasyMock.eq(test2));
@@ -1360,7 +1362,7 @@ public class HostTestTest extends TestCase {
 
         // We expect all the test from the JUnit4 suite to run under the original suite classname
         // not under the container class name.
-        TestIdentifier test = new TestIdentifier(Junit4TestClass.class.getName(), "testPass5");
+        TestDescription test = new TestDescription(Junit4TestClass.class.getName(), "testPass5");
         mListener.testRunStarted(test.getClassName(), 1);
         mListener.testStarted(test);
         mListener.testEnded(EasyMock.eq(test), (Map<String, String>)EasyMock.anyObject());
@@ -1674,8 +1676,8 @@ public class HostTestTest extends TestCase {
         mHostTest.setClassName(SuccessTestCase.class.getName());
         mHostTest.addIncludeAnnotation("com.android.tradefed.testtype.HostTestTest$MyAnnotation3");
         assertEquals(2, mHostTest.countTestCases());
-        TestIdentifier test1 = new TestIdentifier(SuccessTestCase.class.getName(), "testPass");
-        TestIdentifier test2 = new TestIdentifier(SuccessTestCase.class.getName(), "testPass2");
+        TestDescription test1 = new TestDescription(SuccessTestCase.class.getName(), "testPass");
+        TestDescription test2 = new TestDescription(SuccessTestCase.class.getName(), "testPass2");
         mListener.testRunStarted((String) EasyMock.anyObject(), EasyMock.eq(2));
         mListener.testStarted(EasyMock.eq(test1));
         mListener.testEnded(EasyMock.eq(test1), (Map<String, String>) EasyMock.anyObject());
@@ -1694,7 +1696,7 @@ public class HostTestTest extends TestCase {
         mHostTest.setClassName(AnotherTestCase.class.getName());
         mHostTest.addExcludeAnnotation("com.android.tradefed.testtype.HostTestTest$MyAnnotation3");
         assertEquals(1, mHostTest.countTestCases());
-        TestIdentifier test1 = new TestIdentifier(AnotherTestCase.class.getName(), "testPass4");
+        TestDescription test1 = new TestDescription(AnotherTestCase.class.getName(), "testPass4");
         mListener.testRunStarted((String) EasyMock.anyObject(), EasyMock.eq(1));
         mListener.testStarted(EasyMock.eq(test1));
         mListener.testEnded(EasyMock.eq(test1), (Map<String, String>) EasyMock.anyObject());
@@ -1709,7 +1711,7 @@ public class HostTestTest extends TestCase {
         mHostTest.setClassName(AnotherTestCase.class.getName());
         mHostTest.addIncludeAnnotation("com.android.tradefed.testtype.HostTestTest$MyAnnotation3");
         assertEquals(1, mHostTest.countTestCases());
-        TestIdentifier test1 = new TestIdentifier(AnotherTestCase.class.getName(), "testPass3");
+        TestDescription test1 = new TestDescription(AnotherTestCase.class.getName(), "testPass3");
         mListener.testRunStarted((String) EasyMock.anyObject(), EasyMock.eq(1));
         mListener.testStarted(EasyMock.eq(test1));
         mListener.testEnded(EasyMock.eq(test1), (Map<String, String>) EasyMock.anyObject());
@@ -1728,7 +1730,8 @@ public class HostTestTest extends TestCase {
         mHostTest.setClassName(SuccessDeviceTest2.class.getName());
         mHostTest.addIncludeAnnotation("com.android.tradefed.testtype.HostTestTest$MyAnnotation3");
         assertEquals(1, mHostTest.countTestCases());
-        TestIdentifier test1 = new TestIdentifier(SuccessDeviceTest2.class.getName(), "testPass1");
+        TestDescription test1 =
+                new TestDescription(SuccessDeviceTest2.class.getName(), "testPass1");
         mListener.testRunStarted((String) EasyMock.anyObject(), EasyMock.eq(1));
         mListener.testStarted(EasyMock.eq(test1));
         mListener.testEnded(EasyMock.eq(test1), (Map<String, String>) EasyMock.anyObject());
@@ -1747,8 +1750,8 @@ public class HostTestTest extends TestCase {
         mHostTest.setClassName(InheritedDeviceTest3.class.getName());
         mHostTest.addIncludeAnnotation("com.android.tradefed.testtype.HostTestTest$MyAnnotation3");
         assertEquals(1, mHostTest.countTestCases());
-        TestIdentifier test1 =
-                new TestIdentifier(InheritedDeviceTest3.class.getName(), "testPass3");
+        TestDescription test1 =
+                new TestDescription(InheritedDeviceTest3.class.getName(), "testPass3");
         mListener.testRunStarted((String) EasyMock.anyObject(), EasyMock.eq(1));
         mListener.testStarted(EasyMock.eq(test1));
         mListener.testEnded(EasyMock.eq(test1), (Map<String, String>) EasyMock.anyObject());
@@ -1767,10 +1770,10 @@ public class HostTestTest extends TestCase {
         mHostTest.setClassName(InheritedDeviceTest3.class.getName());
         mHostTest.addExcludeAnnotation("com.android.tradefed.testtype.HostTestTest$MyAnnotation3");
         assertEquals(2, mHostTest.countTestCases());
-        TestIdentifier test1 =
-                new TestIdentifier(InheritedDeviceTest3.class.getName(), "testPass1");
-        TestIdentifier test2 =
-                new TestIdentifier(InheritedDeviceTest3.class.getName(), "testPass2");
+        TestDescription test1 =
+                new TestDescription(InheritedDeviceTest3.class.getName(), "testPass1");
+        TestDescription test2 =
+                new TestDescription(InheritedDeviceTest3.class.getName(), "testPass2");
         mListener.testRunStarted((String) EasyMock.anyObject(), EasyMock.eq(2));
         mListener.testStarted(EasyMock.eq(test1));
         mListener.testEnded(EasyMock.eq(test1), (Map<String, String>) EasyMock.anyObject());
@@ -1849,8 +1852,8 @@ public class HostTestTest extends TestCase {
         mListener.testRunStarted(
                 EasyMock.eq("com.android.tradefed.testtype.HostTestTest$SuccessTestCase"),
                 EasyMock.eq(1));
-        TestIdentifier tid2 =
-                new TestIdentifier(
+        TestDescription tid2 =
+                new TestDescription(
                         "com.android.tradefed.testtype.HostTestTest$SuccessTestCase", "testPass2");
         mListener.testStarted(tid2);
         mListener.testEnded(tid2, Collections.emptyMap());
@@ -1859,13 +1862,13 @@ public class HostTestTest extends TestCase {
         mListener.testRunStarted(
                 EasyMock.eq("com.android.tradefed.testtype.HostTestTest$AnotherTestCase"),
                 EasyMock.eq(2));
-        TestIdentifier tid3 =
-                new TestIdentifier(
+        TestDescription tid3 =
+                new TestDescription(
                         "com.android.tradefed.testtype.HostTestTest$AnotherTestCase", "testPass3");
         mListener.testStarted(tid3);
         mListener.testEnded(tid3, Collections.emptyMap());
-        TestIdentifier tid4 =
-                new TestIdentifier(
+        TestDescription tid4 =
+                new TestDescription(
                         "com.android.tradefed.testtype.HostTestTest$AnotherTestCase", "testPass4");
         mListener.testStarted(tid4);
         mListener.testEnded(tid4, Collections.emptyMap());
@@ -1927,8 +1930,10 @@ public class HostTestTest extends TestCase {
      */
     public void testRun_junit4style_log() throws Exception {
         mHostTest.setClassName(Junit4TestLogClass.class.getName());
-        TestIdentifier test1 = new TestIdentifier(Junit4TestLogClass.class.getName(), "testPass1");
-        TestIdentifier test2 = new TestIdentifier(Junit4TestLogClass.class.getName(), "testPass2");
+        TestDescription test1 =
+                new TestDescription(Junit4TestLogClass.class.getName(), "testPass1");
+        TestDescription test2 =
+                new TestDescription(Junit4TestLogClass.class.getName(), "testPass2");
         mListener.testRunStarted((String) EasyMock.anyObject(), EasyMock.eq(2));
         mListener.testStarted(EasyMock.eq(test1));
         mListener.testLog(EasyMock.eq("TEST"), EasyMock.eq(LogDataType.TEXT), EasyMock.anyObject());
@@ -1953,12 +1958,12 @@ public class HostTestTest extends TestCase {
         setter.setOptionValue("class", AnotherTestCase.class.getName());
 
         // only one tests in the SuccessTestCase because it's been filtered out.
-        TestIdentifier tid2 = new TestIdentifier(SuccessTestCase.class.getName(), "testPass2");
-        TestIdentifier tid3 = new TestIdentifier(AnotherTestCase.class.getName(), "testPass3");
-        TestIdentifier tid4 = new TestIdentifier(AnotherTestCase.class.getName(), "testPass4");
+        TestDescription tid2 = new TestDescription(SuccessTestCase.class.getName(), "testPass2");
+        TestDescription tid3 = new TestDescription(AnotherTestCase.class.getName(), "testPass3");
+        TestDescription tid4 = new TestDescription(AnotherTestCase.class.getName(), "testPass4");
         testSplit_excludeFilter_shardUnit_Method(
                 SuccessTestCase.class.getName() + "#testPass",
-                new TestIdentifier[] {tid2, tid3, tid4});
+                new TestDescription[] {tid2, tid3, tid4});
     }
 
     /**
@@ -1969,15 +1974,14 @@ public class HostTestTest extends TestCase {
         setter.setOptionValue("class", SuccessTestCase.class.getName());
         setter.setOptionValue("class", AnotherTestCase.class.getName());
 
-        TestIdentifier tid3 = new TestIdentifier(AnotherTestCase.class.getName(), "testPass3");
-        TestIdentifier tid4 = new TestIdentifier(AnotherTestCase.class.getName(), "testPass4");
+        TestDescription tid3 = new TestDescription(AnotherTestCase.class.getName(), "testPass3");
+        TestDescription tid4 = new TestDescription(AnotherTestCase.class.getName(), "testPass4");
         testSplit_excludeFilter_shardUnit_Method(
-                SuccessTestCase.class.getName(),
-                new TestIdentifier[] {tid3, tid4});
+                SuccessTestCase.class.getName(), new TestDescription[] {tid3, tid4});
     }
 
     private void testSplit_excludeFilter_shardUnit_Method(
-            String excludeFilter, TestIdentifier[] expectedTids)
+            String excludeFilter, TestDescription[] expectedTids)
             throws DeviceNotAvailableException, ConfigurationException {
         mHostTest.addExcludeFilter(excludeFilter);
         OptionSetter setter = new OptionSetter(mHostTest);
@@ -1986,7 +1990,7 @@ public class HostTestTest extends TestCase {
         Collection<IRemoteTest> res = mHostTest.split(expectedTids.length);
         assertEquals(expectedTids.length, res.size());
 
-        for (TestIdentifier tid : expectedTids) {
+        for (TestDescription tid : expectedTids) {
             mListener.testRunStarted(tid.getClassName(), 1);
             mListener.testStarted(tid);
             mListener.testEnded(tid, Collections.emptyMap());
@@ -2029,10 +2033,10 @@ public class HostTestTest extends TestCase {
 
         // Second class run properly
         mListener.testRunStarted(EasyMock.anyObject(), EasyMock.eq(2));
-        TestIdentifier tid2 = new TestIdentifier(Junit4TestClass.class.getName(), "testPass5");
+        TestDescription tid2 = new TestDescription(Junit4TestClass.class.getName(), "testPass5");
         mListener.testStarted(EasyMock.eq(tid2));
         mListener.testEnded(EasyMock.eq(tid2), EasyMock.anyObject());
-        TestIdentifier tid3 = new TestIdentifier(Junit4TestClass.class.getName(), "testPass6");
+        TestDescription tid3 = new TestDescription(Junit4TestClass.class.getName(), "testPass6");
         mListener.testStarted(EasyMock.eq(tid3));
         mListener.testEnded(EasyMock.eq(tid3), EasyMock.anyObject());
         mListener.testRunEnded(EasyMock.anyLong(), EasyMock.anyObject());
@@ -2065,7 +2069,7 @@ public class HostTestTest extends TestCase {
         setter.setOptionValue("class", Junit4TestClass.class.getName());
         // First class has a test failure because of the @Before
         mListener.testRunStarted(EasyMock.anyObject(), EasyMock.eq(1));
-        TestIdentifier tid = new TestIdentifier(JUnit4FailedBefore.class.getName(), "test1");
+        TestDescription tid = new TestDescription(JUnit4FailedBefore.class.getName(), "test1");
         mListener.testStarted(EasyMock.eq(tid));
         mListener.testFailed(EasyMock.eq(tid), EasyMock.anyObject());
         mListener.testEnded(EasyMock.eq(tid), EasyMock.anyObject());
@@ -2073,10 +2077,10 @@ public class HostTestTest extends TestCase {
 
         // Second class run properly
         mListener.testRunStarted(EasyMock.anyObject(), EasyMock.eq(2));
-        TestIdentifier tid2 = new TestIdentifier(Junit4TestClass.class.getName(), "testPass5");
+        TestDescription tid2 = new TestDescription(Junit4TestClass.class.getName(), "testPass5");
         mListener.testStarted(EasyMock.eq(tid2));
         mListener.testEnded(EasyMock.eq(tid2), EasyMock.anyObject());
-        TestIdentifier tid3 = new TestIdentifier(Junit4TestClass.class.getName(), "testPass6");
+        TestDescription tid3 = new TestDescription(Junit4TestClass.class.getName(), "testPass6");
         mListener.testStarted(EasyMock.eq(tid3));
         mListener.testEnded(EasyMock.eq(tid3), EasyMock.anyObject());
         mListener.testRunEnded(EasyMock.anyLong(), EasyMock.anyObject());

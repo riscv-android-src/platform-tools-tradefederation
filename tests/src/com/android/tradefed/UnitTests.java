@@ -106,6 +106,7 @@ import com.android.tradefed.result.LogFileSaverTest;
 import com.android.tradefed.result.MetricsXMLResultReporterTest;
 import com.android.tradefed.result.SnapshotInputStreamSourceTest;
 import com.android.tradefed.result.SubprocessResultsReporterTest;
+import com.android.tradefed.result.TestDescriptionTest;
 import com.android.tradefed.result.TestFailureEmailResultReporterTest;
 import com.android.tradefed.result.TestSummaryTest;
 import com.android.tradefed.result.XmlResultReporterTest;
@@ -359,8 +360,8 @@ import org.junit.runners.Suite.SuiteClasses;
     // result
     AggregatingProfilerListenerTest.class,
     BugreportCollectorTest.class,
-    ConsoleResultReporterTest.class,
     CollectingTestListenerTest.class,
+    ConsoleResultReporterTest.class,
     DeviceFileReporterTest.class,
     DeviceUnavailEmailResultReporterTest.class,
     EmailResultReporterTest.class,
@@ -375,8 +376,9 @@ import org.junit.runners.Suite.SuiteClasses;
     MetricsXMLResultReporterTest.class,
     SnapshotInputStreamSourceTest.class,
     SubprocessResultsReporterTest.class,
-    TestSummaryTest.class,
+    TestDescriptionTest.class,
     TestFailureEmailResultReporterTest.class,
+    TestSummaryTest.class,
     XmlResultReporterTest.class,
 
     // targetprep

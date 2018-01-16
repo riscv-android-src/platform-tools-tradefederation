@@ -16,12 +16,12 @@
 package com.android.tradefed.testtype;
 
 import com.android.ddmlib.Log;
-import com.android.ddmlib.testrunner.TestIdentifier;
 import com.android.tradefed.config.Option;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.result.ITestInvocationListener;
+import com.android.tradefed.result.TestDescription;
 import com.android.tradefed.util.TestFilterHelper;
 
 import junit.framework.Test;
@@ -132,14 +132,14 @@ public class DeviceTestCase extends MetricTestCase
                 }
                 listener.testRunStarted(runName, testMethodNames.size());
                 for (String methodName : testMethodNames) {
-                    TestIdentifier testId = new TestIdentifier(runName, methodName);
+                    TestDescription testId = new TestDescription(runName, methodName);
                     listener.testStarted(testId);
                     listener.testEnded(testId, empty);
                 }
                 listener.testRunEnded(0, empty);
             } else {
                 listener.testRunStarted(runName, 1);
-                TestIdentifier testId = new TestIdentifier(runName, getName());
+                TestDescription testId = new TestDescription(runName, getName());
                 listener.testStarted(testId);
                 listener.testEnded(testId, empty);
                 listener.testRunEnded(0, empty);

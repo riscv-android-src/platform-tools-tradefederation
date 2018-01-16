@@ -15,7 +15,6 @@
  */
 package com.android.tradefed.result;
 
-import com.android.ddmlib.testrunner.TestIdentifier;
 import com.android.tradefed.testtype.DeviceJUnit4ClassRunner.LogAnnotation;
 import com.android.tradefed.testtype.DeviceJUnit4ClassRunner.MetricAnnotation;
 import com.android.tradefed.testtype.MetricTestCase.LogHolder;
@@ -66,15 +65,21 @@ public class JUnit4ResultForwarder extends RunListener {
     @Override
     public void testStarted(Description description) {
         mTestCaseFailures.clear();
-        TestIdentifier testid = new TestIdentifier(description.getClassName(),
-                description.getMethodName());
+        TestDescription testid =
+                new TestDescription(
+                        description.getClassName(),
+                        description.getMethodName(),
+                        description.getAnnotations());
         mListener.testStarted(testid);
     }
 
     @Override
     public void testFinished(Description description) {
-        TestIdentifier testid = new TestIdentifier(description.getClassName(),
-                description.getMethodName());
+        TestDescription testid =
+                new TestDescription(
+                        description.getClassName(),
+                        description.getMethodName(),
+                        description.getAnnotations());
         handleFailures(testid);
         // Explore the Description to see if we find any Annotation metrics carrier
         Map<String, String> metrics = new HashMap<>();
@@ -99,8 +104,11 @@ public class JUnit4ResultForwarder extends RunListener {
 
     @Override
     public void testIgnored(Description description) throws Exception {
-        TestIdentifier testid = new TestIdentifier(description.getClassName(),
-                description.getMethodName());
+        TestDescription testid =
+                new TestDescription(
+                        description.getClassName(),
+                        description.getMethodName(),
+                        description.getAnnotations());
         // We complete the event life cycle since JUnit4 fireIgnored is not within fireTestStarted
         // and fireTestEnded.
         mListener.testStarted(testid);
@@ -113,7 +121,7 @@ public class JUnit4ResultForwarder extends RunListener {
      * AssumptionViolatedException is received then treat the test as assumption failure. Otherwise
      * treat everything else as failure.
      */
-    private void handleFailures(TestIdentifier testid) {
+    private void handleFailures(TestDescription testid) {
         if (mTestCaseFailures.isEmpty()) {
             return;
         }
