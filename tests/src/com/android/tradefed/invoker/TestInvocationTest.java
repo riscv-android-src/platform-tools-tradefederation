@@ -18,7 +18,6 @@ package com.android.tradefed.invoker;
 import static org.mockito.Mockito.doReturn;
 
 import com.android.ddmlib.IDevice;
-import com.android.ddmlib.testrunner.TestIdentifier;
 import com.android.tradefed.build.BuildInfo;
 import com.android.tradefed.build.BuildRetrievalError;
 import com.android.tradefed.build.IBuildInfo;
@@ -62,6 +61,7 @@ import com.android.tradefed.result.InputStreamSource;
 import com.android.tradefed.result.InvocationStatus;
 import com.android.tradefed.result.LogDataType;
 import com.android.tradefed.result.LogFile;
+import com.android.tradefed.result.TestDescription;
 import com.android.tradefed.result.TestSummary;
 import com.android.tradefed.targetprep.BuildError;
 import com.android.tradefed.targetprep.ITargetCleaner;
@@ -1727,7 +1727,7 @@ public class TestInvocationTest extends TestCase {
         configuration.setDeviceMetricCollectors(collectors);
 
         mMockTestListener.testRunStarted("TestStub", 1);
-        TestIdentifier testId = new TestIdentifier("StubTest", "StubMethod");
+        TestDescription testId = new TestDescription("StubTest", "StubMethod");
         mMockTestListener.testStarted(EasyMock.eq(testId), EasyMock.anyLong());
         mMockTestListener.testEnded(
                 EasyMock.eq(testId), EasyMock.anyLong(), EasyMock.eq(Collections.emptyMap()));

@@ -17,12 +17,12 @@
 package com.android.tradefed.testtype;
 
 import com.android.ddmlib.Log.LogLevel;
-import com.android.ddmlib.testrunner.TestIdentifier;
 import com.android.tradefed.config.Option;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.DeviceUnresponsiveException;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.result.ITestInvocationListener;
+import com.android.tradefed.result.TestDescription;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -89,7 +89,7 @@ public class StubTest implements IShardableTest {
             CLog.i("nothing to test!");
         } else {
             listener.testRunStarted("TestStub", 1);
-            TestIdentifier testId = new TestIdentifier("StubTest", "StubMethod");
+            TestDescription testId = new TestDescription("StubTest", "StubMethod");
             listener.testStarted(testId);
             listener.testEnded(testId, Collections.emptyMap());
             listener.testRunEnded(500, new LinkedHashMap<>());

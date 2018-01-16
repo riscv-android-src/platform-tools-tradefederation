@@ -15,7 +15,6 @@
  */
 package com.android.tradefed.testtype;
 
-import com.android.ddmlib.testrunner.TestIdentifier;
 import com.android.tradefed.build.IFolderBuildInfo;
 import com.android.tradefed.config.Option;
 import com.android.tradefed.log.LogUtil.CLog;
@@ -23,6 +22,7 @@ import com.android.tradefed.result.FileInputStreamSource;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.InputStreamSource;
 import com.android.tradefed.result.LogDataType;
+import com.android.tradefed.result.TestDescription;
 import com.android.tradefed.util.CommandResult;
 import com.android.tradefed.util.CommandStatus;
 import com.android.tradefed.util.FileUtil;
@@ -309,7 +309,7 @@ public class TfTestLauncher extends SubprocessTfLauncher {
             return;
         }
         listener.testRunStarted("elapsed-time", 1);
-        TestIdentifier tid = new TestIdentifier("elapsed-time", "run-elapsed-time");
+        TestDescription tid = new TestDescription("elapsed-time", "run-elapsed-time");
         listener.testStarted(tid);
         Map<String, String> runMetrics = new HashMap<>();
         runMetrics.put("elapsed-time", Long.toString(elapsedTime));
@@ -327,7 +327,7 @@ public class TfTestLauncher extends SubprocessTfLauncher {
     @VisibleForTesting
     protected void testTmpDirClean(File tmpDir, ITestInvocationListener listener) {
         listener.testRunStarted("temporaryFiles", 1);
-        TestIdentifier tid = new TestIdentifier("temporary-files", "testIfClean");
+        TestDescription tid = new TestDescription("temporary-files", "testIfClean");
         listener.testStarted(tid);
         String[] listFiles = tmpDir.list();
         List<String> unmatchedFiles = new ArrayList<String>();
@@ -392,7 +392,7 @@ public class TfTestLauncher extends SubprocessTfLauncher {
                 return;
             }
             listener.testRunStarted("hprofAllocSites", 1);
-            TestIdentifier tid = new TestIdentifier("hprof", "allocationSites");
+            TestDescription tid = new TestDescription("hprof", "allocationSites");
             listener.testStarted(tid);
             listener.testEnded(tid, results);
             listener.testRunEnded(0, Collections.emptyMap());

@@ -17,9 +17,7 @@
 package com.android.tradefed.targetprep;
 
 import com.android.ddmlib.testrunner.TestIdentifier;
-import com.android.ddmlib.testrunner.TestResult;
 import com.android.ddmlib.testrunner.TestResult.TestStatus;
-import com.android.ddmlib.testrunner.TestRunResult;
 import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.config.Option;
 import com.android.tradefed.config.Option.Importance;
@@ -28,11 +26,14 @@ import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.result.CollectingTestListener;
+import com.android.tradefed.result.TestResult;
+import com.android.tradefed.result.TestRunResult;
 import com.android.tradefed.testtype.InstrumentationTest;
 import com.android.tradefed.util.RunUtil;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Map.Entry;
 
 /** A {@link ITargetPreparer} that runs instrumentation */
 @OptionClass(alias = "instrumentation-preparer")
@@ -145,7 +146,7 @@ public class InstrumentationPreparer extends BaseTargetPreparer {
             if (!result.hasFailedTests()) {
                 continue;
             }
-            for (Map.Entry<TestIdentifier, TestResult> entry : result.getTestResults().entrySet()) {
+            for (Entry<TestIdentifier, TestResult> entry : result.getTestResults().entrySet()) {
                 if (entry.getValue().getStatus().equals(TestStatus.PASSED)) {
                     continue;
                 }

@@ -16,13 +16,14 @@
 package com.android.tradefed.testtype;
 
 import static com.google.common.truth.Truth.assertThat;
+
 import static org.junit.Assert.fail;
-import static org.mockito.Mockito.any;
-import static org.mockito.Mockito.anyLong;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.doReturn;
-import static org.mockito.Mockito.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
 
@@ -37,9 +38,11 @@ import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.util.ListInstrumentationParser;
 import com.android.tradefed.util.ListInstrumentationParser.InstrumentationTarget;
+
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 
+import org.easymock.IAnswer;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -61,8 +64,6 @@ import java.util.Map;
 @RunWith(JUnit4.class)
 public class InstrumentationTestTest {
 
-    private static final int TEST_TIMEOUT = 0;
-    private static final long SHELL_TIMEOUT = 0;
     private static final String TEST_PACKAGE_VALUE = "com.foo";
     private static final String TEST_RUNNER_VALUE = ".FooRunner";
     private static final TestIdentifier TEST1 = new TestIdentifier("Test", "test1");
@@ -81,7 +82,7 @@ public class InstrumentationTestTest {
 
     /**
      * Helper class for providing an {@link IAnswer} to a {@link
-     * ITestDevice#runInstrumentationTests(IRemoteAndroidTestRunner, ITestRunListener)} call.
+     * ITestDevice#runInstrumentationTests(IRemoteAndroidTestRunner, ITestRunListener...)} call.
      */
     @FunctionalInterface
     interface RunInstrumentationTestsAnswer extends Answer<Boolean> {
@@ -95,7 +96,7 @@ public class InstrumentationTestTest {
     }
 
     @Before
-    public void setUp() throws DeviceNotAvailableException {
+    public void setUp() {
         MockitoAnnotations.initMocks(this);
 
         doReturn(mMockIDevice).when(mMockTestDevice).getIDevice();
@@ -166,7 +167,7 @@ public class InstrumentationTestTest {
 
     /** Test normal run scenario with a test class specified. */
     @Test
-    public void testRun_class() throws DeviceNotAvailableException {
+    public void testRun_class() {
         String className = "FooTest";
         FakeTestRunner runner = new FakeTestRunner("unused", "unused");
 

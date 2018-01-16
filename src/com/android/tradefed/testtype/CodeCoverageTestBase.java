@@ -20,7 +20,6 @@ import static com.google.common.base.Preconditions.checkState;
 import com.android.ddmlib.testrunner.IRemoteAndroidTestRunner;
 import com.android.ddmlib.testrunner.RemoteAndroidTestRunner;
 import com.android.ddmlib.testrunner.TestIdentifier;
-import com.android.ddmlib.testrunner.TestRunResult;
 import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.config.Option;
 import com.android.tradefed.device.DeviceNotAvailableException;
@@ -33,10 +32,12 @@ import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.InputStreamSource;
 import com.android.tradefed.result.LogDataType;
 import com.android.tradefed.result.ResultForwarder;
+import com.android.tradefed.result.TestRunResult;
 import com.android.tradefed.util.FileUtil;
 import com.android.tradefed.util.ICompressionStrategy;
 import com.android.tradefed.util.ListInstrumentationParser;
 import com.android.tradefed.util.ListInstrumentationParser.InstrumentationTarget;
+
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.ImmutableMap;
 
@@ -535,12 +536,13 @@ public abstract class CodeCoverageTestBase<T extends CodeCoverageReportFormat>
                 try {
                     coverageFile = mDevice.pullFile(coverageFilePath);
                     if (coverageFile != null) {
-                        FileInputStreamSource source = new FileInputStreamSource(coverageFile);
-                        testLog(
-                                mCurrentRunName + "_runtime_coverage",
-                                LogDataType.COVERAGE,
-                                source);
-                        source.cancel();
+                        try (FileInputStreamSource source =
+                                new FileInputStreamSource(coverageFile)) {
+                            testLog(
+                                    mCurrentRunName + "_runtime_coverage",
+                                    LogDataType.COVERAGE,
+                                    source);
+                        }
                     } else {
                         CLog.w("Failed to pull coverage file from device: %s", coverageFilePath);
                     }

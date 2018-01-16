@@ -47,7 +47,7 @@ import java.io.OutputStream;
 import java.util.HashMap;
 import java.util.Map;
 
-/** Unit tests for {@link CoverageMeasurementForwarder). */
+/** Unit tests for {@link CoverageMeasurementForwarder}. */
 @RunWith(JUnit4.class)
 public final class CoverageMeasurementForwarderTest {
 
