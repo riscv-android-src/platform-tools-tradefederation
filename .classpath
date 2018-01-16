@@ -17,6 +17,7 @@
 	<classpathentry combineaccessrules="false" kind="src" path="/loganalysis"/>
 	<classpathentry kind="var" path="TRADEFED_ROOT/out/host/common/obj/JAVA_LIBRARIES/host-libprotobuf-java-full_intermediates/classes.jar"/>
 	<classpathentry combineaccessrules="false" kind="src" path="/ddmlib"/>
-	<classpathentry kind="var" path="TRADEFED_ROOT/external/error_prone/error_prone/error_prone_annotations-2.0.19.jar"/>
+	<classpathentry kind="var" path="TRADEFED_ROOT/external/error_prone/error_prone/error_prone_annotations-2.2.0.jar"/>
+	<classpathentry combineaccessrules="false" kind="src" path="/LongevityRunner"/>
 	<classpathentry kind="output" path="bin"/>
 </classpath>
