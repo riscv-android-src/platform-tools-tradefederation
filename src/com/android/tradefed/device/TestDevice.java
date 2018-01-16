@@ -767,6 +767,20 @@ public class TestDevice extends NativeDevice {
         return 0;
     }
 
+    /** {@inheritDoc} */
+    @Override
+    public int getMaxNumberOfRunningUsersSupported() throws DeviceNotAvailableException {
+        checkApiLevelAgainstNextRelease("get-max-running-users", 28);
+        String command = "pm get-max-running-users";
+        String commandOutput = executeShellCommand(command);
+        try {
+            return Integer.parseInt(commandOutput.substring(commandOutput.lastIndexOf(" ")).trim());
+        } catch (NumberFormatException e) {
+            CLog.e("Failed to parse result: %s", commandOutput);
+        }
+        return 0;
+    }
+
     /**
      * {@inheritDoc}
      */

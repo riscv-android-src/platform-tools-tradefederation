@@ -438,6 +438,14 @@ public interface ITestDevice extends INativeDevice {
     public int getMaxNumberOfUsersSupported() throws DeviceNotAvailableException;
 
     /**
+     * Get the maximum number of supported simultaneously running users. Defaults to 0.
+     *
+     * @return an integer indicating the number of simultaneously running users
+     * @throws DeviceNotAvailableException
+     */
+    public int getMaxNumberOfRunningUsersSupported() throws DeviceNotAvailableException;
+
+    /**
      * Starts a given user in the background if it is currently stopped. If the user is already
      * running in the background, this method is a NOOP.
      * @param userId of the user to start in the background
