@@ -48,6 +48,7 @@ import java.io.InputStreamReader;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
@@ -109,6 +110,10 @@ public class AppTransitionTests implements IRemoteTest, IDeviceTest {
 
     @Option(name = "runner", description = "The instrumentation test runner class name to use.")
     private String mRunnerName = "android.support.test.runner.AndroidJUnitRunner";
+
+    @Option(name = "run-arg",
+            description = "Additional test specific arguments to provide.")
+    private Map<String, String> mArgMap = new LinkedHashMap<String, String>();
 
     @Option(name = "launcher-activity", description = "Home activity name")
     private String mLauncherActivity = ".NexusLauncherActivity";
@@ -277,6 +282,9 @@ public class AppTransitionTests implements IRemoteTest, IDeviceTest {
             runner.addInstrumentationArg("pre_launch_apps", preLaunchApps);
         }
         runner.addInstrumentationArg("launch_iteration", Integer.toString(mLaunchIteration));
+        for (Map.Entry<String, String> entry : getTestRunArgMap().entrySet()) {
+            runner.addInstrumentationArg(entry.getKey(), entry.getValue());
+        }
         if (isTraceDirEnabled()) {
             mDevice.executeShellCommand(String.format("rm -rf %s/%s", mTraceDirectory, testName));
             runner.addInstrumentationArg("trace_directory", mTraceDirectory);
@@ -296,6 +304,9 @@ public class AppTransitionTests implements IRemoteTest, IDeviceTest {
             runner.setClassNames(mClasses.toArray(new String[] {}));
         }
         runner.addInstrumentationArg("iteration_count", Integer.toString(mLatencyIteration));
+        for (Map.Entry<String, String> entry : getTestRunArgMap().entrySet()) {
+            runner.addInstrumentationArg(entry.getKey(), entry.getValue());
+        }
         if (isTraceDirEnabled()) {
             mDevice.executeShellCommand(String.format("rm -rf %s/%s", mTraceDirectory,
                     TEST_LATENCY));
@@ -691,6 +702,20 @@ public class AppTransitionTests implements IRemoteTest, IDeviceTest {
     @Override
     public ITestDevice getDevice() {
         return mDevice;
+    }
+
+    /**
+     * @return the arguments map to pass to the test runner.
+     */
+    public Map<String, String> getTestRunArgMap() {
+        return mArgMap;
+    }
+
+    /**
+     * @param runArgMap the arguments to pass to the test runner.
+     */
+    public void setTestRunArgMap(Map<String, String> runArgMap) {
+        mArgMap = runArgMap;
     }
 
 }
