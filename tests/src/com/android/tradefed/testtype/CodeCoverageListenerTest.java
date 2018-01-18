@@ -97,7 +97,7 @@ public class CodeCoverageListenerTest {
     }
 
     @Test
-    public void testFailure_noCoverageMetric() throws DeviceNotAvailableException {
+    public void testFailure_noCoverageMetric() {
         // Simulate a test run.
         mCodeCoverageListener.testRunStarted(RUN_NAME, TEST_COUNT);
         mCodeCoverageListener.testRunEnded(ELAPSED_TIME, ImmutableMap.of());

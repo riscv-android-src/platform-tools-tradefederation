@@ -15,8 +15,8 @@
  */
 package com.android.tradefed.testtype;
 
-import com.android.ddmlib.testrunner.ITestRunListener;
 import com.android.ddmlib.testrunner.TestIdentifier;
+import com.android.tradefed.result.ITestInvocationListener;
 
 import org.easymock.EasyMock;
 
@@ -34,7 +34,8 @@ public class GTestListTestParserTest extends GTestParserTestBase {
     @SuppressWarnings("unchecked")
     public void testParseSimpleList() throws Exception {
         String[] contents =  readInFile(GTEST_LIST_FILE_1);
-        ITestRunListener mockRunListener = EasyMock.createMock(ITestRunListener.class);
+        ITestInvocationListener mockRunListener =
+                EasyMock.createMock(ITestInvocationListener.class);
         mockRunListener.testRunStarted(TEST_MODULE_NAME, 23);
         // 11 passing test cases in this run
         for (int i = 0; i < 23; ++i) {
@@ -58,7 +59,8 @@ public class GTestListTestParserTest extends GTestParserTestBase {
     @SuppressWarnings("unchecked")
     public void testParseMultiClassList() throws Exception {
         String[] contents =  readInFile(GTEST_LIST_FILE_2);
-        ITestRunListener mockRunListener = EasyMock.createMock(ITestRunListener.class);
+        ITestInvocationListener mockRunListener =
+                EasyMock.createMock(ITestInvocationListener.class);
         mockRunListener.testRunStarted(TEST_MODULE_NAME, 127);
         // 11 passing test cases in this run
         for (int i = 0; i < 127; ++i) {
@@ -81,7 +83,8 @@ public class GTestListTestParserTest extends GTestParserTestBase {
      */
     public void testParseMalformedList() throws Exception {
         String[] contents =  readInFile(GTEST_LIST_FILE_3);
-        ITestRunListener mockRunListener = EasyMock.createMock(ITestRunListener.class);
+        ITestInvocationListener mockRunListener =
+                EasyMock.createMock(ITestInvocationListener.class);
         GTestListTestParser parser = new GTestListTestParser(TEST_MODULE_NAME, mockRunListener);
         try {
             parser.processNewLines(contents);

@@ -432,10 +432,8 @@ public class BugreportCollector implements ITestInvocationListener {
     }
 
 
-    // Methods from the {@link ITestRunListener} interface
-    /**
-     * {@inheritDoc}
-     */
+    // Methods from the {@link ITestInvocationListener} interface
+    /** {@inheritDoc} */
     @Override
     public void testEnded(TestIdentifier test, Map<String, String> testMetrics) {
         mListener.testEnded(test, testMetrics);

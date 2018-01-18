@@ -16,9 +16,9 @@
 package com.android.tradefed.testtype;
 
 import com.android.ddmlib.MultiLineReceiver;
-import com.android.ddmlib.testrunner.ITestRunListener;
 import com.android.ddmlib.testrunner.TestIdentifier;
 import com.android.tradefed.log.LogUtil.CLog;
+import com.android.tradefed.result.ITestInvocationListener;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -34,7 +34,7 @@ public class GTestListTestParser extends MultiLineReceiver {
 
     private String mLastTestClassName = null;
     private String mTestRunName = null;
-    private ITestRunListener mTestRunListener = null;
+    private ITestInvocationListener mTestRunListener = null;
     /** Whether or not to prepend filename to classname. */
     private boolean mPrependFileName = false;
 
@@ -51,11 +51,11 @@ public class GTestListTestParser extends MultiLineReceiver {
     /**
      * Creates the GTestListTestParser for a single listener.
      *
-     * @param testRunName the test run name to provide to
-     *            {@link ITestRunListener#testRunStarted(String, int)}
+     * @param testRunName the test run name to provide to {@link
+     *     ITestInvocationListener#testRunStarted(String, int)}
      * @param listener informed of test results as the tests are executing
      */
-    public GTestListTestParser(String testRunName, ITestRunListener listener) {
+    public GTestListTestParser(String testRunName, ITestInvocationListener listener) {
         mTestRunName = testRunName;
         mTestRunListener = listener;
         // don't trim, since we need the leading whitespace
