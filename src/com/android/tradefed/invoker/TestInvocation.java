@@ -33,7 +33,6 @@ import com.android.tradefed.log.ILeveledLogOutput;
 import com.android.tradefed.log.ILogRegistry;
 import com.android.tradefed.log.LogRegistry;
 import com.android.tradefed.log.LogUtil.CLog;
-import com.android.tradefed.result.AggregatingProfilerListener;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.InputStreamSource;
 import com.android.tradefed.result.LogDataType;
@@ -299,9 +298,6 @@ public class TestInvocation implements ITestInvocation {
             try {
                 // Clean up host.
                 invocationPath.doCleanUp(context, config, exception);
-                if (config.getProfiler() != null) {
-                    config.getProfiler().reportAllMetrics(listener);
-                }
                 for (ITestDevice device : context.getDevices()) {
                     reportLogs(device, listener, Stage.TEARDOWN);
                 }
@@ -602,9 +598,6 @@ public class TestInvocation implements ITestInvocation {
                 new ArrayList<>(config.getTestInvocationListeners().size() + extraListeners.length);
         allListeners.addAll(config.getTestInvocationListeners());
         allListeners.addAll(Arrays.asList(extraListeners));
-        if (config.getProfiler() != null) {
-            allListeners.add(new AggregatingProfilerListener(config.getProfiler()));
-        }
         ITestInvocationListener listener =
                 new LogSaverResultForwarder(config.getLogSaver(), allListeners);
         IInvocationExecution invocationPath = createInvocationExec();
