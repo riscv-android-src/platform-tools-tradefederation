@@ -17,11 +17,13 @@ package com.android.tradefed.device.metric;
 
 import com.android.tradefed.config.OptionSetter;
 import com.android.tradefed.device.ITestDevice;
+import com.android.tradefed.device.metric.DeviceMetricData;
 import com.android.tradefed.invoker.IInvocationContext;
 import com.android.tradefed.invoker.InvocationContext;
 import com.android.tradefed.result.FileInputStreamSource;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.LogDataType;
+import com.android.tradefed.util.FileUtil;
 
 import org.junit.Before;
 import org.junit.Test;
@@ -55,6 +57,16 @@ public class FilePullerDeviceMetricCollectorTest {
                             String key, File metricFile, DeviceMetricData runData) {
                         try (FileInputStreamSource source = new FileInputStreamSource(metricFile)) {
                             testLog(key, LogDataType.TEXT, source);
+                        }
+                    }
+                    @Override
+                    public void processMetricDirectory(
+                            String key, File metricDirectory, DeviceMetricData runData) {
+                        try (FileInputStreamSource source = new FileInputStreamSource(
+                                metricDirectory)) {
+                            testLog(key, LogDataType.TEXT, source);
+                        } finally {
+                            FileUtil.deleteFile(metricDirectory);
                         }
                     }
                 };
@@ -126,5 +138,28 @@ public class FilePullerDeviceMetricCollectorTest {
         Mockito.verify(mMockDevice, Mockito.times(0)).pullFile(Mockito.eq("/data/coverage"));
         Mockito.verify(mMockListener, Mockito.times(0))
                 .testLog(Mockito.eq("coverageFile"), Mockito.eq(LogDataType.TEXT), Mockito.any());
+    }
+
+    /**
+     * Test when a directory is found matching the key, then pulled and {@link
+     * FilePullerDeviceMetricCollector#processMetricDirectory(String key,
+     * File metricDirectory, DeviceMetricData runData)} is called.
+     */
+    @Test
+    public void testPullMatchingDirectory() throws Exception {
+        OptionSetter setter = new OptionSetter(mFilePuller);
+        setter.setOptionValue("directory-keys", "coverageDirectory");
+        Map<String, String> currentMetrics = new HashMap<>();
+        currentMetrics.put("coverageDirectory", "/data/coverage");
+
+        Mockito.when(mMockDevice.pullDir(Mockito.eq("coverageDirectory"),
+                Mockito.any(File.class))).thenReturn(true);
+
+        mFilePuller.testRunStarted("fakeRun", 5);
+        mFilePuller.testRunEnded(500, currentMetrics);
+
+        Mockito.verify(mMockListener)
+                .testLog(Mockito.eq("coverageDirectory"), Mockito.eq(LogDataType.TEXT),
+                        Mockito.any());
     }
 }
