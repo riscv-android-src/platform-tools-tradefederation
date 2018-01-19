@@ -20,8 +20,7 @@ import logging
 import os
 import subprocess
 import sys
-# TODO(b/71989707): re-import this when bug is fixed.
-# import urllib2
+import urllib2
 
 import constants
 
@@ -114,17 +113,15 @@ def build(build_targets, verbose=False):
 
 def _can_upload_to_result_server():
     """Return Boolean if we can talk to result server."""
-    # TODO(b/71989707): Turn this back on when bug is resolved.
-
     # TODO: Also check if we have a slow connection to result server.
-    # if constants.RESULT_SERVER:
-    #     try:
-    #         urllib2.urlopen(constants.RESULT_SERVER,
-    #                         timeout=constants.RESULT_SERVER_TIMEOUT).close()
-    #         return True
-    #     # pylint: disable=broad-except
-    #     except Exception as err:
-    #         logging.debug('Talking to result server raised exception: %s', err)
+    if constants.RESULT_SERVER:
+        try:
+            urllib2.urlopen(constants.RESULT_SERVER,
+                            timeout=constants.RESULT_SERVER_TIMEOUT).close()
+            return True
+        # pylint: disable=broad-except
+        except Exception as err:
+            logging.debug('Talking to result server raised exception: %s', err)
     return False
 
 
