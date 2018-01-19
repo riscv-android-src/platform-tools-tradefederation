@@ -27,6 +27,8 @@
         <option name="screen-brightness" value="30" />
     </target_preparer>
 
+    <template-include name="preparers" default="empty" />
+
     <template-include name="test" />
 
     <logger class="com.android.tradefed.log.FileLogger">
