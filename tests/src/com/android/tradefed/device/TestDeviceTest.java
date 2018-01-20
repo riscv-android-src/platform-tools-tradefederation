@@ -1881,6 +1881,28 @@ public class TestDeviceTest extends TestCase {
     }
 
     /**
+     * Test that multi user output is handled by {@link TestDevice#getMaxNumberOfUsersSupported()}.
+     */
+    public void testMaxNumberOfRunningUsersSupported() throws Exception {
+        injectSystemProperty("ro.build.version.sdk", "28");
+        injectSystemProperty(TestDevice.BUILD_CODENAME_PROP, "REL");
+        final String getMaxRunningUsersCommand = "pm get-max-running-users";
+        injectShellResponse(getMaxRunningUsersCommand, "Maximum supported running users: 4");
+        replayMocks();
+        assertEquals(4, mTestDevice.getMaxNumberOfRunningUsersSupported());
+    }
+
+    /** Test that invalid output is handled by {@link TestDevice#getMaxNumberOfUsersSupported()}. */
+    public void testMaxNumberOfRunningUsersSupported_invalid() throws Exception {
+        injectSystemProperty("ro.build.version.sdk", "28");
+        injectSystemProperty(TestDevice.BUILD_CODENAME_PROP, "REL");
+        final String getMaxRunningUsersCommand = "pm get-max-running-users";
+        injectShellResponse(getMaxRunningUsersCommand, "not the output we expect");
+        replayMocks();
+        assertEquals(0, mTestDevice.getMaxNumberOfRunningUsersSupported());
+    }
+
+    /**
      * Test that single user output is handled by {@link TestDevice#getMaxNumberOfUsersSupported()}.
      */
     public void testIsMultiUserSupported_singleUser() throws Exception {
