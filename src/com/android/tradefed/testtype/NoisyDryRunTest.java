@@ -17,7 +17,6 @@
 package com.android.tradefed.testtype;
 
 import com.android.annotations.VisibleForTesting;
-import com.android.ddmlib.testrunner.TestIdentifier;
 import com.android.tradefed.command.CommandFileParser;
 import com.android.tradefed.command.CommandFileParser.CommandLine;
 import com.android.tradefed.config.ConfigurationException;
@@ -27,6 +26,7 @@ import com.android.tradefed.config.Option;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.result.ITestInvocationListener;
+import com.android.tradefed.result.TestDescription;
 import com.android.tradefed.util.QuotationAwareTokenizer;
 import com.android.tradefed.util.RunUtil;
 import com.android.tradefed.util.StreamUtil;
@@ -62,8 +62,8 @@ public class NoisyDryRunTest implements IRemoteTest {
 
     private List<CommandLine> testCommandFile(ITestInvocationListener listener, String filename) {
         listener.testRunStarted(NoisyDryRunTest.class.getCanonicalName() + "_parseFile", 1);
-        TestIdentifier parseFileTest = new TestIdentifier(NoisyDryRunTest.class.getCanonicalName(),
-                "parseFile");
+        TestDescription parseFileTest =
+                new TestDescription(NoisyDryRunTest.class.getCanonicalName(), "parseFile");
         listener.testStarted(parseFileTest);
         CommandFileParser parser = new CommandFileParser();
         try {
@@ -112,8 +112,9 @@ public class NoisyDryRunTest implements IRemoteTest {
         listener.testRunStarted(NoisyDryRunTest.class.getCanonicalName() + "_parseCommands",
                 commands.size());
         for (int i = 0; i < commands.size(); ++i) {
-            TestIdentifier parseCmdTest = new TestIdentifier(
-                    NoisyDryRunTest.class.getCanonicalName(), "parseCommand" + i);
+            TestDescription parseCmdTest =
+                    new TestDescription(
+                            NoisyDryRunTest.class.getCanonicalName(), "parseCommand" + i);
             listener.testStarted(parseCmdTest);
 
             String[] args = commands.get(i).asArray();

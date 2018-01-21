@@ -17,12 +17,12 @@ package com.android.tradefed.testtype.suite;
 
 import com.android.ddmlib.Log.LogLevel;
 import com.android.ddmlib.testrunner.TestIdentifier;
-import com.android.ddmlib.testrunner.TestRunResult;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.result.CollectingTestListener;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.InputStreamSource;
 import com.android.tradefed.result.LogDataType;
+import com.android.tradefed.result.TestRunResult;
 import com.android.tradefed.testtype.IRemoteTest;
 
 import java.util.Map;

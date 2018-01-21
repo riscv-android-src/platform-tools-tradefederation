@@ -27,8 +27,6 @@ import com.android.tradefed.device.TestDeviceOptions;
 import com.android.tradefed.device.metric.IMetricCollector;
 import com.android.tradefed.log.ILeveledLogOutput;
 import com.android.tradefed.log.StdoutLogger;
-import com.android.tradefed.profiler.ITestProfiler;
-import com.android.tradefed.profiler.StubTestProfiler;
 import com.android.tradefed.result.FileSystemLogSaver;
 import com.android.tradefed.result.ILogSaver;
 import com.android.tradefed.result.ITestInvocationListener;
@@ -87,7 +85,6 @@ public class Configuration implements IConfiguration {
     public static final String SYSTEM_STATUS_CHECKER_TYPE_NAME = "system_checker";
     public static final String CONFIGURATION_DESCRIPTION_TYPE_NAME = "config_desc";
     public static final String DEVICE_NAME = "device";
-    public static final String TEST_PROFILER_TYPE_NAME = "test_profiler";
     public static final String DEVICE_METRICS_COLLECTOR_TYPE_NAME = "metrics_collector";
     public static final String SANDBOX_TYPE_NAME = "sandbox";
 
@@ -162,7 +159,6 @@ public class Configuration implements IConfiguration {
             sObjTypeMap.put(
                     CONFIGURATION_DESCRIPTION_TYPE_NAME,
                     new ObjTypeInfo(ConfigurationDescriptor.class, false));
-            sObjTypeMap.put(TEST_PROFILER_TYPE_NAME, new ObjTypeInfo(ITestProfiler.class, false));
             sObjTypeMap.put(
                     DEVICE_METRICS_COLLECTOR_TYPE_NAME,
                     new ObjTypeInfo(IMetricCollector.class, true));
@@ -215,7 +211,6 @@ public class Configuration implements IConfiguration {
         setMultiTargetPreparer(new StubMultiTargetPreparer());
         setSystemStatusCheckers(new ArrayList<ISystemStatusChecker>());
         setConfigurationDescriptor(new ConfigurationDescriptor());
-        setProfiler(new StubTestProfiler());
         setDeviceMetricCollectors(new ArrayList<>());
     }
 
@@ -360,13 +355,6 @@ public class Configuration implements IConfiguration {
     public List<IMetricCollector> getMetricCollectors() {
         return (List<IMetricCollector>)
                 getConfigurationObjectList(DEVICE_METRICS_COLLECTOR_TYPE_NAME);
-    }
-
-    /** {@inheritDoc} */
-    @SuppressWarnings("unchecked")
-    @Override
-    public ITestProfiler getProfiler() {
-        return (ITestProfiler) getConfigurationObject(TEST_PROFILER_TYPE_NAME);
     }
 
     /** {@inheritDoc} */
@@ -730,12 +718,6 @@ public class Configuration implements IConfiguration {
     @Override
     public void setSystemStatusChecker(ISystemStatusChecker systemChecker) {
         setConfigurationObjectNoThrow(SYSTEM_STATUS_CHECKER_TYPE_NAME, systemChecker);
-    }
-
-    /** {@inheritDoc} */
-    @Override
-    public void setProfiler(ITestProfiler profiler) {
-        setConfigurationObjectNoThrow(TEST_PROFILER_TYPE_NAME, profiler);
     }
 
     /** {@inheritDoc} */
@@ -1273,8 +1255,10 @@ public class Configuration implements IConfiguration {
         ConfigurationUtil.dumpClassToXml(
                 serializer, CMD_OPTIONS_TYPE_NAME, getCommandOptions(), excludeFilters);
 
-        ConfigurationUtil.dumpClassToXml(
-                serializer, TEST_PROFILER_TYPE_NAME, getProfiler(), excludeFilters);
+        for (IMetricCollector collector : getMetricCollectors()) {
+            ConfigurationUtil.dumpClassToXml(
+                    serializer, DEVICE_METRICS_COLLECTOR_TYPE_NAME, collector, excludeFilters);
+        }
 
         serializer.endTag(null, ConfigurationUtil.CONFIGURATION_NAME);
         serializer.endDocument();

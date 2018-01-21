@@ -207,9 +207,6 @@ public class InvocationExecution implements IInvocationExecution {
                 multipreparer.setUp(context);
                 CLog.d("done with multi target preparer '%s'", multipreparer);
             }
-            if (config.getProfiler() != null) {
-                config.getProfiler().setUp(context);
-            }
         } finally {
             // Note: These metrics are handled in a try in case of a kernel reset or device issue.
             // Setup timing metric. It does not include flashing time on boot tests.

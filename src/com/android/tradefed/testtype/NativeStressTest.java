@@ -18,7 +18,6 @@ package com.android.tradefed.testtype;
 
 import com.android.ddmlib.FileListingService;
 import com.android.ddmlib.Log;
-import com.android.ddmlib.testrunner.ITestRunListener;
 import com.android.tradefed.config.Option;
 import com.android.tradefed.config.Option.Importance;
 import com.android.tradefed.config.OptionClass;
@@ -144,8 +143,9 @@ public class NativeStressTest implements IDeviceTest, IRemoteTest {
      * @param listener the run listener
      * @throws DeviceNotAvailableException
      */
-    private void doRunAllTestsInSubdirectory(IFileEntry rootEntry, ITestDevice testDevice,
-            ITestRunListener listener) throws DeviceNotAvailableException {
+    private void doRunAllTestsInSubdirectory(
+            IFileEntry rootEntry, ITestDevice testDevice, ITestInvocationListener listener)
+            throws DeviceNotAvailableException {
 
         if (rootEntry.isDirectory()) {
             // recursively run tests in all subdirectories
@@ -188,8 +188,8 @@ public class NativeStressTest implements IDeviceTest, IRemoteTest {
         }
     }
 
-    private void reportTestCompleted(long startTime, ITestRunListener listener,
-            NativeStressTestParser parser) {
+    private void reportTestCompleted(
+            long startTime, ITestInvocationListener listener, NativeStressTestParser parser) {
         final long elapsedTime = System.currentTimeMillis() - startTime;
         int iterationsComplete = parser.getIterationsCompleted();
         float avgIterationTime = iterationsComplete > 0 ? elapsedTime / iterationsComplete : 0;

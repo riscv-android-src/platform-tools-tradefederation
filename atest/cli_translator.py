@@ -186,8 +186,16 @@ class CLITranslator(object):
             about module names and dir locations.
         """
         file_path = os.path.join(self.out_dir, MODULE_INFO)
-        # Make target is simply file path relative to root.
-        module_info_target = os.path.relpath(file_path, self.root_dir)
+        out_dir_base = os.environ.get('OUT_DIR')
+        if out_dir_base is None or not os.path.isabs(out_dir_base):
+            # Make target is simply file path relative to root
+            module_info_target = os.path.relpath(file_path, self.root_dir)
+        else:
+            # Chances are a custom absolute out dir is used, use
+            # ANDROID_PRODUCT_OUT instead.
+            file_path = os.path.join(os.environ.get('ANDROID_PRODUCT_OUT'),
+                                     MODULE_INFO)
+            module_info_target = file_path
         if not os.path.isfile(file_path) or force_build:
             logging.info('Generating %s - this is required for '
                          'initial runs.', MODULE_INFO)

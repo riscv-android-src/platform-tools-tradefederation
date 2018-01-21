@@ -18,7 +18,6 @@ package com.android.tradefed.testtype;
 
 import com.android.ddmlib.FileListingService;
 import com.android.ddmlib.IShellOutputReceiver;
-import com.android.ddmlib.testrunner.ITestRunListener;
 import com.android.tradefed.config.Option;
 import com.android.tradefed.config.OptionClass;
 import com.android.tradefed.config.OptionCopier;
@@ -432,12 +431,13 @@ public class GTest
      *
      * @param root The root folder to begin searching for native tests
      * @param testDevice The device to run tests on
-     * @param listener the {@link ITestRunListener}
+     * @param listener the {@link ITestInvocationListener}
      * @throws DeviceNotAvailableException
      */
     @VisibleForTesting
-    void doRunAllTestsInSubdirectory(String root, ITestDevice testDevice,
-            ITestRunListener listener) throws DeviceNotAvailableException {
+    void doRunAllTestsInSubdirectory(
+            String root, ITestDevice testDevice, ITestInvocationListener listener)
+            throws DeviceNotAvailableException {
         if (testDevice.isDirectory(root)) {
             // recursively run tests in all subdirectories
             for (String child : testDevice.getChildren(root)) {
@@ -572,18 +572,21 @@ public class GTest
     }
 
     /**
-     * Run the given gtest binary and parse XML results
-     * This methods typically requires the filter for .tff and .xml files, otherwise it will post
-     * some unwanted results.
+     * Run the given gtest binary and parse XML results This methods typically requires the filter
+     * for .tff and .xml files, otherwise it will post some unwanted results.
      *
      * @param testDevice the {@link ITestDevice}
      * @param fullPath absolute file system path to gtest binary on device
      * @param flags gtest execution flags
-     * @param listener the {@link ITestRunListener}
+     * @param listener the {@link ITestInvocationListener}
      * @throws DeviceNotAvailableException
      */
-    private void runTestXml(final ITestDevice testDevice, final String fullPath,
-            final String flags, ITestRunListener listener) throws DeviceNotAvailableException {
+    private void runTestXml(
+            final ITestDevice testDevice,
+            final String fullPath,
+            final String flags,
+            ITestInvocationListener listener)
+            throws DeviceNotAvailableException {
         CollectingOutputReceiver outputCollector = new CollectingOutputReceiver();
         File tmpOutput = null;
         try {
@@ -619,12 +622,13 @@ public class GTest
 
     /**
      * Exposed for testing
+     *
      * @param testRunName
      * @param listener
      * @return a {@link GTestXmlResultParser}
      */
     @VisibleForTesting
-    GTestXmlResultParser createXmlParser(String testRunName, ITestRunListener listener) {
+    GTestXmlResultParser createXmlParser(String testRunName, ITestInvocationListener listener) {
         return new GTestXmlResultParser(testRunName, listener);
     }
 
@@ -695,7 +699,7 @@ public class GTest
      * @return a {@link IShellOutputReceiver}
      */
     @VisibleForTesting
-    IShellOutputReceiver createResultParser(String runName, ITestRunListener listener) {
+    IShellOutputReceiver createResultParser(String runName, ITestInvocationListener listener) {
         IShellOutputReceiver receiver = null;
         if (mCollectTestsOnly) {
             GTestListTestParser resultParser = new GTestListTestParser(runName, listener);

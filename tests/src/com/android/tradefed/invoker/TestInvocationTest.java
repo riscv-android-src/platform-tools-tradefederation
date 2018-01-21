@@ -18,7 +18,6 @@ package com.android.tradefed.invoker;
 import static org.mockito.Mockito.doReturn;
 
 import com.android.ddmlib.IDevice;
-import com.android.ddmlib.testrunner.TestIdentifier;
 import com.android.tradefed.build.BuildInfo;
 import com.android.tradefed.build.BuildRetrievalError;
 import com.android.tradefed.build.IBuildInfo;
@@ -53,9 +52,6 @@ import com.android.tradefed.invoker.shard.ShardHelper;
 import com.android.tradefed.invoker.shard.StrictShardHelper;
 import com.android.tradefed.log.ILeveledLogOutput;
 import com.android.tradefed.log.ILogRegistry;
-import com.android.tradefed.profiler.IAggregatingTestProfiler;
-import com.android.tradefed.profiler.ITestProfiler;
-import com.android.tradefed.profiler.MetricOutputData;
 import com.android.tradefed.result.ByteArrayInputStreamSource;
 import com.android.tradefed.result.ILogSaver;
 import com.android.tradefed.result.ILogSaverListener;
@@ -65,6 +61,7 @@ import com.android.tradefed.result.InputStreamSource;
 import com.android.tradefed.result.InvocationStatus;
 import com.android.tradefed.result.LogDataType;
 import com.android.tradefed.result.LogFile;
+import com.android.tradefed.result.TestDescription;
 import com.android.tradefed.result.TestSummary;
 import com.android.tradefed.targetprep.BuildError;
 import com.android.tradefed.targetprep.ITargetCleaner;
@@ -1095,28 +1092,6 @@ public class TestInvocationTest extends TestCase {
     }
 
     /**
-     * Test that a config with an {@link ITestProfiler} attempts to setup and teardown the
-     * profiler.
-     */
-    public void testInvoke_profiler() throws Throwable {
-        IAggregatingTestProfiler mockProfiler = EasyMock.createMock(IAggregatingTestProfiler.class);
-        mStubConfiguration.setProfiler(mockProfiler);
-        setupInvoke();
-        EasyMock.expect(mMockBuildProvider.getBuild()).andReturn(mMockBuildInfo);
-        mMockPreparer.setUp(mMockDevice, mMockBuildInfo);
-        setupInvokeWithBuild();
-        setupMockSuccessListeners();
-        EasyMock.expectLastCall();
-        mockProfiler.setUp((IInvocationContext)EasyMock.anyObject());
-        EasyMock.expectLastCall();
-        EasyMock.expect(mockProfiler.getMetricOutputUtil()).andReturn(new MetricOutputData());
-        mockProfiler.reportAllMetrics(((ITestInvocationListener)EasyMock.anyObject()));
-        EasyMock.expectLastCall();
-        replayMocks(mockProfiler);
-        mTestInvocation.invoke(mStubInvocationMetadata, mStubConfiguration, mockRescheduler);
-        verifyMocks(mockProfiler);
-    }
-    /**
      * Set up expected conditions for normal run up to the part where tests are run.
      *
      * @param test the {@link Test} to use.
@@ -1752,7 +1727,7 @@ public class TestInvocationTest extends TestCase {
         configuration.setDeviceMetricCollectors(collectors);
 
         mMockTestListener.testRunStarted("TestStub", 1);
-        TestIdentifier testId = new TestIdentifier("StubTest", "StubMethod");
+        TestDescription testId = new TestDescription("StubTest", "StubMethod");
         mMockTestListener.testStarted(EasyMock.eq(testId), EasyMock.anyLong());
         mMockTestListener.testEnded(
                 EasyMock.eq(testId), EasyMock.anyLong(), EasyMock.eq(Collections.emptyMap()));

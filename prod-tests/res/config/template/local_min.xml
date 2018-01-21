@@ -20,6 +20,8 @@
         <option name="disable" value="true" />
     </target_preparer>
 
+    <template-include name="preparers" default="empty" />
+
     <template-include name="test" default="empty" />
 
     <logger class="com.android.tradefed.log.FileLogger">

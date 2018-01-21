@@ -15,7 +15,6 @@
  */
 package com.android.tradefed.testtype;
 
-import com.android.ddmlib.testrunner.TestIdentifier;
 import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.build.IFolderBuildInfo;
 import com.android.tradefed.config.GlobalConfiguration;
@@ -27,6 +26,7 @@ import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.result.FileInputStreamSource;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.LogDataType;
+import com.android.tradefed.result.TestDescription;
 import com.android.tradefed.util.CommandResult;
 import com.android.tradefed.util.CommandStatus;
 import com.android.tradefed.util.FileUtil;
@@ -345,7 +345,7 @@ public abstract class SubprocessTfLauncher
     private void testCleanStdErr(File stdErrFile, ITestInvocationListener listener)
             throws IOException {
         listener.testRunStarted("StdErr", 1);
-        TestIdentifier tid = new TestIdentifier("stderr-test", "checkIsEmpty");
+        TestDescription tid = new TestDescription("stderr-test", "checkIsEmpty");
         listener.testStarted(tid);
         if (!FileUtil.readStringFromFile(stdErrFile).isEmpty()) {
             String trace =

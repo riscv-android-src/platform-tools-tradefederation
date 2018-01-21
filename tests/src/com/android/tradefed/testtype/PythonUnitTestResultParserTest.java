@@ -22,8 +22,8 @@ import static org.easymock.EasyMock.expectLastCall;
 import static org.easymock.EasyMock.replay;
 import static org.easymock.EasyMock.verify;
 
-import com.android.ddmlib.testrunner.ITestRunListener;
 import com.android.ddmlib.testrunner.TestIdentifier;
+import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.util.ArrayUtil;
 
 import junit.framework.AssertionFailedError;
@@ -36,11 +36,11 @@ import java.util.Collections;
 public class PythonUnitTestResultParserTest extends TestCase {
 
     private PythonUnitTestResultParser mParser;
-    private ITestRunListener mMockListener;
+    private ITestInvocationListener mMockListener;
 
     @Override
     public void setUp() throws Exception {
-        mMockListener = createMock(ITestRunListener.class);
+        mMockListener = createMock(ITestInvocationListener.class);
         mParser = new PythonUnitTestResultParser(ArrayUtil.list(mMockListener), "test");
     }
 

@@ -15,10 +15,10 @@
  */
 package com.android.tradefed.testtype;
 
-import com.android.ddmlib.testrunner.ITestRunListener;
 import com.android.ddmlib.testrunner.TestIdentifier;
 import com.android.tradefed.device.CollectingOutputReceiver;
 import com.android.tradefed.log.LogUtil.CLog;
+import com.android.tradefed.result.ITestInvocationListener;
 
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
@@ -51,16 +51,16 @@ public class GTestXmlResultParser {
     private int mNumTestsRun = 0;
     private int mNumTestsExpected = 0;
     private long mTotalRunTime = 0;
-    private final Collection<ITestRunListener> mTestListeners;
+    private final Collection<ITestInvocationListener> mTestListeners;
 
     /**
      * Creates the GTestXmlResultParser.
      *
-     * @param testRunName the test run name to provide to
-     *            {@link ITestRunListener#testRunStarted(String, int)}
+     * @param testRunName the test run name to provide to {@link
+     *     ITestInvocationListener#testRunStarted(String, int)}
      * @param listeners informed of test results as the tests are executing
      */
-    public GTestXmlResultParser(String testRunName, Collection<ITestRunListener> listeners) {
+    public GTestXmlResultParser(String testRunName, Collection<ITestInvocationListener> listeners) {
         mTestRunName = testRunName;
         mTestListeners = new ArrayList<>(listeners);
     }
@@ -68,11 +68,11 @@ public class GTestXmlResultParser {
     /**
      * Creates the GTestXmlResultParser for a single listener.
      *
-     * @param testRunName the test run name to provide to
-     *            {@link ITestRunListener#testRunStarted(String, int)}
+     * @param testRunName the test run name to provide to {@link
+     *     ITestInvocationListener#testRunStarted(String, int)}
      * @param listener informed of test results as the tests are executing
      */
-    public GTestXmlResultParser(String testRunName, ITestRunListener listener) {
+    public GTestXmlResultParser(String testRunName, ITestInvocationListener listener) {
         mTestRunName = testRunName;
         mTestListeners = new ArrayList<>();
         if (listener != null) {
@@ -94,7 +94,7 @@ public class GTestXmlResultParser {
             result = db.parse(f);
         } catch (SAXException | IOException | ParserConfigurationException e) {
             reportTestRunStarted();
-            for (ITestRunListener listener : mTestListeners) {
+            for (ITestInvocationListener listener : mTestListeners) {
                 String errorMessage = String.format("Failed to get an xml output from tests,"
                         + " it probably crashed");
                 if (output != null) {
@@ -126,13 +126,13 @@ public class GTestXmlResultParser {
         }
 
         if (mNumTestsExpected > mNumTestsRun) {
-            for (ITestRunListener listener : mTestListeners) {
+            for (ITestInvocationListener listener : mTestListeners) {
                 listener.testRunFailed(
                         String.format("Test run incomplete. Expected %d tests, received %d",
                         mNumTestsExpected, mNumTestsRun));
             }
         }
-        for (ITestRunListener listener : mTestListeners) {
+        for (ITestInvocationListener listener : mTestListeners) {
             listener.testRunEnded(mTotalRunTime, Collections.emptyMap());
         }
     }
@@ -147,7 +147,7 @@ public class GTestXmlResultParser {
      * reported.
      */
     private void reportTestRunStarted() {
-        for (ITestRunListener listener : mTestListeners) {
+        for (ITestInvocationListener listener : mTestListeners) {
             listener.testRunStarted(mTestRunName, mNumTestsExpected);
         }
     }
@@ -165,7 +165,7 @@ public class GTestXmlResultParser {
         TestIdentifier testId = new TestIdentifier(parsedResults.mTestClassName,
                 parsedResults.mTestName);
         mNumTestsRun++;
-        for (ITestRunListener listener : mTestListeners) {
+        for (ITestInvocationListener listener : mTestListeners) {
             listener.testStarted(testId);
         }
 
@@ -178,14 +178,14 @@ public class GTestXmlResultParser {
                 // trace and error doesn't show properly in reporter, so adding it here.
                 trace += "\nFailed";
             }
-            for (ITestRunListener listener : mTestListeners) {
+            for (ITestInvocationListener listener : mTestListeners) {
                 listener.testFailed(testId, trace);
             }
         }
 
         Map<String, String> map = new HashMap<>();
         map.put("runtime", parsedResults.mTestRunTime);
-        for (ITestRunListener listener : mTestListeners) {
+        for (ITestInvocationListener listener : mTestListeners) {
             listener.testEnded(testId, map);
         }
     }

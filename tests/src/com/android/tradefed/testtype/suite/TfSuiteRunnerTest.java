@@ -57,12 +57,6 @@ public class TfSuiteRunnerTest {
                     + "    <option name=\"test-suite-tag\" value=\"example-suite\" />\n"
                     + "    <test class=\"com.android.tradefed.testtype.StubTest\" />\n"
                     + "</configuration>";
-    private static final String TEST_CONFIG_MULTI_ABI =
-            "<configuration description=\"Runs a stub tests part of some suite\">\n"
-                    + "    <option name=\"test-suite-tag\" value=\"example-suite2\" />\n"
-                    + "    <test class=\"com.android.tradefed.testtype.AndroidJUnitTest\" />\n"
-                    + "</configuration>";
-    private static final String FAKE_HOST_ARCH = "arm";
 
     private TfSuiteRunner mRunner;
 

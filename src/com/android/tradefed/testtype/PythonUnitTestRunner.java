@@ -17,7 +17,6 @@
 package com.android.tradefed.testtype;
 
 import com.android.ddmlib.MultiLineReceiver;
-import com.android.ddmlib.testrunner.ITestRunListener;
 import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.config.Option;
 import com.android.tradefed.config.OptionClass;
@@ -170,7 +169,7 @@ public class PythonUnitTestRunner implements IRemoteTest, IBuildReceiver {
     }
 
     // Exposed for testing purpose.
-    void doRunTest(ITestRunListener listener, IRunUtil runUtil, String pyModule) {
+    void doRunTest(ITestInvocationListener listener, IRunUtil runUtil, String pyModule) {
         String[] baseOpts = {mPythonBin, "-m", "unittest", "-v"};
         String[] testModule = {pyModule};
         String[] cmd;
