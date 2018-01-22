@@ -29,6 +29,7 @@ public class DeviceTestRunOptions {
     private Long mTestTimeoutMs = BaseHostJUnit4Test.DEFAULT_TEST_TIMEOUT_MS; // optional
     private Long mMaxTimeToOutputMs; // optional
     private Long mMaxInstrumentationTimeoutMs; // optional
+    private boolean mCheckResults = true; // optional
 
     public DeviceTestRunOptions(String packageName) {
         this.mPackageName = packageName;
@@ -132,6 +133,19 @@ public class DeviceTestRunOptions {
      */
     public DeviceTestRunOptions setMaxInstrumentationTimeoutMs(Long maxInstrumentationTimeoutMs) {
         this.mMaxInstrumentationTimeoutMs = maxInstrumentationTimeoutMs;
+        return this;
+    }
+
+    public boolean shouldCheckResults() {
+        return mCheckResults;
+    }
+
+    /**
+     * Sets whether or not the results of the instrumentation run should be checked and ensure no
+     * failures occured.
+     */
+    public DeviceTestRunOptions setCheckResults(boolean checkResults) {
+        this.mCheckResults = checkResults;
         return this;
     }
 }
