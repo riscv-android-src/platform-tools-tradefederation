@@ -67,15 +67,9 @@ import com.android.tradefed.device.WifiHelperTest;
 import com.android.tradefed.device.metric.AtraceCollectorTest;
 import com.android.tradefed.device.metric.BaseDeviceMetricCollectorTest;
 import com.android.tradefed.device.metric.DeviceMetricDataTest;
-import com.android.tradefed.device.metric.MemInfoMetricCollectorTest;
 import com.android.tradefed.device.metric.FilePullerDeviceMetricCollectorTest;
-import com.android.tradefed.device.metric.BuddyInfoMetricCollectorTest;
-import com.android.tradefed.device.metric.IonHeapInfoMetricCollectorTest;
-import com.android.tradefed.device.metric.GfxInfoMetricCollectorTest;
-import com.android.tradefed.device.metric.PagetypeInfoMetricCollectorTest;
 import com.android.tradefed.device.metric.ScheduleMultipleDeviceMetricCollectorTest;
 import com.android.tradefed.device.metric.ScheduledDeviceMetricCollectorTest;
-import com.android.tradefed.device.metric.TraceMetricCollectorTest;
 import com.android.tradefed.invoker.InvocationContextTest;
 import com.android.tradefed.invoker.InvocationExecutionTest;
 import com.android.tradefed.invoker.ShardListenerTest;
@@ -325,16 +319,10 @@ import org.junit.runners.Suite.SuiteClasses;
     // device.metric
     AtraceCollectorTest.class,
     BaseDeviceMetricCollectorTest.class,
-    BuddyInfoMetricCollectorTest.class,
     DeviceMetricDataTest.class,
     FilePullerDeviceMetricCollectorTest.class,
-    GfxInfoMetricCollectorTest.class,
-    IonHeapInfoMetricCollectorTest.class,
-    MemInfoMetricCollectorTest.class,
-    PagetypeInfoMetricCollectorTest.class,
     ScheduledDeviceMetricCollectorTest.class,
     ScheduleMultipleDeviceMetricCollectorTest.class,
-    TraceMetricCollectorTest.class,
 
     // invoker
     InvocationContextTest.class,
