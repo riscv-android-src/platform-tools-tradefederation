@@ -20,26 +20,22 @@ import com.android.tradefed.log.LogUtil.CLog;
 import com.google.common.io.Files;
 import java.io.File;
 import java.io.IOException;
-import java.text.SimpleDateFormat;
-import java.util.Date;
-import java.util.Locale;
 
-/** A {@link ScheduledDeviceMetricCollector} to collect graphics stats at regular intervals. */
-public class JankinfoMetricCollector extends ScheduledDeviceMetricCollector {
-    JankinfoMetricCollector() {
-        setTag("jank");
+/** A {@link ScheduledDeviceMetricCollector} to collect memory dumps at regular intervals. */
+public class MemInfoMetricCollector extends ScheduledDeviceMetricCollector {
+    MemInfoMetricCollector() {
+        setTag("compact-meminfo");
     }
 
     @Override
     public void collect(DeviceMetricData runData) throws InterruptedException {
-        String fileSuffix =
-                new SimpleDateFormat("yyyy-MM-dd-HH-mm-ss-SSS", Locale.US).format(new Date());
         try {
-            CLog.i("Running graphicsstats...");
+            CLog.i("Running meminfo...");
             File outputFile =
                     new File(
-                            String.format("%s/graphics-%s.txt", Files.createTempDir(), fileSuffix));
-            saveProcessOutput("dumpsys graphicsstats", outputFile);
+                            String.format(
+                                    "%s/compact-meminfo-%s.txt", createTempDir(), getFileSuffix()));
+            saveProcessOutput("dumpsys meminfo -c -S", outputFile);
             runData.addStringMetric(
                     Files.getNameWithoutExtension(outputFile.getName()), outputFile.getPath());
         } catch (DeviceNotAvailableException | IOException e) {
