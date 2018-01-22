@@ -15,6 +15,7 @@
  */
 package com.android.tradefed.config;
 
+import static org.easymock.EasyMock.anyObject;
 import static org.easymock.EasyMock.eq;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
@@ -47,20 +48,15 @@ public class SandboxConfigurationFactoryTest {
 
     private SandboxConfigurationFactory mFactory;
     private File mConfig;
-    private File mTmpEnvDir;
     private ISandbox mFakeSandbox;
     private IRunUtil mMockRunUtil;
-    private String mProperty;
 
     @Before
     public void setUp() throws IOException, ConfigurationException {
         mFactory = SandboxConfigurationFactory.getInstance();
         mConfig = FileUtil.createTempFile("sandbox-config-test", ".xml");
-        mTmpEnvDir = FileUtil.createTempDir("sandbox-tmp-dir");
         mFakeSandbox = EasyMock.createMock(ISandbox.class);
         mMockRunUtil = EasyMock.createMock(IRunUtil.class);
-        mProperty = System.getProperty("TF_JAR_DIR");
-        System.setProperty("TF_JAR_DIR", mTmpEnvDir.getAbsolutePath());
         try {
             GlobalConfiguration.createGlobalConfiguration(new String[] {});
         } catch (IllegalStateException ignore) {
@@ -70,12 +66,7 @@ public class SandboxConfigurationFactoryTest {
 
     @After
     public void tearDown() {
-        FileUtil.recursiveDelete(mTmpEnvDir);
         FileUtil.deleteFile(mConfig);
-        if (mProperty != null) {
-            System.setProperty("TF_JAR_DIR", mProperty);
-            mProperty = null;
-        }
     }
 
     private void expectDumpCmd(CommandResult res) {
@@ -84,7 +75,7 @@ public class SandboxConfigurationFactoryTest {
                                 EasyMock.anyLong(),
                                 eq("java"),
                                 eq("-cp"),
-                                eq(new File(mTmpEnvDir, "*").getAbsolutePath()),
+                                anyObject(),
                                 eq(SandboxConfigDump.class.getCanonicalName()),
                                 eq(DumpCmd.NON_VERSIONED_CONFIG.toString()),
                                 EasyMock.anyObject(),

@@ -25,10 +25,13 @@ import com.android.tradefed.util.FileUtil;
 import com.android.tradefed.util.IRunUtil;
 import com.android.tradefed.util.IRunUtil.EnvPriority;
 
+import com.google.common.base.Joiner;
+
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 
 /** A utility class for managing {@link IConfiguration} when doing sandboxing. */
 public class SandboxConfigUtil {
@@ -39,7 +42,7 @@ public class SandboxConfigUtil {
      * Create a subprocess based on the Tf jars from any version, and dump the xml {@link
      * IConfiguration} based on the command line args.
      *
-     * @param rootDir the directory containing all the jars from TF.
+     * @param classpath the classpath to use to run the sandbox.
      * @param runUtil the {@link IRunUtil} to use to run the command.
      * @param args the command line args.
      * @param dump the {@link DumpCmd} driving some of the outputs.
@@ -48,7 +51,7 @@ public class SandboxConfigUtil {
      * @throws ConfigurationException if the dump is not successful.
      */
     public static File dumpConfigForVersion(
-            File rootDir, IRunUtil runUtil, String[] args, DumpCmd dump, File globalConfig)
+            String classpath, IRunUtil runUtil, String[] args, DumpCmd dump, File globalConfig)
             throws ConfigurationException {
         runUtil.unsetEnvVariable(GlobalConfiguration.GLOBAL_CONFIG_VARIABLE);
         File destination = null;
@@ -67,7 +70,7 @@ public class SandboxConfigUtil {
         List<String> mCmdArgs = new ArrayList<>();
         mCmdArgs.add("java");
         mCmdArgs.add("-cp");
-        mCmdArgs.add(new File(rootDir, "*").getAbsolutePath());
+        mCmdArgs.add(classpath);
         mCmdArgs.add(SandboxConfigDump.class.getCanonicalName());
         mCmdArgs.add(dump.toString());
         mCmdArgs.add(destination.getAbsolutePath());
@@ -81,6 +84,33 @@ public class SandboxConfigUtil {
         FileUtil.deleteFile(globalConfig);
         FileUtil.deleteFile(destination);
         throw new ConfigurationException(result.getStderr());
+    }
+
+    /**
+     * Create a subprocess based on the Tf jars from any version, and dump the xml {@link
+     * IConfiguration} based on the command line args.
+     *
+     * @param rootDir the directory containing all the jars from TF.
+     * @param runUtil the {@link IRunUtil} to use to run the command.
+     * @param args the command line args.
+     * @param dump the {@link DumpCmd} driving some of the outputs.
+     * @param globalConfig the file describing the global configuration to be used.
+     * @return A {@link File} containing the xml dump from the command line.
+     * @throws ConfigurationException if the dump is not successful.
+     */
+    public static File dumpConfigForVersion(
+            File rootDir, IRunUtil runUtil, String[] args, DumpCmd dump, File globalConfig)
+            throws ConfigurationException {
+        // include all jars on the classpath
+        String classpath = "";
+        try {
+            Set<String> jarFiles = FileUtil.findFiles(rootDir, ".*.jar");
+            classpath = Joiner.on(":").join(jarFiles);
+        } catch (IOException e) {
+            throw new ConfigurationException(e.getMessage());
+        }
+
+        return dumpConfigForVersion(classpath, runUtil, args, dump, globalConfig);
     }
 
     /** Create a global config with only the keystore to make it available in subprocess. */
