@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2017 The Android Open Source Project
+ * Copyright (C) 2018 The Android Open Source Project
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -20,28 +20,22 @@ import com.android.tradefed.log.LogUtil.CLog;
 import com.google.common.io.Files;
 import java.io.File;
 import java.io.IOException;
-import java.text.SimpleDateFormat;
-import java.util.Date;
-import java.util.Locale;
 
-/** A {@link ScheduledDeviceMetricCollector} to collect memory dumps at regular intervals. */
-public final class MeminfoMetricCollector extends ScheduledDeviceMetricCollector {
-    MeminfoMetricCollector() {
-        setTag("meminfo");
+/** A {@link ScheduledDeviceMetricCollector} to collect fragmentation at regular intervals. */
+public class BuddyInfoMetricCollector extends ScheduledDeviceMetricCollector {
+    public BuddyInfoMetricCollector() {
+        setTag("fragmentation");
     }
 
     @Override
-    public void collect(DeviceMetricData runData) throws InterruptedException {
-        String fileSuffix =
-                new SimpleDateFormat("yyyy-MM-dd-HH-mm-ss-SSS", Locale.US).format(new Date());
+    void collect(DeviceMetricData runData) throws InterruptedException {
         try {
-            CLog.i("Running meminfo...");
+            CLog.i("Running fragmentation collector...");
             File outputFile =
                     new File(
                             String.format(
-                                    "%s/compact-meminfo-%s.txt",
-                                    Files.createTempDir(), fileSuffix));
-            saveProcessOutput("dumpsys meminfo -c -S", outputFile);
+                                    "%s/unusable-index-%s.txt", createTempDir(), getFileSuffix()));
+            saveProcessOutput("cat /d/extfrag/unusable_index", outputFile);
             runData.addStringMetric(
                     Files.getNameWithoutExtension(outputFile.getName()), outputFile.getPath());
         } catch (DeviceNotAvailableException | IOException e) {
