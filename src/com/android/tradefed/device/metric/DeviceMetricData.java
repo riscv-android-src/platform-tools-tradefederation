@@ -15,7 +15,11 @@
  */
 package com.android.tradefed.device.metric;
 
+import com.android.tradefed.device.ITestDevice;
+import com.android.tradefed.invoker.IInvocationContext;
+
 import com.google.common.base.Preconditions;
+
 import java.io.Serializable;
 import java.util.Collections;
 import java.util.LinkedHashMap;
@@ -27,14 +31,57 @@ import java.util.Map;
  */
 public class DeviceMetricData implements Serializable {
     private static final long serialVersionUID = 1;
+    // When collecting metrics for multiple devices, the configuration name of the device is added
+    // as a namespace to differentiate the metrics.
+    private static final String DEVICE_NAME_FORMAT_KEY = "{%s}:%s";
 
     // TODO: expend type supports to more complex type: Object, File, etc.
     private Map<String, String> mCurrentStringMetrics =
             Collections.synchronizedMap(new LinkedHashMap<String, String>());
 
+    private final IInvocationContext mContext;
+
+    /** Ctor */
+    public DeviceMetricData(IInvocationContext context) {
+        mContext = context;
+    }
+
+    /**
+     * Add a single metric associated with the primary device.
+     *
+     * @param key The key of the metric.
+     * @param value The value associated with the metric.
+     */
     public void addStringMetric(String key, String value) {
         synchronized (mCurrentStringMetrics) {
-            mCurrentStringMetrics.put(key, value);
+            String deviceName = null;
+            if (mContext.getDevices().size() > 1) {
+                // If there is more than one device, default add is for first device.
+                deviceName = mContext.getDeviceName(mContext.getDevices().get(0));
+                mCurrentStringMetrics.put(
+                        String.format(DEVICE_NAME_FORMAT_KEY, deviceName, key), value);
+            } else {
+                mCurrentStringMetrics.put(key, value);
+            }
+        }
+    }
+
+    /**
+     * Add a single metric associated with a specified device.
+     *
+     * @param device the {@link ITestDevice} the metric is associated to.
+     * @param key The key of the metric.
+     * @param value The value associated with the metric.
+     */
+    public void addStringMetricForDevice(ITestDevice device, String key, String value) {
+        synchronized (mCurrentStringMetrics) {
+            if (mContext.getDevices().size() > 1) {
+                String deviceName = mContext.getDeviceName(device);
+                mCurrentStringMetrics.put(
+                        String.format(DEVICE_NAME_FORMAT_KEY, deviceName, key), value);
+            } else {
+                mCurrentStringMetrics.put(key, value);
+            }
         }
     }
 

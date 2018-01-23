@@ -108,7 +108,7 @@ public class BaseDeviceMetricCollector implements IMetricCollector {
     /** Test run callbacks */
     @Override
     public final void testRunStarted(String runName, int testCount) {
-        mRunData = new DeviceMetricData();
+        mRunData = new DeviceMetricData(mContext);
         try {
             onTestRunStart(mRunData);
         } catch (Throwable t) {
@@ -148,7 +148,7 @@ public class BaseDeviceMetricCollector implements IMetricCollector {
 
     @Override
     public final void testStarted(TestIdentifier test, long startTime) {
-        mTestData = new DeviceMetricData();
+        mTestData = new DeviceMetricData(mContext);
         try {
             onTestStart(mTestData);
         } catch (Throwable t) {

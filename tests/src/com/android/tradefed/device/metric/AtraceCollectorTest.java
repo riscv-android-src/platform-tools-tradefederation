@@ -16,25 +16,24 @@
 
 package com.android.tradefed.device.metric;
 
-import com.android.tradefed.build.IDeviceBuildInfo;
 import com.android.tradefed.config.OptionSetter;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.invoker.IInvocationContext;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.LogDataType;
 
+import org.easymock.EasyMock;
+import org.junit.Before;
+import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.junit.runners.JUnit4;
+
 import java.io.File;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
-
-import org.easymock.EasyMock;
-
-import org.junit.Before;
-import org.junit.runner.RunWith;
-import org.junit.runners.JUnit4;
-import org.junit.Test;
+import java.util.Map;
 
 /**
  * Unit tests for {@link AtraceCollector},
@@ -42,7 +41,6 @@ import org.junit.Test;
 @RunWith(JUnit4.class)
 public final class AtraceCollectorTest {
     private ITestDevice mMockDevice;
-    private IDeviceBuildInfo mMockDeviceBuildInfo;
     private AtraceCollector mAtrace;
     private OptionSetter mOptionSetter;
     private ITestInvocationListener mMockTestLogger;
@@ -54,7 +52,6 @@ public final class AtraceCollectorTest {
     @Before
     public void setUp() throws Exception {
         mMockDevice = EasyMock.createNiceMock(ITestDevice.class);
-        mMockDeviceBuildInfo = EasyMock.createMock(IDeviceBuildInfo.class);
         mMockTestLogger = EasyMock.createMock(ITestInvocationListener.class);
         mMockInvocationContext = EasyMock.createNiceMock(IInvocationContext.class);
 
@@ -85,7 +82,7 @@ public final class AtraceCollectorTest {
 
         EasyMock.replay(mMockDevice);
 
-        mAtrace.onTestStart(new DeviceMetricData());
+        mAtrace.onTestStart(new DeviceMetricData(mMockInvocationContext));
         EasyMock.verify(mMockDevice);
     }
 
@@ -107,7 +104,7 @@ public final class AtraceCollectorTest {
         EasyMock.replay(mMockDevice);
 
         mOptionSetter.setOptionValue("compress-dump", "false");
-        mAtrace.onTestStart(new DeviceMetricData());
+        mAtrace.onTestStart(new DeviceMetricData(mMockInvocationContext));
         EasyMock.verify(mMockDevice);
     }
 
@@ -129,7 +126,7 @@ public final class AtraceCollectorTest {
 
         EasyMock.replay(mMockDevice);
 
-        mAtrace.onTestStart(new DeviceMetricData());
+        mAtrace.onTestStart(new DeviceMetricData(mMockInvocationContext));
         EasyMock.verify(mMockDevice);
     }
 
@@ -156,7 +153,7 @@ public final class AtraceCollectorTest {
 
         mOptionSetter.setOptionValue("categories", freqCategory);
         mOptionSetter.setOptionValue("categories", schedCategory);
-        mAtrace.onTestStart(new DeviceMetricData());
+        mAtrace.onTestStart(new DeviceMetricData(mMockInvocationContext));
         EasyMock.verify(mMockDevice);
     }
 
@@ -179,19 +176,18 @@ public final class AtraceCollectorTest {
         EasyMock.replay(mMockDevice);
 
         AtraceCollector atrace = new AtraceCollector();
-        atrace.onTestStart(new DeviceMetricData());
-        atrace.onTestEnd(new DeviceMetricData(), new HashMap<String, String>());
+        atrace.onTestStart(new DeviceMetricData(mMockInvocationContext));
+        atrace.onTestEnd(
+                new DeviceMetricData(mMockInvocationContext), new HashMap<String, String>());
         EasyMock.verify(mMockDevice);
     }
 
     /**
-     * Test {@link AtraceCollector#onTestEnd(DeviceMetricData, final Map<String, String>)} to see
-     * if atrace collection stopped correctly.
+     * Test {@link AtraceCollector#onTestEnd(DeviceMetricData, Map)} to see if atrace collection
+     * stopped correctly.
      *
-     * <p>
-     * Expect that atrace command was stopped, the trace file was pulled from
-     * device to host and the trace file removed from device.
-     * </p>
+     * <p>Expect that atrace command was stopped, the trace file was pulled from device to host and
+     * the trace file removed from device.
      */
     @Test
     public void testStopsAtraceDuringTearDown() throws Exception {
@@ -205,18 +201,17 @@ public final class AtraceCollectorTest {
                 .andReturn("").times(1);
 
         EasyMock.replay(mMockDevice);
-        mAtrace.onTestEnd(new DeviceMetricData(), new HashMap<String, String>());
+        mAtrace.onTestEnd(
+                new DeviceMetricData(mMockInvocationContext), new HashMap<String, String>());
         EasyMock.verify(mMockDevice);
     }
 
     /**
-     * Test {@link AtraceCollector#onTestEnd(DeviceMetricData, final Map<String, String>)} to see
-     * if atrace collection stopped correctly when preserve-ondevice-log is set.
+     * Test {@link AtraceCollector#onTestEnd(DeviceMetricData, Map)} to see if atrace collection
+     * stopped correctly when preserve-ondevice-log is set.
      *
-     * <p>
-     * Expect that atrace command was stopped, the trace file was pulled from
-     * device to host and the trace file was not removed from the device.
-     * </p>
+     * <p>Expect that atrace command was stopped, the trace file was pulled from device to host and
+     * the trace file was not removed from the device.
      */
     @Test
     public void testPreserveFileOnDeviceOption() throws Exception {
@@ -229,18 +224,16 @@ public final class AtraceCollectorTest {
 
         EasyMock.replay(mMockDevice);
         mOptionSetter.setOptionValue("preserve-ondevice-log", "true");
-        mAtrace.onTestEnd(new DeviceMetricData(), new HashMap<String, String>());
+        mAtrace.onTestEnd(
+                new DeviceMetricData(mMockInvocationContext), new HashMap<String, String>());
         EasyMock.verify(mMockDevice);
     }
 
     /**
-     * Test {@link AtraceCollector#onTestEnd(DeviceMetricData, final Map<String, String>)} to see
-     * that it throws an exception if the atrace file could not be collected.
+     * Test {@link AtraceCollector#onTestEnd(DeviceMetricData, Map)} to see that it throws an
+     * exception if the atrace file could not be collected.
      *
-     * <p>
-     * Expect that DeviceNotAvailableException is thrown when the file returned
-     * is null.
-     * </p>
+     * <p>Expect that DeviceNotAvailableException is thrown when the file returned is null.
      */
     @Test
     public void testLogPullFail() throws Exception {
@@ -248,16 +241,15 @@ public final class AtraceCollectorTest {
                 .andReturn(null).once();
         EasyMock.replay(mMockDevice);
 
-        mAtrace.onTestEnd(new DeviceMetricData(), new HashMap<String, String>());
+        mAtrace.onTestEnd(
+                new DeviceMetricData(mMockInvocationContext), new HashMap<String, String>());
     }
 
     /**
-     * Test {@link AtraceCollector#onTestEnd(DeviceMetricData, final Map<String, String>)} to see
-     * that it uploads its file correctly with compression on.
+     * Test {@link AtraceCollector#onTestEnd(DeviceMetricData, Map)} to see that it uploads its file
+     * correctly with compression on.
      *
-     * <p>
-     * Expect that testLog is called with the proper filename and LogDataType.
-     * </p>
+     * <p>Expect that testLog is called with the proper filename and LogDataType.
      */
     @Test
     public void testUploadsLogWithCompression() throws Exception {
@@ -272,18 +264,17 @@ public final class AtraceCollectorTest {
         EasyMock.expectLastCall().times(1);
         EasyMock.replay(mMockDevice, mMockTestLogger);
 
-        mAtrace.onTestEnd(new DeviceMetricData(), new HashMap<String, String>());
+        mAtrace.onTestEnd(
+                new DeviceMetricData(mMockInvocationContext), new HashMap<String, String>());
 
         EasyMock.verify(mMockTestLogger);
     }
 
     /**
-     * Test {@link AtraceCollector#onTestEnd(DeviceMetricData, final Map<String, String>)} to see
-     * that it uploads its file correctly with compression off.
+     * Test {@link AtraceCollector#onTestEnd(DeviceMetricData, Map)} to see that it uploads its file
+     * correctly with compression off.
      *
-     * <p>
-     * Expect that testLog is called with the proper filename and LogDataType.
-     * </p>
+     * <p>Expect that testLog is called with the proper filename and LogDataType.
      */
     @Test
     public void testUploadslogWithoutCompression() throws Exception {
@@ -299,18 +290,17 @@ public final class AtraceCollectorTest {
         EasyMock.replay(mMockDevice, mMockTestLogger);
 
         mOptionSetter.setOptionValue("compress-dump", "false");
-        mAtrace.onTestEnd(new DeviceMetricData(), new HashMap<String, String>());
+        mAtrace.onTestEnd(
+                new DeviceMetricData(mMockInvocationContext), new HashMap<String, String>());
 
         EasyMock.verify(mMockTestLogger);
     }
 
     /**
-     * Test {@link AtraceCollector#onTestEnd(DeviceMetricData, final Map<String, String>)} to see
-     * that each device uploads a log
+     * Test {@link AtraceCollector#onTestEnd(DeviceMetricData, Map)} to see that each device uploads
+     * a log
      *
-     * <p>
-     * Expect that testLog is called for each device.
-     * </p>
+     * <p>Expect that testLog is called for each device.
      */
     @Test
     public void testMultipleDeviceBehavior() throws Exception {
@@ -342,7 +332,8 @@ public final class AtraceCollectorTest {
         OptionSetter optionSetter = new OptionSetter(atrace);
         optionSetter.setOptionValue("categories", mCategories);
         atrace.init(mockInvocationContext, mMockTestLogger);
-        atrace.onTestEnd(new DeviceMetricData(), new HashMap<String, String>());
+        atrace.onTestEnd(
+                new DeviceMetricData(mMockInvocationContext), new HashMap<String, String>());
 
         EasyMock.verify(mMockTestLogger);
     }

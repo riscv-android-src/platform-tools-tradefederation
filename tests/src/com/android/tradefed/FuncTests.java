@@ -19,6 +19,7 @@ import com.android.tradefed.build.FileDownloadCacheFuncTest;
 import com.android.tradefed.command.CommandSchedulerFuncTest;
 import com.android.tradefed.command.remote.RemoteManagerFuncTest;
 import com.android.tradefed.device.TestDeviceFuncTest;
+import com.android.tradefed.device.metric.DeviceMetricDataFuncTest;
 import com.android.tradefed.targetprep.AppSetupFuncTest;
 import com.android.tradefed.targetprep.DeviceSetupFuncTest;
 import com.android.tradefed.testtype.DeviceSuite;
@@ -45,6 +46,8 @@ import org.junit.runners.Suite.SuiteClasses;
     RemoteManagerFuncTest.class,
     // device
     TestDeviceFuncTest.class,
+    // device.metric
+    DeviceMetricDataFuncTest.class,
     // targetprep
     AppSetupFuncTest.class,
     DeviceSetupFuncTest.class,

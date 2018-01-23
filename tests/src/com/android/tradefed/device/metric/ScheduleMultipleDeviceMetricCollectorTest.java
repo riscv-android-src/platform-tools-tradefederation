@@ -22,6 +22,7 @@ import static org.junit.Assert.fail;
 import com.android.tradefed.config.OptionSetter;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.invoker.IInvocationContext;
+import com.android.tradefed.invoker.InvocationContext;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.util.RunUtil;
 import java.io.File;
@@ -96,6 +97,7 @@ public class ScheduleMultipleDeviceMetricCollectorTest {
     @Before
     public void setUp() throws Exception {
         MockitoAnnotations.initMocks(this);
+        mContext = new InvocationContext();
     }
 
     @Test
@@ -125,7 +127,7 @@ public class ScheduleMultipleDeviceMetricCollectorTest {
             setter.setOptionValue("metric-collector-command-classes", key);
         }
 
-        DeviceMetricData runData = new DeviceMetricData();
+        DeviceMetricData runData = new DeviceMetricData(mContext);
 
         // Start the tests.
         Map<String, String> metrics = new HashMap<>();
@@ -153,7 +155,7 @@ public class ScheduleMultipleDeviceMetricCollectorTest {
         Map<String, String> metrics = new HashMap<>();
         multipleMetricCollector.init(mContext, mMockListener);
 
-        DeviceMetricData runData = new DeviceMetricData();
+        DeviceMetricData runData = new DeviceMetricData(mContext);
 
         try {
             multipleMetricCollector.onTestRunStart(runData);
@@ -196,7 +198,7 @@ public class ScheduleMultipleDeviceMetricCollectorTest {
             setter.setOptionValue("metric-collector-command-classes", key);
         }
 
-        DeviceMetricData runData = new DeviceMetricData();
+        DeviceMetricData runData = new DeviceMetricData(mContext);
 
         // Start the tests, which should fail with the expected error message.
         multipleMetricCollector.init(mContext, mMockListener);

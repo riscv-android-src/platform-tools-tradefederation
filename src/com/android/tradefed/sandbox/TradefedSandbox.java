@@ -35,14 +35,11 @@ import com.android.tradefed.util.SerializationUtil;
 import com.android.tradefed.util.StreamUtil;
 import com.android.tradefed.util.SubprocessTestResultsParser;
 
-import com.google.common.base.Joiner;
-
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Set;
 
 /**
  * Sandbox container that can run a Trade Federation invocation. TODO: Allow Options to be passed to
@@ -76,13 +73,7 @@ public class TradefedSandbox implements ISandbox {
         mCmdArgs.add("java");
         mCmdArgs.add(String.format("-Djava.io.tmpdir=%s", mSandboxTmpFolder.getAbsolutePath()));
         mCmdArgs.add("-cp");
-        // include all jars on the classpath
-        String classpath = "";
-        Set<String> jarFiles = FileUtil.findFiles(mRootFolder, ".*.jar");
-        // Device jars should not be loaded since they can mess up the host jar loading.
-        List<String> filteredList = removeDeviceJars(jarFiles);
-        classpath = Joiner.on(":").join(filteredList);
-        mCmdArgs.add(classpath);
+        mCmdArgs.add(createClasspath(mRootFolder));
         mCmdArgs.add(TradefedSandboxRunner.class.getCanonicalName());
         mCmdArgs.add(mSerializedContext.getAbsolutePath());
         mCmdArgs.add(mSerializedConfiguration.getAbsolutePath());
@@ -191,6 +182,23 @@ public class TradefedSandbox implements ISandbox {
     }
 
     /**
+     * Create a classpath based on the environment and the working directory returned by {@link
+     * #getTradefedSandboxEnvironment(IConfiguration, String[])}.
+     *
+     * @param workingDir the current working directory for the sandbox.
+     * @return The classpath to be use.
+     */
+    public String createClasspath(File workingDir) throws Exception {
+        // Get the classpath property.
+        String classpathStr = System.getProperty("java.class.path");
+        if (classpathStr == null) {
+            throw new ConfigurationException(
+                    "Could not find the classpath property: java.class.path");
+        }
+        return classpathStr;
+    }
+
+    /**
      * Prepare the {@link IConfiguration} that will be passed to the subprocess and will drive the
      * container execution.
      *
@@ -208,8 +216,12 @@ public class TradefedSandbox implements ISandbox {
             mGlobalConfig = SandboxConfigUtil.dumpFilteredGlobalConfig();
             mSerializedConfiguration =
                     SandboxConfigUtil.dumpConfigForVersion(
-                            mRootFolder, mRunUtil, args, DumpCmd.RUN_CONFIG, mGlobalConfig);
-        } catch (ConfigurationException | IOException e) {
+                            createClasspath(mRootFolder),
+                            mRunUtil,
+                            args,
+                            DumpCmd.RUN_CONFIG,
+                            mGlobalConfig);
+        } catch (Exception e) {
             StreamUtil.close(mEventParser);
             return e;
         }
@@ -230,16 +242,5 @@ public class TradefedSandbox implements ISandbox {
      */
     protected File prepareContext(IInvocationContext context) throws IOException {
         return SerializationUtil.serialize(context);
-    }
-
-    private List<String> removeDeviceJars(Set<String> jars) {
-        List<String> ordered = new ArrayList<>();
-        for (String jar : jars) {
-            if (jar.contains("target/testcases")) {
-                continue;
-            }
-            ordered.add(jar);
-        }
-        return ordered;
     }
 }
