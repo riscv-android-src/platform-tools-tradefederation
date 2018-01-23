@@ -15,9 +15,9 @@
  */
 package com.android.tradefed.result;
 
-import com.android.ddmlib.Log;
 import com.android.ddmlib.testrunner.TestIdentifier;
 import com.android.ddmlib.testrunner.TestResult.TestStatus;
+import com.android.tradefed.log.LogUtil.CLog;
 
 import java.util.HashMap;
 import java.util.LinkedHashMap;
@@ -33,7 +33,6 @@ import java.util.Set;
  * <p>Not thread safe! The test* callbacks must be called in order
  */
 public class TestRunResult {
-    private static final String LOG_TAG = TestRunResult.class.getSimpleName();
     private String mTestRunName;
     // Uses a LinkedHashMap to have predictable iteration order
     private Map<TestIdentifier, TestResult> mTestResults =
@@ -146,6 +145,12 @@ public class TestRunResult {
         return mRunFailureError;
     }
 
+    /**
+     * Notify that a test run started.
+     *
+     * @param runName the name associated to the test run for tracking purpose.
+     * @param testCount the number of test cases associated with the test count.
+     */
     public void testRunStarted(String runName, int testCount) {
         mTestRunName = runName;
         mIsRunComplete = false;
@@ -170,7 +175,7 @@ public class TestRunResult {
     private void updateTestResult(TestIdentifier test, TestStatus status, String trace) {
         TestResult r = mTestResults.get(test);
         if (r == null) {
-            Log.d(LOG_TAG, String.format("received test event without test start for %s", test));
+            CLog.d("received test event without test start for %s", test);
             r = new TestResult();
         }
         r.setStatus(status);
