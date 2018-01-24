@@ -314,8 +314,8 @@ public class GTest
     }
 
     /*
-     * Conforms filters using a {@link com.android.ddmlib.testrunner.TestIdentifier} format
-     * to be recognized by the GTest executable.
+     * Conforms filters using a {@link TestDescription} format to be recognized by the GTest
+     * executable.
      */
     private String cleanFilter(String filter) {
         return filter.replace('#', '.');

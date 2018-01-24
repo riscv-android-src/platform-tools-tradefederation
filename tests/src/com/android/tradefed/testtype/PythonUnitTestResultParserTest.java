@@ -22,8 +22,8 @@ import static org.easymock.EasyMock.expectLastCall;
 import static org.easymock.EasyMock.replay;
 import static org.easymock.EasyMock.verify;
 
-import com.android.ddmlib.testrunner.TestIdentifier;
 import com.android.tradefed.result.ITestInvocationListener;
+import com.android.tradefed.result.TestDescription;
 import com.android.tradefed.util.ArrayUtil;
 
 import junit.framework.AssertionFailedError;
@@ -118,7 +118,7 @@ public class PythonUnitTestResultParserTest extends TestCase {
                 "",
                 "OK"
         };
-        TestIdentifier[] ids = {new TestIdentifier("a", "b")};
+        TestDescription[] ids = {new TestDescription("a", "b")};
         boolean[] didPass = {true};
         setTestIdChecks(ids, didPass);
         setRunListenerChecks(1, 1000, true);
@@ -137,7 +137,7 @@ public class PythonUnitTestResultParserTest extends TestCase {
                 "",
                 "OK (expected failures=1)"
         };
-        TestIdentifier[] ids = {new TestIdentifier("a", "b")};
+        TestDescription[] ids = {new TestDescription("a", "b")};
         boolean[] didPass = {true};
         setTestIdChecks(ids, didPass);
         setRunListenerChecks(1, 1000, true);
@@ -157,7 +157,7 @@ public class PythonUnitTestResultParserTest extends TestCase {
                 "",
                 "OK"
         };
-        TestIdentifier[] ids = {new TestIdentifier("a", "b"), new TestIdentifier("c", "d")};
+        TestDescription[] ids = {new TestDescription("a", "b"), new TestDescription("c", "d")};
         boolean didPass[] = {true, true};
         setTestIdChecks(ids, didPass);
         setRunListenerChecks(2, 1000, true);
@@ -177,7 +177,7 @@ public class PythonUnitTestResultParserTest extends TestCase {
                 "",
                 "OK (expected failures=1)"
         };
-        TestIdentifier[] ids = {new TestIdentifier("a", "b"), new TestIdentifier("c", "d")};
+        TestDescription[] ids = {new TestDescription("a", "b"), new TestDescription("c", "d")};
         boolean[] didPass = {true, true};
         setTestIdChecks(ids, didPass);
         setRunListenerChecks(2, 1000, true);
@@ -197,7 +197,7 @@ public class PythonUnitTestResultParserTest extends TestCase {
                 "",
                 "OK (expected failures=2)"
         };
-        TestIdentifier[] ids = {new TestIdentifier("a", "b"), new TestIdentifier("c", "d")};
+        TestDescription[] ids = {new TestDescription("a", "b"), new TestDescription("c", "d")};
         boolean[] didPass = {true, true};
         setTestIdChecks(ids, didPass);
         setRunListenerChecks(2, 1000, true);
@@ -224,7 +224,7 @@ public class PythonUnitTestResultParserTest extends TestCase {
                 "",
                 "FAILED (errors=1)"
         };
-        TestIdentifier[] ids = {new TestIdentifier("a", "b")};
+        TestDescription[] ids = {new TestDescription("a", "b")};
         boolean[] didPass = {false};
         setRunListenerChecks(1, 1000, false);
         setTestIdChecks(ids, didPass);
@@ -252,7 +252,7 @@ public class PythonUnitTestResultParserTest extends TestCase {
                 "",
                 "FAILED (errors=1)"
         };
-        TestIdentifier[] ids = {new TestIdentifier("a", "b"), new TestIdentifier("c", "d")};
+        TestDescription[] ids = {new TestDescription("a", "b"), new TestDescription("c", "d")};
         boolean[] didPass = {true, false};
         setRunListenerChecks(1, 1000, false);
         setTestIdChecks(ids, didPass);
@@ -271,7 +271,7 @@ public class PythonUnitTestResultParserTest extends TestCase {
                 "",
                 "OK (unexpected success=1)",
         };
-        TestIdentifier[] ids = {new TestIdentifier("a", "b")};
+        TestDescription[] ids = {new TestDescription("a", "b")};
         boolean[] didPass = {false};
         setTestIdChecks(ids, didPass);
         setRunListenerChecks(1, 1000, false);
@@ -290,7 +290,7 @@ public class PythonUnitTestResultParserTest extends TestCase {
                 "",
                 "OK (skipped=1)",
         };
-        TestIdentifier[] ids = {new TestIdentifier("a", "b")};
+        TestDescription[] ids = {new TestDescription("a", "b")};
         boolean[] didPass = {false};
         boolean[] didSkip = {true};
         setTestIdChecks(ids, didPass, didSkip);
@@ -311,7 +311,7 @@ public class PythonUnitTestResultParserTest extends TestCase {
                 "",
                 "OK",
         };
-        TestIdentifier[] ids = {new TestIdentifier("a", "b")};
+        TestDescription[] ids = {new TestDescription("a", "b")};
         boolean[] didPass = {true};
         setTestIdChecks(ids, didPass);
         setRunListenerChecks(1, 1000, true);
@@ -340,7 +340,7 @@ public class PythonUnitTestResultParserTest extends TestCase {
                 "",
                 "FAILED (errors=1)"
         };
-        TestIdentifier[] ids = {new TestIdentifier("a", "b")};
+        TestDescription[] ids = {new TestDescription("a", "b")};
         boolean[] didPass = {false};
         setTestIdChecks(ids, didPass);
         setRunListenerChecks(1, 1000, false);
@@ -393,15 +393,15 @@ public class PythonUnitTestResultParserTest extends TestCase {
                 "",
                 "FAILED (failures=2, errors=1, skipped=1, expected failures=1, unexpected successes=1)",
         };
-        TestIdentifier[] ids = {
-                new TestIdentifier("foo.testFoo", "testError"),
-                new TestIdentifier("foo.testFoo", "testExpectedFailure"),
-                new TestIdentifier("foo.testFoo", "testFail"),
-                new TestIdentifier("foo.testFoo", "testFailWithDocString"),
-                new TestIdentifier("foo.testFoo", "testOk"),
-                new TestIdentifier("foo.testFoo", "testOkWithDocString"),
-                new TestIdentifier("foo.testFoo", "testSkipped"),
-                new TestIdentifier("foo.testFoo", "testUnexpectedSuccess")
+        TestDescription[] ids = {
+            new TestDescription("foo.testFoo", "testError"),
+            new TestDescription("foo.testFoo", "testExpectedFailure"),
+            new TestDescription("foo.testFoo", "testFail"),
+            new TestDescription("foo.testFoo", "testFailWithDocString"),
+            new TestDescription("foo.testFoo", "testOk"),
+            new TestDescription("foo.testFoo", "testOkWithDocString"),
+            new TestDescription("foo.testFoo", "testSkipped"),
+            new TestDescription("foo.testFoo", "testUnexpectedSuccess")
         };
         boolean[] didPass = {false, true, false, false, true, true, false, false};
         boolean[] didSkip = {false, false, false, false, false, false, true, false};
@@ -459,7 +459,7 @@ public class PythonUnitTestResultParserTest extends TestCase {
         expectLastCall().times(1);
     }
 
-    private void setTestIdChecks(TestIdentifier[] ids, boolean[] didPass) {
+    private void setTestIdChecks(TestDescription[] ids, boolean[] didPass) {
         for (int i = 0; i < ids.length; i++) {
             mMockListener.testStarted(ids[i]);
             expectLastCall().times(1);
@@ -477,7 +477,7 @@ public class PythonUnitTestResultParserTest extends TestCase {
         }
     }
 
-    private void setTestIdChecks(TestIdentifier[] ids, boolean[] didPass, boolean[] didSkip) {
+    private void setTestIdChecks(TestDescription[] ids, boolean[] didPass, boolean[] didSkip) {
         for (int i = 0; i < ids.length; i++) {
             mMockListener.testStarted(ids[i]);
             expectLastCall().times(1);

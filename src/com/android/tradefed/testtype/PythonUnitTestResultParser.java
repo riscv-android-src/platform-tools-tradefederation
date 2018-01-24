@@ -16,8 +16,8 @@
 package com.android.tradefed.testtype;
 
 import com.android.ddmlib.MultiLineReceiver;
-import com.android.ddmlib.testrunner.TestIdentifier;
 import com.android.tradefed.result.ITestInvocationListener;
+import com.android.tradefed.result.TestDescription;
 
 import java.util.Collection;
 import java.util.Collections;
@@ -97,7 +97,7 @@ public class PythonUnitTestResultParser extends MultiLineReceiver {
     // General state
     private final Collection<ITestInvocationListener> mListeners;
     private final String mRunName;
-    private Map<TestIdentifier, String> mTestResultCache;
+    private Map<TestDescription, String> mTestResultCache;
     // Use a special entry to mark skipped test in mTestResultCache
     static final String SKIPPED_ENTRY = "Skipped";
 
@@ -292,7 +292,7 @@ public class PythonUnitTestResultParser extends MultiLineReceiver {
         for (ITestInvocationListener listener : mListeners) {
             listener.testRunStarted(mRunName, mTotalTestCount);
 
-            for (Entry<TestIdentifier, String> test : mTestResultCache.entrySet()) {
+            for (Entry<TestDescription, String> test : mTestResultCache.entrySet()) {
                 listener.testStarted(test.getKey());
                 if (SKIPPED_ENTRY.equals(test.getValue())) {
                     listener.testIgnored(test.getKey());
@@ -312,7 +312,7 @@ public class PythonUnitTestResultParser extends MultiLineReceiver {
 
     /** Record a non-failure test case. */
     private void reportNonFailureTestResult() throws PythonUnitTestParseException {
-        TestIdentifier testId = new TestIdentifier(mCurrentTestClass, mCurrentTestName);
+        TestDescription testId = new TestDescription(mCurrentTestClass, mCurrentTestName);
         if (PATTERN_TEST_SUCCESS.matcher(mCurrentTestStatus).matches()) {
             mTestResultCache.put(testId, null);
         } else if (PATTERN_TEST_SKIPPED.matcher(mCurrentTestStatus).matches()) {
@@ -329,7 +329,7 @@ public class PythonUnitTestResultParser extends MultiLineReceiver {
 
     /** Record a failed test case and its traceback message. */
     private void reportFailureTestResult() {
-        TestIdentifier testId = new TestIdentifier(mCurrentTestClass, mCurrentTestName);
+        TestDescription testId = new TestDescription(mCurrentTestClass, mCurrentTestName);
         mTestResultCache.put(testId, mCurrentTraceback.toString());
         mFailedTestCount++;
     }

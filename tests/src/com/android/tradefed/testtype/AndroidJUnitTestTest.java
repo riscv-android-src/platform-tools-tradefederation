@@ -83,6 +83,8 @@ public class AndroidJUnitTestTest extends TestCase {
         mMockRemoteRunner.setMaxTimeout(0L, TimeUnit.MILLISECONDS);
         mMockRemoteRunner.addInstrumentationArg(InstrumentationTest.TEST_TIMEOUT_INST_ARGS_KEY,
                 Long.toString(SHELL_TIMEOUT));
+        mMockRemoteRunner.addInstrumentationArg(
+                AndroidJUnitTest.NEW_RUN_LISTENER_ORDER_KEY, "true");
     }
 
     /**

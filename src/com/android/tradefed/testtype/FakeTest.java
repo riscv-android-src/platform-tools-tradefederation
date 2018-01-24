@@ -15,13 +15,13 @@
  */
 package com.android.tradefed.testtype;
 
-import com.android.ddmlib.testrunner.TestIdentifier;
 import com.android.tradefed.config.Option;
 import com.android.tradefed.config.Option.Importance;
 import com.android.tradefed.config.OptionClass;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.result.ITestInvocationListener;
+import com.android.tradefed.result.TestDescription;
 
 import java.util.Collections;
 import java.util.LinkedHashMap;
@@ -177,7 +177,7 @@ public class FakeTest implements IDeviceTest, IRemoteTest {
 
             i++;
             final String testName = String.format("testMethod%d", i);
-            final TestIdentifier test = new TestIdentifier(runName, testName);
+            final TestDescription test = new TestDescription(runName, testName);
 
             listener.testStarted(test);
             switch (c) {

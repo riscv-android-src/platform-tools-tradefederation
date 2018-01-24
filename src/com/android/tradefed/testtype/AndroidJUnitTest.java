@@ -29,6 +29,8 @@ import com.android.tradefed.util.ListInstrumentationParser;
 
 import com.google.common.annotations.VisibleForTesting;
 
+import org.junit.runner.notification.RunListener;
+
 import java.io.File;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -66,6 +68,11 @@ public class AndroidJUnitTest extends InstrumentationTest implements IRuntimeHin
     private static final String SHARD_INDEX_INST_ARGS_KEY = "shardIndex";
     /** instrumentation test runner argument used to specify the total number of shards */
     private static final String NUM_SHARD_INST_ARGS_KEY = "numShards";
+    /**
+     * instrumentation test runner argument used to enable the new {@link RunListener} order on
+     * device side.
+     */
+    public static final String NEW_RUN_LISTENER_ORDER_KEY = "mNewRunListenerOrderMode";
 
     private static final String INCLUDE_FILE = "includes.txt";
     private static final String EXCLUDE_FILE = "excludes.txt";
@@ -118,6 +125,13 @@ public class AndroidJUnitTest extends InstrumentationTest implements IRuntimeHin
                         + "Can be repeated."
     )
     private List<String> mExtraDeviceListener = new ArrayList<>();
+
+    @Option(
+        name = "use-new-run-listener-order",
+        description = "Enables the new RunListener Order for AJUR."
+    )
+    // Default to true as it is harmless if not supported.
+    private boolean mNewRunListenerOrderMode = true;
 
     private String mDeviceIncludeFile = null;
     private String mDeviceExcludeFile = null;
@@ -317,6 +331,10 @@ public class AndroidJUnitTest extends InstrumentationTest implements IRuntimeHin
         if (mTotalShards > 0 && isShardable()) {
             runner.addInstrumentationArg(SHARD_INDEX_INST_ARGS_KEY, Integer.toString(mShardIndex));
             runner.addInstrumentationArg(NUM_SHARD_INST_ARGS_KEY, Integer.toString(mTotalShards));
+        }
+        if (mNewRunListenerOrderMode) {
+            runner.addInstrumentationArg(
+                    NEW_RUN_LISTENER_ORDER_KEY, Boolean.toString(mNewRunListenerOrderMode));
         }
         // Add the listeners received from Options
         addDeviceListener(mExtraDeviceListener);
