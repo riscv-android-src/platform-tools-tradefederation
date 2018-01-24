@@ -16,9 +16,9 @@
 package com.android.tradefed.testtype;
 
 import com.android.ddmlib.MultiLineReceiver;
-import com.android.ddmlib.testrunner.TestIdentifier;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.result.ITestInvocationListener;
+import com.android.tradefed.result.TestDescription;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -46,7 +46,7 @@ public class GTestListTestParser extends MultiLineReceiver {
     private static final Pattern TEST_METHOD = Pattern.compile("\\s+(\\w+)$");
 
     // exposed for unit testing
-    protected List<TestIdentifier> mTests = new ArrayList<>();
+    protected List<TestDescription> mTests = new ArrayList<>();
 
     /**
      * Creates the GTestListTestParser for a single listener.
@@ -103,8 +103,8 @@ public class GTestListTestParser extends MultiLineReceiver {
                         "parsed new test case name %s but no test class name has been set", line));
             }
             // Test method name found
-            mTests.add(new TestIdentifier(
-                    getTestClass(mLastTestClassName), methodMatcher.group(1)));
+            mTests.add(
+                    new TestDescription(getTestClass(mLastTestClassName), methodMatcher.group(1)));
         } else {
             CLog.v("line ignored: %s", line);
         }
@@ -126,7 +126,7 @@ public class GTestListTestParser extends MultiLineReceiver {
         // now we send out all the test callbacks
         final Map<String, String> empty = Collections.<String, String>emptyMap();
         mTestRunListener.testRunStarted(mTestRunName, mTests.size());
-        for (TestIdentifier id : mTests) {
+        for (TestDescription id : mTests) {
             mTestRunListener.testStarted(id);
             mTestRunListener.testEnded(id, empty);
         }

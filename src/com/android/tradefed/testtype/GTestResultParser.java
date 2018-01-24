@@ -17,9 +17,9 @@ package com.android.tradefed.testtype;
 
 import com.android.ddmlib.IShellOutputReceiver;
 import com.android.ddmlib.MultiLineReceiver;
-import com.android.ddmlib.testrunner.TestIdentifier;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.result.ITestInvocationListener;
+import com.android.tradefed.result.TestDescription;
 import com.android.tradefed.testtype.testdefs.XmlDefsTest;
 
 import java.util.ArrayList;
@@ -555,9 +555,9 @@ public class GTestResultParser extends MultiLineReceiver {
         TestResult testResult = getCurrentTestResult();
         testResult.mTestClass = parsedResults.mTestClassName;
         testResult.mTestName = parsedResults.mTestName;
-        TestIdentifier testId = null;
+        TestDescription testId = null;
         if (getTestClass(testResult) !=null && testResult.mTestName !=null) {
-            testId = new TestIdentifier(getTestClass(testResult), testResult.mTestName);
+            testId = new TestDescription(getTestClass(testResult), testResult.mTestName);
         } else {
             CLog.e("Error during parsing, className: %s and testName: %s, should both be not null",
                     getTestClass(testResult), testResult.mTestName);
@@ -581,9 +581,9 @@ public class GTestResultParser extends MultiLineReceiver {
     private void doTestEnded(String identifier, boolean testPassed) {
         ParsedTestInfo parsedResults = parseTestIdentifier(identifier);
         TestResult testResult = getCurrentTestResult();
-        TestIdentifier testId = null;
+        TestDescription testId = null;
         if (getTestClass(testResult) !=null && testResult.mTestName !=null) {
-            testId = new TestIdentifier(getTestClass(testResult), testResult.mTestName);
+            testId = new TestDescription(getTestClass(testResult), testResult.mTestName);
         } else {
             CLog.e("Error during parsing, className: %s and testName: %s, should both be not null",
                     getTestClass(testResult), testResult.mTestName);
@@ -700,8 +700,9 @@ public class GTestResultParser extends MultiLineReceiver {
         if ((mCurrentTestResult != null) && (mCurrentTestResult.isComplete())) {
             // current test results are cleared out after every complete test run,
             // if it's not null, assume the last test caused this and report as a test failure
-            TestIdentifier testId = new TestIdentifier(getTestClass(mCurrentTestResult),
-                    mCurrentTestResult.mTestName);
+            TestDescription testId =
+                    new TestDescription(
+                            getTestClass(mCurrentTestResult), mCurrentTestResult.mTestName);
 
             // If there was any stack trace during the test run, append it to the "test failed"
             // error message so we have an idea of what caused the crash/failure.

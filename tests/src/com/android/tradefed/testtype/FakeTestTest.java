@@ -16,9 +16,9 @@
 
 package com.android.tradefed.testtype;
 
-import com.android.ddmlib.testrunner.TestIdentifier;
 import com.android.tradefed.config.OptionSetter;
 import com.android.tradefed.result.ITestInvocationListener;
+import com.android.tradefed.result.TestDescription;
 
 import junit.framework.TestCase;
 
@@ -250,7 +250,7 @@ public class FakeTestTest extends TestCase {
     private void testPassExpectations(ITestInvocationListener l, String klass,
             int idx) {
         final String name = String.format("testMethod%d", idx);
-        final TestIdentifier test = new TestIdentifier(klass, name);
+        final TestDescription test = new TestDescription(klass, name);
         l.testStarted(test);
         l.testEnded(EasyMock.eq(test), EasyMock.<Map<String, String>>anyObject());
     }
@@ -258,7 +258,7 @@ public class FakeTestTest extends TestCase {
     private void testFailExpectations(ITestInvocationListener l, String klass,
             int idx) {
         final String name = String.format("testMethod%d", idx);
-        final TestIdentifier test = new TestIdentifier(klass, name);
+        final TestDescription test = new TestDescription(klass, name);
         l.testStarted(test);
         l.testFailed(EasyMock.eq(test), EasyMock.<String>anyObject());
         l.testEnded(EasyMock.eq(test), EasyMock.<Map<String, String>>anyObject());

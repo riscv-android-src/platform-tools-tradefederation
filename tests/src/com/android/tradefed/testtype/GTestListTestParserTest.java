@@ -17,6 +17,7 @@ package com.android.tradefed.testtype;
 
 import com.android.ddmlib.testrunner.TestIdentifier;
 import com.android.tradefed.result.ITestInvocationListener;
+import com.android.tradefed.result.TestDescription;
 
 import org.easymock.EasyMock;
 
@@ -95,11 +96,11 @@ public class GTestListTestParserTest extends GTestParserTestBase {
         }
     }
 
-    private void verifyTestIdentifiers(List<TestIdentifier> tests, int classesExpected)
+    private void verifyTestIdentifiers(List<TestDescription> tests, int classesExpected)
             throws Exception {
         int classesFound = 0;
         String lastClass = "notaclass";
-        for (TestIdentifier test : tests) {
+        for (TestDescription test : tests) {
             String className = test.getClassName();
             String methodName = test.getTestName();
             assertFalse(String.format("Class name %s improperly formatted", className),
