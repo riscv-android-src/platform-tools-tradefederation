@@ -107,6 +107,7 @@ import com.android.tradefed.result.SnapshotInputStreamSourceTest;
 import com.android.tradefed.result.SubprocessResultsReporterTest;
 import com.android.tradefed.result.TestDescriptionTest;
 import com.android.tradefed.result.TestFailureEmailResultReporterTest;
+import com.android.tradefed.result.TestRunResultTest;
 import com.android.tradefed.result.TestSummaryTest;
 import com.android.tradefed.result.XmlResultReporterTest;
 import com.android.tradefed.sandbox.SandboxConfigDumpTest;
@@ -185,8 +186,8 @@ import com.android.tradefed.testtype.suite.ITestSuiteTest;
 import com.android.tradefed.testtype.suite.ModuleDefinitionTest;
 import com.android.tradefed.testtype.suite.ModuleListenerTest;
 import com.android.tradefed.testtype.suite.ModuleMergerTest;
-import com.android.tradefed.testtype.suite.SuiteModuleLoaderTest;
 import com.android.tradefed.testtype.suite.ModuleSplitterTest;
+import com.android.tradefed.testtype.suite.SuiteModuleLoaderTest;
 import com.android.tradefed.testtype.suite.TestFailureListenerTest;
 import com.android.tradefed.testtype.suite.TestSuiteInfoTest;
 import com.android.tradefed.testtype.suite.TfSuiteRunnerTest;
@@ -375,6 +376,7 @@ import org.junit.runners.Suite.SuiteClasses;
     SubprocessResultsReporterTest.class,
     TestDescriptionTest.class,
     TestFailureEmailResultReporterTest.class,
+    TestRunResultTest.class,
     TestSummaryTest.class,
     XmlResultReporterTest.class,
 

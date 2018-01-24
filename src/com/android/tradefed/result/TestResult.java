@@ -15,7 +15,6 @@
  */
 package com.android.tradefed.result;
 
-import com.android.ddmlib.testrunner.ITestRunListener;
 import com.android.ddmlib.testrunner.TestIdentifier;
 import com.android.ddmlib.testrunner.TestResult.TestStatus;
 
@@ -62,7 +61,7 @@ public class TestResult {
 
     /**
      * Return the {@link System#currentTimeMillis()} time that the {@link
-     * ITestRunListener#testStarted(TestIdentifier)} event was received.
+     * ITestInvocationListener#testStarted(TestIdentifier)} event was received.
      */
     public long getStartTime() {
         return mStartTime;
@@ -70,7 +69,7 @@ public class TestResult {
 
     /**
      * Allows to set the time when the test was started, to be used with {@link
-     * ITestRunListener#testStarted(TestIdentifier, long)}.
+     * ITestInvocationListener#testStarted(TestIdentifier, long)}.
      */
     public void setStartTime(long startTime) {
         mStartTime = startTime;
@@ -78,7 +77,7 @@ public class TestResult {
 
     /**
      * Return the {@link System#currentTimeMillis()} time that the {@link
-     * ITestRunListener#testEnded(TestIdentifier, Map)} event was received.
+     * ITestInvocationListener#testEnded(TestIdentifier, Map)} event was received.
      */
     public long getEndTime() {
         return mEndTime;
