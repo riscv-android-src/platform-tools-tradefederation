@@ -15,10 +15,10 @@
  */
 package com.android.tradefed.testtype;
 
-import com.android.ddmlib.testrunner.TestIdentifier;
 import com.android.tradefed.device.CollectingOutputReceiver;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.result.ITestInvocationListener;
+import com.android.tradefed.result.TestDescription;
 
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
@@ -162,8 +162,8 @@ public class GTestXmlResultParser {
         String testname = testcase.getAttribute("name");
         String runtime = testcase.getAttribute("time");
         ParsedTestInfo parsedResults = new ParsedTestInfo(classname, testname, runtime);
-        TestIdentifier testId = new TestIdentifier(parsedResults.mTestClassName,
-                parsedResults.mTestName);
+        TestDescription testId =
+                new TestDescription(parsedResults.mTestClassName, parsedResults.mTestName);
         mNumTestsRun++;
         for (ITestInvocationListener listener : mTestListeners) {
             listener.testStarted(testId);
