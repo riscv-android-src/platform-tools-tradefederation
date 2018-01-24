@@ -72,7 +72,7 @@ public class AndroidJUnitTest extends InstrumentationTest implements IRuntimeHin
      * instrumentation test runner argument used to enable the new {@link RunListener} order on
      * device side.
      */
-    public static final String NEW_RUN_LISTENER_ORDER_KEY = "mNewRunListenerOrderMode";
+    public static final String NEW_RUN_LISTENER_ORDER_KEY = "newRunListenerMode";
 
     private static final String INCLUDE_FILE = "includes.txt";
     private static final String EXCLUDE_FILE = "excludes.txt";
