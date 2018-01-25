@@ -42,7 +42,7 @@ endif
 
 LOCAL_MODULE := tradefed
 
-LOCAL_STATIC_JAVA_LIBRARIES := junit-host kxml2-2.3.0 jline-1.0 tf-remote-client commons-compress-prebuilt host-libprotobuf-java-full tradefed-protos error_prone_annotations-2.0.18
+LOCAL_STATIC_JAVA_LIBRARIES := junit-host kxml2-2.3.0 jline-1.0 tf-remote-client commons-compress-prebuilt host-libprotobuf-java-full tradefed-protos error_prone_annotations-2.0.18 longevity-host-lib
 
 # If the real one isn't present, use the prebuilt platformprotos library.
 ifeq ($(wildcard frameworks/base/Android.mk),)
