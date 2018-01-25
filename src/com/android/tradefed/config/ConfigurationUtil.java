@@ -150,7 +150,24 @@ public class ConfigurationUtil {
      * @param dirs a list of {@link File} of extra directories to search for test configs
      */
     public static Set<String> getConfigNamesFromDirs(String subPath, List<File> dirs) {
-        Set<String> configNames = new HashSet<String>();
+        Set<File> res = getConfigNamesFileFromDirs(subPath, dirs);
+        if (res.isEmpty()) {
+            return new HashSet<>();
+        }
+        Set<String> files = new HashSet<>();
+        res.forEach(file -> files.add(file.getAbsolutePath()));
+        return files;
+    }
+
+    /**
+     * Helper to get the test config files from given directories.
+     *
+     * @param subPath The location where to look for configuration. Can be null.
+     * @param dirs A list of {@link File} of extra directories to search for test configs
+     * @return the set of {@link File} that were found.
+     */
+    public static Set<File> getConfigNamesFileFromDirs(String subPath, List<File> dirs) {
+        Set<File> configNames = new HashSet<>();
         for (File dir : dirs) {
             if (subPath != null) {
                 dir = new File(dir, subPath);
@@ -160,8 +177,8 @@ public class ConfigurationUtil {
                 continue;
             }
             try {
-                configNames.addAll(FileUtil.findFiles(dir, ".*.config"));
-                configNames.addAll(FileUtil.findFiles(dir, ".*.xml"));
+                configNames.addAll(FileUtil.findFilesObject(dir, ".*.config"));
+                configNames.addAll(FileUtil.findFilesObject(dir, ".*.xml"));
             } catch (IOException e) {
                 CLog.w("Failed to get test config files from directory %s", dir.getAbsolutePath());
             }

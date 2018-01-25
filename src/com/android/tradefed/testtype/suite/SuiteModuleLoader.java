@@ -18,6 +18,7 @@ package com.android.tradefed.testtype.suite;
 import com.android.annotations.VisibleForTesting;
 import com.android.tradefed.config.ConfigurationException;
 import com.android.tradefed.config.ConfigurationFactory;
+import com.android.tradefed.config.ConfigurationUtil;
 import com.android.tradefed.config.IConfiguration;
 import com.android.tradefed.config.IConfigurationFactory;
 import com.android.tradefed.log.LogUtil.CLog;
@@ -46,7 +47,10 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
 
-/** Retrieves Compatibility test module definitions from the repository. */
+/**
+ * Retrieves Compatibility test module definitions from the repository. TODO: Add the expansion of
+ * suite when loading a module.
+ */
 public class SuiteModuleLoader {
 
     private static final String CONFIG_EXT = ".config";
@@ -57,93 +61,139 @@ public class SuiteModuleLoader {
     private Map<String, List<SuiteTestFilter>> mExcludeFilters = new HashMap<>();
     private IConfigurationFactory mConfigFactory = ConfigurationFactory.getInstance();
 
-    /** Main loading of configurations, looking into testcases/ folder */
-    public LinkedHashMap<String, IConfiguration> loadConfigs(
-            File testsDir,
-            Set<IAbi> abis,
+    /**
+     * Ctor for the SuiteModuleLoader.
+     *
+     * @param includeFilters The formatted and parsed include filters.
+     * @param excludeFilters The formatted and parsed exclude filters.
+     * @param testArgs the list of test ({@link IRemoteTest}) arguments.
+     * @param moduleArgs the list of module arguments.
+     */
+    public SuiteModuleLoader(
+            Map<String, List<SuiteTestFilter>> includeFilters,
+            Map<String, List<SuiteTestFilter>> excludeFilters,
             List<String> testArgs,
-            List<String> moduleArgs,
-            Set<String> includeFilters,
-            Set<String> excludeFilters) {
-        CLog.d(
-                "Initializing ModuleRepo\nTests Dir:%s\nABIs:%s\n"
-                        + "Test Args:%s\nModule Args:%s\nIncludes:%s\nExcludes:%s",
-                testsDir.getAbsolutePath(),
-                abis,
-                testArgs,
-                moduleArgs,
-                includeFilters,
-                excludeFilters);
-
-        LinkedHashMap<String, IConfiguration> toRun = new LinkedHashMap<>();
+            List<String> moduleArgs) {
+        mIncludeAll = includeFilters.isEmpty();
+        mIncludeFilters = includeFilters;
+        mExcludeFilters = excludeFilters;
 
         putArgs(testArgs, mTestArgs);
         putArgs(moduleArgs, mModuleArgs);
-        mIncludeAll = includeFilters.isEmpty();
-        // Include all the inclusions
-        addFilters(includeFilters, mIncludeFilters, abis);
-        // Exclude all the exclusions
-        addFilters(excludeFilters, mExcludeFilters, abis);
+    }
 
-        File[] configFiles = testsDir.listFiles(new ConfigFilter());
-        if (configFiles.length == 0) {
-            throw new IllegalArgumentException(
-                    String.format("No config files found in %s", testsDir.getAbsolutePath()));
-        }
+    /** Main loading of configurations, looking into a folder */
+    public LinkedHashMap<String, IConfiguration> loadConfigsFromDirectory(
+            File testsDir, Set<IAbi> abis, String suitePrefix, String suiteTag) {
+        LinkedHashMap<String, IConfiguration> toRun = new LinkedHashMap<>();
+
+        List<File> listConfigFiles = new ArrayList<>();
+        List<File> extraTestCasesDirs = Arrays.asList(testsDir);
+        listConfigFiles.addAll(
+                ConfigurationUtil.getConfigNamesFileFromDirs(suitePrefix, extraTestCasesDirs));
         // Ensure stable initial order of configurations.
-        List<File> listConfigFiles = Arrays.asList(configFiles);
         Collections.sort(listConfigFiles);
         for (File configFile : listConfigFiles) {
-            final String name = configFile.getName().replace(CONFIG_EXT, "");
-            final String[] pathArg = new String[] {configFile.getAbsolutePath()};
-            try {
-                // Invokes parser to process the test module config file
-                // Need to generate a different config for each ABI as we cannot guarantee the
-                // configs are idempotent. This however means we parse the same file multiple times
-                for (IAbi abi : abis) {
-                    String id = AbiUtils.createId(abi.getName(), name);
-                    if (!shouldRunModule(id)) {
-                        // If the module should not run tests based on the state of filters,
-                        // skip this name/abi combination.
-                        continue;
-                    }
-                    IConfiguration config = mConfigFactory.createConfigurationFromArgs(pathArg);
-                    Map<String, List<String>> args = new HashMap<>();
-                    if (mModuleArgs.containsKey(name)) {
-                        args.putAll(mModuleArgs.get(name));
-                    }
-                    if (mModuleArgs.containsKey(id)) {
-                        args.putAll(mModuleArgs.get(id));
-                    }
-                    injectOptionsToConfig(args, config);
+            toRun.putAll(
+                    loadOneConfig(
+                            configFile.getName(), configFile.getAbsolutePath(), abis, suiteTag));
+        }
+        return toRun;
+    }
 
-                    List<IRemoteTest> tests = config.getTests();
-                    for (IRemoteTest test : tests) {
-                        String className = test.getClass().getName();
-                        Map<String, List<String>> testArgsMap = new HashMap<>();
-                        if (mTestArgs.containsKey(className)) {
-                            testArgsMap.putAll(mTestArgs.get(className));
-                        }
-                        injectOptionsToConfig(testArgsMap, config);
-                        addFiltersToTest(test, abi, name);
-                        if (test instanceof IAbiReceiver) {
-                            ((IAbiReceiver) test).setAbi(abi);
-                        }
-                    }
-                    List<ITargetPreparer> preparers = config.getTargetPreparers();
-                    for (ITargetPreparer preparer : preparers) {
-                        if (preparer instanceof IAbiReceiver) {
-                            ((IAbiReceiver) preparer).setAbi(abi);
-                        }
-                    }
-                    // add the abi to the description
-                    config.getConfigurationDescription().setAbi(abi);
-                    toRun.put(id, config);
+    /**
+     * Main loading of configurations, looking into the resources on the classpath. (TF configs for
+     * example).
+     */
+    public LinkedHashMap<String, IConfiguration> loadConfigsFromJars(
+            Set<IAbi> abis, String suitePrefix, String suiteTag) {
+        LinkedHashMap<String, IConfiguration> toRun = new LinkedHashMap<>();
+
+        IConfigurationFactory configFactory = ConfigurationFactory.getInstance();
+        List<String> configs = configFactory.getConfigList(suitePrefix, false);
+        // Sort configs to ensure they are always evaluated and added in the same order.
+        Collections.sort(configs);
+        for (String configName : configs) {
+            toRun.putAll(loadOneConfig(configName, configName, abis, suiteTag));
+        }
+        return toRun;
+    }
+
+    /**
+     * Load a single config location (file or on TF classpath). It can results in several {@link
+     * IConfiguration}. If a single configuration get expanded in different ways.
+     *
+     * @param configName The actual config name only. (no path)
+     * @param configFullName The fully qualified config name. (with path, if any).
+     * @param abis The set of all abis that needs to run.
+     * @param suiteTag the Tag of the suite aimed to be run.
+     * @return A map of loaded configuration.
+     */
+    private LinkedHashMap<String, IConfiguration> loadOneConfig(
+            String configName, String configFullName, Set<IAbi> abis, String suiteTag) {
+        LinkedHashMap<String, IConfiguration> toRun = new LinkedHashMap<>();
+        final String name = configName.replace(CONFIG_EXT, "");
+        final String[] pathArg = new String[] {configFullName};
+        try {
+            // Invokes parser to process the test module config file
+            // Need to generate a different config for each ABI as we cannot guarantee the
+            // configs are idempotent. This however means we parse the same file multiple times
+            for (IAbi abi : abis) {
+                String id = AbiUtils.createId(abi.getName(), name);
+                if (!shouldRunModule(id)) {
+                    // If the module should not run tests based on the state of filters,
+                    // skip this name/abi combination.
+                    continue;
                 }
-            } catch (ConfigurationException e) {
-                throw new RuntimeException(
-                        String.format("Error parsing config file: %s", configFile.getName()), e);
+                IConfiguration config = mConfigFactory.createConfigurationFromArgs(pathArg);
+
+                // If a suiteTag is used, we load with it.
+                if (suiteTag != null
+                        && !config.getConfigurationDescription()
+                                .getSuiteTags()
+                                .contains(suiteTag)) {
+                    continue;
+                }
+
+                Map<String, List<String>> args = new HashMap<>();
+                if (mModuleArgs.containsKey(name)) {
+                    args.putAll(mModuleArgs.get(name));
+                }
+                if (mModuleArgs.containsKey(id)) {
+                    args.putAll(mModuleArgs.get(id));
+                }
+                injectOptionsToConfig(args, config);
+
+                // Set target preparers
+                List<ITargetPreparer> preparers = config.getTargetPreparers();
+                for (ITargetPreparer preparer : preparers) {
+                    if (preparer instanceof IAbiReceiver) {
+                        ((IAbiReceiver) preparer).setAbi(abi);
+                    }
+                }
+
+                // Set IRemoteTests
+                List<IRemoteTest> tests = config.getTests();
+                for (IRemoteTest test : tests) {
+                    String className = test.getClass().getName();
+                    Map<String, List<String>> testArgsMap = new HashMap<>();
+                    if (mTestArgs.containsKey(className)) {
+                        testArgsMap.putAll(mTestArgs.get(className));
+                    }
+                    injectOptionsToConfig(testArgsMap, config);
+                    addFiltersToTest(test, abi, name);
+                    if (test instanceof IAbiReceiver) {
+                        ((IAbiReceiver) test).setAbi(abi);
+                    }
+                }
+
+                // add the abi to the description
+                config.getConfigurationDescription().setAbi(abi);
+                toRun.put(id, config);
             }
+        } catch (ConfigurationException e) {
+            throw new RuntimeException(
+                    String.format("Error parsing configuration: %s", configFullName), e);
         }
         return toRun;
     }
@@ -195,7 +245,14 @@ public class SuiteModuleLoader {
         return modules;
     }
 
-    private void addFilters(
+    /**
+     * Utility method that allows to parse and create a structure with the option filters.
+     *
+     * @param stringFilters The original option filters format.
+     * @param filters The filters parsed from the string format.
+     * @param abis The Abis to consider in the filtering.
+     */
+    public static void addFilters(
             Set<String> stringFilters, Map<String, List<SuiteTestFilter>> filters, Set<IAbi> abis) {
         for (String filterString : stringFilters) {
             SuiteTestFilter filter = SuiteTestFilter.createFrom(filterString);
@@ -210,12 +267,12 @@ public class SuiteModuleLoader {
         }
     }
 
-    private void addFilter(
+    private static void addFilter(
             String abi, SuiteTestFilter filter, Map<String, List<SuiteTestFilter>> filters) {
         getFilterList(filters, AbiUtils.createId(abi, filter.getName())).add(filter);
     }
 
-    private List<SuiteTestFilter> getFilterList(
+    private static List<SuiteTestFilter> getFilterList(
             Map<String, List<SuiteTestFilter>> filters, String id) {
         List<SuiteTestFilter> fs = filters.get(id);
         if (fs == null) {
@@ -228,9 +285,8 @@ public class SuiteModuleLoader {
     private void addFiltersToTest(IRemoteTest test, IAbi abi, String name) {
         String moduleId = AbiUtils.createId(abi.getName(), name);
         if (!(test instanceof ITestFilterReceiver)) {
-            throw new IllegalArgumentException(
-                    String.format(
-                            "Test in module %s must implement ITestFilterReceiver.", moduleId));
+            CLog.e("Test in module %s does not implement ITestFilterReceiver.", moduleId);
+            return;
         }
         List<SuiteTestFilter> mdIncludes = getFilterList(mIncludeFilters, moduleId);
         List<SuiteTestFilter> mdExcludes = getFilterList(mExcludeFilters, moduleId);
