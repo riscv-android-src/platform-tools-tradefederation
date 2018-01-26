@@ -19,7 +19,6 @@ import com.android.tradefed.build.StubBuildProvider;
 import com.android.tradefed.config.Configuration;
 import com.android.tradefed.config.IConfiguration;
 import com.android.tradefed.config.IDeviceConfiguration;
-import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.result.TextResultReporter;
 import com.android.tradefed.targetprep.ITargetPreparer;
 import com.android.tradefed.targetprep.multi.IMultiTargetPreparer;
@@ -38,11 +37,14 @@ public class ValidateSuiteConfigHelper {
      * Check that a configuration is properly built to run in a suite.
      *
      * @param config a {@link IConfiguration} to be checked if valide for suite.
-     * @return True if the config can be run, false otherwise.
      */
-    public static boolean validateConfig(IConfiguration config) {
+    public static void validateConfig(IConfiguration config) {
         if (!config.getBuildProvider().getClass().isAssignableFrom(StubBuildProvider.class)) {
-            return false;
+            throwRuntime(
+                    config,
+                    String.format(
+                            "%s objects are not allowed in module.",
+                            Configuration.BUILD_PROVIDER_TYPE_NAME));
         }
         // if a multi device config is presented, ensure none of the devices define a build_provider
         for (IDeviceConfiguration deviceConfig : config.getDeviceConfig()) {
@@ -50,50 +52,66 @@ public class ValidateSuiteConfigHelper {
                     .getBuildProvider()
                     .getClass()
                     .isAssignableFrom(StubBuildProvider.class)) {
-                return false;
+                throwRuntime(
+                        config,
+                        String.format(
+                                "%s objects are not allowed in module.",
+                                Configuration.BUILD_PROVIDER_TYPE_NAME));
             }
-            if (!checkTargetPrep(config.getTargetPreparers())) {
-                return false;
-            }
+            checkTargetPrep(config, config.getTargetPreparers());
         }
         if (config.getTestInvocationListeners().size() != 1) {
-            return false;
+            throwRuntime(
+                    config,
+                    String.format(
+                            "%s objects are not allowed in module.",
+                            Configuration.RESULT_REPORTER_TYPE_NAME));
         }
         if (!config.getTestInvocationListeners()
                 .get(0)
                 .getClass()
                 .isAssignableFrom(TextResultReporter.class)) {
-            return false;
+            throwRuntime(
+                    config,
+                    String.format(
+                            "%s objects are not allowed in module.",
+                            Configuration.RESULT_REPORTER_TYPE_NAME));
         }
         // Check target preparers
-        if (!checkTargetPrep(config.getTargetPreparers())) {
-            return false;
-        }
-        if (!checkTargetPrep(config.getMultiTargetPreparers())) {
-            return false;
-        }
+        checkTargetPrep(config, config.getTargetPreparers());
+        checkTargetPrep(config, config.getMultiTargetPreparers());
         if (!config.getMetricCollectors().isEmpty()) {
-            CLog.e(
-                    "Configuration %s contains a %s which is not allowed in module.",
-                    config.getName(), Configuration.DEVICE_METRICS_COLLECTOR_TYPE_NAME);
-            return false;
+            throwRuntime(
+                    config,
+                    String.format(
+                            "%s objects are not allowed in module.",
+                            Configuration.DEVICE_METRICS_COLLECTOR_TYPE_NAME));
         }
-        return true;
     }
 
     /**
      * Check target_preparer and multi_target_preparer to ensure they do not extends each other as
      * it could lead to some issues.
      */
-    private static boolean checkTargetPrep(List<?> targetPrepList) {
+    private static boolean checkTargetPrep(IConfiguration config, List<?> targetPrepList) {
         for (Object o : targetPrepList) {
             if (o instanceof ITargetPreparer && o instanceof IMultiTargetPreparer) {
-                CLog.d(
-                        "%s is extending both target_preparer and multi_target_preparer",
-                        o.getClass().getCanonicalName());
+                throwRuntime(
+                        config,
+                        String.format(
+                                "%s is extending both %s and " + "%s",
+                                o.getClass().getCanonicalName(),
+                                Configuration.TARGET_PREPARER_TYPE_NAME,
+                                Configuration.MULTI_PREPARER_TYPE_NAME));
                 return false;
             }
         }
         return true;
+    }
+
+    private static void throwRuntime(IConfiguration config, String msg) {
+        throw new RuntimeException(
+                String.format(
+                        "Configuration %s cannot be run in a suite: %s", config.getName(), msg));
     }
 }
