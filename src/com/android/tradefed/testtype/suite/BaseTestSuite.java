@@ -24,6 +24,7 @@ import com.android.tradefed.config.OptionClass;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.testtype.IAbi;
+import com.android.tradefed.testtype.IRemoteTest;
 import com.android.tradefed.util.ArrayUtil;
 
 import java.io.File;
@@ -131,7 +132,7 @@ public class BaseTestSuite extends ITestSuite {
                             + "Test Args:%s\nModule Args:%s\nIncludes:%s\nExcludes:%s",
                     abis, mTestArgs, mModuleArgs, mIncludeFiltersParsed, mExcludeFiltersParsed);
             mModuleRepo =
-                    new SuiteModuleLoader(
+                    createModuleLoader(
                             mIncludeFiltersParsed, mExcludeFiltersParsed, mTestArgs, mModuleArgs);
             // Actual loading of the configurations.
             return loadingStrategy(abis, testsDir, mSuitePrefix, mSuiteTag);
@@ -177,24 +178,63 @@ public class BaseTestSuite extends ITestSuite {
         super.setBuild(buildInfo);
     }
 
+    /** Sets include-filters for the compatibility test */
+    public void setIncludeFilter(Set<String> includeFilters) {
+        mIncludeFilters.addAll(includeFilters);
+    }
+
+    /** Sets exclude-filters for the compatibility test */
+    public void setExcludeFilter(Set<String> excludeFilters) {
+        mExcludeFilters.addAll(excludeFilters);
+    }
+
+    /** Returns the current {@link SuiteModuleLoader}. */
+    public SuiteModuleLoader getModuleLoader() {
+        return mModuleRepo;
+    }
+
+    /**
+     * Create the {@link SuiteModuleLoader} responsible to load the {@link IConfiguration} and
+     * assign them some of the options.
+     *
+     * @param includeFiltersFormatted The formatted and parsed include filters.
+     * @param excludeFiltersFormatted The formatted and parsed exclude filters.
+     * @param testArgs the list of test ({@link IRemoteTest}) arguments.
+     * @param moduleArgs the list of module arguments.
+     * @return the created {@link SuiteModuleLoader}.
+     */
+    public SuiteModuleLoader createModuleLoader(
+            Map<String, List<SuiteTestFilter>> includeFiltersFormatted,
+            Map<String, List<SuiteTestFilter>> excludeFiltersFormatted,
+            List<String> testArgs,
+            List<String> moduleArgs) {
+        return new SuiteModuleLoader(
+                includeFiltersFormatted, excludeFiltersFormatted, testArgs, moduleArgs);
+    }
+
     /**
      * Sets the include/exclude filters up based on if a module name was given.
      *
      * @throws FileNotFoundException if any file is not found.
      */
-    protected void setupFilters(File testDir) throws FileNotFoundException {
+    protected void setupFilters(File testsDir) throws FileNotFoundException {
         if (mModuleName != null) {
-            List<String> modules = SuiteModuleLoader.getModuleNamesMatching(testDir, mModuleName);
+            // If this option (-m / --module) is set only the matching unique module should run.
+            Set<File> modules =
+                    SuiteModuleLoader.getModuleNamesMatching(
+                            testsDir, mSuitePrefix, String.format("%s.*.config", mModuleName));
             if (modules.size() == 0) {
                 throw new IllegalArgumentException(
                         String.format("No modules found matching %s", mModuleName));
             } else if (modules.size() > 1) {
                 throw new IllegalArgumentException(
                         String.format(
-                                "Multiple modules found matching %s:\n%s\nWhich one did you mean?\n",
+                                "Multiple modules found matching %s:\n%s\nWhich one did you "
+                                        + "mean?\n",
                                 mModuleName, ArrayUtil.join("\n", modules)));
             } else {
-                String moduleName = modules.get(0);
+                File mod = modules.iterator().next();
+                String moduleName = mod.getName().replace(".config", "");
                 checkFilters(mIncludeFilters, moduleName);
                 checkFilters(mExcludeFilters, moduleName);
                 mIncludeFilters.add(
@@ -216,20 +256,5 @@ public class BaseTestSuite extends ITestSuite {
         }
         filters.clear();
         filters.addAll(cleanedFilters);
-    }
-
-    /** Sets include-filters for the compatibility test */
-    public void setIncludeFilter(Set<String> includeFilters) {
-        mIncludeFilters.addAll(includeFilters);
-    }
-
-    /** Sets exclude-filters for the compatibility test */
-    public void setExcludeFilter(Set<String> excludeFilters) {
-        mExcludeFilters.addAll(excludeFilters);
-    }
-
-    /** Returns the current {@link SuiteModuleLoader}. */
-    public SuiteModuleLoader getModuleLoader() {
-        return mModuleRepo;
     }
 }

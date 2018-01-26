@@ -26,6 +26,7 @@ import java.io.File;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.lang.reflect.Field;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashSet;
 import java.util.List;
@@ -167,6 +168,22 @@ public class ConfigurationUtil {
      * @return the set of {@link File} that were found.
      */
     public static Set<File> getConfigNamesFileFromDirs(String subPath, List<File> dirs) {
+        List<String> patterns = new ArrayList<>();
+        patterns.add(".*.config");
+        patterns.add(".*.xml");
+        return getConfigNamesFileFromDirs(subPath, dirs, patterns);
+    }
+
+    /**
+     * Search a particular pattern of in the given directories.
+     *
+     * @param subPath The location where to look for configuration. Can be null.
+     * @param dirs A list of {@link File} of extra directories to search for test configs
+     * @param configNamePatterns the list of patterns for files to be found.
+     * @return the set of {@link File} that were found.
+     */
+    public static Set<File> getConfigNamesFileFromDirs(
+            String subPath, List<File> dirs, List<String> configNamePatterns) {
         Set<File> configNames = new HashSet<>();
         for (File dir : dirs) {
             if (subPath != null) {
@@ -177,8 +194,9 @@ public class ConfigurationUtil {
                 continue;
             }
             try {
-                configNames.addAll(FileUtil.findFilesObject(dir, ".*.config"));
-                configNames.addAll(FileUtil.findFilesObject(dir, ".*.xml"));
+                for (String configNamePattern : configNamePatterns) {
+                    configNames.addAll(FileUtil.findFilesObject(dir, configNamePattern));
+                }
             } catch (IOException e) {
                 CLog.w("Failed to get test config files from directory %s", dir.getAbsolutePath());
             }

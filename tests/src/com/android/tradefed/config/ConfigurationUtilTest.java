@@ -103,4 +103,33 @@ public class ConfigurationUtilTest {
             FileUtil.recursiveDelete(tmpDir);
         }
     }
+
+    /**
+     * Test {@link ConfigurationUtil#getConfigNamesFileFromDirs(String, List, List)} can search for
+     * file in directories based on patterns.
+     */
+    @Test
+    public void testGetConfigNamesFromDirs_patterns() throws Exception {
+        File tmpDir = null;
+        try {
+            tmpDir = FileUtil.createTempDir("test_configs_dir");
+            // Random file located in the root directory
+            FileUtil.createTempFile("whatevername", ".whateverextension", tmpDir);
+            // Other file located in a sub directory
+            File subDir = FileUtil.getFileForPath(tmpDir, "sub");
+            FileUtil.mkdirsRWX(subDir);
+            File config2 = FileUtil.createTempFile("config", ".otherext", subDir);
+
+            List<String> patterns = new ArrayList<>();
+            patterns.add(".*.other.*");
+            // Test getConfigNamesFileFromDirs only locate configs under subPath.
+            Set<File> configs =
+                    ConfigurationUtil.getConfigNamesFileFromDirs(
+                            "sub", Arrays.asList(tmpDir), patterns);
+            assertEquals(1, configs.size());
+            assertTrue(configs.contains(config2));
+        } finally {
+            FileUtil.recursiveDelete(tmpDir);
+        }
+    }
 }
