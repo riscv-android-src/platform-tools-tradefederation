@@ -16,6 +16,7 @@
 package com.android.tradefed.testtype.suite;
 
 import com.android.tradefed.build.IBuildInfo;
+import com.android.tradefed.config.Configuration;
 import com.android.tradefed.config.ConfigurationException;
 import com.android.tradefed.config.ConfigurationFactory;
 import com.android.tradefed.config.DeviceConfigurationHolder;
@@ -25,6 +26,7 @@ import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.invoker.IInvocationContext;
 import com.android.tradefed.invoker.InvocationContext;
 import com.android.tradefed.log.LogUtil.CLog;
+import com.android.tradefed.result.ILogSaver;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.TestDescription;
 import com.android.tradefed.targetprep.ITargetPreparer;
@@ -59,6 +61,8 @@ public class ITestSuiteMultiTest {
     private IBuildInfo mMockBuildInfo2;
 
     private ITargetPreparer mMockTargetPrep;
+    private IConfiguration mStubMainConfiguration;
+    private ILogSaver mMockLogSaver;
 
     static class TestSuiteMultiDeviceImpl extends ITestSuite {
         private int mNumTests = 1;
@@ -115,6 +119,11 @@ public class ITestSuiteMultiTest {
         mMockDevice2 = EasyMock.createMock(ITestDevice.class);
         EasyMock.expect(mMockDevice2.getSerialNumber()).andStubReturn("SERIAL2");
         mMockBuildInfo2 = EasyMock.createMock(IBuildInfo.class);
+        mMockLogSaver = EasyMock.createMock(ILogSaver.class);
+        mStubMainConfiguration = new Configuration("stub", "stub");
+        mStubMainConfiguration.setLogSaver(mMockLogSaver);
+
+        mTestSuite.setConfiguration(mStubMainConfiguration);
     }
 
     /**

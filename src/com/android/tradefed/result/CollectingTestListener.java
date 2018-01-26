@@ -29,11 +29,11 @@ import java.util.Map;
 
 /**
  * A {@link ITestInvocationListener} that will collect all test results.
- * <p/>
- * Although the data structures used in this object are thread-safe, the
- * {@link ITestInvocationListener} callbacks must be called in the correct order.
+ *
+ * <p>Although the data structures used in this object are thread-safe, the {@link
+ * ITestInvocationListener} callbacks must be called in the correct order.
  */
-public class CollectingTestListener implements ITestInvocationListener {
+public class CollectingTestListener implements ITestInvocationListener, ILogSaverListener {
 
     // Stores the test results
     // Uses a synchronized map to make thread safe.
@@ -55,12 +55,24 @@ public class CollectingTestListener implements ITestInvocationListener {
         "attempt to add test metrics values for test runs with the same name." )
     private boolean mIsAggregateMetrics = false;
 
+    @Option(
+        name = "store-logged-file-info",
+        description =
+                "Whether or not to associate and store logged file information with their test case"
+    )
+    private boolean mStoreLoggedFileInfo = false;
+
     private IBuildInfo mBuildInfo;
     private IInvocationContext mContext;
 
     /** Toggle the 'aggregate metrics' option */
     protected void setIsAggregrateMetrics(boolean aggregate) {
         mIsAggregateMetrics = aggregate;
+    }
+
+    /** Toggle the 'store the logged file info' option */
+    protected void setStoreLoggedFileInfo(boolean store) {
+        mStoreLoggedFileInfo = store;
     }
 
     /**
@@ -315,12 +327,26 @@ public class CollectingTestListener implements ITestInvocationListener {
         return null;
     }
 
-    /**
-     * {@inheritDoc}
-     */
+    /** {@inheritDoc} */
     @Override
     public void testLog(String dataName, LogDataType dataType, InputStreamSource dataStream) {
-        // ignore
+        // ignore, testLogSaved is implemented.
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public void testLogSaved(
+            String dataName, LogDataType dataType, InputStreamSource dataStream, LogFile logFile) {
+        if (mStoreLoggedFileInfo) {
+            // Pass the log information to the results to associated them with test cases.
+            mCurrentResults.testLogSaved(dataName, logFile);
+        }
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public void setLogSaver(ILogSaver logSaver) {
+        // CollectingTestListener does not need the logSaver
     }
 
     /**

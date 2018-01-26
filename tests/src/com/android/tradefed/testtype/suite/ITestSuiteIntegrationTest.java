@@ -22,6 +22,7 @@ import static org.mockito.Mockito.mock;
 
 import com.android.tradefed.build.BuildInfo;
 import com.android.tradefed.build.IBuildInfo;
+import com.android.tradefed.config.Configuration;
 import com.android.tradefed.config.ConfigurationDef;
 import com.android.tradefed.config.ConfigurationException;
 import com.android.tradefed.config.ConfigurationFactory;
@@ -47,6 +48,7 @@ import com.android.tradefed.testtype.IInvocationContextReceiver;
 import com.android.tradefed.testtype.IRemoteTest;
 import com.android.tradefed.util.FileUtil;
 
+import org.easymock.EasyMock;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -87,6 +89,8 @@ public class ITestSuiteIntegrationTest {
     private IBuildInfo mMockBuildInfo;
     private SuiteResultReporter mListener;
     private IInvocationContext mContext;
+    private IConfiguration mStubMainConfiguration;
+    private ILogSaver mMockLogSaver;
 
     /**
      * Create a CTS configuration with a fake tests to exercise all cases.
@@ -138,6 +142,9 @@ public class ITestSuiteIntegrationTest {
         mContext.addAllocatedDevice(ConfigurationDef.DEFAULT_DEVICE_NAME, mMockDevice);
         mContext.addDeviceBuildInfo(ConfigurationDef.DEFAULT_DEVICE_NAME, mMockBuildInfo);
 
+        mMockLogSaver = EasyMock.createMock(ILogSaver.class);
+        mStubMainConfiguration = new Configuration("stub", "stub");
+        mStubMainConfiguration.setLogSaver(mMockLogSaver);
         doReturn("serial").when(mMockDevice).getSerialNumber();
     }
 
@@ -202,6 +209,7 @@ public class ITestSuiteIntegrationTest {
         suite.setBuild(mMockBuildInfo);
         suite.setSystemStatusChecker(new ArrayList<ISystemStatusChecker>());
         suite.setInvocationContext(mContext);
+        suite.setConfiguration(mStubMainConfiguration);
         mListener.invocationStarted(mContext);
         suite.run(mListener);
         mListener.invocationEnded(System.currentTimeMillis());
@@ -227,6 +235,7 @@ public class ITestSuiteIntegrationTest {
         suite.setBuild(mMockBuildInfo);
         suite.setSystemStatusChecker(new ArrayList<ISystemStatusChecker>());
         suite.setInvocationContext(mContext);
+        suite.setConfiguration(mStubMainConfiguration);
         mListener.invocationStarted(mContext);
         suite.run(mListener);
         mListener.invocationEnded(System.currentTimeMillis());
@@ -252,6 +261,7 @@ public class ITestSuiteIntegrationTest {
         suite.setBuild(mMockBuildInfo);
         suite.setSystemStatusChecker(new ArrayList<ISystemStatusChecker>());
         suite.setInvocationContext(mContext);
+        suite.setConfiguration(mStubMainConfiguration);
         mListener.invocationStarted(mContext);
         suite.run(mListener);
         mListener.invocationEnded(System.currentTimeMillis());
@@ -276,6 +286,7 @@ public class ITestSuiteIntegrationTest {
         suite.setBuild(mMockBuildInfo);
         suite.setSystemStatusChecker(new ArrayList<ISystemStatusChecker>());
         suite.setInvocationContext(mContext);
+        suite.setConfiguration(mStubMainConfiguration);
         mListener.invocationStarted(mContext);
         try {
             suite.run(mListener);
@@ -392,6 +403,7 @@ public class ITestSuiteIntegrationTest {
         config.setSystemStatusCheckers(new ArrayList<ISystemStatusChecker>());
         suite.setSystemStatusChecker(new ArrayList<ISystemStatusChecker>());
         suite.setInvocationContext(mContext);
+        suite.setConfiguration(mStubMainConfiguration);
         config.setTestInvocationListener(mListener);
         config.getCommandOptions().setShardCount(5);
         // invocation context
@@ -429,6 +441,7 @@ public class ITestSuiteIntegrationTest {
         config.setSystemStatusCheckers(new ArrayList<ISystemStatusChecker>());
         suite.setSystemStatusChecker(new ArrayList<ISystemStatusChecker>());
         suite.setInvocationContext(mContext);
+        suite.setConfiguration(mStubMainConfiguration);
         config.setTestInvocationListener(mListener);
         config.getCommandOptions().setShardCount(5);
         // invocation context
@@ -470,6 +483,7 @@ public class ITestSuiteIntegrationTest {
         config.setSystemStatusCheckers(new ArrayList<ISystemStatusChecker>());
         suite.setSystemStatusChecker(new ArrayList<ISystemStatusChecker>());
         suite.setInvocationContext(mContext);
+        suite.setConfiguration(mStubMainConfiguration);
         config.setTestInvocationListener(mListener);
         config.getCommandOptions().setShardCount(2);
         config.getCommandOptions().setShardIndex(0);
@@ -549,6 +563,7 @@ public class ITestSuiteIntegrationTest {
         config.setSystemStatusCheckers(new ArrayList<ISystemStatusChecker>());
         suite.setSystemStatusChecker(new ArrayList<ISystemStatusChecker>());
         suite.setInvocationContext(mContext);
+        suite.setConfiguration(mStubMainConfiguration);
         config.setTestInvocationListener(mListener);
         config.getCommandOptions().setShardCount(shardCount);
         config.getCommandOptions().setShardIndex(shardIndex);

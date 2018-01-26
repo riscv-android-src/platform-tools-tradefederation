@@ -29,9 +29,10 @@ import com.android.tradefed.log.ILogRegistry.EventType;
 import com.android.tradefed.log.ITestLogger;
 import com.android.tradefed.log.LogRegistry;
 import com.android.tradefed.log.LogUtil.CLog;
+import com.android.tradefed.result.ILogSaver;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.ITestLoggerReceiver;
-import com.android.tradefed.result.ResultForwarder;
+import com.android.tradefed.result.LogSaverResultForwarder;
 import com.android.tradefed.result.TestDescription;
 import com.android.tradefed.result.TestResult;
 import com.android.tradefed.result.TestRunResult;
@@ -51,9 +52,7 @@ import com.android.tradefed.testtype.ITestCollector;
 import com.android.tradefed.testtype.suite.module.IModuleController;
 import com.android.tradefed.testtype.suite.module.IModuleController.RunStrategy;
 import com.android.tradefed.util.StreamUtil;
-
 import com.google.common.annotations.VisibleForTesting;
-
 import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.util.ArrayList;
@@ -76,6 +75,7 @@ public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestColl
 
     private final IInvocationContext mModuleInvocationContext;
     private final IConfiguration mModuleConfiguration;
+    private ILogSaver mLogSaver;
 
     private final String mId;
     private Collection<IRemoteTest> mTests = null;
@@ -213,6 +213,11 @@ public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestColl
         mRunMetricCollectors = collectors;
     }
 
+    /** Pass the invocation log saver to the module so it can use it if necessary. */
+    public void setLogSaver(ILogSaver logSaver) {
+        mLogSaver = logSaver;
+    }
+
     /**
      * Run all the {@link IRemoteTest} contained in the module and use all the preparers before and
      * after to setup and clean the device.
@@ -347,7 +352,8 @@ public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestColl
                 }
                 currentTestListener.add(moduleListener);
 
-                ITestInvocationListener runListener = new ResultForwarder(currentTestListener);
+                ITestInvocationListener runListener =
+                        new LogSaverResultForwarder(mLogSaver, currentTestListener);
                 if (mRunMetricCollectors != null) {
                     // Module only init the collectors here to avoid triggering the collectors when
                     // replaying the cached events at the end. This ensure metrics are capture at
