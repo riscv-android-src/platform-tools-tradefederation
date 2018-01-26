@@ -24,6 +24,13 @@ LOCAL_JAVA_LIBRARIES := host-libprotobuf-java-full
 LOCAL_SOURCE_FILES_ALL_GENERATED := true
 LOCAL_MODULE_TAGS := optional
 
+# If the real one isn't present, use the prebuilt platformprotos library.
+ifeq ($(wildcard frameworks/base/Android.mk),)
+  LOCAL_STATIC_JAVA_LIBRARIES += platformprotos-prebuilt
+else
+  LOCAL_STATIC_JAVA_LIBRARIES += platformprotos
+endif
+
 include $(BUILD_HOST_JAVA_LIBRARY)
 
 include $(CLEAR_VARS)
@@ -43,13 +50,6 @@ endif
 LOCAL_MODULE := tradefed
 
 LOCAL_STATIC_JAVA_LIBRARIES := junit-host kxml2-2.3.0 jline-1.0 tf-remote-client commons-compress-prebuilt host-libprotobuf-java-full tradefed-protos error_prone_annotations-2.0.18 longevity-host-lib
-
-# If the real one isn't present, use the prebuilt platformprotos library.
-ifeq ($(wildcard frameworks/base/Android.mk),)
-  LOCAL_STATIC_JAVA_LIBRARIES += platformprotos-prebuilt
-else
-  LOCAL_STATIC_JAVA_LIBRARIES += platformprotos
-endif
 
 # emmalib is only a runtime dependency if generating code coverage reporters,
 # not a compile time dependency
