@@ -31,6 +31,7 @@ import org.junit.runners.JUnit4;
 
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -42,7 +43,12 @@ public class SuiteModuleLoaderTest {
 
     @Before
     public void setUp() {
-        mRepo = new SuiteModuleLoader();
+        mRepo =
+                new SuiteModuleLoader(
+                        new LinkedHashMap<String, List<SuiteTestFilter>>(),
+                        new LinkedHashMap<String, List<SuiteTestFilter>>(),
+                        new ArrayList<>(),
+                        new ArrayList<>());
     }
 
     public static class TestInject implements IRemoteTest {

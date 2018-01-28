@@ -22,15 +22,18 @@ import com.android.tradefed.config.Option;
 import com.android.tradefed.config.Option.Importance;
 import com.android.tradefed.config.OptionClass;
 import com.android.tradefed.device.DeviceNotAvailableException;
+import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.testtype.IAbi;
 import com.android.tradefed.util.ArrayUtil;
 
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 /** A Test for running Compatibility Test Suite with new suite system. */
@@ -62,7 +65,7 @@ public class BaseTestSuite extends ITestSuite {
     @Option(
         name = MODULE_OPTION,
         shortName = 'm',
-        description = "the test module to run.",
+        description = "the test module to run. Only works for configuration in the tests dir.",
         importance = Importance.IF_UNSET
     )
     private String mModuleName = null;
@@ -93,21 +96,70 @@ public class BaseTestSuite extends ITestSuite {
     )
     private List<String> mTestArgs = new ArrayList<>();
 
-    private SuiteModuleLoader mModuleRepo = new SuiteModuleLoader();
+    @Option(
+        name = "run-suite-tag",
+        description =
+                "The tag that must be run. If specified, only configurations containing the "
+                        + "matching suite tag will be able to run."
+    )
+    private String mSuiteTag = null;
+
+    @Option(
+        name = "suite-config-prefix",
+        description = "Search only configs with given prefix for suite tags."
+    )
+    private String mSuitePrefix = null;
+
+    private SuiteModuleLoader mModuleRepo;
+    private Map<String, List<SuiteTestFilter>> mIncludeFiltersParsed = new HashMap<>();
+    private Map<String, List<SuiteTestFilter>> mExcludeFiltersParsed = new HashMap<>();
 
     /** {@inheritDoc} */
     @Override
     public LinkedHashMap<String, IConfiguration> loadTests() {
         try {
-            File testDir = getTestsDir();
-            setupFilters(testDir);
+            File testsDir = getTestsDir();
+            setupFilters(testsDir);
             Set<IAbi> abis = getAbis(getDevice());
-            // Initialize the repository
-            return mModuleRepo.loadConfigs(
-                    testDir, abis, mTestArgs, mModuleArgs, mIncludeFilters, mExcludeFilters);
+
+            // Create and populate the filters here
+            SuiteModuleLoader.addFilters(mIncludeFilters, mIncludeFiltersParsed, abis);
+            SuiteModuleLoader.addFilters(mExcludeFilters, mExcludeFiltersParsed, abis);
+
+            CLog.d(
+                    "Initializing ModuleRepo\nABIs:%s\n"
+                            + "Test Args:%s\nModule Args:%s\nIncludes:%s\nExcludes:%s",
+                    abis, mTestArgs, mModuleArgs, mIncludeFiltersParsed, mExcludeFiltersParsed);
+            mModuleRepo =
+                    new SuiteModuleLoader(
+                            mIncludeFiltersParsed, mExcludeFiltersParsed, mTestArgs, mModuleArgs);
+            // Actual loading of the configurations.
+            return loadingStrategy(abis, testsDir, mSuitePrefix, mSuiteTag);
         } catch (DeviceNotAvailableException | FileNotFoundException e) {
             throw new RuntimeException(e);
         }
+    }
+
+    /**
+     * Default loading strategy will load from the resources and the tests directory. Can be
+     * extended or replaced.
+     *
+     * @param abis The set of abis to run against.
+     * @param testsDir The tests directory.
+     * @param suitePrefix A prefix to filter the resource directory.
+     * @param suiteTag The suite tag a module should have to be included. Can be null.
+     * @return A list of loaded configuration for the suite.
+     */
+    public LinkedHashMap<String, IConfiguration> loadingStrategy(
+            Set<IAbi> abis, File testsDir, String suitePrefix, String suiteTag) {
+        LinkedHashMap<String, IConfiguration> loadedConfigs = new LinkedHashMap<>();
+        // Load configs that are part of the resources
+        loadedConfigs.putAll(getModuleLoader().loadConfigsFromJars(abis, suitePrefix, suiteTag));
+
+        // Load the configs that are part of the tests dir
+        loadedConfigs.putAll(
+                getModuleLoader().loadConfigsFromDirectory(testsDir, abis, suitePrefix, suiteTag));
+        return loadedConfigs;
     }
 
     public File getTestsDir() throws FileNotFoundException {
@@ -126,8 +178,7 @@ public class BaseTestSuite extends ITestSuite {
     }
 
     /**
-     * Sets the include/exclude filters up based on if a module name was given or whether this is a
-     * retry run.
+     * Sets the include/exclude filters up based on if a module name was given.
      *
      * @throws FileNotFoundException if any file is not found.
      */
@@ -175,5 +226,10 @@ public class BaseTestSuite extends ITestSuite {
     /** Sets exclude-filters for the compatibility test */
     public void setExcludeFilter(Set<String> excludeFilters) {
         mExcludeFilters.addAll(excludeFilters);
+    }
+
+    /** Returns the current {@link SuiteModuleLoader}. */
+    public SuiteModuleLoader getModuleLoader() {
+        return mModuleRepo;
     }
 }

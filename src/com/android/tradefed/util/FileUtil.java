@@ -1022,10 +1022,25 @@ public class FileUtil {
      * @return a set of {@link String} of the file paths
      */
     public static Set<String> findFiles(File dir, String filter) throws IOException {
-        Set<String> files = new HashSet<String>();
+        Set<String> files = new HashSet<>();
         Files.walk(Paths.get(dir.getAbsolutePath()), FileVisitOption.FOLLOW_LINKS)
-                .filter(path -> new File(path.toString()).getName().matches(filter))
+                .filter(path -> path.getFileName().toString().matches(filter))
                 .forEach(path -> files.add(path.toString()));
+        return files;
+    }
+
+    /**
+     * Get all file paths of files in the given directory with name matching the given filter
+     *
+     * @param dir {@link File} object of the directory to search for files recursively
+     * @param filter {@link String} of the regex to match file names
+     * @return a set of {@link File} of the file objects. @See {@link #findFiles(File, String)}
+     */
+    public static Set<File> findFilesObject(File dir, String filter) throws IOException {
+        Set<File> files = new HashSet<>();
+        Files.walk(Paths.get(dir.getAbsolutePath()), FileVisitOption.FOLLOW_LINKS)
+                .filter(path -> path.getFileName().toString().matches(filter))
+                .forEach(path -> files.add(path.toFile()));
         return files;
     }
 
