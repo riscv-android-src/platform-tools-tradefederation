@@ -27,6 +27,7 @@ import com.android.tradefed.util.SubprocessEventHelper.InvocationFailedEventInfo
 import com.android.tradefed.util.SubprocessEventHelper.InvocationStartedEventInfo;
 import com.android.tradefed.util.SubprocessEventHelper.TestEndedEventInfo;
 import com.android.tradefed.util.SubprocessEventHelper.TestLogEventInfo;
+import com.android.tradefed.util.SubprocessEventHelper.TestModuleStartedEventInfo;
 import com.android.tradefed.util.SubprocessEventHelper.TestRunEndedEventInfo;
 import com.android.tradefed.util.SubprocessEventHelper.TestRunFailedEventInfo;
 import com.android.tradefed.util.SubprocessEventHelper.TestRunStartedEventInfo;
@@ -61,6 +62,7 @@ public class SubprocessTestResultsParser implements Closeable {
 
     private ITestInvocationListener mListener;
     private TestIdentifier mCurrentTest = null;
+    private IInvocationContext mCurrentModuleContext = null;
     private Pattern mPattern = null;
     private Map<String, EventHandler> mHandlerMap = null;
     private EventReceiverThread mEventReceiver = null;
@@ -78,6 +80,8 @@ public class SubprocessTestResultsParser implements Closeable {
         public static final String TEST_RUN_ENDED = "TEST_RUN_ENDED";
         public static final String TEST_RUN_FAILED = "TEST_RUN_FAILED";
         public static final String TEST_RUN_STARTED = "TEST_RUN_STARTED";
+        public static final String TEST_MODULE_STARTED = "TEST_MODULE_STARTED";
+        public static final String TEST_MODULE_ENDED = "TEST_MODULE_ENDED";
         public static final String TEST_LOG = "TEST_LOG";
         public static final String INVOCATION_STARTED = "INVOCATION_STARTED";
     }
@@ -210,6 +214,8 @@ public class SubprocessTestResultsParser implements Closeable {
         sb.append(StatusKeys.TEST_RUN_ENDED).append("|");
         sb.append(StatusKeys.TEST_RUN_FAILED).append("|");
         sb.append(StatusKeys.TEST_RUN_STARTED).append("|");
+        sb.append(StatusKeys.TEST_MODULE_STARTED).append("|");
+        sb.append(StatusKeys.TEST_MODULE_ENDED).append("|");
         sb.append(StatusKeys.TEST_LOG).append("|");
         sb.append(StatusKeys.INVOCATION_STARTED);
         String patt = String.format("(.*)(%s)( )(.*)", sb.toString());
@@ -227,6 +233,8 @@ public class SubprocessTestResultsParser implements Closeable {
         mHandlerMap.put(StatusKeys.TEST_RUN_ENDED, new TestRunEndedEventHandler());
         mHandlerMap.put(StatusKeys.TEST_RUN_FAILED, new TestRunFailedEventHandler());
         mHandlerMap.put(StatusKeys.TEST_RUN_STARTED, new TestRunStartedEventHandler());
+        mHandlerMap.put(StatusKeys.TEST_MODULE_STARTED, new TestModuleStartedEventHandler());
+        mHandlerMap.put(StatusKeys.TEST_MODULE_ENDED, new TestModuleEndedEventHandler());
         mHandlerMap.put(StatusKeys.TEST_LOG, new TestLogEventHandler());
         mHandlerMap.put(StatusKeys.INVOCATION_STARTED, new InvocationStartedEventHandler());
     }
@@ -389,6 +397,27 @@ public class SubprocessTestResultsParser implements Closeable {
                     new FailedTestEventInfo(new JSONObject(eventJson));
             checkCurrentTestId(FailedAssumption.mClassName, FailedAssumption.mTestName);
             mListener.testAssumptionFailure(mCurrentTest, FailedAssumption.mTrace);
+        }
+    }
+
+    private class TestModuleStartedEventHandler implements EventHandler {
+        @Override
+        public void handleEvent(String eventJson) throws JSONException {
+            TestModuleStartedEventInfo module =
+                    new TestModuleStartedEventInfo(new JSONObject(eventJson));
+            mCurrentModuleContext = module.mModuleContext;
+            mListener.testModuleStarted(module.mModuleContext);
+        }
+    }
+
+    private class TestModuleEndedEventHandler implements EventHandler {
+        @Override
+        public void handleEvent(String eventJson) throws JSONException {
+            if (mCurrentModuleContext == null) {
+                CLog.w("Calling testModuleEnded when testModuleStarted was not called.");
+            }
+            mListener.testModuleEnded();
+            mCurrentModuleContext = null;
         }
     }
 

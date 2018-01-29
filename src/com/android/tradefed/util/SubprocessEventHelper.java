@@ -15,6 +15,7 @@
  */
 package com.android.tradefed.util;
 
+import com.android.tradefed.invoker.IInvocationContext;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.result.LogDataType;
 
@@ -22,6 +23,7 @@ import org.json.JSONException;
 import org.json.JSONObject;
 
 import java.io.File;
+import java.io.IOException;
 import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.util.HashMap;
@@ -48,6 +50,8 @@ public class SubprocessEventHelper {
     private static final String DATA_FILE_KEY = "dataFile";
 
     private static final String TEST_TAG_KEY = "testTag";
+
+    private static final String MODULE_CONTEXT_KEY = "moduleContextFileName";
 
     /**
      * Helper for testRunStarted information
@@ -415,6 +419,39 @@ public class SubprocessEventHelper {
                 }
             } catch (JSONException e) {
                 CLog.e(e);
+            }
+            return tags.toString();
+        }
+    }
+
+    /** Helper for test module started information. */
+    public static class TestModuleStartedEventInfo {
+        public IInvocationContext mModuleContext;
+
+        public TestModuleStartedEventInfo(IInvocationContext moduleContext) {
+            mModuleContext = moduleContext;
+        }
+
+        public TestModuleStartedEventInfo(JSONObject jsonObject) throws JSONException {
+            String file = jsonObject.getString(MODULE_CONTEXT_KEY);
+            try {
+                mModuleContext =
+                        (IInvocationContext) SerializationUtil.deserialize(new File(file), true);
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            }
+        }
+
+        @Override
+        public String toString() {
+            JSONObject tags = null;
+            try {
+                tags = new JSONObject();
+                File serializedContext = SerializationUtil.serialize(mModuleContext);
+                tags.put(MODULE_CONTEXT_KEY, serializedContext.getAbsolutePath());
+            } catch (IOException | JSONException e) {
+                CLog.e(e);
+                throw new RuntimeException(e);
             }
             return tags.toString();
         }
