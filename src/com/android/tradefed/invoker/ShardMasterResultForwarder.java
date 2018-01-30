@@ -38,10 +38,10 @@ public class ShardMasterResultForwarder extends LogSaverResultForwarder {
 
     private final int mInitCount;
     private int mShardsRemaining;
-    private int mTotalElapsed = 0;
+    private long mTotalElapsed = 0L;
     private boolean mStartReported = false;
 
-    private long mFirstShardEndTime = 0l;
+    private long mFirstShardEndTime = 0L;
     private IInvocationContext mOriginalContext;
     private List<IInvocationContext> mShardContextList;
     private int shardIndex = 0;
