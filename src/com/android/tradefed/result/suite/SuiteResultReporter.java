@@ -118,7 +118,7 @@ public class SuiteResultReporter extends CollectingTestListener {
     @Override
     public void invocationEnded(long elapsedTime) {
         super.invocationEnded(elapsedTime);
-        mElapsedTime = System.currentTimeMillis() - mStartTime;
+        mElapsedTime = elapsedTime;
 
         // finalize and print results - general
         Collection<TestRunResult> results = getRunResults();
