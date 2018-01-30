@@ -642,12 +642,12 @@ class CLITranslatorUnittests(unittest.TestCase):
     def test_find_tests_by_test_mapping(self, _mock_findbymodule):
         """Test _find_tests_by_test_mapping method."""
         test_infos = self.ctr._find_tests_by_test_mapping(
-            TEST_MAPPING_DIR_INCLUDE_PARENT)
+            TEST_MAPPING_DIR_INCLUDE_PARENT, 'test_mapping_sample')
         unittest_utils.assert_strict_equal(
             self, test_infos, set([MODULE_INFO, CLASS_INFO]))
 
         test_infos = self.ctr._find_tests_by_test_mapping(
-            TEST_MAPPING_DIR_NOT_INCLUDE_PARENT)
+            TEST_MAPPING_DIR_NOT_INCLUDE_PARENT, 'test_mapping_sample')
         unittest_utils.assert_strict_equal(self, test_infos, set([INT_INFO]))
 
 
