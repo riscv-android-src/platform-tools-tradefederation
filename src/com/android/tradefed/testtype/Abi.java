@@ -48,4 +48,17 @@ public class Abi implements IAbi {
     public String toString() {
         return "{" + mName + ", bitness=" + mBitness + "}";
     }
+
+    /** {@inheritDoc} */
+    @Override
+    public boolean equals(Object obj) {
+        Abi other = (Abi) obj;
+        if (!mName.equals(other.mName)) {
+            return false;
+        }
+        if (!mBitness.equals(other.mBitness)) {
+            return false;
+        }
+        return true;
+    }
 }
