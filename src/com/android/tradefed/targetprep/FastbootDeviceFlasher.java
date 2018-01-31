@@ -302,11 +302,20 @@ public class FastbootDeviceFlasher implements IDeviceFlasher  {
      */
     protected void verifyRequiredBoards(ITestDevice device, IFlashingResourcesParser resourceParser,
             String deviceProductType) throws TargetSetupError {
-        if (!resourceParser.getRequiredBoards().contains(deviceProductType)) {
+        if (!containsIgnoreCase(resourceParser.getRequiredBoards(), deviceProductType)) {
             throw new TargetSetupError(String.format("Device %s is %s. Expected %s",
                     device.getSerialNumber(), deviceProductType,
                     resourceParser.getRequiredBoards()), device.getDeviceDescriptor());
         }
+    }
+
+    private static boolean containsIgnoreCase(Collection<String> stringList, String anotherString) {
+        for (String aString : stringList) {
+            if (aString != null && aString.equalsIgnoreCase(anotherString)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     /**

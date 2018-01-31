@@ -120,6 +120,38 @@ public class SuiteModuleLoader {
     }
 
     /**
+     * Pass the filters to the {@link IRemoteTest}. Default behavior is to ignore if the IRemoteTest
+     * does not implements {@link ITestFileFilterReceiver}. This can be overriden to create a more
+     * restrictive behavior.
+     *
+     * @param test The {@link IRemoteTest} that is being considered.
+     * @param abi The Abi we are currently working on.
+     * @param name The name of the module.
+     * @param includeFilters The formatted and parsed include filters.
+     * @param excludeFilters The formatted and parsed exclude filters.
+     */
+    public void addFiltersToTest(
+            IRemoteTest test,
+            IAbi abi,
+            String name,
+            Map<String, List<SuiteTestFilter>> includeFilters,
+            Map<String, List<SuiteTestFilter>> excludeFilters) {
+        String moduleId = AbiUtils.createId(abi.getName(), name);
+        if (!(test instanceof ITestFilterReceiver)) {
+            CLog.e("Test in module %s does not implement ITestFilterReceiver.", moduleId);
+            return;
+        }
+        List<SuiteTestFilter> mdIncludes = getFilterList(includeFilters, moduleId);
+        List<SuiteTestFilter> mdExcludes = getFilterList(excludeFilters, moduleId);
+        if (!mdIncludes.isEmpty()) {
+            addTestIncludes((ITestFilterReceiver) test, mdIncludes, name);
+        }
+        if (!mdExcludes.isEmpty()) {
+            addTestExcludes((ITestFilterReceiver) test, mdExcludes, name);
+        }
+    }
+
+    /**
      * Load a single config location (file or on TF classpath). It can results in several {@link
      * IConfiguration}. If a single configuration get expanded in different ways.
      *
@@ -181,7 +213,7 @@ public class SuiteModuleLoader {
                         testArgsMap.putAll(mTestArgs.get(className));
                     }
                     injectOptionsToConfig(testArgsMap, config);
-                    addFiltersToTest(test, abi, name);
+                    addFiltersToTest(test, abi, name, mIncludeFilters, mExcludeFilters);
                     if (test instanceof IAbiReceiver) {
                         ((IAbiReceiver) test).setAbi(abi);
                     }
@@ -218,30 +250,15 @@ public class SuiteModuleLoader {
         }
     }
 
-    /** @return the {@link List} of modules whose name contains the given pattern. */
-    public static List<String> getModuleNamesMatching(File directory, String pattern) {
-        String[] names =
-                directory.list(
-                        new FilenameFilter() {
-                            @Override
-                            public boolean accept(File dir, String name) {
-                                return name.contains(pattern) && name.endsWith(CONFIG_EXT);
-                            }
-                        });
-        List<String> modules = new ArrayList<String>(names.length);
-        for (String name : names) {
-            int index = name.indexOf(CONFIG_EXT);
-            if (index > 0) {
-                String module = name.substring(0, index);
-                if (module.equals(pattern)) {
-                    // Pattern represents a single module, just return a single-item list
-                    modules = new ArrayList<>(1);
-                    modules.add(module);
-                    return modules;
-                }
-                modules.add(module);
-            }
-        }
+    /** @return the {@link Set} of modules whose name contains the given pattern. */
+    public static Set<File> getModuleNamesMatching(
+            File directory, String suitePrefix, String pattern) {
+        List<File> extraTestCasesDirs = Arrays.asList(directory);
+        List<String> patterns = new ArrayList<>();
+        patterns.add(pattern);
+        Set<File> modules =
+                ConfigurationUtil.getConfigNamesFileFromDirs(
+                        suitePrefix, extraTestCasesDirs, patterns);
         return modules;
     }
 
@@ -280,22 +297,6 @@ public class SuiteModuleLoader {
             filters.put(id, fs);
         }
         return fs;
-    }
-
-    private void addFiltersToTest(IRemoteTest test, IAbi abi, String name) {
-        String moduleId = AbiUtils.createId(abi.getName(), name);
-        if (!(test instanceof ITestFilterReceiver)) {
-            CLog.e("Test in module %s does not implement ITestFilterReceiver.", moduleId);
-            return;
-        }
-        List<SuiteTestFilter> mdIncludes = getFilterList(mIncludeFilters, moduleId);
-        List<SuiteTestFilter> mdExcludes = getFilterList(mExcludeFilters, moduleId);
-        if (!mdIncludes.isEmpty()) {
-            addTestIncludes((ITestFilterReceiver) test, mdIncludes, name);
-        }
-        if (!mdExcludes.isEmpty()) {
-            addTestExcludes((ITestFilterReceiver) test, mdExcludes, name);
-        }
     }
 
     private boolean shouldRunModule(String moduleId) {

@@ -16,18 +16,23 @@
 
 package com.android.tradefed.testtype;
 
+import static org.junit.Assert.*;
+
 import com.android.ddmlib.testrunner.TestIdentifier;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.util.CommandResult;
 import com.android.tradefed.util.CommandStatus;
 import com.android.tradefed.util.IRunUtil;
 
-import junit.framework.TestCase;
-
 import org.easymock.EasyMock;
+import org.junit.Before;
+import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.junit.runners.JUnit4;
 
 /** Unit tests for {@link PythonUnitTestRunner}. */
-public class PythonUnitTestRunnerTest extends TestCase {
+@RunWith(JUnit4.class)
+public class PythonUnitTestRunnerTest {
 
     private static final String[] TEST_PASS_STDERR = {
         "b (a) ... ok", "", PythonUnitTestResultParser.DASH_LINE, "Ran 1 tests in 1s", "", "OK",
@@ -117,31 +122,33 @@ public class PythonUnitTestRunnerTest extends TestCase {
     private PythonUnitTestRunner mRunner;
     private ITestInvocationListener mMockListener;
 
-    @Override
+    @Before
     public void setUp() throws Exception {
-        super.setUp();
         mRunner = new PythonUnitTestRunner();
         mMockListener = EasyMock.createMock(ITestInvocationListener.class);
     }
 
+    @Test
     public void testCheckPythonVersion_276given270min() {
         CommandResult c = new CommandResult();
         c.setStderr("Python 2.7.6");
         mRunner.checkPythonVersion(c);
     }
 
+    @Test
     public void testCheckPythonVersion_276given331min() {
         CommandResult c = new CommandResult();
         c.setStderr("Python 2.7.6");
         mRunner.setMinPythonVersion("3.3.1");
         try {
             mRunner.checkPythonVersion(c);
-            fail("Detected 2.7.6 >= 3.3.1");
-        } catch (AssertionError e) {
-            return;
+            fail("Should have thrown an exception.");
+        } catch (RuntimeException expected) {
+            // expected
         }
     }
 
+    @Test
     public void testCheckPythonVersion_300given276min() {
         CommandResult c = new CommandResult();
         c.setStderr("Python 3.0.0");
@@ -189,6 +196,7 @@ public class PythonUnitTestRunnerTest extends TestCase {
     }
 
     /** Test execution succeeds and all test cases pass. */
+    @Test
     public void testRunPass() {
         IRunUtil mockRunUtil = getMockRunUtil(UnitTestResult.PASS);
         setMockListenerExpectTestPass(true);
@@ -198,6 +206,7 @@ public class PythonUnitTestRunnerTest extends TestCase {
     }
 
     /** Test execution succeeds and some test cases fail. */
+    @Test
     public void testRunFail() {
         IRunUtil mockRunUtil = getMockRunUtil(UnitTestResult.FAIL);
         setMockListenerExpectTestPass(false);
@@ -207,6 +216,7 @@ public class PythonUnitTestRunnerTest extends TestCase {
     }
 
     /** Test execution fails. */
+    @Test
     public void testRunExecutionFail() {
         IRunUtil mockRunUtil = getMockRunUtil(UnitTestResult.EXECUTION_FAIL);
         EasyMock.replay(mockRunUtil);
@@ -220,6 +230,7 @@ public class PythonUnitTestRunnerTest extends TestCase {
     }
 
     /** Test execution times out. */
+    @Test
     public void testRunTimeout() {
         IRunUtil mockRunUtil = getMockRunUtil(UnitTestResult.TIMEOUT);
         EasyMock.replay(mockRunUtil);
