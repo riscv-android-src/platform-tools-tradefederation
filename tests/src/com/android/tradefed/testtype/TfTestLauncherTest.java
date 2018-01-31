@@ -28,20 +28,22 @@ import com.android.tradefed.util.CommandResult;
 import com.android.tradefed.util.CommandStatus;
 import com.android.tradefed.util.FileUtil;
 import com.android.tradefed.util.IRunUtil;
+import com.android.tradefed.util.SystemUtil;
 import com.android.tradefed.util.IRunUtil.EnvPriority;
 
 import org.easymock.EasyMock;
 import org.junit.Before;
 import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.junit.runners.JUnit4;
 import org.mockito.Mockito;
 
 import java.io.File;
 import java.io.FileOutputStream;
 import java.util.Collections;
 
-/**
- * Unit tests for {@link TfTestLauncher}
- */
+/** Unit tests for {@link TfTestLauncher} */
+@RunWith(JUnit4.class)
 public class TfTestLauncherTest {
 
     private static final String CONFIG_NAME = "FAKE_CONFIG";
@@ -86,6 +88,7 @@ public class TfTestLauncherTest {
                                 (FileOutputStream) EasyMock.anyObject(),
                                 EasyMock.eq("java"),
                                 (String) EasyMock.anyObject(),
+                                EasyMock.eq("--add-opens=java.base/java.nio=ALL-UNNAMED"),
                                 EasyMock.eq("-cp"),
                                 (String) EasyMock.anyObject(),
                                 EasyMock.eq("com.android.tradefed.command.CommandRunner"),
@@ -104,6 +107,8 @@ public class TfTestLauncherTest {
                 .andReturn(cr);
 
         mMockRunUtil.unsetEnvVariable(SubprocessTfLauncher.TF_GLOBAL_CONFIG);
+        mMockRunUtil.unsetEnvVariable(SystemUtil.ENV_ANDROID_HOST_OUT_TESTCASES);
+        mMockRunUtil.unsetEnvVariable(SystemUtil.ENV_ANDROID_TARGET_OUT_TESTCASES);
         mMockRunUtil.setEnvVariablePriority(EnvPriority.SET);
         mMockRunUtil.setEnvVariable(SubprocessTfLauncher.TF_GLOBAL_CONFIG, SUB_GLOBAL_CONFIG);
 
@@ -207,6 +212,8 @@ public class TfTestLauncherTest {
         EasyMock.expect(mMockBuildInfo.getBuildFlavor()).andReturn(BUILD_FLAVOR).times(2);
         EasyMock.expect(mMockBuildInfo.getBuildId()).andReturn(BUILD_ID).times(2);
         mMockRunUtil.unsetEnvVariable(TfTestLauncher.TF_GLOBAL_CONFIG);
+        mMockRunUtil.unsetEnvVariable(SystemUtil.ENV_ANDROID_HOST_OUT_TESTCASES);
+        mMockRunUtil.unsetEnvVariable(SystemUtil.ENV_ANDROID_TARGET_OUT_TESTCASES);
         mMockRunUtil.setEnvVariablePriority(EnvPriority.SET);
         mMockRunUtil.setEnvVariable(SubprocessTfLauncher.TF_GLOBAL_CONFIG, SUB_GLOBAL_CONFIG);
         EasyMock.replay(mMockBuildInfo, mMockRunUtil, mMockListener);

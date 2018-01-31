@@ -29,6 +29,7 @@ import com.android.tradefed.util.FileUtil;
 import com.android.tradefed.util.HprofAllocSiteParser;
 import com.android.tradefed.util.RunUtil;
 import com.android.tradefed.util.StreamUtil;
+import com.android.tradefed.util.SystemUtil;
 import com.android.tradefed.util.TarUtil;
 
 import com.google.common.annotations.VisibleForTesting;
@@ -179,6 +180,9 @@ public class TfTestLauncher extends SubprocessTfLauncher {
                             apk);
             mCmdArgs.add(apkPath);
         }
+        // Unset potential build environment to ensure they do not affect the unit tests
+        getRunUtil().unsetEnvVariable(SystemUtil.ENV_ANDROID_HOST_OUT_TESTCASES);
+        getRunUtil().unsetEnvVariable(SystemUtil.ENV_ANDROID_TARGET_OUT_TESTCASES);
     }
 
     /** {@inheritDoc} */
