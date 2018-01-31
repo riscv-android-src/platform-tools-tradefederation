@@ -15,12 +15,22 @@
  */
 package com.android.tradefed.invoker;
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.fail;
+import static org.mockito.Mockito.mock;
+
 import com.android.tradefed.config.Configuration;
 import com.android.tradefed.config.DeviceConfigurationHolder;
 import com.android.tradefed.config.IConfiguration;
+import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
+import com.android.tradefed.device.metric.BaseDeviceMetricCollector;
+import com.android.tradefed.device.metric.IMetricCollector;
+import com.android.tradefed.device.metric.IMetricCollectorReceiver;
+import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.targetprep.IHostCleaner;
 import com.android.tradefed.targetprep.ITargetPreparer;
+import com.android.tradefed.testtype.IRemoteTest;
 import com.android.tradefed.util.IDisableable;
 
 import org.easymock.EasyMock;
@@ -28,6 +38,9 @@ import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
+
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * Unit tests for {@link InvocationExecution}. Tests for each individual interface of
@@ -39,12 +52,14 @@ public class InvocationExecutionTest {
     private InvocationExecution mExec;
     private IInvocationContext mContext;
     private IConfiguration mConfig;
+    private ITestInvocationListener mMockListener;
 
     @Before
     public void setUp() {
         mExec = new InvocationExecution();
         mContext = new InvocationContext();
         mConfig = new Configuration("test", "test");
+        mMockListener = mock(ITestInvocationListener.class);
     }
 
     /** Test class for a target preparer class that also do host cleaner. */
@@ -84,5 +99,68 @@ public class InvocationExecutionTest {
         EasyMock.replay(cleaner);
         mExec.doCleanUp(mContext, mConfig, null);
         EasyMock.verify(cleaner);
+    }
+
+    /**
+     * Test {@link IRemoteTest} that also implements {@link IMetricCollectorReceiver} to test the
+     * init behavior.
+     */
+    private static class RemoteTestCollector implements IRemoteTest, IMetricCollectorReceiver {
+
+        private List<IMetricCollector> mCollectors;
+
+        @Override
+        public void setMetricCollectors(List<IMetricCollector> collectors) {
+            mCollectors = collectors;
+        }
+
+        @Override
+        public void run(ITestInvocationListener listener) throws DeviceNotAvailableException {
+            for (IMetricCollector collector : mCollectors) {
+                collector.init(new InvocationContext(), new ITestInvocationListener() {});
+            }
+        }
+    }
+
+    public static class TestBaseMetricCollector extends BaseDeviceMetricCollector {
+        public static int sTotalInit = 0;
+        private boolean mFirstInit = true;
+
+        @Override
+        public ITestInvocationListener init(
+                IInvocationContext context, ITestInvocationListener listener) {
+            if (mFirstInit) {
+                sTotalInit++;
+                mFirstInit = false;
+            } else {
+                fail("Init should only be called once per instance.");
+            }
+            return super.init(context, listener);
+        }
+    }
+
+    /**
+     * Test that the collectors always run with the right context no matter where they are
+     * (re)initialized.
+     */
+    @Test
+    public void testRun_metricCollectors() throws Exception {
+        List<IRemoteTest> tests = new ArrayList<>();
+        // First add an IMetricCollectorReceiver
+        tests.add(new RemoteTestCollector());
+        // Then a regular non IMetricCollectorReceiver
+        tests.add(
+                new IRemoteTest() {
+                    @Override
+                    public void run(ITestInvocationListener listener)
+                            throws DeviceNotAvailableException {}
+                });
+        mConfig.setTests(tests);
+        List<IMetricCollector> collectors = new ArrayList<>();
+        collectors.add(new TestBaseMetricCollector());
+        mConfig.setDeviceMetricCollectors(collectors);
+        mExec.runTests(mContext, mConfig, mMockListener);
+        // Init was called twice in total on the class, but only once per instance.
+        assertEquals(2, TestBaseMetricCollector.sTotalInit);
     }
 }

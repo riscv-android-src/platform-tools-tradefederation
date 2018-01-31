@@ -24,6 +24,7 @@ import com.android.tradefed.build.IDeviceBuildProvider;
 import com.android.tradefed.config.GlobalConfiguration;
 import com.android.tradefed.config.IConfiguration;
 import com.android.tradefed.config.IDeviceConfiguration;
+import com.android.tradefed.config.OptionCopier;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.device.StubDevice;
@@ -56,6 +57,7 @@ import com.google.common.annotations.VisibleForTesting;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.ListIterator;
 
@@ -305,12 +307,6 @@ public class InvocationExecution implements IInvocationExecution {
     public void runTests(
             IInvocationContext context, IConfiguration config, ITestInvocationListener listener)
             throws DeviceNotAvailableException {
-        // Wrap collectors in each other and collection will be sequential
-        ITestInvocationListener listenerWithCollectors = listener;
-        for (IMetricCollector collector : config.getMetricCollectors()) {
-            listenerWithCollectors = collector.init(context, listenerWithCollectors);
-        }
-
         for (IRemoteTest test : config.getTests()) {
             // For compatibility of those receivers, they are assumed to be single device alloc.
             if (test instanceof IDeviceTest) {
@@ -331,14 +327,42 @@ public class InvocationExecution implements IInvocationExecution {
             if (test instanceof IInvocationContextReceiver) {
                 ((IInvocationContextReceiver) test).setInvocationContext(context);
             }
+
+            // We clone the collectors for each IRemoteTest to ensure no state conflicts.
+            List<IMetricCollector> clonedCollectors = cloneCollectors(config.getMetricCollectors());
             if (test instanceof IMetricCollectorReceiver) {
-                ((IMetricCollectorReceiver) test).setMetricCollectors(config.getMetricCollectors());
+                ((IMetricCollectorReceiver) test).setMetricCollectors(clonedCollectors);
                 // If test can receive collectors then let it handle the how to set them up
                 test.run(listener);
             } else {
+                // Wrap collectors in each other and collection will be sequential, do this in the
+                // loop to ensure they are always initialized against the right context.
+                ITestInvocationListener listenerWithCollectors = listener;
+                for (IMetricCollector collector : clonedCollectors) {
+                    listenerWithCollectors = collector.init(context, listenerWithCollectors);
+                }
                 test.run(listenerWithCollectors);
             }
         }
+    }
+
+    /**
+     * Helper to clone {@link IMetricCollector}s in order for each {@link IRemoteTest} to get a
+     * different instance, and avoid internal state and multi-init issues.
+     */
+    private List<IMetricCollector> cloneCollectors(List<IMetricCollector> originalCollectors) {
+        List<IMetricCollector> cloneList = new ArrayList<>();
+        for (IMetricCollector collector : originalCollectors) {
+            try {
+                // TF object should all have a constructore with no args, so this should be safe.
+                IMetricCollector clone = collector.getClass().newInstance();
+                OptionCopier.copyOptionsNoThrow(collector, clone);
+                cloneList.add(clone);
+            } catch (InstantiationException | IllegalAccessException e) {
+                throw new RuntimeException(e);
+            }
+        }
+        return cloneList;
     }
 
     private void reportLogs(ITestDevice device, ITestInvocationListener listener, Stage stage) {

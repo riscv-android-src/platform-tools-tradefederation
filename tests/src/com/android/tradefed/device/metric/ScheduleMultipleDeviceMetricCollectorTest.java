@@ -25,11 +25,7 @@ import com.android.tradefed.invoker.IInvocationContext;
 import com.android.tradefed.invoker.InvocationContext;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.util.RunUtil;
-import java.io.File;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+
 import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
@@ -39,6 +35,12 @@ import org.junit.runners.JUnit4;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 import org.mockito.Spy;
+
+import java.io.File;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 /** Unit tests for {@link ScheduleMultipleDeviceMetricCollector}. */
 @RunWith(JUnit4.class)
@@ -174,6 +176,50 @@ public class ScheduleMultipleDeviceMetricCollectorTest {
         runData.addToMetrics(metricsCollected);
 
         assertEquals(0, metricsCollected.size());
+    }
+
+    /** Test that if a specified collector does not exists, we ignore it and proceed. */
+    @Test
+    public void testMultipleMetricCollector_collectorNotFound() throws Exception {
+        OptionSetter setter = new OptionSetter(mMultipleMetricCollector);
+
+        // Set up the metric collection storage path.
+        File metricStoragePath = folder.newFolder();
+        setter.setOptionValue("metric-storage-path", metricStoragePath.toString());
+
+        // Set up the intervals.
+        Map<String, Long> intervals = new HashMap<>();
+        intervals.put("meminfoInterval", 100L);
+        for (String key : intervals.keySet()) {
+            setter.setOptionValue(
+                    "metric-collection-intervals", key, intervals.get(key).toString());
+        }
+
+        // Request the collectors.
+        List<String> classnames = new ArrayList<>();
+        classnames.add(TestMeminfoCollector.class.getName());
+        classnames.add("this.does.not.exists.collector");
+        for (String key : classnames) {
+            setter.setOptionValue("metric-collector-command-classes", key);
+        }
+
+        Map<String, String> metrics = new HashMap<>();
+        mMultipleMetricCollector.init(mContext, mMockListener);
+
+        DeviceMetricData runData = new DeviceMetricData(mContext);
+
+        try {
+            mMultipleMetricCollector.onTestRunStart(runData);
+            RunUtil.getDefault().sleep(500);
+        } finally {
+            mMultipleMetricCollector.onTestRunEnd(runData, metrics);
+        }
+
+        // No metrics should have been collected.
+        Map<String, String> metricsCollected = new HashMap<>();
+        runData.addToMetrics(metricsCollected);
+
+        assertTrue(metricsCollected.containsKey("meminfo1"));
     }
 
     @Test
