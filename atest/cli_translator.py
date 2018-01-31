@@ -545,6 +545,10 @@ class CLITranslator(object):
         else:
             search_dir = self.root_dir
         test_path = self._find_class_file(class_name, search_dir)
+        if not test_path and rel_config:
+            logging.info('Did not find class (%s) under module path (%s), '
+                         'researching from repo root.', class_name, rel_config)
+            test_path = self._find_class_file(class_name, self.root_dir)
         if not test_path:
             return None
         full_class_name = self._get_fully_qualified_class_name(test_path)
