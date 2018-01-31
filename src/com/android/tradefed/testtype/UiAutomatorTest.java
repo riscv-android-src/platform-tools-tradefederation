@@ -88,9 +88,9 @@ public class UiAutomatorTest implements IRemoteTest, IDeviceTest, ITestFilterRec
     private Map<String, String> mArgMap = new LinkedHashMap<String, String>();
 
     @Option(name = "timeout",
-            description = "Aborts the test run if any test takes longer than the specified number "
-                    + "of milliseconds. For no timeout, set to 0.")
-    private int mTestTimeout = 30 * 60 * 1000;  // default to 30 minutes
+            description = "Aborts the test run if any test takes longer than the specified "
+                    + "timeout. For no timeout, set to 0.", isTimeVal = true)
+    private long mTestTimeout = 30 * 60 * 1000; // default to 30 minutes
 
     @Option(name = "capture-logs", description =
             "capture bugreport and screenshot as specified.")
