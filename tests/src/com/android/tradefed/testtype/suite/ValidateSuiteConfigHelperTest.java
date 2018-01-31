@@ -15,8 +15,7 @@
  */
 package com.android.tradefed.testtype.suite;
 
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.*;
 
 import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.build.LocalFolderBuildProvider;
@@ -54,7 +53,7 @@ public class ValidateSuiteConfigHelperTest {
     @Test
     public void testCanRunAsSuite() {
         IConfiguration config = new Configuration("test", "test description");
-        assertTrue(ValidateSuiteConfigHelper.validateConfig(config));
+        ValidateSuiteConfigHelper.validateConfig(config);
     }
 
     /** Test that a config with a build provider cannot run as suite. */
@@ -64,7 +63,12 @@ public class ValidateSuiteConfigHelperTest {
         // LocalFolderBuildProvider extends the default StubBuildProvider but is still correctly
         // rejected.
         config.setBuildProvider(new LocalFolderBuildProvider());
-        assertFalse(ValidateSuiteConfigHelper.validateConfig(config));
+        try {
+            ValidateSuiteConfigHelper.validateConfig(config);
+            fail("Should have thrown an exception.");
+        } catch (RuntimeException expected) {
+            assertTrue(expected.getMessage().contains(Configuration.BUILD_PROVIDER_TYPE_NAME));
+        }
     }
 
     /**
@@ -79,7 +83,12 @@ public class ValidateSuiteConfigHelperTest {
         IDeviceConfiguration deviceConfig = new DeviceConfigurationHolder("default");
         deviceConfig.addSpecificConfig(new LocalFolderBuildProvider());
         config.setDeviceConfig(deviceConfig);
-        assertFalse(ValidateSuiteConfigHelper.validateConfig(config));
+        try {
+            ValidateSuiteConfigHelper.validateConfig(config);
+            fail("Should have thrown an exception.");
+        } catch (RuntimeException expected) {
+            assertTrue(expected.getMessage().contains(Configuration.BUILD_PROVIDER_TYPE_NAME));
+        }
     }
 
     /** Test that a config with a result reporter cannot run as suite. */
@@ -87,7 +96,12 @@ public class ValidateSuiteConfigHelperTest {
     public void testNotRunningAsSuite_resultReporter() {
         IConfiguration config = new Configuration("test", "test description");
         config.setTestInvocationListener(new CollectingTestListener());
-        assertFalse(ValidateSuiteConfigHelper.validateConfig(config));
+        try {
+            ValidateSuiteConfigHelper.validateConfig(config);
+            fail("Should have thrown an exception.");
+        } catch (RuntimeException expected) {
+            assertTrue(expected.getMessage().contains(Configuration.RESULT_REPORTER_TYPE_NAME));
+        }
     }
 
     /** Test that a config with a multiple result reporter cannot run as suite. */
@@ -98,7 +112,12 @@ public class ValidateSuiteConfigHelperTest {
         listeners.add(new TextResultReporter());
         listeners.add(new CollectingTestListener());
         config.setTestInvocationListeners(listeners);
-        assertFalse(ValidateSuiteConfigHelper.validateConfig(config));
+        try {
+            ValidateSuiteConfigHelper.validateConfig(config);
+            fail("Should have thrown an exception.");
+        } catch (RuntimeException expected) {
+            assertTrue(expected.getMessage().contains(Configuration.RESULT_REPORTER_TYPE_NAME));
+        }
     }
 
     /** Test that a config that contains simple target preparers is allows to run in a suite. */
@@ -107,7 +126,7 @@ public class ValidateSuiteConfigHelperTest {
         IConfiguration config = new Configuration("test", "test description");
         config.setTargetPreparer(new StubTargetPreparer());
         config.setMultiTargetPreparer(new StubMultiTargetPreparer());
-        assertTrue(ValidateSuiteConfigHelper.validateConfig(config));
+        ValidateSuiteConfigHelper.validateConfig(config);
     }
 
     /**
@@ -118,7 +137,13 @@ public class ValidateSuiteConfigHelperTest {
     public void testTargetPrep_badPreparer() {
         IConfiguration config = new Configuration("test", "test description");
         config.setTargetPreparer(new BadSingleMultiPreparer());
-        assertFalse(ValidateSuiteConfigHelper.validateConfig(config));
+        try {
+            ValidateSuiteConfigHelper.validateConfig(config);
+            fail("Should have thrown an exception.");
+        } catch (RuntimeException expected) {
+            assertTrue(expected.getMessage().contains(Configuration.TARGET_PREPARER_TYPE_NAME));
+            assertTrue(expected.getMessage().contains(Configuration.MULTI_PREPARER_TYPE_NAME));
+        }
     }
 
     /**
@@ -129,7 +154,13 @@ public class ValidateSuiteConfigHelperTest {
     public void testTargetPrep_badMultiPreparer() {
         IConfiguration config = new Configuration("test", "test description");
         config.setMultiTargetPreparer(new BadSingleMultiPreparer());
-        assertFalse(ValidateSuiteConfigHelper.validateConfig(config));
+        try {
+            ValidateSuiteConfigHelper.validateConfig(config);
+            fail("Should have thrown an exception.");
+        } catch (RuntimeException expected) {
+            assertTrue(expected.getMessage().contains(Configuration.TARGET_PREPARER_TYPE_NAME));
+            assertTrue(expected.getMessage().contains(Configuration.MULTI_PREPARER_TYPE_NAME));
+        }
     }
 
     /**
@@ -162,6 +193,13 @@ public class ValidateSuiteConfigHelperTest {
         List<IMetricCollector> collectors = new ArrayList<>();
         collectors.add(new BaseDeviceMetricCollector());
         config.setDeviceMetricCollectors(collectors);
-        assertFalse(ValidateSuiteConfigHelper.validateConfig(config));
+        try {
+            ValidateSuiteConfigHelper.validateConfig(config);
+            fail("Should have thrown an exception.");
+        } catch (RuntimeException expected) {
+            assertTrue(
+                    expected.getMessage()
+                            .contains(Configuration.DEVICE_METRICS_COLLECTOR_TYPE_NAME));
+        }
     }
 }

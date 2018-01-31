@@ -70,7 +70,9 @@ public class ModuleSplitter {
         }
         List<ModuleDefinition> runModules = new ArrayList<>();
         for (Entry<String, IConfiguration> configMap : runConfig.entrySet()) {
-            validateConfig(configMap.getValue());
+            // Check that it's a valid configuration for suites, throw otherwise.
+            ValidateSuiteConfigHelper.validateConfig(configMap.getValue());
+
             createAndAddModule(
                     runModules,
                     configMap.getKey(),
@@ -162,16 +164,6 @@ public class ModuleSplitter {
                         clonePreparers(config.getMultiTargetPreparers()),
                         config);
         currentList.add(module);
-    }
-
-    private static void validateConfig(IConfiguration config) {
-        if (!ValidateSuiteConfigHelper.validateConfig(config)) {
-            throw new RuntimeException(
-                    new ConfigurationException(
-                            String.format(
-                                    "Configuration %s cannot be run in a suite.",
-                                    config.getName())));
-        }
     }
 
     /**
