@@ -160,9 +160,11 @@ public class InstrumentationTest implements IDeviceTest, IResumableTest, ITestCo
             "If unspecified, will use package name.")
     private String mRunName = null;
 
-    @Option(name = "instrumentation-arg",
-            description = "Additional instrumentation arguments to provide.")
-    private Map<String, String> mInstrArgMap = new HashMap<String, String>();
+    @Option(
+        name = "instrumentation-arg",
+        description = "Additional instrumentation arguments to provide."
+    )
+    private final Map<String, String> mInstrArgMap = new HashMap<String, String>();
 
     @Option(name = "bugreport-on-failure", description = "Sets which failed testcase events " +
             "cause a bugreport to be collected. a bugreport after failed testcases.  Note that " +
@@ -899,54 +901,34 @@ public class InstrumentationTest implements IDeviceTest, IResumableTest, ITestCo
             if (mRebootBeforeReRun) {
                 mDevice.reboot();
             }
-            if (mReRunUsingTestFile) {
-                reRunTestsFromFile(listener);
-            } else {
-                reRunTestsSerially(listener);
-            }
-        }
-    }
 
-    /**
-     * re-runs tests from test file via {@link InstrumentationFileTest}
-     */
-    private void reRunTestsFromFile(final ITestInvocationListener listener)
-            throws DeviceNotAvailableException {
-        CLog.i("Running individual tests using a test file");
-        try {
-            InstrumentationFileTest testReRunner = new InstrumentationFileTest(this,
-                    mRemainingTests, mFallbackToSerialRerun, mReRunUsingTestFileAttempts);
+            IRemoteTest testReRunner = null;
+            try {
+                testReRunner = getTestReRunner();
+            } catch (ConfigurationException e) {
+                CLog.e("Failed to create test runner: %s", e.getMessage());
+                return;
+            }
+
             CollectingTestListener testTracker = new CollectingTestListener();
             try {
                 testReRunner.run(new ResultForwarder(listener, testTracker));
             } finally {
                 calculateRemainingTests(mRemainingTests, testTracker);
             }
-        } catch (ConfigurationException e) {
-            CLog.e("Failed to create InstrumentationFileTest: %s", e.getMessage());
         }
     }
 
-    /** re-runs tests one by one via {@link InstrumentationSerialTest} */
     @VisibleForTesting
-    void reRunTestsSerially(final ITestInvocationListener listener)
-            throws DeviceNotAvailableException {
-        CLog.i("Running individual tests serially");
-        // Since the same runner is reused we must ensure TEST_FILE_INST_ARGS_KEY is not set.
-        // Otherwise, the runner will attempt to execute tests from file.
-        if (mInstrArgMap != null && mInstrArgMap.containsKey(TEST_FILE_INST_ARGS_KEY)) {
+    IRemoteTest getTestReRunner() throws ConfigurationException {
+        if (mReRunUsingTestFile) {
+            return new InstrumentationFileTest(
+                    this, mRemainingTests, mFallbackToSerialRerun, mReRunUsingTestFileAttempts);
+        } else {
+            // Since the same runner is reused we must ensure TEST_FILE_INST_ARGS_KEY is not set.
+            // Otherwise, the runner will attempt to execute tests from file.
             mInstrArgMap.remove(TEST_FILE_INST_ARGS_KEY);
-        }
-        try {
-            InstrumentationSerialTest testReRunner = new InstrumentationSerialTest(this, mRemainingTests);
-            CollectingTestListener testTracker = new CollectingTestListener();
-            try {
-                testReRunner.run(new ResultForwarder(listener, testTracker));
-            } finally {
-                calculateRemainingTests(mRemainingTests, testTracker);
-            }
-        } catch (ConfigurationException e) {
-            CLog.e("Failed to create InstrumentationSerialTest: %s", e.getMessage());
+            return new InstrumentationSerialTest(this, mRemainingTests);
         }
     }
 
