@@ -75,6 +75,7 @@ import com.android.tradefed.device.metric.BuddyInfoMetricCollectorTest;
 import com.android.tradefed.device.metric.IonHeapInfoMetricCollectorTest;
 import com.android.tradefed.device.metric.GfxInfoMetricCollectorTest;
 import com.android.tradefed.device.metric.PagetypeInfoMetricCollectorTest;
+import com.android.tradefed.device.metric.ProcessMaxMemoryCollectorTest;
 import com.android.tradefed.device.metric.ScheduleMultipleDeviceMetricCollectorTest;
 import com.android.tradefed.device.metric.ScheduledDeviceMetricCollectorTest;
 import com.android.tradefed.device.metric.TraceMetricCollectorTest;
@@ -339,6 +340,7 @@ import org.junit.runners.Suite.SuiteClasses;
     IonHeapInfoMetricCollectorTest.class,
     MemInfoMetricCollectorTest.class,
     PagetypeInfoMetricCollectorTest.class,
+    ProcessMaxMemoryCollectorTest.class,
     ScheduledDeviceMetricCollectorTest.class,
     ScheduleMultipleDeviceMetricCollectorTest.class,
     TraceMetricCollectorTest.class,
