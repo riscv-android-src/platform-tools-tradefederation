@@ -57,6 +57,8 @@ TEST_MODULE_NAME = 'test-module-name'
 COMPATIBILITY_PACKAGE_PREFIX = "com.android.compatibility"
 CTS_JAR = "cts-tradefed"
 
+TEST_MAPPING = 'TEST_MAPPING'
+
 class TestDiscoveryException(Exception):
     """Base Exception for CLITranslator issues with test discovery."""
 
@@ -543,6 +545,10 @@ class CLITranslator(object):
         else:
             search_dir = self.root_dir
         test_path = self._find_class_file(class_name, search_dir)
+        if not test_path and rel_config:
+            logging.info('Did not find class (%s) under module path (%s), '
+                         'researching from repo root.', class_name, rel_config)
+            test_path = self._find_class_file(class_name, self.root_dir)
         if not test_path:
             return None
         full_class_name = self._get_fully_qualified_class_name(test_path)
@@ -621,12 +627,14 @@ class CLITranslator(object):
                     atest_tf_test_runner.AtestTradefedTestRunner.NAME)
         return None
 
-    def _find_tests_by_test_mapping(self, path=''):
+    def _find_tests_by_test_mapping(self, path='', file_name=TEST_MAPPING):
         """Find test infos defined in TEST_MAPPING of the given path and its
         parent directories if required.
 
         Args:
             path: A string of path in source. Default is set to '', i.e., CWD.
+            file_name: Name of TEST_MAPPING file. Default is set to
+                    `TEST_MAPPING`. The argument is added for testing purpose.
 
         Returns:
             A set of populated TestInfo namedtuples that's defined in
@@ -639,7 +647,7 @@ class CLITranslator(object):
             return None
         tests = set()
         test_mapping = None
-        test_mapping_file = os.path.join(directory, 'TEST_MAPPING')
+        test_mapping_file = os.path.join(directory, file_name)
         if os.path.exists(test_mapping_file):
             with open(test_mapping_file) as json_file:
                 test_mapping = json.load(json_file)
@@ -658,7 +666,7 @@ class CLITranslator(object):
                     logging.warn('Failed to locate test %s', name)
         if not test_mapping or test_mapping.get('include_parent'):
             parent_dir_tests = self._find_tests_by_test_mapping(
-                os.path.dirname(directory))
+                os.path.dirname(directory), file_name)
             if parent_dir_tests:
                 tests |= parent_dir_tests
         return tests

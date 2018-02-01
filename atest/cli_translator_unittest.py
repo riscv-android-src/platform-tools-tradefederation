@@ -19,6 +19,7 @@
 import json
 import unittest
 import os
+import re
 import mock
 
 import cli_translator as cli_t
@@ -58,6 +59,9 @@ CLASS_FILTER = cli_t.TestFilter(FULL_CLASS_NAME, frozenset())
 CLASS_INFO = cli_t.TestInfo(CONFIG_FILE, MODULE_NAME, None,
                             frozenset([CLASS_FILTER]),
                             atf_tr.AtestTradefedTestRunner.NAME)
+CLASS_INFO_MODULE_2 = cli_t.TestInfo(CONFIG2_FILE, MODULE2_NAME, None,
+                                     frozenset([CLASS_FILTER]),
+                                     atf_tr.AtestTradefedTestRunner.NAME)
 CLASS2_FILTER = cli_t.TestFilter(FULL_CLASS2_NAME, frozenset())
 CLASS2_INFO = cli_t.TestInfo(CONFIG_FILE, MODULE_NAME, None,
                              frozenset([CLASS2_FILTER]),
@@ -128,6 +132,8 @@ TEST_MAPPING_DIR_INCLUDE_PARENT = os.path.join(
 TEST_MAPPING_DIR_NOT_INCLUDE_PARENT = os.path.join(
     os.path.dirname(__file__), TEST_DATA_DIR, 'test_mapping', 'folder2')
 
+SEARCH_DIR_RE = re.compile(r'^find ([^ ]*).*$')
+
 def isfile_side_effect(value):
     """Mock return values for os.path.isfile."""
     if value == '/%s/%s' % (MODULE_DIR, cli_t.MODULE_CONFIG):
@@ -162,6 +168,14 @@ def targetsfromxml_side_effect(_):
 def realpath_side_effect(path):
     """Mock return values for os.path.realpath."""
     return os.path.join(ROOT, path)
+
+#pylint: disable=unused-argument
+def classoutside_side_effect(find_cmd, shell=False):
+    """Mock the check output of a find cmd where class outside module path."""
+    search_dir = SEARCH_DIR_RE.match(find_cmd).group(1).strip()
+    if search_dir == ROOT:
+        return FIND_ONE
+    return None
 
 #pylint: disable=protected-access
 #pylint: disable=no-self-use
@@ -383,9 +397,20 @@ class CLITranslatorUnittests(unittest.TestCase):
         unittest_utils.assert_strict_equal(
             self, self.ctr._find_test_by_class_name(class_methods),
             FLAT_METHOD_INFO)
-        # find output fails to find class file
+        # module and rel_config passed in
+        unittest_utils.assert_strict_equal(
+            self, self.ctr._find_test_by_class_name(CLASS_NAME, MODULE_NAME,
+                                                    CONFIG_FILE), CLASS_INFO)
+        # find output fails to find class file, should return None
         mock_checkoutput.return_value = ''
         self.assertIsNone(self.ctr._find_test_by_class_name('Not class'))
+        # class is outside given module path
+        mock_checkoutput.side_effect = classoutside_side_effect
+        unittest_utils.assert_strict_equal(
+            self, self.ctr._find_test_by_class_name(CLASS_NAME, MODULE2_NAME,
+                                                    CONFIG2_FILE),
+            CLASS_INFO_MODULE_2)
+
 
     @mock.patch('subprocess.check_output', return_value=FIND_ONE)
     @mock.patch.object(cli_t.CLITranslator, '_get_fully_qualified_class_name',
@@ -642,12 +667,12 @@ class CLITranslatorUnittests(unittest.TestCase):
     def test_find_tests_by_test_mapping(self, _mock_findbymodule):
         """Test _find_tests_by_test_mapping method."""
         test_infos = self.ctr._find_tests_by_test_mapping(
-            TEST_MAPPING_DIR_INCLUDE_PARENT)
+            TEST_MAPPING_DIR_INCLUDE_PARENT, 'test_mapping_sample')
         unittest_utils.assert_strict_equal(
             self, test_infos, set([MODULE_INFO, CLASS_INFO]))
 
         test_infos = self.ctr._find_tests_by_test_mapping(
-            TEST_MAPPING_DIR_NOT_INCLUDE_PARENT)
+            TEST_MAPPING_DIR_NOT_INCLUDE_PARENT, 'test_mapping_sample')
         unittest_utils.assert_strict_equal(self, test_infos, set([INT_INFO]))
 
 

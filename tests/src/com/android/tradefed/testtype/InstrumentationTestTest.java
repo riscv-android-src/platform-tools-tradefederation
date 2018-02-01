@@ -22,7 +22,6 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doAnswer;
-import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
@@ -563,9 +562,7 @@ public class InstrumentationTestTest {
      */
     @Test
     public void testCollectWorks_RunCrash() throws Exception {
-        doNothing()
-                .when(mInstrumentationTest)
-                .reRunTestsSerially(any(ITestInvocationListener.class));
+        doReturn(mock(IRemoteTest.class)).when(mInstrumentationTest).getTestReRunner();
 
         // We collect successfully 5 tests
         RunInstrumentationTestsAnswer collected =

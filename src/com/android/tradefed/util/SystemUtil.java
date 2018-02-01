@@ -35,11 +35,8 @@ public class SystemUtil {
 
     // Environment variables for the test cases directory in target out directory and host out
     // directory.
-    @VisibleForTesting
-    static final String ENV_ANDROID_TARGET_OUT_TESTCASES = "ANDROID_TARGET_OUT_TESTCASES";
-
-    @VisibleForTesting
-    static final String ENV_ANDROID_HOST_OUT_TESTCASES = "ANDROID_HOST_OUT_TESTCASES";
+    public static final String ENV_ANDROID_TARGET_OUT_TESTCASES = "ANDROID_TARGET_OUT_TESTCASES";
+    public static final String ENV_ANDROID_HOST_OUT_TESTCASES = "ANDROID_HOST_OUT_TESTCASES";
 
     static final String ENV_ANDROID_PRODUCT_OUT = "ANDROID_PRODUCT_OUT";
 

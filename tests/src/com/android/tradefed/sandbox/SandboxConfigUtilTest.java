@@ -25,6 +25,7 @@ import com.android.tradefed.util.CommandStatus;
 import com.android.tradefed.util.FileUtil;
 import com.android.tradefed.util.IRunUtil;
 
+import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -38,10 +39,17 @@ import java.io.File;
 public class SandboxConfigUtilTest {
 
     private IRunUtil mMockRunUtil;
+    private File mTmpRootDir;
 
     @Before
-    public void setUp() {
+    public void setUp() throws Exception {
         mMockRunUtil = Mockito.mock(IRunUtil.class);
+        mTmpRootDir = FileUtil.createTempDir("sandbox-config-util-test");
+    }
+
+    @After
+    public void tearDown() {
+        FileUtil.recursiveDelete(mTmpRootDir);
     }
 
     /**
@@ -57,7 +65,7 @@ public class SandboxConfigUtilTest {
         try {
             res =
                     SandboxConfigUtil.dumpConfigForVersion(
-                            new File(""),
+                            mTmpRootDir,
                             mMockRunUtil,
                             new String[] {"empty"},
                             DumpCmd.FULL_XML,
@@ -80,7 +88,7 @@ public class SandboxConfigUtilTest {
         doReturn(result).when(mMockRunUtil).runTimedCmd(Mockito.anyLong(), Mockito.any());
         try {
             SandboxConfigUtil.dumpConfigForVersion(
-                    new File(""), mMockRunUtil, new String[] {"empty"}, DumpCmd.FULL_XML, null);
+                    mTmpRootDir, mMockRunUtil, new String[] {"empty"}, DumpCmd.FULL_XML, null);
             fail("Should have thrown an exception.");
         } catch (ConfigurationException expected) {
             assertEquals("Ouch I failed", expected.getMessage());

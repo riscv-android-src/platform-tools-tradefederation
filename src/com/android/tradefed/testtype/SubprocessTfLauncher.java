@@ -130,13 +130,18 @@ public abstract class SubprocessTfLauncher
         mRunUtil = runUtil;
     }
 
+    /** Returns the {@link IRunUtil} that will be used for the subprocess command. */
+    protected IRunUtil getRunUtil() {
+        return mRunUtil;
+    }
+
     /**
      * Setup before running the test.
      */
     protected void preRun() {
         Assert.assertNotNull(mBuildInfo);
         Assert.assertNotNull(mConfigName);
-        IFolderBuildInfo tfBuild = (IFolderBuildInfo)mBuildInfo;
+        IFolderBuildInfo tfBuild = (IFolderBuildInfo) mBuildInfo;
         mRootDir = tfBuild.getRootDir().getAbsolutePath();
         String jarClasspath = FileUtil.getPath(mRootDir, "*");
 
@@ -156,6 +161,8 @@ public abstract class SubprocessTfLauncher
         if (mRemoteDebug) {
             mCmdArgs.add("-agentlib:jdwp=transport=dt_socket,server=y,suspend=y,address=10088");
         }
+        // FIXME: b/72742216: This prevent the illegal reflective access
+        mCmdArgs.add("--add-opens=java.base/java.nio=ALL-UNNAMED");
         mCmdArgs.add("-cp");
 
         mCmdArgs.add(jarClasspath);

@@ -18,7 +18,6 @@ package com.android.tradefed.testtype.suite;
 import com.android.annotations.VisibleForTesting;
 import com.android.ddmlib.Log.LogLevel;
 import com.android.tradefed.build.IBuildInfo;
-import com.android.tradefed.config.ConfigurationException;
 import com.android.tradefed.config.IConfiguration;
 import com.android.tradefed.config.Option;
 import com.android.tradefed.config.Option.Importance;
@@ -253,13 +252,9 @@ public abstract class ITestSuite
         }
 
         for (Entry<String, IConfiguration> config : runConfig.entrySet()) {
-            if (!ValidateSuiteConfigHelper.validateConfig(config.getValue())) {
-                throw new RuntimeException(
-                        new ConfigurationException(
-                                String.format(
-                                        "Configuration %s cannot be run in a suite.",
-                                        config.getValue().getName())));
-            }
+            // Validate the configuration, it will throw if not valid.
+            ValidateSuiteConfigHelper.validateConfig(config.getValue());
+
             ModuleDefinition module =
                     new ModuleDefinition(
                             config.getKey(),
