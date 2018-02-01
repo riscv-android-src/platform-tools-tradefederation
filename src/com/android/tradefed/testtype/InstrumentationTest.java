@@ -865,27 +865,31 @@ public class InstrumentationTest implements IDeviceTest, IResumableTest, ITestCo
     private void runWithRerun(final ITestInvocationListener listener,
             Collection<TestIdentifier> expectedTests) throws DeviceNotAvailableException {
         CollectingTestListener testTracker = new CollectingTestListener();
-        try {
-            mDevice.runInstrumentationTests(
-                    mRunner,
-                    new ResultForwarder(listener, testTracker) {
-                        @Override
-                        public void testRunStarted(String runName, int testCount) {
-                            // In case of crash, run will attempt to report with 0
-                            if (testCount == 0 && !expectedTests.isEmpty()) {
-                                CLog.e(
-                                        "Run reported 0 tests while we collected %s",
-                                        expectedTests.size());
-                                super.testRunStarted(runName, expectedTests.size());
-                            } else {
-                                super.testRunStarted(runName, testCount);
-                            }
+        mDevice.runInstrumentationTests(
+                mRunner,
+                new ResultForwarder(listener, testTracker) {
+                    @Override
+                    public void testRunStarted(String runName, int testCount) {
+                        // In case of crash, run will attempt to report with 0
+                        if (testCount == 0 && !expectedTests.isEmpty()) {
+                            CLog.e(
+                                    "Run reported 0 tests while we collected %s",
+                                    expectedTests.size());
+                            super.testRunStarted(runName, expectedTests.size());
+                        } else {
+                            super.testRunStarted(runName, testCount);
                         }
-                    });
-        } finally {
-            calculateRemainingTests(expectedTests, testTracker);
+                    }
+                });
+
+        TestRunResult testRun = testTracker.getCurrentRunResults();
+        if (testRun.isRunFailure() || !testRun.getCompletedTests().containsAll(expectedTests)) {
+            // Don't re-run any completed tests, unless this is a coverage run.
+            if (!mCoverage) {
+                expectedTests.removeAll(testTracker.getCurrentRunResults().getCompletedTests());
+            }
+            rerunTests(expectedTests, listener);
         }
-        rerunTests(expectedTests, listener);
     }
 
     /**
@@ -897,21 +901,19 @@ public class InstrumentationTest implements IDeviceTest, IResumableTest, ITestCo
     private void rerunTests(
             Collection<TestIdentifier> expectedTests, final ITestInvocationListener listener)
             throws DeviceNotAvailableException {
-        if (!expectedTests.isEmpty()) {
-            if (mRebootBeforeReRun) {
-                mDevice.reboot();
-            }
-
-            IRemoteTest testReRunner = null;
-            try {
-                testReRunner = getTestReRunner(expectedTests);
-            } catch (ConfigurationException e) {
-                CLog.e("Failed to create test runner: %s", e.getMessage());
-                return;
-            }
-
-            testReRunner.run(listener);
+        if (mRebootBeforeReRun) {
+            mDevice.reboot();
         }
+
+        IRemoteTest testReRunner = null;
+        try {
+            testReRunner = getTestReRunner(expectedTests);
+        } catch (ConfigurationException e) {
+            CLog.e("Failed to create test runner: %s", e.getMessage());
+            return;
+        }
+
+        testReRunner.run(listener);
     }
 
     @VisibleForTesting
@@ -925,17 +927,6 @@ public class InstrumentationTest implements IDeviceTest, IResumableTest, ITestCo
             mInstrArgMap.remove(TEST_FILE_INST_ARGS_KEY);
             return new InstrumentationSerialTest(this, tests);
         }
-    }
-
-    /**
-     * Remove the set of tests collected by testTracker from the set of expectedTests
-     *
-     * @param expectedTests
-     * @param testTracker
-     */
-    private void calculateRemainingTests(Collection<TestIdentifier> expectedTests,
-            CollectingTestListener testTracker) {
-        expectedTests.removeAll(testTracker.getCurrentRunResults().getCompletedTests());
     }
 
     /**
