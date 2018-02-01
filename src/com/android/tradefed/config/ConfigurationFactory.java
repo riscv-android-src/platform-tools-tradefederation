@@ -786,7 +786,7 @@ public class ConfigurationFactory implements IConfigurationFactory {
             } catch (ConfigurationException e) {
                 if (e.getCause() != null &&
                         e.getCause() instanceof ClassNotFoundException) {
-                    ClassNotFoundException cnfe = (ClassNotFoundException)e.getCause();
+                    ClassNotFoundException cnfe = (ClassNotFoundException) e.getCause();
                     String className = cnfe.getLocalizedMessage();
                     // Some Cts configs are shipped with Trade Federation, we exclude those from
                     // the failure since these packages are not available for loading.

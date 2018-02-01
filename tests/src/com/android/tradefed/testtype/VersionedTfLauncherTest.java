@@ -39,6 +39,8 @@ import com.android.tradefed.util.IRunUtil.EnvPriority;
 import org.easymock.EasyMock;
 import org.junit.Before;
 import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.junit.runners.JUnit4;
 
 import java.io.File;
 import java.io.FileOutputStream;
@@ -46,9 +48,8 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 
-/**
- * Unit tests for {@link VersionedTfLauncher}
- */
+/** Unit tests for {@link VersionedTfLauncher}. */
+@RunWith(JUnit4.class)
 public class VersionedTfLauncherTest {
 
     private static final String FAKE_SERIAL = "FAKE_SERIAL";
@@ -119,6 +120,7 @@ public class VersionedTfLauncherTest {
                                 (FileOutputStream) EasyMock.anyObject(),
                                 EasyMock.eq("java"),
                                 (String) EasyMock.anyObject(),
+                                EasyMock.eq("--add-opens=java.base/java.nio=ALL-UNNAMED"),
                                 EasyMock.eq("-cp"),
                                 (String) EasyMock.anyObject(),
                                 EasyMock.eq("com.android.tradefed.command.CommandRunner"),
@@ -178,6 +180,7 @@ public class VersionedTfLauncherTest {
                                 (FileOutputStream) EasyMock.anyObject(),
                                 EasyMock.eq("java"),
                                 (String) EasyMock.anyObject(),
+                                EasyMock.eq("--add-opens=java.base/java.nio=ALL-UNNAMED"),
                                 EasyMock.eq("-cp"),
                                 (String) EasyMock.anyObject(),
                                 EasyMock.eq("com.android.tradefed.command.CommandRunner"),
@@ -228,6 +231,7 @@ public class VersionedTfLauncherTest {
                                 (FileOutputStream) EasyMock.anyObject(),
                                 EasyMock.eq("java"),
                                 (String) EasyMock.anyObject(),
+                                EasyMock.eq("--add-opens=java.base/java.nio=ALL-UNNAMED"),
                                 EasyMock.eq("-cp"),
                                 (String) EasyMock.anyObject(),
                                 EasyMock.eq("com.android.tradefed.command.CommandRunner"),
@@ -298,6 +302,7 @@ public class VersionedTfLauncherTest {
                                 (FileOutputStream) EasyMock.anyObject(),
                                 EasyMock.eq("java"),
                                 (String) EasyMock.anyObject(),
+                                EasyMock.eq("--add-opens=java.base/java.nio=ALL-UNNAMED"),
                                 EasyMock.eq("-cp"),
                                 (String) EasyMock.anyObject(),
                                 EasyMock.eq("com.android.tradefed.command.CommandRunner"),
