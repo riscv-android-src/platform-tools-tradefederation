@@ -136,7 +136,9 @@ public class TradefedSandbox implements ISandbox {
         try {
             mRootFolder =
                     getTradefedSandboxEnvironment(
-                            config, QuotationAwareTokenizer.tokenizeLine(config.getCommandLine()));
+                            context,
+                            config,
+                            QuotationAwareTokenizer.tokenizeLine(config.getCommandLine()));
         } catch (ConfigurationException e) {
             return e;
         }
@@ -171,7 +173,8 @@ public class TradefedSandbox implements ISandbox {
     }
 
     @Override
-    public File getTradefedSandboxEnvironment(IConfiguration nonVersionedConfig, String[] args)
+    public File getTradefedSandboxEnvironment(
+            IInvocationContext context, IConfiguration nonVersionedConfig, String[] args)
             throws ConfigurationException {
         String tfDir = System.getProperty("TF_JAR_DIR");
         if (tfDir == null || tfDir.isEmpty()) {
@@ -183,7 +186,7 @@ public class TradefedSandbox implements ISandbox {
 
     /**
      * Create a classpath based on the environment and the working directory returned by {@link
-     * #getTradefedSandboxEnvironment(IConfiguration, String[])}.
+     * #getTradefedSandboxEnvironment(IInvocationContext, IConfiguration, String[])}.
      *
      * @param workingDir the current working directory for the sandbox.
      * @return The classpath to be use.
