@@ -540,6 +540,15 @@ public class CommandScheduler extends Thread implements ICommandScheduler, IComm
             ITestInvocation instance = getInvocation();
             IConfiguration config = mCmd.getConfiguration();
 
+            for (final IScheduledInvocationListener listener : mListeners) {
+                try {
+                    listener.invocationInitiated(mInvocationContext);
+                } catch (Throwable anyException) {
+                    CLog.e("Exception caught while calling invocationInitiated:");
+                    CLog.e(anyException);
+                }
+            }
+
             try {
                 // Copy the command options invocation attributes to the invocation if it has not
                 // been already done.

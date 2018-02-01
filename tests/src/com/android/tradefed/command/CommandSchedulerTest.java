@@ -316,6 +316,7 @@ public class CommandSchedulerTest extends TestCase {
         EasyMock.expect(mockDevice.getIDevice()).andStubReturn(mockIDevice);
         IScheduledInvocationListener mockListener = EasyMock
                 .createMock(IScheduledInvocationListener.class);
+        mockListener.invocationInitiated((IInvocationContext) EasyMock.anyObject());
         mockListener.invocationComplete((IInvocationContext)EasyMock.anyObject(),
                 (Map<ITestDevice, FreeDeviceState>)EasyMock.anyObject());
         EasyMock.expect(mockDevice.waitForDeviceShell(EasyMock.anyLong())).andReturn(true);
@@ -1037,6 +1038,7 @@ public class CommandSchedulerTest extends TestCase {
                 (IScheduledInvocationListener)EasyMock.anyObject());
         IScheduledInvocationListener mockListener = EasyMock
                 .createMock(IScheduledInvocationListener.class);
+        mockListener.invocationInitiated((IInvocationContext) EasyMock.anyObject());
         mockListener.invocationComplete((IInvocationContext)EasyMock.anyObject(),
                 (Map<ITestDevice, FreeDeviceState>)EasyMock.anyObject());
         replayMocks(mockListener);
@@ -1102,6 +1104,7 @@ public class CommandSchedulerTest extends TestCase {
         EasyMock.expect(mockDevice.getIDevice()).andStubReturn(mockIDevice);
         IScheduledInvocationListener mockListener =
                 EasyMock.createMock(IScheduledInvocationListener.class);
+        mockListener.invocationInitiated((InvocationContext) EasyMock.anyObject());
         mockListener.invocationComplete(
                 (IInvocationContext) EasyMock.anyObject(), EasyMock.anyObject());
         EasyMock.expect(mockDevice.waitForDeviceShell(EasyMock.anyLong())).andReturn(true);
