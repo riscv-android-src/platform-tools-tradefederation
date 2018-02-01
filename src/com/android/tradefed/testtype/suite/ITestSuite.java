@@ -20,6 +20,7 @@ import com.android.ddmlib.Log.LogLevel;
 import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.config.ConfigurationException;
 import com.android.tradefed.config.IConfiguration;
+import com.android.tradefed.config.IDeviceConfiguration;
 import com.android.tradefed.config.Option;
 import com.android.tradefed.config.Option.Importance;
 import com.android.tradefed.config.OptionCopier;
@@ -35,6 +36,7 @@ import com.android.tradefed.result.InputStreamSource;
 import com.android.tradefed.result.LogDataType;
 import com.android.tradefed.suite.checker.ISystemStatusChecker;
 import com.android.tradefed.suite.checker.ISystemStatusCheckerReceiver;
+import com.android.tradefed.targetprep.ITargetPreparer;
 import com.android.tradefed.testtype.Abi;
 import com.android.tradefed.testtype.IAbi;
 import com.android.tradefed.testtype.IBuildReceiver;
@@ -267,12 +269,13 @@ public abstract class ITestSuite
         for (Entry<String, IConfiguration> config : runConfig.entrySet()) {
             // Validate the configuration, it will throw if not valid.
             ValidateSuiteConfigHelper.validateConfig(config.getValue());
-
+            Map<String, List<ITargetPreparer>> preparersPerDevice =
+                    getPreparerPerDevice(config.getValue());
             ModuleDefinition module =
                     new ModuleDefinition(
                             config.getKey(),
                             config.getValue().getTests(),
-                            config.getValue().getTargetPreparers(),
+                            preparersPerDevice,
                             config.getValue().getMultiTargetPreparers(),
                             config.getValue());
             module.setDevice(mDevice);
@@ -299,6 +302,17 @@ public abstract class ITestSuite
                 throw new RuntimeException(ex);
             }
         }
+    }
+
+    /** Create the mapping of device to its target_preparer. */
+    private Map<String, List<ITargetPreparer>> getPreparerPerDevice(IConfiguration config) {
+        Map<String, List<ITargetPreparer>> res = new LinkedHashMap<>();
+        for (IDeviceConfiguration holder : config.getDeviceConfig()) {
+            List<ITargetPreparer> preparers = new ArrayList<>();
+            res.put(holder.getDeviceName(), preparers);
+            preparers.addAll(holder.getTargetPreparers());
+        }
+        return res;
     }
 
     /** Generic run method for all test loaded from {@link #loadTests()}. */

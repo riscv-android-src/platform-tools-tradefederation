@@ -39,12 +39,16 @@ public class ValidateSuiteConfigHelper {
      * @param config a {@link IConfiguration} to be checked if valide for suite.
      */
     public static void validateConfig(IConfiguration config) {
-        if (!config.getBuildProvider().getClass().isAssignableFrom(StubBuildProvider.class)) {
-            throwRuntime(
-                    config,
-                    String.format(
-                            "%s objects are not allowed in module.",
-                            Configuration.BUILD_PROVIDER_TYPE_NAME));
+        if (config.getDeviceConfig().size() < 2) {
+            // Special handling for single device objects.
+            if (!config.getBuildProvider().getClass().isAssignableFrom(StubBuildProvider.class)) {
+                throwRuntime(
+                        config,
+                        String.format(
+                                "%s objects are not allowed in module.",
+                                Configuration.BUILD_PROVIDER_TYPE_NAME));
+            }
+            checkTargetPrep(config, config.getTargetPreparers());
         }
         // if a multi device config is presented, ensure none of the devices define a build_provider
         for (IDeviceConfiguration deviceConfig : config.getDeviceConfig()) {
@@ -58,7 +62,7 @@ public class ValidateSuiteConfigHelper {
                                 "%s objects are not allowed in module.",
                                 Configuration.BUILD_PROVIDER_TYPE_NAME));
             }
-            checkTargetPrep(config, config.getTargetPreparers());
+            checkTargetPrep(config, deviceConfig.getTargetPreparers());
         }
         if (config.getTestInvocationListeners().size() != 1) {
             throwRuntime(
@@ -77,8 +81,7 @@ public class ValidateSuiteConfigHelper {
                             "%s objects are not allowed in module.",
                             Configuration.RESULT_REPORTER_TYPE_NAME));
         }
-        // Check target preparers
-        checkTargetPrep(config, config.getTargetPreparers());
+        // Check multi target preparers
         checkTargetPrep(config, config.getMultiTargetPreparers());
         if (!config.getMetricCollectors().isEmpty()) {
             throwRuntime(
