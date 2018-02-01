@@ -19,6 +19,7 @@ import static com.google.common.truth.Truth.assertThat;
 
 import static org.junit.Assert.fail;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyCollectionOf;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doAnswer;
@@ -214,19 +215,6 @@ public class InstrumentationTestTest {
 
         assertThat(runner.getArgs()).containsEntry("class", testClassName);
         assertThat(runner.getArgs()).doesNotContainKey("package");
-    }
-
-    /** Test that IllegalArgumentException is thrown when attempting run without setting package. */
-    @Test
-    public void testRun_noPackage() throws DeviceNotAvailableException {
-        mInstrumentationTest.setPackageName(null);
-
-        try {
-            mInstrumentationTest.run(mMockListener);
-            fail("IllegalArgumentException not thrown");
-        } catch (IllegalArgumentException e) {
-            // expected
-        }
     }
 
     /** Test that IllegalArgumentException is thrown when attempting run without setting device. */
@@ -562,7 +550,9 @@ public class InstrumentationTestTest {
      */
     @Test
     public void testCollectWorks_RunCrash() throws Exception {
-        doReturn(mock(IRemoteTest.class)).when(mInstrumentationTest).getTestReRunner();
+        doReturn(mock(IRemoteTest.class))
+                .when(mInstrumentationTest)
+                .getTestReRunner(anyCollectionOf(TestIdentifier.class));
 
         // We collect successfully 5 tests
         RunInstrumentationTestsAnswer collected =
