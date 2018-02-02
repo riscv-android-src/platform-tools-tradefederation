@@ -13,10 +13,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+#pylint: disable=too-many-lines
 """
 Command Line Translator for atest.
 """
 
+import copy
 import itertools
 import json
 import logging
@@ -24,7 +26,7 @@ import os
 import re
 import subprocess
 import time
-import xml.etree.ElementTree as ET
+import xml.etree.ElementTree as ElementTree
 from collections import namedtuple
 
 import atest_utils
@@ -76,6 +78,9 @@ class MissingPackageNameError(Exception):
 
 class TooManyMethodsError(Exception):
     """Raised when input string contains more than one # character."""
+
+class FatalIncludeError(SyntaxError):
+    """Raised if expanding include tag fails."""
 
 class Enum(tuple):
     """enum library isn't a Python 2.7 built-in, so roll our own."""
@@ -400,8 +405,7 @@ class CLITranslator(object):
         """
         target_to_add = None
         targets = set()
-        tree = ET.parse(xml_file)
-        root = tree.getroot()
+        root = self._load_xml_file(xml_file)
         option_tags = root.findall('.//option')
         for tag in option_tags:
             name = tag.attrib['name'].strip()
@@ -482,6 +486,53 @@ class CLITranslator(object):
                 '\n\nOnly one class#method combination supported per positional'
                 ' argument. Multiple classes should be separated by spaces: '
                 'class#method class#method')
+
+    def _load_xml_file(self, path):
+        """Load an xml file with option to expand <include> tags
+
+        Args:
+            path: A string of path to xml file.
+
+        Returns:
+            An xml.etree.ElementTree.Element instance of the root of the tree.
+        """
+        tree = ElementTree.parse(path)
+        root = tree.getroot()
+        self._load_include_tags(root)
+        return root
+
+    #pylint: disable=invalid-name
+    def _load_include_tags(self, root):
+        """Recursively expand in-place the <include> tags in a given xml tree.
+
+        Python xml libraries don't support our type of <include> tags. Logic used
+        below is modified version of the built-in ElementInclude logic found here:
+        https://github.com/python/cpython/blob/2.7/Lib/xml/etree/ElementInclude.py
+
+        Args:
+            root: The root xml.etree.ElementTree.Element.
+
+        Returns:
+            An xml.etree.ElementTree.Element instance with include tags expanded
+        """
+        i = 0
+        while i < len(root):
+            elem = root[i]
+            if elem.tag == 'include':
+                # expand included xml file
+                integration_name = elem.get('name')
+                if not integration_name:
+                    logging.warn('skipping <include> tag with no "name" value')
+                    continue
+                full_path = self._search_integration_dirs(integration_name)
+                node = self._load_xml_file(full_path)
+                if node is None:
+                    raise FatalIncludeError("can't load %r" % integration_name)
+                node = copy.copy(node)
+                if elem.tail:
+                    node.tail = (node.tail or "") + elem.tail
+                root[i] = node
+            i = i + 1
 
     def _find_test_by_module_name(self, module_name):
         """Find test for the given module name.
@@ -579,6 +630,18 @@ class CLITranslator(object):
                                              module_info.module_name,
                                              module_info.rel_config)
 
+    def _search_integration_dirs(self, name):
+        """Search integration dirs for name and return full path."""
+        for integration_dir in self.integration_dirs:
+            abs_path = os.path.join(self.root_dir, integration_dir)
+            find_cmd = FIND_CMDS[REFERENCE_TYPE.INTEGRATION] % (abs_path, name)
+            logging.debug('Executing: %s', find_cmd)
+            out = subprocess.check_output(find_cmd, shell=True)
+            logging.debug('Integration - Find Cmd Out: %s', out)
+            test_file = self._extract_test_path(out)
+            if test_file:
+                return test_file
+
     def _find_test_by_integration_name(self, name):
         """Find the test info matching the given integration name.
 
@@ -601,30 +664,24 @@ class CLITranslator(object):
                     return None
                 class_name = self._get_fully_qualified_class_name(path)
             filters = frozenset([TestFilter(class_name, methods)])
-        for integration_dir in self.integration_dirs:
-            abs_path = os.path.join(self.root_dir, integration_dir)
-            find_cmd = FIND_CMDS[REFERENCE_TYPE.INTEGRATION] % (abs_path, name)
-            logging.debug('Executing: %s', find_cmd)
-            out = subprocess.check_output(find_cmd, shell=True)
-            logging.debug('Integration - Find Cmd Out: %s', out)
-            test_file = self._extract_test_path(out)
-            if test_file:
-                # Don't use names that simply match the path,
-                # must be the actual name used by TF to run the test.
-                match = INT_NAME_RE.match(test_file)
-                if not match:
-                    logging.error('Integration test outside config dir: %s',
-                                  test_file)
-                    return None
-                int_name = match.group('int_name')
-                if int_name != name:
-                    logging.warn('Input (%s) not valid integration name, '
-                                 'did you mean: %s?', name, int_name)
-                    return None
-                rel_config = os.path.relpath(test_file, self.root_dir)
-                return TestInfo(
-                    rel_config, None, name, filters,
-                    atest_tf_test_runner.AtestTradefedTestRunner.NAME)
+        test_file = self._search_integration_dirs(name)
+        if test_file:
+            # Don't use names that simply match the path,
+            # must be the actual name used by TF to run the test.
+            match = INT_NAME_RE.match(test_file)
+            if not match:
+                logging.error('Integration test outside config dir: %s',
+                              test_file)
+                return None
+            int_name = match.group('int_name')
+            if int_name != name:
+                logging.warn('Input (%s) not valid integration name, '
+                             'did you mean: %s?', name, int_name)
+                return None
+            rel_config = os.path.relpath(test_file, self.root_dir)
+            return TestInfo(
+                rel_config, None, name, filters,
+                atest_tf_test_runner.AtestTradefedTestRunner.NAME)
         return None
 
     def _find_tests_by_test_mapping(self, path='', file_name=TEST_MAPPING):
