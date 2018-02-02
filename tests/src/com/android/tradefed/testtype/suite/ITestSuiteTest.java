@@ -42,6 +42,7 @@ import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.InputStreamSource;
 import com.android.tradefed.result.LogDataType;
 import com.android.tradefed.suite.checker.ISystemStatusChecker;
+import com.android.tradefed.suite.checker.KeyguardStatusChecker;
 import com.android.tradefed.testtype.IAbi;
 import com.android.tradefed.testtype.IRemoteTest;
 import com.android.tradefed.testtype.StubTest;
@@ -65,9 +66,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-/**
- * Unit tests for {@link ITestSuite}
- */
+/** Unit tests for {@link ITestSuite}. */
 @RunWith(JUnit4.class)
 public class ITestSuiteTest {
 
@@ -853,5 +852,45 @@ public class ITestSuiteTest {
         verifyMocks();
         assertEquals("value1", c.getValue().get("metric1"));
         assertEquals("value2", c.getValue().get("metric2"));
+    }
+
+    /**
+     * If a non-existing {@link ISystemStatusChecker} is specified to be skipped. Throw from the
+     * very beginning as it's not going to work.
+     */
+    @Test
+    public void testStatusChecker_doesNotExist() throws Exception {
+        OptionSetter setter = new OptionSetter(mTestSuite);
+        setter.setOptionValue(ITestSuite.SKIP_SYSTEM_STATUS_CHECKER, "com.i.dont.exist.Checker");
+        try {
+            mTestSuite.run(mMockListener);
+            fail("Should have thrown an exception.");
+        } catch (RuntimeException expected) {
+            assertTrue(expected.getCause() instanceof ConfigurationException);
+        }
+    }
+
+    /**
+     * Test for {@link ITestSuite#run(ITestInvocationListener)} when only one of the module checkers
+     * is skipped.
+     */
+    @Test
+    public void testRun_SkipOneModuleChecker() throws Exception {
+        OptionSetter setter = new OptionSetter(mTestSuite);
+        setter.setOptionValue(
+                ITestSuite.SKIP_SYSTEM_STATUS_CHECKER, KeyguardStatusChecker.class.getName());
+        List<ISystemStatusChecker> sysChecker = new ArrayList<ISystemStatusChecker>();
+        sysChecker.add(mMockSysChecker);
+        // getKeyguardState is never called because it is skipped.
+        sysChecker.add(new KeyguardStatusChecker());
+        mTestSuite.setSystemStatusChecker(sysChecker);
+        EasyMock.expect(mMockSysChecker.preExecutionCheck(EasyMock.eq(mMockDevice)))
+                .andReturn(true);
+        EasyMock.expect(mMockSysChecker.postExecutionCheck(EasyMock.eq(mMockDevice)))
+                .andReturn(true);
+        expectTestRun(mMockListener);
+        replayMocks();
+        mTestSuite.run(mMockListener);
+        verifyMocks();
     }
 }
