@@ -24,6 +24,8 @@ import com.android.tradefed.config.ConfigurationException;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.result.ITestInvocationListener;
+import com.android.tradefed.result.ITestLifeCycleReceiver;
+import com.android.tradefed.result.ddmlib.TestRunToTestInvocationForwarder;
 
 import junit.framework.TestCase;
 
@@ -542,7 +544,9 @@ public class InstrumentationFileTestTest extends TestCase {
         @Override
         public Boolean answer() throws Throwable {
             Object[] args = EasyMock.getCurrentArguments();
-            return answer((IRemoteAndroidTestRunner) args[0], (ITestRunListener) args[1]);
+            return answer(
+                    (IRemoteAndroidTestRunner) args[0],
+                    new TestRunToTestInvocationForwarder((ITestLifeCycleReceiver) args[1]));
         }
 
         public abstract Boolean answer(IRemoteAndroidTestRunner runner,
@@ -552,8 +556,10 @@ public class InstrumentationFileTestTest extends TestCase {
     private void setRunTestExpectations(RunTestAnswer runTestResponse)
             throws DeviceNotAvailableException {
 
-        EasyMock.expect(mMockTestDevice
-                .runInstrumentationTests((IRemoteAndroidTestRunner) EasyMock.anyObject(),
-                        (ITestRunListener) EasyMock.anyObject())).andAnswer(runTestResponse);
+        EasyMock.expect(
+                        mMockTestDevice.runInstrumentationTests(
+                                (IRemoteAndroidTestRunner) EasyMock.anyObject(),
+                                (ITestLifeCycleReceiver) EasyMock.anyObject()))
+                .andAnswer(runTestResponse);
     }
 }

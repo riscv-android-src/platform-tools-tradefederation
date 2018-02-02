@@ -39,9 +39,11 @@ import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.log.ITestLogger;
 import com.android.tradefed.result.ITestInvocationListener;
+import com.android.tradefed.result.ITestLifeCycleReceiver;
 import com.android.tradefed.result.InputStreamSource;
 import com.android.tradefed.result.LogDataType;
 import com.android.tradefed.result.TestRunResult;
+import com.android.tradefed.result.ddmlib.TestRunToTestInvocationForwarder;
 import com.android.tradefed.util.ICompressionStrategy;
 import com.android.tradefed.util.ListInstrumentationParser;
 import com.android.tradefed.util.ListInstrumentationParser.InstrumentationTarget;
@@ -142,7 +144,7 @@ public class CodeCoverageTestBaseTest {
         doAnswer(CALL_RUNNER)
                 .when(mDevice)
                 .runInstrumentationTests(
-                        any(IRemoteAndroidTestRunner.class), any(ITestRunListener.class));
+                        any(IRemoteAndroidTestRunner.class), any(ITestLifeCycleReceiver.class));
         mCoverageTest = new CodeCoverageTestStub();
     }
 
@@ -843,7 +845,10 @@ public class CodeCoverageTestBaseTest {
     private static final Answer<Void> CALL_RUNNER =
             invocation -> {
                 Object[] args = invocation.getArguments();
-                ((IRemoteAndroidTestRunner) args[0]).run((ITestRunListener) args[1]);
+                ((IRemoteAndroidTestRunner) args[0])
+                        .run(
+                                new TestRunToTestInvocationForwarder(
+                                        (ITestLifeCycleReceiver) args[1]));
                 return null;
             };
 

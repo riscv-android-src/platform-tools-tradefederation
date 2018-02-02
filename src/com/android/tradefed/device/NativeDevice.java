@@ -39,10 +39,12 @@ import com.android.tradefed.log.ITestLogger;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.result.ByteArrayInputStreamSource;
 import com.android.tradefed.result.FileInputStreamSource;
+import com.android.tradefed.result.ITestLifeCycleReceiver;
 import com.android.tradefed.result.InputStreamSource;
 import com.android.tradefed.result.LogDataType;
 import com.android.tradefed.result.SnapshotInputStreamSource;
 import com.android.tradefed.result.StubTestRunListener;
+import com.android.tradefed.result.ddmlib.TestRunToTestInvocationForwarder;
 import com.android.tradefed.targetprep.TargetSetupError;
 import com.android.tradefed.util.ArrayUtil;
 import com.android.tradefed.util.Bugreport;
@@ -639,23 +641,28 @@ public class NativeDevice implements IManagedTestDevice {
         return output;
     }
 
-    /**
-     * {@inheritDoc}
-     */
+    /** {@inheritDoc} */
     @Override
-    public boolean runInstrumentationTests(final IRemoteAndroidTestRunner runner,
-            final Collection<ITestRunListener> listeners) throws DeviceNotAvailableException {
+    public boolean runInstrumentationTests(
+            final IRemoteAndroidTestRunner runner,
+            final Collection<ITestLifeCycleReceiver> listeners)
+            throws DeviceNotAvailableException {
         RunFailureListener failureListener = new RunFailureListener();
-        listeners.add(failureListener);
-        DeviceAction runTestsAction = new DeviceAction() {
-            @Override
-            public boolean run() throws IOException, TimeoutException, AdbCommandRejectedException,
-                    ShellCommandUnresponsiveException, InstallException, SyncException {
-                runner.run(listeners);
-                return true;
-            }
+        List<ITestRunListener> runListeners = new ArrayList<>();
+        runListeners.add(failureListener);
+        runListeners.add(new TestRunToTestInvocationForwarder(listeners));
 
-        };
+        DeviceAction runTestsAction =
+                new DeviceAction() {
+                    @Override
+                    public boolean run()
+                            throws IOException, TimeoutException, AdbCommandRejectedException,
+                                    ShellCommandUnresponsiveException, InstallException,
+                                    SyncException {
+                        runner.run(runListeners);
+                        return true;
+                    }
+                };
         boolean result = performDeviceAction(String.format("run %s instrumentation tests",
                 runner.getPackageName()), runTestsAction, 0);
         if (failureListener.isRunFailure()) {
@@ -668,13 +675,13 @@ public class NativeDevice implements IManagedTestDevice {
         return result;
     }
 
-    /**
-     * {@inheritDoc}
-     */
+    /** {@inheritDoc} */
     @Override
-    public boolean runInstrumentationTestsAsUser(final IRemoteAndroidTestRunner runner,
-            int userId, final Collection<ITestRunListener> listeners)
-                    throws DeviceNotAvailableException {
+    public boolean runInstrumentationTestsAsUser(
+            final IRemoteAndroidTestRunner runner,
+            int userId,
+            final Collection<ITestLifeCycleReceiver> listeners)
+            throws DeviceNotAvailableException {
         String oldRunTimeOptions = appendUserRunTimeOptionToRunner(runner, userId);
         boolean result = runInstrumentationTests(runner, listeners);
         resetUserRunTimeOptionToRunner(runner, oldRunTimeOptions);
@@ -731,23 +738,21 @@ public class NativeDevice implements IManagedTestDevice {
         }
     }
 
-    /**
-     * {@inheritDoc}
-     */
+    /** {@inheritDoc} */
     @Override
-    public boolean runInstrumentationTests(IRemoteAndroidTestRunner runner,
-            ITestRunListener... listeners) throws DeviceNotAvailableException {
-        List<ITestRunListener> listenerList = new ArrayList<>();
+    public boolean runInstrumentationTests(
+            IRemoteAndroidTestRunner runner, ITestLifeCycleReceiver... listeners)
+            throws DeviceNotAvailableException {
+        List<ITestLifeCycleReceiver> listenerList = new ArrayList<>();
         listenerList.addAll(Arrays.asList(listeners));
         return runInstrumentationTests(runner, listenerList);
     }
 
-    /**
-     * {@inheritDoc}
-     */
+    /** {@inheritDoc} */
     @Override
-    public boolean runInstrumentationTestsAsUser(IRemoteAndroidTestRunner runner, int userId,
-            ITestRunListener... listeners) throws DeviceNotAvailableException {
+    public boolean runInstrumentationTestsAsUser(
+            IRemoteAndroidTestRunner runner, int userId, ITestLifeCycleReceiver... listeners)
+            throws DeviceNotAvailableException {
         String oldRunTimeOptions = appendUserRunTimeOptionToRunner(runner, userId);
         boolean result = runInstrumentationTests(runner, listeners);
         resetUserRunTimeOptionToRunner(runner, oldRunTimeOptions);

@@ -32,6 +32,7 @@ import com.android.tradefed.host.HostOptions;
 import com.android.tradefed.host.IHostOptions;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.result.ByteArrayInputStreamSource;
+import com.android.tradefed.result.ITestLifeCycleReceiver;
 import com.android.tradefed.result.InputStreamSource;
 import com.android.tradefed.util.ArrayUtil;
 import com.android.tradefed.util.CommandResult;
@@ -839,10 +840,11 @@ public class TestDeviceTest extends TestCase {
     public void testRunInstrumentationTests() throws Exception {
         IRemoteAndroidTestRunner mockRunner = EasyMock.createMock(IRemoteAndroidTestRunner.class);
         EasyMock.expect(mockRunner.getPackageName()).andStubReturn("com.example");
-        Collection<ITestRunListener> listeners = new ArrayList<ITestRunListener>(0);
+        Collection<ITestLifeCycleReceiver> listeners = new ArrayList<>(0);
         mockRunner.setMaxTimeToOutputResponse(EasyMock.anyLong(), (TimeUnit)EasyMock.anyObject());
         // expect runner.run command to be called
-        mockRunner.run(listeners);
+        Collection<ITestRunListener> expectedMock = EasyMock.anyObject();
+        mockRunner.run(expectedMock);
         EasyMock.replay(mockRunner);
         mTestDevice.runInstrumentationTests(mockRunner, listeners);
     }
@@ -853,11 +855,12 @@ public class TestDeviceTest extends TestCase {
      */
     public void testRunInstrumentationTests_recoveryFails() throws Exception {
         IRemoteAndroidTestRunner mockRunner = EasyMock.createMock(IRemoteAndroidTestRunner.class);
-        Collection<ITestRunListener> listeners = new ArrayList<ITestRunListener>(1);
-        ITestRunListener listener = EasyMock.createMock(ITestRunListener.class);
+        Collection<ITestLifeCycleReceiver> listeners = new ArrayList<>(1);
+        ITestLifeCycleReceiver listener = EasyMock.createMock(ITestLifeCycleReceiver.class);
         listeners.add(listener);
         mockRunner.setMaxTimeToOutputResponse(EasyMock.anyLong(), (TimeUnit)EasyMock.anyObject());
-        mockRunner.run(listeners);
+        Collection<ITestRunListener> expectedMock = EasyMock.anyObject();
+        mockRunner.run(expectedMock);
         EasyMock.expectLastCall().andThrow(new IOException());
         EasyMock.expect(mockRunner.getPackageName()).andReturn("foo");
         listener.testRunFailed((String)EasyMock.anyObject());
@@ -878,11 +881,12 @@ public class TestDeviceTest extends TestCase {
      */
     public void testRunInstrumentationTests_recoverySucceeds() throws Exception {
         IRemoteAndroidTestRunner mockRunner = EasyMock.createMock(IRemoteAndroidTestRunner.class);
-        Collection<ITestRunListener> listeners = new ArrayList<ITestRunListener>(1);
-        ITestRunListener listener = EasyMock.createMock(ITestRunListener.class);
+        Collection<ITestLifeCycleReceiver> listeners = new ArrayList<>(1);
+        ITestLifeCycleReceiver listener = EasyMock.createMock(ITestLifeCycleReceiver.class);
         listeners.add(listener);
         mockRunner.setMaxTimeToOutputResponse(EasyMock.anyLong(), (TimeUnit)EasyMock.anyObject());
-        mockRunner.run(listeners);
+        Collection<ITestRunListener> expectedMock = EasyMock.anyObject();
+        mockRunner.run(expectedMock);
         EasyMock.expectLastCall().andThrow(new IOException());
         EasyMock.expect(mockRunner.getPackageName()).andReturn("foo");
         listener.testRunFailed((String)EasyMock.anyObject());
@@ -2019,7 +2023,7 @@ public class TestDeviceTest extends TestCase {
     public void testrunInstrumentationTestsAsUser_failed() throws Exception {
         IRemoteAndroidTestRunner mockRunner = EasyMock.createMock(IRemoteAndroidTestRunner.class);
         EasyMock.expect(mockRunner.getPackageName()).andStubReturn("com.example");
-        Collection<ITestRunListener> listeners = new ArrayList<ITestRunListener>();
+        Collection<ITestLifeCycleReceiver> listeners = new ArrayList<>();
         EasyMock.replay(mockRunner);
         try {
             mTestDevice.runInstrumentationTestsAsUser(mockRunner, 12, listeners);
