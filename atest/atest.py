@@ -40,11 +40,6 @@ EXPECTED_VARS = frozenset([
     atest_utils.ANDROID_BUILD_TOP,
     'ANDROID_TARGET_OUT_TESTCASES',
     'OUT'])
-EXIT_CODE_SUCCESS = 0
-EXIT_CODE_ENV_NOT_SETUP = 1
-EXIT_CODE_BUILD_FAILURE = 2
-EXIT_CODE_ERROR = 3
-EXIT_CODE_TEST_NOT_FOUND = 4
 BUILD_STEP = 'build'
 INSTALL_STEP = 'install'
 TEST_STEP = 'test'
@@ -319,10 +314,10 @@ def main(argv):
     args = _parse_args(argv)
     _configure_logging(args.verbose)
     if _missing_environment_variables():
-        return EXIT_CODE_ENV_NOT_SETUP
+        return constants.EXIT_CODE_ENV_NOT_SETUP
     if args.generate_baseline and args.generate_new_metrics:
         logging.error('Cannot collect both baseline and new metrics at the same time.')
-        return EXIT_CODE_ERROR
+        return constants.EXIT_CODE_ERROR
     repo_root = os.environ.get(atest_utils.ANDROID_BUILD_TOP)
     results_dir = make_test_run_dir()
     translator = cli_translator.CLITranslator(
@@ -335,7 +330,7 @@ def main(argv):
         logging.info('This can happen after a repo sync or if the test is '
                      'new. Running: with "%s"  may resolve the issue.',
                      REBUILD_MODULE_INFO_FLAG)
-        return EXIT_CODE_TEST_NOT_FOUND
+        return constants.EXIT_CODE_TEST_NOT_FOUND
     build_targets |= test_runner_handler.get_test_runner_reqs(test_infos)
     extra_args = get_extra_args(args)
     # args.steps will be None if none of -bit set, else list of params set.
@@ -343,14 +338,14 @@ def main(argv):
     if BUILD_STEP in steps:
         success = atest_utils.build(build_targets, args.verbose)
         if not success:
-            return EXIT_CODE_BUILD_FAILURE
+            return constants.EXIT_CODE_BUILD_FAILURE
     elif TEST_STEP not in steps:
         logging.warn('Install step without test step currently not '
                      'supported, installing AND testing instead.')
         steps.append(TEST_STEP)
     if TEST_STEP in steps:
         test_runner_handler.run_all_tests(results_dir, test_infos, extra_args)
-    return EXIT_CODE_SUCCESS
+    return constants.EXIT_CODE_SUCCESS
 
 if __name__ == '__main__':
     sys.exit(main(sys.argv[1:]))
