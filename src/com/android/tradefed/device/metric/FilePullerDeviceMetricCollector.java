@@ -19,8 +19,10 @@ import com.android.tradefed.config.Option;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.log.LogUtil.CLog;
+import com.android.tradefed.util.FileUtil;
 
 import java.io.File;
+import java.io.IOException;
 import java.util.AbstractMap.SimpleEntry;
 import java.util.ArrayList;
 import java.util.List;
@@ -39,6 +41,12 @@ public abstract class FilePullerDeviceMetricCollector extends BaseDeviceMetricCo
         description = "The pattern key name to be pull from the device as a file. Can be repeated."
     )
     private List<String> mKeys = new ArrayList<>();
+
+    @Option(
+        name = "directory-keys",
+        description = "Path to the directory on the device that contains the metrics."
+        )
+    protected List<String> mDirectoryKeys = new ArrayList<>();
 
     @Option(
         name = "clean-up",
@@ -67,8 +75,19 @@ public abstract class FilePullerDeviceMetricCollector extends BaseDeviceMetricCo
      */
     public abstract void processMetricFile(String key, File metricFile, DeviceMetricData runData);
 
+    /**
+     * Implementation of the method should allow to log the directory, parse it for metrics
+     * to be put in
+     * {@link DeviceMetricData}.
+     *
+     * @param key the option key associated to the directory that was pulled.
+     * @param metricDirectoy the {@link File} pulled from the device matching the option key.
+     * @param runData the run {@link DeviceMetricData} where metrics can be stored.
+     */
+    public abstract void processMetricDirectory(String key, File metricDirectory, DeviceMetricData runData);
+
     private void processMetricRequest(DeviceMetricData data, Map<String, String> currentMetrics) {
-        if (mKeys.isEmpty()) {
+        if (mKeys.isEmpty() && mDirectoryKeys.isEmpty()) {
             return;
         }
         for (String key : mKeys) {
@@ -77,6 +96,14 @@ public abstract class FilePullerDeviceMetricCollector extends BaseDeviceMetricCo
                 processMetricFile(pulledMetrics.getKey(), pulledMetrics.getValue(), data);
             }
         }
+
+        for (String key : mDirectoryKeys) {
+            Entry<String, File> pulledMetrics = pullMetricDirectory(key);
+            if (pulledMetrics != null) {
+                processMetricDirectory(pulledMetrics.getKey(), pulledMetrics.getValue(), data);
+            }
+        }
+
     }
 
     private Entry<String, File> pullMetricFile(
@@ -107,4 +134,40 @@ public abstract class FilePullerDeviceMetricCollector extends BaseDeviceMetricCo
         CLog.e("Could not find a device file associated to pattern '%s'.", pattern);
         return null;
     }
+
+    /**
+     * Pulls the directory and all its content from the device and save it in the
+     * host under the host_tmp folder.
+     *
+     * @param keyDirectory path to the source directory in the device.
+     * @return Key,value pair of the directory name and path to the directory in the
+     * local host.
+     */
+    private Entry<String, File> pullMetricDirectory(String keyDirectory) {
+        try {
+            File tmpDestDir = FileUtil.createTempDir("host_tmp");
+            for (ITestDevice device : getDevices()) {
+                try {
+                    if (device.pullDir(keyDirectory, tmpDestDir)) {
+                        if (mCleanUp) {
+                            device.executeShellCommand(
+                                    String.format("rm -rf %s", keyDirectory));
+                        }
+                        return new SimpleEntry<String, File>(keyDirectory, tmpDestDir);
+                    }
+                } catch (DeviceNotAvailableException e) {
+                    CLog.e(
+                            "Exception when pulling directory '%s' from %s",
+                            keyDirectory, device.getSerialNumber());
+                    CLog.e(e);
+                }
+            }
+        } catch (IOException ioe) {
+            CLog.e("Exception while creating the local directory");
+            CLog.e(ioe);
+        }
+        CLog.e("Could not find a device directory associated to path '%s'.", keyDirectory);
+        return null;
+    }
+
 }

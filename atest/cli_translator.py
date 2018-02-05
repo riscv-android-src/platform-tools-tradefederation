@@ -23,11 +23,13 @@ import logging
 import os
 import re
 import subprocess
+import sys
 import time
 import xml.etree.ElementTree as ET
 from collections import namedtuple
 
 import atest_utils
+import constants
 from test_runners import atest_tf_test_runner
 
 RUN_CMD = ('atest_tradefed.sh run commandAndExit %s --template:map '
@@ -926,9 +928,11 @@ class CLITranslator(object):
         if not tests:
             test_infos = self._find_tests_by_test_mapping()
             if not test_infos:
-                raise NoTestFoundError(
-                    'Failed to find TEST_MAPPING at %s or its parent '
-                    'directories.' % os.path.realpath(''))
+                logging.warn(
+                    'No TEST_MAPPING found at %s or its parent directories.\n'
+                    'You might be missing test arguments, try `atest --help` '
+                    'for more information', os.path.realpath(''))
+                sys.exit(constants.EXIT_CODE_TEST_NOT_FOUND)
         else:
             for test in tests:
                 possible_reference_types = self._get_test_reference_types(test)

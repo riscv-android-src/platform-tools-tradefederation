@@ -35,16 +35,12 @@ import cli_translator
 # pylint: disable=import-error
 import constants
 import test_runner_handler
+from test_runners import regression_test_runner
 
 EXPECTED_VARS = frozenset([
     atest_utils.ANDROID_BUILD_TOP,
     'ANDROID_TARGET_OUT_TESTCASES',
     'OUT'])
-EXIT_CODE_SUCCESS = 0
-EXIT_CODE_ENV_NOT_SETUP = 1
-EXIT_CODE_BUILD_FAILURE = 2
-EXIT_CODE_ERROR = 3
-EXIT_CODE_TEST_NOT_FOUND = 4
 BUILD_STEP = 'build'
 INSTALL_STEP = 'install'
 TEST_STEP = 'test'
@@ -193,6 +189,40 @@ RUNNING MULTIPLE CLASSES
         atest FrameworksServicesTests:ScreenDecorWindowTests CtsJankDeviceTestCases:CtsDeviceJankUi
 
 
+- - - - - - - - - - -
+REGRESSION DETECTION
+- - - - - - - - - - -
+
+    Generate pre-patch or post-patch metrics without running regression detection:
+
+    Example:
+        atest <test> --generate-baseline <optional iter>
+        atest <test> --generate-new-metrics <optional iter>
+
+    Local regression detection can be run in three options:
+
+    1) Provide a folder containing baseline (pre-patch) metrics (generated previously). Atest will
+       run the tests n (default 5) iterations, generate a new set of post-patch metrics, and
+       compare those against existing metrics.
+
+    Example:
+        atest <test> --detect-regression </path/to/baseline> --generate-new-metrics <optional iter>
+
+    2) Provide a folder containing post-patch metrics (generated previously). Atest will run the
+       tests n (default 5) iterations, generate a new set of pre-patch metrics, and compare those
+       against those provided. Note: the developer needs to revert the device/tests to pre-patch
+       state to generate baseline metrics.
+
+    Example:
+        atest <test> --detect-regression </path/to/new> --generate-baseline <optional iter>
+
+    3) Provide 2 folders containing both pre-patch and post-patch metrics. Atest will run no tests
+       but the regression detection algorithm.
+
+    Example:
+        atest --detect-regression </path/to/baseline> </path/to/new>
+
+
 '''
 
 
@@ -232,6 +262,9 @@ def _parse_args(argv):
     parser.add_argument('--generate-new-metrics', nargs='?', type=int, const=5, default=0,
                         help='Generate new metrics, run 5 iterations by default. '
                              'Provide an int argument to specify # iterations.')
+    parser.add_argument('--detect-regression', nargs='*',
+                        help='Run regression detection algorithm. Supply '
+                             'path to baseline and/or new metrics folders.')
     return parser.parse_args(argv)
 
 
@@ -301,10 +334,81 @@ def get_extra_args(args):
     if INSTALL_STEP not in steps:
         extra_args[constants.DISABLE_INSTALL] = None
     if args.generate_baseline:
-        extra_args[constants.ITERATIONS] = args.generate_baseline
+        extra_args[constants.PRE_PATCH_ITERATIONS] = args.generate_baseline
     if args.generate_new_metrics:
-        extra_args[constants.ITERATIONS] = args.generate_new_metrics
+        extra_args[constants.POST_PATCH_ITERATIONS] = args.generate_new_metrics
     return extra_args
+
+
+def _get_regression_detection_args(args, results_dir):
+    """Get args for regression detection test runners.
+
+    Args:
+        args: parsed args object.
+        results_dir: string directory to store atest results.
+
+    Returns:
+        Dict of args for regression detection test runner to utilize.
+    """
+    regression_args = {}
+    pre_patch_folder = (os.path.join(results_dir, 'baseline-metrics') if args.generate_baseline
+                        else args.detect_regression.pop(0))
+    post_patch_folder = (os.path.join(results_dir, 'new-metrics') if args.generate_new_metrics
+                         else args.detect_regression.pop(0))
+    regression_args[constants.PRE_PATCH_FOLDER] = pre_patch_folder
+    regression_args[constants.POST_PATCH_FOLDER] = post_patch_folder
+    return regression_args
+
+
+def _will_run_tests(args):
+    """Determine if there are tests to run.
+
+    Currently only used by detect_regression to skip the test if just running regression detection.
+
+    Args:
+        args: parsed args object.
+
+    Returns:
+        True if there are tests to run, false otherwise.
+    """
+    return not (args.detect_regression and len(args.detect_regression) == 2)
+
+
+def _has_valid_regression_detection_args(args):
+    """Validate regression detection args.
+
+    Args:
+        args: parsed args object.
+
+    Returns:
+        True if args are valid
+    """
+    if args.generate_baseline and args.generate_new_metrics:
+        logging.error('Cannot collect both baseline and new metrics at the same time.')
+        return False
+    if args.detect_regression is not None:
+        if not args.detect_regression:
+            logging.error('Need to specify at least 1 arg for regression detection.')
+            return False
+        elif len(args.detect_regression) == 1:
+            if args.generate_baseline or args.generate_new_metrics:
+                return True
+            logging.error('Need to specify --generate-baseline or --generate-new-metrics.')
+            return False
+        elif len(args.detect_regression) == 2:
+            if args.generate_baseline:
+                logging.error('Specified 2 metric paths and --generate-baseline, '
+                              'either drop --generate-baseline or drop a path')
+                return False
+            if args.generate_new_metrics:
+                logging.error('Specified 2 metric paths and --generate-new-metrics, '
+                              'either drop --generate-new-metrics or drop a path')
+                return False
+            return True
+        else:
+            logging.error('Specified more than 2 metric paths.')
+            return False
+    return True
 
 
 def main(argv):
@@ -319,38 +423,49 @@ def main(argv):
     args = _parse_args(argv)
     _configure_logging(args.verbose)
     if _missing_environment_variables():
-        return EXIT_CODE_ENV_NOT_SETUP
+        return constants.EXIT_CODE_ENV_NOT_SETUP
     if args.generate_baseline and args.generate_new_metrics:
         logging.error('Cannot collect both baseline and new metrics at the same time.')
-        return EXIT_CODE_ERROR
+        return constants.EXIT_CODE_ERROR
+    if not _has_valid_regression_detection_args(args):
+        return constants.EXIT_CODE_ERROR
     repo_root = os.environ.get(atest_utils.ANDROID_BUILD_TOP)
     results_dir = make_test_run_dir()
     translator = cli_translator.CLITranslator(
         results_dir=results_dir, root_dir=repo_root,
         force_init=args.rebuild_module_info)
-    try:
-        build_targets, test_infos = translator.translate(args.tests)
-    except cli_translator.TestDiscoveryException:
-        logging.exception('Error occured in test discovery:')
-        logging.info('This can happen after a repo sync or if the test is '
-                     'new. Running: with "%s"  may resolve the issue.',
-                     REBUILD_MODULE_INFO_FLAG)
-        return EXIT_CODE_TEST_NOT_FOUND
+    build_targets = set()
+    test_infos = set()
+    if _will_run_tests(args):
+        try:
+            build_targets, test_infos = translator.translate(args.tests)
+        except cli_translator.TestDiscoveryException:
+            logging.exception('Error occured in test discovery:')
+            logging.info('This can happen after a repo sync or if the test is '
+                         'new. Running: with "%s"  may resolve the issue.',
+                         REBUILD_MODULE_INFO_FLAG)
+            return constants.EXIT_CODE_TEST_NOT_FOUND
     build_targets |= test_runner_handler.get_test_runner_reqs(test_infos)
     extra_args = get_extra_args(args)
+    if args.detect_regression:
+        build_targets |= (regression_test_runner.RegressionTestRunner('')
+                          .get_test_runner_build_reqs())
     # args.steps will be None if none of -bit set, else list of params set.
     steps = args.steps if args.steps else ALL_STEPS
     if BUILD_STEP in steps:
         success = atest_utils.build(build_targets, args.verbose)
         if not success:
-            return EXIT_CODE_BUILD_FAILURE
+            return constants.EXIT_CODE_BUILD_FAILURE
     elif TEST_STEP not in steps:
         logging.warn('Install step without test step currently not '
                      'supported, installing AND testing instead.')
         steps.append(TEST_STEP)
     if TEST_STEP in steps:
         test_runner_handler.run_all_tests(results_dir, test_infos, extra_args)
-    return EXIT_CODE_SUCCESS
+    if args.detect_regression:
+        regression_args = _get_regression_detection_args(args, results_dir)
+        regression_test_runner.RegressionTestRunner('').run_tests(None, regression_args)
+    return constants.EXIT_CODE_SUCCESS
 
 if __name__ == '__main__':
     sys.exit(main(sys.argv[1:]))
