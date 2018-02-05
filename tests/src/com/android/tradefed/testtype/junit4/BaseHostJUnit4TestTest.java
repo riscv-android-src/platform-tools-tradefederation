@@ -18,7 +18,6 @@ package com.android.tradefed.testtype.junit4;
 import static org.junit.Assert.fail;
 
 import com.android.ddmlib.testrunner.IRemoteAndroidTestRunner;
-import com.android.ddmlib.testrunner.ITestRunListener;
 import com.android.ddmlib.testrunner.TestIdentifier;
 import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.config.OptionSetter;
@@ -117,7 +116,7 @@ public class BaseHostJUnit4TestTest {
         EasyMock.expect(
                         mMockDevice.runInstrumentationTests(
                                 (IRemoteAndroidTestRunner) EasyMock.anyObject(),
-                                (ITestRunListener) EasyMock.anyObject()))
+                                (ITestInvocationListener) EasyMock.anyObject()))
                 .andReturn(true);
         EasyMock.replay(mMockBuild, mMockDevice, mMockContext);
         try {
@@ -144,7 +143,7 @@ public class BaseHostJUnit4TestTest {
                         mMockDevice.runInstrumentationTestsAsUser(
                                 (IRemoteAndroidTestRunner) EasyMock.anyObject(),
                                 EasyMock.eq(0),
-                                (ITestRunListener) EasyMock.anyObject()))
+                                (ITestInvocationListener) EasyMock.anyObject()))
                 .andReturn(true);
         EasyMock.replay(mMockBuild, mMockDevice, mMockContext);
         try {
@@ -170,7 +169,7 @@ public class BaseHostJUnit4TestTest {
         EasyMock.expect(
                         mMockDevice.runInstrumentationTests(
                                 (IRemoteAndroidTestRunner) EasyMock.anyObject(),
-                                (ITestRunListener) EasyMock.anyObject()))
+                                (ITestInvocationListener) EasyMock.anyObject()))
                 .andReturn(true);
         EasyMock.replay(mMockBuild, mMockDevice, mMockContext);
         try {
