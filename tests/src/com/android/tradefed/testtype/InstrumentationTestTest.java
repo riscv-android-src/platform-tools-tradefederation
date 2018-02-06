@@ -30,7 +30,6 @@ import static org.mockito.Mockito.verify;
 
 import com.android.ddmlib.IDevice;
 import com.android.ddmlib.testrunner.IRemoteAndroidTestRunner;
-import com.android.ddmlib.testrunner.ITestRunListener;
 import com.android.ddmlib.testrunner.InstrumentationResultParser;
 import com.android.ddmlib.testrunner.RemoteAndroidTestRunner;
 import com.android.ddmlib.testrunner.TestIdentifier;
@@ -38,6 +37,7 @@ import com.android.tradefed.config.ConfigurationException;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.result.ITestInvocationListener;
+import com.android.tradefed.result.ITestLifeCycleReceiver;
 import com.android.tradefed.util.ListInstrumentationParser;
 import com.android.tradefed.util.ListInstrumentationParser.InstrumentationTarget;
 
@@ -87,17 +87,19 @@ public class InstrumentationTestTest {
 
     /**
      * Helper class for providing an {@link IAnswer} to a {@link
-     * ITestDevice#runInstrumentationTests(IRemoteAndroidTestRunner, ITestRunListener...)} call.
+     * ITestDevice#runInstrumentationTests(IRemoteAndroidTestRunner, ITestInvocationListener...)}
+     * call.
      */
     @FunctionalInterface
     interface RunInstrumentationTestsAnswer extends Answer<Boolean> {
         @Override
         default Boolean answer(InvocationOnMock invocation) throws Exception {
             Object[] args = invocation.getArguments();
-            return answer((IRemoteAndroidTestRunner) args[0], (ITestRunListener) args[1]);
+            return answer((IRemoteAndroidTestRunner) args[0], (ITestLifeCycleReceiver) args[1]);
         }
 
-        Boolean answer(IRemoteAndroidTestRunner runner, ITestRunListener listener) throws Exception;
+        Boolean answer(IRemoteAndroidTestRunner runner, ITestLifeCycleReceiver listener)
+                throws Exception;
     }
 
     @Before
@@ -139,7 +141,7 @@ public class InstrumentationTestTest {
         doAnswer(runTests)
                 .when(mMockTestDevice)
                 .runInstrumentationTests(
-                        any(IRemoteAndroidTestRunner.class), any(ITestRunListener.class));
+                        any(IRemoteAndroidTestRunner.class), any(ITestInvocationListener.class));
 
         mInstrumentationTest.run(mMockListener);
 
@@ -148,7 +150,7 @@ public class InstrumentationTestTest {
                 ArgumentCaptor.forClass(IRemoteAndroidTestRunner.class);
         inOrder.verify(mInstrumentationTest).setRunnerArgs(runner.capture());
         inOrder.verify(mMockTestDevice, times(2))
-                .runInstrumentationTests(eq(runner.getValue()), any(ITestRunListener.class));
+                .runInstrumentationTests(eq(runner.getValue()), any(ITestLifeCycleReceiver.class));
 
         inOrder.verify(mMockListener).testRunStarted(TEST_PACKAGE_VALUE, 2);
         inOrder.verify(mMockListener).testStarted(eq(TEST1), anyLong());
@@ -250,7 +252,7 @@ public class InstrumentationTestTest {
         doAnswer(collectTest)
                 .when(mMockTestDevice)
                 .runInstrumentationTests(
-                        any(IRemoteAndroidTestRunner.class), any(ITestRunListener.class));
+                        any(IRemoteAndroidTestRunner.class), any(ITestLifeCycleReceiver.class));
 
         mInstrumentationTest.run(mMockListener);
 
@@ -300,7 +302,7 @@ public class InstrumentationTestTest {
                 .doAnswer(rerun)
                 .when(mMockTestDevice)
                 .runInstrumentationTests(
-                        any(IRemoteAndroidTestRunner.class), any(ITestRunListener.class));
+                        any(IRemoteAndroidTestRunner.class), any(ITestLifeCycleReceiver.class));
 
         mInstrumentationTest.run(mMockListener);
 
@@ -372,7 +374,7 @@ public class InstrumentationTestTest {
                 .doAnswer(rerun2)
                 .when(mMockTestDevice)
                 .runInstrumentationTests(
-                        any(IRemoteAndroidTestRunner.class), any(ITestRunListener.class));
+                        any(IRemoteAndroidTestRunner.class), any(ITestLifeCycleReceiver.class));
 
         mInstrumentationTest.run(mMockListener);
 
@@ -437,7 +439,7 @@ public class InstrumentationTestTest {
                 .doAnswer(rerun)
                 .when(mMockTestDevice)
                 .runInstrumentationTests(
-                        any(IRemoteAndroidTestRunner.class), any(ITestRunListener.class));
+                        any(IRemoteAndroidTestRunner.class), any(ITestInvocationListener.class));
 
         mInstrumentationTest.run(mMockListener);
 
@@ -495,7 +497,7 @@ public class InstrumentationTestTest {
                 .doAnswer(rerun)
                 .when(mMockTestDevice)
                 .runInstrumentationTests(
-                        any(IRemoteAndroidTestRunner.class), any(ITestRunListener.class));
+                        any(IRemoteAndroidTestRunner.class), any(ITestLifeCycleReceiver.class));
 
         try {
             mInstrumentationTest.run(mMockListener);
@@ -588,7 +590,7 @@ public class InstrumentationTestTest {
         doAnswer(collected)
                 .when(mMockTestDevice)
                 .runInstrumentationTests(
-                        any(IRemoteAndroidTestRunner.class), any(ITestRunListener.class));
+                        any(IRemoteAndroidTestRunner.class), any(ITestLifeCycleReceiver.class));
 
         mInstrumentationTest.setEnforceFormat(true);
 
@@ -618,7 +620,7 @@ public class InstrumentationTestTest {
         doAnswer(collected)
                 .when(mMockTestDevice)
                 .runInstrumentationTests(
-                        any(IRemoteAndroidTestRunner.class), any(ITestRunListener.class));
+                        any(IRemoteAndroidTestRunner.class), any(ITestLifeCycleReceiver.class));
 
         mInstrumentationTest.setEnforceFormat(false);
 
@@ -664,7 +666,7 @@ public class InstrumentationTestTest {
                 .doAnswer(partialRun)
                 .when(mMockTestDevice)
                 .runInstrumentationTests(
-                        any(IRemoteAndroidTestRunner.class), any(ITestRunListener.class));
+                        any(IRemoteAndroidTestRunner.class), any(ITestLifeCycleReceiver.class));
 
         mInstrumentationTest.run(mMockListener);
 
