@@ -1,0 +1,150 @@
+/*
+ * Copyright (C) 2018 The Android Open Source Project
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+package com.android.tradefed.testtype.suite;
+
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
+
+import com.android.tradefed.build.IDeviceBuildInfo;
+import com.android.tradefed.config.IConfiguration;
+import com.android.tradefed.config.OptionSetter;
+import com.android.tradefed.device.ITestDevice;
+import com.android.tradefed.util.FileUtil;
+import com.android.tradefed.util.ZipUtil;
+
+import org.easymock.EasyMock;
+import org.junit.Before;
+import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.junit.runners.JUnit4;
+
+import java.io.File;
+import java.io.InputStream;
+import java.nio.file.Paths;
+import java.util.LinkedHashMap;
+
+/** Unit tests for {@link TestMappingSuiteRunner}. */
+@RunWith(JUnit4.class)
+public class TestMappingSuiteRunnerTest {
+
+    private static final String ABI_1 = "arm64-v8a";
+    private static final String ABI_2 = "armeabi-v7a";
+    private static final String NON_EXISTING_DIR = "non-existing-dir";
+    private static final String TEST_DATA_DIR = "testdata";
+    private static final String TEST_MAPPING = "TEST_MAPPING";
+    private static final String TEST_MAPPINGS_ZIP = "test_mappings.zip";
+
+    private TestMappingSuiteRunner mRunner;
+    private IDeviceBuildInfo mBuildInfo;
+    private ITestDevice mMockDevice;
+
+    @Before
+    public void setUp() throws Exception {
+        mMockDevice = EasyMock.createMock(ITestDevice.class);
+        mBuildInfo = EasyMock.createMock(IDeviceBuildInfo.class);
+        mRunner = new TestMappingSuiteRunner();
+        mRunner.setBuild(mBuildInfo);
+        mRunner.setDevice(mMockDevice);
+
+        EasyMock.expect(mBuildInfo.getTestsDir()).andReturn(new File(NON_EXISTING_DIR));
+        EasyMock.expect(mMockDevice.getProperty(EasyMock.anyObject())).andReturn(ABI_1);
+        EasyMock.expect(mMockDevice.getProperty(EasyMock.anyObject())).andReturn(ABI_2);
+        EasyMock.replay(mBuildInfo, mMockDevice);
+    }
+
+    /**
+     * Test for {@link TestMappingSuiteRunner#loadTests()} to fail when both options include-filter
+     * and test-type are set.
+     */
+    @Test(expected = RuntimeException.class)
+    public void testLoadTests_conflictTestType() throws Exception {
+        OptionSetter setter = new OptionSetter(mRunner);
+        setter.setOptionValue("include-filter", "test1");
+        setter.setOptionValue("test-type", "type");
+        mRunner.loadTests();
+    }
+
+    /** Test for {@link TestMappingSuiteRunner#loadTests()} to fail when no test option is set. */
+    @Test(expected = RuntimeException.class)
+    public void testLoadTests_noOption() throws Exception {
+        mRunner.loadTests();
+    }
+
+    /**
+     * Test for {@link TestMappingSuiteRunner#loadTests()} for loading tests from test_mappings.zip.
+     */
+    @Test
+    public void testLoadTests_testMappingsZip() throws Exception {
+        File tempDir = null;
+        try {
+            OptionSetter setter = new OptionSetter(mRunner);
+            setter.setOptionValue("test-type", "postsubmit");
+
+            tempDir = FileUtil.createTempDir("test_mapping");
+
+            File srcDir = FileUtil.createTempDir("src", tempDir);
+            String srcFile = File.separator + TEST_DATA_DIR + File.separator + "test_mapping_1";
+            InputStream resourceStream = this.getClass().getResourceAsStream(srcFile);
+            FileUtil.saveResourceFile(resourceStream, srcDir, TEST_MAPPING);
+            File subDir = FileUtil.createTempDir("sub_dir", srcDir);
+            srcFile = File.separator + TEST_DATA_DIR + File.separator + "test_mapping_2";
+            resourceStream = this.getClass().getResourceAsStream(srcFile);
+            FileUtil.saveResourceFile(resourceStream, subDir, TEST_MAPPING);
+
+            File zipFile = Paths.get(tempDir.getAbsolutePath(), TEST_MAPPINGS_ZIP).toFile();
+            ZipUtil.createZip(srcDir, zipFile);
+
+            IDeviceBuildInfo mockBuildInfo = EasyMock.createMock(IDeviceBuildInfo.class);
+            EasyMock.expect(mockBuildInfo.getTestsDir()).andReturn(new File("non-existing-dir"));
+            EasyMock.expect(mockBuildInfo.getFile(TEST_MAPPINGS_ZIP)).andReturn(zipFile);
+
+            mRunner.setBuild(mockBuildInfo);
+            EasyMock.replay(mockBuildInfo);
+
+            LinkedHashMap<String, IConfiguration> configMap = mRunner.loadTests();
+            assertEquals(2, configMap.size());
+            assertTrue(configMap.containsKey(ABI_1 + " suite/stub1"));
+            assertTrue(configMap.containsKey(ABI_1 + " suite/stub2"));
+
+            EasyMock.verify(mockBuildInfo);
+        } finally {
+            FileUtil.recursiveDelete(tempDir);
+        }
+    }
+
+    /**
+     * Test for {@link TestMappingSuiteRunner#loadTests()} that when a test config supports
+     * IAbiReceiver, multiple instances of the config are queued up.
+     */
+    @Test
+    public void testLoadTestsForMultiAbi() throws Exception {
+        OptionSetter setter = new OptionSetter(mRunner);
+        setter.setOptionValue("include-filter", "suite/stubAbi");
+
+        ITestDevice mockDevice = EasyMock.createMock(ITestDevice.class);
+        EasyMock.expect(mockDevice.getProperty(EasyMock.eq("ro.product.cpu.abilist")))
+                .andReturn(ABI_1 + "," + ABI_2);
+        mRunner.setDevice(mockDevice);
+        EasyMock.replay(mockDevice);
+
+        LinkedHashMap<String, IConfiguration> configMap = mRunner.loadTests();
+
+        assertEquals(2, configMap.size());
+        assertTrue(configMap.containsKey(ABI_1 + " suite/stubAbi"));
+        assertTrue(configMap.containsKey(ABI_2 + " suite/stubAbi"));
+        EasyMock.verify(mockDevice);
+    }
+}

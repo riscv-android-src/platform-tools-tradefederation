@@ -1,0 +1,13 @@
+{
+  "presubmit": [
+    {
+      "name": "suite/stub1"
+    }
+  ],
+  "postsubmit": [
+    {
+      "name": "suite/stub2"
+    }
+  ],
+  "include_parent": false
+}

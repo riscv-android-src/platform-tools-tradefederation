@@ -183,6 +183,11 @@ public class BaseTestSuite extends ITestSuite {
         mIncludeFilters.addAll(includeFilters);
     }
 
+    /** Gets a copy of include-filters for the compatibility test */
+    protected Set<String> getIncludeFilter() {
+        return new HashSet<String>(mIncludeFilters);
+    }
+
     /** Sets exclude-filters for the compatibility test */
     public void setExcludeFilter(Set<String> excludeFilters) {
         mExcludeFilters.addAll(excludeFilters);
