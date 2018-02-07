@@ -20,6 +20,7 @@ import com.android.tradefed.command.CommandSchedulerFuncTest;
 import com.android.tradefed.command.remote.RemoteManagerFuncTest;
 import com.android.tradefed.device.TestDeviceFuncTest;
 import com.android.tradefed.device.metric.DeviceMetricDataFuncTest;
+import com.android.tradefed.proto.PlatformProtosFuncTest;
 import com.android.tradefed.targetprep.AppSetupFuncTest;
 import com.android.tradefed.targetprep.DeviceSetupFuncTest;
 import com.android.tradefed.testtype.DeviceSuite;
@@ -48,6 +49,8 @@ import org.junit.runners.Suite.SuiteClasses;
     TestDeviceFuncTest.class,
     // device.metric
     DeviceMetricDataFuncTest.class,
+    // proto
+    PlatformProtosFuncTest.class,
     // targetprep
     AppSetupFuncTest.class,
     DeviceSetupFuncTest.class,
