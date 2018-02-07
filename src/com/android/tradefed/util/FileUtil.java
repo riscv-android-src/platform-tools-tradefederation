@@ -613,12 +613,19 @@ public class FileUtil {
         // Based on empirical testing File.getUsableSpace is a low cost operation (~ 100 us for
         // local disk, ~ 100 ms for network disk). Therefore call it every time tmp file is
         // created
-        long usableSpace = file.getUsableSpace();
+        long usableSpace = 0L;
+        try {
+            usableSpace = Files.getFileStore(file.toPath()).getUsableSpace();
+        } catch (IOException ioe) {
+            CLog.w("Failed to get usable space for %s, ignored", file.getAbsolutePath());
+            CLog.w(ioe);
+            return;
+        }
         long minDiskSpace = mMinDiskSpaceMb * 1024 * 1024;
         if (usableSpace < minDiskSpace) {
             throw new LowDiskSpaceException(String.format(
                     "Available space on %s is %.2f MB. Min is %d MB", file.getAbsolutePath(),
-                    file.getUsableSpace() / (1024.0 * 1024.0), mMinDiskSpaceMb));
+                    usableSpace / (1024.0 * 1024.0), mMinDiskSpaceMb));
         }
     }
 

@@ -83,7 +83,6 @@ public class InstrumentationTest implements IDeviceTest, IResumableTest, ITestCo
         name = "package",
         shortName = 'p',
         description = "The manifest package name of the Android test application to run.",
-        mandatory = true,
         importance = Importance.IF_UNSET
     )
     private String mPackageName = null;
@@ -678,6 +677,7 @@ public class InstrumentationTest implements IDeviceTest, IResumableTest, ITestCo
     @Override
     public void run(final ITestInvocationListener listener) throws DeviceNotAvailableException {
         checkArgument(mDevice != null, "Device has not been set.");
+        checkArgument(mPackageName != null, "Package name has not been set.");
 
         if (mRunnerName == null) {
             setRunnerName(queryRunnerName());
