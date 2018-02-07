@@ -19,6 +19,7 @@ import static org.junit.Assert.*;
 
 import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.build.LocalFolderBuildProvider;
+import com.android.tradefed.build.StubBuildProvider;
 import com.android.tradefed.config.Configuration;
 import com.android.tradefed.config.DeviceConfigurationHolder;
 import com.android.tradefed.config.IConfiguration;
@@ -89,6 +90,27 @@ public class ValidateSuiteConfigHelperTest {
         } catch (RuntimeException expected) {
             assertTrue(expected.getMessage().contains(Configuration.BUILD_PROVIDER_TYPE_NAME));
         }
+    }
+
+    /**
+     * Test that a config with multiple devices can still pass the validation check as long as each
+     * device is properly defined and respect the single device rules.
+     */
+    @Test
+    public void testParse_MultiDevice() throws Exception {
+        IConfiguration config = new Configuration("test", "test description");
+        // LocalFolderBuildProvider extends the default StubBuildProvider but is still correctly
+        // rejected.
+        List<IDeviceConfiguration> listDeviceConfigs = new ArrayList<>();
+        IDeviceConfiguration deviceConfig1 = new DeviceConfigurationHolder("device1");
+        deviceConfig1.addSpecificConfig(new StubBuildProvider());
+        deviceConfig1.addSpecificConfig(new StubTargetPreparer());
+        listDeviceConfigs.add(deviceConfig1);
+        listDeviceConfigs.add(new DeviceConfigurationHolder("device2"));
+
+        config.setDeviceConfigList(listDeviceConfigs);
+
+        ValidateSuiteConfigHelper.validateConfig(config);
     }
 
     /** Test that a config with a result reporter cannot run as suite. */

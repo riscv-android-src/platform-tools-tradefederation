@@ -67,13 +67,13 @@ import com.android.tradefed.device.WifiHelperTest;
 import com.android.tradefed.device.metric.AtraceCollectorTest;
 import com.android.tradefed.device.metric.AtraceRunMetricCollectorTest;
 import com.android.tradefed.device.metric.BaseDeviceMetricCollectorTest;
-import com.android.tradefed.device.metric.DeviceMetricDataTest;
-import com.android.tradefed.device.metric.MemInfoMetricCollectorTest;
-import com.android.tradefed.device.metric.BugreportzMetricCollectorTest;
-import com.android.tradefed.device.metric.FilePullerDeviceMetricCollectorTest;
 import com.android.tradefed.device.metric.BuddyInfoMetricCollectorTest;
-import com.android.tradefed.device.metric.IonHeapInfoMetricCollectorTest;
+import com.android.tradefed.device.metric.BugreportzMetricCollectorTest;
+import com.android.tradefed.device.metric.DeviceMetricDataTest;
+import com.android.tradefed.device.metric.FilePullerDeviceMetricCollectorTest;
 import com.android.tradefed.device.metric.GfxInfoMetricCollectorTest;
+import com.android.tradefed.device.metric.IonHeapInfoMetricCollectorTest;
+import com.android.tradefed.device.metric.MemInfoMetricCollectorTest;
 import com.android.tradefed.device.metric.PagetypeInfoMetricCollectorTest;
 import com.android.tradefed.device.metric.ProcessMaxMemoryCollectorTest;
 import com.android.tradefed.device.metric.ScheduleMultipleDeviceMetricCollectorTest;
@@ -191,6 +191,7 @@ import com.android.tradefed.testtype.suite.BaseTestSuiteTest;
 import com.android.tradefed.testtype.suite.ITestSuiteIntegrationTest;
 import com.android.tradefed.testtype.suite.ITestSuiteMultiTest;
 import com.android.tradefed.testtype.suite.ITestSuiteTest;
+import com.android.tradefed.testtype.suite.ModuleDefinitionMultiTest;
 import com.android.tradefed.testtype.suite.ModuleDefinitionTest;
 import com.android.tradefed.testtype.suite.ModuleListenerTest;
 import com.android.tradefed.testtype.suite.ModuleMergerTest;
@@ -259,6 +260,7 @@ import com.android.tradefed.util.net.XmlRpcHelperTest;
 import com.android.tradefed.util.sl4a.Sl4aClientTest;
 import com.android.tradefed.util.sl4a.Sl4aEventDispatcherTest;
 import com.android.tradefed.util.xml.AndroidManifestWriterTest;
+
 import org.junit.runner.RunWith;
 import org.junit.runners.Suite;
 import org.junit.runners.Suite.SuiteClasses;
@@ -489,6 +491,7 @@ import org.junit.runners.Suite.SuiteClasses;
     ITestSuiteIntegrationTest.class,
     ITestSuiteMultiTest.class,
     ITestSuiteTest.class,
+    ModuleDefinitionMultiTest.class,
     ModuleDefinitionTest.class,
     ModuleListenerTest.class,
     ModuleMergerTest.class,
