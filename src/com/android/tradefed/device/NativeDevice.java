@@ -60,6 +60,8 @@ import com.android.tradefed.util.SizeLimitedOutputStream;
 import com.android.tradefed.util.StreamUtil;
 import com.android.tradefed.util.ZipUtil2;
 
+import com.google.common.annotations.VisibleForTesting;
+
 import org.apache.commons.compress.archivers.zip.ZipFile;
 
 import java.io.File;
@@ -67,6 +69,7 @@ import java.io.FilenameFilter;
 import java.io.IOException;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
+import java.time.Clock;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -185,6 +188,7 @@ public class NativeDevice implements IManagedTestDevice {
     protected TestDeviceOptions mOptions = new TestDeviceOptions();
     private Process mEmulatorProcess;
     private SizeLimitedOutputStream mEmulatorOutput;
+    private Clock mClock = Clock.systemUTC();
 
     private RecoveryMode mRecoveryMode = RecoveryMode.AVAILABLE;
 
@@ -262,13 +266,16 @@ public class NativeDevice implements IManagedTestDevice {
         mAllocationMonitor = allocationMonitor;
     }
 
-    /**
-     * Get the {@link RunUtil} instance to use.
-     * <p/>
-     * Exposed for unit testing.
-     */
+    /** Get the {@link RunUtil} instance to use. */
+    @VisibleForTesting
     protected IRunUtil getRunUtil() {
         return RunUtil.getDefault();
+    }
+
+    /** Set the Clock instance to use. */
+    @VisibleForTesting
+    protected void setClock(Clock clock) {
+        mClock = clock;
     }
 
     /**
@@ -1476,8 +1483,8 @@ public class NativeDevice implements IManagedTestDevice {
     /**
      * Return <code>true</code> if local file is newer than remote file. {@link IFileEntry} being
      * accurate to the minute, in case of equal times, the file will be considered newer.
-     * Exposed for testing.
      */
+    @VisibleForTesting
     protected boolean isNewer(File localFile, IFileEntry entry) {
         final String entryTimeString = String.format("%s %s", entry.getDate(), entry.getTime());
         try {
@@ -1961,11 +1968,8 @@ public class NativeDevice implements IManagedTestDevice {
         }
     }
 
-    /**
-     * Factory method to create a {@link LogcatReceiver}.
-     * <p/>
-     * Exposed for unit testing.
-     */
+    /** Factory method to create a {@link LogcatReceiver}. */
+    @VisibleForTesting
     LogcatReceiver createLogcatReceiver() {
         String logcatOptions = mOptions.getLogcatOptions();
         if (logcatOptions == null) {
@@ -2131,10 +2135,8 @@ public class NativeDevice implements IManagedTestDevice {
         return null;
     }
 
-    /**
-     * Internal Helper method to get the bugreportz zip file as a {@link File}.
-     * Exposed for testing.
-     */
+    /** Internal Helper method to get the bugreportz zip file as a {@link File}. */
+    @VisibleForTesting
     protected File getBugreportzInternal() {
         CollectingOutputReceiver receiver = new CollectingOutputReceiver();
         // Does not rely on {@link ITestDevice#executeAdbCommand(String...)} because it does not
@@ -2249,9 +2251,11 @@ public class NativeDevice implements IManagedTestDevice {
         // times
         Random rnd = new Random();
         int backoffSlotCount = 2;
-        int waitTime = mOptions.getWifiRetryWaitTime();
+        int slotTime = mOptions.getWifiRetryWaitTime();
+        int waitTime = 0;
         IWifiHelper wifi = createWifiHelper();
         try {
+            long startTime = mClock.millis();
             for (int i = 1; i <= mOptions.getWifiAttempts(); i++) {
                 CLog.i("Connecting to wifi network %s on %s", wifiSsid, getSerialNumber());
                 boolean success =
@@ -2276,10 +2280,16 @@ public class NativeDevice implements IManagedTestDevice {
                             i,
                             mOptions.getWifiAttempts());
                 }
+                if (mClock.millis() - startTime >= mOptions.getMaxWifiConnectTime()) {
+                    CLog.e(
+                            "Failed to connect to wifi after %d ms. Aborting.",
+                            mOptions.getMaxWifiConnectTime());
+                    break;
+                }
                 if (i < mOptions.getWifiAttempts()) {
                     if (mOptions.isWifiExpoRetryEnabled()) {
                         // use binary exponential back-offs when retrying.
-                        waitTime *= rnd.nextInt(backoffSlotCount);
+                        waitTime = rnd.nextInt(backoffSlotCount) * slotTime;
                         backoffSlotCount *= 2;
                     }
                     CLog.e("Waiting for %d ms before reconnecting to %s...", waitTime, wifiSsid);
@@ -2461,10 +2471,12 @@ public class NativeDevice implements IManagedTestDevice {
 
     /**
      * Create a {@link WifiHelper} to use
-     * <p/>
-     * Exposed so unit tests can mock
+     *
+     * <p>
+     *
      * @throws DeviceNotAvailableException
      */
+    @VisibleForTesting
     IWifiHelper createWifiHelper() throws DeviceNotAvailableException {
         // current wifi helper won't work on AndroidNativeDevice
         // TODO: create a new Wifi helper with supported feature of AndroidNativeDevice when
@@ -2643,11 +2655,7 @@ public class NativeDevice implements IManagedTestDevice {
         doReboot();
     }
 
-    /**
-     * Exposed for unit testing.
-     *
-     * @throws DeviceNotAvailableException
-     */
+    @VisibleForTesting
     void doReboot() throws DeviceNotAvailableException, UnsupportedOperationException {
         if (TestDeviceState.FASTBOOT == getDeviceState()) {
             CLog.i("device %s in fastboot. Rebooting to userspace.", getSerialNumber());
@@ -3096,11 +3104,8 @@ public class NativeDevice implements IManagedTestDevice {
         if (obj == null) throw new NullPointerException();
     }
 
-    /**
-     * Retrieve this device's recovery mechanism.
-     * <p/>
-     * Exposed for unit testing.
-     */
+    /** Retrieve this device's recovery mechanism. */
+    @VisibleForTesting
     IDeviceRecovery getRecovery() {
         return mRecovery;
     }
@@ -3394,10 +3399,8 @@ public class NativeDevice implements IManagedTestDevice {
         return new DeviceEventResponse(newState, stateChanged);
     }
 
-    /**
-     * Helper to get the time difference between the device and the host. Use Epoch time.
-     * Exposed for testing.
-     */
+    /** Helper to get the time difference between the device and the host. Use Epoch time. */
+    @VisibleForTesting
     protected long getDeviceTimeOffset(Date date) throws DeviceNotAvailableException {
         Long deviceTime = getDeviceDate();
         long offset = 0;
@@ -3916,11 +3919,8 @@ public class NativeDevice implements IManagedTestDevice {
         return true;
     }
 
-    /**
-     * Gets the {@link IHostOptions} instance to use.
-     *
-     * <p>Exposed for unit testing
-     */
+    /** Gets the {@link IHostOptions} instance to use. */
+    @VisibleForTesting
     IHostOptions getHostOptions() {
         return GlobalConfiguration.getInstance().getHostOptions();
     }
