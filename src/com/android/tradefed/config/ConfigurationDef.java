@@ -55,11 +55,11 @@ public class ConfigurationDef {
         final String value;
         final String source;
 
-        OptionDef(String optionName, String optionValue, String source) {
+        public OptionDef(String optionName, String optionValue, String source) {
             this(optionName, null, optionValue, source);
         }
 
-        OptionDef(String optionName, String optionKey, String optionValue, String source) {
+        public OptionDef(String optionName, String optionKey, String optionValue, String source) {
             this.name = optionName;
             this.key = optionKey;
             this.value = optionValue;
