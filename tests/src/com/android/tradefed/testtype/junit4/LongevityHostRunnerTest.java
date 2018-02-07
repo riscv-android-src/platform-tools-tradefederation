@@ -202,7 +202,7 @@ public class LongevityHostRunnerTest {
     public void testIterationsRespected() throws Exception {
         setUpRunner(FeaturesLongevitySuite.class);
         OptionSetter setter = new OptionSetter(mHostRunner);
-        setter.setOptionValue("iterations", "10");
+        setter.setOptionValue(LongevityHostRunner.ITERATIONS_OPTION, "10");
         Result result = new JUnitCore().run(mHostRunner);
         Assert.assertEquals(result.getRunCount(), 10);
         Assert.assertTrue(result.wasSuccessful());
