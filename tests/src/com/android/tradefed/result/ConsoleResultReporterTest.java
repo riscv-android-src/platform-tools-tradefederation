@@ -15,7 +15,6 @@
  */
 package com.android.tradefed.result;
 
-import com.android.ddmlib.testrunner.TestIdentifier;
 import com.android.tradefed.invoker.IInvocationContext;
 
 import junit.framework.TestCase;
@@ -72,7 +71,7 @@ public class ConsoleResultReporterTest extends TestCase {
         IInvocationContext nullContext = null;
         reporter.invocationStarted(nullContext);
         reporter.testRunStarted("Test Run", 1);
-        TestIdentifier testId = new TestIdentifier("class", "method");
+        TestDescription testId = new TestDescription("class", "method");
         reporter.testStarted(testId);
         Map<String, String> metrics = new HashMap<>();
         metrics.put("key2", "value2");
@@ -122,7 +121,7 @@ public class ConsoleResultReporterTest extends TestCase {
 
         reporter.testRunStarted("Test Run 1", 3);
 
-        TestIdentifier run1test1Id = new TestIdentifier("class1", "method1");
+        TestDescription run1test1Id = new TestDescription("class1", "method1");
         reporter.testStarted(run1test1Id);
         reporter.testFailed(run1test1Id, "trace");
         Map<String, String> run1Test1Metrics = new HashMap<>();
@@ -130,14 +129,14 @@ public class ConsoleResultReporterTest extends TestCase {
         run1Test1Metrics.put("run1_test1_key2", "run1_test1_value2");
         reporter.testEnded(run1test1Id, run1Test1Metrics);
 
-        TestIdentifier run1test2Id = new TestIdentifier("class1", "method2");
+        TestDescription run1test2Id = new TestDescription("class1", "method2");
         reporter.testStarted(run1test2Id);
         Map<String, String> run1Test2Metrics = new HashMap<>();
         run1Test2Metrics.put("run1_test2_key1", "run1_test2_value1");
         run1Test2Metrics.put("run1_test2_key2", "run1_test2_value2");
         reporter.testEnded(run1test2Id, run1Test2Metrics);
 
-        TestIdentifier run1test3Id = new TestIdentifier("class1", "method3");
+        TestDescription run1test3Id = new TestDescription("class1", "method3");
         reporter.testStarted(run1test3Id);
         reporter.testAssumptionFailure(run1test3Id, "trace");
         Map<String, String> run1Test3Metrics = new HashMap<>();
@@ -145,7 +144,7 @@ public class ConsoleResultReporterTest extends TestCase {
         run1Test3Metrics.put("run1_test3_key2", "run1_test3_value2");
         reporter.testEnded(run1test3Id, run1Test3Metrics);
 
-        TestIdentifier run1test4Id = new TestIdentifier("class1", "method4");
+        TestDescription run1test4Id = new TestDescription("class1", "method4");
         reporter.testStarted(run1test4Id);
         reporter.testIgnored(run1test4Id);
         reporter.testEnded(run1test4Id, EMPTY_MAP);
@@ -156,21 +155,21 @@ public class ConsoleResultReporterTest extends TestCase {
         reporter.testRunEnded(0, run1Metrics);
 
         reporter.testRunStarted("Test Run 2", 4);
-        TestIdentifier run2test1Id = new TestIdentifier("class2", "method1");
+        TestDescription run2test1Id = new TestDescription("class2", "method1");
         reporter.testStarted(run2test1Id);
         reporter.testFailed(run2test1Id, "trace");
         reporter.testEnded(run2test1Id, EMPTY_MAP);
 
-        TestIdentifier run2test2Id = new TestIdentifier("class2", "method2");
+        TestDescription run2test2Id = new TestDescription("class2", "method2");
         reporter.testStarted(run2test2Id);
         reporter.testEnded(run2test2Id, EMPTY_MAP);
 
-        TestIdentifier run2test3Id = new TestIdentifier("class2", "method3");
+        TestDescription run2test3Id = new TestDescription("class2", "method3");
         reporter.testStarted(run2test3Id);
         reporter.testAssumptionFailure(run2test3Id, "trace");
         reporter.testEnded(run2test3Id, EMPTY_MAP);
 
-        TestIdentifier run2test4Id = new TestIdentifier("class2", "method4");
+        TestDescription run2test4Id = new TestDescription("class2", "method4");
         reporter.testStarted(run2test4Id);
         reporter.testIgnored(run2test4Id);
         reporter.testEnded(run2test4Id, EMPTY_MAP);

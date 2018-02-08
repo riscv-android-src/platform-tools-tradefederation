@@ -109,7 +109,7 @@ public class DeviceTestCaseTest {
         listener.testEnded(test1, metrics);
         listener.testStarted(test2);
         listener.testEnded(test2, Collections.emptyMap());
-        listener.testRunEnded(EasyMock.anyLong(), EasyMock.anyObject());
+        listener.testRunEnded(EasyMock.anyLong(), (Map<String, String>) EasyMock.anyObject());
         EasyMock.replay(listener);
 
         test.run(listener);
@@ -131,7 +131,7 @@ public class DeviceTestCaseTest {
         Map<String, String> metrics = new HashMap<>();
         metrics.put("test", "value");
         listener.testEnded(test1, metrics);
-        listener.testRunEnded(EasyMock.anyLong(), EasyMock.anyObject());
+        listener.testRunEnded(EasyMock.anyLong(), (Map<String, String>) EasyMock.anyObject());
         EasyMock.replay(listener);
 
         test.run(listener);
@@ -151,7 +151,7 @@ public class DeviceTestCaseTest {
         final TestDescription test2 = new TestDescription(MockTest.class.getName(), "test2");
         listener.testStarted(test2);
         listener.testEnded(test2, Collections.emptyMap());
-        listener.testRunEnded(EasyMock.anyLong(), EasyMock.anyObject());
+        listener.testRunEnded(EasyMock.anyLong(), (Map<String, String>) EasyMock.anyObject());
         EasyMock.replay(listener);
 
         test.run(listener);
@@ -174,7 +174,7 @@ public class DeviceTestCaseTest {
                 new TestDescription(MockAnnotatedTest.class.getName(), "test1");
         listener.testStarted(test1);
         listener.testEnded(test1, Collections.emptyMap());
-        listener.testRunEnded(EasyMock.anyLong(), EasyMock.anyObject());
+        listener.testRunEnded(EasyMock.anyLong(), (Map<String, String>) EasyMock.anyObject());
         EasyMock.replay(listener);
 
         test.run(listener);
@@ -196,7 +196,7 @@ public class DeviceTestCaseTest {
                 new TestDescription(MockAnnotatedTest.class.getName(), "test1");
         listener.testStarted(test1);
         listener.testEnded(test1, Collections.emptyMap());
-        listener.testRunEnded(EasyMock.anyLong(), EasyMock.anyObject());
+        listener.testRunEnded(EasyMock.anyLong(), (Map<String, String>) EasyMock.anyObject());
         EasyMock.replay(listener);
 
         test.run(listener);
@@ -216,7 +216,7 @@ public class DeviceTestCaseTest {
         Map<String, String> metrics = new HashMap<>();
         metrics.put("test", "value");
         listener.testEnded(test1, metrics);
-        listener.testRunEnded(EasyMock.anyLong(), EasyMock.anyObject());
+        listener.testRunEnded(EasyMock.anyLong(), (Map<String, String>) EasyMock.anyObject());
         EasyMock.replay(listener);
 
         test.run(listener);
@@ -237,7 +237,7 @@ public class DeviceTestCaseTest {
                 EasyMock.contains(MockAbortTest.EXCEP_MSG));
         listener.testEnded(test1, Collections.emptyMap());
         listener.testRunFailed(EasyMock.contains(MockAbortTest.EXCEP_MSG));
-        listener.testRunEnded(EasyMock.anyLong(), EasyMock.anyObject());
+        listener.testRunEnded(EasyMock.anyLong(), (Map<String, String>) EasyMock.anyObject());
         EasyMock.replay(listener);
         try {
             test.run(listener);
@@ -262,7 +262,7 @@ public class DeviceTestCaseTest {
         listener.testEnded(EasyMock.anyObject(), EasyMock.anyObject());
         listener.testStarted(EasyMock.anyObject());
         listener.testEnded(EasyMock.anyObject(), EasyMock.anyObject());
-        listener.testRunEnded(EasyMock.anyLong(), EasyMock.anyObject());
+        listener.testRunEnded(EasyMock.anyLong(), (Map<String, String>) EasyMock.anyObject());
         EasyMock.replay(listener);
         test.run(listener);
         EasyMock.verify(listener);
@@ -281,7 +281,7 @@ public class DeviceTestCaseTest {
         listener.testRunStarted((String)EasyMock.anyObject(), EasyMock.eq(1));
         listener.testStarted(EasyMock.anyObject());
         listener.testEnded(EasyMock.anyObject(), EasyMock.anyObject());
-        listener.testRunEnded(EasyMock.anyLong(), EasyMock.anyObject());
+        listener.testRunEnded(EasyMock.anyLong(), (Map<String, String>) EasyMock.anyObject());
         EasyMock.replay(listener);
         test.run(listener);
         EasyMock.verify(listener);
@@ -303,7 +303,7 @@ public class DeviceTestCaseTest {
         listener.testEnded(test1, Collections.emptyMap());
         listener.testStarted(test2);
         listener.testEnded(test2, Collections.emptyMap());
-        listener.testRunEnded(EasyMock.anyLong(), EasyMock.anyObject());
+        listener.testRunEnded(EasyMock.anyLong(), (Map<String, String>) EasyMock.anyObject());
         EasyMock.replay(listener);
 
         test.run(listener);

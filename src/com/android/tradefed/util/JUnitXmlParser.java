@@ -16,9 +16,9 @@
 
 package com.android.tradefed.util;
 
-import com.android.ddmlib.testrunner.TestIdentifier;
 import com.android.ddmlib.testrunner.XmlTestRunListener;
 import com.android.tradefed.result.ITestInvocationListener;
+import com.android.tradefed.result.TestDescription;
 import com.android.tradefed.util.xml.AbstractXmlParser;
 
 import org.xml.sax.Attributes;
@@ -64,7 +64,7 @@ public class JUnitXmlParser extends AbstractXmlParser {
         private static final String TESTSUITE_TAG = "testsuite";
         private static final String TESTCASE_TAG = "testcase";
         private static final String TIME_TAG = "time";
-        private TestIdentifier mCurrentTest = null;
+        private TestDescription mCurrentTest = null;
         private StringBuffer mFailureContent = null;
         private long mRunTime = 0L;
 
@@ -88,7 +88,7 @@ public class JUnitXmlParser extends AbstractXmlParser {
                 // store it
                 String testClassName = getMandatoryAttribute(name, "classname", attributes);
                 String methodName = getMandatoryAttribute(name, "name", attributes);
-                mCurrentTest = new TestIdentifier(testClassName, methodName);
+                mCurrentTest = new TestDescription(testClassName, methodName);
                 mTestListener.testStarted(mCurrentTest);
             }
             if (SKIPPED_TAG.equalsIgnoreCase(name)) {

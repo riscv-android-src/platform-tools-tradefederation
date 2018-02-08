@@ -18,8 +18,8 @@ package com.android.tradefed.util;
 
 import static org.junit.Assert.fail;
 
-import com.android.ddmlib.testrunner.TestIdentifier;
 import com.android.tradefed.result.ITestInvocationListener;
+import com.android.tradefed.result.TestDescription;
 import com.android.tradefed.util.xml.AbstractXmlParser.ParseException;
 
 import org.easymock.EasyMock;
@@ -63,15 +63,15 @@ public class JUnitXmlParserTest {
     @Test
     public void testParse() throws ParseException {
         mMockListener.testRunStarted("suiteName", 3);
-        TestIdentifier test1 = new TestIdentifier("PassTest", "testPass");
+        TestDescription test1 = new TestDescription("PassTest", "testPass");
         mMockListener.testStarted(test1);
         mMockListener.testEnded(test1, Collections.emptyMap());
 
-        TestIdentifier test2 = new TestIdentifier("PassTest", "testPass2");
+        TestDescription test2 = new TestDescription("PassTest", "testPass2");
         mMockListener.testStarted(test2);
         mMockListener.testEnded(test2, Collections.emptyMap());
 
-        TestIdentifier test3 = new TestIdentifier("FailTest", "testFail");
+        TestDescription test3 = new TestDescription("FailTest", "testFail");
         mMockListener.testStarted(test3);
         mMockListener.testFailed(
                 EasyMock.eq(test3), EasyMock.contains("java.lang.NullPointerException"));
@@ -87,16 +87,16 @@ public class JUnitXmlParserTest {
     @Test
     public void testParseErrorAndSkipped() throws ParseException {
         mMockListener.testRunStarted("suiteName", 3);
-        TestIdentifier test1 = new TestIdentifier("PassTest", "testPass");
+        TestDescription test1 = new TestDescription("PassTest", "testPass");
         mMockListener.testStarted(test1);
         mMockListener.testEnded(test1, Collections.emptyMap());
 
-        TestIdentifier test2 = new TestIdentifier("SkippedTest", "testSkip");
+        TestDescription test2 = new TestDescription("SkippedTest", "testSkip");
         mMockListener.testStarted(test2);
         mMockListener.testIgnored(test2);
         mMockListener.testEnded(test2, Collections.emptyMap());
 
-        TestIdentifier test3 = new TestIdentifier("ErrorTest", "testFail");
+        TestDescription test3 = new TestDescription("ErrorTest", "testFail");
         mMockListener.testStarted(test3);
         mMockListener.testFailed(
                 EasyMock.eq(test3), EasyMock.contains("java.lang.NullPointerException"));

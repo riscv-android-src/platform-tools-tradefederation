@@ -38,6 +38,7 @@ import org.mockito.Mockito;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.CountDownLatch;
 
 /** Unit tests for {@link TestsPoolPoller}. */
@@ -106,7 +107,7 @@ public class TestsPoolPollerTest {
         Mockito.verify(mListener, Mockito.times(numTests))
                 .testRunStarted(Mockito.anyString(), Mockito.anyInt());
         Mockito.verify(mListener, Mockito.times(numTests))
-                .testRunEnded(Mockito.anyLong(), Mockito.any());
+                .testRunEnded(Mockito.anyLong(), (Map<String, String>) Mockito.any());
         assertEquals(0, tracker.getCount());
     }
 
@@ -137,7 +138,7 @@ public class TestsPoolPollerTest {
         Mockito.verify(mListener, Mockito.times(numTests))
                 .testRunStarted(Mockito.anyString(), Mockito.anyInt());
         Mockito.verify(mListener, Mockito.times(numTests))
-                .testRunEnded(Mockito.anyLong(), Mockito.any());
+                .testRunEnded(Mockito.anyLong(), (Map<String, String>) Mockito.any());
         assertEquals(0, tracker.getCount());
     }
 
@@ -168,7 +169,7 @@ public class TestsPoolPollerTest {
         Mockito.verify(mListener, Mockito.times(numTests))
                 .testRunStarted(Mockito.anyString(), Mockito.anyInt());
         Mockito.verify(mListener, Mockito.times(numTests))
-                .testRunEnded(Mockito.anyLong(), Mockito.any());
+                .testRunEnded(Mockito.anyLong(), (Map<String, String>) Mockito.any());
         assertEquals(0, tracker.getCount());
     }
 
@@ -205,7 +206,8 @@ public class TestsPoolPollerTest {
         // We expect no callbacks on these, poller should stop early.
         Mockito.verify(mListener, Mockito.times(0))
                 .testRunStarted(Mockito.anyString(), Mockito.anyInt());
-        Mockito.verify(mListener, Mockito.times(0)).testRunEnded(Mockito.anyLong(), Mockito.any());
+        Mockito.verify(mListener, Mockito.times(0))
+                .testRunEnded(Mockito.anyLong(), (Map<String, String>) Mockito.any());
         assertEquals(0, tracker.getCount());
     }
 
@@ -242,7 +244,7 @@ public class TestsPoolPollerTest {
         Mockito.verify(mListener, Mockito.times(numTests)).testStarted(Mockito.any());
         Mockito.verify(mListener, Mockito.times(numTests)).testEnded(Mockito.any(), Mockito.any());
         Mockito.verify(mListener, Mockito.times(numTests))
-                .testRunEnded(Mockito.anyLong(), Mockito.any());
+                .testRunEnded(Mockito.anyLong(), (Map<String, String>) Mockito.any());
         Mockito.verify(mDevice).waitForDeviceAvailable(Mockito.anyLong());
         Mockito.verify(mDevice).reboot();
         assertEquals(2, tracker.getCount());

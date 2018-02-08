@@ -15,7 +15,6 @@
  */
 package com.android.tradefed.result;
 
-import com.android.ddmlib.testrunner.TestIdentifier;
 import com.android.ddmlib.testrunner.TestResult.TestStatus;
 import com.android.tradefed.log.LogUtil.CLog;
 
@@ -35,8 +34,8 @@ import java.util.Set;
 public class TestRunResult {
     private String mTestRunName;
     // Uses a LinkedHashMap to have predictable iteration order
-    private Map<TestIdentifier, TestResult> mTestResults =
-            new LinkedHashMap<TestIdentifier, TestResult>();
+    private Map<TestDescription, TestResult> mTestResults =
+            new LinkedHashMap<TestDescription, TestResult>();
     private Map<String, String> mRunMetrics = new HashMap<String, String>();
     private boolean mIsRunComplete = false;
     private long mElapsedTime = 0;
@@ -65,7 +64,7 @@ public class TestRunResult {
     }
 
     /** Returns a map of the test results. */
-    public Map<TestIdentifier, TestResult> getTestResults() {
+    public Map<TestDescription, TestResult> getTestResults() {
         return mTestResults;
     }
 
@@ -75,9 +74,9 @@ public class TestRunResult {
     }
 
     /** Gets the set of completed tests. */
-    public Set<TestIdentifier> getCompletedTests() {
-        Set<TestIdentifier> completedTests = new LinkedHashSet<TestIdentifier>();
-        for (Map.Entry<TestIdentifier, TestResult> testEntry : getTestResults().entrySet()) {
+    public Set<TestDescription> getCompletedTests() {
+        Set<TestDescription> completedTests = new LinkedHashSet<>();
+        for (Map.Entry<TestDescription, TestResult> testEntry : getTestResults().entrySet()) {
             if (!testEntry.getValue().getStatus().equals(TestStatus.INCOMPLETE)) {
                 completedTests.add(testEntry.getKey());
             }
@@ -157,22 +156,22 @@ public class TestRunResult {
         mRunFailureError = null;
     }
 
-    public void testStarted(TestIdentifier test) {
+    public void testStarted(TestDescription test) {
         testStarted(test, System.currentTimeMillis());
     }
 
-    public void testStarted(TestIdentifier test, long startTime) {
+    public void testStarted(TestDescription test, long startTime) {
         TestResult res = new TestResult();
         res.setStartTime(startTime);
         addTestResult(test, res);
     }
 
-    private void addTestResult(TestIdentifier test, TestResult testResult) {
+    private void addTestResult(TestDescription test, TestResult testResult) {
         mIsCountDirty = true;
         mTestResults.put(test, testResult);
     }
 
-    private void updateTestResult(TestIdentifier test, TestStatus status, String trace) {
+    private void updateTestResult(TestDescription test, TestStatus status, String trace) {
         TestResult r = mTestResults.get(test);
         if (r == null) {
             CLog.d("received test event without test start for %s", test);
@@ -183,23 +182,23 @@ public class TestRunResult {
         addTestResult(test, r);
     }
 
-    public void testFailed(TestIdentifier test, String trace) {
+    public void testFailed(TestDescription test, String trace) {
         updateTestResult(test, TestStatus.FAILURE, trace);
     }
 
-    public void testAssumptionFailure(TestIdentifier test, String trace) {
+    public void testAssumptionFailure(TestDescription test, String trace) {
         updateTestResult(test, TestStatus.ASSUMPTION_FAILURE, trace);
     }
 
-    public void testIgnored(TestIdentifier test) {
+    public void testIgnored(TestDescription test) {
         updateTestResult(test, TestStatus.IGNORED, null);
     }
 
-    public void testEnded(TestIdentifier test, Map<String, String> testMetrics) {
+    public void testEnded(TestDescription test, Map<String, String> testMetrics) {
         testEnded(test, System.currentTimeMillis(), testMetrics);
     }
 
-    public void testEnded(TestIdentifier test, long endTime, Map<String, String> testMetrics) {
+    public void testEnded(TestDescription test, long endTime, Map<String, String> testMetrics) {
         TestResult result = mTestResults.get(test);
         if (result == null) {
             result = new TestResult();

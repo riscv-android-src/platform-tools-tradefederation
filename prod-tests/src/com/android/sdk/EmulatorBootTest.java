@@ -16,7 +16,6 @@
 
 package com.android.sdk;
 
-import com.android.ddmlib.testrunner.TestIdentifier;
 import com.android.sdk.tests.EmulatorGpsPreparer;
 import com.android.sdk.tests.EmulatorSmsPreparer;
 import com.android.tradefed.build.IBuildInfo;
@@ -27,6 +26,7 @@ import com.android.tradefed.device.DeviceUnresponsiveException;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.result.ITestInvocationListener;
+import com.android.tradefed.result.TestDescription;
 import com.android.tradefed.targetprep.BuildError;
 import com.android.tradefed.targetprep.SdkAvdPreparer;
 import com.android.tradefed.targetprep.TargetSetupError;
@@ -95,8 +95,8 @@ public class EmulatorBootTest implements IDeviceTest, IRemoteTest, IBuildReceive
      */
     @Override
     public void run(ITestInvocationListener listener) throws DeviceNotAvailableException {
-        TestIdentifier bootTest = new TestIdentifier(EmulatorBootTest.class.getSimpleName(),
-                mTestLabel);
+        TestDescription bootTest =
+                new TestDescription(EmulatorBootTest.class.getSimpleName(), mTestLabel);
         listener.testRunStarted(EmulatorBootTest.class.getSimpleName(), 1);
         listener.testStarted(bootTest);
         try {

@@ -15,8 +15,8 @@
  */
 package com.android.tradefed.result.suite;
 
-import com.android.ddmlib.testrunner.TestIdentifier;
 import com.android.ddmlib.testrunner.TestResult.TestStatus;
+import com.android.tradefed.result.TestDescription;
 import com.android.tradefed.result.TestResult;
 import com.android.tradefed.result.TestRunResult;
 import com.android.tradefed.testtype.suite.TestFailureListener;
@@ -222,12 +222,12 @@ public class XmlSuiteResultFormatter implements IFormatterGenerator {
 
     private static void serializeTestCases(
             XmlSerializer serializer,
-            Map<TestIdentifier, TestResult> results,
+            Map<TestDescription, TestResult> results,
             Map<String, String> loggedFiles)
             throws IllegalArgumentException, IllegalStateException, IOException {
         // We reformat into the same format as the ResultHandler from CTS to be compatible for now.
         Map<String, Map<String, TestResult>> format = new LinkedHashMap<>();
-        for (Entry<TestIdentifier, TestResult> cr : results.entrySet()) {
+        for (Entry<TestDescription, TestResult> cr : results.entrySet()) {
             if (format.get(cr.getKey().getClassName()) == null) {
                 format.put(cr.getKey().getClassName(), new LinkedHashMap<>());
             }
@@ -299,7 +299,7 @@ public class XmlSuiteResultFormatter implements IFormatterGenerator {
             return;
         }
         // TODO: If possible handle a little more generically.
-        String testId = new TestIdentifier(className, testName).toString();
+        String testId = new TestDescription(className, testName).toString();
         for (String key : loggedFiles.keySet()) {
             if (key.startsWith(testId)) {
                 if (key.endsWith("bugreport")) {

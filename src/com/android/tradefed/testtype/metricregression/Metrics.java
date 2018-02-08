@@ -15,8 +15,8 @@
  */
 package com.android.tradefed.testtype.metricregression;
 
-import com.android.ddmlib.testrunner.TestIdentifier;
 import com.android.tradefed.log.LogUtil.CLog;
+import com.android.tradefed.result.TestDescription;
 import com.android.tradefed.util.MetricsXmlParser;
 import com.android.tradefed.util.MultiMap;
 import com.android.tradefed.util.Pair;
@@ -29,7 +29,7 @@ public class Metrics {
     private int mNumTests = -1;
     private final boolean mStrictMode;
     private final MultiMap<String, Double> mRunMetrics = new MultiMap<>();
-    private final MultiMap<Pair<TestIdentifier, String>, Double> mTestMetrics = new MultiMap<>();
+    private final MultiMap<Pair<TestDescription, String>, Double> mTestMetrics = new MultiMap<>();
 
     /** Throw when metrics validation fails in strict mode. */
     public static class MetricsException extends RuntimeException {
@@ -86,12 +86,12 @@ public class Metrics {
     /**
      * Adds a test metric.
      *
-     * @param testId TestIdentifier of the metric
+     * @param testId TestDescription of the metric
      * @param name metric name
      * @param value metric value
      */
-    public void addTestMetric(TestIdentifier testId, String name, String value) {
-        Pair<TestIdentifier, String> metricId = new Pair<>(testId, name);
+    public void addTestMetric(TestDescription testId, String name, String value) {
+        Pair<TestDescription, String> metricId = new Pair<>(testId, name);
         try {
             mTestMetrics.put(metricId, Double.parseDouble(value));
         } catch (NumberFormatException e) {
@@ -118,7 +118,7 @@ public class Metrics {
                                 name, mNumRuns, mRunMetrics.get(name).size()));
             }
         }
-        for (Pair<TestIdentifier, String> id : mTestMetrics.keySet()) {
+        for (Pair<TestDescription, String> id : mTestMetrics.keySet()) {
             if (mTestMetrics.get(id).size() < mNumRuns) {
                 error(
                         String.format(
@@ -155,7 +155,7 @@ public class Metrics {
             }
         }
 
-        for (Pair<TestIdentifier, String> id : mTestMetrics.keySet()) {
+        for (Pair<TestDescription, String> id : mTestMetrics.keySet()) {
             if (!after.mTestMetrics.containsKey(id)) {
                 warn(
                         String.format(
@@ -164,7 +164,7 @@ public class Metrics {
             }
         }
 
-        for (Pair<TestIdentifier, String> id : after.mTestMetrics.keySet()) {
+        for (Pair<TestDescription, String> id : after.mTestMetrics.keySet()) {
             if (!mTestMetrics.containsKey(id)) {
                 warn(
                         String.format(
@@ -222,9 +222,9 @@ public class Metrics {
     /**
      * Gets all test metrics stored in this object.
      *
-     * @return a {@link MultiMap} from (TestIdentifier, test name) pair to Double
+     * @return a {@link MultiMap} from (TestDescription, test name) pair to Double
      */
-    public MultiMap<Pair<TestIdentifier, String>, Double> getTestMetrics() {
+    public MultiMap<Pair<TestDescription, String>, Double> getTestMetrics() {
         return mTestMetrics;
     }
 }

@@ -23,12 +23,12 @@ import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 
-import com.android.ddmlib.testrunner.TestIdentifier;
 import com.android.tradefed.build.BuildInfo;
 import com.android.tradefed.config.OptionSetter;
 import com.android.tradefed.invoker.IInvocationContext;
 import com.android.tradefed.invoker.InvocationContext;
 import com.android.tradefed.result.MetricsXMLResultReporter;
+import com.android.tradefed.result.TestDescription;
 import com.android.tradefed.testtype.metricregression.Metrics;
 import com.android.tradefed.util.MetricsXmlParser.ParseException;
 
@@ -89,13 +89,13 @@ public class MetricsXmlParserTest {
         context.setTestTag("stub");
         mResultReporter.invocationStarted(context);
         mResultReporter.testRunStarted("run", 3);
-        final TestIdentifier testId0 = new TestIdentifier("Test", "pass1");
+        final TestDescription testId0 = new TestDescription("Test", "pass1");
         mResultReporter.testStarted(testId0);
         mResultReporter.testEnded(testId0, Collections.emptyMap());
-        final TestIdentifier testId1 = new TestIdentifier("Test", "pass2");
+        final TestDescription testId1 = new TestDescription("Test", "pass2");
         mResultReporter.testStarted(testId1);
         mResultReporter.testEnded(testId1, Collections.emptyMap());
-        final TestIdentifier testId2 = new TestIdentifier("Test", "pass3");
+        final TestDescription testId2 = new TestDescription("Test", "pass3");
         mResultReporter.testStarted(testId2);
         mResultReporter.testEnded(testId2, Collections.emptyMap());
         mResultReporter.testRunEnded(3, Collections.emptyMap());
@@ -118,13 +118,13 @@ public class MetricsXmlParserTest {
         mResultReporter.invocationStarted(context);
         mResultReporter.testRunStarted("run", 2);
 
-        final TestIdentifier testId0 = new TestIdentifier("Test", "pass1");
+        final TestDescription testId0 = new TestDescription("Test", "pass1");
         mResultReporter.testStarted(testId0);
         Map<String, String> testMetrics0 = new HashMap<>();
         testMetrics0.put("metric1", "1.1");
         mResultReporter.testEnded(testId0, testMetrics0);
 
-        final TestIdentifier testId1 = new TestIdentifier("Test", "pass2");
+        final TestDescription testId1 = new TestDescription("Test", "pass2");
         mResultReporter.testStarted(testId1);
         Map<String, String> testMetrics1 = new HashMap<>();
         testMetrics1.put("metric2", "5.5");
@@ -153,13 +153,13 @@ public class MetricsXmlParserTest {
         mResultReporter.invocationStarted(context);
         mResultReporter.testRunStarted("run", 3);
 
-        final TestIdentifier testId0 = new TestIdentifier("Test", "pass1");
+        final TestDescription testId0 = new TestDescription("Test", "pass1");
         mResultReporter.testStarted(testId0);
         Map<String, String> testMetrics0 = new HashMap<>();
         testMetrics0.put("metric1", "1.1");
         mResultReporter.testEnded(testId0, testMetrics0);
 
-        final TestIdentifier testId1 = new TestIdentifier("Test", "pass2");
+        final TestDescription testId1 = new TestDescription("Test", "pass2");
         mResultReporter.testStarted(testId1);
         Map<String, String> testMetrics1 = new HashMap<>();
         testMetrics1.put("metric2", "5.5");

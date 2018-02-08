@@ -18,7 +18,6 @@ package com.android.tradefed.result;
 
 import com.android.ddmlib.Log;
 import com.android.ddmlib.Log.LogLevel;
-import com.android.ddmlib.testrunner.TestIdentifier;
 import com.android.ddmlib.testrunner.TestResult.TestStatus;
 import com.android.tradefed.config.Option;
 import com.android.tradefed.config.OptionClass;
@@ -136,8 +135,8 @@ public class MetricsXMLResultReporter extends CollectingTestListener {
 
         for (TestRunResult runResult : getRunResults()) {
             printRunMetrics(serializer, runResult.getRunMetrics());
-            Map<TestIdentifier, TestResult> testResults = runResult.getTestResults();
-            for (TestIdentifier test : testResults.keySet()) {
+            Map<TestDescription, TestResult> testResults = runResult.getTestResults();
+            for (TestDescription test : testResults.keySet()) {
                 printTestResults(serializer, test, testResults.get(test));
             }
         }
@@ -146,7 +145,7 @@ public class MetricsXMLResultReporter extends CollectingTestListener {
     }
 
     private void printTestResults(
-            KXmlSerializer serializer, TestIdentifier testId, TestResult testResult)
+            KXmlSerializer serializer, TestDescription testId, TestResult testResult)
             throws IOException {
         serializer.startTag(NS, TAG_TESTCASE);
         serializer.attribute(NS, ATTR_TESTNAME, testId.getTestName());

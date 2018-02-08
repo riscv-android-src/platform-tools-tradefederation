@@ -16,11 +16,11 @@
 package com.android.tradefed.testtype.metricregression;
 
 import com.android.ddmlib.Log;
-import com.android.ddmlib.testrunner.TestIdentifier;
 import com.android.tradefed.config.Option;
 import com.android.tradefed.config.OptionClass;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.result.ITestInvocationListener;
+import com.android.tradefed.result.TestDescription;
 import com.android.tradefed.testtype.IRemoteTest;
 import com.android.tradefed.testtype.suite.ModuleDefinition;
 import com.android.tradefed.util.FileUtil;
@@ -148,11 +148,11 @@ public class DetectRegression implements IRemoteTest {
             }
         }
 
-        Set<Pair<TestIdentifier, String>> testMetricsToCompare =
+        Set<Pair<TestDescription, String>> testMetricsToCompare =
                 Sets.intersection(
                         before.getTestMetrics().keySet(), after.getTestMetrics().keySet());
         MultiMap<String, TableRow> testMetricsResult = new MultiMap<>();
-        for (Pair<TestIdentifier, String> id : testMetricsToCompare) {
+        for (Pair<TestDescription, String> id : testMetricsToCompare) {
             List<Double> beforeMetrics = before.getTestMetrics().get(id);
             List<Double> afterMetrics = after.getTestMetrics().get(id);
             if (computeRegression(beforeMetrics, afterMetrics)) {

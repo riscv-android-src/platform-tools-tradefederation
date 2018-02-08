@@ -15,10 +15,10 @@
  */
 package com.android.tradefed.invoker;
 
-import com.android.ddmlib.testrunner.TestIdentifier;
 import com.android.tradefed.build.BuildInfo;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.result.ITestInvocationListener;
+import com.android.tradefed.result.TestDescription;
 
 import org.easymock.EasyMock;
 import org.junit.Before;
@@ -52,7 +52,7 @@ public class ShardListenerTest {
     public void testBufferAndReplay() {
         mMockListener.invocationStarted(mContext);
         mMockListener.testRunStarted("run1", 1);
-        TestIdentifier tid = new TestIdentifier("class1", "name1");
+        TestDescription tid = new TestDescription("class1", "name1");
         mMockListener.testStarted(tid, 0l);
         mMockListener.testEnded(tid, 0l, Collections.emptyMap());
         mMockListener.testRunEnded(0l, Collections.emptyMap());
@@ -76,7 +76,7 @@ public class ShardListenerTest {
         mMockListener.invocationStarted(mContext);
         mMockListener.testModuleStarted(module1);
         mMockListener.testRunStarted("run1", 1);
-        TestIdentifier tid = new TestIdentifier("class1", "name1");
+        TestDescription tid = new TestDescription("class1", "name1");
         mMockListener.testStarted(tid, 0l);
         mMockListener.testEnded(tid, 0l, Collections.emptyMap());
         mMockListener.testRunEnded(0l, Collections.emptyMap());

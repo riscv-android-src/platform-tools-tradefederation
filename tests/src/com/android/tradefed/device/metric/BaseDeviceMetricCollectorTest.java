@@ -17,12 +17,12 @@ package com.android.tradefed.device.metric;
 
 import static org.mockito.Mockito.times;
 
-import com.android.ddmlib.testrunner.TestIdentifier;
 import com.android.tradefed.invoker.IInvocationContext;
 import com.android.tradefed.invoker.InvocationContext;
 import com.android.tradefed.result.ByteArrayInputStreamSource;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.LogDataType;
+import com.android.tradefed.result.TestDescription;
 
 import org.junit.Assert;
 import org.junit.Before;
@@ -54,7 +54,7 @@ public class BaseDeviceMetricCollectorTest {
         mBase.init(mContext, mMockListener);
         mBase.invocationStarted(mContext);
         mBase.testRunStarted("testRun", 1);
-        TestIdentifier test = new TestIdentifier("class", "method");
+        TestDescription test = new TestDescription("class", "method");
         mBase.testStarted(test);
         mBase.testLog("dataname", LogDataType.TEXT, new ByteArrayInputStreamSource("".getBytes()));
         mBase.testFailed(test, "trace");
@@ -123,7 +123,7 @@ public class BaseDeviceMetricCollectorTest {
         mBase.init(mContext, mMockListener);
         mBase.invocationStarted(mContext);
         mBase.testRunStarted("testRun", 1);
-        TestIdentifier test = new TestIdentifier("class", "method");
+        TestDescription test = new TestDescription("class", "method");
         mBase.testStarted(test);
         mBase.testLog("dataname", LogDataType.TEXT, new ByteArrayInputStreamSource("".getBytes()));
         mBase.testFailed(test, "trace");

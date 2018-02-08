@@ -29,6 +29,7 @@ import org.easymock.EasyMock;
 import org.junit.Before;
 import org.junit.Test;
 
+import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
 /**
@@ -142,7 +143,7 @@ public class NativeBenchmarkTestTest {
         EasyMock.expectLastCall();
         mListener.testRunStarted(EasyMock.eq(fakeRunName), EasyMock.anyInt());
         EasyMock.expectLastCall();
-        mListener.testRunEnded(EasyMock.anyLong(), EasyMock.anyObject());
+        mListener.testRunEnded(EasyMock.anyLong(), (Map<String, String>) EasyMock.anyObject());
         EasyMock.expectLastCall();
         replayMocks(fakeEntry);
         mBenchmark.run(mListener);

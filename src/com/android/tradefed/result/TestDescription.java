@@ -17,6 +17,7 @@ package com.android.tradefed.result;
 
 import com.android.ddmlib.testrunner.TestIdentifier;
 
+import java.io.Serializable;
 import java.lang.annotation.Annotation;
 import java.util.Arrays;
 import java.util.Collection;
@@ -28,7 +29,7 @@ import java.util.Collection;
  *
  * <p>TODO: Remove the underlying dependency on {@link TestIdentifier}.
  */
-public class TestDescription extends TestIdentifier {
+public class TestDescription extends TestIdentifier implements Serializable {
 
     private Annotation[] mAnnotations;
 
@@ -82,5 +83,16 @@ public class TestDescription extends TestIdentifier {
     /** @return all of the annotations attached to this description node */
     public Collection<Annotation> getAnnotations() {
         return Arrays.asList(mAnnotations);
+    }
+
+    /**
+     * Create a {@link TestDescription} from a {@link TestIdentifier}. Used for ease of conversion
+     * from one to another.
+     *
+     * @param testId The {@link TestIdentifier} to convert.
+     * @return the created {@link TestDescription} with the TestIdentifier values.
+     */
+    public static TestDescription createFromTestIdentifier(TestIdentifier testId) {
+        return new TestDescription(testId.getClassName(), testId.getTestName());
     }
 }

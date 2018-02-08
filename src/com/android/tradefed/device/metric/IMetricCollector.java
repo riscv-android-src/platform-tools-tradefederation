@@ -15,11 +15,11 @@
  */
 package com.android.tradefed.device.metric;
 
-import com.android.ddmlib.testrunner.TestIdentifier;
 import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.invoker.IInvocationContext;
 import com.android.tradefed.result.ITestInvocationListener;
+import com.android.tradefed.result.TestDescription;
 
 import java.util.List;
 import java.util.Map;
@@ -83,7 +83,7 @@ public interface IMetricCollector extends ITestInvocationListener {
      * @param testData the {@link DeviceMetricData} holding the data for the test case. Will be the
      *     same object as during {@link #onTestStart(DeviceMetricData)}.
      * @param currentTestCaseMetrics the current map of metrics passed to {@link
-     *     #testEnded(TestIdentifier, Map)}.
+     *     #testEnded(TestDescription, Map)}.
      */
     public void onTestEnd(
             DeviceMetricData testData, final Map<String, String> currentTestCaseMetrics);

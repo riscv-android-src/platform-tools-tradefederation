@@ -15,7 +15,6 @@
  */
 package com.android.tradefed.device.metric;
 
-import com.android.ddmlib.testrunner.TestIdentifier;
 import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.invoker.IInvocationContext;
@@ -23,6 +22,8 @@ import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.InputStreamSource;
 import com.android.tradefed.result.LogDataType;
+import com.android.tradefed.result.TestDescription;
+
 import java.util.List;
 import java.util.Map;
 
@@ -142,12 +143,12 @@ public class BaseDeviceMetricCollector implements IMetricCollector {
 
     /** Test cases callbacks */
     @Override
-    public final void testStarted(TestIdentifier test) {
+    public final void testStarted(TestDescription test) {
         testStarted(test, System.currentTimeMillis());
     }
 
     @Override
-    public final void testStarted(TestIdentifier test, long startTime) {
+    public final void testStarted(TestDescription test, long startTime) {
         mTestData = new DeviceMetricData(mContext);
         try {
             onTestStart(mTestData);
@@ -159,18 +160,18 @@ public class BaseDeviceMetricCollector implements IMetricCollector {
     }
 
     @Override
-    public final void testFailed(TestIdentifier test, String trace) {
+    public final void testFailed(TestDescription test, String trace) {
         mForwarder.testFailed(test, trace);
     }
 
     @Override
-    public final void testEnded(TestIdentifier test, Map<String, String> testMetrics) {
+    public final void testEnded(TestDescription test, Map<String, String> testMetrics) {
         testEnded(test, System.currentTimeMillis(), testMetrics);
     }
 
     @Override
     public final void testEnded(
-            TestIdentifier test, long endTime, Map<String, String> testMetrics) {
+            TestDescription test, long endTime, Map<String, String> testMetrics) {
         try {
             onTestEnd(mTestData, testMetrics);
             mTestData.addToMetrics(testMetrics);
@@ -182,12 +183,12 @@ public class BaseDeviceMetricCollector implements IMetricCollector {
     }
 
     @Override
-    public final void testAssumptionFailure(TestIdentifier test, String trace) {
+    public final void testAssumptionFailure(TestDescription test, String trace) {
         mForwarder.testAssumptionFailure(test, trace);
     }
 
     @Override
-    public final void testIgnored(TestIdentifier test) {
+    public final void testIgnored(TestDescription test) {
         mForwarder.testIgnored(test);
     }
 

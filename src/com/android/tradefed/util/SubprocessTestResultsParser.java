@@ -15,12 +15,12 @@
  */
 package com.android.tradefed.util;
 
-import com.android.ddmlib.testrunner.TestIdentifier;
 import com.android.tradefed.invoker.IInvocationContext;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.result.FileInputStreamSource;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.InputStreamSource;
+import com.android.tradefed.result.TestDescription;
 import com.android.tradefed.util.SubprocessEventHelper.BaseTestEventInfo;
 import com.android.tradefed.util.SubprocessEventHelper.FailedTestEventInfo;
 import com.android.tradefed.util.SubprocessEventHelper.InvocationFailedEventInfo;
@@ -61,8 +61,10 @@ import java.util.regex.Pattern;
 public class SubprocessTestResultsParser implements Closeable {
 
     private ITestInvocationListener mListener;
-    private TestIdentifier mCurrentTest = null;
+
+    private TestDescription mCurrentTest = null;
     private IInvocationContext mCurrentModuleContext = null;
+
     private Pattern mPattern = null;
     private Map<String, EventHandler> mHandlerMap = null;
     private EventReceiverThread mEventReceiver = null;
@@ -293,7 +295,7 @@ public class SubprocessTestResultsParser implements Closeable {
 
     private void checkCurrentTestId(String className, String testName) {
         if (mCurrentTest == null) {
-            mCurrentTest = new TestIdentifier(className, testName);
+            mCurrentTest = new TestDescription(className, testName);
             CLog.w("Calling a test event without having called testStarted.");
         }
     }
@@ -346,7 +348,7 @@ public class SubprocessTestResultsParser implements Closeable {
         @Override
         public void handleEvent(String eventJson) throws JSONException {
             TestStartedEventInfo bti = new TestStartedEventInfo(new JSONObject(eventJson));
-            mCurrentTest = new TestIdentifier(bti.mClassName, bti.mTestName);
+            mCurrentTest = new TestDescription(bti.mClassName, bti.mTestName);
             if (bti.mStartTime != null) {
                 mListener.testStarted(mCurrentTest, bti.mStartTime);
             } else {
@@ -456,7 +458,7 @@ public class SubprocessTestResultsParser implements Closeable {
     }
 
     /** Returns the test that is currently in progress. */
-    public TestIdentifier getCurrentTest() {
+    public TestDescription getCurrentTest() {
         return mCurrentTest;
     }
 }

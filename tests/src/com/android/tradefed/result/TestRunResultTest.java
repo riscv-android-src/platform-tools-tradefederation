@@ -15,9 +15,9 @@
  */
 package com.android.tradefed.result;
 
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
 
-import com.android.ddmlib.testrunner.TestIdentifier;
 import com.android.ddmlib.testrunner.TestResult.TestStatus;
 
 import org.junit.Test;
@@ -33,7 +33,7 @@ public class TestRunResultTest {
     /** Check basic storing of results when events are coming in. */
     @Test
     public void testGetNumTestsInState() {
-        TestIdentifier test = new TestIdentifier("FooTest", "testBar");
+        TestDescription test = new TestDescription("FooTest", "testBar");
         TestRunResult result = new TestRunResult();
         assertEquals(0, result.getNumTestsInState(TestStatus.PASSED));
         result.testStarted(test);
@@ -49,7 +49,7 @@ public class TestRunResultTest {
     /** Check basic storing of results when events are coming in and there is a test failure. */
     @Test
     public void testGetNumTestsInState_failed() {
-        TestIdentifier test = new TestIdentifier("FooTest", "testBar");
+        TestDescription test = new TestDescription("FooTest", "testBar");
         TestRunResult result = new TestRunResult();
         assertEquals(0, result.getNumTestsInState(TestStatus.PASSED));
         result.testStarted(test);
@@ -71,7 +71,7 @@ public class TestRunResultTest {
     /** Test that we are able to specify directly the start and end time of a test. */
     @Test
     public void testSpecifyElapsedTime() {
-        TestIdentifier test = new TestIdentifier("FooTest", "testBar");
+        TestDescription test = new TestDescription("FooTest", "testBar");
         TestRunResult result = new TestRunResult();
         result.testStarted(test, 5L);
         assertEquals(5L, result.getTestResults().get(test).getStartTime());

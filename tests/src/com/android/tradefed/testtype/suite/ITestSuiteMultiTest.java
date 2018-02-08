@@ -15,7 +15,6 @@
  */
 package com.android.tradefed.testtype.suite;
 
-import com.android.ddmlib.testrunner.TestIdentifier;
 import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.config.ConfigurationException;
 import com.android.tradefed.config.ConfigurationFactory;
@@ -27,6 +26,7 @@ import com.android.tradefed.invoker.IInvocationContext;
 import com.android.tradefed.invoker.InvocationContext;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.result.ITestInvocationListener;
+import com.android.tradefed.result.TestDescription;
 import com.android.tradefed.targetprep.ITargetPreparer;
 
 import org.easymock.EasyMock;
@@ -39,6 +39,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 
 /** Unit tests for {@link ITestSuite} when used with multiple devices. */
 @RunWith(JUnit4.class)
@@ -136,15 +137,15 @@ public class ITestSuiteMultiTest {
         mTestSuite.setSystemStatusChecker(new ArrayList<>());
         mMockListener.testModuleStarted(EasyMock.anyObject());
         mMockListener.testRunStarted("test1", 2);
-        TestIdentifier test1 =
-                new TestIdentifier(MultiDeviceStubTest.class.getSimpleName(), "test0");
+        TestDescription test1 =
+                new TestDescription(MultiDeviceStubTest.class.getSimpleName(), "test0");
         mMockListener.testStarted(test1, 0l);
         mMockListener.testEnded(test1, 5l, Collections.emptyMap());
-        TestIdentifier test2 =
-                new TestIdentifier(MultiDeviceStubTest.class.getSimpleName(), "test1");
+        TestDescription test2 =
+                new TestDescription(MultiDeviceStubTest.class.getSimpleName(), "test1");
         mMockListener.testStarted(test2, 0l);
         mMockListener.testEnded(test2, 5l, Collections.emptyMap());
-        mMockListener.testRunEnded(EasyMock.anyLong(), EasyMock.anyObject());
+        mMockListener.testRunEnded(EasyMock.anyLong(), (Map<String, String>) EasyMock.anyObject());
         mMockListener.testModuleEnded();
 
         // Target preparation is triggered against the preparer in the second device.

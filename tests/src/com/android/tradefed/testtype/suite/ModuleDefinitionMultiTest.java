@@ -124,7 +124,7 @@ public class ModuleDefinitionMultiTest {
         mModule.getModuleInvocationContext().addDeviceBuildInfo(DEVICE_NAME_2, mBuildInfo2);
 
         mListener.testRunStarted(MODULE_NAME, 0);
-        mListener.testRunEnded(EasyMock.anyLong(), EasyMock.anyObject());
+        mListener.testRunEnded(EasyMock.anyLong(), (Map<String, String>) EasyMock.anyObject());
 
         // Target preparation is triggered against the preparer in the second device.
         EasyMock.expect(mMockTargetPrep.isDisabled()).andReturn(false);

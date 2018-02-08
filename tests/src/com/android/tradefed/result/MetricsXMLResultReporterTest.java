@@ -19,7 +19,6 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.Mockito.doReturn;
 
-import com.android.ddmlib.testrunner.TestIdentifier;
 import com.android.tradefed.build.BuildInfo;
 import com.android.tradefed.config.OptionSetter;
 import com.android.tradefed.invoker.IInvocationContext;
@@ -73,7 +72,7 @@ public class MetricsXMLResultReporterTest {
     public void testRunMetrics() {
         Map<String, String> map = new HashMap<>();
         map.put("metric-1", "1.0");
-        final TestIdentifier testId = new TestIdentifier("FooTest", "testFoo");
+        final TestDescription testId = new TestDescription("FooTest", "testFoo");
         IInvocationContext context = new InvocationContext();
         context.addDeviceBuildInfo("fakeDevice", new BuildInfo());
         context.setTestTag("stub");
@@ -100,7 +99,7 @@ public class MetricsXMLResultReporterTest {
     public void testTestMetrics() {
         Map<String, String> map = new HashMap<>();
         map.put("metric-1", "1.0");
-        final TestIdentifier testId = new TestIdentifier("FooTest", "testFoo");
+        final TestDescription testId = new TestDescription("FooTest", "testFoo");
         IInvocationContext context = new InvocationContext();
         context.addDeviceBuildInfo("fakeDevice", new BuildInfo());
         context.setTestTag("stub");
@@ -124,7 +123,7 @@ public class MetricsXMLResultReporterTest {
     public void testTestFailMetrics() {
         Map<String, String> map = new HashMap<>();
         map.put("metric-1", "1.0");
-        final TestIdentifier testId = new TestIdentifier("FooTest", "testFoo");
+        final TestDescription testId = new TestDescription("FooTest", "testFoo");
         final String trace = "sample trace";
         IInvocationContext context = new InvocationContext();
         context.addDeviceBuildInfo("fakeDevice", new BuildInfo());

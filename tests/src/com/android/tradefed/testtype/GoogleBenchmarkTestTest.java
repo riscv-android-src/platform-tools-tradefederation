@@ -122,7 +122,8 @@ public class GoogleBenchmarkTestTest extends TestCase {
                 .andReturn("method1\nmethod2\n");
         mMockInvocationListener.testRunStarted(test1, 3);
         mMockInvocationListener.testRunStarted(test2, 2);
-        mMockInvocationListener.testRunEnded(EasyMock.anyLong(), EasyMock.anyObject());
+        mMockInvocationListener.testRunEnded(
+                EasyMock.anyLong(), (Map<String, String>) EasyMock.anyObject());
         EasyMock.expectLastCall().times(2);
         replayMocks();
 
@@ -203,7 +204,8 @@ public class GoogleBenchmarkTestTest extends TestCase {
                 .andReturn("method1\nmethod2\n");
         mMockInvocationListener.testRunStarted(test1, 3);
         mMockInvocationListener.testRunStarted(test2, 2);
-        mMockInvocationListener.testRunEnded(EasyMock.anyLong(), EasyMock.anyObject());
+        mMockInvocationListener.testRunEnded(
+                EasyMock.anyLong(), (Map<String, String>) EasyMock.anyObject());
         EasyMock.expectLastCall().times(2);
         replayMocks();
 
@@ -240,7 +242,8 @@ public class GoogleBenchmarkTestTest extends TestCase {
                 .andReturn("method1\nmethod2\nmethod3");
         // Expect reportName instead of test name
         mMockInvocationListener.testRunStarted(reportName, 3);
-        mMockInvocationListener.testRunEnded(EasyMock.anyLong(), EasyMock.anyObject());
+        mMockInvocationListener.testRunEnded(
+                EasyMock.anyLong(), (Map<String, String>) EasyMock.anyObject());
         EasyMock.expectLastCall();
         replayMocks();
 
@@ -277,7 +280,8 @@ public class GoogleBenchmarkTestTest extends TestCase {
         mMockInvocationListener.testRunStarted(test1, 3);
         mMockInvocationListener.testRunFailed(EasyMock.anyObject());
         // Even with exception testrunEnded is expected.
-        mMockInvocationListener.testRunEnded(EasyMock.anyLong(), EasyMock.anyObject());
+        mMockInvocationListener.testRunEnded(
+                EasyMock.anyLong(), (Map<String, String>) EasyMock.anyObject());
         EasyMock.expectLastCall();
         replayMocks();
 

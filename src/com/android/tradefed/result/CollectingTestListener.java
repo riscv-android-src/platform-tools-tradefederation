@@ -15,7 +15,6 @@
  */
 package com.android.tradefed.result;
 
-import com.android.ddmlib.testrunner.TestIdentifier;
 import com.android.ddmlib.testrunner.TestResult.TestStatus;
 import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.config.Option;
@@ -151,52 +150,48 @@ public class CollectingTestListener implements ITestInvocationListener {
         mIsCountDirty = true;
     }
 
-    /**
-     * {@inheritDoc}
-     */
+    /** {@inheritDoc} */
     @Override
-    public void testStarted(TestIdentifier test) {
+    public void testStarted(TestDescription test) {
         testStarted(test, System.currentTimeMillis());
     }
 
     /** {@inheritDoc} */
     @Override
-    public void testStarted(TestIdentifier test, long startTime) {
+    public void testStarted(TestDescription test, long startTime) {
         mIsCountDirty = true;
         mCurrentResults.testStarted(test, startTime);
     }
 
-    /**
-     * {@inheritDoc}
-     */
+    /** {@inheritDoc} */
     @Override
-    public void testEnded(TestIdentifier test, Map<String, String> testMetrics) {
+    public void testEnded(TestDescription test, Map<String, String> testMetrics) {
         testEnded(test, System.currentTimeMillis(), testMetrics);
     }
 
     /** {@inheritDoc} */
     @Override
-    public void testEnded(TestIdentifier test, long endTime, Map<String, String> testMetrics) {
+    public void testEnded(TestDescription test, long endTime, Map<String, String> testMetrics) {
         mIsCountDirty = true;
         mCurrentResults.testEnded(test, endTime, testMetrics);
     }
 
     /** {@inheritDoc} */
     @Override
-    public void testFailed(TestIdentifier test, String trace) {
+    public void testFailed(TestDescription test, String trace) {
         mIsCountDirty = true;
         mCurrentResults.testFailed(test, trace);
     }
 
     @Override
-    public void testAssumptionFailure(TestIdentifier test, String trace) {
+    public void testAssumptionFailure(TestDescription test, String trace) {
         mIsCountDirty = true;
         mCurrentResults.testAssumptionFailure(test, trace);
 
     }
 
     @Override
-    public void testIgnored(TestIdentifier test) {
+    public void testIgnored(TestDescription test) {
         mIsCountDirty = true;
         mCurrentResults.testIgnored(test);
     }

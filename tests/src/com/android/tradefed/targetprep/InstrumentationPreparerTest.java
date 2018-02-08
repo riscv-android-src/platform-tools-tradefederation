@@ -16,13 +16,13 @@
 
 package com.android.tradefed.targetprep;
 
-import com.android.ddmlib.testrunner.TestIdentifier;
 import com.android.tradefed.build.DeviceBuildInfo;
 import com.android.tradefed.build.IDeviceBuildInfo;
 import com.android.tradefed.command.remote.DeviceDescriptor;
 import com.android.tradefed.device.DeviceAllocationState;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.result.ITestInvocationListener;
+import com.android.tradefed.result.TestDescription;
 import com.android.tradefed.testtype.InstrumentationTest;
 
 import junit.framework.TestCase;
@@ -56,7 +56,7 @@ public class InstrumentationPreparerTest extends TestCase {
 
     public void testRun() throws Exception {
         final String packageName = "packageName";
-        final TestIdentifier test = new TestIdentifier("FooTest", "testFoo");
+        final TestDescription test = new TestDescription("FooTest", "testFoo");
         mMockITest = new InstrumentationTest() {
             @Override
             public void run(ITestInvocationListener listener) {
@@ -82,7 +82,7 @@ public class InstrumentationPreparerTest extends TestCase {
 
     public void testRun_testFailed() throws Exception {
         final String packageName = "packageName";
-        final TestIdentifier test = new TestIdentifier("FooTest", "testFoo");
+        final TestDescription test = new TestDescription("FooTest", "testFoo");
         mMockITest = new InstrumentationTest() {
             @Override
             public void run(ITestInvocationListener listener) {

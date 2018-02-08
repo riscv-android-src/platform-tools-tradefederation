@@ -20,7 +20,6 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
-import com.android.ddmlib.testrunner.TestIdentifier;
 import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.config.Configuration;
 import com.android.tradefed.config.ConfigurationDescriptor;
@@ -41,6 +40,7 @@ import com.android.tradefed.result.ByteArrayInputStreamSource;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.InputStreamSource;
 import com.android.tradefed.result.LogDataType;
+import com.android.tradefed.result.TestDescription;
 import com.android.tradefed.suite.checker.ISystemStatusChecker;
 import com.android.tradefed.suite.checker.KeyguardStatusChecker;
 import com.android.tradefed.testtype.IAbi;
@@ -150,7 +150,7 @@ public class ITestSuiteTest {
                 if (mRunException != null) {
                     throw mRunException;
                 }
-                TestIdentifier test = new TestIdentifier(EMPTY_CONFIG, EMPTY_CONFIG);
+                TestDescription test = new TestDescription(EMPTY_CONFIG, EMPTY_CONFIG);
                 listener.testStarted(test, 0);
                 listener.testEnded(test, 5, Collections.emptyMap());
             } finally {
@@ -206,10 +206,10 @@ public class ITestSuiteTest {
     private void expectTestRun(ITestInvocationListener listener) {
         listener.testModuleStarted(EasyMock.anyObject());
         listener.testRunStarted(TEST_CONFIG_NAME, 1);
-        TestIdentifier test = new TestIdentifier(EMPTY_CONFIG, EMPTY_CONFIG);
+        TestDescription test = new TestDescription(EMPTY_CONFIG, EMPTY_CONFIG);
         listener.testStarted(test, 0);
         listener.testEnded(test, 5, Collections.emptyMap());
-        listener.testRunEnded(EasyMock.anyLong(), EasyMock.anyObject());
+        listener.testRunEnded(EasyMock.anyLong(), (Map<String, String>) EasyMock.anyObject());
         listener.testModuleEnded();
     }
 
@@ -280,11 +280,11 @@ public class ITestSuiteTest {
         expectTestRun(mMockListener);
 
         mMockListener.testRunStarted(ITestSuite.MODULE_CHECKER_PRE + "_test", 0);
-        mMockListener.testRunEnded(EasyMock.anyLong(), EasyMock.anyObject());
+        mMockListener.testRunEnded(EasyMock.anyLong(), (Map<String, String>) EasyMock.anyObject());
 
         mMockListener.testRunStarted(ITestSuite.MODULE_CHECKER_POST + "_test", 0);
         mMockListener.testRunFailed(EasyMock.anyObject());
-        mMockListener.testRunEnded(EasyMock.anyLong(), EasyMock.anyObject());
+        mMockListener.testRunEnded(EasyMock.anyLong(), (Map<String, String>) EasyMock.anyObject());
 
         replayMocks();
         mTestSuite.run(mMockListener);
@@ -351,7 +351,7 @@ public class ITestSuiteTest {
         mMockListener.testRunStarted(TEST_CONFIG_NAME, 1);
         EasyMock.expectLastCall().times(1);
         mMockListener.testRunFailed("Module test only ran 0 out of 1 expected tests.");
-        mMockListener.testRunEnded(EasyMock.anyLong(), EasyMock.anyObject());
+        mMockListener.testRunEnded(EasyMock.anyLong(), (Map<String, String>) EasyMock.anyObject());
         EasyMock.expectLastCall().times(1);
         mMockListener.testModuleEnded();
         replayMocks();
@@ -398,7 +398,7 @@ public class ITestSuiteTest {
         mMockListener.testRunStarted(TEST_CONFIG_NAME, 1);
         EasyMock.expectLastCall().times(1);
         mMockListener.testRunFailed("Module test only ran 0 out of 1 expected tests.");
-        mMockListener.testRunEnded(EasyMock.anyLong(), EasyMock.anyObject());
+        mMockListener.testRunEnded(EasyMock.anyLong(), (Map<String, String>) EasyMock.anyObject());
         EasyMock.expectLastCall().times(1);
         mMockListener.testModuleEnded();
         replayMocks();
@@ -841,7 +841,7 @@ public class ITestSuiteTest {
         Capture<Map<String, String>> c = new Capture<>();
         mMockListener.testModuleStarted(EasyMock.anyObject());
         mMockListener.testRunStarted(TEST_CONFIG_NAME, 1);
-        TestIdentifier test = new TestIdentifier(EMPTY_CONFIG, EMPTY_CONFIG);
+        TestDescription test = new TestDescription(EMPTY_CONFIG, EMPTY_CONFIG);
         mMockListener.testStarted(test, 0);
         mMockListener.testEnded(test, 5, Collections.emptyMap());
         mMockListener.testRunEnded(EasyMock.anyLong(), EasyMock.capture(c));

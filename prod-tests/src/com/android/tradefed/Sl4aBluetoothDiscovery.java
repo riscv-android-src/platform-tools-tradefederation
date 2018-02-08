@@ -15,12 +15,12 @@
  */
 package com.android.tradefed;
 
-import com.android.ddmlib.testrunner.TestIdentifier;
 import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.result.ITestInvocationListener;
+import com.android.tradefed.result.TestDescription;
 import com.android.tradefed.testtype.IMultiDeviceTest;
 import com.android.tradefed.testtype.IRemoteTest;
 import com.android.tradefed.util.sl4a.Sl4aClient;
@@ -93,8 +93,8 @@ public class Sl4aBluetoothDiscovery implements IRemoteTest, IMultiDeviceTest {
         Sl4aClient dutClient = Sl4aClient.startSL4A(mDut, null);
         Sl4aClient discovererClient = Sl4aClient.startSL4A(mDiscoverer, null);
 
-        TestIdentifier testId = new TestIdentifier(this.getClass().getCanonicalName(),
-                "bluetooth_discovery");
+        TestDescription testId =
+                new TestDescription(this.getClass().getCanonicalName(), "bluetooth_discovery");
 
         long startTime = System.currentTimeMillis();
         listener.testRunStarted("sl4a_bluetooth", 1);

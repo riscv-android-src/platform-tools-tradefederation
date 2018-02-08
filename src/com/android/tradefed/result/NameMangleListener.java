@@ -16,7 +16,6 @@
 
 package com.android.tradefed.result;
 
-import com.android.ddmlib.testrunner.TestIdentifier;
 import com.android.tradefed.invoker.IInvocationContext;
 
 import java.util.Map;
@@ -33,18 +32,17 @@ public abstract class NameMangleListener implements ITestInvocationListener {
     }
 
     /**
-     * This method is run on all {@link TestIdentifier}s that are passed to the
-     * {@link #testStarted(TestIdentifier)},
-     * {@link #testFailed(TestIdentifier, String)}, and
-     * {@link #testEnded(TestIdentifier, Map)} callbacks.  The method should return a
-     * possibly-different {@link TestIdentifier} that will be passed to the downstream
-     * {@link ITestInvocationListener} that was specified during construction.
-     * <p />
-     * The implementation should be careful to not modify the original {@link TestIdentifier}.
-     * <p />
-     * The default implementation passes the incoming identifier through unmodified.
+     * This method is run on all {@link TestDescription}s that are passed to the {@link
+     * #testStarted(TestDescription)}, {@link #testFailed(TestDescription, String)}, and {@link
+     * #testEnded(TestDescription, Map)} callbacks. The method should return a possibly-different
+     * {@link TestDescription} that will be passed to the downstream {@link ITestInvocationListener}
+     * that was specified during construction.
+     *
+     * <p>The implementation should be careful to not modify the original {@link TestDescription}.
+     *
+     * <p>The default implementation passes the incoming identifier through unmodified.
      */
-    protected TestIdentifier mangleTestId(TestIdentifier test) {
+    protected TestDescription mangleTestId(TestDescription test) {
         return test;
     }
 
@@ -63,39 +61,31 @@ public abstract class NameMangleListener implements ITestInvocationListener {
     }
 
     // ITestRunListener methods
-    /**
-     * {@inheritDoc}
-     */
+    /** {@inheritDoc} */
     @Override
-    public void testEnded(TestIdentifier test, Map<String, String> testMetrics) {
-        final TestIdentifier mangledTestId = mangleTestId(test);
+    public void testEnded(TestDescription test, Map<String, String> testMetrics) {
+        final TestDescription mangledTestId = mangleTestId(test);
         mListener.testEnded(mangledTestId, testMetrics);
     }
 
-    /**
-     * {@inheritDoc}
-     */
+    /** {@inheritDoc} */
     @Override
-    public void testFailed(TestIdentifier test, String trace) {
-        final TestIdentifier mangledTestId = mangleTestId(test);
+    public void testFailed(TestDescription test, String trace) {
+        final TestDescription mangledTestId = mangleTestId(test);
         mListener.testFailed(mangledTestId, trace);
     }
 
-    /**
-     * {@inheritDoc}
-     */
+    /** {@inheritDoc} */
     @Override
-    public void testAssumptionFailure(TestIdentifier test, String trace) {
-        final TestIdentifier mangledTestId = mangleTestId(test);
+    public void testAssumptionFailure(TestDescription test, String trace) {
+        final TestDescription mangledTestId = mangleTestId(test);
         mListener.testAssumptionFailure(mangledTestId, trace);
     }
 
-    /**
-     * {@inheritDoc}
-     */
+    /** {@inheritDoc} */
     @Override
-    public void testIgnored(TestIdentifier test) {
-        final TestIdentifier mangledTestId = mangleTestId(test);
+    public void testIgnored(TestDescription test) {
+        final TestDescription mangledTestId = mangleTestId(test);
         mListener.testIgnored(mangledTestId);
     }
 
@@ -132,12 +122,10 @@ public abstract class NameMangleListener implements ITestInvocationListener {
         mListener.testRunStopped(elapsedTime);
     }
 
-    /**
-     * {@inheritDoc}
-     */
+    /** {@inheritDoc} */
     @Override
-    public void testStarted(TestIdentifier test) {
-        final TestIdentifier mangledTestId = mangleTestId(test);
+    public void testStarted(TestDescription test) {
+        final TestDescription mangledTestId = mangleTestId(test);
         mListener.testStarted(mangledTestId);
     }
 

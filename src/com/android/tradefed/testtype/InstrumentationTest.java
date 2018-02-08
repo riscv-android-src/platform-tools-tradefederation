@@ -25,7 +25,6 @@ import com.android.ddmlib.testrunner.IRemoteAndroidTestRunner;
 import com.android.ddmlib.testrunner.IRemoteAndroidTestRunner.TestSize;
 import com.android.ddmlib.testrunner.InstrumentationResultParser;
 import com.android.ddmlib.testrunner.RemoteAndroidTestRunner;
-import com.android.ddmlib.testrunner.TestIdentifier;
 import com.android.tradefed.config.ConfigurationException;
 import com.android.tradefed.config.Option;
 import com.android.tradefed.config.Option.Importance;
@@ -39,6 +38,7 @@ import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.InputStreamSource;
 import com.android.tradefed.result.LogDataType;
 import com.android.tradefed.result.ResultForwarder;
+import com.android.tradefed.result.TestDescription;
 import com.android.tradefed.result.TestRunResult;
 import com.android.tradefed.util.AbiFormatter;
 import com.android.tradefed.util.ArrayUtil;
@@ -255,7 +255,7 @@ public class InstrumentationTest implements IDeviceTest, IResumableTest, ITestCo
 
     private IRemoteAndroidTestRunner mRunner;
 
-    private Collection<TestIdentifier> mTestsToRun = null;
+    private Collection<TestDescription> mTestsToRun = null;
 
     private String mCoverageTarget = null;
 
@@ -352,7 +352,7 @@ public class InstrumentationTest implements IDeviceTest, IResumableTest, ITestCo
      *
      * @param tests the tests to run
      */
-    public void setTestsToRun(Collection<TestIdentifier> tests) {
+    public void setTestsToRun(Collection<TestDescription> tests) {
         mTestsToRun = tests;
     }
 
@@ -763,7 +763,7 @@ public class InstrumentationTest implements IDeviceTest, IResumableTest, ITestCo
                     "Tests to run should not be set explicitly when --collect-tests-only is set.");
 
             // Use the actual listener to collect the tests, and print a error if this fails
-            Collection<TestIdentifier> collectedTests = collectTestsToRun(mRunner, listener);
+            Collection<TestDescription> collectedTests = collectTestsToRun(mRunner, listener);
             if (collectedTests == null) {
                 CLog.e("Failed to collect tests for %s", mPackageName);
             } else {
@@ -773,7 +773,7 @@ public class InstrumentationTest implements IDeviceTest, IResumableTest, ITestCo
         }
 
         // If the tests to run weren't provided explicitly, collect them.
-        Collection<TestIdentifier> testsToRun = mTestsToRun;
+        Collection<TestDescription> testsToRun = mTestsToRun;
         if (testsToRun == null) {
             // Don't notify the listener since it's not a real run.
             testsToRun = collectTestsToRun(mRunner, null);
@@ -862,8 +862,9 @@ public class InstrumentationTest implements IDeviceTest, IResumableTest, ITestCo
      * @param listener the {@link ITestInvocationListener}
      * @param expectedTests the full set of expected tests in this run.
      */
-    private void runWithRerun(final ITestInvocationListener listener,
-            Collection<TestIdentifier> expectedTests) throws DeviceNotAvailableException {
+    private void runWithRerun(
+            final ITestInvocationListener listener, Collection<TestDescription> expectedTests)
+            throws DeviceNotAvailableException {
         CollectingTestListener testTracker = new CollectingTestListener();
         mDevice.runInstrumentationTests(
                 mRunner,
@@ -899,7 +900,7 @@ public class InstrumentationTest implements IDeviceTest, IResumableTest, ITestCo
      * @throws DeviceNotAvailableException
      */
     private void rerunTests(
-            Collection<TestIdentifier> expectedTests, final ITestInvocationListener listener)
+            Collection<TestDescription> expectedTests, final ITestInvocationListener listener)
             throws DeviceNotAvailableException {
         if (mRebootBeforeReRun) {
             mDevice.reboot();
@@ -917,7 +918,7 @@ public class InstrumentationTest implements IDeviceTest, IResumableTest, ITestCo
     }
 
     @VisibleForTesting
-    IRemoteTest getTestReRunner(Collection<TestIdentifier> tests) throws ConfigurationException {
+    IRemoteTest getTestReRunner(Collection<TestDescription> tests) throws ConfigurationException {
         if (mReRunUsingTestFile) {
             return new InstrumentationFileTest(
                     this, tests, mFallbackToSerialRerun, mReRunUsingTestFileAttempts);
@@ -931,17 +932,18 @@ public class InstrumentationTest implements IDeviceTest, IResumableTest, ITestCo
 
     /**
      * Collect the list of tests that should be executed by this test run.
-     * <p/>
-     * This will be done by executing the test run in 'logOnly' mode, and recording the list of
+     *
+     * <p>This will be done by executing the test run in 'logOnly' mode, and recording the list of
      * tests.
      *
      * @param runner the {@link IRemoteAndroidTestRunner} to use to run the tests.
-     * @return a {@link Collection} of {@link TestIdentifier}s that represent all tests to be
-     * executed by this run
+     * @return a {@link Collection} of {@link TestDescription}s that represent all tests to be
+     *     executed by this run
      * @throws DeviceNotAvailableException
      */
-    private Collection<TestIdentifier> collectTestsToRun(final IRemoteAndroidTestRunner runner,
-            final ITestInvocationListener listener) throws DeviceNotAvailableException {
+    private Collection<TestDescription> collectTestsToRun(
+            final IRemoteAndroidTestRunner runner, final ITestInvocationListener listener)
+            throws DeviceNotAvailableException {
         if (isRerunMode()) {
             Log.d(LOG_TAG, String.format("Collecting test info for %s on device %s",
                     mPackageName, mDevice.getSerialNumber()));
@@ -950,7 +952,7 @@ public class InstrumentationTest implements IDeviceTest, IResumableTest, ITestCo
             runner.setDebug(false);
             // try to collect tests multiple times, in case device is temporarily not available
             // on first attempt
-            Collection<TestIdentifier>  tests = collectTestsAndRetry(runner, listener);
+            Collection<TestDescription> tests = collectTestsAndRetry(runner, listener);
             // done with "logOnly" mode, restore proper test timeout before real test execution
             addTimeoutsToRunner(runner);
             runner.setTestCollection(false);
@@ -969,7 +971,7 @@ public class InstrumentationTest implements IDeviceTest, IResumableTest, ITestCo
      * @throws DeviceNotAvailableException if communication with the device was lost
      */
     @VisibleForTesting
-    Collection<TestIdentifier> collectTestsAndRetry(
+    Collection<TestDescription> collectTestsAndRetry(
             final IRemoteAndroidTestRunner runner, final ITestInvocationListener listener)
             throws DeviceNotAvailableException {
         boolean communicationFailure = false;
@@ -1035,7 +1037,7 @@ public class InstrumentationTest implements IDeviceTest, IResumableTest, ITestCo
         }
 
         @Override
-        public void testFailed(TestIdentifier test, String trace) {
+        public void testFailed(TestDescription test, String trace) {
             try {
                 InputStreamSource screenSource = mDevice.getScreenshot();
                 super.testLog(String.format("screenshot-%s_%s", test.getClassName(),
@@ -1056,7 +1058,7 @@ public class InstrumentationTest implements IDeviceTest, IResumableTest, ITestCo
     static class FailedTestLogcatGenerator extends ResultForwarder {
         private ITestDevice mDevice;
         private int mNumLogcatBytes;
-        private Map<TestIdentifier, Long> mMapStartTime = new HashMap<TestIdentifier, Long>();
+        private Map<TestDescription, Long> mMapStartTime = new HashMap<TestDescription, Long>();
 
         public FailedTestLogcatGenerator(ITestInvocationListener listener, ITestDevice device,
                 int maxLogcatBytes) {
@@ -1070,7 +1072,7 @@ public class InstrumentationTest implements IDeviceTest, IResumableTest, ITestCo
         }
 
         @Override
-        public void testStarted(TestIdentifier test) {
+        public void testStarted(TestDescription test) {
             super.testStarted(test);
             // capture the starting date of the tests.
             try {
@@ -1084,18 +1086,18 @@ public class InstrumentationTest implements IDeviceTest, IResumableTest, ITestCo
         }
 
         @Override
-        public void testFailed(TestIdentifier test, String trace) {
+        public void testFailed(TestDescription test, String trace) {
             super.testFailed(test, trace);
             captureLog(test);
         }
 
         @Override
-        public void testAssumptionFailure(TestIdentifier test, String trace) {
+        public void testAssumptionFailure(TestDescription test, String trace) {
             super.testAssumptionFailure(test, trace);
             captureLog(test);
         }
 
-        private void captureLog(TestIdentifier test) {
+        private void captureLog(TestDescription test) {
             // if we can, capture starting the beginning of the test only to be more precise
             long startTime = 0;
             if (mMapStartTime.containsKey(test)) {

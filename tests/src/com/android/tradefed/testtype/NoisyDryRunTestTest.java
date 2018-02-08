@@ -32,6 +32,7 @@ import org.junit.runners.JUnit4;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.Map;
 
 /**
  * Unit test for {@link NoisyDryRunTest}.
@@ -60,7 +61,7 @@ public class NoisyDryRunTestTest {
         mMockListener.testRunStarted("com.android.tradefed.testtype.NoisyDryRunTest_parseFile", 1);
         mMockListener.testStarted(EasyMock.anyObject());
         mMockListener.testEnded(EasyMock.anyObject(), EasyMock.anyObject());
-        mMockListener.testRunEnded(EasyMock.eq(0l), EasyMock.anyObject());
+        mMockListener.testRunEnded(EasyMock.eq(0l), (Map<String, String>) EasyMock.anyObject());
 
         mMockListener.testRunStarted("com.android.tradefed.testtype.NoisyDryRunTest_parseCommands",
                 2);
@@ -68,7 +69,7 @@ public class NoisyDryRunTestTest {
         mMockListener.testEnded(EasyMock.anyObject(), EasyMock.anyObject());
         mMockListener.testStarted(EasyMock.anyObject());
         mMockListener.testEnded(EasyMock.anyObject(), EasyMock.anyObject());
-        mMockListener.testRunEnded(EasyMock.eq(0l), EasyMock.anyObject());
+        mMockListener.testRunEnded(EasyMock.eq(0l), (Map<String, String>) EasyMock.anyObject());
         replayMocks();
 
         NoisyDryRunTest noisyDryRunTest = new NoisyDryRunTest();
@@ -85,7 +86,7 @@ public class NoisyDryRunTestTest {
         mMockListener.testStarted(EasyMock.anyObject());
         mMockListener.testEnded(EasyMock.anyObject(), EasyMock.anyObject());
         mMockListener.testFailed(EasyMock.anyObject(), EasyMock.anyObject());
-        mMockListener.testRunEnded(EasyMock.eq(0l), EasyMock.anyObject());
+        mMockListener.testRunEnded(EasyMock.eq(0l), (Map<String, String>) EasyMock.anyObject());
         replayMocks();
 
         NoisyDryRunTest noisyDryRunTest = new NoisyDryRunTest();
@@ -102,7 +103,7 @@ public class NoisyDryRunTestTest {
         mMockListener.testRunStarted("com.android.tradefed.testtype.NoisyDryRunTest_parseFile", 1);
         mMockListener.testStarted(EasyMock.anyObject());
         mMockListener.testEnded(EasyMock.anyObject(), EasyMock.anyObject());
-        mMockListener.testRunEnded(EasyMock.eq(0l), EasyMock.anyObject());
+        mMockListener.testRunEnded(EasyMock.eq(0l), (Map<String, String>) EasyMock.anyObject());
 
         mMockListener.testRunStarted("com.android.tradefed.testtype.NoisyDryRunTest_parseCommands",
                 2);
@@ -111,7 +112,7 @@ public class NoisyDryRunTestTest {
         mMockListener.testStarted(EasyMock.anyObject());
         mMockListener.testFailed(EasyMock.anyObject(), EasyMock.anyObject());
         mMockListener.testEnded(EasyMock.anyObject(), EasyMock.anyObject());
-        mMockListener.testRunEnded(EasyMock.eq(0l), EasyMock.anyObject());
+        mMockListener.testRunEnded(EasyMock.eq(0l), (Map<String, String>) EasyMock.anyObject());
         replayMocks();
 
         NoisyDryRunTest noisyDryRunTest = new NoisyDryRunTest();

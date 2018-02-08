@@ -15,8 +15,6 @@
  */
 package com.android.tradefed.result;
 
-import com.android.ddmlib.testrunner.TestIdentifier;
-
 import junit.framework.Test;
 import junit.framework.TestCase;
 import junit.framework.TestListener;
@@ -35,7 +33,7 @@ public class InvocationToJUnitResultForwarderTest extends TestCase {
     private static final String CLASS_NAME = "className";
     private TestListener mJUnitListener;
     private InvocationToJUnitResultForwarder mTestForwarder;
-    private TestIdentifier mTestIdentifier;
+    private TestDescription mTestIdentifier;
 
     /**
      * {@inheritDoc}
@@ -45,13 +43,13 @@ public class InvocationToJUnitResultForwarderTest extends TestCase {
         super.setUp();
         mJUnitListener = EasyMock.createMock(TestListener.class);
         mTestForwarder = new InvocationToJUnitResultForwarder(mJUnitListener);
-        mTestIdentifier = new TestIdentifier(CLASS_NAME, TEST_NAME);
+        mTestIdentifier = new TestDescription(CLASS_NAME, TEST_NAME);
     }
 
     /**
-     * Simple test for {@link InvocationToJUnitResultForwarder#testEnded(TestIdentifier, Map)}.
-     * <p/>
-     * Verifies that data put into TestIdentifier is forwarded in correct format
+     * Simple test for {@link InvocationToJUnitResultForwarder#testEnded(TestDescription, Map)}.
+     *
+     * <p>Verifies that data put into TestIdentifier is forwarded in correct format
      */
     public void testTestEnded() {
         Map<String, String> emptyMap = Collections.emptyMap();

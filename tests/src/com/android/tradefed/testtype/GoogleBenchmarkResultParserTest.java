@@ -17,10 +17,10 @@ package com.android.tradefed.testtype;
 
 import static org.junit.Assert.assertEquals;
 
-import com.android.ddmlib.testrunner.TestIdentifier;
 import com.android.tradefed.device.CollectingOutputReceiver;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.result.ITestInvocationListener;
+import com.android.tradefed.result.TestDescription;
 
 import org.easymock.EasyMock;
 import org.json.JSONException;
@@ -82,7 +82,7 @@ public class GoogleBenchmarkResultParserTest {
     public void testParseSimpleFile() throws Exception {
         ITestInvocationListener mMockInvocationListener =
                 EasyMock.createMock(ITestInvocationListener.class);
-        mMockInvocationListener.testStarted((TestIdentifier)EasyMock.anyObject());
+        mMockInvocationListener.testStarted((TestDescription) EasyMock.anyObject());
         EasyMock.expectLastCall().times(3);
         Map<String, String> test1 = new HashMap<String, String>();
         test1.put("cpu_time", "5");
@@ -100,12 +100,12 @@ public class GoogleBenchmarkResultParserTest {
         test3.put("name", "BM_string_strlen/64");
         test3.put("iterations", "10499948");
         test3.put("bytes_per_second", "1061047935");
-        mMockInvocationListener.testEnded((TestIdentifier)EasyMock.anyObject(),
-                EasyMock.eq(test1));
-        mMockInvocationListener.testEnded((TestIdentifier)EasyMock.anyObject(),
-                EasyMock.eq(test2));
-        mMockInvocationListener.testEnded((TestIdentifier)EasyMock.anyObject(),
-                EasyMock.eq(test3));
+        mMockInvocationListener.testEnded(
+                (TestDescription) EasyMock.anyObject(), EasyMock.eq(test1));
+        mMockInvocationListener.testEnded(
+                (TestDescription) EasyMock.anyObject(), EasyMock.eq(test2));
+        mMockInvocationListener.testEnded(
+                (TestDescription) EasyMock.anyObject(), EasyMock.eq(test3));
         EasyMock.replay(mMockInvocationListener);
         CollectingOutputReceiver contents =  readInFile(GBENCH_OUTPUT_FILE_1);
         GoogleBenchmarkResultParser resultParser =
@@ -128,15 +128,15 @@ public class GoogleBenchmarkResultParserTest {
     public void testParseSimpleFile_twoTests() throws Exception {
         ITestInvocationListener mMockInvocationListener =
                 EasyMock.createMock(ITestInvocationListener.class);
-        mMockInvocationListener.testStarted((TestIdentifier)EasyMock.anyObject());
+        mMockInvocationListener.testStarted((TestDescription) EasyMock.anyObject());
         EasyMock.expectLastCall().times(2);
         Map<String, String> test1 = new HashMap<String, String>();
         test1.put("cpu_time", "5");
         test1.put("real_time", "5");
         test1.put("name", "BM_one");
         test1.put("iterations", "109451958");
-        mMockInvocationListener.testEnded((TestIdentifier)EasyMock.anyObject(),
-                EasyMock.eq(test1));
+        mMockInvocationListener.testEnded(
+                (TestDescription) EasyMock.anyObject(), EasyMock.eq(test1));
         mMockInvocationListener.testEnded(EasyMock.anyObject(), EasyMock.anyObject());
         EasyMock.replay(mMockInvocationListener);
         CollectingOutputReceiver contents =  readInFile(GBENCH_OUTPUT_FILE_2);
@@ -200,7 +200,7 @@ public class GoogleBenchmarkResultParserTest {
     public void testParseSimpleFile_withWarning() throws Exception {
         ITestInvocationListener mMockInvocationListener =
                 EasyMock.createMock(ITestInvocationListener.class);
-        mMockInvocationListener.testStarted((TestIdentifier) EasyMock.anyObject());
+        mMockInvocationListener.testStarted((TestDescription) EasyMock.anyObject());
         Map<String, String> test1 = new HashMap<String, String>();
         test1.put("cpu_time", "19361");
         test1.put("real_time", "44930");
@@ -208,7 +208,7 @@ public class GoogleBenchmarkResultParserTest {
         test1.put("iterations", "36464");
         test1.put("time_unit", "ns");
         mMockInvocationListener.testEnded(
-                (TestIdentifier) EasyMock.anyObject(), EasyMock.eq(test1));
+                (TestDescription) EasyMock.anyObject(), EasyMock.eq(test1));
         EasyMock.replay(mMockInvocationListener);
         CollectingOutputReceiver contents = readInFile(GBENCH_OUTPUT_FILE_5);
         GoogleBenchmarkResultParser resultParser =

@@ -19,7 +19,6 @@ import static com.google.common.base.Preconditions.checkState;
 
 import com.android.ddmlib.testrunner.IRemoteAndroidTestRunner;
 import com.android.ddmlib.testrunner.RemoteAndroidTestRunner;
-import com.android.ddmlib.testrunner.TestIdentifier;
 import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.config.Option;
 import com.android.tradefed.device.DeviceNotAvailableException;
@@ -32,6 +31,7 @@ import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.InputStreamSource;
 import com.android.tradefed.result.LogDataType;
 import com.android.tradefed.result.ResultForwarder;
+import com.android.tradefed.result.TestDescription;
 import com.android.tradefed.result.TestRunResult;
 import com.android.tradefed.util.FileUtil;
 import com.android.tradefed.util.ICompressionStrategy;
@@ -218,8 +218,7 @@ public abstract class CodeCoverageTestBase<T extends CodeCoverageReportFormat>
                     }
 
                     // Something went wrong with this shard, so re-run the tests individually
-                    for (TestIdentifier identifier :
-                            collectTests(target, shardIndex, numShards)) {
+                    for (TestDescription identifier : collectTests(target, shardIndex, numShards)) {
                         runTest(target, identifier, coverageListener);
                     }
                 }
@@ -326,15 +325,16 @@ public abstract class CodeCoverageTestBase<T extends CodeCoverageReportFormat>
         return collectTests(target, 0, 2).size() < collectTests(target).size();
     }
 
-    /** Returns all of the {@link TestIdentifier}s for the given target. */
-    Collection<TestIdentifier> collectTests(InstrumentationTarget target)
+    /** Returns all of the {@link TestDescription}s for the given target. */
+    Collection<TestDescription> collectTests(InstrumentationTarget target)
             throws DeviceNotAvailableException {
         return collectTests(target, 0, 1);
     }
 
-    /** Returns all of the {@link TestIdentifier}s for the given target and shard. */
-    Collection<TestIdentifier> collectTests(InstrumentationTarget target, int shardIndex,
-            int numShards) throws DeviceNotAvailableException {
+    /** Returns all of the {@link TestDescription}s for the given target and shard. */
+    Collection<TestDescription> collectTests(
+            InstrumentationTarget target, int shardIndex, int numShards)
+            throws DeviceNotAvailableException {
 
         // Create a runner and enable test collection
         IRemoteAndroidTestRunner runner = createTestRunner(target, shardIndex, numShards);
@@ -402,8 +402,11 @@ public abstract class CodeCoverageTestBase<T extends CodeCoverageReportFormat>
      * @param listener The {@link ITestInvocationListener} to be notified of tests results.
      * @return The results for the executed test run.
      */
-    TestRunResult runTest(InstrumentationTarget target, TestIdentifier identifier,
-            ITestInvocationListener listener) throws DeviceNotAvailableException {
+    TestRunResult runTest(
+            InstrumentationTarget target,
+            TestDescription identifier,
+            ITestInvocationListener listener)
+            throws DeviceNotAvailableException {
         return runTest(createTest(target, identifier), listener);
     }
 
@@ -442,7 +445,7 @@ public abstract class CodeCoverageTestBase<T extends CodeCoverageReportFormat>
     }
 
     /** Returns a new {@link InstrumentationTest} for the identified test on the given target. */
-    InstrumentationTest createTest(InstrumentationTarget target, TestIdentifier identifier) {
+    InstrumentationTest createTest(InstrumentationTarget target, TestDescription identifier) {
         // Get a new InstrumentationTest instance
         InstrumentationTest ret = createTest(target);
 

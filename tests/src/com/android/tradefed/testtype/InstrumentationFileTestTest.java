@@ -19,12 +19,12 @@ package com.android.tradefed.testtype;
 import com.android.ddmlib.IDevice;
 import com.android.ddmlib.testrunner.IRemoteAndroidTestRunner;
 import com.android.ddmlib.testrunner.ITestRunListener;
-import com.android.ddmlib.testrunner.TestIdentifier;
 import com.android.tradefed.config.ConfigurationException;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.ITestLifeCycleReceiver;
+import com.android.tradefed.result.TestDescription;
 import com.android.tradefed.result.ddmlib.TestRunToTestInvocationForwarder;
 
 import junit.framework.TestCase;
@@ -86,8 +86,8 @@ public class InstrumentationFileTestTest extends TestCase {
     @SuppressWarnings("unchecked")
     public void testRun_singleSuccessfulTest() throws DeviceNotAvailableException,
             ConfigurationException {
-        final Collection<TestIdentifier> testsList = new ArrayList<>(1);
-        final TestIdentifier test = new TestIdentifier("ClassFoo", "methodBar");
+        final Collection<TestDescription> testsList = new ArrayList<>(1);
+        final TestDescription test = new TestDescription("ClassFoo", "methodBar");
         testsList.add(test);
 
         // verify the mock listener is passed through to the runner
@@ -141,10 +141,10 @@ public class InstrumentationFileTestTest extends TestCase {
     @SuppressWarnings("unchecked")
     public void testRun_reRunOneFailedToCompleteTest()
             throws DeviceNotAvailableException, ConfigurationException {
-        final Collection<TestIdentifier> testsList = new ArrayList<>(1);
-        final TestIdentifier test1 = new TestIdentifier("ClassFoo1", "methodBar1");
-        final TestIdentifier test2 = new TestIdentifier("ClassFoo2", "methodBar2");
-        final TestIdentifier test3 = new TestIdentifier("ClassFoo3", "methodBar3");
+        final Collection<TestDescription> testsList = new ArrayList<>(1);
+        final TestDescription test1 = new TestDescription("ClassFoo1", "methodBar1");
+        final TestDescription test2 = new TestDescription("ClassFoo2", "methodBar2");
+        final TestDescription test3 = new TestDescription("ClassFoo3", "methodBar3");
         testsList.add(test1);
         testsList.add(test2);
         testsList.add(test3);
@@ -235,9 +235,9 @@ public class InstrumentationFileTestTest extends TestCase {
     @SuppressWarnings("unchecked")
     public void testRun_serialReRunOfTwoFailedToCompleteTests()
             throws DeviceNotAvailableException, ConfigurationException {
-        final Collection<TestIdentifier> testsList = new ArrayList<>(1);
-        final TestIdentifier test1 = new TestIdentifier("ClassFoo1", "methodBar1");
-        final TestIdentifier test2 = new TestIdentifier("ClassFoo2", "methodBar2");
+        final Collection<TestDescription> testsList = new ArrayList<>(1);
+        final TestDescription test1 = new TestDescription("ClassFoo1", "methodBar1");
+        final TestDescription test2 = new TestDescription("ClassFoo2", "methodBar2");
         testsList.add(test1);
         testsList.add(test2);
 
@@ -337,9 +337,9 @@ public class InstrumentationFileTestTest extends TestCase {
     @SuppressWarnings("unchecked")
     public void testRun_noSerialReRun()
             throws DeviceNotAvailableException, ConfigurationException {
-        final Collection<TestIdentifier> testsList = new ArrayList<>(1);
-        final TestIdentifier test1 = new TestIdentifier("ClassFoo1", "methodBar1");
-        final TestIdentifier test2 = new TestIdentifier("ClassFoo2", "methodBar2");
+        final Collection<TestDescription> testsList = new ArrayList<>(1);
+        final TestDescription test1 = new TestDescription("ClassFoo1", "methodBar1");
+        final TestDescription test2 = new TestDescription("ClassFoo2", "methodBar2");
         testsList.add(test1);
         testsList.add(test2);
 
@@ -393,13 +393,13 @@ public class InstrumentationFileTestTest extends TestCase {
     @SuppressWarnings("unchecked")
     public void testRun_exceedMaxAttempts()
             throws DeviceNotAvailableException, ConfigurationException {
-        final ArrayList<TestIdentifier> testsList = new ArrayList<>(1);
-        final TestIdentifier test1 = new TestIdentifier("ClassFoo1", "methodBar1");
-        final TestIdentifier test2 = new TestIdentifier("ClassFoo2", "methodBar2");
-        final TestIdentifier test3 = new TestIdentifier("ClassFoo3", "methodBar3");
-        final TestIdentifier test4 = new TestIdentifier("ClassFoo4", "methodBar4");
-        final TestIdentifier test5 = new TestIdentifier("ClassFoo5", "methodBar5");
-        final TestIdentifier test6 = new TestIdentifier("ClassFoo6", "methodBar6");
+        final ArrayList<TestDescription> testsList = new ArrayList<>(1);
+        final TestDescription test1 = new TestDescription("ClassFoo1", "methodBar1");
+        final TestDescription test2 = new TestDescription("ClassFoo2", "methodBar2");
+        final TestDescription test3 = new TestDescription("ClassFoo3", "methodBar3");
+        final TestDescription test4 = new TestDescription("ClassFoo4", "methodBar4");
+        final TestDescription test5 = new TestDescription("ClassFoo5", "methodBar5");
+        final TestDescription test6 = new TestDescription("ClassFoo6", "methodBar6");
 
         testsList.add(test1);
         testsList.add(test2);
@@ -408,7 +408,7 @@ public class InstrumentationFileTestTest extends TestCase {
         testsList.add(test5);
         testsList.add(test6);
 
-        final ArrayList<TestIdentifier> expectedTestsList = new ArrayList<>(testsList);
+        final ArrayList<TestDescription> expectedTestsList = new ArrayList<>(testsList);
 
         // test1 fininshed, test2 started but not finished.
         RunTestAnswer firstRunAnswer = new RunTestAnswer() {
@@ -515,9 +515,10 @@ public class InstrumentationFileTestTest extends TestCase {
 
     /**
      * Helper class that verifies tetFile's content match the expected list of test to be run
-     * @param testsList  list of test to be executed
+     *
+     * @param testsList list of test to be executed
      */
-    private void verifyTestFile(Collection<TestIdentifier> testsList) {
+    private void verifyTestFile(Collection<TestDescription> testsList) {
         // fail if the file was never created
         assertNotNull(mTestFile);
 
@@ -525,7 +526,7 @@ public class InstrumentationFileTestTest extends TestCase {
             String line;
             while ((line = br.readLine()) != null) {
                 String[] str = line.split("#");
-                TestIdentifier test = new TestIdentifier(str[0], str[1]);
+                TestDescription test = new TestDescription(str[0], str[1]);
                 assertTrue(String.format(
                         "Test with class name: %s and method name: %s does not exists",
                         test.getClassName(), test.getTestName()), testsList.contains(test));

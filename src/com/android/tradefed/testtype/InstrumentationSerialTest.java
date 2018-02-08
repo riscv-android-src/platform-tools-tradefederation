@@ -16,7 +16,6 @@
 
 package com.android.tradefed.testtype;
 
-import com.android.ddmlib.testrunner.TestIdentifier;
 import com.android.tradefed.config.ConfigurationException;
 import com.android.tradefed.config.OptionCopier;
 import com.android.tradefed.device.DeviceNotAvailableException;
@@ -24,6 +23,7 @@ import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.result.CollectingTestListener;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.ResultForwarder;
+import com.android.tradefed.result.TestDescription;
 import com.android.tradefed.result.TestRunResult;
 
 import java.util.Collection;
@@ -38,19 +38,20 @@ class InstrumentationSerialTest implements IRemoteTest {
     static final int FAILED_RUN_TEST_ATTEMPTS = 2;
 
     /** the set of tests to run */
-    private final Collection<TestIdentifier> mTests;
+    private final Collection<TestDescription> mTests;
 
     private final InstrumentationTest mInstrumentationTest;
 
     /**
      * Creates a {@link InstrumentationSerialTest}.
      *
-     * @param instrumentationTest  {@link InstrumentationTest} used to configure this class
+     * @param instrumentationTest {@link InstrumentationTest} used to configure this class
      * @param testsToRun a {@link Collection} of tests to run. Note this {@link Collection} will be
-     * used as is (ie a reference to the testsToRun object will be kept).
+     *     used as is (ie a reference to the testsToRun object will be kept).
      */
-    InstrumentationSerialTest(InstrumentationTest instrumentationTest,
-            Collection<TestIdentifier> testsToRun) throws ConfigurationException {
+    InstrumentationSerialTest(
+            InstrumentationTest instrumentationTest, Collection<TestDescription> testsToRun)
+            throws ConfigurationException {
         // reuse the InstrumentationTest class to perform actual test run
         mInstrumentationTest = createInstrumentationTest(instrumentationTest);
         // keep local copy of tests to be run
@@ -86,7 +87,7 @@ class InstrumentationSerialTest implements IRemoteTest {
         }
         // reuse the InstrumentationTest class to perform actual test run
         try {
-            for (TestIdentifier testToRun : mTests) {
+            for (TestDescription testToRun : mTests) {
                 InstrumentationTest runner = createInstrumentationTest(mInstrumentationTest);
                 runner.setClassName(testToRun.getClassName());
                 runner.setMethodName(testToRun.getTestName());
@@ -97,8 +98,9 @@ class InstrumentationSerialTest implements IRemoteTest {
         }
     }
 
-    private void runTest(InstrumentationTest runner, ITestInvocationListener listener,
-            TestIdentifier testToRun) throws DeviceNotAvailableException {
+    private void runTest(
+            InstrumentationTest runner, ITestInvocationListener listener, TestDescription testToRun)
+            throws DeviceNotAvailableException {
         // use a listener filter, to track if the test failed to run
         CollectingTestListener trackingListener = new CollectingTestListener();
         for (int i=1; i <= FAILED_RUN_TEST_ATTEMPTS; i++) {
@@ -114,7 +116,7 @@ class InstrumentationSerialTest implements IRemoteTest {
     }
 
     private void markTestAsFailed(
-            TestIdentifier test, TestRunResult testRun, ITestInvocationListener listener) {
+            TestDescription test, TestRunResult testRun, ITestInvocationListener listener) {
         listener.testRunStarted(testRun.getName(), 1);
         listener.testStarted(test);
 

@@ -15,11 +15,11 @@
  */
 package com.android.tradefed.result.suite;
 
-import com.android.ddmlib.testrunner.TestIdentifier;
 import com.android.tradefed.build.BuildInfo;
 import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.invoker.IInvocationContext;
 import com.android.tradefed.invoker.InvocationContext;
+import com.android.tradefed.result.TestDescription;
 import com.android.tradefed.testtype.Abi;
 import com.android.tradefed.testtype.IAbi;
 import com.android.tradefed.testtype.suite.ModuleDefinition;
@@ -94,8 +94,8 @@ public class FormattedGeneratorReporterTest {
                 };
         mReporter.invocationStarted(mContext);
         mReporter.testRunStarted("run1", 1);
-        mReporter.testStarted(new TestIdentifier("class", "method"));
-        mReporter.testEnded(new TestIdentifier("class", "method"), new HashMap<>());
+        mReporter.testStarted(new TestDescription("class", "method"));
+        mReporter.testEnded(new TestDescription("class", "method"), new HashMap<>());
         mReporter.testRunEnded(450L, new HashMap<>());
         mReporter.invocationEnded(500L);
     }
@@ -126,8 +126,8 @@ public class FormattedGeneratorReporterTest {
         moduleContext.addInvocationAttribute(ModuleDefinition.MODULE_ABI, "abi1");
         mReporter.testModuleStarted(moduleContext);
         mReporter.testRunStarted("run1", 1);
-        mReporter.testStarted(new TestIdentifier("class", "method"));
-        mReporter.testEnded(new TestIdentifier("class", "method"), new HashMap<>());
+        mReporter.testStarted(new TestDescription("class", "method"));
+        mReporter.testEnded(new TestDescription("class", "method"), new HashMap<>());
         mReporter.testRunEnded(450L, new HashMap<>());
         mReporter.testModuleEnded();
         mReporter.invocationEnded(500L);

@@ -17,9 +17,9 @@
 package com.android.tradefed.testtype;
 
 import com.android.ddmlib.Log;
-import com.android.ddmlib.testrunner.TestIdentifier;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.result.ITestInvocationListener;
+import com.android.tradefed.result.TestDescription;
 
 import org.easymock.EasyMock;
 
@@ -75,7 +75,7 @@ public class GTestFuncTest extends DeviceTestCase {
         for (String[] test : allTests) {
             String testClass = test[0];
             String testName = test[1];
-            TestIdentifier id = new TestIdentifier(testClass, testName);
+            TestDescription id = new TestDescription(testClass, testName);
             mMockListener.testStarted(id);
 
             if (testName.endsWith("Fail")) {
@@ -94,10 +94,10 @@ public class GTestFuncTest extends DeviceTestCase {
     /**
      * Helper to run tests in the Native Test App.
      *
-     * @param testId the {%link TestIdentifier} of the test to run
+     * @param testId the {%link TestDescription} of the test to run
      */
     @SuppressWarnings("unchecked")
-    private void doNativeTestAppRunSingleTestFailure(TestIdentifier testId) {
+    private void doNativeTestAppRunSingleTestFailure(TestDescription testId) {
         Map<String, String> emptyMap = Collections.emptyMap();
         mGTest.setModuleName(NATIVE_TESTAPP_MODULE_NAME);
         mMockListener.testRunStarted(NATIVE_TESTAPP_MODULE_NAME, 1);
@@ -115,8 +115,9 @@ public class GTestFuncTest extends DeviceTestCase {
      */
     public void testRun_testCrash() throws DeviceNotAvailableException {
         Log.i(LOG_TAG, "testRun_testCrash");
-        TestIdentifier testId = new TestIdentifier(NATIVE_TESTAPP_GTEST_CLASSNAME,
-                NATIVE_TESTAPP_GTEST_CRASH_METHOD);
+        TestDescription testId =
+                new TestDescription(
+                        NATIVE_TESTAPP_GTEST_CLASSNAME, NATIVE_TESTAPP_GTEST_CRASH_METHOD);
         doNativeTestAppRunSingleTestFailure(testId);
         // Set GTest to only run the crash test
         mGTest.addIncludeFilter(NATIVE_TESTAPP_GTEST_CRASH_METHOD);
@@ -131,8 +132,9 @@ public class GTestFuncTest extends DeviceTestCase {
     public void testRun_deviceReboot() throws Exception {
         Log.i(LOG_TAG, "testRun_deviceReboot");
 
-        TestIdentifier testId = new TestIdentifier(NATIVE_TESTAPP_GTEST_CLASSNAME,
-                NATIVE_TESTAPP_GTEST_TIMEOUT_METHOD);
+        TestDescription testId =
+                new TestDescription(
+                        NATIVE_TESTAPP_GTEST_CLASSNAME, NATIVE_TESTAPP_GTEST_TIMEOUT_METHOD);
 
         doNativeTestAppRunSingleTestFailure(testId);
 
@@ -168,8 +170,9 @@ public class GTestFuncTest extends DeviceTestCase {
     public void testRun_timeout() throws Exception {
         Log.i(LOG_TAG, "testRun_timeout");
 
-        TestIdentifier testId = new TestIdentifier(NATIVE_TESTAPP_GTEST_CLASSNAME,
-                NATIVE_TESTAPP_GTEST_TIMEOUT_METHOD);
+        TestDescription testId =
+                new TestDescription(
+                        NATIVE_TESTAPP_GTEST_CLASSNAME, NATIVE_TESTAPP_GTEST_TIMEOUT_METHOD);
         // set max time to a small amount to reduce this test's execution time
         mGTest.setMaxTestTimeMs(100);
         doNativeTestAppRunSingleTestFailure(testId);

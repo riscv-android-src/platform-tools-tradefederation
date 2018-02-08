@@ -15,7 +15,6 @@
  */
 package com.android.fastboot.tests;
 
-import com.android.ddmlib.testrunner.TestIdentifier;
 import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.build.VersionedFile;
 import com.android.tradefed.config.ConfigurationException;
@@ -28,6 +27,7 @@ import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.device.ITestDevice.RecoveryMode;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.result.ITestInvocationListener;
+import com.android.tradefed.result.TestDescription;
 import com.android.tradefed.targetprep.BuildError;
 import com.android.tradefed.targetprep.DeviceFlashPreparer;
 import com.android.tradefed.targetprep.IDeviceFlasher.UserDataFlashOption;
@@ -131,8 +131,9 @@ public class FastbootTest implements IRemoteTest, IDeviceTest, IBuildReceiver {
      */
     private void testFastboot(ITestInvocationListener listener) throws DeviceNotAvailableException {
         Map<String, String> result = new HashMap<>();
-        TestIdentifier firstBootTestId = new TestIdentifier(
-                String.format("%s.%s", FASTBOOT_TEST, FASTBOOT_TEST), FASTBOOT_TEST);
+        TestDescription firstBootTestId =
+                new TestDescription(
+                        String.format("%s.%s", FASTBOOT_TEST, FASTBOOT_TEST), FASTBOOT_TEST);
         listener.testStarted(firstBootTestId);
         DeviceFlashPreparer flasher = loadFlashPreparerClass();
         long bootStart = INVALID_TIME_DURATION;

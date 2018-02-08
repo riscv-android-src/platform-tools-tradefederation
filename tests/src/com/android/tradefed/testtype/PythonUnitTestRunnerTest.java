@@ -16,10 +16,12 @@
 
 package com.android.tradefed.testtype;
 
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 
-import com.android.ddmlib.testrunner.TestIdentifier;
 import com.android.tradefed.result.ITestInvocationListener;
+import com.android.tradefed.result.TestDescription;
 import com.android.tradefed.util.CommandResult;
 import com.android.tradefed.util.CommandStatus;
 import com.android.tradefed.util.IRunUtil;
@@ -29,6 +31,8 @@ import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
+
+import java.util.Map;
 
 /** Unit tests for {@link PythonUnitTestRunner}. */
 @RunWith(JUnit4.class)
@@ -178,20 +182,20 @@ public class PythonUnitTestRunnerTest {
     private void setMockListenerExpectTestPass(boolean testPass) {
         mMockListener.testRunStarted((String) EasyMock.anyObject(), EasyMock.anyInt());
         EasyMock.expectLastCall().times(1);
-        mMockListener.testStarted((TestIdentifier) EasyMock.anyObject());
+        mMockListener.testStarted((TestDescription) EasyMock.anyObject());
         EasyMock.expectLastCall().times(1);
         if (!testPass) {
             mMockListener.testFailed(
-                    (TestIdentifier) EasyMock.anyObject(), (String) EasyMock.anyObject());
+                    (TestDescription) EasyMock.anyObject(), (String) EasyMock.anyObject());
             EasyMock.expectLastCall().times(1);
         }
-        mMockListener.testEnded((TestIdentifier) EasyMock.anyObject(), EasyMock.anyObject());
+        mMockListener.testEnded((TestDescription) EasyMock.anyObject(), EasyMock.anyObject());
         EasyMock.expectLastCall().times(1);
         if (!testPass) {
             mMockListener.testRunFailed((String) EasyMock.anyObject());
             EasyMock.expectLastCall().times(1);
         }
-        mMockListener.testRunEnded(EasyMock.anyLong(), EasyMock.anyObject());
+        mMockListener.testRunEnded(EasyMock.anyLong(), (Map<String, String>) EasyMock.anyObject());
         EasyMock.expectLastCall().times(1);
     }
 

@@ -16,12 +16,12 @@
 
 package com.android.continuous;
 
-import com.android.ddmlib.testrunner.TestIdentifier;
 import com.android.tradefed.build.BuildInfo;
 import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.invoker.IInvocationContext;
 import com.android.tradefed.invoker.InvocationContext;
 import com.android.tradefed.log.LogUtil.CLog;
+import com.android.tradefed.result.TestDescription;
 import com.android.tradefed.util.IEmail;
 import com.android.tradefed.util.IEmail.Message;
 
@@ -57,7 +57,7 @@ public class SmokeTestFailureReporterTest extends TestCase {
         final String expBodyStart = "FooTest#testFoo failed\nStack trace:\nthis is a trace\n";
 
         final Map<String, String> emptyMap = Collections.emptyMap();
-        final TestIdentifier testId = new TestIdentifier("FooTest", "testFoo");
+        final TestDescription testId = new TestDescription("FooTest", "testFoo");
         final String trace = "this is a trace";
 
         final Capture<Message> msgCapture = new Capture<Message>();
@@ -103,9 +103,9 @@ public class SmokeTestFailureReporterTest extends TestCase {
 
         final Map<String, String> emptyMap = Collections.emptyMap();
         final String trace = "this is a trace";
-        final TestIdentifier testFail = new TestIdentifier("FooTest", "testFail");
-        final TestIdentifier testPass1 = new TestIdentifier("FooTest", "testPass1");
-        final TestIdentifier testPass2 = new TestIdentifier("FooTest", "testPass2");
+        final TestDescription testFail = new TestDescription("FooTest", "testFail");
+        final TestDescription testPass1 = new TestDescription("FooTest", "testPass1");
+        final TestDescription testPass2 = new TestDescription("FooTest", "testPass2");
 
         final Capture<Message> msgCapture = new Capture<Message>();
         mMailer.send(EasyMock.capture(msgCapture));

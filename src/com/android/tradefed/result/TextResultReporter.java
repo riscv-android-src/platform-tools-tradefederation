@@ -16,7 +16,6 @@
 package com.android.tradefed.result;
 
 import com.android.ddmlib.Log.LogLevel;
-import com.android.ddmlib.testrunner.TestIdentifier;
 import com.android.tradefed.config.OptionClass;
 import com.android.tradefed.log.LogUtil.CLog;
 
@@ -40,26 +39,23 @@ public class TextResultReporter extends InvocationToJUnitResultForwarder
 
     /**
      * Overrides parent to explicitly print out failures. The ResultPrinter relies on the runner
-     * calling "print" at end of test run to do this.
-     * {@inheritDoc}
+     * calling "print" at end of test run to do this. {@inheritDoc}
      */
     @Override
-    public void testFailed(TestIdentifier testId, String trace) {
+    public void testFailed(TestDescription testId, String trace) {
         ResultPrinter printer = (ResultPrinter)getJUnitListener();
         printer.getWriter().format("\nTest %s: failed \n stack: %s ", testId, trace);
     }
 
     @Override
-    public void testAssumptionFailure(TestIdentifier testId, String trace) {
+    public void testAssumptionFailure(TestDescription testId, String trace) {
         ResultPrinter printer = (ResultPrinter)getJUnitListener();
         printer.getWriter().format("\nTest %s: assumption failed \n stack: %s ", testId, trace);
     }
 
-    /**
-     * Overrides parent to explicitly print out test metrics.
-     */
+    /** Overrides parent to explicitly print out test metrics. */
     @Override
-    public void testEnded(TestIdentifier testId, Map<String, String> metrics) {
+    public void testEnded(TestDescription testId, Map<String, String> metrics) {
         super.testEnded(testId, metrics);
         if (!metrics.isEmpty()) {
             ResultPrinter printer = (ResultPrinter)getJUnitListener();
