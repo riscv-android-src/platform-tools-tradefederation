@@ -29,6 +29,8 @@ import com.android.ddmlib.SyncService.ISyncProgressMonitor;
 import com.android.ddmlib.TimeoutException;
 import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.command.remote.DeviceDescriptor;
+import com.android.tradefed.config.ConfigurationException;
+import com.android.tradefed.config.OptionSetter;
 import com.android.tradefed.log.ITestLogger;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.result.ByteArrayInputStreamSource;
@@ -50,6 +52,7 @@ import org.mockito.Mockito;
 
 import java.io.File;
 import java.io.IOException;
+import java.time.Clock;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.HashMap;
@@ -616,6 +619,36 @@ public class NativeDeviceTest extends TestCase {
     }
 
     /**
+     * Unit test for {@link NativeDevice#connectToWifiNetwork(String, String)} for limiting the time
+     * trying to connect to wifi.
+     */
+    public void testConnectToWifiNetwork_maxConnectTime()
+            throws DeviceNotAvailableException, ConfigurationException {
+        OptionSetter deviceOptionSetter = new OptionSetter(mTestDevice.getOptions());
+        deviceOptionSetter.setOptionValue("max-wifi-connect-time", "10000");
+        Clock mockClock = Mockito.mock(Clock.class);
+        mTestDevice.setClock(mockClock);
+        EasyMock.expect(
+                        mMockWifi.connectToNetwork(
+                                FAKE_NETWORK_SSID,
+                                FAKE_NETWORK_PASSWORD,
+                                mTestDevice.getOptions().getConnCheckUrl(),
+                                false))
+                .andReturn(false)
+                .times(2);
+        Mockito.when(mockClock.millis())
+                .thenReturn(Long.valueOf(0), Long.valueOf(6000), Long.valueOf(12000));
+        Map<String, String> fakeWifiInfo = new HashMap<String, String>();
+        fakeWifiInfo.put("bssid", FAKE_NETWORK_SSID);
+        EasyMock.expect(mMockWifi.getWifiInfo()).andReturn(fakeWifiInfo).times(2);
+
+        EasyMock.replay(mMockWifi, mMockIDevice);
+        assertFalse(mTestDevice.connectToWifiNetwork(FAKE_NETWORK_SSID, FAKE_NETWORK_PASSWORD));
+        EasyMock.verify(mMockWifi, mMockIDevice);
+        Mockito.verify(mockClock, Mockito.times(3)).millis();
+    }
+
+    /**
      * Unit test for {@link NativeDevice#connectToWifiNetwork(String, String, boolean)}.
      */
     public void testConnectToWifiNetwork_scanSsid() throws DeviceNotAvailableException {
@@ -629,6 +662,7 @@ public class NativeDeviceTest extends TestCase {
                 FAKE_NETWORK_PASSWORD, true));
         EasyMock.verify(mMockWifi, mMockIDevice);
     }
+
     /**
      * Unit test for {@link NativeDevice#checkWifiConnection(String)}.
      */
