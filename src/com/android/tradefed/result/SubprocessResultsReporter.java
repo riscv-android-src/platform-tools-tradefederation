@@ -27,11 +27,14 @@ import com.android.tradefed.util.SubprocessEventHelper.InvocationFailedEventInfo
 import com.android.tradefed.util.SubprocessEventHelper.InvocationStartedEventInfo;
 import com.android.tradefed.util.SubprocessEventHelper.TestEndedEventInfo;
 import com.android.tradefed.util.SubprocessEventHelper.TestLogEventInfo;
+import com.android.tradefed.util.SubprocessEventHelper.TestModuleStartedEventInfo;
 import com.android.tradefed.util.SubprocessEventHelper.TestRunEndedEventInfo;
 import com.android.tradefed.util.SubprocessEventHelper.TestRunFailedEventInfo;
 import com.android.tradefed.util.SubprocessEventHelper.TestRunStartedEventInfo;
 import com.android.tradefed.util.SubprocessEventHelper.TestStartedEventInfo;
 import com.android.tradefed.util.SubprocessTestResultsParser;
+
+import org.json.JSONObject;
 
 import java.io.File;
 import java.io.FileWriter;
@@ -201,6 +204,19 @@ public class SubprocessResultsReporter implements ITestInvocationListener, AutoC
     public void invocationFailed(Throwable cause) {
         InvocationFailedEventInfo info = new InvocationFailedEventInfo(cause);
         printEvent(SubprocessTestResultsParser.StatusKeys.INVOCATION_FAILED, info);
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public void testModuleStarted(IInvocationContext moduleContext) {
+        TestModuleStartedEventInfo info = new TestModuleStartedEventInfo(moduleContext);
+        printEvent(SubprocessTestResultsParser.StatusKeys.TEST_MODULE_STARTED, info);
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public void testModuleEnded() {
+        printEvent(SubprocessTestResultsParser.StatusKeys.TEST_MODULE_ENDED, new JSONObject());
     }
 
     /**
