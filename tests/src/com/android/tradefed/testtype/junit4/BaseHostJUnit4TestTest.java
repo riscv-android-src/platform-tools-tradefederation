@@ -15,6 +15,7 @@
  */
 package com.android.tradefed.testtype.junit4;
 
+import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 import com.android.ddmlib.testrunner.IRemoteAndroidTestRunner;
@@ -61,6 +62,28 @@ public class BaseHostJUnit4TestTest {
             listener.testStarted(tid);
             listener.testEnded(tid, Collections.emptyMap());
             listener.testRunEnded(500l, Collections.emptyMap());
+            return listener;
+        }
+    }
+
+    /**
+     * An implementation of the base class that simulate a crashed instrumentation from an host test
+     * run.
+     */
+    @RunWith(DeviceJUnit4ClassRunner.class)
+    public static class FailureHostJUnit4Test extends BaseHostJUnit4Test {
+        @Test
+        public void testOne() {
+            Assert.assertNotNull(getDevice());
+            Assert.assertNotNull(getBuild());
+        }
+
+        @Override
+        CollectingTestListener createListener() {
+            CollectingTestListener listener = new CollectingTestListener();
+            listener.testRunStarted("testRun", 1);
+            listener.testRunFailed("instrumentation crashed");
+            listener.testRunEnded(50L, Collections.emptyMap());
             return listener;
         }
     }
@@ -178,6 +201,34 @@ public class BaseHostJUnit4TestTest {
         } catch (AssumptionViolatedException e) {
             // Ensure that the Assume logic in the test does not make a false pass for the unit test
             fail("Should not have thrown an Assume exception.");
+        }
+        EasyMock.verify(mMockBuild, mMockDevice, mMockContext);
+    }
+
+    /**
+     * Test that if the instrumentation crash directly we report it as a failure and not an
+     * AssumptionFailure (which would improperly categorize the failure).
+     */
+    @Test
+    public void testRunDeviceTests_crashedInstrumentation() throws Exception {
+        FailureHostJUnit4Test test = new FailureHostJUnit4Test();
+        test.setDevice(mMockDevice);
+        test.setBuild(mMockBuild);
+        test.setInvocationContext(mMockContext);
+        EasyMock.expect(mMockDevice.getIDevice()).andReturn(new StubDevice("serial"));
+        EasyMock.expect(
+                        mMockDevice.runInstrumentationTests(
+                                (IRemoteAndroidTestRunner) EasyMock.anyObject(),
+                                (ITestInvocationListener) EasyMock.anyObject()))
+                .andReturn(true);
+        EasyMock.replay(mMockBuild, mMockDevice, mMockContext);
+        try {
+            test.runDeviceTests("com.package", "testClass");
+        } catch (AssumptionViolatedException e) {
+            // Ensure that the Assume logic in the test does not make a false pass for the unit test
+            fail("Should not have thrown an Assume exception.");
+        } catch (AssertionError expected) {
+            assertTrue(expected.getMessage().contains("instrumentation crashed"));
         }
         EasyMock.verify(mMockBuild, mMockDevice, mMockContext);
     }
