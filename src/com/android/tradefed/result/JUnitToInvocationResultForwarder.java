@@ -16,6 +16,8 @@
 
 package com.android.tradefed.result;
 
+import com.android.tradefed.log.LogUtil.CLog;
+
 import junit.framework.AssertionFailedError;
 import junit.framework.Test;
 import junit.framework.TestCase;
@@ -23,6 +25,8 @@ import junit.framework.TestListener;
 
 import java.io.ByteArrayOutputStream;
 import java.io.PrintStream;
+import java.lang.annotation.Annotation;
+import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -128,7 +132,17 @@ public class JUnitToInvocationResultForwarder implements TestListener {
         if (test instanceof TestCase) {
             testName = ((TestCase)test).getName();
         }
-        return new TestDescription(className, testName);
+        Annotation[] annotations = new Annotation[0];
+        try {
+            // Backfill the annotations on a JUnit3 method
+            Method testMethod = test.getClass().getDeclaredMethod(testName);
+            annotations = testMethod.getAnnotations();
+        } catch (NoSuchMethodException | SecurityException e) {
+            // Should not happen, at that point the test method is ensured to exists.
+            CLog.e("Ignoring this exception:");
+            CLog.e(e);
+        }
+        return new TestDescription(className, testName, annotations);
     }
 
     /**
