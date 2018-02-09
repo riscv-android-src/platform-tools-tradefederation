@@ -22,15 +22,11 @@ import java.lang.annotation.Annotation;
 import java.util.Arrays;
 import java.util.Collection;
 
-/**
- * Class representing information about a test case. Extends ddmlib TestIdentifer for compatibility
- * with our current result reporting interfaces, but this class will aim at completely replacing it
- * in order to provide more powerful use cases.
- *
- * <p>TODO: Remove the underlying dependency on {@link TestIdentifier}.
- */
-public class TestDescription extends TestIdentifier implements Serializable {
+/** Class representing information about a test case. */
+public final class TestDescription implements Serializable {
 
+    private final String mClassName;
+    private final String mTestName;
     private Annotation[] mAnnotations;
 
     /**
@@ -40,7 +36,11 @@ public class TestDescription extends TestIdentifier implements Serializable {
      * @param testName The test (method) name.
      */
     public TestDescription(String className, String testName) {
-        super(className, testName);
+        if (className == null || testName == null) {
+            throw new IllegalArgumentException("className and testName must be non-null");
+        }
+        mClassName = className;
+        mTestName = testName;
         mAnnotations = new Annotation[0];
     }
 
@@ -85,6 +85,43 @@ public class TestDescription extends TestIdentifier implements Serializable {
         return Arrays.asList(mAnnotations);
     }
 
+    /** Returns the fully qualified class name of the test. */
+    public String getClassName() {
+        return mClassName;
+    }
+
+    /** Returns the name of the test. */
+    public String getTestName() {
+        return mTestName;
+    }
+
+    @Override
+    public int hashCode() {
+        final int prime = 31;
+        int result = 1;
+        result = prime * result + ((mClassName == null) ? 0 : mClassName.hashCode());
+        result = prime * result + ((mTestName == null) ? 0 : mTestName.hashCode());
+        return result;
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+        if (this == obj) return true;
+        if (obj == null) return false;
+        if (getClass() != obj.getClass()) return false;
+        TestDescription other = (TestDescription) obj;
+
+        if (!mClassName.equals(other.mClassName) || !mTestName.equals(other.mTestName)) {
+            return false;
+        }
+        return true;
+    }
+
+    @Override
+    public String toString() {
+        return String.format("%s#%s", getClassName(), getTestName());
+    }
+
     /**
      * Create a {@link TestDescription} from a {@link TestIdentifier}. Used for ease of conversion
      * from one to another.
@@ -94,5 +131,16 @@ public class TestDescription extends TestIdentifier implements Serializable {
      */
     public static TestDescription createFromTestIdentifier(TestIdentifier testId) {
         return new TestDescription(testId.getClassName(), testId.getTestName());
+    }
+
+    /**
+     * Create a {@link TestIdentifier} from a {@link TestDescription}. Useful for converting a
+     * description during testing.
+     *
+     * @param desc The {@link TestDescription} to convert.
+     * @return The created {@link TestIdentifier} with the TestDescription values.
+     */
+    public static TestIdentifier convertToIdentifier(TestDescription desc) {
+        return new TestIdentifier(desc.getClassName(), desc.getTestName());
     }
 }
