@@ -44,9 +44,10 @@ import org.mockito.Spy;
 @RunWith(JUnit4.class)
 public class ScheduleMultipleDeviceMetricCollectorTest {
     @Rule public final TemporaryFolder folder = new TemporaryFolder();
-    @Mock private ITestDevice testDevice;
+    @Mock private ITestDevice mTestDevice;
     @Mock private ITestInvocationListener mMockListener;
-    @Spy private ScheduleMultipleDeviceMetricCollector multipleMetricCollector;
+    @Spy private ScheduleMultipleDeviceMetricCollector mMultipleMetricCollector;
+
     private IInvocationContext mContext;
 
     static class TestMeminfoCollector extends ScheduledDeviceMetricCollector {
@@ -58,7 +59,8 @@ public class ScheduleMultipleDeviceMetricCollectorTest {
         }
 
         @Override
-        public void collect(DeviceMetricData runData) throws InterruptedException {
+        public void collect(ITestDevice device, DeviceMetricData runData)
+                throws InterruptedException {
             mInternalCounter++;
             runData.addStringMetric(key + mInternalCounter, "value" + mInternalCounter);
         }
@@ -73,7 +75,8 @@ public class ScheduleMultipleDeviceMetricCollectorTest {
         }
 
         @Override
-        public void collect(DeviceMetricData runData) throws InterruptedException {
+        public void collect(ITestDevice device, DeviceMetricData runData)
+                throws InterruptedException {
             mInternalCounter++;
             runData.addStringMetric(key + mInternalCounter, "value" + mInternalCounter);
         }
@@ -88,7 +91,8 @@ public class ScheduleMultipleDeviceMetricCollectorTest {
         }
 
         @Override
-        public void collect(DeviceMetricData runData) throws InterruptedException {
+        public void collect(ITestDevice device, DeviceMetricData runData)
+                throws InterruptedException {
             mInternalCounter++;
             runData.addStringMetric(key + mInternalCounter, "value" + mInternalCounter);
         }
@@ -98,11 +102,12 @@ public class ScheduleMultipleDeviceMetricCollectorTest {
     public void setUp() throws Exception {
         MockitoAnnotations.initMocks(this);
         mContext = new InvocationContext();
+        mContext.addAllocatedDevice("test device", mTestDevice);
     }
 
     @Test
     public void testMultipleMetricCollector_success() throws Exception {
-        OptionSetter setter = new OptionSetter(multipleMetricCollector);
+        OptionSetter setter = new OptionSetter(mMultipleMetricCollector);
 
         // Set up the metric collection storage path.
         File metricStoragePath = folder.newFolder();
@@ -131,12 +136,12 @@ public class ScheduleMultipleDeviceMetricCollectorTest {
 
         // Start the tests.
         Map<String, String> metrics = new HashMap<>();
-        multipleMetricCollector.init(mContext, mMockListener);
+        mMultipleMetricCollector.init(mContext, mMockListener);
         try {
-            multipleMetricCollector.onTestRunStart(runData);
+            mMultipleMetricCollector.onTestRunStart(runData);
             RunUtil.getDefault().sleep(500);
         } finally {
-            multipleMetricCollector.onTestRunEnd(runData, metrics);
+            mMultipleMetricCollector.onTestRunEnd(runData, metrics);
         }
 
         // We give it 500msec to run and 100msec interval we should easily have at least run all the
@@ -153,15 +158,15 @@ public class ScheduleMultipleDeviceMetricCollectorTest {
     @Test
     public void testMultipleMetricCollector_noFailureEvenIfNoCollectorRequested() throws Exception {
         Map<String, String> metrics = new HashMap<>();
-        multipleMetricCollector.init(mContext, mMockListener);
+        mMultipleMetricCollector.init(mContext, mMockListener);
 
         DeviceMetricData runData = new DeviceMetricData(mContext);
 
         try {
-            multipleMetricCollector.onTestRunStart(runData);
+            mMultipleMetricCollector.onTestRunStart(runData);
             RunUtil.getDefault().sleep(500);
         } finally {
-            multipleMetricCollector.onTestRunEnd(runData, metrics);
+            mMultipleMetricCollector.onTestRunEnd(runData, metrics);
         }
 
         // No metrics should have been collected.
@@ -178,7 +183,7 @@ public class ScheduleMultipleDeviceMetricCollectorTest {
                         + "ScheduleMultipleDeviceMetricCollectorTest$TestJankinfoCollector expects "
                         + "a non negative interval.";
 
-        OptionSetter setter = new OptionSetter(multipleMetricCollector);
+        OptionSetter setter = new OptionSetter(mMultipleMetricCollector);
 
         // Set up the metric collection storage path.
         setter.setOptionValue("metric-storage-path", folder.newFolder().toString());
@@ -201,10 +206,10 @@ public class ScheduleMultipleDeviceMetricCollectorTest {
         DeviceMetricData runData = new DeviceMetricData(mContext);
 
         // Start the tests, which should fail with the expected error message.
-        multipleMetricCollector.init(mContext, mMockListener);
+        mMultipleMetricCollector.init(mContext, mMockListener);
 
         try {
-            multipleMetricCollector.onTestRunStart(runData);
+            mMultipleMetricCollector.onTestRunStart(runData);
             fail("Should throw illegal argument exception in case of negative intervals.");
         } catch (IllegalArgumentException e) {
             assertEquals(expectedStderr, e.getMessage());

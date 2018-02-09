@@ -16,6 +16,7 @@
 package com.android.tradefed.device.metric;
 
 import com.android.tradefed.device.DeviceNotAvailableException;
+import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.google.common.io.Files;
 import java.io.File;
@@ -31,18 +32,17 @@ public class IonHeapInfoMetricCollector extends ScheduledDeviceMetricCollector {
     }
 
     @Override
-    void collect(DeviceMetricData runData) throws InterruptedException {
-        collectIonAudio(runData);
-        collectIonSystem(runData);
+    void collect(ITestDevice device, DeviceMetricData runData) throws InterruptedException {
+        collectIonAudio(device, runData);
+        collectIonSystem(device, runData);
     }
 
-    void collectIonAudio(DeviceMetricData runData) {
+    void collectIonAudio(ITestDevice device, DeviceMetricData runData) {
         try {
             CLog.i("Running ionheap audio collector...");
-            File outputFile =
-                    new File(
-                            String.format("%s/ion-audio-%s.txt", createTempDir(), getFileSuffix()));
-            saveProcessOutput("cat /d/ion/heaps/audio", outputFile);
+            String outputFileName =
+                    String.format("%s/ion-audio-%s", createTempDir(), getFileSuffix());
+            File outputFile = saveProcessOutput(device, "cat /d/ion/heaps/audio", outputFileName);
             runData.addStringMetric(
                     Files.getNameWithoutExtension(outputFile.getName()), outputFile.getPath());
         } catch (DeviceNotAvailableException | IOException e) {
@@ -50,14 +50,12 @@ public class IonHeapInfoMetricCollector extends ScheduledDeviceMetricCollector {
         }
     }
 
-    void collectIonSystem(DeviceMetricData runData) {
+    void collectIonSystem(ITestDevice device, DeviceMetricData runData) {
         try {
             CLog.i("Running ionheap system collector...");
-            File outputFile =
-                    new File(
-                            String.format(
-                                    "%s/ion-system-%s.txt", createTempDir(), getFileSuffix()));
-            saveProcessOutput("cat /d/ion/heaps/system", outputFile);
+            String outputFileName =
+                    String.format("%s/ion-system-%s", createTempDir(), getFileSuffix());
+            File outputFile = saveProcessOutput(device, "cat /d/ion/heaps/system", outputFileName);
             runData.addStringMetric(
                     Files.getNameWithoutExtension(outputFile.getName()), outputFile.getPath());
         } catch (DeviceNotAvailableException | IOException e) {

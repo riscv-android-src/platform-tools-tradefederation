@@ -17,12 +17,12 @@ package com.android.tradefed.device.metric;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
-import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.Mockito.doNothing;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.when;
 
+import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.invoker.IInvocationContext;
 import java.io.File;
 import java.util.HashMap;
@@ -38,12 +38,14 @@ import org.mockito.MockitoAnnotations;
 import org.mockito.Spy;
 
 /** Unit tests for {@link MemInfoMetricCollector}. */
-//TODO(b/71868090): Consolidate all the individual metric collector tests into one common tests.
+// TODO(b/71868090): Consolidate all the individual metric collector tests into one common tests.
 @RunWith(JUnit4.class)
 public class MemInfoMetricCollectorTest {
     @Mock IInvocationContext mContext;
 
-    @Spy MemInfoMetricCollector compactMeminfoMetricCollector;
+    @Mock ITestDevice mDevice;
+
+    @Spy MemInfoMetricCollector mMemInfoMetricCollector;
 
     @Rule public TemporaryFolder tempFolder = new TemporaryFolder();
 
@@ -51,19 +53,19 @@ public class MemInfoMetricCollectorTest {
     public void setup() throws Exception {
         MockitoAnnotations.initMocks(this);
 
-        doNothing()
-                .when(compactMeminfoMetricCollector)
-                .saveProcessOutput(anyString(), any(File.class));
+        doReturn(new File("compact-meminfo-1"))
+                .when(mMemInfoMetricCollector)
+                .saveProcessOutput(any(ITestDevice.class), anyString(), anyString());
 
-        doReturn(tempFolder.newFolder()).when(compactMeminfoMetricCollector).createTempDir();
+        doReturn(tempFolder.newFolder()).when(mMemInfoMetricCollector).createTempDir();
     }
 
     @Test
     public void testCollect() throws Exception {
         DeviceMetricData runData = new DeviceMetricData(mContext);
-        when(compactMeminfoMetricCollector.getFileSuffix()).thenReturn("1");
+        when(mMemInfoMetricCollector.getFileSuffix()).thenReturn("1");
 
-        compactMeminfoMetricCollector.collect(runData);
+        mMemInfoMetricCollector.collect(mDevice, runData);
 
         Map<String, String> metricsCollected = new HashMap<String, String>();
         runData.addToMetrics(metricsCollected);

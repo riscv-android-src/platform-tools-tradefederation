@@ -16,6 +16,8 @@
 package com.android.tradefed.device.metric;
 
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -49,6 +51,9 @@ public class BugreportzMetricCollectorTest {
 
         doReturn(Arrays.asList(mTestDevice)).when(mContext).getDevices();
 
+        when(mTestDevice.logBugreport(anyString(), any(ITestInvocationListener.class)))
+                .thenReturn(true);
+
         mBugreportzMetricCollector.init(mContext, mForwarder);
 
         when(mBugreportzMetricCollector.getFileSuffix()).thenReturn("1");
@@ -61,7 +66,7 @@ public class BugreportzMetricCollectorTest {
 
         DeviceMetricData runData = new DeviceMetricData(mContext);
 
-        mBugreportzMetricCollector.collect(runData);
+        mBugreportzMetricCollector.collect(mTestDevice, runData);
 
         verify(mTestDevice).logBugreport(eq("bugreport-1"), eq(mForwarder));
     }

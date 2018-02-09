@@ -21,7 +21,6 @@ import com.android.tradefed.config.Option;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.log.LogUtil.CLog;
-
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -59,41 +58,38 @@ public class ProcessMaxMemoryCollector extends ScheduledDeviceMetricCollector {
     }
 
     @Override
-    void collect(DeviceMetricData runData) throws InterruptedException {
-        for (ITestDevice device : getDevices()) {
-            try {
-                Map<String, Long> procPss = mMemoryData.get(device).mProcPss;
-                Map<String, Long> procUss = mMemoryData.get(device).mProcUss;
-                for (String proc : mProcessNames) {
-                    String dumpResult =
-                            device.executeShellCommand("dumpsys meminfo --checkin " + proc);
-                    if (dumpResult.startsWith("No process found")) {
-                        // process not found, skip
-                        continue;
-                    }
-                    DumpsysProcessMeminfoItem item =
-                            new DumpsysProcessMeminfoParser()
-                                    .parse(Arrays.asList(dumpResult.split("\n")));
-                    Long pss =
-                            item.get(DumpsysProcessMeminfoItem.TOTAL)
-                                    .get(DumpsysProcessMeminfoItem.PSS);
-                    Long uss =
-                            item.get(DumpsysProcessMeminfoItem.TOTAL)
-                                    .get(DumpsysProcessMeminfoItem.PRIVATE_DIRTY);
-                    if (pss == null || uss == null) {
-                        CLog.e("Error parsing meminfo output: " + dumpResult);
-                        continue;
-                    }
-                    if (procPss.getOrDefault(proc, 0L) < pss) {
-                        procPss.put(proc, pss);
-                    }
-                    if (procUss.getOrDefault(proc, 0L) < uss) {
-                        procUss.put(proc, uss);
-                    }
+    void collect(ITestDevice device, DeviceMetricData runData) throws InterruptedException {
+        try {
+            Map<String, Long> procPss = mMemoryData.get(device).mProcPss;
+            Map<String, Long> procUss = mMemoryData.get(device).mProcUss;
+            for (String proc : mProcessNames) {
+                String dumpResult = device.executeShellCommand("dumpsys meminfo --checkin " + proc);
+                if (dumpResult.startsWith("No process found")) {
+                    // process not found, skip
+                    continue;
                 }
-            } catch (DeviceNotAvailableException e) {
-                CLog.e(e);
+                DumpsysProcessMeminfoItem item =
+                        new DumpsysProcessMeminfoParser()
+                                .parse(Arrays.asList(dumpResult.split("\n")));
+                Long pss =
+                        item.get(DumpsysProcessMeminfoItem.TOTAL)
+                                .get(DumpsysProcessMeminfoItem.PSS);
+                Long uss =
+                        item.get(DumpsysProcessMeminfoItem.TOTAL)
+                                .get(DumpsysProcessMeminfoItem.PRIVATE_DIRTY);
+                if (pss == null || uss == null) {
+                    CLog.e("Error parsing meminfo output: " + dumpResult);
+                    continue;
+                }
+                if (procPss.getOrDefault(proc, 0L) < pss) {
+                    procPss.put(proc, pss);
+                }
+                if (procUss.getOrDefault(proc, 0L) < uss) {
+                    procUss.put(proc, uss);
+                }
             }
+        } catch (DeviceNotAvailableException e) {
+            CLog.e(e);
         }
     }
 

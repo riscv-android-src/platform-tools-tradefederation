@@ -67,8 +67,8 @@ public class TemperatureCollectorTest {
 
         DeviceMetricData data = new DeviceMetricData(mContext);
         mCollector.onStart(data);
-        mCollector.collect(data);
-        mCollector.collect(data);
+        mCollector.collect(mDevice, data);
+        mCollector.collect(mDevice, data);
         mCollector.onEnd(data);
 
         verify(mDevice, times(2))
@@ -88,7 +88,7 @@ public class TemperatureCollectorTest {
 
         DeviceMetricData data = new DeviceMetricData(mContext);
         mCollector.onStart(data);
-        mCollector.collect(data);
+        mCollector.collect(mDevice, data);
         mCollector.onEnd(data);
 
         verify(mDevice).executeShellCommand(eq("cat /sys/class/hwmon/hwmon1/device/msm_therm"));

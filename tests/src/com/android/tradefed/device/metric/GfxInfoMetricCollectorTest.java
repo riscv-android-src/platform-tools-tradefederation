@@ -15,20 +15,17 @@
  */
 package com.android.tradefed.device.metric;
 
-import static org.mockito.Mockito.doNothing;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doReturn;
-import static org.mockito.Mockito.when;
 
+import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.invoker.IInvocationContext;
 import java.io.File;
 import java.util.HashMap;
 import java.util.Map;
-
-import static org.mockito.Mockito.anyString;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
-import static org.mockito.Mockito.any;
-
 import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
@@ -45,7 +42,9 @@ import org.mockito.Spy;
 public class GfxInfoMetricCollectorTest {
     @Mock IInvocationContext mContext;
 
-    @Spy GfxInfoMetricCollector jankinfoMetricCollector;
+    @Mock ITestDevice mDevice;
+
+    @Spy GfxInfoMetricCollector mGfxInfoMetricCollector;
 
     @Rule public TemporaryFolder tempFolder = new TemporaryFolder();
 
@@ -53,17 +52,18 @@ public class GfxInfoMetricCollectorTest {
     public void setup() throws Exception {
         MockitoAnnotations.initMocks(this);
 
-        doNothing().when(jankinfoMetricCollector).saveProcessOutput(anyString(), any(File.class));
+        doReturn(new File("graphics-1"))
+                .when(mGfxInfoMetricCollector)
+                .saveProcessOutput(any(ITestDevice.class), anyString(), anyString());
 
-        doReturn(tempFolder.newFolder()).when(jankinfoMetricCollector).createTempDir();
+        doReturn(tempFolder.newFolder()).when(mGfxInfoMetricCollector).createTempDir();
     }
 
     @Test
     public void testCollect() throws Exception {
         DeviceMetricData runData = new DeviceMetricData(mContext);
-        when(jankinfoMetricCollector.getFileSuffix()).thenReturn("1");
 
-        jankinfoMetricCollector.collect(runData);
+        mGfxInfoMetricCollector.collect(mDevice, runData);
 
         Map<String, String> metricsCollected = new HashMap<String, String>();
         runData.addToMetrics(metricsCollected);

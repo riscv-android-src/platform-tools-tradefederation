@@ -21,13 +21,10 @@ import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.util.FileUtil;
-import java.io.BufferedWriter;
 import java.io.File;
-import java.io.FileWriter;
 import java.io.IOException;
 import java.text.SimpleDateFormat;
 import java.util.Date;
-import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Timer;
@@ -63,7 +60,9 @@ public abstract class ScheduledDeviceMetricCollector extends BaseDeviceMetricCol
                     @Override
                     public void run() {
                         try {
-                            collect(runData);
+                            for (ITestDevice device : getDevices()) {
+                                collect(device, runData);
+                            }
                         } catch (InterruptedException e) {
                             timer.cancel();
                             Thread.currentThread().interrupt();
@@ -92,12 +91,13 @@ public abstract class ScheduledDeviceMetricCollector extends BaseDeviceMetricCol
     }
 
     /**
-     * Task periodically & asynchronously run during the test running.
+     * Task periodically & asynchronously run during the test running on a specific device.
      *
+     * @param device the {@link ITestDevice} the metric is associated to.
      * @param runData the {@link DeviceMetricData} where to put metrics.
      * @throws InterruptedException
      */
-    abstract void collect(DeviceMetricData runData) throws InterruptedException;
+    abstract void collect(ITestDevice device, DeviceMetricData runData) throws InterruptedException;
 
     /**
      * Executed when entering this collector.
@@ -125,16 +125,16 @@ public abstract class ScheduledDeviceMetricCollector extends BaseDeviceMetricCol
      * @throws DeviceNotAvailableException
      * @throws IOException
      */
-    void saveProcessOutput(String command, File outputFile)
+    File saveProcessOutput(ITestDevice device, String command, String outputFileName)
             throws DeviceNotAvailableException, IOException {
-        List<ITestDevice> testDevices = getDevices();
+        String output = device.executeShellCommand(command);
 
-        for (ITestDevice testDevice : testDevices) {
-            String output = testDevice.executeShellCommand(command);
-            try (BufferedWriter writer = new BufferedWriter(new FileWriter(outputFile))) {
-                writer.write(output);
-            }
-        }
+        // Create the output file and dump the output of the command to this file.
+        File outputFile = new File(outputFileName);
+
+        FileUtil.writeToFile(output, outputFile);
+
+        return outputFile;
     }
 
     /**
