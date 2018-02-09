@@ -19,9 +19,11 @@ Aggregates test runners, groups tests by test runners and kicks off tests.
 import itertools
 
 from test_runners import atest_tf_test_runner
+from test_runners import vts_tf_test_runner
 
 _TEST_RUNNERS = {
     atest_tf_test_runner.AtestTradefedTestRunner.NAME: atest_tf_test_runner.AtestTradefedTestRunner,
+    vts_tf_test_runner.VtsTradefedTestRunner.NAME: vts_tf_test_runner.VtsTradefedTestRunner,
 }
 
 class UnknownTestRunnerError(Exception):
