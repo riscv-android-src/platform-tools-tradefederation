@@ -15,7 +15,6 @@
  */
 package com.android.tradefed.result;
 
-import com.android.ddmlib.testrunner.TestIdentifier;
 import com.android.tradefed.build.BuildInfo;
 import com.android.tradefed.invoker.IInvocationContext;
 import com.android.tradefed.invoker.InvocationContext;
@@ -117,7 +116,7 @@ public class XmlResultReporterTest extends TestCase {
      */
     public void testSinglePass() {
         Map<String, String> emptyMap = Collections.emptyMap();
-        final TestIdentifier testId = new TestIdentifier("FooTest", "testFoo");
+        final TestDescription testId = new TestDescription("FooTest", "testFoo");
         IInvocationContext context = new InvocationContext();
         context.addDeviceBuildInfo("fakeDevice", new BuildInfo());
         context.setTestTag("stub");
@@ -140,7 +139,7 @@ public class XmlResultReporterTest extends TestCase {
      */
     public void testSingleFail() {
         Map<String, String> emptyMap = Collections.emptyMap();
-        final TestIdentifier testId = new TestIdentifier("FooTest", "testFoo");
+        final TestDescription testId = new TestDescription("FooTest", "testFoo");
         final String trace = "this is a trace";
         IInvocationContext context = new InvocationContext();
         context.addDeviceBuildInfo("fakeDevice", new BuildInfo());

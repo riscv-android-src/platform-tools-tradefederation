@@ -19,6 +19,7 @@ import com.android.ddmlib.testrunner.ITestRunListener;
 import com.android.ddmlib.testrunner.TestIdentifier;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.result.ITestLifeCycleReceiver;
+import com.android.tradefed.result.TestDescription;
 
 import java.util.Arrays;
 import java.util.Collection;
@@ -46,7 +47,7 @@ public class TestRunToTestInvocationForwarder implements ITestRunListener {
     public void testStarted(TestIdentifier testId) {
         for (ITestLifeCycleReceiver listener : mListeners) {
             try {
-                listener.testStarted(testId);
+                listener.testStarted(TestDescription.createFromTestIdentifier(testId));
             } catch (RuntimeException any) {
                 CLog.e(
                         "RuntimeException when invoking %s#testStarted",
@@ -60,7 +61,7 @@ public class TestRunToTestInvocationForwarder implements ITestRunListener {
     public void testStarted(TestIdentifier testId, long startTime) {
         for (ITestLifeCycleReceiver listener : mListeners) {
             try {
-                listener.testStarted(testId, startTime);
+                listener.testStarted(TestDescription.createFromTestIdentifier(testId), startTime);
             } catch (RuntimeException any) {
                 CLog.e(
                         "RuntimeException when invoking %s#testStarted",
@@ -74,7 +75,8 @@ public class TestRunToTestInvocationForwarder implements ITestRunListener {
     public void testAssumptionFailure(TestIdentifier testId, String trace) {
         for (ITestLifeCycleReceiver listener : mListeners) {
             try {
-                listener.testAssumptionFailure(testId, trace);
+                listener.testAssumptionFailure(
+                        TestDescription.createFromTestIdentifier(testId), trace);
             } catch (RuntimeException any) {
                 CLog.e(
                         "RuntimeException when invoking %s#testAssumptionFailure",
@@ -88,7 +90,7 @@ public class TestRunToTestInvocationForwarder implements ITestRunListener {
     public void testFailed(TestIdentifier testId, String trace) {
         for (ITestLifeCycleReceiver listener : mListeners) {
             try {
-                listener.testFailed(testId, trace);
+                listener.testFailed(TestDescription.createFromTestIdentifier(testId), trace);
             } catch (RuntimeException any) {
                 CLog.e(
                         "RuntimeException when invoking %s#testFailed",
@@ -102,7 +104,7 @@ public class TestRunToTestInvocationForwarder implements ITestRunListener {
     public void testIgnored(TestIdentifier testId) {
         for (ITestLifeCycleReceiver listener : mListeners) {
             try {
-                listener.testIgnored(testId);
+                listener.testIgnored(TestDescription.createFromTestIdentifier(testId));
             } catch (RuntimeException any) {
                 CLog.e(
                         "RuntimeException when invoking %s#testIgnored",
@@ -116,7 +118,7 @@ public class TestRunToTestInvocationForwarder implements ITestRunListener {
     public void testEnded(TestIdentifier testId, Map<String, String> testMetrics) {
         for (ITestLifeCycleReceiver listener : mListeners) {
             try {
-                listener.testEnded(testId, testMetrics);
+                listener.testEnded(TestDescription.createFromTestIdentifier(testId), testMetrics);
             } catch (RuntimeException any) {
                 CLog.e(
                         "RuntimeException when invoking %s#testEnded",
@@ -130,7 +132,8 @@ public class TestRunToTestInvocationForwarder implements ITestRunListener {
     public void testEnded(TestIdentifier testId, long endTime, Map<String, String> testMetrics) {
         for (ITestLifeCycleReceiver listener : mListeners) {
             try {
-                listener.testEnded(testId, endTime, testMetrics);
+                listener.testEnded(
+                        TestDescription.createFromTestIdentifier(testId), endTime, testMetrics);
             } catch (RuntimeException any) {
                 CLog.e(
                         "RuntimeException when invoking %s#testEnded",

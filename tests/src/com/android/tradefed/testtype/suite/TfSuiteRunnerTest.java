@@ -45,6 +45,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 
 /**
  * Unit tests for {@link TfSuiteRunner}.
@@ -184,7 +185,7 @@ public class TfSuiteRunnerTest {
         // runs the expanded suite
         listener.testModuleStarted(EasyMock.anyObject());
         listener.testRunStarted("suite/stub1", 0);
-        listener.testRunEnded(EasyMock.anyLong(), EasyMock.anyObject());
+        listener.testRunEnded(EasyMock.anyLong(), (Map<String, String>) EasyMock.anyObject());
         listener.testModuleEnded();
         EasyMock.replay(listener);
         mRunner.run(listener);

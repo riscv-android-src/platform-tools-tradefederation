@@ -16,13 +16,13 @@
 package com.android.tradefed.invoker;
 
 import com.android.ddmlib.Log.LogLevel;
-import com.android.ddmlib.testrunner.TestIdentifier;
 import com.android.ddmlib.testrunner.TestResult.TestStatus;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.result.CollectingTestListener;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.InputStreamSource;
 import com.android.tradefed.result.LogDataType;
+import com.android.tradefed.result.TestDescription;
 import com.android.tradefed.result.TestResult;
 import com.android.tradefed.result.TestRunResult;
 import com.android.tradefed.util.TimeUtil;
@@ -142,8 +142,8 @@ public class ShardListener extends CollectingTestListener {
         }
     }
 
-    private void forwardTestResults(Map<TestIdentifier, TestResult> testResults) {
-        for (Map.Entry<TestIdentifier, TestResult> testEntry : testResults.entrySet()) {
+    private void forwardTestResults(Map<TestDescription, TestResult> testResults) {
+        for (Map.Entry<TestDescription, TestResult> testEntry : testResults.entrySet()) {
             mMasterListener.testStarted(testEntry.getKey(), testEntry.getValue().getStartTime());
             switch (testEntry.getValue().getStatus()) {
                 case FAILURE:

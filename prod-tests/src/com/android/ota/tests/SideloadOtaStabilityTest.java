@@ -20,7 +20,6 @@ import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.CoreMatchers.not;
 import static org.junit.Assert.assertThat;
 
-import com.android.ddmlib.testrunner.TestIdentifier;
 import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.build.IDeviceBuildInfo;
 import com.android.tradefed.build.OtaDeviceBuildInfo;
@@ -38,6 +37,7 @@ import com.android.tradefed.result.FileInputStreamSource;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.InputStreamSource;
 import com.android.tradefed.result.LogDataType;
+import com.android.tradefed.result.TestDescription;
 import com.android.tradefed.targetprep.BuildError;
 import com.android.tradefed.targetprep.ITargetPreparer;
 import com.android.tradefed.targetprep.TargetSetupError;
@@ -287,8 +287,8 @@ public class SideloadOtaStabilityTest implements IDeviceTest, IBuildReceiver,
      */
     private BootTimeInfo installOta(ITestInvocationListener listener, IDeviceBuildInfo otaBuild)
             throws DeviceNotAvailableException {
-        TestIdentifier test = new TestIdentifier(getClass().getName(),
-                String.format("apply_ota[%s]", mRunName));
+        TestDescription test =
+                new TestDescription(getClass().getName(), String.format("apply_ota[%s]", mRunName));
         Map<String, String> metrics = new HashMap<String, String>();
         listener.testStarted(test);
         try {

@@ -15,15 +15,22 @@
  */
 package com.android.tradefed.util;
 
-import com.android.ddmlib.testrunner.TestIdentifier;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
+
+import com.android.tradefed.invoker.IInvocationContext;
 import com.android.tradefed.invoker.InvocationContext;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.result.ITestInvocationListener;
-
-import junit.framework.TestCase;
+import com.android.tradefed.result.TestDescription;
 
 import org.easymock.Capture;
 import org.easymock.EasyMock;
+import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.junit.runners.JUnit4;
 
 import java.io.BufferedReader;
 import java.io.File;
@@ -35,10 +42,9 @@ import java.net.Socket;
 import java.util.Map;
 import java.util.Vector;
 
-/**
- * Unit Tests for {@link SubprocessTestResultsParser}
- */
-public class SubprocessTestResultsParserTest extends TestCase {
+/** Unit Tests for {@link SubprocessTestResultsParser} */
+@RunWith(JUnit4.class)
+public class SubprocessTestResultsParserTest {
 
     private static final String TEST_TYPE_DIR = "testdata";
     private static final String SUBPROC_OUTPUT_FILE_1 = "subprocess1.txt";
@@ -70,32 +76,29 @@ public class SubprocessTestResultsParserTest extends TestCase {
         return fileContents.toArray(new String[fileContents.size()]);
     }
 
-    /**
-     * Tests the parser for cases of test failed, ignored, assumption failure
-     */
-    @SuppressWarnings("unchecked")
+    /** Tests the parser for cases of test failed, ignored, assumption failure */
+    @Test
     public void testParse_randomEvents() throws Exception {
         String[] contents = readInFile(SUBPROC_OUTPUT_FILE_1);
         ITestInvocationListener mockRunListener =
                 EasyMock.createMock(ITestInvocationListener.class);
         mockRunListener.testRunStarted("arm64-v8a CtsGestureTestCases", 4);
-        mockRunListener.testStarted((TestIdentifier) EasyMock.anyObject(), EasyMock.anyLong());
+        mockRunListener.testStarted((TestDescription) EasyMock.anyObject(), EasyMock.anyLong());
         EasyMock.expectLastCall().times(4);
         mockRunListener.testEnded(
-                (TestIdentifier) EasyMock.anyObject(),
+                (TestDescription) EasyMock.anyObject(),
                 EasyMock.anyLong(),
                 (Map<String, String>) EasyMock.anyObject());
         EasyMock.expectLastCall().times(4);
-        mockRunListener.testRunEnded(EasyMock.anyLong(),
-                (Map<String, String>) EasyMock.anyObject());
+        mockRunListener.testRunEnded(EasyMock.anyLong(), EasyMock.anyObject());
         EasyMock.expectLastCall().times(1);
-        mockRunListener.testIgnored((TestIdentifier)EasyMock.anyObject());
+        mockRunListener.testIgnored((TestDescription) EasyMock.anyObject());
         EasyMock.expectLastCall();
-        mockRunListener.testFailed((TestIdentifier)EasyMock.anyObject(),
-                (String) EasyMock.anyObject());
+        mockRunListener.testFailed(
+                (TestDescription) EasyMock.anyObject(), (String) EasyMock.anyObject());
         EasyMock.expectLastCall();
-        mockRunListener.testAssumptionFailure((TestIdentifier)EasyMock.anyObject(),
-                (String) EasyMock.anyObject());
+        mockRunListener.testAssumptionFailure(
+                (TestDescription) EasyMock.anyObject(), (String) EasyMock.anyObject());
         EasyMock.expectLastCall();
         EasyMock.replay(mockRunListener);
         File tmp = FileUtil.createTempFile("sub", "unit");
@@ -111,31 +114,28 @@ public class SubprocessTestResultsParserTest extends TestCase {
         }
     }
 
-    /**
-     * Tests the parser for cases of test starting without closing.
-     */
-    @SuppressWarnings("unchecked")
+    /** Tests the parser for cases of test starting without closing. */
+    @Test
     public void testParse_invalidEventOrder() throws Exception {
         String[] contents =  readInFile(SUBPROC_OUTPUT_FILE_2);
         ITestInvocationListener mockRunListener =
                 EasyMock.createMock(ITestInvocationListener.class);
         mockRunListener.testRunStarted("arm64-v8a CtsGestureTestCases", 4);
-        mockRunListener.testStarted((TestIdentifier) EasyMock.anyObject(), EasyMock.anyLong());
+        mockRunListener.testStarted((TestDescription) EasyMock.anyObject(), EasyMock.anyLong());
         EasyMock.expectLastCall().times(4);
         mockRunListener.testEnded(
-                (TestIdentifier) EasyMock.anyObject(),
+                (TestDescription) EasyMock.anyObject(),
                 EasyMock.anyLong(),
                 (Map<String, String>) EasyMock.anyObject());
         EasyMock.expectLastCall().times(3);
         mockRunListener.testRunFailed((String)EasyMock.anyObject());
         EasyMock.expectLastCall().times(1);
-        mockRunListener.testRunEnded(EasyMock.anyLong(),
-                (Map<String, String>) EasyMock.anyObject());
+        mockRunListener.testRunEnded(EasyMock.anyLong(), EasyMock.anyObject());
         EasyMock.expectLastCall().times(1);
-        mockRunListener.testIgnored((TestIdentifier)EasyMock.anyObject());
+        mockRunListener.testIgnored((TestDescription) EasyMock.anyObject());
         EasyMock.expectLastCall();
-        mockRunListener.testAssumptionFailure((TestIdentifier)EasyMock.anyObject(),
-                (String) EasyMock.anyObject());
+        mockRunListener.testAssumptionFailure(
+                (TestDescription) EasyMock.anyObject(), (String) EasyMock.anyObject());
         EasyMock.expectLastCall();
         EasyMock.replay(mockRunListener);
         File tmp = FileUtil.createTempFile("sub", "unit");
@@ -151,16 +151,14 @@ public class SubprocessTestResultsParserTest extends TestCase {
         }
     }
 
-    /**
-     * Tests the parser for cases of test starting without closing.
-     */
-    @SuppressWarnings("unchecked")
+    /** Tests the parser for cases of test starting without closing. */
+    @Test
     public void testParse_testNotStarted() throws Exception {
         ITestInvocationListener mockRunListener =
                 EasyMock.createMock(ITestInvocationListener.class);
         mockRunListener.testRunStarted("arm64-v8a CtsGestureTestCases", 4);
         mockRunListener.testEnded(
-                (TestIdentifier) EasyMock.anyObject(),
+                (TestDescription) EasyMock.anyObject(),
                 EasyMock.anyLong(),
                 (Map<String, String>) EasyMock.anyObject());
         EasyMock.expectLastCall().times(1);
@@ -189,12 +187,13 @@ public class SubprocessTestResultsParserTest extends TestCase {
     }
 
     /** Tests the parser for a cases when there is no start/end time stamp. */
+    @Test
     public void testParse_noTimeStamp() throws Exception {
         ITestInvocationListener mockRunListener =
                 EasyMock.createMock(ITestInvocationListener.class);
         mockRunListener.testRunStarted("arm64-v8a CtsGestureTestCases", 4);
         mockRunListener.testStarted(EasyMock.anyObject());
-        mockRunListener.testEnded((TestIdentifier) EasyMock.anyObject(), EasyMock.anyObject());
+        mockRunListener.testEnded((TestDescription) EasyMock.anyObject(), EasyMock.anyObject());
         EasyMock.expectLastCall().times(1);
         EasyMock.replay(mockRunListener);
         File tmp = FileUtil.createTempFile("sub", "unit");
@@ -224,10 +223,8 @@ public class SubprocessTestResultsParserTest extends TestCase {
         }
     }
 
-    /**
-     * Test injecting an invocation failure and verify the callback is called.
-     */
-    @SuppressWarnings("unchecked")
+    /** Test injecting an invocation failure and verify the callback is called. */
+    @Test
     public void testParse_invocationFailed() throws Exception {
         ITestInvocationListener mockRunListener =
                 EasyMock.createMock(ITestInvocationListener.class);
@@ -259,16 +256,14 @@ public class SubprocessTestResultsParserTest extends TestCase {
         }
     }
 
-    /**
-     * Report results when received from socket.
-     */
-    @SuppressWarnings("unchecked")
+    /** Report results when received from socket. */
+    @Test
     public void testParser_receiveFromSocket() throws Exception {
         ITestInvocationListener mockRunListener =
                 EasyMock.createMock(ITestInvocationListener.class);
         mockRunListener.testRunStarted("arm64-v8a CtsGestureTestCases", 4);
         mockRunListener.testEnded(
-                (TestIdentifier) EasyMock.anyObject(),
+                (TestDescription) EasyMock.anyObject(),
                 EasyMock.anyLong(),
                 (Map<String, String>) EasyMock.anyObject());
         EasyMock.expectLastCall().times(1);
@@ -303,10 +298,8 @@ public class SubprocessTestResultsParserTest extends TestCase {
         }
     }
 
-    /**
-     * When the receiver thread fails to join then an exception is thrown.
-     */
-    @SuppressWarnings("unchecked")
+    /** When the receiver thread fails to join then an exception is thrown. */
+    @Test
     public void testParser_failToJoin() throws Exception {
         ITestInvocationListener mockRunListener =
                 EasyMock.createMock(ITestInvocationListener.class);
@@ -323,6 +316,7 @@ public class SubprocessTestResultsParserTest extends TestCase {
     }
 
     /** Tests the parser receiving event on updating test tag. */
+    @Test
     public void testParse_testTag() throws Exception {
         final String subTestTag = "test_tag_in_subprocess";
         InvocationContext context = new InvocationContext();
@@ -351,6 +345,7 @@ public class SubprocessTestResultsParserTest extends TestCase {
     }
 
     /** Tests the parser should not overwrite the test tag in parent process if it's already set. */
+    @Test
     public void testParse_testTagNotOverwrite() throws Exception {
         final String subTestTag = "test_tag_in_subprocess";
         final String parentTestTag = "test_tag_in_parent_process";
@@ -372,6 +367,39 @@ public class SubprocessTestResultsParserTest extends TestCase {
         } finally {
             StreamUtil.close(resultParser);
             FileUtil.deleteFile(tmp);
+        }
+    }
+
+    /** Test that module start and end is properly parsed when reported. */
+    @Test
+    public void testParse_moduleStarted_end() throws Exception {
+        ITestInvocationListener mockRunListener =
+                EasyMock.createMock(ITestInvocationListener.class);
+        mockRunListener.testModuleStarted(EasyMock.anyObject());
+        mockRunListener.testModuleEnded();
+        EasyMock.replay(mockRunListener);
+        IInvocationContext fakeModuleContext = new InvocationContext();
+        File tmp = FileUtil.createTempFile("sub", "unit");
+        SubprocessTestResultsParser resultParser = null;
+        File serializedModule = null;
+        try {
+            serializedModule = SerializationUtil.serialize(fakeModuleContext);
+            resultParser =
+                    new SubprocessTestResultsParser(mockRunListener, new InvocationContext());
+            String moduleStart =
+                    String.format(
+                            "TEST_MODULE_STARTED {\"moduleContextFileName\":\"%s\"}\n",
+                            serializedModule.getAbsolutePath());
+            FileUtil.writeToFile(moduleStart, tmp, true);
+            String moduleEnd = "TEST_MODULE_ENDED {}\n";
+            FileUtil.writeToFile(moduleEnd, tmp, true);
+
+            resultParser.parseFile(tmp);
+            EasyMock.verify(mockRunListener);
+        } finally {
+            StreamUtil.close(resultParser);
+            FileUtil.deleteFile(tmp);
+            FileUtil.deleteFile(serializedModule);
         }
     }
 }

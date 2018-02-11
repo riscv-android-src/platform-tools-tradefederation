@@ -18,7 +18,6 @@ package com.android.monkey;
 
 import com.android.ddmlib.CollectingOutputReceiver;
 import com.android.ddmlib.IShellOutputReceiver;
-import com.android.ddmlib.testrunner.TestIdentifier;
 import com.android.loganalysis.item.AnrItem;
 import com.android.loganalysis.item.BugreportItem;
 import com.android.loganalysis.item.MiscKernelLogItem;
@@ -37,6 +36,7 @@ import com.android.tradefed.result.FileInputStreamSource;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.InputStreamSource;
 import com.android.tradefed.result.LogDataType;
+import com.android.tradefed.result.TestDescription;
 import com.android.tradefed.testtype.IDeviceTest;
 import com.android.tradefed.testtype.IRemoteTest;
 import com.android.tradefed.testtype.IRetriableTest;
@@ -256,7 +256,7 @@ public class MonkeyBase implements IDeviceTest, IRemoteTest, IRetriableTest {
     public void run(ITestInvocationListener listener) throws DeviceNotAvailableException {
         Assert.assertNotNull(getDevice());
 
-        TestIdentifier id = new TestIdentifier(getClass().getCanonicalName(), "monkey");
+        TestDescription id = new TestDescription(getClass().getCanonicalName(), "monkey");
         long startTime = System.currentTimeMillis();
 
         listener.testRunStarted(getClass().getCanonicalName(), 1);

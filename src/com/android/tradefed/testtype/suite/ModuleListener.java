@@ -16,12 +16,12 @@
 package com.android.tradefed.testtype.suite;
 
 import com.android.ddmlib.Log.LogLevel;
-import com.android.ddmlib.testrunner.TestIdentifier;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.result.CollectingTestListener;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.InputStreamSource;
 import com.android.tradefed.result.LogDataType;
+import com.android.tradefed.result.TestDescription;
 import com.android.tradefed.result.TestRunResult;
 import com.android.tradefed.testtype.IRemoteTest;
 
@@ -72,7 +72,7 @@ public class ModuleListener extends CollectingTestListener {
 
     /** {@inheritDoc} */
     @Override
-    public void testStarted(TestIdentifier test, long startTime) {
+    public void testStarted(TestDescription test, long startTime) {
         CLog.d("ModuleListener.testStarted(%s)", test.toString());
         mTestFailed = false;
         super.testStarted(test, startTime);
@@ -92,14 +92,14 @@ public class ModuleListener extends CollectingTestListener {
 
     /** {@inheritDoc} */
     @Override
-    public void testEnded(TestIdentifier test, Map<String, String> testMetrics) {
+    public void testEnded(TestDescription test, Map<String, String> testMetrics) {
         logTestPassed(test.toString());
         super.testEnded(test, testMetrics);
     }
 
     /** {@inheritDoc} */
     @Override
-    public void testEnded(TestIdentifier test, long endTime, Map<String, String> testMetrics) {
+    public void testEnded(TestDescription test, long endTime, Map<String, String> testMetrics) {
         logTestPassed(test.toString());
         super.testEnded(test, endTime, testMetrics);
     }
@@ -107,7 +107,7 @@ public class ModuleListener extends CollectingTestListener {
 
     /** {@inheritDoc} */
     @Override
-    public void testFailed(TestIdentifier test, String trace) {
+    public void testFailed(TestDescription test, String trace) {
         if (mSkip) {
             return;
         }

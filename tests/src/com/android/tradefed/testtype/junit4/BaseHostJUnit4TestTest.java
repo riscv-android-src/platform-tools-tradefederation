@@ -18,7 +18,6 @@ package com.android.tradefed.testtype.junit4;
 import static org.junit.Assert.fail;
 
 import com.android.ddmlib.testrunner.IRemoteAndroidTestRunner;
-import com.android.ddmlib.testrunner.TestIdentifier;
 import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.config.OptionSetter;
 import com.android.tradefed.device.ITestDevice;
@@ -39,6 +38,7 @@ import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
 
 import java.util.Collections;
+import java.util.Map;
 
 /** Unit tests for {@link BaseHostJUnit4Test}. */
 @RunWith(JUnit4.class)
@@ -57,7 +57,7 @@ public class BaseHostJUnit4TestTest {
         CollectingTestListener createListener() {
             CollectingTestListener listener = new CollectingTestListener();
             listener.testRunStarted("testRun", 1);
-            TestIdentifier tid = new TestIdentifier("class", "test1");
+            TestDescription tid = new TestDescription("class", "test1");
             listener.testStarted(tid);
             listener.testEnded(tid, Collections.emptyMap());
             listener.testRunEnded(500l, Collections.emptyMap());
@@ -96,7 +96,7 @@ public class BaseHostJUnit4TestTest {
         TestDescription tid = new TestDescription(CLASSNAME, "testPass");
         mMockListener.testStarted(tid);
         mMockListener.testEnded(tid, Collections.emptyMap());
-        mMockListener.testRunEnded(EasyMock.anyLong(), EasyMock.anyObject());
+        mMockListener.testRunEnded(EasyMock.anyLong(), (Map<String, String>) EasyMock.anyObject());
         EasyMock.replay(mMockListener, mMockBuild, mMockDevice, mMockContext);
         mHostTest.run(mMockListener);
         EasyMock.verify(mMockListener, mMockBuild, mMockDevice, mMockContext);

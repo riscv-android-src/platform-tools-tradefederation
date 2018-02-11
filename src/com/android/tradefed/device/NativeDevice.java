@@ -1281,38 +1281,32 @@ public class NativeDevice implements IManagedTestDevice {
             CLog.e("Device path %s is not a directory", deviceFilePath);
             return false;
         }
-        String lsOutput = executeShellCommand(String.format("ls -Ap1 %s", deviceFilePath));
-        if (lsOutput.trim().isEmpty()) {
+        IFileEntry entry = getFileEntry(deviceFilePath);
+        Collection<IFileEntry> children = entry.getChildren(false);
+        if (children.isEmpty()) {
             CLog.i("Device path is empty, nothing to do.");
             return true;
         }
-        String[] items = lsOutput.split("\r?\n");
-        for (String item : items) {
-            if (item.isEmpty()) {
-                // skip empty entries
-                continue;
-            }
-            if (item.endsWith("/")) {
+        for (IFileEntry item : children) {
+            if (item.isDirectory()) {
                 // handle sub dir
-                // prepare local path first
-                item = item.substring(0, item.length() - 1);
-                File subDir = new File(localDir, item);
+                File subDir = new File(localDir, item.getName());
                 if (!subDir.mkdir()) {
                     CLog.w("Failed to create sub directory %s, aborting.",
                             subDir.getAbsolutePath());
                     return false;
                 }
-                String deviceSubDir = String.format("%s/%s", deviceFilePath, item);
+                String deviceSubDir = item.getFullPath();
                 if (!pullDir(deviceSubDir, subDir)) {
                     CLog.w("Failed to pull sub directory %s from device, aborting", deviceSubDir);
                     return false;
                 }
             } else {
                 // handle regular file
-                String deviceFile = String.format("%s/%s", deviceFilePath, item);
-                File localFile = new File(localDir, item);
-                if (!pullFile(deviceFile, localFile)) {
-                    CLog.w("Failed to pull file %s from device, aborting", deviceFile);
+                File localFile = new File(localDir, item.getName());
+                String fullPath = item.getFullPath();
+                if (!pullFile(fullPath, localFile)) {
+                    CLog.w("Failed to pull file %s from device, aborting", fullPath);
                     return false;
                 }
             }

@@ -16,8 +16,8 @@
 
 package com.android.tradefed.util;
 
-import com.android.ddmlib.testrunner.TestIdentifier;
 import com.android.tradefed.result.MetricsXMLResultReporter;
+import com.android.tradefed.result.TestDescription;
 import com.android.tradefed.testtype.metricregression.Metrics;
 
 import com.google.common.annotations.VisibleForTesting;
@@ -67,7 +67,7 @@ public class MetricsXmlParser {
         private static final String RUNMETRIC_TAG = "runmetric";
         private static final String TESTMETRIC_TAG = "testmetric";
 
-        private TestIdentifier mCurrentTest = null;
+        private TestDescription mCurrentTest = null;
 
         private Metrics mMetrics;
         private Set<String> mBlacklistMetrics;
@@ -90,7 +90,7 @@ public class MetricsXmlParser {
                 // start of description of an individual test method
                 String testClassName = getMandatoryAttribute(name, "classname", attributes);
                 String methodName = getMandatoryAttribute(name, "testname", attributes);
-                mCurrentTest = new TestIdentifier(testClassName, methodName);
+                mCurrentTest = new TestDescription(testClassName, methodName);
             }
             if (RUNMETRIC_TAG.equalsIgnoreCase(name)) {
                 String metricName = getMandatoryAttribute(name, "name", attributes);

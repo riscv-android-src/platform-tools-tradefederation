@@ -1,6 +1,19 @@
+/*
+ * Copyright (C) 2018 The Android Open Source Project
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package com.android.tradefed.result;
-
-import com.android.ddmlib.testrunner.TestIdentifier;
 
 import java.util.Map;
 
@@ -58,20 +71,21 @@ public interface ITestLifeCycleReceiver {
     public default void testRunStopped(long elapsedTime) {}
 
     /**
-     * Reports the start of an individual test case.
+     * Reports the start of an individual test case. Older interface, should use {@link
+     * #testStarted(TestDescription)} whenever possible.
      *
      * @param test identifies the test
      */
-    public default void testStarted(TestIdentifier test) {}
+    public default void testStarted(TestDescription test) {}
 
     /**
-     * Alternative to {@link #testStarted(TestIdentifier)} where we also specify when the test was
-     * started, combined with {@link #testEnded(TestIdentifier, long, Map)} for accurate measure.
+     * Alternative to {@link #testStarted(TestDescription)} where we also specify when the test was
+     * started, combined with {@link #testEnded(TestDescription, long, Map)} for accurate measure.
      *
      * @param test identifies the test
      * @param startTime the time the test started, measured via {@link System#currentTimeMillis()}
      */
-    default void testStarted(TestIdentifier test, long startTime) {
+    default void testStarted(TestDescription test, long startTime) {
         testStarted(test);
     }
 
@@ -83,7 +97,7 @@ public interface ITestLifeCycleReceiver {
      * @param test identifies the test
      * @param trace stack trace of failure
      */
-    public default void testFailed(TestIdentifier test, String trace) {}
+    public default void testFailed(TestDescription test, String trace) {}
 
     /**
      * Called when an atomic test flags that it assumes a condition that is false
@@ -91,7 +105,7 @@ public interface ITestLifeCycleReceiver {
      * @param test identifies the test
      * @param trace stack trace of failure
      */
-    public default void testAssumptionFailure(TestIdentifier test, String trace) {}
+    public default void testAssumptionFailure(TestDescription test, String trace) {}
 
     /**
      * Called when a test will not be run, generally because a test method is annotated with
@@ -99,7 +113,7 @@ public interface ITestLifeCycleReceiver {
      *
      * @param test identifies the test
      */
-    public default void testIgnored(TestIdentifier test) {}
+    public default void testIgnored(TestDescription test) {}
 
     /**
      * Reports the execution end of an individual test case.
@@ -110,18 +124,18 @@ public interface ITestLifeCycleReceiver {
      * @param test identifies the test
      * @param testMetrics a {@link Map} of the metrics emitted
      */
-    public default void testEnded(TestIdentifier test, Map<String, String> testMetrics) {}
+    public default void testEnded(TestDescription test, Map<String, String> testMetrics) {}
 
     /**
-     * Alternative to {@link #testEnded(TestIdentifier, Map)} where we can specify the end time
-     * directly. Combine with {@link #testStarted(TestIdentifier, long)} for accurate measure.
+     * Alternative to {@link #testEnded(TestDescription, Map)} where we can specify the end time
+     * directly. Combine with {@link #testStarted(TestDescription, long)} for accurate measure.
      *
      * @param test identifies the test
      * @param endTime the time the test ended, measured via {@link System#currentTimeMillis()}
      * @param testMetrics a {@link Map} of the metrics emitted
      */
     public default void testEnded(
-            TestIdentifier test, long endTime, Map<String, String> testMetrics) {
+            TestDescription test, long endTime, Map<String, String> testMetrics) {
         testEnded(test, testMetrics);
     }
 }

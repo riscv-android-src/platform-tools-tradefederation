@@ -21,7 +21,6 @@ import static org.junit.Assert.assertTrue;
 import com.android.annotations.VisibleForTesting;
 import com.android.ddmlib.Log.LogLevel;
 import com.android.ddmlib.testrunner.RemoteAndroidTestRunner;
-import com.android.ddmlib.testrunner.TestIdentifier;
 import com.android.ddmlib.testrunner.TestResult.TestStatus;
 import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.device.DeviceNotAvailableException;
@@ -29,6 +28,7 @@ import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.invoker.IInvocationContext;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.result.CollectingTestListener;
+import com.android.tradefed.result.TestDescription;
 import com.android.tradefed.result.TestResult;
 import com.android.tradefed.result.TestRunResult;
 import com.android.tradefed.targetprep.TargetSetupError;
@@ -492,7 +492,7 @@ public abstract class BaseHostJUnit4Test
             if (runResult.hasFailedTests()) {
                 // build a meaningful error message
                 StringBuilder errorBuilder = new StringBuilder("on-device tests failed:\n");
-                for (Map.Entry<TestIdentifier, TestResult> resultEntry :
+                for (Map.Entry<TestDescription, TestResult> resultEntry :
                         runResult.getTestResults().entrySet()) {
                     if (!TestStatus.PASSED.equals(resultEntry.getValue().getStatus())) {
                         errorBuilder.append(resultEntry.getKey().toString());
@@ -562,7 +562,7 @@ public abstract class BaseHostJUnit4Test
     }
 
     private void printTestResult(TestRunResult runResult) {
-        for (Map.Entry<TestIdentifier, TestResult> testEntry :
+        for (Map.Entry<TestDescription, TestResult> testEntry :
                 runResult.getTestResults().entrySet()) {
             TestResult testResult = testEntry.getValue();
             TestStatus testStatus = testResult.getStatus();

@@ -52,14 +52,6 @@ public class InstalledInstrumentationsTest
 
     private ITestDevice mDevice;
 
-    /**
-     * @deprecated use --shell-timeout or --test-timeout option instead.
-     */
-    @Deprecated
-    @Option(name = "timeout",
-            description="Deprecated - Use \"shell-timeout\" or \"test-timeout\" instead.")
-    private Integer mTimeout = null;
-
     @Option(name = "shell-timeout",
             description="The defined timeout (in milliseconds) is used as a maximum waiting time "
                     + "when expecting the command output from the device. At any time, if the "

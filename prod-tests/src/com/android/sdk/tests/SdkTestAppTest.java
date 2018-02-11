@@ -15,12 +15,12 @@
  */
 package com.android.sdk.tests;
 
-import com.android.ddmlib.testrunner.TestIdentifier;
 import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.build.ISdkBuildInfo;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.result.ITestInvocationListener;
+import com.android.tradefed.result.TestDescription;
 import com.android.tradefed.testtype.IBuildReceiver;
 import com.android.tradefed.testtype.IRemoteTest;
 import com.android.tradefed.util.CommandResult;
@@ -172,8 +172,10 @@ public class SdkTestAppTest implements IRemoteTest, IBuildReceiver {
             boolean isLibrary) {
         CLog.i("Building %s test-app for target %s", testAppDir.getName(), target);
         // dynamically generate a test name
-        TestIdentifier testId = new TestIdentifier(this.getClass().getName(), String.format(
-                "%s_%s", testAppDir.getName(), target));
+        TestDescription testId =
+                new TestDescription(
+                        this.getClass().getName(),
+                        String.format("%s_%s", testAppDir.getName(), target));
         listener.testStarted(testId);
         try {
             runTestAppTest(target, testAppDir, isLibrary);

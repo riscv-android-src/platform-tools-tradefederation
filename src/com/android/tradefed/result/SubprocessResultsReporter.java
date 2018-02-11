@@ -15,7 +15,6 @@
  */
 package com.android.tradefed.result;
 
-import com.android.ddmlib.testrunner.TestIdentifier;
 import com.android.tradefed.config.Option;
 import com.android.tradefed.invoker.IInvocationContext;
 import com.android.tradefed.log.LogUtil.CLog;
@@ -27,11 +26,14 @@ import com.android.tradefed.util.SubprocessEventHelper.InvocationFailedEventInfo
 import com.android.tradefed.util.SubprocessEventHelper.InvocationStartedEventInfo;
 import com.android.tradefed.util.SubprocessEventHelper.TestEndedEventInfo;
 import com.android.tradefed.util.SubprocessEventHelper.TestLogEventInfo;
+import com.android.tradefed.util.SubprocessEventHelper.TestModuleStartedEventInfo;
 import com.android.tradefed.util.SubprocessEventHelper.TestRunEndedEventInfo;
 import com.android.tradefed.util.SubprocessEventHelper.TestRunFailedEventInfo;
 import com.android.tradefed.util.SubprocessEventHelper.TestRunStartedEventInfo;
 import com.android.tradefed.util.SubprocessEventHelper.TestStartedEventInfo;
 import com.android.tradefed.util.SubprocessTestResultsParser;
+
+import org.json.JSONObject;
 
 import java.io.File;
 import java.io.FileWriter;
@@ -61,27 +63,23 @@ public class SubprocessResultsReporter implements ITestInvocationListener, AutoC
 
     private boolean mPrintWarning = true;
 
-    /**
-     * {@inheritDoc}
-     */
+    /** {@inheritDoc} */
     @Override
-    public void testAssumptionFailure(TestIdentifier testId, String trace) {
+    public void testAssumptionFailure(TestDescription testId, String trace) {
         FailedTestEventInfo info =
                 new FailedTestEventInfo(testId.getClassName(), testId.getTestName(), trace);
         printEvent(SubprocessTestResultsParser.StatusKeys.TEST_ASSUMPTION_FAILURE, info);
     }
 
-    /**
-     * {@inheritDoc}
-     */
+    /** {@inheritDoc} */
     @Override
-    public void testEnded(TestIdentifier testId, Map<String, String> metrics) {
+    public void testEnded(TestDescription testId, Map<String, String> metrics) {
         testEnded(testId, System.currentTimeMillis(), metrics);
     }
 
     /** {@inheritDoc} */
     @Override
-    public void testEnded(TestIdentifier testId, long endTime, Map<String, String> metrics) {
+    public void testEnded(TestDescription testId, long endTime, Map<String, String> metrics) {
         TestEndedEventInfo info =
                 new TestEndedEventInfo(
                         testId.getClassName(), testId.getTestName(), endTime, metrics);
@@ -90,17 +88,15 @@ public class SubprocessResultsReporter implements ITestInvocationListener, AutoC
 
     /** {@inheritDoc} */
     @Override
-    public void testFailed(TestIdentifier testId, String reason) {
+    public void testFailed(TestDescription testId, String reason) {
         FailedTestEventInfo info =
                 new FailedTestEventInfo(testId.getClassName(), testId.getTestName(), reason);
         printEvent(SubprocessTestResultsParser.StatusKeys.TEST_FAILED, info);
     }
 
-    /**
-     * {@inheritDoc}
-     */
+    /** {@inheritDoc} */
     @Override
-    public void testIgnored(TestIdentifier testId) {
+    public void testIgnored(TestDescription testId) {
         BaseTestEventInfo info = new BaseTestEventInfo(testId.getClassName(), testId.getTestName());
         printEvent(SubprocessTestResultsParser.StatusKeys.TEST_IGNORED, info);
     }
@@ -137,17 +133,15 @@ public class SubprocessResultsReporter implements ITestInvocationListener, AutoC
         // ignore
     }
 
-    /**
-     * {@inheritDoc}
-     */
+    /** {@inheritDoc} */
     @Override
-    public void testStarted(TestIdentifier testId) {
+    public void testStarted(TestDescription testId) {
         testStarted(testId, System.currentTimeMillis());
     }
 
     /** {@inheritDoc} */
     @Override
-    public void testStarted(TestIdentifier testId, long startTime) {
+    public void testStarted(TestDescription testId, long startTime) {
         TestStartedEventInfo info =
                 new TestStartedEventInfo(testId.getClassName(), testId.getTestName(), startTime);
         printEvent(SubprocessTestResultsParser.StatusKeys.TEST_STARTED, info);
@@ -201,6 +195,19 @@ public class SubprocessResultsReporter implements ITestInvocationListener, AutoC
     public void invocationFailed(Throwable cause) {
         InvocationFailedEventInfo info = new InvocationFailedEventInfo(cause);
         printEvent(SubprocessTestResultsParser.StatusKeys.INVOCATION_FAILED, info);
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public void testModuleStarted(IInvocationContext moduleContext) {
+        TestModuleStartedEventInfo info = new TestModuleStartedEventInfo(moduleContext);
+        printEvent(SubprocessTestResultsParser.StatusKeys.TEST_MODULE_STARTED, info);
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public void testModuleEnded() {
+        printEvent(SubprocessTestResultsParser.StatusKeys.TEST_MODULE_ENDED, new JSONObject());
     }
 
     /**

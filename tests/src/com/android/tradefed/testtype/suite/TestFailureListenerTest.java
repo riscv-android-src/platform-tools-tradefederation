@@ -15,13 +15,13 @@
  */
 package com.android.tradefed.testtype.suite;
 
-import com.android.ddmlib.testrunner.TestIdentifier;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.result.ByteArrayInputStreamSource;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.InputStreamSource;
 import com.android.tradefed.result.LogDataType;
+import com.android.tradefed.result.TestDescription;
 import com.android.tradefed.util.IRunUtil;
 
 import org.easymock.EasyMock;
@@ -59,7 +59,7 @@ public class TestFailureListenerTest {
     @Test
     @SuppressWarnings("MustBeClosedChecker")
     public void testTestFailed() throws Exception {
-        TestIdentifier testId = new TestIdentifier("com.fake", "methodfake");
+        TestDescription testId = new TestDescription("com.fake", "methodfake");
         final String trace = "oups it failed";
         final long startDate = 1479917040l; // Wed Nov 23 16:04:00 GMT 2016
         final byte[] fakeData = "fakeData".getBytes();
@@ -105,7 +105,7 @@ public class TestFailureListenerTest {
                         return EasyMock.createMock(IRunUtil.class);
                     }
                 };
-        TestIdentifier testId = new TestIdentifier("com.fake", "methodfake");
+        TestDescription testId = new TestDescription("com.fake", "methodfake");
         final String trace = "oups it failed";
         final byte[] fakeData = "fakeData".getBytes();
         InputStreamSource fakeSource = new ByteArrayInputStreamSource(fakeData);
@@ -139,7 +139,7 @@ public class TestFailureListenerTest {
         mFailureListener =
                 new TestFailureListener(mMockListener, mListDevice, false, false, false, true, -1);
         final String trace = "oups it failed";
-        TestIdentifier testId = new TestIdentifier("com.fake", "methodfake");
+        TestDescription testId = new TestDescription("com.fake", "methodfake");
         EasyMock.expect(mMockDevice.getProperty(EasyMock.eq("ro.build.type"))).andReturn("user");
         EasyMock.replay(mMockListener, mMockDevice);
         mFailureListener.testStarted(testId);
@@ -159,7 +159,7 @@ public class TestFailureListenerTest {
         mFailureListener =
                 new TestFailureListener(mMockListener, mListDevice, false, false, false, true, -1);
         final String trace = "oups it failed";
-        TestIdentifier testId = new TestIdentifier("com.fake", "methodfake");
+        TestDescription testId = new TestDescription("com.fake", "methodfake");
         EasyMock.expect(mMockDevice.getProperty(EasyMock.eq("ro.build.type"))).andReturn("debug");
         mMockDevice.reboot();
         EasyMock.expect(device2.getSerialNumber()).andStubReturn("SERIAL2");

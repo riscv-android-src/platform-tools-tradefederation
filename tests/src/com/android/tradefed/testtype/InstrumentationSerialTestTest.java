@@ -15,11 +15,11 @@
  */
 package com.android.tradefed.testtype;
 
-import com.android.ddmlib.testrunner.TestIdentifier;
 import com.android.tradefed.config.ConfigurationException;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.result.ITestInvocationListener;
+import com.android.tradefed.result.TestDescription;
 
 import junit.framework.TestCase;
 
@@ -56,8 +56,8 @@ public class InstrumentationSerialTestTest extends TestCase {
      */
     public void testRun() throws DeviceNotAvailableException, ConfigurationException {
         final String packageName = "com.foo";
-        final TestIdentifier test = new TestIdentifier("FooTest", "testFoo");
-        final Collection<TestIdentifier> testList = new ArrayList<TestIdentifier>(1);
+        final TestDescription test = new TestDescription("FooTest", "testFoo");
+        final Collection<TestDescription> testList = new ArrayList<TestDescription>(1);
         testList.add(test);
         final InstrumentationTest mockITest =
                 new InstrumentationTest() {
@@ -102,9 +102,9 @@ public class InstrumentationSerialTestTest extends TestCase {
      */
     public void testRun_runFailure() throws DeviceNotAvailableException, ConfigurationException {
         final String packageName = "com.foo";
-        final TestIdentifier test = new TestIdentifier("FooTest", "testFoo");
+        final TestDescription test = new TestDescription("FooTest", "testFoo");
         final String runFailureMsg = "run failed";
-        final Collection<TestIdentifier> testList = new ArrayList<TestIdentifier>(1);
+        final Collection<TestDescription> testList = new ArrayList<TestDescription>(1);
         testList.add(test);
         final InstrumentationTest mockITest =
                 new InstrumentationTest() {
@@ -152,8 +152,9 @@ public class InstrumentationSerialTestTest extends TestCase {
      * Test that IllegalArgumentException is thrown when attempting run without setting device.
      */
     public void testRun_noDevice() throws DeviceNotAvailableException, ConfigurationException {
-        mInstrumentationSerialTest = new InstrumentationSerialTest(new InstrumentationTest(),
-                new ArrayList<TestIdentifier>());
+        mInstrumentationSerialTest =
+                new InstrumentationSerialTest(
+                        new InstrumentationTest(), new ArrayList<TestDescription>());
         EasyMock.replay(mMockListener);
         try {
             mInstrumentationSerialTest.run(mMockListener);

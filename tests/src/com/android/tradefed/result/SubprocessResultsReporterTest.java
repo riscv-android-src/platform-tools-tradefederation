@@ -15,9 +15,9 @@
  */
 package com.android.tradefed.result;
 
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.fail;
 
-import com.android.ddmlib.testrunner.TestIdentifier;
 import com.android.tradefed.config.OptionSetter;
 import com.android.tradefed.invoker.InvocationContext;
 import com.android.tradefed.util.FileUtil;
@@ -50,7 +50,7 @@ public class SubprocessResultsReporterTest {
      */
     @Test
     public void testPrintEvent_Inop() {
-        TestIdentifier testId = new TestIdentifier("com.fakeclass", "faketest");
+        TestDescription testId = new TestDescription("com.fakeclass", "faketest");
         mReporter.testStarted(testId);
         mReporter.testFailed(testId, "fake failure");
         mReporter.testEnded(testId, Collections.emptyMap());
@@ -101,7 +101,7 @@ public class SubprocessResultsReporterTest {
      */
     @Test
     public void testPrintEvent_printToSocket() throws Exception {
-        TestIdentifier testId = new TestIdentifier("com.fakeclass", "faketest");
+        TestDescription testId = new TestDescription("com.fakeclass", "faketest");
         ITestInvocationListener mMockListener = EasyMock.createMock(ITestInvocationListener.class);
         SubprocessTestResultsParser receiver =
                 new SubprocessTestResultsParser(mMockListener, true, new InvocationContext());

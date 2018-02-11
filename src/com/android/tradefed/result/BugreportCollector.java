@@ -15,7 +15,6 @@
  */
 package com.android.tradefed.result;
 
-import com.android.ddmlib.testrunner.TestIdentifier;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.invoker.IInvocationContext;
@@ -314,7 +313,7 @@ public class BugreportCollector implements ITestInvocationListener {
         return check(relation, noun, null);
     }
 
-    boolean check(Relation relation, Noun noun, TestIdentifier test) {
+    boolean check(Relation relation, Noun noun, TestDescription test) {
         // Expect to get something like "AFTER", "TESTCASE"
 
         // All freqs that could match _right now_.  Should be added in decreasing order of
@@ -434,29 +433,25 @@ public class BugreportCollector implements ITestInvocationListener {
     // Methods from the {@link ITestInvocationListener} interface
     /** {@inheritDoc} */
     @Override
-    public void testEnded(TestIdentifier test, Map<String, String> testMetrics) {
+    public void testEnded(TestDescription test, Map<String, String> testMetrics) {
         mListener.testEnded(test, testMetrics);
         mCollector.testEnded(test, testMetrics);
         check(Relation.AFTER, Noun.TESTCASE, test);
         reset();
     }
 
-    /**
-     * {@inheritDoc}
-     */
+    /** {@inheritDoc} */
     @Override
-    public void testFailed(TestIdentifier test, String trace) {
+    public void testFailed(TestDescription test, String trace) {
         mListener.testFailed(test, trace);
         mCollector.testFailed(test, trace);
         check(Relation.AFTER, Noun.FAILED_TESTCASE, test);
         reset();
     }
 
-    /**
-     * {@inheritDoc}
-     */
+    /** {@inheritDoc} */
     @Override
-    public void testAssumptionFailure(TestIdentifier test, String trace) {
+    public void testAssumptionFailure(TestDescription test, String trace) {
         mListener.testAssumptionFailure(test, trace);
         mCollector.testAssumptionFailure(test, trace);
         check(Relation.AFTER, Noun.FAILED_TESTCASE, test);
@@ -503,11 +498,9 @@ public class BugreportCollector implements ITestInvocationListener {
         // FIXME: figure out how to expose this
     }
 
-    /**
-     * {@inheritDoc}
-     */
+    /** {@inheritDoc} */
     @Override
-    public void testStarted(TestIdentifier test) {
+    public void testStarted(TestDescription test) {
         mListener.testStarted(test);
         mCollector.testStarted(test);
         check(Relation.AT_START_OF, Noun.TESTCASE, test);
@@ -562,7 +555,7 @@ public class BugreportCollector implements ITestInvocationListener {
     }
 
     @Override
-    public void testIgnored(TestIdentifier test) {
+    public void testIgnored(TestDescription test) {
         // ignore
     }
 }

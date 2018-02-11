@@ -16,13 +16,13 @@
 
 package com.android.tradefed.device.metric;
 
-import com.android.ddmlib.testrunner.TestIdentifier;
 import com.android.tradefed.config.Option;
 import com.android.tradefed.config.OptionClass;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.result.FileInputStreamSource;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.LogDataType;
+import com.android.tradefed.result.TestDescription;
 import com.android.tradefed.util.CommandResult;
 import com.android.tradefed.util.CommandStatus;
 import com.android.tradefed.util.FileUtil;
@@ -134,7 +134,7 @@ public class AtraceRunMetricCollector extends FilePullerDeviceMetricCollector {
         String scriptArgs[] = scriptPath.split(" ");
         String scriptPathArgs[] = scriptArgs[0].split("/");
         String scriptName[] = scriptPathArgs[scriptPathArgs.length - 1].split("\\.");
-        TestIdentifier testId = new TestIdentifier(scriptName[0], testDirectory.getName());
+        TestDescription testId = new TestDescription(scriptName[0], testDirectory.getName());
         mListener.testStarted(testId);
         mListener.testEnded(testId, finalResult);
         return true;

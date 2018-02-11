@@ -15,18 +15,19 @@
  */
 package com.android.tradefed.util;
 
-import com.android.ddmlib.testrunner.TestIdentifier;
 import com.android.tradefed.invoker.IInvocationContext;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.result.FileInputStreamSource;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.InputStreamSource;
+import com.android.tradefed.result.TestDescription;
 import com.android.tradefed.util.SubprocessEventHelper.BaseTestEventInfo;
 import com.android.tradefed.util.SubprocessEventHelper.FailedTestEventInfo;
 import com.android.tradefed.util.SubprocessEventHelper.InvocationFailedEventInfo;
 import com.android.tradefed.util.SubprocessEventHelper.InvocationStartedEventInfo;
 import com.android.tradefed.util.SubprocessEventHelper.TestEndedEventInfo;
 import com.android.tradefed.util.SubprocessEventHelper.TestLogEventInfo;
+import com.android.tradefed.util.SubprocessEventHelper.TestModuleStartedEventInfo;
 import com.android.tradefed.util.SubprocessEventHelper.TestRunEndedEventInfo;
 import com.android.tradefed.util.SubprocessEventHelper.TestRunFailedEventInfo;
 import com.android.tradefed.util.SubprocessEventHelper.TestRunStartedEventInfo;
@@ -60,7 +61,10 @@ import java.util.regex.Pattern;
 public class SubprocessTestResultsParser implements Closeable {
 
     private ITestInvocationListener mListener;
-    private TestIdentifier mCurrentTest = null;
+
+    private TestDescription mCurrentTest = null;
+    private IInvocationContext mCurrentModuleContext = null;
+
     private Pattern mPattern = null;
     private Map<String, EventHandler> mHandlerMap = null;
     private EventReceiverThread mEventReceiver = null;
@@ -78,6 +82,8 @@ public class SubprocessTestResultsParser implements Closeable {
         public static final String TEST_RUN_ENDED = "TEST_RUN_ENDED";
         public static final String TEST_RUN_FAILED = "TEST_RUN_FAILED";
         public static final String TEST_RUN_STARTED = "TEST_RUN_STARTED";
+        public static final String TEST_MODULE_STARTED = "TEST_MODULE_STARTED";
+        public static final String TEST_MODULE_ENDED = "TEST_MODULE_ENDED";
         public static final String TEST_LOG = "TEST_LOG";
         public static final String INVOCATION_STARTED = "INVOCATION_STARTED";
     }
@@ -210,6 +216,8 @@ public class SubprocessTestResultsParser implements Closeable {
         sb.append(StatusKeys.TEST_RUN_ENDED).append("|");
         sb.append(StatusKeys.TEST_RUN_FAILED).append("|");
         sb.append(StatusKeys.TEST_RUN_STARTED).append("|");
+        sb.append(StatusKeys.TEST_MODULE_STARTED).append("|");
+        sb.append(StatusKeys.TEST_MODULE_ENDED).append("|");
         sb.append(StatusKeys.TEST_LOG).append("|");
         sb.append(StatusKeys.INVOCATION_STARTED);
         String patt = String.format("(.*)(%s)( )(.*)", sb.toString());
@@ -227,6 +235,8 @@ public class SubprocessTestResultsParser implements Closeable {
         mHandlerMap.put(StatusKeys.TEST_RUN_ENDED, new TestRunEndedEventHandler());
         mHandlerMap.put(StatusKeys.TEST_RUN_FAILED, new TestRunFailedEventHandler());
         mHandlerMap.put(StatusKeys.TEST_RUN_STARTED, new TestRunStartedEventHandler());
+        mHandlerMap.put(StatusKeys.TEST_MODULE_STARTED, new TestModuleStartedEventHandler());
+        mHandlerMap.put(StatusKeys.TEST_MODULE_ENDED, new TestModuleEndedEventHandler());
         mHandlerMap.put(StatusKeys.TEST_LOG, new TestLogEventHandler());
         mHandlerMap.put(StatusKeys.INVOCATION_STARTED, new InvocationStartedEventHandler());
     }
@@ -285,7 +295,7 @@ public class SubprocessTestResultsParser implements Closeable {
 
     private void checkCurrentTestId(String className, String testName) {
         if (mCurrentTest == null) {
-            mCurrentTest = new TestIdentifier(className, testName);
+            mCurrentTest = new TestDescription(className, testName);
             CLog.w("Calling a test event without having called testStarted.");
         }
     }
@@ -338,7 +348,7 @@ public class SubprocessTestResultsParser implements Closeable {
         @Override
         public void handleEvent(String eventJson) throws JSONException {
             TestStartedEventInfo bti = new TestStartedEventInfo(new JSONObject(eventJson));
-            mCurrentTest = new TestIdentifier(bti.mClassName, bti.mTestName);
+            mCurrentTest = new TestDescription(bti.mClassName, bti.mTestName);
             if (bti.mStartTime != null) {
                 mListener.testStarted(mCurrentTest, bti.mStartTime);
             } else {
@@ -392,6 +402,27 @@ public class SubprocessTestResultsParser implements Closeable {
         }
     }
 
+    private class TestModuleStartedEventHandler implements EventHandler {
+        @Override
+        public void handleEvent(String eventJson) throws JSONException {
+            TestModuleStartedEventInfo module =
+                    new TestModuleStartedEventInfo(new JSONObject(eventJson));
+            mCurrentModuleContext = module.mModuleContext;
+            mListener.testModuleStarted(module.mModuleContext);
+        }
+    }
+
+    private class TestModuleEndedEventHandler implements EventHandler {
+        @Override
+        public void handleEvent(String eventJson) throws JSONException {
+            if (mCurrentModuleContext == null) {
+                CLog.w("Calling testModuleEnded when testModuleStarted was not called.");
+            }
+            mListener.testModuleEnded();
+            mCurrentModuleContext = null;
+        }
+    }
+
     private class TestLogEventHandler implements EventHandler {
         @Override
         public void handleEvent(String eventJson) throws JSONException {
@@ -427,7 +458,7 @@ public class SubprocessTestResultsParser implements Closeable {
     }
 
     /** Returns the test that is currently in progress. */
-    public TestIdentifier getCurrentTest() {
+    public TestDescription getCurrentTest() {
         return mCurrentTest;
     }
 }

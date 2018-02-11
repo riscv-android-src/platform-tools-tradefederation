@@ -15,7 +15,6 @@
  */
 package com.android.tradefed.testtype;
 
-import com.android.ddmlib.testrunner.TestIdentifier;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.TestDescription;
 
@@ -40,9 +39,10 @@ public class GTestListTestParserTest extends GTestParserTestBase {
         mockRunListener.testRunStarted(TEST_MODULE_NAME, 23);
         // 11 passing test cases in this run
         for (int i = 0; i < 23; ++i) {
-            mockRunListener.testStarted((TestIdentifier)EasyMock.anyObject());
-            mockRunListener.testEnded((TestIdentifier)EasyMock.anyObject(),
-                    (Map<String, String>)EasyMock.anyObject());
+            mockRunListener.testStarted((TestDescription) EasyMock.anyObject());
+            mockRunListener.testEnded(
+                    (TestDescription) EasyMock.anyObject(),
+                    (Map<String, String>) EasyMock.anyObject());
         }
         mockRunListener.testRunEnded(EasyMock.anyLong(),
                 (Map<String, String>) EasyMock.anyObject());
@@ -51,7 +51,7 @@ public class GTestListTestParserTest extends GTestParserTestBase {
         parser.processNewLines(contents);
         parser.flush();
         EasyMock.verify(mockRunListener);
-        verifyTestIdentifiers(parser.mTests, 1);
+        verifyTestDescriptions(parser.mTests, 1);
     }
 
     /**
@@ -65,9 +65,10 @@ public class GTestListTestParserTest extends GTestParserTestBase {
         mockRunListener.testRunStarted(TEST_MODULE_NAME, 127);
         // 11 passing test cases in this run
         for (int i = 0; i < 127; ++i) {
-            mockRunListener.testStarted((TestIdentifier)EasyMock.anyObject());
-            mockRunListener.testEnded((TestIdentifier)EasyMock.anyObject(),
-                    (Map<String, String>)EasyMock.anyObject());
+            mockRunListener.testStarted((TestDescription) EasyMock.anyObject());
+            mockRunListener.testEnded(
+                    (TestDescription) EasyMock.anyObject(),
+                    (Map<String, String>) EasyMock.anyObject());
         }
         mockRunListener.testRunEnded(EasyMock.anyLong(),
                 (Map<String, String>) EasyMock.anyObject());
@@ -76,7 +77,7 @@ public class GTestListTestParserTest extends GTestParserTestBase {
         parser.processNewLines(contents);
         parser.flush();
         EasyMock.verify(mockRunListener);
-        verifyTestIdentifiers(parser.mTests, 29);
+        verifyTestDescriptions(parser.mTests, 29);
     }
 
     /**
@@ -96,7 +97,7 @@ public class GTestListTestParserTest extends GTestParserTestBase {
         }
     }
 
-    private void verifyTestIdentifiers(List<TestDescription> tests, int classesExpected)
+    private void verifyTestDescriptions(List<TestDescription> tests, int classesExpected)
             throws Exception {
         int classesFound = 0;
         String lastClass = "notaclass";

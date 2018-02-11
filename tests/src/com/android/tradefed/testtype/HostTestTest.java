@@ -1014,7 +1014,7 @@ public class HostTestTest extends TestCase {
         Map<String, String> metrics2 = new HashMap<>();
         metrics2.put("key2", "value2");
         mListener.testEnded(test2, metrics2);
-        mListener.testRunEnded(EasyMock.anyLong(), EasyMock.anyObject());
+        mListener.testRunEnded(EasyMock.anyLong(), (Map<String, String>) EasyMock.anyObject());
         EasyMock.replay(mListener);
         mHostTest.run(mListener);
         EasyMock.verify(mListener);
@@ -1857,7 +1857,7 @@ public class HostTestTest extends TestCase {
                         "com.android.tradefed.testtype.HostTestTest$SuccessTestCase", "testPass2");
         mListener.testStarted(tid2);
         mListener.testEnded(tid2, Collections.emptyMap());
-        mListener.testRunEnded(EasyMock.anyLong(), EasyMock.anyObject());
+        mListener.testRunEnded(EasyMock.anyLong(), (Map<String, String>) EasyMock.anyObject());
 
         mListener.testRunStarted(
                 EasyMock.eq("com.android.tradefed.testtype.HostTestTest$AnotherTestCase"),
@@ -1872,7 +1872,7 @@ public class HostTestTest extends TestCase {
                         "com.android.tradefed.testtype.HostTestTest$AnotherTestCase", "testPass4");
         mListener.testStarted(tid4);
         mListener.testEnded(tid4, Collections.emptyMap());
-        mListener.testRunEnded(EasyMock.anyLong(), EasyMock.anyObject());
+        mListener.testRunEnded(EasyMock.anyLong(), (Map<String, String>) EasyMock.anyObject());
 
         EasyMock.replay(mListener, mMockDevice);
         for (IRemoteTest test : res) {
@@ -1943,7 +1943,7 @@ public class HostTestTest extends TestCase {
         mListener.testLog(
                 EasyMock.eq("TEST2"), EasyMock.eq(LogDataType.TEXT), EasyMock.anyObject());
         mListener.testEnded(test2, Collections.emptyMap());
-        mListener.testRunEnded(EasyMock.anyLong(), EasyMock.anyObject());
+        mListener.testRunEnded(EasyMock.anyLong(), (Map<String, String>) EasyMock.anyObject());
         EasyMock.replay(mListener);
         mHostTest.run(mListener);
         EasyMock.verify(mListener);
@@ -1994,7 +1994,7 @@ public class HostTestTest extends TestCase {
             mListener.testRunStarted(tid.getClassName(), 1);
             mListener.testStarted(tid);
             mListener.testEnded(tid, Collections.emptyMap());
-            mListener.testRunEnded(EasyMock.anyLong(), EasyMock.anyObject());
+            mListener.testRunEnded(EasyMock.anyLong(), (Map<String, String>) EasyMock.anyObject());
         }
 
         EasyMock.replay(mListener, mMockDevice);
@@ -2029,7 +2029,7 @@ public class HostTestTest extends TestCase {
         // First class fail with the run failure
         mListener.testRunStarted(EasyMock.anyObject(), EasyMock.eq(1));
         mListener.testRunFailed(EasyMock.contains("Failed with trace:"));
-        mListener.testRunEnded(EasyMock.anyLong(), EasyMock.anyObject());
+        mListener.testRunEnded(EasyMock.anyLong(), (Map<String, String>) EasyMock.anyObject());
 
         // Second class run properly
         mListener.testRunStarted(EasyMock.anyObject(), EasyMock.eq(2));
@@ -2039,7 +2039,7 @@ public class HostTestTest extends TestCase {
         TestDescription tid3 = new TestDescription(Junit4TestClass.class.getName(), "testPass6");
         mListener.testStarted(EasyMock.eq(tid3));
         mListener.testEnded(EasyMock.eq(tid3), EasyMock.anyObject());
-        mListener.testRunEnded(EasyMock.anyLong(), EasyMock.anyObject());
+        mListener.testRunEnded(EasyMock.anyLong(), (Map<String, String>) EasyMock.anyObject());
 
         EasyMock.replay(mListener);
         assertEquals(3, mHostTest.countTestCases());
@@ -2073,7 +2073,7 @@ public class HostTestTest extends TestCase {
         mListener.testStarted(EasyMock.eq(tid));
         mListener.testFailed(EasyMock.eq(tid), EasyMock.anyObject());
         mListener.testEnded(EasyMock.eq(tid), EasyMock.anyObject());
-        mListener.testRunEnded(EasyMock.anyLong(), EasyMock.anyObject());
+        mListener.testRunEnded(EasyMock.anyLong(), (Map<String, String>) EasyMock.anyObject());
 
         // Second class run properly
         mListener.testRunStarted(EasyMock.anyObject(), EasyMock.eq(2));
@@ -2083,7 +2083,7 @@ public class HostTestTest extends TestCase {
         TestDescription tid3 = new TestDescription(Junit4TestClass.class.getName(), "testPass6");
         mListener.testStarted(EasyMock.eq(tid3));
         mListener.testEnded(EasyMock.eq(tid3), EasyMock.anyObject());
-        mListener.testRunEnded(EasyMock.anyLong(), EasyMock.anyObject());
+        mListener.testRunEnded(EasyMock.anyLong(), (Map<String, String>) EasyMock.anyObject());
 
         EasyMock.replay(mListener);
         assertEquals(3, mHostTest.countTestCases());

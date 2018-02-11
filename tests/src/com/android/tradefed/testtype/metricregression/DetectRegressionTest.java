@@ -24,11 +24,11 @@ import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 
-import com.android.ddmlib.testrunner.TestIdentifier;
-
-import com.google.common.primitives.Doubles;
+import com.android.tradefed.result.TestDescription;
 import com.android.tradefed.testtype.metricregression.DetectRegression.TableRow;
 import com.android.tradefed.util.MultiMap;
+
+import com.google.common.primitives.Doubles;
 
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -112,8 +112,8 @@ public class DetectRegressionTest {
     public void testRunRegressionDetection() {
         DetectRegression detector = spy(DetectRegression.class);
         doNothing().when(detector).logResult(any(), any(), any(), any());
-        TestIdentifier id1 = new TestIdentifier("class", "test1");
-        TestIdentifier id2 = new TestIdentifier("class", "test2");
+        TestDescription id1 = new TestDescription("class", "test1");
+        TestDescription id2 = new TestDescription("class", "test2");
         Metrics before = new Metrics(false);
         Arrays.asList("3.0", "3.0", "3.0", "3.0", "3.0")
                 .forEach(e -> before.addRunMetric("metric-1", e));

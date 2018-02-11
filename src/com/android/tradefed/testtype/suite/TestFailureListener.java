@@ -15,13 +15,13 @@
  */
 package com.android.tradefed.testtype.suite;
 
-import com.android.ddmlib.testrunner.TestIdentifier;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.InputStreamSource;
 import com.android.tradefed.result.LogDataType;
+import com.android.tradefed.result.TestDescription;
 import com.android.tradefed.util.IRunUtil;
 import com.android.tradefed.util.RunUtil;
 
@@ -51,7 +51,7 @@ public class TestFailureListener implements ITestInvocationListener {
     private boolean mScreenshotOnFailure;
     private boolean mRebootOnFailure;
     private int mMaxLogcatBytes;
-    private Map<TestIdentifier, Long> mTrackStartTime = new HashMap<>();
+    private Map<TestDescription, Long> mTrackStartTime = new HashMap<>();
     private List<Thread> mLogcatThreads = new ArrayList<>();
 
     public TestFailureListener(
@@ -82,11 +82,9 @@ public class TestFailureListener implements ITestInvocationListener {
         }
     }
 
-    /**
-     * We override testStarted in order to track the start time.
-     */
+    /** We override testStarted in order to track the start time. */
     @Override
-    public void testStarted(TestIdentifier test) {
+    public void testStarted(TestDescription test) {
         if (mLogcatOnFailure) {
             try {
                 mTrackStartTime.put(test, mListDevice.get(0).getDeviceDate());
@@ -98,21 +96,17 @@ public class TestFailureListener implements ITestInvocationListener {
         }
     }
 
-    /**
-     * Make sure we clean the map when test end to avoid too much overhead.
-     */
+    /** Make sure we clean the map when test end to avoid too much overhead. */
     @Override
-    public void testEnded(TestIdentifier test, Map<String, String> testMetrics) {
+    public void testEnded(TestDescription test, Map<String, String> testMetrics) {
         if (mLogcatOnFailure) {
             mTrackStartTime.remove(test);
         }
     }
 
-    /**
-     * {@inheritDoc}
-     */
+    /** {@inheritDoc} */
     @Override
-    public void testFailed(TestIdentifier test, String trace) {
+    public void testFailed(TestDescription test, String trace) {
         CLog.i("FailureListener.testFailed %s %b %b %b", test.toString(), mBugReportOnFailure,
                 mLogcatOnFailure, mScreenshotOnFailure);
         for (ITestDevice device : mListDevice) {
@@ -121,7 +115,7 @@ public class TestFailureListener implements ITestInvocationListener {
     }
 
     /** Capture the appropriate logs for one device for one test failure. */
-    private void captureFailure(ITestDevice device, TestIdentifier test) {
+    private void captureFailure(ITestDevice device, TestDescription test) {
         String serial = device.getSerialNumber();
         if (mScreenshotOnFailure) {
             try {

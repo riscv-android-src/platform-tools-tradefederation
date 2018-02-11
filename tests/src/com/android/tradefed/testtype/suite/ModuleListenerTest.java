@@ -17,9 +17,9 @@ package com.android.tradefed.testtype.suite;
 
 import static org.junit.Assert.assertEquals;
 
-import com.android.ddmlib.testrunner.TestIdentifier;
 import com.android.ddmlib.testrunner.TestResult.TestStatus;
 import com.android.tradefed.result.ITestInvocationListener;
+import com.android.tradefed.result.TestDescription;
 
 import org.junit.Before;
 import org.junit.Test;
@@ -48,7 +48,7 @@ public class ModuleListenerTest {
         final int numTests = 5;
         mListener.testRunStarted("run1", numTests);
         for (int i = 0; i < numTests; i++) {
-            TestIdentifier tid = new TestIdentifier("class", "test" + i);
+            TestDescription tid = new TestDescription("class", "test" + i);
             mListener.testStarted(tid);
             mListener.testEnded(tid, Collections.emptyMap());
         }
@@ -57,12 +57,12 @@ public class ModuleListenerTest {
         assertEquals(numTests, mListener.getNumTestsInState(TestStatus.PASSED));
     }
 
-    /** All the tests did not execute, so the amount of TestIdentifier seen is lower. */
+    /** All the tests did not execute, so the amount of TestDescription seen is lower. */
     @Test
     public void testRun_missingTests() {
         final int numTests = 5;
         mListener.testRunStarted("run1", numTests);
-        TestIdentifier tid = new TestIdentifier("class", "test" + numTests);
+        TestDescription tid = new TestDescription("class", "test" + numTests);
         // Only one test execute
         mListener.testStarted(tid);
         mListener.testEnded(tid, Collections.emptyMap());
@@ -80,7 +80,7 @@ public class ModuleListenerTest {
     public void testInternalRerun() {
         final int numTests = 5;
         mListener.testRunStarted("run1", numTests);
-        TestIdentifier tid = new TestIdentifier("class", "test" + numTests);
+        TestDescription tid = new TestDescription("class", "test" + numTests);
         // Only one test execute the first time
         mListener.testStarted(tid);
         mListener.testEnded(tid, Collections.emptyMap());
@@ -89,7 +89,7 @@ public class ModuleListenerTest {
         // Runner restart to execute all the remaining
         mListener.testRunStarted("run1", numTests - 1);
         for (int i = 0; i < numTests - 1; i++) {
-            TestIdentifier tid2 = new TestIdentifier("class", "test" + i);
+            TestDescription tid2 = new TestDescription("class", "test" + i);
             mListener.testStarted(tid2);
             mListener.testEnded(tid2, Collections.emptyMap());
         }
@@ -105,7 +105,7 @@ public class ModuleListenerTest {
         final int numTests = 5;
         mListener.testRunStarted("run1", numTests);
         for (int i = 0; i < numTests; i++) {
-            TestIdentifier tid = new TestIdentifier("class", "test" + i);
+            TestDescription tid = new TestDescription("class", "test" + i);
             mListener.testStarted(tid);
             mListener.testEnded(tid, Collections.emptyMap());
         }
@@ -113,7 +113,7 @@ public class ModuleListenerTest {
 
         mListener.testRunStarted("run2", numTests);
         for (int i = 0; i < numTests; i++) {
-            TestIdentifier tid = new TestIdentifier("class2", "test" + i);
+            TestDescription tid = new TestDescription("class2", "test" + i);
             mListener.testStarted(tid);
             mListener.testEnded(tid, Collections.emptyMap());
         }

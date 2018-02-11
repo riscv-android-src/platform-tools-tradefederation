@@ -21,7 +21,7 @@ import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 
-import com.android.ddmlib.testrunner.TestIdentifier;
+import com.android.tradefed.result.TestDescription;
 import com.android.tradefed.util.Pair;
 
 import com.google.common.primitives.Doubles;
@@ -59,9 +59,9 @@ public class MetricsTest {
 
     @Test
     public void testAddTestMetrics() {
-        TestIdentifier id1 = new TestIdentifier("class", "test1");
+        TestDescription id1 = new TestDescription("class", "test1");
         Arrays.asList("1.0", "1.1", "1.2").forEach(e -> mMetrics.addTestMetric(id1, "metric1", e));
-        TestIdentifier id2 = new TestIdentifier("class", "test2");
+        TestDescription id2 = new TestDescription("class", "test2");
         Arrays.asList("2.0", "2.1", "2.2").forEach(e -> mMetrics.addTestMetric(id2, "metric1", e));
         Arrays.asList("3.0", "3.1", "3.2").forEach(e -> mMetrics.addTestMetric(id2, "metric2", e));
 
@@ -82,9 +82,9 @@ public class MetricsTest {
         data.put("metric1", Arrays.asList("1.0", "1.1", "1.2"));
         data.put("metric2", Arrays.asList("2.0", "2.1"));
         data.forEach((k, v) -> v.forEach(e -> mMetrics.addRunMetric(k, e)));
-        TestIdentifier id1 = new TestIdentifier("class", "test1");
+        TestDescription id1 = new TestDescription("class", "test1");
         Arrays.asList("1.0", "1.1", "1.2").forEach(e -> mMetrics.addTestMetric(id1, "metric1", e));
-        TestIdentifier id2 = new TestIdentifier("class", "test2");
+        TestDescription id2 = new TestDescription("class", "test2");
         Arrays.asList("2.0", "2.1", "2.2").forEach(e -> mMetrics.addTestMetric(id2, "metric1", e));
         Arrays.asList("3.0", "3.1").forEach(e -> mMetrics.addTestMetric(id2, "metric2", e));
         mMetrics.validate(3);
@@ -102,7 +102,7 @@ public class MetricsTest {
                         });
         Arrays.asList("2.0", "2.1", "2.2").forEach(e -> mMetrics.addRunMetric("metric2", e));
         Arrays.asList("2.0", "2.1", "2.2").forEach(e -> other.addRunMetric("metric5", e));
-        TestIdentifier id1 = new TestIdentifier("class", "test1");
+        TestDescription id1 = new TestDescription("class", "test1");
         Arrays.asList("1.0", "1.1", "1.2")
                 .forEach(
                         e -> {
@@ -110,7 +110,7 @@ public class MetricsTest {
                             other.addTestMetric(id1, "metric1", e);
                         });
         Arrays.asList("3.0", "3.1", "3.3").forEach(e -> mMetrics.addTestMetric(id1, "metric6", e));
-        TestIdentifier id2 = new TestIdentifier("class", "test2");
+        TestDescription id2 = new TestDescription("class", "test2");
         Arrays.asList("2.0", "2.1", "2.2")
                 .forEach(
                         e -> {

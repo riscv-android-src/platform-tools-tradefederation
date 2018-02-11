@@ -456,7 +456,7 @@ public class GTestResultParser extends MultiLineReceiver {
      *          testname. This method guarantees a string will always be returned for the class and
      *          test names (but not for the time value).
      */
-    private ParsedTestInfo parseTestIdentifier(String identifier) {
+    private ParsedTestInfo parseTestDescription(String identifier) {
         ParsedTestInfo returnInfo = new ParsedTestInfo("UNKNOWN_CLASS", "UNKNOWN_TEST", null);
 
         Pattern timePattern = Pattern.compile(".*(\\((\\d+) ms\\))");  // eg: (XX ms)
@@ -551,7 +551,7 @@ public class GTestResultParser extends MultiLineReceiver {
      * @param identifier Raw log output of the form classname.testname, with an optional time (x ms)
      */
     private void processTestStartedTag(String identifier) {
-        ParsedTestInfo parsedResults = parseTestIdentifier(identifier);
+        ParsedTestInfo parsedResults = parseTestDescription(identifier);
         TestResult testResult = getCurrentTestResult();
         testResult.mTestClass = parsedResults.mTestClassName;
         testResult.mTestName = parsedResults.mTestName;
@@ -579,7 +579,7 @@ public class GTestResultParser extends MultiLineReceiver {
      *          if failed)
      */
     private void doTestEnded(String identifier, boolean testPassed) {
-        ParsedTestInfo parsedResults = parseTestIdentifier(identifier);
+        ParsedTestInfo parsedResults = parseTestDescription(identifier);
         TestResult testResult = getCurrentTestResult();
         TestDescription testId = null;
         if (getTestClass(testResult) !=null && testResult.mTestName !=null) {

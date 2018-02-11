@@ -17,7 +17,6 @@ package com.android.tradefed.result;
 
 import com.android.ddmlib.Log;
 import com.android.ddmlib.Log.LogLevel;
-import com.android.ddmlib.testrunner.TestIdentifier;
 import com.android.ddmlib.testrunner.TestResult.TestStatus;
 import com.android.tradefed.config.Option;
 import com.android.tradefed.config.OptionClass;
@@ -108,8 +107,8 @@ public class ConsoleResultReporter extends CollectingTestListener implements ILo
             sb.append(" No results");
         }
         sb.append("\n");
-        Map<TestIdentifier, TestResult> testResults = testRunResult.getTestResults();
-        for (Map.Entry<TestIdentifier, TestResult> entry : testResults.entrySet()) {
+        Map<TestDescription, TestResult> testResults = testRunResult.getTestResults();
+        for (Map.Entry<TestDescription, TestResult> entry : testResults.entrySet()) {
             if (mSuppressPassedTest && TestStatus.PASSED.equals(entry.getValue().getStatus())) {
                 continue;
             }
@@ -130,7 +129,7 @@ public class ConsoleResultReporter extends CollectingTestListener implements ILo
     /**
      * Get the test summary as string including test metrics.
      */
-    String getTestSummary(TestIdentifier testId, TestResult testResult) {
+    String getTestSummary(TestDescription testId, TestResult testResult) {
         StringBuilder sb = new StringBuilder();
         sb.append(String.format("  %s: %s (%dms)\n", testId.toString(), testResult.getStatus(),
                 testResult.getEndTime() - testResult.getStartTime()));

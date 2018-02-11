@@ -15,7 +15,6 @@
  */
 package com.android.app.tests;
 
-import com.android.ddmlib.testrunner.TestIdentifier;
 import com.android.tradefed.build.IAppBuildInfo;
 import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.build.VersionedFile;
@@ -24,6 +23,7 @@ import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.InputStreamSource;
 import com.android.tradefed.result.LogDataType;
+import com.android.tradefed.result.TestDescription;
 import com.android.tradefed.testtype.IBuildReceiver;
 import com.android.tradefed.testtype.IDeviceTest;
 import com.android.tradefed.testtype.IRemoteTest;
@@ -114,8 +114,10 @@ public class AppLaunchTest implements IDeviceTest, IRemoteTest, IBuildReceiver {
 
     private void performInstallTest(File apkFile, ITestInvocationListener listener)
             throws DeviceNotAvailableException {
-        TestIdentifier installTest = new TestIdentifier("com.android.app.tests.InstallTest",
-                FileUtil.getBaseName(apkFile.getName()));
+        TestDescription installTest =
+                new TestDescription(
+                        "com.android.app.tests.InstallTest",
+                        FileUtil.getBaseName(apkFile.getName()));
         listener.testStarted(installTest);
         String result = getDevice().installPackage(apkFile, true);
         if (result != null) {

@@ -15,13 +15,13 @@
  */
 package com.android.performance.tests;
 
-import com.android.ddmlib.testrunner.TestIdentifier;
 import com.android.tradefed.config.Option;
 import com.android.tradefed.config.Option.Importance;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.result.ITestInvocationListener;
+import com.android.tradefed.result.TestDescription;
 import com.android.tradefed.testtype.IDeviceTest;
 import com.android.tradefed.testtype.IRemoteTest;
 import com.android.tradefed.util.AbiFormatter;
@@ -192,7 +192,7 @@ public class EmmcPerformanceTest implements IDeviceTest, IRemoteTest {
             throws DeviceNotAvailableException {
         CLog.i("Starting test %s", testKey);
 
-        TestIdentifier id = new TestIdentifier(RUN_KEY, testKey);
+        TestDescription id = new TestDescription(RUN_KEY, testKey);
         listener.testStarted(id);
 
         Map<String, SimpleStats> simpleperfMetricsMap = new HashMap<String, SimpleStats>();

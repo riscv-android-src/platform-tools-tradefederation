@@ -69,7 +69,7 @@ public class DeviceTestSuiteTest {
         listener.testEnded(test1, metrics);
         listener.testStarted(test2);
         listener.testEnded(test2, Collections.emptyMap());
-        listener.testRunEnded(EasyMock.anyLong(), EasyMock.anyObject());
+        listener.testRunEnded(EasyMock.anyLong(), (Map<String, String>) EasyMock.anyObject());
         EasyMock.replay(listener);
 
         suite.run(listener);
@@ -92,7 +92,7 @@ public class DeviceTestSuiteTest {
                 EasyMock.contains(MockAbortTest.EXCEP_MSG));
         listener.testEnded(test1, Collections.emptyMap());
         listener.testRunFailed(EasyMock.contains(MockAbortTest.EXCEP_MSG));
-        listener.testRunEnded(EasyMock.anyLong(), EasyMock.anyObject());
+        listener.testRunEnded(EasyMock.anyLong(), (Map<String, String>) EasyMock.anyObject());
         EasyMock.replay(listener);
         try {
             suite.run(listener);

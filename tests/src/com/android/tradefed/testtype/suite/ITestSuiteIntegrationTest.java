@@ -20,7 +20,6 @@ import static org.junit.Assert.fail;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.mock;
 
-import com.android.ddmlib.testrunner.TestIdentifier;
 import com.android.tradefed.build.BuildInfo;
 import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.config.ConfigurationDef;
@@ -39,6 +38,7 @@ import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.result.ILogSaver;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.ResultForwarder;
+import com.android.tradefed.result.TestDescription;
 import com.android.tradefed.result.suite.SuiteResultReporter;
 import com.android.tradefed.suite.checker.ISystemStatusChecker;
 import com.android.tradefed.suite.checker.ISystemStatusCheckerReceiver;
@@ -150,7 +150,7 @@ public class ITestSuiteIntegrationTest {
     public static class TestSuiteFolderImpl extends ITestSuite {
 
         private File mConfigFolder;
-        private List<TestIdentifier> mTests;
+        private List<TestDescription> mTests;
 
         public TestSuiteFolderImpl() {}
 
@@ -158,7 +158,7 @@ public class ITestSuiteIntegrationTest {
             mConfigFolder = configFolder;
         }
 
-        public TestSuiteFolderImpl(File configFolder, List<TestIdentifier> tests) {
+        public TestSuiteFolderImpl(File configFolder, List<TestDescription> tests) {
             this(configFolder);
             mTests = tests;
         }
@@ -535,10 +535,10 @@ public class ITestSuiteIntegrationTest {
     }
 
     private void helperTestShardIndex(int shardCount, int shardIndex) throws Exception {
-        List<TestIdentifier> tests = new ArrayList<>();
-        tests.add(new TestIdentifier("class1", "test1"));
-        tests.add(new TestIdentifier("class1", "test2"));
-        tests.add(new TestIdentifier("class1", "test3"));
+        List<TestDescription> tests = new ArrayList<>();
+        tests.add(new TestDescription("class1", "test1"));
+        tests.add(new TestDescription("class1", "test2"));
+        tests.add(new TestDescription("class1", "test3"));
         createConfig(mTestConfigFolder, "module1", TEST_STUB, true, true, false, false, false);
         ITestSuite suite = new TestSuiteFolderImpl(mTestConfigFolder, tests);
         IConfiguration config =

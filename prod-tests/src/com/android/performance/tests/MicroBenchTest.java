@@ -16,13 +16,13 @@
 package com.android.performance.tests;
 
 import com.android.ddmlib.MultiLineReceiver;
-import com.android.ddmlib.testrunner.TestIdentifier;
 import com.android.tradefed.config.Option;
 import com.android.tradefed.config.Option.Importance;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.result.ITestInvocationListener;
+import com.android.tradefed.result.TestDescription;
 import com.android.tradefed.testtype.IDeviceTest;
 import com.android.tradefed.testtype.IRemoteTest;
 import com.android.tradefed.util.AbiFormatter;
@@ -289,8 +289,7 @@ public class MicroBenchTest implements IDeviceTest, IRemoteTest {
 
             CLog.i("Running %s test", mTestName);
 
-            TestIdentifier testId = new TestIdentifier(getClass().getCanonicalName(),
-                    mTestKey);
+            TestDescription testId = new TestDescription(getClass().getCanonicalName(), mTestKey);
             listener.testStarted(testId);
             final String cmd = String.format(mCommand, mFormattedBinaryName, mIterations);
 

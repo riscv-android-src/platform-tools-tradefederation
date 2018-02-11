@@ -18,7 +18,6 @@ package com.android.tradefed.testtype;
 import static org.junit.Assert.assertTrue;
 
 import com.android.ddmlib.IDevice;
-import com.android.ddmlib.testrunner.TestIdentifier;
 import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.build.IFolderBuildInfo;
 import com.android.tradefed.command.CommandOptions;
@@ -31,6 +30,7 @@ import com.android.tradefed.device.StubDevice;
 import com.android.tradefed.result.FileInputStreamSource;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.LogDataType;
+import com.android.tradefed.result.TestDescription;
 import com.android.tradefed.util.CommandResult;
 import com.android.tradefed.util.CommandStatus;
 import com.android.tradefed.util.IRunUtil;
@@ -149,8 +149,9 @@ public class VersionedTfLauncherTest {
                 (FileInputStreamSource)EasyMock.anyObject());
         EasyMock.expectLastCall().times(3);
         mMockListener.testRunStarted("StdErr", 1);
-        mMockListener.testStarted((TestIdentifier)EasyMock.anyObject());
-        mMockListener.testEnded((TestIdentifier)EasyMock.anyObject(),
+        mMockListener.testStarted((TestDescription) EasyMock.anyObject());
+        mMockListener.testEnded(
+                (TestDescription) EasyMock.anyObject(),
                 EasyMock.eq(Collections.<String, String>emptyMap()));
         mMockListener.testRunEnded(0, Collections.emptyMap());
 
@@ -204,8 +205,9 @@ public class VersionedTfLauncherTest {
                 (FileInputStreamSource)EasyMock.anyObject());
         EasyMock.expectLastCall().times(3);
         mMockListener.testRunStarted("StdErr", 1);
-        mMockListener.testStarted((TestIdentifier)EasyMock.anyObject());
-        mMockListener.testEnded((TestIdentifier)EasyMock.anyObject(),
+        mMockListener.testStarted((TestDescription) EasyMock.anyObject());
+        mMockListener.testEnded(
+                (TestDescription) EasyMock.anyObject(),
                 EasyMock.eq(Collections.<String, String>emptyMap()));
         mMockListener.testRunEnded(0, Collections.emptyMap());
 
@@ -259,9 +261,9 @@ public class VersionedTfLauncherTest {
                 (FileInputStreamSource) EasyMock.anyObject());
         EasyMock.expectLastCall().times(3);
         mMockListener.testRunStarted("StdErr", 1);
-        mMockListener.testStarted((TestIdentifier) EasyMock.anyObject());
+        mMockListener.testStarted((TestDescription) EasyMock.anyObject());
         mMockListener.testEnded(
-                (TestIdentifier) EasyMock.anyObject(),
+                (TestDescription) EasyMock.anyObject(),
                 EasyMock.eq(Collections.<String, String>emptyMap()));
         mMockListener.testRunEnded(0, Collections.emptyMap());
 
@@ -334,9 +336,9 @@ public class VersionedTfLauncherTest {
                 (FileInputStreamSource) EasyMock.anyObject());
         EasyMock.expectLastCall().times(3);
         mMockListener.testRunStarted("StdErr", 1);
-        mMockListener.testStarted((TestIdentifier) EasyMock.anyObject());
+        mMockListener.testStarted((TestDescription) EasyMock.anyObject());
         mMockListener.testEnded(
-                (TestIdentifier) EasyMock.anyObject(),
+                (TestDescription) EasyMock.anyObject(),
                 EasyMock.eq(Collections.<String, String>emptyMap()));
         mMockListener.testRunEnded(0, Collections.emptyMap());
         EasyMock.expect(mMockConfig.getCommandOptions()).andReturn(new CommandOptions());

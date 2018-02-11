@@ -17,11 +17,11 @@
 package com.android.performance.tests;
 
 import com.android.ddmlib.CollectingOutputReceiver;
-import com.android.ddmlib.testrunner.TestIdentifier;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.result.ITestInvocationListener;
+import com.android.tradefed.result.TestDescription;
 import com.android.tradefed.testtype.IDeviceTest;
 import com.android.tradefed.testtype.IRemoteTest;
 
@@ -94,7 +94,7 @@ public class GeekbenchTest implements IDeviceTest, IRemoteTest {
      */
     @Override
     public void run(ITestInvocationListener listener) throws DeviceNotAvailableException {
-        TestIdentifier testId = new TestIdentifier(getClass().getCanonicalName(), RUN_KEY);
+        TestDescription testId = new TestDescription(getClass().getCanonicalName(), RUN_KEY);
         ITestDevice device = getDevice();
 
         // delete old results

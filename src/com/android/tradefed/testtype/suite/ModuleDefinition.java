@@ -16,7 +16,6 @@
 package com.android.tradefed.testtype.suite;
 
 import com.android.ddmlib.Log.LogLevel;
-import com.android.ddmlib.testrunner.TestIdentifier;
 import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.config.ConfigurationDescriptor;
 import com.android.tradefed.config.IConfiguration;
@@ -33,6 +32,7 @@ import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.ITestLoggerReceiver;
 import com.android.tradefed.result.ResultForwarder;
+import com.android.tradefed.result.TestDescription;
 import com.android.tradefed.result.TestResult;
 import com.android.tradefed.result.TestRunResult;
 import com.android.tradefed.suite.checker.ISystemStatusCheckerReceiver;
@@ -289,8 +289,8 @@ public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestColl
             if (preparationException != null) {
                 // For reporting purpose we create a failure placeholder with the error stack
                 // similar to InitializationError of JUnit.
-                TestIdentifier testid =
-                        new TestIdentifier(
+                TestDescription testid =
+                        new TestDescription(
                                 preparationException.getClass().getCanonicalName(),
                                 "preparationError");
                 listener.testRunStarted(getId(), 1);
@@ -466,8 +466,8 @@ public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestColl
     }
 
     private void forwardTestResults(
-            Map<TestIdentifier, TestResult> testResults, ITestInvocationListener listener) {
-        for (Map.Entry<TestIdentifier, TestResult> testEntry : testResults.entrySet()) {
+            Map<TestDescription, TestResult> testResults, ITestInvocationListener listener) {
+        for (Map.Entry<TestDescription, TestResult> testEntry : testResults.entrySet()) {
             listener.testStarted(testEntry.getKey(), testEntry.getValue().getStartTime());
             switch (testEntry.getValue().getStatus()) {
                 case FAILURE:

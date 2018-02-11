@@ -327,9 +327,32 @@ class CLITranslatorUnittests(unittest.TestCase):
         self.assertRaises(cli_t.UnregisteredModuleError,
                           self.ctr._get_module_name, 'bad/path')
 
-    def test_get_targets_from_xml(self):
+    @mock.patch.object(cli_t.CLITranslator, '_search_integration_dirs')
+    def test_load_xml_file(self, search):
+        """Test _load_xml_file and _load_include_tags methods."""
+        search.return_value = os.path.join(
+            os.path.dirname(os.path.realpath(__file__)), 'unittest_data',
+            'CtsUiDeviceTestCases.xml')
+        xml_file = os.path.join(
+            os.path.dirname(os.path.realpath(__file__)), 'unittest_data',
+            cli_t.MODULE_CONFIG)
+        xml_root = self.ctr._load_xml_file(xml_file)
+        include_tags = xml_root.findall('.//include')
+        self.assertEqual(0, len(include_tags))
+        option_tags = xml_root.findall('.//option')
+        included = False
+        for tag in option_tags:
+            if tag.attrib['value'].strip() == 'CtsUiDeviceTestCases.apk':
+                included = True
+        self.assertTrue(included)
+
+    @mock.patch.object(cli_t.CLITranslator, '_search_integration_dirs')
+    def test_get_targets_from_xml(self, search):
         """Test _get_targets_from_xml method."""
         # Mocking Etree is near impossible, so use a real file.
+        search.return_value = os.path.join(
+            os.path.dirname(os.path.realpath(__file__)), 'unittest_data',
+            'CtsUiDeviceTestCases.xml')
         xml_file = os.path.join(
             os.path.dirname(os.path.realpath(__file__)), 'unittest_data',
             cli_t.MODULE_CONFIG)

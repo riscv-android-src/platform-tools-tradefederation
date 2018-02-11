@@ -304,7 +304,6 @@ public final class AtraceCollectorTest {
      */
     @Test
     public void testMultipleDeviceBehavior() throws Exception {
-
         int num_devices = 3;
         List<ITestDevice> devices = new ArrayList<ITestDevice>();
         for (int i = 0; i < num_devices; i++) {

@@ -19,7 +19,6 @@ package com.android.tradefed.testtype;
 import com.android.ddmlib.FileListingService;
 import com.android.ddmlib.testrunner.IRemoteAndroidTestRunner;
 import com.android.ddmlib.testrunner.RemoteAndroidTestRunner;
-import com.android.ddmlib.testrunner.TestIdentifier;
 import com.android.tradefed.config.Option;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.IFileEntry;
@@ -30,6 +29,7 @@ import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.ITestLifeCycleReceiver;
 import com.android.tradefed.result.InputStreamSource;
 import com.android.tradefed.result.LogDataType;
+import com.android.tradefed.result.TestDescription;
 import com.android.tradefed.util.FileUtil;
 import com.android.tradefed.util.IRunUtil;
 import com.android.tradefed.util.RunUtil;
@@ -368,16 +368,16 @@ public class UiAutomatorTest implements IRemoteTest, IDeviceTest, ITestFilterRec
         }
 
         @Override
-        public void testFailed(TestIdentifier test, String trace) {
+        public void testFailed(TestDescription test, String trace) {
             captureFailureLog(test);
         }
 
         @Override
-        public void testAssumptionFailure(TestIdentifier test, String trace) {
+        public void testAssumptionFailure(TestDescription test, String trace) {
             captureFailureLog(test);
         }
 
-        private void captureFailureLog(TestIdentifier test) {
+        private void captureFailureLog(TestDescription test) {
             if (mLoggingOption == LoggingOption.AFTER_FAILURE) {
                 onScreenshotAndBugreport(getDevice(), mListener, String.format("%s_%s_failure",
                         test.getClassName(), test.getTestName()));
@@ -396,7 +396,7 @@ public class UiAutomatorTest implements IRemoteTest, IDeviceTest, ITestFilterRec
         }
 
         @Override
-        public void testEnded(TestIdentifier test, Map<String, String> testMetrics) {
+        public void testEnded(TestDescription test, Map<String, String> testMetrics) {
             if (!mLoggedTestFailure && mLoggingOption == LoggingOption.AFTER_TEST) {
                 onScreenshotAndBugreport(getDevice(), mListener, String.format("%s_%s_final",
                         test.getClassName(), test.getTestName()));

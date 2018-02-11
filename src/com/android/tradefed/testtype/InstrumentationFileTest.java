@@ -16,7 +16,6 @@
 
 package com.android.tradefed.testtype;
 
-import com.android.ddmlib.testrunner.TestIdentifier;
 import com.android.tradefed.config.ConfigurationException;
 import com.android.tradefed.config.OptionCopier;
 import com.android.tradefed.device.DeviceNotAvailableException;
@@ -24,6 +23,7 @@ import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.result.CollectingTestListener;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.ResultForwarder;
+import com.android.tradefed.result.TestDescription;
 import com.android.tradefed.util.FileUtil;
 
 import java.io.BufferedWriter;
@@ -50,7 +50,7 @@ class InstrumentationFileTest implements IRemoteTest {
     private InstrumentationTest mInstrumentationTest = null;
 
     /** the set of tests to run */
-    private final Collection<TestIdentifier> mTests;
+    private final Collection<TestDescription> mTests;
 
     private String mFilePathOnDevice = null;
 
@@ -63,13 +63,16 @@ class InstrumentationFileTest implements IRemoteTest {
     /**
      * Creates a {@link InstrumentationFileTest}.
      *
-     * @param instrumentationTest  {@link InstrumentationTest} used to configure this class
-     * @param testsToRun  a {@link Collection} of tests to run. Note this {@link Collection} will be
-     * used as is (ie a reference to the testsToRun object will be kept).
+     * @param instrumentationTest {@link InstrumentationTest} used to configure this class
+     * @param testsToRun a {@link Collection} of tests to run. Note this {@link Collection} will be
+     *     used as is (ie a reference to the testsToRun object will be kept).
      */
-    InstrumentationFileTest(InstrumentationTest instrumentationTest,
-            Collection<TestIdentifier> testsToRun, boolean retrySerially, int maxAttempts)
-                    throws ConfigurationException {
+    InstrumentationFileTest(
+            InstrumentationTest instrumentationTest,
+            Collection<TestDescription> testsToRun,
+            boolean retrySerially,
+            int maxAttempts)
+            throws ConfigurationException {
         // reuse the InstrumentationTest class to perform actual test run
         mInstrumentationTest = createInstrumentationTest();
         // copy all options from the original InstrumentationTest
@@ -101,15 +104,16 @@ class InstrumentationFileTest implements IRemoteTest {
 
     /**
      * Creates a file based on the {@link Collection} of tests to run. Upon successful file creation
-     * will push the file onto the test device and attempt to run them via
-     * {@link InstrumentationTest}. If something goes wrong, will default to serial test execution.
+     * will push the file onto the test device and attempt to run them via {@link
+     * InstrumentationTest}. If something goes wrong, will default to serial test execution.
      *
-     * @param tests  a {@link Collection} of tests to run
+     * @param tests a {@link Collection} of tests to run
      * @param listener the test result listener
      * @throws DeviceNotAvailableException
      */
-    private void writeTestsToFileAndRun(Collection<TestIdentifier> tests,
-            final ITestInvocationListener listener) throws DeviceNotAvailableException {
+    private void writeTestsToFileAndRun(
+            Collection<TestDescription> tests, final ITestInvocationListener listener)
+            throws DeviceNotAvailableException {
         mAttemps += 1;
         if (mMaxAttemps > 0 && mAttemps <= mMaxAttemps) {
             CLog.d("Try to run tests from file for the %d/%d attempts",
@@ -130,7 +134,7 @@ class InstrumentationFileTest implements IRemoteTest {
             testFile = FileUtil.createTempFile(
                     "tf_testFile_" + InstrumentationFileTest.class.getCanonicalName(), ".txt");
             try (BufferedWriter bw = new BufferedWriter(new FileWriter(testFile))) {
-                for (TestIdentifier testToRun : tests) {
+                for (TestDescription testToRun : tests) {
                     bw.write(testToRun.getClassName() + METHOD_SEPARATOR + testToRun.getTestName());
                     bw.newLine();
                 }
@@ -176,7 +180,7 @@ class InstrumentationFileTest implements IRemoteTest {
             runner.run(new ResultForwarder(listener, testTracker));
         } finally {
             deleteTestFileFromDevice(mFilePathOnDevice);
-            Collection<TestIdentifier> completedTests =
+            Collection<TestDescription> completedTests =
                     testTracker.getCurrentRunResults().getCompletedTests();
             if (mTests.removeAll(completedTests) && !mTests.isEmpty()) {
                 // re-run remaining tests from file
