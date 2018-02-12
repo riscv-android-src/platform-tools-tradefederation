@@ -66,7 +66,7 @@ class ModuleInfo(object):
         module_file_path = os.path.join(out_dir, _MODULE_INFO)
 
         # Check for custom out dir.
-        out_dir_base = os.environ.get('OUT_DIR')
+        out_dir_base = os.environ.get(constants.ANDROID_OUT_DIR)
         if out_dir_base is None or not os.path.isabs(out_dir_base):
             # Make target is simply file path relative to root
             module_info_target = os.path.relpath(module_file_path, root_dir)

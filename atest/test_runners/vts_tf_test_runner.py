@@ -29,17 +29,28 @@ class VtsTradefedTestRunner(atest_tf_test_runner.AtestTradefedTestRunner):
     NAME = 'VtsTradefedTestRunner'
     EXECUTABLE = 'vts-tradefed'
     _RUN_CMD = ('{exe} run commandAndExit vts-staging-default -m {test} {args}')
-    _BUILD_REQ = set()
+    _BUILD_REQ = {'vts-tradefed-standalone'}
     _DEFAULT_ARGS = ['--skip-all-system-status-check',
                      '--skip-preconditions',
                      '--primary-abi-only']
 
-    def __init__(self, results_dir):
+    def __init__(self, results_dir, **kwargs):
         """Init stuff for vts tradefed runner class."""
-        super(VtsTradefedTestRunner, self).__init__(results_dir)
+        super(VtsTradefedTestRunner, self).__init__(results_dir, **kwargs)
         self.run_cmd_dict = {'exe': self.EXECUTABLE,
                              'test': '',
                              'args': ''}
+
+    def get_test_runner_build_reqs(self):
+        """Return the build requirements.
+
+        Returns:
+            Set of build targets.
+        """
+        build_req = self._BUILD_REQ
+        if self._is_missing_adb():
+            build_req.add('adb')
+        return build_req
 
     def run_tests(self, test_infos, extra_args):
         """Run the list of test_infos.
@@ -93,7 +104,7 @@ class VtsTradefedTestRunner(atest_tf_test_runner.AtestTradefedTestRunner):
         args.extend(self._parse_extra_args(extra_args))
         for test_info in test_infos:
             cmd_dict = copy.deepcopy(self.run_cmd_dict)
-            cmd_dict['test'] = test_info.module_name
+            cmd_dict['test'] = test_info.test_name
             cmd_dict['args'] = ' '.join(args)
             cmds.append(self._RUN_CMD.format(**cmd_dict))
         return cmds
