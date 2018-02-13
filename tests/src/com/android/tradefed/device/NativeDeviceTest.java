@@ -49,12 +49,12 @@ import org.mockito.Mockito;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collection;
 import java.util.Date;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.concurrent.TimeUnit;
 
 /**
@@ -279,107 +279,205 @@ public class NativeDeviceTest extends TestCase {
         FileUtil.recursiveDelete(testDir);
     }
 
-    private List<String> getFlatDir(File root) {
-        List<String> ret = new ArrayList<>();
-        for (File f : root.listFiles()) {
-            if (f.isDirectory()) {
-                String base = f.getName() + "/";
-                ret.add(base);
-                List<String> list = getFlatDir(f);
-                for (String e :list) {
-                    ret.add(base + e);
-                }
-            } else {
-                ret.add(f.getName());
-            }
+    /** Test {@link NativeDevice#pullDir(String, File)} when the remote directory is empty. */
+    public void testPullDir_nothingToDo() throws Exception {
+        final IFileEntry fakeEntry = EasyMock.createMock(IFileEntry.class);
+        mTestDevice =
+                new TestableAndroidNativeDevice() {
+                    @Override
+                    public IFileEntry getFileEntry(String path) throws DeviceNotAvailableException {
+                        return fakeEntry;
+                    }
+
+                    @Override
+                    public String executeShellCommand(String command)
+                            throws DeviceNotAvailableException {
+                        return "drwxr-xr-x root     root    somedirectory";
+                    }
+                };
+        File dir = FileUtil.createTempDir("tf-test");
+        Collection<IFileEntry> childrens = new ArrayList<>();
+        EasyMock.expect(fakeEntry.getChildren(false)).andReturn(childrens);
+        // Empty list of childen
+        EasyMock.replay(fakeEntry);
+        try {
+            boolean res = mTestDevice.pullDir("/sdcard/screenshots/", dir);
+            assertTrue(res);
+            assertTrue(dir.list().length == 0);
+        } finally {
+            FileUtil.recursiveDelete(dir);
         }
-        return ret;
+        EasyMock.verify(fakeEntry);
     }
 
+    /**
+     * Test {@link NativeDevice#pullDir(String, File)} when the remote directory has a file and a
+     * directory.
+     */
     public void testPullDir() throws Exception {
-        final String base = "/foo";
-        final String[][] dirs = new String[][]{
-            {base, "bar1/"},
-            {base, "bar2/"},
-            {base + "/bar1", ""},
-            {base + "/bar2", "file1"},
-            {base + "/bar2", "file2"},
-            {base + "/bar2", "bar3/"},
-            {base + "/bar2/bar3", "file1"},
-        };
-        final String lsCmd = "ls -Ap1 ";
-        mTestDevice = new TestableAndroidNativeDevice() {
-            @Override
-            public String executeShellCommand(String command) throws DeviceNotAvailableException {
-                if (!command.startsWith(command)) {
-                    fail("unsupported shell command");
-                    return null;
-                }
-                // assuming passed in command should always be a full directory path without
-                // trailing "/"
-                command = command.substring(lsCmd.length());
-                StringBuilder ret = new StringBuilder();
-                for (String[] item : dirs) {
-                    if (item[0].equals(command)) {
-                        if (item[1].isEmpty()) {
-                            return "";
+        final IFileEntry fakeEntry = EasyMock.createMock(IFileEntry.class);
+        final IFileEntry fakeDir = EasyMock.createMock(IFileEntry.class);
+        mTestDevice =
+                new TestableAndroidNativeDevice() {
+                    private boolean mFirstCall = true;
+
+                    @Override
+                    public IFileEntry getFileEntry(String path) throws DeviceNotAvailableException {
+                        if (mFirstCall) {
+                            mFirstCall = false;
+                            return fakeEntry;
                         } else {
-                            ret.append(item[1]);
-                            ret.append('\n');
+                            return fakeDir;
                         }
                     }
-                }
-                return ret.toString();
-            }
-            @Override
-            public boolean isDirectory(String path) throws DeviceNotAvailableException {
-                for (String[] item : dirs) {
-                    if (item[0].equals(path)) {
+
+                    @Override
+                    public String executeShellCommand(String command)
+                            throws DeviceNotAvailableException {
+                        return "drwxr-xr-x root     root    somedirectory";
+                    }
+
+                    @Override
+                    public boolean pullFile(String remoteFilePath, File localFile)
+                            throws DeviceNotAvailableException {
+                        try {
+                            // Just touch the file to make it appear.
+                            localFile.createNewFile();
+                        } catch (IOException e) {
+                            throw new RuntimeException(e);
+                        }
                         return true;
                     }
-                }
-                return false;
-            }
-            @Override
-            public boolean pullFile(String remoteFilePath, File localFile)
-                    throws DeviceNotAvailableException {
-                // check that remoteFilePath is valid
-                boolean found = false;
-                for (String[] item : dirs) {
-                    if (String.format("%s/%s", item[0], item[1]).equals(remoteFilePath)) {
-                        found = true;
-                        break;
+                };
+        File dir = FileUtil.createTempDir("tf-test");
+        Collection<IFileEntry> children = new ArrayList<>();
+        IFileEntry fakeFile = EasyMock.createMock(IFileEntry.class);
+        children.add(fakeFile);
+        EasyMock.expect(fakeFile.isDirectory()).andReturn(false);
+        EasyMock.expect(fakeFile.getName()).andReturn("fakeFile");
+        EasyMock.expect(fakeFile.getFullPath()).andReturn("/sdcard/screenshots/fakeFile");
+
+        children.add(fakeDir);
+        EasyMock.expect(fakeDir.isDirectory()).andReturn(true);
+        EasyMock.expect(fakeDir.getName()).andReturn("fakeDir");
+        EasyMock.expect(fakeDir.getFullPath()).andReturn("/sdcard/screenshots/fakeDir");
+        // #pullDir is being called on dir fakeDir to pull everything recursively.
+        Collection<IFileEntry> fakeDirChildren = new ArrayList<>();
+        EasyMock.expect(fakeDir.getChildren(false)).andReturn(fakeDirChildren);
+        EasyMock.expect(fakeEntry.getChildren(false)).andReturn(children);
+
+        EasyMock.replay(fakeEntry, fakeFile, fakeDir);
+        try {
+            boolean res = mTestDevice.pullDir("/sdcard/screenshots/", dir);
+            assertTrue(res);
+            assertEquals(2, dir.list().length);
+            assertTrue(Arrays.asList(dir.list()).contains("fakeFile"));
+            assertTrue(Arrays.asList(dir.list()).contains("fakeDir"));
+        } finally {
+            FileUtil.recursiveDelete(dir);
+        }
+        EasyMock.verify(fakeEntry, fakeFile, fakeDir);
+    }
+
+    /** Test pulling a directory when one of the pull fails. */
+    public void testPullDir_pullFail() throws Exception {
+        final IFileEntry fakeEntry = EasyMock.createMock(IFileEntry.class);
+        final IFileEntry fakeDir = EasyMock.createMock(IFileEntry.class);
+        mTestDevice =
+                new TestableAndroidNativeDevice() {
+                    private boolean mFirstCall = true;
+                    private boolean mFirstPull = true;
+
+                    @Override
+                    public IFileEntry getFileEntry(String path) throws DeviceNotAvailableException {
+                        if (mFirstCall) {
+                            mFirstCall = false;
+                            return fakeEntry;
+                        } else {
+                            return fakeDir;
+                        }
                     }
-                }
-                assertTrue("trying to pull non-existent file: " + remoteFilePath, found);
-                try {
-                    return localFile.createNewFile();
-                } catch (IOException ioe) {
-                    throw new RuntimeException("failed to create empty file", ioe);
-                }
-            }
-        };
+
+                    @Override
+                    public String executeShellCommand(String command)
+                            throws DeviceNotAvailableException {
+                        return "drwxr-xr-x root     root    somedirectory";
+                    }
+
+                    @Override
+                    public boolean pullFile(String remoteFilePath, File localFile)
+                            throws DeviceNotAvailableException {
+                        if (mFirstPull) {
+                            mFirstPull = false;
+                            try {
+                                // Just touch the file to make it appear.
+                                localFile.createNewFile();
+                            } catch (IOException e) {
+                                throw new RuntimeException(e);
+                            }
+                            return true;
+                        } else {
+                            return false;
+                        }
+                    }
+                };
+        File dir = FileUtil.createTempDir("tf-test");
+        Collection<IFileEntry> children = new ArrayList<>();
+        IFileEntry fakeFile = EasyMock.createMock(IFileEntry.class);
+        children.add(fakeFile);
+        EasyMock.expect(fakeFile.isDirectory()).andReturn(false);
+        EasyMock.expect(fakeFile.getName()).andReturn("fakeFile");
+        EasyMock.expect(fakeFile.getFullPath()).andReturn("/sdcard/screenshots/fakeFile");
+
+        children.add(fakeDir);
+        EasyMock.expect(fakeDir.isDirectory()).andReturn(true);
+        EasyMock.expect(fakeDir.getName()).andReturn("fakeDir");
+        EasyMock.expect(fakeDir.getFullPath()).andReturn("/sdcard/screenshots/fakeDir");
+        // #pullDir is being called on dir fakeDir to pull everything recursively.
+        Collection<IFileEntry> fakeDirChildren = new ArrayList<>();
+        IFileEntry secondLevelChildren = EasyMock.createMock(IFileEntry.class);
+        fakeDirChildren.add(secondLevelChildren);
+        EasyMock.expect(fakeDir.getChildren(false)).andReturn(fakeDirChildren);
+        EasyMock.expect(fakeEntry.getChildren(false)).andReturn(children);
+
+        EasyMock.expect(secondLevelChildren.isDirectory()).andReturn(false);
+        EasyMock.expect(secondLevelChildren.getName()).andReturn("secondLevelChildren");
+        EasyMock.expect(secondLevelChildren.getFullPath())
+                .andReturn("/sdcard/screenshots/fakeDir/secondLevelChildren");
+
+        EasyMock.replay(fakeEntry, fakeFile, fakeDir, secondLevelChildren);
+        try {
+            boolean res = mTestDevice.pullDir("/sdcard/screenshots/", dir);
+            // If one of the pull fails, the full command is considered failed.
+            assertFalse(res);
+            assertEquals(2, dir.list().length);
+            assertTrue(Arrays.asList(dir.list()).contains("fakeFile"));
+            // The subdir was created
+            assertTrue(Arrays.asList(dir.list()).contains("fakeDir"));
+            // The last file failed to pull, so the dir is empty.
+            assertEquals(0, new File(dir, "fakeDir").list().length);
+        } finally {
+            FileUtil.recursiveDelete(dir);
+        }
+        EasyMock.verify(fakeEntry, fakeFile, fakeDir, secondLevelChildren);
+    }
+
+    /**
+     * Test that if the requested path is not a directory on the device side, we just fail directly.
+     */
+    public void testPullDir_invalidPath() throws Exception {
+        mTestDevice =
+                new TestableAndroidNativeDevice() {
+                    @Override
+                    public String executeShellCommand(String command)
+                            throws DeviceNotAvailableException {
+                        return "-rwxr-xr-x root     root    somefile";
+                    }
+                };
         File dir = FileUtil.createTempDir("tf-test");
         try {
-            mTestDevice.pullDir(base, dir);
-            // verify local directory structure
-            Set<String> files = new HashSet<>();
-            files.addAll(getFlatDir(dir));
-            for (String[] item : dirs) {
-                if (item[1].isEmpty()) {
-                    // skip empty directories (already covered when listing parent directory)
-                    continue;
-                }
-                String path = String.format("%s/%s", item[0], item[1]);
-                // remove the "/foo/" prefix
-                path = path.substring(base.length() + 1);
-                if (!files.contains(path)) {
-                    fail("unknown path: " + path);
-                } else {
-                    files.remove(path);
-                }
-            }
-            assertTrue("failed validation: " + files.toString(), files.isEmpty());
+            assertFalse(mTestDevice.pullDir("somefile", dir));
+            assertTrue(dir.list().length == 0);
         } finally {
             FileUtil.recursiveDelete(dir);
         }
