@@ -16,6 +16,10 @@
 
 """Utility functions for unit tests."""
 
+import os
+
+import constants
+import unittest_constants as uc
 
 def assert_strict_equal(test_class, first, second):
     """Check for strict equality and strict equality of nametuple elements.
@@ -35,3 +39,58 @@ def assert_strict_equal(test_class, first, second):
         for f in first._fields:
             assert_strict_equal(test_class, getattr(first, f),
                                 getattr(second, f))
+
+def assert_equal_testinfos(test_class, test_info_a, test_info_b):
+    """Check that the passed in TestInfos are equal."""
+    # Use unittest.assertEqual to do checks when None is involved.
+    if test_info_a is None or test_info_b is None:
+        test_class.assertEqual(test_info_a, test_info_b)
+        return
+
+    for attr in test_info_a.__dict__:
+        test_info_a_attr = getattr(test_info_a, attr)
+        test_info_b_attr = getattr(test_info_b, attr)
+        test_class.assertEqual(test_info_a_attr, test_info_b_attr,
+                               msg=('TestInfo.%s mismatch: %s != %s' %
+                                    (attr, test_info_a_attr, test_info_b_attr)))
+
+def assert_equal_testinfo_sets(test_class, test_info_set_a, test_info_set_b):
+    """Check that the sets of TestInfos are equal."""
+    test_class.assertEqual(len(test_info_set_a), len(test_info_set_b),
+                           msg=('mismatch # of TestInfos: %d != %d' %
+                                (len(test_info_set_a), len(test_info_set_b))))
+    # Iterate over a set and pop them out as you compare them.
+    while test_info_set_a:
+        test_info_a = test_info_set_a.pop()
+        test_info_b_to_remove = None
+        for test_info_b in test_info_set_b:
+            try:
+                assert_equal_testinfos(test_class, test_info_a, test_info_b)
+                test_info_b_to_remove = test_info_b
+                break
+            except AssertionError:
+                pass
+        if test_info_b_to_remove:
+            test_info_set_b.remove(test_info_b_to_remove)
+        else:
+            # We haven't found a match, raise an assertion error.
+            raise AssertionError('No matching TestInfo (%s) in [%s]' %
+                                 (test_info_a, ';'.join([str(t) for t in test_info_set_b])))
+
+
+def isfile_side_effect(value):
+    """Mock return values for os.path.isfile."""
+    if value == '/%s/%s' % (uc.MODULE_DIR, constants.MODULE_CONFIG):
+        return True
+    if value.endswith('.java'):
+        return True
+    if value.endswith(uc.INT_NAME + '.xml'):
+        return True
+    if value.endswith(uc.GTF_INT_NAME + '.xml'):
+        return True
+    return False
+
+
+def realpath_side_effect(path):
+    """Mock return values for os.path.realpath."""
+    return os.path.join(uc.ROOT, path)

@@ -21,28 +21,25 @@ Class that other test runners will instantiate for test runners.
 import logging
 import subprocess
 
+# pylint: disable=import-error
+import atest_error
 
-class NoTestRunnerName(Exception):
-    """Raised when Test Runner class var NAME isn't defined."""
-
-class NoTestRunnerExecutable(Exception):
-    """Raised when Test Runner class var EXECUTABLE isn't defined."""
-
-class HostEnvCheckFailed(Exception):
-    """Raised when Test Runner's host env check fails."""
 
 class TestRunnerBase(object):
     """Base Test Runner class."""
     NAME = ''
     EXECUTABLE = ''
 
-    def __init__(self, results_dir):
+    def __init__(self, results_dir, **kwargs):
         """Init stuff for base class."""
         self.results_dir = results_dir
         if not self.NAME:
-            raise NoTestRunnerName('Class var NAME is not defined.')
+            raise atest_error.NoTestRunnerName('Class var NAME is not defined.')
         if not self.EXECUTABLE:
-            raise NoTestRunnerExecutable('Class var EXECUTABLE is not defined.')
+            raise atest_error.NoTestRunnerExecutable('Class var EXECUTABLE is '
+                                                     'not defined.')
+        if kwargs:
+            logging.info('ignoring the following args: %s', kwargs)
 
     @staticmethod
     def run(cmd):

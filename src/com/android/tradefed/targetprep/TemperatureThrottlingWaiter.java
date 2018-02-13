@@ -43,8 +43,14 @@ public class TemperatureThrottlingWaiter extends BaseTargetPreparer {
         + "temperature has reached to target; defaults to 120s")
     private long mPostIdleWaitSecs = 120;
 
-    @Option(name = "device-temperature-file-path", description = "Name of file that contains device"
-        + "temperature. Example: /sys/class/hwmon/hwmon1/device/msm_therm")
+    public static final String DEVICE_TEMPERATURE_FILE_PATH_NAME = "device-temperature-file-path";
+
+    @Option(
+        name = DEVICE_TEMPERATURE_FILE_PATH_NAME,
+        description =
+                "Name of file that contains device"
+                        + "temperature. Example: /sys/class/hwmon/hwmon1/device/msm_therm"
+    )
     private String mDeviceTemperatureFilePath = null;
 
     @Option(name = "target-temperature", description = "Target Temperature that device should have;"

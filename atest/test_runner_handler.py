@@ -18,14 +18,13 @@ Aggregates test runners, groups tests by test runners and kicks off tests.
 
 import itertools
 
+import atest_error
 from test_runners import atest_tf_test_runner
 
+# pylint: disable=line-too-long
 _TEST_RUNNERS = {
     atest_tf_test_runner.AtestTradefedTestRunner.NAME: atest_tf_test_runner.AtestTradefedTestRunner,
 }
-
-class UnknownTestRunnerError(Exception):
-    """Raised when an unknown test runner is specified."""
 
 
 def _get_test_runners():
@@ -38,12 +37,13 @@ def _get_test_runners():
         Dict of test runner name to test runner class.
     """
     test_runners_dict = _TEST_RUNNERS
-    # Example import of external test runner:
-    # try:
-    #     import ext_tr
-    #     test_runners_dict[ext_tr.tr_class.NAME] = ext_tr.tr_class
-    # except ImportError:
-    #     pass
+    # Example import of example test runner:
+    try:
+        # pylint: disable=line-too-long
+        from test_runners import example_test_runner
+        test_runners_dict[example_test_runner.ExampleTestRunner.NAME] = example_test_runner.ExampleTestRunner
+    except ImportError:
+        pass
     return test_runners_dict
 
 
@@ -63,17 +63,19 @@ def _group_tests_by_test_runners(test_infos):
     for test_runner, tests in itertools.groupby(sorted_test_infos, key):
         # groupby returns a grouper object, we want to operate on a list.
         tests = list(tests)
-        test_runner_class = test_runner_dict.get(test_runner, None)
+        test_runner_class = test_runner_dict.get(test_runner)
         if test_runner_class is None:
-            raise UnknownTestRunnerError('Unknown Test Runner %s' % test_runner)
+            raise atest_error.UnknownTestRunnerError('Unknown Test Runner %s' %
+                                                     test_runner)
         tests_by_test_runner.append((test_runner_class, tests))
     return tests_by_test_runner
 
 
-def get_test_runner_reqs(test_infos):
+def get_test_runner_reqs(module_info, test_infos):
     """Returns the requirements for all test runners specified in the tests.
 
     Args:
+        module_info: ModuleInfo object.
         test_infos: List of TestInfo.
 
     Returns:
@@ -83,7 +85,8 @@ def get_test_runner_reqs(test_infos):
     test_runner_build_req = set()
     for test_runner, _ in _group_tests_by_test_runners(test_infos):
         test_runner_build_req |= test_runner(
-            dummy_result_dir).get_test_runner_build_reqs()
+            dummy_result_dir,
+            module_info=module_info).get_test_runner_build_reqs()
     return test_runner_build_req
 
 

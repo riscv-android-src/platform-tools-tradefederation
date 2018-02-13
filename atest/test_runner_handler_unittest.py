@@ -21,8 +21,9 @@
 import unittest
 import mock
 
-import cli_translator as cli_t
+import atest_error
 import test_runner_handler
+from test_finders import test_info
 from test_runners import test_runner_base as tr_base
 
 FAKE_TR_NAME_A = 'FakeTestRunnerA'
@@ -34,17 +35,13 @@ MODULE_NAME_A = 'ModuleNameA'
 MODULE_NAME_A_AGAIN = 'ModuleNameA_AGAIN'
 MODULE_NAME_B = 'ModuleNameB'
 MODULE_NAME_B_AGAIN = 'ModuleNameB_AGAIN'
-CONFIG_FILE = '/path/to/config/file'
-MODULE_INFO_A = cli_t.TestInfo(CONFIG_FILE, MODULE_NAME_A, None, frozenset(),
-                               FAKE_TR_NAME_A)
-MODULE_INFO_A_AGAIN = cli_t.TestInfo(CONFIG_FILE, MODULE_NAME_A_AGAIN, None,
-                                     frozenset(), FAKE_TR_NAME_A)
-MODULE_INFO_B = cli_t.TestInfo(CONFIG_FILE, MODULE_NAME_B, None, frozenset(),
-                               FAKE_TR_NAME_B)
-MODULE_INFO_B_AGAIN = cli_t.TestInfo(CONFIG_FILE, MODULE_NAME_B_AGAIN, None,
-                                     frozenset(), FAKE_TR_NAME_B)
-BAD_TESTINFO = cli_t.TestInfo(CONFIG_FILE, 'bad_name', None, frozenset(),
-                              MISSING_TR_NAME)
+MODULE_INFO_A = test_info.TestInfo(MODULE_NAME_A, FAKE_TR_NAME_A, set())
+MODULE_INFO_A_AGAIN = test_info.TestInfo(MODULE_NAME_A_AGAIN, FAKE_TR_NAME_A,
+                                         set())
+MODULE_INFO_B = test_info.TestInfo(MODULE_NAME_B, FAKE_TR_NAME_B, set())
+MODULE_INFO_B_AGAIN = test_info.TestInfo(MODULE_NAME_B_AGAIN, FAKE_TR_NAME_B,
+                                         set())
+BAD_TESTINFO = test_info.TestInfo('bad_name', MISSING_TR_NAME, set())
 
 class FakeTestRunnerA(tr_base.TestRunnerBase):
     """Fake test runner A."""
@@ -99,16 +96,18 @@ class TestRunnerHandlerUnittests(unittest.TestCase):
 
         # Let's make sure we fail as expected.
         self.assertRaises(
-            test_runner_handler.UnknownTestRunnerError,
+            atest_error.UnknownTestRunnerError,
             test_runner_handler._group_tests_by_test_runners, [BAD_TESTINFO])
 
     def test_get_test_runner_reqs(self):
         """Test that we get all the reqs from the test runners."""
         test_infos = [MODULE_INFO_A, MODULE_INFO_B]
         want_set = FAKE_TR_A_REQS | FAKE_TR_B_REQS
+        empty_module_info = None
         self.assertEqual(
             want_set,
-            test_runner_handler.get_test_runner_reqs(test_infos))
+            test_runner_handler.get_test_runner_reqs(empty_module_info,
+                                                     test_infos))
 
 
 if __name__ == '__main__':
