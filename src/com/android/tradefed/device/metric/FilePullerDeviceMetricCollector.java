@@ -81,7 +81,7 @@ public abstract class FilePullerDeviceMetricCollector extends BaseDeviceMetricCo
      * {@link DeviceMetricData}.
      *
      * @param key the option key associated to the directory that was pulled.
-     * @param metricDirectoy the {@link File} pulled from the device matching the option key.
+     * @param metricDirectory the {@link File} pulled from the device matching the option key.
      * @param runData the run {@link DeviceMetricData} where metrics can be stored.
      */
     public abstract void processMetricDirectory(String key, File metricDirectory, DeviceMetricData runData);
