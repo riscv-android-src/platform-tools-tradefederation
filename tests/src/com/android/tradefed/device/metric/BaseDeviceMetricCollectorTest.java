@@ -177,7 +177,7 @@ public class BaseDeviceMetricCollectorTest {
     public void testIncludeTestCase_optionGroup_noAnnotation() throws Exception {
         mBase = new TwoMetricsBaseCollector();
         OptionSetter setter = new OptionSetter(mBase);
-        setter.setOptionValue("test-case-include-annotation", "group");
+        setter.setOptionValue(BaseDeviceMetricCollector.TEST_CASE_INCLUDE_GROUP_OPTION, "group");
 
         verifyFiltering(mBase, null, false);
     }
@@ -190,7 +190,7 @@ public class BaseDeviceMetricCollectorTest {
     public void testIncludeTestCase_optionGroup_differentAnnotationGroup() throws Exception {
         mBase = new TwoMetricsBaseCollector();
         OptionSetter setter = new OptionSetter(mBase);
-        setter.setOptionValue("test-case-include-annotation", "group");
+        setter.setOptionValue(BaseDeviceMetricCollector.TEST_CASE_INCLUDE_GROUP_OPTION, "group");
 
         verifyFiltering(mBase, new TestAnnotation("group1"), false);
     }
@@ -203,7 +203,7 @@ public class BaseDeviceMetricCollectorTest {
     public void testIncludeTestCase_optionGroup_sameAnnotationGroup() throws Exception {
         mBase = new TwoMetricsBaseCollector();
         OptionSetter setter = new OptionSetter(mBase);
-        setter.setOptionValue("test-case-include-annotation", "group");
+        setter.setOptionValue(BaseDeviceMetricCollector.TEST_CASE_INCLUDE_GROUP_OPTION, "group");
 
         verifyFiltering(mBase, new TestAnnotation("group"), true);
     }
@@ -216,7 +216,7 @@ public class BaseDeviceMetricCollectorTest {
     public void testIncludeTestCase_optionGroup_multiGroup() throws Exception {
         mBase = new TwoMetricsBaseCollector();
         OptionSetter setter = new OptionSetter(mBase);
-        setter.setOptionValue("test-case-include-annotation", "group");
+        setter.setOptionValue(BaseDeviceMetricCollector.TEST_CASE_INCLUDE_GROUP_OPTION, "group");
 
         verifyFiltering(mBase, new TestAnnotation("group1,group2,group"), true);
     }
@@ -240,7 +240,7 @@ public class BaseDeviceMetricCollectorTest {
     public void testExcludeTestCase_optionGroup_noAnnotation() throws Exception {
         mBase = new TwoMetricsBaseCollector();
         OptionSetter setter = new OptionSetter(mBase);
-        setter.setOptionValue("test-case-exclude-annotation", "group");
+        setter.setOptionValue(BaseDeviceMetricCollector.TEST_CASE_EXCLUDE_GROUP_OPTION, "group");
 
         verifyFiltering(mBase, null, true);
     }
@@ -253,7 +253,7 @@ public class BaseDeviceMetricCollectorTest {
     public void testExcludeTestCase_optionGroup_sameGroup() throws Exception {
         mBase = new TwoMetricsBaseCollector();
         OptionSetter setter = new OptionSetter(mBase);
-        setter.setOptionValue("test-case-exclude-annotation", "group");
+        setter.setOptionValue(BaseDeviceMetricCollector.TEST_CASE_EXCLUDE_GROUP_OPTION, "group");
 
         verifyFiltering(mBase, new TestAnnotation("group"), false);
     }
@@ -266,7 +266,7 @@ public class BaseDeviceMetricCollectorTest {
     public void testExcludeTestCase_optionGroup_multiGroup() throws Exception {
         mBase = new TwoMetricsBaseCollector();
         OptionSetter setter = new OptionSetter(mBase);
-        setter.setOptionValue("test-case-exclude-annotation", "group");
+        setter.setOptionValue(BaseDeviceMetricCollector.TEST_CASE_EXCLUDE_GROUP_OPTION, "group");
 
         verifyFiltering(mBase, new TestAnnotation("group1,group2,group"), false);
     }
@@ -276,8 +276,8 @@ public class BaseDeviceMetricCollectorTest {
     public void testExcludeTestCase_includeAndExclude() throws Exception {
         mBase = new TwoMetricsBaseCollector();
         OptionSetter setter = new OptionSetter(mBase);
-        setter.setOptionValue("test-case-exclude-annotation", "group");
-        setter.setOptionValue("test-case-include-annotation", "group");
+        setter.setOptionValue(BaseDeviceMetricCollector.TEST_CASE_EXCLUDE_GROUP_OPTION, "group");
+        setter.setOptionValue(BaseDeviceMetricCollector.TEST_CASE_INCLUDE_GROUP_OPTION, "group");
 
         verifyFiltering(mBase, new TestAnnotation("group1,group2,group"), false);
     }
@@ -382,7 +382,7 @@ public class BaseDeviceMetricCollectorTest {
     public void testActualRunAnnotated_include() throws Exception {
         mBase = new TwoMetricsBaseCollector();
         OptionSetter setter = new OptionSetter(mBase);
-        setter.setOptionValue("test-case-include-annotation", "group1");
+        setter.setOptionValue(BaseDeviceMetricCollector.TEST_CASE_INCLUDE_GROUP_OPTION, "group1");
         mBase.init(mContext, mMockListener);
         mBase.invocationStarted(mContext);
 
@@ -428,7 +428,7 @@ public class BaseDeviceMetricCollectorTest {
     public void testActualRunAnnotated_exclude() throws Exception {
         mBase = new TwoMetricsBaseCollector();
         OptionSetter setter = new OptionSetter(mBase);
-        setter.setOptionValue("test-case-exclude-annotation", "group1");
+        setter.setOptionValue(BaseDeviceMetricCollector.TEST_CASE_EXCLUDE_GROUP_OPTION, "group1");
         mBase.init(mContext, mMockListener);
         mBase.invocationStarted(mContext);
 
