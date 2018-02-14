@@ -201,6 +201,22 @@ public class ConfigurationUtil {
                 CLog.w("Failed to get test config files from directory %s", dir.getAbsolutePath());
             }
         }
-        return configNames;
+        return dedupFiles(configNames);
+    }
+
+    /**
+     * From a same tests dir we only expect a single instance of each names, so we dedup the files
+     * if that happens.
+     */
+    private static Set<File> dedupFiles(Set<File> origSet) {
+        Set<String> tracker = new HashSet<>();
+        Set<File> newSet = new HashSet<>();
+        for (File f : origSet) {
+            if (!tracker.contains(f.getName())) {
+                tracker.add(f.getName());
+                newSet.add(f);
+            }
+        }
+        return newSet;
     }
 }
