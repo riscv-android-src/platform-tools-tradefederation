@@ -32,6 +32,8 @@ import com.android.tradefed.util.AbiUtils;
 import com.android.tradefed.util.FileUtil;
 import com.android.tradefed.util.StreamUtil;
 
+import com.google.common.base.Strings;
+
 import java.io.File;
 import java.io.FilenameFilter;
 import java.io.IOException;
@@ -180,10 +182,13 @@ public class SuiteModuleLoader {
                 IConfiguration config = mConfigFactory.createConfigurationFromArgs(pathArg);
 
                 // If a suiteTag is used, we load with it.
-                if (suiteTag != null
+                if (!Strings.isNullOrEmpty(suiteTag)
                         && !config.getConfigurationDescription()
                                 .getSuiteTags()
                                 .contains(suiteTag)) {
+                    CLog.d(
+                            "Configuration %s does not include the suite-tag '%s'. Ignoring it.",
+                            configFullName, suiteTag);
                     continue;
                 }
 
