@@ -153,7 +153,7 @@ public class TestRunResult {
     public void testRunStarted(String runName, int testCount) {
         mTestRunName = runName;
         mIsRunComplete = false;
-        mRunFailureError = null;
+        // Do not reset mRunFailureError since for re-run we want to preserve previous failures.
     }
 
     public void testStarted(TestDescription test) {
