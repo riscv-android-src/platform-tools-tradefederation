@@ -38,8 +38,11 @@ import java.util.Set;
  */
 public class BaseDeviceMetricCollector implements IMetricCollector {
 
+    public static final String TEST_CASE_INCLUDE_GROUP_OPTION = "test-case-include-group";
+    public static final String TEST_CASE_EXCLUDE_GROUP_OPTION = "test-case-exclude-group";
+
     @Option(
-        name = "test-case-include-annotation",
+        name = TEST_CASE_INCLUDE_GROUP_OPTION,
         description =
                 "Specify a group to include as part of the collection,"
                         + "group can be specified via @MetricOption. Can be repeated."
@@ -49,7 +52,7 @@ public class BaseDeviceMetricCollector implements IMetricCollector {
     private List<String> mTestCaseIncludeAnnotationGroup = new ArrayList<>();
 
     @Option(
-        name = "test-case-exclude-annotation",
+        name = TEST_CASE_EXCLUDE_GROUP_OPTION,
         description =
                 "Specify a group to exclude from the metric collection,"
                         + "group can be specified via @MetricOption. Can be repeated."

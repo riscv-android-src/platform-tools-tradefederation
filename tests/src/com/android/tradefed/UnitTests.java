@@ -199,6 +199,7 @@ import com.android.tradefed.testtype.suite.ModuleMergerTest;
 import com.android.tradefed.testtype.suite.ModuleSplitterTest;
 import com.android.tradefed.testtype.suite.SuiteModuleLoaderTest;
 import com.android.tradefed.testtype.suite.TestFailureListenerTest;
+import com.android.tradefed.testtype.suite.TestMappingSuiteRunnerTest;
 import com.android.tradefed.testtype.suite.TestSuiteInfoTest;
 import com.android.tradefed.testtype.suite.TfSuiteRunnerTest;
 import com.android.tradefed.testtype.suite.ValidateSuiteConfigHelperTest;
@@ -247,6 +248,7 @@ import com.android.tradefed.util.TableBuilderTest;
 import com.android.tradefed.util.TableFormatterTest;
 import com.android.tradefed.util.TarUtilTest;
 import com.android.tradefed.util.TestLoaderTest;
+import com.android.tradefed.util.TestMappingTest;
 import com.android.tradefed.util.TimeUtilTest;
 import com.android.tradefed.util.TimeValTest;
 import com.android.tradefed.util.ZipUtil2Test;
@@ -500,6 +502,7 @@ import org.junit.runners.Suite.SuiteClasses;
     ModuleSplitterTest.class,
     SuiteModuleLoaderTest.class,
     TestFailureListenerTest.class,
+    TestMappingSuiteRunnerTest.class,
     TestSuiteInfoTest.class,
     TfSuiteRunnerTest.class,
     ValidateSuiteConfigHelperTest.class,
@@ -552,6 +555,7 @@ import org.junit.runners.Suite.SuiteClasses;
     TableFormatterTest.class,
     TarUtilTest.class,
     TestLoaderTest.class,
+    TestMappingTest.class,
     TimeUtilTest.class,
     TimeValTest.class,
     XmlRpcHelperTest.class,

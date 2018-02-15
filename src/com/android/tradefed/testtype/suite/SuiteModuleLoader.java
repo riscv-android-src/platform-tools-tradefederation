@@ -15,7 +15,7 @@
  */
 package com.android.tradefed.testtype.suite;
 
-import com.android.annotations.VisibleForTesting;
+import com.android.tradefed.config.ConfigurationDef.OptionDef;
 import com.android.tradefed.config.ConfigurationException;
 import com.android.tradefed.config.ConfigurationFactory;
 import com.android.tradefed.config.ConfigurationUtil;
@@ -32,6 +32,8 @@ import com.android.tradefed.util.AbiUtils;
 import com.android.tradefed.util.FileUtil;
 import com.android.tradefed.util.StreamUtil;
 
+import com.google.common.base.Strings;
+
 import java.io.File;
 import java.io.FilenameFilter;
 import java.io.IOException;
@@ -44,7 +46,6 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Map.Entry;
 import java.util.Set;
 
 /**
@@ -53,9 +54,9 @@ import java.util.Set;
  */
 public class SuiteModuleLoader {
 
-    private static final String CONFIG_EXT = ".config";
-    private Map<String, Map<String, List<String>>> mTestArgs = new HashMap<>();
-    private Map<String, Map<String, List<String>>> mModuleArgs = new HashMap<>();
+    public static final String CONFIG_EXT = ".config";
+    private Map<String, List<OptionDef>> mTestOptions = new HashMap<>();
+    private Map<String, List<OptionDef>> mModuleOptions = new HashMap<>();
     private boolean mIncludeAll;
     private Map<String, List<SuiteTestFilter>> mIncludeFilters = new HashMap<>();
     private Map<String, List<SuiteTestFilter>> mExcludeFilters = new HashMap<>();
@@ -78,8 +79,8 @@ public class SuiteModuleLoader {
         mIncludeFilters = includeFilters;
         mExcludeFilters = excludeFilters;
 
-        putArgs(testArgs, mTestArgs);
-        putArgs(moduleArgs, mModuleArgs);
+        parseArgs(testArgs, mTestOptions);
+        parseArgs(moduleArgs, mModuleOptions);
     }
 
     /** Main loading of configurations, looking into a folder */
@@ -180,21 +181,24 @@ public class SuiteModuleLoader {
                 IConfiguration config = mConfigFactory.createConfigurationFromArgs(pathArg);
 
                 // If a suiteTag is used, we load with it.
-                if (suiteTag != null
+                if (!Strings.isNullOrEmpty(suiteTag)
                         && !config.getConfigurationDescription()
                                 .getSuiteTags()
                                 .contains(suiteTag)) {
+                    CLog.d(
+                            "Configuration %s does not include the suite-tag '%s'. Ignoring it.",
+                            configFullName, suiteTag);
                     continue;
                 }
 
-                Map<String, List<String>> args = new HashMap<>();
-                if (mModuleArgs.containsKey(name)) {
-                    args.putAll(mModuleArgs.get(name));
+                List<OptionDef> optionsToInject = new ArrayList<>();
+                if (mModuleOptions.containsKey(name)) {
+                    optionsToInject.addAll(mModuleOptions.get(name));
                 }
-                if (mModuleArgs.containsKey(id)) {
-                    args.putAll(mModuleArgs.get(id));
+                if (mModuleOptions.containsKey(id)) {
+                    optionsToInject.addAll(mModuleOptions.get(id));
                 }
-                injectOptionsToConfig(args, config);
+                config.injectOptionValues(optionsToInject);
 
                 // Set target preparers
                 List<ITargetPreparer> preparers = config.getTargetPreparers();
@@ -208,11 +212,9 @@ public class SuiteModuleLoader {
                 List<IRemoteTest> tests = config.getTests();
                 for (IRemoteTest test : tests) {
                     String className = test.getClass().getName();
-                    Map<String, List<String>> testArgsMap = new HashMap<>();
-                    if (mTestArgs.containsKey(className)) {
-                        testArgsMap.putAll(mTestArgs.get(className));
+                    if (mTestOptions.containsKey(className)) {
+                        config.injectOptionValues(mTestOptions.get(className));
                     }
-                    injectOptionsToConfig(testArgsMap, config);
                     addFiltersToTest(test, abi, name, mIncludeFilters, mExcludeFilters);
                     if (test instanceof IAbiReceiver) {
                         ((IAbiReceiver) test).setAbi(abi);
@@ -225,29 +227,12 @@ public class SuiteModuleLoader {
             }
         } catch (ConfigurationException e) {
             throw new RuntimeException(
-                    String.format("Error parsing configuration: %s", configFullName), e);
+                    String.format(
+                            "Error parsing configuration: %s: '%s'",
+                            configFullName, e.getMessage()),
+                    e);
         }
         return toRun;
-    }
-
-    /** Helper to inject options to a config. */
-    @VisibleForTesting
-    void injectOptionsToConfig(Map<String, List<String>> optionMap, IConfiguration config)
-            throws ConfigurationException {
-        for (Entry<String, List<String>> entry : optionMap.entrySet()) {
-            for (String entryValue : entry.getValue()) {
-                String entryName = entry.getKey();
-                if (entryValue.contains(":=")) {
-                    // entryValue is key-value pair
-                    String key = entryValue.substring(0, entryValue.indexOf(":="));
-                    String value = entryValue.substring(entryValue.indexOf(":=") + 2);
-                    config.injectOptionValue(entryName, key, value);
-                } else {
-                    // entryValue is just the argument value
-                    config.injectOptionValue(entryName, entryValue);
-                }
-            }
-        }
     }
 
     /** @return the {@link Set} of modules whose name contains the given pattern. */
@@ -378,23 +363,42 @@ public class SuiteModuleLoader {
         }
     }
 
-    private void putArgs(List<String> args, Map<String, Map<String, List<String>>> argsMap) {
+    /**
+     * Parse a list of args formatted as expected into {@link OptionDef} to be injected to module
+     * configurations.
+     *
+     * <p>Format: <module name / module id / class runner>:<option name>:[<arg-key>:=]<arg-value>
+     */
+    private void parseArgs(List<String> args, Map<String, List<OptionDef>> moduleOptions) {
         for (String arg : args) {
-            String[] parts = arg.split(":");
-            String target = parts[0];
-            String key = parts[1];
-            String value = parts[2];
-            Map<String, List<String>> map = argsMap.get(target);
-            if (map == null) {
-                map = new HashMap<>();
-                argsMap.put(target, map);
+            int moduleSep = arg.indexOf(":");
+            if (moduleSep == -1) {
+                throw new RuntimeException("Expected delimiter ':' for module or class.");
             }
-            List<String> valueList = map.get(key);
-            if (valueList == null) {
-                valueList = new ArrayList<>();
-                map.put(key, valueList);
+            String moduleName = arg.substring(0, moduleSep);
+            String remainder = arg.substring(moduleSep + 1);
+            List<OptionDef> listOption = moduleOptions.get(moduleName);
+            if (listOption == null) {
+                listOption = new ArrayList<>();
+                moduleOptions.put(moduleName, listOption);
             }
-            valueList.add(value);
+            int optionNameSep = remainder.indexOf(":");
+            if (optionNameSep == -1) {
+                throw new RuntimeException(
+                        "Expected delimiter ':' between option name and values.");
+            }
+            String optionName = remainder.substring(0, optionNameSep);
+            String optionValueString = remainder.substring(optionNameSep + 1);
+            // TODO: See if QuotationTokenizer can be improved for multi-character delimiter.
+            // or change the delimiter to a single char.
+            String[] tokens = optionValueString.split(":=");
+            OptionDef option = null;
+            if (tokens.length == 1) {
+                option = new OptionDef(optionName, tokens[0], moduleName);
+            } else if (tokens.length == 2) {
+                option = new OptionDef(optionName, tokens[0], tokens[1], moduleName);
+            }
+            listOption.add(option);
         }
     }
 }

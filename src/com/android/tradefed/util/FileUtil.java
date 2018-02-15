@@ -28,6 +28,7 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
+import java.io.FileWriter;
 import java.io.FilenameFilter;
 import java.io.IOException;
 import java.io.InputStream;
@@ -1069,5 +1070,36 @@ public class FileUtil {
             }
         }
         return LogDataType.UNKNOWN.getContentType();
+    }
+
+    /**
+     * Save a resource file to a directory.
+     *
+     * @param resourceStream a {link InputStream} object to the resource to be saved.
+     * @param destDir a {@link File} object of a directory to where the resource file will be saved.
+     * @param targetFileName a {@link String} for the name of the file to be saved to.
+     * @return a {@link File} object of the file saved.
+     * @throws IOException if the file failed to be saved.
+     */
+    public static File saveResourceFile(
+            InputStream resourceStream, File destDir, String targetFileName) throws IOException {
+        FileWriter writer = null;
+        File file = Paths.get(destDir.getAbsolutePath(), targetFileName).toFile();
+        try {
+            writer = new FileWriter(file);
+            StreamUtil.copyStreamToWriter(resourceStream, writer);
+            return file;
+        } catch (IOException e) {
+            CLog.e("IOException while saving resource %s/%s", destDir, targetFileName);
+            deleteFile(file);
+            throw e;
+        } finally {
+            if (writer != null) {
+                writer.close();
+            }
+            if (resourceStream != null) {
+                resourceStream.close();
+            }
+        }
     }
 }

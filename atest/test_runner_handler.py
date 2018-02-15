@@ -20,10 +20,12 @@ import itertools
 
 import atest_error
 from test_runners import atest_tf_test_runner
+from test_runners import vts_tf_test_runner
 
 # pylint: disable=line-too-long
 _TEST_RUNNERS = {
     atest_tf_test_runner.AtestTradefedTestRunner.NAME: atest_tf_test_runner.AtestTradefedTestRunner,
+    vts_tf_test_runner.VtsTradefedTestRunner.NAME: vts_tf_test_runner.VtsTradefedTestRunner,
 }
 
 

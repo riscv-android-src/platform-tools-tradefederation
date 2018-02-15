@@ -56,10 +56,12 @@ public interface ISandbox {
     /**
      * Returns the sandbox environment TF to be used based on the command line arguments.
      *
+     * @param context the {@link IInvocationContext} of the parent.
      * @param nonVersionedConfig the {@link IConfiguration} representing the non versioned objects.
      * @param args the command line arguments.
      * @return a {@link File} directory containing the TF sandbox environment jars.
      */
-    public File getTradefedSandboxEnvironment(IConfiguration nonVersionedConfig, String[] args)
+    public File getTradefedSandboxEnvironment(
+            IInvocationContext context, IConfiguration nonVersionedConfig, String[] args)
             throws ConfigurationException;
 }

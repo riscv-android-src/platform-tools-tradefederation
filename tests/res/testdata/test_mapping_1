@@ -1,0 +1,18 @@
+{
+  "presubmit": [
+    {
+      "name": "test1"
+    }
+  ],
+  "postsubmit": [
+    {
+      "name": "test2"
+    }
+  ],
+  "othertype": [
+    {
+      "name": "test3"
+    }
+  ],
+  "include_parent": false
+}
