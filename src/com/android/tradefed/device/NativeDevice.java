@@ -67,8 +67,6 @@ import org.apache.commons.compress.archivers.zip.ZipFile;
 import java.io.File;
 import java.io.FilenameFilter;
 import java.io.IOException;
-import java.lang.reflect.Constructor;
-import java.lang.reflect.InvocationTargetException;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.time.Clock;
@@ -1296,23 +1294,8 @@ public class NativeDevice implements IManagedTestDevice {
             CLog.e("Device path %s is not a directory", deviceFilePath);
             return false;
         }
-        FileEntry entryRoot = null;
-        try {
-            Constructor<FileEntry> ctor =
-                    FileEntry.class.getDeclaredConstructor(
-                            FileEntry.class, String.class, int.class, boolean.class);
-            ctor.setAccessible(true);
-            entryRoot =
-                    ctor.newInstance(
-                            null, deviceFilePath, FileListingService.TYPE_DIRECTORY, false);
-        } catch (NoSuchMethodException
-                | SecurityException
-                | InstantiationException
-                | IllegalAccessException
-                | IllegalArgumentException
-                | InvocationTargetException e) {
-            throw new RuntimeException(e);
-        }
+        FileEntry entryRoot =
+                new FileEntry(null, deviceFilePath, FileListingService.TYPE_DIRECTORY, false);
         IFileEntry entry = getFileEntry(entryRoot);
         Collection<IFileEntry> children = entry.getChildren(false);
         if (children.isEmpty()) {
