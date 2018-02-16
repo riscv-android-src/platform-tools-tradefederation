@@ -18,6 +18,7 @@ package com.android.tradefed.device;
 import static org.mockito.Mockito.doThrow;
 
 import com.android.ddmlib.AdbCommandRejectedException;
+import com.android.ddmlib.FileListingService.FileEntry;
 import com.android.ddmlib.IDevice;
 import com.android.ddmlib.IDevice.DeviceState;
 import com.android.ddmlib.IShellOutputReceiver;
@@ -285,7 +286,8 @@ public class NativeDeviceTest extends TestCase {
         mTestDevice =
                 new TestableAndroidNativeDevice() {
                     @Override
-                    public IFileEntry getFileEntry(String path) throws DeviceNotAvailableException {
+                    public IFileEntry getFileEntry(FileEntry path)
+                            throws DeviceNotAvailableException {
                         return fakeEntry;
                     }
 
@@ -322,7 +324,8 @@ public class NativeDeviceTest extends TestCase {
                     private boolean mFirstCall = true;
 
                     @Override
-                    public IFileEntry getFileEntry(String path) throws DeviceNotAvailableException {
+                    public IFileEntry getFileEntry(FileEntry path)
+                            throws DeviceNotAvailableException {
                         if (mFirstCall) {
                             mFirstCall = false;
                             return fakeEntry;
@@ -389,7 +392,8 @@ public class NativeDeviceTest extends TestCase {
                     private boolean mFirstPull = true;
 
                     @Override
-                    public IFileEntry getFileEntry(String path) throws DeviceNotAvailableException {
+                    public IFileEntry getFileEntry(FileEntry path)
+                            throws DeviceNotAvailableException {
                         if (mFirstCall) {
                             mFirstCall = false;
                             return fakeEntry;

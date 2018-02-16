@@ -62,6 +62,8 @@ import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.io.FilenameFilter;
 import java.io.IOException;
+import java.lang.reflect.Constructor;
+import java.lang.reflect.InvocationTargetException;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
@@ -1153,6 +1155,19 @@ public class NativeDevice implements IManagedTestDevice {
     }
 
     /**
+     * Unofficial helper to get a {@link FileEntry} from a non-root path. FIXME: Refactor the
+     * FileEntry system to have it available from any path. (even non root).
+     *
+     * @param entry a {@link FileEntry} not necessarily root as Ddmlib requires.
+     * @return a {@link FileEntryWrapper} representing the FileEntry.
+     * @throws DeviceNotAvailableException
+     */
+    public IFileEntry getFileEntry(FileEntry entry) throws DeviceNotAvailableException {
+        // FileEntryWrapper is going to construct the list of child fild internally.
+        return new FileEntryWrapper(this, entry);
+    }
+
+    /**
      * {@inheritDoc}
      */
     @Override
@@ -1246,7 +1261,24 @@ public class NativeDevice implements IManagedTestDevice {
             CLog.e("Device path %s is not a directory", deviceFilePath);
             return false;
         }
-        IFileEntry entry = getFileEntry(deviceFilePath);
+        FileEntry entryRoot = null;
+        try {
+            Constructor<FileEntry> ctor =
+                    FileEntry.class.getDeclaredConstructor(
+                            FileEntry.class, String.class, int.class, boolean.class);
+            ctor.setAccessible(true);
+            entryRoot =
+                    ctor.newInstance(
+                            null, deviceFilePath, FileListingService.TYPE_DIRECTORY, false);
+        } catch (NoSuchMethodException
+                | SecurityException
+                | InstantiationException
+                | IllegalAccessException
+                | IllegalArgumentException
+                | InvocationTargetException e) {
+            throw new RuntimeException(e);
+        }
+        IFileEntry entry = getFileEntry(entryRoot);
         Collection<IFileEntry> children = entry.getChildren(false);
         if (children.isEmpty()) {
             CLog.i("Device path is empty, nothing to do.");
