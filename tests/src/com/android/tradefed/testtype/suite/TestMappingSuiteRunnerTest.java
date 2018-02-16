@@ -67,13 +67,13 @@ public class TestMappingSuiteRunnerTest {
 
     /**
      * Test for {@link TestMappingSuiteRunner#loadTests()} to fail when both options include-filter
-     * and test-type are set.
+     * and test-mapping-test-type are set.
      */
     @Test(expected = RuntimeException.class)
     public void testLoadTests_conflictTestType() throws Exception {
         OptionSetter setter = new OptionSetter(mRunner);
         setter.setOptionValue("include-filter", "test1");
-        setter.setOptionValue("test-type", "type");
+        setter.setOptionValue("test-mapping-test-type", "type");
         mRunner.loadTests();
     }
 
@@ -91,7 +91,7 @@ public class TestMappingSuiteRunnerTest {
         File tempDir = null;
         try {
             OptionSetter setter = new OptionSetter(mRunner);
-            setter.setOptionValue("test-type", "postsubmit");
+            setter.setOptionValue("test-mapping-test-type", "postsubmit");
 
             tempDir = FileUtil.createTempDir("test_mapping");
 

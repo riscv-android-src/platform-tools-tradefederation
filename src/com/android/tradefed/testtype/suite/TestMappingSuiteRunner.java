@@ -29,7 +29,7 @@ import java.util.Set;
 public class TestMappingSuiteRunner extends BaseTestSuite {
 
     @Option(
-        name = "test-type",
+        name = "test-mapping-test-type",
         description =
                 "Type of tests to run, e.g., presubmit, postsubmit. The suite runner "
                         + "shall load the tests defined in all TEST_MAPPING files in the source "
@@ -42,9 +42,9 @@ public class TestMappingSuiteRunner extends BaseTestSuite {
      * IConfiguration} and a unique name under which it will report results. There are 2 ways to
      * load tests for {@link TestMappingSuiteRunner}:
      *
-     * <p>1. --test-type, which specifies the type of tests in TEST_MAPPING files. The runner will
-     * parse all TEST_MAPPING files in the source code through build artifact test_mappings.zip, and
-     * load tests grouped under the given test type.
+     * <p>1. --test-mapping-test-type, which specifies the type of tests in TEST_MAPPING files. The
+     * runner will parse all TEST_MAPPING files in the source code through build artifact
+     * test_mappings.zip, and load tests grouped under the given test type.
      *
      * <p>2. --include-filter, which specifies the name of the test to run. The use case is for
      * presubmit check to only run a list of tests related to the Cls to be verifies. The list of
@@ -57,12 +57,13 @@ public class TestMappingSuiteRunner extends BaseTestSuite {
         Set<String> includeFilter = getIncludeFilter();
         if (mTestType == null && includeFilter.isEmpty()) {
             throw new RuntimeException(
-                    "At least one of the options, --test-type or --include-filter, should be set.");
+                    "At least one of the options, --test-mapping-test-type or --include-filter, "
+                            + "should be set.");
         }
         if (mTestType != null && !includeFilter.isEmpty()) {
             throw new RuntimeException(
-                    "If options --test-type is set, neither option --include-filter should be "
-                            + "set.");
+                    "If options --test-mapping-test-type is set, option --include-filter should "
+                            + "not be set.");
         }
 
         if (mTestType != null) {
