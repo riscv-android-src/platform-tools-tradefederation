@@ -33,4 +33,5 @@
     <result_reporter class="com.android.tradefed.result.suite.SuiteResultReporter" />
     <result_reporter class="com.android.tradefed.result.MetricsXMLResultReporter"/>
     <template-include name="reporters" default="empty" />
+    <template-include name="metrics_collector" default="empty" />
 </configuration>
