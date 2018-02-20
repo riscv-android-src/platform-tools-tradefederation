@@ -267,6 +267,9 @@ def _parse_args(argv):
     parser.add_argument('--detect-regression', nargs='*',
                         help='Run regression detection algorithm. Supply '
                              'path to baseline and/or new metrics folders.')
+    parser.add_argument('-e', '--extra-args',
+                        help='Extra args to be passed as is to the test runner '
+                             'as a string. Enclose them in double quotes (")')
     return parser.parse_args(argv)
 
 
@@ -339,6 +342,8 @@ def get_extra_args(args):
         extra_args[constants.PRE_PATCH_ITERATIONS] = args.generate_baseline
     if args.generate_new_metrics:
         extra_args[constants.POST_PATCH_ITERATIONS] = args.generate_new_metrics
+    if args.extra_args:
+        extra_args[constants.EXTRA_ARGS] = args.extra_args
     return extra_args
 
 
