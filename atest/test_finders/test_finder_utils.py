@@ -29,7 +29,9 @@ import atest_enum
 import constants
 
 # Helps find apk files listed in a test config (AndroidTest.xml) file.
-# Matches "filename.apk" in <option name="foo", value="bar/filename.apk" />
+# Matches "filename.apk" in <option name="foo", value="filename.apk" />
+# We want to make sure we don't grab apks with paths in their name since we
+# assume the apk name is the build target.
 _APK_RE = re.compile(r'^[^/]+\.apk$', re.I)
 # Parse package name from the package declaration line of a java file.
 # Group matches "foo.bar" of line "package foo.bar;"
@@ -63,6 +65,8 @@ FIND_CMDS = {
 # XML parsing related constants.
 _COMPATIBILITY_PACKAGE_PREFIX = "com.android.compatibility"
 _CTS_JAR = "cts-tradefed"
+_XML_PUSH_DELIM = '->'
+_APK_SUFFIX = '.apk'
 # Setup script for device perf tests.
 _PERF_SETUP_LABEL = 'perf-setup.sh'
 
@@ -76,7 +80,6 @@ _VTS_BINARY_SRC = 'binary-test-source'
 _VTS_PUSH_GROUP = 'push-group'
 _VTS_PUSH = 'push'
 _VTS_BINARY_SRC_DELIM = '::'
-_VTS_PUSH_DELIM = '->'
 _VTS_PUSH_DIR = os.path.join(os.environ.get(constants.ANDROID_BUILD_TOP, ''),
                              'test', 'vts', 'tools', 'vts-tradefed', 'res',
                              'push_groups')
@@ -270,6 +273,44 @@ def get_targets_from_xml(xml_file, module_info):
     xml_root = ET.parse(xml_file).getroot()
     return get_targets_from_xml_root(xml_root, module_info)
 
+def _get_apk_target(apk_target):
+    """Return the sanitized apk_target string from the xml.
+
+    The apk_target string can be of 2 forms:
+      - apk_target.apk
+      - apk_target.apk->/path/to/install/apk_target.apk
+
+    We want to return apk_target in both cases.
+
+    Args:
+        apk_target: String of target name to clean.
+
+    Returns:
+        String of apk_target to build.
+    """
+    apk = apk_target.split(_XML_PUSH_DELIM, 1)[0].strip()
+    return apk[:-len(_APK_SUFFIX)]
+
+
+def _is_apk_target(name, value):
+    """Return True if XML option is an apk target.
+
+    We have some scenarios where an XML option can be an apk target:
+      - value is an apk file.
+      - name is a 'push' option where value holds the apk_file + other stuff.
+
+    Args:
+        name: String name of XML option.
+        value: String value of the XML option.
+
+    Returns:
+        True if it's an apk target we should build, False otherwise.
+    """
+    if _APK_RE.match(value):
+        return True
+    if name == 'push' and value.endswith(_APK_SUFFIX):
+        return True
+    return False
 
 def get_targets_from_xml_root(xml_root, module_info):
     """Retrieve build targets from the given xml root.
@@ -290,9 +331,10 @@ def get_targets_from_xml_root(xml_root, module_info):
     option_tags = xml_root.findall('.//option')
     for tag in option_tags:
         target_to_add = None
+        name = tag.attrib[_XML_NAME].strip()
         value = tag.attrib[_XML_VALUE].strip()
-        if _APK_RE.match(value):
-            target_to_add = value[:-len('.apk')]
+        if _is_apk_target(name, value):
+            target_to_add = _get_apk_target(value)
         elif _PERF_SETUP_LABEL in value:
             targets.add(_PERF_SETUP_LABEL)
             continue
@@ -342,7 +384,7 @@ def _get_vts_push_group_targets(push_file, rel_out_dir):
                 targets |= _get_vts_push_group_targets(line.strip(),
                                                        rel_out_dir)
                 continue
-            sanitized_target = target.split(_VTS_PUSH_DELIM)[0]
+            sanitized_target = target.split(_XML_PUSH_DELIM, 1)[0].strip()
             targets.add(os.path.join(rel_out_dir, sanitized_target))
     return targets
 
@@ -387,8 +429,8 @@ def _get_vts_binary_src_target(value, rel_out_dir):
     if match:
         target = os.path.join(rel_out_dir, match.group('target'))
     # DATA/target->/data/target
-    elif _VTS_PUSH_DELIM in value:
-        target = value.split(_VTS_PUSH_DELIM, 1)[0].strip()
+    elif _XML_PUSH_DELIM in value:
+        target = value.split(_XML_PUSH_DELIM, 1)[0].strip()
         target = os.path.join(rel_out_dir, target)
     return target
 
@@ -432,7 +474,7 @@ def get_targets_from_vts_xml(xml_file, rel_out_dir, module_info):
             targets |= _get_vts_push_group_targets(value, rel_out_dir)
         elif name == _VTS_PUSH:
             # Parse out the build artifact directly.
-            push_target = value.split(_VTS_PUSH_DELIM)[0]
+            push_target = value.split(_XML_PUSH_DELIM, 1)[0].strip()
             # If the config specified append-bitness, append the bits suffixes
             # to the target.
             if _specified_bitness(xml_root):

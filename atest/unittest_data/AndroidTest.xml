@@ -6,6 +6,7 @@
     <option name="cleanup-apks" value="true" />
     <option name="test-file-name" value="CtsJankDeviceTestCases.apk" />
     <option name="test-file-name" value="is_not_module.apk" />
+    <option name="push" value="GtsEmptyTestApp.apk->/data/local/tmp/gts/packageinstaller/GtsEmptyTestApp.apk" />
   </target_preparer>
   <include name="CtsUiDeviceTestCases"/>
   <test class="com.android.tradefed.testtype.AndroidJUnitTest" >
