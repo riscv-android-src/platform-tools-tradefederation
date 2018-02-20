@@ -41,9 +41,11 @@ _PACKAGE_RE = re.compile(r'\s*package\s+(?P<package>[^;]+)\s*;\s*', re.I)
 #           in HostTest.java)
 # 1. QUALIFIED_CLASS: Like CLASS but also contains the package in front like
 #.                    com.android.tradefed.testtype.HostTest.
-# 2. INTEGRATION: XML file name in one of the 4 integration config directories.
+# 2. PACKAGE: Name of a java package.
+# 3. INTEGRATION: XML file name in one of the 4 integration config directories.
+
 FIND_REFERENCE_TYPE = atest_enum.AtestEnum(['CLASS', 'QUALIFIED_CLASS',
-                                            'INTEGRATION'])
+                                            'PACKAGE', 'INTEGRATION', ])
 
 # Unix find commands for searching for test files based on test type input.
 # Note: Find (unlike grep) exits with status 0 if nothing found.
@@ -52,6 +54,8 @@ FIND_CMDS = {
                                 r"f -name '%s.java' -print",
     FIND_REFERENCE_TYPE.QUALIFIED_CLASS: r"find %s -type d -name \".*\" -prune "
                                          r"-o -wholename '*%s.java' -print",
+    FIND_REFERENCE_TYPE.PACKAGE: r"find %s -type d -name \".*\" -prune -o "
+                                 r"-wholename '*%s' -type d -print",
     FIND_REFERENCE_TYPE.INTEGRATION: r"find %s -type d -name \".*\" -prune -o "
                                      r"-wholename '*%s.xml' -print"
 }
@@ -73,7 +77,7 @@ _VTS_PUSH_GROUP = 'push-group'
 _VTS_PUSH = 'push'
 _VTS_BINARY_SRC_DELIM = '::'
 _VTS_PUSH_DELIM = '->'
-_VTS_PUSH_DIR = os.path.join(os.environ.get(constants.ANDROID_BUILD_TOP),
+_VTS_PUSH_DIR = os.path.join(os.environ.get(constants.ANDROID_BUILD_TOP, ''),
                              'test', 'vts', 'tools', 'vts-tradefed', 'res',
                              'push_groups')
 _VTS_PUSH_SUFFIX = '.push'
@@ -164,30 +168,43 @@ def extract_test_path(output):
     return tests[test_index]
 
 
-def find_class_file(class_name, search_dir):
-    """Find a java class file given a class name and search dir.
+def run_find_cmd(ref_type, search_dir, target):
+    """Find a path to a target given a search dir and a target name.
 
     Args:
-        class_name: A string of the test's class name.
+        ref_type: An AtestEnum of the reference type.
         search_dir: A string of the dirpath to search in.
+        target: A string of what you're trying to find.
+
+    Return:
+        A string of the path to the target.
+    """
+    find_cmd = FIND_CMDS[ref_type] % (search_dir, target)
+    start = time.time()
+    ref_name = FIND_REFERENCE_TYPE[ref_type]
+    logging.debug('Executing %s find cmd: %s', ref_name, find_cmd)
+    out = subprocess.check_output(find_cmd, shell=True)
+    logging.debug('%s find completed in %ss', ref_name, time.time() - start)
+    logging.debug('%s find cmd out: %s', ref_name, out)
+    return extract_test_path(out)
+
+def find_class_file(search_dir, class_name):
+    """Find a path to a class file given a search dir and a class name.
+
+    Args:
+        search_dir: A string of the dirpath to search in.
+        class_name: A string of the class to search for.
 
     Return:
         A string of the path to the java file.
     """
     if '.' in class_name:
-        find_cmd = FIND_CMDS[FIND_REFERENCE_TYPE.QUALIFIED_CLASS] % (
-            search_dir, class_name.replace('.', '/'))
+        find_target = class_name.replace('.', '/')
+        ref_type = FIND_REFERENCE_TYPE.QUALIFIED_CLASS
     else:
-        find_cmd = FIND_CMDS[FIND_REFERENCE_TYPE.CLASS] % (
-            search_dir, class_name)
-    # TODO: Pull out common find cmd and timing code.
-    start = time.time()
-    logging.debug('Executing: %s', find_cmd)
-    out = subprocess.check_output(find_cmd, shell=True)
-    logging.debug('Find completed in %ss', time.time() - start)
-    logging.debug('Class - Find Cmd Out: %s', out)
-    return extract_test_path(out)
-
+        find_target = class_name
+        ref_type = FIND_REFERENCE_TYPE.CLASS
+    return run_find_cmd(ref_type, search_dir, find_target)
 
 def is_equal_or_sub_dir(sub_dir, parent_dir):
     """Return True sub_dir is sub dir or equal to parent_dir.

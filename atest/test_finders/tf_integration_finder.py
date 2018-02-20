@@ -20,7 +20,6 @@ import copy
 import logging
 import os
 import re
-import subprocess
 import xml.etree.ElementTree as ElementTree
 
 # pylint: disable=import-error
@@ -129,13 +128,9 @@ class TFIntegrationFinder(test_finder_base.TestFinderBase):
         """Search integration dirs for name and return full path."""
         for integration_dir in self.integration_dirs:
             abs_path = os.path.join(self.root_dir, integration_dir)
-            find_cmd = test_finder_utils.FIND_CMDS[
-                test_finder_utils.FIND_REFERENCE_TYPE.INTEGRATION] % (abs_path,
-                                                                      name)
-            logging.debug('Executing: %s', find_cmd)
-            out = subprocess.check_output(find_cmd, shell=True)
-            logging.debug('Integration - Find Cmd Out: %s', out)
-            test_file = test_finder_utils.extract_test_path(out)
+            test_file = test_finder_utils.run_find_cmd(
+                test_finder_utils.FIND_REFERENCE_TYPE.INTEGRATION,
+                abs_path, name)
             if test_file:
                 return test_file
         return None

@@ -32,6 +32,7 @@ from test_finders import test_info
 from test_runners import atest_tf_test_runner as atf_tr
 
 MODULE_CLASS = '%s:%s' % (uc.MODULE_NAME, uc.CLASS_NAME)
+MODULE_PACKAGE = '%s:%s' % (uc.MODULE_NAME, uc.PACKAGE)
 FLAT_METHOD_INFO = test_info.TestInfo(
     uc.MODULE_NAME,
     atf_tr.AtestTradefedTestRunner.NAME,
@@ -191,6 +192,69 @@ class ModuleFinderUnittests(unittest.TestCase):
         bad_class = '%s:%s' % (uc.MODULE_NAME, 'Anything')
         self.mod_finder.module_info.get_module_info.return_value = mod_info
         self.assertIsNone(self.mod_finder.find_test_by_module_and_class(bad_class))
+
+    @mock.patch.object(module_finder.ModuleFinder, '_is_vts_module',
+                       return_value=False)
+    @mock.patch.object(module_finder.ModuleFinder, '_get_build_targets')
+    @mock.patch.object(module_finder.ModuleFinder, '_is_auto_gen_test_config',
+                       return_value=False)
+    @mock.patch('subprocess.check_output', return_value=uc.FIND_PKG)
+    @mock.patch('os.path.isfile', side_effect=unittest_utils.isfile_side_effect)
+    @mock.patch('os.path.isdir', return_value=True)
+    #pylint: disable=unused-argument
+    def test_find_test_by_package_name(self, _isdir, _isfile, mock_checkoutput,
+                                       _auto, mock_build, _vts):
+        """Test find_test_by_package_name."""
+        mock_build.return_value = uc.CLASS_BUILD_TARGETS
+        self.mod_finder.module_info.get_module_name.return_value = uc.MODULE_NAME
+        unittest_utils.assert_equal_testinfos(
+            self, self.mod_finder.find_test_by_package_name(uc.PACKAGE),
+            uc.PACKAGE_INFO)
+        # with method, should raise
+        pkg_with_method = '%s#%s' % (uc.PACKAGE, uc.METHOD_NAME)
+        self.assertRaises(atest_error.MethodWithoutClassError,
+                          self.mod_finder.find_test_by_package_name,
+                          pkg_with_method)
+        # module and rel_config passed in
+        unittest_utils.assert_equal_testinfos(
+            self, self.mod_finder.find_test_by_package_name(
+                uc.PACKAGE, uc.MODULE_NAME, uc.CONFIG_FILE), uc.PACKAGE_INFO)
+        # find output fails to find class file
+        mock_checkoutput.return_value = ''
+        self.assertIsNone(self.mod_finder.find_test_by_package_name('Not pkg'))
+
+    @mock.patch.object(module_finder.ModuleFinder, '_is_vts_module',
+                       return_value=False)
+    @mock.patch.object(module_finder.ModuleFinder, '_get_build_targets')
+    @mock.patch.object(module_finder.ModuleFinder, '_is_auto_gen_test_config',
+                       return_value=False)
+    @mock.patch('subprocess.check_output', return_value=uc.FIND_PKG)
+    @mock.patch('os.path.isfile', side_effect=unittest_utils.isfile_side_effect)
+    #pylint: disable=unused-argument
+    def test_find_test_by_module_and_package(self, _isfile, mock_checkoutput,
+                                             _auto, mock_build, _vts):
+        """Test find_test_by_module_and_package."""
+        mock_build.return_value = uc.CLASS_BUILD_TARGETS
+        mod_info = {'installed': ['/path/to/install'],
+                    'path': [uc.MODULE_DIR]}
+        self.mod_finder.module_info.get_module_info.return_value = mod_info
+        t_info = self.mod_finder.find_test_by_module_and_package(MODULE_PACKAGE)
+        unittest_utils.assert_equal_testinfos(self, t_info, uc.PACKAGE_INFO)
+        # with method, raises
+        module_pkg_with_method = '%s:%s#%s' % (uc.MODULE2_NAME, uc.PACKAGE,
+                                               uc.METHOD_NAME)
+        self.assertRaises(atest_error.MethodWithoutClassError,
+                          self.mod_finder.find_test_by_module_and_package,
+                          module_pkg_with_method)
+        # bad module, good pkg, returns None
+        bad_module = '%s:%s' % ('BadMod', uc.PACKAGE)
+        self.mod_finder.module_info.get_module_info.return_value = None
+        self.assertIsNone(self.mod_finder.find_test_by_module_and_package(bad_module))
+        # find output fails to find package path
+        mock_checkoutput.return_value = ''
+        bad_pkg = '%s:%s' % (uc.MODULE_NAME, 'Anything')
+        self.mod_finder.module_info.get_module_info.return_value = mod_info
+        self.assertIsNone(self.mod_finder.find_test_by_module_and_package(bad_pkg))
 
     @mock.patch.object(module_finder.ModuleFinder, '_get_build_targets')
     @mock.patch.object(module_finder.ModuleFinder, '_is_vts_module',

@@ -34,8 +34,10 @@ MODULE_NAME = 'CtsJankDeviceTestCases'
 MODULE2_NAME = 'HelloWorldTests'
 CLASS_NAME = 'CtsDeviceJankUi'
 FULL_CLASS_NAME = 'android.jank.cts.ui.CtsDeviceJankUi'
+PACKAGE = 'android.jank.cts.ui'
 FIND_ONE = ROOT + 'foo/bar/jank/src/android/jank/cts/ui/CtsDeviceJankUi.java\n'
 FIND_TWO = ROOT + 'other/dir/test.java\n' + FIND_ONE
+FIND_PKG = ROOT + 'foo/bar/jank/src/android/jank/cts/ui\n'
 INT_NAME = 'example/reboot'
 GTF_INT_NAME = 'some/gtf_int_test'
 TEST_DATA_DIR = 'unittest_data'
@@ -58,11 +60,18 @@ MODULE_INFO = test_info.TestInfo(MODULE_NAME,
 CLASS_FILTER = test_info.TestFilter(FULL_CLASS_NAME, frozenset())
 CLASS_DATA = {constants.TI_REL_CONFIG: CONFIG_FILE,
               constants.TI_FILTER: frozenset([CLASS_FILTER])}
+PACKAGE_FILTER = test_info.TestFilter(PACKAGE, frozenset())
+PACKAGE_DATA = {constants.TI_REL_CONFIG: CONFIG_FILE,
+                constants.TI_FILTER: frozenset([PACKAGE_FILTER])}
 CLASS_BUILD_TARGETS = {'class-specific-target'}
 CLASS_INFO = test_info.TestInfo(MODULE_NAME,
                                 atf_tr.AtestTradefedTestRunner.NAME,
                                 CLASS_BUILD_TARGETS,
                                 CLASS_DATA)
+PACKAGE_INFO = test_info.TestInfo(MODULE_NAME,
+                                  atf_tr.AtestTradefedTestRunner.NAME,
+                                  CLASS_BUILD_TARGETS,
+                                  PACKAGE_DATA)
 MODULE_CLASS_COMBINED_BUILD_TARGETS = MODULE_BUILD_TARGETS | CLASS_BUILD_TARGETS
 INT_CONFIG = os.path.join(INT_DIR, INT_NAME + '.xml')
 GTF_INT_CONFIG = os.path.join(GTF_INT_DIR, GTF_INT_NAME + '.xml')
