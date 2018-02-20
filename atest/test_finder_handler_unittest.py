@@ -101,7 +101,7 @@ class TestFinderHandlerUnittests(unittest.TestCase):
         self.assertEqual(
             test_finder_handler._get_test_reference_types('class.name.or.package'),
             [REF_TYPE.INTEGRATION_FILE_PATH, REF_TYPE.MODULE_FILE_PATH,
-             REF_TYPE.QUALIFIED_CLASS, REF_TYPE.PACKAGE]
+             REF_TYPE.QUALIFIED_CLASS]
         )
         self.assertEqual(
             test_finder_handler._get_test_reference_types('module:class'),
@@ -109,8 +109,7 @@ class TestFinderHandlerUnittests(unittest.TestCase):
         )
         self.assertEqual(
             test_finder_handler._get_test_reference_types('module:class.or.package'),
-            [REF_TYPE.MODULE_CLASS, REF_TYPE.INTEGRATION,
-             REF_TYPE.MODULE_PACKAGE]
+            [REF_TYPE.MODULE_CLASS, REF_TYPE.INTEGRATION]
         )
         self.assertEqual(
             test_finder_handler._get_test_reference_types('.'),
