@@ -19,6 +19,7 @@ import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.sandbox.ISandbox;
 import com.android.tradefed.sandbox.SandboxConfigDump.DumpCmd;
 import com.android.tradefed.sandbox.SandboxConfigUtil;
+import com.android.tradefed.sandbox.SandboxConfigurationException;
 import com.android.tradefed.util.FileUtil;
 import com.android.tradefed.util.IRunUtil;
 import com.android.tradefed.util.keystore.IKeyStoreClient;
@@ -88,15 +89,25 @@ public class SandboxConfigurationFactory extends ConfigurationFactory {
             // Reset the command line to the original one.
             config.setCommandLine(args);
             config.setConfigurationObject(Configuration.SANDBOX_TYPE_NAME, sandbox);
+        } catch (SandboxConfigurationException e) {
+            // Handle the thin launcher mode: Configuration does not exists in parent version yet.
+            config = sandbox.createThinLauncherConfig(args, keyStoreClient, runUtil, globalConfig);
+            if (config == null) {
+                // Rethrow the original exception.
+                CLog.e(e);
+                throw e;
+            }
         } catch (IOException e) {
             CLog.e(e);
-            sandbox.tearDown();
             throw new ConfigurationException("Failed to dump global config.", e);
         } catch (ConfigurationException e) {
             CLog.e(e);
-            sandbox.tearDown();
             throw e;
         } finally {
+            if (config == null) {
+                // In case of error, tear down the sandbox.
+                sandbox.tearDown();
+            }
             FileUtil.deleteFile(globalConfig);
             FileUtil.deleteFile(xmlConfig);
         }
