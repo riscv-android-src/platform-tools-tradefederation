@@ -88,7 +88,7 @@ public class SuiteResultReporter extends CollectingTestListener {
         if (abiName != null) {
             IAbi abi = new Abi(abiName.get(0), AbiUtils.getBitness(abiName.get(0)));
             mModuleAbi.put(
-                    moduleContext.getAttributes().get(ModuleDefinition.MODULE_NAME).get(0), abi);
+                    moduleContext.getAttributes().get(ModuleDefinition.MODULE_ID).get(0), abi);
         }
     }
 

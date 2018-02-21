@@ -369,13 +369,14 @@ public class ModuleDefinitionTest {
         IConfiguration config = new Configuration("", "");
         ConfigurationDescriptor descriptor = new ConfigurationDescriptor();
         descriptor.setAbi(new Abi("arm", "32"));
+        descriptor.setModuleName(MODULE_NAME);
         config.setConfigurationObject(
                 Configuration.CONFIGURATION_DESCRIPTION_TYPE_NAME, descriptor);
         List<IRemoteTest> testList = new ArrayList<>();
         testList.add(new TestObject("run1", testCount, false));
         mModule =
                 new ModuleDefinition(
-                        MODULE_NAME,
+                        "arm32 " + MODULE_NAME,
                         testList,
                         mMapDeviceTargetPreparer,
                         mMultiTargetPrepList,
@@ -386,6 +387,9 @@ public class ModuleDefinitionTest {
                 MODULE_NAME,
                 moduleContext.getAttributes().get(ModuleDefinition.MODULE_NAME).get(0));
         assertEquals("arm", moduleContext.getAttributes().get(ModuleDefinition.MODULE_ABI).get(0));
+        assertEquals(
+                "arm32 " + MODULE_NAME,
+                moduleContext.getAttributes().get(ModuleDefinition.MODULE_ID).get(0));
     }
 
     /**

@@ -221,8 +221,9 @@ public class SuiteModuleLoader {
                     }
                 }
 
-                // add the abi to the description
+                // add the abi and module name to the description
                 config.getConfigurationDescription().setAbi(abi);
+                config.getConfigurationDescription().setModuleName(name);
                 toRun.put(id, config);
             }
         } catch (ConfigurationException e) {

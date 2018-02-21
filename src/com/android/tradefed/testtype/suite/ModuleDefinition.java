@@ -70,8 +70,18 @@ import java.util.Map;
 public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestCollector {
 
     /** key names used for saving module info into {@link IInvocationContext} */
+    /**
+     * Module name is the base name associated with the module, usually coming from the Xml TF
+     * config file the module was loaded from.
+     */
     public static final String MODULE_NAME = "module-name";
     public static final String MODULE_ABI = "module-abi";
+    /**
+     * Module ID the name that will be used to identify uniquely the module during testRunStart. It
+     * will usually be a combination of MODULE_ABI + MODULE_NAME.
+     */
+    public static final String MODULE_ID = "module-id";
+
     public static final String MODULE_CONTROLLER = "module_controller";
 
     private final IInvocationContext mModuleInvocationContext;
@@ -122,12 +132,18 @@ public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestColl
         ConfigurationDescriptor configDescriptor = moduleConfig.getConfigurationDescription();
         mModuleInvocationContext = new InvocationContext();
         mModuleInvocationContext.setConfigurationDescriptor(configDescriptor);
-        mModuleInvocationContext.addInvocationAttribute(MODULE_NAME, mId);
+
         // If available in the suite, add the abi name
         if (configDescriptor.getAbi() != null) {
             mModuleInvocationContext.addInvocationAttribute(
                     MODULE_ABI, configDescriptor.getAbi().getName());
         }
+        if (configDescriptor.getModuleName() != null) {
+            mModuleInvocationContext.addInvocationAttribute(
+                    MODULE_NAME, configDescriptor.getModuleName());
+        }
+        // If there is no specific abi, module-id should be module-name
+        mModuleInvocationContext.addInvocationAttribute(MODULE_ID, mId);
 
         mMultiPreparers.addAll(multiPreparers);
         mPreparersPerDevice = preparersPerDevice;
