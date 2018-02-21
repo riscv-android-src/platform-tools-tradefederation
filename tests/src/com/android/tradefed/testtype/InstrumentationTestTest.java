@@ -181,7 +181,7 @@ public class InstrumentationTestTest {
         mInstrumentationTest.setClassName(className);
         mInstrumentationTest.setRunnerArgs(runner);
 
-        assertThat(runner.getArgs()).containsEntry("class", className);
+        assertThat(runner.getArgs()).containsEntry("class", "'" + className + "'");
     }
 
     /** Test normal run scenario with a test class and method specified. */
@@ -195,7 +195,7 @@ public class InstrumentationTestTest {
         mInstrumentationTest.setMethodName(methodName);
         mInstrumentationTest.setRunnerArgs(runner);
 
-        assertThat(runner.getArgs()).containsEntry("class", "FooTest#testFoo");
+        assertThat(runner.getArgs()).containsEntry("class", "'FooTest#testFoo'");
     }
 
     /** Test normal run scenario with a test package specified. */
@@ -219,8 +219,7 @@ public class InstrumentationTestTest {
         mInstrumentationTest.setTestPackageName("com.foo");
         mInstrumentationTest.setClassName(testClassName);
         mInstrumentationTest.setRunnerArgs(runner);
-
-        assertThat(runner.getArgs()).containsEntry("class", testClassName);
+        assertThat(runner.getArgs()).containsEntry("class", "'" + testClassName + "'");
         assertThat(runner.getArgs()).doesNotContainKey("package");
     }
 
