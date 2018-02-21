@@ -122,7 +122,7 @@ public class FormattedGeneratorReporterTest {
                 };
         mReporter.invocationStarted(mContext);
         IInvocationContext moduleContext = new InvocationContext();
-        moduleContext.addInvocationAttribute(ModuleDefinition.MODULE_NAME, "module1");
+        moduleContext.addInvocationAttribute(ModuleDefinition.MODULE_ID, "module1");
         moduleContext.addInvocationAttribute(ModuleDefinition.MODULE_ABI, "abi1");
         mReporter.testModuleStarted(moduleContext);
         mReporter.testRunStarted("run1", 1);
