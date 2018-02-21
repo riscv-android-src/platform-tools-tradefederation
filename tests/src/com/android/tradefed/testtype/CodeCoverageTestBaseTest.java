@@ -885,8 +885,16 @@ public class CodeCoverageTestBaseTest {
 
             // Run each of the tests
             for (TestDescription test : tests) {
-                listeners.stream().forEach(l -> l.testStarted(test));
-                listeners.stream().forEach(l -> l.testEnded(test, ImmutableMap.of()));
+                listeners
+                        .stream()
+                        .forEach(l -> l.testStarted(TestDescription.convertToIdentifier(test)));
+                listeners
+                        .stream()
+                        .forEach(
+                                l ->
+                                        l.testEnded(
+                                                TestDescription.convertToIdentifier(test),
+                                                ImmutableMap.of()));
             }
 
             // Mock out the coverage measurement if necessary
