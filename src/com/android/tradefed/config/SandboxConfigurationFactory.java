@@ -42,7 +42,7 @@ public class SandboxConfigurationFactory extends ConfigurationFactory {
 
     /** {@inheritDoc} */
     @Override
-    ConfigurationDef getConfigurationDef(
+    protected ConfigurationDef getConfigurationDef(
             String name, boolean isGlobal, Map<String, String> templateMap)
             throws ConfigurationException {
         // TODO: Extend ConfigurationDef to possibly create a different IConfiguration type and

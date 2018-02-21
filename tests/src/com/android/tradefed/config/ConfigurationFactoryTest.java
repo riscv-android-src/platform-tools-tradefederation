@@ -62,12 +62,13 @@ public class ConfigurationFactoryTest extends TestCase {
     @Override
     protected void setUp() throws Exception {
         super.setUp();
-        mFactory = new ConfigurationFactory() {
-            @Override
-            String getConfigPrefix() {
-                return "testconfigs/";
-            }
-        };
+        mFactory =
+                new ConfigurationFactory() {
+                    @Override
+                    protected String getConfigPrefix() {
+                        return "testconfigs/";
+                    }
+                };
     }
 
     /**

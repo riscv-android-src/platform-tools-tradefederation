@@ -232,11 +232,10 @@ public class ConfigurationFactory implements IConfigurationFactory {
      * Implementation of {@link IConfigDefLoader} that tracks the included configurations from one
      * root config, and throws an exception on circular includes.
      */
-    class ConfigLoader implements IConfigDefLoader {
+    protected class ConfigLoader implements IConfigDefLoader {
 
         private final boolean mIsGlobalConfig;
         private DirectedGraph<String> mConfigGraph = new DirectedGraph<String>();
-
 
         public ConfigLoader(boolean isGlobalConfig) {
             mIsGlobalConfig = isGlobalConfig;
@@ -249,20 +248,7 @@ public class ConfigurationFactory implements IConfigurationFactory {
         public ConfigurationDef getConfigurationDef(String name, Map<String, String> templateMap)
                 throws ConfigurationException {
 
-            String configName = name;
-            if (!isBundledConfig(name)) {
-                configName = getAbsolutePath(null, name);
-                // If the config file does not exist in the default location, try to locate it from
-                // test cases directories defined by environment variables.
-                File configFile = new File(configName);
-                if (!configFile.exists()) {
-                    configFile = getTestCaseConfigPath(name);
-                    if (configFile != null) {
-                        configName = configFile.getAbsolutePath();
-                    }
-                }
-            }
-
+            String configName = findConfigName(name, null);
             final ConfigId configId = new ConfigId(name, templateMap);
             ConfigurationDef def = mConfigDefMap.get(configId);
 
@@ -280,12 +266,13 @@ public class ConfigurationFactory implements IConfigurationFactory {
             return def;
         }
 
-        /**
-         * Returns true if it is a config file found inside the classpath.
-         */
-        private boolean isBundledConfig(String name) {
-            InputStream configStream = getClass().getResourceAsStream(
-                    String.format("/%s%s%s", getConfigPrefix(), name, CONFIG_SUFFIX));
+        /** Returns true if it is a config file found inside the classpath. */
+        protected boolean isBundledConfig(String name) {
+            InputStream configStream =
+                    getClass()
+                            .getResourceAsStream(
+                                    String.format(
+                                            "/%s%s%s", getConfigPrefix(), name, CONFIG_SUFFIX));
             return configStream != null;
         }
 
@@ -316,6 +303,52 @@ public class ConfigurationFactory implements IConfigurationFactory {
         }
 
         /**
+         * Find config's name based on its name and its parent name. This is used to properly handle
+         * bundle configs and local configs.
+         *
+         * @param name config's name
+         * @param parentName config's parent's name.
+         * @return the config's full name.
+         * @throws ConfigurationException
+         */
+        protected String findConfigName(String name, String parentName)
+                throws ConfigurationException {
+            if (isBundledConfig(name)) {
+                return name;
+            }
+            if (parentName == null || isBundledConfig(parentName)) {
+                // Search files for config.
+                String configName = getAbsolutePath(null, name);
+                File localConfig = new File(configName);
+                if (!localConfig.exists()) {
+                    localConfig = getTestCaseConfigPath(name);
+                }
+                if (localConfig != null) {
+                    return localConfig.getAbsolutePath();
+                }
+                // Can not find local config.
+                if (parentName == null) {
+                    throw new ConfigurationException(
+                            String.format("Can not find local config %s.", name));
+
+                } else {
+                    throw new ConfigurationException(
+                            String.format(
+                                    "Bundled config '%s' is including a config '%s' that's neither "
+                                            + "local nor bundled.",
+                                    parentName, name));
+                }
+            }
+            try {
+                // Local configs' include should be relative to their parent's path.
+                String parentRoot = new File(parentName).getParentFile().getCanonicalPath();
+                return getAbsolutePath(parentRoot, name);
+            } catch (IOException e) {
+                throw new ConfigurationException(e.getMessage(), e.getCause());
+            }
+        }
+
+        /**
          * Configs that are bundled inside the tradefed.jar can only include other configs also
          * bundled inside tradefed.jar. However, local (external) configs can include both local
          * (external) and bundled configs.
@@ -329,34 +362,7 @@ public class ConfigurationFactory implements IConfigurationFactory {
                 Map<String, String> templateMap)
                 throws ConfigurationException {
 
-            String config_name = name;
-            if (!isBundledConfig(name)) {
-                try {
-                    // Check that included config is either bundled or exists in filesystem
-                    if (isBundledConfig(parentName)) {
-                        // check that 'name' maps to a local file that exists
-                        File localConfig = new File(name);
-                        if (!localConfig.exists()) {
-                            localConfig = getTestCaseConfigPath(name);
-                        }
-                        if (localConfig == null) {
-                            throw new ConfigurationException(String.format(
-                                    "Bundled config '%s' is including a config '%s' that's neither "
-                                            + "local nor bundled.",
-                                    parentName, name));
-                        }
-                        config_name = localConfig.getAbsolutePath();
-                    } else {
-                        // Local configs' include should be relative to their parent's path.
-                        String parentRoot = new File(parentName).getParentFile().getCanonicalPath();
-                        config_name = getAbsolutePath(parentRoot, name);
-                    }
-                } catch (IOException e) {
-                    throw new ConfigurationException(String.format(
-                            "Failure when trying to determine local file canonical path %s", e));
-                }
-            }
-
+            String config_name = findConfigName(name, parentName);
             mConfigGraph.addEdge(parentName, config_name);
             // If the inclusion of configurations is a cycle we throw an exception.
             if (!mConfigGraph.isDag()) {
@@ -391,11 +397,30 @@ public class ConfigurationFactory implements IConfigurationFactory {
             BufferedInputStream bufStream = getConfigStream(name);
             ConfigurationXmlParser parser = new ConfigurationXmlParser(this, deviceTagObject);
             parser.parse(def, name, bufStream, templateMap);
+            trackConfig(name, def);
+        }
 
+        /**
+         * Track config for dynamic loading. Right now only local files are supported.
+         *
+         * @param name config's name
+         * @param def config's def.
+         */
+        protected void trackConfig(String name, ConfigurationDef def) {
             // Track local config source files
             if (!isBundledConfig(name)) {
                 def.registerSource(new File(name));
             }
+        }
+
+        /**
+         * Should track the config's life cycle or not.
+         *
+         * @param name config's name
+         * @return <code>true</code> if the config is trackable, otherwise <code>false</code>.
+         */
+        protected boolean isTrackableConfig(String name) {
+            return !isBundledConfig(name);
         }
 
         /**
@@ -405,9 +430,10 @@ public class ConfigurationFactory implements IConfigurationFactory {
         public boolean isGlobalConfig() {
             return mIsGlobalConfig;
         }
+
     }
 
-    ConfigurationFactory() {
+    protected ConfigurationFactory() {
         mConfigDefMap = new Hashtable<ConfigId, ConfigurationDef>();
     }
 
@@ -429,7 +455,7 @@ public class ConfigurationFactory implements IConfigurationFactory {
      * @return {@link ConfigurationDef}
      * @throws ConfigurationException if an error occurred loading the config
      */
-    ConfigurationDef getConfigurationDef(
+    protected ConfigurationDef getConfigurationDef(
             String name, boolean isGlobal, Map<String, String> templateMap)
             throws ConfigurationException {
         return new ConfigLoader(isGlobal).getConfigurationDef(name, templateMap);
@@ -733,12 +759,12 @@ public class ConfigurationFactory implements IConfigurationFactory {
 
     /**
      * Return the path prefix of config xml files on classpath
-     * <p/>
-     * Exposed so unit tests can mock.
+     *
+     * <p>Exposed so unit tests can mock.
      *
      * @return {@link String} path with trailing /
      */
-    String getConfigPrefix() {
+    protected String getConfigPrefix() {
         return CONFIG_PREFIX;
     }
 
@@ -749,9 +775,8 @@ public class ConfigurationFactory implements IConfigurationFactory {
      * @return a {@link BufferedInputStream} for reading config contents
      * @throws ConfigurationException if config could not be found
      */
-    private BufferedInputStream getConfigStream(String name) throws ConfigurationException {
-        InputStream configStream = getClass().getResourceAsStream(
-                String.format("/%s%s%s", getConfigPrefix(), name, CONFIG_SUFFIX));
+    protected BufferedInputStream getConfigStream(String name) throws ConfigurationException {
+        InputStream configStream = getBundledConfigStream(name);
         if (configStream == null) {
             // now try to load from file
             try {
@@ -763,6 +788,12 @@ public class ConfigurationFactory implements IConfigurationFactory {
         }
         // buffer input for performance - just in case config file is large
         return new BufferedInputStream(configStream);
+    }
+
+    protected InputStream getBundledConfigStream(String name) {
+        return getClass()
+                .getResourceAsStream(
+                        String.format("/%s%s%s", getConfigPrefix(), name, CONFIG_SUFFIX));
     }
 
     /**
