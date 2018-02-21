@@ -26,6 +26,7 @@ import com.android.tradefed.targetprep.DeviceSetupFuncTest;
 import com.android.tradefed.testtype.DeviceSuite;
 import com.android.tradefed.testtype.InstrumentationTestFuncTest;
 import com.android.tradefed.util.FileUtilFuncTest;
+import com.android.tradefed.util.GCSFileDownloaderFuncTest;
 import com.android.tradefed.util.RunUtilFuncTest;
 import com.android.tradefed.util.net.HttpHelperFuncTest;
 
@@ -58,6 +59,7 @@ import org.junit.runners.Suite.SuiteClasses;
     InstrumentationTestFuncTest.class,
     // util
     FileUtilFuncTest.class,
+    GCSFileDownloaderFuncTest.class,
     // TODO: temporarily remove from suite until we figure out how to install gtest data
     //this.addTestSuite(GTestFuncTest.class);
     HttpHelperFuncTest.class,

@@ -17,9 +17,11 @@ VTS Tradefed test runner class.
 """
 
 import copy
+import logging
 
 # pylint: disable=import-error
 import atest_tf_test_runner
+import constants
 
 
 class VtsTradefedTestRunner(atest_tf_test_runner.AtestTradefedTestRunner):
@@ -37,33 +39,61 @@ class VtsTradefedTestRunner(atest_tf_test_runner.AtestTradefedTestRunner):
         super(VtsTradefedTestRunner, self).__init__(results_dir)
         self.run_cmd_dict = {'exe': self.EXECUTABLE,
                              'test': '',
-                             'args': ' '.join(self._DEFAULT_ARGS)}
+                             'args': ''}
 
-    def run_tests(self, test_infos, _extra_args):
+    def run_tests(self, test_infos, extra_args):
         """Run the list of test_infos.
 
         Args:
             test_infos: List of TestInfo.
-            _extra_args: Dict of extra args to add to test run.
-                         (currently unused)
+            extra_args: Dict of extra args to add to test run.
         """
-        run_cmds = self._generate_run_commands(test_infos)
+        run_cmds = self._generate_run_commands(test_infos, extra_args)
         for run_cmd in run_cmds:
             super(VtsTradefedTestRunner, self).run(run_cmd)
 
+    def _parse_extra_args(self, extra_args):
+        """Convert the extra args into something vts-tf can understand.
+
+        We want to transform the top-level args from atest into specific args
+        that vts-tradefed supports. The only arg we take as is is EXTRA_ARG
+        since that is what the user intentionally wants to pass to the test
+        runner.
+
+        Args:
+            extra_args: Dict of args
+
+        Returns:
+            List of args to append.
+        """
+        args_to_append = []
+        args_not_supported = []
+        for arg in extra_args:
+            if constants.EXTRA_ARGS == arg:
+                args_to_append.append(extra_args[arg])
+                continue
+            args_not_supported.append(arg)
+        logging.info('%s does not support the following args: %s',
+                     self.EXECUTABLE, args_not_supported)
+        return args_to_append
+
     # pylint: disable=arguments-differ
-    def _generate_run_commands(self, test_infos):
+    def _generate_run_commands(self, test_infos, extra_args):
         """Generate a list of run commands from TestInfos.
 
         Args:
             test_infos: List of TestInfo tests to run.
+            extra_args: Dict of extra args to add to test run.
 
         Returns:
             A List of strings that contains the vts-tradefed run command.
         """
         cmds = []
+        args = self._DEFAULT_ARGS
+        args.extend(self._parse_extra_args(extra_args))
         for test_info in test_infos:
             cmd_dict = copy.deepcopy(self.run_cmd_dict)
             cmd_dict['test'] = test_info.module_name
+            cmd_dict['args'] = ' '.join(args)
             cmds.append(self._RUN_CMD.format(**cmd_dict))
         return cmds
