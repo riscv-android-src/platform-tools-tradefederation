@@ -129,10 +129,10 @@ class AtestTradefedTestRunner(test_runner_base.TestRunnerBase):
             if constants.DISABLE_INSTALL == arg:
                 args_to_append.append('--disable-target-preparers')
                 continue
-            if constants.EXTRA_ARGS == arg:
+            if constants.CUSTOM_ARGS == arg:
                 # We might need to sanitize it prior to appending but for now
                 # let's just treat it like a simple arg to pass on through.
-                args_to_append.append(extra_args[arg])
+                args_to_append.extend(extra_args[arg])
                 continue
             args_not_supported.append(arg)
         return args_to_append, args_not_supported
