@@ -37,6 +37,7 @@ import com.android.tradefed.invoker.IInvocationContext;
 import com.android.tradefed.invoker.InvocationContext;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.result.ByteArrayInputStreamSource;
+import com.android.tradefed.result.ILogSaver;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.InputStreamSource;
 import com.android.tradefed.result.LogDataType;
@@ -83,6 +84,8 @@ public class ITestSuiteTest {
     private ISystemStatusChecker mMockSysChecker;
     private IInvocationContext mContext;
     private List<IMetricCollector> mListCollectors;
+    private IConfiguration mStubMainConfiguration;
+    private ILogSaver mMockLogSaver;
 
     /**
      * Very basic implementation of {@link ITestSuite} to test it.
@@ -167,8 +170,13 @@ public class ITestSuiteTest {
         EasyMock.expect(mMockDevice.getSerialNumber()).andStubReturn("SERIAL");
         mMockBuildInfo = EasyMock.createMock(IBuildInfo.class);
         mMockSysChecker = EasyMock.createMock(ISystemStatusChecker.class);
+        mMockLogSaver = EasyMock.createMock(ILogSaver.class);
+        mStubMainConfiguration = new Configuration("stub", "stub");
+        mStubMainConfiguration.setLogSaver(mMockLogSaver);
+
         mTestSuite.setDevice(mMockDevice);
         mTestSuite.setBuild(mMockBuildInfo);
+        mTestSuite.setConfiguration(mStubMainConfiguration);
         mContext = new InvocationContext();
         mTestSuite.setInvocationContext(mContext);
         mListCollectors = new ArrayList<>();
@@ -343,6 +351,7 @@ public class ITestSuiteTest {
         mTestSuite.setBuild(mMockBuildInfo);
         mTestSuite.setInvocationContext(mContext);
         mTestSuite.setSystemStatusChecker(sysChecker);
+        mTestSuite.setConfiguration(mStubMainConfiguration);
         OptionSetter setter = new OptionSetter(mTestSuite);
         setter.setOptionValue("skip-all-system-status-check", "true");
         setter.setOptionValue("reboot-per-module", "true");
@@ -390,6 +399,7 @@ public class ITestSuiteTest {
         mTestSuite.setDevice(mMockDevice);
         mTestSuite.setBuild(mMockBuildInfo);
         mTestSuite.setInvocationContext(mContext);
+        mTestSuite.setConfiguration(mStubMainConfiguration);
         OptionSetter setter = new OptionSetter(mTestSuite);
         setter.setOptionValue("skip-all-system-status-check", "true");
         setter.setOptionValue("reboot-per-module", "true");

@@ -37,8 +37,12 @@ public class TestRunResult {
     private Map<TestDescription, TestResult> mTestResults =
             new LinkedHashMap<TestDescription, TestResult>();
     private Map<String, String> mRunMetrics = new HashMap<String, String>();
+    // Log files associated with the test run itself (testRunStart / testRunEnd).
+    private Map<String, LogFile> mRunLoggedFiles;
     private boolean mIsRunComplete = false;
     private long mElapsedTime = 0;
+
+    private TestResult mCurrentTestResult;
 
     /** represents sums of tests in each TestStatus state. Indexed by TestStatus.ordinal() */
     private int[] mStatusCounts = new int[TestStatus.values().length];
@@ -52,6 +56,7 @@ public class TestRunResult {
     /** Create an empty{@link TestRunResult}. */
     public TestRunResult() {
         mTestRunName = "not started";
+        mRunLoggedFiles = new LinkedHashMap<String, LogFile>();
     }
 
     public void setAggregateMetrics(boolean metricAggregation) {
@@ -161,9 +166,9 @@ public class TestRunResult {
     }
 
     public void testStarted(TestDescription test, long startTime) {
-        TestResult res = new TestResult();
-        res.setStartTime(startTime);
-        addTestResult(test, res);
+        mCurrentTestResult = new TestResult();
+        mCurrentTestResult.setStartTime(startTime);
+        addTestResult(test, mCurrentTestResult);
     }
 
     private void addTestResult(TestDescription test, TestResult testResult) {
@@ -209,6 +214,7 @@ public class TestRunResult {
         result.setEndTime(endTime);
         result.setMetrics(testMetrics);
         addTestResult(test, result);
+        mCurrentTestResult = null;
     }
 
     public void testRunFailed(String errorMessage) {
@@ -275,5 +281,27 @@ public class TestRunResult {
             }
         }
         return builder.toString();
+    }
+
+    /**
+     * Information about a file being logged are stored and associated to the test case or test run
+     * in progress.
+     *
+     * @param dataName the name referencing the data.
+     * @param logFile The {@link LogFile} object representing where the object was saved and and
+     *     information about it.
+     */
+    public void testLogSaved(String dataName, LogFile logFile) {
+        if (mCurrentTestResult != null) {
+            // We have a test case in progress, we can associate the log to it.
+            mCurrentTestResult.addLoggedFile(dataName, logFile);
+        } else {
+            mRunLoggedFiles.put(dataName, logFile);
+        }
+    }
+
+    /** Returns a copy of the map containing all the logged file associated with that test case. */
+    public Map<String, LogFile> getRunLoggedFiles() {
+        return new LinkedHashMap<>(mRunLoggedFiles);
     }
 }

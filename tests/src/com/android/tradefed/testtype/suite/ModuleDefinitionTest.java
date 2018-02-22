@@ -26,7 +26,14 @@ import com.android.tradefed.config.IConfiguration;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.invoker.IInvocationContext;
+import com.android.tradefed.invoker.TestInvocation;
+import com.android.tradefed.result.ByteArrayInputStreamSource;
+import com.android.tradefed.result.ILogSaver;
+import com.android.tradefed.result.ILogSaverListener;
 import com.android.tradefed.result.ITestInvocationListener;
+import com.android.tradefed.result.LogDataType;
+import com.android.tradefed.result.LogFile;
+import com.android.tradefed.result.LogSaverResultForwarder;
 import com.android.tradefed.result.TestDescription;
 import com.android.tradefed.targetprep.BaseTargetPreparer;
 import com.android.tradefed.targetprep.BuildError;
@@ -39,19 +46,18 @@ import com.android.tradefed.testtype.IBuildReceiver;
 import com.android.tradefed.testtype.IDeviceTest;
 import com.android.tradefed.testtype.IRemoteTest;
 import com.android.tradefed.testtype.suite.module.IModuleController;
-
-import org.easymock.EasyMock;
-import org.junit.Before;
-import org.junit.Test;
-import org.junit.runner.RunWith;
-import org.junit.runners.JUnit4;
-
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import org.easymock.EasyMock;
+import org.junit.Before;
+import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.junit.runners.JUnit4;
 
 /** Unit tests for {@link ModuleDefinition} */
 @RunWith(JUnit4.class)
@@ -70,6 +76,9 @@ public class ModuleDefinitionTest {
     private ITestInvocationListener mMockListener;
     private IBuildInfo mMockBuildInfo;
     private ITestDevice mMockDevice;
+    // Extra mock for log saving testing
+    private ILogSaver mMockLogSaver;
+    private ILogSaverListener mMockLogSaverListener;
 
     private interface ITestInterface extends IRemoteTest, IBuildReceiver, IDeviceTest {}
 
@@ -119,6 +128,9 @@ public class ModuleDefinitionTest {
 
     @Before
     public void setUp() {
+        mMockLogSaver = EasyMock.createMock(ILogSaver.class);
+        mMockLogSaverListener = EasyMock.createMock(ILogSaverListener.class);
+
         mMockListener = EasyMock.createMock(ITestInvocationListener.class);
         mTestList = new ArrayList<>();
         mMockTest = EasyMock.createMock(ITestInterface.class);
@@ -151,7 +163,7 @@ public class ModuleDefinitionTest {
      * Helper for replaying mocks.
      */
     private void replayMocks() {
-        EasyMock.replay(mMockListener);
+        EasyMock.replay(mMockListener, mMockLogSaver, mMockLogSaverListener);
         for (IRemoteTest test : mTestList) {
             EasyMock.replay(test);
         }
@@ -168,7 +180,7 @@ public class ModuleDefinitionTest {
      * Helper for verifying mocks.
      */
     private void verifyMocks() {
-        EasyMock.verify(mMockListener);
+        EasyMock.verify(mMockListener, mMockLogSaver, mMockLogSaverListener);
         for (IRemoteTest test : mTestList) {
             EasyMock.verify(test);
         }
@@ -483,6 +495,86 @@ public class ModuleDefinitionTest {
         mMockListener.testRunEnded(EasyMock.anyLong(), (Map<String, String>) EasyMock.anyObject());
         replayMocks();
         mModule.run(mMockListener, null);
+        verifyMocks();
+    }
+
+    /** Test {@link IRemoteTest} that log a file during its run. */
+    public class TestLogClass implements ITestInterface {
+
+        @Override
+        public void run(ITestInvocationListener listener) throws DeviceNotAvailableException {
+            listener.testLog(
+                    "testlogclass",
+                    LogDataType.TEXT,
+                    new ByteArrayInputStreamSource("".getBytes()));
+        }
+
+        @Override
+        public void setBuild(IBuildInfo buildInfo) {}
+
+        @Override
+        public void setDevice(ITestDevice device) {}
+
+        @Override
+        public ITestDevice getDevice() {
+            return null;
+        }
+    }
+
+    /**
+     * Test that the invocation level result_reporter receive the testLogSaved information from the
+     * modules.
+     *
+     * <p>The {@link LogSaverResultForwarder} from the module is expected to log the file and ensure
+     * that it passes the information to the {@link LogSaverResultForwarder} from the {@link
+     * TestInvocation} in order for final result_reporter to know about logged files.
+     */
+    @Test
+    public void testModule_LogSaverResultForwarder() throws Exception {
+        List<IRemoteTest> testList = new ArrayList<>();
+        testList.add(new TestLogClass());
+        mModule =
+                new ModuleDefinition(
+                        MODULE_NAME,
+                        testList,
+                        mMapDeviceTargetPreparer,
+                        mMultiTargetPrepList,
+                        new Configuration("", ""));
+        mModule.setLogSaver(mMockLogSaver);
+        mModule.getModuleInvocationContext().addAllocatedDevice(DEFAULT_DEVICE_NAME, mMockDevice);
+        mModule.getModuleInvocationContext()
+                .addDeviceBuildInfo(DEFAULT_DEVICE_NAME, mMockBuildInfo);
+        mModule.setBuild(mMockBuildInfo);
+        mModule.setDevice(mMockDevice);
+        EasyMock.expect(mMockPrep.isDisabled()).andReturn(false);
+        mMockPrep.setUp(EasyMock.eq(mMockDevice), EasyMock.eq(mMockBuildInfo));
+        EasyMock.expect(mMockCleaner.isDisabled()).andStubReturn(false);
+        mMockCleaner.setUp(EasyMock.eq(mMockDevice), EasyMock.eq(mMockBuildInfo));
+        mMockCleaner.tearDown(
+                EasyMock.eq(mMockDevice), EasyMock.eq(mMockBuildInfo), EasyMock.isNull());
+        mMockLogSaverListener.testRunStarted(MODULE_NAME, 0);
+        mMockLogSaverListener.testRunEnded(EasyMock.anyLong(), EasyMock.anyObject());
+
+        LogFile loggedFile = new LogFile("path", "url", false, false);
+        EasyMock.expect(
+                        mMockLogSaver.saveLogData(
+                                EasyMock.eq("testlogclass"),
+                                EasyMock.eq(LogDataType.TEXT),
+                                EasyMock.anyObject()))
+                .andReturn(loggedFile);
+        mMockLogSaverListener.setLogSaver(mMockLogSaver);
+        // mMockLogSaverListener should receive the testLogSaved call even from the module
+        mMockLogSaverListener.testLogSaved(
+                EasyMock.eq("testlogclass"),
+                EasyMock.eq(LogDataType.TEXT),
+                EasyMock.anyObject(),
+                EasyMock.eq(loggedFile));
+
+        // Simulate how the invoker actually put the log saver
+        replayMocks();
+        LogSaverResultForwarder forwarder =
+                new LogSaverResultForwarder(mMockLogSaver, Arrays.asList(mMockLogSaverListener));
+        mModule.run(forwarder);
         verifyMocks();
     }
 }

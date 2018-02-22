@@ -18,13 +18,14 @@ package com.android.tradefed.testtype.suite;
 import com.android.ddmlib.Log.LogLevel;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.result.CollectingTestListener;
+import com.android.tradefed.result.ILogSaverListener;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.InputStreamSource;
 import com.android.tradefed.result.LogDataType;
+import com.android.tradefed.result.LogFile;
 import com.android.tradefed.result.TestDescription;
 import com.android.tradefed.result.TestRunResult;
 import com.android.tradefed.testtype.IRemoteTest;
-
 import java.util.Map;
 
 /**
@@ -33,23 +34,17 @@ import java.util.Map;
  */
 public class ModuleListener extends CollectingTestListener {
 
-    private ITestInvocationListener mListener;
     private int mExpectedTestCount = 0;
     private boolean mSkip = false;
     private boolean mTestFailed = false;
     private int mTestsRan = 1;
+    private ITestInvocationListener mMainListener;
 
-    /** Constructor. Accept the original listener to forward testLog callback. */
+    /** Constructor. */
     public ModuleListener(ITestInvocationListener listener) {
-        mListener = listener;
+        mMainListener = listener;
         setIsAggregrateMetrics(true);
-    }
-
-    /** {@inheritDoc} */
-    @Override
-    public void testLog(String name, LogDataType type, InputStreamSource stream) {
-        CLog.d("ModuleListener.testLog(%s, %s, %s)", name, type.toString(), stream.toString());
-        mListener.testLog(name, type, stream);
+        setStoreLoggedFileInfo(true);
     }
 
     /**
@@ -138,5 +133,18 @@ public class ModuleListener extends CollectingTestListener {
     /** Whether or not to mark all the test cases skipped. */
     public void setMarkTestsSkipped(boolean skip) {
         mSkip = skip;
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public void testLogSaved(
+            String dataName, LogDataType dataType, InputStreamSource dataStream, LogFile logFile) {
+        // Forward to CollectingTestListener to store the logs
+        super.testLogSaved(dataName, dataType, dataStream, logFile);
+        // Forward to the main listener so logs are properly reported to the end result_reporters.
+        if (mMainListener instanceof ILogSaverListener) {
+            ((ILogSaverListener) mMainListener)
+                    .testLogSaved(dataName, dataType, dataStream, logFile);
+        }
     }
 }
