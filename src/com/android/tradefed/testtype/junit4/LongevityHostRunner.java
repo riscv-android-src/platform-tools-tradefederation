@@ -34,6 +34,7 @@ import com.android.tradefed.testtype.IInvocationContextReceiver;
 import com.android.tradefed.testtype.IMultiDeviceTest;
 import com.android.tradefed.testtype.ISetOptionReceiver;
 import com.android.tradefed.testtype.junit4.builder.DeviceJUnit4ClassRunnerBuilder;
+import com.android.tradefed.util.TimeVal;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
@@ -63,6 +64,7 @@ public class LongevityHostRunner extends Runner
                 IInvocationContextReceiver,
                 ISetOptionReceiver {
     static final String ITERATIONS_OPTION = "iterations";
+    static final String TOTAL_TIMEOUT_OPTION = "total-timeout";
 
     private ITestDevice mDevice;
     private IBuildInfo mBuildInfo;
@@ -78,6 +80,13 @@ public class LongevityHostRunner extends Runner
         description = "The number of times to repeat the tests in this suite."
     )
     private int mIterations = 1;
+
+    @Option(
+        name = TOTAL_TIMEOUT_OPTION,
+        description = "The overall timeout for this suite.",
+        isTimeVal = true
+    )
+    private long mTotalTimeoutMsec = 30 * 60 * 1000; // 30 min
 
     private Class<?> mSuiteKlass;
 
@@ -124,6 +133,8 @@ public class LongevityHostRunner extends Runner
         // Note: *TS does not have a convenient mechanism for sending options to test runners. To
         // get around that issue, this runner will also pull any options intended for tests that
         // match the runner options and override it's own options with these.
+        //
+        // TODO: Remove this code when better option passing is available.
         Iterator<String> iterator = mKeyValueOptions.iterator();
         while (iterator.hasNext()) {
             String kvPair = iterator.next();
@@ -137,12 +148,23 @@ public class LongevityHostRunner extends Runner
                             String.format(
                                     "Malformed input, %s, should be iterations:<int>.", kvPair));
                 }
-                continue;
+            } else if (kvPair.contains(TOTAL_TIMEOUT_OPTION)) {
+                try {
+                    mTotalTimeoutMsec = TimeVal.fromString(kvPair.split(":")[1]);
+                    // Remove this from options passed down, due to aggressive unused option errors.
+                    iterator.remove();
+                } catch (ArrayIndexOutOfBoundsException | NumberFormatException e) {
+                    throw new RuntimeException(
+                            String.format(
+                                    "Malformed input, %s, should be total-timeout:<long|time>.",
+                                    kvPair));
+                }
             }
         }
         // Construct runner option map from TF options.
         Map<String, String> options = new HashMap<>();
-        options.put("iterations", String.valueOf(mIterations));
+        options.put(ITERATIONS_OPTION, String.valueOf(mIterations));
+        options.put(TOTAL_TIMEOUT_OPTION, String.valueOf(mTotalTimeoutMsec));
         return options;
     }
 

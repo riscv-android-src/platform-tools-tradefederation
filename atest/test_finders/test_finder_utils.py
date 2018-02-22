@@ -62,6 +62,25 @@ _CTS_JAR = "cts-tradefed"
 # Setup script for device perf tests.
 _PERF_SETUP_LABEL = 'perf-setup.sh'
 
+# XML tags.
+_XML_NAME = 'name'
+_XML_VALUE = 'value'
+
+# VTS xml parsing constants.
+_VTS_TEST_MODULE = 'test-module-name'
+_VTS_BINARY_SRC = 'binary-test-source'
+_VTS_PUSH_GROUP = 'push-group'
+_VTS_PUSH = 'push'
+_VTS_BINARY_SRC_DELIM = '::'
+_VTS_PUSH_DELIM = '->'
+_VTS_PUSH_DIR = os.path.join(os.environ.get(constants.ANDROID_BUILD_TOP),
+                             'test', 'vts', 'tools', 'vts-tradefed', 'res',
+                             'push_groups')
+_VTS_PUSH_SUFFIX = '.push'
+_VTS_BITNESS = 'append-bitness'
+_VTS_BITNESS_TRUE = 'true'
+_VTS_BITNESS_32 = '32'
+_VTS_BITNESS_64 = '64'
 
 # pylint: disable=inconsistent-return-statements
 def split_methods(user_input):
@@ -252,7 +271,7 @@ def get_targets_from_xml_root(xml_root, module_info):
     option_tags = xml_root.findall('.//option')
     for tag in option_tags:
         target_to_add = None
-        value = tag.attrib['value'].strip()
+        value = tag.attrib[_XML_VALUE].strip()
         if _APK_RE.match(value):
             target_to_add = value[:-len('.apk')]
         elif _PERF_SETUP_LABEL in value:
@@ -276,6 +295,110 @@ def get_targets_from_xml_root(xml_root, module_info):
     logging.debug('Targets found in config file: %s', targets)
     return targets
 
+def _get_vts_push_group_targets(push_file, rel_out_dir):
+    """Retrieve vts push group build targets.
+
+    A push group file is a file that list out test dependencies and other push
+    group files. Go through the push file and gather all the test deps we need.
+
+    Args:
+        push_file: Name of the push file in the VTS
+        rel_out_dir: Abs path to the out dir to help create vts build targets.
+
+    Returns:
+        Set of string which represent build targets.
+    """
+    targets = set()
+    full_push_file_path = os.path.join(_VTS_PUSH_DIR, push_file)
+    # pylint: disable=invalid-name
+    with open(full_push_file_path) as f:
+        for line in f:
+            target = line.strip()
+            # Skip empty lines.
+            if not target:
+                continue
+
+            # This is a push file, get the targets from it.
+            if target.endswith(_VTS_PUSH_SUFFIX):
+                targets |= _get_vts_push_group_targets(line.strip(),
+                                                       rel_out_dir)
+                continue
+            sanitized_target = target.split(_VTS_PUSH_DELIM)[0]
+            targets.add(os.path.join(rel_out_dir, sanitized_target))
+    return targets
+
+def _specified_bitness(xml_root):
+    """Check if the xml file contains the option append-bitness.
+
+    Args:
+        xml_file: abs path to xml file.
+
+    Returns:
+        True if xml specifies to append-bitness, False otherwise.
+    """
+    option_tags = xml_root.findall('.//option')
+    for tag in option_tags:
+        value = tag.attrib[_XML_VALUE].strip()
+        name = tag.attrib[_XML_NAME].strip()
+        if name == _VTS_BITNESS and value == _VTS_BITNESS_TRUE:
+            return True
+    return False
+
+def get_targets_from_vts_xml(xml_file, rel_out_dir, module_info):
+    """Parse a vts xml for test dependencies we need to build.
+
+    We have a separate vts parsing function because we make a big assumption
+    on the targets (the way they're formatted and what they represent) and we
+    also create these build targets in a very special manner as well.
+    The 4 options we're looking for are:
+      - binary-test-source
+      - push-group
+      - push
+      - test-module-name
+
+    Args:
+        module_info: ModuleInfo class used to verify targets are valid modules.
+        rel_out_dir: Abs path to the out dir to help create vts build targets.
+        xml_file: abs path to xml file.
+
+    Returns:
+        A set of build targets based on the signals found in the xml file.
+    """
+    xml_root = ET.parse(xml_file).getroot()
+    targets = set()
+    option_tags = xml_root.findall('.//option')
+    for tag in option_tags:
+        value = tag.attrib[_XML_VALUE].strip()
+        name = tag.attrib[_XML_NAME].strip()
+        if name == _VTS_TEST_MODULE:
+            if module_info.is_module(value):
+                targets.add(value)
+            else:
+                logging.warning('vts test module (%s) not present in module '
+                                'info, skipping build', value)
+        elif name == _VTS_BINARY_SRC:
+            # Parse out the out artifact, looks like _{32,64}bit::DATA/blah.
+            # We'll grab everything after the double semi-colon and prepend
+            # the rel_out_dir to the build target.
+            bin_target = value[value.find(_VTS_BINARY_SRC_DELIM) +
+                               len(_VTS_BINARY_SRC_DELIM):]
+            targets.add(os.path.join(rel_out_dir, bin_target))
+        elif name == _VTS_PUSH_GROUP:
+            # Look up the push file and parse out build artifacts (as well as
+            # other push group files to parse).
+            targets |= _get_vts_push_group_targets(value, rel_out_dir)
+        elif name == _VTS_PUSH:
+            # Parse out the build artifact directly.
+            push_target = value.split(_VTS_PUSH_DELIM)[0]
+            # If the config specified append-bitness, append the bits suffixes
+            # to the target.
+            if _specified_bitness(xml_root):
+                targets.add(os.path.join(rel_out_dir, push_target + _VTS_BITNESS_32))
+                targets.add(os.path.join(rel_out_dir, push_target + _VTS_BITNESS_64))
+            else:
+                targets.add(os.path.join(rel_out_dir, push_target))
+    logging.debug('Targets found in config file: %s', targets)
+    return targets
 
 def get_dir_path_and_filename(path):
     """Return tuple of dir and file name from given path.

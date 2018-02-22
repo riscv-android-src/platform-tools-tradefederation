@@ -31,6 +31,22 @@ from test_finders import test_finder_utils
 CLASS_DIR = 'foo/bar/jank/src/android/jank/cts/ui'
 FIND_TWO = uc.ROOT + 'other/dir/test.java\n' + uc.FIND_ONE
 XML_TARGETS = {'CtsJankDeviceTestCases', 'perf-setup.sh', 'cts-tradefed'}
+VTS_XML = 'VtsAndroidTest.xml'
+VTS_BITNESS_XML = 'VtsBitnessAndroidTest.xml'
+VTS_PUSH_DIR = 'vts_push_files'
+VTS_XML_TARGETS = {'VtsTestName',
+                   'DATA/nativetest/vts_treble_vintf_test/vts_treble_vintf_test',
+                   'DATA/nativetest64/vts_treble_vintf_test/vts_treble_vintf_test',
+                   'DATA/lib/libhidl-gen-hash.so',
+                   'DATA/lib64/libhidl-gen-hash.so',
+                   'hal-hidl-hash/frameworks/hardware/interfaces/current.txt',
+                   'hal-hidl-hash/hardware/interfaces/current.txt',
+                   'hal-hidl-hash/system/hardware/interfaces/current.txt',
+                   'hal-hidl-hash/system/libhidl/transport/current.txt',
+                   'push_file1_target1',
+                   'push_file1_target2',
+                   'push_file2_target1',
+                   'push_file2_target2'}
 
 
 #pylint: disable=protected-access
@@ -122,6 +138,24 @@ class TestFinderUtilsUnittests(unittest.TestCase):
             self,
             test_finder_utils.get_targets_from_xml(xml_file, mock_module_info),
             XML_TARGETS)
+
+    @mock.patch.object(test_finder_utils, '_VTS_PUSH_DIR',
+                       os.path.join(os.path.dirname(os.path.realpath(__file__)),
+                                    '..', uc.TEST_DATA_DIR, VTS_PUSH_DIR))
+    def test_get_targets_from_vts_xml(self):
+        """Test get_targets_from_xml method."""
+        # Mocking Etree is near impossible, so use a real file, but mock out
+        # ModuleInfo,
+        mock_module_info = mock.Mock(spec=module_info.ModuleInfo)
+        mock_module_info.is_module.return_value = True
+        xml_file = os.path.join(
+            os.path.dirname(os.path.realpath(__file__)), '..', uc.TEST_DATA_DIR,
+            VTS_XML)
+        unittest_utils.assert_strict_equal(
+            self,
+            test_finder_utils.get_targets_from_vts_xml(xml_file, '',
+                                                       mock_module_info),
+            VTS_XML_TARGETS)
 
 
 if __name__ == '__main__':

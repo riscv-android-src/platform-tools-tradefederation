@@ -27,6 +27,7 @@ import test_info
 import test_finder_base
 import test_finder_utils
 from test_runners import atest_tf_test_runner
+from test_runners import vts_tf_test_runner
 
 # Parse package name from the package declaration line of a java file.
 # Group matches "foo.bar" of line "package foo.bar;"
@@ -44,6 +45,7 @@ class ModuleFinder(test_finder_base.TestFinderBase):
     """Module finder class."""
     NAME = 'MODULE'
     _TEST_RUNNER = atest_tf_test_runner.AtestTradefedTestRunner.NAME
+    _VTS_TEST_RUNNER = vts_tf_test_runner.VtsTradefedTestRunner.NAME
 
     def __init__(self, module_info=None):
         super(ModuleFinder, self).__init__()
@@ -58,6 +60,36 @@ class ModuleFinder(test_finder_base.TestFinderBase):
         suites = [suite for suite in suites if suite not in _SUITES_TO_IGNORE]
         return len(suites) == 1 and 'vts' in suites
 
+    def _update_to_vts_test_info(self, test):
+        """Fill in the fields with vts specific info.
+
+        We need to update the runner to use the vts runner and also find the
+        test specific depedencies
+
+        Args:
+            test: TestInfo to update with vts specific details.
+
+        Return:
+            TestInfo that is ready for the vts test runner.
+        """
+        test.test_runner = self._VTS_TEST_RUNNER
+        config_file = os.path.join(self.root_dir,
+                                   test.data[constants.TI_REL_CONFIG])
+        # Need to get out dir (special logic is to account for custom out dirs).
+        # The out dir is used to construct the build targets for the test deps.
+        out_dir = os.environ.get(constants.ANDROID_HOST_OUT)
+        custom_out_dir = os.environ.get(constants.ANDROID_OUT_DIR)
+        # If we're not an absolute custom out dir, get relative out dir path.
+        if custom_out_dir is None or not os.path.isabs(custom_out_dir):
+            out_dir = os.path.relpath(out_dir, self.root_dir)
+        vts_out_dir = os.path.join(out_dir, 'vts', 'android-vts', 'testcases')
+
+        # Add in vts test build targets.
+        test.build_targets = test_finder_utils.get_targets_from_vts_xml(
+            config_file, vts_out_dir, self.module_info)
+        test.build_targets.add('vts-test-core')
+        return test
+
     def _process_test_info(self, test):
         """Process the test info and return some fields updated/changed.
 
@@ -69,14 +101,10 @@ class ModuleFinder(test_finder_base.TestFinderBase):
 
         Return:
             TestInfo that has been modified as needed.
-
-        Raises:
-            atest_error.UnsupportedModuleTestError if the test found is a vts
-            test.
         """
         # Check if this is only a vts module.
         if self._is_vts_module(test.test_name):
-            raise atest_error.UnsupportedModuleTestError('no support for vts tests')
+            return self._update_to_vts_test_info(test)
         return test
 
     def _is_auto_gen_test_config(self, module_name):

@@ -474,10 +474,6 @@ public abstract class BaseHostJUnit4Test
                         maxInstrumentationTimeoutMs);
         mLatestInstruRes = runResult;
         printTestResult(runResult);
-        // assume not all tests have skipped (and rethrow AssumptionViolatedException if so)
-        Assume.assumeTrue(
-                runResult.getNumTests()
-                        != runResult.getNumTestsInState(TestStatus.ASSUMPTION_FAILURE));
         if (checkResults) {
             if (runResult.isRunFailure()) {
                 throw new AssertionError(
@@ -502,6 +498,10 @@ public abstract class BaseHostJUnit4Test
                 }
                 throw new AssertionError(errorBuilder.toString());
             }
+            // Assume not all tests have skipped (and rethrow AssumptionViolatedException if so)
+            Assume.assumeTrue(
+                    runResult.getNumTests()
+                            != runResult.getNumTestsInState(TestStatus.ASSUMPTION_FAILURE));
         }
         return !runResult.hasFailedTests() && runResult.getNumTests() > 0;
     }

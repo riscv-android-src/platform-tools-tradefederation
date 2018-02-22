@@ -18,6 +18,7 @@ package com.android.tradefed.device;
 import com.android.ddmlib.AdbCommandRejectedException;
 import com.android.ddmlib.IDevice;
 import com.android.ddmlib.InstallException;
+import com.android.ddmlib.InstallReceiver;
 import com.android.ddmlib.RawImage;
 import com.android.ddmlib.ShellCommandUnresponsiveException;
 import com.android.ddmlib.SyncException;
@@ -95,6 +96,11 @@ public class TestDevice extends NativeDevice {
     /** Time given to a file to be dumped on device side */
     private static final long DUMPHEAP_TIME = 5000l;
 
+    /** Timeout in minutes for the package installation */
+    static final long INSTALL_TIMEOUT_MINUTES = 4;
+    /** Max timeout to output for package installation */
+    static final long INSTALL_TIMEOUT_TO_OUTPUT_MINUTES = 3;
+
     /**
      * @param device
      * @param stateMonitor
@@ -119,22 +125,49 @@ public class TestDevice extends NativeDevice {
                     throws DeviceNotAvailableException {
         // use array to store response, so it can be returned to caller
         final String[] response = new String[1];
-        DeviceAction installAction = new DeviceAction() {
-            @Override
-            public boolean run() throws InstallException {
-                try {
-                    getIDevice().installPackage(packageFile.getAbsolutePath(),
-                            reinstall, extraArgs.toArray(new String[]{}));
-                    response[0] = null;
-                } catch (InstallException e) {
-                    response[0] = e.getMessage();
-                }
-                return response[0] == null;
-            }
-        };
+        DeviceAction installAction =
+                new DeviceAction() {
+                    @Override
+                    public boolean run() throws InstallException {
+                        try {
+                            InstallReceiver receiver = createInstallReceiver();
+                            getIDevice()
+                                    .installPackage(
+                                            packageFile.getAbsolutePath(),
+                                            reinstall,
+                                            receiver,
+                                            INSTALL_TIMEOUT_MINUTES,
+                                            INSTALL_TIMEOUT_TO_OUTPUT_MINUTES,
+                                            TimeUnit.MINUTES,
+                                            extraArgs.toArray(new String[] {}));
+                            if (receiver.isSuccessfullyCompleted()) {
+                                response[0] = null;
+                            } else if (receiver.getErrorMessage() == null) {
+                                response[0] =
+                                        String.format(
+                                                "Installation of %s timed out",
+                                                packageFile.getAbsolutePath());
+                            } else {
+                                response[0] = receiver.getErrorMessage();
+                            }
+                        } catch (InstallException e) {
+                            response[0] = e.getMessage();
+                        }
+                        return response[0] == null;
+                    }
+                };
         performDeviceAction(String.format("install %s", packageFile.getAbsolutePath()),
                 installAction, MAX_RETRY_ATTEMPTS);
         return response[0];
+    }
+
+    /**
+     * Creates and return an {@link InstallReceiver} for {@link #internalInstallPackage(File,
+     * boolean, List)} and {@link #installPackage(File, File, boolean, String...)} testing.
+     */
+    @VisibleForTesting
+    InstallReceiver createInstallReceiver() {
+        return new InstallReceiver();
     }
 
     /**
@@ -204,34 +237,55 @@ public class TestDevice extends NativeDevice {
             final boolean reinstall, final String... extraArgs) throws DeviceNotAvailableException {
         // use array to store response, so it can be returned to caller
         final String[] response = new String[1];
-        DeviceAction installAction = new DeviceAction() {
-            @Override
-            public boolean run() throws InstallException, SyncException, IOException,
-            TimeoutException, AdbCommandRejectedException {
-                // TODO: create a getIDevice().installPackage(File, File...) method when the dist
-                // cert functionality is ready to be open sourced
-                String remotePackagePath = getIDevice().syncPackageToDevice(
-                        packageFile.getAbsolutePath());
-                String remoteCertPath = getIDevice().syncPackageToDevice(
-                        certFile.getAbsolutePath());
-                // trick installRemotePackage into issuing a 'pm install <apk> <cert>' command,
-                // by adding apk path to extraArgs, and using cert as the 'apk file'
-                String[] newExtraArgs = new String[extraArgs.length + 1];
-                System.arraycopy(extraArgs, 0, newExtraArgs, 0, extraArgs.length);
-                newExtraArgs[newExtraArgs.length - 1] = String.format("\"%s\"", remotePackagePath);
-                try {
-                     getIDevice().installRemotePackage(remoteCertPath, reinstall,
-                            newExtraArgs);
-                     response[0] = null;
-                } catch (InstallException e) {
-                    response[0] = e.getMessage();
-                } finally {
-                    getIDevice().removeRemotePackage(remotePackagePath);
-                    getIDevice().removeRemotePackage(remoteCertPath);
-                }
-                return true;
-            }
-        };
+        DeviceAction installAction =
+                new DeviceAction() {
+                    @Override
+                    public boolean run()
+                            throws InstallException, SyncException, IOException, TimeoutException,
+                                    AdbCommandRejectedException {
+                        // TODO: create a getIDevice().installPackage(File, File...) method when the
+                        // dist cert functionality is ready to be open sourced
+                        String remotePackagePath =
+                                getIDevice().syncPackageToDevice(packageFile.getAbsolutePath());
+                        String remoteCertPath =
+                                getIDevice().syncPackageToDevice(certFile.getAbsolutePath());
+                        // trick installRemotePackage into issuing a 'pm install <apk> <cert>'
+                        // command, by adding apk path to extraArgs, and using cert as the
+                        // 'apk file'.
+                        String[] newExtraArgs = new String[extraArgs.length + 1];
+                        System.arraycopy(extraArgs, 0, newExtraArgs, 0, extraArgs.length);
+                        newExtraArgs[newExtraArgs.length - 1] =
+                                String.format("\"%s\"", remotePackagePath);
+                        try {
+                            InstallReceiver receiver = createInstallReceiver();
+                            getIDevice()
+                                    .installRemotePackage(
+                                            remoteCertPath,
+                                            reinstall,
+                                            receiver,
+                                            INSTALL_TIMEOUT_MINUTES,
+                                            INSTALL_TIMEOUT_TO_OUTPUT_MINUTES,
+                                            TimeUnit.MINUTES,
+                                            newExtraArgs);
+                            if (receiver.isSuccessfullyCompleted()) {
+                                response[0] = null;
+                            } else if (receiver.getErrorMessage() == null) {
+                                response[0] =
+                                        String.format(
+                                                "Installation of %s timed out.",
+                                                packageFile.getAbsolutePath());
+                            } else {
+                                response[0] = receiver.getErrorMessage();
+                            }
+                        } catch (InstallException e) {
+                            response[0] = e.getMessage();
+                        } finally {
+                            getIDevice().removeRemotePackage(remotePackagePath);
+                            getIDevice().removeRemotePackage(remoteCertPath);
+                        }
+                        return true;
+                    }
+                };
         performDeviceAction(String.format("install %s", packageFile.getAbsolutePath()),
                 installAction, MAX_RETRY_ATTEMPTS);
         return response[0];

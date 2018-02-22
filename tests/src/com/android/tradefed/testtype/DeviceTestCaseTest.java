@@ -15,6 +15,7 @@
  */
 package com.android.tradefed.testtype;
 
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.fail;
 
 import com.android.tradefed.device.DeviceNotAvailableException;
@@ -23,6 +24,7 @@ import com.android.tradefed.result.TestDescription;
 
 import junit.framework.TestCase;
 
+import org.easymock.Capture;
 import org.easymock.EasyMock;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -32,6 +34,7 @@ import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 /** Unit tests for {@link DeviceTestCase}. */
@@ -179,6 +182,30 @@ public class DeviceTestCaseTest {
 
         test.run(listener);
         EasyMock.verify(listener);
+    }
+
+    /** Verify that we properly carry the annotations of the methods. */
+    @Test
+    public void testRun_checkAnnotation() throws Exception {
+        MockAnnotatedTest test = new MockAnnotatedTest();
+        ITestInvocationListener listener = EasyMock.createMock(ITestInvocationListener.class);
+        listener.testRunStarted(MockAnnotatedTest.class.getName(), 2);
+        Capture<TestDescription> capture = new Capture<>();
+        listener.testStarted(EasyMock.capture(capture));
+        listener.testEnded(EasyMock.capture(capture), (Map<String, String>) EasyMock.anyObject());
+        listener.testStarted(EasyMock.capture(capture));
+        listener.testEnded(EasyMock.capture(capture), (Map<String, String>) EasyMock.anyObject());
+        listener.testRunEnded(EasyMock.anyLong(), (Map<String, String>) EasyMock.anyObject());
+        EasyMock.replay(listener);
+
+        test.run(listener);
+        EasyMock.verify(listener);
+
+        List<TestDescription> descriptions = capture.getValues();
+        // Ensure we properly capture the annotations for both methods.
+        for (TestDescription desc : descriptions) {
+            assertFalse(desc.getAnnotations().isEmpty());
+        }
     }
 
     /**

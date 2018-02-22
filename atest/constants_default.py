@@ -45,6 +45,8 @@ MODULE_CONFIG = 'AndroidTest.xml'
 # Env constants
 ANDROID_BUILD_TOP = 'ANDROID_BUILD_TOP'
 ANDROID_OUT = 'OUT'
+ANDROID_OUT_DIR = 'OUT_DIR'
+ANDROID_HOST_OUT = 'ANDROID_HOST_OUT'
 
 # Test Info data keys
 TI_FILTER = 'filter'

@@ -19,6 +19,7 @@ import com.android.ddmlib.AdbCommandRejectedException;
 import com.android.ddmlib.IDevice;
 import com.android.ddmlib.IDevice.DeviceState;
 import com.android.ddmlib.IShellOutputReceiver;
+import com.android.ddmlib.InstallReceiver;
 import com.android.ddmlib.RawImage;
 import com.android.ddmlib.ShellCommandUnresponsiveException;
 import com.android.ddmlib.TimeoutException;
@@ -1220,6 +1221,15 @@ public class TestDeviceTest extends TestCase {
      * {@link TestDevice#installPackage(File, File, boolean, String...)}.
      */
     public void testInstallPackages() throws Exception {
+        mTestDevice =
+                new TestableTestDevice() {
+                    @Override
+                    InstallReceiver createInstallReceiver() {
+                        InstallReceiver receiver = new InstallReceiver();
+                        receiver.processNewLines(new String[] {"Success"});
+                        return receiver;
+                    }
+                };
         final String certFile = "foo.dc";
         final String apkFile = "foo.apk";
         EasyMock.expect(mMockIDevice.syncPackageToDevice(EasyMock.contains(certFile))).andReturn(
@@ -1227,8 +1237,15 @@ public class TestDeviceTest extends TestCase {
         EasyMock.expect(mMockIDevice.syncPackageToDevice(EasyMock.contains(apkFile))).andReturn(
                 apkFile);
         // expect apk path to be passed as extra arg
-        mMockIDevice.installRemotePackage(EasyMock.eq(certFile), EasyMock.eq(true),
-                EasyMock.eq("-l"), EasyMock.contains(apkFile));
+        mMockIDevice.installRemotePackage(
+                EasyMock.eq(certFile),
+                EasyMock.eq(true),
+                EasyMock.anyObject(),
+                EasyMock.eq(TestDevice.INSTALL_TIMEOUT_MINUTES),
+                EasyMock.eq(TestDevice.INSTALL_TIMEOUT_TO_OUTPUT_MINUTES),
+                EasyMock.eq(TimeUnit.MINUTES),
+                EasyMock.eq("-l"),
+                EasyMock.contains(apkFile));
         EasyMock.expectLastCall();
         mMockIDevice.removeRemotePackage(certFile);
         mMockIDevice.removeRemotePackage(apkFile);
@@ -1319,9 +1336,24 @@ public class TestDeviceTest extends TestCase {
      * @throws Exception
      */
     public void testInstallPackage_default_runtimePermissionNotSupported() throws Exception {
+        mTestDevice =
+                new TestableTestDevice() {
+                    @Override
+                    InstallReceiver createInstallReceiver() {
+                        InstallReceiver receiver = new InstallReceiver();
+                        receiver.processNewLines(new String[] {"Success"});
+                        return receiver;
+                    }
+                };
         final String apkFile = "foo.apk";
         setMockIDeviceRuntimePermissionNotSupported();
-        mMockIDevice.installPackage(EasyMock.contains(apkFile), EasyMock.eq(true));
+        mMockIDevice.installPackage(
+                EasyMock.contains(apkFile),
+                EasyMock.eq(true),
+                EasyMock.anyObject(),
+                EasyMock.eq(TestDevice.INSTALL_TIMEOUT_MINUTES),
+                EasyMock.eq(TestDevice.INSTALL_TIMEOUT_TO_OUTPUT_MINUTES),
+                EasyMock.eq(TimeUnit.MINUTES));
         EasyMock.expectLastCall();
         replayMocks();
         assertNull(mTestDevice.installPackage(new File(apkFile), true));
@@ -1332,9 +1364,24 @@ public class TestDeviceTest extends TestCase {
      * @throws Exception
      */
     public void testInstallPackage_default_runtimePermissionSupported() throws Exception {
+        mTestDevice =
+                new TestableTestDevice() {
+                    @Override
+                    InstallReceiver createInstallReceiver() {
+                        InstallReceiver receiver = new InstallReceiver();
+                        receiver.processNewLines(new String[] {"Success"});
+                        return receiver;
+                    }
+                };
         final String apkFile = "foo.apk";
         setMockIDeviceRuntimePermissionSupported();
-        mMockIDevice.installPackage(EasyMock.contains(apkFile), EasyMock.eq(true),
+        mMockIDevice.installPackage(
+                EasyMock.contains(apkFile),
+                EasyMock.eq(true),
+                EasyMock.anyObject(),
+                EasyMock.eq(TestDevice.INSTALL_TIMEOUT_MINUTES),
+                EasyMock.eq(TestDevice.INSTALL_TIMEOUT_TO_OUTPUT_MINUTES),
+                EasyMock.eq(TimeUnit.MINUTES),
                 EasyMock.eq("-g"));
         EasyMock.expectLastCall();
         replayMocks();
@@ -1347,11 +1394,27 @@ public class TestDeviceTest extends TestCase {
      * @throws Exception
      */
     public void testinstallPackageForUser_default_runtimePermissionNotSupported() throws Exception {
+        mTestDevice =
+                new TestableTestDevice() {
+                    @Override
+                    InstallReceiver createInstallReceiver() {
+                        InstallReceiver receiver = new InstallReceiver();
+                        receiver.processNewLines(new String[] {"Success"});
+                        return receiver;
+                    }
+                };
         final String apkFile = "foo.apk";
         int uid = 123;
         setMockIDeviceRuntimePermissionNotSupported();
-        mMockIDevice.installPackage(EasyMock.contains(apkFile), EasyMock.eq(true),
-                EasyMock.eq("--user"), EasyMock.eq(Integer.toString(uid)));
+        mMockIDevice.installPackage(
+                EasyMock.contains(apkFile),
+                EasyMock.eq(true),
+                EasyMock.anyObject(),
+                EasyMock.eq(TestDevice.INSTALL_TIMEOUT_MINUTES),
+                EasyMock.eq(TestDevice.INSTALL_TIMEOUT_TO_OUTPUT_MINUTES),
+                EasyMock.eq(TimeUnit.MINUTES),
+                EasyMock.eq("--user"),
+                EasyMock.eq(Integer.toString(uid)));
         EasyMock.expectLastCall();
         replayMocks();
         assertNull(mTestDevice.installPackageForUser(new File(apkFile), true, uid));
@@ -1363,11 +1426,28 @@ public class TestDeviceTest extends TestCase {
      * @throws Exception
      */
     public void testinstallPackageForUser_default_runtimePermissionSupported() throws Exception {
+        mTestDevice =
+                new TestableTestDevice() {
+                    @Override
+                    InstallReceiver createInstallReceiver() {
+                        InstallReceiver receiver = new InstallReceiver();
+                        receiver.processNewLines(new String[] {"Success"});
+                        return receiver;
+                    }
+                };
         final String apkFile = "foo.apk";
         int uid = 123;
         setMockIDeviceRuntimePermissionSupported();
-        mMockIDevice.installPackage(EasyMock.contains(apkFile), EasyMock.eq(true),
-                EasyMock.eq("-g"), EasyMock.eq("--user"), EasyMock.eq(Integer.toString(uid)));
+        mMockIDevice.installPackage(
+                EasyMock.contains(apkFile),
+                EasyMock.eq(true),
+                EasyMock.anyObject(),
+                EasyMock.eq(TestDevice.INSTALL_TIMEOUT_MINUTES),
+                EasyMock.eq(TestDevice.INSTALL_TIMEOUT_TO_OUTPUT_MINUTES),
+                EasyMock.eq(TimeUnit.MINUTES),
+                EasyMock.eq("-g"),
+                EasyMock.eq("--user"),
+                EasyMock.eq(Integer.toString(uid)));
         EasyMock.expectLastCall();
         replayMocks();
         assertNull(mTestDevice.installPackageForUser(new File(apkFile), true, uid));
@@ -1397,13 +1477,56 @@ public class TestDeviceTest extends TestCase {
      * @throws Exception
      */
     public void testInstallPackage_grant_runtimePermissionSupported() throws Exception {
+        mTestDevice =
+                new TestableTestDevice() {
+                    @Override
+                    InstallReceiver createInstallReceiver() {
+                        InstallReceiver receiver = new InstallReceiver();
+                        receiver.processNewLines(new String[] {"Success"});
+                        return receiver;
+                    }
+                };
         final String apkFile = "foo.apk";
         setMockIDeviceRuntimePermissionSupported();
-        mMockIDevice.installPackage(EasyMock.contains(apkFile), EasyMock.eq(true),
+        mMockIDevice.installPackage(
+                EasyMock.contains(apkFile),
+                EasyMock.eq(true),
+                EasyMock.anyObject(),
+                EasyMock.eq(TestDevice.INSTALL_TIMEOUT_MINUTES),
+                EasyMock.eq(TestDevice.INSTALL_TIMEOUT_TO_OUTPUT_MINUTES),
+                EasyMock.eq(TimeUnit.MINUTES),
                 EasyMock.eq("-g"));
         EasyMock.expectLastCall();
         replayMocks();
         assertNull(mTestDevice.installPackage(new File(apkFile), true, true));
+    }
+
+    /** Test installing an apk that times out without any messages. */
+    public void testInstallPackage_timeout() throws Exception {
+        mTestDevice =
+                new TestableTestDevice() {
+                    @Override
+                    InstallReceiver createInstallReceiver() {
+                        InstallReceiver receiver = new InstallReceiver();
+                        receiver.processNewLines(new String[] {});
+                        return receiver;
+                    }
+                };
+        final String apkFile = "foo.apk";
+        setMockIDeviceRuntimePermissionSupported();
+        mMockIDevice.installPackage(
+                EasyMock.contains(apkFile),
+                EasyMock.eq(true),
+                EasyMock.anyObject(),
+                EasyMock.eq(TestDevice.INSTALL_TIMEOUT_MINUTES),
+                EasyMock.eq(TestDevice.INSTALL_TIMEOUT_TO_OUTPUT_MINUTES),
+                EasyMock.eq(TimeUnit.MINUTES),
+                EasyMock.eq("-g"));
+        EasyMock.expectLastCall();
+        replayMocks();
+        assertEquals(
+                String.format("Installation of %s timed out", new File(apkFile).getAbsolutePath()),
+                mTestDevice.installPackage(new File(apkFile), true, true));
     }
 
     /**
@@ -1412,9 +1535,24 @@ public class TestDeviceTest extends TestCase {
      * @throws Exception
      */
     public void testInstallPackage_noGrant_runtimePermissionSupported() throws Exception {
+        mTestDevice =
+                new TestableTestDevice() {
+                    @Override
+                    InstallReceiver createInstallReceiver() {
+                        InstallReceiver receiver = new InstallReceiver();
+                        receiver.processNewLines(new String[] {"Success"});
+                        return receiver;
+                    }
+                };
         final String apkFile = "foo.apk";
         setMockIDeviceRuntimePermissionSupported();
-        mMockIDevice.installPackage(EasyMock.contains(apkFile), EasyMock.eq(true));
+        mMockIDevice.installPackage(
+                EasyMock.contains(apkFile),
+                EasyMock.eq(true),
+                EasyMock.anyObject(),
+                EasyMock.eq(TestDevice.INSTALL_TIMEOUT_MINUTES),
+                EasyMock.eq(TestDevice.INSTALL_TIMEOUT_TO_OUTPUT_MINUTES),
+                EasyMock.eq(TimeUnit.MINUTES));
         EasyMock.expectLastCall();
         replayMocks();
         assertNull(mTestDevice.installPackage(new File(apkFile), true, false));
@@ -1444,11 +1582,28 @@ public class TestDeviceTest extends TestCase {
      * @throws Exception
      */
     public void testInstallPackageForUser_grant_runtimePermissionSupported() throws Exception {
+        mTestDevice =
+                new TestableTestDevice() {
+                    @Override
+                    InstallReceiver createInstallReceiver() {
+                        InstallReceiver receiver = new InstallReceiver();
+                        receiver.processNewLines(new String[] {"Success"});
+                        return receiver;
+                    }
+                };
         final String apkFile = "foo.apk";
         int uid = 123;
         setMockIDeviceRuntimePermissionSupported();
-        mMockIDevice.installPackage(EasyMock.contains(apkFile), EasyMock.eq(true),
-                EasyMock.eq("-g"), EasyMock.eq("--user"), EasyMock.eq(Integer.toString(uid)));
+        mMockIDevice.installPackage(
+                EasyMock.contains(apkFile),
+                EasyMock.eq(true),
+                EasyMock.anyObject(),
+                EasyMock.eq(TestDevice.INSTALL_TIMEOUT_MINUTES),
+                EasyMock.eq(TestDevice.INSTALL_TIMEOUT_TO_OUTPUT_MINUTES),
+                EasyMock.eq(TimeUnit.MINUTES),
+                EasyMock.eq("-g"),
+                EasyMock.eq("--user"),
+                EasyMock.eq(Integer.toString(uid)));
         EasyMock.expectLastCall();
         replayMocks();
         assertNull(mTestDevice.installPackageForUser(new File(apkFile), true, true, uid));
@@ -1460,11 +1615,27 @@ public class TestDeviceTest extends TestCase {
      * @throws Exception
      */
     public void testInstallPackageForUser_noGrant_runtimePermissionSupported() throws Exception {
+        mTestDevice =
+                new TestableTestDevice() {
+                    @Override
+                    InstallReceiver createInstallReceiver() {
+                        InstallReceiver receiver = new InstallReceiver();
+                        receiver.processNewLines(new String[] {"Success"});
+                        return receiver;
+                    }
+                };
         final String apkFile = "foo.apk";
         int uid = 123;
         setMockIDeviceRuntimePermissionSupported();
-        mMockIDevice.installPackage(EasyMock.contains(apkFile), EasyMock.eq(true),
-                EasyMock.eq("--user"), EasyMock.eq(Integer.toString(uid)));
+        mMockIDevice.installPackage(
+                EasyMock.contains(apkFile),
+                EasyMock.eq(true),
+                EasyMock.anyObject(),
+                EasyMock.eq(TestDevice.INSTALL_TIMEOUT_MINUTES),
+                EasyMock.eq(TestDevice.INSTALL_TIMEOUT_TO_OUTPUT_MINUTES),
+                EasyMock.eq(TimeUnit.MINUTES),
+                EasyMock.eq("--user"),
+                EasyMock.eq(Integer.toString(uid)));
         EasyMock.expectLastCall();
         replayMocks();
         assertNull(mTestDevice.installPackageForUser(new File(apkFile), true, false, uid));
