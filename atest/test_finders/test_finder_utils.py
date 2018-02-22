@@ -81,6 +81,8 @@ _VTS_BITNESS = 'append-bitness'
 _VTS_BITNESS_TRUE = 'true'
 _VTS_BITNESS_32 = '32'
 _VTS_BITNESS_64 = '64'
+# Matches 'DATA/target' in '_32bit::DATA/target'
+_VTS_BINARY_SRC_DELIM_RE = re.compile(r'.*::(?P<target>.*)$')
 
 # pylint: disable=inconsistent-return-statements
 def split_methods(user_input):
@@ -344,6 +346,35 @@ def _specified_bitness(xml_root):
             return True
     return False
 
+def _get_vts_binary_src_target(value, rel_out_dir):
+    """Parse out the vts binary src target.
+
+    The value can be in the following pattern:
+      - {_32bit,_64bit,_IPC32_32bit}::DATA/target (DATA/target)
+      - DATA/target->/data/target (DATA/target)
+      - out/host/linx-x86/bin/VtsSecuritySelinuxPolicyHostTest (the string as
+        is)
+
+    Args:
+        value: String of the XML option value to parse.
+        rel_out_dir: String path of out dir to prepend to target when required.
+
+    Returns:
+        String of the target to build.
+    """
+    # We'll assume right off the bat we can use the value as is and modify it if
+    # necessary, e.g. out/host/linux-x86/bin...
+    target = value
+    # _32bit::DATA/target
+    match = _VTS_BINARY_SRC_DELIM_RE.match(value)
+    if match:
+        target = os.path.join(rel_out_dir, match.group('target'))
+    # DATA/target->/data/target
+    elif _VTS_PUSH_DELIM in value:
+        target = value.split(_VTS_PUSH_DELIM, 1)[0].strip()
+        target = os.path.join(rel_out_dir, target)
+    return target
+
 def get_targets_from_vts_xml(xml_file, rel_out_dir, module_info):
     """Parse a vts xml for test dependencies we need to build.
 
@@ -377,12 +408,7 @@ def get_targets_from_vts_xml(xml_file, rel_out_dir, module_info):
                 logging.warning('vts test module (%s) not present in module '
                                 'info, skipping build', value)
         elif name == _VTS_BINARY_SRC:
-            # Parse out the out artifact, looks like _{32,64}bit::DATA/blah.
-            # We'll grab everything after the double semi-colon and prepend
-            # the rel_out_dir to the build target.
-            bin_target = value[value.find(_VTS_BINARY_SRC_DELIM) +
-                               len(_VTS_BINARY_SRC_DELIM):]
-            targets.add(os.path.join(rel_out_dir, bin_target))
+            targets.add(_get_vts_binary_src_target(value, rel_out_dir))
         elif name == _VTS_PUSH_GROUP:
             # Look up the push file and parse out build artifacts (as well as
             # other push group files to parse).
