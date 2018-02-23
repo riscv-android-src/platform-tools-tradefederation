@@ -80,12 +80,13 @@ class VtsTradefedTestRunner(atest_tf_test_runner.AtestTradefedTestRunner):
         args_to_append = []
         args_not_supported = []
         for arg in extra_args:
-            if constants.EXTRA_ARGS == arg:
-                args_to_append.append(extra_args[arg])
+            if constants.CUSTOM_ARGS == arg:
+                args_to_append.extend(extra_args[arg])
                 continue
             args_not_supported.append(arg)
-        logging.info('%s does not support the following args: %s',
-                     self.EXECUTABLE, args_not_supported)
+        if args_not_supported:
+            logging.info('%s does not support the following args: %s',
+                         self.EXECUTABLE, args_not_supported)
         return args_to_append
 
     # pylint: disable=arguments-differ

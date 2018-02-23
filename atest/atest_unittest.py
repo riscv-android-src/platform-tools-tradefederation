@@ -30,19 +30,32 @@ class AtestUnittests(unittest.TestCase):
         """Test _has_environment_variables when no env vars."""
         self.assertTrue(atest._missing_environment_variables())
 
-
     @mock.patch('os.environ.get', return_value='out/testcases/')
     def test_missing_environment_variables_initialized(self, _):
         """Test _has_environment_variables when env vars."""
         self.assertFalse(atest._missing_environment_variables())
 
-
     def test_parse_args(self):
         """Test _parse_args parses command line args."""
-        args = ['test_name_one', 'test_name_two']
-        arg1, arg2 = atest._parse_args(args).tests
-        self.assertTrue(arg1, 'test_name_one')
-        self.assertTrue(arg2, 'test_name_two')
+        test_one = 'test_name_one'
+        test_two = 'test_name_two'
+        custom_arg = '--custom_arg'
+        custom_arg_val = 'custom_arg_val'
+        pos_custom_arg = 'pos_custom_arg'
+
+        # Test out test and custom args are properly retrieved.
+        args = [test_one, test_two, '--', custom_arg, custom_arg_val]
+        parsed_args = atest._parse_args(args)
+        self.assertEqual(parsed_args.tests, [test_one, test_two])
+        self.assertEqual(parsed_args.custom_args, [custom_arg, custom_arg_val])
+
+        # Test out custom positional args with no test args.
+        args = ['--', pos_custom_arg, custom_arg_val]
+        parsed_args = atest._parse_args(args)
+        self.assertEqual(parsed_args.tests, [])
+        self.assertEqual(parsed_args.custom_args, [pos_custom_arg,
+                                                   custom_arg_val])
+
 
 if __name__ == '__main__':
     unittest.main()
