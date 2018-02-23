@@ -73,7 +73,7 @@ _VTS_PUSH_GROUP = 'push-group'
 _VTS_PUSH = 'push'
 _VTS_BINARY_SRC_DELIM = '::'
 _VTS_PUSH_DELIM = '->'
-_VTS_PUSH_DIR = os.path.join(os.environ.get(constants.ANDROID_BUILD_TOP),
+_VTS_PUSH_DIR = os.path.join(os.environ.get(constants.ANDROID_BUILD_TOP, ''),
                              'test', 'vts', 'tools', 'vts-tradefed', 'res',
                              'push_groups')
 _VTS_PUSH_SUFFIX = '.push'
