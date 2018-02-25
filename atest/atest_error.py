@@ -35,6 +35,9 @@ class MissingPackageNameError(Exception):
 class TooManyMethodsError(Exception):
     """Raised when input string contains more than one # character."""
 
+class MethodWithoutClassError(Exception):
+    """Raised when method is appended via # but no class file specified."""
+
 class UnknownTestRunnerError(Exception):
     """Raised when an unknown test runner is specified."""
 

@@ -18,6 +18,7 @@ package com.android.tradefed.result;
 import com.android.ddmlib.testrunner.TestResult.TestStatus;
 
 import java.util.Arrays;
+import java.util.LinkedHashMap;
 import java.util.Map;
 
 /** Container for a result of a single test. */
@@ -26,6 +27,7 @@ public class TestResult {
     private TestStatus mStatus;
     private String mStackTrace;
     private Map<String, String> mMetrics;
+    private Map<String, LogFile> mLoggedFiles;
     // the start and end time of the test, measured via {@link System#currentTimeMillis()}
     private long mStartTime = 0;
     private long mEndTime = 0;
@@ -33,6 +35,7 @@ public class TestResult {
     public TestResult() {
         mStatus = TestStatus.INCOMPLETE;
         mStartTime = System.currentTimeMillis();
+        mLoggedFiles = new LinkedHashMap<String, LogFile>();
     }
 
     /** Get the {@link TestStatus} result of the test. */
@@ -56,6 +59,16 @@ public class TestResult {
     /** Set the test metrics, overriding any previous values. */
     public void setMetrics(Map<String, String> metrics) {
         mMetrics = metrics;
+    }
+
+    /** Add a logged file tracking associated with that test case */
+    public void addLoggedFile(String dataName, LogFile loggedFile) {
+        mLoggedFiles.put(dataName, loggedFile);
+    }
+
+    /** Returns a copy of the map containing all the logged file associated with that test case. */
+    public Map<String, LogFile> getLoggedFiles() {
+        return new LinkedHashMap<>(mLoggedFiles);
     }
 
     /**

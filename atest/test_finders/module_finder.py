@@ -97,7 +97,7 @@ class ModuleFinder(test_finder_base.TestFinderBase):
         update the test_info fields (like test_runner) appropriately.
 
         Args:
-            test_info: TestInfo that has been filled out by a find method.
+            test: TestInfo that has been filled out by a find method.
 
         Return:
             TestInfo that has been modified as needed.
@@ -183,12 +183,12 @@ class ModuleFinder(test_finder_base.TestFinderBase):
                                       os.path.dirname(rel_config))
         else:
             search_dir = self.root_dir
-        test_path = test_finder_utils.find_class_file(class_name, search_dir)
+        test_path = test_finder_utils.find_class_file(search_dir, class_name)
         if not test_path and rel_config:
             logging.info('Did not find class (%s) under module path (%s), '
                          'researching from repo root.', class_name, rel_config)
-            test_path = test_finder_utils.find_class_file(class_name,
-                                                          self.root_dir)
+            test_path = test_finder_utils.find_class_file(self.root_dir,
+                                                          class_name)
         if not test_path:
             return None
         full_class_name = test_finder_utils.get_fully_qualified_class_name(
@@ -227,6 +227,66 @@ class ModuleFinder(test_finder_base.TestFinderBase):
             return None
         return self.find_test_by_class_name(
             class_name, module_info.test_name,
+            module_info.data.get(constants.TI_REL_CONFIG))
+
+    def find_test_by_package_name(self, package, module_name=None,
+                                  rel_config=None):
+        """Find the test info given a PACKAGE string.
+
+        Args:
+            package: A string of the package name.
+            module_name: Optional. A string of the module name.
+            ref_config: Optional. A string of rel path of config.
+
+        Returns:
+            A populated TestInfo namedtuple if found, else None.
+        """
+        _, methods = test_finder_utils.split_methods(package)
+        if methods:
+            raise atest_error.MethodWithoutClassError('Method filtering '
+                                                      'requires class')
+        # Confirm that packages exists and get user input for multiples.
+        if rel_config:
+            search_dir = os.path.join(self.root_dir,
+                                      os.path.dirname(rel_config))
+        else:
+            search_dir = self.root_dir
+        package_path = test_finder_utils.run_find_cmd(
+            test_finder_utils.FIND_REFERENCE_TYPE.PACKAGE, search_dir,
+            package.replace('.', '/'))
+        # package path will be the full path to the dir represented by package
+        if not package_path:
+            return None
+        test_filter = frozenset([test_info.TestFilter(package, frozenset())])
+        if not rel_config:
+            rel_module_dir = test_finder_utils.find_parent_module_dir(
+                self.root_dir, package_path)
+            rel_config = os.path.join(rel_module_dir, constants.MODULE_CONFIG)
+        if not module_name:
+            module_name = self.module_info.get_module_name(
+                os.path.dirname(rel_config))
+        return self._process_test_info(test_info.TestInfo(
+            test_name=module_name,
+            test_runner=self._TEST_RUNNER,
+            build_targets=self._get_build_targets(module_name, rel_config),
+            data={constants.TI_FILTER: test_filter,
+                  constants.TI_REL_CONFIG: rel_config}))
+
+    def find_test_by_module_and_package(self, module_package):
+        """Find the test info given a MODULE:PACKAGE string.
+
+        Args:
+            module_package: A string of form MODULE:PACKAGE
+
+        Returns:
+            A populated TestInfo namedtuple if found, else None.
+        """
+        module_name, package = module_package.split(':')
+        module_info = self.find_test_by_module_name(module_name)
+        if not module_info:
+            return None
+        return self.find_test_by_package_name(
+            package, module_info.test_name,
             module_info.data.get(constants.TI_REL_CONFIG))
 
     def find_test_by_path(self, path):

@@ -22,10 +22,8 @@ import com.android.tradefed.log.LogUtil.CLog;
 import java.io.IOException;
 import java.util.List;
 
-/**
- * A {@link ResultForwarder} for saving logs with the global file saver.
- */
-public class LogSaverResultForwarder extends ResultForwarder {
+/** A {@link ResultForwarder} for saving logs with the global file saver. */
+public class LogSaverResultForwarder extends ResultForwarder implements ILogSaverListener {
 
     ILogSaver mLogSaver;
 
@@ -96,5 +94,33 @@ public class LogSaverResultForwarder extends ResultForwarder {
             CLog.e("Failed to save log data");
             CLog.e(e);
         }
+    }
+
+    /**
+     * {@inheritDoc}
+     *
+     * <p>If {@link LogSaverResultForwarder} is wrap in another one, ensure we forward the
+     * testLogSaved callback to the listeners under it.
+     */
+    @Override
+    public void testLogSaved(
+            String dataName, LogDataType dataType, InputStreamSource dataStream, LogFile logFile) {
+        try {
+            for (ITestInvocationListener listener : getListeners()) {
+                if (listener instanceof ILogSaverListener) {
+                    ((ILogSaverListener) listener)
+                            .testLogSaved(dataName, dataType, dataStream, logFile);
+                }
+            }
+        } catch (RuntimeException e) {
+            CLog.e("Failed to save log data");
+            CLog.e(e);
+        }
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public void setLogSaver(ILogSaver logSaver) {
+        // Does not need the log saver again, already received in constructor.
     }
 }

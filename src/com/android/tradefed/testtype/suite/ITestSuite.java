@@ -20,6 +20,7 @@ import com.android.ddmlib.Log.LogLevel;
 import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.config.ConfigurationException;
 import com.android.tradefed.config.IConfiguration;
+import com.android.tradefed.config.IConfigurationReceiver;
 import com.android.tradefed.config.IDeviceConfiguration;
 import com.android.tradefed.config.Option;
 import com.android.tradefed.config.Option.Importance;
@@ -78,7 +79,8 @@ public abstract class ITestSuite
                 ITestCollector,
                 IInvocationContextReceiver,
                 IRuntimeHintProvider,
-                IMetricCollectorReceiver {
+                IMetricCollectorReceiver,
+                IConfigurationReceiver {
 
     public static final String SKIP_SYSTEM_STATUS_CHECKER = "skip-system-status-check";
     public static final String MODULE_CHECKER_PRE = "PreModuleChecker";
@@ -200,6 +202,7 @@ public abstract class ITestSuite
     private List<ISystemStatusChecker> mSystemStatusCheckers;
     private IInvocationContext mContext;
     private List<IMetricCollector> mMetricCollectors;
+    private IConfiguration mMainConfiguration;
 
     // Sharding attributes
     private boolean mIsSharded = false;
@@ -427,6 +430,9 @@ public abstract class ITestSuite
         }
         // Pass the run defined collectors to be used.
         module.setMetricCollectors(mMetricCollectors);
+        // Pass the main invocation logSaver
+        module.setLogSaver(mMainConfiguration.getLogSaver());
+
         // Actually run the module
         module.run(listener, failureListener);
 
@@ -679,6 +685,12 @@ public abstract class ITestSuite
             return mDirectModule.getRuntimeHint();
         }
         return 0l;
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public void setConfiguration(IConfiguration configuration) {
+        mMainConfiguration = configuration;
     }
 
     /**

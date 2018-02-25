@@ -37,7 +37,6 @@ public class ModuleListenerTest {
 
     @Before
     public void setUp() {
-        // We pipe all the events to nowhere
         mStubListener = new ITestInvocationListener() {};
         mListener = new ModuleListener(mStubListener);
     }
