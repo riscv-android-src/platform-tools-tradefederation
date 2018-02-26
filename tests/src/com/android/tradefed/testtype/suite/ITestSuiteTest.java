@@ -903,4 +903,17 @@ public class ITestSuiteTest {
         mTestSuite.run(mMockListener);
         verifyMocks();
     }
+
+    /** If a non-existing runner name is provided for the whitelist, throw an exception. */
+    @Test
+    public void testWhitelistRunner_notFound() throws Exception {
+        OptionSetter setter = new OptionSetter(mTestSuite);
+        setter.setOptionValue(ITestSuite.WHITE_LIST_RUNNER, "com.I.dont.exist.runner");
+        try {
+            mTestSuite.run(mMockListener);
+            fail("Should have thrown an exception.");
+        } catch (RuntimeException expected) {
+            assertTrue(expected.getCause() instanceof ConfigurationException);
+        }
+    }
 }
