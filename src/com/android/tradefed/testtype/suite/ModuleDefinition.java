@@ -52,16 +52,20 @@ import com.android.tradefed.testtype.ITestCollector;
 import com.android.tradefed.testtype.suite.module.IModuleController;
 import com.android.tradefed.testtype.suite.module.IModuleController.RunStrategy;
 import com.android.tradefed.util.StreamUtil;
+
 import com.google.common.annotations.VisibleForTesting;
+
 import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.ListIterator;
 import java.util.Map;
+import java.util.Set;
 
 /**
  * Container for the test run configuration. This class is an helper to prepare and run the tests.
@@ -107,6 +111,8 @@ public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestColl
     private long mElapsedTearDown = 0l;
 
     private long mElapsedTest = 0l;
+
+    private Set<String> mRunnerWhiteList = new HashSet<>();
 
     public static final String PREPARATION_TIME = "PREP_TIME";
     public static final String TEAR_DOWN_TIME = "TEARDOWN_TIME";
@@ -331,6 +337,13 @@ public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestColl
                 IRemoteTest test = poll();
                 if (test == null) {
                     return;
+                }
+                if (!mRunnerWhiteList.isEmpty()
+                        && !mRunnerWhiteList.contains(test.getClass().getName())) {
+                    CLog.d(
+                            "Runner %s was skipped by the runner whitelist.",
+                            test.getClass().getName());
+                    continue;
                 }
 
                 if (test instanceof IBuildReceiver) {
@@ -653,6 +666,11 @@ public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestColl
     /** Returns the {@link IInvocationContext} associated with the module. */
     public IInvocationContext getModuleInvocationContext() {
         return mModuleInvocationContext;
+    }
+
+    /** Sets of runner that are allowed to run. */
+    public void setRunnerWhiteList(Set<String> runners) {
+        mRunnerWhiteList.addAll(runners);
     }
 
     /**
