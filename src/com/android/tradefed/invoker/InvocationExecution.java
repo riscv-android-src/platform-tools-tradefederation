@@ -18,6 +18,7 @@ package com.android.tradefed.invoker;
 import com.android.ddmlib.Log.LogLevel;
 import com.android.tradefed.build.BuildRetrievalError;
 import com.android.tradefed.build.IBuildInfo;
+import com.android.tradefed.build.IBuildInfo.BuildInfoProperties;
 import com.android.tradefed.build.IBuildProvider;
 import com.android.tradefed.build.IDeviceBuildInfo;
 import com.android.tradefed.build.IDeviceBuildProvider;
@@ -454,6 +455,10 @@ public class InvocationExecution implements IInvocationExecution {
                             + " have no alias/namespace in front of test-tag.");
         }
 
+        if (info.getProperties().contains(BuildInfoProperties.DO_NOT_LINK_TESTS_DIR)) {
+            CLog.d("Skip linking external directory as FileProperty was set.");
+            return;
+        }
         // Load environment tests dir.
         if (info instanceof IDeviceBuildInfo) {
             File testsDir = ((IDeviceBuildInfo) info).getTestsDir();
@@ -471,6 +476,8 @@ public class InvocationExecution implements IInvocationExecution {
                                 subDir,
                                 /** version */
                                 "v1");
+                        // Ensure we always delete the linking, no matter how the JVM exits.
+                        subDir.deleteOnExit();
                     } catch (IOException e) {
                         CLog.e(
                                 "Failed to load external test dir %s. Ignoring it.",
