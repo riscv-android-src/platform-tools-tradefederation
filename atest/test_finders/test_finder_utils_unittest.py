@@ -30,7 +30,6 @@ from test_finders import test_finder_utils
 
 CLASS_DIR = 'foo/bar/jank/src/android/jank/cts/ui'
 FIND_TWO = uc.ROOT + 'other/dir/test.java\n' + uc.FIND_ONE
-XML_TARGETS = {'CtsJankDeviceTestCases', 'perf-setup.sh', 'cts-tradefed'}
 VTS_XML = 'VtsAndroidTest.xml'
 VTS_BITNESS_XML = 'VtsBitnessAndroidTest.xml'
 VTS_PUSH_DIR = 'vts_push_files'
@@ -49,6 +48,8 @@ VTS_XML_TARGETS = {'VtsTestName',
                    'push_file1_target2',
                    'push_file2_target1',
                    'push_file2_target2'}
+XML_TARGETS = {'CtsJankDeviceTestCases', 'perf-setup.sh', 'cts-tradefed',
+               'GtsEmptyTestApp'}
 
 
 #pylint: disable=protected-access
