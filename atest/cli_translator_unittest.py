@@ -30,9 +30,9 @@ from test_finders import test_finder_base
 
 # TEST_MAPPING related consts
 TEST_MAPPING_DIR_INCLUDE_PARENT = os.path.join(
-    os.path.dirname(__file__), uc.TEST_DATA_DIR, 'test_mapping', 'folder1')
+    uc.TEST_DATA_DIR, 'test_mapping', 'folder1')
 TEST_MAPPING_DIR_NOT_INCLUDE_PARENT = os.path.join(
-    os.path.dirname(__file__), uc.TEST_DATA_DIR, 'test_mapping', 'folder2')
+    uc.TEST_DATA_DIR, 'test_mapping', 'folder2')
 
 SEARCH_DIR_RE = re.compile(r'^find ([^ ]*).*$')
 
