@@ -22,6 +22,7 @@ import java.io.File;
 import java.util.Collection;
 import java.util.LinkedList;
 import java.util.Map;
+import java.util.Set;
 
 /**
  * A {@link IDeviceBuildInfo} used for over-the-air update testing. It is composed of two device
@@ -159,6 +160,18 @@ public class OtaDeviceBuildInfo implements IDeviceBuildInfo {
     @Override
     public void addBuildAttribute(String attributeName, String attributeValue) {
         mBaselineBuild.addBuildAttribute(attributeName, attributeValue);
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public void setProperties(BuildInfoProperties... properties) {
+        mBaselineBuild.setProperties(properties);
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public Set<BuildInfoProperties> getProperties() {
+        return mBaselineBuild.getProperties();
     }
 
     /**
