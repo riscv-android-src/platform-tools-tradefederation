@@ -615,18 +615,36 @@ public class FileUtil {
         // local disk, ~ 100 ms for network disk). Therefore call it every time tmp file is
         // created
         long usableSpace = 0L;
+        Exception nioException = null;
         try {
+            // Trying first with java.nio
             usableSpace = Files.getFileStore(file.toPath()).getUsableSpace();
         } catch (IOException ioe) {
-            CLog.w("Failed to get usable space for %s, ignored", file.getAbsolutePath());
-            CLog.w(ioe);
-            return;
+            nioException = ioe;
+            // We cannot use the CLog logger as it reaches for the logger file and would requests
+            // verifyDiskSpace again (loop recursion), so we do best effort logging here.
+            ioe.printStackTrace();
         }
+        // Try out a fallback with regular java File.
+        if (usableSpace == 0L) {
+            usableSpace = file.getUsableSpace();
+        }
+
         long minDiskSpace = mMinDiskSpaceMb * 1024 * 1024;
         if (usableSpace < minDiskSpace) {
-            throw new LowDiskSpaceException(String.format(
-                    "Available space on %s is %.2f MB. Min is %d MB", file.getAbsolutePath(),
-                    usableSpace / (1024.0 * 1024.0), mMinDiskSpaceMb));
+            String message =
+                    String.format(
+                            "Available space on %s is %.2f MB. Min is %d MB.",
+                            file.getAbsolutePath(),
+                            usableSpace / (1024.0 * 1024.0),
+                            mMinDiskSpaceMb);
+            if (nioException != null) {
+                message =
+                        String.format(
+                                "%s Got an exception during getUsableSpace:\n'%s'",
+                                message, StreamUtil.getStackTrace(nioException));
+            }
+            throw new LowDiskSpaceException(message);
         }
     }
 
