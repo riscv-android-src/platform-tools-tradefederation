@@ -185,6 +185,7 @@ import com.android.tradefed.testtype.TfTestLauncherTest;
 import com.android.tradefed.testtype.VersionedTfLauncherTest;
 import com.android.tradefed.testtype.host.CoverageMeasurementForwarderTest;
 import com.android.tradefed.testtype.junit4.BaseHostJUnit4TestTest;
+import com.android.tradefed.testtype.junit4.DeviceParameterizedRunnerTest;
 import com.android.tradefed.testtype.junit4.LongevityHostRunnerTest;
 import com.android.tradefed.testtype.metricregression.DetectRegressionTest;
 import com.android.tradefed.testtype.metricregression.MetricsTest;
@@ -486,6 +487,7 @@ import org.junit.runners.Suite.SuiteClasses;
 
     // testtype/junit4
     BaseHostJUnit4TestTest.class,
+    DeviceParameterizedRunnerTest.class,
     LongevityHostRunnerTest.class,
 
     // testtype/metricregression
