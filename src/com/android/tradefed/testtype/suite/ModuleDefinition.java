@@ -341,8 +341,8 @@ public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestColl
                 if (!mRunnerWhiteList.isEmpty()
                         && !mRunnerWhiteList.contains(test.getClass().getName())) {
                     CLog.d(
-                            "Runner %s was skipped by the runner whitelist.",
-                            test.getClass().getName());
+                            "Runner %s was skipped by the runner whitelist: '%s'.",
+                            test.getClass().getName(), mRunnerWhiteList);
                     continue;
                 }
 
