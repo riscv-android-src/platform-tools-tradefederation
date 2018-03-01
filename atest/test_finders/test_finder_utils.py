@@ -149,6 +149,22 @@ def get_fully_qualified_class_name(test_path):
     raise atest_error.MissingPackageNameError(test_path)
 
 
+def get_package_name(file_name):
+    """Parse the package name from a java file.
+
+    Args:
+        file_name: A string of the absolute path to the java file.
+
+    Returns:
+        A string of the package name or None
+      """
+    with open(file_name) as data:
+        for line in data:
+            match = _PACKAGE_RE.match(line)
+            if match:
+                return match.group('package')
+
+
 def extract_test_path(output):
     """Extract the test path from the output of a unix 'find' command.
 
@@ -193,6 +209,7 @@ def run_find_cmd(ref_type, search_dir, target):
     logging.debug('%s find cmd out: %s', ref_name, out)
     return extract_test_path(out)
 
+
 def find_class_file(search_dir, class_name):
     """Find a path to a class file given a search dir and a class name.
 
@@ -210,6 +227,7 @@ def find_class_file(search_dir, class_name):
         find_target = class_name
         ref_type = FIND_REFERENCE_TYPE.CLASS
     return run_find_cmd(ref_type, search_dir, find_target)
+
 
 def is_equal_or_sub_dir(sub_dir, parent_dir):
     """Return True sub_dir is sub dir or equal to parent_dir.
@@ -273,6 +291,7 @@ def get_targets_from_xml(xml_file, module_info):
     xml_root = ET.parse(xml_file).getroot()
     return get_targets_from_xml_root(xml_root, module_info)
 
+
 def _get_apk_target(apk_target):
     """Return the sanitized apk_target string from the xml.
 
@@ -311,6 +330,7 @@ def _is_apk_target(name, value):
     if name == 'push' and value.endswith(_APK_SUFFIX):
         return True
     return False
+
 
 def get_targets_from_xml_root(xml_root, module_info):
     """Retrieve build targets from the given xml root.
@@ -356,6 +376,7 @@ def get_targets_from_xml_root(xml_root, module_info):
     logging.debug('Targets found in config file: %s', targets)
     return targets
 
+
 def _get_vts_push_group_targets(push_file, rel_out_dir):
     """Retrieve vts push group build targets.
 
@@ -388,11 +409,12 @@ def _get_vts_push_group_targets(push_file, rel_out_dir):
             targets.add(os.path.join(rel_out_dir, sanitized_target))
     return targets
 
+
 def _specified_bitness(xml_root):
     """Check if the xml file contains the option append-bitness.
 
     Args:
-        xml_file: abs path to xml file.
+        xml_root: abs path to xml file.
 
     Returns:
         True if xml specifies to append-bitness, False otherwise.
@@ -404,6 +426,7 @@ def _specified_bitness(xml_root):
         if name == _VTS_BITNESS and value == _VTS_BITNESS_TRUE:
             return True
     return False
+
 
 def _get_vts_binary_src_target(value, rel_out_dir):
     """Parse out the vts binary src target.
@@ -433,6 +456,7 @@ def _get_vts_binary_src_target(value, rel_out_dir):
         target = value.split(_XML_PUSH_DELIM, 1)[0].strip()
         target = os.path.join(rel_out_dir, target)
     return target
+
 
 def get_targets_from_vts_xml(xml_file, rel_out_dir, module_info):
     """Parse a vts xml for test dependencies we need to build.
@@ -484,6 +508,7 @@ def get_targets_from_vts_xml(xml_file, rel_out_dir, module_info):
                 targets.add(os.path.join(rel_out_dir, push_target))
     logging.debug('Targets found in config file: %s', targets)
     return targets
+
 
 def get_dir_path_and_filename(path):
     """Return tuple of dir and file name from given path.

@@ -134,26 +134,21 @@ class TestFinderUtilsUnittests(unittest.TestCase):
         mock_module_info = mock.Mock(spec=module_info.ModuleInfo)
         mock_module_info.is_module.side_effect = lambda module: (
             not module == 'is_not_module')
-        xml_file = os.path.join(
-            os.path.dirname(os.path.realpath(__file__)), '..', uc.TEST_DATA_DIR,
-            constants.MODULE_CONFIG)
+        xml_file = os.path.join(uc.TEST_DATA_DIR, constants.MODULE_CONFIG)
         unittest_utils.assert_strict_equal(
             self,
             test_finder_utils.get_targets_from_xml(xml_file, mock_module_info),
             XML_TARGETS)
 
     @mock.patch.object(test_finder_utils, '_VTS_PUSH_DIR',
-                       os.path.join(os.path.dirname(os.path.realpath(__file__)),
-                                    '..', uc.TEST_DATA_DIR, VTS_PUSH_DIR))
+                       os.path.join(uc.TEST_DATA_DIR, VTS_PUSH_DIR))
     def test_get_targets_from_vts_xml(self):
         """Test get_targets_from_xml method."""
         # Mocking Etree is near impossible, so use a real file, but mock out
         # ModuleInfo,
         mock_module_info = mock.Mock(spec=module_info.ModuleInfo)
         mock_module_info.is_module.return_value = True
-        xml_file = os.path.join(
-            os.path.dirname(os.path.realpath(__file__)), '..', uc.TEST_DATA_DIR,
-            VTS_XML)
+        xml_file = os.path.join(uc.TEST_DATA_DIR, VTS_XML)
         unittest_utils.assert_strict_equal(
             self,
             test_finder_utils.get_targets_from_vts_xml(xml_file, '',

@@ -16,6 +16,8 @@
 Test Finder Handler module.
 """
 
+import logging
+
 import atest_enum
 from test_finders import test_finder_base
 from test_finders import tf_integration_finder
@@ -191,7 +193,10 @@ def _get_default_find_methods(module_info, test):
     """
     find_methods = []
     finder_instance_dict = _get_finder_instance_dict(module_info)
-    for test_ref_type in _get_test_reference_types(test):
+    test_ref_types = _get_test_reference_types(test)
+    logging.debug('Resolved input to possible references: %s', [
+        _REFERENCE_TYPE[t] for t in test_ref_types])
+    for test_ref_type in test_ref_types:
         find_method = _REF_TYPE_TO_FUNC_MAP[test_ref_type]
         finder_instance = finder_instance_dict[find_method.im_class.NAME]
         find_methods.append(test_finder_base.Finder(finder_instance,

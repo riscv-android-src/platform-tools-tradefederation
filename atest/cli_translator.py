@@ -140,5 +140,7 @@ class CLITranslator(object):
         test_infos = self._get_test_infos(tests)
         end = time.time()
         logging.debug('Found tests in %ss', end - start)
+        for test_info in test_infos:
+            logging.debug('%s\n', test_info)
         build_targets = self._gather_build_targets(test_infos)
         return build_targets, test_infos
