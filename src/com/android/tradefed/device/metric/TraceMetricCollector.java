@@ -16,6 +16,7 @@
 package com.android.tradefed.device.metric;
 
 import com.android.tradefed.device.DeviceNotAvailableException;
+import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.google.common.io.Files;
 import java.io.File;
@@ -28,12 +29,13 @@ public class TraceMetricCollector extends ScheduledDeviceMetricCollector {
     }
 
     @Override
-    void collect(DeviceMetricData runData) throws InterruptedException {
+    void collect(ITestDevice device, DeviceMetricData runData) throws InterruptedException {
         try {
             CLog.i("Running trace collector...");
+            String outputFileName = String.format("%s/trace-%s", createTempDir(), getFileSuffix());
             File outputFile =
-                    new File(String.format("%s/trace-%s.txt", createTempDir(), getFileSuffix()));
-            saveProcessOutput("cat /sys/kernel/debug/tracing/trace", outputFile);
+                    saveProcessOutput(
+                            device, "cat /sys/kernel/debug/tracing/trace", outputFileName);
             runData.addStringMetric(
                     Files.getNameWithoutExtension(outputFile.getName()), outputFile.getPath());
         } catch (DeviceNotAvailableException | IOException e) {

@@ -19,10 +19,10 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.when;
 
+import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.invoker.IInvocationContext;
 import java.io.File;
 import java.util.HashMap;
@@ -43,7 +43,9 @@ import org.mockito.Spy;
 public class TraceMetricCollectorTest {
     @Mock IInvocationContext mContext;
 
-    @Spy TraceMetricCollector traceInfoMetricCollector;
+    @Mock ITestDevice mDevice;
+
+    @Spy TraceMetricCollector mTraceInfoMetricCollector;
 
     @Rule public TemporaryFolder tempFolder = new TemporaryFolder();
 
@@ -51,17 +53,19 @@ public class TraceMetricCollectorTest {
     public void setup() throws Exception {
         MockitoAnnotations.initMocks(this);
 
-        doNothing().when(traceInfoMetricCollector).saveProcessOutput(anyString(), any(File.class));
+        doReturn(new File("trace-1"))
+                .when(mTraceInfoMetricCollector)
+                .saveProcessOutput(any(ITestDevice.class), anyString(), anyString());
 
-        doReturn(tempFolder.newFolder()).when(traceInfoMetricCollector).createTempDir();
+        doReturn(tempFolder.newFolder()).when(mTraceInfoMetricCollector).createTempDir();
     }
 
     @Test
     public void testCollect() throws Exception {
         DeviceMetricData runData = new DeviceMetricData(mContext);
-        when(traceInfoMetricCollector.getFileSuffix()).thenReturn("1");
+        when(mTraceInfoMetricCollector.getFileSuffix()).thenReturn("1");
 
-        traceInfoMetricCollector.collect(runData);
+        mTraceInfoMetricCollector.collect(mDevice, runData);
 
         Map<String, String> metricsCollected = new HashMap<String, String>();
         runData.addToMetrics(metricsCollected);

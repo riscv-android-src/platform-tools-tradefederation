@@ -17,6 +17,7 @@
 package com.android.tradefed.device.metric;
 
 import com.android.tradefed.config.Option;
+import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.invoker.IInvocationContext;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.result.ITestInvocationListener;
@@ -163,7 +164,9 @@ public class ScheduleMultipleDeviceMetricCollector extends BaseDeviceMetricColle
 
             if (elapsedTime >= taskInterval) {
                 try {
-                    singleMetricCollector.collect(runData);
+                    for (ITestDevice device : getDevices()) {
+                        singleMetricCollector.collect(device, runData);
+                    }
                     mLastUpdate.put(singleMetricCollector, System.currentTimeMillis());
                 } catch (InterruptedException e) {
                     CLog.e("Exception during %s", singleMetricCollector.getClass());

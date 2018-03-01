@@ -13,16 +13,17 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 package com.android.tradefed.device.metric;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.Mockito.doNothing;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doReturn;
-import static org.mockito.Mockito.when;
 
+import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.invoker.IInvocationContext;
 import java.io.File;
 import java.util.HashMap;
@@ -38,12 +39,14 @@ import org.mockito.MockitoAnnotations;
 import org.mockito.Spy;
 
 /** Unit tests for {@link IonHeapInfoMetricCollector}. */
-//TODO(b/71868090): Consolidate all the individual metric collector tests into one common tests.
+// TODO(b/71868090): Consolidate all the individual metric collector tests into one common tests.
 @RunWith(JUnit4.class)
 public class IonHeapInfoMetricCollectorTest {
     @Mock IInvocationContext mContext;
 
-    @Spy IonHeapInfoMetricCollector ionHeapInfoMetricCollector;
+    @Mock ITestDevice mDevice;
+
+    @Spy IonHeapInfoMetricCollector mIonHeapInfoMetricCollector;
 
     @Rule public TemporaryFolder tempFolder = new TemporaryFolder();
 
@@ -51,19 +54,23 @@ public class IonHeapInfoMetricCollectorTest {
     public void setup() throws Exception {
         MockitoAnnotations.initMocks(this);
 
-        doNothing()
-                .when(ionHeapInfoMetricCollector)
-                .saveProcessOutput(anyString(), any(File.class));
+        doReturn(new File("ion-system-2"))
+                .when(mIonHeapInfoMetricCollector)
+                .saveProcessOutput(
+                        any(ITestDevice.class), eq("cat /d/ion/heaps/system"), anyString());
+        doReturn(new File("ion-audio-1"))
+                .when(mIonHeapInfoMetricCollector)
+                .saveProcessOutput(
+                        any(ITestDevice.class), eq("cat /d/ion/heaps/audio"), anyString());
 
-        doReturn(tempFolder.newFolder()).when(ionHeapInfoMetricCollector).createTempDir();
+        doReturn(tempFolder.newFolder()).when(mIonHeapInfoMetricCollector).createTempDir();
     }
 
     @Test
     public void testCollect() throws Exception {
         DeviceMetricData runData = new DeviceMetricData(mContext);
-        when(ionHeapInfoMetricCollector.getFileSuffix()).thenReturn("1").thenReturn("2");
 
-        ionHeapInfoMetricCollector.collect(runData);
+        mIonHeapInfoMetricCollector.collect(mDevice, runData);
 
         Map<String, String> metricsCollected = new HashMap<String, String>();
         runData.addToMetrics(metricsCollected);

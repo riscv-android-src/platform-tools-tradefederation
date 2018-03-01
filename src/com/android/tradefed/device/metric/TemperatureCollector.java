@@ -21,7 +21,6 @@ import com.android.tradefed.config.Option;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.log.LogUtil.CLog;
-
 import java.util.HashMap;
 import java.util.Map;
 import java.util.regex.Matcher;
@@ -71,30 +70,28 @@ public class TemperatureCollector extends ScheduledDeviceMetricCollector {
     }
 
     @Override
-    void collect(DeviceMetricData runData) throws InterruptedException {
+    void collect(ITestDevice device, DeviceMetricData runData) throws InterruptedException {
         if (mDeviceTemperatureFilePath == null) {
             return;
         }
-        for (ITestDevice device : getDevices()) {
-            try {
-                if (!device.isAdbRoot()) {
-                    continue;
-                }
-                Double temp = getTemperature(device);
-                if (temp == null) {
-                    continue;
-                }
-                mMaxDeviceTemps.putIfAbsent(device, temp);
-                mMinDeviceTemps.putIfAbsent(device, temp);
-                if (mMaxDeviceTemps.get(device) < temp) {
-                    mMaxDeviceTemps.put(device, temp);
-                }
-                if (mMinDeviceTemps.get(device) > temp) {
-                    mMinDeviceTemps.put(device, temp);
-                }
-            } catch (DeviceNotAvailableException e) {
-                CLog.e(e);
+        try {
+            if (!device.isAdbRoot()) {
+                return;
             }
+            Double temp = getTemperature(device);
+            if (temp == null) {
+                return;
+            }
+            mMaxDeviceTemps.putIfAbsent(device, temp);
+            mMinDeviceTemps.putIfAbsent(device, temp);
+            if (mMaxDeviceTemps.get(device) < temp) {
+                mMaxDeviceTemps.put(device, temp);
+            }
+            if (mMinDeviceTemps.get(device) > temp) {
+                mMinDeviceTemps.put(device, temp);
+            }
+        } catch (DeviceNotAvailableException e) {
+            CLog.e(e);
         }
     }
 

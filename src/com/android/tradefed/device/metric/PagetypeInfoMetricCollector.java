@@ -16,6 +16,7 @@
 package com.android.tradefed.device.metric;
 
 import com.android.tradefed.device.DeviceNotAvailableException;
+import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.google.common.io.Files;
 import java.io.File;
@@ -28,14 +29,12 @@ public class PagetypeInfoMetricCollector extends ScheduledDeviceMetricCollector 
     }
 
     @Override
-    void collect(DeviceMetricData runData) throws InterruptedException {
+    void collect(ITestDevice device, DeviceMetricData runData) throws InterruptedException {
         try {
             CLog.i("Running pagetype info collector...");
-            File outputFile =
-                    new File(
-                            String.format(
-                                    "%s/pagetypeinfo-%s.txt", createTempDir(), getFileSuffix()));
-            saveProcessOutput("cat /proc/pagetypeinfo", outputFile);
+            String outputFileName =
+                    String.format("%s/pagetypeinfo-%s", createTempDir(), getFileSuffix());
+            File outputFile = saveProcessOutput(device, "cat /proc/pagetypeinfo", outputFileName);
             runData.addStringMetric(
                     Files.getNameWithoutExtension(outputFile.getName()), outputFile.getPath());
         } catch (DeviceNotAvailableException | IOException e) {

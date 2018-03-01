@@ -26,14 +26,12 @@ public class BugreportzMetricCollector extends ScheduledDeviceMetricCollector {
     }
 
     @Override
-    void collect(DeviceMetricData runData) throws InterruptedException {
+    void collect(ITestDevice device, DeviceMetricData runData) throws InterruptedException {
         CLog.i("Running bugreportz...");
 
-        for (ITestDevice testDevice : getDevices()) {
-            String hostBugreportFilename = String.format("bugreport-%s", getFileSuffix());
-            if (!testDevice.logBugreport(hostBugreportFilename, getInvocationListener())) {
-                CLog.e("Failed to run bugreportz or bugreport.");
-            }
+        String hostBugreportFilename = String.format("bugreport-%s", getFileSuffix());
+        if (!device.logBugreport(hostBugreportFilename, getInvocationListener())) {
+            CLog.e("Failed to run bugreportz or bugreport.");
         }
     }
 }

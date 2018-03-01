@@ -16,6 +16,7 @@
 package com.android.tradefed.device.metric;
 
 import com.android.tradefed.device.DeviceNotAvailableException;
+import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.google.common.io.Files;
 import java.io.File;
@@ -28,12 +29,12 @@ public class GfxInfoMetricCollector extends ScheduledDeviceMetricCollector {
     }
 
     @Override
-    public void collect(DeviceMetricData runData) throws InterruptedException {
+    public void collect(ITestDevice device, DeviceMetricData runData) throws InterruptedException {
         try {
             CLog.i("Running graphicsstats...");
-            File outputFile =
-                    new File(String.format("%s/graphics-%s.txt", createTempDir(), getFileSuffix()));
-            saveProcessOutput("dumpsys graphicsstats", outputFile);
+            String outputFileName =
+                    String.format("%s/graphics-%s", createTempDir(), getFileSuffix());
+            File outputFile = saveProcessOutput(device, "dumpsys graphicsstats", outputFileName);
             runData.addStringMetric(
                     Files.getNameWithoutExtension(outputFile.getName()), outputFile.getPath());
         } catch (DeviceNotAvailableException | IOException e) {

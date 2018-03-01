@@ -17,12 +17,11 @@ package com.android.tradefed.device.metric;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
-import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.Mockito.doNothing;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doReturn;
-import static org.mockito.Mockito.when;
 
+import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.invoker.IInvocationContext;
 import java.io.File;
 import java.util.HashMap;
@@ -43,7 +42,9 @@ import org.mockito.Spy;
 public class BuddyInfoMetricCollectorTest {
     @Mock IInvocationContext mContext;
 
-    @Spy BuddyInfoMetricCollector fragmentationInfoMetricCollector;
+    @Mock ITestDevice device;
+
+    @Spy BuddyInfoMetricCollector mBuddyInfoMetricCollector;
 
     @Rule public TemporaryFolder tempFolder = new TemporaryFolder();
 
@@ -51,19 +52,18 @@ public class BuddyInfoMetricCollectorTest {
     public void setup() throws Exception {
         MockitoAnnotations.initMocks(this);
 
-        doNothing()
-                .when(fragmentationInfoMetricCollector)
-                .saveProcessOutput(anyString(), any(File.class));
+        doReturn(new File("unusable-index-1"))
+                .when(mBuddyInfoMetricCollector)
+                .saveProcessOutput(any(ITestDevice.class), anyString(), anyString());
 
-        doReturn(tempFolder.newFolder()).when(fragmentationInfoMetricCollector).createTempDir();
+        doReturn(tempFolder.newFolder()).when(mBuddyInfoMetricCollector).createTempDir();
     }
 
     @Test
     public void testCollect() throws Exception {
         DeviceMetricData runData = new DeviceMetricData(mContext);
-        when(fragmentationInfoMetricCollector.getFileSuffix()).thenReturn("1");
 
-        fragmentationInfoMetricCollector.collect(runData);
+        mBuddyInfoMetricCollector.collect(device, runData);
 
         Map<String, String> metricsCollected = new HashMap<String, String>();
         runData.addToMetrics(metricsCollected);

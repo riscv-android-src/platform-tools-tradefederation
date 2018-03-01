@@ -78,7 +78,7 @@ public class ProcessMaxMemoryCollectorTest {
 
         DeviceMetricData data = new DeviceMetricData(mContext);
         mCollector.onStart(data);
-        mCollector.collect(data);
+        mCollector.collect(mDevice, data);
         mCollector.onEnd(data);
 
         verify(mDevice).executeShellCommand(Mockito.eq("dumpsys meminfo --checkin system_server"));
@@ -96,7 +96,7 @@ public class ProcessMaxMemoryCollectorTest {
 
         DeviceMetricData data = new DeviceMetricData(mContext);
         mCollector.onStart(data);
-        mCollector.collect(data);
+        mCollector.collect(mDevice, data);
         mCollector.onEnd(data);
 
         verify(mDevice).executeShellCommand(Mockito.eq("dumpsys meminfo --checkin system_server"));

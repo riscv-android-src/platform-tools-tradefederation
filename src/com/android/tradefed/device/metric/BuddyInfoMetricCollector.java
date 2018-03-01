@@ -16,6 +16,7 @@
 package com.android.tradefed.device.metric;
 
 import com.android.tradefed.device.DeviceNotAvailableException;
+import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.google.common.io.Files;
 import java.io.File;
@@ -28,16 +29,18 @@ public class BuddyInfoMetricCollector extends ScheduledDeviceMetricCollector {
     }
 
     @Override
-    void collect(DeviceMetricData runData) throws InterruptedException {
+    void collect(ITestDevice device, DeviceMetricData runData) throws InterruptedException {
         try {
-            CLog.i("Running fragmentation collector...");
+            CLog.i("Running unusable-index collector...");
+            String outputFileName =
+                    String.format("%s/unusable-index-%s", createTempDir(), getFileSuffix());
             File outputFile =
-                    new File(
-                            String.format(
-                                    "%s/unusable-index-%s.txt", createTempDir(), getFileSuffix()));
-            saveProcessOutput("cat /d/extfrag/unusable_index", outputFile);
-            runData.addStringMetric(
-                    Files.getNameWithoutExtension(outputFile.getName()), outputFile.getPath());
+                    saveProcessOutput(device, "cat /d/extfrag/unusable_index", outputFileName);
+            runData.addStringMetricForDevice(
+                    device,
+                    Files.getNameWithoutExtension(outputFile.getName()),
+                    outputFile.getPath());
+
         } catch (DeviceNotAvailableException | IOException e) {
             CLog.e(e);
         }
