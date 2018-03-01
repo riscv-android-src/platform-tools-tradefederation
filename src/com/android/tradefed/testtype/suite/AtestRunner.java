@@ -69,9 +69,14 @@ public class AtestRunner extends ITestSuite {
 
     @Option(
         name = "disable-target-preparers",
-        description = "Skip the target preparer steps enumerated in test config."
+        description =
+                "Skip the target preparer steps enumerated in test config. Skips the teardown step "
+                        + "as well."
     )
-    private boolean mSkipInstall = false;
+    private boolean mSkipSetUp = false;
+
+    @Option(name = "disable-teardown", description = "Skip the teardown of the target preparers.")
+    private boolean mSkipTearDown = false;
 
     @Option(
         name = "abi-name",
@@ -112,8 +117,8 @@ public class AtestRunner extends ITestSuite {
                 for (String filter : testInfo.filters) {
                     addFilter(testConfig, filter);
                 }
-                if (mSkipInstall) {
-                    disableTargetPreparers(testConfig);
+                if (mSkipSetUp || mSkipTearDown) {
+                    disableTargetPreparers(testConfig, mSkipSetUp, mSkipTearDown);
                 }
                 if (mDebug) {
                     addDebugger(testConfig);
@@ -241,12 +246,20 @@ public class AtestRunner extends ITestSuite {
     }
 
     /** Helper to disable TargetPreparers of a test. */
-    private void disableTargetPreparers(IConfiguration testConfig) {
+    private void disableTargetPreparers(
+            IConfiguration testConfig, boolean skipSetUp, boolean skipTearDown) {
         for (ITargetPreparer targetPreparer : testConfig.getTargetPreparers()) {
-            CLog.d(
-                    "%s: Disabling Target Preparer (%s)",
-                    testConfig.getName(), targetPreparer.getClass().getSimpleName());
-            targetPreparer.setDisable(true);
+            if (skipSetUp) {
+                CLog.d(
+                        "%s: Disabling Target Preparer (%s)",
+                        testConfig.getName(), targetPreparer.getClass().getSimpleName());
+                targetPreparer.setDisable(true);
+            } else if (skipTearDown) {
+                CLog.d(
+                        "%s: Disabling Target Preparer TearDown (%s)",
+                        testConfig.getName(), targetPreparer.getClass().getSimpleName());
+                targetPreparer.setDisableTearDown(true);
+            }
         }
     }
 }
