@@ -30,6 +30,7 @@ public class DeviceTestRunOptions {
     private Long mMaxTimeToOutputMs; // optional
     private Long mMaxInstrumentationTimeoutMs; // optional
     private boolean mCheckResults = true; // optional
+    private boolean mDisableHiddenApiCheck = false; // optional
 
     public DeviceTestRunOptions(String packageName) {
         this.mPackageName = packageName;
@@ -147,5 +148,18 @@ public class DeviceTestRunOptions {
     public DeviceTestRunOptions setCheckResults(boolean checkResults) {
         this.mCheckResults = checkResults;
         return this;
+    }
+
+    /**
+     * sets whether or not to add the --no-hidden-api-checks to the 'am instrument' used from the
+     * host side.
+     */
+    public DeviceTestRunOptions setDisableHiddenApiCheck(boolean disableHiddenApiCheck) {
+        this.mDisableHiddenApiCheck = disableHiddenApiCheck;
+        return this;
+    }
+
+    public boolean isHiddenApiCheckDisabled() {
+        return mDisableHiddenApiCheck;
     }
 }
