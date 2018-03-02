@@ -44,6 +44,7 @@ import com.android.tradefed.result.LogDataType;
 import com.android.tradefed.result.TestDescription;
 import com.android.tradefed.suite.checker.ISystemStatusChecker;
 import com.android.tradefed.suite.checker.KeyguardStatusChecker;
+import com.android.tradefed.targetprep.StubTargetPreparer;
 import com.android.tradefed.testtype.IAbi;
 import com.android.tradefed.testtype.IRemoteTest;
 import com.android.tradefed.testtype.StubTest;
@@ -908,12 +909,42 @@ public class ITestSuiteTest {
     @Test
     public void testWhitelistRunner_notFound() throws Exception {
         OptionSetter setter = new OptionSetter(mTestSuite);
-        setter.setOptionValue(ITestSuite.WHITE_LIST_RUNNER, "com.I.dont.exist.runner");
+        setter.setOptionValue(ITestSuite.RUNNER_WHITELIST, "com.I.dont.exist.runner");
         try {
             mTestSuite.run(mMockListener);
             fail("Should have thrown an exception.");
         } catch (RuntimeException expected) {
             assertTrue(expected.getCause() instanceof ConfigurationException);
         }
+    }
+
+    /**
+     * Test that if the preparer is whitelisted it is left untouched by {@link
+     * ITestSuite#filterPreparers(IConfiguration, Set)}.
+     */
+    @Test
+    public void testPreparerWhitelist() throws Exception {
+        IConfiguration config = new Configuration("name", "description");
+        config.setTargetPreparer(new StubTargetPreparer());
+        Set<String> allowedPreparers = new HashSet<>();
+        allowedPreparers.add(StubTargetPreparer.class.getName());
+        assertEquals(1, config.getTargetPreparers().size());
+        mTestSuite.filterPreparers(config, allowedPreparers);
+        assertEquals(1, config.getTargetPreparers().size());
+    }
+
+    /**
+     * Test that if the preparer is not whitelisted it is left filtered out by {@link
+     * ITestSuite#filterPreparers(IConfiguration, Set)}.
+     */
+    @Test
+    public void testPreparerWhitelist_filtered() throws Exception {
+        IConfiguration config = new Configuration("name", "description");
+        config.setTargetPreparer(new StubTargetPreparer());
+        Set<String> allowedPreparers = new HashSet<>();
+        allowedPreparers.add("some.other.preparer");
+        assertEquals(1, config.getTargetPreparers().size());
+        mTestSuite.filterPreparers(config, allowedPreparers);
+        assertEquals(0, config.getTargetPreparers().size());
     }
 }
