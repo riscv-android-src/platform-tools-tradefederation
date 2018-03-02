@@ -31,7 +31,8 @@ public enum LogDataType {
     TAR_GZ("tar.gz", "application/gzip", true, false),
     GZIP("gz", "application/gzip", true, false),
     HPROF("hprof", "text/plain", true, false),
-    COVERAGE("ec", "text/plain", false, false),  /* Emma coverage file */
+    COVERAGE("ec", "text/plain", false, false), // Emma coverage file
+    PB("pb", "application/octet-stream", true, false), // Binary proto file
     /* Specific text file types */
     BUGREPORT("txt", "text/plain", false, true),
     BUGREPORTZ("zip", "application/zip", true, false),
@@ -43,10 +44,10 @@ public enum LogDataType {
     MEM_INFO("txt", "text/plain", false, true),
     TOP("txt", "text/plain", false, true),
     DUMPSYS("txt", "text/plain", false, true),
-    COMPACT_MEMINFO("txt", "text/plain", false, true),  // dumpsys meminfo -c
-    SERVICES("txt", "text/plain", false, true),  // dumpsys activity services
-    GFX_INFO("txt", "text/plain", false, true),  // dumpsys gfxinfo
-    CPU_INFO("txt", "text/plain", false, true),  // dumpsys cpuinfo
+    COMPACT_MEMINFO("txt", "text/plain", false, true), // dumpsys meminfo -c
+    SERVICES("txt", "text/plain", false, true), // dumpsys activity services
+    GFX_INFO("txt", "text/plain", false, true), // dumpsys gfxinfo
+    CPU_INFO("txt", "text/plain", false, true), // dumpsys cpuinfo
     JACOCO_CSV("csv", "text/csv", false, true), // JaCoCo coverage report in CSV format
     JACOCO_XML("xml", "text/xml", false, true), // JaCoCo coverage report in XML format
     ATRACE("dat", "text/plain", true, false),
