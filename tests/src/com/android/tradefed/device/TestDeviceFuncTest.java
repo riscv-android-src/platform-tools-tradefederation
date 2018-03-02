@@ -515,7 +515,7 @@ public class TestDeviceFuncTest implements IDeviceTest {
             Log.i(LOG_TAG, "Fastboot not enabled skipping testExecuteFastbootCommand_deviceInAdb");
             return;
         }
-        int origTimeout = mTestDevice.getCommandTimeout();
+        long origTimeout = mTestDevice.getCommandTimeout();
         try {
             assertEquals(TestDeviceState.ONLINE, mMonitor.getDeviceState());
             // reset operation timeout to small value to make test run quicker
