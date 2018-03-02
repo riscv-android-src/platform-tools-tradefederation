@@ -56,6 +56,7 @@ import com.android.tradefed.util.IRunUtil;
 import com.android.tradefed.util.KeyguardControllerState;
 import com.android.tradefed.util.ProcessInfo;
 import com.android.tradefed.util.PsParser;
+import com.android.tradefed.util.QuotationAwareTokenizer;
 import com.android.tradefed.util.RunUtil;
 import com.android.tradefed.util.SizeLimitedOutputStream;
 import com.android.tradefed.util.StreamUtil;
@@ -173,9 +174,9 @@ public class NativeDevice implements IManagedTestDevice {
     private static final int WIFI_RECONNECT_TIMEOUT = 60 * 1000;
 
     /** The time in ms to wait for a command to complete. */
-    private int mCmdTimeout = 2 * 60 * 1000;
+    private long mCmdTimeout = 2 * 60 * 1000L;
     /** The time in ms to wait for a 'long' command to complete. */
-    private long mLongCmdTimeout = 25 * 60 * 1000;
+    private long mLongCmdTimeout = 25 * 60 * 1000L;
 
     private IDevice mIDevice;
     private IDeviceRecovery mRecovery = new WaitDeviceRecovery();
@@ -246,6 +247,32 @@ public class NativeDevice implements IManagedTestDevice {
                 throw new IOException();
             }
             mOutput = result.getStdout();
+            return true;
+        }
+    }
+
+    protected class AdbShellAction implements DeviceAction {
+        /** the output from the command */
+        CommandResult mResult = null;
+
+        private String[] mCmd;
+        private long mTimeout;
+
+        AdbShellAction(String[] cmd, long timeout) {
+            mCmd = cmd;
+            mTimeout = timeout;
+        }
+
+        @Override
+        public boolean run() throws TimeoutException, IOException {
+            mResult = getRunUtil().runTimedCmd(mTimeout, mCmd);
+            if (mResult.getStatus() == CommandStatus.EXCEPTION) {
+                throw new IOException(mResult.getStderr());
+            } else if (mResult.getStatus() == CommandStatus.TIMED_OUT) {
+                throw new TimeoutException(mResult.getStderr());
+            }
+            // If it's not some issue with running the adb command, then we return the CommandResult
+            // which will contain all the infos.
             return true;
         }
     }
@@ -647,6 +674,33 @@ public class NativeDevice implements IManagedTestDevice {
         String output = receiver.getOutput();
         CLog.v("%s on %s returned %s", command, getSerialNumber(), output);
         return output;
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public CommandResult executeShellV2Command(String cmd) throws DeviceNotAvailableException {
+        return executeShellV2Command(cmd, getCommandTimeout(), TimeUnit.MILLISECONDS);
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public CommandResult executeShellV2Command(
+            String cmd, final long maxTimeoutForCommand, final TimeUnit timeUnit)
+            throws DeviceNotAvailableException {
+        return executeShellV2Command(
+                cmd, getCommandTimeout(), TimeUnit.MILLISECONDS, MAX_RETRY_ATTEMPTS);
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public CommandResult executeShellV2Command(
+            String cmd, final long maxTimeoutForCommand, final TimeUnit timeUnit, int retryAttempts)
+            throws DeviceNotAvailableException {
+        final String[] fullCmd = buildAdbShellCommand(cmd);
+        AdbShellAction adbActionV2 =
+                new AdbShellAction(fullCmd, timeUnit.toMillis(maxTimeoutForCommand));
+        performDeviceAction(String.format("adb %s", fullCmd[4]), adbActionV2, retryAttempts);
+        return adbActionV2.mResult;
     }
 
     /** {@inheritDoc} */
@@ -1535,6 +1589,7 @@ public class NativeDevice implements IManagedTestDevice {
         return adbAction.mOutput;
     }
 
+
     /**
      * {@inheritDoc}
      */
@@ -1660,10 +1715,8 @@ public class NativeDevice implements IManagedTestDevice {
         return false;
     }
 
-    /**
-     * Get the max time allowed in ms for commands.
-     */
-    int getCommandTimeout() {
+    /** Get the max time allowed in ms for commands. */
+    long getCommandTimeout() {
         return mCmdTimeout;
     }
 
@@ -1681,10 +1734,8 @@ public class NativeDevice implements IManagedTestDevice {
         return mLongCmdTimeout;
     }
 
-    /**
-     * Set the max time allowed in ms for commands.
-     */
-    void setCommandTimeout(int timeout) {
+    /** Set the max time allowed in ms for commands. */
+    void setCommandTimeout(long timeout) {
         mCmdTimeout = timeout;
     }
 
@@ -1694,6 +1745,14 @@ public class NativeDevice implements IManagedTestDevice {
     private String[] buildAdbCommand(String... commandArgs) {
         return ArrayUtil.buildArray(new String[] {"adb", "-s", getSerialNumber()},
                 commandArgs);
+    }
+
+    /** Builds the OS command for the given adb shell command session and args */
+    private String[] buildAdbShellCommand(String command) {
+        // TODO: implement the shell v2 support in ddmlib itself.
+        String[] commandArgs = QuotationAwareTokenizer.tokenizeLine(command);
+        return ArrayUtil.buildArray(
+                new String[] {"adb", "-s", getSerialNumber(), "shell"}, commandArgs);
     }
 
     /**
