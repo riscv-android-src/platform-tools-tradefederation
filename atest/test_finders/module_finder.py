@@ -29,6 +29,8 @@ import test_finder_utils
 from test_runners import atest_tf_test_runner
 from test_runners import vts_tf_test_runner
 
+_JAVA_EXT = '.java'
+
 # Parse package name from the package declaration line of a java file.
 # Group matches "foo.bar" of line "package foo.bar;"
 _PACKAGE_RE = re.compile(r'\s*package\s+(?P<package>[^;]+)\s*;\s*', re.I)
@@ -294,9 +296,10 @@ class ModuleFinder(test_finder_base.TestFinderBase):
 
         Strategy:
             path_to_java_file --> Resolve to CLASS
+            path_to_module_file -> Resolve to MODULE
             path_to_module_dir -> Resolve to MODULE
-            path_to_class_dir --> Resolve to MODULE (TODO: Maybe all classes)
-            path_to_random_dir --> try to resolve to MODULE
+            path_to_dir_with_class_files--> Resolve to PACKAGE
+            path_to_any_other_dir --> Resolve as MODULE
 
         Args:
             path: A string of the test's path.
@@ -304,6 +307,7 @@ class ModuleFinder(test_finder_base.TestFinderBase):
         Returns:
             A populated TestInfo namedtuple if test found, else None
         """
+        logging.debug('Finding test by path: %s', path)
         path, methods = test_finder_utils.split_methods(path)
         # TODO: See if this can be generalized and shared with methods above
         # create absolute path from cwd and remove symbolic links
@@ -311,13 +315,13 @@ class ModuleFinder(test_finder_base.TestFinderBase):
         if not os.path.exists(path):
             return None
         dir_path, file_name = test_finder_utils.get_dir_path_and_filename(path)
-
         # Module/Class
         try:
             rel_module_dir = test_finder_utils.find_parent_module_dir(
                 self.root_dir, dir_path)
             if not rel_module_dir:
                 return None
+            module_name = self.module_info.get_module_name(rel_module_dir)
         except atest_error.TestWithNoModuleError:
             # If TF test config will be auto generated, _find_parent_module_dir
             # fails with TestWithNoModuleError as there is no AndroidTest.xml.
@@ -330,15 +334,29 @@ class ModuleFinder(test_finder_base.TestFinderBase):
             module_name = self.module_info.get_module_name(rel_module_dir)
             if not self._is_auto_gen_test_config(module_name):
                 raise
-        module_name = self.module_info.get_module_name(rel_module_dir)
         rel_config = os.path.join(rel_module_dir, constants.MODULE_CONFIG)
         data = {constants.TI_REL_CONFIG: rel_config,
                 constants.TI_FILTER: frozenset()}
-        if file_name and file_name.endswith('.java'):
+        # Path is to java file
+        if file_name and file_name.endswith(_JAVA_EXT):
             full_class_name = test_finder_utils.get_fully_qualified_class_name(
                 path)
             data[constants.TI_FILTER] = frozenset(
                 [test_info.TestFilter(full_class_name, methods)])
+        # path to non-module dir, treat as package
+        elif (not file_name and not self._is_auto_gen_test_config(module_name)
+              and rel_module_dir != os.path.relpath(path, self.root_dir)):
+            dir_items = [os.path.join(path, f) for f in os.listdir(path)]
+            for dir_item in dir_items:
+                if dir_item.endswith(_JAVA_EXT):
+                    package_name = test_finder_utils.get_package_name(dir_item)
+                    if package_name:
+                        # methods should be empty frozenset for package.
+                        if methods:
+                            raise atest_error.MethodWithoutClassError()
+                        data[constants.TI_FILTER] = frozenset(
+                            [test_info.TestFilter(package_name, methods)])
+                        break
         return self._process_test_info(test_info.TestInfo(
             test_name=module_name,
             test_runner=self._TEST_RUNNER,

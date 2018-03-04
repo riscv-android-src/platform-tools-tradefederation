@@ -40,10 +40,11 @@ FIND_TWO = ROOT + 'other/dir/test.java\n' + FIND_ONE
 FIND_PKG = ROOT + 'foo/bar/jank/src/android/jank/cts/ui\n'
 INT_NAME = 'example/reboot'
 GTF_INT_NAME = 'some/gtf_int_test'
-TEST_DATA_DIR = 'unittest_data'
+TEST_DATA_DIR = os.path.join(os.path.dirname(__file__), 'unittest_data')
 
 INT_DIR = 'tf/contrib/res/config'
 GTF_INT_DIR = 'gtf/core/res/config'
+
 CONFIG_FILE = os.path.join(MODULE_DIR, constants.MODULE_CONFIG)
 CONFIG2_FILE = os.path.join(MODULE2_DIR, constants.MODULE_CONFIG)
 JSON_FILE = 'module-info.json'
@@ -63,6 +64,15 @@ CLASS_DATA = {constants.TI_REL_CONFIG: CONFIG_FILE,
 PACKAGE_FILTER = test_info.TestFilter(PACKAGE, frozenset())
 PACKAGE_DATA = {constants.TI_REL_CONFIG: CONFIG_FILE,
                 constants.TI_FILTER: frozenset([PACKAGE_FILTER])}
+TEST_DATA_CONFIG = os.path.relpath(os.path.join(TEST_DATA_DIR,
+                                                constants.MODULE_CONFIG), ROOT)
+PATH_DATA = {
+    constants.TI_REL_CONFIG: TEST_DATA_CONFIG,
+    constants.TI_FILTER: frozenset([PACKAGE_FILTER])}
+EMPTY_PATH_DATA = {
+    constants.TI_REL_CONFIG: TEST_DATA_CONFIG,
+    constants.TI_FILTER: frozenset()}
+
 CLASS_BUILD_TARGETS = {'class-specific-target'}
 CLASS_INFO = test_info.TestInfo(MODULE_NAME,
                                 atf_tr.AtestTradefedTestRunner.NAME,
@@ -72,6 +82,14 @@ PACKAGE_INFO = test_info.TestInfo(MODULE_NAME,
                                   atf_tr.AtestTradefedTestRunner.NAME,
                                   CLASS_BUILD_TARGETS,
                                   PACKAGE_DATA)
+PATH_INFO = test_info.TestInfo(MODULE_NAME,
+                               atf_tr.AtestTradefedTestRunner.NAME,
+                               MODULE_BUILD_TARGETS,
+                               PATH_DATA)
+EMPTY_PATH_INFO = test_info.TestInfo(MODULE_NAME,
+                                     atf_tr.AtestTradefedTestRunner.NAME,
+                                     MODULE_BUILD_TARGETS,
+                                     EMPTY_PATH_DATA)
 MODULE_CLASS_COMBINED_BUILD_TARGETS = MODULE_BUILD_TARGETS | CLASS_BUILD_TARGETS
 INT_CONFIG = os.path.join(INT_DIR, INT_NAME + '.xml')
 GTF_INT_CONFIG = os.path.join(GTF_INT_DIR, GTF_INT_NAME + '.xml')

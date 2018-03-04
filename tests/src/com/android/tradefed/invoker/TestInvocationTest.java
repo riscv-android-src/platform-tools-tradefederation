@@ -35,6 +35,7 @@ import com.android.tradefed.config.DeviceConfigurationHolder;
 import com.android.tradefed.config.IConfiguration;
 import com.android.tradefed.config.IConfigurationFactory;
 import com.android.tradefed.config.IDeviceConfiguration;
+import com.android.tradefed.config.Option;
 import com.android.tradefed.config.OptionSetter;
 import com.android.tradefed.device.DeviceAllocationState;
 import com.android.tradefed.device.DeviceNotAvailableException;
@@ -1693,9 +1694,12 @@ public class TestInvocationTest extends TestCase {
         }
     }
 
-    private class TestableCollector extends BaseDeviceMetricCollector {
+    public static class TestableCollector extends BaseDeviceMetricCollector {
 
+        @Option(name = "name")
         private String mName;
+
+        public TestableCollector() {}
 
         public TestableCollector(String name) {
             mName = name;

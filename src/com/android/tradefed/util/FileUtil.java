@@ -610,40 +610,31 @@ public class FileUtil {
         }
     }
 
+    /**
+     * Note: We should never use CLog in here, since it also relies on that method, this would lead
+     * to infinite recursion.
+     */
     private static void verifyDiskSpace(File file) {
         // Based on empirical testing File.getUsableSpace is a low cost operation (~ 100 us for
         // local disk, ~ 100 ms for network disk). Therefore call it every time tmp file is
         // created
         long usableSpace = 0L;
-        Exception nioException = null;
-        try {
-            // Trying first with java.nio
-            usableSpace = Files.getFileStore(file.toPath()).getUsableSpace();
-        } catch (IOException ioe) {
-            nioException = ioe;
-            // We cannot use the CLog logger as it reaches for the logger file and would requests
-            // verifyDiskSpace again (loop recursion), so we do best effort logging here.
-            ioe.printStackTrace();
+        File toCheck = file;
+        if (!file.isDirectory() && file.getParentFile() != null) {
+            // If the given file is not a directory it might not work properly so using the parent
+            // in that case.
+            toCheck = file.getParentFile();
         }
-        // Try out a fallback with regular java File.
-        if (usableSpace == 0L) {
-            usableSpace = file.getUsableSpace();
-        }
+        usableSpace = toCheck.getUsableSpace();
 
         long minDiskSpace = mMinDiskSpaceMb * 1024 * 1024;
         if (usableSpace < minDiskSpace) {
             String message =
                     String.format(
                             "Available space on %s is %.2f MB. Min is %d MB.",
-                            file.getAbsolutePath(),
+                            toCheck.getAbsolutePath(),
                             usableSpace / (1024.0 * 1024.0),
                             mMinDiskSpaceMb);
-            if (nioException != null) {
-                message =
-                        String.format(
-                                "%s Got an exception during getUsableSpace:\n'%s'",
-                                message, StreamUtil.getStackTrace(nioException));
-            }
             throw new LowDiskSpaceException(message);
         }
     }

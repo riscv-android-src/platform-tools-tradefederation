@@ -21,6 +21,7 @@ import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.invoker.IInvocationContext;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.result.ITestInvocationListener;
+
 import java.io.File;
 import java.math.BigInteger;
 import java.util.ArrayList;
@@ -75,7 +76,6 @@ public class ScheduleMultipleDeviceMetricCollector extends BaseDeviceMetricColle
     public ITestInvocationListener init(
             IInvocationContext context, ITestInvocationListener listener) {
         super.init(context, listener);
-
         initMetricCollectors(context, listener);
 
         return this;
@@ -139,7 +139,7 @@ public class ScheduleMultipleDeviceMetricCollector extends BaseDeviceMetricColle
      * args and initializing the last update value of each of the collectors to current time.
      */
     private void setupCollection() {
-        mMetricCollectorIntervals = parseAllArgs();
+        parseAllArgs();
         for (ScheduledDeviceMetricCollector singleMetricCollector :
                 mMetricCollectorIntervals.keySet()) {
             mLastUpdate.put(singleMetricCollector, System.currentTimeMillis());
@@ -177,7 +177,7 @@ public class ScheduleMultipleDeviceMetricCollector extends BaseDeviceMetricColle
     }
 
     /** Parse all the intervals provided in the command line. */
-    private Map<ScheduledDeviceMetricCollector, Long> parseAllArgs() {
+    private void parseAllArgs() {
         for (ScheduledDeviceMetricCollector metricCollector : mMetricCollectors) {
             Long value = mIntervalMs.getOrDefault(metricCollector.getTag(), 0L);
 
@@ -188,7 +188,6 @@ public class ScheduleMultipleDeviceMetricCollector extends BaseDeviceMetricColle
                         metricCollector.getClass() + " expects a non negative interval.");
             }
         }
-        return mMetricCollectorIntervals;
     }
 
     /** Get the {@code scheduleRate} common to all tasks which is the gcd of all the intervals. */

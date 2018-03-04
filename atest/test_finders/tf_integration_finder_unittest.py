@@ -111,12 +111,9 @@ class TFIntegrationFinderUnittests(unittest.TestCase):
                        '_search_integration_dirs')
     def test_load_xml_file(self, search):
         """Test _load_xml_file and _load_include_tags methods."""
-        search.return_value = os.path.join(
-            os.path.dirname(os.path.realpath(__file__)), '..', uc.TEST_DATA_DIR,
-            'CtsUiDeviceTestCases.xml')
-        xml_file = os.path.join(
-            os.path.dirname(os.path.realpath(__file__)), '..', uc.TEST_DATA_DIR,
-            constants.MODULE_CONFIG)
+        search.return_value = os.path.join(uc.TEST_DATA_DIR,
+                                           'CtsUiDeviceTestCases.xml')
+        xml_file = os.path.join(uc.TEST_DATA_DIR, constants.MODULE_CONFIG)
         print 'xml_file: %s' % xml_file
         xml_root = self.tf_finder._load_xml_file(xml_file)
         include_tags = xml_root.findall('.//include')

@@ -33,6 +33,7 @@ import com.android.ddmlib.testrunner.IRemoteAndroidTestRunner;
 import com.android.ddmlib.testrunner.InstrumentationResultParser;
 import com.android.ddmlib.testrunner.RemoteAndroidTestRunner;
 import com.android.tradefed.config.ConfigurationException;
+import com.android.tradefed.config.OptionSetter;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.result.ITestInvocationListener;
@@ -170,6 +171,17 @@ public class InstrumentationTestTest {
         } catch (IllegalArgumentException e) {
             // expected
         }
+    }
+
+    /** Test normal run scenario with --no-hidden-api-check specified */
+    @Test
+    public void testRun_hiddenApiCheck() throws Exception {
+        OptionSetter setter = new OptionSetter(mInstrumentationTest);
+        setter.setOptionValue("hidden-api-checks", "false");
+        RemoteAndroidTestRunner runner =
+                (RemoteAndroidTestRunner)
+                        mInstrumentationTest.createRemoteAndroidTestRunner("", "", mMockIDevice);
+        assertThat(runner.getRunOptions()).contains("--no-hidden-api-checks");
     }
 
     /** Test normal run scenario with a test class specified. */
@@ -749,6 +761,7 @@ public class InstrumentationTestTest {
     private static class FakeTestRunner extends RemoteAndroidTestRunner {
 
         private Map<String, String> mArgs = new HashMap<>();
+        private String mRunOptions;
 
         FakeTestRunner(String packageName, String runnerName) {
             super(packageName, runnerName, null);

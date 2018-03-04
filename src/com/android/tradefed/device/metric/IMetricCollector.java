@@ -31,11 +31,19 @@ import java.util.Map;
  * <p>This interface cannot be used as a <result_reporter> even it extends {@link
  * ITestInvocationListener}. The configuration checking will reject it. It must be used as a
  * "metrics_collector".
+ *
+ * <p>Collectors are not expected to keep an internal state as they may be re-used in several
+ * places. If an internal state really must be used, then it should be cleaned on {@link
+ * #init(IInvocationContext, ITestInvocationListener)}.
  */
 public interface IMetricCollector extends ITestInvocationListener {
 
     /**
-     * Initialization of the collector with the current context and where to forward results.
+     * Initialization of the collector with the current context and where to forward results. Will
+     * only be called once per instance, and the collector is expected to update its internal
+     * context and listener. Init will never be called during a test run always before.
+     *
+     * <p>Do not override unless you know what you are doing.
      *
      * @param context the {@link IInvocationContext} for the invocation in progress.
      * @param listener the {@link ITestInvocationListener} where to put results.

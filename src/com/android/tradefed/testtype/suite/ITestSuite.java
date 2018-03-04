@@ -83,7 +83,8 @@ public abstract class ITestSuite
                 IConfigurationReceiver {
 
     public static final String SKIP_SYSTEM_STATUS_CHECKER = "skip-system-status-check";
-    public static final String WHITE_LIST_RUNNER = "whitelist-runner";
+    public static final String RUNNER_WHITELIST = "runner-whitelist";
+    public static final String PREPARER_WHITELIST = "preparer-whitelist";
     public static final String MODULE_CHECKER_PRE = "PreModuleChecker";
     public static final String MODULE_CHECKER_POST = "PostModuleChecker";
     public static final String ABI_OPTION = "abi";
@@ -197,8 +198,15 @@ public abstract class ITestSuite
     )
     private MultiMap<String, String> mModuleMetadataExcludeFilter = new MultiMap<>();
 
-    @Option(name = WHITE_LIST_RUNNER, description = "Runner class that are allowed to run.")
+    @Option(name = RUNNER_WHITELIST, description = "Runner class(es) that are allowed to run.")
     private Set<String> mAllowedRunners = new HashSet<>();
+
+    @Option(
+        name = PREPARER_WHITELIST,
+        description =
+                "Preparer class(es) that are allowed to run. This mostly usefeul for dry-runs."
+    )
+    private Set<String> mAllowedPreparers = new HashSet<>();
 
     private ITestDevice mDevice;
     private IBuildInfo mBuildInfo;
@@ -249,6 +257,7 @@ public abstract class ITestSuite
                 // from execution
                 continue;
             }
+            filterPreparers(config.getValue(), mAllowedPreparers);
             filteredConfig.put(config.getKey(), config.getValue());
         }
         runConfig.clear();
@@ -295,32 +304,16 @@ public abstract class ITestSuite
         return runModules;
     }
 
-    private void checkSystemStatusBlackList() {
-        for (String checker : mSystemStatusCheckBlacklist) {
+    private void checkClassLoad(Set<String> classes, String type) {
+        for (String c : classes) {
             try {
-                Class.forName(checker);
+                Class.forName(c);
             } catch (ClassNotFoundException e) {
                 ConfigurationException ex =
                         new ConfigurationException(
                                 String.format(
                                         "--%s must contains valid class, %s was not found",
-                                        SKIP_SYSTEM_STATUS_CHECKER, checker),
-                                e);
-                throw new RuntimeException(ex);
-            }
-        }
-    }
-
-    private void checkRunnerWhiteList() {
-        for (String runner : mAllowedRunners) {
-            try {
-                Class.forName(runner);
-            } catch (ClassNotFoundException e) {
-                ConfigurationException ex =
-                        new ConfigurationException(
-                                String.format(
-                                        "--%s must contains valid class, %s was not found",
-                                        WHITE_LIST_RUNNER, runner),
+                                        type, c),
                                 e);
                 throw new RuntimeException(ex);
             }
@@ -341,9 +334,10 @@ public abstract class ITestSuite
     /** Generic run method for all test loaded from {@link #loadTests()}. */
     @Override
     public final void run(ITestInvocationListener listener) throws DeviceNotAvailableException {
-        // Load and check the module checkers
-        checkSystemStatusBlackList();
-        checkRunnerWhiteList();
+        // Load and check the module checkers, runners and preparers in black and whitelist
+        checkClassLoad(mSystemStatusCheckBlacklist, SKIP_SYSTEM_STATUS_CHECKER);
+        checkClassLoad(mAllowedRunners, RUNNER_WHITELIST);
+        checkClassLoad(mAllowedPreparers, PREPARER_WHITELIST);
 
         List<ModuleDefinition> runModules = createExecutionList();
         // Check if we have something to run.
@@ -843,5 +837,22 @@ public abstract class ITestSuite
         // we've matched at least one inclusion rule (if there's any) AND we didn't match any of the
         // exclusion rules (if there's any)
         return true;
+    }
+
+    /**
+     * Filter out the preparers that were not whitelisted. This is useful for collect-tests-only
+     * where some preparers are not needed to dry run through the invocation.
+     *
+     * @param config the {@link IConfiguration} considered for filtering.
+     * @param preparerWhiteList the current preparer whitelist.
+     */
+    @VisibleForTesting
+    void filterPreparers(IConfiguration config, Set<String> preparerWhiteList) {
+        List<ITargetPreparer> preparers = new ArrayList<>(config.getTargetPreparers());
+        for (ITargetPreparer prep : preparers) {
+            if (!preparerWhiteList.contains(prep.getClass().getName())) {
+                config.getTargetPreparers().remove(prep);
+            }
+        }
     }
 }

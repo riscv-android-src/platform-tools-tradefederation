@@ -247,6 +247,14 @@ public class InstrumentationTest implements IDeviceTest, IResumableTest, ITestCo
     )
     private boolean mShouldEnforceFormat = false;
 
+    @Option(
+        name = "hidden-api-checks",
+        description =
+                "If set to false, the '--no-hidden-api-checks' flag will be passed to the am "
+                        + "instrument command. Only works for P or later."
+    )
+    private boolean mHiddenApiChecks = true;
+
     private IAbi mAbi = null;
 
     private Collection<String> mInstallArgs = new ArrayList<>();
@@ -609,10 +617,19 @@ public class InstrumentationTest implements IDeviceTest, IResumableTest, ITestCo
         RemoteAndroidTestRunner runner = new RemoteAndroidTestRunner(
                 packageName, runnerName, device);
         String abiName = resolveAbiName();
+        String runOptions = "";
+        if (!mHiddenApiChecks) {
+            runOptions += "--no-hidden-api-checks ";
+        }
         if (abiName != null) {
             mInstallArgs.add(String.format("--abi %s", abiName));
-            runner.setRunOptions(String.format("--abi %s", abiName));
+            runOptions += String.format("--abi %s", abiName);
         }
+        // Set the run options if any.
+        if (!runOptions.isEmpty()) {
+            runner.setRunOptions(runOptions);
+        }
+
         runner.setEnforceTimeStamp(mShouldEnforceFormat);
         return runner;
     }

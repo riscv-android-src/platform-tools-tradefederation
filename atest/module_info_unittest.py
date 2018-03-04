@@ -24,7 +24,7 @@ import constants
 import module_info
 import unittest_constants as uc
 
-JSON_FILE_PATH = os.path.join(os.path.dirname(__file__), uc.TEST_DATA_DIR)
+JSON_FILE_PATH = os.path.join(uc.TEST_DATA_DIR, uc.JSON_FILE)
 EXPECTED_MOD_TARGET = 'tradefed'
 EXPECTED_MOD_TARGET_PATH = ['tf/core']
 UNEXPECTED_MOD_TARGET = 'this_should_not_be_in_module-info.json'
@@ -101,24 +101,21 @@ class ModuleInfoUnittests(unittest.TestCase):
     def test_is_module(self):
         """Test that we get the module when it's properly loaded."""
         # Load up the test json file and check that module is in it
-        mod_file = os.path.join(JSON_FILE_PATH, uc.JSON_FILE)
-        mod_info = module_info.ModuleInfo(module_file=mod_file)
+        mod_info = module_info.ModuleInfo(module_file=JSON_FILE_PATH)
         self.assertTrue(mod_info.is_module(EXPECTED_MOD_TARGET))
         self.assertFalse(mod_info.is_module(UNEXPECTED_MOD_TARGET))
 
     def test_get_path(self):
         """Test that we get the module path when it's properly loaded."""
         # Load up the test json file and check that module is in it
-        mod_file = os.path.join(JSON_FILE_PATH, uc.JSON_FILE)
-        mod_info = module_info.ModuleInfo(module_file=mod_file)
+        mod_info = module_info.ModuleInfo(module_file=JSON_FILE_PATH)
         self.assertEqual(mod_info.get_paths(EXPECTED_MOD_TARGET),
                          EXPECTED_MOD_TARGET_PATH)
         self.assertEqual(mod_info.get_paths(MOD_NO_PATH), [])
 
     def test_get_module_name(self):
         """test that we get the module name properly."""
-        mod_file = os.path.join(JSON_FILE_PATH, uc.JSON_FILE)
-        mod_info = module_info.ModuleInfo(module_file=mod_file)
+        mod_info = module_info.ModuleInfo(module_file=JSON_FILE_PATH)
         self.assertEqual(mod_info.get_module_name(EXPECTED_MOD_TARGET_PATH[0]),
                          EXPECTED_MOD_TARGET)
         # TODO: test returning multiple modules on 1 path when it's ready.
