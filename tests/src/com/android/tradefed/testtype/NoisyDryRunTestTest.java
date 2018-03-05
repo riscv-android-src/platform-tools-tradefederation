@@ -79,6 +79,33 @@ public class NoisyDryRunTestTest {
         verifyMocks();
     }
 
+    /**
+     * Test loading a configuration with a USE_KEYSTORE option specified. It should still load and
+     * we fake the keystore to simply validate the overall structure.
+     */
+    @Test
+    public void testRun_withKeystore() throws Exception {
+        FileUtil.writeToFile("tf/fake --fail-invocation-with-cause USE_KEYSTORE@fake\n", mFile);
+        mMockListener.testRunStarted("com.android.tradefed.testtype.NoisyDryRunTest_parseFile", 1);
+        mMockListener.testStarted(EasyMock.anyObject());
+        mMockListener.testEnded(EasyMock.anyObject(), EasyMock.anyObject());
+        mMockListener.testRunEnded(EasyMock.eq(0l), (Map<String, String>) EasyMock.anyObject());
+
+        mMockListener.testRunStarted(
+                "com.android.tradefed.testtype.NoisyDryRunTest_parseCommands", 1);
+        mMockListener.testStarted(EasyMock.anyObject());
+        mMockListener.testEnded(EasyMock.anyObject(), EasyMock.anyObject());
+
+        mMockListener.testRunEnded(EasyMock.eq(0l), (Map<String, String>) EasyMock.anyObject());
+        replayMocks();
+
+        NoisyDryRunTest noisyDryRunTest = new NoisyDryRunTest();
+        OptionSetter setter = new OptionSetter(noisyDryRunTest);
+        setter.setOptionValue("cmdfile", mFile.getAbsolutePath());
+        noisyDryRunTest.run(mMockListener);
+        verifyMocks();
+    }
+
     @Test
     public void testRun_invalidCmdFile() throws Exception {
         FileUtil.deleteFile(mFile);
