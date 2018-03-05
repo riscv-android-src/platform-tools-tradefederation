@@ -131,11 +131,11 @@ class ModuleInfo(object):
         return name in self.name_to_module_info
 
     def get_paths(self, name):
-        """Return paths of supplied module name, None if non-existent."""
+        """Return paths of supplied module name, Empty list if non-existent."""
         info = self.name_to_module_info.get(name)
         if info:
             return info.get(_MODULE_PATH, [])
-        return None
+        return []
 
     def get_module_name(self, rel_module_path):
         """Get the modules that all have module_path.
