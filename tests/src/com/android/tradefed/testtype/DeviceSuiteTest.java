@@ -119,6 +119,36 @@ public class DeviceSuiteTest {
     public class Junit4DeviceSuite {
     }
 
+    /** JUnit3 test class */
+    public static class JUnit3DeviceTestCase extends DeviceTestCase
+            implements IBuildReceiver, IAbiReceiver {
+        private IBuildInfo mBuild;
+        private IAbi mAbi;
+
+        public void testOne() {
+            assertNotNull(getDevice());
+            assertNotNull(mBuild);
+            assertNotNull(mAbi);
+        }
+
+        @Override
+        public void setBuild(IBuildInfo buildInfo) {
+            mBuild = buildInfo;
+        }
+
+        @Override
+        public void setAbi(IAbi abi) {
+            mAbi = abi;
+        }
+    }
+
+    /** JUnit4 style suite that contains a JUnit3 class. */
+    @RunWith(DeviceSuite.class)
+    @SuiteClasses({
+        JUnit3DeviceTestCase.class,
+    })
+    public class JUnit4SuiteWithJunit3 {}
+
     /** Simple Annotation class for testing */
     @Retention(RetentionPolicy.RUNTIME)
     public @interface MyAnnotation1 {}
@@ -188,6 +218,24 @@ public class DeviceSuiteTest {
         mListener.testEnded(EasyMock.eq(test1), EasyMock.eq(expected));
         mListener.testStarted(EasyMock.eq(test2));
         mListener.testEnded(EasyMock.eq(test2), EasyMock.eq(Collections.emptyMap()));
+        mListener.testRunEnded(EasyMock.anyLong(), EasyMock.eq(Collections.emptyMap()));
+        EasyMock.replay(mListener, mMockDevice);
+        mHostTest.run(mListener);
+        EasyMock.verify(mListener, mMockDevice);
+    }
+
+    /** Test that a JUnit3 class inside our JUnit4 suite can receive the usual values. */
+    @Test
+    public void testRunDeviceSuite_junit3() throws Exception {
+        OptionSetter setter = new OptionSetter(mHostTest);
+        setter.setOptionValue("class", JUnit4SuiteWithJunit3.class.getName());
+        mListener.testRunStarted(
+                EasyMock.eq("com.android.tradefed.testtype.DeviceSuiteTest$JUnit4SuiteWithJunit3"),
+                EasyMock.eq(1));
+        TestDescription test1 =
+                new TestDescription(JUnit3DeviceTestCase.class.getName(), "testOne");
+        mListener.testStarted(EasyMock.eq(test1));
+        mListener.testEnded(EasyMock.eq(test1), EasyMock.eq(Collections.emptyMap()));
         mListener.testRunEnded(EasyMock.anyLong(), EasyMock.eq(Collections.emptyMap()));
         EasyMock.replay(mListener, mMockDevice);
         mHostTest.run(mListener);
