@@ -68,6 +68,10 @@ public class TestMappingSuiteRunner extends BaseTestSuite {
 
         if (mTestType != null) {
             Set<String> testsToRun = TestMapping.getTests(getBuildInfo(), mTestType);
+            if (testsToRun.isEmpty()) {
+                throw new RuntimeException(
+                        String.format("No test found for the given type: %s.", mTestType));
+            }
             setIncludeFilter(testsToRun);
         }
 
