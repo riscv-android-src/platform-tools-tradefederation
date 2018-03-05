@@ -30,7 +30,7 @@ import com.android.tradefed.result.TestDescription;
 import com.android.tradefed.util.QuotationAwareTokenizer;
 import com.android.tradefed.util.RunUtil;
 import com.android.tradefed.util.StreamUtil;
-import com.android.tradefed.util.keystore.StubKeyStoreClient;
+import com.android.tradefed.util.keystore.DryRunKeyStore;
 
 import java.io.File;
 import java.io.IOException;
@@ -120,11 +120,15 @@ public class NoisyDryRunTest implements IRemoteTest {
             String[] args = commands.get(i).asArray();
             String cmdLine = QuotationAwareTokenizer.combineTokens(args);
             try {
-                IConfiguration config = ConfigurationFactory.getInstance()
-                        .createConfigurationFromArgs(args, null, new StubKeyStoreClient());
+                // Use dry run keystore to always work for any keystore.
+                // FIXME: the DryRunKeyStore is a temporary fixed until each config can be validated
+                // against its own keystore.
+                IConfiguration config =
+                        ConfigurationFactory.getInstance()
+                                .createConfigurationFromArgs(args, null, new DryRunKeyStore());
                 config.validateOptions();
             } catch (ConfigurationException e) {
-                CLog.e("Failed to parse comand line %s.", cmdLine);
+                CLog.e("Failed to parse comand line: %s.", cmdLine);
                 CLog.e(e);
                 listener.testFailed(parseCmdTest, StreamUtil.getStackTrace(e));
             } finally {
