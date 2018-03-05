@@ -15,6 +15,7 @@
  */
 package com.android.tradefed.testtype.suite.module;
 
+import com.android.tradefed.config.Option;
 import com.android.tradefed.invoker.IInvocationContext;
 import com.android.tradefed.testtype.Abi;
 import com.android.tradefed.testtype.IAbi;
@@ -26,6 +27,24 @@ import com.android.tradefed.util.AbiUtils;
  * module should run or not.
  */
 public abstract class BaseModuleController implements IModuleController {
+
+    @Option(
+        name = "bugreport-on-failure",
+        description = "Module option to capture a bugreport on its test failure."
+    )
+    private boolean mBugReportOnFailure = true;
+
+    @Option(
+        name = "logcat-on-failure",
+        description = "Module option to capture a logcat on its test failure."
+    )
+    private boolean mLogcatOnFailure = true;
+
+    @Option(
+        name = "screenshot-on-failure",
+        description = "Module option to capture a screenshot on its test failure."
+    )
+    private boolean mScreenshotOnFailure = true;
 
     private IInvocationContext mContext;
 
@@ -47,5 +66,20 @@ public abstract class BaseModuleController implements IModuleController {
     public final IAbi getModuleAbi() {
         String abi = mContext.getAttributes().get(ModuleDefinition.MODULE_ABI).get(0);
         return new Abi(abi, AbiUtils.getBitness(abi));
+    }
+
+    /** Returns whether of not the module wants to capture the logcat on test failure. */
+    public final boolean shouldCaptureLogcat() {
+        return mLogcatOnFailure;
+    }
+
+    /** Returns whether of not the module wants to capture the screenshot on test failure. */
+    public final boolean shouldCaptureScreenshot() {
+        return mScreenshotOnFailure;
+    }
+
+    /** Returns whether of not the module wants to capture the bugreport on test failure. */
+    public final boolean shouldCaptureBugreport() {
+        return mBugReportOnFailure;
     }
 }
