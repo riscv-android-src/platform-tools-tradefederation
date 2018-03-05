@@ -274,6 +274,7 @@ public class ImageStats implements IRemoteTest, IBuildReceiver {
                 // has a min report size requirement and current category does not meet it
                 CLog.v("Skipped reporting for %s (value %d): it's below threshold %d",
                         e.getKey(), e.getValue(), mMinReportSize);
+                continue;
             }
             ret.put(e.getKey(), Long.toString(e.getValue()));
         }
