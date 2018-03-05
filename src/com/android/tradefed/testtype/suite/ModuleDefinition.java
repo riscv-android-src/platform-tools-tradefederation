@@ -49,7 +49,7 @@ import com.android.tradefed.testtype.IMultiDeviceTest;
 import com.android.tradefed.testtype.IRemoteTest;
 import com.android.tradefed.testtype.IRuntimeHintProvider;
 import com.android.tradefed.testtype.ITestCollector;
-import com.android.tradefed.testtype.suite.module.IModuleController;
+import com.android.tradefed.testtype.suite.module.BaseModuleController;
 import com.android.tradefed.testtype.suite.module.IModuleController.RunStrategy;
 import com.android.tradefed.util.StreamUtil;
 
@@ -681,8 +681,15 @@ public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestColl
      */
     private RunStrategy applyConfigurationControl(TestFailureListener failureListener) {
         Object ctrlObject = mModuleConfiguration.getConfigurationObject(MODULE_CONTROLLER);
-        if (ctrlObject != null) {
-            IModuleController controller = (IModuleController) ctrlObject;
+        if (ctrlObject != null && ctrlObject instanceof BaseModuleController) {
+            BaseModuleController controller = (BaseModuleController) ctrlObject;
+            // module_controller can also control the log collection for the one module
+            if (failureListener != null) {
+                failureListener.applyModuleConfiguration(
+                        controller.shouldCaptureBugreport(),
+                        controller.shouldCaptureLogcat(),
+                        controller.shouldCaptureScreenshot());
+            }
             return controller.shouldRunModule(mModuleInvocationContext);
         }
         return RunStrategy.RUN;
