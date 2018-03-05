@@ -46,10 +46,17 @@ public class TestFailureListener implements ITestInvocationListener {
 
     private List<ITestDevice> mListDevice;
     private ITestInvocationListener mListener;
+    // Settings for the whole invocation
     private boolean mBugReportOnFailure;
     private boolean mLogcatOnFailure;
     private boolean mScreenshotOnFailure;
     private boolean mRebootOnFailure;
+
+    // module specific values
+    private boolean mModuleBugReportOnFailure = true;
+    private boolean mModuleLogcatOnFailure = true;
+    private boolean mModuleScreenshotOnFailure = true;
+
     private int mMaxLogcatBytes;
     private Map<TestDescription, Long> mTrackStartTime = new HashMap<>();
     private List<Thread> mLogcatThreads = new ArrayList<>();
@@ -117,7 +124,7 @@ public class TestFailureListener implements ITestInvocationListener {
     /** Capture the appropriate logs for one device for one test failure. */
     private void captureFailure(ITestDevice device, TestDescription test) {
         String serial = device.getSerialNumber();
-        if (mScreenshotOnFailure) {
+        if (mScreenshotOnFailure && mModuleScreenshotOnFailure) {
             try {
                 try (InputStreamSource screenSource = device.getScreenshot()) {
                     testLog(
@@ -130,13 +137,13 @@ public class TestFailureListener implements ITestInvocationListener {
                 CLog.e("Device %s became unavailable while capturing screenshot", serial);
             }
         }
-        if (mBugReportOnFailure) {
+        if (mBugReportOnFailure && mModuleBugReportOnFailure) {
             if (!device.logBugreport(
                     String.format("%s-%s-bugreport", test.toString(), serial), mListener)) {
                 CLog.e("Failed to capture bugreport for %s failure on %s.", test, serial);
             }
         }
-        if (mLogcatOnFailure) {
+        if (mLogcatOnFailure && mModuleLogcatOnFailure) {
             Runnable captureLogcat =
                     new Runnable() {
                         @Override
@@ -194,6 +201,10 @@ public class TestFailureListener implements ITestInvocationListener {
 
     /** Join on all the logcat capturing threads to ensure they terminate. */
     public void join() {
+        // Reset the module config to use the invocation settings by default.
+        mModuleBugReportOnFailure = true;
+        mModuleLogcatOnFailure = true;
+        mModuleScreenshotOnFailure = true;
         synchronized (mLogcatThreads) {
             for (Thread t : mLogcatThreads) {
                 if (!t.isAlive()) {
@@ -220,5 +231,20 @@ public class TestFailureListener implements ITestInvocationListener {
     @VisibleForTesting
     IRunUtil getRunUtil() {
         return RunUtil.getDefault();
+    }
+
+    /**
+     * Allows to override the invocation settings of capture on failure by the module specific
+     * configurations.
+     *
+     * @param bugreportOnFailure true to capture a bugreport on test failure. False otherwise.
+     * @param logcatOnfailure true to capture a logcat on test failure. False otherwise.
+     * @param screenshotOnFailure true to capture a screenshot on failure. False otherwise.
+     */
+    public void applyModuleConfiguration(
+            boolean bugreportOnFailure, boolean logcatOnfailure, boolean screenshotOnFailure) {
+        mModuleBugReportOnFailure = bugreportOnFailure;
+        mModuleLogcatOnFailure = logcatOnfailure;
+        mModuleScreenshotOnFailure = screenshotOnFailure;
     }
 }
