@@ -21,9 +21,16 @@ import java.io.File;
 import java.io.Serializable;
 import java.util.Collection;
 import java.util.Map;
+import java.util.Set;
 
 /** Holds information about the build under test. */
 public interface IBuildInfo extends Serializable {
+
+    /** Some properties that a {@link IBuildInfo} can have to tweak some handling of it. */
+    public enum BuildInfoProperties {
+        DO_NOT_COPY_ON_SHARDING,
+        DO_NOT_LINK_TESTS_DIR,
+    }
 
     /**
      * Default value when build ID is unknown.
@@ -120,6 +127,16 @@ public interface IBuildInfo extends Serializable {
      */
     public void addBuildAttribute(String attributeName, String attributeValue);
 
+    /**
+     * Set the {@link BuildInfoProperties} for the {@link IBuildInfo} instance. Override any
+     * existing properties set before.
+     *
+     * @param properties The list of properties to add.
+     */
+    public void setProperties(BuildInfoProperties... properties);
+
+    /** Returns a copy of the properties currently set on the {@link IBuildInfo}. */
+    public Set<BuildInfoProperties> getProperties();
 
     /**
      * Helper method to retrieve a file with given name.

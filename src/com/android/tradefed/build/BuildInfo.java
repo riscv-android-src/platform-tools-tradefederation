@@ -26,9 +26,12 @@ import com.google.common.base.Objects;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.Arrays;
 import java.util.Collection;
+import java.util.HashSet;
 import java.util.Hashtable;
 import java.util.Map;
+import java.util.Set;
 
 /**
  * Generic implementation of a {@link IBuildInfo} that should be associated
@@ -47,6 +50,9 @@ public class BuildInfo implements IBuildInfo {
     private String mBuildFlavor = null;
     private String mBuildBranch = null;
     private String mDeviceSerial = null;
+
+    /** File handling properties: Some files of the BuildInfo might requires special handling */
+    private final Set<BuildInfoProperties> mProperties = new HashSet<>();
 
     /**
      * Creates a {@link BuildInfo} using default attribute values.
@@ -145,6 +151,19 @@ public class BuildInfo implements IBuildInfo {
     @Override
     public Map<String, String> getBuildAttributes() {
         return mBuildAttributes.getUniqueMap();
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public void setProperties(BuildInfoProperties... properties) {
+        mProperties.clear();
+        mProperties.addAll(Arrays.asList(properties));
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public Set<BuildInfoProperties> getProperties() {
+        return new HashSet<>(mProperties);
     }
 
     /**
