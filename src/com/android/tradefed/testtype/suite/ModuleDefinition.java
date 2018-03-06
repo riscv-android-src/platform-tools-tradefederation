@@ -49,7 +49,7 @@ import com.android.tradefed.testtype.IMultiDeviceTest;
 import com.android.tradefed.testtype.IRemoteTest;
 import com.android.tradefed.testtype.IRuntimeHintProvider;
 import com.android.tradefed.testtype.ITestCollector;
-import com.android.tradefed.testtype.suite.module.IModuleController;
+import com.android.tradefed.testtype.suite.module.BaseModuleController;
 import com.android.tradefed.testtype.suite.module.IModuleController.RunStrategy;
 import com.android.tradefed.util.StreamUtil;
 
@@ -61,11 +61,9 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.ListIterator;
 import java.util.Map;
-import java.util.Set;
 
 /**
  * Container for the test run configuration. This class is an helper to prepare and run the tests.
@@ -111,8 +109,6 @@ public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestColl
     private long mElapsedTearDown = 0l;
 
     private long mElapsedTest = 0l;
-
-    private Set<String> mRunnerWhiteList = new HashSet<>();
 
     public static final String PREPARATION_TIME = "PREP_TIME";
     public static final String TEAR_DOWN_TIME = "TEARDOWN_TIME";
@@ -337,13 +333,6 @@ public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestColl
                 IRemoteTest test = poll();
                 if (test == null) {
                     return;
-                }
-                if (!mRunnerWhiteList.isEmpty()
-                        && !mRunnerWhiteList.contains(test.getClass().getName())) {
-                    CLog.d(
-                            "Runner %s was skipped by the runner whitelist: '%s'.",
-                            test.getClass().getName(), mRunnerWhiteList);
-                    continue;
                 }
 
                 if (test instanceof IBuildReceiver) {
@@ -668,11 +657,6 @@ public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestColl
         return mModuleInvocationContext;
     }
 
-    /** Sets of runner that are allowed to run. */
-    public void setRunnerWhiteList(Set<String> runners) {
-        mRunnerWhiteList.addAll(runners);
-    }
-
     /**
      * Allow to load a module_controller object to tune how should a particular module run.
      *
@@ -681,8 +665,15 @@ public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestColl
      */
     private RunStrategy applyConfigurationControl(TestFailureListener failureListener) {
         Object ctrlObject = mModuleConfiguration.getConfigurationObject(MODULE_CONTROLLER);
-        if (ctrlObject != null) {
-            IModuleController controller = (IModuleController) ctrlObject;
+        if (ctrlObject != null && ctrlObject instanceof BaseModuleController) {
+            BaseModuleController controller = (BaseModuleController) ctrlObject;
+            // module_controller can also control the log collection for the one module
+            if (failureListener != null) {
+                failureListener.applyModuleConfiguration(
+                        controller.shouldCaptureBugreport(),
+                        controller.shouldCaptureLogcat(),
+                        controller.shouldCaptureScreenshot());
+            }
             return controller.shouldRunModule(mModuleInvocationContext);
         }
         return RunStrategy.RUN;

@@ -23,6 +23,7 @@ import com.android.tradefed.command.remote.DeviceDescriptor;
 import com.android.tradefed.config.Configuration;
 import com.android.tradefed.config.ConfigurationDescriptor;
 import com.android.tradefed.config.IConfiguration;
+import com.android.tradefed.config.OptionSetter;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.invoker.IInvocationContext;
@@ -45,7 +46,9 @@ import com.android.tradefed.testtype.Abi;
 import com.android.tradefed.testtype.IBuildReceiver;
 import com.android.tradefed.testtype.IDeviceTest;
 import com.android.tradefed.testtype.IRemoteTest;
+import com.android.tradefed.testtype.suite.module.BaseModuleController;
 import com.android.tradefed.testtype.suite.module.IModuleController;
+import com.android.tradefed.testtype.suite.module.TestFailureModuleController;
 
 import org.easymock.EasyMock;
 import org.junit.Before;
@@ -57,11 +60,10 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
+
 
 /** Unit tests for {@link ModuleDefinition} */
 @RunWith(JUnit4.class)
@@ -415,10 +417,10 @@ public class ModuleDefinitionTest {
     @Test
     public void testModuleController_fullBypass() throws Exception {
         IConfiguration config = new Configuration("", "");
-        IModuleController moduleConfig =
-                new IModuleController() {
+        BaseModuleController moduleConfig =
+                new BaseModuleController() {
                     @Override
-                    public RunStrategy shouldRunModule(IInvocationContext context) {
+                    public RunStrategy shouldRun(IInvocationContext context) {
                         return RunStrategy.FULL_MODULE_BYPASS;
                     }
                 };
@@ -458,10 +460,10 @@ public class ModuleDefinitionTest {
     @Test
     public void testModuleController_skipTestCases() throws Exception {
         IConfiguration config = new Configuration("", "");
-        IModuleController moduleConfig =
-                new IModuleController() {
+        BaseModuleController moduleConfig =
+                new BaseModuleController() {
                     @Override
-                    public RunStrategy shouldRunModule(IInvocationContext context) {
+                    public RunStrategy shouldRun(IInvocationContext context) {
                         return RunStrategy.SKIP_MODULE_TESTCASES;
                     }
                 };
@@ -557,7 +559,8 @@ public class ModuleDefinitionTest {
         mMockCleaner.tearDown(
                 EasyMock.eq(mMockDevice), EasyMock.eq(mMockBuildInfo), EasyMock.isNull());
         mMockLogSaverListener.testRunStarted(MODULE_NAME, 0);
-        mMockLogSaverListener.testRunEnded(EasyMock.anyLong(), EasyMock.anyObject());
+        mMockLogSaverListener.testRunEnded(
+                EasyMock.anyLong(), (Map<String, String>) EasyMock.anyObject());
 
         LogFile loggedFile = new LogFile("path", "url", false, false);
         EasyMock.expect(
@@ -583,40 +586,52 @@ public class ModuleDefinitionTest {
     }
 
     /**
-     * Test a run where the runner is not part of the whitelist. The runner is skipped and no test
-     * cases are reported.
+     * Test that the {@link IModuleController} object can override the behavior of the capture of
+     * the failure.
      */
     @Test
-    public void testRun_NotPartOfWhiteList() throws Exception {
-        final int testCount = 5;
+    public void testOverrideModuleConfig() throws Exception {
+        // failure listener with capture logcat on failure and screenshot on failure.
+        List<ITestDevice> listDevice = new ArrayList<>();
+        listDevice.add(mMockDevice);
+        EasyMock.expect(mMockDevice.getSerialNumber()).andReturn("Serial");
+        TestFailureListener failureListener =
+                new TestFailureListener(mMockListener, listDevice, false, true, true, false, 5);
+        IConfiguration config = new Configuration("", "");
+        TestFailureModuleController moduleConfig = new TestFailureModuleController();
+        OptionSetter setter = new OptionSetter(moduleConfig);
+        // Module option should override the logcat on failure
+        setter.setOptionValue("logcat-on-failure", "false");
+        config.setConfigurationObject(ModuleDefinition.MODULE_CONTROLLER, moduleConfig);
         List<IRemoteTest> testList = new ArrayList<>();
-        testList.add(new TestObject("run1", testCount, false));
+        testList.add(
+                new IRemoteTest() {
+                    @Override
+                    public void run(ITestInvocationListener listener)
+                            throws DeviceNotAvailableException {
+                        listener.testFailed(
+                                new TestDescription("failedclass", "failedmethod"), "trace");
+                    }
+                });
+        mTargetPrepList.clear();
         mModule =
                 new ModuleDefinition(
                         MODULE_NAME,
                         testList,
                         mMapDeviceTargetPreparer,
                         mMultiTargetPrepList,
-                        new Configuration("", ""));
-        Set<String> whiteList = new HashSet<>();
-        whiteList.add("this.is.not.TestObject");
-        mModule.setRunnerWhiteList(whiteList);
-        mModule.getModuleInvocationContext().addAllocatedDevice(DEFAULT_DEVICE_NAME, mMockDevice);
-        mModule.getModuleInvocationContext()
-                .addDeviceBuildInfo(DEFAULT_DEVICE_NAME, mMockBuildInfo);
-        mModule.setBuild(mMockBuildInfo);
-        mModule.setDevice(mMockDevice);
-        EasyMock.expect(mMockPrep.isDisabled()).andReturn(false);
-        mMockPrep.setUp(EasyMock.eq(mMockDevice), EasyMock.eq(mMockBuildInfo));
-        EasyMock.expect(mMockCleaner.isDisabled()).andStubReturn(false);
-        mMockCleaner.setUp(EasyMock.eq(mMockDevice), EasyMock.eq(mMockBuildInfo));
-        mMockCleaner.tearDown(
-                EasyMock.eq(mMockDevice), EasyMock.eq(mMockBuildInfo), EasyMock.isNull());
-        mMockListener.testRunStarted(MODULE_NAME, 0);
-        // No test cases are run.
+                        config);
+        mMockListener.testRunStarted("fakeName", 0);
         mMockListener.testRunEnded(EasyMock.anyLong(), (Map<String, String>) EasyMock.anyObject());
+        // Only screenshot is captured
+        EasyMock.expect(mMockDevice.getScreenshot())
+                .andReturn(new ByteArrayInputStreamSource("".getBytes()));
+        // Only a screenshot is capture, logcat for that module was disabled.
+        mMockListener.testLog(
+                EasyMock.anyObject(), EasyMock.eq(LogDataType.PNG), EasyMock.anyObject());
+        EasyMock.replay(mMockDevice);
         replayMocks();
-        mModule.run(mMockListener);
-        verifyMocks();
+        mModule.run(mMockListener, failureListener);
+        EasyMock.verify(mMockDevice);
     }
 }

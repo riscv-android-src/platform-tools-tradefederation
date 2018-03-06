@@ -49,7 +49,7 @@ endif
 
 LOCAL_MODULE := tradefed
 
-LOCAL_STATIC_JAVA_LIBRARIES := junit-host kxml2-2.3.0 jline-1.0 tf-remote-client commons-compress-prebuilt host-libprotobuf-java-full tradefed-protos error_prone_annotations-2.0.18 longevity-host-lib
+LOCAL_STATIC_JAVA_LIBRARIES := junit-host junit-params-host kxml2-2.3.0 jline-1.0 tf-remote-client commons-compress-prebuilt host-libprotobuf-java-full tradefed-protos error_prone_annotations-2.0.18 longevity-host-lib
 
 # emmalib is only a runtime dependency if generating code coverage reporters,
 # not a compile time dependency
