@@ -58,6 +58,7 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -254,7 +255,12 @@ public abstract class ITestSuite
                     mModuleMetadataIncludeFilter,
                     mModuleMetadataExcludeFilter)) {
                 // if the module config did not pass the metadata filters, it's excluded
-                // from execution
+                // from execution.
+                continue;
+            }
+            if (!filterByRunnerType(config.getValue(), mAllowedRunners)) {
+                // if the module config did not pass the runner type filter, it's excluded from
+                // execution.
                 continue;
             }
             filterPreparers(config.getValue(), mAllowedPreparers);
@@ -448,8 +454,6 @@ public abstract class ITestSuite
         // Pass the main invocation logSaver
         module.setLogSaver(mMainConfiguration.getLogSaver());
 
-        // Sets the runners that are allowed to run.
-        module.setRunnerWhiteList(mAllowedRunners);
         // Actually run the module
         module.run(listener, failureListener);
 
@@ -848,11 +852,47 @@ public abstract class ITestSuite
      */
     @VisibleForTesting
     void filterPreparers(IConfiguration config, Set<String> preparerWhiteList) {
+        // If no filters was provided, skip the filtering.
+        if (preparerWhiteList.isEmpty()) {
+            return;
+        }
         List<ITargetPreparer> preparers = new ArrayList<>(config.getTargetPreparers());
         for (ITargetPreparer prep : preparers) {
             if (!preparerWhiteList.contains(prep.getClass().getName())) {
                 config.getTargetPreparers().remove(prep);
             }
         }
+    }
+
+    /**
+     * Apply the Runner whitelist filtering, removing any runner that was not whitelisted. If a
+     * configuration has several runners, some might be removed and the config will still run.
+     *
+     * @param config The {@link IConfiguration} being evaluated.
+     * @param allowedRunners The current runner whitelist.
+     * @return True if the configuration module is allowed to run, false otherwise.
+     */
+    @VisibleForTesting
+    protected boolean filterByRunnerType(IConfiguration config, Set<String> allowedRunners) {
+        // If no filters are provided, simply run everything.
+        if (allowedRunners.isEmpty()) {
+            return true;
+        }
+        Iterator<IRemoteTest> iterator = config.getTests().iterator();
+        while (iterator.hasNext()) {
+            IRemoteTest test = iterator.next();
+            if (!allowedRunners.contains(test.getClass().getName())) {
+                CLog.d(
+                        "Runner '%s' in module '%s' was skipped by the runner whitelist: '%s'.",
+                        test.getClass().getName(), config.getName(), allowedRunners);
+                iterator.remove();
+            }
+        }
+
+        if (config.getTests().isEmpty()) {
+            CLog.d("Module %s does not have any more tests, skipping it.", config.getName());
+            return false;
+        }
+        return true;
     }
 }
