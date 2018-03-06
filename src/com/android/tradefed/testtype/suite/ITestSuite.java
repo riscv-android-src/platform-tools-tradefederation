@@ -852,6 +852,10 @@ public abstract class ITestSuite
      */
     @VisibleForTesting
     void filterPreparers(IConfiguration config, Set<String> preparerWhiteList) {
+        // If no filters was provided, skip the filtering.
+        if (preparerWhiteList.isEmpty()) {
+            return;
+        }
         List<ITargetPreparer> preparers = new ArrayList<>(config.getTargetPreparers());
         for (ITargetPreparer prep : preparers) {
             if (!preparerWhiteList.contains(prep.getClass().getName())) {

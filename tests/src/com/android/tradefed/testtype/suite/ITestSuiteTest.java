@@ -935,6 +935,21 @@ public class ITestSuiteTest {
     }
 
     /**
+     * Test that if the preparer whitelist is empty then nothing is done, we do not filter the
+     * preparer.
+     */
+    @Test
+    public void testPreparerWhitelist_empty() throws Exception {
+        IConfiguration config = new Configuration("name", "description");
+        config.setTargetPreparer(new StubTargetPreparer());
+        // Empty whitelist should allow everything to run.
+        Set<String> allowedPreparers = new HashSet<>();
+        assertEquals(1, config.getTargetPreparers().size());
+        mTestSuite.filterPreparers(config, allowedPreparers);
+        assertEquals(1, config.getTargetPreparers().size());
+    }
+
+    /**
      * Test that if the preparer is not whitelisted it is left filtered out by {@link
      * ITestSuite#filterPreparers(IConfiguration, Set)}.
      */
