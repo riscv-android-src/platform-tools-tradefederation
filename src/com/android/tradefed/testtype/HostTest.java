@@ -507,7 +507,6 @@ public class HostTest
         }
     }
 
-
     private void runJUnit4Tests(
             ITestInvocationListener listener, Runner checkRunner, String className) {
         JUnitCore runnerCore = new JUnitCore();
@@ -548,7 +547,7 @@ public class HostTest
      * Helper to fake the execution of JUnit4 Tests, using the {@link Description}
      */
     private void fakeDescriptionExecution(Description desc, JUnit4ResultForwarder listener) {
-        if (desc.getMethodName() == null) {
+        if (desc.getMethodName() == null || !desc.getChildren().isEmpty()) {
             for (Description child : desc.getChildren()) {
                 fakeDescriptionExecution(child, listener);
             }
