@@ -21,6 +21,7 @@ import com.android.ddmlib.IDevice;
 import com.android.tradefed.build.BuildInfo;
 import com.android.tradefed.build.BuildRetrievalError;
 import com.android.tradefed.build.IBuildInfo;
+import com.android.tradefed.build.IBuildInfo.BuildInfoProperties;
 import com.android.tradefed.build.IBuildProvider;
 import com.android.tradefed.build.IDeviceBuildInfo;
 import com.android.tradefed.build.IDeviceBuildProvider;
@@ -91,8 +92,10 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 /** Unit tests for {@link TestInvocation}. */
 @SuppressWarnings("MustBeClosedChecker")
@@ -200,6 +203,7 @@ public class TestInvocationTest extends TestCase {
         EasyMock.expect(mMockBuildInfo.getBuildAttributes()).andStubReturn(EMPTY_MAP);
         EasyMock.expect(mMockBuildInfo.getBuildBranch()).andStubReturn("branch");
         EasyMock.expect(mMockBuildInfo.getBuildFlavor()).andStubReturn("flavor");
+        EasyMock.expect(mMockBuildInfo.getProperties()).andStubReturn(new HashSet<>());
 
         // always expect logger initialization and cleanup calls
         mMockLogRegistry.registerLogger(mMockLogger);
@@ -1598,6 +1602,7 @@ public class TestInvocationTest extends TestCase {
                     }
                 };
         mMockBuildInfo = EasyMock.createMock(IDeviceBuildInfo.class);
+        EasyMock.expect(mMockBuildInfo.getProperties()).andStubReturn(new HashSet<>());
         IRemoteTest test = EasyMock.createNiceMock(IRemoteTest.class);
         ITargetCleaner mockCleaner = EasyMock.createMock(ITargetCleaner.class);
         EasyMock.expect(mockCleaner.isDisabled()).andReturn(false).times(2);
@@ -1672,6 +1677,7 @@ public class TestInvocationTest extends TestCase {
                     EasyMock.eq("v1"));
             EasyMock.expect(((IDeviceBuildInfo) mMockBuildInfo).getTestsDir())
                     .andReturn(tmpTestsDir);
+            EasyMock.expect(mMockBuildInfo.getProperties()).andStubReturn(new HashSet<>());
 
             setupMockSuccessListeners();
             setupNormalInvoke(test);
@@ -1688,6 +1694,70 @@ public class TestInvocationTest extends TestCase {
             assertTrue(tmpTestsDir.listFiles()[0].listFiles().length == 1);
             assertEquals(
                     tmpTestsFile.getName(), tmpTestsDir.listFiles()[0].listFiles()[0].getName());
+        } finally {
+            FileUtil.recursiveDelete(tmpTestsDir);
+            FileUtil.recursiveDelete(tmpExternalTestsDir);
+        }
+    }
+
+    /**
+     * Test when a {@link IDeviceBuildInfo} is passing through we do not attempt to add the external
+     * directories to it, since {@link BuildInfoProperties} is set to skip the linking.
+     */
+    public void testInvoke_deviceInfoBuild_withEnv_andSkipProperty() throws Throwable {
+        File tmpTestsDir = FileUtil.createTempDir("invocation-tests-dir");
+        File tmpExternalTestsDir = FileUtil.createTempDir("external-tf-dir");
+        FileUtil.createTempFile("testsfile", "txt", tmpExternalTestsDir);
+        try {
+            mTestInvocation =
+                    new TestInvocation() {
+                        @Override
+                        ILogRegistry getLogRegistry() {
+                            return mMockLogRegistry;
+                        }
+
+                        @Override
+                        public IInvocationExecution createInvocationExec() {
+                            return new InvocationExecution() {
+                                @Override
+                                protected IShardHelper createShardHelper() {
+                                    return new ShardHelper();
+                                }
+
+                                @Override
+                                List<File> getExternalTestCasesDirs() {
+                                    List<File> list = new ArrayList<>();
+                                    list.add(tmpExternalTestsDir);
+                                    return list;
+                                }
+                            };
+                        }
+
+                        @Override
+                        protected void setExitCode(ExitCode code, Throwable stack) {
+                            // empty on purpose
+                        }
+                    };
+            mMockBuildInfo = EasyMock.createMock(IDeviceBuildInfo.class);
+            IRemoteTest test = EasyMock.createNiceMock(IRemoteTest.class);
+            ITargetCleaner mockCleaner = EasyMock.createMock(ITargetCleaner.class);
+            EasyMock.expect(mockCleaner.isDisabled()).andReturn(false).times(2);
+            mockCleaner.setUp(mMockDevice, mMockBuildInfo);
+            mockCleaner.tearDown(mMockDevice, mMockBuildInfo, null);
+            mStubConfiguration.getTargetPreparers().add(mockCleaner);
+
+            Set<BuildInfoProperties> prop = new HashSet<>();
+            prop.add(BuildInfoProperties.DO_NOT_LINK_TESTS_DIR);
+            EasyMock.expect(mMockBuildInfo.getProperties()).andStubReturn(prop);
+
+            setupMockSuccessListeners();
+            setupNormalInvoke(test);
+            EasyMock.replay(mockCleaner, mockRescheduler);
+            mTestInvocation.invoke(mStubInvocationMetadata, mStubConfiguration, mockRescheduler);
+            verifyMocks(mockCleaner, mockRescheduler);
+            verifySummaryListener();
+            // Check that the external directory was NOT copied in the testsDir.
+            assertTrue(tmpTestsDir.listFiles().length == 0);
         } finally {
             FileUtil.recursiveDelete(tmpTestsDir);
             FileUtil.recursiveDelete(tmpExternalTestsDir);
