@@ -200,7 +200,7 @@ class ModuleFinder(test_finder_base.TestFinderBase):
         if not rel_config:
             test_dir = os.path.dirname(test_path)
             rel_module_dir = test_finder_utils.find_parent_module_dir(
-                self.root_dir, test_dir)
+                self.root_dir, test_dir, self.module_info)
             rel_config = os.path.join(rel_module_dir, constants.MODULE_CONFIG)
         if not module_name:
             module_name = self.module_info.get_module_name(os.path.dirname(
@@ -262,7 +262,7 @@ class ModuleFinder(test_finder_base.TestFinderBase):
         test_filter = frozenset([test_info.TestFilter(package, frozenset())])
         if not rel_config:
             rel_module_dir = test_finder_utils.find_parent_module_dir(
-                self.root_dir, package_path)
+                self.root_dir, package_path, self.module_info)
             rel_config = os.path.join(rel_module_dir, constants.MODULE_CONFIG)
         if not module_name:
             module_name = self.module_info.get_module_name(
@@ -316,24 +316,11 @@ class ModuleFinder(test_finder_base.TestFinderBase):
             return None
         dir_path, file_name = test_finder_utils.get_dir_path_and_filename(path)
         # Module/Class
-        try:
-            rel_module_dir = test_finder_utils.find_parent_module_dir(
-                self.root_dir, dir_path)
-            if not rel_module_dir:
-                return None
-            module_name = self.module_info.get_module_name(rel_module_dir)
-        except atest_error.TestWithNoModuleError:
-            # If TF test config will be auto generated, _find_parent_module_dir
-            # fails with TestWithNoModuleError as there is no AndroidTest.xml.
-            # In that case, try again to locate parent module directory by
-            # searching for Android.mk. If that works and the module does have
-            # test config auto generated, create TestInfo based on the located
-            # module.
-            rel_module_dir = test_finder_utils.find_parent_module_dir(
-                self.root_dir, dir_path, _ANDROID_MK)
-            module_name = self.module_info.get_module_name(rel_module_dir)
-            if not self._is_auto_gen_test_config(module_name):
-                raise
+        rel_module_dir = test_finder_utils.find_parent_module_dir(
+            self.root_dir, dir_path, self.module_info)
+        if not rel_module_dir:
+            return None
+        module_name = self.module_info.get_module_name(rel_module_dir)
         rel_config = os.path.join(rel_module_dir, constants.MODULE_CONFIG)
         data = {constants.TI_REL_CONFIG: rel_config,
                 constants.TI_FILTER: frozenset()}

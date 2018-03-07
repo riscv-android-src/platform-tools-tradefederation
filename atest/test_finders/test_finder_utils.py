@@ -247,16 +247,14 @@ def is_equal_or_sub_dir(sub_dir, parent_dir):
         return False
     return os.path.commonprefix([sub_dir, parent_dir]) == parent_dir
 
-
-def find_parent_module_dir(root_dir, start_dir,
-                           file_to_locate=constants.MODULE_CONFIG):
+def find_parent_module_dir(root_dir, start_dir, module_info):
     """From current dir search up file tree until root dir for module dir.
 
     Args:
       start_dir: A string of the dir to start searching up from.
       root_dir: A string  of the dir that is the parent of the start dir.
-      file_to_locate: Name of the file to locate in parent module dir,
-              default is set to AndroidTest.xml
+      module_info: ModuleInfo object containing module information from the
+                   build system.
 
     Returns:
         A string of the module dir relative to root.
@@ -267,13 +265,30 @@ def find_parent_module_dir(root_dir, start_dir,
     """
     if not is_equal_or_sub_dir(start_dir, root_dir):
         raise ValueError('%s not in repo %s' % (start_dir, root_dir))
+    module_dir = None
     current_dir = start_dir
     while current_dir != root_dir:
-        if os.path.isfile(os.path.join(current_dir, file_to_locate)):
-            return os.path.relpath(current_dir, root_dir)
+        # If we find an AndroidTest.xml, we know we found the right directory.
+        if os.path.isfile(os.path.join(current_dir, constants.MODULE_CONFIG)):
+            module_dir = os.path.relpath(current_dir, root_dir)
+            break
+        # If we haven't found a possible auto-generated config location, check
+        # now.
+        if not module_dir:
+            rel_dir = os.path.relpath(current_dir, root_dir)
+            module_list = module_info.path_to_module_info.get(rel_dir, [])
+            # Verify only one module at this level has an auto_test_config.
+            if len([x for x in module_list if x.get('auto_test_config')]) == 1:
+                # We found a single test module!
+                module_dir = rel_dir
+                # But keep searching in case there's an AndroidTest.xml in a
+                # parent folder. Example: a class belongs to an test apk that's
+                # part of a hostside test setup (common in cts).
         current_dir = os.path.dirname(current_dir)
-    raise atest_error.TestWithNoModuleError('No Parent Module Dir for: %s' %
-                                            start_dir)
+    if not module_dir:
+        raise atest_error.TestWithNoModuleError('No Parent Module Dir for: %s'
+                                                % start_dir)
+    return module_dir
 
 
 def get_targets_from_xml(xml_file, module_info):
