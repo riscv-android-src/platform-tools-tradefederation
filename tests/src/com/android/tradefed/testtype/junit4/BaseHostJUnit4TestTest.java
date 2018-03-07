@@ -18,7 +18,9 @@ package com.android.tradefed.testtype.junit4;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
+import com.android.ddmlib.IDevice;
 import com.android.ddmlib.testrunner.IRemoteAndroidTestRunner;
+import com.android.ddmlib.testrunner.RemoteAndroidTestRunner;
 import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.config.OptionSetter;
 import com.android.tradefed.device.ITestDevice;
@@ -27,6 +29,7 @@ import com.android.tradefed.invoker.IInvocationContext;
 import com.android.tradefed.result.CollectingTestListener;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.TestDescription;
+import com.android.tradefed.testtype.Abi;
 import com.android.tradefed.testtype.DeviceJUnit4ClassRunner;
 import com.android.tradefed.testtype.HostTest;
 
@@ -37,6 +40,7 @@ import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
+import org.mockito.Mockito;
 
 import java.util.Collections;
 import java.util.Map;
@@ -149,6 +153,40 @@ public class BaseHostJUnit4TestTest {
             fail("Should not have thrown an Assume exception.");
         }
         EasyMock.verify(mMockBuild, mMockDevice, mMockContext);
+    }
+
+    /** Test that when running an instrumentation, the abi is properly passed. */
+    @Test
+    public void testRunDeviceTests_abi() throws Exception {
+        RemoteAndroidTestRunner runner = Mockito.mock(RemoteAndroidTestRunner.class);
+        TestableHostJUnit4Test test =
+                new TestableHostJUnit4Test() {
+                    @Override
+                    RemoteAndroidTestRunner createTestRunner(
+                            String packageName, String runnerName, IDevice device) {
+                        return runner;
+                    }
+                };
+        test.setDevice(mMockDevice);
+        test.setBuild(mMockBuild);
+        test.setInvocationContext(mMockContext);
+        test.setAbi(new Abi("arm", "32"));
+        EasyMock.expect(mMockDevice.getIDevice()).andReturn(new StubDevice("serial"));
+        EasyMock.expect(
+                        mMockDevice.runInstrumentationTests(
+                                (IRemoteAndroidTestRunner) EasyMock.anyObject(),
+                                (ITestInvocationListener) EasyMock.anyObject()))
+                .andReturn(true);
+        EasyMock.replay(mMockBuild, mMockDevice, mMockContext);
+        try {
+            test.runDeviceTests("com.package", "testClass");
+        } catch (AssumptionViolatedException e) {
+            // Ensure that the Assume logic in the test does not make a false pass for the unit test
+            fail("Should not have thrown an Assume exception.");
+        }
+        EasyMock.verify(mMockBuild, mMockDevice, mMockContext);
+        // Verify that the runner options were properly set.
+        Mockito.verify(runner).setRunOptions("--abi arm");
     }
 
     /**
