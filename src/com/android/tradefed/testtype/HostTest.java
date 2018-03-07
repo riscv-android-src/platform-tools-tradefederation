@@ -27,7 +27,9 @@ import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.invoker.IInvocationContext;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.JUnit4ResultForwarder;
+import com.android.tradefed.result.ResultForwarder;
 import com.android.tradefed.result.TestDescription;
+import com.android.tradefed.testtype.host.PrettyTestEventLogger;
 import com.android.tradefed.util.JUnit4TestFilter;
 import com.android.tradefed.util.TestFilterHelper;
 
@@ -131,6 +133,13 @@ public class HostTest
     @Option(name = "shard-unit",
             description = "Shard by class or method")
     private ShardUnit mShardUnit = ShardUnit.CLASS;
+
+    @Option(
+        name = "enable-pretty-logs",
+        description =
+                "whether or not to enable a logging for each test start and end on both host and device side."
+    )
+    private boolean mEnableHostDeviceLogs = true;
 
     private ITestDevice mDevice;
     private IBuildInfo mBuildInfo;
@@ -412,6 +421,11 @@ public class HostTest
         if (mMethodName != null && classes.size() > 1) {
             throw new IllegalArgumentException("Method name given with multiple test classes");
         }
+        // Add a pretty logger to the events to mark clearly start/end of test cases.
+        if (mEnableHostDeviceLogs) {
+            PrettyTestEventLogger logger = new PrettyTestEventLogger(mContext.getDevices());
+            listener = new ResultForwarder(logger, listener);
+        }
         if (mTestMethods != null) {
             runTestCases(listener);
         } else {
@@ -419,7 +433,8 @@ public class HostTest
         }
     }
 
-    private void runTestClasses(ITestInvocationListener listener) throws DeviceNotAvailableException {
+    private void runTestClasses(ITestInvocationListener listener)
+            throws DeviceNotAvailableException {
         for (Class<?> classObj : getClasses()) {
             if (IRemoteTest.class.isAssignableFrom(classObj)) {
                 IRemoteTest test = (IRemoteTest) loadObject(classObj);
