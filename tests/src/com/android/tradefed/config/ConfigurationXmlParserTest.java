@@ -313,7 +313,9 @@ public class ConfigurationXmlParserTest {
             "</configuration>";
         final String configName = "config";
         ConfigurationDef configDef = new ConfigurationDef(configName);
-        String expectedException = "Tags [target_preparer] should be included in a <device> tag.";
+        String expectedException =
+                "You seem to want a multi-devices configuration but you have "
+                        + "[target_preparer] tags outside the <device> tags";
         try {
             xmlParser.parse(configDef, configName, getStringAsStream(normalConfig), null);
             fail("An exception should have been thrown.");
