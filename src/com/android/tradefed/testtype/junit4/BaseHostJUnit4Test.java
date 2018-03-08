@@ -19,6 +19,7 @@ package com.android.tradefed.testtype.junit4;
 import static org.junit.Assert.assertTrue;
 
 import com.android.annotations.VisibleForTesting;
+import com.android.ddmlib.IDevice;
 import com.android.ddmlib.Log.LogLevel;
 import com.android.ddmlib.testrunner.RemoteAndroidTestRunner;
 import com.android.ddmlib.testrunner.TestResult.TestStatus;
@@ -141,7 +142,9 @@ public abstract class BaseHostJUnit4Test
      */
     public final void installPackage(ITestDevice device, String apkFileName, String... options)
             throws DeviceNotAvailableException, TargetSetupError {
-        SuiteApkInstaller installer = new SuiteApkInstaller();
+        SuiteApkInstaller installer = createSuiteApkInstaller();
+        // Force the apk clean up
+        installer.setCleanApk(true);
         // Store the preparer for cleanup
         mInstallers.put(installer, device);
         installer.addTestFileName(apkFileName);
@@ -175,7 +178,9 @@ public abstract class BaseHostJUnit4Test
     public final void installPackageAsUser(
             ITestDevice device, String apkFileName, boolean grantPermission, int userId)
             throws DeviceNotAvailableException, TargetSetupError {
-        SuiteApkInstaller installer = new SuiteApkInstaller();
+        SuiteApkInstaller installer = createSuiteApkInstaller();
+        // Force the apk clean up
+        installer.setCleanApk(true);
         // Store the preparer for cleanup
         mInstallers.put(installer, device);
         installer.addTestFileName(apkFileName);
@@ -539,14 +544,13 @@ public abstract class BaseHostJUnit4Test
             Long maxInstrumentationTimeoutMs,
             boolean isHiddenApiCheckDisabled)
             throws DeviceNotAvailableException {
-        RemoteAndroidTestRunner testRunner =
-                new RemoteAndroidTestRunner(pkgName, runner, device.getIDevice());
+        RemoteAndroidTestRunner testRunner = createTestRunner(pkgName, runner, device.getIDevice());
         String runOptions = "";
         if (isHiddenApiCheckDisabled) {
             runOptions += "--no-hidden-api-checks ";
         }
         if (getAbi() != null) {
-            runOptions += String.format("--abi %s", getAbi());
+            runOptions += String.format("--abi %s", getAbi().getName());
         }
         // Set the run options if any.
         if (!runOptions.isEmpty()) {
@@ -579,6 +583,12 @@ public abstract class BaseHostJUnit4Test
             assertTrue(device.runInstrumentationTestsAsUser(testRunner, userId, listener));
         }
         return listener.getCurrentRunResults();
+    }
+
+    @VisibleForTesting
+    RemoteAndroidTestRunner createTestRunner(
+            String packageName, String runnerName, IDevice device) {
+        return new RemoteAndroidTestRunner(packageName, runnerName, device);
     }
 
     @VisibleForTesting
@@ -652,4 +662,8 @@ public abstract class BaseHostJUnit4Test
         return getDevice().hasFeature("feature:" + feature);
     }
 
+    @VisibleForTesting
+    SuiteApkInstaller createSuiteApkInstaller() {
+        return new SuiteApkInstaller();
+    }
 }
