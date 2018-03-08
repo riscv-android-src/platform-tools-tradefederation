@@ -142,7 +142,9 @@ public abstract class BaseHostJUnit4Test
      */
     public final void installPackage(ITestDevice device, String apkFileName, String... options)
             throws DeviceNotAvailableException, TargetSetupError {
-        SuiteApkInstaller installer = new SuiteApkInstaller();
+        SuiteApkInstaller installer = createSuiteApkInstaller();
+        // Force the apk clean up
+        installer.setCleanApk(true);
         // Store the preparer for cleanup
         mInstallers.put(installer, device);
         installer.addTestFileName(apkFileName);
@@ -176,7 +178,9 @@ public abstract class BaseHostJUnit4Test
     public final void installPackageAsUser(
             ITestDevice device, String apkFileName, boolean grantPermission, int userId)
             throws DeviceNotAvailableException, TargetSetupError {
-        SuiteApkInstaller installer = new SuiteApkInstaller();
+        SuiteApkInstaller installer = createSuiteApkInstaller();
+        // Force the apk clean up
+        installer.setCleanApk(true);
         // Store the preparer for cleanup
         mInstallers.put(installer, device);
         installer.addTestFileName(apkFileName);
@@ -658,4 +662,8 @@ public abstract class BaseHostJUnit4Test
         return getDevice().hasFeature("feature:" + feature);
     }
 
+    @VisibleForTesting
+    SuiteApkInstaller createSuiteApkInstaller() {
+        return new SuiteApkInstaller();
+    }
 }
