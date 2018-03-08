@@ -64,6 +64,7 @@ public class BaseDeviceMetricCollector implements IMetricCollector {
     private DeviceMetricData mRunData;
     private DeviceMetricData mTestData;
     private String mTag;
+    private String mRunName;
     /**
      * Variable for whether or not to skip the collection of one test case because it was filtered.
      */
@@ -140,6 +141,7 @@ public class BaseDeviceMetricCollector implements IMetricCollector {
     @Override
     public final void testRunStarted(String runName, int testCount) {
         mRunData = new DeviceMetricData(mContext);
+        mRunName = runName;
         try {
             onTestRunStart(mRunData);
         } catch (Throwable t) {
@@ -246,6 +248,15 @@ public class BaseDeviceMetricCollector implements IMetricCollector {
      */
     public String getTag() {
         return mTag;
+    }
+
+    /**
+     * Returns the name of test run {@code mRunName} that triggers the collector.
+     *
+     * @return mRunName, the current test run name.
+     */
+    public String getRunName() {
+        return mRunName;
     }
 
     /**
