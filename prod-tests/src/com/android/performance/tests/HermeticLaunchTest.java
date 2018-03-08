@@ -122,15 +122,15 @@ public class HermeticLaunchTest implements IRemoteTest, IDeviceTest {
 
     @Option(name = "target-package", description = "package which contains all the "
             + "activities to launch")
-    private String mTargetPackage = null;
+    private String mtargetPackage = null;
 
     @Option(name = "activity-names", description = "Fully qualified activity "
             + "names separated by comma"
             + "If not set then all the activities will be included for launching")
-    private String mActivityNames = "";
+    private String mactivityNames = "";
 
     @Option(name = "launch-count", description = "number of time to launch the each activity")
-    private int mLaunchCount = 10;
+    private int mlaunchCount = 10;
 
     @Option(name = "save-atrace", description = "Upload the atrace file in permanent storage")
     private boolean mSaveAtrace = false;
@@ -170,12 +170,8 @@ public class HermeticLaunchTest implements IRemoteTest, IDeviceTest {
                 mSectionSet.add(sectionOption.toString());
             }
 
-            // Remove if there is already existing atrace_logs folder
+            //Remove if there is already existing atrace_logs folder
             mDevice.executeShellCommand("rm -rf ${EXTERNAL_STORAGE}/atrace_logs");
-
-            // Increment the launch count by one and discard the first launch
-            // time from final calculations
-            mLaunchCount++;
 
             mRunner = createRemoteAndroidTestRunner(mPackageName, mRunnerName,
                         mDevice.getIDevice());
@@ -246,10 +242,10 @@ public class HermeticLaunchTest implements IRemoteTest, IDeviceTest {
             throws DeviceNotAvailableException {
         RemoteAndroidTestRunner runner = new RemoteAndroidTestRunner(
                 packageName, runnerName, device);
-        runner.addInstrumentationArg("targetpackage", mTargetPackage);
-        runner.addInstrumentationArg("launchcount", Integer.toString(mLaunchCount));
-        if (mActivityNames != null && !mActivityNames.isEmpty()) {
-            runner.addInstrumentationArg("activitylist", mActivityNames);
+        runner.addInstrumentationArg("targetpackage", mtargetPackage);
+        runner.addInstrumentationArg("launchcount", mlaunchCount + "");
+        if (mactivityNames != null && !mactivityNames.isEmpty()) {
+            runner.addInstrumentationArg("activitylist", mactivityNames);
         }
         if (!mSaveAtrace) {
             runner.addInstrumentationArg("recordtrace", "false");
@@ -303,8 +299,8 @@ public class HermeticLaunchTest implements IRemoteTest, IDeviceTest {
                             if (amLaunchTimes.containsKey(activityName)) {
                                 amLaunchTimes.get(activityName).add(displayTimeInMs);
                             } else {
-                                // Ignore the first launch time for each activity.
                                 List<Integer> launchTimes = new ArrayList<>();
+                                launchTimes.add(displayTimeInMs);
                                 amLaunchTimes.put(activityName, launchTimes);
                             }
                         }
@@ -318,7 +314,7 @@ public class HermeticLaunchTest implements IRemoteTest, IDeviceTest {
         // Verify logcat data
         for (String activityName : amLaunchTimes.keySet()) {
             Assert.assertEquals("Data lost for launch time for the activity :"
-                    + activityName, amLaunchTimes.get(activityName).size(), (mLaunchCount - 1));
+                    + activityName, amLaunchTimes.get(activityName).size(), mlaunchCount);
         }
 
         /*
@@ -374,16 +370,11 @@ public class HermeticLaunchTest implements IRemoteTest, IDeviceTest {
                                 activityName), filePathAll);
                 String[] filePaths = filePathAll.split(",");
                 Assert.assertEquals(String.format("Unable to find file path for all the launches "
-                        + "for the activity :%s", activityName), filePaths.length, mLaunchCount);
+                        + "for the activity :%s", activityName), filePaths.length, mlaunchCount);
                 // Pull and parse the info
                 List<Map<String, List<SectionPeriod>>> mutipleLaunchTraceInfo =
                         new LinkedList<>();
                 for (int count = 0; count < filePaths.length; count++) {
-                    // Ignore the first trace file from each activity in the trace file
-                    // metric calculation
-                    if (count == 0) {
-                        continue;
-                    }
                     File currentAtraceFile = pullAtraceInfoFile(filePaths[count]);
                     String[] splitName = filePaths[count].split("-");
                     // Process id is appended to original file name
