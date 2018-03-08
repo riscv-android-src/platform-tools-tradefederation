@@ -22,16 +22,23 @@ import com.android.ddmlib.IDevice;
 import com.android.ddmlib.testrunner.IRemoteAndroidTestRunner;
 import com.android.ddmlib.testrunner.RemoteAndroidTestRunner;
 import com.android.tradefed.build.IBuildInfo;
+import com.android.tradefed.command.remote.DeviceDescriptor;
+import com.android.tradefed.config.ConfigurationDef;
 import com.android.tradefed.config.OptionSetter;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.device.StubDevice;
 import com.android.tradefed.invoker.IInvocationContext;
+import com.android.tradefed.invoker.InvocationContext;
+import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.result.CollectingTestListener;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.TestDescription;
+import com.android.tradefed.targetprep.TargetSetupError;
+import com.android.tradefed.targetprep.suite.SuiteApkInstaller;
 import com.android.tradefed.testtype.Abi;
 import com.android.tradefed.testtype.DeviceJUnit4ClassRunner;
 import com.android.tradefed.testtype.HostTest;
+import com.android.tradefed.util.FileUtil;
 
 import org.easymock.EasyMock;
 import org.junit.Assert;
@@ -42,7 +49,9 @@ import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
 import org.mockito.Mockito;
 
+import java.io.File;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.Map;
 
 /** Unit tests for {@link BaseHostJUnit4Test}. */
@@ -106,7 +115,9 @@ public class BaseHostJUnit4TestTest {
         mMockListener = EasyMock.createMock(ITestInvocationListener.class);
         mMockBuild = EasyMock.createMock(IBuildInfo.class);
         mMockDevice = EasyMock.createMock(ITestDevice.class);
-        mMockContext = EasyMock.createMock(IInvocationContext.class);
+        mMockContext = new InvocationContext();
+        mMockContext.addAllocatedDevice(ConfigurationDef.DEFAULT_DEVICE_NAME, mMockDevice);
+        mMockContext.addDeviceBuildInfo(ConfigurationDef.DEFAULT_DEVICE_NAME, mMockBuild);
 
         mHostTest = new HostTest();
         mHostTest.setBuild(mMockBuild);
@@ -124,9 +135,9 @@ public class BaseHostJUnit4TestTest {
         mMockListener.testStarted(tid);
         mMockListener.testEnded(tid, Collections.emptyMap());
         mMockListener.testRunEnded(EasyMock.anyLong(), (Map<String, String>) EasyMock.anyObject());
-        EasyMock.replay(mMockListener, mMockBuild, mMockDevice, mMockContext);
+        EasyMock.replay(mMockListener, mMockBuild, mMockDevice);
         mHostTest.run(mMockListener);
-        EasyMock.verify(mMockListener, mMockBuild, mMockDevice, mMockContext);
+        EasyMock.verify(mMockListener, mMockBuild, mMockDevice);
     }
 
     /**
@@ -145,14 +156,14 @@ public class BaseHostJUnit4TestTest {
                                 (IRemoteAndroidTestRunner) EasyMock.anyObject(),
                                 (ITestInvocationListener) EasyMock.anyObject()))
                 .andReturn(true);
-        EasyMock.replay(mMockBuild, mMockDevice, mMockContext);
+        EasyMock.replay(mMockBuild, mMockDevice);
         try {
             test.runDeviceTests("com.package", "testClass");
         } catch (AssumptionViolatedException e) {
             // Ensure that the Assume logic in the test does not make a false pass for the unit test
             fail("Should not have thrown an Assume exception.");
         }
-        EasyMock.verify(mMockBuild, mMockDevice, mMockContext);
+        EasyMock.verify(mMockBuild, mMockDevice);
     }
 
     /** Test that when running an instrumentation, the abi is properly passed. */
@@ -177,14 +188,14 @@ public class BaseHostJUnit4TestTest {
                                 (IRemoteAndroidTestRunner) EasyMock.anyObject(),
                                 (ITestInvocationListener) EasyMock.anyObject()))
                 .andReturn(true);
-        EasyMock.replay(mMockBuild, mMockDevice, mMockContext);
+        EasyMock.replay(mMockBuild, mMockDevice);
         try {
             test.runDeviceTests("com.package", "testClass");
         } catch (AssumptionViolatedException e) {
             // Ensure that the Assume logic in the test does not make a false pass for the unit test
             fail("Should not have thrown an Assume exception.");
         }
-        EasyMock.verify(mMockBuild, mMockDevice, mMockContext);
+        EasyMock.verify(mMockBuild, mMockDevice);
         // Verify that the runner options were properly set.
         Mockito.verify(runner).setRunOptions("--abi arm");
     }
@@ -206,14 +217,14 @@ public class BaseHostJUnit4TestTest {
                                 EasyMock.eq(0),
                                 (ITestInvocationListener) EasyMock.anyObject()))
                 .andReturn(true);
-        EasyMock.replay(mMockBuild, mMockDevice, mMockContext);
+        EasyMock.replay(mMockBuild, mMockDevice);
         try {
             test.runDeviceTests("package", "class", 0, null);
         } catch (AssumptionViolatedException e) {
             // Ensure that the Assume logic in the test does not make a false pass for the unit test
             fail("Should not have thrown an Assume exception.");
         }
-        EasyMock.verify(mMockBuild, mMockDevice, mMockContext);
+        EasyMock.verify(mMockBuild, mMockDevice);
     }
 
     /**
@@ -232,7 +243,7 @@ public class BaseHostJUnit4TestTest {
                                 (IRemoteAndroidTestRunner) EasyMock.anyObject(),
                                 (ITestInvocationListener) EasyMock.anyObject()))
                 .andReturn(true);
-        EasyMock.replay(mMockBuild, mMockDevice, mMockContext);
+        EasyMock.replay(mMockBuild, mMockDevice);
         try {
             test.runDeviceTests(
                     new DeviceTestRunOptions("com.package").setTestClassName("testClass"));
@@ -240,7 +251,7 @@ public class BaseHostJUnit4TestTest {
             // Ensure that the Assume logic in the test does not make a false pass for the unit test
             fail("Should not have thrown an Assume exception.");
         }
-        EasyMock.verify(mMockBuild, mMockDevice, mMockContext);
+        EasyMock.verify(mMockBuild, mMockDevice);
     }
 
     /**
@@ -259,7 +270,7 @@ public class BaseHostJUnit4TestTest {
                                 (IRemoteAndroidTestRunner) EasyMock.anyObject(),
                                 (ITestInvocationListener) EasyMock.anyObject()))
                 .andReturn(true);
-        EasyMock.replay(mMockBuild, mMockDevice, mMockContext);
+        EasyMock.replay(mMockBuild, mMockDevice);
         try {
             test.runDeviceTests("com.package", "testClass");
         } catch (AssumptionViolatedException e) {
@@ -268,6 +279,67 @@ public class BaseHostJUnit4TestTest {
         } catch (AssertionError expected) {
             assertTrue(expected.getMessage().contains("instrumentation crashed"));
         }
-        EasyMock.verify(mMockBuild, mMockDevice, mMockContext);
+        EasyMock.verify(mMockBuild, mMockDevice);
+    }
+
+    /** An implementation of the base class for testing purpose of installation of apk. */
+    @RunWith(DeviceJUnit4ClassRunner.class)
+    public static class InstallApkHostJUnit4Test extends BaseHostJUnit4Test {
+        @Test
+        public void testInstall() throws Exception {
+            installPackage("apkFileName");
+        }
+
+        @Override
+        SuiteApkInstaller createSuiteApkInstaller() {
+            return new SuiteApkInstaller() {
+                @Override
+                protected String parsePackageName(
+                        File testAppFile, DeviceDescriptor deviceDescriptor)
+                        throws TargetSetupError {
+                    CLog.e("here");
+                    return "fakepackage";
+                }
+            };
+        }
+    }
+
+    /**
+     * Test that when running a test that use the {@link BaseHostJUnit4Test#installPackage(String,
+     * String...)} the package is properly auto uninstalled.
+     */
+    @Test
+    public void testInstallUninstall() throws Exception {
+        File fakeTestsDir = FileUtil.createTempDir("fake-base-host-dir");
+        try {
+            File apk = new File(fakeTestsDir, "apkFileName");
+            apk.createNewFile();
+            HostTest test = new HostTest();
+            test.setBuild(mMockBuild);
+            test.setDevice(mMockDevice);
+            test.setInvocationContext(mMockContext);
+            OptionSetter setter = new OptionSetter(test);
+            setter.setOptionValue("class", InstallApkHostJUnit4Test.class.getName());
+            mMockListener.testRunStarted(InstallApkHostJUnit4Test.class.getName(), 1);
+            TestDescription description =
+                    new TestDescription(InstallApkHostJUnit4Test.class.getName(), "testInstall");
+            mMockListener.testStarted(description);
+            Map<String, String> properties = new HashMap<>();
+            properties.put("ROOT_DIR", fakeTestsDir.getAbsolutePath());
+            EasyMock.expect(mMockBuild.getBuildAttributes()).andReturn(properties).times(2);
+            EasyMock.expect(mMockDevice.getDeviceDescriptor()).andReturn(null);
+
+            EasyMock.expect(mMockDevice.installPackage(apk, true)).andReturn(null);
+            // Ensure that the auto-uninstall is triggered
+            EasyMock.expect(mMockDevice.uninstallPackage("fakepackage")).andReturn(null);
+            mMockListener.testEnded(description, new HashMap<>());
+            mMockListener.testRunEnded(EasyMock.anyLong(), EasyMock.anyObject());
+
+            EasyMock.replay(mMockBuild, mMockDevice, mMockListener);
+            test.run(mMockListener);
+            EasyMock.verify(mMockBuild, mMockDevice, mMockListener);
+        } finally {
+            FileUtil.recursiveDelete(fakeTestsDir);
+        }
     }
 }
