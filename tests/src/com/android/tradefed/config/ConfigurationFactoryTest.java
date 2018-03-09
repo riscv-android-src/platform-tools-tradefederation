@@ -475,6 +475,27 @@ public class ConfigurationFactoryTest extends TestCase {
         assertEquals("valueFromTemplateIncludeConfig", fromTemplateIncludeConfig.mOption);
     }
 
+    /** Test loading a config that uses template-include to include another config. */
+    public void testCreateConfigurationFromArgs_templateInclude_multiKey() throws Exception {
+        try {
+            mFactory.createConfigurationFromArgs(
+                    new String[] {
+                        "template-include-config",
+                        "--template:map",
+                        "target",
+                        "test-config",
+                        "--template:map",
+                        "target",
+                        "test-config"
+                    });
+            fail("Should have thrown an exception.");
+        } catch (ConfigurationException expected) {
+            // Expected
+            assertEquals(
+                    "More than one template specified for key 'target'", expected.getMessage());
+        }
+    }
+
     /**
      * Make sure that we throw a useful error when template-include usage is underspecified.
      */
@@ -563,15 +584,19 @@ public class ConfigurationFactoryTest extends TestCase {
         final String depTargetName = "template-include-config";
         final String targetName = "test-config";
 
-        try {
-            IConfiguration config = mFactory.createConfigurationFromArgs(new String[]{configName,
-                    "--template:map", "dep-target", depTargetName,
-                    "--template:map", "target", targetName});
-            assertTrue(config.getTests().get(0) instanceof StubOptionTest);
-            assertTrue(config.getTests().get(1) instanceof StubOptionTest);
-        } catch (ConfigurationException e) {
-            fail(e.getMessage());
-        }
+        IConfiguration config =
+                mFactory.createConfigurationFromArgs(
+                        new String[] {
+                            configName,
+                            "--template:map",
+                            "dep-target",
+                            depTargetName,
+                            "--template:map",
+                            "target",
+                            targetName
+                        });
+        assertTrue(config.getTests().get(0) instanceof StubOptionTest);
+        assertTrue(config.getTests().get(1) instanceof StubOptionTest);
     }
 
     /**
