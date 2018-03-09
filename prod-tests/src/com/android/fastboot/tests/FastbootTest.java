@@ -16,7 +16,6 @@
 package com.android.fastboot.tests;
 
 import com.android.tradefed.build.IBuildInfo;
-import com.android.tradefed.build.VersionedFile;
 import com.android.tradefed.config.ConfigurationException;
 import com.android.tradefed.config.Option;
 import com.android.tradefed.config.OptionSetter;
@@ -44,8 +43,6 @@ import java.util.Map;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 /**
  * Flashes the device as part of the test, report device post-flash status as test results.
@@ -278,14 +275,11 @@ public class FastbootTest implements IRemoteTest, IDeviceTest, IBuildReceiver {
      * Helper to find the fastboot file as part of the buildinfo file list.
      */
     private File getFastbootFile(IBuildInfo buildInfo) {
-        Pattern fastbootPattern = Pattern.compile("fastboot.*");
-        for (VersionedFile f : buildInfo.getFiles()) {
-            Matcher matcher = fastbootPattern.matcher(f.getFile().getName());
-            if (matcher.find()) {
-                FileUtil.chmodGroupRWX(f.getFile());
-                return f.getFile();
-            }
+        File fastboot = buildInfo.getFile("fastboot");
+        if (fastboot == null) {
+            return null;
         }
-        return null;
+        FileUtil.chmodGroupRWX(fastboot);
+        return fastboot;
     }
 }
