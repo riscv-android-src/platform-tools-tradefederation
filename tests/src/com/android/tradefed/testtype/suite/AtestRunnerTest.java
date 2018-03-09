@@ -314,4 +314,31 @@ public class AtestRunnerTest {
             assertTrue(!targetPreparer.isDisabled());
         }
     }
+
+    @Test
+    public void testDisableTearDown() throws Exception {
+        String filePath = truncateAndWrite(mTmpFile, mInfos.get("module1"));
+        OptionSetter setter = new OptionSetter(mSpyRunner);
+        setter.setOptionValue("disable-teardown", "true");
+        setter.setOptionValue("test-info-file", filePath);
+        LinkedHashMap<String, IConfiguration> configMap = mSpyRunner.loadTests();
+        assertEquals(1, configMap.size());
+        IConfiguration config = configMap.get("module1");
+        for (ITargetPreparer targetPreparer : config.getTargetPreparers()) {
+            assertTrue(targetPreparer.isTearDownDisabled());
+        }
+    }
+
+    @Test
+    public void testDisableTearDownUnset() throws Exception {
+        String filePath = truncateAndWrite(mTmpFile, mInfos.get("module1"));
+        OptionSetter setter = new OptionSetter(mSpyRunner);
+        setter.setOptionValue("test-info-file", filePath);
+        LinkedHashMap<String, IConfiguration> configMap = mSpyRunner.loadTests();
+        assertEquals(1, configMap.size());
+        IConfiguration config = configMap.get("module1");
+        for (ITargetPreparer targetPreparer : config.getTargetPreparers()) {
+            assertTrue(!targetPreparer.isTearDownDisabled());
+        }
+    }
 }
