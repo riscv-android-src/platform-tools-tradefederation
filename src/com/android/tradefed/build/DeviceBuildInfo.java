@@ -17,7 +17,6 @@
 package com.android.tradefed.build;
 
 import java.io.File;
-import java.io.IOException;
 
 /**
  * A {@link IBuildInfo} that represents a complete Android device build and (optionally) its tests.
@@ -269,21 +268,20 @@ public class DeviceBuildInfo extends BuildInfo implements IDeviceBuildInfo {
         setFile(RAMDISK_IMAGE_NAME, ramdisk, version);
     }
 
-    /**
-     * {@inheritDoc}
-     */
+    /** {@inheritDoc} */
     @Override
-    public IBuildInfo clone() {
-        DeviceBuildInfo copy = new DeviceBuildInfo(getBuildId(), getBuildTargetName());
-        copy.addAllBuildAttributes(this);
-        try {
-            copy.addAllFiles(this);
-        } catch (IOException e) {
-            throw new RuntimeException(e);
+    protected boolean applyBuildProperties(
+            VersionedFile origFileConsidered, IBuildInfo build, IBuildInfo receiver) {
+        // If the no copy on sharding is set, that means the tests dir will be shared and should
+        // not be copied.
+        if (origFileConsidered.getFile().equals(build.getFile(TESTDIR_IMAGE_NAME))
+                && getProperties().contains(BuildInfoProperties.DO_NOT_COPY_ON_SHARDING)) {
+            receiver.setFile(
+                    TESTDIR_IMAGE_NAME,
+                    origFileConsidered.getFile(),
+                    origFileConsidered.getVersion());
+            return true;
         }
-        copy.setBuildBranch(getBuildBranch());
-        copy.setBuildFlavor(getBuildFlavor());
-
-        return copy;
+        return false;
     }
 }
