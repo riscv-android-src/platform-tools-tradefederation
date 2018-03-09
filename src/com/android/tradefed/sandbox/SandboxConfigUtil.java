@@ -48,11 +48,11 @@ public class SandboxConfigUtil {
      * @param dump the {@link DumpCmd} driving some of the outputs.
      * @param globalConfig the file describing the global configuration to be used.
      * @return A {@link File} containing the xml dump from the command line.
-     * @throws ConfigurationException if the dump is not successful.
+     * @throws SandboxConfigurationException if the dump is not successful.
      */
     public static File dumpConfigForVersion(
             String classpath, IRunUtil runUtil, String[] args, DumpCmd dump, File globalConfig)
-            throws ConfigurationException {
+            throws SandboxConfigurationException, IOException {
         runUtil.unsetEnvVariable(GlobalConfiguration.GLOBAL_CONFIG_VARIABLE);
         File destination = null;
         try {
@@ -65,7 +65,7 @@ public class SandboxConfigUtil {
         } catch (IOException e) {
             FileUtil.deleteFile(globalConfig);
             FileUtil.deleteFile(destination);
-            throw new ConfigurationException(e.getMessage());
+            throw e;
         }
         List<String> mCmdArgs = new ArrayList<>();
         mCmdArgs.add("java");
@@ -83,7 +83,7 @@ public class SandboxConfigUtil {
         }
         FileUtil.deleteFile(globalConfig);
         FileUtil.deleteFile(destination);
-        throw new ConfigurationException(result.getStderr());
+        throw new SandboxConfigurationException(result.getStderr());
     }
 
     /**
@@ -100,15 +100,15 @@ public class SandboxConfigUtil {
      */
     public static File dumpConfigForVersion(
             File rootDir, IRunUtil runUtil, String[] args, DumpCmd dump, File globalConfig)
-            throws ConfigurationException {
+            throws ConfigurationException, IOException {
         // include all jars on the classpath
         String classpath = "";
-        try {
-            Set<String> jarFiles = FileUtil.findFiles(rootDir, ".*.jar");
+        //try {
+        Set<String> jarFiles = FileUtil.findFiles(rootDir, ".*.jar");
             classpath = Joiner.on(":").join(jarFiles);
-        } catch (IOException e) {
-            throw new ConfigurationException(e.getMessage());
-        }
+        // } catch (IOException e) {
+        //    throw new ConfigurationException(e.getMessage());
+        // }
 
         return dumpConfigForVersion(classpath, runUtil, args, dump, globalConfig);
     }
