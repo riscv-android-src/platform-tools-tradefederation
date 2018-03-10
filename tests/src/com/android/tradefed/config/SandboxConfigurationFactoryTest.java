@@ -24,6 +24,7 @@ import static org.junit.Assert.fail;
 import com.android.tradefed.sandbox.ISandbox;
 import com.android.tradefed.sandbox.SandboxConfigDump;
 import com.android.tradefed.sandbox.SandboxConfigDump.DumpCmd;
+import com.android.tradefed.sandbox.SandboxConfigurationException;
 import com.android.tradefed.util.CommandResult;
 import com.android.tradefed.util.CommandStatus;
 import com.android.tradefed.util.FileUtil;
@@ -117,9 +118,9 @@ public class SandboxConfigurationFactoryTest {
         assertEquals(mFakeSandbox, config.getConfigurationObject(Configuration.SANDBOX_TYPE_NAME));
     }
 
-    /** Test that when the dump config failed, we throw a ConfigurationException. */
+    /** Test that when the dump config failed, we throw a SandboxConfigurationException. */
     @Test
-    public void testCreateConfigurationFromArgs_fail() {
+    public void testCreateConfigurationFromArgs_fail() throws Exception {
         String[] args = new String[] {mConfig.getAbsolutePath()};
         mMockRunUtil.unsetEnvVariable(GlobalConfiguration.GLOBAL_CONFIG_VARIABLE);
         EasyMock.expectLastCall().times(2);
@@ -130,6 +131,12 @@ public class SandboxConfigurationFactoryTest {
         results.setStatus(CommandStatus.FAILED);
         results.setStderr("I failed");
         expectDumpCmd(results);
+        // Thin launcher is attempted, and in this case fails, so original exception is thrown.
+        EasyMock.expect(
+                        mFakeSandbox.createThinLauncherConfig(
+                                EasyMock.anyObject(), EasyMock.anyObject(),
+                                EasyMock.anyObject(), EasyMock.anyObject()))
+                .andReturn(null);
         // in case of failure, tearDown is called right away for cleaning up
         mFakeSandbox.tearDown();
         EasyMock.replay(mFakeSandbox, mMockRunUtil);
@@ -137,7 +144,7 @@ public class SandboxConfigurationFactoryTest {
             mFactory.createConfigurationFromArgs(
                     args, new StubKeyStoreClient(), mFakeSandbox, mMockRunUtil);
             fail("Should have thrown an exception.");
-        } catch (ConfigurationException expected) {
+        } catch (SandboxConfigurationException expected) {
             // expected
         }
         EasyMock.verify(mFakeSandbox, mMockRunUtil);

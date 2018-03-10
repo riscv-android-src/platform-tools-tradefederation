@@ -21,6 +21,8 @@ import com.android.tradefed.invoker.IInvocationContext;
 import com.android.tradefed.log.ITestLogger;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.util.CommandResult;
+import com.android.tradefed.util.IRunUtil;
+import com.android.tradefed.util.keystore.IKeyStoreClient;
 
 import java.io.File;
 
@@ -64,4 +66,29 @@ public interface ISandbox {
     public File getTradefedSandboxEnvironment(
             IInvocationContext context, IConfiguration nonVersionedConfig, String[] args)
             throws ConfigurationException;
+
+    /**
+     * Create a classpath based on the environment and the working directory returned by {@link
+     * #getTradefedSandboxEnvironment(IInvocationContext, IConfiguration, String[])}.
+     *
+     * @param workingDir the current working directory for the sandbox.
+     * @return The classpath to be use.
+     */
+    public String createClasspath(File workingDir) throws ConfigurationException;
+
+    /**
+     * Special mode disconnected from main run: When a configuration does not appear to exists in
+     * the parent, we fallback to thin launcher where we attempt to setup the sandbox with currently
+     * known informations and fill up the working directory to create the config fully in the
+     * versioned dir.
+     *
+     * @param args The original command line args.
+     * @param keyStoreClient the current keystore client to use to create configurations.
+     * @param runUtil the current {@link IRunUtil} to run host commands.
+     * @param globalConfig The global configuration to use to run subprocesses of TF.
+     * @return a File pointing to the configuration XML of TF for NON_VERSIONED objects. Returns
+     *     null if no thin launcher config could be created.
+     */
+    public IConfiguration createThinLauncherConfig(
+            String[] args, IKeyStoreClient keyStoreClient, IRunUtil runUtil, File globalConfig);
 }

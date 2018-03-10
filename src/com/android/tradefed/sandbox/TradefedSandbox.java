@@ -34,6 +34,7 @@ import com.android.tradefed.util.RunUtil;
 import com.android.tradefed.util.SerializationUtil;
 import com.android.tradefed.util.StreamUtil;
 import com.android.tradefed.util.SubprocessTestResultsParser;
+import com.android.tradefed.util.keystore.IKeyStoreClient;
 
 import java.io.File;
 import java.io.FileOutputStream;
@@ -191,7 +192,8 @@ public class TradefedSandbox implements ISandbox {
      * @param workingDir the current working directory for the sandbox.
      * @return The classpath to be use.
      */
-    public String createClasspath(File workingDir) throws Exception {
+    @Override
+    public String createClasspath(File workingDir) throws ConfigurationException {
         // Get the classpath property.
         String classpathStr = System.getProperty("java.class.path");
         if (classpathStr == null) {
@@ -245,5 +247,14 @@ public class TradefedSandbox implements ISandbox {
      */
     protected File prepareContext(IInvocationContext context) throws IOException {
         return SerializationUtil.serialize(context);
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public IConfiguration createThinLauncherConfig(
+            String[] args, IKeyStoreClient keyStoreClient, IRunUtil runUtil, File globalConfig) {
+        // Default thin launcher cannot do anything, since this sandbox uses the same version as
+        // the parent version.
+        return null;
     }
 }
