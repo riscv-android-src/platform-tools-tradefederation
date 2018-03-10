@@ -129,6 +129,9 @@ class AtestTradefedTestRunner(test_runner_base.TestRunnerBase):
             if constants.DISABLE_INSTALL == arg:
                 args_to_append.append('--disable-target-preparers')
                 continue
+            if constants.DISABLE_TEARDOWN == arg:
+                args_to_append.append('--disable-teardown')
+                continue
             if constants.CUSTOM_ARGS == arg:
                 # We might need to sanitize it prior to appending but for now
                 # let's just treat it like a simple arg to pass on through.
