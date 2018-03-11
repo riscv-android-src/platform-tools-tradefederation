@@ -77,6 +77,7 @@ public class InvocationExecutionTest {
         mConfig.setDeviceConfig(holder);
         mContext.addAllocatedDevice("default", EasyMock.createMock(ITestDevice.class));
         EasyMock.expect(cleaner.isDisabled()).andReturn(false);
+        EasyMock.expect(cleaner.isTearDownDisabled()).andReturn(false);
         cleaner.cleanUp(null, null);
         EasyMock.replay(cleaner);
         mExec.doCleanUp(mContext, mConfig, null);
@@ -95,6 +96,26 @@ public class InvocationExecutionTest {
         mConfig.setDeviceConfig(holder);
         mContext.addAllocatedDevice("default", EasyMock.createMock(ITestDevice.class));
         EasyMock.expect(cleaner.isDisabled()).andReturn(true);
+        // cleaner.isTearDownDisabled not expected, because isDisabled true stops || execution.
+        // cleanUp call is not expected
+        EasyMock.replay(cleaner);
+        mExec.doCleanUp(mContext, mConfig, null);
+        EasyMock.verify(cleaner);
+    }
+
+    /**
+     * Test that {@link InvocationExecution#doCleanUp(IInvocationContext, IConfiguration,
+     * Throwable)} properly use {@link IDisableable} isTearDownDisabled to prevent cleanup step.
+     */
+    @Test
+    public void testCleanUp_tearDownDisabled() throws Exception {
+        DeviceConfigurationHolder holder = new DeviceConfigurationHolder("default");
+        ITargetHostCleaner cleaner = EasyMock.createMock(ITargetHostCleaner.class);
+        holder.addSpecificConfig(cleaner);
+        mConfig.setDeviceConfig(holder);
+        mContext.addAllocatedDevice("default", EasyMock.createMock(ITestDevice.class));
+        EasyMock.expect(cleaner.isDisabled()).andReturn(false);
+        EasyMock.expect(cleaner.isTearDownDisabled()).andReturn(true);
         // cleanUp call is not expected
         EasyMock.replay(cleaner);
         mExec.doCleanUp(mContext, mConfig, null);

@@ -233,6 +233,10 @@ public class InvocationExecution implements IInvocationExecution {
                 multiPreparers.listIterator(multiPreparers.size());
         while (iterator.hasPrevious()) {
             IMultiTargetPreparer multipreparer = iterator.previous();
+            if (multipreparer.isDisabled() || multipreparer.isTearDownDisabled()) {
+                CLog.d("%s has been disabled. skipping.", multipreparer);
+                continue;
+            }
             CLog.d("Starting multi target tearDown '%s'", multipreparer);
             multipreparer.tearDown(context, throwable);
             CLog.d("Done with multi target tearDown '%s'", multipreparer);
@@ -250,7 +254,7 @@ public class InvocationExecution implements IInvocationExecution {
                 if (preparer instanceof ITargetCleaner) {
                     ITargetCleaner cleaner = (ITargetCleaner) preparer;
                     // do not call the cleaner if it was disabled
-                    if (cleaner.isDisabled()) {
+                    if (cleaner.isDisabled() || cleaner.isTearDownDisabled()) {
                         CLog.d("%s has been disabled. skipping.", cleaner);
                         continue;
                     }
@@ -294,7 +298,7 @@ public class InvocationExecution implements IInvocationExecution {
                 ITargetPreparer preparer = itr.previous();
                 if (preparer instanceof IHostCleaner) {
                     IHostCleaner cleaner = (IHostCleaner) preparer;
-                    if (preparer.isDisabled()) {
+                    if (preparer.isDisabled() || preparer.isTearDownDisabled()) {
                         CLog.d("%s has been disabled. skipping.", cleaner);
                         continue;
                     }

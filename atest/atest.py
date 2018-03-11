@@ -249,7 +249,13 @@ def _parse_args(argv):
     parser.add_argument('-i', '--install', action='append_const', dest='steps',
                         const=INSTALL_STEP, help='Install an APK.')
     parser.add_argument('-t', '--test', action='append_const', dest='steps',
-                        const=TEST_STEP, help='Run the tests.')
+                        const=TEST_STEP,
+                        help='Run the tests. WARNING: Many test configs force cleanup '
+                        'of device after test run. In this case, -d must be used in previous '
+                        'test run to disable cleanup, for -t to work. Otherwise, '
+                        'device will need to be setup again with -i.')
+    parser.add_argument('-d', '--disable-teardown', action='store_true',
+                        help='Disables test teardown and cleanup.')
     parser.add_argument('-m', REBUILD_MODULE_INFO_FLAG, action='store_true',
                         help='Forces a rebuild of the module-info.json file. '
                              'This may be necessary following a repo sync or '
@@ -352,6 +358,8 @@ def get_extra_args(args):
     steps = args.steps or ALL_STEPS
     if INSTALL_STEP not in steps:
         extra_args[constants.DISABLE_INSTALL] = None
+    if args.disable_teardown:
+        extra_args[constants.DISABLE_TEARDOWN] = args.disable_teardown
     if args.generate_baseline:
         extra_args[constants.PRE_PATCH_ITERATIONS] = args.generate_baseline
     if args.generate_new_metrics:

@@ -36,7 +36,14 @@ public class GCSConfigurationServerTest {
             "<configuration>"
                     + "<device_manager class=\"com.android.tradefed.device.DeviceManager\" />\n"
                     + "</configuration>";
-    private static final String HOST_CONFIG_MAPPING = "hostname,,host-config.xml,";
+    private static final String HOST_CONFIG_MAPPING =
+            "\n"
+                    + "\n"
+                    + "# comment\n"
+                    + "\n"
+                    + "[cluster]\n"
+                    + "\n"
+                    + "hostname,,host-config.xml,\n";
 
     private GCSConfigurationServer mConfigServer;
     private String mHostname;
