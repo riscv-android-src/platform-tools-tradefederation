@@ -79,8 +79,16 @@ public class GCSConfigurationServer implements IConfigurationServer {
         try {
             while (scanner.hasNextLine()) {
                 // "hostname,instance-name,host-config-file-name,host-command-file"
-                String line = scanner.nextLine();
+                String line = scanner.nextLine().trim();
+                if (line.startsWith("#") || line.isEmpty() || line.startsWith("[")) {
+                    // Ignore comments, empty line and cluster name line.
+                    continue;
+                }
                 String[] hostMap = line.split(",");
+                if (hostMap.length < 3) {
+                    // Ignore invalid lines.
+                    continue;
+                }
                 if (sameHost(hostname, hostMap[0])) {
                     System.out.format("%s's config is %s\n", hostname, hostMap[2]);
                     return hostMap[2];

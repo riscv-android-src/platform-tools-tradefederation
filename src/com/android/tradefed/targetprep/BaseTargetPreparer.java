@@ -26,6 +26,12 @@ public abstract class BaseTargetPreparer implements ITargetPreparer {
     @Option(name = "disable", description = "disables the target preparer")
     private boolean mDisable = false;
 
+    @Option(
+        name = "disable-tear-down",
+        description = "disables the clean up step of a target cleaner"
+    )
+    private boolean mDisableTearDown = false;
+
     /** {@inheritDoc} */
     @Override
     public final boolean isDisabled() {
@@ -34,7 +40,19 @@ public abstract class BaseTargetPreparer implements ITargetPreparer {
 
     /** {@inheritDoc} */
     @Override
+    public final boolean isTearDownDisabled() {
+        return mDisableTearDown;
+    }
+
+    /** {@inheritDoc} */
+    @Override
     public final void setDisable(boolean isDisabled) {
         mDisable = isDisabled;
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public final void setDisableTearDown(boolean isDisabled) {
+        mDisableTearDown = isDisabled;
     }
 }

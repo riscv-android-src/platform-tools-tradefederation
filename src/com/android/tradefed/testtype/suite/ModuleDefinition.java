@@ -568,7 +568,7 @@ public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestColl
         List<IMultiTargetPreparer> cleanerList = new ArrayList<>(mMultiPreparers);
         Collections.reverse(cleanerList);
         for (IMultiTargetPreparer multiCleaner : cleanerList) {
-            if (multiCleaner.isDisabled()) {
+            if (multiCleaner.isDisabled() || multiCleaner.isTearDownDisabled()) {
                 // If disabled skip completely.
                 continue;
             }
@@ -585,7 +585,7 @@ public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestColl
                 if (preparer instanceof ITargetCleaner) {
                     ITargetCleaner cleaner = (ITargetCleaner) preparer;
                     // do not call the cleaner if it was disabled
-                    if (cleaner.isDisabled()) {
+                    if (cleaner.isDisabled() || cleaner.isTearDownDisabled()) {
                         CLog.d("%s has been disabled. skipping.", cleaner);
                         continue;
                     }

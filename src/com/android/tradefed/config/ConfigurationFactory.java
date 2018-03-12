@@ -546,9 +546,16 @@ public class ConfigurationFactory implements IConfigurationFactory {
             templateArgParser.setKeyStore(keyStoreClient);
         }
         optionArgsRef.addAll(templateArgParser.parseBestEffort(listArgs));
-        ConfigurationDef configDef = getConfigurationDef(configName, false,
-                parserSettings.templateMap);
-        if (!parserSettings.templateMap.isEmpty()) {
+        // Check that the same template is not attempted to be loaded twice.
+        for (String key : parserSettings.templateMap.keySet()) {
+            if (parserSettings.templateMap.get(key).size() > 1) {
+                throw new ConfigurationException(
+                        String.format("More than one template specified for key '%s'", key));
+            }
+        }
+        Map<String, String> uniqueMap = parserSettings.templateMap.getUniqueMap();
+        ConfigurationDef configDef = getConfigurationDef(configName, false, uniqueMap);
+        if (!uniqueMap.isEmpty()) {
             // remove the bad ConfigDef from the cache.
             for (ConfigId cid : mConfigDefMap.keySet()) {
                 if (mConfigDefMap.get(cid) == configDef) {
@@ -557,8 +564,8 @@ public class ConfigurationFactory implements IConfigurationFactory {
                     break;
                 }
             }
-            throw new ConfigurationException(String.format("Unused template:map parameters: %s",
-                    parserSettings.templateMap.toString()));
+            throw new ConfigurationException(
+                    String.format("Unused template:map parameters: %s", uniqueMap.toString()));
         }
         return configDef.createConfiguration();
     }

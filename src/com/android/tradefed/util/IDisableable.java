@@ -21,18 +21,33 @@ package com.android.tradefed.util;
  */
 public interface IDisableable {
 
-    /** Returns True if the object should be disabled and skipped. False otherwise. */
+    /** Returns True if entire object disabled (skip both setup and teardown). False otherwise. */
     public default boolean isDisabled() {
         return false;
     }
 
+    /** Returns True if just teardown should be skipped. False otherwise. */
+    public default boolean isTearDownDisabled() {
+        return false;
+    }
+
     /**
-     * Sets whether or not the object should be disabled or not. Can be use to make an object
-     * disabled by default in the default constructor.
+     * Sets whether the object should be disabled. Disabled means that both setup and teardown steps
+     * should be skipped. Can be use to make an object disabled by default in the default
+     * constructor.
      *
      * @param isDisabled the state the object should be put in.
      */
     public default void setDisable(boolean isDisabled) {
         // TODO: Remove the default empty implementation
+    }
+
+    /**
+     * Sets whether the teardown step in the object should be skipped. Setup step is still done.
+     *
+     * @param isDisabled the state the object should be put in.
+     */
+    public default void setDisableTearDown(boolean isDisabled) {
+        // Empty implementation to avoid having to implement everywhere.
     }
 }

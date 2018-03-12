@@ -59,6 +59,12 @@ public class BootstrapBuildProvider implements IDeviceBuildProvider {
     @Option(name="branch", description="build branch name to supply.")
     private String mBranch = null;
 
+    @Option(
+        name = "build-id",
+        description = "Specify the build id to report instead of the one from the device."
+    )
+    private String mBuildId = null;
+
     @Option(name="shell-available-timeout",
             description="Time to wait in seconds for device shell to become available. " +
             "Default to 300 seconds.")
@@ -91,7 +97,11 @@ public class BootstrapBuildProvider implements IDeviceBuildProvider {
     @Override
     public IBuildInfo getBuild(ITestDevice device) throws BuildRetrievalError,
             DeviceNotAvailableException {
-        String buildId = device.getBuildId();
+        String buildId = mBuildId;
+        // If mBuildId is set, do not use the device build-id
+        if (buildId == null) {
+            buildId = device.getBuildId();
+        }
         IBuildInfo info = new DeviceBuildInfo(buildId, mBuildTargetName);
         if (!(device.getIDevice() instanceof StubDevice)) {
             if (!device.waitForDeviceShell(mShellAvailableTimeout * 1000)) {

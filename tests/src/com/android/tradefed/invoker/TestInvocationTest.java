@@ -167,6 +167,7 @@ public class TestInvocationTest extends TestCase {
         mStubConfiguration.setBuildProvider(mMockBuildProvider);
 
         EasyMock.expect(mMockPreparer.isDisabled()).andStubReturn(false);
+        EasyMock.expect(mMockPreparer.isTearDownDisabled()).andStubReturn(false);
 
         List<IDeviceConfiguration> deviceConfigs = new ArrayList<IDeviceConfiguration>();
         IDeviceConfiguration device1 =
@@ -683,6 +684,7 @@ public class TestInvocationTest extends TestCase {
          IRemoteTest test = EasyMock.createNiceMock(IRemoteTest.class);
          ITargetCleaner mockCleaner = EasyMock.createMock(ITargetCleaner.class);
         EasyMock.expect(mockCleaner.isDisabled()).andReturn(false).times(2);
+        EasyMock.expect(mockCleaner.isTearDownDisabled()).andReturn(false);
          mockCleaner.setUp(mMockDevice, mMockBuildInfo);
          mockCleaner.tearDown(mMockDevice, mMockBuildInfo, null);
          mStubConfiguration.getTargetPreparers().add(mockCleaner);
@@ -707,6 +709,7 @@ public class TestInvocationTest extends TestCase {
         EasyMock.expectLastCall().andThrow(exception);
         ITargetCleaner mockCleaner = EasyMock.createMock(ITargetCleaner.class);
         EasyMock.expect(mockCleaner.isDisabled()).andReturn(false).times(2);
+        EasyMock.expect(mockCleaner.isTearDownDisabled()).andReturn(false);
         mockCleaner.setUp(mMockDevice, mMockBuildInfo);
         EasyMock.expectLastCall();
         mockCleaner.tearDown(mMockDevice, mMockBuildInfo, exception);
@@ -741,6 +744,7 @@ public class TestInvocationTest extends TestCase {
         EasyMock.expectLastCall().andThrow(exception);
         ITargetCleaner mockCleaner = EasyMock.createMock(ITargetCleaner.class);
         EasyMock.expect(mockCleaner.isDisabled()).andReturn(false).times(2);
+        EasyMock.expect(mockCleaner.isTearDownDisabled()).andReturn(false);
         mockCleaner.setUp(mMockDevice, mMockBuildInfo);
         // tearDown should be called
         mockCleaner.tearDown(mMockDevice, mMockBuildInfo, exception);
@@ -1522,6 +1526,7 @@ public class TestInvocationTest extends TestCase {
         mStubConfiguration.setCommandOptions(commandOption);
 
         EasyMock.expect(mMockPreparer.isDisabled()).andReturn(true);
+        // Not expect isTearDownDisabled.
 
         ITestInvocationListener listener = EasyMock.createStrictMock(ITestInvocationListener.class);
         listener.testLog(
@@ -1556,6 +1561,7 @@ public class TestInvocationTest extends TestCase {
         mStubConfiguration.setCommandOptions(commandOption);
 
         EasyMock.expect(mMockPreparer.isDisabled()).andReturn(true);
+        // Not expect isTearDownDisabled
 
         ITestInvocationListener listener = EasyMock.createStrictMock(ITestInvocationListener.class);
         listener.testLog(
@@ -1606,6 +1612,7 @@ public class TestInvocationTest extends TestCase {
         IRemoteTest test = EasyMock.createNiceMock(IRemoteTest.class);
         ITargetCleaner mockCleaner = EasyMock.createMock(ITargetCleaner.class);
         EasyMock.expect(mockCleaner.isDisabled()).andReturn(false).times(2);
+        EasyMock.expect(mockCleaner.isTearDownDisabled()).andReturn(false);
         mockCleaner.setUp(mMockDevice, mMockBuildInfo);
         mockCleaner.tearDown(mMockDevice, mMockBuildInfo, null);
         mStubConfiguration.getTargetPreparers().add(mockCleaner);
@@ -1667,6 +1674,7 @@ public class TestInvocationTest extends TestCase {
             IRemoteTest test = EasyMock.createNiceMock(IRemoteTest.class);
             ITargetCleaner mockCleaner = EasyMock.createMock(ITargetCleaner.class);
             EasyMock.expect(mockCleaner.isDisabled()).andReturn(false).times(2);
+            EasyMock.expect(mockCleaner.isTearDownDisabled()).andReturn(false);
             mockCleaner.setUp(mMockDevice, mMockBuildInfo);
             mockCleaner.tearDown(mMockDevice, mMockBuildInfo, null);
             mStubConfiguration.getTargetPreparers().add(mockCleaner);
@@ -1742,6 +1750,7 @@ public class TestInvocationTest extends TestCase {
             IRemoteTest test = EasyMock.createNiceMock(IRemoteTest.class);
             ITargetCleaner mockCleaner = EasyMock.createMock(ITargetCleaner.class);
             EasyMock.expect(mockCleaner.isDisabled()).andReturn(false).times(2);
+            EasyMock.expect(mockCleaner.isTearDownDisabled()).andReturn(false);
             mockCleaner.setUp(mMockDevice, mMockBuildInfo);
             mockCleaner.tearDown(mMockDevice, mMockBuildInfo, null);
             mStubConfiguration.getTargetPreparers().add(mockCleaner);
