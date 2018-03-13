@@ -524,25 +524,25 @@ public class TestInvocationTest extends TestCase {
                                 EasyMock.eq(LOGCAT_NAME_SETUP),
                                 EasyMock.eq(LogDataType.LOGCAT),
                                 (InputStream) EasyMock.anyObject()))
-                .andReturn(new LogFile(PATH, URL, false /* compressed */, true /* text */));
+                .andReturn(new LogFile(PATH, URL, LogDataType.TEXT));
         EasyMock.expect(
                         mMockLogSaver.saveLogData(
                                 EasyMock.eq(LOGCAT_NAME_TEST),
                                 EasyMock.eq(LogDataType.LOGCAT),
                                 (InputStream) EasyMock.anyObject()))
-                .andReturn(new LogFile(PATH, URL, false /* compressed */, true /* text */));
+                .andReturn(new LogFile(PATH, URL, LogDataType.TEXT));
         EasyMock.expect(
                         mMockLogSaver.saveLogData(
                                 EasyMock.eq(LOGCAT_NAME_TEARDOWN),
                                 EasyMock.eq(LogDataType.LOGCAT),
                                 (InputStream) EasyMock.anyObject()))
-                .andReturn(new LogFile(PATH, URL, false /* compressed */, true /* text */));
+                .andReturn(new LogFile(PATH, URL, LogDataType.TEXT));
         EasyMock.expect(
                         mMockLogSaver.saveLogData(
                                 EasyMock.eq(TestInvocation.TRADEFED_LOG_NAME),
                                 EasyMock.eq(LogDataType.TEXT),
                                 (InputStream) EasyMock.anyObject()))
-                .andReturn(new LogFile(PATH, URL, false /* compressed */, true /* text */));
+                .andReturn(new LogFile(PATH, URL, LogDataType.TEXT));
         resumeListener.testLog(
                 EasyMock.eq(LOGCAT_NAME_SETUP),
                 EasyMock.eq(LogDataType.LOGCAT),
@@ -592,25 +592,25 @@ public class TestInvocationTest extends TestCase {
                                 EasyMock.eq(LOGCAT_NAME_SETUP),
                                 EasyMock.eq(LogDataType.LOGCAT),
                                 (InputStream) EasyMock.anyObject()))
-                .andReturn(new LogFile(PATH, URL, false /* compressed */, true /* text */));
+                .andReturn(new LogFile(PATH, URL, LogDataType.TEXT));
         EasyMock.expect(
                         mMockLogSaver.saveLogData(
                                 EasyMock.eq(LOGCAT_NAME_TEST),
                                 EasyMock.eq(LogDataType.LOGCAT),
                                 (InputStream) EasyMock.anyObject()))
-                .andReturn(new LogFile(PATH, URL, false /* compressed */, true /* text */));
+                .andReturn(new LogFile(PATH, URL, LogDataType.TEXT));
         EasyMock.expect(
                         mMockLogSaver.saveLogData(
                                 EasyMock.eq(LOGCAT_NAME_TEARDOWN),
                                 EasyMock.eq(LogDataType.LOGCAT),
                                 (InputStream) EasyMock.anyObject()))
-                .andReturn(new LogFile(PATH, URL, false /* compressed */, true /* text */));
+                .andReturn(new LogFile(PATH, URL, LogDataType.TEXT));
         EasyMock.expect(
                         mMockLogSaver.saveLogData(
                                 EasyMock.eq(TestInvocation.TRADEFED_LOG_NAME),
                                 EasyMock.eq(LogDataType.TEXT),
                                 (InputStream) EasyMock.anyObject()))
-                .andReturn(new LogFile(PATH, URL, false /* compressed */, true /* text */));
+                .andReturn(new LogFile(PATH, URL, LogDataType.TEXT));
         resumeListener.testLog(
                 EasyMock.eq(LOGCAT_NAME_SETUP),
                 EasyMock.eq(LogDataType.LOGCAT),
@@ -1183,7 +1183,7 @@ public class TestInvocationTest extends TestCase {
                                     EasyMock.eq(LOGCAT_NAME_SETUP),
                                     EasyMock.eq(LogDataType.LOGCAT),
                                     (InputStream) EasyMock.anyObject()))
-                    .andReturn(new LogFile(PATH, URL, false /* compressed */, true /* text */));
+                    .andReturn(new LogFile(PATH, URL, LogDataType.TEXT));
             mMockTestListener.testLog(
                     EasyMock.eq(LOGCAT_NAME_SETUP),
                     EasyMock.eq(LogDataType.LOGCAT),
@@ -1207,7 +1207,7 @@ public class TestInvocationTest extends TestCase {
                                     EasyMock.eq(LOGCAT_NAME_ERROR),
                                     EasyMock.eq(LogDataType.LOGCAT),
                                     (InputStream) EasyMock.anyObject()))
-                    .andReturn(new LogFile(PATH, URL, false /* compressed */, true /* text */));
+                    .andReturn(new LogFile(PATH, URL, LogDataType.TEXT));
             mMockTestListener.testLog(
                     EasyMock.eq(LOGCAT_NAME_ERROR),
                     EasyMock.eq(LogDataType.LOGCAT),
@@ -1223,7 +1223,7 @@ public class TestInvocationTest extends TestCase {
                                     EasyMock.eq(LOGCAT_NAME_TEST),
                                     EasyMock.eq(LogDataType.LOGCAT),
                                     (InputStream) EasyMock.anyObject()))
-                    .andReturn(new LogFile(PATH, URL, false /* compressed */, true /* text */));
+                    .andReturn(new LogFile(PATH, URL, LogDataType.TEXT));
             mMockTestListener.testLog(
                     EasyMock.eq(LOGCAT_NAME_TEST),
                     EasyMock.eq(LogDataType.LOGCAT),
@@ -1249,7 +1249,7 @@ public class TestInvocationTest extends TestCase {
                                     EasyMock.eq(LOGCAT_NAME_TEARDOWN),
                                     EasyMock.eq(LogDataType.LOGCAT),
                                     (InputStream) EasyMock.anyObject()))
-                    .andReturn(new LogFile(PATH, URL, false /* compressed */, true /* text */));
+                    .andReturn(new LogFile(PATH, URL, LogDataType.TEXT));
             mMockTestListener.testLog(
                     EasyMock.eq(LOGCAT_NAME_TEARDOWN),
                     EasyMock.eq(LogDataType.LOGCAT),
@@ -1265,7 +1265,7 @@ public class TestInvocationTest extends TestCase {
                                 EasyMock.eq(TestInvocation.TRADEFED_LOG_NAME),
                                 EasyMock.eq(LogDataType.TEXT),
                                 (InputStream) EasyMock.anyObject()))
-                .andReturn(new LogFile(PATH, URL, false /* compressed */, true /* text */));
+                .andReturn(new LogFile(PATH, URL, LogDataType.TEXT));
         mMockTestListener.testLog(EasyMock.eq(TestInvocation.TRADEFED_LOG_NAME),
                 EasyMock.eq(LogDataType.TEXT), (InputStreamSource)EasyMock.anyObject());
         mMockSummaryListener.testLog(EasyMock.eq(TestInvocation.TRADEFED_LOG_NAME),

@@ -120,10 +120,10 @@ public class TestRunResultTest {
         // Check that there is no logged file at first.
         TestResult testRes = result.getTestResults().get(test);
         assertEquals(0, testRes.getLoggedFiles().size());
-        result.testLogSaved("test", new LogFile("path", "url", true, true));
+        result.testLogSaved("test", new LogFile("path", "url", LogDataType.TEXT));
         assertEquals(1, testRes.getLoggedFiles().size());
         result.testFailed(test, "failure");
-        result.testLogSaved("afterFailure", new LogFile("path", "url", true, true));
+        result.testLogSaved("afterFailure", new LogFile("path", "url", LogDataType.TEXT));
         assertEquals(2, testRes.getLoggedFiles().size());
         result.testEnded(test, Collections.emptyMap());
         // Once done, the results are still available.
@@ -138,7 +138,7 @@ public class TestRunResultTest {
     public void testLogSavedFile_runLogs() {
         TestRunResult result = new TestRunResult();
         result.testRunStarted("run", 1);
-        result.testLogSaved("outsideTestCase", new LogFile("path", "url", true, true));
+        result.testLogSaved("outsideTestCase", new LogFile("path", "url", LogDataType.TEXT));
 
         TestDescription test = new TestDescription("FooTest", "testBar");
         result.testStarted(test);
@@ -146,10 +146,10 @@ public class TestRunResultTest {
         TestResult testRes = result.getTestResults().get(test);
         assertEquals(0, testRes.getLoggedFiles().size());
 
-        result.testLogSaved("insideTestCase", new LogFile("path", "url", true, true));
-        result.testLogSaved("insideTestCase2", new LogFile("path", "url", true, true));
+        result.testLogSaved("insideTestCase", new LogFile("path", "url", LogDataType.TEXT));
+        result.testLogSaved("insideTestCase2", new LogFile("path", "url", LogDataType.TEXT));
         result.testEnded(test, Collections.emptyMap());
-        result.testLogSaved("outsideTestCase2", new LogFile("path", "url", true, true));
+        result.testLogSaved("outsideTestCase2", new LogFile("path", "url", LogDataType.TEXT));
         // Once done, the results are still available and the test cases has its two files.
         assertEquals(2, testRes.getLoggedFiles().size());
         assertTrue(testRes.getLoggedFiles().containsKey("insideTestCase"));
