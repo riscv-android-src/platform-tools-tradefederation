@@ -529,8 +529,8 @@ public class ITestSuiteIntegrationTest {
         // Only a subpart of the module runs. 2 out of 3 tests.
         assertEquals(1, mListener.getTotalModules());
         assertEquals(1, mListener.getCompleteModules());
-        assertEquals(2, mListener.getTotalTests());
-        assertEquals(2, mListener.getPassedTests());
+        assertEquals(1, mListener.getTotalTests());
+        assertEquals(1, mListener.getPassedTests());
         assertEquals(0, mListener.getFailedTests());
     }
 
@@ -543,8 +543,8 @@ public class ITestSuiteIntegrationTest {
         // Only a subpart of the module runs. 1 out of 3 tests.
         assertEquals(1, mListener.getTotalModules());
         assertEquals(1, mListener.getCompleteModules());
-        assertEquals(1, mListener.getTotalTests());
-        assertEquals(1, mListener.getPassedTests());
+        assertEquals(2, mListener.getTotalTests());
+        assertEquals(2, mListener.getPassedTests());
         assertEquals(0, mListener.getFailedTests());
     }
 
