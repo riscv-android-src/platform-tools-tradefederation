@@ -51,7 +51,7 @@ public class DeviceSuiteTest {
     private IAbi mMockAbi;
 
     @Before
-    public void setUp() {
+    public void setUp() throws Exception {
         mHostTest = new HostTest();
         mMockDevice = EasyMock.createMock(ITestDevice.class);
         mListener = EasyMock.createMock(ITestInvocationListener.class);
@@ -60,6 +60,9 @@ public class DeviceSuiteTest {
         mHostTest.setDevice(mMockDevice);
         mHostTest.setBuild(mMockBuildInfo);
         mHostTest.setAbi(mMockAbi);
+        OptionSetter setter = new OptionSetter(mHostTest);
+        // Disable pretty logging for testing
+        setter.setOptionValue("enable-pretty-logs", "false");
     }
 
     @RunWith(DeviceJUnit4ClassRunner.class)
