@@ -20,9 +20,11 @@ import com.android.tradefed.build.IDeviceBuildInfo;
 import com.android.tradefed.config.ConfigurationException;
 import com.android.tradefed.config.ConfigurationFactory;
 import com.android.tradefed.config.ConfigurationUtil;
+import com.android.tradefed.config.IConfiguration;
 import com.android.tradefed.config.IConfigurationFactory;
 import com.android.tradefed.testtype.DeviceJUnit4ClassRunner;
 import com.android.tradefed.testtype.IBuildReceiver;
+import com.android.tradefed.testtype.suite.ValidateSuiteConfigHelper;
 
 import com.google.common.base.Joiner;
 
@@ -68,8 +70,13 @@ public class DeviceTestsConfigValidation implements IBuildReceiver {
                         null, extraTestCasesDirs, Arrays.asList(".*.config")));
         for (File config : configs) {
             try {
-                configFactory.createConfigurationFromArgs(new String[] {config.getAbsolutePath()});
-                // TODO: if any add extra checks on the IConfiguration
+                IConfiguration c =
+                        configFactory.createConfigurationFromArgs(
+                                new String[] {config.getAbsolutePath()});
+                // All configurations in device-tests.zip should be module since they are generated
+                // from AndroidTest.xml
+                ValidateSuiteConfigHelper.validateConfig(c);
+                // Add more checks if necessary
             } catch (ConfigurationException e) {
                 errors.add(String.format("\t%s: %s", config.getName(), e.getMessage()));
             }
