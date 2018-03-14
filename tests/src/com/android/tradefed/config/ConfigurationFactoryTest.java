@@ -1203,7 +1203,9 @@ public class ConfigurationFactoryTest extends TestCase {
      * devices tags.
      */
     public void testCreateConfigurationFromArgs_multidevice_exception() throws Exception {
-        String expectedException = "Tags [build_provider] should be included in a <device> tag.";
+        String expectedException =
+                "You seem to want a multi-devices configuration but you have "
+                        + "[build_provider] tags outside the <device> tags";
         try {
             mFactory.createConfigurationFromArgs(new String[]{"multi-device-outside-tag"});
             fail("Should have thrown a Configuration Exception");
@@ -1507,6 +1509,48 @@ public class ConfigurationFactoryTest extends TestCase {
             assertTrue(res.iterator().next().contains("testconfig2"));
         } finally {
             FileUtil.recursiveDelete(tmpDir);
+        }
+    }
+
+    /**
+     * Test that if the base configuration is single device and a template attempt to make it
+     * multi-devices, it will fail and provide a clear message about which tags are not in the right
+     * place.
+     */
+    public void testCreateConfigurationFromArgs_singleDeviceTemplate_includeMulti()
+            throws Exception {
+        try {
+            mFactory.createConfigurationFromArgs(
+                    new String[] {
+                        "local-preparer-base", "--template:map", "config", "test-config-multi"
+                    });
+            fail("Should have thrown an exception");
+        } catch (ConfigurationException expected) {
+            assertEquals(
+                    "You seem to want a multi-devices configuration but you have "
+                            + "[target_preparer] tags outside the <device> tags",
+                    expected.getMessage());
+        }
+    }
+
+    /**
+     * Opposite scenario of {@link
+     * #testCreateConfigurationFromArgs_singleDeviceTemplate_includeMulti()} where the base template
+     * is multi-devices and the template included has a single device tag.
+     */
+    public void testCreateConfigurationFromArgs_multiDeviceTemplate_includeSingle()
+            throws Exception {
+        try {
+            mFactory.createConfigurationFromArgs(
+                    new String[] {
+                        "multi-device", "--template:map", "preparers", "local-preparer-base"
+                    });
+            fail("Should have thrown an exception");
+        } catch (ConfigurationException expected) {
+            assertEquals(
+                    "You seem to want a multi-devices configuration but you have "
+                            + "[target_preparer] tags outside the <device> tags",
+                    expected.getMessage());
         }
     }
 }
