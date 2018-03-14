@@ -22,6 +22,7 @@ import com.android.ddmlib.IDevice;
 import com.android.ddmlib.IDevice.DeviceState;
 import com.android.ddmlib.IShellOutputReceiver;
 import com.android.ddmlib.InstallException;
+import com.android.ddmlib.Log.LogLevel;
 import com.android.ddmlib.NullOutputReceiver;
 import com.android.ddmlib.ShellCommandUnresponsiveException;
 import com.android.ddmlib.SyncException;
@@ -3899,11 +3900,13 @@ public class NativeDevice implements IManagedTestDevice {
         }
     }
 
+    /** {@inheritDoc} */
     @Override
     public File dumpHeap(String process, String devicePath) throws DeviceNotAvailableException {
         throw new UnsupportedOperationException("dumpHeap is not supported.");
     }
 
+    /** {@inheritDoc} */
     @Override
     public String getProcessPid(String process) throws DeviceNotAvailableException {
         String output = executeShellCommand(String.format("pidof %s", process)).trim();
@@ -3912,6 +3915,38 @@ public class NativeDevice implements IManagedTestDevice {
         }
         CLog.e("Failed to find a valid pid for process.");
         return null;
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public void logOnDevice(String tag, LogLevel level, String format, Object... args) {
+        String message = String.format(format, args);
+        try {
+            String levelLetter = logLevelToLogcatLevel(level);
+            String command = String.format("log -t %s -p %s '%s'", tag, levelLetter, message);
+            executeShellCommand(command);
+        } catch (DeviceNotAvailableException e) {
+            CLog.e("Device went not available when attempting to log '%s'", message);
+            CLog.e(e);
+        }
+    }
+
+    /** Convert the {@link LogLevel} to the letter used in log (see 'adb shell log --help'). */
+    private String logLevelToLogcatLevel(LogLevel level) {
+        switch (level) {
+            case DEBUG:
+                return "d";
+            case ERROR:
+                return "e";
+            case INFO:
+                return "i";
+            case VERBOSE:
+                return "v";
+            case WARN:
+                return "w";
+            default:
+                return "i";
+        }
     }
 
     /** Validate that pid is an integer and not empty. */

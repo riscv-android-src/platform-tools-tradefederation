@@ -29,7 +29,6 @@ import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.device.StubDevice;
 import com.android.tradefed.invoker.IInvocationContext;
 import com.android.tradefed.invoker.InvocationContext;
-import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.result.CollectingTestListener;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.TestDescription;
@@ -111,7 +110,7 @@ public class BaseHostJUnit4TestTest {
     private HostTest mHostTest;
 
     @Before
-    public void setUp() {
+    public void setUp() throws Exception {
         mMockListener = EasyMock.createMock(ITestInvocationListener.class);
         mMockBuild = EasyMock.createMock(IBuildInfo.class);
         mMockDevice = EasyMock.createMock(ITestDevice.class);
@@ -123,6 +122,9 @@ public class BaseHostJUnit4TestTest {
         mHostTest.setBuild(mMockBuild);
         mHostTest.setDevice(mMockDevice);
         mHostTest.setInvocationContext(mMockContext);
+        OptionSetter setter = new OptionSetter(mHostTest);
+        // Disable pretty logging for testing
+        setter.setOptionValue("enable-pretty-logs", "false");
     }
 
     /** Test that we are able to run the test as a JUnit4. */
@@ -297,7 +299,6 @@ public class BaseHostJUnit4TestTest {
                 protected String parsePackageName(
                         File testAppFile, DeviceDescriptor deviceDescriptor)
                         throws TargetSetupError {
-                    CLog.e("here");
                     return "fakepackage";
                 }
             };
@@ -319,6 +320,8 @@ public class BaseHostJUnit4TestTest {
             test.setDevice(mMockDevice);
             test.setInvocationContext(mMockContext);
             OptionSetter setter = new OptionSetter(test);
+            // Disable pretty logging for testing
+            setter.setOptionValue("enable-pretty-logs", "false");
             setter.setOptionValue("class", InstallApkHostJUnit4Test.class.getName());
             mMockListener.testRunStarted(InstallApkHostJUnit4Test.class.getName(), 1);
             TestDescription description =

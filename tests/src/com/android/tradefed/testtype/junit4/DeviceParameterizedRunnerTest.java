@@ -90,13 +90,16 @@ public class DeviceParameterizedRunnerTest {
     private ITestInvocationListener mListener;
 
     @Before
-    public void setUp() {
+    public void setUp() throws Exception {
         mDevice = EasyMock.createMock(ITestDevice.class);
         mBuild = EasyMock.createMock(IBuildInfo.class);
         mListener = EasyMock.createMock(ITestInvocationListener.class);
         mTest = new HostTest();
         mTest.setDevice(mDevice);
         mTest.setBuild(mBuild);
+        OptionSetter setter = new OptionSetter(mTest);
+        // Disable pretty logging for testing
+        setter.setOptionValue("enable-pretty-logs", "false");
     }
 
     /** Test running the parameterized tests. */
