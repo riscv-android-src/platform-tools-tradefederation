@@ -79,8 +79,10 @@ fi
 # include any host-side test jars from suite
 if [ ! -z "${ANDROID_HOST_OUT_TESTCASES}" ]; then
     for folder in ${ANDROID_HOST_OUT_TESTCASES}/*; do
-        for j in $folder/*.jar; do
-            TF_PATH=${TF_PATH}:$j
+        for entry in "$folder"/*; do
+            if [[ "$entry" = *".jar"* ]]; then
+                TF_PATH=${TF_PATH}:$entry
+            fi
         done
     done
 fi
