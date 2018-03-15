@@ -24,6 +24,26 @@ import java.io.File;
 public interface IDeviceBuildInfo extends IBuildInfo {
 
     /**
+     * ANDROID_HOST_OUT_TESTCASES and ANDROID_TARGET_OUT_TESTCASES are linked in the tests dir of
+     * the build info.
+     */
+    public enum ExternalLinkedDir {
+        TARGET_LINKED_DIR("target_testcases"),
+        HOST_LINKED_DIR("host_testcases");
+
+        private final String mName;
+
+        private ExternalLinkedDir(String name) {
+            mName = name;
+        }
+
+        @Override
+        public String toString() {
+            return mName;
+        }
+    }
+
+    /**
      * Returns the unique identifier of platform build under test. Should never be null. Defaults to
      * {@link #UNKNOWN_BUILD_ID}.
      */
