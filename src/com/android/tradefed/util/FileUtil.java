@@ -399,7 +399,7 @@ public class FileUtil {
      */
     public static void hardlinkFile(File origFile, File destFile) throws IOException {
         try {
-            Files.createLink(Paths.get(destFile.toURI()), Paths.get(origFile.toURI()));
+            Files.createLink(destFile.toPath(), origFile.toPath());
         } catch (FileSystemException e) {
             if (e.getMessage().contains("Invalid cross-device link")) {
                 CLog.d("Hardlink failed: '%s', falling back to copy.", e.getMessage());
@@ -418,33 +418,10 @@ public class FileUtil {
      * @throws IOException if failed to symlink file
      */
     public static void symlinkFile(File origFile, File destFile) throws IOException {
-        CommandResult res = linkFile(origFile, destFile, true);
-        if (!CommandStatus.SUCCESS.equals(res.getStatus())) {
-            throw new IOException(
-                    String.format(
-                            "Error trying to symlink: %s\nstdout:%s\nstderr:%s",
-                            res.getStatus(), res.getStdout(), res.getStderr()));
-        }
-    }
-
-    private static CommandResult linkFile(File origFile, File destFile, boolean symlink)
-            throws IOException {
-        if (!origFile.exists()) {
-            String link = symlink ? "symlink" : "hardlink";
-            throw new IOException(
-                    String.format(
-                            "Cannot %s %s. File does not exist", link, origFile.getAbsolutePath()));
-        }
-        List<String> cmd = new ArrayList<>();
-        cmd.add("ln");
-        if (symlink) {
-            cmd.add("-s");
-        }
-        cmd.add(origFile.getAbsolutePath());
-        cmd.add(destFile.getAbsolutePath());
-        CommandResult result =
-                RunUtil.getDefault().runTimedCmdSilently(10 * 1000, cmd.toArray(new String[0]));
-        return result;
+        CLog.d(
+                "Attempting symlink from %s to %s",
+                origFile.getAbsolutePath(), destFile.getAbsolutePath());
+        Files.createSymbolicLink(destFile.toPath(), origFile.toPath());
     }
 
     /**
