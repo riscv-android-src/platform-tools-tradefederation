@@ -295,6 +295,11 @@ public class ConfigurationDef {
         mMultiDeviceMode = multiDeviceMode;
     }
 
+    /** Returns whether or not the recorded configuration is multi-device or not. */
+    public boolean isMultiDeviceMode() {
+        return mMultiDeviceMode;
+    }
+
     public void addExpectedDevice(String deviceName) {
         mExpectedDevices.add(deviceName);
     }

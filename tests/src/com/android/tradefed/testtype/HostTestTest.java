@@ -446,6 +446,9 @@ public class HostTestTest extends TestCase {
         mMockBuildInfo = EasyMock.createMock(IBuildInfo.class);
         mHostTest.setDevice(mMockDevice);
         mHostTest.setBuild(mMockBuildInfo);
+        OptionSetter setter = new OptionSetter(mHostTest);
+        // Disable pretty logging for testing
+        setter.setOptionValue("enable-pretty-logs", "false");
     }
 
     /**

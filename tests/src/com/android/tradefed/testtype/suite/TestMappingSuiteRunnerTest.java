@@ -125,6 +125,34 @@ public class TestMappingSuiteRunnerTest {
         }
     }
 
+    /** Test for {@link TestMappingSuiteRunner#loadTests()} to fail when no test is found. */
+    @Test(expected = RuntimeException.class)
+    public void testLoadTests_noTest() throws Exception {
+        File tempDir = null;
+        try {
+            OptionSetter setter = new OptionSetter(mRunner);
+            setter.setOptionValue("test-mapping-test-type", "none-exist");
+
+            tempDir = FileUtil.createTempDir("test_mapping");
+
+            File srcDir = FileUtil.createTempDir("src", tempDir);
+
+            File zipFile = Paths.get(tempDir.getAbsolutePath(), TEST_MAPPINGS_ZIP).toFile();
+            ZipUtil.createZip(srcDir, zipFile);
+
+            IDeviceBuildInfo mockBuildInfo = EasyMock.createMock(IDeviceBuildInfo.class);
+            EasyMock.expect(mockBuildInfo.getTestsDir()).andReturn(new File("non-existing-dir"));
+            EasyMock.expect(mockBuildInfo.getFile(TEST_MAPPINGS_ZIP)).andReturn(zipFile);
+
+            mRunner.setBuild(mockBuildInfo);
+            EasyMock.replay(mockBuildInfo);
+
+            mRunner.loadTests();
+        } finally {
+            FileUtil.recursiveDelete(tempDir);
+        }
+    }
+
     /**
      * Test for {@link TestMappingSuiteRunner#loadTests()} that when a test config supports
      * IAbiReceiver, multiple instances of the config are queued up.

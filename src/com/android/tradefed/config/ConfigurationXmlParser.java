@@ -67,7 +67,6 @@ class ConfigurationXmlParser {
         // State-holding members
         private String mCurrentConfigObject;
         private String mCurrentDeviceObject;
-        private Boolean isMultiDeviceConfigMode = false;
         private List<String> mListDevice = new ArrayList<String>();
         private List<String> mOutsideTag = new ArrayList<String>();
 
@@ -128,7 +127,6 @@ class ConfigurationXmlParser {
                             + "cannot contain reserved character: '%s'",
                             OptionSetter.NAMESPACE_SEPARATOR)));
                 }
-                isMultiDeviceConfigMode = true;
                 mConfigDef.setMultiDeviceMode(true);
                 mCurrentDeviceObject = deviceName;
                 addObject(localName, attributes);
@@ -340,7 +338,8 @@ class ConfigurationXmlParser {
                     new ConfigHandler(
                             configDef, name, mConfigDefLoader, mParentDeviceObject, templateMap);
             parser.parse(new InputSource(xmlInput), configHandler);
-            checkValidMultiConfiguration(configHandler);
+            // ConfigurationDef holds whether or not the configs are multi-device or not.
+            checkValidMultiConfiguration(configHandler, configDef);
         } catch (ParserConfigurationException e) {
             throwConfigException(name, e);
         } catch (SAXException e) {
@@ -363,14 +362,18 @@ class ConfigurationXmlParser {
     }
 
     /**
-     * Validate that the configuration is valid from a multi device configuration standpoint:
-     * Some tags are not allowed outside the <device> tags.
+     * Validate that the configuration is valid from a multi device configuration standpoint: Some
+     * tags are not allowed outside the <device> tags.
      */
-    private void checkValidMultiConfiguration(ConfigHandler configHandler) throws SAXException {
-        if (configHandler.isMultiDeviceConfigMode == true &&
-                !configHandler.mOutsideTag.isEmpty()) {
-            throw new SAXException(new ConfigurationException(String.format("Tags %s "
-                    + "should be included in a <device> tag.", configHandler.mOutsideTag)));
+    private void checkValidMultiConfiguration(
+            ConfigHandler configHandler, ConfigurationDef configDef) throws SAXException {
+        if (configDef.isMultiDeviceMode() && !configHandler.mOutsideTag.isEmpty()) {
+            throw new SAXException(
+                    new ConfigurationException(
+                            String.format(
+                                    "You seem to want a multi-devices configuration but you have %s tags outside "
+                                            + "the <device> tags",
+                                    configHandler.mOutsideTag)));
         }
     }
 }
