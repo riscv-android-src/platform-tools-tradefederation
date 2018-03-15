@@ -111,6 +111,21 @@ public class BaseTestSuite extends ITestSuite {
     )
     private String mSuitePrefix = null;
 
+    @Option(
+        name = "skip-loading-config-jar",
+        description = "Whether or not to skip loading configurations from the JAR on the classpath."
+    )
+    private boolean mSkipJarLoading = false;
+
+    @Option(
+        name = "config-patterns",
+        description =
+                "The pattern(s) of the configurations that should be loaded from a directory."
+                        + " If none is explicitly specified, .*.xml and .*.config will be used."
+                        + " Can be repeated."
+    )
+    private List<String> mConfigPatterns = new ArrayList<>();
+
     private SuiteModuleLoader mModuleRepo;
     private Map<String, List<SuiteTestFilter>> mIncludeFiltersParsed = new HashMap<>();
     private Map<String, List<SuiteTestFilter>> mExcludeFiltersParsed = new HashMap<>();
@@ -155,11 +170,21 @@ public class BaseTestSuite extends ITestSuite {
             Set<IAbi> abis, File testsDir, String suitePrefix, String suiteTag) {
         LinkedHashMap<String, IConfiguration> loadedConfigs = new LinkedHashMap<>();
         // Load configs that are part of the resources
-        loadedConfigs.putAll(getModuleLoader().loadConfigsFromJars(abis, suitePrefix, suiteTag));
+        if (!mSkipJarLoading) {
+            loadedConfigs.putAll(
+                    getModuleLoader().loadConfigsFromJars(abis, suitePrefix, suiteTag));
+        }
 
         // Load the configs that are part of the tests dir
+        if (mConfigPatterns.isEmpty()) {
+            // If no special pattern was configured, use the default configuration patterns we know
+            mConfigPatterns.add(".*.config");
+            mConfigPatterns.add(".*.xml");
+        }
         loadedConfigs.putAll(
-                getModuleLoader().loadConfigsFromDirectory(testsDir, abis, suitePrefix, suiteTag));
+                getModuleLoader()
+                        .loadConfigsFromDirectory(
+                                testsDir, abis, suitePrefix, suiteTag, mConfigPatterns));
         return loadedConfigs;
     }
 
