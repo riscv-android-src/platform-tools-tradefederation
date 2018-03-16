@@ -154,6 +154,14 @@ public class InstalledInstrumentationsTest
     )
     private boolean mCoverage = false;
 
+    @Option(
+        name = "hidden-api-checks",
+        description =
+                "If set to false, the '--no-hidden-api-checks' flag will be passed to the am "
+                        + "instrument command. Only works for P or later."
+    )
+    private boolean mHiddenApiChecks = true;
+
     private int mTotalShards = 0;
     private int mShardIndex = 0;
 
