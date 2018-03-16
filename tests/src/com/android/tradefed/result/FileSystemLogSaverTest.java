@@ -193,8 +193,8 @@ public class FileSystemLogSaverTest extends TestCase {
     }
 
     /**
-     * Test saving compressed data for
-     * {@link FileSystemLogSaver#saveLogDataRaw(String, String, InputStream)}.
+     * Test saving compressed data for {@link FileSystemLogSaver#saveLogDataRaw(String, LogDataType,
+     * InputStream)}.
      */
     public void testSaveLogData_compressed() throws IOException {
         LogFile logFile = null;
@@ -220,8 +220,8 @@ public class FileSystemLogSaverTest extends TestCase {
     }
 
     /**
-     * Simple normal case test for
-     * {@link FileSystemLogSaver#saveLogDataRaw(String, String, InputStream)}.
+     * Simple normal case test for {@link FileSystemLogSaver#saveLogDataRaw(String, LogDataType,
+     * InputStream)}.
      */
     public void testSaveLogDataRaw() throws IOException {
         LogFile logFile = null;
@@ -234,8 +234,7 @@ public class FileSystemLogSaverTest extends TestCase {
 
             final String testData = "Here's some test data, blah";
             ByteArrayInputStream mockInput = new ByteArrayInputStream(testData.getBytes());
-            logFile = saver.saveLogDataRaw("testSaveLogData", LogDataType.TEXT.getFileExt(),
-                    mockInput);
+            logFile = saver.saveLogDataRaw("testSaveLogData", LogDataType.TEXT, mockInput);
 
             // Verify test data was written to file
             logFileReader = new BufferedReader(new FileReader(new File(logFile.getPath())));
