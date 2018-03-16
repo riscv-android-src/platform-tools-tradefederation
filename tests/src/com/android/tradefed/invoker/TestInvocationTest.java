@@ -24,6 +24,7 @@ import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.build.IBuildInfo.BuildInfoProperties;
 import com.android.tradefed.build.IBuildProvider;
 import com.android.tradefed.build.IDeviceBuildInfo;
+import com.android.tradefed.build.IDeviceBuildInfo.ExternalLinkedDir;
 import com.android.tradefed.build.IDeviceBuildProvider;
 import com.android.tradefed.command.CommandOptions;
 import com.android.tradefed.command.CommandRunner.ExitCode;
@@ -77,6 +78,7 @@ import com.android.tradefed.testtype.IShardableTest;
 import com.android.tradefed.testtype.IStrictShardableTest;
 import com.android.tradefed.testtype.StubTest;
 import com.android.tradefed.util.FileUtil;
+import com.android.tradefed.util.SystemUtil.EnvVariable;
 
 import com.google.common.util.concurrent.SettableFuture;
 
@@ -1595,9 +1597,9 @@ public class TestInvocationTest extends TestCase {
                             }
 
                             @Override
-                            List<File> getExternalTestCasesDirs() {
+                            File getExternalTestCasesDirs(EnvVariable envVar) {
                                 // Return empty list to ensure we do not have any environment loaded
-                                return new ArrayList<>();
+                                return null;
                             }
                         };
                     }
@@ -1657,10 +1659,11 @@ public class TestInvocationTest extends TestCase {
                                 }
 
                                 @Override
-                                List<File> getExternalTestCasesDirs() {
-                                    List<File> list = new ArrayList<>();
-                                    list.add(tmpExternalTestsDir);
-                                    return list;
+                                File getExternalTestCasesDirs(EnvVariable envVar) {
+                                    if (EnvVariable.ANDROID_TARGET_OUT_TESTCASES.equals(envVar)) {
+                                        return tmpExternalTestsDir;
+                                    }
+                                    return null;
                                 }
                             };
                         }
@@ -1680,7 +1683,7 @@ public class TestInvocationTest extends TestCase {
             mStubConfiguration.getTargetPreparers().add(mockCleaner);
 
             mMockBuildInfo.setFile(
-                    EasyMock.contains(tmpExternalTestsDir.getName()),
+                    EasyMock.contains(ExternalLinkedDir.TARGET_LINKED_DIR.toString()),
                     EasyMock.anyObject(),
                     EasyMock.eq("v1"));
             EasyMock.expect(((IDeviceBuildInfo) mMockBuildInfo).getTestsDir())
@@ -1697,7 +1700,10 @@ public class TestInvocationTest extends TestCase {
             assertTrue(tmpTestsDir.listFiles().length == 1);
             // external-tf-dir - the symlink is the original file name + randomized sequence
             assertTrue(
-                    tmpTestsDir.listFiles()[0].getName().startsWith(tmpExternalTestsDir.getName()));
+                    tmpTestsDir
+                            .listFiles()[0]
+                            .getName()
+                            .startsWith(ExternalLinkedDir.TARGET_LINKED_DIR.toString()));
             // testsfile.txt
             assertTrue(tmpTestsDir.listFiles()[0].listFiles().length == 1);
             assertEquals(
@@ -1733,10 +1739,8 @@ public class TestInvocationTest extends TestCase {
                                 }
 
                                 @Override
-                                List<File> getExternalTestCasesDirs() {
-                                    List<File> list = new ArrayList<>();
-                                    list.add(tmpExternalTestsDir);
-                                    return list;
+                                File getExternalTestCasesDirs(EnvVariable envVar) {
+                                    return tmpExternalTestsDir;
                                 }
                             };
                         }
