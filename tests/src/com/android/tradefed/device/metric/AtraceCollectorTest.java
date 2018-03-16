@@ -45,7 +45,7 @@ public final class AtraceCollectorTest {
     private OptionSetter mOptionSetter;
     private ITestInvocationListener mMockTestLogger;
     private IInvocationContext mMockInvocationContext;
-    private String mDefaultLogPath = "/data/local/tmp/atrace.dat";
+    private String mDefaultLogPath = "/data/local/tmp/atrace.atr";
     private String mSerialNo = "12349876";
     private String mCategories = "tisket tasket brisket basket";
 
