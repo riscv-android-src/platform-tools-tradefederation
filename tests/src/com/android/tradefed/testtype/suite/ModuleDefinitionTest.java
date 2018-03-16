@@ -594,7 +594,7 @@ public class ModuleDefinitionTest {
         mMockLogSaverListener.testRunEnded(
                 EasyMock.anyLong(), (Map<String, String>) EasyMock.anyObject());
 
-        LogFile loggedFile = new LogFile("path", "url", false, false);
+        LogFile loggedFile = new LogFile("path", "url", LogDataType.TEXT);
         EasyMock.expect(
                         mMockLogSaver.saveLogData(
                                 EasyMock.eq("testlogclass"),

@@ -33,6 +33,7 @@ import com.android.tradefed.log.ILogRegistry;
 import com.android.tradefed.result.ByteArrayInputStreamSource;
 import com.android.tradefed.result.ILogSaver;
 import com.android.tradefed.result.ITestInvocationListener;
+import com.android.tradefed.result.LogDataType;
 import com.android.tradefed.result.LogFile;
 
 import org.easymock.EasyMock;
@@ -215,7 +216,7 @@ public class TestInvocationMultiTest {
         EasyMock.expect(
                         mMockLogSaver.saveLogData(
                                 EasyMock.anyObject(), EasyMock.anyObject(), EasyMock.anyObject()))
-                .andReturn(new LogFile("", "", false, true));
+                .andReturn(new LogFile("", "", LogDataType.TEXT));
         mMockTestListener.invocationEnded(EasyMock.anyLong());
         EasyMock.expect(mMockTestListener.getSummary()).andReturn(null);
         mMockLogSaver.invocationEnded(EasyMock.anyLong());
@@ -293,7 +294,7 @@ public class TestInvocationMultiTest {
         EasyMock.expect(
                         mMockLogSaver.saveLogData(
                                 EasyMock.anyObject(), EasyMock.anyObject(), EasyMock.anyObject()))
-                .andReturn(new LogFile("", "", false, true));
+                .andReturn(new LogFile("", "", LogDataType.TEXT));
         mMockTestListener.invocationEnded(EasyMock.anyLong());
         EasyMock.expect(mMockTestListener.getSummary()).andReturn(null);
         mMockLogSaver.invocationEnded(EasyMock.anyLong());
