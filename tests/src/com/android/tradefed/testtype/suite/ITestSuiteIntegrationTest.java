@@ -453,8 +453,11 @@ public class ITestSuiteIntegrationTest {
         StrictShardHelper helper = new StrictShardHelper();
         TestParallelShardRescheduler rescheduler = new TestParallelShardRescheduler();
         helper.shardConfig(config, mContext, rescheduler);
-        for (Thread t : rescheduler.mRunning) {
-            t.join(2000);
+        // Wait until all results are received, we expect 2 modules.
+        while (mListener.getRunResults().size() < 2) {
+            for (Thread t : rescheduler.mRunning) {
+                t.join(2000);
+            }
         }
 
         assertEquals(2, mListener.getTotalModules());
