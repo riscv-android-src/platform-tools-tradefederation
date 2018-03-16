@@ -72,6 +72,15 @@ public class OptionSetterTest extends TestCase {
         private String mMyDuplicateOption;
     }
 
+    /** Option source with options with same name and an unsupported type. */
+    private static class DuplicateOptionSourceUnsupportedType {
+        @Option(name = "string", shortName = 's')
+        private String mMyOption;
+
+        @Option(name = "string", shortName = 's')
+        private String[] mMyDuplicateOptionThatIsAlsoUnsupported;
+    }
+
     /** Option source with an option with same name as AllTypesOptionSource. */
     @OptionClass(alias = "shared")
     private static class SharedOptionSource {
@@ -271,6 +280,19 @@ public class OptionSetterTest extends TestCase {
     public void testOptionSetter_duplicateOptions() {
         try {
             new OptionSetter(new DuplicateOptionSource());
+            fail("ConfigurationException not thrown");
+        } catch (ConfigurationException e) {
+            // expected
+        }
+    }
+
+    /**
+     * Test creating an {@link OptionSetter} for a source with duplicate option names,
+     * where one of the options has an unsupported type.
+     */
+    public void testOptionSetter_duplicateOptionsUnsupportedType() {
+        try {
+            new OptionSetter(new DuplicateOptionSourceUnsupportedType());
             fail("ConfigurationException not thrown");
         } catch (ConfigurationException e) {
             // expected
