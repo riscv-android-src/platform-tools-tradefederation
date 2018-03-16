@@ -389,6 +389,7 @@ public class BaseDeviceMetricCollectorTest {
         HostTest host = new HostTest();
         OptionSetter setterHost = new OptionSetter(host);
         setterHost.setOptionValue("class", TestRunAnnotated.class.getName());
+        setterHost.setOptionValue("enable-pretty-logs", "false");
 
         host.run(mBase);
 
@@ -435,6 +436,7 @@ public class BaseDeviceMetricCollectorTest {
         HostTest host = new HostTest();
         OptionSetter setterHost = new OptionSetter(host);
         setterHost.setOptionValue("class", TestRunAnnotated.class.getName());
+        setterHost.setOptionValue("enable-pretty-logs", "false");
 
         host.run(mBase);
 

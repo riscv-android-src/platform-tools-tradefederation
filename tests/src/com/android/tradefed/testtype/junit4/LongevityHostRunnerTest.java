@@ -223,6 +223,9 @@ public class LongevityHostRunnerTest {
     @Test
     public void testConfigXmlSetup() throws Exception {
         mHostTest = new SetClassHostTest();
+        OptionSetter setter = new OptionSetter(mHostTest);
+        // Disable pretty logging for testing
+        setter.setOptionValue("enable-pretty-logs", "false");
         mHostTest.setDevice(mMockDevice);
         mHostTest.setBuild(mMockBuildInfo);
         mHostTest.publicSetClassName(PassingLongevitySuite.class.getName());

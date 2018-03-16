@@ -17,6 +17,7 @@ package com.android.tradefed.device;
 
 import com.android.ddmlib.IDevice;
 import com.android.ddmlib.IShellOutputReceiver;
+import com.android.ddmlib.Log.LogLevel;
 import com.android.ddmlib.testrunner.IRemoteAndroidTestRunner;
 import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.command.remote.DeviceDescriptor;
@@ -1119,4 +1120,15 @@ public interface INativeDevice {
 
     /** Returns the pid of the service or null if something went wrong. */
     public String getProcessPid(String process) throws DeviceNotAvailableException;
+
+    /**
+     * Log a message in the logcat of the device. This is a safe call that will not throw even if
+     * the logging fails.
+     *
+     * @param tag The tag under which we log our message in the logcat.
+     * @param level The debug level of the message in the logcat.
+     * @param format The message format.
+     * @param args the args to be replaced via String.format().
+     */
+    public void logOnDevice(String tag, LogLevel level, String format, Object... args);
 }

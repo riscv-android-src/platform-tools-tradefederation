@@ -7,6 +7,9 @@ This markdown will explain how to use atest on the commandline to run android te
 Importantly, when writing your test's build script file (Android.mk), make sure to include
 the variable `LOCAL_COMPATIBILITY_SUITE`.  A good default to use for it is `device-test`.
 
+Curious about how atest works? Want to add a feature but not sure where to begin?
+Just want to learn about the overall structure? [Go here.](./docs/atest_structure.md)
+
 ##### Table of Contents
 1. [Environment Setup](#environment-setup)
 2. [Basic Usage](#basic-usage)
