@@ -33,6 +33,7 @@ public enum LogDataType {
     HPROF("hprof", "text/plain", true, false),
     COVERAGE("ec", "text/plain", false, false), // Emma coverage file
     PB("pb", "application/octet-stream", true, false), // Binary proto file
+    TEXTPB("textproto", "text/plain", false, true), // Text proto file
     /* Specific text file types */
     BUGREPORT("txt", "text/plain", false, true),
     BUGREPORTZ("zip", "application/zip", true, false),
@@ -51,6 +52,7 @@ public enum LogDataType {
     JACOCO_CSV("csv", "text/csv", false, true), // JaCoCo coverage report in CSV format
     JACOCO_XML("xml", "text/xml", false, true), // JaCoCo coverage report in XML format
     ATRACE("dat", "text/plain", true, false),
+    DIR("", "text/plain", false, false),
     /* Unknown file type */
     UNKNOWN("dat", "text/plain", false, false);
 
