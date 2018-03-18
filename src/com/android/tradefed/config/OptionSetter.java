@@ -254,7 +254,8 @@ public class OptionSetter {
             if (size() > 0) {
                 Handler existingFieldHandler = getHandler(getFirstField().getGenericType());
                 Handler newFieldHandler = getHandler(field.getGenericType());
-                if (!existingFieldHandler.getClass().equals(newFieldHandler.getClass())) {
+                if (existingFieldHandler == null || newFieldHandler == null ||
+                        !existingFieldHandler.getClass().equals(newFieldHandler.getClass())) {
                     throw new ConfigurationException(String.format(
                             "@Option field with name '%s' in class '%s' is defined with a " +
                             "different type than same option in class '%s'",

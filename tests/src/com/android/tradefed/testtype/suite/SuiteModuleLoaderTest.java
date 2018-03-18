@@ -114,8 +114,11 @@ public class SuiteModuleLoaderTest {
                         new LinkedHashMap<String, List<SuiteTestFilter>>(),
                         new ArrayList<>(),
                         moduleArgs);
+        List<String> patterns = new ArrayList<>();
+        patterns.add(".*.config");
+        patterns.add(".*.xml");
         LinkedHashMap<String, IConfiguration> res =
-                mRepo.loadConfigsFromDirectory(mTestsDir, mAbis, null, null);
+                mRepo.loadConfigsFromDirectory(mTestsDir, mAbis, null, null, patterns);
         assertNotNull(res.get("armeabi-v7a module1"));
         IConfiguration config = res.get("armeabi-v7a module1");
 
@@ -159,8 +162,11 @@ public class SuiteModuleLoaderTest {
                         new LinkedHashMap<String, List<SuiteTestFilter>>(),
                         testArgs,
                         new ArrayList<>());
+        List<String> patterns = new ArrayList<>();
+        patterns.add(".*.config");
+        patterns.add(".*.xml");
         LinkedHashMap<String, IConfiguration> res =
-                mRepo.loadConfigsFromDirectory(mTestsDir, mAbis, null, null);
+                mRepo.loadConfigsFromDirectory(mTestsDir, mAbis, null, null, patterns);
         assertNotNull(res.get("armeabi-v7a module1"));
         IConfiguration config = res.get("armeabi-v7a module1");
 

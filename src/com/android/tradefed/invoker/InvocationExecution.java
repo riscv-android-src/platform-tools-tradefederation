@@ -21,6 +21,7 @@ import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.build.IBuildInfo.BuildInfoProperties;
 import com.android.tradefed.build.IBuildProvider;
 import com.android.tradefed.build.IDeviceBuildInfo;
+import com.android.tradefed.build.IDeviceBuildInfo.ExternalLinkedDir;
 import com.android.tradefed.build.IDeviceBuildProvider;
 import com.android.tradefed.config.GlobalConfiguration;
 import com.android.tradefed.config.IConfiguration;
@@ -52,6 +53,7 @@ import com.android.tradefed.testtype.IMultiDeviceTest;
 import com.android.tradefed.testtype.IRemoteTest;
 import com.android.tradefed.util.FileUtil;
 import com.android.tradefed.util.SystemUtil;
+import com.android.tradefed.util.SystemUtil.EnvVariable;
 import com.android.tradefed.util.TimeUtil;
 
 import com.google.common.annotations.VisibleForTesting;
@@ -467,35 +469,49 @@ public class InvocationExecution implements IInvocationExecution {
         if (info instanceof IDeviceBuildInfo) {
             File testsDir = ((IDeviceBuildInfo) info).getTestsDir();
             if (testsDir != null && testsDir.exists()) {
-                for (File externalTestDir : getExternalTestCasesDirs()) {
-                    try {
-                        // Avoid conflict by creating a randomized name for the arriving symlink
-                        // file.
-                        File subDir = FileUtil.createTempDir(externalTestDir.getName(), testsDir);
-                        subDir.delete();
-                        FileUtil.symlinkFile(externalTestDir, subDir);
-                        // Tag the dir in the build info to be possibly cleaned.
-                        info.setFile(
-                                subDir.getName(),
-                                subDir,
-                                /** version */
-                                "v1");
-                        // Ensure we always delete the linking, no matter how the JVM exits.
-                        subDir.deleteOnExit();
-                    } catch (IOException e) {
-                        CLog.e(
-                                "Failed to load external test dir %s. Ignoring it.",
-                                externalTestDir);
-                        CLog.e(e);
-                    }
-                }
+                handleLinkingExternalDirs(
+                        (IDeviceBuildInfo) info,
+                        testsDir,
+                        EnvVariable.ANDROID_TARGET_OUT_TESTCASES,
+                        ExternalLinkedDir.TARGET_LINKED_DIR.toString());
+                handleLinkingExternalDirs(
+                        (IDeviceBuildInfo) info,
+                        testsDir,
+                        EnvVariable.ANDROID_HOST_OUT_TESTCASES,
+                        ExternalLinkedDir.HOST_LINKED_DIR.toString());
             }
         }
     }
 
-    /** Returns the list of external directories to Tradefed coming from the environment. */
+    private void handleLinkingExternalDirs(
+            IDeviceBuildInfo info, File testsDir, EnvVariable var, String baseName) {
+        File externalDir = getExternalTestCasesDirs(var);
+        if (externalDir == null) {
+            return;
+        }
+        try {
+            // Avoid conflict by creating a randomized name for the arriving symlink
+            // file.
+            File subDir = FileUtil.createTempDir(baseName, testsDir);
+            subDir.delete();
+            FileUtil.symlinkFile(externalDir, subDir);
+            // Tag the dir in the build info to be possibly cleaned.
+            info.setFile(
+                    baseName,
+                    subDir,
+                    /** version */
+                    "v1");
+            // Ensure we always delete the linking, no matter how the JVM exits.
+            subDir.deleteOnExit();
+        } catch (IOException e) {
+            CLog.e("Failed to load external test dir %s. Ignoring it.", externalDir);
+            CLog.e(e);
+        }
+    }
+
+    /** Returns the external directory coming from the environment. */
     @VisibleForTesting
-    List<File> getExternalTestCasesDirs() {
-        return SystemUtil.getExternalTestCasesDirs();
+    File getExternalTestCasesDirs(EnvVariable envVar) {
+        return SystemUtil.getExternalTestCasesDir(envVar);
     }
 }
