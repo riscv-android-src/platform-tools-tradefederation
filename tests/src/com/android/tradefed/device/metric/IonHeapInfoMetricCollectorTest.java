@@ -21,10 +21,14 @@ import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.doReturn;
 
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.invoker.IInvocationContext;
+import com.android.tradefed.result.ITestInvocationListener;
+import com.android.tradefed.result.InputStreamSource;
+import com.android.tradefed.result.LogDataType;
 import java.io.File;
 import java.util.HashMap;
 import java.util.Map;
@@ -44,6 +48,8 @@ import org.mockito.Spy;
 public class IonHeapInfoMetricCollectorTest {
     @Mock IInvocationContext mContext;
 
+    @Mock ITestInvocationListener mListener;
+
     @Mock ITestDevice mDevice;
 
     @Spy IonHeapInfoMetricCollector mIonHeapInfoMetricCollector;
@@ -53,6 +59,12 @@ public class IonHeapInfoMetricCollectorTest {
     @Before
     public void setup() throws Exception {
         MockitoAnnotations.initMocks(this);
+
+        mIonHeapInfoMetricCollector.init(mContext, mListener);
+
+        doNothing()
+                .when(mListener)
+                .testLog(anyString(), eq(LogDataType.TEXT), any(InputStreamSource.class));
 
         doReturn(new File("ion-system-2"))
                 .when(mIonHeapInfoMetricCollector)
