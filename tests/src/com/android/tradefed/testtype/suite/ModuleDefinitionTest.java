@@ -627,6 +627,9 @@ public class ModuleDefinitionTest {
                                 EasyMock.anyObject()))
                 .andReturn(loggedFile);
         mMockLogSaverListener.setLogSaver(mMockLogSaver);
+        // The final reporter still receive the testLog signal
+        mMockLogSaverListener.testLog(
+                EasyMock.eq("testlogclass"), EasyMock.eq(LogDataType.TEXT), EasyMock.anyObject());
         // mMockLogSaverListener should receive the testLogSaved call even from the module
         mMockLogSaverListener.testLogSaved(
                 EasyMock.eq("testlogclass"),
@@ -653,7 +656,8 @@ public class ModuleDefinitionTest {
         listDevice.add(mMockDevice);
         EasyMock.expect(mMockDevice.getSerialNumber()).andReturn("Serial");
         TestFailureListener failureListener =
-                new TestFailureListener(mMockListener, listDevice, false, true, true, false, 5);
+                new TestFailureListener(listDevice, false, true, true, false, 5);
+        failureListener.setLogger(mMockListener);
         IConfiguration config = new Configuration("", "");
         TestFailureModuleController moduleConfig = new TestFailureModuleController();
         OptionSetter setter = new OptionSetter(moduleConfig);
@@ -678,6 +682,7 @@ public class ModuleDefinitionTest {
                         mMapDeviceTargetPreparer,
                         mMultiTargetPrepList,
                         config);
+        mModule.setLogSaver(mMockLogSaver);
         mMockListener.testRunStarted("fakeName", 0);
         mMockListener.testRunEnded(
                 EasyMock.anyLong(), (HashMap<String, Metric>) EasyMock.anyObject());
@@ -685,8 +690,13 @@ public class ModuleDefinitionTest {
         EasyMock.expect(mMockDevice.getScreenshot())
                 .andReturn(new ByteArrayInputStreamSource("".getBytes()));
         // Only a screenshot is capture, logcat for that module was disabled.
-        mMockListener.testLog(
-                EasyMock.anyObject(), EasyMock.eq(LogDataType.PNG), EasyMock.anyObject());
+        LogFile loggedFile = new LogFile("path", "url", LogDataType.PNG);
+        EasyMock.expect(
+                        mMockLogSaver.saveLogData(
+                                EasyMock.eq("failedclass#failedmethod-Serial-screenshot"),
+                                EasyMock.eq(LogDataType.PNG),
+                                EasyMock.anyObject()))
+                .andReturn(loggedFile);
         replayMocks();
         mModule.run(mMockListener, failureListener);
         verifyMocks();

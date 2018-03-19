@@ -18,7 +18,9 @@ package com.android.tradefed.testtype.suite;
 import com.android.tradefed.config.Option;
 import com.android.tradefed.config.OptionCopier;
 import com.android.tradefed.device.DeviceNotAvailableException;
+import com.android.tradefed.result.ByteArrayInputStreamSource;
 import com.android.tradefed.result.ITestInvocationListener;
+import com.android.tradefed.result.LogDataType;
 import com.android.tradefed.result.TestDescription;
 import com.android.tradefed.testtype.IAbi;
 import com.android.tradefed.testtype.IAbiReceiver;
@@ -67,6 +69,9 @@ public class TestSuiteStub
     @Option(name = "throw-device-not-available")
     protected boolean mThrow = false;
 
+    @Option(name = "log-fake-files")
+    protected boolean mLogFiles = false;
+
     protected List<TestDescription> mShardedTestToRun;
     protected Integer mShardIndex = null;
 
@@ -75,6 +80,12 @@ public class TestSuiteStub
         listener.testRunStarted(mModule, 3);
         TestDescription tid = new TestDescription("TestStub", "test1");
         listener.testStarted(tid);
+        if (mLogFiles) {
+            listener.testLog(
+                    tid.toString() + "-file",
+                    LogDataType.LOGCAT,
+                    new ByteArrayInputStreamSource("test".getBytes()));
+        }
         listener.testEnded(tid, Collections.emptyMap());
 
         if (mIsComplete) {
@@ -84,6 +95,12 @@ public class TestSuiteStub
             if (mThrow) {
                 throw new DeviceNotAvailableException();
             }
+            if (mLogFiles) {
+                listener.testLog(
+                        tid2.toString() + "-file",
+                        LogDataType.BUGREPORT,
+                        new ByteArrayInputStreamSource("test".getBytes()));
+            }
             listener.testEnded(tid2, Collections.emptyMap());
         }
 
@@ -92,8 +109,21 @@ public class TestSuiteStub
         if (mDoesOneTestFail) {
             listener.testFailed(tid3, "ouch this is bad.");
         }
+        if (mLogFiles) {
+            listener.testLog(
+                    tid3.toString() + "-file",
+                    LogDataType.BUGREPORT,
+                    new ByteArrayInputStreamSource("test".getBytes()));
+        }
         listener.testEnded(tid3, Collections.emptyMap());
 
+        if (mLogFiles) {
+            // One file logged at run level
+            listener.testLog(
+                    mModule + "-file",
+                    LogDataType.EAR,
+                    new ByteArrayInputStreamSource("test".getBytes()));
+        }
         listener.testRunEnded(0, Collections.emptyMap());
     }
 
