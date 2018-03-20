@@ -998,6 +998,14 @@ public interface INativeDevice {
     public int getApiLevel() throws DeviceNotAvailableException;
 
     /**
+     * Helper to get the time difference between the device and a given {@link Date}. Use Epoch time
+     * internally.
+     *
+     * @return the difference in milliseconds
+     */
+    public long getDeviceTimeOffset(Date date) throws DeviceNotAvailableException;
+
+    /**
      * Sets the date on device
      * <p>
      * Note: setting date on device requires root
