@@ -3409,9 +3409,9 @@ public class NativeDevice implements IManagedTestDevice {
         return new DeviceEventResponse(newState, stateChanged);
     }
 
-    /** Helper to get the time difference between the device and the host. Use Epoch time. */
-    @VisibleForTesting
-    protected long getDeviceTimeOffset(Date date) throws DeviceNotAvailableException {
+    /** {@inheritDoc} */
+    @Override
+    public long getDeviceTimeOffset(Date date) throws DeviceNotAvailableException {
         Long deviceTime = getDeviceDate();
         long offset = 0;
 

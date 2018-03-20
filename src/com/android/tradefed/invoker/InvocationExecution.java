@@ -490,8 +490,7 @@ public class InvocationExecution implements IInvocationExecution {
             return;
         }
         try {
-            // Avoid conflict by creating a randomized name for the arriving symlink
-            // file.
+            // Avoid conflict by creating a randomized name for the arriving symlink file.
             File subDir = FileUtil.createTempDir(baseName, testsDir);
             subDir.delete();
             FileUtil.symlinkFile(externalDir, subDir);
