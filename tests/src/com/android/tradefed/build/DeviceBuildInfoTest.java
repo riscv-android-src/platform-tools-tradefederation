@@ -17,9 +17,11 @@ package com.android.tradefed.build;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
+import com.android.tradefed.build.IBuildInfo.BuildInfoProperties;
 import com.android.tradefed.util.FileUtil;
 
 import org.junit.After;
@@ -37,6 +39,7 @@ public class DeviceBuildInfoTest {
     private static final String VERSION = "1";
     private DeviceBuildInfo mBuildInfo;
     private File mImageFile;
+    private File mTestsDir;
 
     @Before
     public void setUp() throws Exception {
@@ -44,17 +47,21 @@ public class DeviceBuildInfoTest {
         mImageFile = FileUtil.createTempFile("image", "tmp");
         FileUtil.writeToFile("filedata", mImageFile);
         mBuildInfo.setBasebandImage(mImageFile, VERSION);
+        mTestsDir = FileUtil.createTempDir("device-info-tests-dir");
+        mBuildInfo.setTestsDir(mTestsDir, VERSION);
     }
 
     @After
     public void tearDown() throws Exception {
         FileUtil.deleteFile(mImageFile);
+        FileUtil.recursiveDelete(mTestsDir);
+        mBuildInfo.cleanUp();
     }
 
     /** Test method for {@link DeviceBuildInfo#clone()}. */
     @Test
     public void testClone() throws Exception {
-        DeviceBuildInfo copy = (DeviceBuildInfo)mBuildInfo.clone();
+        DeviceBuildInfo copy = (DeviceBuildInfo) mBuildInfo.clone();
         try {
             // ensure a copy of mImageFile was created
             assertEquals(VERSION, copy.getBasebandVersion());
@@ -67,6 +74,7 @@ public class DeviceBuildInfoTest {
             if (copy.getBasebandImageFile() != null) {
                 copy.getBasebandImageFile().delete();
             }
+            copy.cleanUp();
         }
     }
 
@@ -77,5 +85,30 @@ public class DeviceBuildInfoTest {
         mBuildInfo.cleanUp();
         assertNull(mBuildInfo.getBasebandImageFile());
         assertFalse(mImageFile.exists());
+    }
+
+    /**
+     * When the {@link BuildInfoProperties} for no sharding copy is set, the tests dir will not be
+     * copied.
+     */
+    @Test
+    public void testCloneWithProperties() {
+        DeviceBuildInfo copy = (DeviceBuildInfo) mBuildInfo.clone();
+        try {
+            assertNotEquals(copy.getTestsDir(), mBuildInfo.getTestsDir());
+            assertNotEquals(copy.getBasebandImageFile(), mBuildInfo.getBasebandImageFile());
+        } finally {
+            copy.cleanUp();
+        }
+
+        mBuildInfo.setProperties(BuildInfoProperties.DO_NOT_COPY_ON_SHARDING);
+        copy = (DeviceBuildInfo) mBuildInfo.clone();
+        try {
+            assertEquals(copy.getTestsDir(), mBuildInfo.getTestsDir());
+            // Only the tests dir is not copied.
+            assertNotEquals(copy.getBasebandImageFile(), mBuildInfo.getBasebandImageFile());
+        } finally {
+            copy.cleanUp();
+        }
     }
 }

@@ -26,6 +26,7 @@ import com.google.common.base.Objects;
 
 import java.io.File;
 import java.io.IOException;
+import java.lang.reflect.InvocationTargetException;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashSet;
@@ -207,6 +208,9 @@ public class BuildInfo implements IBuildInfo {
     protected void addAllFiles(BuildInfo build) throws IOException {
         for (Map.Entry<String, VersionedFile> fileEntry : build.getVersionedFileMap().entrySet()) {
             File origFile = fileEntry.getValue().getFile();
+            if (applyBuildProperties(fileEntry.getValue(), build, this)) {
+                continue;
+            }
             File copyFile;
             if (origFile.isDirectory()) {
                 copyFile = FileUtil.createTempDir(fileEntry.getKey());
@@ -220,6 +224,21 @@ public class BuildInfo implements IBuildInfo {
             }
             setFile(fileEntry.getKey(), copyFile, fileEntry.getValue().getVersion());
         }
+    }
+
+    /**
+     * Allow to apply some of the {@link com.android.tradefed.build.IBuildInfo.BuildInfoProperties}
+     * and possibly do a different handling.
+     *
+     * @param origFileConsidered The currently looked at {@link VersionedFile}.
+     * @param build the original build being cloned
+     * @param receiver the build receiving the information.
+     * @return True if we applied the properties and further handling should be skipped. False
+     *     otherwise.
+     */
+    protected boolean applyBuildProperties(
+            VersionedFile origFileConsidered, IBuildInfo build, IBuildInfo receiver) {
+        return false;
     }
 
     protected Map<String, VersionedFile> getVersionedFileMap() {
@@ -287,8 +306,23 @@ public class BuildInfo implements IBuildInfo {
      */
     @Override
     public IBuildInfo clone() {
-        BuildInfo copy = new BuildInfo(mBuildId, mBuildTargetName);
+        BuildInfo copy = null;
+        try {
+            copy =
+                    this.getClass()
+                            .getDeclaredConstructor(String.class, String.class)
+                            .newInstance(getBuildId(), getBuildTargetName());
+        } catch (InstantiationException
+                | IllegalAccessException
+                | IllegalArgumentException
+                | InvocationTargetException
+                | NoSuchMethodException
+                | SecurityException e) {
+            CLog.e("Failed to clone the build info.");
+            throw new RuntimeException(e);
+        }
         copy.addAllBuildAttributes(this);
+        copy.setProperties(this.getProperties().toArray(new BuildInfoProperties[0]));
         try {
             copy.addAllFiles(this);
         } catch (IOException e) {
