@@ -3398,6 +3398,24 @@ public class TestDeviceTest extends TestCase {
         Assert.assertFalse(state.isKeyguardOccluded());
     }
 
+    /** New output of dumpsys is not as clean and has stuff in front. */
+    public void testGetKeyguardState_new() throws Exception {
+        mTestDevice =
+                new TestableTestDevice() {
+                    @Override
+                    public String executeShellCommand(String command)
+                            throws DeviceNotAvailableException {
+                        return "isHomeRecentsComponent=true  KeyguardController:\n"
+                                + "  mKeyguardShowing=true\n"
+                                + "  mKeyguardGoingAway=false\n"
+                                + "  mOccluded=false\n";
+                    }
+                };
+        KeyguardControllerState state = mTestDevice.getKeyguardState();
+        Assert.assertTrue(state.isKeyguardShowing());
+        Assert.assertFalse(state.isKeyguardOccluded());
+    }
+
     /** Test for {@link TestDevice#getKeyguardState()} when the device does not support it. */
     public void testGetKeyguardState_unsupported() throws Exception {
         mTestDevice =
