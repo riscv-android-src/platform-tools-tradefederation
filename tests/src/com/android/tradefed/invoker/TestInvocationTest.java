@@ -1441,8 +1441,6 @@ public class TestInvocationTest extends TestCase {
         EasyMock.expect(mMockBuildProvider.getBuild()).andReturn(mMockBuildInfo);
         EasyMock.expect(mMockBuildInfo.getTestTag()).andStubReturn("");
         mMockBuildInfo.addBuildAttribute("command_line_args", commandLine);
-        mMockLogSaver.invocationStarted((IInvocationContext)EasyMock.anyObject());
-        EasyMock.expectLastCall();
         mMockTestListener.invocationStarted((IInvocationContext)EasyMock.anyObject());
         EasyMock.expectLastCall();
         mMockSummaryListener.invocationStarted((IInvocationContext)EasyMock.anyObject());

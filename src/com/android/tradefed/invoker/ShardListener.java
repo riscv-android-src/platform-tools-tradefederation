@@ -19,9 +19,11 @@ import com.android.ddmlib.Log.LogLevel;
 import com.android.ddmlib.testrunner.TestResult.TestStatus;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.result.CollectingTestListener;
+import com.android.tradefed.result.ILogSaverListener;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.InputStreamSource;
 import com.android.tradefed.result.LogDataType;
+import com.android.tradefed.result.LogFile;
 import com.android.tradefed.result.TestDescription;
 import com.android.tradefed.result.TestResult;
 import com.android.tradefed.result.TestRunResult;
@@ -85,9 +87,21 @@ public class ShardListener extends CollectingTestListener {
         }
     }
 
-    /**
-     * {@inheritDoc}
-     */
+    /** {@inheritDoc} */
+    @Override
+    public void testLogSaved(
+            String dataName, LogDataType dataType, InputStreamSource dataStream, LogFile logFile) {
+        super.testLogSaved(dataName, dataType, dataStream, logFile);
+        // Forward the testLogSaved callback.
+        synchronized (mMasterListener) {
+            if (mMasterListener instanceof ILogSaverListener) {
+                ((ILogSaverListener) mMasterListener)
+                        .testLogSaved(dataName, dataType, dataStream, logFile);
+            }
+        }
+    }
+
+    /** {@inheritDoc} */
     @Override
     public void testRunEnded(long elapsedTime, Map<String, String> runMetrics) {
         super.testRunEnded(elapsedTime, runMetrics);
