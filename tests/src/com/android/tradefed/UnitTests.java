@@ -125,6 +125,7 @@ import com.android.tradefed.suite.checker.ActivityStatusCheckerTest;
 import com.android.tradefed.suite.checker.KeyguardStatusCheckerTest;
 import com.android.tradefed.suite.checker.SystemServerFileDescriptorCheckerTest;
 import com.android.tradefed.suite.checker.SystemServerStatusCheckerTest;
+import com.android.tradefed.suite.checker.TimeStatusCheckerTest;
 import com.android.tradefed.targetprep.AllTestAppsInstallSetupTest;
 import com.android.tradefed.targetprep.AppSetupTest;
 import com.android.tradefed.targetprep.BuildInfoAttributePreparerTest;
@@ -452,6 +453,7 @@ import org.junit.runners.Suite.SuiteClasses;
     KeyguardStatusCheckerTest.class,
     SystemServerFileDescriptorCheckerTest.class,
     SystemServerStatusCheckerTest.class,
+    TimeStatusCheckerTest.class,
 
     // testtype
     AndroidJUnitTestTest.class,
