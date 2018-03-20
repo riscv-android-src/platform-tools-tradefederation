@@ -90,8 +90,7 @@ public class ShardHelper implements IShardHelper {
             expectedShard = Math.min(shardCount, shardableTests.size());
         }
         ShardMasterResultForwarder resultCollector =
-                new ShardMasterResultForwarder(
-                        config.getLogSaver(), buildMasterShardListeners(config), expectedShard);
+                new ShardMasterResultForwarder(buildMasterShardListeners(config), expectedShard);
 
         resultCollector.invocationStarted(context);
         synchronized (shardableTests) {

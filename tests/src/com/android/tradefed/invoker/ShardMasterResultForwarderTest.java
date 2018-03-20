@@ -17,12 +17,17 @@ package com.android.tradefed.invoker;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
+import static org.mockito.Mockito.times;
 
 import com.android.tradefed.build.BuildInfo;
 import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.device.ITestDevice;
+import com.android.tradefed.result.ByteArrayInputStreamSource;
 import com.android.tradefed.result.ILogSaver;
+import com.android.tradefed.result.ILogSaverListener;
 import com.android.tradefed.result.ITestInvocationListener;
+import com.android.tradefed.result.LogDataType;
+import com.android.tradefed.result.LogSaverResultForwarder;
 
 import org.junit.Before;
 import org.junit.Test;
@@ -33,21 +38,23 @@ import org.mockito.Mockito;
 import org.mockito.MockitoAnnotations;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
 /** Unit tests for {@link ShardMasterResultForwarder}. */
 @RunWith(JUnit4.class)
 public class ShardMasterResultForwarderTest {
     private ShardMasterResultForwarder mShardMaster;
-    @Mock private ILogSaver mMockLogSaver;
     @Mock private ITestInvocationListener mMockListener;
+    @Mock private LogListenerTestInterface mMockLogListener;
+    @Mock private ILogSaver mMockLogSaver;
 
     @Before
     public void setUp() {
         MockitoAnnotations.initMocks(this);
         List<ITestInvocationListener> listListener = new ArrayList<>();
         listListener.add(mMockListener);
-        mShardMaster = new ShardMasterResultForwarder(mMockLogSaver, listListener, 2);
+        mShardMaster = new ShardMasterResultForwarder(listListener, 2);
     }
 
     /**
@@ -136,5 +143,39 @@ public class ShardMasterResultForwarderTest {
         assertEquals("value2_device2", mainBuild2.getBuildAttributes().get("shard2_device2"));
         // Each build only received the matching device build from shards, nothing more.
         assertEquals(2, mainBuild2.getBuildAttributes().size());
+    }
+
+    /** Test interface to check a reporter implementing {@link ILogSaverListener}. */
+    public interface LogListenerTestInterface extends ITestInvocationListener, ILogSaverListener {}
+
+    /** Test that the log saver is only called once during a sharding setup. */
+    @Test
+    public void testForward_Sharded() throws Exception {
+        // Setup the reporters like in a sharding session
+        ShardMasterResultForwarder reporter =
+                new ShardMasterResultForwarder(Arrays.asList(mMockLogListener), 1);
+        ShardListener shardListener = new ShardListener(reporter);
+        LogSaverResultForwarder invocationLogger =
+                new LogSaverResultForwarder(mMockLogSaver, Arrays.asList(shardListener));
+        IInvocationContext main = new InvocationContext();
+        IBuildInfo mainBuild1 = new BuildInfo();
+        main.addAllocatedDevice("device1", Mockito.mock(ITestDevice.class));
+        main.addDeviceBuildInfo("device1", mainBuild1);
+
+        invocationLogger.invocationStarted(main);
+        invocationLogger.testLog(
+                "fakeData", LogDataType.TEXT, new ByteArrayInputStreamSource("test".getBytes()));
+        invocationLogger.invocationEnded(500L);
+
+        // Log saver only saved the file once.
+        Mockito.verify(mMockLogSaver, times(1))
+                .saveLogData(Mockito.any(), Mockito.any(), Mockito.any());
+        Mockito.verify(mMockLogListener, times(1)).invocationStarted(Mockito.eq(main));
+        Mockito.verify(mMockLogListener, times(1))
+                .testLog(Mockito.any(), Mockito.any(), Mockito.any());
+        // The callback was received all the way to the last reporter.
+        Mockito.verify(mMockLogListener, times(1))
+                .testLogSaved(Mockito.any(), Mockito.any(), Mockito.any(), Mockito.any());
+        Mockito.verify(mMockLogListener, times(1)).invocationEnded(500L);
     }
 }
