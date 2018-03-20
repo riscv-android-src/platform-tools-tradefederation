@@ -1248,16 +1248,18 @@ public class NativeDeviceTest extends TestCase {
      * Seoul is GMT+9.
      */
     public void testIsNewer() throws Exception {
-        TestableAndroidNativeDevice testDevice = new TestableAndroidNativeDevice() {
-            @Override
-            public String getProperty(String name) throws DeviceNotAvailableException {
-                return "Asia/Seoul";
-            }
-            @Override
-            protected long getDeviceTimeOffset(Date date) throws DeviceNotAvailableException {
-                return 0;
-            }
-        };
+        TestableAndroidNativeDevice testDevice =
+                new TestableAndroidNativeDevice() {
+                    @Override
+                    public String getProperty(String name) throws DeviceNotAvailableException {
+                        return "Asia/Seoul";
+                    }
+
+                    @Override
+                    public long getDeviceTimeOffset(Date date) throws DeviceNotAvailableException {
+                        return 0;
+                    }
+                };
         File localFile = FileUtil.createTempFile("timezonetest", ".txt");
         try {
             localFile.setLastModified(1470906000000l); // Thu Aug 11 09:00:00 GMT 2016
@@ -1277,16 +1279,18 @@ public class NativeDeviceTest extends TestCase {
      * Seoul is GMT+9. Clock on device is inaccurate and in advance of host.
      */
     public void testIsNewer_timeOffset() throws Exception {
-        TestableAndroidNativeDevice testDevice = new TestableAndroidNativeDevice() {
-            @Override
-            public String getProperty(String name) throws DeviceNotAvailableException {
-                return "Asia/Seoul";
-            }
-            @Override
-            protected long getDeviceTimeOffset(Date date) throws DeviceNotAvailableException {
-                return -15 * 60 * 1000; // Device in advance of 15m on host.
-            }
-        };
+        TestableAndroidNativeDevice testDevice =
+                new TestableAndroidNativeDevice() {
+                    @Override
+                    public String getProperty(String name) throws DeviceNotAvailableException {
+                        return "Asia/Seoul";
+                    }
+
+                    @Override
+                    public long getDeviceTimeOffset(Date date) throws DeviceNotAvailableException {
+                        return -15 * 60 * 1000; // Device in advance of 15m on host.
+                    }
+                };
         File localFile = FileUtil.createTempFile("timezonetest", ".txt");
         try {
             localFile.setLastModified(1470906000000l); // Thu, 11 Aug 2016 09:00:00 GMT
@@ -1308,16 +1312,18 @@ public class NativeDeviceTest extends TestCase {
      * Local file is set to 10min earlier than remoteFile.
      */
     public void testIsNewer_fails() throws Exception {
-        TestableAndroidNativeDevice testDevice = new TestableAndroidNativeDevice() {
-            @Override
-            public String getProperty(String name) throws DeviceNotAvailableException {
-                return "Asia/Seoul";
-            }
-            @Override
-            protected long getDeviceTimeOffset(Date date) throws DeviceNotAvailableException {
-                return 0;
-            }
-        };
+        TestableAndroidNativeDevice testDevice =
+                new TestableAndroidNativeDevice() {
+                    @Override
+                    public String getProperty(String name) throws DeviceNotAvailableException {
+                        return "Asia/Seoul";
+                    }
+
+                    @Override
+                    public long getDeviceTimeOffset(Date date) throws DeviceNotAvailableException {
+                        return 0;
+                    }
+                };
         File localFile = FileUtil.createTempFile("timezonetest", ".txt");
         try {
             localFile.setLastModified(1470906000000l); // Thu, 11 Aug 2016 09:00:00 GMT
@@ -1763,23 +1769,27 @@ public class NativeDeviceTest extends TestCase {
      */
     public void testSetDate() throws DeviceNotAvailableException {
         Date date = new Date(1476958881000L);
-        mTestDevice = new TestableAndroidNativeDevice() {
-            @Override
-            public int getApiLevel() throws DeviceNotAvailableException {
-                return 24;
-            }
-            @Override
-            protected long getDeviceTimeOffset(Date date) throws DeviceNotAvailableException {
-                // right above set threshold
-                return NativeDevice.MAX_HOST_DEVICE_TIME_OFFSET + 1;
-            }
-            @Override
-            public String executeShellCommand(String command) throws DeviceNotAvailableException {
-                CLog.e("%s", command);
-                assertEquals("date -u 102010212016.21", command);
-                return command;
-            }
-        };
+        mTestDevice =
+                new TestableAndroidNativeDevice() {
+                    @Override
+                    public int getApiLevel() throws DeviceNotAvailableException {
+                        return 24;
+                    }
+
+                    @Override
+                    public long getDeviceTimeOffset(Date date) throws DeviceNotAvailableException {
+                        // right above set threshold
+                        return NativeDevice.MAX_HOST_DEVICE_TIME_OFFSET + 1;
+                    }
+
+                    @Override
+                    public String executeShellCommand(String command)
+                            throws DeviceNotAvailableException {
+                        CLog.e("%s", command);
+                        assertEquals("date -u 102010212016.21", command);
+                        return command;
+                    }
+                };
         mTestDevice.setDate(date);
     }
 
@@ -1789,23 +1799,27 @@ public class NativeDeviceTest extends TestCase {
      */
     public void testSetDate_lowApi() throws DeviceNotAvailableException {
         Date date = new Date(1476958881000L);
-        mTestDevice = new TestableAndroidNativeDevice() {
-            @Override
-            public int getApiLevel() throws DeviceNotAvailableException {
-                return 22;
-            }
-            @Override
-            protected long getDeviceTimeOffset(Date date) throws DeviceNotAvailableException {
-                // right above set threshold
-                return NativeDevice.MAX_HOST_DEVICE_TIME_OFFSET + 1;
-            }
-            @Override
-            public String executeShellCommand(String command) throws DeviceNotAvailableException {
-                CLog.e("%s", command);
-                assertEquals("date -u 1476958881", command);
-                return command;
-            }
-        };
+        mTestDevice =
+                new TestableAndroidNativeDevice() {
+                    @Override
+                    public int getApiLevel() throws DeviceNotAvailableException {
+                        return 22;
+                    }
+
+                    @Override
+                    public long getDeviceTimeOffset(Date date) throws DeviceNotAvailableException {
+                        // right above set threshold
+                        return NativeDevice.MAX_HOST_DEVICE_TIME_OFFSET + 1;
+                    }
+
+                    @Override
+                    public String executeShellCommand(String command)
+                            throws DeviceNotAvailableException {
+                        CLog.e("%s", command);
+                        assertEquals("date -u 1476958881", command);
+                        return command;
+                    }
+                };
         mTestDevice.setDate(date);
     }
 
@@ -1814,18 +1828,21 @@ public class NativeDeviceTest extends TestCase {
      */
     public void testSetDate_NoAction() throws DeviceNotAvailableException {
         Date date = new Date(1476958881000L);
-        mTestDevice = new TestableAndroidNativeDevice() {
-            @Override
-            protected long getDeviceTimeOffset(Date date) throws DeviceNotAvailableException {
-                // right below set threshold
-                return NativeDevice.MAX_HOST_DEVICE_TIME_OFFSET - 1;
-            }
-            @Override
-            public String executeShellCommand(String command) throws DeviceNotAvailableException {
-                fail("Should not be called");
-                return command;
-            }
-        };
+        mTestDevice =
+                new TestableAndroidNativeDevice() {
+                    @Override
+                    public long getDeviceTimeOffset(Date date) throws DeviceNotAvailableException {
+                        // right below set threshold
+                        return NativeDevice.MAX_HOST_DEVICE_TIME_OFFSET - 1;
+                    }
+
+                    @Override
+                    public String executeShellCommand(String command)
+                            throws DeviceNotAvailableException {
+                        fail("Should not be called");
+                        return command;
+                    }
+                };
         mTestDevice.setDate(date);
     }
 
