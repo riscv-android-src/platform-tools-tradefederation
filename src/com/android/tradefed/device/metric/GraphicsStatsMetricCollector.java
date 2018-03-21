@@ -18,13 +18,16 @@ package com.android.tradefed.device.metric;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.log.LogUtil.CLog;
+import com.android.tradefed.result.FileInputStreamSource;
+import com.android.tradefed.result.InputStreamSource;
+import com.android.tradefed.result.LogDataType;
 import com.google.common.io.Files;
 import java.io.File;
 import java.io.IOException;
 
 /** A {@link ScheduledDeviceMetricCollector} to collect graphics stats at regular intervals. */
-public class GfxInfoMetricCollector extends ScheduledDeviceMetricCollector {
-    GfxInfoMetricCollector() {
+public class GraphicsStatsMetricCollector extends ScheduledDeviceMetricCollector {
+    GraphicsStatsMetricCollector() {
         setTag("jank");
     }
 
@@ -37,6 +40,13 @@ public class GfxInfoMetricCollector extends ScheduledDeviceMetricCollector {
             File outputFile = saveProcessOutput(device, "dumpsys graphicsstats", outputFileName);
             runData.addStringMetric(
                     Files.getNameWithoutExtension(outputFile.getName()), outputFile.getPath());
+            try (InputStreamSource source = new FileInputStreamSource(outputFile, true)) {
+                getInvocationListener()
+                        .testLog(
+                                Files.getNameWithoutExtension(outputFile.getName()),
+                                LogDataType.GFX_INFO,
+                                source);
+            }
         } catch (DeviceNotAvailableException | IOException e) {
             CLog.e(e);
         }
