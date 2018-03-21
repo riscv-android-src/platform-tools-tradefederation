@@ -18,8 +18,11 @@ package com.android.tradefed.invoker;
 import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.result.ILogSaver;
+import com.android.tradefed.result.ILogSaverListener;
 import com.android.tradefed.result.ITestInvocationListener;
-import com.android.tradefed.result.LogSaverResultForwarder;
+import com.android.tradefed.result.InputStreamSource;
+import com.android.tradefed.result.LogDataType;
+import com.android.tradefed.result.LogFile;
 import com.android.tradefed.result.ResultForwarder;
 import com.android.tradefed.util.TimeUtil;
 
@@ -34,7 +37,7 @@ import java.util.Map.Entry;
  * <p>This class is not thread safe. It is expected that clients will lock on this class when
  * sending test results, to prevent invocation callbacks from being called out of order.
  */
-public class ShardMasterResultForwarder extends LogSaverResultForwarder {
+public class ShardMasterResultForwarder extends ResultForwarder implements ILogSaverListener {
 
     private final int mInitCount;
     private int mShardsRemaining;
@@ -50,12 +53,11 @@ public class ShardMasterResultForwarder extends LogSaverResultForwarder {
      * Create a {@link ShardMasterResultForwarder}.
      *
      * @param listeners the list of {@link ITestInvocationListener} to forward results to when all
-     *            shards are completed
+     *     shards are completed
      * @param expectedShards the number of shards
      */
-    public ShardMasterResultForwarder(ILogSaver logSaver,
-            List<ITestInvocationListener> listeners, int expectedShards) {
-        super(logSaver, listeners);
+    public ShardMasterResultForwarder(List<ITestInvocationListener> listeners, int expectedShards) {
+        super(listeners);
         mShardsRemaining = expectedShards;
         mInitCount = expectedShards;
         mShardContextList = new ArrayList<>();
@@ -108,6 +110,29 @@ public class ShardMasterResultForwarder extends LogSaverResultForwarder {
         }
     }
 
+    /** {@inheritDoc} */
+    @Override
+    public void testLogSaved(
+            String dataName, LogDataType dataType, InputStreamSource dataStream, LogFile logFile) {
+        for (ITestInvocationListener listener : getListeners()) {
+            try {
+                // Forward the testLogSaved event to ILogSaverListener
+                if (listener instanceof ILogSaverListener) {
+                    ((ILogSaverListener) listener)
+                            .testLogSaved(dataName, dataType, dataStream, logFile);
+                }
+            } catch (Exception e) {
+                CLog.e("Exception while invoking %s#testLogSaved", listener.getClass().getName());
+                CLog.e(e);
+            }
+        }
+    }
+
+    @Override
+    public void setLogSaver(ILogSaver logSaver) {
+        // Shard master does not need log saver.
+    }
+    
     /**
      * Copy the build info from the shard builds to the main build in the original invocation
      * context.
