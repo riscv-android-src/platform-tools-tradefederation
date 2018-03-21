@@ -335,19 +335,25 @@ public class ConfigurationDef {
      * Loads the class for the given the config object associated with this definition.
      *
      * @param objectTypeName the name of the config object type. Used to generate more descriptive
-     *            error messages
+     *     error messages
      * @param className the class name of the object to load
      * @return the config object populated with default option values
-     * @throws ConfigurationException if config object could not be created
+     * @throws ClassNotFoundConfigurationException if config object could not be created
      */
     private Class<?> getClassForObject(String objectTypeName, String className)
-            throws ConfigurationException {
+            throws ClassNotFoundConfigurationException {
         try {
             return Class.forName(className);
         } catch (ClassNotFoundException e) {
-            throw new ConfigurationException(
-                    String.format("Could not find class %s for config object type %s", className,
-                            objectTypeName), e);
+            ClassNotFoundConfigurationException exception =
+                    new ClassNotFoundConfigurationException(
+                            String.format(
+                                    "Could not find class %s for config object type %s",
+                                    className, objectTypeName),
+                            e,
+                            className,
+                            objectTypeName);
+            throw exception;
         }
     }
 

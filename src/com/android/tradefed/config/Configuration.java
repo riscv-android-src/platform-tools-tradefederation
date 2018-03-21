@@ -1182,10 +1182,6 @@ public class Configuration implements IConfiguration {
             ConfigurationUtil.dumpClassToXml(
                     serializer, MULTI_PREPARER_TYPE_NAME, multipreparer, excludeFilters);
         }
-        for (ISystemStatusChecker checker : getSystemStatusCheckers()) {
-            ConfigurationUtil.dumpClassToXml(
-                    serializer, SYSTEM_STATUS_CHECKER_TYPE_NAME, checker, excludeFilters);
-        }
 
         if (getDeviceConfig().size() > 1) {
             // Handle multi device.
@@ -1260,6 +1256,10 @@ public class Configuration implements IConfiguration {
                     serializer, DEVICE_METRICS_COLLECTOR_TYPE_NAME, collector, excludeFilters);
         }
 
+        for (ISystemStatusChecker checker : getSystemStatusCheckers()) {
+            ConfigurationUtil.dumpClassToXml(
+                    serializer, SYSTEM_STATUS_CHECKER_TYPE_NAME, checker, excludeFilters);
+        }
         serializer.endTag(null, ConfigurationUtil.CONFIGURATION_NAME);
         serializer.endDocument();
     }

@@ -81,8 +81,8 @@ public class SandboxConfigUtil {
         if (CommandStatus.SUCCESS.equals(result.getStatus())) {
             return destination;
         }
-        FileUtil.deleteFile(globalConfig);
         FileUtil.deleteFile(destination);
+        // Do not delete the global configuration file here in this case, it might still be used.
         throw new SandboxConfigurationException(result.getStderr());
     }
 
@@ -103,13 +103,8 @@ public class SandboxConfigUtil {
             throws ConfigurationException, IOException {
         // include all jars on the classpath
         String classpath = "";
-        //try {
         Set<String> jarFiles = FileUtil.findFiles(rootDir, ".*.jar");
-            classpath = Joiner.on(":").join(jarFiles);
-        // } catch (IOException e) {
-        //    throw new ConfigurationException(e.getMessage());
-        // }
-
+        classpath = Joiner.on(":").join(jarFiles);
         return dumpConfigForVersion(classpath, runUtil, args, dump, globalConfig);
     }
 
