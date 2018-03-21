@@ -25,7 +25,13 @@ import urllib2
 
 import constants
 
-_BUILD_CMD = ['make', '-j', '-C', os.environ.get(constants.ANDROID_BUILD_TOP)]
+# Setting TERM to dumb increases chances build error is at the end of the output
+# we collect.
+_BUILD_ENV = os.environ.copy()
+_BUILD_ENV['TERM'] = 'dumb'
+_MAKE_CMD = '%s/build/soong/soong_ui.bash' % os.environ.get(
+    constants.ANDROID_BUILD_TOP)
+_BUILD_CMD = [_MAKE_CMD, '--make-mode', '-j']
 _BASH_RESET_CODE = '\033[0m\n'
 # Arbitrary number to limit stdout for failed runs in _run_limited_output.
 # Reason for its use is that the make command itself has its own carriage
@@ -46,7 +52,7 @@ def _run_limited_output(cmd):
     """
     # Send stderr to stdout so we only have to deal with a single pipe.
     proc = subprocess.Popen(cmd, stdout=subprocess.PIPE,
-                            stderr=subprocess.STDOUT)
+                            stderr=subprocess.STDOUT, env=_BUILD_ENV)
     sys.stdout.write('\n')
     # Determine the width of the terminal. We'll need to clear this many
     # characters when carriage returning.
@@ -78,7 +84,7 @@ def _run_limited_output(cmd):
         output = full_output
         if len(output) >= _FAILED_OUTPUT_LINE_LIMIT:
             output = output[-_FAILED_OUTPUT_LINE_LIMIT:]
-        logging.error('Output (may be trimmed):\n%s', ''.join(output))
+        output = 'Output (may be trimmed):\n%s' % ''.join(output)
         raise subprocess.CalledProcessError(proc.returncode, cmd, output)
 
 
