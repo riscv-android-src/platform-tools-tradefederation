@@ -15,11 +15,13 @@
  */
 package com.android.tradefed.testtype.suite;
 
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 
 import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.build.LocalFolderBuildProvider;
 import com.android.tradefed.build.StubBuildProvider;
+import com.android.tradefed.command.CommandOptions;
 import com.android.tradefed.config.Configuration;
 import com.android.tradefed.config.DeviceConfigurationHolder;
 import com.android.tradefed.config.IConfiguration;
@@ -38,6 +40,7 @@ import com.android.tradefed.targetprep.StubTargetPreparer;
 import com.android.tradefed.targetprep.TargetSetupError;
 import com.android.tradefed.targetprep.multi.IMultiTargetPreparer;
 import com.android.tradefed.targetprep.multi.StubMultiTargetPreparer;
+import com.android.tradefed.testtype.suite.module.TestFailureModuleController;
 
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -222,6 +225,30 @@ public class ValidateSuiteConfigHelperTest {
             assertTrue(
                     expected.getMessage()
                             .contains(Configuration.DEVICE_METRICS_COLLECTOR_TYPE_NAME));
+        }
+    }
+
+    /** Test that if the module controller has the proper class it does not fail the validation. */
+    @Test
+    public void testModuleController() throws Exception {
+        IConfiguration config = new Configuration("test", "test description");
+        config.setConfigurationObject(
+                ModuleDefinition.MODULE_CONTROLLER, new TestFailureModuleController());
+        ValidateSuiteConfigHelper.validateConfig(config);
+    }
+
+    /**
+     * Test that if the module controller does not have the proper class, it fails the validation.
+     */
+    @Test
+    public void testModuleController_fail() throws Exception {
+        IConfiguration config = new Configuration("test", "test description");
+        config.setConfigurationObject(ModuleDefinition.MODULE_CONTROLLER, new CommandOptions());
+        try {
+            ValidateSuiteConfigHelper.validateConfig(config);
+            fail("Should have thrown an exception.");
+        } catch (RuntimeException expected) {
+            assertTrue(expected.getMessage().contains(ModuleDefinition.MODULE_CONTROLLER));
         }
     }
 }
