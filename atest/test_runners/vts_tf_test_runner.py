@@ -21,6 +21,7 @@ import logging
 
 # pylint: disable=import-error
 import atest_tf_test_runner
+import atest_utils
 import constants
 
 
@@ -48,8 +49,8 @@ class VtsTradefedTestRunner(atest_tf_test_runner.AtestTradefedTestRunner):
             Set of build targets.
         """
         build_req = self._BUILD_REQ
-        if self._is_missing_adb():
-            build_req.add('adb')
+        build_req |= super(VtsTradefedTestRunner,
+                           self).get_test_runner_build_reqs()
         return build_req
 
     def run_tests(self, test_infos, extra_args):
@@ -103,6 +104,7 @@ class VtsTradefedTestRunner(atest_tf_test_runner.AtestTradefedTestRunner):
         cmds = []
         args = self._DEFAULT_ARGS
         args.extend(self._parse_extra_args(extra_args))
+        args.extend(atest_utils.get_result_server_args())
         for test_info in test_infos:
             cmd_dict = copy.deepcopy(self.run_cmd_dict)
             cmd_dict['test'] = test_info.test_name
