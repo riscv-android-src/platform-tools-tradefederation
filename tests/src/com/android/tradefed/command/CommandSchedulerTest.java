@@ -22,6 +22,7 @@ import com.android.tradefed.command.CommandScheduler.CommandTrackerIdComparator;
 import com.android.tradefed.command.ICommandScheduler.IScheduledInvocationListener;
 import com.android.tradefed.config.ConfigurationDescriptor;
 import com.android.tradefed.config.ConfigurationException;
+import com.android.tradefed.config.ConfigurationFactory;
 import com.android.tradefed.config.DeviceConfigurationHolder;
 import com.android.tradefed.config.IConfiguration;
 import com.android.tradefed.config.IConfigurationFactory;
@@ -49,6 +50,7 @@ import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.util.FileUtil;
 import com.android.tradefed.util.RunUtil;
+import com.android.tradefed.util.keystore.DryRunKeyStore;
 import com.android.tradefed.util.keystore.IKeyStoreClient;
 
 import junit.framework.TestCase;
@@ -90,6 +92,54 @@ public class CommandSchedulerTest extends TestCase {
     private ConfigurationDescriptor mMockConfigDescriptor;
     private IInvocationContext mContext;
 
+    class TestableCommandScheduler extends CommandScheduler {
+
+        @Override
+        ITestInvocation createRunInstance() {
+            return mMockInvocation;
+        }
+
+        @Override
+        protected IDeviceManager getDeviceManager() {
+            return mMockManager;
+        }
+
+        @Override
+        protected IConfigurationFactory getConfigFactory() {
+            return mMockConfigFactory;
+        }
+
+        @Override
+        protected IInvocationContext createInvocationContext() {
+            return mContext;
+        }
+
+        @Override
+        protected void initLogging() {
+            // ignore
+        }
+
+        @Override
+        protected void cleanUp() {
+            // ignore
+        }
+
+        @Override
+        void logEvent(EventType event, Map<String, String> args) {
+            // ignore
+        }
+
+        @Override
+        void checkInvocations() {
+            // ignore
+        }
+
+        @Override
+        CommandFileParser createCommandFileParser() {
+            return mMockCmdFileParser;
+        }
+    }
+
     /**
      * {@inheritDoc}
      */
@@ -107,54 +157,7 @@ public class CommandSchedulerTest extends TestCase {
         mMockConfigDescriptor = new ConfigurationDescriptor();
         mContext = new InvocationContext();
 
-        mScheduler =
-                new CommandScheduler() {
-
-                    @Override
-                    ITestInvocation createRunInstance() {
-                        return mMockInvocation;
-                    }
-
-                    @Override
-                    protected IDeviceManager getDeviceManager() {
-                        return mMockManager;
-                    }
-
-                    @Override
-                    protected IConfigurationFactory getConfigFactory() {
-                        return mMockConfigFactory;
-                    }
-
-                    @Override
-                    protected IInvocationContext createInvocationContext() {
-                        return mContext;
-                    }
-
-                    @Override
-                    protected void initLogging() {
-                        // ignore
-                    }
-
-                    @Override
-                    protected void cleanUp() {
-                        // ignore
-                    }
-
-                    @Override
-                    void logEvent(EventType event, Map<String, String> args) {
-                        // ignore
-                    }
-
-                    @Override
-                    void checkInvocations() {
-                        // ignore
-                    }
-
-                    @Override
-                    CommandFileParser createCommandFileParser() {
-                        return mMockCmdFileParser;
-                    }
-                };
+        mScheduler = new TestableCommandScheduler();
         // not starting the CommandScheduler yet because test methods need to setup mocks first
     }
 
@@ -291,6 +294,32 @@ public class CommandSchedulerTest extends TestCase {
         // the same config object is being used, so clear its state
         mCommandOptions.setDryRunMode(false);
         assertTrue(mScheduler.addCommand(args2));
+        mScheduler.shutdownOnEmpty();
+        mScheduler.join();
+        verifyMocks();
+    }
+
+    /**
+     * Test {@link CommandScheduler#run()} when one config has been added in noisy-dry-run or
+     * dry-run mode the keystore is properly faked by a {@link DryRunKeyStore}.
+     */
+    public void testRun_dryRun_keystore() throws Throwable {
+        mScheduler =
+                new TestableCommandScheduler() {
+                    @Override
+                    protected IConfigurationFactory getConfigFactory() {
+                        // Use the real factory for that loading test.
+                        return ConfigurationFactory.getInstance();
+                    }
+                };
+        String[] dryRunArgs =
+                new String[] {"empty", "--noisy-dry-run", "--min-loop-time", "USE_KEYSTORE@fake"};
+        mMockManager.setNumDevices(2);
+        //setCreateConfigExpectations(dryRunArgs, 1);
+
+        replayMocks();
+        mScheduler.start();
+        assertFalse(mScheduler.addCommand(dryRunArgs));
         mScheduler.shutdownOnEmpty();
         mScheduler.join();
         verifyMocks();
