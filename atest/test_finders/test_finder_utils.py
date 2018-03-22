@@ -76,6 +76,7 @@ _XML_VALUE = 'value'
 
 # VTS xml parsing constants.
 _VTS_TEST_MODULE = 'test-module-name'
+_VTS_MODULE = 'module-name'
 _VTS_BINARY_SRC = 'binary-test-source'
 _VTS_PUSH_GROUP = 'push-group'
 _VTS_PUSH = 'push'
@@ -499,7 +500,7 @@ def get_targets_from_vts_xml(xml_file, rel_out_dir, module_info):
     for tag in option_tags:
         value = tag.attrib[_XML_VALUE].strip()
         name = tag.attrib[_XML_NAME].strip()
-        if name == _VTS_TEST_MODULE:
+        if name in [_VTS_TEST_MODULE, _VTS_MODULE]:
             if module_info.is_module(value):
                 targets.add(value)
             else:
