@@ -22,6 +22,7 @@ import com.android.tradefed.config.IDeviceConfiguration;
 import com.android.tradefed.result.TextResultReporter;
 import com.android.tradefed.targetprep.ITargetPreparer;
 import com.android.tradefed.targetprep.multi.IMultiTargetPreparer;
+import com.android.tradefed.testtype.suite.module.BaseModuleController;
 
 import java.util.List;
 
@@ -89,6 +90,18 @@ public class ValidateSuiteConfigHelper {
                     String.format(
                             "%s objects are not allowed in module.",
                             Configuration.DEVICE_METRICS_COLLECTOR_TYPE_NAME));
+        }
+
+        // Check that we validate the module_controller.
+        Object controller = config.getConfigurationObject(ModuleDefinition.MODULE_CONTROLLER);
+        if (controller != null) {
+            if (!(controller instanceof BaseModuleController)) {
+                throwRuntime(
+                        config,
+                        String.format(
+                                "%s object should be of type %s",
+                                ModuleDefinition.MODULE_CONTROLLER, BaseModuleController.class));
+            }
         }
     }
 

@@ -72,8 +72,9 @@ import com.android.tradefed.device.metric.BaseDeviceMetricCollectorTest;
 import com.android.tradefed.device.metric.BuddyInfoMetricCollectorTest;
 import com.android.tradefed.device.metric.BugreportzMetricCollectorTest;
 import com.android.tradefed.device.metric.DeviceMetricDataTest;
+import com.android.tradefed.device.metric.DumpHeapCollectorTest;
 import com.android.tradefed.device.metric.FilePullerDeviceMetricCollectorTest;
-import com.android.tradefed.device.metric.GfxInfoMetricCollectorTest;
+import com.android.tradefed.device.metric.GraphicsStatsMetricCollectorTest;
 import com.android.tradefed.device.metric.IonHeapInfoMetricCollectorTest;
 import com.android.tradefed.device.metric.MemInfoMetricCollectorTest;
 import com.android.tradefed.device.metric.PagetypeInfoMetricCollectorTest;
@@ -352,8 +353,9 @@ import org.junit.runners.Suite.SuiteClasses;
     BuddyInfoMetricCollectorTest.class,
     BugreportzMetricCollectorTest.class,
     DeviceMetricDataTest.class,
+    DumpHeapCollectorTest.class,
     FilePullerDeviceMetricCollectorTest.class,
-    GfxInfoMetricCollectorTest.class,
+    GraphicsStatsMetricCollectorTest.class,
     IonHeapInfoMetricCollectorTest.class,
     MemInfoMetricCollectorTest.class,
     PagetypeInfoMetricCollectorTest.class,

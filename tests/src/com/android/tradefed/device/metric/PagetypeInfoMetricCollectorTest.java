@@ -17,13 +17,18 @@ package com.android.tradefed.device.metric;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
-import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.when;
 
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.invoker.IInvocationContext;
+import com.android.tradefed.result.ITestInvocationListener;
+import com.android.tradefed.result.InputStreamSource;
+import com.android.tradefed.result.LogDataType;
 import java.io.File;
 import java.util.HashMap;
 import java.util.Map;
@@ -43,6 +48,8 @@ import org.mockito.Spy;
 public class PagetypeInfoMetricCollectorTest {
     @Mock IInvocationContext mContext;
 
+    @Mock ITestInvocationListener mListener;
+
     @Mock ITestDevice mDevice;
 
     @Spy PagetypeInfoMetricCollector mPagetypeInfoMetricCollector;
@@ -52,6 +59,12 @@ public class PagetypeInfoMetricCollectorTest {
     @Before
     public void setup() throws Exception {
         MockitoAnnotations.initMocks(this);
+
+        mPagetypeInfoMetricCollector.init(mContext, mListener);
+
+        doNothing()
+                .when(mListener)
+                .testLog(anyString(), eq(LogDataType.TEXT), any(InputStreamSource.class));
 
         doReturn(new File("pagetypeinfo-1"))
                 .when(mPagetypeInfoMetricCollector)

@@ -567,8 +567,9 @@ public class TestInvocationTest extends TestCase {
         Capture<IConfiguration> capturedConfig = new Capture<IConfiguration>();
         EasyMock.expect(mockRescheduler.scheduleConfig(EasyMock.capture(capturedConfig)))
                 .andReturn(Boolean.TRUE);
+        // When resuming the original build provider is still going to handle the clean up.
         mMockBuildProvider.cleanUp(mMockBuildInfo);
-        EasyMock.expectLastCall().times(2);
+        EasyMock.expectLastCall().times(4);
         mMockDevice.clearLastConnectedWifiNetwork();
         mMockDevice.stopLogcat();
 
@@ -632,8 +633,6 @@ public class TestInvocationTest extends TestCase {
         resumeListener.invocationEnded(EasyMock.anyLong());
         mMockLogSaver.invocationEnded(EasyMock.anyLong());
         EasyMock.expect(resumeListener.getSummary()).andReturn(null);
-        mMockBuildInfo.cleanUp();
-        EasyMock.expectLastCall().times(2);
         mMockLogger.closeLog();
         EasyMock.expectLastCall().times(3);
         mMockDevice.clearLastConnectedWifiNetwork();
@@ -1441,8 +1440,6 @@ public class TestInvocationTest extends TestCase {
         EasyMock.expect(mMockBuildProvider.getBuild()).andReturn(mMockBuildInfo);
         EasyMock.expect(mMockBuildInfo.getTestTag()).andStubReturn("");
         mMockBuildInfo.addBuildAttribute("command_line_args", commandLine);
-        mMockLogSaver.invocationStarted((IInvocationContext)EasyMock.anyObject());
-        EasyMock.expectLastCall();
         mMockTestListener.invocationStarted((IInvocationContext)EasyMock.anyObject());
         EasyMock.expectLastCall();
         mMockSummaryListener.invocationStarted((IInvocationContext)EasyMock.anyObject());
