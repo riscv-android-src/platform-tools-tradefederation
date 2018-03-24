@@ -26,8 +26,23 @@
 
     <!-- Collect graphicsstats dump every 4 minutes. -->
     <option name="metric-collection-intervals" key="jank" value="240000" />
-    <option name="metric-collector-command-classes" value="com.android.tradefed.device.metric.GfxInfoMetricCollector" />
+    <option name="metric-collector-command-classes" value="com.android.tradefed.device.metric.GraphicsStatsMetricCollector" />
 
+    <!-- Collect bugreport every 1 hour. -->
+    <option name="metric-collection-intervals" key="bugreportz" value="3600000" />
+    <option name="metric-collector-command-classes" value="com.android.tradefed.device.metric.BugreportzMetricCollector" />
+
+    <!-- Collect ion audio and system heap info every 15 minutes. -->
+    <option name="metric-collection-intervals" key="ion" value="900000" />
+    <option name="metric-collector-command-classes" value="com.android.tradefed.device.metric.IonHeapInfoMetricCollector" />
+
+    <!-- Collect pagetype info every 10 minutes. -->
+    <option name="metric-collection-intervals" key="pagetypeinfo" value="600000" />
+    <option name="metric-collector-command-classes" value="com.android.tradefed.device.metric.PagetypeInfoMetricCollector" />
+
+    <!-- Collect trace every 20 minutes. -->
+    <option name="metric-collection-intervals" key="trace" value="1200000" />
+    <option name="metric-collector-command-classes" value="com.android.tradefed.device.metric.TraceMetricCollector" />
     <!-- Add more if there are requests. -->
   </metrics_collector>
 </configuration>
