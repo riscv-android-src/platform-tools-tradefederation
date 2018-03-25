@@ -13,14 +13,8 @@
      See the License for the specific language governing permissions and
      limitations under the License.
 -->
-<!-- Base configuration for longevity runs. -->
-<configuration description="Base configuration for longevity runs.">
-    <target_preparer class="com.android.tradefed.targetprep.suite.SuiteApkInstaller">
-        <option name="test-file-name" value="PhoneLongevityTests.apk" />
-    </target_preparer>
-
-    <template-include name="preparers" default="empty" />
-
+<!-- Test configuration for longevity runs. -->
+<configuration description="Test configuration for longevity runs.">
     <!-- Shuffle and run the longevity tests 100 times. The test timeout is
          5 minutes and the test suite timeout is 10 mins.
     -->
@@ -29,15 +23,10 @@
         <option name="class" value="android.longevity.platform.PhoneSuite" />
         <option name="instrumentation-arg" key="iterations" value="100" />
         <option name="instrumentation-arg" key="shuffle" value="true" />
+        <!-- Test timeouts in 5 minutes. -->
         <option name="instrumentation-arg" key="timeout_msec" value="300000" />
+        <!-- Suite timeouts in 10 hours. -->
         <option name="instrumentation-arg" key="suite-timeout_msec" value="36000000" />
         <option name="instrumentation-arg" key="min-battery" value="0.05" />
     </test>
-
-    <logger class="com.android.tradefed.log.FileLogger">
-        <option name="log-level" value="VERBOSE" />
-        <option name="log-level-display" value="VERBOSE" />
-    </logger>
-
-    <template-include name="metrics_collector" default="empty" />
 </configuration>
