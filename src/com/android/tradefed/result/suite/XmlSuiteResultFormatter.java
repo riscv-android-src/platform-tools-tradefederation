@@ -16,6 +16,7 @@
 package com.android.tradefed.result.suite;
 
 import com.android.ddmlib.testrunner.TestResult.TestStatus;
+import com.android.tradefed.result.LogFile;
 import com.android.tradefed.result.TestDescription;
 import com.android.tradefed.result.TestResult;
 import com.android.tradefed.result.TestRunResult;
@@ -213,7 +214,7 @@ public class XmlSuiteResultFormatter implements IFormatterGenerator {
             serializer.attribute(NS, DONE_ATTR, Boolean.toString(module.isRunComplete()));
             serializer.attribute(
                     NS, PASS_ATTR, Integer.toString(module.getNumTestsInState(TestStatus.PASSED)));
-            serializeTestCases(serializer, module.getTestResults(), holder.loggedFiles);
+            serializeTestCases(serializer, module.getTestResults());
             serializer.endTag(NS, MODULE_TAG);
         }
         serializer.endDocument();
@@ -221,9 +222,7 @@ public class XmlSuiteResultFormatter implements IFormatterGenerator {
     }
 
     private static void serializeTestCases(
-            XmlSerializer serializer,
-            Map<TestDescription, TestResult> results,
-            Map<String, String> loggedFiles)
+            XmlSerializer serializer, Map<TestDescription, TestResult> results)
             throws IllegalArgumentException, IllegalStateException, IOException {
         // We reformat into the same format as the ResultHandler from CTS to be compatible for now.
         Map<String, Map<String, TestResult>> format = new LinkedHashMap<>();
@@ -252,7 +251,7 @@ public class XmlSuiteResultFormatter implements IFormatterGenerator {
 
                 handleTestFailure(serializer, individualResult.getValue().getStackTrace());
 
-                HandleLoggedFiles(serializer, loggedFiles, className, individualResult.getKey());
+                HandleLoggedFiles(serializer, individualResult);
 
                 for (Entry<String, String> metric :
                         individualResult.getValue().getMetrics().entrySet()) {
@@ -290,31 +289,32 @@ public class XmlSuiteResultFormatter implements IFormatterGenerator {
 
     /** Add files captured by {@link TestFailureListener} on test failures. */
     private static void HandleLoggedFiles(
-            XmlSerializer serializer,
-            Map<String, String> loggedFiles,
-            String className,
-            String testName)
+            XmlSerializer serializer, Entry<String, TestResult> testResult)
             throws IllegalArgumentException, IllegalStateException, IOException {
-        if (loggedFiles == null) {
+        Map<String, LogFile> loggedFiles = testResult.getValue().getLoggedFiles();
+        if (loggedFiles == null || loggedFiles.isEmpty()) {
             return;
         }
-        // TODO: If possible handle a little more generically.
-        String testId = new TestDescription(className, testName).toString();
         for (String key : loggedFiles.keySet()) {
-            if (key.startsWith(testId)) {
-                if (key.endsWith("bugreport")) {
+            switch (loggedFiles.get(key).getType()) {
+                case BUGREPORT:
                     serializer.startTag(NS, BUGREPORT_TAG);
-                    serializer.text(loggedFiles.get(key));
+                    serializer.text(loggedFiles.get(key).getUrl());
                     serializer.endTag(NS, BUGREPORT_TAG);
-                } else if (key.endsWith("logcat")) {
+                    break;
+                case LOGCAT:
                     serializer.startTag(NS, LOGCAT_TAG);
-                    serializer.text(loggedFiles.get(key));
+                    serializer.text(loggedFiles.get(key).getUrl());
                     serializer.endTag(NS, LOGCAT_TAG);
-                } else if (key.endsWith("screenshot")) {
+                    break;
+                case PNG:
+                case JPEG:
                     serializer.startTag(NS, SCREENSHOT_TAG);
-                    serializer.text(loggedFiles.get(key));
+                    serializer.text(loggedFiles.get(key).getUrl());
                     serializer.endTag(NS, SCREENSHOT_TAG);
-                }
+                    break;
+                default:
+                    break;
             }
         }
     }
