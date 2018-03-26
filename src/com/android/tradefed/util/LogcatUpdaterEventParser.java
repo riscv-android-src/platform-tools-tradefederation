@@ -137,10 +137,6 @@ public class LogcatUpdaterEventParser implements Closeable {
                 "update_engine", "Using this install plan:", UpdaterEventType.UPDATE_START);
         registerEventTrigger(
                 "update_engine",
-                "ActionProcessor: Aborting processing due to failure.",
-                UpdaterEventType.ERROR);
-        registerEventTrigger(
-                "update_engine",
                 "ActionProcessor: finished DownloadAction with code ErrorCode::kSuccess",
                 UpdaterEventType.DOWNLOAD_COMPLETE);
         registerEventTrigger(
@@ -209,7 +205,9 @@ public class LogcatUpdaterEventParser implements Closeable {
             String lastLine;
             while ((lastLine = mStreamReader.readLine()) != null) {
                 UpdaterEventType parsedEvent = parseEventType(lastLine);
-                if (parsedEvent == UpdaterEventType.ERROR || expectedEvent.equals(parsedEvent)) {
+                if (parsedEvent == UpdaterEventType.ERROR
+                        || parsedEvent == UpdaterEventType.ERROR_FLAKY
+                        || expectedEvent.equals(parsedEvent)) {
                     return parsedEvent;
                 }
             }
