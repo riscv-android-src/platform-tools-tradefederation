@@ -22,6 +22,7 @@ import com.android.tradefed.config.IConfiguration;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.DeviceUnresponsiveException;
 import com.android.tradefed.device.ITestDevice;
+import com.android.tradefed.device.StubDevice;
 import com.android.tradefed.device.metric.IMetricCollector;
 import com.android.tradefed.invoker.IInvocationContext;
 import com.android.tradefed.invoker.InvocationContext;
@@ -441,6 +442,14 @@ public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestColl
 
     private void reportFailure(ITestInvocationListener listener, String errorMessage) {
         listener.testRunFailed(errorMessage);
+        for (ITestDevice device : mModuleInvocationContext.getDevices()) {
+            if (device.getIDevice() instanceof StubDevice) {
+                continue;
+            }
+            device.logBugreport(
+                    String.format("module-failure-bugreport-%s", device.getSerialNumber()),
+                    listener);
+        }
     }
 
     /** Helper to log the device events. */
