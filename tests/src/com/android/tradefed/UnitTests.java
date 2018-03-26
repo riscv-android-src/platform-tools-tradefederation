@@ -118,6 +118,7 @@ import com.android.tradefed.result.TestRunResultTest;
 import com.android.tradefed.result.TestSummaryTest;
 import com.android.tradefed.result.XmlResultReporterTest;
 import com.android.tradefed.result.suite.FormattedGeneratorReporterTest;
+import com.android.tradefed.result.suite.XmlSuiteResultFormatterTest;
 import com.android.tradefed.sandbox.SandboxConfigDumpTest;
 import com.android.tradefed.sandbox.SandboxConfigUtilTest;
 import com.android.tradefed.sandbox.SandboxInvocationRunnerTest;
@@ -410,6 +411,7 @@ import org.junit.runners.Suite.SuiteClasses;
 
     // result.suite
     FormattedGeneratorReporterTest.class,
+    XmlSuiteResultFormatterTest.class,
 
     // targetprep
     AllTestAppsInstallSetupTest.class,

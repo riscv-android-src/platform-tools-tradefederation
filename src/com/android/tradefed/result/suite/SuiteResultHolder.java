@@ -29,8 +29,6 @@ public class SuiteResultHolder {
 
     /** The collection of all results from the invocation. */
     public Collection<TestRunResult> runResults;
-    /** A map of logged file by <file name, file url>. */
-    public Map<String, String> loggedFiles;
     /** A map of each module's abi. */
     public Map<String, IAbi> modulesAbi;
 
