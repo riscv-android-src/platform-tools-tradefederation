@@ -18,6 +18,7 @@ package com.android.tradefed.testtype.suite;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;
 
+import com.android.ddmlib.IDevice;
 import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.command.remote.DeviceDescriptor;
 import com.android.tradefed.config.Configuration;
@@ -25,6 +26,7 @@ import com.android.tradefed.config.ConfigurationDescriptor;
 import com.android.tradefed.config.IConfiguration;
 import com.android.tradefed.config.OptionSetter;
 import com.android.tradefed.device.DeviceNotAvailableException;
+import com.android.tradefed.device.DeviceUnresponsiveException;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.invoker.IInvocationContext;
 import com.android.tradefed.invoker.TestInvocation;
@@ -95,11 +97,20 @@ public class ModuleDefinitionTest {
         private String mRunName;
         private int mNumTest;
         private boolean mShouldThrow;
+        private boolean mDeviceUnresponsive = false;
 
         public TestObject(String runName, int numTest, boolean shouldThrow) {
             mRunName = runName;
             mNumTest = numTest;
             mShouldThrow = shouldThrow;
+        }
+
+        public TestObject(
+                String runName, int numTest, boolean shouldThrow, boolean deviceUnresponsive) {
+            mRunName = runName;
+            mNumTest = numTest;
+            mShouldThrow = shouldThrow;
+            mDeviceUnresponsive = deviceUnresponsive;
         }
 
         @Override
@@ -110,6 +121,9 @@ public class ModuleDefinitionTest {
                 listener.testStarted(test);
                 if (mShouldThrow && i == mNumTest / 2) {
                     throw new DeviceNotAvailableException();
+                }
+                if (mDeviceUnresponsive) {
+                    throw new DeviceUnresponsiveException();
                 }
                 listener.testEnded(test, Collections.emptyMap());
             }
@@ -169,7 +183,7 @@ public class ModuleDefinitionTest {
      * Helper for replaying mocks.
      */
     private void replayMocks() {
-        EasyMock.replay(mMockListener, mMockLogSaver, mMockLogSaverListener);
+        EasyMock.replay(mMockListener, mMockLogSaver, mMockLogSaverListener, mMockDevice);
         for (IRemoteTest test : mTestList) {
             EasyMock.replay(test);
         }
@@ -186,7 +200,7 @@ public class ModuleDefinitionTest {
      * Helper for verifying mocks.
      */
     private void verifyMocks() {
-        EasyMock.verify(mMockListener, mMockLogSaver, mMockLogSaverListener);
+        EasyMock.verify(mMockListener, mMockLogSaver, mMockLogSaverListener, mMockDevice);
         for (IRemoteTest test : mTestList) {
             EasyMock.verify(test);
         }
@@ -661,9 +675,64 @@ public class ModuleDefinitionTest {
         // Only a screenshot is capture, logcat for that module was disabled.
         mMockListener.testLog(
                 EasyMock.anyObject(), EasyMock.eq(LogDataType.PNG), EasyMock.anyObject());
-        EasyMock.replay(mMockDevice);
         replayMocks();
         mModule.run(mMockListener, failureListener);
-        EasyMock.verify(mMockDevice);
+        verifyMocks();
+    }
+
+    /** Test when the test yields a DeviceUnresponsive exception. */
+    @Test
+    public void testRun_partialRun_deviceUnresponsive() throws Exception {
+        final int testCount = 4;
+        List<IRemoteTest> testList = new ArrayList<>();
+        testList.add(new TestObject("run1", testCount, false, true));
+        mModule =
+                new ModuleDefinition(
+                        MODULE_NAME,
+                        testList,
+                        mMapDeviceTargetPreparer,
+                        mMultiTargetPrepList,
+                        new Configuration("", ""));
+        mModule.getModuleInvocationContext().addAllocatedDevice(DEFAULT_DEVICE_NAME, mMockDevice);
+        mModule.getModuleInvocationContext()
+                .addDeviceBuildInfo(DEFAULT_DEVICE_NAME, mMockBuildInfo);
+        mModule.setBuild(mMockBuildInfo);
+        mModule.setDevice(mMockDevice);
+        EasyMock.expect(mMockPrep.isDisabled()).andReturn(false);
+        // no isTearDownDisabled() expected for setup
+        mMockPrep.setUp(EasyMock.eq(mMockDevice), EasyMock.eq(mMockBuildInfo));
+        EasyMock.expect(mMockCleaner.isDisabled()).andStubReturn(false);
+        mMockCleaner.setUp(EasyMock.eq(mMockDevice), EasyMock.eq(mMockBuildInfo));
+        EasyMock.expect(mMockCleaner.isTearDownDisabled()).andStubReturn(false);
+        mMockCleaner.tearDown(
+                EasyMock.eq(mMockDevice), EasyMock.eq(mMockBuildInfo), EasyMock.isNull());
+        mMockListener.testRunStarted(MODULE_NAME, testCount);
+        for (int i = 0; i < 1; i++) {
+            mMockListener.testStarted((TestDescription) EasyMock.anyObject(), EasyMock.anyLong());
+            mMockListener.testEnded(
+                    (TestDescription) EasyMock.anyObject(),
+                    EasyMock.anyLong(),
+                    EasyMock.anyObject());
+        }
+        mMockListener.testFailed(EasyMock.anyObject(), EasyMock.anyObject());
+        mMockListener.testRunFailed(EasyMock.anyObject());
+        mMockListener.testRunEnded(EasyMock.anyLong(), (Map<String, String>) EasyMock.anyObject());
+
+        // There was a module failure so a bugreport should be captured.
+        EasyMock.expect(mMockDevice.getIDevice()).andStubReturn(EasyMock.createMock(IDevice.class));
+        EasyMock.expect(mMockDevice.getSerialNumber()).andReturn("SERIAL");
+        EasyMock.expect(
+                        mMockDevice.logBugreport(
+                                EasyMock.eq("module-failure-bugreport-SERIAL"),
+                                EasyMock.anyObject()))
+                .andReturn(true);
+
+        replayMocks();
+        // DeviceUnresponsive should not throw since it indicates that the device was recovered.
+        mModule.run(mMockListener);
+        // Only one module
+        assertEquals(1, mModule.getTestsResults().size());
+        assertEquals(0, mModule.getTestsResults().get(0).getNumCompleteTests());
+        verifyMocks();
     }
 }

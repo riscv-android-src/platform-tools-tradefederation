@@ -492,7 +492,8 @@ public class ConfigurationFactory implements IConfigurationFactory {
         IConfiguration config =
                 internalCreateConfigurationFromArgs(reorderedArrayArgs, listArgs, keyStoreClient);
         config.setCommandLine(arrayArgs);
-        if (listArgs.contains("--" + CommandOptions.DRY_RUN_OPTION)) {
+        if (listArgs.contains("--" + CommandOptions.DRY_RUN_OPTION)
+                || listArgs.contains("--" + CommandOptions.NOISY_DRY_RUN_OPTION)) {
             // In case of dry-run, we replace the KeyStore by a dry-run one.
             CLog.w("dry-run detected, we are using a dryrun keystore");
             keyStoreClient = new DryRunKeyStore();
