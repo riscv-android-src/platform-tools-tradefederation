@@ -46,8 +46,14 @@ public class LogcatUpdaterEventParserTest extends TestCase {
         "11-11 00:00:00.001  123 321 I update_engine: foo bar baz\n",
         "11-11 00:00:00.001  123 321 I update_engine: foo bar baz\n",
         "11-11 00:00:00.001  123 321 I update_engine: foo bar baz\n",
+        "11-11 00:00:00.001  123 321 I update_engine_client: "
+                + "onPayloadApplicationComplete(ErrorCode::kPayloadTimestampError (51))\n",
+    };
+    private static final String[] LOGS_ERROR_FLAKY = {
         "11-11 00:00:00.001  123 321 I update_engine: "
                 + "ActionProcessor: Aborting processing due to failure.\n",
+        "11-11 00:00:00.001  123 321 I update_engine_client: "
+                + "onPayloadApplicationComplete(ErrorCode::kNewRootfsVerificationError (15))\n",
     };
     private static final long EVENT_TIMEOUT_MS = 5 * 1000L;
     private static final long THREAD_TIMEOUT_MS = 5 * 1000L;
@@ -128,10 +134,6 @@ public class LogcatUpdaterEventParserTest extends TestCase {
                 "01-09 17:06:50.799  8688  8688 I update_engine_client: "
                         + "onPayloadApplicationComplete(ErrorCode::kUserCanceled (48))";
         assertEquals(UpdaterEventType.ERROR, mParser.parseEventType(error1));
-        String error2 =
-                "04-05 10:56:20.026   172   172 I update_engine: "
-                        + "ActionProcessor: Aborting processing due to failure.";
-        assertEquals(UpdaterEventType.ERROR, mParser.parseEventType(error2));
     }
 
     /** Test that events registered first are matched first */
@@ -161,6 +163,14 @@ public class LogcatUpdaterEventParserTest extends TestCase {
         UpdaterEventType event =
                 mParser.waitForEvent(UpdaterEventType.UPDATE_COMPLETE, EVENT_TIMEOUT_MS);
         assertEquals(UpdaterEventType.ERROR, event);
+    }
+
+    /** Test that waitForEvent returns when it sees an flaky update error. */
+    public void testWaitForEventErrorFlaky() throws Exception {
+        feedMockPipe(LOGS_ERROR_FLAKY);
+        UpdaterEventType event =
+                mParser.waitForEvent(UpdaterEventType.UPDATE_COMPLETE, EVENT_TIMEOUT_MS);
+        assertEquals(UpdaterEventType.ERROR_FLAKY, event);
     }
 
     /** Test that waitForEvent honors the timeout. */
