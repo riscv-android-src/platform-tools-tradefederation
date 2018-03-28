@@ -16,6 +16,7 @@
 package com.android.tradefed.sandbox;
 
 import com.android.annotations.VisibleForTesting;
+import com.android.tradefed.config.Configuration;
 import com.android.tradefed.config.ConfigurationException;
 import com.android.tradefed.config.IConfiguration;
 import com.android.tradefed.invoker.IInvocationContext;
@@ -177,6 +178,21 @@ public class TradefedSandbox implements ISandbox {
     public File getTradefedSandboxEnvironment(
             IInvocationContext context, IConfiguration nonVersionedConfig, String[] args)
             throws ConfigurationException {
+        SandboxOptions options =
+                (SandboxOptions)
+                        nonVersionedConfig.getConfigurationObject(
+                                Configuration.SANBOX_OPTIONS_TYPE_NAME);
+        // Check that we have no args conflicts.
+        if (options.getSandboxTfDirectory() != null && options.getSandboxBuildId() != null) {
+            throw new ConfigurationException(
+                    String.format(
+                            "Sandbox options %s and %s cannot be set at the same time",
+                            SandboxOptions.TF_LOCATION, SandboxOptions.SANDBOX_BUILD_ID));
+        }
+
+        if (options.getSandboxTfDirectory() != null) {
+            return options.getSandboxTfDirectory();
+        }
         String tfDir = System.getProperty("TF_JAR_DIR");
         if (tfDir == null || tfDir.isEmpty()) {
             throw new ConfigurationException(
