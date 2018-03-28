@@ -23,12 +23,11 @@ import java.io.File;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
-import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
 /**
  * Holds a record of a configuration, its associated objects and their options.
@@ -83,7 +82,7 @@ public class ConfigurationDef {
     }
 
     private boolean mMultiDeviceMode = false;
-    private Set<String> mExpectedDevices = new LinkedHashSet<>();
+    private Map<String, Boolean> mExpectedDevices = new LinkedHashMap<>();
     private static final Pattern MULTI_PATTERN = Pattern.compile("(.*)(:)(.*)");
     public static final String DEFAULT_DEVICE_NAME = "DEFAULT_DEVICE";
 
@@ -198,13 +197,43 @@ public class ConfigurationDef {
         List<IDeviceConfiguration> deviceObjectList = new ArrayList<IDeviceConfiguration>();
         IDeviceConfiguration defaultDeviceConfig =
                 new DeviceConfigurationHolder(DEFAULT_DEVICE_NAME);
+        boolean hybridMultiDeviceHandling = false;
+
         if (!mMultiDeviceMode) {
             // We still populate a default device config to avoid special logic in the rest of the
             // harness.
             deviceObjectList.add(defaultDeviceConfig);
         } else {
-            for (String name : mExpectedDevices) {
-                deviceObjectList.add(new DeviceConfigurationHolder(name));
+            // FIXME: handle this in a more generic way.
+            // Get the number of real device (non build-only) device
+            Long numDut =
+                    mExpectedDevices
+                            .values()
+                            .stream()
+                            .filter(value -> (value == false))
+                            .collect(Collectors.counting());
+            Long numNonDut =
+                    mExpectedDevices
+                            .values()
+                            .stream()
+                            .filter(value -> (value == true))
+                            .collect(Collectors.counting());
+            if (numDut == 0) {
+                throw new ConfigurationException(
+                        "All the <device> where marked with isFake=true. You need at least one "
+                                + "device under test.");
+            }
+            if (numNonDut > 0 && numDut == 1) {
+                // If we have fake device but only a single real device, is the only use case to
+                // handle very differently: object at the root of the xml needs to be associated
+                // with the only DuT.
+                // All the other use cases can be handled the regular way.
+                CLog.d("Only one Device Under Test, using hybrid handling.");
+                hybridMultiDeviceHandling = true;
+            }
+            for (String name : mExpectedDevices.keySet()) {
+                deviceObjectList.add(
+                        new DeviceConfigurationHolder(name, mExpectedDevices.get(name)));
             }
         }
 
@@ -251,8 +280,31 @@ public class ConfigurationDef {
                     multiDev.addFrequency(configObject, configDef.mAppearanceNum);
                 } else {
                     if (Configuration.doesBuiltInObjSupportMultiDevice(entryName)) {
-                        defaultDeviceConfig.addSpecificConfig(configObject);
-                        defaultDeviceConfig.addFrequency(configObject, configDef.mAppearanceNum);
+                        if (hybridMultiDeviceHandling) {
+                            // Special handling for a multi-device with one Dut and the rest are
+                            // non-dut devices.
+                            // At this point we are ensured to have only one Dut device. Object at
+                            // the root should are associated with the only device under test (Dut).
+                            List<IDeviceConfiguration> realDevice =
+                                    deviceObjectList
+                                            .stream()
+                                            .filter(object -> (object.isFake() == false))
+                                            .collect(Collectors.toList());
+                            if (realDevice.size() != 1) {
+                                throw new ConfigurationException(
+                                        String.format(
+                                                "Something went very bad, we found '%s' Dut "
+                                                        + "device while expecting one only.",
+                                                realDevice.size()));
+                            }
+                            realDevice.get(0).addSpecificConfig(configObject);
+                            realDevice.get(0).addFrequency(configObject, configDef.mAppearanceNum);
+                        } else {
+                            // Regular handling of object for single device situation.
+                            defaultDeviceConfig.addSpecificConfig(configObject);
+                            defaultDeviceConfig.addFrequency(
+                                    configObject, configDef.mAppearanceNum);
+                        }
                     } else {
                         // Only add to flat list if they are not part of multi device config.
                         objectList.add(configObject);
@@ -324,8 +376,21 @@ public class ConfigurationDef {
         return mMultiDeviceMode;
     }
 
-    public void addExpectedDevice(String deviceName) {
-        mExpectedDevices.add(deviceName);
+    /** Add a device that needs to be tracked and whether or not it's real. */
+    public String addExpectedDevice(String deviceName, boolean isFake) {
+        Boolean previous = mExpectedDevices.put(deviceName, isFake);
+        if (previous != null && previous != isFake) {
+            return String.format(
+                    "Mismatch for device '%s'. It was defined once as isFake=false, once as "
+                            + "isFake=true",
+                    deviceName);
+        }
+        return null;
+    }
+
+    /** Returns the current Map of tracked devices and if they are real or not. */
+    public Map<String, Boolean> getExpectedDevices() {
+        return mExpectedDevices;
     }
 
     /**
