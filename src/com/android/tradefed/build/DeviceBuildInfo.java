@@ -33,6 +33,13 @@ public class DeviceBuildInfo extends BuildInfo implements IDeviceBuildInfo {
     private static final String MKBOOTIMG_IMAGE_NAME = "mkbootimg";
     private static final String RAMDISK_IMAGE_NAME = "ramdisk";
 
+    private static final String[] FILE_NOT_TO_CLONE =
+            new String[] {
+                TESTDIR_IMAGE_NAME,
+                ExternalLinkedDir.HOST_LINKED_DIR.toString(),
+                ExternalLinkedDir.TARGET_LINKED_DIR.toString()
+            };
+
     public DeviceBuildInfo() {
         super();
     }
@@ -274,13 +281,14 @@ public class DeviceBuildInfo extends BuildInfo implements IDeviceBuildInfo {
             VersionedFile origFileConsidered, IBuildInfo build, IBuildInfo receiver) {
         // If the no copy on sharding is set, that means the tests dir will be shared and should
         // not be copied.
-        if (origFileConsidered.getFile().equals(build.getFile(TESTDIR_IMAGE_NAME))
-                && getProperties().contains(BuildInfoProperties.DO_NOT_COPY_ON_SHARDING)) {
-            receiver.setFile(
-                    TESTDIR_IMAGE_NAME,
-                    origFileConsidered.getFile(),
-                    origFileConsidered.getVersion());
-            return true;
+        if (getProperties().contains(BuildInfoProperties.DO_NOT_COPY_ON_SHARDING)) {
+            for (String name : FILE_NOT_TO_CLONE) {
+                if (origFileConsidered.getFile().equals(build.getFile(name))) {
+                    receiver.setFile(
+                            name, origFileConsidered.getFile(), origFileConsidered.getVersion());
+                    return true;
+                }
+            }
         }
         return false;
     }
