@@ -410,7 +410,8 @@ public class BaseDeviceMetricCollectorTest {
         // Metrics should have been skipped, so the map should be empty.
         Mockito.verify(mMockListener, times(1))
                 .testEnded(Mockito.eq(test3), Mockito.anyLong(), mCapturedMetrics.capture());
-        Mockito.verify(mMockListener, times(1)).testRunEnded(Mockito.anyLong(), Mockito.any());
+        Mockito.verify(mMockListener, times(1))
+                .testRunEnded(Mockito.anyLong(), (Map<String, String>) Mockito.any());
 
         List<Map<String, String>> allValues = mCapturedMetrics.getAllValues();
         // For test1
@@ -457,7 +458,8 @@ public class BaseDeviceMetricCollectorTest {
         // Metrics should have been skipped, so the map should be empty.
         Mockito.verify(mMockListener, times(1))
                 .testEnded(Mockito.eq(test3), Mockito.anyLong(), mCapturedMetrics.capture());
-        Mockito.verify(mMockListener, times(1)).testRunEnded(Mockito.anyLong(), Mockito.any());
+        Mockito.verify(mMockListener, times(1))
+                .testRunEnded(Mockito.anyLong(), (Map<String, String>) Mockito.any());
 
         List<Map<String, String>> allValues = mCapturedMetrics.getAllValues();
         // For test1

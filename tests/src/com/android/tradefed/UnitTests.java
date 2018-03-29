@@ -266,6 +266,7 @@ import com.android.tradefed.util.keystore.JSONFileKeyStoreFactoryTest;
 import com.android.tradefed.util.net.HttpHelperTest;
 import com.android.tradefed.util.net.HttpMultipartPostTest;
 import com.android.tradefed.util.net.XmlRpcHelperTest;
+import com.android.tradefed.util.proto.TfMetricProtoUtilTest;
 import com.android.tradefed.util.sl4a.Sl4aClientTest;
 import com.android.tradefed.util.sl4a.Sl4aEventDispatcherTest;
 import com.android.tradefed.util.xml.AndroidManifestWriterTest;
@@ -543,8 +544,6 @@ import org.junit.runners.Suite.SuiteClasses;
     FileUtilTest.class,
     FixedByteArrayOutputStreamTest.class,
     HprofAllocSiteParserTest.class,
-    HttpHelperTest.class,
-    HttpMultipartPostTest.class,
     JUnitXmlParserTest.class,
     KeyguardControllerStateTest.class,
     ListInstrumentationParserTest.class,
@@ -572,22 +571,31 @@ import org.junit.runners.Suite.SuiteClasses;
     TestMappingTest.class,
     TimeUtilTest.class,
     TimeValTest.class,
-    XmlRpcHelperTest.class,
     ZipUtilTest.class,
     ZipUtil2Test.class,
 
-    //util/hostmetric
+    // util/hostmetric
     AbstractHostMonitorTest.class,
     HeapHostMonitorTest.class,
 
-    // util subdirs
-    AndroidManifestWriterTest.class,
-    Sl4aClientTest.class,
-    Sl4aEventDispatcherTest.class,
+    // util/net
+    HttpHelperTest.class,
+    HttpMultipartPostTest.class,
+    XmlRpcHelperTest.class,
 
     // util/keystore
     JSONFileKeyStoreClientTest.class,
     JSONFileKeyStoreFactoryTest.class,
+
+    // util/proto
+    TfMetricProtoUtilTest.class,
+
+    // util/sl4a
+    Sl4aClientTest.class,
+    Sl4aEventDispatcherTest.class,
+
+    // util/xml
+    AndroidManifestWriterTest.class,
 })
 public class UnitTests {
     // empty of purpose
