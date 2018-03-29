@@ -336,7 +336,8 @@ public class BaseHostJUnit4TestTest {
             // Ensure that the auto-uninstall is triggered
             EasyMock.expect(mMockDevice.uninstallPackage("fakepackage")).andReturn(null);
             mMockListener.testEnded(description, new HashMap<>());
-            mMockListener.testRunEnded(EasyMock.anyLong(), EasyMock.anyObject());
+            mMockListener.testRunEnded(
+                    EasyMock.anyLong(), (Map<String, String>) EasyMock.anyObject());
 
             EasyMock.replay(mMockBuild, mMockDevice, mMockListener);
             test.run(mMockListener);

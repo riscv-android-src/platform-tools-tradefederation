@@ -90,7 +90,8 @@ public class SubprocessTestResultsParserTest {
                 EasyMock.anyLong(),
                 (Map<String, String>) EasyMock.anyObject());
         EasyMock.expectLastCall().times(4);
-        mockRunListener.testRunEnded(EasyMock.anyLong(), EasyMock.anyObject());
+        mockRunListener.testRunEnded(
+                EasyMock.anyLong(), (Map<String, String>) EasyMock.anyObject());
         EasyMock.expectLastCall().times(1);
         mockRunListener.testIgnored((TestDescription) EasyMock.anyObject());
         EasyMock.expectLastCall();
@@ -130,7 +131,8 @@ public class SubprocessTestResultsParserTest {
         EasyMock.expectLastCall().times(3);
         mockRunListener.testRunFailed((String)EasyMock.anyObject());
         EasyMock.expectLastCall().times(1);
-        mockRunListener.testRunEnded(EasyMock.anyLong(), EasyMock.anyObject());
+        mockRunListener.testRunEnded(
+                EasyMock.anyLong(), (Map<String, String>) EasyMock.anyObject());
         EasyMock.expectLastCall().times(1);
         mockRunListener.testIgnored((TestDescription) EasyMock.anyObject());
         EasyMock.expectLastCall();

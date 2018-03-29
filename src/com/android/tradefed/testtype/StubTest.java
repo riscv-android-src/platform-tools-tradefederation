@@ -92,7 +92,7 @@ public class StubTest implements IShardableTest {
             TestDescription testId = new TestDescription("StubTest", "StubMethod");
             listener.testStarted(testId);
             listener.testEnded(testId, Collections.emptyMap());
-            listener.testRunEnded(500, new LinkedHashMap<>());
+            listener.testRunEnded(500, new LinkedHashMap<String, String>());
         }
     }
 
