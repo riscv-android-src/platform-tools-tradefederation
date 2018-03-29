@@ -416,6 +416,10 @@ public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestColl
                     mTestsResults.addAll(moduleListener.getRunResults());
                     mExpectedTests += moduleListener.getNumTotalTests();
                 }
+                // After the run, if it has failed, capture a bugreport
+                if (moduleListener.hasFailed()) {
+                    captureBugreport(listener);
+                }
             }
         } finally {
             long cleanStartTime = getCurrentTime();
@@ -442,6 +446,9 @@ public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestColl
 
     private void reportFailure(ITestInvocationListener listener, String errorMessage) {
         listener.testRunFailed(errorMessage);
+    }
+
+    private void captureBugreport(ITestLogger listener) {
         for (ITestDevice device : mModuleInvocationContext.getDevices()) {
             if (device.getIDevice() instanceof StubDevice) {
                 continue;
