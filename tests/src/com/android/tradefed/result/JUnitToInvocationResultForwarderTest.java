@@ -15,16 +15,25 @@
  */
 package com.android.tradefed.result;
 
+import static org.junit.Assert.*;
+
 import com.android.tradefed.testtype.DeviceTestCase;
 
 import junit.framework.AssertionFailedError;
+import junit.framework.TestCase;
 
+import org.easymock.Capture;
 import org.easymock.EasyMock;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
 
+import java.lang.annotation.ElementType;
+import java.lang.annotation.Inherited;
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
+import java.lang.annotation.Target;
 import java.util.Collections;
 import java.util.Map;
 
@@ -40,6 +49,21 @@ public class JUnitToInvocationResultForwarderTest {
         mListener = EasyMock.createMock(ITestInvocationListener.class);
         mForwarder = new JUnitToInvocationResultForwarder(mListener);
     }
+
+    /** Inherited test annotation to ensure we properly collected it. */
+    @Target(ElementType.METHOD)
+    @Inherited
+    @Retention(RetentionPolicy.RUNTIME)
+    public @interface MyCustomAnnotation {}
+
+    /** Base test class with a test method annotated with an inherited annotation. */
+    public class BaseTestClass extends TestCase {
+        @MyCustomAnnotation
+        public void testbaseWithAnnotation() {}
+    }
+
+    /** Extension of the base test class. */
+    public class InheritingClass extends BaseTestClass {}
 
     /**
      * Test method for {@link JUnitToInvocationResultForwarder#addFailure(junit.framework.Test,
@@ -82,5 +106,26 @@ public class JUnitToInvocationResultForwarderTest {
         EasyMock.replay(mListener);
         mForwarder.startTest(test);
         EasyMock.verify(mListener);
+    }
+
+    /**
+     * Test method for {@link JUnitToInvocationResultForwarder#startTest(junit.framework.Test)} when
+     * the test method is inherited.
+     */
+    @Test
+    public void testStartTest_annotations() {
+        Capture<TestDescription> capture = new Capture<>();
+        mListener.testStarted(EasyMock.capture(capture));
+        InheritingClass test = new InheritingClass();
+        test.setName("testbaseWithAnnotation");
+        EasyMock.replay(mListener);
+        mForwarder.startTest(test);
+        EasyMock.verify(mListener);
+        TestDescription desc = capture.getValue();
+        assertEquals(InheritingClass.class.getName(), desc.getClassName());
+        assertEquals("testbaseWithAnnotation", desc.getTestName());
+        assertEquals(1, desc.getAnnotations().size());
+        // MyCustomAnnotation is inherited
+        assertTrue(desc.getAnnotations().iterator().next() instanceof MyCustomAnnotation);
     }
 }

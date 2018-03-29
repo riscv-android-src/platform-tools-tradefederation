@@ -130,12 +130,12 @@ public class JUnitToInvocationResultForwarder implements TestListener {
         final String className = test.getClass().getName();
         String testName = "";
         if (test instanceof TestCase) {
-            testName = ((TestCase)test).getName();
+            testName = ((TestCase) test).getName();
         }
         Annotation[] annotations = new Annotation[0];
         try {
             // Backfill the annotations on a JUnit3 method
-            Method testMethod = test.getClass().getDeclaredMethod(testName);
+            Method testMethod = test.getClass().getMethod(testName);
             annotations = testMethod.getAnnotations();
         } catch (NoSuchMethodException | SecurityException e) {
             // Should not happen, at that point the test method is ensured to exists.
