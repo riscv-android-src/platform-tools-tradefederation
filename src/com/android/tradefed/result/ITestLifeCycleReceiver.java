@@ -15,6 +15,10 @@
  */
 package com.android.tradefed.result;
 
+import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
+import com.android.tradefed.util.proto.TfMetricProtoUtil;
+
+import java.util.HashMap;
 import java.util.Map;
 
 /**
@@ -60,6 +64,17 @@ public interface ITestLifeCycleReceiver {
      * @param runMetrics key-value pairs reported at the end of a test run
      */
     public default void testRunEnded(long elapsedTimeMillis, Map<String, String> runMetrics) {}
+
+    /**
+     * Reports end of test run. FIXME: We cannot have two Map<> interfaces with different type, so
+     * we have to use HashMap here.
+     *
+     * @param elapsedTimeMillis device reported elapsed time, in milliseconds
+     * @param runMetrics key-value pairs reported at the end of a test run with {@link Metric}.
+     */
+    public default void testRunEnded(long elapsedTimeMillis, HashMap<String, Metric> runMetrics) {
+        testRunEnded(elapsedTimeMillis, TfMetricProtoUtil.compatibleConvert(runMetrics));
+    }
 
     /**
      * Reports test run stopped before completion due to a user request.
