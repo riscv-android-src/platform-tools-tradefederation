@@ -90,6 +90,7 @@ class ModuleFinder(test_finder_base.TestFinderBase):
         test.build_targets = test_finder_utils.get_targets_from_vts_xml(
             config_file, vts_out_dir, self.module_info)
         test.build_targets.add('vts-test-core')
+        test.build_targets.add(test.test_name)
         return test
 
     def _process_test_info(self, test):
