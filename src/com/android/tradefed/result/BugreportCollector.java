@@ -19,9 +19,11 @@ import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.invoker.IInvocationContext;
 import com.android.tradefed.log.LogUtil.CLog;
+import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
 
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.ListIterator;
@@ -463,6 +465,14 @@ public class BugreportCollector implements ITestInvocationListener {
      */
     @Override
     public void testRunEnded(long elapsedTime, Map<String, String> runMetrics) {
+        mListener.testRunEnded(elapsedTime, runMetrics);
+        mCollector.testRunEnded(elapsedTime, runMetrics);
+        check(Relation.AFTER, Noun.TESTRUN);
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public void testRunEnded(long elapsedTime, HashMap<String, Metric> runMetrics) {
         mListener.testRunEnded(elapsedTime, runMetrics);
         mCollector.testRunEnded(elapsedTime, runMetrics);
         check(Relation.AFTER, Noun.TESTRUN);

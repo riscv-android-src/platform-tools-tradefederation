@@ -18,6 +18,7 @@ package com.android.tradefed.testtype;
 import static org.junit.Assert.fail;
 
 import com.android.tradefed.device.DeviceNotAvailableException;
+import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.TestDescription;
 
@@ -69,7 +70,7 @@ public class DeviceTestSuiteTest {
         listener.testEnded(test1, metrics);
         listener.testStarted(test2);
         listener.testEnded(test2, Collections.emptyMap());
-        listener.testRunEnded(EasyMock.anyLong(), (Map<String, String>) EasyMock.anyObject());
+        listener.testRunEnded(EasyMock.anyLong(), (HashMap<String, Metric>) EasyMock.anyObject());
         EasyMock.replay(listener);
 
         suite.run(listener);
@@ -92,7 +93,7 @@ public class DeviceTestSuiteTest {
                 EasyMock.contains(MockAbortTest.EXCEP_MSG));
         listener.testEnded(test1, Collections.emptyMap());
         listener.testRunFailed(EasyMock.contains(MockAbortTest.EXCEP_MSG));
-        listener.testRunEnded(EasyMock.anyLong(), (Map<String, String>) EasyMock.anyObject());
+        listener.testRunEnded(EasyMock.anyLong(), (HashMap<String, Metric>) EasyMock.anyObject());
         EasyMock.replay(listener);
         try {
             suite.run(listener);

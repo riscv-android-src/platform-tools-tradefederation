@@ -17,9 +17,11 @@ package com.android.tradefed.result;
 
 import com.android.tradefed.invoker.IInvocationContext;
 import com.android.tradefed.log.LogUtil.CLog;
+import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
 
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -206,6 +208,21 @@ public class ResultForwarder implements ITestInvocationListener {
                 listener.testRunEnded(elapsedTime, runMetrics);
             } catch (RuntimeException e) {
                 CLog.e("RuntimeException while invoking %s#testRunEnded",
+                        listener.getClass().getName());
+                CLog.e(e);
+            }
+        }
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public void testRunEnded(long elapsedTime, HashMap<String, Metric> runMetrics) {
+        for (ITestInvocationListener listener : mListeners) {
+            try {
+                listener.testRunEnded(elapsedTime, runMetrics);
+            } catch (RuntimeException e) {
+                CLog.e(
+                        "RuntimeException while invoking %s#testRunEnded",
                         listener.getClass().getName());
                 CLog.e(e);
             }
