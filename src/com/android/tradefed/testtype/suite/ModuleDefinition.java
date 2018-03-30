@@ -402,7 +402,8 @@ public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestColl
                     // We do special logging of some information in Context of the module for easier
                     // debugging.
                     CLog.e(
-                            "Module %s threw a DeviceNotAvailableException on device %s during test %s",
+                            "Module %s threw a DeviceNotAvailableException on device %s during "
+                                    + "test %s",
                             getId(), mDevice.getSerialNumber(), test.getClass());
                     CLog.e(dnae);
                     // log an events
