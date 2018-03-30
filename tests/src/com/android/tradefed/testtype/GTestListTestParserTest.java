@@ -97,6 +97,36 @@ public class GTestListTestParserTest extends GTestParserTestBase {
         }
     }
 
+    /** Tests that test cases with special characters like "/" are still parsed properly. */
+    public void testParseSimpleList_withSpecialChar() throws Exception {
+        String[] contents = readInFile(GTEST_LIST_FILE_4);
+        ITestInvocationListener mockRunListener =
+                EasyMock.createMock(ITestInvocationListener.class);
+        mockRunListener.testRunStarted(TEST_MODULE_NAME, 2);
+        TestDescription test1 =
+                new TestDescription(
+                        "SPM/AAudioOutputStreamCallbackTest",
+                        "SD/AAudioStreamBuilderDirectionTest");
+        mockRunListener.testStarted(test1);
+        mockRunListener.testEnded(EasyMock.eq(test1), (Map<String, String>) EasyMock.anyObject());
+
+        TestDescription test2 =
+                new TestDescription(
+                        "SPM/AAudioOutputStreamCallbackTest",
+                        "testPlayback/SHARED__0__LOW_LATENCY");
+        mockRunListener.testStarted(test2);
+        mockRunListener.testEnded(EasyMock.eq(test2), (Map<String, String>) EasyMock.anyObject());
+
+        mockRunListener.testRunEnded(
+                EasyMock.anyLong(), (Map<String, String>) EasyMock.anyObject());
+        EasyMock.replay(mockRunListener);
+        GTestListTestParser parser = new GTestListTestParser(TEST_MODULE_NAME, mockRunListener);
+        parser.processNewLines(contents);
+        parser.flush();
+        EasyMock.verify(mockRunListener);
+        verifyTestDescriptions(parser.mTests, 1);
+    }
+
     private void verifyTestDescriptions(List<TestDescription> tests, int classesExpected)
             throws Exception {
         int classesFound = 0;
