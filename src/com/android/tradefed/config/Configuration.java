@@ -31,6 +31,7 @@ import com.android.tradefed.result.FileSystemLogSaver;
 import com.android.tradefed.result.ILogSaver;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.TextResultReporter;
+import com.android.tradefed.sandbox.SandboxOptions;
 import com.android.tradefed.suite.checker.ISystemStatusChecker;
 import com.android.tradefed.targetprep.ITargetPreparer;
 import com.android.tradefed.targetprep.multi.IMultiTargetPreparer;
@@ -87,6 +88,7 @@ public class Configuration implements IConfiguration {
     public static final String DEVICE_NAME = "device";
     public static final String DEVICE_METRICS_COLLECTOR_TYPE_NAME = "metrics_collector";
     public static final String SANDBOX_TYPE_NAME = "sandbox";
+    public static final String SANBOX_OPTIONS_TYPE_NAME = "sandbox_options";
 
     private static Map<String, ObjTypeInfo> sObjTypeMap = null;
     private static Set<String> sMultiDeviceSupportedTag = null;
@@ -162,6 +164,7 @@ public class Configuration implements IConfiguration {
             sObjTypeMap.put(
                     DEVICE_METRICS_COLLECTOR_TYPE_NAME,
                     new ObjTypeInfo(IMetricCollector.class, true));
+            sObjTypeMap.put(SANBOX_OPTIONS_TYPE_NAME, new ObjTypeInfo(SandboxOptions.class, false));
         }
         return sObjTypeMap;
     }
@@ -212,6 +215,7 @@ public class Configuration implements IConfiguration {
         setSystemStatusCheckers(new ArrayList<ISystemStatusChecker>());
         setConfigurationDescriptor(new ConfigurationDescriptor());
         setDeviceMetricCollectors(new ArrayList<>());
+        setConfigurationObjectNoThrow(SANBOX_OPTIONS_TYPE_NAME, new SandboxOptions());
     }
 
     /**
@@ -1260,6 +1264,13 @@ public class Configuration implements IConfiguration {
             ConfigurationUtil.dumpClassToXml(
                     serializer, SYSTEM_STATUS_CHECKER_TYPE_NAME, checker, excludeFilters);
         }
+
+        ConfigurationUtil.dumpClassToXml(
+                serializer,
+                SANBOX_OPTIONS_TYPE_NAME,
+                getConfigurationObject(SANBOX_OPTIONS_TYPE_NAME),
+                excludeFilters);
+
         serializer.endTag(null, ConfigurationUtil.CONFIGURATION_NAME);
         serializer.endDocument();
     }

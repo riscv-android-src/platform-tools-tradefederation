@@ -22,6 +22,7 @@ import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
 import com.android.tradefed.build.IBuildInfo.BuildInfoProperties;
+import com.android.tradefed.build.IDeviceBuildInfo.ExternalLinkedDir;
 import com.android.tradefed.util.FileUtil;
 
 import org.junit.After;
@@ -40,6 +41,7 @@ public class DeviceBuildInfoTest {
     private DeviceBuildInfo mBuildInfo;
     private File mImageFile;
     private File mTestsDir;
+    private File mHostLinkedDir;
 
     @Before
     public void setUp() throws Exception {
@@ -49,6 +51,7 @@ public class DeviceBuildInfoTest {
         mBuildInfo.setBasebandImage(mImageFile, VERSION);
         mTestsDir = FileUtil.createTempDir("device-info-tests-dir");
         mBuildInfo.setTestsDir(mTestsDir, VERSION);
+        mHostLinkedDir = FileUtil.createTempDir("host-linked-dir");
     }
 
     @After
@@ -56,6 +59,7 @@ public class DeviceBuildInfoTest {
         FileUtil.deleteFile(mImageFile);
         FileUtil.recursiveDelete(mTestsDir);
         mBuildInfo.cleanUp();
+        FileUtil.recursiveDelete(mHostLinkedDir);
     }
 
     /** Test method for {@link DeviceBuildInfo#clone()}. */
@@ -92,7 +96,8 @@ public class DeviceBuildInfoTest {
      * copied.
      */
     @Test
-    public void testCloneWithProperties() {
+    public void testCloneWithProperties() throws Exception {
+        mBuildInfo.setFile(ExternalLinkedDir.HOST_LINKED_DIR.toString(), mHostLinkedDir, "v1");
         DeviceBuildInfo copy = (DeviceBuildInfo) mBuildInfo.clone();
         try {
             assertNotEquals(copy.getTestsDir(), mBuildInfo.getTestsDir());
@@ -105,6 +110,8 @@ public class DeviceBuildInfoTest {
         copy = (DeviceBuildInfo) mBuildInfo.clone();
         try {
             assertEquals(copy.getTestsDir(), mBuildInfo.getTestsDir());
+            assertEquals(
+                    copy.getFile(ExternalLinkedDir.HOST_LINKED_DIR.toString()), mHostLinkedDir);
             // Only the tests dir is not copied.
             assertNotEquals(copy.getBasebandImageFile(), mBuildInfo.getBasebandImageFile());
         } finally {

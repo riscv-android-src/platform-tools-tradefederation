@@ -523,7 +523,7 @@ public class ModuleDefinitionTest {
                         listener.testStarted(tid);
                         listener.testFailed(tid, "I failed");
                         listener.testEnded(tid, new HashMap<>());
-                        listener.testRunEnded(0, new HashMap<>());
+                        listener.testRunEnded(0, new HashMap<String, String>());
                     }
                 });
         mTargetPrepList.clear();
