@@ -19,11 +19,14 @@ import com.android.tradefed.build.StubBuildProvider;
 import com.android.tradefed.config.Configuration;
 import com.android.tradefed.config.IConfiguration;
 import com.android.tradefed.config.IDeviceConfiguration;
+import com.android.tradefed.device.metric.FilePullerLogCollector;
+import com.android.tradefed.device.metric.IMetricCollector;
 import com.android.tradefed.result.TextResultReporter;
 import com.android.tradefed.targetprep.ITargetPreparer;
 import com.android.tradefed.targetprep.multi.IMultiTargetPreparer;
 import com.android.tradefed.testtype.suite.module.BaseModuleController;
 
+import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -31,6 +34,18 @@ import java.util.List;
  * the expected requirements: - No Build providers - No Result reporters
  */
 public class ValidateSuiteConfigHelper {
+
+    /**
+     * Special exemption list for some collectors. They would be overly cumbersome to be defined at
+     * the suite level.
+     */
+    private static final List<String> ALLOWED_COLLECTOR_IN_MODULE = new ArrayList<>();
+
+    static {
+        // This collector simply pull and log file from the device. it is useful at the module level
+        // so they can specify which 'key' is going to be watched to be pulled.
+        ALLOWED_COLLECTOR_IN_MODULE.add(FilePullerLogCollector.class.getCanonicalName());
+    }
 
     private ValidateSuiteConfigHelper() {}
 
@@ -84,12 +99,18 @@ public class ValidateSuiteConfigHelper {
         }
         // Check multi target preparers
         checkTargetPrep(config, config.getMultiTargetPreparers());
-        if (!config.getMetricCollectors().isEmpty()) {
-            throwRuntime(
-                    config,
-                    String.format(
-                            "%s objects are not allowed in module.",
-                            Configuration.DEVICE_METRICS_COLLECTOR_TYPE_NAME));
+
+        // Check metric collectors
+        for (IMetricCollector collector : config.getMetricCollectors()) {
+            // Only some collectors are allowed in the module
+            if (!ALLOWED_COLLECTOR_IN_MODULE.contains(collector.getClass().getCanonicalName())) {
+                throwRuntime(
+                        config,
+                        String.format(
+                                "%s objects are not allowed in module. Except for: %s",
+                                Configuration.DEVICE_METRICS_COLLECTOR_TYPE_NAME,
+                                ALLOWED_COLLECTOR_IN_MODULE));
+            }
         }
 
         // Check that we validate the module_controller.
