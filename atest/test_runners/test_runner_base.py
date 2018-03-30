@@ -48,7 +48,7 @@ class TestRunnerBase(object):
         Args:
             cmd: A string of the command to execute.
         """
-        logging.debug('Executing command: %s', cmd)
+        logging.info('Executing command: %s', cmd)
         subprocess.check_call(cmd, shell=True, stderr=subprocess.STDOUT)
 
     def run_tests(self, test_infos, extra_args):
