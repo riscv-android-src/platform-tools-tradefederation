@@ -39,6 +39,7 @@ public class ModuleListener extends CollectingTestListener {
     private boolean mTestFailed = false;
     private int mTestsRan = 1;
     private ITestInvocationListener mMainListener;
+    private boolean mHasFailed = false;
 
     /** Constructor. */
     public ModuleListener(ITestInvocationListener listener) {
@@ -68,8 +69,14 @@ public class ModuleListener extends CollectingTestListener {
     /** {@inheritDoc} */
     @Override
     public void testRunFailed(String errorMessage) {
+        mHasFailed = true;
         CLog.d("ModuleListener.testRunFailed(%s)", errorMessage);
         super.testRunFailed(errorMessage);
+    }
+
+    /** Returns whether or not the listener session has failed. */
+    public boolean hasFailed() {
+        return mHasFailed;
     }
 
     /** {@inheritDoc} */
