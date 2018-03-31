@@ -96,6 +96,12 @@ public class InstalledInstrumentationsTest
             "collector, so use the EACH setting with due caution.")
     private BugreportCollector.Freq mBugreportFrequency = null;
 
+    @Option(
+        name = "bugreport-on-run-failure",
+        description = "Take a bugreport if the instrumentation finish with a run failure"
+    )
+    private boolean mBugreportOnRunFailure = false;
+
     @Option(name = "screenshot-on-failure", description = "Take a screenshot on every test failure")
     private boolean mScreenshotOnFailure = false;
 

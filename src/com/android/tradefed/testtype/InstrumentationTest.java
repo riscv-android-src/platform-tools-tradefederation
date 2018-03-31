@@ -178,6 +178,12 @@ public class InstrumentationTest implements IDeviceTest, IResumableTest, ITestCo
             "collector, so use the EACH setting with due caution.")
     private BugreportCollector.Freq mBugreportFrequency = null;
 
+    @Option(
+        name = "bugreport-on-run-failure",
+        description = "Take a bugreport if the instrumentation finish with a run failure"
+    )
+    private boolean mBugreportOnRunFailure = false;
+
     @Option(name = "screenshot-on-failure", description = "Take a screenshot on every test failure")
     private boolean mScreenshotOnFailure = false;
 
@@ -902,6 +908,18 @@ public class InstrumentationTest implements IDeviceTest, IResumableTest, ITestCo
 
         TestRunResult testRun = testTracker.getCurrentRunResults();
         if (testRun.isRunFailure() || !testRun.getCompletedTests().containsAll(expectedTests)) {
+            if (mBugreportOnRunFailure) {
+                // Capture a bugreport to help with the failure.
+                String name = (mTestClassName != null) ? mTestClassName : mPackageName;
+                boolean res =
+                        mDevice.logBugreport(
+                                String.format("bugreport-on-run-failure-%s", name), listener);
+                if (!res) {
+                    CLog.e(
+                            "Failed to capture a bugreport for the run failure of '%s'",
+                            testRun.getName());
+                }
+            }
             // Don't re-run any completed tests, unless this is a coverage run.
             if (!mCoverage) {
                 expectedTests.removeAll(testTracker.getCurrentRunResults().getCompletedTests());
