@@ -81,6 +81,10 @@ class VtsTradefedTestRunner(atest_tf_test_runner.AtestTradefedTestRunner):
         args_to_append = []
         args_not_supported = []
         for arg in extra_args:
+            if constants.SERIAL == arg:
+                args_to_append.append('--serial')
+                args_to_append.append(extra_args[arg])
+                continue
             if constants.CUSTOM_ARGS == arg:
                 args_to_append.extend(extra_args[arg])
                 continue

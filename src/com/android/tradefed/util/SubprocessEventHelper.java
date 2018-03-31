@@ -18,6 +18,7 @@ package com.android.tradefed.util;
 import com.android.tradefed.invoker.IInvocationContext;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.result.LogDataType;
+import com.android.tradefed.testtype.suite.ModuleDefinition;
 
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -52,6 +53,7 @@ public class SubprocessEventHelper {
     private static final String TEST_TAG_KEY = "testTag";
 
     private static final String MODULE_CONTEXT_KEY = "moduleContextFileName";
+    private static final String MODULE_NAME = "moduleName";
 
     /**
      * Helper for testRunStarted information
@@ -449,6 +451,15 @@ public class SubprocessEventHelper {
                 tags = new JSONObject();
                 File serializedContext = SerializationUtil.serialize(mModuleContext);
                 tags.put(MODULE_CONTEXT_KEY, serializedContext.getAbsolutePath());
+                // For easier debugging on the events for modules, add the module name
+                String moduleName =
+                        mModuleContext
+                                .getAttributes()
+                                .getUniqueMap()
+                                .get(ModuleDefinition.MODULE_NAME);
+                if (moduleName != null) {
+                    tags.put(MODULE_NAME, moduleName);
+                }
             } catch (IOException | JSONException e) {
                 CLog.e(e);
                 throw new RuntimeException(e);
