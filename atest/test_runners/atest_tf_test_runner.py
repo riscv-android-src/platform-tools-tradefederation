@@ -129,6 +129,10 @@ class AtestTradefedTestRunner(test_runner_base.TestRunnerBase):
             if constants.DISABLE_INSTALL == arg:
                 args_to_append.append('--disable-target-preparers')
                 continue
+            if constants.SERIAL == arg:
+                args_to_append.append('--serial')
+                args_to_append.append(extra_args[arg])
+                continue
             if constants.DISABLE_TEARDOWN == arg:
                 args_to_append.append('--disable-teardown')
                 continue
