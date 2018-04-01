@@ -254,6 +254,8 @@ def _parse_args(argv):
                         'of device after test run. In this case, -d must be used in previous '
                         'test run to disable cleanup, for -t to work. Otherwise, '
                         'device will need to be setup again with -i.')
+    parser.add_argument('-s', '--serial',
+                        help='The device to run the test on.')
     parser.add_argument('-d', '--disable-teardown', action='store_true',
                         help='Disables test teardown and cleanup.')
     parser.add_argument('-m', REBUILD_MODULE_INFO_FLAG, action='store_true',
@@ -362,6 +364,8 @@ def get_extra_args(args):
         extra_args[constants.DISABLE_TEARDOWN] = args.disable_teardown
     if args.generate_baseline:
         extra_args[constants.PRE_PATCH_ITERATIONS] = args.generate_baseline
+    if args.serial:
+        extra_args[constants.SERIAL] = args.serial
     if args.generate_new_metrics:
         extra_args[constants.POST_PATCH_ITERATIONS] = args.generate_new_metrics
     if args.custom_args:

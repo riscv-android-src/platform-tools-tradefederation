@@ -30,9 +30,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
-/**
- * Unit tests for {@link InstalledInstrumentationsTestTest}.
- */
+/** Unit tests for {@link InstalledInstrumentationsTest}. */
 public class InstalledInstrumentationsTestTest extends TestCase {
 
     private static final String TEST_PKG = "com.example.tests";
