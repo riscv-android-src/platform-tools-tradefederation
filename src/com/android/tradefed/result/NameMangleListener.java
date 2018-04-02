@@ -17,7 +17,9 @@
 package com.android.tradefed.result;
 
 import com.android.tradefed.invoker.IInvocationContext;
+import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
 
+import java.util.HashMap;
 import java.util.Map;
 
 /**
@@ -94,6 +96,12 @@ public abstract class NameMangleListener implements ITestInvocationListener {
      */
     @Override
     public void testRunEnded(long elapsedTime, Map<String, String> runMetrics) {
+        mListener.testRunEnded(elapsedTime, runMetrics);
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public void testRunEnded(long elapsedTime, HashMap<String, Metric> runMetrics) {
         mListener.testRunEnded(elapsedTime, runMetrics);
     }
 

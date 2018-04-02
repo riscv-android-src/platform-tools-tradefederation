@@ -16,6 +16,8 @@
 package com.android.tradefed.util.proto;
 
 import com.android.tradefed.log.LogUtil.CLog;
+import com.android.tradefed.metrics.proto.MetricMeasurement.DataType;
+import com.android.tradefed.metrics.proto.MetricMeasurement.Directionality;
 import com.android.tradefed.metrics.proto.MetricMeasurement.Measurements;
 import com.android.tradefed.metrics.proto.MetricMeasurement.Measurements.MeasurementCase;
 import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
@@ -59,5 +61,26 @@ public class TfMetricProtoUtil {
             oldFormat.put(key, value);
         }
         return oldFormat;
+    }
+
+    /**
+     * Conversion from Map<String, String> to HashMap<String, Metric>. In order to go to the new
+     * interface. Information might only be partially populated because of the old format
+     * limitations.
+     */
+    public static HashMap<String, Metric> upgradeConvert(Map<String, String> metrics) {
+        HashMap<String, Metric> newFormat = new HashMap<>();
+        for (String key : metrics.keySet()) {
+            Measurements measures =
+                    Measurements.newBuilder().setSingleString(metrics.get(key)).build();
+            Metric m =
+                    Metric.newBuilder()
+                            .setMeasurements(measures)
+                            .setDirection(Directionality.DIRECTIONALITY_UNSPECIFIED)
+                            .setType(DataType.RAW)
+                            .build();
+            newFormat.put(key, m);
+        }
+        return newFormat;
     }
 }
