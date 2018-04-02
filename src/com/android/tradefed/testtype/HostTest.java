@@ -25,6 +25,7 @@ import com.android.tradefed.config.OptionSetter;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.invoker.IInvocationContext;
+import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.JUnit4ResultForwarder;
 import com.android.tradefed.result.ResultForwarder;
@@ -57,6 +58,7 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.Deque;
 import java.util.Enumeration;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -137,7 +139,8 @@ public class HostTest
     @Option(
         name = "enable-pretty-logs",
         description =
-                "whether or not to enable a logging for each test start and end on both host and device side."
+                "whether or not to enable a logging for each test start and end on both host and "
+                        + "device side."
     )
     private boolean mEnableHostDeviceLogs = true;
 
@@ -515,7 +518,7 @@ public class HostTest
                 listener.testStarted(testId);
                 listener.testEnded(testId, empty);
             }
-            Map<String, String> emptyMap = Collections.emptyMap();
+            HashMap<String, Metric> emptyMap = new HashMap<>();
             listener.testRunEnded(0, emptyMap);
         } else {
             JUnitRunUtil.runTest(listener, junitTest, className);
@@ -538,22 +541,22 @@ public class HostTest
                 setTestObjectInformation(checkRunner);
                 runnerCore.run(checkRunner);
             }
-            listener.testRunEnded(System.currentTimeMillis() - startTime,
-                    Collections.emptyMap());
+            listener.testRunEnded(
+                    System.currentTimeMillis() - startTime, new HashMap<String, Metric>());
         } else {
             // Special case where filtering leaves no tests to run, we report no failure
             // in this case.
             if (EXCLUDE_NO_TEST_FAILURE.equals(
                     checkRunner.getDescription().getClassName())) {
                 listener.testRunStarted(className, 0);
-                listener.testRunEnded(0, Collections.emptyMap());
+                listener.testRunEnded(0, new HashMap<String, Metric>());
             } else {
                 // Run the Error runner to get the failures from test classes.
                 listener.testRunStarted(className, checkRunner.testCount());
                 RunNotifier failureNotifier = new RunNotifier();
                 failureNotifier.addListener(list);
                 checkRunner.run(failureNotifier);
-                listener.testRunEnded(0, Collections.emptyMap());
+                listener.testRunEnded(0, new HashMap<String, Metric>());
             }
         }
     }

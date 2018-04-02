@@ -17,6 +17,7 @@ package com.android.tradefed.result;
 
 import com.android.ddmlib.Log;
 import com.android.tradefed.invoker.IInvocationContext;
+import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
 
 import junit.framework.AssertionFailedError;
 import junit.framework.Test;
@@ -25,6 +26,7 @@ import junit.framework.TestResult;
 
 import org.junit.AssumptionViolatedException;
 
+import java.util.HashMap;
 import java.util.Map;
 
 /**
@@ -66,11 +68,9 @@ import java.util.Map;
         mJUnitListener.addError(test, throwable);
     }
 
-    /**
-     * {@inheritDoc}
-     */
+    /** {@inheritDoc} */
     @Override
-    public void testRunEnded(long elapsedTime, Map<String, String> runMetrics) {
+    public void testRunEnded(long elapsedTime, HashMap<String, Metric> runMetrics) {
        // TODO: no run ended method on TestListener - would be good to propagate the elaspedTime
        // info up
        Log.i(LOG_TAG, String.format("run ended %d ms", elapsedTime));
