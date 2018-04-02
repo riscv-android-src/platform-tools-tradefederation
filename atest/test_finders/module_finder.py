@@ -27,6 +27,7 @@ import test_info
 import test_finder_base
 import test_finder_utils
 from test_runners import atest_tf_test_runner
+from test_runners import robolectric_test_runner
 from test_runners import vts_tf_test_runner
 
 _JAVA_EXT = '.java'
@@ -47,6 +48,7 @@ class ModuleFinder(test_finder_base.TestFinderBase):
     """Module finder class."""
     NAME = 'MODULE'
     _TEST_RUNNER = atest_tf_test_runner.AtestTradefedTestRunner.NAME
+    _ROBOLECTRIC_RUNNER = robolectric_test_runner.RobolectricTestRunner.NAME
     _VTS_TEST_RUNNER = vts_tf_test_runner.VtsTradefedTestRunner.NAME
 
     def __init__(self, module_info=None):
@@ -54,10 +56,49 @@ class ModuleFinder(test_finder_base.TestFinderBase):
         self.root_dir = os.environ.get(constants.ANDROID_BUILD_TOP)
         self.module_info = module_info
 
+    def _is_testable_module(self, mod_info):
+        """Check if module is something we can test.
+
+        A module is testable if:
+          - it's installed.
+          - it's a robolectric module (or shares path with one).
+
+        Args:
+            mod_info: Dict of module info to check.
+
+        Returns:
+            True if we can test this module, False otherwise.
+        """
+        if not mod_info:
+            return False
+        # TODO: b/77286797
+        if mod_info.get('installed'):
+            return True
+        if self._is_robolectric_test(mod_info.get(constants.MODULE_NAME)):
+            return True
+        return False
+
+    def _get_first_testable_module(self, path):
+        """Returns first testable module given module path.
+
+        Args:
+            path: String path of module to look for.
+
+        Returns:
+            String of first installed module name.
+        """
+        for mod in self.module_info.get_module_names(path):
+            mod_info = self.module_info.get_module_info(mod)
+            if self._is_testable_module(mod_info):
+                return mod_info.get(constants.MODULE_NAME)
+        return None
+
     def _is_vts_module(self, module_name):
         """Returns True if the module is a vts module, else False."""
         mod_info = self.module_info.get_module_info(module_name)
-        suites = mod_info.get('compatibility_suites', [])
+        suites = []
+        if mod_info:
+            suites = mod_info.get('compatibility_suites', [])
         # Pull out all *ts (cts, tvts, etc) suites.
         suites = [suite for suite in suites if suite not in _SUITES_TO_IGNORE]
         return len(suites) == 1 and 'vts' in suites
@@ -93,6 +134,63 @@ class ModuleFinder(test_finder_base.TestFinderBase):
         test.build_targets.add(test.test_name)
         return test
 
+    def _get_robolectric_test_name(self, module_name):
+        """Returns run robolectric module.
+
+        There are at least 2 modules in every robolectric module path, return
+        the module that we can run as a build target.
+
+        Arg:
+            module_name: String of module.
+
+        Returns:
+            String of module that is the run robolectric module, None if none
+            could be found.
+        """
+        module_name_info = self.module_info.get_module_info(module_name)
+        if not module_name_info:
+            return None
+        for mod in self.module_info.get_module_names(
+                module_name_info.get(constants.MODULE_PATH, [])[0]):
+            mod_info = self.module_info.get_module_info(mod)
+            if test_finder_utils.is_robolectric_module(mod_info):
+                return mod
+        return None
+
+    def _is_robolectric_test(self, module_name):
+        """Check if module is a robolectric test.
+
+        A module can be a robolectric test if the specified module has their
+        class set as ROBOLECTRIC (or shares their path with a module that does).
+
+        Args:
+            module_name: String of module to check.
+
+        Returns:
+            True if the module is a robolectric module, else False.
+        """
+        # Check 1, module class is ROBOLECTRIC
+        mod_info = self.module_info.get_module_info(module_name)
+        if mod_info and test_finder_utils.is_robolectric_module(mod_info):
+            return True
+        # Check 2, shared modules in the path have class ROBOLECTRIC_CLASS.
+        if self._get_robolectric_test_name(module_name):
+            return True
+        return False
+
+    def _update_to_robolectric_test_info(self, test):
+        """Update the fields for a robolectric test.
+
+        Args:
+          test: TestInfo to be updated with robolectric fields.
+
+        Returns:
+          TestInfo with robolectric fields.
+        """
+        test.test_runner = self._ROBOLECTRIC_RUNNER
+        test.test_name = self._get_robolectric_test_name(test.test_name)
+        return test
+
     def _process_test_info(self, test):
         """Process the test info and return some fields updated/changed.
 
@@ -108,6 +206,11 @@ class ModuleFinder(test_finder_base.TestFinderBase):
         # Check if this is only a vts module.
         if self._is_vts_module(test.test_name):
             return self._update_to_vts_test_info(test)
+        elif self._is_robolectric_test(test.test_name):
+            return self._update_to_robolectric_test_info(test)
+        module_name = test.test_name
+        rel_config = test.data[constants.TI_REL_CONFIG]
+        test.build_targets = self._get_build_targets(module_name, rel_config)
         return test
 
     def _is_auto_gen_test_config(self, module_name):
@@ -153,14 +256,15 @@ class ModuleFinder(test_finder_base.TestFinderBase):
         Returns:
             A populated TestInfo namedtuple if found, else None.
         """
-        info = self.module_info.get_module_info(module_name)
-        if info and info.get('installed'):
+        mod_info = self.module_info.get_module_info(module_name)
+        if self._is_testable_module(mod_info):
             # path is a list with only 1 element.
-            rel_config = os.path.join(info['path'][0], constants.MODULE_CONFIG)
+            rel_config = os.path.join(mod_info['path'][0],
+                                      constants.MODULE_CONFIG)
             return self._process_test_info(test_info.TestInfo(
                 test_name=module_name,
                 test_runner=self._TEST_RUNNER,
-                build_targets=self._get_build_targets(module_name, rel_config),
+                build_targets=set(),
                 data={constants.TI_REL_CONFIG: rel_config,
                       constants.TI_FILTER: frozenset()}))
         return None
@@ -204,12 +308,12 @@ class ModuleFinder(test_finder_base.TestFinderBase):
                 self.root_dir, test_dir, self.module_info)
             rel_config = os.path.join(rel_module_dir, constants.MODULE_CONFIG)
         if not module_name:
-            module_name = self.module_info.get_module_name(os.path.dirname(
+            module_name = self._get_first_testable_module(os.path.dirname(
                 rel_config))
         return self._process_test_info(test_info.TestInfo(
             test_name=module_name,
             test_runner=self._TEST_RUNNER,
-            build_targets=self._get_build_targets(module_name, rel_config),
+            build_targets=set(),
             data={constants.TI_FILTER: test_filter,
                   constants.TI_REL_CONFIG: rel_config}))
 
@@ -266,12 +370,12 @@ class ModuleFinder(test_finder_base.TestFinderBase):
                 self.root_dir, package_path, self.module_info)
             rel_config = os.path.join(rel_module_dir, constants.MODULE_CONFIG)
         if not module_name:
-            module_name = self.module_info.get_module_name(
+            module_name = self._get_first_testable_module(
                 os.path.dirname(rel_config))
         return self._process_test_info(test_info.TestInfo(
             test_name=module_name,
             test_runner=self._TEST_RUNNER,
-            build_targets=self._get_build_targets(module_name, rel_config),
+            build_targets=set(),
             data={constants.TI_FILTER: test_filter,
                   constants.TI_REL_CONFIG: rel_config}))
 
@@ -321,7 +425,7 @@ class ModuleFinder(test_finder_base.TestFinderBase):
             self.root_dir, dir_path, self.module_info)
         if not rel_module_dir:
             return None
-        module_name = self.module_info.get_module_name(rel_module_dir)
+        module_name = self._get_first_testable_module(rel_module_dir)
         rel_config = os.path.join(rel_module_dir, constants.MODULE_CONFIG)
         data = {constants.TI_REL_CONFIG: rel_config,
                 constants.TI_FILTER: frozenset()}
@@ -348,5 +452,5 @@ class ModuleFinder(test_finder_base.TestFinderBase):
         return self._process_test_info(test_info.TestInfo(
             test_name=module_name,
             test_runner=self._TEST_RUNNER,
-            build_targets=self._get_build_targets(module_name, rel_config),
+            build_targets=set(),
             data=data))
