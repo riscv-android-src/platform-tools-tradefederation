@@ -31,6 +31,7 @@ import junit.framework.TestCase;
 
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.Map;
 
 /** Unit tests for {@link PythonUnitTestResultParser}. */
 public class PythonUnitTestResultParserTest extends TestCase {
@@ -437,7 +438,7 @@ public class PythonUnitTestResultParserTest extends TestCase {
         expectLastCall().times(1);
         mMockListener.testFailed(anyObject(), eq(expectedTrackback));
         expectLastCall().times(1);
-        mMockListener.testEnded(anyObject(), anyObject());
+        mMockListener.testEnded(anyObject(), (Map<String, String>) anyObject());
         expectLastCall().times(1);
         setRunListenerChecks(1, 1000, false);
 
