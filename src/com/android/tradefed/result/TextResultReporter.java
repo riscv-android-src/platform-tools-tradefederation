@@ -18,9 +18,11 @@ package com.android.tradefed.result;
 import com.android.ddmlib.Log.LogLevel;
 import com.android.tradefed.config.OptionClass;
 import com.android.tradefed.log.LogUtil.CLog;
+import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
 
 import junit.textui.ResultPrinter;
 
+import java.util.HashMap;
 import java.util.Map;
 
 /**
@@ -63,14 +65,12 @@ public class TextResultReporter extends InvocationToJUnitResultForwarder
         }
     }
 
-    /**
-     * Overrides parent to explicitly print out metrics.
-     */
+    /** Overrides parent to explicitly print out metrics. */
     @Override
-    public void testRunEnded(long elapsedTime, Map<String, String> metrics) {
+    public void testRunEnded(long elapsedTime, HashMap<String, Metric> metrics) {
         super.testRunEnded(elapsedTime, metrics);
         if (!metrics.isEmpty()) {
-            ResultPrinter printer = (ResultPrinter)getJUnitListener();
+            ResultPrinter printer = (ResultPrinter) getJUnitListener();
             printer.getWriter().format("\nMetrics: %s\n", metrics);
         }
     }

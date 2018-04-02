@@ -20,6 +20,7 @@ import static org.junit.Assert.assertNotNull;
 import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.config.OptionSetter;
 import com.android.tradefed.device.ITestDevice;
+import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.TestDescription;
 import com.android.tradefed.testtype.HostTest;
@@ -34,7 +35,6 @@ import org.junit.runners.JUnit4;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 
 import junitparams.Parameters;
 
@@ -124,7 +124,7 @@ public class DeviceParameterizedRunnerTest {
         mListener.testStarted(test2_2);
         mListener.testEnded(test2_2, new HashMap<>());
 
-        mListener.testRunEnded(EasyMock.anyLong(), (Map<String, String>) EasyMock.anyObject());
+        mListener.testRunEnded(EasyMock.anyLong(), (HashMap<String, Metric>) EasyMock.anyObject());
 
         EasyMock.replay(mDevice, mBuild, mListener);
         mTest.run(mListener);
@@ -154,7 +154,7 @@ public class DeviceParameterizedRunnerTest {
         mListener.testStarted(test2_2);
         mListener.testEnded(test2_2, new HashMap<>());
 
-        mListener.testRunEnded(EasyMock.anyLong(), (Map<String, String>) EasyMock.anyObject());
+        mListener.testRunEnded(EasyMock.anyLong(), (HashMap<String, Metric>) EasyMock.anyObject());
 
         EasyMock.replay(mDevice, mBuild, mListener);
         mTest.run(mListener);
@@ -175,7 +175,7 @@ public class DeviceParameterizedRunnerTest {
         mListener.testStarted(test2_p1);
         mListener.testEnded(test2_p1, new HashMap<>());
 
-        mListener.testRunEnded(EasyMock.anyLong(), (Map<String, String>) EasyMock.anyObject());
+        mListener.testRunEnded(EasyMock.anyLong(), (HashMap<String, Metric>) EasyMock.anyObject());
 
         EasyMock.replay(mDevice, mBuild, mListener);
         mTest.run(mListener);
@@ -197,7 +197,7 @@ public class DeviceParameterizedRunnerTest {
         mListener.testStarted(test2_p1);
         mListener.testEnded(test2_p1, new HashMap<>());
 
-        mListener.testRunEnded(EasyMock.anyLong(), (Map<String, String>) EasyMock.anyObject());
+        mListener.testRunEnded(EasyMock.anyLong(), (HashMap<String, Metric>) EasyMock.anyObject());
 
         EasyMock.replay(mDevice, mBuild, mListener);
         mTest.run(mListener);
@@ -222,7 +222,7 @@ public class DeviceParameterizedRunnerTest {
         mListener.testStarted(test2_2);
         mListener.testEnded(test2_2, new HashMap<>());
 
-        mListener.testRunEnded(EasyMock.anyLong(), (Map<String, String>) EasyMock.anyObject());
+        mListener.testRunEnded(EasyMock.anyLong(), (HashMap<String, Metric>) EasyMock.anyObject());
 
         EasyMock.replay(mDevice, mBuild, mListener);
         mTest.run(mListener);
@@ -246,7 +246,7 @@ public class DeviceParameterizedRunnerTest {
         mListener.testIgnored(test2_p1);
         mListener.testEnded(test2_p1, new HashMap<>());
 
-        mListener.testRunEnded(EasyMock.anyLong(), (Map<String, String>) EasyMock.anyObject());
+        mListener.testRunEnded(EasyMock.anyLong(), (HashMap<String, Metric>) EasyMock.anyObject());
 
         EasyMock.replay(mDevice, mBuild, mListener);
         mTest.run(mListener);
