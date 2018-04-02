@@ -16,8 +16,10 @@
 package com.android.tradefed.result;
 
 import com.android.ddmlib.testrunner.TestResult.TestStatus;
+import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
 
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
@@ -27,6 +29,7 @@ public class TestResult {
     private TestStatus mStatus;
     private String mStackTrace;
     private Map<String, String> mMetrics;
+    private HashMap<String, Metric> mProtoMetrics;
     private Map<String, LogFile> mLoggedFiles;
     // the start and end time of the test, measured via {@link System#currentTimeMillis()}
     private long mStartTime = 0;
@@ -36,6 +39,7 @@ public class TestResult {
         mStatus = TestStatus.INCOMPLETE;
         mStartTime = System.currentTimeMillis();
         mLoggedFiles = new LinkedHashMap<String, LogFile>();
+        mProtoMetrics = new HashMap<>();
     }
 
     /** Get the {@link TestStatus} result of the test. */
@@ -56,9 +60,19 @@ public class TestResult {
         return mMetrics;
     }
 
+    /** Get the associated test metrics in proto format. */
+    public HashMap<String, Metric> getProtoMetrics() {
+        return mProtoMetrics;
+    }
+
     /** Set the test metrics, overriding any previous values. */
     public void setMetrics(Map<String, String> metrics) {
         mMetrics = metrics;
+    }
+
+    /** Set the test proto metrics format, overriding any previous values. */
+    public void setProtoMetrics(HashMap<String, Metric> metrics) {
+        mProtoMetrics = metrics;
     }
 
     /** Add a logged file tracking associated with that test case */

@@ -21,6 +21,7 @@ import com.android.tradefed.metrics.proto.MetricMeasurement.Directionality;
 import com.android.tradefed.metrics.proto.MetricMeasurement.Measurements;
 import com.android.tradefed.metrics.proto.MetricMeasurement.Measurements.MeasurementCase;
 import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
+import com.android.tradefed.metrics.proto.MetricMeasurement.Metric.Builder;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -82,5 +83,21 @@ public class TfMetricProtoUtil {
             newFormat.put(key, m);
         }
         return newFormat;
+    }
+
+    /**
+     * Create a {@link Metric} for a single long/int value, and optionally provide a unit.
+     *
+     * @param value The value that will be stored.
+     * @param unit the unit of the value, or null if no unit.
+     * @return a {@link Metric} populated with the informations.
+     */
+    public static Metric createSingleValue(long value, String unit) {
+        Measurements measure = Measurements.newBuilder().setSingleInt(value).build();
+        Builder metricBuilder = Metric.newBuilder().setType(DataType.RAW).setMeasurements(measure);
+        if (unit != null) {
+            metricBuilder.setUnit(unit);
+        }
+        return metricBuilder.build();
     }
 }
