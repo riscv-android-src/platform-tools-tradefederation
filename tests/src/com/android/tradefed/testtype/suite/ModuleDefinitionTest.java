@@ -316,7 +316,7 @@ public class ModuleDefinitionTest {
         mMockListener.testStarted(
                 new TestDescription(TargetSetupError.class.getCanonicalName(), "preparationError"));
         mMockListener.testFailed(EasyMock.anyObject(), EasyMock.contains(exceptionMessage));
-        mMockListener.testEnded(EasyMock.anyObject(), EasyMock.anyObject());
+        mMockListener.testEnded(EasyMock.anyObject(), (Map<String, String>) EasyMock.anyObject());
         mMockListener.testRunFailed(EasyMock.contains(exceptionMessage));
         mMockListener.testRunEnded(EasyMock.anyLong(), (Map<String, String>) EasyMock.anyObject());
         replayMocks();
@@ -359,7 +359,7 @@ public class ModuleDefinitionTest {
             mMockListener.testEnded(
                     (TestDescription) EasyMock.anyObject(),
                     EasyMock.anyLong(),
-                    EasyMock.anyObject());
+                    (Map<String, String>) EasyMock.anyObject());
         }
         mMockListener.testRunEnded(EasyMock.anyLong(), (Map<String, String>) EasyMock.anyObject());
         replayMocks();
@@ -403,7 +403,7 @@ public class ModuleDefinitionTest {
             mMockListener.testEnded(
                     (TestDescription) EasyMock.anyObject(),
                     EasyMock.anyLong(),
-                    EasyMock.anyObject());
+                    (Map<String, String>) EasyMock.anyObject());
         }
         mMockListener.testFailed(EasyMock.anyObject(), EasyMock.anyObject());
         mMockListener.testRunFailed(EasyMock.anyObject());
@@ -522,7 +522,7 @@ public class ModuleDefinitionTest {
                         listener.testRunStarted("test", 1);
                         listener.testStarted(tid);
                         listener.testFailed(tid, "I failed");
-                        listener.testEnded(tid, new HashMap<>());
+                        listener.testEnded(tid, new HashMap<String, String>());
                         listener.testRunEnded(0, new HashMap<String, String>());
                     }
                 });
@@ -541,7 +541,10 @@ public class ModuleDefinitionTest {
         mMockListener.testRunStarted(EasyMock.anyObject(), EasyMock.anyInt());
         mMockListener.testStarted(EasyMock.anyObject(), EasyMock.anyLong());
         mMockListener.testIgnored(EasyMock.anyObject());
-        mMockListener.testEnded(EasyMock.anyObject(), EasyMock.anyLong(), EasyMock.anyObject());
+        mMockListener.testEnded(
+                EasyMock.anyObject(),
+                EasyMock.anyLong(),
+                (Map<String, String>) EasyMock.anyObject());
         mMockListener.testRunEnded(EasyMock.anyLong(), (Map<String, String>) EasyMock.anyObject());
         replayMocks();
         mModule.run(mMockListener, null);
@@ -712,7 +715,7 @@ public class ModuleDefinitionTest {
             mMockListener.testEnded(
                     (TestDescription) EasyMock.anyObject(),
                     EasyMock.anyLong(),
-                    EasyMock.anyObject());
+                    (Map<String, String>) EasyMock.anyObject());
         }
         mMockListener.testFailed(EasyMock.anyObject(), EasyMock.anyObject());
         mMockListener.testRunFailed(EasyMock.anyObject());

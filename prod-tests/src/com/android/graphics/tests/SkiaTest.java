@@ -22,6 +22,7 @@ import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.IFileEntry;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.log.LogUtil.CLog;
+import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
 import com.android.tradefed.result.FileInputStreamSource;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.LogDataType;
@@ -32,6 +33,7 @@ import com.android.tradefed.util.RunUtil;
 
 import java.io.File;
 import java.util.Collections;
+import java.util.HashMap;
 
 /**
  *  Test for running Skia native tests.
@@ -100,10 +102,10 @@ public class SkiaTest implements IRemoteTest, IDeviceTest {
         if (app == null) {
             CLog.w("Could not find test %s in %s!", fullPath, mDevice.getSerialNumber());
             listener.testFailed(testId, "Device does not have " + fullPath);
-            listener.testEnded(testId, null);
+            listener.testEnded(testId, new HashMap<String, Metric>());
         } else {
             // The test for detecting the file has ended.
-            listener.testEnded(testId, null);
+            listener.testEnded(testId, new HashMap<String, Metric>());
             prepareDevice();
             runTest(app);
             retrieveFiles(mSkiaApp, listener);
@@ -199,7 +201,7 @@ public class SkiaTest implements IRemoteTest, IDeviceTest {
                 CLog.w("Failed to delete temporary file %s", localFile.getPath());
             }
         }
-        listener.testEnded(testId, null);
+        listener.testEnded(testId, new HashMap<String, Metric>());
     }
 
     /**

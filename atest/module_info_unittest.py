@@ -30,7 +30,7 @@ EXPECTED_MOD_TARGET_PATH = ['tf/core']
 UNEXPECTED_MOD_TARGET = 'this_should_not_be_in_module-info.json'
 MOD_NO_PATH = 'module-no-path'
 PATH_TO_MULT_MODULES = 'shared/path/to/be/used'
-MULT_MOODULES_WITH_SHARED_PATH = ['module1', 'module2']
+MULT_MOODULES_WITH_SHARED_PATH = ['module2', 'module1']
 
 #pylint: disable=protected-access
 class ModuleInfoUnittests(unittest.TestCase):
@@ -87,13 +87,13 @@ class ModuleInfoUnittests(unittest.TestCase):
         mod_two = 'mod2'
         mod_path_one = '/path/to/mod1'
         mod_path_two = '/path/to/mod2'
-        mod_info_dict = {mod_one: {module_info._MODULE_PATH: [mod_path_one]},
-                         mod_two: {module_info._MODULE_PATH: [mod_path_two]}}
+        mod_info_dict = {mod_one: {constants.MODULE_PATH: [mod_path_one]},
+                         mod_two: {constants.MODULE_PATH: [mod_path_two]}}
         mock_load_module.return_value = ('mod_target', mod_info_dict)
-        path_to_mod_info = {mod_path_one: [{module_info._MODULE_NAME: mod_one,
-                                            module_info._MODULE_PATH: [mod_path_one]}],
-                            mod_path_two: [{module_info._MODULE_NAME: mod_two,
-                                            module_info._MODULE_PATH: [mod_path_two]}]}
+        path_to_mod_info = {mod_path_one: [{constants.MODULE_NAME: mod_one,
+                                            constants.MODULE_PATH: [mod_path_one]}],
+                            mod_path_two: [{constants.MODULE_NAME: mod_two,
+                                            constants.MODULE_PATH: [mod_path_two]}]}
         mod_info = module_info.ModuleInfo()
         self.assertDictEqual(path_to_mod_info,
                              mod_info._get_path_to_module_info(mod_info_dict))
@@ -113,14 +113,13 @@ class ModuleInfoUnittests(unittest.TestCase):
                          EXPECTED_MOD_TARGET_PATH)
         self.assertEqual(mod_info.get_paths(MOD_NO_PATH), [])
 
-    def test_get_module_name(self):
+    def test_get_module_names(self):
         """test that we get the module name properly."""
         mod_info = module_info.ModuleInfo(module_file=JSON_FILE_PATH)
-        self.assertEqual(mod_info.get_module_name(EXPECTED_MOD_TARGET_PATH[0]),
-                         EXPECTED_MOD_TARGET)
-        # TODO: test returning multiple modules on 1 path when it's ready.
-        # self.assertEqual(mod_info.get_module_name(PATH_TO_MULT_MODULES),
-        #                  MULT_MOODULES_WITH_SHARED_PATH)
+        self.assertEqual(mod_info.get_module_names(EXPECTED_MOD_TARGET_PATH[0]),
+                         [EXPECTED_MOD_TARGET])
+        self.assertEqual(mod_info.get_module_names(PATH_TO_MULT_MODULES),
+                         MULT_MOODULES_WITH_SHARED_PATH)
 
 
 

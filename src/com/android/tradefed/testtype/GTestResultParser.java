@@ -18,6 +18,8 @@ package com.android.tradefed.testtype;
 import com.android.ddmlib.IShellOutputReceiver;
 import com.android.ddmlib.MultiLineReceiver;
 import com.android.tradefed.log.LogUtil.CLog;
+import com.android.tradefed.metrics.proto.MetricMeasurement.Measurements;
+import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.TestDescription;
 import com.android.tradefed.testtype.testdefs.XmlDefsTest;
@@ -267,7 +269,7 @@ public class GTestResultParser extends MultiLineReceiver {
             for (ITestInvocationListener listener : mTestListeners) {
                 listener.testRunStarted(mTestRunName, 0);
                 listener.testRunFailed(lines[0]);
-                listener.testRunEnded(0, Collections.emptyMap());
+                listener.testRunEnded(0, new HashMap<String, Metric>());
             }
         } else {
             for (String line : lines) {
@@ -435,10 +437,13 @@ public class GTestResultParser extends MultiLineReceiver {
      *
      * @return a {@link Map} of run metrics data
      */
-    private Map<String, String> getRunMetrics() {
-        Map<String, String> metricsMap = new HashMap<>();
+    private HashMap<String, Metric> getRunMetrics() {
+        HashMap<String, Metric> metricsMap = new HashMap<>();
         if (mCoverageTarget != null) {
-            metricsMap.put(XmlDefsTest.COVERAGE_TARGET_KEY, mCoverageTarget);
+            Measurements measure =
+                    Measurements.newBuilder().setSingleString(mCoverageTarget).build();
+            Metric m = Metric.newBuilder().setMeasurements(measure).build();
+            metricsMap.put(XmlDefsTest.COVERAGE_TARGET_KEY, m);
         }
         return metricsMap;
     }

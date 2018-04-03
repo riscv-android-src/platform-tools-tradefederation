@@ -29,6 +29,7 @@ import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.device.StubDevice;
 import com.android.tradefed.invoker.IInvocationContext;
 import com.android.tradefed.invoker.InvocationContext;
+import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
 import com.android.tradefed.result.CollectingTestListener;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.TestDescription;
@@ -136,7 +137,8 @@ public class BaseHostJUnit4TestTest {
         TestDescription tid = new TestDescription(CLASSNAME, "testPass");
         mMockListener.testStarted(tid);
         mMockListener.testEnded(tid, Collections.emptyMap());
-        mMockListener.testRunEnded(EasyMock.anyLong(), (Map<String, String>) EasyMock.anyObject());
+        mMockListener.testRunEnded(
+                EasyMock.anyLong(), (HashMap<String, Metric>) EasyMock.anyObject());
         EasyMock.replay(mMockListener, mMockBuild, mMockDevice);
         mHostTest.run(mMockListener);
         EasyMock.verify(mMockListener, mMockBuild, mMockDevice);
@@ -335,9 +337,9 @@ public class BaseHostJUnit4TestTest {
             EasyMock.expect(mMockDevice.installPackage(apk, true)).andReturn(null);
             // Ensure that the auto-uninstall is triggered
             EasyMock.expect(mMockDevice.uninstallPackage("fakepackage")).andReturn(null);
-            mMockListener.testEnded(description, new HashMap<>());
+            mMockListener.testEnded(description, new HashMap<String, String>());
             mMockListener.testRunEnded(
-                    EasyMock.anyLong(), (Map<String, String>) EasyMock.anyObject());
+                    EasyMock.anyLong(), (HashMap<String, Metric>) EasyMock.anyObject());
 
             EasyMock.replay(mMockBuild, mMockDevice, mMockListener);
             test.run(mMockListener);
