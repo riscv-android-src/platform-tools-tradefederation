@@ -43,6 +43,11 @@ EXIT_CODE_TEST_NOT_FOUND = 4
 
 # Test finder constants.
 MODULE_CONFIG = 'AndroidTest.xml'
+MODULE_NAME = 'module_name'
+MODULE_PATH = 'path'
+MODULE_CLASS = 'class'
+MODULE_INSTALLED = 'installed'
+MODULE_CLASS_ROBOLECTRIC = 'ROBOLECTRIC'
 
 # Env constants
 ANDROID_BUILD_TOP = 'ANDROID_BUILD_TOP'

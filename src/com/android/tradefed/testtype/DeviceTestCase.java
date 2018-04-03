@@ -20,6 +20,7 @@ import com.android.tradefed.config.Option;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.log.LogUtil.CLog;
+import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.TestDescription;
 import com.android.tradefed.util.TestFilterHelper;
@@ -31,6 +32,7 @@ import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
@@ -136,13 +138,13 @@ public class DeviceTestCase extends MetricTestCase
                     listener.testStarted(testId);
                     listener.testEnded(testId, empty);
                 }
-                listener.testRunEnded(0, empty);
+                listener.testRunEnded(0, new HashMap<String, Metric>());
             } else {
                 listener.testRunStarted(runName, 1);
                 TestDescription testId = new TestDescription(runName, getName());
                 listener.testStarted(testId);
                 listener.testEnded(testId, empty);
-                listener.testRunEnded(0, empty);
+                listener.testRunEnded(0, new HashMap<String, Metric>());
             }
         } else {
             JUnitRunUtil.runTest(listener, this);

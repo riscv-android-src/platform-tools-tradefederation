@@ -21,6 +21,7 @@ import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.config.Option;
 import com.android.tradefed.config.OptionSetter;
 import com.android.tradefed.device.ITestDevice;
+import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.TestDescription;
 import com.android.tradefed.testtype.DeviceJUnit4ClassRunner.TestMetrics;
@@ -171,7 +172,7 @@ public class DeviceSuiteTest {
         mListener.testEnded(EasyMock.eq(test1), EasyMock.eq(Collections.emptyMap()));
         mListener.testStarted(EasyMock.eq(test2));
         mListener.testEnded(EasyMock.eq(test2), EasyMock.eq(Collections.emptyMap()));
-        mListener.testRunEnded(EasyMock.anyLong(), EasyMock.eq(Collections.emptyMap()));
+        mListener.testRunEnded(EasyMock.anyLong(), EasyMock.eq(new HashMap<String, Metric>()));
         EasyMock.replay(mListener, mMockDevice);
         mHostTest.run(mListener);
         EasyMock.verify(mListener, mMockDevice);
@@ -196,7 +197,7 @@ public class DeviceSuiteTest {
                 new TestDescription(Junit4DeviceTestclass.class.getName(), "testPass1");
         mListener.testStarted(EasyMock.eq(test1));
         mListener.testEnded(EasyMock.eq(test1), EasyMock.eq(Collections.emptyMap()));
-        mListener.testRunEnded(EasyMock.anyLong(), EasyMock.eq(Collections.emptyMap()));
+        mListener.testRunEnded(EasyMock.anyLong(), EasyMock.eq(new HashMap<String, Metric>()));
         EasyMock.replay(mListener, mMockDevice);
         mHostTest.run(mListener);
         EasyMock.verify(mListener, mMockDevice);
@@ -221,7 +222,7 @@ public class DeviceSuiteTest {
         mListener.testEnded(EasyMock.eq(test1), EasyMock.eq(expected));
         mListener.testStarted(EasyMock.eq(test2));
         mListener.testEnded(EasyMock.eq(test2), EasyMock.eq(Collections.emptyMap()));
-        mListener.testRunEnded(EasyMock.anyLong(), EasyMock.eq(Collections.emptyMap()));
+        mListener.testRunEnded(EasyMock.anyLong(), EasyMock.eq(new HashMap<String, Metric>()));
         EasyMock.replay(mListener, mMockDevice);
         mHostTest.run(mListener);
         EasyMock.verify(mListener, mMockDevice);
@@ -239,7 +240,7 @@ public class DeviceSuiteTest {
                 new TestDescription(JUnit3DeviceTestCase.class.getName(), "testOne");
         mListener.testStarted(EasyMock.eq(test1));
         mListener.testEnded(EasyMock.eq(test1), EasyMock.eq(Collections.emptyMap()));
-        mListener.testRunEnded(EasyMock.anyLong(), EasyMock.eq(Collections.emptyMap()));
+        mListener.testRunEnded(EasyMock.anyLong(), EasyMock.eq(new HashMap<String, Metric>()));
         EasyMock.replay(mListener, mMockDevice);
         mHostTest.run(mListener);
         EasyMock.verify(mListener, mMockDevice);
