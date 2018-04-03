@@ -47,6 +47,7 @@ import com.android.tradefed.testtype.Abi;
 import com.android.tradefed.testtype.IInvocationContextReceiver;
 import com.android.tradefed.testtype.IRemoteTest;
 import com.android.tradefed.util.FileUtil;
+import com.android.tradefed.util.RunUtil;
 
 import org.easymock.EasyMock;
 import org.junit.After;
@@ -454,12 +455,12 @@ public class ITestSuiteIntegrationTest {
         TestParallelShardRescheduler rescheduler = new TestParallelShardRescheduler();
         helper.shardConfig(config, mContext, rescheduler);
         // Wait until all results are received, we expect 2 modules.
-        while (mListener.getRunResults().size() < 2) {
+        while (mListener.getTotalModules() < 2) {
             for (Thread t : rescheduler.mRunning) {
                 t.join(2000);
             }
         }
-
+        RunUtil.getDefault().sleep(250L);
         assertEquals(2, mListener.getTotalModules());
         assertEquals(2, mListener.getCompleteModules());
         assertEquals(6, mListener.getTotalTests());
