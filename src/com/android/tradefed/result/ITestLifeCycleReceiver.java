@@ -142,6 +142,19 @@ public interface ITestLifeCycleReceiver {
     public default void testEnded(TestDescription test, Map<String, String> testMetrics) {}
 
     /**
+     * Reports the execution end of an individual test case.
+     *
+     * <p>If {@link #testFailed} was not invoked, this test passed. Also returns any key/value
+     * metrics which may have been emitted during the test case's execution.
+     *
+     * @param test identifies the test
+     * @param testMetrics a {@link Map} of the metrics emitted
+     */
+    public default void testEnded(TestDescription test, HashMap<String, Metric> testMetrics) {
+        testEnded(test, TfMetricProtoUtil.compatibleConvert(testMetrics));
+    }
+
+    /**
      * Alternative to {@link #testEnded(TestDescription, Map)} where we can specify the end time
      * directly. Combine with {@link #testStarted(TestDescription, long)} for accurate measure.
      *
@@ -152,5 +165,18 @@ public interface ITestLifeCycleReceiver {
     public default void testEnded(
             TestDescription test, long endTime, Map<String, String> testMetrics) {
         testEnded(test, testMetrics);
+    }
+
+    /**
+     * Alternative to {@link #testEnded(TestDescription, Map)} where we can specify the end time
+     * directly. Combine with {@link #testStarted(TestDescription, long)} for accurate measure.
+     *
+     * @param test identifies the test
+     * @param endTime the time the test ended, measured via {@link System#currentTimeMillis()}
+     * @param testMetrics a {@link Map} of the metrics emitted
+     */
+    public default void testEnded(
+            TestDescription test, long endTime, HashMap<String, Metric> testMetrics) {
+        testEnded(test, endTime, TfMetricProtoUtil.compatibleConvert(testMetrics));
     }
 }

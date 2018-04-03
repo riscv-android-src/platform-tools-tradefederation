@@ -1236,7 +1236,8 @@ public class HostTestTest extends TestCase {
         Capture<TestDescription> captured = new Capture<>();
         mListener.testStarted(EasyMock.capture(captured));
         mListener.testFailed((TestDescription) EasyMock.anyObject(), (String) EasyMock.anyObject());
-        mListener.testEnded((TestDescription) EasyMock.anyObject(), EasyMock.anyObject());
+        mListener.testEnded(
+                (TestDescription) EasyMock.anyObject(), (Map<String, String>) EasyMock.anyObject());
         mListener.testRunEnded(EasyMock.anyLong(), (HashMap<String, Metric>) EasyMock.anyObject());
         EasyMock.replay(mListener);
         mHostTest.run(mListener);
@@ -2040,10 +2041,10 @@ public class HostTestTest extends TestCase {
         mListener.testRunStarted(EasyMock.anyObject(), EasyMock.eq(2));
         TestDescription tid2 = new TestDescription(Junit4TestClass.class.getName(), "testPass5");
         mListener.testStarted(EasyMock.eq(tid2));
-        mListener.testEnded(EasyMock.eq(tid2), EasyMock.anyObject());
+        mListener.testEnded(EasyMock.eq(tid2), (Map<String, String>) EasyMock.anyObject());
         TestDescription tid3 = new TestDescription(Junit4TestClass.class.getName(), "testPass6");
         mListener.testStarted(EasyMock.eq(tid3));
-        mListener.testEnded(EasyMock.eq(tid3), EasyMock.anyObject());
+        mListener.testEnded(EasyMock.eq(tid3), (Map<String, String>) EasyMock.anyObject());
         mListener.testRunEnded(EasyMock.anyLong(), (HashMap<String, Metric>) EasyMock.anyObject());
 
         EasyMock.replay(mListener);
@@ -2077,17 +2078,17 @@ public class HostTestTest extends TestCase {
         TestDescription tid = new TestDescription(JUnit4FailedBefore.class.getName(), "test1");
         mListener.testStarted(EasyMock.eq(tid));
         mListener.testFailed(EasyMock.eq(tid), EasyMock.anyObject());
-        mListener.testEnded(EasyMock.eq(tid), EasyMock.anyObject());
+        mListener.testEnded(EasyMock.eq(tid), (Map<String, String>) EasyMock.anyObject());
         mListener.testRunEnded(EasyMock.anyLong(), (HashMap<String, Metric>) EasyMock.anyObject());
 
         // Second class run properly
         mListener.testRunStarted(EasyMock.anyObject(), EasyMock.eq(2));
         TestDescription tid2 = new TestDescription(Junit4TestClass.class.getName(), "testPass5");
         mListener.testStarted(EasyMock.eq(tid2));
-        mListener.testEnded(EasyMock.eq(tid2), EasyMock.anyObject());
+        mListener.testEnded(EasyMock.eq(tid2), (Map<String, String>) EasyMock.anyObject());
         TestDescription tid3 = new TestDescription(Junit4TestClass.class.getName(), "testPass6");
         mListener.testStarted(EasyMock.eq(tid3));
-        mListener.testEnded(EasyMock.eq(tid3), EasyMock.anyObject());
+        mListener.testEnded(EasyMock.eq(tid3), (Map<String, String>) EasyMock.anyObject());
         mListener.testRunEnded(EasyMock.anyLong(), (HashMap<String, Metric>) EasyMock.anyObject());
 
         EasyMock.replay(mListener);

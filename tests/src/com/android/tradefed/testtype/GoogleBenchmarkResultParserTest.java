@@ -137,7 +137,8 @@ public class GoogleBenchmarkResultParserTest {
         test1.put("iterations", "109451958");
         mMockInvocationListener.testEnded(
                 (TestDescription) EasyMock.anyObject(), EasyMock.eq(test1));
-        mMockInvocationListener.testEnded(EasyMock.anyObject(), EasyMock.anyObject());
+        mMockInvocationListener.testEnded(
+                EasyMock.anyObject(), (Map<String, String>) EasyMock.anyObject());
         EasyMock.replay(mMockInvocationListener);
         CollectingOutputReceiver contents =  readInFile(GBENCH_OUTPUT_FILE_2);
         GoogleBenchmarkResultParser resultParser =

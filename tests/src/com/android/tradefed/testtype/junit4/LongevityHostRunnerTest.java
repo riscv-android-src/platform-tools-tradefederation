@@ -232,7 +232,7 @@ public class LongevityHostRunnerTest {
         mHostTest.run(mMockListener);
         // Verify nothing failed, but something passed.
         verify(mMockListener, never()).testFailed(any(), any());
-        verify(mMockListener).testEnded(any(), any());
+        verify(mMockListener).testEnded(any(), (Map<String, String>) any());
     }
 
     public class SetClassHostTest extends HostTest {
