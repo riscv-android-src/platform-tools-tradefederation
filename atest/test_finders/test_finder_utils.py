@@ -248,6 +248,22 @@ def is_equal_or_sub_dir(sub_dir, parent_dir):
         return False
     return os.path.commonprefix([sub_dir, parent_dir]) == parent_dir
 
+
+def is_robolectric_module(mod_info):
+    """Check if a module is a robolectric module.
+
+    Args:
+        mod_info: ModuleInfo to check.
+
+    Returns:
+        True if module is a robolectric module, False otherwise.
+    """
+    if mod_info:
+        return (mod_info.get(constants.MODULE_CLASS, [None])[0] ==
+                constants.MODULE_CLASS_ROBOLECTRIC)
+    return False
+
+
 def find_parent_module_dir(root_dir, start_dir, module_info):
     """From current dir search up file tree until root dir for module dir.
 
@@ -285,6 +301,11 @@ def find_parent_module_dir(root_dir, start_dir, module_info):
                 # But keep searching in case there's an AndroidTest.xml in a
                 # parent folder. Example: a class belongs to an test apk that's
                 # part of a hostside test setup (common in cts).
+            # Check if a robolectric module lives here.
+            for mod in module_list:
+                if is_robolectric_module(mod):
+                    module_dir = rel_dir
+                    break
         current_dir = os.path.dirname(current_dir)
     if not module_dir:
         raise atest_error.TestWithNoModuleError('No Parent Module Dir for: %s'

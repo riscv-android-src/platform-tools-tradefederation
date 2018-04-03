@@ -25,13 +25,9 @@ import urllib2
 
 import constants
 
-# Setting TERM to dumb increases chances build error is at the end of the output
-# we collect.
-_BUILD_ENV = os.environ.copy()
-_BUILD_ENV['TERM'] = 'dumb'
 _MAKE_CMD = '%s/build/soong/soong_ui.bash' % os.environ.get(
     constants.ANDROID_BUILD_TOP)
-_BUILD_CMD = [_MAKE_CMD, '--make-mode', '-j']
+_BUILD_CMD = [_MAKE_CMD, '--make-mode']
 _BASH_RESET_CODE = '\033[0m\n'
 # Arbitrary number to limit stdout for failed runs in _run_limited_output.
 # Reason for its use is that the make command itself has its own carriage
@@ -40,11 +36,12 @@ _BASH_RESET_CODE = '\033[0m\n'
 _FAILED_OUTPUT_LINE_LIMIT = 100
 
 
-def _run_limited_output(cmd):
+def _run_limited_output(cmd, env_vars=None):
     """Runs a given command and streams the output on a single line in stdout.
 
     Args:
         cmd: A list of strings representing the command to run.
+        env_vars: Optional arg. Dict of env vars to set during build.
 
     Raises:
         subprocess.CalledProcessError: When the command exits with a non-0
@@ -52,7 +49,7 @@ def _run_limited_output(cmd):
     """
     # Send stderr to stdout so we only have to deal with a single pipe.
     proc = subprocess.Popen(cmd, stdout=subprocess.PIPE,
-                            stderr=subprocess.STDOUT, env=_BUILD_ENV)
+                            stderr=subprocess.STDOUT, env=env_vars)
     sys.stdout.write('\n')
     # Determine the width of the terminal. We'll need to clear this many
     # characters when carriage returning.
@@ -88,26 +85,35 @@ def _run_limited_output(cmd):
         raise subprocess.CalledProcessError(proc.returncode, cmd, output)
 
 
-def build(build_targets, verbose=False):
+def build(build_targets, verbose=False, env_vars=None):
     """Shell out and make build_targets.
 
     Args:
         build_targets: A set of strings of build targets to make.
         verbose: Optional arg. If True output is streamed to the console.
                  If False, only the last line of the build output is outputted.
+        env_vars: Optional arg. Dict of env vars to set during build.
 
     Returns:
-        Boolean of whether build command was successful.
+        Boolean of whether build command was successful, True if nothing to
+        build.
     """
+    if not build_targets:
+        logging.debug('No build targets, skipping build.')
+        return True
+    full_env_vars = os.environ.copy()
+    if env_vars:
+        full_env_vars.update(env_vars)
     logging.info('Building targets: %s', ' '.join(build_targets))
     cmd = _BUILD_CMD + list(build_targets)
     logging.debug('Executing command: %s', cmd)
     try:
         if verbose:
-            subprocess.check_call(cmd, stderr=subprocess.STDOUT)
+            subprocess.check_call(cmd, stderr=subprocess.STDOUT,
+                                  env=full_env_vars)
         else:
             # TODO: Save output to a log file.
-            _run_limited_output(cmd)
+            _run_limited_output(cmd, env_vars=full_env_vars)
         logging.info('Build successful')
         return True
     except subprocess.CalledProcessError as err:

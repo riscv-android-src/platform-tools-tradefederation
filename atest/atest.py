@@ -478,17 +478,16 @@ def main(argv):
             return constants.EXIT_CODE_TEST_NOT_FOUND
     build_targets |= test_runner_handler.get_test_runner_reqs(mod_info,
                                                               test_infos)
-    # We don't initialize module-info if it already exists or
-    # --rebuild-module-info is passed in. Add it to the list of build targets to
-    # keep the file up to date.
-    build_targets.add(mod_info.module_info_target)
     extra_args = get_extra_args(args)
     if args.detect_regression:
         build_targets |= (regression_test_runner.RegressionTestRunner('')
                           .get_test_runner_build_reqs())
     # args.steps will be None if none of -bit set, else list of params set.
     steps = args.steps if args.steps else ALL_STEPS
-    if BUILD_STEP in steps:
+    if build_targets and BUILD_STEP in steps:
+        # Add module-info.json target to the list of build targets to keep the
+        # file up to date.
+        build_targets.add(mod_info.module_info_target)
         success = atest_utils.build(build_targets, args.verbose)
         if not success:
             return constants.EXIT_CODE_BUILD_FAILURE
