@@ -242,7 +242,8 @@ public class TestsPoolPollerTest {
         Mockito.verify(mListener, Mockito.times(numTests))
                 .testRunStarted(Mockito.anyString(), Mockito.anyInt());
         Mockito.verify(mListener, Mockito.times(numTests)).testStarted(Mockito.any());
-        Mockito.verify(mListener, Mockito.times(numTests)).testEnded(Mockito.any(), Mockito.any());
+        Mockito.verify(mListener, Mockito.times(numTests))
+                .testEnded(Mockito.any(), (Map<String, String>) Mockito.any());
         Mockito.verify(mListener, Mockito.times(numTests))
                 .testRunEnded(Mockito.anyLong(), (Map<String, String>) Mockito.any());
         Mockito.verify(mDevice).waitForDeviceAvailable(Mockito.anyLong());

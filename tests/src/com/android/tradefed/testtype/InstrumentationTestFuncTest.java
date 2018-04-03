@@ -94,7 +94,8 @@ public class InstrumentationTestFuncTest implements IDeviceTest {
         mInstrumentationTest.setShellTimeout(SHELL_TIMEOUT);
         mMockListener.testRunStarted(TestAppConstants.TESTAPP_PACKAGE, 1);
         mMockListener.testStarted(EasyMock.eq(expectedTest));
-        mMockListener.testEnded(EasyMock.eq(expectedTest), EasyMock.anyObject());
+        mMockListener.testEnded(
+                EasyMock.eq(expectedTest), (Map<String, String>) EasyMock.anyObject());
         mMockListener.testRunEnded(EasyMock.anyLong(), (Map<String, String>) EasyMock.anyObject());
         EasyMock.replay(mMockListener);
         mInstrumentationTest.run(mMockListener);
@@ -139,13 +140,15 @@ public class InstrumentationTestFuncTest implements IDeviceTest {
             // Before N handling of instrumentation crash is slightly different.
             mMockListener.testFailed(
                     EasyMock.eq(expectedTest), EasyMock.contains("RuntimeException"));
-            mMockListener.testEnded(EasyMock.eq(expectedTest), EasyMock.anyObject());
+            mMockListener.testEnded(
+                    EasyMock.eq(expectedTest), (Map<String, String>) EasyMock.anyObject());
             mMockListener.testRunFailed(
                     EasyMock.eq("Instrumentation run failed due to 'java.lang.RuntimeException'"));
         } else {
             mMockListener.testFailed(
                     EasyMock.eq(expectedTest), EasyMock.contains("Process crashed."));
-            mMockListener.testEnded(EasyMock.eq(expectedTest), EasyMock.anyObject());
+            mMockListener.testEnded(
+                    EasyMock.eq(expectedTest), (Map<String, String>) EasyMock.anyObject());
             mMockListener.testRunFailed(
                     EasyMock.eq("Instrumentation run failed due to 'Process crashed.'"));
         }
