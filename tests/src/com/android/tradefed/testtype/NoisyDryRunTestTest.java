@@ -60,15 +60,15 @@ public class NoisyDryRunTestTest {
                 + "tf/fake", mFile);
         mMockListener.testRunStarted("com.android.tradefed.testtype.NoisyDryRunTest_parseFile", 1);
         mMockListener.testStarted(EasyMock.anyObject());
-        mMockListener.testEnded(EasyMock.anyObject(), EasyMock.anyObject());
+        mMockListener.testEnded(EasyMock.anyObject(), (Map<String, String>) EasyMock.anyObject());
         mMockListener.testRunEnded(EasyMock.eq(0l), (Map<String, String>) EasyMock.anyObject());
 
         mMockListener.testRunStarted("com.android.tradefed.testtype.NoisyDryRunTest_parseCommands",
                 2);
         mMockListener.testStarted(EasyMock.anyObject());
-        mMockListener.testEnded(EasyMock.anyObject(), EasyMock.anyObject());
+        mMockListener.testEnded(EasyMock.anyObject(), (Map<String, String>) EasyMock.anyObject());
         mMockListener.testStarted(EasyMock.anyObject());
-        mMockListener.testEnded(EasyMock.anyObject(), EasyMock.anyObject());
+        mMockListener.testEnded(EasyMock.anyObject(), (Map<String, String>) EasyMock.anyObject());
         mMockListener.testRunEnded(EasyMock.eq(0l), (Map<String, String>) EasyMock.anyObject());
         replayMocks();
 
@@ -88,13 +88,13 @@ public class NoisyDryRunTestTest {
         FileUtil.writeToFile("tf/fake --fail-invocation-with-cause USE_KEYSTORE@fake\n", mFile);
         mMockListener.testRunStarted("com.android.tradefed.testtype.NoisyDryRunTest_parseFile", 1);
         mMockListener.testStarted(EasyMock.anyObject());
-        mMockListener.testEnded(EasyMock.anyObject(), EasyMock.anyObject());
+        mMockListener.testEnded(EasyMock.anyObject(), (Map<String, String>) EasyMock.anyObject());
         mMockListener.testRunEnded(EasyMock.eq(0l), (Map<String, String>) EasyMock.anyObject());
 
         mMockListener.testRunStarted(
                 "com.android.tradefed.testtype.NoisyDryRunTest_parseCommands", 1);
         mMockListener.testStarted(EasyMock.anyObject());
-        mMockListener.testEnded(EasyMock.anyObject(), EasyMock.anyObject());
+        mMockListener.testEnded(EasyMock.anyObject(), (Map<String, String>) EasyMock.anyObject());
 
         mMockListener.testRunEnded(EasyMock.eq(0l), (Map<String, String>) EasyMock.anyObject());
         replayMocks();
@@ -111,7 +111,7 @@ public class NoisyDryRunTestTest {
         FileUtil.deleteFile(mFile);
         mMockListener.testRunStarted("com.android.tradefed.testtype.NoisyDryRunTest_parseFile", 1);
         mMockListener.testStarted(EasyMock.anyObject());
-        mMockListener.testEnded(EasyMock.anyObject(), EasyMock.anyObject());
+        mMockListener.testEnded(EasyMock.anyObject(), (Map<String, String>) EasyMock.anyObject());
         mMockListener.testFailed(EasyMock.anyObject(), EasyMock.anyObject());
         mMockListener.testRunEnded(EasyMock.eq(0l), (Map<String, String>) EasyMock.anyObject());
         replayMocks();
@@ -129,16 +129,16 @@ public class NoisyDryRunTestTest {
                 + "invalid --option value2", mFile);
         mMockListener.testRunStarted("com.android.tradefed.testtype.NoisyDryRunTest_parseFile", 1);
         mMockListener.testStarted(EasyMock.anyObject());
-        mMockListener.testEnded(EasyMock.anyObject(), EasyMock.anyObject());
+        mMockListener.testEnded(EasyMock.anyObject(), (Map<String, String>) EasyMock.anyObject());
         mMockListener.testRunEnded(EasyMock.eq(0l), (Map<String, String>) EasyMock.anyObject());
 
         mMockListener.testRunStarted("com.android.tradefed.testtype.NoisyDryRunTest_parseCommands",
                 2);
         mMockListener.testStarted(EasyMock.anyObject());
-        mMockListener.testEnded(EasyMock.anyObject(), EasyMock.anyObject());
+        mMockListener.testEnded(EasyMock.anyObject(), (Map<String, String>) EasyMock.anyObject());
         mMockListener.testStarted(EasyMock.anyObject());
         mMockListener.testFailed(EasyMock.anyObject(), EasyMock.anyObject());
-        mMockListener.testEnded(EasyMock.anyObject(), EasyMock.anyObject());
+        mMockListener.testEnded(EasyMock.anyObject(), (Map<String, String>) EasyMock.anyObject());
         mMockListener.testRunEnded(EasyMock.eq(0l), (Map<String, String>) EasyMock.anyObject());
         replayMocks();
 
