@@ -20,6 +20,7 @@ import com.android.tradefed.device.ITestDevice;
 import java.io.File;
 import java.io.Serializable;
 import java.util.Collection;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
@@ -170,6 +171,9 @@ public interface IBuildInfo extends Serializable {
      * Clean up any temporary build files
      */
     public void cleanUp();
+
+    /** Version of {@link #cleanUp()} where some files are not deleted. */
+    public void cleanUp(List<File> doNotDelete);
 
     /**
      * Clones the {@link IBuildInfo} object.
