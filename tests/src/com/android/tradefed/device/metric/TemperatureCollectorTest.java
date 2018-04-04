@@ -26,6 +26,7 @@ import static org.mockito.Mockito.when;
 import com.android.tradefed.config.OptionSetter;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.invoker.IInvocationContext;
+import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
 import com.android.tradefed.result.ITestInvocationListener;
 
 import org.junit.Before;
@@ -35,7 +36,6 @@ import org.junit.runners.JUnit4;
 
 import java.util.Collections;
 import java.util.HashMap;
-import java.util.Map;
 
 /** Unit tests for {@link TemperatureCollector}. */
 @RunWith(JUnit4.class)
@@ -74,10 +74,10 @@ public class TemperatureCollectorTest {
         verify(mDevice, times(2))
                 .executeShellCommand(eq("cat /sys/class/hwmon/hwmon1/device/msm_therm"));
 
-        Map<String, String> results = new HashMap<>();
+        HashMap<String, Metric> results = new HashMap<>();
         data.addToMetrics(results);
-        assertEquals(32D, Double.parseDouble(results.get("maxtemp")), 0);
-        assertEquals(22D, Double.parseDouble(results.get("mintemp")), 0);
+        assertEquals(32D, results.get("max_temperature").getMeasurements().getSingleDouble(), 0);
+        assertEquals(22D, results.get("min_temperature").getMeasurements().getSingleDouble(), 0);
     }
 
     @Test
@@ -93,7 +93,7 @@ public class TemperatureCollectorTest {
 
         verify(mDevice).executeShellCommand(eq("cat /sys/class/hwmon/hwmon1/device/msm_therm"));
 
-        Map<String, String> results = new HashMap<>();
+        HashMap<String, Metric> results = new HashMap<>();
         data.addToMetrics(results);
         assertTrue(results.isEmpty());
     }

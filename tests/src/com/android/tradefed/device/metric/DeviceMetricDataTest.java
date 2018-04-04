@@ -23,6 +23,8 @@ import static org.mockito.Mockito.mock;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.invoker.IInvocationContext;
 import com.android.tradefed.invoker.InvocationContext;
+import com.android.tradefed.metrics.proto.MetricMeasurement.Measurements;
+import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
 
 import org.junit.Before;
 import org.junit.Test;
@@ -30,7 +32,6 @@ import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
 
 import java.util.HashMap;
-import java.util.Map;
 
 /** Unit tests for {@link DeviceMetricData}. */
 @RunWith(JUnit4.class)
@@ -53,10 +54,13 @@ public class DeviceMetricDataTest {
      */
     @Test
     public void testSingleDeviceAdd() {
-        mData.addStringMetric("test", "testValue");
-        Map<String, String> resMetrics = new HashMap<>();
+        mData.addMetric(
+                "test",
+                Metric.newBuilder()
+                        .setMeasurements(Measurements.newBuilder().setSingleString("testValue")));
+        HashMap<String, Metric> resMetrics = new HashMap<>();
         mData.addToMetrics(resMetrics);
-        assertEquals("testValue", resMetrics.get("test"));
+        assertEquals("testValue", resMetrics.get("test").getMeasurements().getSingleString());
     }
 
     /**
@@ -65,10 +69,14 @@ public class DeviceMetricDataTest {
      */
     @Test
     public void testSingleDeviceAddToDevice() {
-        mData.addStringMetricForDevice(mDevice1, "test", "testValue");
-        Map<String, String> resMetrics = new HashMap<>();
+        mData.addMetricForDevice(
+                mDevice1,
+                "test",
+                Metric.newBuilder()
+                        .setMeasurements(Measurements.newBuilder().setSingleString("testValue")));
+        HashMap<String, Metric> resMetrics = new HashMap<>();
         mData.addToMetrics(resMetrics);
-        assertEquals("testValue", resMetrics.get("test"));
+        assertEquals("testValue", resMetrics.get("test").getMeasurements().getSingleString());
     }
 
     /**
@@ -78,12 +86,16 @@ public class DeviceMetricDataTest {
     @Test
     public void testMultiDeviceAdd() {
         mContext.addAllocatedDevice("device2", mock(ITestDevice.class));
-        mData.addStringMetric("test", "testValue");
-        Map<String, String> resMetrics = new HashMap<>();
+        mData.addMetric(
+                "test",
+                Metric.newBuilder()
+                        .setMeasurements(Measurements.newBuilder().setSingleString("testValue")));
+        HashMap<String, Metric> resMetrics = new HashMap<>();
         mData.addToMetrics(resMetrics);
         assertNull(resMetrics.get("test"));
         // Metric key was associated with the device name.
-        assertEquals("testValue", resMetrics.get("{device1}:test"));
+        assertEquals(
+                "testValue", resMetrics.get("{device1}:test").getMeasurements().getSingleString());
     }
 
     /**
@@ -94,11 +106,16 @@ public class DeviceMetricDataTest {
     public void testMultiDeviceAdd_forDevice() {
         ITestDevice device2 = mock(ITestDevice.class);
         mContext.addAllocatedDevice("device2", device2);
-        mData.addStringMetricForDevice(device2, "test", "testValue");
-        Map<String, String> resMetrics = new HashMap<>();
+        mData.addMetricForDevice(
+                device2,
+                "test",
+                Metric.newBuilder()
+                        .setMeasurements(Measurements.newBuilder().setSingleString("testValue")));
+        HashMap<String, Metric> resMetrics = new HashMap<>();
         mData.addToMetrics(resMetrics);
         assertNull(resMetrics.get("test"));
         // Metric key was associated with the device name.
-        assertEquals("testValue", resMetrics.get("{device2}:test"));
+        assertEquals(
+                "testValue", resMetrics.get("{device2}:test").getMeasurements().getSingleString());
     }
 }

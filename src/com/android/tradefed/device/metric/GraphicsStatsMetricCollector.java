@@ -38,8 +38,6 @@ public class GraphicsStatsMetricCollector extends ScheduledDeviceMetricCollector
             String outputFileName =
                     String.format("%s/graphics-%s", createTempDir(), getFileSuffix());
             File outputFile = saveProcessOutput(device, "dumpsys graphicsstats", outputFileName);
-            runData.addStringMetric(
-                    Files.getNameWithoutExtension(outputFile.getName()), outputFile.getPath());
             try (InputStreamSource source = new FileInputStreamSource(outputFile, true)) {
                 getInvocationListener()
                         .testLog(
