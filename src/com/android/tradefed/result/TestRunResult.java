@@ -17,6 +17,8 @@ package com.android.tradefed.result;
 
 import com.android.ddmlib.testrunner.TestResult.TestStatus;
 import com.android.tradefed.log.LogUtil.CLog;
+import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
+import com.android.tradefed.util.proto.TfMetricProtoUtil;
 
 import java.util.HashMap;
 import java.util.LinkedHashMap;
@@ -36,7 +38,9 @@ public class TestRunResult {
     // Uses a LinkedHashMap to have predictable iteration order
     private Map<TestDescription, TestResult> mTestResults =
             new LinkedHashMap<TestDescription, TestResult>();
-    private Map<String, String> mRunMetrics = new HashMap<String, String>();
+    // Store the metrics for the run
+    private Map<String, String> mRunMetrics = new HashMap<>();
+    private HashMap<String, Metric> mRunProtoMetrics = new HashMap<>();
     // Log files associated with the test run itself (testRunStart / testRunEnd).
     private Map<String, LogFile> mRunLoggedFiles;
     private boolean mIsRunComplete = false;
@@ -73,9 +77,14 @@ public class TestRunResult {
         return mTestResults;
     }
 
-    /** @return a {@link Map} of the test test run metrics. */
+    /** @return a {@link Map} of the test run metrics. */
     public Map<String, String> getRunMetrics() {
         return mRunMetrics;
+    }
+
+    /** @return a {@link Map} of the test run metrics with the new proto format. */
+    public HashMap<String, Metric> getRunProtoMetrics() {
+        return mRunProtoMetrics;
     }
 
     /** Gets the set of completed tests. */
@@ -202,6 +211,10 @@ public class TestRunResult {
     public void testEnded(TestDescription test, Map<String, String> testMetrics) {
         testEnded(test, System.currentTimeMillis(), testMetrics);
     }
+    
+    public void testEnded(TestDescription test, HashMap<String, Metric> testMetrics) {
+        testEnded(test, System.currentTimeMillis(), testMetrics);
+    }
 
     public void testEnded(TestDescription test, long endTime, Map<String, String> testMetrics) {
         TestResult result = mTestResults.get(test);
@@ -213,8 +226,15 @@ public class TestRunResult {
         }
         result.setEndTime(endTime);
         result.setMetrics(testMetrics);
+        result.setProtoMetrics(TfMetricProtoUtil.upgradeConvert(testMetrics));
         addTestResult(test, result);
         mCurrentTestResult = null;
+    }
+
+    public void testEnded(TestDescription test, long endTime, HashMap<String, Metric> testMetrics) {
+        testEnded(test, endTime, TfMetricProtoUtil.compatibleConvert(testMetrics));
+        TestResult result = mTestResults.get(test);
+        result.setProtoMetrics(testMetrics);
     }
 
     public void testRunFailed(String errorMessage) {
@@ -236,8 +256,24 @@ public class TestRunResult {
         } else {
             mRunMetrics.putAll(runMetrics);
         }
+        // Also add to the new interface:
+        mRunProtoMetrics.putAll(TfMetricProtoUtil.upgradeConvert(runMetrics));
+
         mElapsedTime += elapsedTime;
         mIsRunComplete = true;
+    }
+
+    /** New interface using the new proto metrics. */
+    public void testRunEnded(long elapsedTime, HashMap<String, Metric> runMetrics) {
+        // Internally store the information as backward compatible format
+        testRunEnded(elapsedTime, TfMetricProtoUtil.compatibleConvert(runMetrics));
+        // Store the new format directly too.
+        // TODO: See if aggregation should/can be done with the new format.
+        mRunProtoMetrics.putAll(runMetrics);
+
+        // TODO: when old format is deprecated, do not forget to uncomment the next two lines
+        // mElapsedTime += elapsedTime;
+        // mIsRunComplete = true;
     }
 
     /**

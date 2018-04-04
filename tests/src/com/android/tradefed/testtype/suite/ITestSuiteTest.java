@@ -36,6 +36,7 @@ import com.android.tradefed.device.metric.IMetricCollector;
 import com.android.tradefed.invoker.IInvocationContext;
 import com.android.tradefed.invoker.InvocationContext;
 import com.android.tradefed.log.LogUtil.CLog;
+import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
 import com.android.tradefed.result.ByteArrayInputStreamSource;
 import com.android.tradefed.result.ILogSaver;
 import com.android.tradefed.result.ITestInvocationListener;
@@ -218,8 +219,8 @@ public class ITestSuiteTest {
         listener.testRunStarted(TEST_CONFIG_NAME, 1);
         TestDescription test = new TestDescription(EMPTY_CONFIG, EMPTY_CONFIG);
         listener.testStarted(test, 0);
-        listener.testEnded(test, 5, Collections.emptyMap());
-        listener.testRunEnded(EasyMock.anyLong(), (Map<String, String>) EasyMock.anyObject());
+        listener.testEnded(test, 5, new HashMap<String, Metric>());
+        listener.testRunEnded(EasyMock.anyLong(), (HashMap<String, Metric>) EasyMock.anyObject());
         listener.testModuleEnded();
     }
 
@@ -362,7 +363,8 @@ public class ITestSuiteTest {
         mMockListener.testRunStarted(TEST_CONFIG_NAME, 1);
         EasyMock.expectLastCall().times(1);
         mMockListener.testRunFailed("Module test only ran 0 out of 1 expected tests.");
-        mMockListener.testRunEnded(EasyMock.anyLong(), (Map<String, String>) EasyMock.anyObject());
+        mMockListener.testRunEnded(
+                EasyMock.anyLong(), (HashMap<String, Metric>) EasyMock.anyObject());
         EasyMock.expectLastCall().times(1);
         mMockListener.testModuleEnded();
         replayMocks();
@@ -410,7 +412,8 @@ public class ITestSuiteTest {
         mMockListener.testRunStarted(TEST_CONFIG_NAME, 1);
         EasyMock.expectLastCall().times(1);
         mMockListener.testRunFailed("Module test only ran 0 out of 1 expected tests.");
-        mMockListener.testRunEnded(EasyMock.anyLong(), (Map<String, String>) EasyMock.anyObject());
+        mMockListener.testRunEnded(
+                EasyMock.anyLong(), (HashMap<String, Metric>) EasyMock.anyObject());
         EasyMock.expectLastCall().times(1);
         mMockListener.testModuleEnded();
         replayMocks();
@@ -850,20 +853,20 @@ public class ITestSuiteTest {
         EasyMock.expect(mMockSysChecker.postExecutionCheck(EasyMock.eq(mMockDevice)))
                 .andReturn(true);
 
-        Capture<Map<String, String>> c = new Capture<>();
+        Capture<HashMap<String, Metric>> c = new Capture<>();
         mMockListener.testModuleStarted(EasyMock.anyObject());
         mMockListener.testRunStarted(TEST_CONFIG_NAME, 1);
         TestDescription test = new TestDescription(EMPTY_CONFIG, EMPTY_CONFIG);
         mMockListener.testStarted(test, 0);
-        mMockListener.testEnded(test, 5, Collections.emptyMap());
+        mMockListener.testEnded(test, 5, new HashMap<String, Metric>());
         mMockListener.testRunEnded(EasyMock.anyLong(), EasyMock.capture(c));
         mMockListener.testModuleEnded();
 
         replayMocks();
         mTestSuite.run(mMockListener);
         verifyMocks();
-        assertEquals("value1", c.getValue().get("metric1"));
-        assertEquals("value2", c.getValue().get("metric2"));
+        assertEquals("value1", c.getValue().get("metric1").getMeasurements().getSingleString());
+        assertEquals("value2", c.getValue().get("metric2").getMeasurements().getSingleString());
     }
 
     /**

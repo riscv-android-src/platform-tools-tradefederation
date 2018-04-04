@@ -26,6 +26,7 @@ import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.invoker.IInvocationContext;
 import com.android.tradefed.invoker.InvocationContext;
 import com.android.tradefed.log.LogUtil.CLog;
+import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
 import com.android.tradefed.result.ILogSaver;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.TestDescription;
@@ -38,10 +39,9 @@ import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
 
 import java.util.ArrayList;
-import java.util.Collections;
+import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Map;
 
 /** Unit tests for {@link ITestSuite} when used with multiple devices. */
 @RunWith(JUnit4.class)
@@ -149,12 +149,13 @@ public class ITestSuiteMultiTest {
         TestDescription test1 =
                 new TestDescription(MultiDeviceStubTest.class.getSimpleName(), "test0");
         mMockListener.testStarted(test1, 0l);
-        mMockListener.testEnded(test1, 5l, Collections.emptyMap());
+        mMockListener.testEnded(test1, 5l, new HashMap<String, Metric>());
         TestDescription test2 =
                 new TestDescription(MultiDeviceStubTest.class.getSimpleName(), "test1");
         mMockListener.testStarted(test2, 0l);
-        mMockListener.testEnded(test2, 5l, Collections.emptyMap());
-        mMockListener.testRunEnded(EasyMock.anyLong(), (Map<String, String>) EasyMock.anyObject());
+        mMockListener.testEnded(test2, 5l, new HashMap<String, Metric>());
+        mMockListener.testRunEnded(
+                EasyMock.anyLong(), (HashMap<String, Metric>) EasyMock.anyObject());
         mMockListener.testModuleEnded();
 
         // Target preparation is triggered against the preparer in the second device.
