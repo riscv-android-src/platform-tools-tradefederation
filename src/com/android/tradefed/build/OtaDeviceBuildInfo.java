@@ -21,6 +21,7 @@ import com.android.tradefed.device.ITestDevice;
 import java.io.File;
 import java.util.Collection;
 import java.util.LinkedList;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
@@ -413,6 +414,13 @@ public class OtaDeviceBuildInfo implements IDeviceBuildInfo {
     public void cleanUp() {
         mBaselineBuild.cleanUp();
         mOtaBuild.cleanUp();
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public void cleanUp(List<File> doNotDelete) {
+        mBaselineBuild.cleanUp(doNotDelete);
+        mOtaBuild.cleanUp(doNotDelete);
     }
 
     /**
