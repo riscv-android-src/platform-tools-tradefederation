@@ -28,6 +28,7 @@ import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.device.ITestDevice.RecoveryMode;
 import com.android.tradefed.device.StubDevice;
 import com.android.tradefed.device.TestDeviceState;
+import com.android.tradefed.invoker.sandbox.SandboxedInvocationExecution;
 import com.android.tradefed.invoker.shard.ShardBuildCloner;
 import com.android.tradefed.log.ILeveledLogOutput;
 import com.android.tradefed.log.ILogRegistry;
@@ -213,14 +214,14 @@ public class TestInvocation implements ITestInvocation {
                     badDevice.setRecoveryMode(RecoveryMode.NONE);
                 }
             }
-            reportFailure(e, listener, config, context, rescheduler);
+            reportFailure(e, listener, config, context, rescheduler, invocationPath);
         } catch (TargetSetupError e) {
             exception = e;
             CLog.e("Caught exception while running invocation");
             CLog.e(e);
             bugreportName = TARGET_SETUP_ERROR_BUGREPORT_NAME;
             badDevice = context.getDeviceBySerial(e.getDeviceDescriptor().getSerial());
-            reportFailure(e, listener, config, context, rescheduler);
+            reportFailure(e, listener, config, context, rescheduler, invocationPath);
         } catch (DeviceNotAvailableException e) {
             exception = e;
             // log a warning here so its captured before reportLogs is called
@@ -234,7 +235,7 @@ public class TestInvocation implements ITestInvocation {
             }
             resumed = resume(config, context, rescheduler, System.currentTimeMillis() - startTime);
             if (!resumed) {
-                reportFailure(e, listener, config, context, rescheduler);
+                reportFailure(e, listener, config, context, rescheduler, invocationPath);
             } else {
                 CLog.i("Rescheduled failed invocation for resume");
             }
@@ -246,18 +247,18 @@ public class TestInvocation implements ITestInvocation {
             throw e;
         } catch (RunInterruptedException e) {
             CLog.w("Invocation interrupted");
-            reportFailure(e, listener, config, context, rescheduler);
+            reportFailure(e, listener, config, context, rescheduler, invocationPath);
         } catch (AssertionError e) {
             exception = e;
             CLog.e("Caught AssertionError while running invocation: %s", e.toString());
             CLog.e(e);
-            reportFailure(e, listener, config, context, rescheduler);
+            reportFailure(e, listener, config, context, rescheduler, invocationPath);
         } catch (Throwable t) {
             exception = t;
             // log a warning here so its captured before reportLogs is called
             CLog.e("Unexpected exception when running invocation: %s", t.toString());
             CLog.e(t);
-            reportFailure(t, listener, config, context, rescheduler);
+            reportFailure(t, listener, config, context, rescheduler, invocationPath);
             throw t;
         } finally {
             for (ITestDevice device : context.getDevices()) {
@@ -291,7 +292,13 @@ public class TestInvocation implements ITestInvocation {
                 CLog.e(tearDownException);
                 if (exception == null) {
                     // only report when the exception is new during tear down
-                    reportFailure(tearDownException, listener, config, context, rescheduler);
+                    reportFailure(
+                            tearDownException,
+                            listener,
+                            config,
+                            context,
+                            rescheduler,
+                            invocationPath);
                 }
             }
             mStatus = "done running tests";
@@ -405,21 +412,19 @@ public class TestInvocation implements ITestInvocation {
         return false;
     }
 
-    private void reportFailure(Throwable exception, ITestInvocationListener listener,
-            IConfiguration config, IInvocationContext context, IRescheduler rescheduler) {
+    private void reportFailure(
+            Throwable exception,
+            ITestInvocationListener listener,
+            IConfiguration config,
+            IInvocationContext context,
+            IRescheduler rescheduler,
+            IInvocationExecution invocationPath) {
+        // Always report the failure
         listener.invocationFailed(exception);
-
-        if (config.getConfigurationDescription().shouldUseSandbox()) {
-            // TODO: move specialized sandbox logic once TestInvocation is refactored.
-            // If we are sandboxed, build reset and reschedule should happen on the parents.
-            return;
-        }
-        if (!(exception instanceof BuildError) && !(exception.getCause() instanceof BuildError)) {
-            for (String deviceName : context.getDeviceConfigNames()) {
-                config.getDeviceConfigByName(deviceName)
-                        .getBuildProvider()
-                        .buildNotTested(context.getBuildInfo(deviceName));
-            }
+        // Reset the build (if necessary) and decide if we should reschedule the configuration.
+        boolean shouldReschedule =
+                invocationPath.resetBuildAndReschedule(exception, listener, config, context);
+        if (shouldReschedule) {
             rescheduleTest(config, rescheduler);
         }
     }
@@ -600,7 +605,8 @@ public class TestInvocation implements ITestInvocation {
         allListeners.addAll(Arrays.asList(extraListeners));
         ITestInvocationListener listener =
                 new LogSaverResultForwarder(config.getLogSaver(), allListeners);
-        IInvocationExecution invocationPath = createInvocationExec();
+        IInvocationExecution invocationPath =
+                createInvocationExec(config.getConfigurationDescription().shouldUseSandbox());
         try {
             mStatus = "fetching build";
             config.getLogOutput().init();
@@ -690,7 +696,17 @@ public class TestInvocation implements ITestInvocation {
         mStopRequested = true;
     }
 
-    public IInvocationExecution createInvocationExec() {
+    /**
+     * Create the invocation path that should be followed.
+     *
+     * @param isSandboxed If we are currently running in the sandbox, then a special path is
+     *     applied.
+     * @return The {@link IInvocationExecution} describing the invocation.
+     */
+    public IInvocationExecution createInvocationExec(boolean isSandboxed) {
+        if (isSandboxed) {
+            return new SandboxedInvocationExecution();
+        }
         return new InvocationExecution();
     }
 }

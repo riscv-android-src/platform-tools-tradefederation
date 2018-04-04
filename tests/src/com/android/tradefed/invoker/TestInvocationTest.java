@@ -230,7 +230,7 @@ public class TestInvocationTest extends TestCase {
                     }
 
                     @Override
-                    public IInvocationExecution createInvocationExec() {
+                    public IInvocationExecution createInvocationExec(boolean isSandboxed) {
                         return new InvocationExecution() {
                             @Override
                             protected IShardHelper createShardHelper() {
@@ -842,7 +842,7 @@ public class TestInvocationTest extends TestCase {
                     }
 
                     @Override
-                    public IInvocationExecution createInvocationExec() {
+                    public IInvocationExecution createInvocationExec(boolean isSandboxed) {
                         return new InvocationExecution() {
                             @Override
                             protected IShardHelper createShardHelper() {
@@ -926,7 +926,7 @@ public class TestInvocationTest extends TestCase {
                     }
 
                     @Override
-                    public IInvocationExecution createInvocationExec() {
+                    public IInvocationExecution createInvocationExec(boolean isSandboxed) {
                         return new InvocationExecution() {
                             @Override
                             protected IShardHelper createShardHelper() {
@@ -1586,7 +1586,7 @@ public class TestInvocationTest extends TestCase {
                     }
 
                     @Override
-                    public IInvocationExecution createInvocationExec() {
+                    public IInvocationExecution createInvocationExec(boolean isSandboxed) {
                         return new InvocationExecution() {
                             @Override
                             protected IShardHelper createShardHelper() {
@@ -1648,7 +1648,7 @@ public class TestInvocationTest extends TestCase {
                         }
 
                         @Override
-                        public IInvocationExecution createInvocationExec() {
+                        public IInvocationExecution createInvocationExec(boolean isSandboxed) {
                             return new InvocationExecution() {
                                 @Override
                                 protected IShardHelper createShardHelper() {
@@ -1728,7 +1728,7 @@ public class TestInvocationTest extends TestCase {
                         }
 
                         @Override
-                        public IInvocationExecution createInvocationExec() {
+                        public IInvocationExecution createInvocationExec(boolean isSandboxed) {
                             return new InvocationExecution() {
                                 @Override
                                 protected IShardHelper createShardHelper() {

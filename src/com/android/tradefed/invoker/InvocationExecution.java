@@ -78,12 +78,6 @@ public class InvocationExecution implements IInvocationExecution {
             IRescheduler rescheduler,
             ITestInvocationListener listener)
             throws DeviceNotAvailableException, BuildRetrievalError {
-        // If the invocation is currently sandboxed, builds have already been downloaded.
-        // TODO: refactor to be part of new TestInvocation type.
-        if (config.getConfigurationDescription().shouldUseSandbox()) {
-            CLog.d("Skipping download in the sandbox.");
-            return true;
-        }
         String currentDeviceName = null;
         try {
             updateInvocationContext(context, config);
@@ -351,6 +345,23 @@ public class InvocationExecution implements IInvocationExecution {
                 test.run(listenerWithCollectors);
             }
         }
+    }
+
+    @Override
+    public boolean resetBuildAndReschedule(
+            Throwable exception,
+            ITestInvocationListener listener,
+            IConfiguration config,
+            IInvocationContext context) {
+        if (!(exception instanceof BuildError) && !(exception.getCause() instanceof BuildError)) {
+            for (String deviceName : context.getDeviceConfigNames()) {
+                config.getDeviceConfigByName(deviceName)
+                        .getBuildProvider()
+                        .buildNotTested(context.getBuildInfo(deviceName));
+            }
+            return true;
+        }
+        return false;
     }
 
     /**
