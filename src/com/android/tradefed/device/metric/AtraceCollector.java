@@ -32,6 +32,7 @@ import com.android.tradefed.result.FileInputStreamSource;
 import com.android.tradefed.result.LogDataType;
 
 import java.io.File;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.concurrent.TimeUnit;
 import java.util.Map;
@@ -48,12 +49,16 @@ public class AtraceCollector extends BaseDeviceMetricCollector {
             description = "the tracing categories atrace will capture")
     private List<String> mCategories = new ArrayList<>();
 
-    @Option(name = "log-path",
-            description = "the temporary location the trace log will be saved to on device")
+    @Option(
+        name = "log-path",
+        description = "the temporary location the trace log will be saved to on device"
+    )
     private String mLogPath = "/data/local/tmp/";
 
-    @Option(name = "log-filename",
-            description = "the temporary location the trace log will be saved to on device")
+    @Option(
+        name = "log-filename",
+        description = "the temporary location the trace log will be saved to on device"
+    )
     private String mLogFilename = "atrace";
 
     @Option(name = "preserve-ondevice-log",
@@ -64,33 +69,61 @@ public class AtraceCollector extends BaseDeviceMetricCollector {
             description = "produce a compressed trace dump")
     private boolean mCompressDump = true;
 
-    private String fullLogPath() {
-        String suffix = mCompressDump ? ".dat" : ".txt";
-        return mLogPath + mLogFilename + suffix;
+    protected String fullLogPath() {
+        return Paths.get(mLogPath, mLogFilename + "." + getLogType().getFileExt()).toString();
+    }
+
+    protected LogDataType getLogType() {
+        if (mCompressDump) {
+            return LogDataType.ATRACE;
+        } else {
+            return LogDataType.TEXT;
+        }
+    }
+
+    protected void startTracing(ITestDevice device) {
+        //atrace --async_start will set a variety of sysfs entries, and then exit.
+        String cmd = "atrace --async_start ";
+        if (mCompressDump) {
+            cmd += "-z ";
+        }
+        cmd += String.join(" ", mCategories);
+        CollectingOutputReceiver c = new CollectingOutputReceiver();
+        CLog.i("issuing command : %s to device: %s", cmd, device.getSerialNumber());
+
+        try {
+            device.executeShellCommand(cmd, c, 1, TimeUnit.SECONDS, 1);
+        } catch (DeviceNotAvailableException e) {
+            CLog.e("Error starting atrace:");
+            CLog.e(e);
+        }
+        CLog.i("command output: %s", c.getOutput());
     }
 
     @Override
     public void onTestStart(DeviceMetricData testData) {
-
         if (mCategories.isEmpty()) {
             CLog.d("no categories specified to trace, not running AtraceMetricCollector");
             return;
         }
 
         for (ITestDevice device : getDevices()) {
-            String cmd = "atrace --async_start ";
-            if (mCompressDump) cmd += "-z ";
-            cmd += String.join(" ", mCategories);
-            CollectingOutputReceiver c = new CollectingOutputReceiver();
-            CLog.i("issuing command : \"" + cmd + "\" to device: " + device.getSerialNumber());
+            startTracing(device);
+        }
+    }
 
-            try {
-                device.executeShellCommand(cmd, c, 1, TimeUnit.SECONDS, 1);
-            } catch (DeviceNotAvailableException e) {
-                CLog.e("Error starting atrace:");
-                CLog.e(e);
-            }
-            CLog.i("command output: " + c.getOutput());
+    protected void stopTracing(ITestDevice device) {
+        CLog.i("collecting atrace log from device: %s", device.getSerialNumber());
+        try {
+            device.executeShellCommand(
+                    "atrace --async_stop -o " + fullLogPath(),
+                    new NullOutputReceiver(),
+                    60,
+                    TimeUnit.SECONDS,
+                    1);
+        } catch (DeviceNotAvailableException e) {
+            CLog.e("Error stopping atrace");
+            CLog.e(e);
         }
     }
 
@@ -103,17 +136,16 @@ public class AtraceCollector extends BaseDeviceMetricCollector {
 
         for (ITestDevice device : getDevices()) {
             try {
-                CLog.i("collecting atrace log from device: " + device.getSerialNumber());
-                device.executeShellCommand(
-                        "atrace --async_stop -o " + fullLogPath(),
-                        new NullOutputReceiver(),
-                        60, TimeUnit.SECONDS, 1);
+                stopTracing(device);
 
                 File trace = device.pullFile(fullLogPath());
                 if (trace != null) {
-                    LogDataType type = mCompressDump ? LogDataType.ATRACE : LogDataType.TEXT;
+                    CLog.i("Log size: %s bytes", String.valueOf(trace.length()));
                     try (FileInputStreamSource streamSource = new FileInputStreamSource(trace)) {
-                        testLog(mLogFilename + device.getSerialNumber(), type, streamSource);
+                        testLog(
+                                mLogFilename + device.getSerialNumber(),
+                                getLogType(),
+                                streamSource);
                     }
                     trace.delete();
                 }
@@ -125,7 +157,7 @@ public class AtraceCollector extends BaseDeviceMetricCollector {
                     device.executeShellCommand("rm -f " + fullLogPath());
                 }
                 else {
-                    CLog.w("preserving ondevice atrace log: " + fullLogPath());
+                    CLog.w("preserving ondevice atrace log: %s", fullLogPath());
                 }
             }
             catch (DeviceNotAvailableException | DeviceRuntimeException e) {
