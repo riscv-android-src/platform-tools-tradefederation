@@ -20,8 +20,10 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
+import com.android.ddmlib.IDevice;
 import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.config.Configuration;
+import com.android.tradefed.config.ConfigurationDef;
 import com.android.tradefed.config.ConfigurationDescriptor;
 import com.android.tradefed.config.ConfigurationException;
 import com.android.tradefed.config.ConfigurationFactory;
@@ -227,6 +229,13 @@ public class ITestSuiteTest {
     /** Test for {@link ITestSuite#run(ITestInvocationListener)}. */
     @Test
     public void testRun() throws Exception {
+        OptionSetter setter = new OptionSetter(mTestSuite);
+        setter.setOptionValue("reboot-before-test", "true");
+        mContext.addAllocatedDevice(ConfigurationDef.DEFAULT_DEVICE_NAME, mMockDevice);
+        // Since we set the option, expect a reboot to occur.
+        EasyMock.expect(mMockDevice.getIDevice()).andReturn(EasyMock.createMock(IDevice.class));
+        mMockDevice.reboot();
+
         List<ISystemStatusChecker> sysChecker = new ArrayList<ISystemStatusChecker>();
         sysChecker.add(mMockSysChecker);
         mTestSuite.setSystemStatusChecker(sysChecker);
