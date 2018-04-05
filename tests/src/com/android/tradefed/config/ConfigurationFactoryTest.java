@@ -1553,4 +1553,26 @@ public class ConfigurationFactoryTest extends TestCase {
                     expected.getMessage());
         }
     }
+
+    /**
+     * Test that if we load a configuration with some unfound class, we throw an exception and
+     * report the objects that did not load.
+     */
+    public void testCreateConfigurationFromArgs_failedToLoadClass() throws Exception {
+        try {
+            mFactory.createConfigurationFromArgs(new String[] {"multi-device-incorrect"});
+            fail("Should have thrown an exception");
+        } catch (ClassNotFoundConfigurationException expected) {
+            assertTrue(
+                    expected.getMessage()
+                            .contains("Failed to load some objects in the configuration:"));
+            assertEquals(
+                    "device1:build_provider",
+                    expected.getRejectedObjects().get("com.android.tradefed.build.doesnotexists"));
+            assertEquals(
+                    "device3:target_preparer",
+                    expected.getRejectedObjects()
+                            .get("com.android.tradefed.targetprep.doesnotexistseither"));
+        }
+    }
 }

@@ -17,12 +17,14 @@ package com.android.tradefed.config;
 
 import com.android.tradefed.sandbox.SandboxConfigurationException;
 
+import java.util.HashMap;
+import java.util.Map;
+
 /** {@link ConfigurationException} for when the class of an object is not found. */
 public class ClassNotFoundConfigurationException extends ConfigurationException {
 
     private static final long serialVersionUID = 7742154448569011969L;
-    private String mClassName = null;
-    private String mObjectType = null;
+    private Map<String, String> mRejectedObjects;
 
     /**
      * Creates a {@link SandboxConfigurationException}.
@@ -44,19 +46,25 @@ public class ClassNotFoundConfigurationException extends ConfigurationException 
     public ClassNotFoundConfigurationException(
             String msg, Throwable cause, String className, String objectType) {
         super(msg, cause);
-        mClassName = className;
-        mObjectType = objectType;
-    }
-
-    /** Returns the fully qualified name of the class that failed to load. */
-    public String getClassName() {
-        return mClassName;
+        mRejectedObjects = new HashMap<>();
+        mRejectedObjects.put(className, objectType);
     }
 
     /**
-     * Returns the object type (definied in {@link Configuration}) of the class that failed to load.
+     * Creates a {@link SandboxConfigurationException}.
+     *
+     * @param msg a meaningful error message
+     * @param cause the {@link Throwable} that represents the original cause of the error
+     * @param rejectedObjects The map of objects that failed loading.
      */
-    public String getObjectType() {
-        return mObjectType;
+    public ClassNotFoundConfigurationException(
+            String msg, Throwable cause, Map<String, String> rejectedObjects) {
+        super(msg, cause);
+        mRejectedObjects = rejectedObjects;
+    }
+
+    /** Returns the map of object class that was rejected. */
+    public Map<String, String> getRejectedObjects() {
+        return mRejectedObjects;
     }
 }
