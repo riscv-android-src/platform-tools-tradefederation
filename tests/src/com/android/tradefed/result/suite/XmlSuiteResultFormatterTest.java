@@ -201,9 +201,9 @@ public class XmlSuiteResultFormatterTest {
             fakeRes.testStarted(description);
             fakeRes.testLogSaved(
                     runName + "log" + i, new LogFile("path", "http:url/" + runName, type));
-            fakeRes.testEnded(description, new HashMap<>());
+            fakeRes.testEnded(description, new HashMap<String, String>());
         }
-        fakeRes.testRunEnded(10L, new HashMap<>());
+        fakeRes.testRunEnded(10L, new HashMap<String, String>());
         return fakeRes;
     }
 
@@ -214,16 +214,16 @@ public class XmlSuiteResultFormatterTest {
             TestDescription description =
                     new TestDescription("com.class." + runName, runName + ".method" + i);
             fakeRes.testStarted(description);
-            fakeRes.testEnded(description, new HashMap<>());
+            fakeRes.testEnded(description, new HashMap<String, String>());
         }
         for (int i = 0; i < failed; i++) {
             TestDescription description =
                     new TestDescription("com.class." + runName, runName + ".failed" + i);
             fakeRes.testStarted(description);
             fakeRes.testFailed(description, runName + " failed.\nstack\nstack");
-            fakeRes.testEnded(description, new HashMap<>());
+            fakeRes.testEnded(description, new HashMap<String, String>());
         }
-        fakeRes.testRunEnded(10L, new HashMap<>());
+        fakeRes.testRunEnded(10L, new HashMap<String, String>());
         return fakeRes;
     }
 

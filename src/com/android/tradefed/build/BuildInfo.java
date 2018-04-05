@@ -31,6 +31,7 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashSet;
 import java.util.Hashtable;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
@@ -299,6 +300,32 @@ public class BuildInfo implements IBuildInfo {
             FileUtil.recursiveDelete(fileRecord.getFile());
         }
         mVersionedFileMap.clear();
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public void cleanUp(List<File> doNotClean) {
+        if (doNotClean == null) {
+            cleanUp();
+        }
+        for (VersionedFile fileRecord : mVersionedFileMap.values()) {
+            if (!doNotClean.contains(fileRecord.getFile())) {
+                FileUtil.recursiveDelete(fileRecord.getFile());
+            }
+        }
+        refreshVersionedFiles();
+    }
+
+    /**
+     * Run through all the {@link VersionedFile} and remove from the map the one that do not exists.
+     */
+    private void refreshVersionedFiles() {
+        Set<String> keys = new HashSet<>(mVersionedFileMap.keySet());
+        for (String key : keys) {
+            if (!mVersionedFileMap.get(key).getFile().exists()) {
+                mVersionedFileMap.remove(key);
+            }
+        }
     }
 
     /**

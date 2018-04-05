@@ -85,6 +85,7 @@ import com.android.tradefed.device.metric.TemperatureCollectorTest;
 import com.android.tradefed.device.metric.TraceMetricCollectorTest;
 import com.android.tradefed.invoker.InvocationContextTest;
 import com.android.tradefed.invoker.InvocationExecutionTest;
+import com.android.tradefed.invoker.SandboxedInvocationExecutionTest;
 import com.android.tradefed.invoker.ShardListenerTest;
 import com.android.tradefed.invoker.ShardMasterResultForwarderTest;
 import com.android.tradefed.invoker.TestInvocationMultiTest;
@@ -370,6 +371,7 @@ import org.junit.runners.Suite.SuiteClasses;
     // invoker
     InvocationContextTest.class,
     InvocationExecutionTest.class,
+    SandboxedInvocationExecutionTest.class,
     ShardListenerTest.class,
     ShardMasterResultForwarderTest.class,
     TestInvocationMultiTest.class,
