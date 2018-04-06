@@ -80,9 +80,11 @@ public class ConfigurationDescriptor implements Serializable {
         mSuiteTags = suiteTags;
     }
 
-    /** Retrieves all configured metadata */
+    /** Retrieves all configured metadata and return a copy of the map. */
     public MultiMap<String, String> getAllMetaData() {
-        return mMetaData;
+        MultiMap<String, String> copy = new MultiMap<>();
+        copy.putAll(mMetaData);
+        return copy;
     }
 
     /** Get the named metadata entries */
