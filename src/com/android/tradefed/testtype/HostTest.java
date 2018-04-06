@@ -894,7 +894,12 @@ public class HostTest
                 test.addTestMethod(testObj);
                 subTests = test.mTestMethods;
             }
-            test.mRuntimeHint = mRuntimeHint * subTests.size() / numTotalTestCases;
+            if (numTotalTestCases == 0) {
+                // In case there is no tests left
+                test.mRuntimeHint = 0L;
+            } else {
+                test.mRuntimeHint = mRuntimeHint * subTests.size() / numTotalTestCases;
+            }
             i = (i + 1) % shardCount;
         }
 
@@ -971,7 +976,7 @@ public class HostTest
             // update the runtime hint on pro-rate of number of tests.
             if (newCount == 0) {
                 // In case there is not tests left.
-                test.mRuntimeHint = 0l;
+                test.mRuntimeHint = 0L;
             } else {
                 test.mRuntimeHint = (mRuntimeHint * newCount) / numTotalTestCases;
             }

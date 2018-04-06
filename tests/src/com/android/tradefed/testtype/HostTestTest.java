@@ -2096,4 +2096,25 @@ public class HostTestTest extends TestCase {
         mHostTest.run(mListener);
         EasyMock.verify(mListener);
     }
+
+    /**
+     * Test that when all tests are filtered out, we properly shard them with 0 runtime, and they
+     * will be completely skipped during execution.
+     */
+    public void testSplit_withFilter() throws Exception {
+        OptionSetter setter = new OptionSetter(mHostTest);
+        setter.setOptionValue("class", Junit4TestClass.class.getName());
+        setter.setOptionValue("class", AnotherTestCase.class.getName());
+        // Filter everything out
+        mHostTest.addExcludeFilter(Junit4TestClass.class.getName());
+        mHostTest.addExcludeFilter(AnotherTestCase.class.getName());
+
+        Collection<IRemoteTest> tests = mHostTest.split(6);
+        assertEquals(2, tests.size());
+        for (IRemoteTest test : tests) {
+            assertTrue(test instanceof HostTest);
+            assertEquals(0L, ((HostTest) test).getRuntimeHint());
+            assertEquals(0, ((HostTest) test).countTestCases());
+        }
+    }
 }
