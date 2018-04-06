@@ -189,7 +189,8 @@ public class PythonUnitTestRunnerTest {
                     (TestDescription) EasyMock.anyObject(), (String) EasyMock.anyObject());
             EasyMock.expectLastCall().times(1);
         }
-        mMockListener.testEnded((TestDescription) EasyMock.anyObject(), EasyMock.anyObject());
+        mMockListener.testEnded(
+                (TestDescription) EasyMock.anyObject(), (Map<String, String>) EasyMock.anyObject());
         EasyMock.expectLastCall().times(1);
         if (!testPass) {
             mMockListener.testRunFailed((String) EasyMock.anyObject());

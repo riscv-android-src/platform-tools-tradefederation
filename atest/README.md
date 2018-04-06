@@ -1,4 +1,4 @@
-# ATEST
+# Atest
 
 Atest is a command line tool that allows users to build, install and run Android tests locally.
 This markdown will explain how to use atest on the commandline to run android tests.<br>
@@ -7,14 +7,14 @@ This markdown will explain how to use atest on the commandline to run android te
 Importantly, when writing your test's build script file (Android.mk), make sure to include
 the variable `LOCAL_COMPATIBILITY_SUITE`.  A good default to use for it is `device-test`.
 
-Curious about how atest works? Want to add a feature but not sure where to begin?
+Curious about how atest works? Want to add a feature but not sure where to begin? [Go here.](./docs/developer_workflow.md)
 Just want to learn about the overall structure? [Go here.](./docs/atest_structure.md)
 
 ##### Table of Contents
 1. [Environment Setup](#environment-setup)
 2. [Basic Usage](#basic-usage)
 3. [Identifying Tests](#identifying-tests)
-4. [Specifying Steps: Build, Install or Run](#specifying-steps)
+4. [Specifying Steps: Build, Install or Run](#specifying-steps:-build,-install-or-run)
 5. [Running Specific Methods](#running-specific-methods)
 6. [Running Multiple Classes](#running-multiple-classes)
 7. [Detecting Metrics Regression](#detecting-metrics-regression)
@@ -57,7 +57,7 @@ Atest commands take the following form:
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;-v&nbsp;&nbsp;&nbsp;--verbose&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Display DEBUG level logging.<br>
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;-h&nbsp;&nbsp;&nbsp;--help&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;show this help message and exit<br>
 
-More information about **-b**, **-i** and **-t** can be found below under [Specifying Steps: Build, Install or Run.](#specifying-steps)
+More information about **-b**, **-i** and **-t** can be found below under [Specifying Steps: Build, Install or Run.](#specifying-steps:-build,-install-or-run)
 
 #### \<tests to run>
 
@@ -151,7 +151,7 @@ More information about **-b**, **-i** and **-t** can be found below under [Speci
   &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;From android repo root: `atest tools/tradefederation/contrib/res/config/example/reboot.xml`
 
 
-## <a name="specifying-steps">Specifying Steps: Build, Install or Run</a>
+## <a name="specifying-steps:-build,-install-or-run">Specifying Steps: Build, Install or Run</a>
 
 The **-b**, **-i** and **-t** options allow you to specify which steps you want to run.  If none of
 those options are given, then all steps are run. If any of these options are provided then only the

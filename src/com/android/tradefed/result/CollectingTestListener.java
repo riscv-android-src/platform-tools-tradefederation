@@ -19,11 +19,13 @@ import com.android.ddmlib.testrunner.TestResult.TestStatus;
 import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.config.Option;
 import com.android.tradefed.invoker.IInvocationContext;
+import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
 
 import com.google.common.annotations.VisibleForTesting;
 
 import java.util.Collection;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
@@ -213,6 +215,13 @@ public class CollectingTestListener implements ITestInvocationListener, ILogSave
      */
     @Override
     public void testRunEnded(long elapsedTime, Map<String, String> runMetrics) {
+        mIsCountDirty = true;
+        mCurrentResults.testRunEnded(elapsedTime, runMetrics);
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public void testRunEnded(long elapsedTime, HashMap<String, Metric> runMetrics) {
         mIsCountDirty = true;
         mCurrentResults.testRunEnded(elapsedTime, runMetrics);
     }

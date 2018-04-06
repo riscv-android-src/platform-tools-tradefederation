@@ -17,6 +17,7 @@
 package com.android.tradefed.config;
 
 import com.android.tradefed.device.metric.IMetricCollector;
+import com.android.tradefed.log.LogUtil.CLog;
 
 import java.io.File;
 import java.util.ArrayList;
@@ -207,13 +208,25 @@ public class ConfigurationDef {
             }
         }
 
+        Map<String, String> rejectedObjects = new HashMap<>();
+        Throwable cause = null;
+
         for (Map.Entry<String, List<ConfigObjectDef>> objClassEntry : mObjectClassMap.entrySet()) {
             List<Object> objectList = new ArrayList<Object>(objClassEntry.getValue().size());
             String entryName = objClassEntry.getKey();
             boolean shouldAddToFlatConfig = true;
 
             for (ConfigObjectDef configDef : objClassEntry.getValue()) {
-                Object configObject = createObject(objClassEntry.getKey(), configDef.mClassName);
+                Object configObject = null;
+                try {
+                    configObject = createObject(objClassEntry.getKey(), configDef.mClassName);
+                } catch (ClassNotFoundConfigurationException e) {
+                    // Store all the loading failure
+                    cause = e.getCause();
+                    rejectedObjects.putAll(e.getRejectedObjects());
+                    CLog.e(e);
+                    continue;
+                }
                 Matcher matcher = null;
                 if (mMultiDeviceMode) {
                     matcher = MULTI_PATTERN.matcher(entryName);
@@ -250,6 +263,17 @@ public class ConfigurationDef {
                 config.setConfigurationObjectList(entryName, objectList);
             }
         }
+
+        // Send all the objects that failed the loading.
+        if (!rejectedObjects.isEmpty()) {
+            throw new ClassNotFoundConfigurationException(
+                    String.format(
+                            "Failed to load some objects in the configuration: %s",
+                            rejectedObjects),
+                    cause,
+                    rejectedObjects);
+        }
+
         // We always add the device configuration list so we can rely on it everywhere
         config.setConfigurationObjectList(Configuration.DEVICE_NAME, deviceObjectList);
         config.injectOptionValues(mOptionList);

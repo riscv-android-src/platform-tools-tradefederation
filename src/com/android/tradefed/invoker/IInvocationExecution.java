@@ -124,4 +124,19 @@ public interface IInvocationExecution {
     public default void runTests(
             IInvocationContext context, IConfiguration config, ITestInvocationListener listener)
             throws DeviceNotAvailableException {}
+
+    /**
+     * Report a failure for the invocation.
+     *
+     * @param exception The exception that should be reported.
+     * @param listener The invocation listener.
+     * @param config The configuration currently running.
+     * @param context The {@link IInvocationContext} of the invocation.
+     * @return True if the configuration should be rescheduled, False otherwise.
+     */
+    public boolean resetBuildAndReschedule(
+            Throwable exception,
+            ITestInvocationListener listener,
+            IConfiguration config,
+            IInvocationContext context);
 }

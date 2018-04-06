@@ -81,7 +81,7 @@ public class TestInvocationMultiTest {
                     }
 
                     @Override
-                    public IInvocationExecution createInvocationExec() {
+                    public IInvocationExecution createInvocationExec(boolean isSandboxed) {
                         return new InvocationExecution() {
                             @Override
                             protected IShardHelper createShardHelper() {
