@@ -16,19 +16,14 @@
 
 package com.android.tradefed.util;
 
-import com.android.tradefed.log.LogUtil.CLog;
-
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 
 /** File downloader to download file from google cloud storage (GCS). */
 public class GCSFileDownloader {
-
-    // https://cloud.google.com/storage/docs/gsutil
-    private static final String GSUTIL = "gsutil";
-    private static final String GCS_FILENAME_FORMAT = "gs://%s/%s";
-    private static final String CP = "cp";
     private static final long TIMEOUT = 10000; // 10s
     private static final long RETRY_INTERVAL = 1000; // 1s
     private static final int ATTETMPTS = 3;
@@ -41,40 +36,13 @@ public class GCSFileDownloader {
      * @return {@link InputStream} with the file content.
      */
     public InputStream downloadFile(String bucketName, String filename) throws IOException {
-        checkGSUtil();
-        CLog.d("Downloading %s %s", bucketName, filename);
-        // "gsutil cp url... -" will copy the file to stdout.
-        CommandResult res =
-                RunUtil.getDefault()
-                        .runTimedCmdRetry(
-                                TIMEOUT,
-                                RETRY_INTERVAL,
-                                ATTETMPTS,
-                                GSUTIL,
-                                CP,
-                                String.format(GCS_FILENAME_FORMAT, bucketName, filename),
-                                "-");
-        if (!CommandStatus.SUCCESS.equals(res.getStatus())) {
-            throw new IOException(
-                    String.format(
-                            "Failed to download %s %s with %s.\nstdout: %s\nstderr: %s",
-                            bucketName,
-                            filename,
-                            res.getStatus(),
-                            res.getStdout(),
-                            res.getStderr()));
-        }
-        return new ByteArrayInputStream(res.getStdout().getBytes());
-    }
+        GCSBucketUtil bucket = new GCSBucketUtil(bucketName);
+        bucket.setTimeoutMs(TIMEOUT);
+        bucket.setRetryInterval(RETRY_INTERVAL);
+        bucket.setAttempts(ATTETMPTS);
 
-    void checkGSUtil() throws IOException {
-        CommandResult res =
-                RunUtil.getDefault()
-                        .runTimedCmdRetry(TIMEOUT, RETRY_INTERVAL, ATTETMPTS, GSUTIL, "-v");
-        if (!CommandStatus.SUCCESS.equals(res.getStatus())) {
-            throw new IOException(
-                    "gsutil is not installed.\n"
-                            + "https://cloud.google.com/storage/docs/gsutil for instructions.");
-        }
+        Path path = Paths.get(filename);
+        String contents = bucket.pullContents(path);
+        return new ByteArrayInputStream(contents.getBytes());
     }
 }

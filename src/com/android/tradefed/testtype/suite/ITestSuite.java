@@ -27,6 +27,7 @@ import com.android.tradefed.config.Option.Importance;
 import com.android.tradefed.config.OptionCopier;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
+import com.android.tradefed.device.StubDevice;
 import com.android.tradefed.device.metric.IMetricCollector;
 import com.android.tradefed.device.metric.IMetricCollectorReceiver;
 import com.android.tradefed.invoker.IInvocationContext;
@@ -209,6 +210,12 @@ public abstract class ITestSuite
     )
     private Set<String> mAllowedPreparers = new HashSet<>();
 
+    @Option(
+        name = "reboot-before-test",
+        description = "Reboot the device before the test suite starts."
+    )
+    private boolean mRebootBeforeTest = false;
+
     private ITestDevice mDevice;
     private IBuildInfo mBuildInfo;
     private Map<ITestDevice, IBuildInfo> mDeviceInfos;
@@ -352,10 +359,22 @@ public abstract class ITestSuite
             return;
         }
 
-        // Allow checkers to log files for easier debbuging.
+        // Allow checkers to log files for easier debugging.
         for (ISystemStatusChecker checker : mSystemStatusCheckers) {
             if (checker instanceof ITestLoggerReceiver) {
                 ((ITestLoggerReceiver) checker).setTestLogger(listener);
+            }
+        }
+
+        // If requested reboot each device before the testing starts.
+        if (mRebootBeforeTest) {
+            for (ITestDevice device : mContext.getDevices()) {
+                if (!(device.getIDevice() instanceof StubDevice)) {
+                    CLog.d(
+                            "Rebooting device '%s' before test starts as requested.",
+                            device.getSerialNumber());
+                    mDevice.reboot();
+                }
             }
         }
 
