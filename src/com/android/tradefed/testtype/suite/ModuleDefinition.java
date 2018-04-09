@@ -32,8 +32,10 @@ import com.android.tradefed.log.LogRegistry;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
 import com.android.tradefed.result.ILogSaver;
+import com.android.tradefed.result.ILogSaverListener;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.ITestLoggerReceiver;
+import com.android.tradefed.result.LogFile;
 import com.android.tradefed.result.LogSaverResultForwarder;
 import com.android.tradefed.result.TestDescription;
 import com.android.tradefed.result.TestResult;
@@ -64,9 +66,11 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.ListIterator;
 import java.util.Map;
+import java.util.Map.Entry;
 
 /**
  * Container for the test run configuration. This class is an helper to prepare and run the tests.
@@ -376,6 +380,9 @@ public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestColl
 
                 ITestInvocationListener runListener =
                         new LogSaverResultForwarder(mLogSaver, currentTestListener);
+                if (failureListener != null) {
+                    failureListener.setLogger(runListener);
+                }
                 if (mRunMetricCollectors != null) {
                     // Module only init the collectors here to avoid triggering the collectors when
                     // replaying the cached events at the end. This ensure metrics are capture at
@@ -480,8 +487,8 @@ public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestColl
         long elapsedTime = 0l;
         HashMap<String, Metric> metricsProto = new HashMap<>();
         listener.testRunStarted(getId(), totalExpectedTests);
-
         int numResults = 0;
+        Map<String, LogFile> aggLogFiles = new LinkedHashMap<>();
         for (TestRunResult runResult : listResults) {
             numResults += runResult.getTestResults().size();
             forwardTestResults(runResult.getTestResults(), listener);
@@ -492,6 +499,7 @@ public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestColl
             elapsedTime += runResult.getElapsedTime();
             // put metrics from the tests
             metricsProto.putAll(runResult.getRunProtoMetrics());
+            aggLogFiles.putAll(runResult.getRunLoggedFiles());
         }
         // put metrics from the preparation
         metricsProto.put(
@@ -510,6 +518,13 @@ public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestColl
             listener.testRunFailed(error);
             CLog.e(error);
             mIsFailedModule = true;
+        }
+
+        // Provide a strong association of the run to its logs.
+        for (Entry<String, LogFile> logFile : aggLogFiles.entrySet()) {
+            if (listener instanceof ILogSaverListener) {
+                ((ILogSaverListener) listener).logAssociation(logFile.getKey(), logFile.getValue());
+            }
         }
         listener.testRunEnded(getCurrentTime() - mElapsedTest, metricsProto);
     }
@@ -535,6 +550,14 @@ public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestColl
                     break;
                 default:
                     break;
+            }
+            // Provide a strong association of the test to its logs.
+            for (Entry<String, LogFile> logFile :
+                    testEntry.getValue().getLoggedFiles().entrySet()) {
+                if (listener instanceof ILogSaverListener) {
+                    ((ILogSaverListener) listener)
+                            .logAssociation(logFile.getKey(), logFile.getValue());
+                }
             }
             listener.testEnded(
                     testEntry.getKey(),
