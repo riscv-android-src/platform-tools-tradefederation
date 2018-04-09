@@ -87,10 +87,14 @@ public class GTest
             description="The GTest-based negative filter of the test names to run.")
     private Set<String> mExcludeFilters = new HashSet<>();
 
-    @Option(name = "native-test-timeout", description =
-            "The max time in ms for a gtest to run. " +
-            "Test run will be aborted if any test takes longer.")
-    private int mMaxTestTimeMs = 1 * 60 * 1000;
+    @Option(
+        name = "native-test-timeout",
+        description =
+                "The max time for a gtest to run. Test run will be aborted if any test "
+                        + "takes longer.",
+        isTimeVal = true
+    )
+    private long mMaxTestTimeMs = 1 * 60 * 1000L;
 
     @Option(name = "send-coverage",
             description = "Send coverage target info to test listeners.")
