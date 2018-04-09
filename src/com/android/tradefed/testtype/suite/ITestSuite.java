@@ -381,7 +381,6 @@ public abstract class ITestSuite
         /** Setup a special listener to take actions on test failures. */
         TestFailureListener failureListener =
                 new TestFailureListener(
-                        listener,
                         mContext.getDevices(),
                         mBugReportOnFailure,
                         mLogcatOnFailure,

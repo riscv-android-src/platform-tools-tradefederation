@@ -57,24 +57,12 @@ public class CollectingTestListener implements ITestInvocationListener, ILogSave
         "attempt to add test metrics values for test runs with the same name." )
     private boolean mIsAggregateMetrics = false;
 
-    @Option(
-        name = "store-logged-file-info",
-        description =
-                "Whether or not to associate and store logged file information with their test case"
-    )
-    private boolean mStoreLoggedFileInfo = false;
-
     private IBuildInfo mBuildInfo;
     private IInvocationContext mContext;
 
     /** Toggle the 'aggregate metrics' option */
     protected void setIsAggregrateMetrics(boolean aggregate) {
         mIsAggregateMetrics = aggregate;
-    }
-
-    /** Toggle the 'store the logged file info' option */
-    protected void setStoreLoggedFileInfo(boolean store) {
-        mStoreLoggedFileInfo = store;
     }
 
     /**
@@ -339,23 +327,26 @@ public class CollectingTestListener implements ITestInvocationListener, ILogSave
     /** {@inheritDoc} */
     @Override
     public void testLog(String dataName, LogDataType dataType, InputStreamSource dataStream) {
-        // ignore, testLogSaved is implemented.
+        // ignore, logAssociation is implemented.
     }
 
     /** {@inheritDoc} */
     @Override
     public void testLogSaved(
             String dataName, LogDataType dataType, InputStreamSource dataStream, LogFile logFile) {
-        if (mStoreLoggedFileInfo) {
-            // Pass the log information to the results to associated them with test cases.
-            mCurrentResults.testLogSaved(dataName, logFile);
-        }
+        // ignore, logAssociation is used to save the files
     }
 
     /** {@inheritDoc} */
     @Override
     public void setLogSaver(ILogSaver logSaver) {
         // CollectingTestListener does not need the logSaver
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public void logAssociation(String dataName, LogFile logFile) {
+        mCurrentResults.testLogSaved(dataName, logFile);
     }
 
     /**

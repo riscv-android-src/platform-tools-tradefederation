@@ -23,9 +23,11 @@ import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.InputStreamSource;
 import com.android.tradefed.result.LogDataType;
 import com.android.tradefed.result.LogFile;
+import com.android.tradefed.result.LogSaverResultForwarder;
 import com.android.tradefed.result.TestDescription;
 import com.android.tradefed.result.TestRunResult;
 import com.android.tradefed.testtype.IRemoteTest;
+
 import java.util.Map;
 
 /**
@@ -45,7 +47,6 @@ public class ModuleListener extends CollectingTestListener {
     public ModuleListener(ITestInvocationListener listener) {
         mMainListener = listener;
         setIsAggregrateMetrics(true);
-        setStoreLoggedFileInfo(true);
     }
 
     /**
@@ -140,6 +141,18 @@ public class ModuleListener extends CollectingTestListener {
     /** Whether or not to mark all the test cases skipped. */
     public void setMarkTestsSkipped(boolean skip) {
         mSkip = skip;
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public void testLog(String dataName, LogDataType dataType, InputStreamSource dataStream) {
+        if (mMainListener instanceof LogSaverResultForwarder) {
+            // If the listener is a log saver, we should simply forward the testLog not save again.
+            ((LogSaverResultForwarder) mMainListener)
+                    .testLogForward(dataName, dataType, dataStream);
+        } else {
+            super.testLog(dataName, dataType, dataStream);
+        }
     }
 
     /** {@inheritDoc} */

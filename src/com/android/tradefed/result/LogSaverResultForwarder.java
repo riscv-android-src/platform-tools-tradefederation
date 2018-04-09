@@ -80,7 +80,7 @@ public class LogSaverResultForwarder extends ResultForwarder implements ILogSave
      */
     @Override
     public void testLog(String dataName, LogDataType dataType, InputStreamSource dataStream) {
-        super.testLog(dataName, dataType, dataStream);
+        testLogForward(dataName, dataType, dataStream);
         try {
             LogFile logFile = mLogSaver.saveLogData(dataName, dataType,
                     dataStream.createInputStream());
@@ -88,12 +88,18 @@ public class LogSaverResultForwarder extends ResultForwarder implements ILogSave
                 if (listener instanceof ILogSaverListener) {
                     ((ILogSaverListener) listener).testLogSaved(dataName, dataType,
                             dataStream, logFile);
+                    ((ILogSaverListener) listener).logAssociation(dataName, logFile);
                 }
             }
         } catch (RuntimeException | IOException e) {
             CLog.e("Failed to save log data");
             CLog.e(e);
         }
+    }
+
+    public void testLogForward(
+            String dataName, LogDataType dataType, InputStreamSource dataStream) {
+        super.testLog(dataName, dataType, dataStream);
     }
 
     /**
@@ -115,6 +121,22 @@ public class LogSaverResultForwarder extends ResultForwarder implements ILogSave
         } catch (RuntimeException e) {
             CLog.e("Failed to save log data");
             CLog.e(e);
+        }
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public void logAssociation(String dataName, LogFile logFile) {
+        for (ITestInvocationListener listener : getListeners()) {
+            try {
+                // Forward the logAssociation call
+                if (listener instanceof ILogSaverListener) {
+                    ((ILogSaverListener) listener).logAssociation(dataName, logFile);
+                }
+            } catch (RuntimeException e) {
+                CLog.e("Failed to provide the log association");
+                CLog.e(e);
+            }
         }
     }
 
