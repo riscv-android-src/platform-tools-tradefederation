@@ -576,7 +576,7 @@ public class CommandSchedulerFuncTest {
     public void testShutdown_invocation_timeout() throws Throwable {
         final LongInvocation li = new LongInvocation(2);
         mCommandOptions.setLoopMode(false);
-        mCommandOptions.setInvocationTimeout(500l);
+        mCommandOptions.setInvocationTimeout(1000L);
         mCommandScheduler =
                 new CommandScheduler() {
                     @Override
@@ -615,7 +615,7 @@ public class CommandSchedulerFuncTest {
         mCommandScheduler.start();
         mInterruptible = true;
         mCommandScheduler.addCommand(slowConfigArgs);
-        mCommandScheduler.join(mCommandOptions.getInvocationTimeout() * 2);
+        mCommandScheduler.join(mCommandOptions.getInvocationTimeout() * 3);
         // Stop and was interrupted by timeout
         assertTrue(li.runInterrupted);
     }
