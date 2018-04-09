@@ -34,19 +34,23 @@ class RegressionTestRunner(test_runner_base.TestRunnerBase):
         self.run_cmd_dict = {'exe': self.EXECUTABLE,
                              'args': ''}
 
-    def run_tests(self, test_infos, extra_args):
+    def run_tests(self, test_infos, extra_args, reporter):
         """Run the list of test_infos.
 
         Args:
             test_infos: List of TestInfo.
-            args: Dict of args to add to regression detection test run.
+            extra_args: Dict of args to add to regression detection test run.
+            reporter: A ResultReporter instance.
         """
+        reporter.register_unsupported_runner(self.NAME)
         pre = extra_args.pop(constants.PRE_PATCH_FOLDER)
         post = extra_args.pop(constants.POST_PATCH_FOLDER)
         args = ['--pre-patch-metrics', pre, '--post-patch-metrics', post]
         self.run_cmd_dict['args'] = ' '.join(args)
         run_cmd = self._RUN_CMD.format(**self.run_cmd_dict)
-        super(RegressionTestRunner, self).run(run_cmd)
+        proc = super(RegressionTestRunner, self).run(run_cmd,
+                                                     output_to_stdout=True)
+        proc.wait()
 
     def host_env_check(self):
         """Check that host env has everything we need.
