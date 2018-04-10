@@ -16,6 +16,7 @@
 package com.android.tradefed.testtype.suite;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.mock;
@@ -36,10 +37,14 @@ import com.android.tradefed.invoker.IRescheduler;
 import com.android.tradefed.invoker.InvocationContext;
 import com.android.tradefed.invoker.shard.StrictShardHelper;
 import com.android.tradefed.log.LogUtil.CLog;
+import com.android.tradefed.result.FileSystemLogSaver;
 import com.android.tradefed.result.ILogSaver;
 import com.android.tradefed.result.ITestInvocationListener;
+import com.android.tradefed.result.LogSaverResultForwarder;
 import com.android.tradefed.result.ResultForwarder;
 import com.android.tradefed.result.TestDescription;
+import com.android.tradefed.result.TestResult;
+import com.android.tradefed.result.TestRunResult;
 import com.android.tradefed.result.suite.SuiteResultReporter;
 import com.android.tradefed.suite.checker.ISystemStatusChecker;
 import com.android.tradefed.suite.checker.ISystemStatusCheckerReceiver;
@@ -61,8 +66,10 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map.Entry;
 
 /**
  * Tests an {@link ITestSuite} end-to-end: A lesson learnt from CTS is that we need to ensure final
@@ -75,11 +82,13 @@ public class ITestSuiteIntegrationTest {
     private static final String CONFIG =
             "<configuration description=\"Auto Generated File\">\n"
                     + "<test class=\"com.android.tradefed.testtype.suite.%s\">\n"
+                    + "    <option name=\"module\" value=\"%s\" />\n"
                     + "    <option name=\"report-test\" value=\"%s\" />\n"
                     + "    <option name=\"run-complete\" value=\"%s\" />\n"
                     + "    <option name=\"test-fail\" value=\"%s\" />\n"
                     + "    <option name=\"internal-retry\" value=\"%s\" />\n"
                     + "    <option name=\"throw-device-not-available\" value=\"%s\" />\n"
+                    + "    <option name=\"log-fake-files\" value=\"%s\" />\n"
                     + "</test>\n"
                     + "</configuration>";
     private static final String FILENAME = "%s.config";
@@ -113,7 +122,8 @@ public class ITestSuiteIntegrationTest {
             boolean runComplete,
             boolean doesOneTestFail,
             boolean internalRetry,
-            boolean throwEx)
+            boolean throwEx,
+            boolean shouldLogFile)
             throws IOException {
         File config = new File(testsDir, String.format(FILENAME, name));
         FileUtil.deleteFile(config);
@@ -125,11 +135,13 @@ public class ITestSuiteIntegrationTest {
                 String.format(
                         CONFIG,
                         moduleClass,
+                        name,
                         reportTest,
                         runComplete,
                         doesOneTestFail,
                         internalRetry,
-                        throwEx),
+                        throwEx,
+                        shouldLogFile),
                 config);
     }
 
@@ -182,7 +194,7 @@ public class ITestSuiteIntegrationTest {
                             ConfigurationFactory.getInstance()
                                     .createConfigurationFromArgs(
                                             new String[] {configFile.getAbsolutePath()});
-                    testConfig.put(configFile.getName(), config);
+                    testConfig.put(configFile.getName().replace(".config", ""), config);
                     for (IRemoteTest test : config.getTests()) {
                         if (test instanceof TestSuiteStub) {
                             ((TestSuiteStub) test).mShardedTestToRun = mTests;
@@ -203,8 +215,10 @@ public class ITestSuiteIntegrationTest {
     /** Tests that a normal run with 2 modules with 3 tests each reports correctly. */
     @Test
     public void testSimplePassRun() throws Exception {
-        createConfig(mTestConfigFolder, "module1", TEST_STUB, true, true, false, false, false);
-        createConfig(mTestConfigFolder, "module2", TEST_STUB, true, true, false, false, false);
+        createConfig(
+                mTestConfigFolder, "module1", TEST_STUB, true, true, false, false, false, false);
+        createConfig(
+                mTestConfigFolder, "module2", TEST_STUB, true, true, false, false, false, false);
         ITestSuite suite = new TestSuiteFolderImpl(mTestConfigFolder);
         suite.setDevice(mMockDevice);
         suite.setBuild(mMockBuildInfo);
@@ -222,15 +236,85 @@ public class ITestSuiteIntegrationTest {
         assertEquals(0, mListener.getFailedTests());
         // Ensure that we have correctly kept track of module's abi.
         assertEquals(2, mListener.getModulesAbi().size());
-        assertEquals("armeabi-v7a", mListener.getModulesAbi().get("module1.config").getName());
-        assertEquals("armeabi-v7a", mListener.getModulesAbi().get("module2.config").getName());
+        assertEquals("armeabi-v7a", mListener.getModulesAbi().get("module1").getName());
+        assertEquals("armeabi-v7a", mListener.getModulesAbi().get("module2").getName());
+    }
+
+    /**
+     * Tests that a normal run with 2 modules with 3 tests each reports correctly and their log
+     * files are properly associated with each test case.
+     */
+    @Test
+    public void testSimplePassRun_withLoggedFile() throws Exception {
+        File logSaverTmpDir = FileUtil.createTempDir("log-saver-tmp-dir");
+        try {
+            ILogSaver logSaver = new FileSystemLogSaver();
+            OptionSetter setter = new OptionSetter(logSaver);
+            setter.setOptionValue("log-file-path", logSaverTmpDir.getAbsolutePath());
+            mStubMainConfiguration.setLogSaver(logSaver);
+            LogSaverResultForwarder mainInvocationForwarder =
+                    new LogSaverResultForwarder(logSaver, Arrays.asList(mListener));
+
+            createConfig(
+                    mTestConfigFolder, "module1", TEST_STUB, true, true, false, false, false, true);
+            createConfig(
+                    mTestConfigFolder, "module2", TEST_STUB, true, true, false, false, false, true);
+            ITestSuite suite = new TestSuiteFolderImpl(mTestConfigFolder);
+            suite.setDevice(mMockDevice);
+            suite.setBuild(mMockBuildInfo);
+            suite.setSystemStatusChecker(new ArrayList<ISystemStatusChecker>());
+            suite.setInvocationContext(mContext);
+            suite.setConfiguration(mStubMainConfiguration);
+            // Fake invocation start
+            mainInvocationForwarder.invocationStarted(mContext);
+            suite.run(mainInvocationForwarder);
+            mainInvocationForwarder.invocationEnded(System.currentTimeMillis());
+            // Fake invocation end
+            // check results
+            assertEquals(2, mListener.getTotalModules());
+            assertEquals(2, mListener.getCompleteModules());
+            assertEquals(6, mListener.getTotalTests());
+            assertEquals(6, mListener.getPassedTests());
+            assertEquals(0, mListener.getFailedTests());
+            // Ensure that we have correctly kept track of module's abi.
+            assertEquals(2, mListener.getModulesAbi().size());
+            assertEquals("armeabi-v7a", mListener.getModulesAbi().get("module1").getName());
+            assertEquals("armeabi-v7a", mListener.getModulesAbi().get("module2").getName());
+            // Check the expected file have been logged in the right place:
+            Iterator<TestRunResult> iterator = mListener.getRunResults().iterator();
+            TestRunResult module1 = iterator.next();
+
+            // Check that all the files at the end are properly associated with each of their test
+            assertEquals("module1", module1.getName());
+            assertEquals(1, module1.getRunLoggedFiles().size());
+            assertTrue(module1.getRunLoggedFiles().containsKey("module1-file"));
+            for (Entry<TestDescription, TestResult> results : module1.getTestResults().entrySet()) {
+                String fileName = String.format("%s-file", results.getKey().toString());
+                assertEquals(1, results.getValue().getLoggedFiles().size());
+                assertTrue(results.getValue().getLoggedFiles().containsKey(fileName));
+            }
+
+            TestRunResult module2 = iterator.next();
+            assertEquals("module2", module2.getName());
+            assertEquals(1, module2.getRunLoggedFiles().size());
+            assertTrue(module2.getRunLoggedFiles().containsKey("module2-file"));
+            for (Entry<TestDescription, TestResult> results : module2.getTestResults().entrySet()) {
+                String fileName = String.format("%s-file", results.getKey().toString());
+                assertEquals(1, results.getValue().getLoggedFiles().size());
+                assertTrue(results.getValue().getLoggedFiles().containsKey(fileName));
+            }
+        } finally {
+            FileUtil.recursiveDelete(logSaverTmpDir);
+        }
     }
 
     /** Tests that a normal run with 2 modules with 3 tests each, 1 failed test in second module. */
     @Test
     public void testSimpleRun_withFail() throws Exception {
-        createConfig(mTestConfigFolder, "module1", TEST_STUB, true, true, false, false, false);
-        createConfig(mTestConfigFolder, "module2", TEST_STUB, true, true, true, false, false);
+        createConfig(
+                mTestConfigFolder, "module1", TEST_STUB, true, true, false, false, false, false);
+        createConfig(
+                mTestConfigFolder, "module2", TEST_STUB, true, true, true, false, false, false);
         ITestSuite suite = new TestSuiteFolderImpl(mTestConfigFolder);
         suite.setDevice(mMockDevice);
         suite.setBuild(mMockBuildInfo);
@@ -255,8 +339,10 @@ public class ITestSuiteIntegrationTest {
      */
     @Test
     public void testRun_incomplete() throws Exception {
-        createConfig(mTestConfigFolder, "module1", TEST_STUB, true, true, false, false, false);
-        createConfig(mTestConfigFolder, "module2", TEST_STUB, true, false, false, false, false);
+        createConfig(
+                mTestConfigFolder, "module1", TEST_STUB, true, true, false, false, false, false);
+        createConfig(
+                mTestConfigFolder, "module2", TEST_STUB, true, false, false, false, false, false);
         ITestSuite suite = new TestSuiteFolderImpl(mTestConfigFolder);
         suite.setDevice(mMockDevice);
         suite.setBuild(mMockBuildInfo);
@@ -280,8 +366,10 @@ public class ITestSuiteIntegrationTest {
      */
     @Test
     public void testRun_DeviceNotAvailable() throws Exception {
-        createConfig(mTestConfigFolder, "module1", TEST_STUB, true, true, false, false, true);
-        createConfig(mTestConfigFolder, "module2", TEST_STUB, true, true, false, false, false);
+        createConfig(
+                mTestConfigFolder, "module1", TEST_STUB, true, true, false, false, true, false);
+        createConfig(
+                mTestConfigFolder, "module2", TEST_STUB, true, true, false, false, false, false);
         ITestSuite suite = new TestSuiteFolderImpl(mTestConfigFolder);
         suite.setDevice(mMockDevice);
         suite.setBuild(mMockBuildInfo);
@@ -393,8 +481,10 @@ public class ITestSuiteIntegrationTest {
     /** Tests running a split ITestSuite. Without parallelism, the first pool will run all tests. */
     @Test
     public void testRun_sharding_firstModuleRunsAll() throws Exception {
-        createConfig(mTestConfigFolder, "module1", TEST_STUB, true, true, false, false, false);
-        createConfig(mTestConfigFolder, "module2", TEST_STUB, true, true, true, false, false);
+        createConfig(
+                mTestConfigFolder, "module1", TEST_STUB, true, true, false, false, false, false);
+        createConfig(
+                mTestConfigFolder, "module2", TEST_STUB, true, true, true, false, false, false);
         ITestSuite suite = new TestSuiteFolderImpl(mTestConfigFolder);
         IConfiguration config =
                 ConfigurationFactory.getInstance()
@@ -431,8 +521,10 @@ public class ITestSuiteIntegrationTest {
      */
     @Test
     public void testRun_sharding_parallelRun() throws Exception {
-        createConfig(mTestConfigFolder, "module1", TEST_STUB, true, true, false, false, false);
-        createConfig(mTestConfigFolder, "module2", TEST_STUB, true, true, true, false, false);
+        createConfig(
+                mTestConfigFolder, "module1", TEST_STUB, true, true, false, false, false, false);
+        createConfig(
+                mTestConfigFolder, "module2", TEST_STUB, true, true, true, false, false, false);
         ITestSuite suite = new TestSuiteFolderImpl(mTestConfigFolder);
         IConfiguration config =
                 ConfigurationFactory.getInstance()
@@ -476,8 +568,10 @@ public class ITestSuiteIntegrationTest {
      */
     @Test
     public void testRun_sharding_withIndex() throws Exception {
-        createConfig(mTestConfigFolder, "module1", TEST_STUB, true, true, false, false, false);
-        createConfig(mTestConfigFolder, "module2", TEST_STUB, true, true, true, false, false);
+        createConfig(
+                mTestConfigFolder, "module1", TEST_STUB, true, true, false, false, false, false);
+        createConfig(
+                mTestConfigFolder, "module2", TEST_STUB, true, true, true, false, false, false);
         ITestSuite suite = new TestSuiteFolderImpl(mTestConfigFolder);
         IConfiguration config =
                 ConfigurationFactory.getInstance()
@@ -557,7 +651,8 @@ public class ITestSuiteIntegrationTest {
         tests.add(new TestDescription("class1", "test1"));
         tests.add(new TestDescription("class1", "test2"));
         tests.add(new TestDescription("class1", "test3"));
-        createConfig(mTestConfigFolder, "module1", TEST_STUB, true, true, false, false, false);
+        createConfig(
+                mTestConfigFolder, "module1", TEST_STUB, true, true, false, false, false, false);
         ITestSuite suite = new TestSuiteFolderImpl(mTestConfigFolder, tests);
         IConfiguration config =
                 ConfigurationFactory.getInstance()

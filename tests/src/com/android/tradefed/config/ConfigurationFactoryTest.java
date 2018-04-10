@@ -1575,4 +1575,68 @@ public class ConfigurationFactoryTest extends TestCase {
                             .get("com.android.tradefed.targetprep.doesnotexistseither"));
         }
     }
+
+    /**
+     * Test that a configuration with one real device and one fake device (isFake=true) will be
+     * loaded like a single device config: The objects outside the <device> tags will be part of the
+     * real device.
+     */
+    public void testCreateConfiguration_multiDevice_fake() throws Exception {
+        IConfiguration config =
+                mFactory.createConfigurationFromArgs(
+                        new String[] {
+                            "test-config-multi-fake",
+                            "--{device1}no-test-boolean-option",
+                            "--{device1}test-boolean-option-false",
+                            // testing with namespace too
+                            "--{device1}stub-preparer:no-test-boolean-option",
+                            "--{device1}stub-preparer:test-boolean-option-false"
+                        });
+        assertEquals(2, config.getDeviceConfig().size());
+        IDeviceConfiguration device1 = config.getDeviceConfigByName("device1");
+        // One target preparer from inside the device tag, one from outside.
+        assertEquals(2, device1.getTargetPreparers().size());
+        StubTargetPreparer deviceSetup1 = (StubTargetPreparer) device1.getTargetPreparers().get(0);
+        // default value of test-boolean-option is true, we set it to false
+        assertFalse(deviceSetup1.getTestBooleanOption());
+        // default value of test-boolean-option-false is false, we set it to true.
+        assertTrue(deviceSetup1.getTestBooleanOptionFalse());
+
+        // Check that the second preparer, outside device1 can still receive option as {device1}.
+        StubTargetPreparer deviceSetup2 = (StubTargetPreparer) device1.getTargetPreparers().get(1);
+        // default value of test-boolean-option is true, we set it to false
+        assertFalse(deviceSetup2.getTestBooleanOption());
+        // default value of test-boolean-option-false is false, we set it to true.
+        assertTrue(deviceSetup2.getTestBooleanOptionFalse());
+    }
+
+    /** Test that a configuration with all the device marked as isReal=false will be rejected. */
+    public void testCreateConfiguration_multiDevice_real_notReal() throws Exception {
+        try {
+            mFactory.createConfigurationFromArgs(new String[] {"test-config-real-not-real"});
+            fail("Should have thrown an exception");
+        } catch (ConfigurationException expected) {
+            assertEquals(
+                    "Failed to parse config xml 'test-config-real-not-real'. Reason: Mismatch for "
+                            + "device 'device1'. It was defined once as isFake=false, once as "
+                            + "isFake=true",
+                    expected.getMessage());
+        }
+    }
+
+    /**
+     * Test that a configuration with two real devices and one fake one (isFake=false) will reject
+     * object that are at the root: We cannot decide where to put these objects.
+     */
+    public void testCreateConfiguration_multiDevice_twoReal_oneFake() throws Exception {
+        try {
+            mFactory.createConfigurationFromArgs(new String[] {"test-config-multi-3-fake"});
+            fail("Should have thrown an exception");
+        } catch (ConfigurationException expected) {
+            assertEquals(
+                    "You seem to want a multi-devices configuration but you have [target_preparer] "
+                            + "tags outside the <device> tags",
+                    expected.getMessage());
+        }
+    }
 }

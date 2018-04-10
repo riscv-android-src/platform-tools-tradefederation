@@ -15,7 +15,9 @@
  */
 package com.android.tradefed.config;
 
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 
 import org.easymock.EasyMock;
 import org.junit.Before;
@@ -414,6 +416,63 @@ public class ConfigurationXmlParserTest {
             fail("An exception should have been thrown.");
         } catch (ConfigurationException expected) {
             assertEquals(expectedException, expected.getMessage());
+        }
+    }
+
+    /**
+     * Test that if an object is left at the root of the config but with one real and one fake
+     * device, we do not reject the xml. Object will be associated later to the real device.
+     */
+    @Test
+    public void testParse_multiDevice_fakeMulti() throws Exception {
+        final String normalConfig =
+                "<configuration description=\"desc\" >\n"
+                        + "  <device name=\"device1\">\n"
+                        + "    <option name=\"opName\" value=\"val\" />\n"
+                        + "  </device>\n"
+                        + "  <device name=\"device2\" isFake=\"true\">\n"
+                        + "    <option name=\"opName3\" value=\"val3\" />\n"
+                        + "  </device>\n"
+                        + "  <target_preparer class=\"com.targetprep.class\">\n"
+                        + "    <option name=\"opName2\" value=\"val2\" />\n"
+                        + "  </target_preparer>\n"
+                        + "</configuration>";
+        final String configName = "config";
+        ConfigurationDef configDef = new ConfigurationDef(configName);
+
+        xmlParser.parse(configDef, configName, getStringAsStream(normalConfig), null);
+        assertEquals(2, configDef.getObjectClassMap().get(Configuration.DEVICE_NAME).size());
+        assertTrue("{device1}opName".equals(configDef.getOptionList().get(0).name));
+        assertEquals("{device2}opName3", configDef.getOptionList().get(1).name);
+    }
+
+    /**
+     * Test that if we have only fake devices, an object cannot be left at the root because we only
+     * consider it properly formatted if at least one real device exists.
+     */
+    @Test
+    public void testParse_multiDevice_fakeMulti_noReal() throws Exception {
+        final String normalConfig =
+                "<configuration description=\"desc\" >\n"
+                        + "  <device name=\"device1\" isFake=\"true\">\n"
+                        + "    <option name=\"opName\" value=\"val\" />\n"
+                        + "  </device>\n"
+                        + "  <device name=\"device2\" isFake=\"true\">\n"
+                        + "    <option name=\"opName3\" value=\"val3\" />\n"
+                        + "  </device>\n"
+                        + "  <target_preparer class=\"com.targetprep.class\">\n"
+                        + "    <option name=\"opName2\" value=\"val2\" />\n"
+                        + "  </target_preparer>\n"
+                        + "</configuration>";
+        final String configName = "config";
+        ConfigurationDef configDef = new ConfigurationDef(configName);
+        try {
+            xmlParser.parse(configDef, configName, getStringAsStream(normalConfig), null);
+            fail("An exception should have been thrown.");
+        } catch (ConfigurationException expected) {
+            assertEquals(
+                    "You seem to want a multi-devices configuration but you have [target_preparer] tags outside the <device> tags",
+                    expected.getMessage());
         }
     }
 }
