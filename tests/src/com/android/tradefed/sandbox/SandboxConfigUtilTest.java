@@ -15,7 +15,9 @@
  */
 package com.android.tradefed.sandbox;
 
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.fail;
 import static org.mockito.Mockito.doReturn;
 
 import com.android.tradefed.config.ConfigurationException;
@@ -45,6 +47,7 @@ public class SandboxConfigUtilTest {
     public void setUp() throws Exception {
         mMockRunUtil = Mockito.mock(IRunUtil.class);
         mTmpRootDir = FileUtil.createTempDir("sandbox-config-util-test");
+        FileUtil.createTempFile("fakejar", ".jar", mTmpRootDir);
     }
 
     @After
@@ -92,6 +95,20 @@ public class SandboxConfigUtilTest {
             fail("Should have thrown an exception.");
         } catch (ConfigurationException expected) {
             assertEquals("Ouch I failed", expected.getMessage());
+        }
+    }
+
+    /** If the classpath is empty, expect a dedicated exception to notify it. */
+    @Test
+    public void testDumpVersion_badClasspath() throws Exception {
+        try {
+            SandboxConfigUtil.dumpConfigForVersion(
+                    "", mMockRunUtil, new String[] {"empty"}, DumpCmd.FULL_XML, null);
+            fail("Should have thrown an exception.");
+        } catch (SandboxConfigurationException expected) {
+            assertEquals(
+                    "Something went wrong with the sandbox setup, classpath was empty.",
+                    expected.getMessage());
         }
     }
 }
