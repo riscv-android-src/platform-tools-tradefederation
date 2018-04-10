@@ -26,6 +26,7 @@ import com.android.tradefed.util.IRunUtil;
 import com.android.tradefed.util.IRunUtil.EnvPriority;
 
 import com.google.common.base.Joiner;
+import com.google.common.base.Strings;
 
 import java.io.File;
 import java.io.IOException;
@@ -53,6 +54,10 @@ public class SandboxConfigUtil {
     public static File dumpConfigForVersion(
             String classpath, IRunUtil runUtil, String[] args, DumpCmd dump, File globalConfig)
             throws SandboxConfigurationException, IOException {
+        if (Strings.isNullOrEmpty(classpath)) {
+            throw new SandboxConfigurationException(
+                    "Something went wrong with the sandbox setup, classpath was empty.");
+        }
         runUtil.unsetEnvVariable(GlobalConfiguration.GLOBAL_CONFIG_VARIABLE);
         File destination = null;
         try {
