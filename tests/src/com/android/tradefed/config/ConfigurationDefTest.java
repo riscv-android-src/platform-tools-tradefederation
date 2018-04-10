@@ -15,7 +15,10 @@
  */
 package com.android.tradefed.config;
 
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 
 import com.android.tradefed.build.StubBuildProvider;
 import com.android.tradefed.device.metric.BaseDeviceMetricCollector;
@@ -104,6 +107,7 @@ public class ConfigurationDefTest {
     @Test
     public void testCreateConfiguration_withDeviceHolder() throws ConfigurationException {
         mConfigDef = new ConfigurationDef(CONFIG_NAME);
+        mConfigDef.addExpectedDevice("device1", false);
         mConfigDef.setMultiDeviceMode(true);
         mConfigDef.setDescription(CONFIG_DESCRIPTION);
         mConfigDef.addConfigObjectDef("device1:" + Configuration.BUILD_PROVIDER_TYPE_NAME,
