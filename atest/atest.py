@@ -59,15 +59,15 @@ EPILOG_TEXT = '''
 IDENTIFYING TESTS
 - - - - - - - - -
 
-    The positional argument <tests> should be a reference to one or more of the
-    tests you'd like to run. Multiple tests can be run in one command by
+    The positional argument <tests> should be a reference to one or more
+    of the tests you'd like to run. Multiple tests can be run in one command by
     separating test references with spaces.
 
-    Usage Template: atest <reference_to_test_1> <reference_to_test_2>
+    Usage template: atest <reference_to_test_1> <reference_to_test_2>
 
     A <reference_to_test> can be satisfied by the test's MODULE NAME,
-    MODULE:CLASS, CLASS NAME, TF INTEGRATION TEST or FILE PATH. Explanations
-    and examples of each follow.
+    MODULE:CLASS, CLASS NAME, TF INTEGRATION TEST, FILE PATH or PACKAGE NAME.
+    Explanations and examples of each follow.
 
 
     < MODULE NAME >
@@ -93,23 +93,29 @@ IDENTIFYING TESTS
         qualified class name or just the basic name.
 
         Examples:
-            atest PtsBatteryTestCases:BatteryTest
-            atest PtsBatteryTestCases:com.google.android.battery.pts.BatteryTest
+            atest FrameworksServicesTests:ScreenDecorWindowTests
+            atest FrameworksServicesTests:com.android.server.wm.ScreenDecorWindowTests
             atest CtsJankDeviceTestCases:CtsDeviceJankUi
 
 
     < CLASS NAME >
 
         A single class can also be run by referencing the class name without
-        the module name. However, this will take more time than the equivalent
-        MODULE:CLASS reference, so we suggest using a MODULE:CLASS reference
-        whenever possible.
+        the module name.
 
         Examples:
             atest ScreenDecorWindowTests
-            atest com.google.android.battery.pts.BatteryTest
             atest CtsDeviceJankUi
 
+        However, this will take more time than the equivalent MODULE:CLASS
+        reference, so we suggest using a MODULE:CLASS reference whenever
+        possible. Examples below are ordered by performance from the fastest
+        to the slowest:
+
+        Examples:
+            atest FrameworksServicesTests:com.android.server.wm.ScreenDecorWindowTests
+            atest FrameworksServicesTests:ScreenDecorWindowTests
+            atest ScreenDecorWindowTests
 
     < TF INTEGRATION TEST >
 
@@ -129,17 +135,28 @@ IDENTIFYING TESTS
         class can also be run by inputting the path to the class's java file.
         Both relative and absolute paths are supported.
 
-        Example - run module from android repo root:
+        Example - 2 ways to run the `CtsJankDeviceTestCases` module via path:
+        1. run module from android <repo root>:
             atest cts/tests/jank/jank
 
-        Example - same module but from <repo root>/cts/tests/jank:
+        2. from <android root>/cts/tests/jank:
             atest .
 
-        Example - run just class from android repo root:
-            atest cts/tests/jank/src/android/jank/cts/ui/CtsDeviceJankUi.java
+        Example - run a specific class within CtsJankDeviceTestCases module
+        from <android repo> root via path:
+           atest cts/tests/jank/src/android/jank/cts/ui/CtsDeviceJankUi.java
 
-        Example - run tf integration test from android repo root:
-            atest tools/tradefederation/contrib/res/config/example/reboot.xml
+        Example - run an integration test from <android repo> root via path:
+           atest tools/tradefederation/contrib/res/config/example/reboot.xml
+
+
+    < PACKAGE NAME >
+
+        Atest supports searching tests from package name as well.
+
+        Examples:
+           atest com.android.server.wm
+           atest android.jank.cts
 
 
 - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -154,10 +171,26 @@ SPECIFYING INDIVIDUAL STEPS: BUILD, INSTALL OR RUN
     Both -b and -t can be run alone.
 
     Examples:
-        atest -b <test>     (just build targets)
-        atest -bt <test>    (build targets, run tests, but skip installing apk)
-        atest -t <test>     (just run test, skip build/install)
-        atest -it <test>    (install and run tests, skip building)
+        atest -b <test>    (just build targets)
+        atest -t <test>    (run tests only)
+        atest -it <test>   (install apk and run tests)
+        atest -bt <test>   (build targets, run tests, but skip installing apk)
+
+
+    Atest now has the ability to force a test to skip its cleanup/teardown step.
+    Many tests, e.g. CTS, cleanup the device after the test is run, so trying to
+    rerun your test with -t will fail without having the --disable-teardown
+    parameter. Use -d before -t to skip the test clean up step and test iteratively.
+
+        atest -d <test>    (disable installing apk and cleanning up device)
+        atest -t <test>
+
+    Note that -t disables both setup/install and teardown/cleanup of the
+    device. So you can continue to rerun your test with just
+
+        atest -t <test>
+
+    as many times as you want.
 
 
 - - - - - - - - - - - - -
@@ -165,15 +198,20 @@ RUNNING SPECIFIC METHODS
 - - - - - - - - - - - - -
 
     It is possible to run only specific methods within a test class. To run
-    only specific methods, identify the class in any of the ways supported
-    for identifying a class (MODULE:CLASS, FILE PATH, etc) and then append the
+    only specific methods, identify the class in any of the ways supported for
+    identifying a class (MODULE:CLASS, FILE PATH, etc) and then append the
     name of the method or method using the following template:
 
-    <reference_to_class>#<method1>,<method2>,<method3>...
+      <reference_to_class>#<method1>
+
+    Multiple methods can be specified with commas:
+
+      <reference_to_class>#<method1>,<method2>,<method3>...
 
     Examples:
-        FrameworksServicesTests:ScreenDecorWindowTests#testFlagChange,testRemoval
-        com.google.android.battery.pts.BatteryTest#testDischarge
+      atest com.android.server.wm.ScreenDecorWindowTests#testMultipleDecors
+
+      atest FrameworksServicesTests:ScreenDecorWindowTests#testFlagChange,testRemoval
 
 
 - - - - - - - - - - - - -
@@ -181,15 +219,17 @@ RUNNING MULTIPLE CLASSES
 - - - - - - - - - - - - -
 
     To run multiple classes, deliminate them with spaces just like you would
-    if running multiple tests.  Atest will automatically build and run
-    multiple classes in the most efficient way possible.
+    when running multiple tests.  Atest will handle building and running
+    classes in the most efficient way possible, so specifying a subset of
+    classes in a module will improve performance over running the whole module.
 
 
-    Example - two classes in same module:
-        atest FrameworksServicesTests:ScreenDecorWindowTests FrameworksServicesTest:DimmerTests
+    Examples:
+    - two classes in same module:
+      atest FrameworksServicesTests:ScreenDecorWindowTests FrameworksServicesTests:DimmerTests
 
-    Example - two classes, different modules:
-        atest FrameworksServicesTests:ScreenDecorWindowTests CtsJankDeviceTestCases:CtsDeviceJankUi
+    - two classes, different modules:
+      atest FrameworksServicesTests:ScreenDecorWindowTests CtsJankDeviceTestCases:CtsDeviceJankUi
 
 
 - - - - - - - - - - -
@@ -204,23 +244,24 @@ REGRESSION DETECTION
 
     Local regression detection can be run in three options:
 
-    1) Provide a folder containing baseline (pre-patch) metrics (generated previously). Atest will
-       run the tests n (default 5) iterations, generate a new set of post-patch metrics, and
-       compare those against existing metrics.
+    1) Provide a folder containing baseline (pre-patch) metrics (generated
+       previously). Atest will run the tests n (default 5) iterations, generate
+       a new set of post-patch metrics, and compare those against existing metrics.
 
     Example:
         atest <test> --detect-regression </path/to/baseline> --generate-new-metrics <optional iter>
 
-    2) Provide a folder containing post-patch metrics (generated previously). Atest will run the
-       tests n (default 5) iterations, generate a new set of pre-patch metrics, and compare those
-       against those provided. Note: the developer needs to revert the device/tests to pre-patch
-       state to generate baseline metrics.
+    2) Provide a folder containing post-patch metrics (generated previously).
+       Atest will run the tests n (default 5) iterations, generate a new set of
+       pre-patch metrics, and compare those against those provided. Note: the
+       developer needs to revert the device/tests to pre-patch state to generate
+       baseline metrics.
 
     Example:
         atest <test> --detect-regression </path/to/new> --generate-baseline <optional iter>
 
-    3) Provide 2 folders containing both pre-patch and post-patch metrics. Atest will run no tests
-       but the regression detection algorithm.
+    3) Provide 2 folders containing both pre-patch and post-patch metrics. Atest
+       will run no tests but the regression detection algorithm.
 
     Example:
         atest --detect-regression </path/to/baseline> </path/to/new>
