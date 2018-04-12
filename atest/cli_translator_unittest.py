@@ -23,16 +23,14 @@ import mock
 
 import atest_error
 import cli_translator as cli_t
+import constants
 import test_finder_handler
 import unittest_constants as uc
 import unittest_utils
 from test_finders import test_finder_base
 
 # TEST_MAPPING related consts
-TEST_MAPPING_DIR_INCLUDE_PARENT = os.path.join(
-    uc.TEST_DATA_DIR, 'test_mapping', 'folder1')
-TEST_MAPPING_DIR_NOT_INCLUDE_PARENT = os.path.join(
-    uc.TEST_DATA_DIR, 'test_mapping', 'folder2')
+TEST_MAPPING_DIR = os.path.join(uc.TEST_DATA_DIR, 'test_mapping', 'folder1')
 
 SEARCH_DIR_RE = re.compile(r'^find ([^ ]*).*$')
 
@@ -98,38 +96,42 @@ class CLITranslatorUnittests(unittest.TestCase):
         """Test translate method."""
         # Check that we can find a class.
         targets, test_infos = self.ctr.translate([uc.CLASS_NAME])
-        unittest_utils.assert_strict_equal(self, targets, uc.CLASS_BUILD_TARGETS)
+        unittest_utils.assert_strict_equal(
+            self, targets, uc.CLASS_BUILD_TARGETS)
         unittest_utils.assert_strict_equal(self, test_infos, {uc.CLASS_INFO})
 
         # Check that we get all the build targets we expect.
         targets, test_infos = self.ctr.translate([uc.MODULE_NAME,
                                                   uc.CLASS_NAME])
-        unittest_utils.assert_strict_equal(self, targets,
-                                           uc.MODULE_CLASS_COMBINED_BUILD_TARGETS)
+        unittest_utils.assert_strict_equal(
+            self, targets, uc.MODULE_CLASS_COMBINED_BUILD_TARGETS)
         unittest_utils.assert_strict_equal(self, test_infos, {uc.MODULE_INFO,
                                                               uc.CLASS_INFO})
 
         # Check that test mappings feeds into get_test_info properly.
-        mock_testmapping.return_value = [uc.MODULE_NAME, uc.CLASS_NAME]
+        mock_testmapping.return_value = ([uc.MODULE_NAME, uc.CLASS_NAME], None)
         targets, test_infos = self.ctr.translate([])
-        unittest_utils.assert_strict_equal(self, targets,
-                                           uc.MODULE_CLASS_COMBINED_BUILD_TARGETS)
+        unittest_utils.assert_strict_equal(
+            self, targets, uc.MODULE_CLASS_COMBINED_BUILD_TARGETS)
         unittest_utils.assert_strict_equal(self, test_infos, {uc.MODULE_INFO,
                                                               uc.CLASS_INFO})
 
     def test_find_tests_by_test_mapping(self):
         """Test _find_tests_by_test_mapping method."""
-        include_parent_result = self.ctr._find_tests_by_test_mapping(
-            TEST_MAPPING_DIR_INCLUDE_PARENT, 'test_mapping_sample')
-        include_parent_should_equal = {'test2', 'test1'}
-        self.assertEqual(include_parent_should_equal, include_parent_result)
+        tests, all_tests = self.ctr._find_tests_by_test_mapping(
+            path=TEST_MAPPING_DIR, file_name='test_mapping_sample')
+        expected = set(['test2', 'test1'])
+        expected_all_tests = {'presubmit': expected,
+                              'postsubmit': set(['test3'])}
+        self.assertEqual(expected, tests)
+        self.assertEqual(expected_all_tests, all_tests)
 
-        no_include_parent_result = self.ctr._find_tests_by_test_mapping(
-            TEST_MAPPING_DIR_NOT_INCLUDE_PARENT, 'test_mapping_sample')
-        no_include_parent_should_equal = {'test3'}
-        self.assertEqual(no_include_parent_should_equal,
-                         no_include_parent_result)
-
+        tests, all_tests = self.ctr._find_tests_by_test_mapping(
+            path=TEST_MAPPING_DIR, test_type=constants.TEST_TYPE_POSTSUBMIT,
+            file_name='test_mapping_sample')
+        expected = set(['test1', 'test2', 'test3'])
+        self.assertEqual(expected, tests)
+        self.assertEqual(expected_all_tests, all_tests)
 
 if __name__ == '__main__':
     unittest.main()
