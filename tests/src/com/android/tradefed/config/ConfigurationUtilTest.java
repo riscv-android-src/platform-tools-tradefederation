@@ -17,8 +17,10 @@
 package com.android.tradefed.config;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
+import com.android.tradefed.command.CommandScheduler;
 import com.android.tradefed.device.DeviceManager;
 import com.android.tradefed.util.FileUtil;
 
@@ -66,7 +68,53 @@ public class ConfigurationUtilTest {
             assertTrue(content.contains("<option name=\"adb-path\" value=\"adb\" />"));
             assertTrue(
                     content.contains(
-                            "<device_manager class=\"com.android.tradefed.device.DeviceManager\">"));
+                            "<device_manager class=\"com.android.tradefed.device."
+                                    + "DeviceManager\">"));
+        } finally {
+            FileUtil.deleteFile(tmpXml);
+        }
+    }
+
+    /**
+     * Test {@link ConfigurationUtil#dumpClassToXml(KXmlSerializer, String, Object, List)} to create
+     * a dump of a configuration with filters
+     */
+    @Test
+    public void testDumpClassToXml_filtered() throws Throwable {
+        File tmpXml = FileUtil.createTempFile("global_config", ".xml");
+        try {
+            PrintWriter output = new PrintWriter(tmpXml);
+            KXmlSerializer serializer = new KXmlSerializer();
+            serializer.setOutput(output);
+            serializer.setFeature("http://xmlpull.org/v1/doc/features.html#indent-output", true);
+            serializer.startDocument("UTF-8", null);
+            serializer.startTag(null, ConfigurationUtil.CONFIGURATION_NAME);
+
+            DeviceManager deviceManager = new DeviceManager();
+            ConfigurationUtil.dumpClassToXml(
+                    serializer,
+                    GlobalConfiguration.DEVICE_MANAGER_TYPE_NAME,
+                    deviceManager,
+                    Arrays.asList("com.android.tradefed.device.DeviceManager"));
+            ConfigurationUtil.dumpClassToXml(
+                    serializer,
+                    GlobalConfiguration.SCHEDULER_TYPE_NAME,
+                    new CommandScheduler(),
+                    Arrays.asList("com.android.tradefed.device.DeviceManager"));
+
+            serializer.endTag(null, ConfigurationUtil.CONFIGURATION_NAME);
+            serializer.endDocument();
+            // Read the dump XML file, make sure configurations can be loaded.
+            String content = FileUtil.readStringFromFile(tmpXml);
+            assertTrue(content.contains("<configuration>"));
+            assertFalse(
+                    content.contains(
+                            "<device_manager class=\"com.android.tradefed.device."
+                                    + "DeviceManager\">"));
+            assertTrue(
+                    content.contains(
+                            "<command_scheduler class=\"com.android.tradefed.command."
+                                    + "CommandScheduler\">"));
         } finally {
             FileUtil.deleteFile(tmpXml);
         }
