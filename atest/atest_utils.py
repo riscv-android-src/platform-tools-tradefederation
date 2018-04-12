@@ -19,6 +19,7 @@ Utility functions for atest.
 import itertools
 import logging
 import os
+import re
 import subprocess
 import sys
 import urllib2
@@ -34,6 +35,31 @@ _BASH_RESET_CODE = '\033[0m\n'
 # return output mechanism that when collected line by line causes the streaming
 # full_output list to be extremely large.
 _FAILED_OUTPUT_LINE_LIMIT = 100
+# Regular expression to match the start of a ninja compile:
+# ex: [ 99% 39710/39711]
+_BUILD_COMPILE_STATUS = re.compile(r'\[\s*(\d{1,3}%\s+)?\d+/\d+\]')
+_BUILD_FAILURE = 'FAILED: '
+
+
+def _capture_fail_section(full_log):
+    """Return the error message from the build output.
+
+    Args:
+        full_log: List of strings representing full output of build.
+
+    Returns:
+        capture_output: List of strings that are build errors.
+    """
+    am_capturing = False
+    capture_output = []
+    for line in full_log:
+        if am_capturing and _BUILD_COMPILE_STATUS.match(line):
+            break
+        if am_capturing or line.startswith(_BUILD_FAILURE):
+            capture_output.append(line)
+            am_capturing = True
+            continue
+    return capture_output
 
 
 def _run_limited_output(cmd, env_vars=None):
@@ -78,7 +104,10 @@ def _run_limited_output(cmd, env_vars=None):
     # Wait for the Popen to finish completely before checking the returncode.
     proc.wait()
     if proc.returncode != 0:
-        output = full_output
+        # Parse out the build error to output.
+        output = _capture_fail_section(full_output)
+        if not output:
+            output = full_output
         if len(output) >= _FAILED_OUTPUT_LINE_LIMIT:
             output = output[-_FAILED_OUTPUT_LINE_LIMIT:]
         output = 'Output (may be trimmed):\n%s' % ''.join(output)
