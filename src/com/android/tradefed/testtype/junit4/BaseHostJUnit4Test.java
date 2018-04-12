@@ -32,6 +32,7 @@ import com.android.tradefed.result.CollectingTestListener;
 import com.android.tradefed.result.TestDescription;
 import com.android.tradefed.result.TestResult;
 import com.android.tradefed.result.TestRunResult;
+import com.android.tradefed.result.ddmlib.DefaultRemoteAndroidTestRunner;
 import com.android.tradefed.targetprep.TargetSetupError;
 import com.android.tradefed.targetprep.suite.SuiteApkInstaller;
 import com.android.tradefed.testtype.IAbi;
@@ -588,7 +589,7 @@ public abstract class BaseHostJUnit4Test
     @VisibleForTesting
     RemoteAndroidTestRunner createTestRunner(
             String packageName, String runnerName, IDevice device) {
-        return new RemoteAndroidTestRunner(packageName, runnerName, device);
+        return new DefaultRemoteAndroidTestRunner(packageName, runnerName, device);
     }
 
     @VisibleForTesting

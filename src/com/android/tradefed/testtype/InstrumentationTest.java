@@ -40,6 +40,7 @@ import com.android.tradefed.result.LogDataType;
 import com.android.tradefed.result.ResultForwarder;
 import com.android.tradefed.result.TestDescription;
 import com.android.tradefed.result.TestRunResult;
+import com.android.tradefed.result.ddmlib.DefaultRemoteAndroidTestRunner;
 import com.android.tradefed.util.AbiFormatter;
 import com.android.tradefed.util.ArrayUtil;
 import com.android.tradefed.util.ListInstrumentationParser;
@@ -620,8 +621,8 @@ public class InstrumentationTest implements IDeviceTest, IResumableTest, ITestCo
      */
     IRemoteAndroidTestRunner createRemoteAndroidTestRunner(String packageName, String runnerName,
             IDevice device) throws DeviceNotAvailableException {
-        RemoteAndroidTestRunner runner = new RemoteAndroidTestRunner(
-                packageName, runnerName, device);
+        RemoteAndroidTestRunner runner =
+                new DefaultRemoteAndroidTestRunner(packageName, runnerName, device);
         String abiName = resolveAbiName();
         String runOptions = "";
         if (!mHiddenApiChecks) {
