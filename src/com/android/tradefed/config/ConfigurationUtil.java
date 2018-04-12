@@ -66,16 +66,20 @@ public class ConfigurationUtil {
      * @param serializer a {@link KXmlSerializer} to create the XML dump
      * @param classTypeName a {@link String} of the class type's name
      * @param obj {@link Object} to be added to the XML dump
-     * @param excludeClassTypes list of object configuration type to be excluded from the dump. for
-     *     example: {@link Configuration#TARGET_PREPARER_TYPE_NAME}.
+     * @param excludeClassFilter list of object configuration type or fully qualified class names to
+     *     be excluded from the dump. for example: {@link Configuration#TARGET_PREPARER_TYPE_NAME}.
+     *     com.android.tradefed.testtype.StubTest
      */
     static void dumpClassToXml(
             KXmlSerializer serializer,
             String classTypeName,
             Object obj,
-            List<String> excludeClassTypes)
+            List<String> excludeClassFilter)
             throws IOException {
-        if (excludeClassTypes.contains(classTypeName)) {
+        if (excludeClassFilter.contains(classTypeName)) {
+            return;
+        }
+        if (excludeClassFilter.contains(obj.getClass().getName())) {
             return;
         }
         serializer.startTag(null, classTypeName);
