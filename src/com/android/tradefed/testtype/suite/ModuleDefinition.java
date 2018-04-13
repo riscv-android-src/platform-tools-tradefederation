@@ -391,6 +391,10 @@ public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestColl
                         runListener = collector.init(mModuleInvocationContext, runListener);
                     }
                 }
+                // The module collectors itself are added: this list will be very limited.
+                for (IMetricCollector collector : mModuleConfiguration.getMetricCollectors()) {
+                    runListener = collector.init(mModuleInvocationContext, runListener);
+                }
                 try {
                     test.run(runListener);
                 } catch (RuntimeException re) {
