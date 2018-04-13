@@ -141,7 +141,7 @@ public class ShardListenerTest {
         mockListener.invocationStarted(mContext);
         mockListener.testLog(
                 EasyMock.eq("run-file"), EasyMock.eq(LogDataType.TEXT), EasyMock.anyObject());
-        LogFile runFile = new LogFile("path", "url", false, LogDataType.TEXT);
+        LogFile runFile = new LogFile("path", "url", false, LogDataType.TEXT, 0L);
         EasyMock.expect(
                         mMockSaver.saveLogData(
                                 EasyMock.eq("run-file"),
@@ -156,7 +156,7 @@ public class ShardListenerTest {
 
         mockListener.testLog(
                 EasyMock.eq("test-file"), EasyMock.eq(LogDataType.TEXT), EasyMock.anyObject());
-        LogFile testFile = new LogFile("path", "url", false, LogDataType.TEXT);
+        LogFile testFile = new LogFile("path", "url", false, LogDataType.TEXT, 0L);
         EasyMock.expect(
                         mMockSaver.saveLogData(
                                 EasyMock.eq("test-file"),

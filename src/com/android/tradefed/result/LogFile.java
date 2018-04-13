@@ -24,6 +24,7 @@ public class LogFile {
     private final boolean mIsText;
     private final boolean mIsCompressed;
     private final LogDataType mType;
+    private final long mSize;
 
     /**
      * Construct a {@link LogFile} with filepath, URL, and {@link LogDataType} metadata.
@@ -38,6 +39,7 @@ public class LogFile {
         mIsCompressed = type.isCompressed();
         mIsText = type.isText();
         mType = type;
+        mSize = 0L;
     }
 
     /**
@@ -50,13 +52,15 @@ public class LogFile {
      * @param url The URL where the saved file can be accessed.
      * @param isCompressed Whether the file was compressed or not.
      * @param type The {@link LogDataType} of the logged file.
+     * @param size The size of the logged file in bytes.
      */
-    public LogFile(String path, String url, boolean isCompressed, LogDataType type) {
+    public LogFile(String path, String url, boolean isCompressed, LogDataType type, long size) {
         mPath = path;
         mUrl = url;
         mIsCompressed = isCompressed;
         mIsText = type.isText();
         mType = type;
+        mSize = size;
     }
 
     /**
@@ -90,5 +94,10 @@ public class LogFile {
     /** Get the {@link LogDataType} of the file that was logged. */
     public LogDataType getType() {
         return mType;
+    }
+
+    /** Get the size of the logged file. */
+    public long getSize() {
+        return mSize;
     }
 }
