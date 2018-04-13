@@ -29,6 +29,7 @@ import com.android.tradefed.config.IDeviceConfiguration;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.device.metric.BaseDeviceMetricCollector;
+import com.android.tradefed.device.metric.FilePullerLogCollector;
 import com.android.tradefed.device.metric.IMetricCollector;
 import com.android.tradefed.invoker.IInvocationContext;
 import com.android.tradefed.result.CollectingTestListener;
@@ -226,6 +227,16 @@ public class ValidateSuiteConfigHelperTest {
                     expected.getMessage()
                             .contains(Configuration.DEVICE_METRICS_COLLECTOR_TYPE_NAME));
         }
+    }
+
+    /** Test that metric collectors exempted can run in the module */
+    @Test
+    public void testMetricCollectors_exempted() {
+        IConfiguration config = new Configuration("test", "test description");
+        List<IMetricCollector> collectors = new ArrayList<>();
+        collectors.add(new FilePullerLogCollector());
+        config.setDeviceMetricCollectors(collectors);
+        ValidateSuiteConfigHelper.validateConfig(config);
     }
 
     /** Test that if the module controller has the proper class it does not fail the validation. */
