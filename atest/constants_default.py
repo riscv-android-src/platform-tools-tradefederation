@@ -62,3 +62,7 @@ TI_REL_CONFIG = 'rel_config'
 # Google TF
 GTF_MODULE = 'google-tradefed'
 GTF_TARGET = 'google-tradefed-core'
+
+# Test type for TEST_MAPPING
+TEST_TYPE_PRESUBMIT = 'presubmit'
+TEST_TYPE_POSTSUBMIT = 'postsubmit'

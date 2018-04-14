@@ -4,5 +4,9 @@
       "name": "test2"
     }
   ],
-  "include_parent": true
+  "postsubmit": [
+    {
+      "name": "test3"
+    }
+  ]
 }
