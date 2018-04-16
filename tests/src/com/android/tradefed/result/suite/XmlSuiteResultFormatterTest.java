@@ -180,13 +180,13 @@ public class XmlSuiteResultFormatterTest {
         mResultHolder.context = mContext;
 
         Collection<TestRunResult> runResults = new ArrayList<>();
-        runResults.add(createResultWithLog("module1", 1, LogDataType.LOGCAT));
+        runResults.add(createResultWithLog("armeabi-v7a module1", 1, LogDataType.LOGCAT));
         runResults.add(createResultWithLog("module2", 1, LogDataType.BUGREPORT));
         runResults.add(createResultWithLog("module3", 1, LogDataType.PNG));
         mResultHolder.runResults = runResults;
 
         Map<String, IAbi> modulesAbi = new HashMap<>();
-        modulesAbi.put("module1", new Abi("armeabi-v7a", "32"));
+        modulesAbi.put("armeabi-v7a module1", new Abi("armeabi-v7a", "32"));
         mResultHolder.modulesAbi = modulesAbi;
 
         mResultHolder.completeModules = 2;
@@ -198,11 +198,31 @@ public class XmlSuiteResultFormatterTest {
         File res = mFormatter.writeResults(mResultHolder, mResultDir);
         String content = FileUtil.readStringFromFile(res);
         // One logcat and one bugreport are found in the report
-        assertXmlContainsValue(content, "Result/Module/TestCase/Test/Logcat", "http:url/module1");
+        assertXmlContainsValue(
+                content, "Result/Module/TestCase/Test/Logcat", "http:url/armeabi-v7a module1");
         assertXmlContainsValue(
                 content, "Result/Module/TestCase/Test/BugReport", "http:url/module2");
         assertXmlContainsValue(
                 content, "Result/Module/TestCase/Test/Screenshot", "http:url/module3");
+
+        // Test that we can read back the informations for log files
+        SuiteResultHolder holder = mFormatter.parseResults(mResultDir);
+        assertEquals(
+                holder.modulesAbi.get("armeabi-v7a module1"),
+                mResultHolder.modulesAbi.get("armeabi-v7a module1"));
+        assertEquals(holder.runResults.size(), mResultHolder.runResults.size());
+        for (TestRunResult result : holder.runResults) {
+            TestDescription description =
+                    new TestDescription(
+                            "com.class." + result.getName(), result.getName() + ".method0");
+            // Check that we reloaded the logged files.
+            assertTrue(
+                    result.getTestResults()
+                                    .get(description)
+                                    .getLoggedFiles()
+                                    .get(result.getName() + "log0")
+                            != null);
+        }
     }
 
     private TestRunResult createResultWithLog(String runName, int count, LogDataType type) {
