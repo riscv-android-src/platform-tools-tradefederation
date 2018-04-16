@@ -97,6 +97,7 @@ public class LogSaverResultForwarder extends ResultForwarder implements ILogSave
         }
     }
 
+    /** Only forward the testLog instead of saving the log first. */
     public void testLogForward(
             String dataName, LogDataType dataType, InputStreamSource dataStream) {
         super.testLog(dataName, dataType, dataStream);

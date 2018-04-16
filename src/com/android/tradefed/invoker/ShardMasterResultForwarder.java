@@ -23,6 +23,7 @@ import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.InputStreamSource;
 import com.android.tradefed.result.LogDataType;
 import com.android.tradefed.result.LogFile;
+import com.android.tradefed.result.LogSaverResultForwarder;
 import com.android.tradefed.result.ResultForwarder;
 import com.android.tradefed.util.TimeUtil;
 
@@ -128,11 +129,49 @@ public class ShardMasterResultForwarder extends ResultForwarder implements ILogS
         }
     }
 
+    /** Only forward the testLog instead of saving the log first. */
+    public void testLogForward(
+            String dataName, LogDataType dataType, InputStreamSource dataStream) {
+        for (ITestInvocationListener listener : getListeners()) {
+            if (listener instanceof LogSaverResultForwarder) {
+                // If the listener is a log saver, we should simply forward the testLog not save
+                // again.
+                ((LogSaverResultForwarder) listener).testLogForward(dataName, dataType, dataStream);
+            } else {
+                try {
+                    listener.testLog(dataName, dataType, dataStream);
+                } catch (RuntimeException e) {
+                    CLog.e(
+                            "RuntimeException while invoking %s#testLog",
+                            listener.getClass().getName());
+                    CLog.e(e);
+                }
+            }
+        }
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public void logAssociation(String dataName, LogFile logFile) {
+        for (ITestInvocationListener listener : getListeners()) {
+            try {
+                // Forward the logAssociation call
+                if (listener instanceof ILogSaverListener) {
+                    ((ILogSaverListener) listener).logAssociation(dataName, logFile);
+                }
+            } catch (RuntimeException e) {
+                CLog.e("Failed to provide the log association");
+                CLog.e(e);
+            }
+        }
+    }
+
+    /** {@inheritDoc} */
     @Override
     public void setLogSaver(ILogSaver logSaver) {
         // Shard master does not need log saver.
     }
-    
+
     /**
      * Copy the build info from the shard builds to the main build in the original invocation
      * context.
