@@ -31,6 +31,7 @@ import com.android.tradefed.util.TimeUtil;
 
 import java.util.Collection;
 import java.util.Map;
+import java.util.Map.Entry;
 
 /**
  * A {@link ITestInvocationListener} that collects results from a invocation shard (aka an
@@ -80,10 +81,16 @@ public class ShardListener extends CollectingTestListener {
      */
     @Override
     public void testLog(String dataName, LogDataType dataType, InputStreamSource dataStream) {
-        // forward testLog results immediately, since they are not order dependent and there are
-        // not stored by CollectingTestListener
+        // forward testLog results immediately, since result reporters might take action on it.
         synchronized (mMasterListener) {
-            mMasterListener.testLog(dataName, dataType, dataStream);
+            if (mMasterListener instanceof ShardMasterResultForwarder) {
+                // If the listener is a log saver, we should simply forward the testLog not save
+                // again.
+                ((ShardMasterResultForwarder) mMasterListener)
+                        .testLogForward(dataName, dataType, dataStream);
+            } else {
+                mMasterListener.testLog(dataName, dataType, dataStream);
+            }
         }
     }
 
@@ -145,6 +152,10 @@ public class ShardListener extends CollectingTestListener {
                 if (runResult.isRunFailure()) {
                     mMasterListener.testRunFailed(runResult.getRunFailureMessage());
                 }
+
+                // Provide a strong association of the run to its logs.
+                forwardLogAssociation(runResult.getRunLoggedFiles(), mMasterListener);
+
                 mMasterListener.testRunEnded(runResult.getElapsedTime(), runResult.getRunMetrics());
             }
             // Close the last module
@@ -174,11 +185,24 @@ public class ShardListener extends CollectingTestListener {
                 default:
                     break;
             }
+            // Provide a strong association of the test to its logs.
+            forwardLogAssociation(testEntry.getValue().getLoggedFiles(), mMasterListener);
+
             if (!testEntry.getValue().getStatus().equals(TestStatus.INCOMPLETE)) {
                 mMasterListener.testEnded(
                         testEntry.getKey(),
                         testEntry.getValue().getEndTime(),
                         testEntry.getValue().getMetrics());
+            }
+        }
+    }
+
+    /** Forward to the listener the logAssociated callback on the files. */
+    private void forwardLogAssociation(
+            Map<String, LogFile> loggedFiles, ITestInvocationListener listener) {
+        for (Entry<String, LogFile> logFile : loggedFiles.entrySet()) {
+            if (listener instanceof ILogSaverListener) {
+                ((ILogSaverListener) listener).logAssociation(logFile.getKey(), logFile.getValue());
             }
         }
     }
