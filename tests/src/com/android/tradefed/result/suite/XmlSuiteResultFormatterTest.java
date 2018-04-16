@@ -15,6 +15,7 @@
  */
 package com.android.tradefed.result.suite;
 
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 
@@ -137,7 +138,7 @@ public class XmlSuiteResultFormatterTest {
 
         mResultHolder.completeModules = 2;
         mResultHolder.totalModules = 1;
-        mResultHolder.passedTests = 1;
+        mResultHolder.passedTests = 2;
         mResultHolder.failedTests = 1;
         mResultHolder.startTime = 0L;
         mResultHolder.endTime = 10L;
@@ -159,6 +160,18 @@ public class XmlSuiteResultFormatterTest {
                 content,
                 "Result/Module/TestCase/Test/Failure/StackTrace",
                 "module1 failed.\nstack\nstack");
+        // Test that we can read back the informations
+        SuiteResultHolder holder = mFormatter.parseResults(mResultDir);
+        assertEquals(holder.completeModules, mResultHolder.completeModules);
+        assertEquals(holder.totalModules, mResultHolder.totalModules);
+        assertEquals(holder.passedTests, mResultHolder.passedTests);
+        assertEquals(holder.failedTests, mResultHolder.failedTests);
+        assertEquals(holder.startTime, mResultHolder.startTime);
+        assertEquals(holder.endTime, mResultHolder.endTime);
+        assertEquals(
+                holder.modulesAbi.get("armeabi-v7a module1"),
+                mResultHolder.modulesAbi.get("module1"));
+        assertEquals(holder.runResults.size(), mResultHolder.runResults.size());
     }
 
     /** Check that the logs for each test case are reported. */
