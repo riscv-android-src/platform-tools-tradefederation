@@ -29,4 +29,14 @@ public interface IFormatterGenerator {
      * @return a {@link File} containing the results in a formatted manner.
      */
     public File writeResults(SuiteResultHolder holder, File resultDir) throws IOException;
+
+    /**
+     * Reverse operation of {@link #writeResults(SuiteResultHolder, File)} which takes a result
+     * directory and create the {@link SuiteResultHolder} out of it.
+     *
+     * @param resultDir The directory where to find the results.
+     * @return A {@link SuiteResultHolder} containing the results representation. Or null if
+     *     anything goes wrong.
+     */
+    public SuiteResultHolder parseResults(File resultDir) throws IOException;
 }
