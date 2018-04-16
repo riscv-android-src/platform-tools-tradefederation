@@ -211,6 +211,8 @@ public class Configuration implements IConfiguration {
         setLogOutput(new StdoutLogger());
         setLogSaver(new FileSystemLogSaver()); // FileSystemLogSaver saves to tmp by default.
         setTestInvocationListener(new TextResultReporter());
+        // Init an empty list of target_preparers
+        setConfigurationObjectListNoThrow(TARGET_PREPARER_TYPE_NAME, new ArrayList<>());
         setMultiTargetPreparer(new StubMultiTargetPreparer());
         setSystemStatusCheckers(new ArrayList<ISystemStatusChecker>());
         setConfigurationDescriptor(new ConfigurationDescriptor());
