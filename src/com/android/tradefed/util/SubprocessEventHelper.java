@@ -18,6 +18,7 @@ package com.android.tradefed.util;
 import com.android.tradefed.invoker.IInvocationContext;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.result.LogDataType;
+import com.android.tradefed.result.LogFile;
 import com.android.tradefed.testtype.suite.ModuleDefinition;
 
 import org.json.JSONException;
@@ -49,6 +50,7 @@ public class SubprocessEventHelper {
     private static final String DATA_NAME_KEY = "dataName";
     private static final String DATA_TYPE_KEY = "dataType";
     private static final String DATA_FILE_KEY = "dataFile";
+    private static final String LOGGED_FILE_KEY = "loggedFile";
 
     private static final String TEST_TAG_KEY = "testTag";
 
@@ -386,6 +388,49 @@ public class SubprocessEventHelper {
                 }
             } catch (JSONException e) {
                 CLog.e(e);
+            }
+            return tags.toString();
+        }
+    }
+
+    /** Helper for logAssociation information. */
+    public static class LogAssociationEventInfo {
+        public String mDataName = null;
+        public LogFile mLoggedFile = null;
+
+        public LogAssociationEventInfo(String dataName, LogFile loggedFile) {
+            mDataName = dataName;
+            mLoggedFile = loggedFile;
+        }
+
+        public LogAssociationEventInfo(JSONObject jsonObject) throws JSONException {
+            mDataName = jsonObject.getString(DATA_NAME_KEY);
+            jsonObject.remove(DATA_NAME_KEY);
+            String file = jsonObject.getString(LOGGED_FILE_KEY);
+            try {
+                mLoggedFile = (LogFile) SerializationUtil.deserialize(new File(file), true);
+            } catch (IOException e) {
+                throw new JSONException(e.getMessage());
+            } finally {
+                FileUtil.deleteFile(new File(file));
+            }
+        }
+
+        @Override
+        public String toString() {
+            JSONObject tags = null;
+            try {
+                tags = new JSONObject();
+                if (mDataName != null) {
+                    tags.put(DATA_NAME_KEY, mDataName);
+                }
+                if (mLoggedFile != null) {
+                    File serializedLoggedFile = SerializationUtil.serialize(mLoggedFile);
+                    tags.put(LOGGED_FILE_KEY, serializedLoggedFile.getAbsolutePath());
+                }
+            } catch (JSONException | IOException e) {
+                CLog.e(e);
+                throw new RuntimeException(e);
             }
             return tags.toString();
         }
