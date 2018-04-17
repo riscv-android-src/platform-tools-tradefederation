@@ -36,6 +36,7 @@ import com.android.tradefed.testtype.host.PrettyTestEventLogger;
 import com.android.tradefed.util.FileUtil;
 import com.android.tradefed.util.JUnit4TestFilter;
 import com.android.tradefed.util.StreamUtil;
+import com.android.tradefed.util.SystemUtil.EnvVariable;
 import com.android.tradefed.util.TestFilterHelper;
 
 import com.google.common.annotations.VisibleForTesting;
@@ -175,7 +176,6 @@ public class HostTest
 
     private static final String EXCLUDE_NO_TEST_FAILURE = "org.junit.runner.manipulation.Filter";
     private static final String TEST_FULL_NAME_FORMAT = "%s#%s";
-    private static final String ANDROID_HOST_TESTCASES = "ANDROID_HOST_OUT_TESTCASES";
     private static final String ROOT_DIR = "ROOT_DIR";
 
     public HostTest() {
@@ -1098,39 +1098,43 @@ public class HostTest
     protected File getJarFile(String jarName, IBuildInfo buildInfo) throws FileNotFoundException {
         File jarFile = null;
         // Check env variable
-        String testcasesPath = System.getenv(ANDROID_HOST_TESTCASES);
+        String testcasesPath = System.getenv(EnvVariable.ANDROID_HOST_OUT_TESTCASES.toString());
         if (testcasesPath != null) {
             File testCasesFile = new File(testcasesPath);
-            // Only return the variable directory if it exists
-            if (testCasesFile.isDirectory()) {
-                jarFile = FileUtil.findFile(testCasesFile, jarName);
-                if (jarFile != null && jarFile.isFile()) {
-                    return jarFile;
-                }
-            }
+            jarFile = searchJarFile(testCasesFile, jarName);
+        }
+        if (jarFile != null) {
+            return jarFile;
         }
 
         // Check tests dir
         if (buildInfo instanceof IDeviceBuildInfo) {
             IDeviceBuildInfo deviceBuildInfo = (IDeviceBuildInfo) buildInfo;
             File testDir = deviceBuildInfo.getTestsDir();
-            if (testDir != null && testDir.isDirectory()) {
-                jarFile = FileUtil.findFile(testDir, jarName);
-                if (jarFile != null && jarFile.isFile()) {
-                    return jarFile;
-                }
-            }
+            jarFile = searchJarFile(testDir, jarName);
+        }
+        if (jarFile != null) {
+            return jarFile;
         }
 
         // Check ROOT_DIR
         if (buildInfo.getBuildAttributes().get(ROOT_DIR) != null) {
             jarFile =
-                    FileUtil.findFile(
-                            new File(buildInfo.getBuildAttributes().get(ROOT_DIR)), jarName);
+                    searchJarFile(new File(buildInfo.getBuildAttributes().get(ROOT_DIR)), jarName);
+        }
+        if (jarFile != null) {
+            return jarFile;
+        }
+        throw new FileNotFoundException(String.format("Could not find jar: %s", jarName));
+    }
+
+    private File searchJarFile(File baseSearchFile, String jarName) {
+        if (baseSearchFile != null && baseSearchFile.isDirectory()) {
+            File jarFile = FileUtil.findFile(baseSearchFile, jarName);
             if (jarFile != null && jarFile.isFile()) {
                 return jarFile;
             }
         }
-        throw new FileNotFoundException(String.format("Could not find jar: %s", jarName));
+        return null;
     }
 }

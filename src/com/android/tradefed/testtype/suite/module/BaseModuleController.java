@@ -29,8 +29,8 @@ import com.android.tradefed.util.AbiUtils;
 public abstract class BaseModuleController implements IModuleController {
 
     @Option(
-        name = "bugreport-on-failure",
-        description = "Module option to capture a bugreport on its test failure."
+        name = "bugreportz-on-failure",
+        description = "Module option to capture a bugreportz on its test failure."
     )
     private boolean mBugReportOnFailure = true;
 
@@ -66,6 +66,11 @@ public abstract class BaseModuleController implements IModuleController {
     public final IAbi getModuleAbi() {
         String abi = mContext.getAttributes().get(ModuleDefinition.MODULE_ABI).get(0);
         return new Abi(abi, AbiUtils.getBitness(abi));
+    }
+
+    /** Helper method to get the module name. */
+    public final String getModuleName() {
+        return mContext.getAttributes().get(ModuleDefinition.MODULE_NAME).get(0);
     }
 
     /** Returns whether of not the module wants to capture the logcat on test failure. */

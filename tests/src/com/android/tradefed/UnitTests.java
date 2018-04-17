@@ -178,6 +178,7 @@ import com.android.tradefed.testtype.InstrumentationFileTestTest;
 import com.android.tradefed.testtype.InstrumentationSerialTestTest;
 import com.android.tradefed.testtype.InstrumentationTestTest;
 import com.android.tradefed.testtype.JacocoCodeCoverageTestTest;
+import com.android.tradefed.testtype.JarHostTestTest;
 import com.android.tradefed.testtype.NativeBenchmarkTestParserTest;
 import com.android.tradefed.testtype.NativeBenchmarkTestTest;
 import com.android.tradefed.testtype.NativeStressTestParserTest;
@@ -210,6 +211,7 @@ import com.android.tradefed.testtype.suite.TestMappingSuiteRunnerTest;
 import com.android.tradefed.testtype.suite.TestSuiteInfoTest;
 import com.android.tradefed.testtype.suite.TfSuiteRunnerTest;
 import com.android.tradefed.testtype.suite.ValidateSuiteConfigHelperTest;
+import com.android.tradefed.testtype.suite.module.BaseModuleControllerTest;
 import com.android.tradefed.testtype.testdefs.XmlDefsParserTest;
 import com.android.tradefed.testtype.testdefs.XmlDefsTestTest;
 import com.android.tradefed.util.AaptParserTest;
@@ -484,6 +486,7 @@ import org.junit.runners.Suite.SuiteClasses;
     InstrumentationFileTestTest.class,
     InstrumentationTestTest.class,
     JacocoCodeCoverageTestTest.class,
+    JarHostTestTest.class,
     NativeBenchmarkTestParserTest.class,
     NativeBenchmarkTestTest.class,
     NativeStressTestParserTest.class,
@@ -523,6 +526,9 @@ import org.junit.runners.Suite.SuiteClasses;
     TestSuiteInfoTest.class,
     TfSuiteRunnerTest.class,
     ValidateSuiteConfigHelperTest.class,
+
+    // testtype/suite/module
+    BaseModuleControllerTest.class,
 
     // testtype/testdefs
     XmlDefsParserTest.class,
