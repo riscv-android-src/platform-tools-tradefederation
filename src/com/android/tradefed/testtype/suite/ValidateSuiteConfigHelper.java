@@ -97,6 +97,15 @@ public class ValidateSuiteConfigHelper {
                             "%s objects are not allowed in module.",
                             Configuration.RESULT_REPORTER_TYPE_NAME));
         }
+        // For now we do not allow pre-multi target preparers in modules.
+        if (config.getMultiPreTargetPreparers().size() > 0) {
+            throwRuntime(
+                    config,
+                    String.format(
+                            "%s objects are not allowed in module.",
+                            Configuration.MULTI_PRE_TARGET_PREPARER_TYPE_NAME));
+        }
+
         // Check multi target preparers
         checkTargetPrep(config, config.getMultiTargetPreparers());
 

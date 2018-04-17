@@ -471,7 +471,8 @@ public class ConfigurationXmlParserTest {
             fail("An exception should have been thrown.");
         } catch (ConfigurationException expected) {
             assertEquals(
-                    "You seem to want a multi-devices configuration but you have [target_preparer] tags outside the <device> tags",
+                    "You seem to want a multi-devices configuration but you have [target_preparer] "
+                            + "tags outside the <device> tags",
                     expected.getMessage());
         }
     }

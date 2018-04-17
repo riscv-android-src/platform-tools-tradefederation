@@ -22,6 +22,7 @@ import com.android.tradefed.log.ILeveledLogOutput;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.targetprep.DeviceWiper;
 import com.android.tradefed.targetprep.StubTargetPreparer;
+import com.android.tradefed.targetprep.multi.StubMultiTargetPreparer;
 import com.android.tradefed.util.FileUtil;
 
 import junit.framework.TestCase;
@@ -1637,6 +1638,37 @@ public class ConfigurationFactoryTest extends TestCase {
                     "You seem to want a multi-devices configuration but you have [target_preparer] "
                             + "tags outside the <device> tags",
                     expected.getMessage());
+        }
+    }
+
+    /**
+     * Test that even if multi_pre_target_prep and multi_target_prep share the same type, we do not
+     * mix the objects internally.
+     */
+    public void testParse_multiTargetPrep() throws Exception {
+        String normalConfig =
+                "<configuration description=\"desc\" >\n"
+                        + "  <multi_pre_target_preparer class=\""
+                        + StubMultiTargetPreparer.class.getName()
+                        + "\" />\n"
+                        + "  <multi_target_preparer class=\""
+                        + StubMultiTargetPreparer.class.getName()
+                        + "\" />\n"
+                        + "</configuration>";
+        File tmpConfig = FileUtil.createTempFile("tmp-config-tests", ".xml");
+        try {
+            FileUtil.writeToFile(normalConfig, tmpConfig);
+            IConfiguration config =
+                    mFactory.createConfigurationFromArgs(
+                            new String[] {tmpConfig.getAbsolutePath()});
+            assertEquals(1, config.getMultiPreTargetPreparers().size());
+            assertEquals(1, config.getMultiTargetPreparers().size());
+            // Different objects have been created for each.
+            assertNotSame(
+                    config.getMultiPreTargetPreparers().get(0),
+                    config.getMultiTargetPreparers().get(0));
+        } finally {
+            FileUtil.deleteFile(tmpConfig);
         }
     }
 }
