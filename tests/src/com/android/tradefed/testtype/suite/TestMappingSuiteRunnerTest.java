@@ -21,7 +21,11 @@ import static org.junit.Assert.assertTrue;
 import com.android.tradefed.build.IDeviceBuildInfo;
 import com.android.tradefed.config.IConfiguration;
 import com.android.tradefed.config.OptionSetter;
+import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
+import com.android.tradefed.testtype.Abi;
+import com.android.tradefed.testtype.IAbi;
+import com.android.tradefed.util.AbiUtils;
 import com.android.tradefed.util.FileUtil;
 import com.android.tradefed.util.ZipUtil;
 
@@ -34,7 +38,9 @@ import org.junit.runners.JUnit4;
 import java.io.File;
 import java.io.InputStream;
 import java.nio.file.Paths;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
+import java.util.Set;
 
 /** Unit tests for {@link TestMappingSuiteRunner}. */
 @RunWith(JUnit4.class)
@@ -55,7 +61,17 @@ public class TestMappingSuiteRunnerTest {
     public void setUp() throws Exception {
         mMockDevice = EasyMock.createMock(ITestDevice.class);
         mBuildInfo = EasyMock.createMock(IDeviceBuildInfo.class);
-        mRunner = new TestMappingSuiteRunner();
+        mRunner =
+                new TestMappingSuiteRunner() {
+                    @Override
+                    public Set<IAbi> getAbis(ITestDevice device)
+                            throws DeviceNotAvailableException {
+                        Set<IAbi> abis = new HashSet<>();
+                        abis.add(new Abi(ABI_1, AbiUtils.getBitness(ABI_1)));
+                        abis.add(new Abi(ABI_2, AbiUtils.getBitness(ABI_2)));
+                        return abis;
+                    }
+                };
         mRunner.setBuild(mBuildInfo);
         mRunner.setDevice(mMockDevice);
 
@@ -115,9 +131,11 @@ public class TestMappingSuiteRunnerTest {
             EasyMock.replay(mockBuildInfo);
 
             LinkedHashMap<String, IConfiguration> configMap = mRunner.loadTests();
-            assertEquals(2, configMap.size());
+            assertEquals(4, configMap.size());
             assertTrue(configMap.containsKey(ABI_1 + " suite/stub1"));
             assertTrue(configMap.containsKey(ABI_1 + " suite/stub2"));
+            assertTrue(configMap.containsKey(ABI_2 + " suite/stub1"));
+            assertTrue(configMap.containsKey(ABI_2 + " suite/stub2"));
 
             EasyMock.verify(mockBuildInfo);
         } finally {
@@ -163,8 +181,6 @@ public class TestMappingSuiteRunnerTest {
         setter.setOptionValue("include-filter", "suite/stubAbi");
 
         ITestDevice mockDevice = EasyMock.createMock(ITestDevice.class);
-        EasyMock.expect(mockDevice.getProperty(EasyMock.eq("ro.product.cpu.abilist")))
-                .andReturn(ABI_1 + "," + ABI_2);
         mRunner.setDevice(mockDevice);
         EasyMock.replay(mockDevice);
 
