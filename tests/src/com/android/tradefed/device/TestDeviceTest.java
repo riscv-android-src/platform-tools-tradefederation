@@ -137,17 +137,18 @@ public class TestDeviceTest extends TestCase {
         mMockWifi = EasyMock.createMock(IWifiHelper.class);
 
         // A TestDevice with a no-op recoverDevice() implementation
-        mTestDevice = new TestableTestDevice() {
-            @Override
-            public void recoverDevice() throws DeviceNotAvailableException {
-                // ignore
-            }
+        mTestDevice =
+                new TestableTestDevice() {
+                    @Override
+                    public void recoverDevice() throws DeviceNotAvailableException {
+                        // ignore
+                    }
 
-            @Override
-            IWifiHelper createWifiHelper() {
-                return mMockWifi;
-            }
-        };
+                    @Override
+                    IWifiHelper createWifiHelper() throws DeviceNotAvailableException {
+                        return mMockWifi;
+                    }
+                };
         mTestDevice.setRecovery(mMockRecovery);
         mTestDevice.setCommandTimeout(100);
         mTestDevice.setLogStartDelay(-1);
@@ -1194,7 +1195,6 @@ public class TestDeviceTest extends TestCase {
      * Test for {@link TestDevice#switchToAdbTcp()} when device has no ip address
      */
     public void testSwitchToAdbTcp_noIp() throws Exception {
-        mMockWifi.cleanUp();
         EasyMock.expect(mMockWifi.getIpAddress()).andReturn(null);
         replayMocks();
         assertNull(mTestDevice.switchToAdbTcp());
@@ -1205,7 +1205,6 @@ public class TestDeviceTest extends TestCase {
      * Test normal success case for {@link TestDevice#switchToAdbTcp()}.
      */
     public void testSwitchToAdbTcp() throws Exception {
-        mMockWifi.cleanUp();
         EasyMock.expect(mMockWifi.getIpAddress()).andReturn("ip");
         EasyMock.expect(mMockRunUtil.runTimedCmd(EasyMock.anyLong(), EasyMock.eq("adb"),
                 EasyMock.eq("-s"), EasyMock.eq("serial"), EasyMock.eq("tcpip"),
@@ -3618,5 +3617,52 @@ public class TestDeviceTest extends TestCase {
         } catch (IllegalArgumentException expected) {
             // expected
         }
+    }
+
+    /**
+     * Test that the wifi helper is uninstalled at postInvocationTearDown if it was installed
+     * before.
+     */
+    public void testPostInvocationWifiTearDown() throws Exception {
+        // A TestDevice with a no-op recoverDevice() implementation
+        mTestDevice =
+                new TestableTestDevice() {
+                    @Override
+                    public void recoverDevice() throws DeviceNotAvailableException {
+                        // ignore
+                    }
+
+                    @Override
+                    public String installPackage(
+                            File packageFile, boolean reinstall, String... extraArgs)
+                            throws DeviceNotAvailableException {
+                        // Fake install is successfull
+                        return null;
+                    }
+
+                    @Override
+                    IWifiHelper createWifiHelper() throws DeviceNotAvailableException {
+                        super.createWifiHelper();
+                        return mMockWifi;
+                    }
+
+                    @Override
+                    IWifiHelper createWifiHelper(boolean doSetup)
+                            throws DeviceNotAvailableException {
+                        return mMockWifi;
+                    }
+                };
+        mMockIDevice.executeShellCommand(
+                EasyMock.eq("dumpsys package com.android.tradefed.utils.wifi"),
+                EasyMock.anyObject(),
+                EasyMock.anyLong(),
+                EasyMock.anyObject());
+        EasyMock.expect(mMockWifi.getIpAddress()).andReturn("ip");
+        // Wifi is cleaned up by the post invocation tear down.
+        mMockWifi.cleanUp();
+        replayMocks();
+        mTestDevice.getIpAddress();
+        mTestDevice.postInvocationTearDown();
+        verifyMocks();
     }
 }
