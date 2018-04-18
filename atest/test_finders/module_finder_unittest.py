@@ -118,11 +118,13 @@ class ModuleFinderUnittests(unittest.TestCase):
         self.assertFalse(self.mod_finder._is_auto_gen_test_config(mod_name))
 
     # pylint: disable=unused-argument
+    @mock.patch.object(module_finder.ModuleFinder, '_has_test_config',
+                       return_value=True)
     @mock.patch.object(module_finder.ModuleFinder, '_get_build_targets',
                        return_value=uc.MODULE_BUILD_TARGETS)
     @mock.patch.object(module_finder.ModuleFinder, '_is_robolectric_test',
                        return_value=False)
-    def test_find_test_by_module_name(self, _robo, _get_targ):
+    def test_find_test_by_module_name(self, _robo, _get_targ, _has_test_config):
         """Test find_test_by_module_name."""
         mod_info = {'installed': ['/path/to/install'],
                     'path': [uc.MODULE_DIR]}
@@ -134,6 +136,8 @@ class ModuleFinderUnittests(unittest.TestCase):
         self.mod_finder.module_info.get_module_info.return_value = None
         self.assertIsNone(self.mod_finder.find_test_by_module_name('Not_Module'))
 
+    @mock.patch.object(module_finder.ModuleFinder, '_has_test_config',
+                       return_value=True)
     @mock.patch.object(module_finder.ModuleFinder, '_is_vts_module',
                        return_value=False)
     @mock.patch.object(module_finder.ModuleFinder, '_is_robolectric_test',
@@ -149,7 +153,7 @@ class ModuleFinderUnittests(unittest.TestCase):
     #pylint: disable=unused-argument
     def test_find_test_by_class_name(self, _isdir, _isfile, _fqcn,
                                      mock_checkoutput, _auto, mock_build, _robo,
-                                     _vts):
+                                     _vts, _has_test_config):
         """Test find_test_by_class_name."""
         mock_build.return_value = uc.CLASS_BUILD_TARGETS
         self.mod_finder.module_info.get_module_names.return_value = [uc.MODULE_NAME]
@@ -187,6 +191,8 @@ class ModuleFinderUnittests(unittest.TestCase):
                                                           uc.CONFIG2_FILE),
             CLASS_INFO_MODULE_2)
 
+    @mock.patch.object(module_finder.ModuleFinder, '_has_test_config',
+                       return_value=True)
     @mock.patch.object(module_finder.ModuleFinder, '_is_vts_module',
                        return_value=False)
     @mock.patch.object(module_finder.ModuleFinder, '_is_robolectric_test',
@@ -201,7 +207,7 @@ class ModuleFinderUnittests(unittest.TestCase):
     #pylint: disable=unused-argument
     def test_find_test_by_module_and_class(self, _isfile, _fqcn,
                                            mock_checkoutput, _auto, mock_build,
-                                           _robo, _vts):
+                                           _robo, _vts, _has_test_config):
         """Test find_test_by_module_and_class."""
         mock_build.return_value = uc.CLASS_BUILD_TARGETS
         mod_info = {constants.MODULE_INSTALLED: DEFAULT_INSTALL_PATH,
@@ -223,6 +229,8 @@ class ModuleFinderUnittests(unittest.TestCase):
         self.mod_finder.module_info.get_module_info.return_value = mod_info
         self.assertIsNone(self.mod_finder.find_test_by_module_and_class(bad_class))
 
+    @mock.patch.object(module_finder.ModuleFinder, '_has_test_config',
+                       return_value=True)
     @mock.patch.object(module_finder.ModuleFinder, '_is_vts_module',
                        return_value=False)
     @mock.patch.object(module_finder.ModuleFinder, '_is_robolectric_test',
@@ -235,7 +243,7 @@ class ModuleFinderUnittests(unittest.TestCase):
     @mock.patch('os.path.isdir', return_value=True)
     #pylint: disable=unused-argument
     def test_find_test_by_package_name(self, _isdir, _isfile, mock_checkoutput,
-                                       _auto, mock_build, _robo, _vts):
+                                       _auto, mock_build, _robo, _vts, _has_test_config):
         """Test find_test_by_package_name."""
         mock_build.return_value = uc.CLASS_BUILD_TARGETS
         self.mod_finder.module_info.get_module_names.return_value = [uc.MODULE_NAME]
@@ -258,6 +266,8 @@ class ModuleFinderUnittests(unittest.TestCase):
         mock_checkoutput.return_value = ''
         self.assertIsNone(self.mod_finder.find_test_by_package_name('Not pkg'))
 
+    @mock.patch.object(module_finder.ModuleFinder, '_has_test_config',
+                       return_value=True)
     @mock.patch.object(module_finder.ModuleFinder, '_is_vts_module',
                        return_value=False)
     @mock.patch.object(module_finder.ModuleFinder, '_is_robolectric_test',
@@ -269,7 +279,7 @@ class ModuleFinderUnittests(unittest.TestCase):
     @mock.patch('os.path.isfile', side_effect=unittest_utils.isfile_side_effect)
     #pylint: disable=unused-argument
     def test_find_test_by_module_and_package(self, _isfile, mock_checkoutput,
-                                             _auto, mock_build, _robo, _vts):
+                                             _auto, mock_build, _robo, _vts, _has_test_config):
         """Test find_test_by_module_and_package."""
         mock_build.return_value = uc.CLASS_BUILD_TARGETS
         mod_info = {constants.MODULE_INSTALLED: DEFAULT_INSTALL_PATH,
@@ -293,6 +303,8 @@ class ModuleFinderUnittests(unittest.TestCase):
         self.mod_finder.module_info.get_module_info.return_value = mod_info
         self.assertIsNone(self.mod_finder.find_test_by_module_and_package(bad_pkg))
 
+    @mock.patch.object(module_finder.ModuleFinder, '_has_test_config',
+                       return_value=True)
     @mock.patch.object(module_finder.ModuleFinder, '_get_build_targets')
     @mock.patch.object(module_finder.ModuleFinder, '_is_vts_module',
                        return_value=False)
@@ -307,7 +319,7 @@ class ModuleFinderUnittests(unittest.TestCase):
     @mock.patch('os.path.exists')
     #pylint: disable=unused-argument
     def test_find_test_by_path(self, mock_pathexists, mock_dir, _isfile, _real,
-                               _fqcn, _robo, _vts, mock_build):
+                               _fqcn, _robo, _vts, mock_build, _has_test_config):
         """Test find_test_by_path."""
         mock_build.return_value = set()
         # Check that we don't return anything with invalid test references.
@@ -322,7 +334,6 @@ class ModuleFinderUnittests(unittest.TestCase):
         self.mod_finder.module_info.get_module_info.return_value = {
             constants.MODULE_INSTALLED: DEFAULT_INSTALL_PATH,
             constants.MODULE_NAME: uc.MODULE_NAME}
-
 
         # Happy path testing.
         mock_dir.return_value = uc.MODULE_DIR
@@ -342,6 +353,8 @@ class ModuleFinderUnittests(unittest.TestCase):
             self, self.mod_finder.find_test_by_path(class_with_methods),
             FLAT_METHOD_INFO)
 
+    @mock.patch.object(module_finder.ModuleFinder, '_has_test_config',
+                       return_value=True)
     @mock.patch.object(module_finder.ModuleFinder, '_get_build_targets',
                        return_value=uc.MODULE_BUILD_TARGETS)
     @mock.patch.object(module_finder.ModuleFinder, '_is_vts_module',
@@ -354,7 +367,7 @@ class ModuleFinderUnittests(unittest.TestCase):
                        return_value=False)
     #pylint: disable=unused-argument
     def test_find_test_by_path_part_2(self, _is_auto_gen, _find_parent, _is_vts,
-                                      _is_robo, _get_build):
+                                      _is_robo, _get_build, _has_test_config):
         """Test find_test_by_path for directories."""
         # Dir with java files in it, should run as package
         class_dir = os.path.join(uc.TEST_DATA_DIR, 'path_testing')
@@ -370,11 +383,12 @@ class ModuleFinderUnittests(unittest.TestCase):
             self, uc.EMPTY_PATH_INFO,
             self.mod_finder.find_test_by_path(empty_dir))
 
-    @mock.patch.object(module_finder.ModuleFinder, '_is_robolectric_test',
-                       return_value=False)
-    def test_is_testable_module(self, is_robo_test):
+    @mock.patch.object(module_finder.ModuleFinder, '_has_test_config')
+    @mock.patch.object(module_finder.ModuleFinder, '_is_robolectric_test')
+    def test_is_testable_module(self, mock_is_robo_test, mock_has_test_config):
         """Test _is_testable_module."""
-        is_robo_test.return_value = False
+        mock_is_robo_test.return_value = False
+        mock_has_test_config.return_value = True
         installed_module_info = {constants.MODULE_INSTALLED:
                                  DEFAULT_INSTALL_PATH}
         non_installed_module_info = {constants.MODULE_NAME: 'rand_name'}
@@ -386,7 +400,10 @@ class ModuleFinderUnittests(unittest.TestCase):
         # Testable Module or is a robo module for non-installed module.
         self.assertTrue(self.mod_finder._is_testable_module(
             installed_module_info))
-        is_robo_test.return_value = True
+        mock_has_test_config.return_value = False
+        self.assertFalse(self.mod_finder._is_testable_module(
+            installed_module_info))
+        mock_is_robo_test.return_value = True
         self.assertTrue(self.mod_finder._is_testable_module(
             non_installed_module_info))
 
@@ -424,6 +441,18 @@ class ModuleFinderUnittests(unittest.TestCase):
         self.mod_finder.module_info.get_module_info.return_value = None
         self.assertFalse(self.mod_finder._is_robolectric_test('rand_mod'))
 
+    @mock.patch.object(module_finder.ModuleFinder, '_is_auto_gen_test_config')
+    def test_has_test_config(self, mock_is_auto_gen):
+        """Test _has_test_config."""
+        mod_info = {constants.MODULE_PATH:[uc.TEST_DATA_DIR]}
+        mock_is_auto_gen.return_value = True
+        # Validate we see the config when it's auto-generated.
+        self.assertTrue(self.mod_finder._has_test_config(mod_info))
+        self.assertTrue(self.mod_finder._has_test_config({}))
+        # Validate when actual config exists and there's no auto-generated config.
+        mock_is_auto_gen.return_value = False
+        self.assertTrue(self.mod_finder._has_test_config(mod_info))
+        self.assertFalse(self.mod_finder._has_test_config({}))
 
 if __name__ == '__main__':
     unittest.main()

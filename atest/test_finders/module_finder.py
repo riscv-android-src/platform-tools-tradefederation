@@ -56,6 +56,27 @@ class ModuleFinder(test_finder_base.TestFinderBase):
         self.root_dir = os.environ.get(constants.ANDROID_BUILD_TOP)
         self.module_info = module_info
 
+    def _has_test_config(self, mod_info):
+        """Validate if this module has a test config.
+
+        A module can have a test config in the following manner:
+          - AndroidTest.xml at the module path.
+          - Auto-generated config via the auto_test_config key in module-info.json.
+
+        Args:
+            mod_info: Dict of module info to check.
+
+        Returns:
+            True if this module has a test config, False otherwise.
+        """
+        # Check for AndroidTest.xml at the module path.
+        for path in mod_info.get(constants.MODULE_PATH, []):
+            if os.path.isfile(os.path.join(path, constants.MODULE_CONFIG)):
+                return True
+
+        # Check if the module has an auto-generated config.
+        return self._is_auto_gen_test_config(mod_info.get(constants.MODULE_NAME))
+
     def _is_testable_module(self, mod_info):
         """Check if module is something we can test.
 
@@ -71,8 +92,7 @@ class ModuleFinder(test_finder_base.TestFinderBase):
         """
         if not mod_info:
             return False
-        # TODO: b/77286797
-        if mod_info.get('installed'):
+        if mod_info.get(constants.MODULE_INSTALLED) and self._has_test_config(mod_info):
             return True
         if self._is_robolectric_test(mod_info.get(constants.MODULE_NAME)):
             return True
