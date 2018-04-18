@@ -20,6 +20,7 @@ import com.android.tradefed.invoker.IInvocationContext;
 import com.android.tradefed.invoker.InvocationContext;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
+import com.android.tradefed.result.LogDataType;
 import com.android.tradefed.result.LogFile;
 import com.android.tradefed.result.TestDescription;
 import com.android.tradefed.result.TestResult;
@@ -109,6 +110,8 @@ public class XmlSuiteResultFormatter implements IFormatterGenerator {
     private static final String TEST_TAG = "Test";
     private static final String TOTAL_TESTS_ATTR = "total_tests";
 
+    private static final String LOG_FILE_NAME_ATTR = "file_name";
+
     /**
      * Allows to add some attributes to the <Result> tag via {@code serializer.attribute}.
      *
@@ -117,6 +120,18 @@ public class XmlSuiteResultFormatter implements IFormatterGenerator {
      */
     public void addSuiteAttributes(XmlSerializer serializer)
             throws IllegalArgumentException, IllegalStateException, IOException {
+        // Default implementation does nothing
+    }
+
+    /**
+     * Reverse operation from {@link #addSuiteAttributes(XmlSerializer)}.
+     *
+     * @param parser The parser where to read the attributes from.
+     * @param context The {@link IInvocationContext} where to put the attributes.
+     * @throws XmlPullParserException
+     */
+    public void parseSuiteAttributes(XmlPullParser parser, IInvocationContext context)
+            throws XmlPullParserException {
         // Default implementation does nothing
     }
 
@@ -131,6 +146,18 @@ public class XmlSuiteResultFormatter implements IFormatterGenerator {
      */
     public void addBuildInfoAttributes(XmlSerializer serializer, SuiteResultHolder holder)
             throws IllegalArgumentException, IllegalStateException, IOException {
+        // Default implementation does nothing
+    }
+
+    /**
+     * Reverse operation from {@link #addBuildInfoAttributes(XmlSerializer, SuiteResultHolder)}.
+     *
+     * @param parser The parser where to read the attributes from.
+     * @param context The {@link IInvocationContext} where to put the attributes.
+     * @throws XmlPullParserException
+     */
+    public void parseBuildInfoAttributes(XmlPullParser parser, IInvocationContext context)
+            throws XmlPullParserException {
         // Default implementation does nothing
     }
 
@@ -315,17 +342,20 @@ public class XmlSuiteResultFormatter implements IFormatterGenerator {
             switch (loggedFiles.get(key).getType()) {
                 case BUGREPORT:
                     serializer.startTag(NS, BUGREPORT_TAG);
+                    serializer.attribute(NS, LOG_FILE_NAME_ATTR, key);
                     serializer.text(loggedFiles.get(key).getUrl());
                     serializer.endTag(NS, BUGREPORT_TAG);
                     break;
                 case LOGCAT:
                     serializer.startTag(NS, LOGCAT_TAG);
+                    serializer.attribute(NS, LOG_FILE_NAME_ATTR, key);
                     serializer.text(loggedFiles.get(key).getUrl());
                     serializer.endTag(NS, LOGCAT_TAG);
                     break;
                 case PNG:
                 case JPEG:
                     serializer.startTag(NS, SCREENSHOT_TAG);
+                    serializer.attribute(NS, LOG_FILE_NAME_ATTR, key);
                     serializer.text(loggedFiles.get(key).getUrl());
                     serializer.endTag(NS, SCREENSHOT_TAG);
                     break;
@@ -378,10 +408,9 @@ public class XmlSuiteResultFormatter implements IFormatterGenerator {
             parser.require(XmlPullParser.START_TAG, NS, RESULT_TAG);
             invocation.startTime = (Long.valueOf(parser.getAttributeValue(NS, START_TIME_ATTR)));
             invocation.endTime = (Long.valueOf(parser.getAttributeValue(NS, END_TIME_ATTR)));
-            // invocation.setTestPlan(parser.getAttributeValue(NS, SUITE_PLAN_ATTR));
             context.addInvocationAttribute(
                     COMMAND_LINE_ARGS, parser.getAttributeValue(NS, COMMAND_LINE_ARGS));
-            // TODO: add placeholder for suiteAttributes parsing
+            parseSuiteAttributes(parser, context);
 
             String deviceList = parser.getAttributeValue(NS, DEVICES_ATTR);
             int i = 0;
@@ -394,7 +423,14 @@ public class XmlSuiteResultFormatter implements IFormatterGenerator {
             parser.nextTag();
             parser.require(XmlPullParser.START_TAG, NS, BUILD_TAG);
 
-            // TODO: add placeholder for buildInfos parsing
+            for (int index = 0; index < parser.getAttributeCount(); index++) {
+                String key = parser.getAttributeName(i);
+                String value = parser.getAttributeValue(NS, key);
+                // TODO: Handle list of values that are comma separated.
+                context.addInvocationAttribute(key, value);
+            }
+            parseBuildInfoAttributes(parser, context);
+
             parser.nextTag();
             parser.require(XmlPullParser.END_TAG, NS, BUILD_TAG);
 
@@ -440,8 +476,11 @@ public class XmlSuiteResultFormatter implements IFormatterGenerator {
             results.add(module);
             String name = parser.getAttributeValue(NS, NAME_ATTR);
             String abi = parser.getAttributeValue(NS, ABI_ATTR);
-            String moduleId = AbiUtils.createId(abi, name);
-            moduleAbis.put(moduleId, new Abi(abi, AbiUtils.getBitness(abi)));
+            String moduleId = name;
+            if (abi != null) {
+                moduleId = AbiUtils.createId(abi, name);
+                moduleAbis.put(moduleId, new Abi(abi, AbiUtils.getBitness(abi)));
+            }
             long moduleElapsedTime = Long.parseLong(parser.getAttributeValue(NS, RUNTIME_ATTR));
             boolean moduleDone = Boolean.parseBoolean(parser.getAttributeValue(NS, DONE_ATTR));
             int totalTests = Integer.parseInt(parser.getAttributeValue(NS, TOTAL_TESTS_ATTR));
@@ -480,19 +519,32 @@ public class XmlSuiteResultFormatter implements IFormatterGenerator {
                     }
                     currentModule.testFailed(description, failure);
                     parser.require(XmlPullParser.END_TAG, NS, FAILURE_TAG);
-                } else if (parser.getName().equals(BUGREPORT_TAG)) {
-                    // TODO: When possible re-associate the file to the test case.
-                    parser.require(XmlPullParser.END_TAG, NS, BUGREPORT_TAG);
-                } else if (parser.getName().equals(LOGCAT_TAG)) {
-                    // TODO: When possible re-associate the file to the test case.
-                    parser.require(XmlPullParser.END_TAG, NS, LOGCAT_TAG);
-                } else if (parser.getName().equals(SCREENSHOT_TAG)) {
-                    // TODO: When possible re-associate the file to the test case.
-                    parser.require(XmlPullParser.END_TAG, NS, SCREENSHOT_TAG);
                 }
+                parseLoggedFiles(parser, currentModule);
             }
             currentModule.testEnded(description, new HashMap<String, Metric>());
             parser.require(XmlPullParser.END_TAG, NS, TEST_TAG);
         }
+    }
+
+    /** Add files captured by {@link TestFailureListener} on test failures. */
+    private static void parseLoggedFiles(XmlPullParser parser, TestRunResult currentModule)
+            throws XmlPullParserException, IOException {
+        if (parser.getName().equals(BUGREPORT_TAG)) {
+            parseSingleFiles(parser, currentModule, BUGREPORT_TAG, LogDataType.BUGREPORTZ);
+        } else if (parser.getName().equals(LOGCAT_TAG)) {
+            parseSingleFiles(parser, currentModule, LOGCAT_TAG, LogDataType.LOGCAT);
+        } else if (parser.getName().equals(SCREENSHOT_TAG)) {
+            parseSingleFiles(parser, currentModule, SCREENSHOT_TAG, LogDataType.PNG);
+        }
+    }
+
+    private static void parseSingleFiles(
+            XmlPullParser parser, TestRunResult currentModule, String tagName, LogDataType type)
+            throws XmlPullParserException, IOException {
+        String name = parser.getAttributeValue(NS, LOG_FILE_NAME_ATTR);
+        String logFileUrl = parser.nextText();
+        currentModule.testLogSaved(name, new LogFile(logFileUrl, logFileUrl, type));
+        parser.require(XmlPullParser.END_TAG, NS, tagName);
     }
 }
