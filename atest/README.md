@@ -48,6 +48,7 @@ Atest commands take the following form:
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;**atest \<optional arguments> \<tests to run>**
 
 #### \<optional arguments>
+
 <table>
 <tr><td>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;-b</td><td>--build</td>
     <td>Build test targets.</td></tr>
