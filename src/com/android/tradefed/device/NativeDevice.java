@@ -1939,8 +1939,8 @@ public class NativeDevice implements IManagedTestDevice {
         }
 
         // Convert date to format needed by the command:
-        // 'MM-DD hh:mm:ss.mmm' or 'YYYY-MM-DD hh:mm:ss.mmm'
-        SimpleDateFormat format = new SimpleDateFormat("MM-dd hh:mm:ss.mmm");
+        // 'MM-DD HH:mm:ss.mmm' or 'YYYY-MM-DD HH:mm:ss.mmm'
+        SimpleDateFormat format = new SimpleDateFormat("MM-dd HH:mm:ss.mmm");
         String dateFormatted = format.format(new Date(date));
 
         byte[] output = new byte[0];

@@ -110,6 +110,7 @@ import com.android.tradefed.result.InvocationFailureEmailResultReporterTest;
 import com.android.tradefed.result.InvocationToJUnitResultForwarderTest;
 import com.android.tradefed.result.JUnitToInvocationResultForwarderTest;
 import com.android.tradefed.result.LogFileSaverTest;
+import com.android.tradefed.result.LogcatCrashResultForwarderTest;
 import com.android.tradefed.result.MetricsXMLResultReporterTest;
 import com.android.tradefed.result.SnapshotInputStreamSourceTest;
 import com.android.tradefed.result.SubprocessResultsReporterTest;
@@ -404,6 +405,7 @@ import org.junit.runners.Suite.SuiteClasses;
     InvocationFailureEmailResultReporterTest.class,
     InvocationToJUnitResultForwarderTest.class,
     JUnitToInvocationResultForwarderTest.class,
+    LogcatCrashResultForwarderTest.class,
     LogFileSaverTest.class,
     MetricsXMLResultReporterTest.class,
     SnapshotInputStreamSourceTest.class,
