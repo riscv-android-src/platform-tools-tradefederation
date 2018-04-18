@@ -101,6 +101,8 @@ public class TestDevice extends NativeDevice {
     /** Max timeout to output for package installation */
     static final long INSTALL_TIMEOUT_TO_OUTPUT_MINUTES = 3;
 
+    private boolean mWasWifiHelperInstalled = false;
+
     /**
      * @param device
      * @param stateMonitor
@@ -1210,7 +1212,44 @@ public class TestDevice extends NativeDevice {
      */
     @Override
     IWifiHelper createWifiHelper() throws DeviceNotAvailableException {
+        mWasWifiHelperInstalled = true;
         return new WifiHelper(this, mOptions.getWifiUtilAPKPath());
+    }
+
+    /**
+     * Alternative to {@link #createWifiHelper()} where we can choose whether to do the wifi helper
+     * setup or not.
+     */
+    @VisibleForTesting
+    IWifiHelper createWifiHelper(boolean doSetup) throws DeviceNotAvailableException {
+        if (doSetup) {
+            mWasWifiHelperInstalled = true;
+        }
+        return new WifiHelper(this, mOptions.getWifiUtilAPKPath(), doSetup);
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public void postInvocationTearDown() {
+        super.postInvocationTearDown();
+        // If wifi was installed and it's a real device, attempt to clean it.
+        if (mWasWifiHelperInstalled) {
+            mWasWifiHelperInstalled = false;
+            if (getIDevice() instanceof StubDevice) {
+                return;
+            }
+            if (!TestDeviceState.ONLINE.equals(getDeviceState())) {
+                return;
+            }
+            try {
+                // Uninstall the wifi utility if it was installed.
+                IWifiHelper wifi = createWifiHelper(false);
+                wifi.cleanUp();
+            } catch (DeviceNotAvailableException e) {
+                CLog.e("Device became unavailable while uninstalling wifi util.");
+                CLog.e(e);
+            }
+        }
     }
 
     /** {@inheritDoc} */
