@@ -22,6 +22,7 @@ import static org.mockito.Mockito.mock;
 import com.android.tradefed.config.Configuration;
 import com.android.tradefed.config.DeviceConfigurationHolder;
 import com.android.tradefed.config.IConfiguration;
+import com.android.tradefed.config.IDeviceConfiguration;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.device.metric.BaseDeviceMetricCollector;
@@ -29,7 +30,9 @@ import com.android.tradefed.device.metric.IMetricCollector;
 import com.android.tradefed.device.metric.IMetricCollectorReceiver;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.targetprep.IHostCleaner;
+import com.android.tradefed.targetprep.ITargetCleaner;
 import com.android.tradefed.targetprep.ITargetPreparer;
+import com.android.tradefed.targetprep.multi.IMultiTargetPreparer;
 import com.android.tradefed.testtype.IRemoteTest;
 import com.android.tradefed.util.IDisableable;
 
@@ -38,8 +41,11 @@ import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
+import org.mockito.InOrder;
+import org.mockito.Mockito;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
 /**
@@ -183,5 +189,55 @@ public class InvocationExecutionTest {
         mExec.runTests(mContext, mConfig, mMockListener);
         // Init was called twice in total on the class, but only once per instance.
         assertEquals(2, TestBaseMetricCollector.sTotalInit);
+    }
+
+    /**
+     * Test the ordering of multi_pre_target_preparer/target_preparer/multi_target_preparer during
+     * setup and tearDown.
+     */
+    @Test
+    public void testDoSetup() throws Throwable {
+        IMultiTargetPreparer stub1 = mock(IMultiTargetPreparer.class);
+        IMultiTargetPreparer stub2 = mock(IMultiTargetPreparer.class);
+        IMultiTargetPreparer stub3 = mock(IMultiTargetPreparer.class);
+        IMultiTargetPreparer stub4 = mock(IMultiTargetPreparer.class);
+        mConfig.setMultiPreTargetPreparers(Arrays.asList(stub1, stub2));
+        mConfig.setMultiTargetPreparers(Arrays.asList(stub3, stub4));
+
+        ITargetCleaner cleaner = mock(ITargetCleaner.class);
+        IDeviceConfiguration holder = new DeviceConfigurationHolder("default");
+        holder.addSpecificConfig(cleaner);
+        mConfig.setDeviceConfig(holder);
+        mContext.addAllocatedDevice("default", mock(ITestDevice.class));
+
+        mExec.doSetup(mContext, mConfig, mMockListener);
+        mExec.doTeardown(mContext, mConfig, null);
+
+        // Pre multi preparers are always called before.
+        InOrder inOrder = Mockito.inOrder(stub1, stub2, stub3, stub4, cleaner);
+        inOrder.verify(stub1).isDisabled();
+        inOrder.verify(stub1).setUp(mContext);
+        inOrder.verify(stub2).isDisabled();
+        inOrder.verify(stub2).setUp(mContext);
+
+        inOrder.verify(cleaner).setUp(Mockito.any(), Mockito.any());
+
+        inOrder.verify(stub3).isDisabled();
+        inOrder.verify(stub3).setUp(mContext);
+        inOrder.verify(stub4).isDisabled();
+        inOrder.verify(stub4).setUp(mContext);
+
+        // tear down
+        inOrder.verify(stub4).isDisabled();
+        inOrder.verify(stub4).tearDown(mContext, null);
+        inOrder.verify(stub3).isDisabled();
+        inOrder.verify(stub3).tearDown(mContext, null);
+
+        inOrder.verify(cleaner).tearDown(Mockito.any(), Mockito.any(), Mockito.any());
+
+        inOrder.verify(stub2).isDisabled();
+        inOrder.verify(stub2).tearDown(mContext, null);
+        inOrder.verify(stub1).isDisabled();
+        inOrder.verify(stub1).tearDown(mContext, null);
     }
 }
