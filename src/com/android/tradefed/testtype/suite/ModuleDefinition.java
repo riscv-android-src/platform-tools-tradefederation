@@ -20,7 +20,6 @@ import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.config.ConfigurationDescriptor;
 import com.android.tradefed.config.IConfiguration;
 import com.android.tradefed.device.DeviceNotAvailableException;
-import com.android.tradefed.device.DeviceUnresponsiveException;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.device.StubDevice;
 import com.android.tradefed.device.metric.IMetricCollector;
@@ -36,7 +35,6 @@ import com.android.tradefed.result.ILogSaverListener;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.ITestLoggerReceiver;
 import com.android.tradefed.result.LogFile;
-import com.android.tradefed.result.LogSaverResultForwarder;
 import com.android.tradefed.result.TestDescription;
 import com.android.tradefed.result.TestResult;
 import com.android.tradefed.result.TestRunResult;
@@ -46,6 +44,7 @@ import com.android.tradefed.targetprep.ITargetCleaner;
 import com.android.tradefed.targetprep.ITargetPreparer;
 import com.android.tradefed.targetprep.TargetSetupError;
 import com.android.tradefed.targetprep.multi.IMultiTargetPreparer;
+import com.android.tradefed.testtype.GranularRetriableTestWrapper;
 import com.android.tradefed.testtype.IBuildReceiver;
 import com.android.tradefed.testtype.IDeviceTest;
 import com.android.tradefed.testtype.IInvocationContextReceiver;
@@ -372,53 +371,11 @@ public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestColl
                     ((ITestCollector) test).setCollectTestsOnly(mCollectTestsOnly);
                 }
 
-                // Run the test, only in case of DeviceNotAvailable we exit the module
-                // execution in order to execute as much as possible.
-                ModuleListener moduleListener = new ModuleListener(listener);
-                moduleListener.setMarkTestsSkipped(skipTestCases);
-                List<ITestInvocationListener> currentTestListener = new ArrayList<>();
-                // Add all the module level listeners, including TestFailureListener
-                if (moduleLevelListeners != null) {
-                    currentTestListener.addAll(moduleLevelListeners);
-                }
-                currentTestListener.add(moduleListener);
-
-                ITestInvocationListener runListener =
-                        new LogSaverResultForwarder(mLogSaver, currentTestListener);
-
-                if (failureListener != null) {
-                    failureListener.setLogger(runListener);
-                    currentTestListener.add(failureListener);
-                }
-                if (mRunMetricCollectors != null) {
-                    // Module only init the collectors here to avoid triggering the collectors when
-                    // replaying the cached events at the end. This ensure metrics are capture at
-                    // the proper time in the invocation.
-                    for (IMetricCollector collector : mRunMetricCollectors) {
-                        runListener = collector.init(mModuleInvocationContext, runListener);
-                    }
-                }
-                // The module collectors itself are added: this list will be very limited.
-                for (IMetricCollector collector : mModuleConfiguration.getMetricCollectors()) {
-                    runListener = collector.init(mModuleInvocationContext, runListener);
-                }
+                GranularRetriableTestWrapper retriableTest =
+                        prepareGranularRetriableWrapper(
+                                test, failureListener, moduleLevelListeners, skipTestCases);
                 try {
-                    test.run(runListener);
-                } catch (RuntimeException re) {
-                    CLog.e("Module '%s' - test '%s' threw exception:", getId(), test.getClass());
-                    CLog.e(re);
-                    CLog.e("Proceeding to the next test.");
-                    reportFailure(runListener, re.getMessage());
-                } catch (DeviceUnresponsiveException due) {
-                    // being able to catch a DeviceUnresponsiveException here implies that
-                    // recovery was successful, and test execution should proceed to next
-                    // module.
-                    CLog.w(
-                            "Ignored DeviceUnresponsiveException because recovery was "
-                                    + "successful, proceeding with next module. Stack trace:");
-                    CLog.w(due);
-                    CLog.w("Proceeding to the next test.");
-                    reportFailure(runListener, due.getMessage());
+                    retriableTest.run(listener);
                 } catch (DeviceNotAvailableException dnae) {
                     // We do special logging of some information in Context of the module for easier
                     // debugging.
@@ -435,11 +392,12 @@ public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestColl
                             getId());
                     throw dnae;
                 } finally {
-                    mTestsResults.addAll(moduleListener.getRunResults());
-                    mExpectedTests += moduleListener.getNumTotalTests();
+                    mTestsResults.addAll(retriableTest.getFinalTestRunResults());
+                    mExpectedTests += retriableTest.getNumIndividualTests();
                 }
-                // After the run, if it has failed, capture a bugreport
-                if (moduleListener.hasFailed()) {
+                // After the run, if the test failed (even after retry the final result passed) has
+                // failed, capture a bugreport.
+                if (retriableTest.hasFailed()) {
                     captureBugreport(listener);
                 }
             }
@@ -464,6 +422,32 @@ public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestColl
                 }
             }
         }
+    }
+
+    /**
+     * Create a wrapper class for the {@link IRemoteTest} which has built-in logic to schedule
+     * multiple test runs for the same module, and have the ability to run testcases in a more
+     * granulated level (a subset of testcases in the module).
+     *
+     * @param test the {@link IRemoteTest} that is being wrapped.
+     * @param failureListener a particular listener to collect logs on testFail. Can be null.
+     * @throws skipTestCases A run strategy when SKIP_MODULE_TESTCASES is defined.
+     */
+    @VisibleForTesting
+    GranularRetriableTestWrapper prepareGranularRetriableWrapper(
+            IRemoteTest test,
+            TestFailureListener failureListener,
+            List<ITestInvocationListener> moduleLevelListeners,
+            boolean skipTestCases) {
+        GranularRetriableTestWrapper retriableTest =
+                new GranularRetriableTestWrapper(test, failureListener, moduleLevelListeners);
+        retriableTest.setModuleId(getId());
+        retriableTest.setMarkTestsSkipped(skipTestCases);
+        retriableTest.setMetricCollectors(mRunMetricCollectors);
+        retriableTest.setModuleConfig(mModuleConfiguration);
+        retriableTest.setInvocationContext(mModuleInvocationContext);
+        retriableTest.setLogSaver(mLogSaver);
+        return retriableTest;
     }
 
     private void reportFailure(ITestInvocationListener listener, String errorMessage) {
