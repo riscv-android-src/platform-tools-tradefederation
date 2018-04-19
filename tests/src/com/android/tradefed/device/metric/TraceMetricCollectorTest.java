@@ -15,13 +15,12 @@
  */
 package com.android.tradefed.device.metric;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.doReturn;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.android.tradefed.device.ITestDevice;
@@ -29,9 +28,7 @@ import com.android.tradefed.invoker.IInvocationContext;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.InputStreamSource;
 import com.android.tradefed.result.LogDataType;
-import java.io.File;
-import java.util.HashMap;
-import java.util.Map;
+
 import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
@@ -41,6 +38,8 @@ import org.junit.runners.JUnit4;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 import org.mockito.Spy;
+
+import java.io.File;
 
 /** Unit tests for {@link TraceMetricCollector}. */
 // TODO(b/71868090): Consolidate all the individual metric collector tests into one common tests.
@@ -80,10 +79,7 @@ public class TraceMetricCollectorTest {
 
         mTraceInfoMetricCollector.collect(mDevice, runData);
 
-        Map<String, String> metricsCollected = new HashMap<String, String>();
-        runData.addToMetrics(metricsCollected);
-
-        assertEquals(metricsCollected.size(), 1);
-        assertTrue(metricsCollected.containsKey("trace-1"));
+        // Verify that we logged the metric file.
+        verify(mListener).testLog(eq("trace-1"), eq(LogDataType.TEXT), any());
     }
 }

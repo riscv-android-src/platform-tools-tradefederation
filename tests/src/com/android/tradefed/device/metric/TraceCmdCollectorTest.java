@@ -20,6 +20,7 @@ import com.android.tradefed.config.OptionSetter;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.invoker.IInvocationContext;
+import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.LogDataType;
 
@@ -32,6 +33,7 @@ import org.junit.runners.JUnit4;
 import java.io.File;
 import java.util.Arrays;
 import java.util.HashMap;
+import java.util.Map;
 
 /** Unit tests for {@link TraceCmdCollector}, */
 @RunWith(JUnit4.class)
@@ -161,7 +163,7 @@ public final class TraceCmdCollectorTest {
         EasyMock.replay(mMockDevice);
         mOptionSetter.setOptionValue("trace-cmd-binary", "trc");
         mTraceCmd.onTestEnd(
-                new DeviceMetricData(mMockInvocationContext), new HashMap<String, String>());
+                new DeviceMetricData(mMockInvocationContext), new HashMap<String, Metric>());
         EasyMock.verify(mMockDevice);
     }
 
@@ -185,7 +187,7 @@ public final class TraceCmdCollectorTest {
 
         mOptionSetter.setOptionValue("trace-cmd-binary", "trace-cmd");
         mTraceCmd.onTestEnd(
-                new DeviceMetricData(mMockInvocationContext), new HashMap<String, String>());
+                new DeviceMetricData(mMockInvocationContext), new HashMap<String, Metric>());
 
         EasyMock.verify(mMockTestLogger);
     }

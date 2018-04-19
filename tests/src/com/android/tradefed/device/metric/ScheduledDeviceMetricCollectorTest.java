@@ -22,15 +22,19 @@ import com.android.tradefed.config.OptionSetter;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.invoker.IInvocationContext;
 import com.android.tradefed.invoker.InvocationContext;
+import com.android.tradefed.metrics.proto.MetricMeasurement.Measurements;
+import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.util.RunUtil;
-import java.util.HashMap;
-import java.util.Map;
+
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
 import org.mockito.Mockito;
+
+import java.util.HashMap;
+import java.util.Map;
 
 /** Unit tests for {@link ScheduledDeviceMetricCollector}. */
 @RunWith(JUnit4.class)
@@ -43,8 +47,13 @@ public class ScheduledDeviceMetricCollectorTest {
         @Override
         void collect(ITestDevice device, DeviceMetricData runData) throws InterruptedException {
             mInternalCounter++;
-            runData.addStringMetricForDevice(
-                    device, "key" + mInternalCounter, "value" + mInternalCounter);
+            runData.addMetricForDevice(
+                    device,
+                    "key" + mInternalCounter,
+                    Metric.newBuilder()
+                            .setMeasurements(
+                                    Measurements.newBuilder()
+                                            .setSingleString("value" + mInternalCounter)));
         }
     }
 
@@ -69,7 +78,7 @@ public class ScheduledDeviceMetricCollectorTest {
         OptionSetter setter = new OptionSetter(mBase);
         // 100 ms interval
         setter.setOptionValue("interval", "100");
-        Map<String, String> metrics = new HashMap<>();
+        HashMap<String, Metric> metrics = new HashMap<>();
         mBase.init(mContext, mMockListener);
         try {
             mBase.testRunStarted("testRun", 1);
@@ -98,7 +107,7 @@ public class ScheduledDeviceMetricCollectorTest {
         OptionSetter setter = new OptionSetter(mBase);
         // 100 ms interval
         setter.setOptionValue("interval", "100");
-        Map<String, String> metrics = new HashMap<>();
+        HashMap<String, Metric> metrics = new HashMap<>();
         mBase.init(mContext, mMockListener);
         try {
             mBase.testRunStarted("testRun", 1);

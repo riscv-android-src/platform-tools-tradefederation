@@ -19,7 +19,9 @@ import com.android.tradefed.config.Option;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.log.LogUtil.CLog;
+import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
 import com.android.tradefed.util.FileUtil;
+import com.android.tradefed.util.proto.TfMetricProtoUtil;
 
 import java.io.File;
 import java.io.IOException;
@@ -56,13 +58,13 @@ public abstract class FilePullerDeviceMetricCollector extends BaseDeviceMetricCo
 
     @Override
     public void onTestRunEnd(
-            DeviceMetricData runData, final Map<String, String> currentRunMetrics) {
-        processMetricRequest(runData, currentRunMetrics);
+            DeviceMetricData runData, final Map<String, Metric> currentRunMetrics) {
+        processMetricRequest(runData, TfMetricProtoUtil.compatibleConvert(currentRunMetrics));
     }
 
     @Override
-    public void onTestEnd(DeviceMetricData testData, Map<String, String> currentTestCaseMetrics) {
-        processMetricRequest(testData, currentTestCaseMetrics);
+    public void onTestEnd(DeviceMetricData testData, Map<String, Metric> currentTestCaseMetrics) {
+        processMetricRequest(testData, TfMetricProtoUtil.compatibleConvert(currentTestCaseMetrics));
     }
 
     /**

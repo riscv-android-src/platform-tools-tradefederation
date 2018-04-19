@@ -36,18 +36,16 @@ public class IonHeapInfoMetricCollector extends ScheduledDeviceMetricCollector {
 
     @Override
     void collect(ITestDevice device, DeviceMetricData runData) throws InterruptedException {
-        collectIonAudio(device, runData);
-        collectIonSystem(device, runData);
+        collectIonAudio(device);
+        collectIonSystem(device);
     }
 
-    void collectIonAudio(ITestDevice device, DeviceMetricData runData) {
+    private void collectIonAudio(ITestDevice device) {
         try {
             CLog.i("Running ionheap audio collector...");
             String outputFileName =
                     String.format("%s/ion-audio-%s", createTempDir(), getFileSuffix());
             File outputFile = saveProcessOutput(device, "cat /d/ion/heaps/audio", outputFileName);
-            runData.addStringMetric(
-                    Files.getNameWithoutExtension(outputFile.getName()), outputFile.getPath());
             try (InputStreamSource source = new FileInputStreamSource(outputFile, true)) {
                 getInvocationListener()
                         .testLog(
@@ -60,14 +58,12 @@ public class IonHeapInfoMetricCollector extends ScheduledDeviceMetricCollector {
         }
     }
 
-    void collectIonSystem(ITestDevice device, DeviceMetricData runData) {
+    private void collectIonSystem(ITestDevice device) {
         try {
             CLog.i("Running ionheap system collector...");
             String outputFileName =
                     String.format("%s/ion-system-%s", createTempDir(), getFileSuffix());
             File outputFile = saveProcessOutput(device, "cat /d/ion/heaps/system", outputFileName);
-            runData.addStringMetric(
-                    Files.getNameWithoutExtension(outputFile.getName()), outputFile.getPath());
             try (InputStreamSource source = new FileInputStreamSource(outputFile, true)) {
                 getInvocationListener()
                         .testLog(

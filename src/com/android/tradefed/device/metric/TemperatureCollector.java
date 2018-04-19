@@ -21,6 +21,11 @@ import com.android.tradefed.config.Option;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.log.LogUtil.CLog;
+import com.android.tradefed.metrics.proto.MetricMeasurement.DataType;
+import com.android.tradefed.metrics.proto.MetricMeasurement.DoubleValues;
+import com.android.tradefed.metrics.proto.MetricMeasurement.Measurements;
+import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
+
 import java.util.HashMap;
 import java.util.Map;
 import java.util.regex.Matcher;
@@ -31,6 +36,8 @@ import java.util.regex.Pattern;
  * long duration performance tests to monitor if the device overheats.
  */
 public class TemperatureCollector extends ScheduledDeviceMetricCollector {
+
+    private static final String CELCIUS_UNIT = "celcius";
 
     // Option name intentionally shared with TemperatureThrottlingWaiter
     @Option(
@@ -53,20 +60,25 @@ public class TemperatureCollector extends ScheduledDeviceMetricCollector {
      * Stores the highest recorded temperature per device. Device will not be present in the map if
      * no valid temperature was recorded.
      */
-    private Map<ITestDevice, Double> mMaxDeviceTemps = new HashMap<>();
+    private Map<ITestDevice, Double> mMaxDeviceTemps;
 
     /**
      * Stores the lowest recorded temperature per device. Device will not be present in the map if
      * no valid temperature was recorded.
      */
-    private Map<ITestDevice, Double> mMinDeviceTemps = new HashMap<>();
+    private Map<ITestDevice, Double> mMinDeviceTemps;
 
     // Example: Result:32 Raw:7e51
     private static Pattern mTemperatureRegex;
 
+    private Map<ITestDevice, DoubleValues.Builder> mValues;
+
     @Override
     void onStart(DeviceMetricData runData) {
         mTemperatureRegex = Pattern.compile(mDeviceTemperatureFileRegex);
+        mMaxDeviceTemps = new HashMap<>();
+        mMinDeviceTemps = new HashMap<>();
+        mValues = new HashMap<>();
     }
 
     @Override
@@ -82,6 +94,10 @@ public class TemperatureCollector extends ScheduledDeviceMetricCollector {
             if (temp == null) {
                 return;
             }
+            if (mValues.get(device) == null) {
+                mValues.put(device, DoubleValues.newBuilder());
+            }
+            mValues.get(device).addDoubleValue(temp);
             mMaxDeviceTemps.putIfAbsent(device, temp);
             mMinDeviceTemps.putIfAbsent(device, temp);
             if (mMaxDeviceTemps.get(device) < temp) {
@@ -109,13 +125,30 @@ public class TemperatureCollector extends ScheduledDeviceMetricCollector {
     @Override
     void onEnd(DeviceMetricData runData) {
         for (ITestDevice device : getDevices()) {
-            Double maxtemp = mMaxDeviceTemps.get(device);
-            if (maxtemp != null) {
-                runData.addStringMetricForDevice(device, "maxtemp", Double.toString(maxtemp));
+            DoubleValues.Builder values = mValues.get(device);
+            if (values != null) {
+                Metric.Builder metric = Metric.newBuilder();
+                metric.setMeasurements(
+                        Measurements.newBuilder().setDoubleValues(values.build()).build());
+                metric.setUnit(CELCIUS_UNIT).setType(DataType.RAW);
+                runData.addMetricForDevice(device, "temperature", metric);
             }
-            Double mintemp = mMinDeviceTemps.get(device);
-            if (mintemp != null) {
-                runData.addStringMetricForDevice(device, "mintemp", Double.toString(mintemp));
+            // Report the max and min for compatibility
+            Double maxTemp = mMaxDeviceTemps.get(device);
+            if (maxTemp != null) {
+                Metric.Builder metric = Metric.newBuilder();
+                metric.setMeasurements(Measurements.newBuilder().setSingleDouble(maxTemp).build());
+                // Since we report some processed value report it as PROCESSED.
+                metric.setUnit(CELCIUS_UNIT).setType(DataType.PROCESSED);
+                runData.addMetricForDevice(device, "max_temperature", metric);
+            }
+            Double minTemp = mMinDeviceTemps.get(device);
+            if (minTemp != null) {
+                Metric.Builder metric = Metric.newBuilder();
+                metric.setMeasurements(Measurements.newBuilder().setSingleDouble(minTemp).build());
+                // Since we report some processed value report it as PROCESSED.
+                metric.setUnit(CELCIUS_UNIT).setType(DataType.PROCESSED);
+                runData.addMetricForDevice(device, "min_temperature", metric);
             }
         }
     }
