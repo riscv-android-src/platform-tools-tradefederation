@@ -23,7 +23,10 @@ import static org.junit.Assert.fail;
 import com.android.tradefed.invoker.IInvocationContext;
 import com.android.tradefed.invoker.InvocationContext;
 import com.android.tradefed.log.LogUtil.CLog;
+import com.android.tradefed.result.ILogSaverListener;
 import com.android.tradefed.result.ITestInvocationListener;
+import com.android.tradefed.result.LogDataType;
+import com.android.tradefed.result.LogFile;
 import com.android.tradefed.result.TestDescription;
 
 import org.easymock.Capture;
@@ -404,5 +407,38 @@ public class SubprocessTestResultsParserTest {
             FileUtil.deleteFile(tmp);
             FileUtil.deleteFile(serializedModule);
         }
+    }
+
+    /** Test that logAssociation event is properly passed and parsed. */
+    @Test
+    public void testParse_logAssociation() throws Exception {
+        ILogSaverListener mockRunListener = EasyMock.createMock(ILogSaverListener.class);
+        Capture<LogFile> capture = new Capture<>();
+        mockRunListener.logAssociation(EasyMock.eq("dataname"), EasyMock.capture(capture));
+        EasyMock.replay(mockRunListener);
+        LogFile logFile = new LogFile("path", "url", LogDataType.TEXT);
+        File serializedLogFile = null;
+        File tmp = FileUtil.createTempFile("sub", "unit");
+        SubprocessTestResultsParser resultParser = null;
+        try {
+            serializedLogFile = SerializationUtil.serialize(logFile);
+            resultParser =
+                    new SubprocessTestResultsParser(mockRunListener, new InvocationContext());
+            String logAssocation =
+                    String.format(
+                            "LOG_ASSOCIATION {\"loggedFile\":\"%s\",\"dataName\":\"dataname\"}\n",
+                            serializedLogFile.getAbsolutePath());
+            FileUtil.writeToFile(logAssocation, tmp, true);
+            resultParser.parseFile(tmp);
+            EasyMock.verify(mockRunListener);
+        } finally {
+            StreamUtil.close(resultParser);
+            FileUtil.deleteFile(serializedLogFile);
+            FileUtil.deleteFile(tmp);
+        }
+        LogFile received = capture.getValue();
+        assertEquals(logFile.getPath(), received.getPath());
+        assertEquals(logFile.getUrl(), received.getUrl());
+        assertEquals(logFile.getType(), received.getType());
     }
 }

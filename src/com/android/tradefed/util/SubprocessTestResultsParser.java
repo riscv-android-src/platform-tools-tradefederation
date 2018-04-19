@@ -18,6 +18,7 @@ package com.android.tradefed.util;
 import com.android.tradefed.invoker.IInvocationContext;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.result.FileInputStreamSource;
+import com.android.tradefed.result.ILogSaverListener;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.InputStreamSource;
 import com.android.tradefed.result.TestDescription;
@@ -25,6 +26,7 @@ import com.android.tradefed.util.SubprocessEventHelper.BaseTestEventInfo;
 import com.android.tradefed.util.SubprocessEventHelper.FailedTestEventInfo;
 import com.android.tradefed.util.SubprocessEventHelper.InvocationFailedEventInfo;
 import com.android.tradefed.util.SubprocessEventHelper.InvocationStartedEventInfo;
+import com.android.tradefed.util.SubprocessEventHelper.LogAssociationEventInfo;
 import com.android.tradefed.util.SubprocessEventHelper.TestEndedEventInfo;
 import com.android.tradefed.util.SubprocessEventHelper.TestLogEventInfo;
 import com.android.tradefed.util.SubprocessEventHelper.TestModuleStartedEventInfo;
@@ -85,6 +87,7 @@ public class SubprocessTestResultsParser implements Closeable {
         public static final String TEST_MODULE_STARTED = "TEST_MODULE_STARTED";
         public static final String TEST_MODULE_ENDED = "TEST_MODULE_ENDED";
         public static final String TEST_LOG = "TEST_LOG";
+        public static final String LOG_ASSOCIATION = "LOG_ASSOCIATION";
         public static final String INVOCATION_STARTED = "INVOCATION_STARTED";
     }
 
@@ -219,6 +222,7 @@ public class SubprocessTestResultsParser implements Closeable {
         sb.append(StatusKeys.TEST_MODULE_STARTED).append("|");
         sb.append(StatusKeys.TEST_MODULE_ENDED).append("|");
         sb.append(StatusKeys.TEST_LOG).append("|");
+        sb.append(StatusKeys.LOG_ASSOCIATION).append("|");
         sb.append(StatusKeys.INVOCATION_STARTED);
         String patt = String.format("(.*)(%s)( )(.*)", sb.toString());
         mPattern = Pattern.compile(patt);
@@ -238,6 +242,7 @@ public class SubprocessTestResultsParser implements Closeable {
         mHandlerMap.put(StatusKeys.TEST_MODULE_STARTED, new TestModuleStartedEventHandler());
         mHandlerMap.put(StatusKeys.TEST_MODULE_ENDED, new TestModuleEndedEventHandler());
         mHandlerMap.put(StatusKeys.TEST_LOG, new TestLogEventHandler());
+        mHandlerMap.put(StatusKeys.LOG_ASSOCIATION, new LogAssociationEventHandler());
         mHandlerMap.put(StatusKeys.INVOCATION_STARTED, new InvocationStartedEventHandler());
     }
 
@@ -433,6 +438,18 @@ public class SubprocessTestResultsParser implements Closeable {
                 mListener.testLog(name, logInfo.mLogType, data);
             } finally {
                 FileUtil.deleteFile(logInfo.mDataFile);
+            }
+        }
+    }
+
+    private class LogAssociationEventHandler implements EventHandler {
+        @Override
+        public void handleEvent(String eventJson) throws JSONException {
+            LogAssociationEventInfo assosInfo =
+                    new LogAssociationEventInfo(new JSONObject(eventJson));
+            if (mListener instanceof ILogSaverListener) {
+                ((ILogSaverListener) mListener)
+                        .logAssociation(assosInfo.mDataName, assosInfo.mLoggedFile);
             }
         }
     }

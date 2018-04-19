@@ -43,10 +43,11 @@ import java.net.Socket;
 import java.util.Map;
 
 /**
- * Implements {@link ITestInvocationListener} to be specified as a result_reporter and forward
- * from the subprocess the results of tests, test runs, test invocations.
+ * Implements {@link ITestInvocationListener} to be specified as a result_reporter and forward from
+ * the subprocess the results of tests, test runs, test invocations.
  */
-public class SubprocessResultsReporter implements ITestInvocationListener, AutoCloseable {
+public class SubprocessResultsReporter
+        implements ITestInvocationListener, ILogSaverListener, AutoCloseable {
 
     @Option(name = "subprocess-report-file", description = "the file where to log the events.")
     private File mReportFile = null;
@@ -178,6 +179,27 @@ public class SubprocessResultsReporter implements ITestInvocationListener, AutoC
                 FileUtil.deleteFile(tmpFile);
             }
         }
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public void testLogSaved(
+            String dataName, LogDataType dataType, InputStreamSource dataStream, LogFile logFile) {
+        // Do nothing, we are not passing the testLogSaved information to the parent process.
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public void setLogSaver(ILogSaver logSaver) {
+        // Do nothing, this result_reporter does not need the log saver.
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public void logAssociation(String dataName, LogFile logFile) {
+        // TODO: Enable when the lab has been updated with the new parser version.
+        // LogAssociationEventInfo info = new LogAssociationEventInfo(dataName, logFile);
+        // printEvent(SubprocessTestResultsParser.StatusKeys.LOG_ASSOCIATION, info);
     }
 
     /**
