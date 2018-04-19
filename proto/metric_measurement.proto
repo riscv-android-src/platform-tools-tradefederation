@@ -45,10 +45,10 @@ message Measurements {
   oneof measurement {
     string single_string = 1;
     int64 single_int = 2;
-    float single_float = 3;
+    double single_double = 3;
     StringValues string_values = 4;
     NumericValues numeric_values = 5;
-    FloatValues float_values = 6;
+    DoubleValues double_values = 6;
   }
 }
 
@@ -63,8 +63,8 @@ message NumericValues {
 }
 
 // Represents a list of float measurements
-message FloatValues {
-  repeated float float_value = 1;
+message DoubleValues {
+  repeated double double_value = 1;
 }
 
 // Represents the full metric: The measurements and its metadata

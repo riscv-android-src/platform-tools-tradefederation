@@ -17,26 +17,23 @@
 package com.android.tradefed.device.metric;
 
 import com.android.ddmlib.NullOutputReceiver;
-
 import com.android.tradefed.config.Option;
 import com.android.tradefed.config.OptionClass;
-
+import com.android.tradefed.device.CollectingOutputReceiver;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.DeviceRuntimeException;
-import com.android.tradefed.device.CollectingOutputReceiver;
 import com.android.tradefed.device.ITestDevice;
-
 import com.android.tradefed.log.LogUtil.CLog;
-
+import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
 import com.android.tradefed.result.FileInputStreamSource;
 import com.android.tradefed.result.LogDataType;
 
 import java.io.File;
 import java.nio.file.Paths;
 import java.util.ArrayList;
-import java.util.concurrent.TimeUnit;
-import java.util.Map;
 import java.util.List;
+import java.util.Map;
+import java.util.concurrent.TimeUnit;
 
 /**
  * A {@link IMetricCollector} that runs atrace during a test and collects the result and log
@@ -129,7 +126,7 @@ public class AtraceCollector extends BaseDeviceMetricCollector {
 
     @Override
     public void onTestEnd(
-            DeviceMetricData testData, final Map<String, String> currentTestCaseMetrics) {
+            DeviceMetricData testData, final Map<String, Metric> currentTestCaseMetrics) {
 
         if (mCategories.isEmpty())
             return;

@@ -39,8 +39,6 @@ public class TraceMetricCollector extends ScheduledDeviceMetricCollector {
             File outputFile =
                     saveProcessOutput(
                             device, "cat /sys/kernel/debug/tracing/trace", outputFileName);
-            runData.addStringMetric(
-                    Files.getNameWithoutExtension(outputFile.getName()), outputFile.getPath());
             try (InputStreamSource source = new FileInputStreamSource(outputFile, true)) {
                 getInvocationListener()
                         .testLog(

@@ -22,6 +22,8 @@ import static org.mockito.Mockito.times;
 import com.android.tradefed.config.OptionSetter;
 import com.android.tradefed.invoker.IInvocationContext;
 import com.android.tradefed.invoker.InvocationContext;
+import com.android.tradefed.metrics.proto.MetricMeasurement.Measurements;
+import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
 import com.android.tradefed.result.ByteArrayInputStreamSource;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.LogDataType;
@@ -115,7 +117,7 @@ public class BaseDeviceMetricCollectorTest {
 
                     @Override
                     public void onTestRunEnd(
-                            DeviceMetricData runData, final Map<String, String> currentRunMetrics) {
+                            DeviceMetricData runData, final Map<String, Metric> currentRunMetrics) {
                         throw new RuntimeException("Failed onTestRunEnd");
                     }
 
@@ -127,7 +129,7 @@ public class BaseDeviceMetricCollectorTest {
                     @Override
                     public void onTestEnd(
                             DeviceMetricData testData,
-                            final Map<String, String> currentTestCaseMetrics) {
+                            final Map<String, Metric> currentTestCaseMetrics) {
                         throw new RuntimeException("Failed onTestEnd");
                     }
                 };
@@ -347,13 +349,19 @@ public class BaseDeviceMetricCollectorTest {
     public class TwoMetricsBaseCollector extends BaseDeviceMetricCollector {
         @Override
         public void onTestStart(DeviceMetricData testData) {
-            testData.addStringMetric("onteststart", "value1");
+            testData.addMetric(
+                    "onteststart",
+                    Metric.newBuilder()
+                            .setMeasurements(Measurements.newBuilder().setSingleString("value1")));
         }
 
         @Override
         public void onTestEnd(
-                DeviceMetricData testData, final Map<String, String> currentTestCaseMetrics) {
-            testData.addStringMetric("ontestend", "value1");
+                DeviceMetricData testData, final Map<String, Metric> currentTestCaseMetrics) {
+            testData.addMetric(
+                    "ontestend",
+                    Metric.newBuilder()
+                            .setMeasurements(Measurements.newBuilder().setSingleString("value1")));
         }
     }
 
@@ -411,7 +419,7 @@ public class BaseDeviceMetricCollectorTest {
         Mockito.verify(mMockListener, times(1))
                 .testEnded(Mockito.eq(test3), Mockito.anyLong(), mCapturedMetrics.capture());
         Mockito.verify(mMockListener, times(1))
-                .testRunEnded(Mockito.anyLong(), (Map<String, String>) Mockito.any());
+                .testRunEnded(Mockito.anyLong(), (HashMap<String, Metric>) Mockito.any());
 
         List<Map<String, String>> allValues = mCapturedMetrics.getAllValues();
         // For test1
@@ -459,7 +467,7 @@ public class BaseDeviceMetricCollectorTest {
         Mockito.verify(mMockListener, times(1))
                 .testEnded(Mockito.eq(test3), Mockito.anyLong(), mCapturedMetrics.capture());
         Mockito.verify(mMockListener, times(1))
-                .testRunEnded(Mockito.anyLong(), (Map<String, String>) Mockito.any());
+                .testRunEnded(Mockito.anyLong(), (HashMap<String, Metric>) Mockito.any());
 
         List<Map<String, String>> allValues = mCapturedMetrics.getAllValues();
         // For test1
