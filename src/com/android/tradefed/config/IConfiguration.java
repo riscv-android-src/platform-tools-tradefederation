@@ -116,6 +116,14 @@ public interface IConfiguration {
     public List<IMultiTargetPreparer> getMultiTargetPreparers();
 
     /**
+     * Gets the {@link IMultiTargetPreparer}s from the configuration that should be executed before
+     * any of the devices target_preparers.
+     *
+     * @return the {@link IMultiTargetPreparer}s provided in order in the configuration
+     */
+    public List<IMultiTargetPreparer> getMultiPreTargetPreparers();
+
+    /**
      * Gets the {@link ISystemStatusChecker}s from the configuration.
      *
      * @return the {@link ISystemStatusChecker}s provided in order in the configuration
@@ -311,6 +319,22 @@ public interface IConfiguration {
      * @param multiTargPrep
      */
     public void setMultiTargetPreparer(IMultiTargetPreparer multiTargPrep);
+
+    /**
+     * Set the list of {@link IMultiTargetPreparer}s in this configuration that should be executed
+     * before any of the devices target_preparers, replacing any existing values
+     *
+     * @param multiPreTargPreps
+     */
+    public void setMultiPreTargetPreparers(List<IMultiTargetPreparer> multiPreTargPreps);
+
+    /**
+     * Convenience method to set a single {@link IMultiTargetPreparer} in this configuration that
+     * should be executed before any of the devices target_preparers, replacing any existing values
+     *
+     * @param multiPreTargPreps
+     */
+    public void setMultiPreTargetPreparer(IMultiTargetPreparer multiPreTargPreps);
 
     /**
      * Set the list of {@link ISystemStatusChecker}s in this configuration, replacing any
