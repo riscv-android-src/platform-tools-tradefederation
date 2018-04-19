@@ -38,6 +38,7 @@ import org.json.JSONException;
 import java.io.IOException;
 import java.io.PrintStream;
 import java.io.PrintWriter;
+import java.util.Collection;
 import java.util.List;
 
 /**
@@ -161,6 +162,14 @@ public interface IConfiguration {
     public Object getConfigurationObject(String typeName);
 
     /**
+     * Generic interface to get all the object of one given type name across devices.
+     *
+     * @param typeName the unique type of the configuration object
+     * @return The list of configuration objects of the given type.
+     */
+    public Collection<Object> getAllConfigurationObjectsOfType(String typeName);
+
+    /**
      * Similar to {@link #getConfigurationObject(String)}, but for configuration
      * object types that support multiple objects.
      *
@@ -273,6 +282,13 @@ public interface IConfiguration {
      * @param preparer
      */
     public void setTargetPreparer(ITargetPreparer preparer);
+
+    /**
+     * Set the list of {@link ITargetPreparer}s, replacing any existing value.
+     *
+     * @param preparers
+     */
+    public void setTargetPreparers(List<ITargetPreparer> preparers);
 
     /**
      * Set a {@link IDeviceConfiguration}, replacing any existing value.

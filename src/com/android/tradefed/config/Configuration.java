@@ -466,6 +466,23 @@ public class Configuration implements IConfiguration {
         return configObjects.get(0);
     }
 
+    /** {@inheritDoc} */
+    @Override
+    public Collection<Object> getAllConfigurationObjectsOfType(String configType) {
+        Collection<Object> objectsCopy = new ArrayList<Object>();
+        if (doesBuiltInObjSupportMultiDevice(configType)) {
+            for (IDeviceConfiguration deviceConfig : getDeviceConfig()) {
+                objectsCopy.addAll(deviceConfig.getAllObjectOfType(configType));
+            }
+        } else {
+            List<?> configObjects = getConfigurationObjectList(configType);
+            if (configObjects != null) {
+                objectsCopy.addAll(configObjects);
+            }
+        }
+        return objectsCopy;
+    }
+
     /**
      * Return a copy of all config objects
      */
@@ -782,6 +799,16 @@ public class Configuration implements IConfiguration {
     public void setTargetPreparer(ITargetPreparer preparer) {
         notAllowedInMultiMode("setTargetPreparer");
         addToDefaultDeviceConfig(preparer);
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public void setTargetPreparers(List<ITargetPreparer> preparers) {
+        notAllowedInMultiMode("setTargetPreparers");
+        getDeviceConfigByName(ConfigurationDef.DEFAULT_DEVICE_NAME).getTargetPreparers().clear();
+        for (ITargetPreparer prep : preparers) {
+            addToDefaultDeviceConfig(prep);
+        }
     }
 
     /**
