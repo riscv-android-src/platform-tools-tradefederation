@@ -17,7 +17,7 @@ package com.android.tradefed.util.proto;
 
 import static org.junit.Assert.assertEquals;
 
-import com.android.tradefed.metrics.proto.MetricMeasurement.FloatValues;
+import com.android.tradefed.metrics.proto.MetricMeasurement.DoubleValues;
 import com.android.tradefed.metrics.proto.MetricMeasurement.Measurements;
 import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
 import com.android.tradefed.metrics.proto.MetricMeasurement.StringValues;
@@ -41,7 +41,7 @@ public class TfMetricProtoUtilTest {
     public void testCompatibleConvert() {
         Map<String, Metric> metrics = new HashMap<>();
         // float
-        Measurements m1 = Measurements.newBuilder().setSingleFloat(5.5f).build();
+        Measurements m1 = Measurements.newBuilder().setSingleDouble(5.5f).build();
         metrics.put("key1", createMetric(m1));
 
         // Integer
@@ -55,7 +55,7 @@ public class TfMetricProtoUtilTest {
         // List of floats
         Measurements m4 =
                 Measurements.newBuilder()
-                        .setFloatValues(FloatValues.newBuilder().addFloatValue(5.5f).build())
+                        .setDoubleValues(DoubleValues.newBuilder().addDoubleValue(5.5f).build())
                         .build();
         metrics.put("key4", createMetric(m4));
 

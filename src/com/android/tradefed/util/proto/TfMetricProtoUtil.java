@@ -24,6 +24,7 @@ import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
 import com.android.tradefed.metrics.proto.MetricMeasurement.Metric.Builder;
 
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.Map;
 
 /** Utility class to help with the Map<String, String> to Map<String, Metric> transition. */
@@ -34,14 +35,14 @@ public class TfMetricProtoUtil {
      * representation are used, list representation are not converted and will be lost.
      */
     public static Map<String, String> compatibleConvert(Map<String, Metric> map) {
-        Map<String, String> oldFormat = new HashMap<>();
+        Map<String, String> oldFormat = new LinkedHashMap<>();
         for (String key : map.keySet()) {
             Measurements measures = map.get(key).getMeasurements();
             MeasurementCase set = measures.getMeasurementCase();
             String value = "";
             switch (set) {
-                case SINGLE_FLOAT:
-                    value = Float.toString(measures.getSingleFloat());
+                case SINGLE_DOUBLE:
+                    value = Double.toString(measures.getSingleDouble());
                     break;
                 case SINGLE_INT:
                     value = Long.toString(measures.getSingleInt());
@@ -70,7 +71,7 @@ public class TfMetricProtoUtil {
      * limitations.
      */
     public static HashMap<String, Metric> upgradeConvert(Map<String, String> metrics) {
-        HashMap<String, Metric> newFormat = new HashMap<>();
+        HashMap<String, Metric> newFormat = new LinkedHashMap<>();
         for (String key : metrics.keySet()) {
             Measurements measures =
                     Measurements.newBuilder().setSingleString(metrics.get(key)).build();

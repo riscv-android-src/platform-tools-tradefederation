@@ -24,6 +24,7 @@ import static org.mockito.Mockito.when;
 import com.android.tradefed.config.OptionSetter;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.invoker.IInvocationContext;
+import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
 import com.android.tradefed.result.ITestInvocationListener;
 
 import org.junit.Before;
@@ -34,7 +35,6 @@ import org.mockito.Mockito;
 
 import java.util.Collections;
 import java.util.HashMap;
-import java.util.Map;
 
 /** Unit tests for {@link ProcessMaxMemoryCollector}. */
 @RunWith(JUnit4.class)
@@ -83,10 +83,10 @@ public class ProcessMaxMemoryCollectorTest {
 
         verify(mDevice).executeShellCommand(Mockito.eq("dumpsys meminfo --checkin system_server"));
 
-        Map<String, String> results = new HashMap<>();
+        HashMap<String, Metric> results = new HashMap<>();
         data.addToMetrics(results);
-        assertEquals("218228", results.get("PSS#system_server"));
-        assertEquals("53456", results.get("USS#system_server"));
+        assertEquals(218228, results.get("MAX_PSS#system_server").getMeasurements().getSingleInt());
+        assertEquals(53456, results.get("MAX_USS#system_server").getMeasurements().getSingleInt());
     }
 
     @Test
@@ -101,7 +101,7 @@ public class ProcessMaxMemoryCollectorTest {
 
         verify(mDevice).executeShellCommand(Mockito.eq("dumpsys meminfo --checkin system_server"));
 
-        Map<String, String> results = new HashMap<>();
+        HashMap<String, Metric> results = new HashMap<>();
         data.addToMetrics(results);
         assertTrue(results.isEmpty());
     }

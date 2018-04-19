@@ -20,7 +20,9 @@ import com.android.tradefed.config.Option;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.log.LogUtil.CLog;
+import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
 import com.android.tradefed.util.FileUtil;
+
 import java.io.File;
 import java.io.IOException;
 import java.text.SimpleDateFormat;
@@ -81,7 +83,7 @@ public abstract class ScheduledDeviceMetricCollector extends BaseDeviceMetricCol
 
     @Override
     public final void onTestRunEnd(
-            DeviceMetricData runData, final Map<String, String> currentRunMetrics) {
+            DeviceMetricData runData, final Map<String, Metric> currentRunMetrics) {
         if (timer != null) {
             timer.cancel();
             timer.purge();

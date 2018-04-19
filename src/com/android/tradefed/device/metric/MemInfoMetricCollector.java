@@ -38,8 +38,6 @@ public class MemInfoMetricCollector extends ScheduledDeviceMetricCollector {
             String outputFileName =
                     String.format("%s/compact-meminfo-%s", createTempDir(), getFileSuffix());
             File outputFile = saveProcessOutput(device, "dumpsys meminfo -c -S", outputFileName);
-            runData.addStringMetric(
-                    Files.getNameWithoutExtension(outputFile.getName()), outputFile.getPath());
             try (InputStreamSource source = new FileInputStreamSource(outputFile, true)) {
                 getInvocationListener()
                         .testLog(
