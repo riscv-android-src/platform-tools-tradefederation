@@ -20,6 +20,7 @@ import com.android.tradefed.config.Option;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.invoker.IInvocationContext;
 import com.android.tradefed.log.LogUtil.CLog;
+import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
 import com.android.tradefed.result.ITestInvocationListener;
 
 import java.io.File;
@@ -207,7 +208,7 @@ public class ScheduleMultipleDeviceMetricCollector extends BaseDeviceMetricColle
 
     @Override
     public final void onTestRunEnd(
-            DeviceMetricData runData, final Map<String, String> currentRunMetrics) {
+            DeviceMetricData runData, final Map<String, Metric> currentRunMetrics) {
         if (mTimer != null) {
             mTimer.cancel();
             mTimer.purge();

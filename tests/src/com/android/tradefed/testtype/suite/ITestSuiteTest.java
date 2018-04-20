@@ -38,6 +38,7 @@ import com.android.tradefed.device.metric.IMetricCollector;
 import com.android.tradefed.invoker.IInvocationContext;
 import com.android.tradefed.invoker.InvocationContext;
 import com.android.tradefed.log.LogUtil.CLog;
+import com.android.tradefed.metrics.proto.MetricMeasurement.Measurements;
 import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
 import com.android.tradefed.result.ByteArrayInputStreamSource;
 import com.android.tradefed.result.ILogSaver;
@@ -189,14 +190,24 @@ public class ITestSuiteTest {
                 new BaseDeviceMetricCollector() {
                     @Override
                     public void onTestRunStart(DeviceMetricData runData) {
-                        runData.addStringMetric("metric1", "value1");
+                        runData.addMetric(
+                                "metric1",
+                                Metric.newBuilder()
+                                        .setMeasurements(
+                                                Measurements.newBuilder()
+                                                        .setSingleString("value1")));
                     }
                 });
         mListCollectors.add(
                 new BaseDeviceMetricCollector() {
                     @Override
                     public void onTestRunStart(DeviceMetricData runData) {
-                        runData.addStringMetric("metric2", "value2");
+                        runData.addMetric(
+                                "metric2",
+                                Metric.newBuilder()
+                                        .setMeasurements(
+                                                Measurements.newBuilder()
+                                                        .setSingleString("value2")));
                     }
                 });
     }

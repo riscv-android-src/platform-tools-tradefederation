@@ -38,8 +38,6 @@ public class PagetypeInfoMetricCollector extends ScheduledDeviceMetricCollector 
             String outputFileName =
                     String.format("%s/pagetypeinfo-%s", createTempDir(), getFileSuffix());
             File outputFile = saveProcessOutput(device, "cat /proc/pagetypeinfo", outputFileName);
-            runData.addStringMetric(
-                    Files.getNameWithoutExtension(outputFile.getName()), outputFile.getPath());
             try (InputStreamSource source = new FileInputStreamSource(outputFile, true)) {
                 getInvocationListener()
                         .testLog(

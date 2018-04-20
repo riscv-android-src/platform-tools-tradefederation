@@ -37,9 +37,11 @@ import com.android.tradefed.result.CollectingTestListener;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.InputStreamSource;
 import com.android.tradefed.result.LogDataType;
+import com.android.tradefed.result.LogcatCrashResultForwarder;
 import com.android.tradefed.result.ResultForwarder;
 import com.android.tradefed.result.TestDescription;
 import com.android.tradefed.result.TestRunResult;
+import com.android.tradefed.result.ddmlib.DefaultRemoteAndroidTestRunner;
 import com.android.tradefed.util.AbiFormatter;
 import com.android.tradefed.util.ArrayUtil;
 import com.android.tradefed.util.ListInstrumentationParser;
@@ -620,8 +622,8 @@ public class InstrumentationTest implements IDeviceTest, IResumableTest, ITestCo
      */
     IRemoteAndroidTestRunner createRemoteAndroidTestRunner(String packageName, String runnerName,
             IDevice device) throws DeviceNotAvailableException {
-        RemoteAndroidTestRunner runner = new RemoteAndroidTestRunner(
-                packageName, runnerName, device);
+        RemoteAndroidTestRunner runner =
+                new DefaultRemoteAndroidTestRunner(packageName, runnerName, device);
         String abiName = resolveAbiName();
         String runOptions = "";
         if (!mHiddenApiChecks) {
@@ -891,7 +893,8 @@ public class InstrumentationTest implements IDeviceTest, IResumableTest, ITestCo
         CollectingTestListener testTracker = new CollectingTestListener();
         mDevice.runInstrumentationTests(
                 mRunner,
-                new ResultForwarder(listener, testTracker) {
+                // Use a crash forwarder to get stacks from logcat when crashing.
+                new LogcatCrashResultForwarder(getDevice(), listener, testTracker) {
                     @Override
                     public void testRunStarted(String runName, int testCount) {
                         // In case of crash, run will attempt to report with 0
@@ -905,7 +908,6 @@ public class InstrumentationTest implements IDeviceTest, IResumableTest, ITestCo
                         }
                     }
                 });
-
         TestRunResult testRun = testTracker.getCurrentRunResults();
         if (testRun.isRunFailure() || !testRun.getCompletedTests().containsAll(expectedTests)) {
             if (mBugreportOnRunFailure) {

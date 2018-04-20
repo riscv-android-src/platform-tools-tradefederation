@@ -18,6 +18,7 @@ package com.android.tradefed.device.metric;
 import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.invoker.IInvocationContext;
+import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.TestDescription;
 
@@ -76,7 +77,7 @@ public interface IMetricCollector extends ITestInvocationListener {
      * @param currentRunMetrics the current map of metrics passed to {@link #testRunEnded(long,
      *     Map)}.
      */
-    public void onTestRunEnd(DeviceMetricData runData, final Map<String, String> currentRunMetrics);
+    public void onTestRunEnd(DeviceMetricData runData, final Map<String, Metric> currentRunMetrics);
 
     /**
      * Callback when a test case is started.
@@ -94,5 +95,5 @@ public interface IMetricCollector extends ITestInvocationListener {
      *     #testEnded(TestDescription, Map)}.
      */
     public void onTestEnd(
-            DeviceMetricData testData, final Map<String, String> currentTestCaseMetrics);
+            DeviceMetricData testData, final Map<String, Metric> currentTestCaseMetrics);
 }

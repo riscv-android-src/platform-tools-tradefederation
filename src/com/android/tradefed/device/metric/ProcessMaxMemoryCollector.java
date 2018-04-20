@@ -21,11 +21,17 @@ import com.android.tradefed.config.Option;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.log.LogUtil.CLog;
+import com.android.tradefed.metrics.proto.MetricMeasurement.DataType;
+import com.android.tradefed.metrics.proto.MetricMeasurement.Measurements;
+import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
+import com.android.tradefed.metrics.proto.MetricMeasurement.NumericValues;
+
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
 
 /**
  * A {@link ScheduledDeviceMetricCollector} to measure peak memory usage of specified processes.
@@ -48,12 +54,20 @@ public class ProcessMaxMemoryCollector extends ScheduledDeviceMetricCollector {
     }
 
     // Memory usage data per device
-    private Map<ITestDevice, DeviceMemoryData> mMemoryData = new HashMap<>();
+    private Map<ITestDevice, DeviceMemoryData> mMemoryData;
+    private Map<ITestDevice, Map<String, NumericValues.Builder>> mPssMemoryPerProcess;
+    private Map<ITestDevice, Map<String, NumericValues.Builder>> mUssMemoryPerProcess;
 
     @Override
     void onStart(DeviceMetricData runData) {
+        mMemoryData = new HashMap<>();
+        mPssMemoryPerProcess = new HashMap<>();
+        mUssMemoryPerProcess = new HashMap<>();
+
         for (ITestDevice device : getDevices()) {
             mMemoryData.put(device, new DeviceMemoryData());
+            mPssMemoryPerProcess.put(device, new HashMap<>());
+            mUssMemoryPerProcess.put(device, new HashMap<>());
         }
     }
 
@@ -81,6 +95,25 @@ public class ProcessMaxMemoryCollector extends ScheduledDeviceMetricCollector {
                     CLog.e("Error parsing meminfo output: " + dumpResult);
                     continue;
                 }
+
+                // Track PSS values
+                if (mPssMemoryPerProcess.get(device) == null) {
+                    mPssMemoryPerProcess.put(device, new HashMap<>());
+                }
+                if (mPssMemoryPerProcess.get(device).get(proc) == null) {
+                    mPssMemoryPerProcess.get(device).put(proc, NumericValues.newBuilder());
+                }
+                mPssMemoryPerProcess.get(device).get(proc).addNumericValue(pss);
+
+                // Track USS values
+                if (mUssMemoryPerProcess.get(device) == null) {
+                    mUssMemoryPerProcess.put(device, new HashMap<>());
+                }
+                if (mUssMemoryPerProcess.get(device).get(proc) == null) {
+                    mUssMemoryPerProcess.get(device).put(proc, NumericValues.newBuilder());
+                }
+                mUssMemoryPerProcess.get(device).get(proc).addNumericValue(uss);
+
                 if (procPss.getOrDefault(proc, 0L) < pss) {
                     procPss.put(proc, pss);
                 }
@@ -96,15 +129,46 @@ public class ProcessMaxMemoryCollector extends ScheduledDeviceMetricCollector {
     @Override
     void onEnd(DeviceMetricData runData) {
         for (ITestDevice device : getDevices()) {
+            // Report all the PSS data for each process
+            for (Entry<String, NumericValues.Builder> values :
+                    mPssMemoryPerProcess.get(device).entrySet()) {
+                Metric.Builder metric = Metric.newBuilder();
+                metric.setMeasurements(
+                                Measurements.newBuilder()
+                                        .setNumericValues(values.getValue().build()))
+                        .build();
+                metric.setUnit("kB").setType(DataType.RAW);
+                runData.addMetricForDevice(device, "PSS#" + values.getKey(), metric);
+            }
+
+            // Report all the USS data for each process
+            for (Entry<String, NumericValues.Builder> values :
+                    mUssMemoryPerProcess.get(device).entrySet()) {
+                Metric.Builder metric = Metric.newBuilder();
+                metric.setMeasurements(
+                                Measurements.newBuilder()
+                                        .setNumericValues(values.getValue().build()))
+                        .build();
+                metric.setUnit("kB").setType(DataType.RAW);
+                runData.addMetricForDevice(device, "USS#" + values.getKey(), metric);
+            }
+
+            // Continue reporting the max PSS / USS for compatibility
             Map<String, Long> procPss = mMemoryData.get(device).mProcPss;
             Map<String, Long> procUss = mMemoryData.get(device).mProcUss;
-            for (Map.Entry<String, Long> pss : procPss.entrySet()) {
-                runData.addStringMetricForDevice(
-                        device, "PSS#" + pss.getKey(), pss.getValue().toString());
+            for (Entry<String, Long> pss : procPss.entrySet()) {
+                Metric.Builder metric = Metric.newBuilder();
+                metric.setMeasurements(
+                        Measurements.newBuilder().setSingleInt(pss.getValue()).build());
+                metric.setUnit("kB").setType(DataType.PROCESSED);
+                runData.addMetricForDevice(device, "MAX_PSS#" + pss.getKey(), metric);
             }
-            for (Map.Entry<String, Long> uss : procUss.entrySet()) {
-                runData.addStringMetricForDevice(
-                        device, "USS#" + uss.getKey(), uss.getValue().toString());
+            for (Entry<String, Long> uss : procUss.entrySet()) {
+                Metric.Builder metric = Metric.newBuilder();
+                metric.setMeasurements(
+                        Measurements.newBuilder().setSingleInt(uss.getValue()).build());
+                metric.setUnit("kB").setType(DataType.PROCESSED);
+                runData.addMetricForDevice(device, "MAX_USS#" + uss.getKey(), metric);
             }
         }
     }

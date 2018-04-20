@@ -55,6 +55,8 @@ import com.android.tradefed.invoker.shard.ShardHelper;
 import com.android.tradefed.invoker.shard.StrictShardHelper;
 import com.android.tradefed.log.ILeveledLogOutput;
 import com.android.tradefed.log.ILogRegistry;
+import com.android.tradefed.metrics.proto.MetricMeasurement.Measurements;
+import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
 import com.android.tradefed.result.ByteArrayInputStreamSource;
 import com.android.tradefed.result.ILogSaver;
 import com.android.tradefed.result.ILogSaverListener;
@@ -1792,8 +1794,12 @@ public class TestInvocationTest extends TestCase {
 
         @Override
         public void onTestRunEnd(
-                DeviceMetricData runData, final Map<String, String> currentRunMetrics) {
-            runData.addStringMetric(mName, mName);
+                DeviceMetricData runData, final Map<String, Metric> currentRunMetrics) {
+            runData.addMetric(
+                    mName,
+                    Metric.newBuilder()
+                            .setMeasurements(
+                                    Measurements.newBuilder().setSingleString(mName).build()));
         }
     }
 
@@ -1828,6 +1834,7 @@ public class TestInvocationTest extends TestCase {
         EasyMock.verify(mMockTestListener);
         // The collectors are called in sequence
         List<String> listKeys = new ArrayList<>(captured.getValue().keySet());
+        assertEquals(4, listKeys.size());
         assertEquals("collector4", listKeys.get(0));
         assertEquals("collector3", listKeys.get(1));
         assertEquals("collector2", listKeys.get(2));

@@ -19,6 +19,7 @@ package com.android.tradefed.device.metric;
 import com.android.tradefed.config.OptionSetter;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.invoker.IInvocationContext;
+import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.LogDataType;
 
@@ -178,7 +179,7 @@ public final class AtraceCollectorTest {
         AtraceCollector atrace = new AtraceCollector();
         atrace.onTestStart(new DeviceMetricData(mMockInvocationContext));
         atrace.onTestEnd(
-                new DeviceMetricData(mMockInvocationContext), new HashMap<String, String>());
+                new DeviceMetricData(mMockInvocationContext), new HashMap<String, Metric>());
         EasyMock.verify(mMockDevice);
     }
 
@@ -202,7 +203,7 @@ public final class AtraceCollectorTest {
 
         EasyMock.replay(mMockDevice);
         mAtrace.onTestEnd(
-                new DeviceMetricData(mMockInvocationContext), new HashMap<String, String>());
+                new DeviceMetricData(mMockInvocationContext), new HashMap<String, Metric>());
         EasyMock.verify(mMockDevice);
     }
 
@@ -225,7 +226,7 @@ public final class AtraceCollectorTest {
         EasyMock.replay(mMockDevice);
         mOptionSetter.setOptionValue("preserve-ondevice-log", "true");
         mAtrace.onTestEnd(
-                new DeviceMetricData(mMockInvocationContext), new HashMap<String, String>());
+                new DeviceMetricData(mMockInvocationContext), new HashMap<String, Metric>());
         EasyMock.verify(mMockDevice);
     }
 
@@ -242,7 +243,7 @@ public final class AtraceCollectorTest {
         EasyMock.replay(mMockDevice);
 
         mAtrace.onTestEnd(
-                new DeviceMetricData(mMockInvocationContext), new HashMap<String, String>());
+                new DeviceMetricData(mMockInvocationContext), new HashMap<String, Metric>());
     }
 
     /**
@@ -265,7 +266,7 @@ public final class AtraceCollectorTest {
         EasyMock.replay(mMockDevice, mMockTestLogger);
 
         mAtrace.onTestEnd(
-                new DeviceMetricData(mMockInvocationContext), new HashMap<String, String>());
+                new DeviceMetricData(mMockInvocationContext), new HashMap<String, Metric>());
 
         EasyMock.verify(mMockTestLogger);
     }
@@ -291,7 +292,7 @@ public final class AtraceCollectorTest {
 
         mOptionSetter.setOptionValue("compress-dump", "false");
         mAtrace.onTestEnd(
-                new DeviceMetricData(mMockInvocationContext), new HashMap<String, String>());
+                new DeviceMetricData(mMockInvocationContext), new HashMap<String, Metric>());
 
         EasyMock.verify(mMockTestLogger);
     }
@@ -332,7 +333,7 @@ public final class AtraceCollectorTest {
         optionSetter.setOptionValue("categories", mCategories);
         atrace.init(mockInvocationContext, mMockTestLogger);
         atrace.onTestEnd(
-                new DeviceMetricData(mMockInvocationContext), new HashMap<String, String>());
+                new DeviceMetricData(mMockInvocationContext), new HashMap<String, Metric>());
 
         EasyMock.verify(mMockTestLogger);
     }

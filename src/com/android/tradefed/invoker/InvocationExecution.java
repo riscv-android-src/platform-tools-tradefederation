@@ -34,6 +34,7 @@ import com.android.tradefed.device.metric.IMetricCollector;
 import com.android.tradefed.device.metric.IMetricCollectorReceiver;
 import com.android.tradefed.invoker.TestInvocation.Stage;
 import com.android.tradefed.invoker.shard.IShardHelper;
+import com.android.tradefed.log.ITestLogger;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.ITestLoggerReceiver;
@@ -162,6 +163,13 @@ public class InvocationExecution implements IInvocationExecution {
             throws TargetSetupError, BuildError, DeviceNotAvailableException {
         long start = System.currentTimeMillis();
         try {
+            // Before all the individual setup, make the multi-pre-target-preparer devices setup
+            runMultiTargetPreparers(
+                    config.getMultiPreTargetPreparers(),
+                    listener,
+                    context,
+                    "multi pre target preparer setup");
+
             // TODO: evaluate doing device setup in parallel
             for (String deviceName : context.getDeviceConfigNames()) {
                 ITestDevice device = context.getDevice(deviceName);
@@ -193,19 +201,12 @@ public class InvocationExecution implements IInvocationExecution {
                 CLog.d("Done with setup of device: '%s'", device.getSerialNumber());
             }
             // After all the individual setup, make the multi-devices setup
-            for (IMultiTargetPreparer multipreparer : config.getMultiTargetPreparers()) {
-                // do not call the preparer if it was disabled
-                if (multipreparer.isDisabled()) {
-                    CLog.d("%s has been disabled. skipping.", multipreparer);
-                    continue;
-                }
-                if (multipreparer instanceof ITestLoggerReceiver) {
-                    ((ITestLoggerReceiver) multipreparer).setTestLogger(listener);
-                }
-                CLog.d("Starting multi target preparer '%s'", multipreparer);
-                multipreparer.setUp(context);
-                CLog.d("done with multi target preparer '%s'", multipreparer);
-            }
+            runMultiTargetPreparers(
+                    config.getMultiTargetPreparers(),
+                    listener,
+                    context,
+                    "multi target preparer setup");
+
         } finally {
             // Note: These metrics are handled in a try in case of a kernel reset or device issue.
             // Setup timing metric. It does not include flashing time on boot tests.
@@ -219,12 +220,35 @@ public class InvocationExecution implements IInvocationExecution {
         }
     }
 
-    @Override
-    public void doTeardown(IInvocationContext context, IConfiguration config, Throwable exception)
-            throws Throwable {
-        Throwable throwable = null;
+    /** Runs the {@link IMultiTargetPreparer} specified. */
+    private void runMultiTargetPreparers(
+            List<IMultiTargetPreparer> multiPreparers,
+            ITestLogger logger,
+            IInvocationContext context,
+            String description)
+            throws TargetSetupError, BuildError, DeviceNotAvailableException {
+        for (IMultiTargetPreparer multiPreparer : multiPreparers) {
+            // do not call the preparer if it was disabled
+            if (multiPreparer.isDisabled()) {
+                CLog.d("%s has been disabled. skipping.", multiPreparer);
+                continue;
+            }
+            if (multiPreparer instanceof ITestLoggerReceiver) {
+                ((ITestLoggerReceiver) multiPreparer).setTestLogger(logger);
+            }
+            CLog.d("Starting %s '%s'", description, multiPreparer);
+            multiPreparer.setUp(context);
+            CLog.d("done with %s '%s'", description, multiPreparer);
+        }
+    }
 
-        List<IMultiTargetPreparer> multiPreparers = config.getMultiTargetPreparers();
+    /** Runs the {@link IMultiTargetPreparer} specified tearDown. */
+    private void runMultiTargetPreparersTearDown(
+            List<IMultiTargetPreparer> multiPreparers,
+            IInvocationContext context,
+            Throwable throwable,
+            String description)
+            throws DeviceNotAvailableException {
         ListIterator<IMultiTargetPreparer> iterator =
                 multiPreparers.listIterator(multiPreparers.size());
         while (iterator.hasPrevious()) {
@@ -233,10 +257,20 @@ public class InvocationExecution implements IInvocationExecution {
                 CLog.d("%s has been disabled. skipping.", multipreparer);
                 continue;
             }
-            CLog.d("Starting multi target tearDown '%s'", multipreparer);
+            CLog.d("Starting %s '%s'", description, multipreparer);
             multipreparer.tearDown(context, throwable);
-            CLog.d("Done with multi target tearDown '%s'", multipreparer);
+            CLog.d("Done with %s '%s'", description, multipreparer);
         }
+    }
+
+    @Override
+    public void doTeardown(IInvocationContext context, IConfiguration config, Throwable exception)
+            throws Throwable {
+        Throwable throwable = null;
+
+        List<IMultiTargetPreparer> multiPreparers = config.getMultiTargetPreparers();
+        runMultiTargetPreparersTearDown(
+                multiPreparers, context, throwable, "multi target preparer teardown");
 
         // Clear wifi settings, to prevent wifi errors from interfering with teardown process.
         for (String deviceName : context.getDeviceConfigNames()) {
@@ -278,6 +312,11 @@ public class InvocationExecution implements IInvocationExecution {
                 device.postInvocationTearDown();
             }
         }
+
+        // After all, run the multi_pre_target_preparer tearDown.
+        List<IMultiTargetPreparer> multiPrePreparers = config.getMultiPreTargetPreparers();
+        runMultiTargetPreparersTearDown(
+                multiPrePreparers, context, throwable, "multi pre target preparer teardown");
 
         if (throwable != null) {
             throw throwable;
