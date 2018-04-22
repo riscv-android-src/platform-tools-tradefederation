@@ -39,10 +39,6 @@ public class BuddyInfoMetricCollector extends ScheduledDeviceMetricCollector {
                     String.format("%s/unusable-index-%s", createTempDir(), getFileSuffix());
             File outputFile =
                     saveProcessOutput(device, "cat /d/extfrag/unusable_index", outputFileName);
-            runData.addStringMetricForDevice(
-                    device,
-                    Files.getNameWithoutExtension(outputFile.getName()),
-                    outputFile.getPath());
             try (InputStreamSource source = new FileInputStreamSource(outputFile, true)) {
                 getInvocationListener()
                         .testLog(

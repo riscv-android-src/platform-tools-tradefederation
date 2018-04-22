@@ -19,6 +19,7 @@ package com.android.tradefed.device.metric;
 import com.android.tradefed.config.Option;
 import com.android.tradefed.config.OptionClass;
 import com.android.tradefed.log.LogUtil.CLog;
+import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
 import com.android.tradefed.result.FileInputStreamSource;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.LogDataType;
@@ -59,7 +60,7 @@ public class AtraceRunMetricCollector extends FilePullerDeviceMetricCollector {
     private ITestInvocationListener mListener = null;
 
     @Override
-    public void onTestEnd(DeviceMetricData testData, Map<String, String> currentTestCaseMetrics) {
+    public void onTestEnd(DeviceMetricData testData, Map<String, Metric> currentTestCaseMetrics) {
         // Collector targets only the run metrics.
     }
 

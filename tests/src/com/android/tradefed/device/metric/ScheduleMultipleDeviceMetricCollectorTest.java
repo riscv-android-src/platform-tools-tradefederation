@@ -23,6 +23,8 @@ import com.android.tradefed.config.OptionSetter;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.invoker.IInvocationContext;
 import com.android.tradefed.invoker.InvocationContext;
+import com.android.tradefed.metrics.proto.MetricMeasurement.Measurements;
+import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.util.RunUtil;
 
@@ -64,7 +66,13 @@ public class ScheduleMultipleDeviceMetricCollectorTest {
         public void collect(ITestDevice device, DeviceMetricData runData)
                 throws InterruptedException {
             mInternalCounter++;
-            runData.addStringMetric(key + mInternalCounter, "value" + mInternalCounter);
+            runData.addMetricForDevice(
+                    device,
+                    key + mInternalCounter,
+                    Metric.newBuilder()
+                            .setMeasurements(
+                                    Measurements.newBuilder()
+                                            .setSingleString("value" + mInternalCounter)));
         }
     }
 
@@ -80,7 +88,13 @@ public class ScheduleMultipleDeviceMetricCollectorTest {
         public void collect(ITestDevice device, DeviceMetricData runData)
                 throws InterruptedException {
             mInternalCounter++;
-            runData.addStringMetric(key + mInternalCounter, "value" + mInternalCounter);
+            runData.addMetricForDevice(
+                    device,
+                    key + mInternalCounter,
+                    Metric.newBuilder()
+                            .setMeasurements(
+                                    Measurements.newBuilder()
+                                            .setSingleString("value" + mInternalCounter)));
         }
     }
 
@@ -96,7 +110,13 @@ public class ScheduleMultipleDeviceMetricCollectorTest {
         public void collect(ITestDevice device, DeviceMetricData runData)
                 throws InterruptedException {
             mInternalCounter++;
-            runData.addStringMetric(key + mInternalCounter, "value" + mInternalCounter);
+            runData.addMetricForDevice(
+                    device,
+                    key + mInternalCounter,
+                    Metric.newBuilder()
+                            .setMeasurements(
+                                    Measurements.newBuilder()
+                                            .setSingleString("value" + mInternalCounter)));
         }
     }
 
@@ -137,7 +157,7 @@ public class ScheduleMultipleDeviceMetricCollectorTest {
         DeviceMetricData runData = new DeviceMetricData(mContext);
 
         // Start the tests.
-        Map<String, String> metrics = new HashMap<>();
+        HashMap<String, Metric> metrics = new HashMap<>();
         mMultipleMetricCollector.init(mContext, mMockListener);
         try {
             mMultipleMetricCollector.onTestRunStart(runData);
@@ -149,7 +169,7 @@ public class ScheduleMultipleDeviceMetricCollectorTest {
         // We give it 500msec to run and 100msec interval we should easily have at least run all the
         // metrics once.
         // assert that the metrics contains filenames of all the collected metrics.
-        Map<String, String> metricsCollected = new HashMap<>();
+        HashMap<String, Metric> metricsCollected = new HashMap<>();
         runData.addToMetrics(metricsCollected);
 
         assertTrue(metricsCollected.containsKey("jankinfo1"));
@@ -159,7 +179,7 @@ public class ScheduleMultipleDeviceMetricCollectorTest {
 
     @Test
     public void testMultipleMetricCollector_noFailureEvenIfNoCollectorRequested() throws Exception {
-        Map<String, String> metrics = new HashMap<>();
+        HashMap<String, Metric> metrics = new HashMap<>();
         mMultipleMetricCollector.init(mContext, mMockListener);
 
         DeviceMetricData runData = new DeviceMetricData(mContext);
@@ -172,7 +192,7 @@ public class ScheduleMultipleDeviceMetricCollectorTest {
         }
 
         // No metrics should have been collected.
-        Map<String, String> metricsCollected = new HashMap<>();
+        HashMap<String, Metric> metricsCollected = new HashMap<>();
         runData.addToMetrics(metricsCollected);
 
         assertEquals(0, metricsCollected.size());
@@ -203,7 +223,7 @@ public class ScheduleMultipleDeviceMetricCollectorTest {
             setter.setOptionValue("metric-collector-command-classes", key);
         }
 
-        Map<String, String> metrics = new HashMap<>();
+        HashMap<String, Metric> metrics = new HashMap<>();
         mMultipleMetricCollector.init(mContext, mMockListener);
 
         DeviceMetricData runData = new DeviceMetricData(mContext);
@@ -216,7 +236,7 @@ public class ScheduleMultipleDeviceMetricCollectorTest {
         }
 
         // No metrics should have been collected.
-        Map<String, String> metricsCollected = new HashMap<>();
+        HashMap<String, Metric> metricsCollected = new HashMap<>();
         runData.addToMetrics(metricsCollected);
 
         assertTrue(metricsCollected.containsKey("meminfo1"));

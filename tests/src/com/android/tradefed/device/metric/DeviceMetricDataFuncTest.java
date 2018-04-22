@@ -21,6 +21,8 @@ import static org.mockito.Mockito.mock;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.invoker.IInvocationContext;
 import com.android.tradefed.invoker.InvocationContext;
+import com.android.tradefed.metrics.proto.MetricMeasurement.Measurements;
+import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
 
 import org.junit.Before;
 import org.junit.Test;
@@ -30,7 +32,6 @@ import org.junit.runners.JUnit4;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutionException;
@@ -68,30 +69,36 @@ public class DeviceMetricDataFuncTest {
 
         // Create a callable wrapper of DeviceMetricData#addStringMetric and
         // DeviceMetricData#addToMetrics which will add a metric and then try to retrieve it.
-        Callable<Map<String, String>> task =
-                new Callable<Map<String, String>>() {
+        Callable<HashMap<String, Metric>> task =
+                new Callable<HashMap<String, Metric>>() {
 
                     @Override
-                    public Map<String, String> call() throws Exception {
-                        deviceMetricData.addStringMetric(UUID.randomUUID().toString(), "value");
-                        Map<String, String> data = new HashMap<>();
+                    public HashMap<String, Metric> call() throws Exception {
+                        deviceMetricData.addMetric(
+                                UUID.randomUUID().toString(),
+                                Metric.newBuilder()
+                                        .setMeasurements(
+                                                Measurements.newBuilder()
+                                                        .setSingleString("value")
+                                                        .build()));
+                        HashMap<String, Metric> data = new HashMap<>();
                         deviceMetricData.addToMetrics(data);
                         return data;
                     }
                 };
         // Create a copy of this callable for every thread.
-        List<Callable<Map<String, String>>> tasks = Collections.nCopies(threadCount, task);
+        List<Callable<HashMap<String, Metric>>> tasks = Collections.nCopies(threadCount, task);
 
         // Create a thread pool to execute the tasks.
         ExecutorService executorService = Executors.newFixedThreadPool(threadCount);
 
         // Invoke the tasks. The call to ExecutorService#invokeAll blocks until all the threads are
         // done.
-        List<Future<Map<String, String>>> futures = executorService.invokeAll(tasks);
+        List<Future<HashMap<String, Metric>>> futures = executorService.invokeAll(tasks);
 
         // Store the results from all the tasks in a common data structure.
-        Map<String, String> metricsData = new HashMap<String, String>(futures.size());
-        for (Future<Map<String, String>> future : futures) {
+        HashMap<String, Metric> metricsData = new HashMap<String, Metric>(futures.size());
+        for (Future<HashMap<String, Metric>> future : futures) {
             metricsData.putAll(future.get());
         }
 
