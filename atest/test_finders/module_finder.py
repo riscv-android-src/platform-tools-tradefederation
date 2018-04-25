@@ -71,7 +71,8 @@ class ModuleFinder(test_finder_base.TestFinderBase):
         """
         # Check for AndroidTest.xml at the module path.
         for path in mod_info.get(constants.MODULE_PATH, []):
-            if os.path.isfile(os.path.join(path, constants.MODULE_CONFIG)):
+            if os.path.isfile(os.path.join(self.root_dir, path,
+                                           constants.MODULE_CONFIG)):
                 return True
 
         # Check if the module has an auto-generated config.
