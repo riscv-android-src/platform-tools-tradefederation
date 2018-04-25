@@ -156,7 +156,8 @@ public class ShardListener extends CollectingTestListener {
                 // Provide a strong association of the run to its logs.
                 forwardLogAssociation(runResult.getRunLoggedFiles(), mMasterListener);
 
-                mMasterListener.testRunEnded(runResult.getElapsedTime(), runResult.getRunMetrics());
+                mMasterListener.testRunEnded(
+                        runResult.getElapsedTime(), runResult.getRunProtoMetrics());
             }
             // Close the last module
             if (moduleContext != null) {
@@ -192,7 +193,7 @@ public class ShardListener extends CollectingTestListener {
                 mMasterListener.testEnded(
                         testEntry.getKey(),
                         testEntry.getValue().getEndTime(),
-                        testEntry.getValue().getMetrics());
+                        testEntry.getValue().getProtoMetrics());
             }
         }
     }
