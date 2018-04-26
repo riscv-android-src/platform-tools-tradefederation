@@ -92,11 +92,23 @@ class TestFinderHandlerUnittests(unittest.TestCase):
         """Test _get_test_reference_types parses reference types correctly."""
         self.assertEqual(
             test_finder_handler._get_test_reference_types('ModuleOrClassName'),
-            [REF_TYPE.INTEGRATION, REF_TYPE.MODULE, REF_TYPE.CLASS, REF_TYPE.CC_CLASS]
+            [REF_TYPE.TEST_SUITE, REF_TYPE.INTEGRATION, REF_TYPE.MODULE,
+             REF_TYPE.CLASS, REF_TYPE.CC_CLASS]
         )
         self.assertEqual(
             test_finder_handler._get_test_reference_types('Module_or_Class_name'),
-            [REF_TYPE.INTEGRATION, REF_TYPE.MODULE, REF_TYPE.CLASS, REF_TYPE.CC_CLASS]
+            [REF_TYPE.TEST_SUITE, REF_TYPE.INTEGRATION, REF_TYPE.MODULE,
+             REF_TYPE.CLASS, REF_TYPE.CC_CLASS]
+        )
+        self.assertEqual(
+            test_finder_handler._get_test_reference_types('SuiteName'),
+            [REF_TYPE.TEST_SUITE, REF_TYPE.INTEGRATION, REF_TYPE.MODULE,
+             REF_TYPE.CLASS, REF_TYPE.CC_CLASS]
+        )
+        self.assertEqual(
+            test_finder_handler._get_test_reference_types('Suite-Name'),
+            [REF_TYPE.TEST_SUITE, REF_TYPE.INTEGRATION, REF_TYPE.MODULE,
+             REF_TYPE.CLASS, REF_TYPE.CC_CLASS]
         )
         self.assertEqual(
             test_finder_handler._get_test_reference_types('some.package'),

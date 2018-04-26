@@ -181,12 +181,12 @@ class TestFinderUtilsUnittests(unittest.TestCase):
         mock_module_info = mock.Mock(spec=module_info.ModuleInfo)
         mock_module_info.path_to_module_info = (
             PATH_TO_MODULE_INFO_WITH_MULTI_AUTOGEN)
-        self.assertRaises(
-            atest_error.TestWithNoModuleError,
-            test_finder_utils.find_parent_module_dir,
-            uc.ROOT,
-            abs_class_dir,
-            mock_module_info)
+        unittest_utils.assert_strict_equal(
+            self,
+            test_finder_utils.find_parent_module_dir(uc.ROOT,
+                                                     abs_class_dir,
+                                                     mock_module_info),
+            None)
 
     @mock.patch('os.path.isdir', return_value=True)
     @mock.patch('os.path.isfile', return_value=False)

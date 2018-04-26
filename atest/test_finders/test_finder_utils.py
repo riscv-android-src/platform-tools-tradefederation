@@ -385,17 +385,17 @@ def find_parent_module_dir(root_dir, start_dir, module_info):
     """From current dir search up file tree until root dir for module dir.
 
     Args:
-      start_dir: A string of the dir to start searching up from.
-      root_dir: A string  of the dir that is the parent of the start dir.
-      module_info: ModuleInfo object containing module information from the
-                   build system.
+        root_dir: A string  of the dir that is the parent of the start dir.
+        start_dir: A string of the dir to start searching up from.
+        module_info: ModuleInfo object containing module information from the
+                     build system.
 
     Returns:
-        A string of the module dir relative to root.
+        A string of the module dir relative to root, None if no Module Dir
+        found.
 
     Exceptions:
         ValueError: Raised if cur_dir not dir or not subdir of root dir.
-        atest_error.TestWithNoModuleError: Raised if no Module Dir found.
     """
     if not is_equal_or_sub_dir(start_dir, root_dir):
         raise ValueError('%s not in repo %s' % (start_dir, root_dir))
@@ -426,8 +426,7 @@ def find_parent_module_dir(root_dir, start_dir, module_info):
                     break
         current_dir = os.path.dirname(current_dir)
     if not module_dir:
-        raise atest_error.TestWithNoModuleError('No Parent Module Dir for: %s'
-                                                % start_dir)
+        return None
     return module_dir
 
 
