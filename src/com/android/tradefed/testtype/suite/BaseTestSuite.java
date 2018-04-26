@@ -178,8 +178,8 @@ public class BaseTestSuite extends ITestSuite {
         // Load the configs that are part of the tests dir
         if (mConfigPatterns.isEmpty()) {
             // If no special pattern was configured, use the default configuration patterns we know
-            mConfigPatterns.add(".*.config");
-            mConfigPatterns.add(".*.xml");
+            mConfigPatterns.add(".*\\.config");
+            mConfigPatterns.add(".*\\.xml");
         }
         loadedConfigs.putAll(
                 getModuleLoader()
