@@ -27,13 +27,17 @@ import com.android.tradefed.config.Configuration;
 import com.android.tradefed.config.ConfigurationException;
 import com.android.tradefed.config.IConfiguration;
 import com.android.tradefed.config.OptionSetter;
+import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.invoker.InvocationContext;
 import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
 import com.android.tradefed.result.ILogSaver;
 import com.android.tradefed.result.ITestInvocationListener;
+import com.android.tradefed.testtype.Abi;
+import com.android.tradefed.testtype.IAbi;
 import com.android.tradefed.testtype.IRemoteTest;
 import com.android.tradefed.testtype.StubTest;
+import com.android.tradefed.util.AbiUtils;
 import com.android.tradefed.util.FileUtil;
 import com.android.tradefed.util.ZipUtil;
 
@@ -47,8 +51,10 @@ import java.io.File;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Set;
 
 /**
  * Unit tests for {@link TfSuiteRunner}.
@@ -68,11 +74,25 @@ public class TfSuiteRunnerTest {
 
     @Before
     public void setUp() {
-        mRunner = new TfSuiteRunner();
+        mRunner = new TestTfSuiteRunner();
         mMockLogSaver = EasyMock.createMock(ILogSaver.class);
         mStubMainConfiguration = new Configuration("stub", "stub");
         mStubMainConfiguration.setLogSaver(mMockLogSaver);
         mRunner.setConfiguration(mStubMainConfiguration);
+    }
+
+    /**
+     * Test TfSuiteRunner that hardcodes the abis to avoid failures related to running the tests
+     * against a particular abi build of tradefed.
+     */
+    public static class TestTfSuiteRunner extends TfSuiteRunner {
+        @Override
+        public Set<IAbi> getAbis(ITestDevice device) throws DeviceNotAvailableException {
+            Set<IAbi> abis = new HashSet<>();
+            abis.add(new Abi("arm64-v8a", AbiUtils.getBitness("arm64-v8a")));
+            abis.add(new Abi("armeabi-v7a", AbiUtils.getBitness("armeabi-v7a")));
+            return abis;
+        }
     }
 
     /**
@@ -259,8 +279,6 @@ public class TfSuiteRunnerTest {
     @Test
     public void testLoadTestsForMultiAbi() throws Exception {
         ITestDevice mockDevice = EasyMock.createMock(ITestDevice.class);
-        EasyMock.expect(mockDevice.getProperty(EasyMock.eq("ro.product.cpu.abilist")))
-                .andReturn("arm64-v8a,armeabi-v7a");
         mRunner.setDevice(mockDevice);
         OptionSetter setter = new OptionSetter(mRunner);
         setter.setOptionValue("suite-config-prefix", "suite");
