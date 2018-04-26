@@ -747,7 +747,7 @@ public abstract class ITestSuite
      * @return The set of ABIs to run the tests on
      * @throws DeviceNotAvailableException
      */
-    public final Set<IAbi> getAbis(ITestDevice device) throws DeviceNotAvailableException {
+    public Set<IAbi> getAbis(ITestDevice device) throws DeviceNotAvailableException {
         Set<IAbi> abis = new LinkedHashSet<>();
         Set<String> archAbis = getAbisForBuildTargetArch();
         if (mPrimaryAbiRun) {
