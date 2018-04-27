@@ -61,7 +61,6 @@ import org.junit.runners.JUnit4;
 
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -126,9 +125,9 @@ public class ModuleDefinitionTest {
                 if (mDeviceUnresponsive) {
                     throw new DeviceUnresponsiveException();
                 }
-                listener.testEnded(test, Collections.emptyMap());
+                listener.testEnded(test, new HashMap<String, Metric>());
             }
-            listener.testRunEnded(0, Collections.emptyMap());
+            listener.testRunEnded(0, new HashMap<String, Metric>());
         }
 
         @Override
@@ -150,7 +149,7 @@ public class ModuleDefinitionTest {
     @Before
     public void setUp() {
         mMockLogSaver = EasyMock.createMock(ILogSaver.class);
-        mMockLogSaverListener = EasyMock.createMock(ILogSaverListener.class);
+        mMockLogSaverListener = EasyMock.createStrictMock(ILogSaverListener.class);
 
         mMockListener = EasyMock.createMock(ITestInvocationListener.class);
         mTestList = new ArrayList<>();
@@ -500,7 +499,7 @@ public class ModuleDefinitionTest {
                 .addDeviceBuildInfo(DEFAULT_DEVICE_NAME, mMockBuildInfo);
         // module is completely skipped, no tests is recorded.
         replayMocks();
-        mModule.run(mMockListener, null);
+        mModule.run(mMockListener, null, null);
         verifyMocks();
     }
 
@@ -555,7 +554,7 @@ public class ModuleDefinitionTest {
         mMockListener.testRunEnded(
                 EasyMock.anyLong(), (HashMap<String, Metric>) EasyMock.anyObject());
         replayMocks();
-        mModule.run(mMockListener, null);
+        mModule.run(mMockListener, null, null);
         verifyMocks();
     }
 
@@ -615,9 +614,10 @@ public class ModuleDefinitionTest {
         EasyMock.expect(mMockCleaner.isTearDownDisabled()).andStubReturn(false);
         mMockCleaner.tearDown(
                 EasyMock.eq(mMockDevice), EasyMock.eq(mMockBuildInfo), EasyMock.isNull());
-        mMockLogSaverListener.testRunStarted(MODULE_NAME, 0);
-        mMockLogSaverListener.testRunEnded(
-                EasyMock.anyLong(), (HashMap<String, Metric>) EasyMock.anyObject());
+        mMockLogSaverListener.setLogSaver(mMockLogSaver);
+        // The final reporter still receive the testLog signal
+        mMockLogSaverListener.testLog(
+                EasyMock.eq("testlogclass"), EasyMock.eq(LogDataType.TEXT), EasyMock.anyObject());
 
         LogFile loggedFile = new LogFile("path", "url", LogDataType.TEXT);
         EasyMock.expect(
@@ -626,16 +626,16 @@ public class ModuleDefinitionTest {
                                 EasyMock.eq(LogDataType.TEXT),
                                 EasyMock.anyObject()))
                 .andReturn(loggedFile);
-        mMockLogSaverListener.setLogSaver(mMockLogSaver);
-        // The final reporter still receive the testLog signal
-        mMockLogSaverListener.testLog(
-                EasyMock.eq("testlogclass"), EasyMock.eq(LogDataType.TEXT), EasyMock.anyObject());
         // mMockLogSaverListener should receive the testLogSaved call even from the module
         mMockLogSaverListener.testLogSaved(
                 EasyMock.eq("testlogclass"),
                 EasyMock.eq(LogDataType.TEXT),
                 EasyMock.anyObject(),
                 EasyMock.eq(loggedFile));
+
+        mMockLogSaverListener.testRunStarted(MODULE_NAME, 0);
+        mMockLogSaverListener.testRunEnded(
+                EasyMock.anyLong(), (HashMap<String, Metric>) EasyMock.anyObject());
 
         // Simulate how the invoker actually put the log saver
         replayMocks();
@@ -698,7 +698,7 @@ public class ModuleDefinitionTest {
                                 EasyMock.anyObject()))
                 .andReturn(loggedFile);
         replayMocks();
-        mModule.run(mMockListener, failureListener);
+        mModule.run(mMockListener, null, failureListener);
         verifyMocks();
     }
 
@@ -756,6 +756,71 @@ public class ModuleDefinitionTest {
         // Only one module
         assertEquals(1, mModule.getTestsResults().size());
         assertEquals(0, mModule.getTestsResults().get(0).getNumCompleteTests());
+        verifyMocks();
+    }
+
+    /**
+     * Test that when a module level listener is specified it receives the events before the
+     * buffering and replay.
+     */
+    @Test
+    public void testRun_moduleLevelListeners() throws Exception {
+        mMockListener = EasyMock.createStrictMock(ITestInvocationListener.class);
+        final int testCount = 5;
+        List<IRemoteTest> testList = new ArrayList<>();
+        testList.add(new TestObject("run1", testCount, false));
+        mModule =
+                new ModuleDefinition(
+                        MODULE_NAME,
+                        testList,
+                        mMapDeviceTargetPreparer,
+                        mMultiTargetPrepList,
+                        new Configuration("", ""));
+        mModule.setLogSaver(mMockLogSaver);
+        mModule.getModuleInvocationContext().addAllocatedDevice(DEFAULT_DEVICE_NAME, mMockDevice);
+        mModule.getModuleInvocationContext()
+                .addDeviceBuildInfo(DEFAULT_DEVICE_NAME, mMockBuildInfo);
+        mModule.setBuild(mMockBuildInfo);
+        mModule.setDevice(mMockDevice);
+        EasyMock.expect(mMockPrep.isDisabled()).andReturn(false);
+        // no isTearDownDisabled() expected for setup
+        mMockPrep.setUp(EasyMock.eq(mMockDevice), EasyMock.eq(mMockBuildInfo));
+        EasyMock.expect(mMockCleaner.isDisabled()).andStubReturn(false);
+        mMockCleaner.setUp(EasyMock.eq(mMockDevice), EasyMock.eq(mMockBuildInfo));
+        EasyMock.expect(mMockCleaner.isTearDownDisabled()).andStubReturn(false);
+        mMockCleaner.tearDown(
+                EasyMock.eq(mMockDevice), EasyMock.eq(mMockBuildInfo), EasyMock.isNull());
+
+        mMockLogSaverListener.setLogSaver(mMockLogSaver);
+
+        mMockListener.testRunStarted("run1", testCount);
+        for (int i = 0; i < testCount; i++) {
+            mMockListener.testStarted((TestDescription) EasyMock.anyObject(), EasyMock.anyLong());
+            mMockListener.testEnded(
+                    (TestDescription) EasyMock.anyObject(),
+                    EasyMock.anyLong(),
+                    (HashMap<String, Metric>) EasyMock.anyObject());
+        }
+        mMockListener.testRunEnded(
+                EasyMock.anyLong(), (HashMap<String, Metric>) EasyMock.anyObject());
+
+        mMockLogSaverListener.testRunStarted(MODULE_NAME, testCount);
+        for (int i = 0; i < testCount; i++) {
+            mMockLogSaverListener.testStarted(
+                    (TestDescription) EasyMock.anyObject(), EasyMock.anyLong());
+            mMockLogSaverListener.testEnded(
+                    (TestDescription) EasyMock.anyObject(),
+                    EasyMock.anyLong(),
+                    (HashMap<String, Metric>) EasyMock.anyObject());
+        }
+        mMockLogSaverListener.testRunEnded(
+                EasyMock.anyLong(), (HashMap<String, Metric>) EasyMock.anyObject());
+
+        // Simulate how the invoker actually put the log saver
+        replayMocks();
+        LogSaverResultForwarder forwarder =
+                new LogSaverResultForwarder(mMockLogSaver, Arrays.asList(mMockLogSaverListener));
+        mModule.run(forwarder, Arrays.asList(mMockListener), null);
         verifyMocks();
     }
 }
