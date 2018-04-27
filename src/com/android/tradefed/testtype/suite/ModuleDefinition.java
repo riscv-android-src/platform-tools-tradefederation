@@ -250,8 +250,8 @@ public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestColl
      * @param listener the {@link ITestInvocationListener} where to report results.
      * @throws DeviceNotAvailableException in case of device going offline.
      */
-    public void run(ITestInvocationListener listener) throws DeviceNotAvailableException {
-        run(listener, null);
+    public final void run(ITestInvocationListener listener) throws DeviceNotAvailableException {
+        run(listener, null, null);
     }
 
     /**
@@ -259,10 +259,14 @@ public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestColl
      * after to setup and clean the device.
      *
      * @param listener the {@link ITestInvocationListener} where to report results.
+     * @param moduleLevelListeners The list of listeners at the module level.
      * @param failureListener a particular listener to collect logs on testFail. Can be null.
      * @throws DeviceNotAvailableException in case of device going offline.
      */
-    public void run(ITestInvocationListener listener, TestFailureListener failureListener)
+    public final void run(
+            ITestInvocationListener listener,
+            List<ITestInvocationListener> moduleLevelListeners,
+            TestFailureListener failureListener)
             throws DeviceNotAvailableException {
         // Load extra configuration for the module from module_controller
         // TODO: make module_controller a full TF object
@@ -373,15 +377,18 @@ public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestColl
                 ModuleListener moduleListener = new ModuleListener(listener);
                 moduleListener.setMarkTestsSkipped(skipTestCases);
                 List<ITestInvocationListener> currentTestListener = new ArrayList<>();
-                if (failureListener != null) {
-                    currentTestListener.add(failureListener);
+                // Add all the module level listeners, including TestFailureListener
+                if (moduleLevelListeners != null) {
+                    currentTestListener.addAll(moduleLevelListeners);
                 }
                 currentTestListener.add(moduleListener);
 
                 ITestInvocationListener runListener =
                         new LogSaverResultForwarder(mLogSaver, currentTestListener);
+
                 if (failureListener != null) {
                     failureListener.setLogger(runListener);
+                    currentTestListener.add(failureListener);
                 }
                 if (mRunMetricCollectors != null) {
                     // Module only init the collectors here to avoid triggering the collectors when

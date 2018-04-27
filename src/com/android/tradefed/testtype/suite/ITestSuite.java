@@ -387,6 +387,8 @@ public abstract class ITestSuite
                         mScreenshotOnFailure,
                         mRebootOnFailure,
                         mMaxLogcatBytes);
+        /** Create the list of listeners applicable at the module level. */
+        List<ITestInvocationListener> moduleListeners = createModuleListeners();
 
         // Only print the running log if we are going to run something.
         if (runModules.get(0).hasTests()) {
@@ -417,7 +419,7 @@ public abstract class ITestSuite
                                 .addDeviceBuildInfo(deviceName, mContext.getBuildInfo(deviceName));
                     }
                     listener.testModuleStarted(module.getModuleInvocationContext());
-                    runSingleModule(module, listener, failureListener);
+                    runSingleModule(module, listener, moduleListeners, failureListener);
                 } finally {
                     // clear out module invocation context since we are now done with module
                     // execution
@@ -438,16 +440,27 @@ public abstract class ITestSuite
     }
 
     /**
+     * Returns the list of {@link ITestInvocationListener} applicable to the {@link ModuleListener}
+     * level. These listeners will be re-used for each module, they will not be re-instantiated so
+     * they should not assume an internal state.
+     */
+    protected List<ITestInvocationListener> createModuleListeners() {
+        return new ArrayList<>();
+    }
+
+    /**
      * Helper method that handle running a single module logic.
      *
      * @param module The {@link ModuleDefinition} to be ran.
      * @param listener The {@link ITestInvocationListener} where to report results
-     * @param failureListener The {@link TestFailureListener} that collect infos on failures.
+     * @param moduleListeners The {@link ITestInvocationListener}s that runs at the module level.
+     * @param failureListener special listener that we add to collect information on failures.
      * @throws DeviceNotAvailableException
      */
     private void runSingleModule(
             ModuleDefinition module,
             ITestInvocationListener listener,
+            List<ITestInvocationListener> moduleListeners,
             TestFailureListener failureListener)
             throws DeviceNotAvailableException {
         if (mRebootPerModule) {
@@ -473,7 +486,7 @@ public abstract class ITestSuite
         module.setLogSaver(mMainConfiguration.getLogSaver());
 
         // Actually run the module
-        module.run(listener, failureListener);
+        module.run(listener, moduleListeners, failureListener);
 
         if (!mSkipAllSystemStatusCheck) {
             runPostModuleCheck(module.getId(), mSystemStatusCheckers, mDevice, listener);
