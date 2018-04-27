@@ -96,6 +96,8 @@ public abstract class ITestSuite
     public static final String ABI_OPTION = "abi";
     public static final String SKIP_HOST_ARCH_CHECK = "skip-host-arch-check";
     public static final String PRIMARY_ABI_RUN = "primary-abi-only";
+    public static final String PARAMETER_KEY = "parameter";
+
     private static final String PRODUCT_CPU_ABI_KEY = "ro.product.cpu.abi";
 
     // Options for test failure case
