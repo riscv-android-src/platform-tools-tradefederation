@@ -22,8 +22,11 @@ import com.android.tradefed.config.ConfigurationUtil;
 import com.android.tradefed.config.IConfiguration;
 import com.android.tradefed.config.IConfigurationFactory;
 import com.android.tradefed.config.Option;
+import com.android.tradefed.config.OptionCopier;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.log.LogUtil.CLog;
+import com.android.tradefed.result.ITestInvocationListener;
+import com.android.tradefed.result.SubprocessResultsReporter;
 import com.android.tradefed.targetprep.ITargetPreparer;
 import com.android.tradefed.testtype.Abi;
 import com.android.tradefed.testtype.IAbi;
@@ -84,6 +87,12 @@ public class AtestRunner extends ITestSuite {
                 "Abi to pass to tests that require an ABI. The device default will be used if not specified."
     )
     private String mabiName;
+
+    @Option(
+        name = "subprocess-report-port",
+        description = "the port where to connect to send the" + "events."
+    )
+    private Integer mReportPort = null;
 
     @Override
     public LinkedHashMap<String, IConfiguration> loadTests() {
@@ -187,11 +196,23 @@ public class AtestRunner extends ITestSuite {
             } else {
                 CLog.e(
                         "Test Class (%s) does not support filtering. Cannot apply filter: %s.\n"
-                                + "Please update test to use a class that implements ITestFilterReceiver. Running entire"
-                                + "test module instead.",
+                                + "Please update test to use a class that implements "
+                                + "ITestFilterReceiver. Running entire test module instead.",
                         test.getClass().getSimpleName(), filter);
             }
         }
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    protected List<ITestInvocationListener> createModuleListeners() {
+        List<ITestInvocationListener> listeners = super.createModuleListeners();
+        if (mReportPort != null) {
+            SubprocessResultsReporter subprocessResult = new SubprocessResultsReporter();
+            OptionCopier.copyOptionsNoThrow(this, subprocessResult);
+            listeners.add(subprocessResult);
+        }
+        return listeners;
     }
 
     /**

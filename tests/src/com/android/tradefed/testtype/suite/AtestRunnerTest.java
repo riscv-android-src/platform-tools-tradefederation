@@ -17,34 +17,22 @@ package com.android.tradefed.testtype.suite;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
-import static org.mockito.Matchers.any;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.when;
-import static org.mockito.Mockito.mock;
 
+import com.android.tradefed.config.Configuration;
+import com.android.tradefed.config.IConfiguration;
+import com.android.tradefed.config.IConfigurationFactory;
+import com.android.tradefed.config.OptionSetter;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.targetprep.ITargetPreparer;
 import com.android.tradefed.targetprep.TestAppInstallSetup;
 import com.android.tradefed.testtype.IRemoteTest;
-import com.android.tradefed.config.IConfiguration;
-import com.android.tradefed.config.Configuration;
-import com.android.tradefed.config.IConfigurationFactory;
-import com.android.tradefed.config.OptionSetter;
-import com.android.tradefed.testtype.InstrumentationTest;
 import com.android.tradefed.testtype.ITestFilterReceiver;
-
-import java.io.File;
-import java.nio.file.Files;
-import java.nio.file.StandardOpenOption;
-import java.util.ArrayList;
-import java.util.Arrays;
-
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.HashMap;
-
-import java.util.Set;
+import com.android.tradefed.testtype.InstrumentationTest;
 
 import org.junit.After;
 import org.junit.Before;
@@ -52,7 +40,17 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
 
-/** Unit tests for {@link TfSuiteRunner}. */
+import java.io.File;
+import java.nio.file.Files;
+import java.nio.file.StandardOpenOption;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Set;
+
+/** Unit tests for {@link AtestRunner}. */
 @RunWith(JUnit4.class)
 public class AtestRunnerTest {
 
@@ -196,7 +194,7 @@ public class AtestRunnerTest {
         String filePath = truncateAndWrite(mTmpFile, "");
         setter = new OptionSetter(mSpyRunner);
         setter.setOptionValue("test-info-file", filePath);
-        LinkedHashMap<String, IConfiguration> configMap = mSpyRunner.loadTests();
+        mSpyRunner.loadTests();
     }
 
     @Test
@@ -340,5 +338,13 @@ public class AtestRunnerTest {
         for (ITargetPreparer targetPreparer : config.getTargetPreparers()) {
             assertTrue(!targetPreparer.isTearDownDisabled());
         }
+    }
+
+    @Test
+    public void testCreateModuleListener() throws Exception {
+        OptionSetter setter = new OptionSetter(mSpyRunner);
+        setter.setOptionValue("subprocess-report-port", "55555");
+        List<ITestInvocationListener> listeners = mSpyRunner.createModuleListeners();
+        assertEquals(1, listeners.size());
     }
 }
