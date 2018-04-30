@@ -43,6 +43,7 @@ import java.util.regex.Pattern;
 public class HermeticMemoryTest implements IDeviceTest, IRemoteTest {
 
     private static final String AM_START = "am start -n %s";
+    private static final String AM_BROADCAST = "am broadcast -a %s -n %s %s";
     private static final String PROC_MEMINFO = "cat /proc/meminfo";
     private static final String MEM_AVAILABLE = "cat /proc/meminfo| grep MemAvailable:";
     private static final String CACHED_PROCESSES = "dumpsys meminfo|awk '/Total PSS by category:"
@@ -73,6 +74,12 @@ public class HermeticMemoryTest implements IDeviceTest, IRemoteTest {
     @Option(name = "component-name",
             description = "package/activity name to launch the activity")
     private String mComponentName = new String();
+
+    @Option(name = "intent-action", description = "intent action to broadcast")
+    private String mIntentAction = new String();
+
+    @Option(name = "intent-params", description = "intent parameters")
+    private String mIntentParams = new String();
 
     @Option(name = "total-memory-kb",
             description = "Built in total memory of the device")
@@ -109,7 +116,12 @@ public class HermeticMemoryTest implements IDeviceTest, IRemoteTest {
         RunUtil.getDefault().sleep(5000);
         Assert.assertTrue("Not a valid component name to start the activity",
                 (mComponentName.split("/").length == 2));
-        mTestDevice.executeShellCommand(String.format(AM_START, mComponentName));
+        if (mIntentAction.isEmpty()) {
+            mTestDevice.executeShellCommand(String.format(AM_START, mComponentName));
+        } else {
+            mTestDevice.executeShellCommand(
+                    String.format(AM_BROADCAST, mIntentAction, mComponentName, mIntentParams));
+        }
 
         RunUtil.getDefault().sleep(mPostAppLaunchDelay);
         String postMemInfo = mTestDevice.executeShellCommand(PROC_MEMINFO);
@@ -317,3 +329,6 @@ public class HermeticMemoryTest implements IDeviceTest, IRemoteTest {
         return mTestDevice;
     }
 }
+
+
+
