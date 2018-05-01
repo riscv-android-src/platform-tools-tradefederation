@@ -24,6 +24,7 @@ import com.android.tradefed.util.SubprocessEventHelper.BaseTestEventInfo;
 import com.android.tradefed.util.SubprocessEventHelper.FailedTestEventInfo;
 import com.android.tradefed.util.SubprocessEventHelper.InvocationFailedEventInfo;
 import com.android.tradefed.util.SubprocessEventHelper.InvocationStartedEventInfo;
+import com.android.tradefed.util.SubprocessEventHelper.LogAssociationEventInfo;
 import com.android.tradefed.util.SubprocessEventHelper.TestEndedEventInfo;
 import com.android.tradefed.util.SubprocessEventHelper.TestLogEventInfo;
 import com.android.tradefed.util.SubprocessEventHelper.TestModuleStartedEventInfo;
@@ -197,9 +198,8 @@ public class SubprocessResultsReporter
     /** {@inheritDoc} */
     @Override
     public void logAssociation(String dataName, LogFile logFile) {
-        // TODO: Enable when the lab has been updated with the new parser version.
-        // LogAssociationEventInfo info = new LogAssociationEventInfo(dataName, logFile);
-        // printEvent(SubprocessTestResultsParser.StatusKeys.LOG_ASSOCIATION, info);
+        LogAssociationEventInfo info = new LogAssociationEventInfo(dataName, logFile);
+        printEvent(SubprocessTestResultsParser.StatusKeys.LOG_ASSOCIATION, info);
     }
 
     /**
