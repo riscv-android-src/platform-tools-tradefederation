@@ -15,10 +15,13 @@
  */
 package com.android.tradefed.invoker.shard;
 
+import com.android.annotations.VisibleForTesting;
 import com.android.tradefed.config.Configuration;
 import com.android.tradefed.config.ConfigurationException;
 import com.android.tradefed.config.ConfigurationFactory;
+import com.android.tradefed.config.GlobalConfiguration;
 import com.android.tradefed.config.IConfiguration;
+import com.android.tradefed.config.IGlobalConfiguration;
 import com.android.tradefed.invoker.IInvocationContext;
 import com.android.tradefed.invoker.IRescheduler;
 import com.android.tradefed.invoker.ShardListener;
@@ -34,6 +37,8 @@ import com.android.tradefed.testtype.IMultiDeviceTest;
 import com.android.tradefed.testtype.IRemoteTest;
 import com.android.tradefed.testtype.IShardableTest;
 import com.android.tradefed.util.QuotationAwareTokenizer;
+import com.android.tradefed.util.keystore.IKeyStoreClient;
+import com.android.tradefed.util.keystore.KeyStoreException;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -150,23 +155,41 @@ public class ShardHelper implements IShardHelper {
         rescheduler.scheduleConfig(shardConfig);
     }
 
+    /** Returns the current global configuration. */
+    @VisibleForTesting
+    protected IGlobalConfiguration getGlobalConfiguration() {
+        return GlobalConfiguration.getInstance();
+    }
+
     /**
      * Helper to clone {@link ISystemStatusChecker}s from the original config to the clonedConfig.
      */
-    private static void cloneConfigObject(IConfiguration oriConfig, IConfiguration clonedConfig) {
+    private void cloneConfigObject(IConfiguration oriConfig, IConfiguration clonedConfig) {
+        IKeyStoreClient client = null;
+        try {
+            client = getGlobalConfiguration().getKeyStoreFactory().createKeyStoreClient();
+        } catch (KeyStoreException e) {
+            throw new RuntimeException(
+                    String.format(
+                            "failed to load keystore client when sharding: %s", e.getMessage()),
+                    e);
+        }
         try {
             IConfiguration deepCopy =
                     ConfigurationFactory.getInstance()
                             .createConfigurationFromArgs(
                                     QuotationAwareTokenizer.tokenizeLine(
-                                            oriConfig.getCommandLine()));
+                                            oriConfig.getCommandLine()),
+                                    null,
+                                    client);
             for (String objType : CONFIG_OBJ_TO_CLONE) {
                 clonedConfig.setConfigurationObjectList(
                         objType, deepCopy.getConfigurationObjectList(objType));
             }
         } catch (ConfigurationException e) {
             // should not happen
-            throw new RuntimeException("failed to deep copy a configuration", e);
+            throw new RuntimeException(
+                    String.format("failed to deep copy a configuration: %s", e.getMessage()), e);
         }
     }
 
