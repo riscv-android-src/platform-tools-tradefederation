@@ -219,6 +219,7 @@ import com.android.tradefed.testtype.testdefs.XmlDefsTestTest;
 import com.android.tradefed.util.AaptParserTest;
 import com.android.tradefed.util.AbiFormatterTest;
 import com.android.tradefed.util.AbiUtilsTest;
+import com.android.tradefed.util.AppVersionFetcherTest;
 import com.android.tradefed.util.ArrayUtilTest;
 import com.android.tradefed.util.BluetoothUtilsTest;
 import com.android.tradefed.util.BugreportTest;
@@ -544,6 +545,7 @@ import org.junit.runners.Suite.SuiteClasses;
     AaptParserTest.class,
     AbiFormatterTest.class,
     AbiUtilsTest.class,
+    AppVersionFetcherTest.class,
     ArrayUtilTest.class,
     BluetoothUtilsTest.class,
     BugreportTest.class,
