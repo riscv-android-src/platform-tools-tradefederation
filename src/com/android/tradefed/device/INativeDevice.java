@@ -488,6 +488,15 @@ public interface INativeDevice {
     public File pullFile(String remoteFilePath) throws DeviceNotAvailableException;
 
     /**
+     * Retrieves a file off device, and returns the contents.
+     *
+     * @param remoteFilePath the absolute path to file on device.
+     * @return A {@link String} containing the contents of the device file, or {@code null} if the
+     *         copy failed for any reason (including problems with the host filesystem)
+     */
+    public String pullFileContents(String remoteFilePath) throws DeviceNotAvailableException;
+
+    /**
      * A convenience method to retrieve a file from the device's external storage, stores it in a
      * local temporary {@link File}, and return a reference to that {@code File}.
      *

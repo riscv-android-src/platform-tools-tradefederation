@@ -948,6 +948,26 @@ public class NativeDevice implements IManagedTestDevice {
      * {@inheritDoc}
      */
     @Override
+    public String pullFileContents(String remoteFilePath) throws DeviceNotAvailableException {
+        File temp = pullFile(remoteFilePath);
+
+        if (temp != null) {
+            try {
+                return FileUtil.readStringFromFile(temp);
+            } catch (IOException e) {
+                CLog.e(String.format("Could not pull file: %s", remoteFilePath));
+            } finally {
+                FileUtil.deleteFile(temp);
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
     public File pullFileFromExternal(String remoteFilePath) throws DeviceNotAvailableException {
         String externalPath = getMountPoint(IDevice.MNT_EXTERNAL_STORAGE);
         String fullPath = (new File(externalPath, remoteFilePath)).getPath();
