@@ -15,24 +15,30 @@
  */
 package com.android.tradefed.testtype;
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.fail;
+
 import com.android.tradefed.config.ConfigurationException;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
+import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.TestDescription;
 
-import junit.framework.TestCase;
-
 import org.easymock.EasyMock;
+import org.junit.Before;
+import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.junit.runners.JUnit4;
 
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.HashMap;
 
-/**
- * Unit tests for {@link InstrumentationSerialTest}.
- */
-public class InstrumentationSerialTestTest extends TestCase {
+/** Unit tests for {@link InstrumentationSerialTest}. */
+@RunWith(JUnit4.class)
+public class InstrumentationSerialTestTest {
 
     /** The {@link InstrumentationSerialTest} under test, with all dependencies mocked out */
     private InstrumentationSerialTest mInstrumentationSerialTest;
@@ -41,19 +47,16 @@ public class InstrumentationSerialTestTest extends TestCase {
     private ITestDevice mMockTestDevice;
     private ITestInvocationListener mMockListener;
 
-    @Override
-    protected void setUp() throws Exception {
-        super.setUp();
-
+    @Before
+    public void setUp() throws Exception {
         mMockTestDevice = EasyMock.createMock(ITestDevice.class);
         mMockListener = EasyMock.createMock(ITestInvocationListener.class);
 
         EasyMock.expect(mMockTestDevice.getSerialNumber()).andStubReturn("serial");
     }
 
-    /**
-     * Test normal run scenario with a single test.
-     */
+    /** Test normal run scenario with a single test. */
+    @Test
     public void testRun() throws DeviceNotAvailableException, ConfigurationException {
         final String packageName = "com.foo";
         final TestDescription test = new TestDescription("FooTest", "testFoo");
@@ -100,6 +103,7 @@ public class InstrumentationSerialTestTest extends TestCase {
      * Test {@link InstrumentationSerialTest#run} when the test run fails without executing the
      * test.
      */
+    @Test
     public void testRun_runFailure() throws DeviceNotAvailableException, ConfigurationException {
         final String packageName = "com.foo";
         final TestDescription test = new TestDescription("FooTest", "testFoo");
@@ -132,13 +136,14 @@ public class InstrumentationSerialTestTest extends TestCase {
         mMockListener.testRunFailed(runFailureMsg);
         EasyMock.expectLastCall().times(expectedAttempts);
         mMockListener.testRunEnded(0, Collections.emptyMap());
-        EasyMock.expectLastCall().times(expectedAttempts);
+        EasyMock.expectLastCall().times(expectedAttempts - 1);
+        mMockListener.testRunEnded(0, new HashMap<String, Metric>());
 
         // now expect test to be marked as failed
         mMockListener.testStarted(EasyMock.eq(test));
         mMockListener.testFailed(EasyMock.eq(test),
                 EasyMock.contains(runFailureMsg));
-        mMockListener.testEnded(EasyMock.eq(test), EasyMock.eq(Collections.emptyMap()));
+        mMockListener.testEnded(EasyMock.eq(test), EasyMock.eq(new HashMap<String, Metric>()));
 
         EasyMock.replay(mMockListener, mMockTestDevice);
         mInstrumentationSerialTest.run(mMockListener);
@@ -148,9 +153,8 @@ public class InstrumentationSerialTestTest extends TestCase {
         EasyMock.verify(mMockListener, mMockTestDevice);
     }
 
-    /**
-     * Test that IllegalArgumentException is thrown when attempting run without setting device.
-     */
+    /** Test that IllegalArgumentException is thrown when attempting run without setting device. */
+    @Test
     public void testRun_noDevice() throws DeviceNotAvailableException, ConfigurationException {
         mInstrumentationSerialTest =
                 new InstrumentationSerialTest(
