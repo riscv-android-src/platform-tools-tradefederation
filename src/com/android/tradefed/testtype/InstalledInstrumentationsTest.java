@@ -23,6 +23,8 @@ import com.android.tradefed.config.OptionCopier;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.log.LogUtil.CLog;
+import com.android.tradefed.metrics.proto.MetricMeasurement.Measurements;
+import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
 import com.android.tradefed.result.BugreportCollector;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.testtype.testdefs.XmlDefsTest;
@@ -333,8 +335,13 @@ public class InstalledInstrumentationsTest
      */
     private void sendCoverage(String packageName, String coverageTarget,
             ITestInvocationListener listener) {
-        Map<String, String> coverageMetric = new HashMap<String, String>(1);
-        coverageMetric.put(COVERAGE_TARGET_KEY, coverageTarget);
+        HashMap<String, Metric> coverageMetric = new HashMap<String, Metric>();
+        Metric metric =
+                Metric.newBuilder()
+                        .setMeasurements(
+                                Measurements.newBuilder().setSingleString(coverageTarget).build())
+                        .build();
+        coverageMetric.put(COVERAGE_TARGET_KEY, metric);
         listener.testRunStarted(packageName, 0);
         listener.testRunEnded(0, coverageMetric);
     }

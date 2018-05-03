@@ -20,10 +20,11 @@ import com.android.tradefed.config.Option.Importance;
 import com.android.tradefed.config.OptionClass;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
+import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.TestDescription;
 
-import java.util.Collections;
+import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.regex.Matcher;
@@ -55,7 +56,7 @@ public class FakeTest implements IDeviceTest, IRemoteTest {
     /** A pattern to identify a run-length-encoded character specification */
     private static final Pattern RLE_SEGMENT = Pattern.compile("^(([PFE])(\\d+)?)");
 
-    static final Map<String, String> EMPTY_MAP = Collections.emptyMap();
+    static final HashMap<String, Metric> EMPTY_MAP = new HashMap<String, Metric>();
 
     private ITestDevice mDevice = null;
 
