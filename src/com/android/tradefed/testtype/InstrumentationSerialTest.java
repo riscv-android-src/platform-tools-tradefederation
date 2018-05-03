@@ -20,6 +20,7 @@ import com.android.tradefed.config.ConfigurationException;
 import com.android.tradefed.config.OptionCopier;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.log.LogUtil.CLog;
+import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
 import com.android.tradefed.result.CollectingTestListener;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.ResultForwarder;
@@ -27,7 +28,7 @@ import com.android.tradefed.result.TestDescription;
 import com.android.tradefed.result.TestRunResult;
 
 import java.util.Collection;
-import java.util.Collections;
+import java.util.HashMap;
 
 /**
  * A Test that runs a set of instrumentation tests by running one adb command for per test.
@@ -130,7 +131,7 @@ class InstrumentationSerialTest implements IRemoteTest {
         if (testRun.isRunFailure()) {
             listener.testRunFailed(message);
         }
-        listener.testEnded(test, Collections.emptyMap());
-        listener.testRunEnded(0, Collections.emptyMap());
+        listener.testEnded(test, new HashMap<String, Metric>());
+        listener.testRunEnded(0, new HashMap<String, Metric>());
     }
 }
