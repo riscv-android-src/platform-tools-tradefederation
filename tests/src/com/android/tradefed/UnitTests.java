@@ -216,6 +216,7 @@ import com.android.tradefed.testtype.suite.TestSuiteInfoTest;
 import com.android.tradefed.testtype.suite.TfSuiteRunnerTest;
 import com.android.tradefed.testtype.suite.ValidateSuiteConfigHelperTest;
 import com.android.tradefed.testtype.suite.module.BaseModuleControllerTest;
+import com.android.tradefed.testtype.suite.module.NativeBridgeModuleControllerTest;
 import com.android.tradefed.testtype.testdefs.XmlDefsParserTest;
 import com.android.tradefed.testtype.testdefs.XmlDefsTestTest;
 import com.android.tradefed.util.AaptParserTest;
@@ -540,6 +541,7 @@ import org.junit.runners.Suite.SuiteClasses;
 
     // testtype/suite/module
     BaseModuleControllerTest.class,
+    NativeBridgeModuleControllerTest.class,
 
     // testtype/testdefs
     XmlDefsParserTest.class,
