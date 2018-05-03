@@ -150,4 +150,25 @@ public class TestResult {
     private static boolean equal(Object a, Object b) {
         return a == b || (a != null && a.equals(b));
     }
+
+    /**
+     * Create an exact copy of given TestResult.
+     *
+     * @param result The TestResult to copy from.
+     */
+    public static TestResult clone(TestResult result) {
+        TestResult newResult = new TestResult();
+        newResult.setStatus(result.getStatus());
+        newResult.setStackTrace(result.getStackTrace());
+        newResult.setMetrics(result.getMetrics());
+        newResult.setProtoMetrics(result.getProtoMetrics());
+        newResult.setStartTime(result.getStartTime());
+        newResult.setEndTime(result.getEndTime());
+        // The LoggedFiles map contains the log file info whenever testLogSaved is called.
+        // e.g. testLogSaved("coverage", new LogFile("/fake/path", "fake//url", LogDataType.TEXT))
+        for (Map.Entry<String, LogFile> logFile : result.getLoggedFiles().entrySet()) {
+            newResult.addLoggedFile(logFile.getKey(), logFile.getValue());
+        }
+        return newResult;
+    }
 }

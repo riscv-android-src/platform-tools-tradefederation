@@ -1962,6 +1962,40 @@ public class NativeDeviceTest extends TestCase {
     }
 
     /**
+     * Test that {@link NativeDevice#pullFileContents(String)} returns a string when succeed pulling
+     * the file.
+     */
+    public void testPullFileContents_returnFileSuccess() throws Exception {
+        final String fakeRemotePath = "/test/";
+        mTestDevice = new TestableAndroidNativeDevice() {
+            @Override
+            public boolean pullFile(String remoteFilePath, File localFile)
+                    throws DeviceNotAvailableException {
+                return true;
+            }
+        };
+        String res = mTestDevice.pullFileContents(fakeRemotePath);
+        assertNotNull(res);
+    }
+
+    /**
+     * Test that {@link NativeDevice#pullFileContents(String)} returns null when failed to pull the
+     * file.
+     */
+    public void testPullFileContents_returnNull() throws Exception {
+        final String fakeRemotePath = "/test/";
+        mTestDevice = new TestableAndroidNativeDevice() {
+            @Override
+            public boolean pullFile(String remoteFilePath, File localFile)
+                    throws DeviceNotAvailableException {
+                return false;
+            }
+        };
+        String res = mTestDevice.pullFileContents(fakeRemotePath);
+        assertNull(res);
+    }
+
+    /**
      * Test that {@link NativeDevice#pushFile(File, String)} returns true when the push is
      * successful.
      */

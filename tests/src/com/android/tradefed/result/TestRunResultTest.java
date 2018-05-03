@@ -26,7 +26,12 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
 
+import java.util.Arrays;
+import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 /** Unit tests for {@link TestRunResult} */
 @RunWith(JUnit4.class)
@@ -158,5 +163,201 @@ public class TestRunResultTest {
         assertEquals(2, result.getRunLoggedFiles().size());
         assertTrue(result.getRunLoggedFiles().containsKey("outsideTestCase"));
         assertTrue(result.getRunLoggedFiles().containsKey("outsideTestCase2"));
+    }
+
+    /** Ensure that the merging logic among multiple testRunResults for the same test is correct. */
+    @Test
+    public void testMergeRetriedRunResults_fullMergeLogicCheck() {
+        /*
+         *|-----------------------------------------------------------------|
+         *|                |  test1     |   test2           |   test3       |
+         *| testcase       |  Foo#foo   |  Bar#bar          | Baz#baz       |
+         *| -------------- -------------------------------------------------|
+         *| 1st Run        |            |                   |               |
+         *|    status      |   PASSED   |     FAILED        |   FAILED      |
+         *|    stack trace |    null    |    "flaky 1"      |"bad_code1"    |
+         *| -------------- -------------------------------------------------|
+         *| 2nd Run        |            |                   |               |
+         *|    status      |  (skipped) |     FAILED        |   FAILED      |
+         *|    stack trace |    null    |    "flaky 2"      |"bad_code2"    |
+         *| -------------- -------------------------------------------------|
+         *| 3rd Run        |            |                   |               |
+         *|    status      |  (skipped) |      PASSED       |   FAILED      |
+         *|    stack trace |    null    |       null        |"bad_code2"    |
+         *| -------------- -------------------------------------------------|
+         *| Expected       |            |                   |               |
+         *|    status      |   PASSED   |      PASSED       |   FAILED      |
+         *|    stack trace |    null    |"flaky 1\nflaky 2" |"bad_code1\n   |
+         *|                |            |                   |+ "bad_code2\n"|
+         *|                |            |                   |+ "bad_code3"  |
+         *|-----------------------------------------------------------------|
+         */
+        // Test Setup.
+        TestDescription testcase1 = new TestDescription("Foo", "foo");
+        TestDescription testcase2 = new TestDescription("Bar", "bar");
+        TestDescription testcase3 = new TestDescription("Baz", "baz");
+        TestRunResult result1 = new TestRunResult();
+        TestRunResult result2 = new TestRunResult();
+        TestRunResult result3 = new TestRunResult();
+        // Mimic the ModuleDefinition run.
+        result1.testRunStarted("fake run", 3);
+        result1.testStarted(testcase1);
+        result1.testEnded(testcase1, Collections.emptyMap());
+        result1.testStarted(testcase2);
+        result1.testFailed(testcase2, "flaky 1");
+        result1.testEnded(testcase2, Collections.emptyMap());
+        result1.testStarted(testcase3);
+        result1.testFailed(testcase3, "bad_code1");
+        result1.testRunEnded(0, Collections.emptyMap());
+
+        result2.testRunStarted("fake run", 2);
+        result2.testStarted(testcase2);
+        result2.testFailed(testcase2, "flaky 2");
+        result2.testEnded(testcase2, Collections.emptyMap());
+        result2.testStarted(testcase3);
+        result2.testFailed(testcase3, "bad_code2");
+        result2.testRunEnded(0, Collections.emptyMap());
+
+        result3.testRunStarted("fake run", 2);
+        result3.testStarted(testcase2);
+        result3.testEnded(testcase2, Collections.emptyMap());
+        result3.testStarted(testcase3);
+        result3.testFailed(testcase3, "bad_code3");
+        result3.testRunEnded(0, Collections.emptyMap());
+
+        List<TestRunResult> testResultList =
+                new ArrayList<>(Arrays.asList(result1, result2, result3));
+        TestRunResult result = TestRunResult.merge(testResultList);
+
+        // Verify result.
+        assertEquals("fake run", result.getName());
+        Map<TestDescription, TestResult> testResult = result.getTestResults();
+        assertTrue(testResult.containsKey(testcase1));
+        assertTrue(testResult.containsKey(testcase2));
+        assertTrue(testResult.containsKey(testcase3));
+
+        TestResult test1Result = testResult.get(testcase1);
+        TestResult test2Result = testResult.get(testcase2);
+        TestResult test3Result = testResult.get(testcase3);
+
+        assertEquals(TestStatus.PASSED, test1Result.getStatus());
+        assertEquals(TestStatus.PASSED, test2Result.getStatus());
+        assertEquals(TestStatus.FAILURE, test3Result.getStatus());
+
+        assertEquals(null, test1Result.getStackTrace());
+        assertEquals("flaky 1\nflaky 2", test2Result.getStackTrace());
+        assertEquals("bad_code1\nbad_code2\nbad_code3", test3Result.getStackTrace());
+    }
+
+    /** Ensure that the merging logic among multiple testRunResults for the same test is correct. */
+    @Test
+    public void testMergeRetriedRunResults_checkMergingStackTraces() {
+        // Test Setup.
+        TestDescription testcase = new TestDescription("Foo", "foo");
+        TestRunResult result1 = new TestRunResult();
+        TestRunResult result2 = new TestRunResult();
+        TestRunResult result3 = new TestRunResult();
+        TestRunResult result4 = new TestRunResult();
+        // Mimic the ModuleDefinition run.
+        result1.testRunStarted("fake run", 1);
+        result1.testStarted(testcase);
+        result1.testEnded(testcase, Collections.emptyMap());
+        result1.testRunEnded(0, Collections.emptyMap());
+
+        result2.testRunStarted("fake run", 1);
+        result2.testStarted(testcase);
+        result2.testFailed(testcase, "Second run failed.");
+        result2.testEnded(testcase, Collections.emptyMap());
+        result2.testRunEnded(0, Collections.emptyMap());
+
+        result3.testRunStarted("fake run", 1);
+        result3.testStarted(testcase);
+        result3.testEnded(testcase, Collections.emptyMap());
+        result3.testRunEnded(0, Collections.emptyMap());
+
+        result4.testRunStarted("fake run", 1);
+        result4.testStarted(testcase);
+        result4.testFailed(testcase, "Fourth run failed.");
+        result4.testEnded(testcase, Collections.emptyMap());
+        result4.testRunEnded(0, Collections.emptyMap());
+
+        List<TestRunResult> testResultList =
+                new ArrayList<>(Arrays.asList(result1, result2, result3, result4));
+        TestRunResult result = TestRunResult.merge(testResultList);
+
+        // Verify result.
+        assertEquals("fake run", result.getName());
+        Map<TestDescription, TestResult> testRunResult = result.getTestResults();
+        assertTrue(testRunResult.containsKey(testcase));
+        TestResult testResult = testRunResult.get(testcase);
+        assertEquals(TestStatus.FAILURE, testResult.getStatus());
+
+        assertEquals("Second run failed.\nFourth run failed.", testResult.getStackTrace());
+    }
+
+    /** Ensure that merge will raise exceptions if merge TestRunResult for different test. */
+    @Test(expected = IllegalArgumentException.class)
+    public void testMergeRetriedRunResults_RaiseErrorIfDiffTests() {
+        // Test Setup.
+        TestDescription testcase1 = new TestDescription("Foo", "foo");
+        TestRunResult result1 = new TestRunResult();
+        TestRunResult result2 = new TestRunResult();
+
+        // Mimic the ModuleDefinition run.
+        result1.testRunStarted("Fake run 1", 1);
+        result1.testStarted(testcase1);
+        result1.testEnded(testcase1, Collections.emptyMap());
+        result1.testRunEnded(0, Collections.emptyMap());
+
+        result2.testRunStarted("Fake run 2", 1);
+        result2.testStarted(testcase1);
+        result2.testEnded(testcase1, Collections.emptyMap());
+        result2.testRunEnded(0, Collections.emptyMap());
+
+        // Verify raise exceptoin.
+        List<TestRunResult> testResultList = new ArrayList<>(Arrays.asList(result1, result2));
+        TestRunResult.merge(testResultList);
+    }
+
+    /**
+     * Ensure that merge will use the last TestRunResult's runMetrics and fileLogs as the merged
+     * TestRunResults.
+     */
+    @Test
+    public void testMergeRetriedRunResults_CheckMergeMapAttributes() {
+        // Test Setup.
+        TestDescription testcase1 = new TestDescription("Foo", "foo");
+        TestRunResult result1 = new TestRunResult();
+        TestRunResult result2 = new TestRunResult();
+        Map<String, String> runMetrics1 = new HashMap<String, String>();
+        Map<String, String> runMetrics2 = new HashMap<String, String>();
+
+        // Mimic the ModuleDefinition run.
+        result1.testRunStarted("Fake run", 1);
+        result1.testLogSaved("run log", new LogFile("path1", "url", LogDataType.TEXT));
+        result1.testStarted(testcase1);
+        result1.testEnded(testcase1, Collections.emptyMap());
+        runMetrics1.put("metric1", "10");
+        runMetrics1.put("metric2", "1000");
+        result1.testRunEnded(0, runMetrics1);
+
+        result2.testRunStarted("Fake run", 1);
+        result1.testLogSaved("run log", new LogFile("path2", "url", LogDataType.TEXT));
+        result2.testStarted(testcase1);
+        result2.testEnded(testcase1, Collections.emptyMap());
+        runMetrics2.put("metric1", "5");
+        runMetrics2.put("metric2", "5000");
+        result2.testRunEnded(0, runMetrics2);
+
+        List<TestRunResult> testResultList = new ArrayList<>(Arrays.asList(result1, result2));
+        TestRunResult result = TestRunResult.merge(testResultList);
+        Map<String, String> runMetrics = result.getRunMetrics();
+        assertTrue(runMetrics.containsKey("metric1"));
+        assertTrue(runMetrics.get("metric1").equals("5"));
+        assertTrue(runMetrics.containsKey("metric2"));
+        assertTrue(runMetrics.get("metric2").equals("5000"));
+
+        assertTrue(result.getRunLoggedFiles().containsKey("run log"));
+        assertEquals("path2", result.getRunLoggedFiles().get("run log").getPath());
     }
 }
