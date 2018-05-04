@@ -17,6 +17,7 @@ package com.android.tradefed.util.proto;
 
 import static org.junit.Assert.assertEquals;
 
+import com.android.tradefed.metrics.proto.MetricMeasurement.DataType;
 import com.android.tradefed.metrics.proto.MetricMeasurement.DoubleValues;
 import com.android.tradefed.metrics.proto.MetricMeasurement.Measurements;
 import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
@@ -76,6 +77,14 @@ public class TfMetricProtoUtilTest {
         assertEquals("10", results.get("key2"));
         assertEquals("value", results.get("key3"));
         assertEquals(3, results.size());
+    }
+
+    /** Test the utility that create a single string measurement from a String. */
+    @Test
+    public void testStringConvert() {
+        Metric m = TfMetricProtoUtil.stringToMetric("test");
+        assertEquals("test", m.getMeasurements().getSingleString());
+        assertEquals(DataType.RAW, m.getType());
     }
 
     private Metric createMetric(Measurements value) {

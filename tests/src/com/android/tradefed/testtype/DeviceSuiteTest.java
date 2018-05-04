@@ -25,6 +25,7 @@ import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.TestDescription;
 import com.android.tradefed.testtype.DeviceJUnit4ClassRunner.TestMetrics;
+import com.android.tradefed.util.proto.TfMetricProtoUtil;
 
 import org.easymock.EasyMock;
 import org.junit.Before;
@@ -36,7 +37,6 @@ import org.junit.runners.Suite.SuiteClasses;
 
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -169,9 +169,9 @@ public class DeviceSuiteTest {
         TestDescription test2 =
                 new TestDescription(Junit4DeviceTestclass.class.getName(), "testPass2");
         mListener.testStarted(EasyMock.eq(test1));
-        mListener.testEnded(EasyMock.eq(test1), EasyMock.eq(Collections.emptyMap()));
+        mListener.testEnded(EasyMock.eq(test1), EasyMock.eq(new HashMap<String, Metric>()));
         mListener.testStarted(EasyMock.eq(test2));
-        mListener.testEnded(EasyMock.eq(test2), EasyMock.eq(Collections.emptyMap()));
+        mListener.testEnded(EasyMock.eq(test2), EasyMock.eq(new HashMap<String, Metric>()));
         mListener.testRunEnded(EasyMock.anyLong(), EasyMock.eq(new HashMap<String, Metric>()));
         EasyMock.replay(mListener, mMockDevice);
         mHostTest.run(mListener);
@@ -196,7 +196,7 @@ public class DeviceSuiteTest {
         TestDescription test1 =
                 new TestDescription(Junit4DeviceTestclass.class.getName(), "testPass1");
         mListener.testStarted(EasyMock.eq(test1));
-        mListener.testEnded(EasyMock.eq(test1), EasyMock.eq(Collections.emptyMap()));
+        mListener.testEnded(EasyMock.eq(test1), EasyMock.eq(new HashMap<String, Metric>()));
         mListener.testRunEnded(EasyMock.anyLong(), EasyMock.eq(new HashMap<String, Metric>()));
         EasyMock.replay(mListener, mMockDevice);
         mHostTest.run(mListener);
@@ -219,9 +219,10 @@ public class DeviceSuiteTest {
         mListener.testStarted(EasyMock.eq(test1));
         Map<String, String> expected = new HashMap<>();
         expected.put("option", "value_test");
-        mListener.testEnded(EasyMock.eq(test1), EasyMock.eq(expected));
+        mListener.testEnded(
+                EasyMock.eq(test1), EasyMock.eq(TfMetricProtoUtil.upgradeConvert(expected)));
         mListener.testStarted(EasyMock.eq(test2));
-        mListener.testEnded(EasyMock.eq(test2), EasyMock.eq(Collections.emptyMap()));
+        mListener.testEnded(EasyMock.eq(test2), EasyMock.eq(new HashMap<String, Metric>()));
         mListener.testRunEnded(EasyMock.anyLong(), EasyMock.eq(new HashMap<String, Metric>()));
         EasyMock.replay(mListener, mMockDevice);
         mHostTest.run(mListener);
@@ -239,7 +240,7 @@ public class DeviceSuiteTest {
         TestDescription test1 =
                 new TestDescription(JUnit3DeviceTestCase.class.getName(), "testOne");
         mListener.testStarted(EasyMock.eq(test1));
-        mListener.testEnded(EasyMock.eq(test1), EasyMock.eq(Collections.emptyMap()));
+        mListener.testEnded(EasyMock.eq(test1), EasyMock.eq(new HashMap<String, Metric>()));
         mListener.testRunEnded(EasyMock.anyLong(), EasyMock.eq(new HashMap<String, Metric>()));
         EasyMock.replay(mListener, mMockDevice);
         mHostTest.run(mListener);

@@ -15,8 +15,10 @@
  */
 package com.android.tradefed.result;
 
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 
+import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
 import com.android.tradefed.testtype.DeviceTestCase;
 
 import junit.framework.AssertionFailedError;
@@ -34,8 +36,7 @@ import java.lang.annotation.Inherited;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
-import java.util.Collections;
-import java.util.Map;
+import java.util.HashMap;
 
 /** Unit tests for {@link JUnitToInvocationResultForwarder}. */
 @RunWith(JUnit4.class)
@@ -85,7 +86,7 @@ public class JUnitToInvocationResultForwarderTest {
     /** Test method for {@link JUnitToInvocationResultForwarder#endTest(junit.framework.Test)}. */
     @Test
     public void testEndTest() {
-        Map<String, String> emptyMap = Collections.emptyMap();
+        HashMap<String, Metric> emptyMap = new HashMap<>();
         mListener.testEnded(
                 EasyMock.eq(new TestDescription(DeviceTestCase.class.getName(), "testEndTest")),
                 EasyMock.eq(emptyMap));

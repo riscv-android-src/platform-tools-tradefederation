@@ -15,6 +15,7 @@
  */
 package com.android.tradefed.result;
 
+import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
 import com.android.tradefed.testtype.DeviceJUnit4ClassRunner.LogAnnotation;
 import com.android.tradefed.testtype.DeviceJUnit4ClassRunner.MetricAnnotation;
 import com.android.tradefed.testtype.MetricTestCase.LogHolder;
@@ -28,10 +29,8 @@ import org.junit.runners.model.MultipleFailureException;
 
 import java.lang.annotation.Annotation;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 
 /**
  * Result forwarder from JUnit4 Runner.
@@ -82,7 +81,7 @@ public class JUnit4ResultForwarder extends RunListener {
                         description.getAnnotations());
         handleFailures(testid);
         // Explore the Description to see if we find any Annotation metrics carrier
-        Map<String, String> metrics = new HashMap<>();
+        HashMap<String, Metric> metrics = new HashMap<>();
         for (Description child : description.getChildren()) {
             for (Annotation a : child.getAnnotations()) {
                 if (a instanceof MetricAnnotation) {
@@ -113,7 +112,7 @@ public class JUnit4ResultForwarder extends RunListener {
         // and fireTestEnded.
         mListener.testStarted(testid);
         mListener.testIgnored(testid);
-        mListener.testEnded(testid, Collections.emptyMap());
+        mListener.testEnded(testid, new HashMap<String, Metric>());
     }
 
     /**
