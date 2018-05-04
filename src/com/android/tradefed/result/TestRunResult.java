@@ -23,6 +23,7 @@ import com.android.tradefed.util.proto.TfMetricProtoUtil;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
@@ -211,7 +212,7 @@ public class TestRunResult {
     public void testEnded(TestDescription test, Map<String, String> testMetrics) {
         testEnded(test, System.currentTimeMillis(), testMetrics);
     }
-    
+
     public void testEnded(TestDescription test, HashMap<String, Metric> testMetrics) {
         testEnded(test, System.currentTimeMillis(), testMetrics);
     }
@@ -339,5 +340,87 @@ public class TestRunResult {
     /** Returns a copy of the map containing all the logged file associated with that test case. */
     public Map<String, LogFile> getRunLoggedFiles() {
         return new LinkedHashMap<>(mRunLoggedFiles);
+    }
+
+
+    /**
+     * Merge multiple TestRunResults of the same testRunName. If a testcase shows up in multiple
+     * TestRunResults but has different results (e.g. "boottest-device" runs three times with result
+     * FAIL-FAIL-PASS), we concatenate all the stack traces from the FAILED runs and trust the final
+     * run result for status, metrics, log files, start/end time.
+     *
+     * @param testRunResults A list of TestRunResult to merge.
+     * @return the final TestRunResult containing the merged data from the testRunResults.
+     */
+    public static TestRunResult merge(List<TestRunResult> testRunResults) {
+        if (testRunResults.isEmpty()) {
+            return null;
+        }
+        TestRunResult finalRunResult = new TestRunResult();
+
+        String testRunName = testRunResults.get(0).getName();
+        Map<String, String> finalRunMetrics = new HashMap<>();
+        HashMap<String, Metric> finalRunProtoMetrics = new HashMap<>();
+        Map<String, LogFile> finalRunLoggedFiles = new HashMap<>();
+        Map<TestDescription, TestResult> finalTestResults =
+                new HashMap<TestDescription, TestResult>();
+
+        for (TestRunResult eachRunResult : testRunResults) {
+            // Check all mTestRunNames are the same.
+            if (!testRunName.equals(eachRunResult.getName())) {
+                throw new IllegalArgumentException(
+                        String.format(
+                                "Unabled to merge TestRunResults: The run results names are "
+                                        + "different (%s, %s)",
+                                testRunName, eachRunResult.getName()));
+            }
+            // Keep the last TestRunResult's RunMetrics, ProtoMetrics and logFiles.
+            // TODO: Currently we keep a single item when multiple TestRunResult have the same
+            // keys. In the future, we may want to improve this logic.
+            finalRunMetrics.putAll(eachRunResult.getRunMetrics());
+            finalRunProtoMetrics.putAll(eachRunResult.getRunProtoMetrics());
+            finalRunLoggedFiles.putAll(eachRunResult.getRunLoggedFiles());
+            // TODO: We are not handling the TestResult log files in the merging logic (different
+            // from the TestRunResult log files). Need to improve in the future.
+            for (Map.Entry<TestDescription, TestResult> testResultEntry :
+                    eachRunResult.getTestResults().entrySet()) {
+                if (!finalTestResults.containsKey(testResultEntry.getKey())) {
+                    TestResult newResult = TestResult.clone(testResultEntry.getValue());
+                    finalTestResults.put(testResultEntry.getKey(), newResult);
+                } else {
+                    /**
+                     * Merge the same testcase's TestResults. - Test status is the final run's
+                     * status, - Test stack trace is the concatenation of each TestResult's stack
+                     * traces. - Test start time is the first TestResult's start time. - Test end
+                     * time is the last TestResult's end time. - Test metrics is the first
+                     * TestResult's metrics.
+                     */
+                    TestResult existingResult = finalTestResults.get(testResultEntry.getKey());
+                    // If the test passes, then it doesn't have stack trace.
+                    if (testResultEntry.getValue().getStackTrace() != null) {
+                        if (existingResult.getStackTrace() != null) {
+                            String stackTrace =
+                                    String.format(
+                                            "%s\n%s",
+                                            existingResult.getStackTrace(),
+                                            testResultEntry.getValue().getStackTrace());
+                            existingResult.setStackTrace(stackTrace);
+                        } else {
+                            existingResult.setStackTrace(
+                                    testResultEntry.getValue().getStackTrace());
+                        }
+                    }
+                    existingResult.setStatus(testResultEntry.getValue().getStatus());
+                    existingResult.setEndTime(testResultEntry.getValue().getEndTime());
+                    finalTestResults.put(testResultEntry.getKey(), existingResult);
+                }
+            }
+        }
+        finalRunResult.mTestRunName = testRunName;
+        finalRunResult.mRunMetrics = finalRunMetrics;
+        finalRunResult.mRunProtoMetrics = finalRunProtoMetrics;
+        finalRunResult.mRunLoggedFiles = finalRunLoggedFiles;
+        finalRunResult.mTestResults = finalTestResults;
+        return finalRunResult;
     }
 }
