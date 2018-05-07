@@ -52,14 +52,14 @@ FIND_REFERENCE_TYPE = atest_enum.AtestEnum(['CLASS', 'QUALIFIED_CLASS',
 # Unix find commands for searching for test files based on test type input.
 # Note: Find (unlike grep) exits with status 0 if nothing found.
 FIND_CMDS = {
-    FIND_REFERENCE_TYPE.CLASS : r"find %s -type d -name \".*\" -prune -o -type "
-                                r"f -name '%s.java' -print",
-    FIND_REFERENCE_TYPE.QUALIFIED_CLASS: r"find %s -type d -name \".*\" -prune "
-                                         r"-o -wholename '*%s.java' -print",
-    FIND_REFERENCE_TYPE.PACKAGE: r"find %s -type d -name \".*\" -prune -o "
-                                 r"-wholename '*%s' -type d -print",
-    FIND_REFERENCE_TYPE.INTEGRATION: r"find %s -type d -name \".*\" -prune -o "
-                                     r"-wholename '*%s.xml' -print"
+    FIND_REFERENCE_TYPE.CLASS : r"find %s -type d %s -prune -o -type f -name "
+                                r"'%s.java' -print",
+    FIND_REFERENCE_TYPE.QUALIFIED_CLASS: r"find %s -type d %s -prune -o "
+                                         r"-wholename '*%s.java' -print",
+    FIND_REFERENCE_TYPE.PACKAGE: r"find %s -type d %s -prune -o -wholename "
+                                 r"'*%s' -type d -print",
+    FIND_REFERENCE_TYPE.INTEGRATION: r"find %s -type d %s -prune -o -wholename "
+                                     r"'*%s.xml' -print"
 }
 
 # XML parsing related constants.
@@ -190,6 +190,75 @@ def extract_test_path(output):
     return tests[test_index]
 
 
+def static_var(varname, value):
+    """Decorator to cache static variable."""
+
+    def fun_var_decorate(func):
+        """Set the static variable in a function."""
+        setattr(func, varname, value)
+        return func
+    return fun_var_decorate
+
+
+@static_var("cached_ignore_dirs", [])
+def _get_ignored_dirs():
+    """Get ignore dirs in find command.
+
+    Since we can't construct a single find cmd to find the target and
+    filter-out the dir with .out-dir, .find-ignore and $OUT-DIR. We have
+    to run the 1st find cmd to find these dirs. Then, we can use these
+    results to generate the real find cmd.
+
+    Return:
+        A list of the ignore dirs.
+    """
+    out_dirs = _get_ignored_dirs.cached_ignore_dirs
+    if not out_dirs:
+        build_top = os.environ.get(constants.ANDROID_BUILD_TOP)
+        find_out_dir_cmd = (r'find %s -maxdepth 2 '
+                            r'-type f \( -name ".out-dir" -o -name '
+                            r'".find-ignore" \)') % build_top
+        out_files = subprocess.check_output(find_out_dir_cmd, shell=True)
+        # Get all dirs with .out-dir or .find-ignore
+        if out_files:
+            out_files = out_files.splitlines()
+            for out_file in out_files:
+                if out_file:
+                    out_dirs.append(os.path.dirname(out_file.strip()))
+        # Get the out folder if user specified $OUT_DIR
+        custom_out_dir = os.environ.get(constants.ANDROID_OUT_DIR)
+        if custom_out_dir:
+            user_out_dir = None
+            if os.path.isabs(custom_out_dir):
+                user_out_dir = custom_out_dir
+            else:
+                user_out_dir = os.path.join(build_top, custom_out_dir)
+            # only ignore the out_dir when it under $ANDROID_BUILD_TOP
+            if build_top in user_out_dir:
+                if user_out_dir not in out_dirs:
+                    out_dirs.append(user_out_dir)
+        _get_ignored_dirs.cached_ignore_dirs = out_dirs
+    return out_dirs
+
+
+def _get_prune_cond_of_ignored_dirs():
+    """Get the prune condition of ignore dirs.
+
+    Generation a string of the prune condition in the find command.
+    It will filter-out the dir with .out-dir, .find-ignore and $OUT-DIR.
+    Because they are the out dirs, we don't have to find them.
+
+    Return:
+        A string of the prune condition of the ignore dirs.
+    """
+    out_dirs = _get_ignored_dirs()
+    prune_cond = r'\( -name ".*"'
+    for out_dir in out_dirs:
+        prune_cond += r' -o -path %s' % out_dir
+    prune_cond += r' \)'
+    return prune_cond
+
+
 def run_find_cmd(ref_type, search_dir, target):
     """Find a path to a target given a search dir and a target name.
 
@@ -201,7 +270,8 @@ def run_find_cmd(ref_type, search_dir, target):
     Return:
         A string of the path to the target.
     """
-    find_cmd = FIND_CMDS[ref_type] % (search_dir, target)
+    prune_cond = _get_prune_cond_of_ignored_dirs()
+    find_cmd = FIND_CMDS[ref_type] % (search_dir, prune_cond, target)
     start = time.time()
     ref_name = FIND_REFERENCE_TYPE[ref_type]
     logging.debug('Executing %s find cmd: %s', ref_name, find_cmd)
