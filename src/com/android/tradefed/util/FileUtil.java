@@ -240,8 +240,9 @@ public class FileUtil {
         // Silence the scary process exception when chmod is missing, we will log instead.
         CommandResult result = RunUtil.getDefault().runTimedCmdSilently(10 * 1000, sChmod);
         // We expect a status fail because 'chmod' requires arguments.
+        String stderr = result.getStderr();
         if (CommandStatus.FAILED.equals(result.getStatus()) &&
-                result.getStderr().contains("chmod: missing operand")) {
+                (stderr.contains("chmod: missing operand") || stderr.contains("usage: "))) {
             return true;
         }
         CLog.w("Chmod is not supported by this OS.");

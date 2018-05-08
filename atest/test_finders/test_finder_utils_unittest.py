@@ -237,6 +237,64 @@ class TestFinderUtilsUnittests(unittest.TestCase):
                                                        mock_module_info),
             VTS_XML_TARGETS)
 
+    @mock.patch('subprocess.check_output')
+    def test_get_ignored_dirs(self, _mock_check_output):
+        """Test _get_ignored_dirs method."""
+        build_top = '/a/b'
+        _mock_check_output.return_value = ('/a/b/c/.find-ignore\n'
+                                           '/a/b/out/.out-dir\n'
+                                           '/a/b/d/.out-dir\n\n')
+        # Case 1: $OUT_DIR = ''. No customized out dir.
+        os_environ_mock = {constants.ANDROID_BUILD_TOP: build_top,
+                           constants.ANDROID_OUT_DIR: ''}
+        with mock.patch.dict('os.environ', os_environ_mock, clear=True):
+            correct_ignore_dirs = ['/a/b/c', '/a/b/out', '/a/b/d']
+            ignore_dirs = test_finder_utils._get_ignored_dirs()
+            self.assertEqual(ignore_dirs, correct_ignore_dirs)
+        # Case 2: $OUT_DIR = 'out2'
+        test_finder_utils._get_ignored_dirs.cached_ignore_dirs = []
+        os_environ_mock = {constants.ANDROID_BUILD_TOP: build_top,
+                           constants.ANDROID_OUT_DIR: 'out2'}
+        with mock.patch.dict('os.environ', os_environ_mock, clear=True):
+            correct_ignore_dirs = ['/a/b/c', '/a/b/out', '/a/b/d', '/a/b/out2']
+            ignore_dirs = test_finder_utils._get_ignored_dirs()
+            self.assertEqual(ignore_dirs, correct_ignore_dirs)
+        # Case 3: The $OUT_DIR is abs dir but not under $ANDROID_BUILD_TOP
+        test_finder_utils._get_ignored_dirs.cached_ignore_dirs = []
+        os_environ_mock = {constants.ANDROID_BUILD_TOP: build_top,
+                           constants.ANDROID_OUT_DIR: '/x/y/e/g'}
+        with mock.patch.dict('os.environ', os_environ_mock, clear=True):
+            correct_ignore_dirs = ['/a/b/c', '/a/b/out', '/a/b/d']
+            ignore_dirs = test_finder_utils._get_ignored_dirs()
+            self.assertEqual(ignore_dirs, correct_ignore_dirs)
+        # Case 4: The $OUT_DIR is abs dir and under $ANDROID_BUILD_TOP
+        test_finder_utils._get_ignored_dirs.cached_ignore_dirs = []
+        os_environ_mock = {constants.ANDROID_BUILD_TOP: build_top,
+                           constants.ANDROID_OUT_DIR: '/a/b/e/g'}
+        with mock.patch.dict('os.environ', os_environ_mock, clear=True):
+            correct_ignore_dirs = ['/a/b/c', '/a/b/out', '/a/b/d', '/a/b/e/g']
+            ignore_dirs = test_finder_utils._get_ignored_dirs()
+            self.assertEqual(ignore_dirs, correct_ignore_dirs)
+        # Case 5: There is a file of '.out-dir' under $OUT_DIR.
+        test_finder_utils._get_ignored_dirs.cached_ignore_dirs = []
+        os_environ_mock = {constants.ANDROID_BUILD_TOP: build_top,
+                           constants.ANDROID_OUT_DIR: 'out'}
+        with mock.patch.dict('os.environ', os_environ_mock, clear=True):
+            correct_ignore_dirs = ['/a/b/c', '/a/b/out', '/a/b/d']
+            ignore_dirs = test_finder_utils._get_ignored_dirs()
+            self.assertEqual(ignore_dirs, correct_ignore_dirs)
+        # Case 6: Testing cache. All of the changes are useless.
+        _mock_check_output.return_value = ('/a/b/X/.find-ignore\n'
+                                           '/a/b/YY/.out-dir\n'
+                                           '/a/b/d/.out-dir\n\n')
+        os_environ_mock = {constants.ANDROID_BUILD_TOP: build_top,
+                           constants.ANDROID_OUT_DIR: 'new'}
+        with mock.patch.dict('os.environ', os_environ_mock, clear=True):
+            cached_answer = ['/a/b/c', '/a/b/out', '/a/b/d']
+            none_cached_answer = ['/a/b/X', '/a/b/YY', '/a/b/d', 'a/b/new']
+            ignore_dirs = test_finder_utils._get_ignored_dirs()
+            self.assertEqual(ignore_dirs, cached_answer)
+            self.assertNotEqual(ignore_dirs, none_cached_answer)
 
 if __name__ == '__main__':
     unittest.main()
