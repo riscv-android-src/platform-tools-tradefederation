@@ -133,6 +133,15 @@ public class LogcatUpdaterEventParser implements Closeable {
         mInternalParser = new LogcatParser();
 
         // events registered first are matched first
+
+        registerEventTrigger(
+                "SystemUpdate",
+                "[Control,InstallationControl] Update URL changed from",
+                UpdaterEventType.UPDATE_URL_CHANGED);
+        registerEventTrigger(
+                "SystemUpdate",
+                "[Execution,SynchronizedUpdateEngine] start",
+                UpdaterEventType.UPDATE_URL_CHANGED);
         registerEventTrigger(
                 "update_engine", "Using this install plan:", UpdaterEventType.UPDATE_START);
         registerEventTrigger(
