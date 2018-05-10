@@ -41,11 +41,12 @@ _TEST_FINDERS = {
 # 6. INTEGRATION: xml file name in one of the 4 integration config directories.
 # 7. SUITE: Value of the "run-suite-tag" in xml config file in 4 config dirs.
 #           Same as value of "test-suite-tag" in AndroidTest.xml files.
+# 8. CC_CLASS: Test case in cc file.
 _REFERENCE_TYPE = atest_enum.AtestEnum(['MODULE', 'CLASS', 'QUALIFIED_CLASS',
                                         'MODULE_CLASS', 'PACKAGE',
                                         'MODULE_PACKAGE', 'MODULE_FILE_PATH',
                                         'INTEGRATION_FILE_PATH', 'INTEGRATION',
-                                        'SUITE'])
+                                        'SUITE', 'CC_CLASS'])
 
 _REF_TYPE_TO_FUNC_MAP = {
     _REFERENCE_TYPE.MODULE: module_finder.ModuleFinder.find_test_by_module_name,
@@ -59,6 +60,8 @@ _REF_TYPE_TO_FUNC_MAP = {
         tf_integration_finder.TFIntegrationFinder.find_int_test_by_path,
     _REFERENCE_TYPE.INTEGRATION:
         tf_integration_finder.TFIntegrationFinder.find_test_by_integration_name,
+    _REFERENCE_TYPE.CC_CLASS:
+        module_finder.ModuleFinder.find_test_by_cc_class_name,
 }
 
 
@@ -140,7 +143,11 @@ def _get_test_reference_types(ref):
         return [_REFERENCE_TYPE.INTEGRATION,
                 _REFERENCE_TYPE.MODULE_CLASS]
     if '.' in ref:
-        if ref_end in ('java', 'bp', 'mk'):
+        # The string of ref_end possibly includes specific mathods, e.g.
+        # foo.java#method, so let ref_end be the first part of splitting '#'.
+        if "#" in ref_end:
+            ref_end = ref_end.split('#')[0]
+        if ref_end in ('java', 'bp', 'mk', 'cc', 'cpp'):
             return [_REFERENCE_TYPE.MODULE_FILE_PATH]
         if ref_end == 'xml':
             return [_REFERENCE_TYPE.INTEGRATION_FILE_PATH]
@@ -154,7 +161,8 @@ def _get_test_reference_types(ref):
             # TODO: Comment in SUITE when it's supported
             # REFERENCE_TYPE.SUITE,
             _REFERENCE_TYPE.MODULE,
-            _REFERENCE_TYPE.CLASS]
+            _REFERENCE_TYPE.CLASS,
+            _REFERENCE_TYPE.CC_CLASS]
 
 
 def _get_registered_find_methods(module_info):
