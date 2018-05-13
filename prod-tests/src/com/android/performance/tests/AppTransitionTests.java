@@ -118,9 +118,6 @@ public class AppTransitionTests implements IRemoteTest, IDeviceTest {
     @Option(name = "launcher-activity", description = "Home activity name")
     private String mLauncherActivity = ".NexusLauncherActivity";
 
-    @Option(name = "recents-activity", description = "Recents activity name")
-    private String mRecentsActivity = ".recents.RecentsActivity";
-
     @Option(name = "class",
             description = "test class to run, may be repeated; multiple classess will be run"
                     + " in the same order as provided in command line")
@@ -491,11 +488,12 @@ public class AppTransitionTests implements IRemoteTest, IDeviceTest {
             if (null != prevAppName) {
                 if (delayItem.getComponentName().contains(mLauncherActivity)) {
                     if (appToHomeKeyTransitionDelayMap.containsKey(prevAppName)) {
-                        appToHomeKeyTransitionDelayMap.get(prevAppName).add(
-                                delayItem.getTransitionDelay());
+                        appToHomeKeyTransitionDelayMap
+                                .get(prevAppName)
+                                .add(delayItem.getWindowDrawnDelay());
                     } else {
                         List<Long> delayTimeList = new ArrayList<Long>();
-                        delayTimeList.add(delayItem.getTransitionDelay());
+                        delayTimeList.add(delayItem.getWindowDrawnDelay());
                         appToHomeKeyTransitionDelayMap.put(prevAppName, delayTimeList);
                     }
                     prevAppName = null;
@@ -527,10 +525,7 @@ public class AppTransitionTests implements IRemoteTest, IDeviceTest {
     }
 
     /**
-     * Analyze and report app to recents transition delay info. Not accounting the first
-     * launch transition delay to avoid the cold launch of the apps or the cold launch of
-     * recents activity. The first launch in the iterations cannot always be cold launch for
-     * the app as well because the apps could be part of preapps list.
+     * Analyze and report app to recents transition delay info.
      *
      * @param transitionDelayItems
      */
@@ -538,19 +533,15 @@ public class AppTransitionTests implements IRemoteTest, IDeviceTest {
         Map<String, String> cmpNameAppMap = reverseAppCmpInfoMap(getAppComponentInfoMap());
         Map<String, List<Long>> appKeyTransitionDelayMap = new HashMap<>();
         String prevAppName = null;
-        Long prevTransitionDelay = -1L;
         for (TransitionDelayItem delayItem : transitionDelayItems) {
-            if (delayItem.getComponentName().contains(mRecentsActivity)) {
-                if (prevTransitionDelay != -1) {
-                    if (appKeyTransitionDelayMap.containsKey(prevAppName)) {
-                        appKeyTransitionDelayMap.get(prevAppName).add(
-                                delayItem.getTransitionDelay());
-                    } else {
-                        if (null != prevAppName) {
-                            List<Long> delayTimeList = new ArrayList<Long>();
-                            delayTimeList.add(delayItem.getTransitionDelay());
-                            appKeyTransitionDelayMap.put(prevAppName, delayTimeList);
-                        }
+            if (delayItem.getComponentName().contains(mLauncherActivity)) {
+                if (appKeyTransitionDelayMap.containsKey(prevAppName)) {
+                    appKeyTransitionDelayMap.get(prevAppName).add(delayItem.getWindowDrawnDelay());
+                } else {
+                    if (null != prevAppName) {
+                        List<Long> delayTimeList = new ArrayList<Long>();
+                        delayTimeList.add(delayItem.getWindowDrawnDelay());
+                        appKeyTransitionDelayMap.put(prevAppName, delayTimeList);
                     }
                 }
                 prevAppName = null;
@@ -559,7 +550,6 @@ public class AppTransitionTests implements IRemoteTest, IDeviceTest {
 
             if (cmpNameAppMap.containsKey(delayItem.getComponentName())) {
                 prevAppName = cmpNameAppMap.get(delayItem.getComponentName());
-                prevTransitionDelay = delayItem.getTransitionDelay();
             }
         }
         //Removing the first cold launch to recents transition delay.
@@ -580,7 +570,7 @@ public class AppTransitionTests implements IRemoteTest, IDeviceTest {
         Map<String, List<Long>> appKeyTransitionDelayMap = new HashMap<>();
         boolean isRecentsBefore = false;
         for (TransitionDelayItem delayItem : transitionDelayItems) {
-            if (delayItem.getComponentName().contains(mRecentsActivity)) {
+            if (delayItem.getComponentName().contains(mLauncherActivity)) {
                 isRecentsBefore = true;
                 continue;
             }
@@ -596,8 +586,8 @@ public class AppTransitionTests implements IRemoteTest, IDeviceTest {
                     delayTimeList.add(delayItem.getTransitionDelay());
                     appKeyTransitionDelayMap.put(appName, delayTimeList);
                 }
-                isRecentsBefore = false;
             }
+            isRecentsBefore = false;
         }
         removeAdditionalLaunchInfo(appKeyTransitionDelayMap);
         computeAndUploadResults(TEST_HOT_LAUNCH_FROM_RECENTS, appKeyTransitionDelayMap);
@@ -632,7 +622,7 @@ public class AppTransitionTests implements IRemoteTest, IDeviceTest {
      */
     private void removeAdditionalLaunchInfo(Map<String, List<Long>> appKeyTransitionDelayMap) {
         for (List<Long> delayList : appKeyTransitionDelayMap.values()) {
-            if (delayList.size() == (mLaunchIteration + 1)) {
+            while (delayList.size() > mLaunchIteration) {
                 delayList.remove(0);
             }
         }
