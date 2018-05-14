@@ -668,6 +668,11 @@ public abstract class ITestSuite
         return mDevice;
     }
 
+    /** Set the value of mAbiName */
+    public void setAbiName(String abiName) {
+        mAbiName = abiName;
+    }
+
     /**
      * {@inheritDoc}
      */
@@ -687,6 +692,11 @@ public abstract class ITestSuite
     @Override
     public void setDeviceInfos(Map<ITestDevice, IBuildInfo> deviceInfos) {
         mDeviceInfos = deviceInfos;
+    }
+
+    /** Set the value of mPrimaryAbiRun */
+    public void setPrimaryAbiRun(boolean primaryAbiRun) {
+        mPrimaryAbiRun = primaryAbiRun;
     }
 
     /**
