@@ -15,18 +15,20 @@
 -->
 <!-- Test configuration for longevity runs. -->
 <configuration description="Test configuration for longevity runs.">
-    <!-- Shuffle and run the longevity tests 100 times. The test timeout is
-         5 minutes and the test suite timeout is 10 mins.
-    -->
     <test class="com.android.tradefed.testtype.AndroidJUnitTest" >
+        <!-- Test run setup and configuration. -->
         <option name="package" value="android.longevity.platform" />
         <option name="class" value="android.longevity.platform.PhoneSuite" />
         <option name="instrumentation-arg" key="iterations" value="100" />
         <option name="instrumentation-arg" key="shuffle" value="true" />
-        <!-- Test timeouts in 5 minutes. -->
+
+        <!-- Timeout configurations. Test: 5m. Suite: 10h. Battery: 5%. -->
         <option name="instrumentation-arg" key="timeout_msec" value="300000" />
-        <!-- Suite timeouts in 10 hours. -->
         <option name="instrumentation-arg" key="suite-timeout_msec" value="36000000" />
         <option name="instrumentation-arg" key="min-battery" value="0.05" />
-    </test>
+
+        <!-- Override or negate instrumentation defaults. -->
+        <option name="shell-timeout" value="0" />
+        <option name="test-timeout" value="0" />
+      </test>
 </configuration>
