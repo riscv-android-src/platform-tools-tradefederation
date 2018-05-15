@@ -83,11 +83,28 @@ public class DeviceSelectionOptions implements IDeviceSelection {
         "amount. Scale: 0-100")
     private Integer mMaxBattery = null;
 
+    @Option(
+        name = "max-battery-temperature",
+        description =
+                "only run this test on a device whose battery temperature is strictly "
+                        + "less than the given amount. Scale: Degrees celsius"
+    )
+    private Integer mMaxBatteryTemperature = null;
+
     @Option(name = "require-battery-check", description = "_If_ --min-battery and/or " +
             "--max-battery is specified, skip devices that have an unknown battery level.  Note " +
             "that this may leave restart-looping devices in limbo indefinitely without manual " +
             "intervention.")
     private boolean mRequireBatteryCheck = true;
+
+    @Option(
+        name = "require-battery-temp-check",
+        description =
+            "_If_ --max-battery-temperature is specified, skip devices that have an " +
+                    "unknown battery temperature.  Note that this may leave restart-looping " +
+                    "devices in limbo indefinitely without manual intervention."
+    )
+    private boolean mRequireBatteryTemperatureCheck = true;
 
     @Option(name = "min-sdk-level", description = "Only run this test on devices that support " +
             "this Android SDK/API level")
@@ -276,6 +293,16 @@ public class DeviceSelectionOptions implements IDeviceSelection {
         return mMaxBattery;
     }
 
+    /** Sets the maximum battery level */
+    public void setMaxBatteryTemperature(Integer maxBatteryTemperature) {
+        mMaxBatteryTemperature = maxBatteryTemperature;
+    }
+
+    /** Gets the requested maximum battery level */
+    public Integer getMaxBatteryTemperature() {
+        return mMaxBatteryTemperature;
+    }
+
     /**
      * Sets whether battery check is required for devices with unknown battery level
      */
@@ -288,6 +315,16 @@ public class DeviceSelectionOptions implements IDeviceSelection {
      */
     public boolean getRequireBatteryCheck() {
         return mRequireBatteryCheck;
+    }
+
+    /** Sets whether battery temp check is required for devices with unknown battery temperature */
+    public void setRequireBatteryTempratureCheck(boolean requireCheckTemprature) {
+        mRequireBatteryTemperatureCheck = requireCheckTemprature;
+    }
+
+    /** Gets whether battery temp check is required for devices with unknown battery temperature */
+    public boolean getRequireBatteryTemperatureCheck() {
+        return mRequireBatteryTemperatureCheck;
     }
 
     /**
@@ -401,6 +438,30 @@ public class DeviceSelectionOptions implements IDeviceSelection {
             }
             if (isLessEqAndNotNull(mMaxBattery, deviceBattery)) {
                 // mMaxBattery <= deviceBattery
+                return false;
+            }
+        }
+        if (mMaxBatteryTemperature != null
+                && (!(device instanceof StubDevice) || (device instanceof FastbootDevice))) {
+            // Only check battery temp on physical device. (FastbootDevice placeholder is
+            // always for a physical device
+
+            if (device instanceof FastbootDevice) {
+                // Cannot get battery temperature
+                return false;
+            }
+
+            // Extract the temperature from the file
+            IBatteryTemperature temp = new BatteryTemperature();
+            Integer deviceBatteryTemp = temp.getBatteryTemperature(device);
+
+            if (mRequireBatteryTemperatureCheck && deviceBatteryTemp <= 0) {
+                // Couldn't determine battery temp when that check is required; reject device
+                return false;
+            }
+
+            if (isLessEqAndNotNull(mMaxBatteryTemperature, deviceBatteryTemp)) {
+                // mMaxBatteryTemperature <= deviceBatteryTemp
                 return false;
             }
         }
