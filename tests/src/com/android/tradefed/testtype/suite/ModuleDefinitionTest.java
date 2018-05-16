@@ -179,9 +179,7 @@ public class ModuleDefinitionTest {
                 .addDeviceBuildInfo(DEFAULT_DEVICE_NAME, mMockBuildInfo);
     }
 
-    /**
-     * Helper for replaying mocks.
-     */
+    /** Helper for replaying mocks. */
     private void replayMocks() {
         EasyMock.replay(mMockListener, mMockLogSaver, mMockLogSaverListener, mMockDevice);
         for (IRemoteTest test : mTestList) {
@@ -196,9 +194,7 @@ public class ModuleDefinitionTest {
         }
     }
 
-    /**
-     * Helper for verifying mocks.
-     */
+    /** Helper for verifying mocks. */
     private void verifyMocks() {
         EasyMock.verify(mMockListener, mMockLogSaver, mMockLogSaverListener, mMockDevice);
         for (IRemoteTest test : mTestList) {
@@ -227,7 +223,7 @@ public class ModuleDefinitionTest {
         mMockCleaner.setUp(EasyMock.eq(mMockDevice), EasyMock.eq(mMockBuildInfo));
         mMockTest.setBuild(EasyMock.eq(mMockBuildInfo));
         mMockTest.setDevice(EasyMock.eq(mMockDevice));
-        mMockTest.run((ITestInvocationListener)EasyMock.anyObject());
+        mMockTest.run((ITestInvocationListener) EasyMock.anyObject());
         EasyMock.expect(mMockCleaner.isTearDownDisabled()).andStubReturn(false);
         mMockCleaner.tearDown(EasyMock.eq(mMockDevice), EasyMock.eq(mMockBuildInfo),
                 EasyMock.isNull());
