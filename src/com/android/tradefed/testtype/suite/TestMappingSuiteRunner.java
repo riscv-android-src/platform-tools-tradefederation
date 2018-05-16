@@ -50,7 +50,7 @@ public class TestMappingSuiteRunner extends BaseTestSuite {
      * presubmit check to only run a list of tests related to the Cls to be verifies. The list of
      * tests are compiled from the related TEST_MAPPING files in modified source code.
      *
-     * @returns a map of test name to the {@link IConfiguration} object of each test.
+     * @return a map of test name to the {@link IConfiguration} object of each test.
      */
     @Override
     public LinkedHashMap<String, IConfiguration> loadTests() {
