@@ -333,6 +333,18 @@ def is_robolectric_module(mod_info):
                 constants.MODULE_CLASS_ROBOLECTRIC)
     return False
 
+def is_2nd_arch_module(module_info):
+    """Check if a codule is 2nd architecture module
+
+    Args:
+        module_info: ModuleInfo to check.
+
+    Returns:
+        True is the module is 2nd architecture module, False otherwise.
+
+    """
+    for_2nd_arch = module_info.get(constants.MODULE_FOR_2ND_ARCH, [])
+    return for_2nd_arch and for_2nd_arch[0]
 
 def find_parent_module_dir(root_dir, start_dir, module_info):
     """From current dir search up file tree until root dir for module dir.
@@ -365,7 +377,8 @@ def find_parent_module_dir(root_dir, start_dir, module_info):
             rel_dir = os.path.relpath(current_dir, root_dir)
             module_list = module_info.path_to_module_info.get(rel_dir, [])
             # Verify only one module at this level has an auto_test_config.
-            if len([x for x in module_list if x.get('auto_test_config')]) == 1:
+            if len([x for x in module_list
+                    if x.get('auto_test_config') and not is_2nd_arch_module(x)]) == 1:
                 # We found a single test module!
                 module_dir = rel_dir
                 # But keep searching in case there's an AndroidTest.xml in a
