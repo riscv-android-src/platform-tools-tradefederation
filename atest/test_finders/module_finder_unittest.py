@@ -444,8 +444,10 @@ class ModuleFinderUnittests(unittest.TestCase):
     @mock.patch.object(module_finder.ModuleFinder, '_is_auto_gen_test_config')
     def test_has_test_config(self, mock_is_auto_gen):
         """Test _has_test_config."""
-        mod_info = {constants.MODULE_PATH:[uc.TEST_DATA_DIR]}
         mock_is_auto_gen.return_value = True
+        self.mod_finder.root_dir = uc.TEST_DATA_DIR
+        mod_info = {constants.MODULE_PATH:[uc.RELATIVE_TEST_DATA_DIR]}
+
         # Validate we see the config when it's auto-generated.
         self.assertTrue(self.mod_finder._has_test_config(mod_info))
         self.assertTrue(self.mod_finder._has_test_config({}))
