@@ -1609,6 +1609,9 @@ public class ConfigurationFactoryTest extends TestCase {
         assertFalse(deviceSetup2.getTestBooleanOption());
         // default value of test-boolean-option-false is false, we set it to true.
         assertTrue(deviceSetup2.getTestBooleanOptionFalse());
+
+        assertFalse(config.isDeviceConfiguredFake("device1"));
+        assertTrue(config.isDeviceConfiguredFake("device2"));
     }
 
     /** Test that a configuration with all the device marked as isReal=false will be rejected. */

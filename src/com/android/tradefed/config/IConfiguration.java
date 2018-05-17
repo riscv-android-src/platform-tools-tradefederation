@@ -409,6 +409,9 @@ public interface IConfiguration {
     public void setConfigurationObjectList(String name, List<?> configList)
             throws ConfigurationException;
 
+    /** Returns whether or not a configured device is tagged isFake=true or not. */
+    public boolean isDeviceConfiguredFake(String deviceName);
+
     /**
      * Set the config {@link Option} fields with given set of command line arguments
      * <p/>
