@@ -64,7 +64,7 @@ public class LogcatCrashResultForwarderTest {
      */
     @Test
     @SuppressWarnings("MustBeClosedChecker")
-    public void testCaptureTestCrash() {
+    public void testCaptureTestCrash_oneCrashingLogcat() {
         mReporter = new LogcatCrashResultForwarder(mMockDevice, mMockListener);
         TestDescription test = new TestDescription("com.class", "test");
 
@@ -91,11 +91,15 @@ public class LogcatCrashResultForwarderTest {
                         "instrumentation failed. reason: 'Process crashed.'"
                                 + "\nCrash Message:Runtime"));
         mMockListener.testEnded(test, 5L, new HashMap<String, String>());
+        // If a run failure follows, expect it to contain the additional stack too.
+        mMockListener.testRunFailed(
+                EasyMock.contains("Something went wrong.\nCrash Message:Runtime"));
 
         EasyMock.replay(mMockListener, mMockDevice);
         mReporter.testStarted(test, 0L);
         mReporter.testFailed(test, "instrumentation failed. reason: 'Process crashed.'");
         mReporter.testEnded(test, 5L, new HashMap<String, String>());
+        mReporter.testRunFailed("Something went wrong.");
         EasyMock.verify(mMockListener, mMockDevice);
     }
 }
