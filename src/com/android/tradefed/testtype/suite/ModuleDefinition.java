@@ -266,6 +266,25 @@ public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestColl
             List<ITestInvocationListener> moduleLevelListeners,
             TestFailureListener failureListener)
             throws DeviceNotAvailableException {
+        run(listener, moduleLevelListeners, failureListener, 1);
+    }
+
+    /**
+     * Run all the {@link IRemoteTest} contained in the module and use all the preparers before and
+     * after to setup and clean the device.
+     *
+     * @param listener the {@link ITestInvocationListener} where to report results.
+     * @param moduleLevelListeners The list of listeners at the module level.
+     * @param failureListener a particular listener to collect logs on testFail. Can be null.
+     * @param maxRunLimit the max number of runs for each testcase.
+     * @throws DeviceNotAvailableException in case of device going offline.
+     */
+    public final void run(
+            ITestInvocationListener listener,
+            List<ITestInvocationListener> moduleLevelListeners,
+            TestFailureListener failureListener,
+            int maxRunLimit)
+            throws DeviceNotAvailableException {
         // Load extra configuration for the module from module_controller
         // TODO: make module_controller a full TF object
         boolean skipTestCases = false;
@@ -365,7 +384,11 @@ public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestColl
 
                 GranularRetriableTestWrapper retriableTest =
                         prepareGranularRetriableWrapper(
-                                test, failureListener, moduleLevelListeners, skipTestCases);
+                                test,
+                                failureListener,
+                                moduleLevelListeners,
+                                skipTestCases,
+                                maxRunLimit);
                 try {
                     retriableTest.run(listener);
                 } catch (DeviceNotAvailableException dnae) {
@@ -384,7 +407,10 @@ public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestColl
                             getId());
                     throw dnae;
                 } finally {
-                    mTestsResults.addAll(retriableTest.getFinalTestRunResults());
+                    TestRunResult finalResult = retriableTest.getFinalTestRunResult();
+                    if (finalResult != null) {
+                        mTestsResults.add(finalResult);
+                    }
                     mExpectedTests += retriableTest.getNumIndividualTests();
                 }
                 // After the run, if the test failed (even after retry the final result passed) has
@@ -424,15 +450,18 @@ public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestColl
      * @param test the {@link IRemoteTest} that is being wrapped.
      * @param failureListener a particular listener to collect logs on testFail. Can be null.
      * @param skipTestCases A run strategy when SKIP_MODULE_TESTCASES is defined.
+     * @param maxRunLimit a rate-limiter on testcases retrying times.
      */
     @VisibleForTesting
     GranularRetriableTestWrapper prepareGranularRetriableWrapper(
             IRemoteTest test,
             TestFailureListener failureListener,
             List<ITestInvocationListener> moduleLevelListeners,
-            boolean skipTestCases) {
+            boolean skipTestCases,
+            int maxRunLimit) {
         GranularRetriableTestWrapper retriableTest =
-                new GranularRetriableTestWrapper(test, failureListener, moduleLevelListeners);
+                new GranularRetriableTestWrapper(
+                        test, failureListener, moduleLevelListeners, maxRunLimit);
         retriableTest.setModuleId(getId());
         retriableTest.setMarkTestsSkipped(skipTestCases);
         retriableTest.setMetricCollectors(mRunMetricCollectors);
