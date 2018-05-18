@@ -626,7 +626,8 @@ public class InstrumentationTest implements IDeviceTest, IResumableTest, ITestCo
                 new DefaultRemoteAndroidTestRunner(packageName, runnerName, device);
         String abiName = resolveAbiName();
         String runOptions = "";
-        if (!mHiddenApiChecks) {
+        // hidden-api-checks flag only exists in P and after.
+        if (!mHiddenApiChecks && getDevice().getApiLevel() >= 28) {
             runOptions += "--no-hidden-api-checks ";
         }
         if (abiName != null) {
