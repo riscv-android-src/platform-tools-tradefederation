@@ -55,6 +55,12 @@ import java.util.Map;
 
     /** {@inheritDoc} */
     @Override
+    public void testEnded(TestDescription test, HashMap<String, Metric> testMetrics) {
+        mJUnitListener.endTest(new TestIdentifierResult(test));
+    }
+
+    /** {@inheritDoc} */
+    @Override
     public void testFailed(TestDescription testId, String trace) {
         Test test = new TestIdentifierResult(testId);
         // TODO: is it accurate to represent the trace as AssertionFailedError?

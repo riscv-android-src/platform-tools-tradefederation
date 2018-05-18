@@ -21,13 +21,13 @@ import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.TestDescription;
+import com.android.tradefed.util.proto.TfMetricProtoUtil;
 
 import org.easymock.EasyMock;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
 
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -67,9 +67,9 @@ public class DeviceTestSuiteTest {
         listener.testStarted(test1);
         Map<String, String> metrics = new HashMap<>();
         metrics.put("key1", "metric1");
-        listener.testEnded(test1, metrics);
+        listener.testEnded(test1, TfMetricProtoUtil.upgradeConvert(metrics));
         listener.testStarted(test2);
-        listener.testEnded(test2, Collections.emptyMap());
+        listener.testEnded(test2, new HashMap<String, Metric>());
         listener.testRunEnded(EasyMock.anyLong(), (HashMap<String, Metric>) EasyMock.anyObject());
         EasyMock.replay(listener);
 
@@ -91,7 +91,7 @@ public class DeviceTestSuiteTest {
         listener.testStarted(test1);
         listener.testFailed(EasyMock.eq(test1),
                 EasyMock.contains(MockAbortTest.EXCEP_MSG));
-        listener.testEnded(test1, Collections.emptyMap());
+        listener.testEnded(test1, new HashMap<String, Metric>());
         listener.testRunFailed(EasyMock.contains(MockAbortTest.EXCEP_MSG));
         listener.testRunEnded(EasyMock.anyLong(), (HashMap<String, Metric>) EasyMock.anyObject());
         EasyMock.replay(listener);

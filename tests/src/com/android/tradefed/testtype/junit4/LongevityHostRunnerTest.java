@@ -15,26 +15,27 @@
  */
 package com.android.tradefed.testtype.junit4;
 
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
-import static org.mockito.Matchers.any;
 
 import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.config.Option;
 import com.android.tradefed.config.OptionSetter;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.invoker.IInvocationContext;
+import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.testtype.DeviceJUnit4ClassRunner;
 import com.android.tradefed.testtype.HostTest;
-import com.android.tradefed.testtype.IDeviceTest;
-import com.android.tradefed.testtype.IBuildReceiver;
 import com.android.tradefed.testtype.IAbi;
 import com.android.tradefed.testtype.IAbiReceiver;
-import com.android.tradefed.testtype.ISetOptionReceiver;
-import com.android.tradefed.testtype.IMultiDeviceTest;
+import com.android.tradefed.testtype.IBuildReceiver;
+import com.android.tradefed.testtype.IDeviceTest;
 import com.android.tradefed.testtype.IInvocationContextReceiver;
+import com.android.tradefed.testtype.IMultiDeviceTest;
+import com.android.tradefed.testtype.ISetOptionReceiver;
 
 import org.junit.Assert;
 import org.junit.Before;
@@ -232,7 +233,7 @@ public class LongevityHostRunnerTest {
         mHostTest.run(mMockListener);
         // Verify nothing failed, but something passed.
         verify(mMockListener, never()).testFailed(any(), any());
-        verify(mMockListener).testEnded(any(), (Map<String, String>) any());
+        verify(mMockListener).testEnded(any(), (HashMap<String, Metric>) any());
     }
 
     public class SetClassHostTest extends HostTest {
