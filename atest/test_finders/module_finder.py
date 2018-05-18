@@ -60,6 +60,7 @@ class ModuleFinder(test_finder_base.TestFinderBase):
         """Validate if this module has a test config.
 
         A module can have a test config in the following manner:
+          - The module name is not for 2nd architecture.
           - AndroidTest.xml at the module path.
           - Auto-generated config via the auto_test_config key in module-info.json.
 
@@ -69,6 +70,10 @@ class ModuleFinder(test_finder_base.TestFinderBase):
         Returns:
             True if this module has a test config, False otherwise.
         """
+        # Check if the module is for 2nd architecture.
+        if test_finder_utils.is_2nd_arch_module(mod_info):
+            return False
+
         # Check for AndroidTest.xml at the module path.
         for path in mod_info.get(constants.MODULE_PATH, []):
             if os.path.isfile(os.path.join(self.root_dir, path,

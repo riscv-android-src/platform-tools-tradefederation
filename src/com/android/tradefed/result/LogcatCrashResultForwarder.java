@@ -28,8 +28,8 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * Special ResultForwarder that extract a logcat crash and adds it to the failure message if it
- * detects a crash condition.
+ * Special listener: on failures (instrumentation process crashing) it will attempt to extract from
+ * the logcat the crash and adds it to the failure message associated with the test.
  */
 public class LogcatCrashResultForwarder extends ResultForwarder {
 
@@ -55,10 +55,7 @@ public class LogcatCrashResultForwarder extends ResultForwarder {
     @Override
     public void testFailed(TestDescription test, String trace) {
         // If the test case was detected as crashing the instrumentation, we had the crash to it.
-        if (trace.contains(ERROR_MESSAGE) && mStartTime != null) {
-            mLogcatItem = extractLogcat(mDevice, mStartTime);
-            trace = addJavaCrashToString(mLogcatItem, trace);
-        }
+        trace = extractCrashAndAddToMessage(trace, mStartTime);
         super.testFailed(test, trace);
     }
 
@@ -72,16 +69,14 @@ public class LogcatCrashResultForwarder extends ResultForwarder {
     @Override
     public void testRunFailed(String errorMessage) {
         // Also add the failure to the run failure if the testFailed generated it.
+        // A Process crash would end the instrumentation, so a testRunFailed is probably going to
+        // be raised for the same reason.
         if (mLogcatItem != null) {
             super.testRunFailed(addJavaCrashToString(mLogcatItem, errorMessage));
             mLogcatItem = null;
             return;
-        } else if (errorMessage.contains(ERROR_MESSAGE) && mLastStartTime != null) {
-            // If the test did not generate the crash but a crash is seen, only add it to the run
-            // failure message.
-            mLogcatItem = extractLogcat(mDevice, mLastStartTime);
-            errorMessage = addJavaCrashToString(mLogcatItem, errorMessage);
         }
+        errorMessage = extractCrashAndAddToMessage(errorMessage, mLastStartTime);
         super.testRunFailed(errorMessage);
         mLogcatItem = null;
     }
@@ -90,6 +85,15 @@ public class LogcatCrashResultForwarder extends ResultForwarder {
     public void testRunEnded(long elapsedTime, Map<String, String> runMetrics) {
         super.testRunEnded(elapsedTime, runMetrics);
         mLastStartTime = null;
+    }
+
+    /** Attempt to extract the crash from the logcat if the test was seen as started. */
+    private String extractCrashAndAddToMessage(String errorMessage, Long startTime) {
+        if (errorMessage.contains(ERROR_MESSAGE) && startTime != null) {
+            mLogcatItem = extractLogcat(mDevice, mStartTime);
+            errorMessage = addJavaCrashToString(mLogcatItem, errorMessage);
+        }
+        return errorMessage;
     }
 
     /**

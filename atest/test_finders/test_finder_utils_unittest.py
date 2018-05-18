@@ -296,5 +296,16 @@ class TestFinderUtilsUnittests(unittest.TestCase):
             self.assertEqual(ignore_dirs, cached_answer)
             self.assertNotEqual(ignore_dirs, none_cached_answer)
 
+    def test_is_2nd_arch_module(self):
+        """Test is_2nd_arch_module correctly detects the module."""
+        is_2nd_arch_module = {'for_2nd_arch': [True]}
+        is_not_2nd_arch_module = {'for_2nd_arch': [False]}
+        is_not_2nd_arch_module_again = {'for_2nd_arch': []}
+
+        self.assertTrue(test_finder_utils.is_2nd_arch_module(is_2nd_arch_module))
+        self.assertFalse(test_finder_utils.is_2nd_arch_module(is_not_2nd_arch_module))
+        self.assertFalse(test_finder_utils.is_2nd_arch_module(is_not_2nd_arch_module_again))
+        self.assertFalse(test_finder_utils.is_2nd_arch_module({}))
+
 if __name__ == '__main__':
     unittest.main()

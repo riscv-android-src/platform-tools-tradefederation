@@ -687,8 +687,7 @@ public class NativeDevice implements IManagedTestDevice {
     public CommandResult executeShellV2Command(
             String cmd, final long maxTimeoutForCommand, final TimeUnit timeUnit)
             throws DeviceNotAvailableException {
-        return executeShellV2Command(
-                cmd, getCommandTimeout(), TimeUnit.MILLISECONDS, MAX_RETRY_ATTEMPTS);
+        return executeShellV2Command(cmd, maxTimeoutForCommand, timeUnit, MAX_RETRY_ATTEMPTS);
     }
 
     /** {@inheritDoc} */

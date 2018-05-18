@@ -42,6 +42,24 @@ public class DeviceSelectionOptionsTest extends TestCase {
     private static final String DEVICE_TYPE = "charm";
     private static final String OTHER_DEVICE_TYPE = "strange";
 
+    // For mockBatteryTemperatureCheck
+    private static final String DUMPSYS_BATTERY_OUTPUT_TEMPLATE =
+            "Current Battery Service state:\n"
+                    + "  AC powered: true\n"
+                    + "  USB powered: false\n"
+                    + "  Wireless powered: false\n"
+                    + "  Max charging current: 1500000\n"
+                    + "  Max charging voltage: 5000000\n"
+                    + "  Charge counter: 6418283\n"
+                    + "  status: 5\n"
+                    + "  health: 2\n"
+                    + "  present: true\n"
+                    + "  level: 100\n"
+                    + "  scale: 100\n"
+                    + "  voltage: 4279\n"
+                    + "  temperature: %s\n"
+                    + "  technology: Li-ion\n";
+
     /**
      * {@inheritDoc}
      */
@@ -371,6 +389,38 @@ public class DeviceSelectionOptionsTest extends TestCase {
         assertTrue(options.matches(mMockDevice));
     }
 
+    /** Test that battery temperature checking works */
+    public void testMatches_maxBatteryTempPass() throws Exception {
+        // 50 < 100, test should pass
+        DeviceSelectionOptions options = mockBatteryTemperatureCheck(50, 100, true);
+        EasyMock.replay(mMockDevice, mMockEmulatorDevice);
+        assertTrue(options.matches(mMockDevice));
+    }
+
+    /** Test that battery temperature checking works */
+    public void testMatches_maxBatteryTempFail() throws Exception {
+        // 150 > 100, test should fail
+        DeviceSelectionOptions options = mockBatteryTemperatureCheck(150, 100, true);
+        EasyMock.replay(mMockDevice, mMockEmulatorDevice);
+        assertFalse(options.matches(mMockDevice));
+    }
+
+    /** Test that battery temperature checking works */
+    public void testMatches_forceBatteryTempCheckTrue() throws Exception {
+        // temperature unavailable, should fail
+        DeviceSelectionOptions options = mockBatteryTemperatureCheck(0, 100, true);
+        EasyMock.replay(mMockDevice, mMockEmulatorDevice);
+        assertFalse(options.matches(mMockDevice));
+    }
+
+    /** Test that battery temperature checking works */
+    public void testMatches_forceBatteryTempCheckFalse() throws Exception {
+        // temperature unavailable, should pass
+        DeviceSelectionOptions options = mockBatteryTemperatureCheck(0, 100, false);
+        EasyMock.replay(mMockDevice, mMockEmulatorDevice);
+        assertTrue(options.matches(mMockDevice));
+    }
+
     /**
      * Test that min sdk checking works for negative case
      */
@@ -490,5 +540,24 @@ public class DeviceSelectionOptionsTest extends TestCase {
         SettableFuture<Integer> batteryFuture = SettableFuture.create();
         batteryFuture.set(battery);
         EasyMock.expect(mMockDevice.getBattery()).andStubReturn(batteryFuture);
+    }
+
+    private DeviceSelectionOptions mockBatteryTemperatureCheck(
+            Integer batteryTemp, Integer maxBatteryTemp, Boolean required) throws Exception {
+
+        // Mock out the execution of executeShellCommand
+        String dumpsysOutput = "";
+
+        if (batteryTemp != 0) {
+            dumpsysOutput = String.format(DUMPSYS_BATTERY_OUTPUT_TEMPLATE, batteryTemp * 10);
+        }
+
+        MockDeviceHelper.injectShellResponse(mMockDevice, "dumpsys battery", dumpsysOutput, false);
+
+        // Create the actual selection options, and set the parameters
+        DeviceSelectionOptions options = new DeviceSelectionOptions();
+        options.setMaxBatteryTemperature(maxBatteryTemp);
+        options.setRequireBatteryTempratureCheck(required);
+        return options;
     }
 }
