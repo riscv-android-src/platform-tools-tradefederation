@@ -21,6 +21,9 @@ include $(CLEAR_VARS)
 LOCAL_MODULE := tradefed-protos
 LOCAL_SRC_FILES := $(call all-proto-files-under, proto)
 LOCAL_JAVA_LIBRARIES := host-libprotobuf-java-full
+LOCAL_PROTOC_OPTIMIZE_TYPE := full
+LOCAL_PROTOC_FLAGS := \
+    -Iexternal/protobuf/src
 LOCAL_SOURCE_FILES_ALL_GENERATED := true
 LOCAL_MODULE_TAGS := optional
 
