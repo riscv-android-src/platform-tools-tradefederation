@@ -73,17 +73,26 @@ public class TfMetricProtoUtil {
     public static HashMap<String, Metric> upgradeConvert(Map<String, String> metrics) {
         HashMap<String, Metric> newFormat = new LinkedHashMap<>();
         for (String key : metrics.keySet()) {
-            Measurements measures =
-                    Measurements.newBuilder().setSingleString(metrics.get(key)).build();
-            Metric m =
-                    Metric.newBuilder()
-                            .setMeasurements(measures)
-                            .setDirection(Directionality.DIRECTIONALITY_UNSPECIFIED)
-                            .setType(DataType.RAW)
-                            .build();
-            newFormat.put(key, m);
+            newFormat.put(key, stringToMetric(metrics.get(key)));
         }
         return newFormat;
+    }
+
+    /**
+     * Convert a simple String metric (old format) to a {@link Metric} (new format).
+     *
+     * @param metric The string containing a metric.
+     * @return The created {@link Metric}
+     */
+    public static Metric stringToMetric(String metric) {
+        Measurements measures = Measurements.newBuilder().setSingleString(metric).build();
+        Metric m =
+                Metric.newBuilder()
+                        .setMeasurements(measures)
+                        .setDirection(Directionality.DIRECTIONALITY_UNSPECIFIED)
+                        .setType(DataType.RAW)
+                        .build();
+        return m;
     }
 
     /**
