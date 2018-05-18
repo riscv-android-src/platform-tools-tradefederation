@@ -112,17 +112,17 @@ public class DeviceParameterizedRunnerTest {
         TestDescription test1 =
                 new TestDescription(TestJUnitParamsClass.class.getName(), "testOne");
         mListener.testStarted(test1);
-        mListener.testEnded(test1, new HashMap<String, String>());
+        mListener.testEnded(test1, new HashMap<String, Metric>());
 
         TestDescription test2_p1 =
                 new TestDescription(TestJUnitParamsClass.class.getName(), "testTwo[0]");
         mListener.testStarted(test2_p1);
-        mListener.testEnded(test2_p1, new HashMap<String, String>());
+        mListener.testEnded(test2_p1, new HashMap<String, Metric>());
 
         TestDescription test2_2 =
                 new TestDescription(TestJUnitParamsClass.class.getName(), "testTwo[1]");
         mListener.testStarted(test2_2);
-        mListener.testEnded(test2_2, new HashMap<String, String>());
+        mListener.testEnded(test2_2, new HashMap<String, Metric>());
 
         mListener.testRunEnded(EasyMock.anyLong(), (HashMap<String, Metric>) EasyMock.anyObject());
 
@@ -142,17 +142,17 @@ public class DeviceParameterizedRunnerTest {
         TestDescription test1 =
                 new TestDescription(TestJUnitParamsClass.class.getName(), "testOne");
         mListener.testStarted(test1);
-        mListener.testEnded(test1, new HashMap<String, String>());
+        mListener.testEnded(test1, new HashMap<String, Metric>());
 
         TestDescription test2_p1 =
                 new TestDescription(TestJUnitParamsClass.class.getName(), "testTwo[0]");
         mListener.testStarted(test2_p1);
-        mListener.testEnded(test2_p1, new HashMap<String, String>());
+        mListener.testEnded(test2_p1, new HashMap<String, Metric>());
 
         TestDescription test2_2 =
                 new TestDescription(TestJUnitParamsClass.class.getName(), "testTwo[1]");
         mListener.testStarted(test2_2);
-        mListener.testEnded(test2_2, new HashMap<String, String>());
+        mListener.testEnded(test2_2, new HashMap<String, Metric>());
 
         mListener.testRunEnded(EasyMock.anyLong(), (HashMap<String, Metric>) EasyMock.anyObject());
 
@@ -173,7 +173,7 @@ public class DeviceParameterizedRunnerTest {
         TestDescription test2_p1 =
                 new TestDescription(TestJUnitParamsClass.class.getName(), "testTwo[0]");
         mListener.testStarted(test2_p1);
-        mListener.testEnded(test2_p1, new HashMap<String, String>());
+        mListener.testEnded(test2_p1, new HashMap<String, Metric>());
 
         mListener.testRunEnded(EasyMock.anyLong(), (HashMap<String, Metric>) EasyMock.anyObject());
 
@@ -195,7 +195,7 @@ public class DeviceParameterizedRunnerTest {
         TestDescription test2_p1 =
                 new TestDescription(TestJUnitParamsClass.class.getName(), "testTwo[0]");
         mListener.testStarted(test2_p1);
-        mListener.testEnded(test2_p1, new HashMap<String, String>());
+        mListener.testEnded(test2_p1, new HashMap<String, Metric>());
 
         mListener.testRunEnded(EasyMock.anyLong(), (HashMap<String, Metric>) EasyMock.anyObject());
 
@@ -215,12 +215,12 @@ public class DeviceParameterizedRunnerTest {
         TestDescription test1 =
                 new TestDescription(TestJUnitParamsClass.class.getName(), "testOne");
         mListener.testStarted(test1);
-        mListener.testEnded(test1, new HashMap<String, String>());
+        mListener.testEnded(test1, new HashMap<String, Metric>());
 
         TestDescription test2_2 =
                 new TestDescription(TestJUnitParamsClass.class.getName(), "testTwo[1]");
         mListener.testStarted(test2_2);
-        mListener.testEnded(test2_2, new HashMap<String, String>());
+        mListener.testEnded(test2_2, new HashMap<String, Metric>());
 
         mListener.testRunEnded(EasyMock.anyLong(), (HashMap<String, Metric>) EasyMock.anyObject());
 
@@ -244,7 +244,7 @@ public class DeviceParameterizedRunnerTest {
                 new TestDescription(TestJUnitParamsClassWithIgnored.class.getName(), "testTwo");
         mListener.testStarted(test2_p1);
         mListener.testIgnored(test2_p1);
-        mListener.testEnded(test2_p1, new HashMap<String, String>());
+        mListener.testEnded(test2_p1, new HashMap<String, Metric>());
 
         mListener.testRunEnded(EasyMock.anyLong(), (HashMap<String, Metric>) EasyMock.anyObject());
 
