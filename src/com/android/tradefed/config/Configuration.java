@@ -839,6 +839,16 @@ public class Configuration implements IConfiguration {
         }
     }
 
+    /** {@inheritDoc} */
+    @Override
+    public boolean isDeviceConfiguredFake(String deviceName) {
+        IDeviceConfiguration deviceConfig = getDeviceConfigByName(deviceName);
+        if (deviceConfig == null) {
+            return false;
+        }
+        return deviceConfig.isFake();
+    }
+
     /**
      * Adds a loaded object to this configuration.
      *
