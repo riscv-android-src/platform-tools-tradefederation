@@ -15,11 +15,15 @@
  */
 package com.android.tradefed.device.metric;
 
+import com.android.tradefed.config.Option;
+import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
 import com.android.tradefed.result.FileInputStreamSource;
 import com.android.tradefed.result.InputStreamSource;
 import com.android.tradefed.result.LogDataType;
+import com.android.tradefed.util.FileUtil;
 
 import java.io.File;
+import java.util.Map;
 
 /**
  * Logger of the file reported by the device-side. This logger is allowed to live inside a module
@@ -28,10 +32,32 @@ import java.io.File;
  */
 public final class FilePullerLogCollector extends FilePullerDeviceMetricCollector {
 
+    @Option(
+        name = "collect-on-run-ended-only",
+        description =
+                "Attempt to collect the files on test run end only instead of on both test cases "
+                        + "and test run ended."
+    )
+    private boolean mCollectOnRunEndedOnly = false;
+
+    @Override
+    public void onTestEnd(DeviceMetricData testData, Map<String, Metric> currentTestCaseMetrics) {
+        if (mCollectOnRunEndedOnly) {
+            return;
+        }
+        super.onTestEnd(testData, currentTestCaseMetrics);
+    }
+
     @Override
     public void processMetricFile(String key, File metricFile, DeviceMetricData runData) {
         try (InputStreamSource source = new FileInputStreamSource(metricFile, true)) {
-            testLog(metricFile.getName(), LogDataType.TEXT, source);
+            // Try to infer the type. This will be improved eventually, see todo on the class.
+            LogDataType type = LogDataType.TEXT;
+            String ext = FileUtil.getExtension(metricFile.getName()).toLowerCase();
+            if (".png".equals(ext)) {
+                type = LogDataType.PNG;
+            }
+            testLog(metricFile.getName(), type, source);
         }
     }
 
