@@ -31,10 +31,8 @@ import junit.framework.TestResult;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.util.Collection;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.Map;
 import java.util.Set;
 import java.util.Vector;
 
@@ -124,7 +122,7 @@ public class DeviceTestCase extends MetricTestCase
         }
         if (mCollectTestsOnly) {
             // Collect only mode, fake the junit test execution.
-            Map<String, String> empty = Collections.emptyMap();
+            HashMap<String, Metric> empty = new HashMap<>();
             String runName = this.getClass().getName();
             if (getName() == null) {
                 Collection<String> testMethodNames = getTestMethodNames();

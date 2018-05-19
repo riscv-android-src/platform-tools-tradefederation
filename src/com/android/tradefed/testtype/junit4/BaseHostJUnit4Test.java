@@ -547,7 +547,8 @@ public abstract class BaseHostJUnit4Test
             throws DeviceNotAvailableException {
         RemoteAndroidTestRunner testRunner = createTestRunner(pkgName, runner, device.getIDevice());
         String runOptions = "";
-        if (isHiddenApiCheckDisabled) {
+        // hidden-api-checks flag only exists in P and after.
+        if (isHiddenApiCheckDisabled && (device.getApiLevel() >= 28)) {
             runOptions += "--no-hidden-api-checks ";
         }
         if (getAbi() != null) {

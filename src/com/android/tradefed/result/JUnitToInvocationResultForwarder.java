@@ -17,6 +17,7 @@
 package com.android.tradefed.result;
 
 import com.android.tradefed.log.LogUtil.CLog;
+import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
 
 import junit.framework.AssertionFailedError;
 import junit.framework.Test;
@@ -28,9 +29,8 @@ import java.io.PrintStream;
 import java.lang.annotation.Annotation;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
-import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 
 /**
  * A class that listens to {@link junit.framework.TestListener} events and forwards them to an
@@ -76,7 +76,7 @@ public class JUnitToInvocationResultForwarder implements TestListener {
      */
     @Override
     public void endTest(Test test) {
-        Map<String, String> emptyMap = Collections.emptyMap();
+        HashMap<String, Metric> emptyMap = new HashMap<>();
         for (ITestInvocationListener listener : mInvocationListeners) {
             listener.testEnded(getTestId(test), emptyMap);
         }
@@ -88,7 +88,7 @@ public class JUnitToInvocationResultForwarder implements TestListener {
      * @param test The {@link Test} that just finished running.
      * @param metrics The metrics in a Map format to be passed to the results callback.
      */
-    public void endTest(Test test, Map<String, String> metrics) {
+    public void endTest(Test test, HashMap<String, Metric> metrics) {
         for (ITestInvocationListener listener : mInvocationListeners) {
             listener.testEnded(getTestId(test), metrics);
         }
