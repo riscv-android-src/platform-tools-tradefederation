@@ -116,3 +116,27 @@ GTF_INT_INFO = test_info.TestInfo(
     set(),
     data={constants.TI_FILTER: frozenset(),
           constants.TI_REL_CONFIG: GTF_INT_CONFIG})
+
+# Sample test configurations in TEST_MAPPING file.
+TEST_MAPPING_TEST = {'name': MODULE_NAME}
+TEST_MAPPING_TEST_WITH_OPTION = {
+    'name': CLASS_NAME,
+    'options': [
+        {
+            'arg1': 'val1'
+        },
+        {
+            'arg2': ''
+        }
+    ]
+}
+TEST_MAPPING_TEST_WITH_OPTION_STR = '%s (arg1: val1, arg2:)' % CLASS_NAME
+TEST_MAPPING_TEST_WITH_BAD_OPTION = {
+    'name': CLASS_NAME,
+    'options': [
+        {
+            'arg1': 'val1',
+            'arg2': ''
+        }
+    ]
+}
