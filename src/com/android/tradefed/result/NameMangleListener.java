@@ -62,10 +62,17 @@ public abstract class NameMangleListener implements ITestInvocationListener {
         return name;
     }
 
-    // ITestRunListener methods
+    // ITestLifeCycleReceiver methods
     /** {@inheritDoc} */
     @Override
     public void testEnded(TestDescription test, Map<String, String> testMetrics) {
+        final TestDescription mangledTestId = mangleTestId(test);
+        mListener.testEnded(mangledTestId, testMetrics);
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public void testEnded(TestDescription test, HashMap<String, Metric> testMetrics) {
         final TestDescription mangledTestId = mangleTestId(test);
         mListener.testEnded(mangledTestId, testMetrics);
     }

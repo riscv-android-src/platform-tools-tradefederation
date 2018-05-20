@@ -25,6 +25,7 @@ import com.android.tradefed.config.IConfiguration;
 import com.android.tradefed.config.Option;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.log.LogUtil.CLog;
+import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.TestDescription;
 import com.android.tradefed.util.QuotationAwareTokenizer;
@@ -74,8 +75,8 @@ public class NoisyDryRunTest implements IRemoteTest {
             listener.testFailed(parseFileTest, StreamUtil.getStackTrace(e));
             return null;
         } finally {
-            listener.testEnded(parseFileTest, new HashMap<String, String>());
-            listener.testRunEnded(0, new HashMap<String, String>());
+            listener.testEnded(parseFileTest, new HashMap<String, Metric>());
+            listener.testRunEnded(0, new HashMap<String, Metric>());
         }
     }
 
@@ -132,9 +133,9 @@ public class NoisyDryRunTest implements IRemoteTest {
                 CLog.e(e);
                 listener.testFailed(parseCmdTest, StreamUtil.getStackTrace(e));
             } finally {
-                listener.testEnded(parseCmdTest, new HashMap<String, String>());
+                listener.testEnded(parseCmdTest, new HashMap<String, Metric>());
             }
         }
-        listener.testRunEnded(0, new HashMap<String, String>());
+        listener.testRunEnded(0, new HashMap<String, Metric>());
     }
 }

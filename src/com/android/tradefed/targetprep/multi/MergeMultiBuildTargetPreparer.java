@@ -85,7 +85,7 @@ public final class MergeMultiBuildTargetPreparer extends BaseMultiTargetPreparer
                 CLog.w("Key '%s' did not match any files, ignoring.", key);
                 continue;
             }
-            receiverInfo.setFile(key, toBeMoved, "set from MergeMultiBuildTargetPreparer");
+            receiverInfo.setFile(key, toBeMoved, providerInfo.getBuildId());
         }
     }
 }

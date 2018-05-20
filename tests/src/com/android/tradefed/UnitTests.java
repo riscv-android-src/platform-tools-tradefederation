@@ -74,6 +74,7 @@ import com.android.tradefed.device.metric.BugreportzMetricCollectorTest;
 import com.android.tradefed.device.metric.DeviceMetricDataTest;
 import com.android.tradefed.device.metric.DumpHeapCollectorTest;
 import com.android.tradefed.device.metric.FilePullerDeviceMetricCollectorTest;
+import com.android.tradefed.device.metric.FilePullerLogCollectorTest;
 import com.android.tradefed.device.metric.GraphicsStatsMetricCollectorTest;
 import com.android.tradefed.device.metric.IonHeapInfoMetricCollectorTest;
 import com.android.tradefed.device.metric.MemInfoMetricCollectorTest;
@@ -168,13 +169,13 @@ import com.android.tradefed.testtype.DeviceSuiteTest;
 import com.android.tradefed.testtype.DeviceTestCaseTest;
 import com.android.tradefed.testtype.DeviceTestSuiteTest;
 import com.android.tradefed.testtype.FakeTestTest;
-import com.android.tradefed.testtype.GranularRetriableTestWrapperTest;
 import com.android.tradefed.testtype.GTestListTestParserTest;
 import com.android.tradefed.testtype.GTestResultParserTest;
 import com.android.tradefed.testtype.GTestTest;
 import com.android.tradefed.testtype.GTestXmlResultParserTest;
 import com.android.tradefed.testtype.GoogleBenchmarkResultParserTest;
 import com.android.tradefed.testtype.GoogleBenchmarkTestTest;
+import com.android.tradefed.testtype.GranularRetriableTestWrapperTest;
 import com.android.tradefed.testtype.HostTestTest;
 import com.android.tradefed.testtype.InstalledInstrumentationsTestTest;
 import com.android.tradefed.testtype.InstrumentationFileTestTest;
@@ -364,6 +365,7 @@ import org.junit.runners.Suite.SuiteClasses;
     DeviceMetricDataTest.class,
     DumpHeapCollectorTest.class,
     FilePullerDeviceMetricCollectorTest.class,
+    FilePullerLogCollectorTest.class,
     GraphicsStatsMetricCollectorTest.class,
     IonHeapInfoMetricCollectorTest.class,
     MemInfoMetricCollectorTest.class,
