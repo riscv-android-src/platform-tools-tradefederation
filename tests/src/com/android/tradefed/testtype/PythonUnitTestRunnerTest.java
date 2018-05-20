@@ -20,6 +20,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
+import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.TestDescription;
 import com.android.tradefed.util.CommandResult;
@@ -32,7 +33,7 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
 
-import java.util.Map;
+import java.util.HashMap;
 
 /** Unit tests for {@link PythonUnitTestRunner}. */
 @RunWith(JUnit4.class)
@@ -190,13 +191,15 @@ public class PythonUnitTestRunnerTest {
             EasyMock.expectLastCall().times(1);
         }
         mMockListener.testEnded(
-                (TestDescription) EasyMock.anyObject(), (Map<String, String>) EasyMock.anyObject());
+                (TestDescription) EasyMock.anyObject(),
+                (HashMap<String, Metric>) EasyMock.anyObject());
         EasyMock.expectLastCall().times(1);
         if (!testPass) {
             mMockListener.testRunFailed((String) EasyMock.anyObject());
             EasyMock.expectLastCall().times(1);
         }
-        mMockListener.testRunEnded(EasyMock.anyLong(), (Map<String, String>) EasyMock.anyObject());
+        mMockListener.testRunEnded(
+                EasyMock.anyLong(), (HashMap<String, Metric>) EasyMock.anyObject());
         EasyMock.expectLastCall().times(1);
     }
 

@@ -17,6 +17,7 @@
 package com.android.tradefed.util;
 
 import com.android.ddmlib.testrunner.XmlTestRunListener;
+import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.TestDescription;
 import com.android.tradefed.util.xml.AbstractXmlParser;
@@ -26,7 +27,7 @@ import org.xml.sax.SAXException;
 import org.xml.sax.helpers.DefaultHandler;
 
 import java.text.NumberFormat;
-import java.util.Collections;
+import java.util.HashMap;
 
 /**
  * Parser that extracts test result data from JUnit results stored in ant's XMLJUnitResultFormatter
@@ -130,10 +131,10 @@ public class JUnitXmlParser extends AbstractXmlParser {
         @Override
         public void endElement(String uri, String localName, String name) {
             if (TESTSUITE_TAG.equalsIgnoreCase(name)) {
-                mTestListener.testRunEnded(mRunTime, Collections.<String, String>emptyMap());
+                mTestListener.testRunEnded(mRunTime, new HashMap<String, Metric>());
             }
             if (TESTCASE_TAG.equalsIgnoreCase(name)) {
-                mTestListener.testEnded(mCurrentTest, Collections.<String, String> emptyMap());
+                mTestListener.testEnded(mCurrentTest, new HashMap<String, Metric>());
             }
             if (FAILURE_TAG.equalsIgnoreCase(name) || ERROR_TAG.equalsIgnoreCase(name)) {
                 mTestListener.testFailed(mCurrentTest,

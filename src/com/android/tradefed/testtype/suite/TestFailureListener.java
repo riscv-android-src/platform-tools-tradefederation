@@ -19,6 +19,7 @@ import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.log.ITestLogger;
 import com.android.tradefed.log.LogUtil.CLog;
+import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.InputStreamSource;
 import com.android.tradefed.result.LogDataType;
@@ -105,6 +106,14 @@ public class TestFailureListener implements ITestInvocationListener {
     /** Make sure we clean the map when test end to avoid too much overhead. */
     @Override
     public void testEnded(TestDescription test, Map<String, String> testMetrics) {
+        if (mLogcatOnFailure) {
+            mTrackStartTime.remove(test);
+        }
+    }
+
+    /** Make sure we clean the map when test end to avoid too much overhead. */
+    @Override
+    public void testEnded(TestDescription test, HashMap<String, Metric> testMetrics) {
         if (mLogcatOnFailure) {
             mTrackStartTime.remove(test);
         }

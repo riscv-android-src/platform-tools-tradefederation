@@ -22,6 +22,7 @@ import com.android.tradefed.config.Option;
 import com.android.tradefed.config.OptionClass;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.log.LogUtil.CLog;
+import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.TestDescription;
 import com.android.tradefed.testtype.IBuildReceiver;
@@ -121,7 +122,7 @@ public class ImageStats implements IRemoteTest, IBuildReceiver {
                 CLog.e(message);
                 CLog.e(ioe);
                 listener.testFailed(td, ioe.toString());
-                listener.testEnded(td, Collections.emptyMap());
+                listener.testEnded(td, new HashMap<String, Metric>());
                 listener.testRunFailed(message);
                 listener.testRunEnded(System.currentTimeMillis() - start,
                         Collections.emptyMap());
