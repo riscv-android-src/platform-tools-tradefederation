@@ -22,6 +22,7 @@ import static org.easymock.EasyMock.expectLastCall;
 import static org.easymock.EasyMock.replay;
 import static org.easymock.EasyMock.verify;
 
+import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.TestDescription;
 import com.android.tradefed.util.ArrayUtil;
@@ -30,8 +31,7 @@ import junit.framework.AssertionFailedError;
 import junit.framework.TestCase;
 
 import java.util.Arrays;
-import java.util.Collections;
-import java.util.Map;
+import java.util.HashMap;
 
 /** Unit tests for {@link PythonUnitTestResultParser}. */
 public class PythonUnitTestResultParserTest extends TestCase {
@@ -438,7 +438,7 @@ public class PythonUnitTestResultParserTest extends TestCase {
         expectLastCall().times(1);
         mMockListener.testFailed(anyObject(), eq(expectedTrackback));
         expectLastCall().times(1);
-        mMockListener.testEnded(anyObject(), (Map<String, String>) anyObject());
+        mMockListener.testEnded(anyObject(), (HashMap<String, Metric>) anyObject());
         expectLastCall().times(1);
         setRunListenerChecks(1, 1000, false);
 
@@ -456,7 +456,7 @@ public class PythonUnitTestResultParserTest extends TestCase {
         } else {
             expectLastCall().andThrow(new AssertionFailedError()).anyTimes();
         }
-        mMockListener.testRunEnded(time, Collections.<String, String>emptyMap());
+        mMockListener.testRunEnded(time, new HashMap<String, Metric>());
         expectLastCall().times(1);
     }
 
@@ -465,14 +465,14 @@ public class PythonUnitTestResultParserTest extends TestCase {
             mMockListener.testStarted(ids[i]);
             expectLastCall().times(1);
             if (didPass[i]) {
-                mMockListener.testEnded(ids[i], Collections.<String, String>emptyMap());
+                mMockListener.testEnded(ids[i], new HashMap<String, Metric>());
                 expectLastCall().times(1);
                 mMockListener.testFailed(eq(ids[i]), (String)anyObject());
                 expectLastCall().andThrow(new AssertionFailedError()).anyTimes();
             } else {
                 mMockListener.testFailed(eq(ids[i]), (String)anyObject());
                 expectLastCall().times(1);
-                mMockListener.testEnded(ids[i], Collections.<String, String>emptyMap());
+                mMockListener.testEnded(ids[i], new HashMap<String, Metric>());
                 expectLastCall().times(1);
             }
         }
@@ -483,19 +483,19 @@ public class PythonUnitTestResultParserTest extends TestCase {
             mMockListener.testStarted(ids[i]);
             expectLastCall().times(1);
             if (didPass[i]) {
-                mMockListener.testEnded(ids[i], Collections.<String, String>emptyMap());
+                mMockListener.testEnded(ids[i], new HashMap<String, Metric>());
                 expectLastCall().times(1);
                 mMockListener.testFailed(eq(ids[i]), (String) anyObject());
                 expectLastCall().andThrow(new AssertionFailedError()).anyTimes();
             } else if (didSkip[i]) {
                 mMockListener.testIgnored(ids[i]);
                 expectLastCall().times(1);
-                mMockListener.testEnded(ids[i], Collections.<String, String>emptyMap());
+                mMockListener.testEnded(ids[i], new HashMap<String, Metric>());
                 expectLastCall().times(1);
             } else {
                 mMockListener.testFailed(eq(ids[i]), (String)anyObject());
                 expectLastCall().times(1);
-                mMockListener.testEnded(ids[i], Collections.<String, String>emptyMap());
+                mMockListener.testEnded(ids[i], new HashMap<String, Metric>());
                 expectLastCall().times(1);
             }
         }

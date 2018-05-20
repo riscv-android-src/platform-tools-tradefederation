@@ -23,6 +23,7 @@ import com.android.tradefed.config.IConfigurationReceiver;
 import com.android.tradefed.config.Option;
 import com.android.tradefed.invoker.IInvocationContext;
 import com.android.tradefed.log.LogUtil.CLog;
+import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
 import com.android.tradefed.result.FileInputStreamSource;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.LogDataType;
@@ -44,7 +45,7 @@ import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
 
 /**
@@ -361,7 +362,7 @@ public abstract class SubprocessTfLauncher
                             FileUtil.readStringFromFile(stdErrFile));
             listener.testFailed(tid, trace);
         }
-        listener.testEnded(tid, Collections.emptyMap());
-        listener.testRunEnded(0, Collections.emptyMap());
+        listener.testEnded(tid, new HashMap<String, Metric>());
+        listener.testRunEnded(0, new HashMap<String, Metric>());
     }
 }

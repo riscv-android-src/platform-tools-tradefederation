@@ -25,6 +25,7 @@ import com.android.tradefed.device.IManagedTestDevice;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.device.ITestDevice.RecoveryMode;
 import com.android.tradefed.log.LogUtil.CLog;
+import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.TestDescription;
 import com.android.tradefed.targetprep.BuildError;
@@ -35,11 +36,11 @@ import com.android.tradefed.testtype.IBuildReceiver;
 import com.android.tradefed.testtype.IDeviceTest;
 import com.android.tradefed.testtype.IRemoteTest;
 import com.android.tradefed.util.FileUtil;
+import com.android.tradefed.util.proto.TfMetricProtoUtil;
 
 import java.io.File;
 import java.util.Collections;
 import java.util.HashMap;
-import java.util.Map;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
@@ -127,7 +128,7 @@ public class FastbootTest implements IRemoteTest, IDeviceTest, IBuildReceiver {
      * @throws DeviceNotAvailableException
      */
     private void testFastboot(ITestInvocationListener listener) throws DeviceNotAvailableException {
-        Map<String, String> result = new HashMap<>();
+        HashMap<String, Metric> result = new HashMap<>();
         TestDescription firstBootTestId =
                 new TestDescription(
                         String.format("%s.%s", FASTBOOT_TEST, FASTBOOT_TEST), FASTBOOT_TEST);
@@ -241,10 +242,13 @@ public class FastbootTest implements IRemoteTest, IDeviceTest, IBuildReceiver {
         } finally {
             CLog.d("Device online time: %dms, initial boot time: %dms", onlineTime, bootTime);
             if (onlineTime != INVALID_TIME_DURATION) {
-                result.put(ONLINE_TIME, Long.toString(onlineTime));
+                result.put(
+                        ONLINE_TIME, TfMetricProtoUtil.stringToMetric(Long.toString(onlineTime)));
             }
             if (bootTime != INVALID_TIME_DURATION) {
-                result.put(INITIAL_BOOT_TIME, Long.toString(bootTime));
+                result.put(
+                        INITIAL_BOOT_TIME,
+                        TfMetricProtoUtil.stringToMetric(Long.toString(bootTime)));
             }
             listener.testEnded(firstBootTestId, result);
         }

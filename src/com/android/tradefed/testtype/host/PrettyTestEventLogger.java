@@ -19,12 +19,13 @@ import com.android.ddmlib.Log.LogLevel;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.device.StubDevice;
 import com.android.tradefed.log.LogUtil.CLog;
+import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.TestDescription;
 
 import java.util.Date;
+import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 
 /**
  * Logger matching the events and logging them in order to make it easier to debug. The log on
@@ -51,7 +52,7 @@ public class PrettyTestEventLogger implements ITestInvocationListener {
     }
 
     @Override
-    public void testEnded(TestDescription test, Map<String, String> testMetrics) {
+    public void testEnded(TestDescription test, HashMap<String, Metric> testMetrics) {
         Date date = new Date();
         String message =
                 String.format(
