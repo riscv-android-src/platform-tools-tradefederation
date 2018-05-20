@@ -24,6 +24,7 @@ import com.android.tradefed.result.TestDescription;
 import com.android.tradefed.testtype.IDeviceTest;
 import com.android.tradefed.testtype.IRemoteTest;
 import com.android.tradefed.util.RunUtil;
+import com.android.tradefed.util.proto.TfMetricProtoUtil;
 
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -159,6 +160,6 @@ public class VellamoBenchmark implements IDeviceTest, IRemoteTest {
         metrics.put("total", Double.toString(sumScore));
         CLog.i("total :: %f", sumScore);
         listener.testEnded(testId, new HashMap<String, Metric>());
-        listener.testRunEnded(durationMs, metrics);
+        listener.testRunEnded(durationMs, TfMetricProtoUtil.upgradeConvert(metrics));
     }
 }

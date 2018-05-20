@@ -39,7 +39,6 @@ import com.android.tradefed.util.FileUtil;
 import com.android.tradefed.util.proto.TfMetricProtoUtil;
 
 import java.io.File;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
@@ -117,8 +116,8 @@ public class FastbootTest implements IRemoteTest, IDeviceTest, IBuildReceiver {
         } finally {
             // reset fastboot path
             ((IManagedTestDevice)mDevice).setFastbootPath(originalFastbootpath);
-            listener.testRunEnded(System.currentTimeMillis() - start,
-                    Collections.<String, String> emptyMap());
+            listener.testRunEnded(
+                    System.currentTimeMillis() - start, new HashMap<String, Metric>());
         }
     }
 
