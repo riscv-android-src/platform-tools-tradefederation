@@ -20,6 +20,7 @@ import static org.junit.Assert.assertTrue;
 import com.android.tradefed.build.IFolderBuildInfo;
 import com.android.tradefed.config.IConfiguration;
 import com.android.tradefed.config.OptionSetter;
+import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
 import com.android.tradefed.result.FileInputStreamSource;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.LogDataType;
@@ -40,8 +41,7 @@ import org.mockito.Mockito;
 
 import java.io.File;
 import java.io.FileOutputStream;
-import java.util.Collections;
-import java.util.Map;
+import java.util.HashMap;
 
 /** Unit tests for {@link TfTestLauncher} */
 @RunWith(JUnit4.class)
@@ -129,13 +129,15 @@ public class TfTestLauncherTest {
             mMockListener.testStarted((TestDescription) EasyMock.anyObject());
             mMockListener.testEnded(
                     (TestDescription) EasyMock.anyObject(),
-                    EasyMock.eq(Collections.<String, String>emptyMap()));
-            mMockListener.testRunEnded(0, Collections.emptyMap());
+                    EasyMock.eq(new HashMap<String, Metric>()));
+            mMockListener.testRunEnded(0, new HashMap<String, Metric>());
         }
         mMockListener.testRunStarted("elapsed-time", 1);
         mMockListener.testStarted(EasyMock.anyObject());
-        mMockListener.testEnded(EasyMock.anyObject(), (Map<String, String>) EasyMock.anyObject());
-        mMockListener.testRunEnded(EasyMock.anyLong(), (Map<String, String>) EasyMock.anyObject());
+        mMockListener.testEnded(
+                EasyMock.anyObject(), (HashMap<String, Metric>) EasyMock.anyObject());
+        mMockListener.testRunEnded(
+                EasyMock.anyLong(), (HashMap<String, Metric>) EasyMock.anyObject());
 
         EasyMock.replay(mMockBuildInfo, mMockRunUtil, mMockListener, mMockConfig);
         mTfTestLauncher.run(mMockListener);
@@ -150,9 +152,8 @@ public class TfTestLauncherTest {
         mMockListener.testRunStarted("temporaryFiles", 1);
         mMockListener.testStarted((TestDescription) EasyMock.anyObject());
         mMockListener.testEnded(
-                (TestDescription) EasyMock.anyObject(),
-                EasyMock.eq(Collections.<String, String>emptyMap()));
-        mMockListener.testRunEnded(0, Collections.emptyMap());
+                (TestDescription) EasyMock.anyObject(), EasyMock.eq(new HashMap<String, Metric>()));
+        mMockListener.testRunEnded(0, new HashMap<String, Metric>());
         File tmpDir = Mockito.mock(File.class);
         Mockito.when(tmpDir.list())
                 .thenReturn(new String[] {"inv_123", "tradefed_global_log_123", "lc_cache",
@@ -174,9 +175,8 @@ public class TfTestLauncherTest {
         mMockListener.testFailed(
                 (TestDescription) EasyMock.anyObject(), (String) EasyMock.anyObject());
         mMockListener.testEnded(
-                (TestDescription) EasyMock.anyObject(),
-                EasyMock.eq(Collections.<String, String>emptyMap()));
-        mMockListener.testRunEnded(0, Collections.emptyMap());
+                (TestDescription) EasyMock.anyObject(), EasyMock.eq(new HashMap<String, Metric>()));
+        mMockListener.testRunEnded(0, new HashMap<String, Metric>());
         File tmpDir = Mockito.mock(File.class);
         Mockito.when(tmpDir.list()).thenReturn(new String[] {"extra_file"});
         EasyMock.replay(mMockListener);
@@ -196,9 +196,8 @@ public class TfTestLauncherTest {
         mMockListener.testFailed(
                 (TestDescription) EasyMock.anyObject(), (String) EasyMock.anyObject());
         mMockListener.testEnded(
-                (TestDescription) EasyMock.anyObject(),
-                EasyMock.eq(Collections.<String, String>emptyMap()));
-        mMockListener.testRunEnded(0, Collections.emptyMap());
+                (TestDescription) EasyMock.anyObject(), EasyMock.eq(new HashMap<String, Metric>()));
+        mMockListener.testRunEnded(0, new HashMap<String, Metric>());
         File tmpDir = Mockito.mock(File.class);
         Mockito.when(tmpDir.list()).thenReturn(new String[] {"inv_1", "inv_2"});
         EasyMock.replay(mMockListener);

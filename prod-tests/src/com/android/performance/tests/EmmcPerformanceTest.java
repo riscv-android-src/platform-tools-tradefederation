@@ -20,6 +20,7 @@ import com.android.tradefed.config.Option.Importance;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.log.LogUtil.CLog;
+import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.TestDescription;
 import com.android.tradefed.testtype.IDeviceTest;
@@ -35,7 +36,6 @@ import org.junit.Assert;
 import java.text.NumberFormat;
 import java.text.ParseException;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
@@ -231,8 +231,7 @@ public class EmmcPerformanceTest implements IDeviceTest, IRemoteTest {
         }
         CLog.i("Test %s finished: mean=%f, stdev=%f, samples=%d", testKey, stats.mean(),
                 stats.stdev(), stats.size());
-        Map<String, String> emptyMap = Collections.emptyMap();
-        listener.testEnded(id, emptyMap);
+        listener.testEnded(id, new HashMap<String, Metric>());
     }
 
     /**

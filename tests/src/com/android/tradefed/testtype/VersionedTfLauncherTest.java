@@ -27,6 +27,7 @@ import com.android.tradefed.config.OptionSetter;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.device.NullDevice;
 import com.android.tradefed.device.StubDevice;
+import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
 import com.android.tradefed.result.FileInputStreamSource;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.LogDataType;
@@ -44,7 +45,6 @@ import org.junit.runners.JUnit4;
 
 import java.io.File;
 import java.io.FileOutputStream;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -151,9 +151,8 @@ public class VersionedTfLauncherTest {
         mMockListener.testRunStarted("StdErr", 1);
         mMockListener.testStarted((TestDescription) EasyMock.anyObject());
         mMockListener.testEnded(
-                (TestDescription) EasyMock.anyObject(),
-                EasyMock.eq(Collections.<String, String>emptyMap()));
-        mMockListener.testRunEnded(0, Collections.emptyMap());
+                (TestDescription) EasyMock.anyObject(), EasyMock.eq(new HashMap<String, Metric>()));
+        mMockListener.testRunEnded(0, new HashMap<String, Metric>());
 
         EasyMock.expect(mMockConfig.getCommandOptions()).andReturn(new CommandOptions());
         EasyMock.replay(mMockTestDevice, mMockBuildInfo, mMockRunUtil, mMockListener, mMockConfig);
@@ -207,9 +206,8 @@ public class VersionedTfLauncherTest {
         mMockListener.testRunStarted("StdErr", 1);
         mMockListener.testStarted((TestDescription) EasyMock.anyObject());
         mMockListener.testEnded(
-                (TestDescription) EasyMock.anyObject(),
-                EasyMock.eq(Collections.<String, String>emptyMap()));
-        mMockListener.testRunEnded(0, Collections.emptyMap());
+                (TestDescription) EasyMock.anyObject(), EasyMock.eq(new HashMap<String, Metric>()));
+        mMockListener.testRunEnded(0, new HashMap<String, Metric>());
 
         EasyMock.expect(mMockConfig.getCommandOptions()).andReturn(new CommandOptions());
         EasyMock.replay(mMockTestDevice, mMockBuildInfo, mMockRunUtil, mMockListener, mMockConfig);
@@ -263,9 +261,8 @@ public class VersionedTfLauncherTest {
         mMockListener.testRunStarted("StdErr", 1);
         mMockListener.testStarted((TestDescription) EasyMock.anyObject());
         mMockListener.testEnded(
-                (TestDescription) EasyMock.anyObject(),
-                EasyMock.eq(Collections.<String, String>emptyMap()));
-        mMockListener.testRunEnded(0, Collections.emptyMap());
+                (TestDescription) EasyMock.anyObject(), EasyMock.eq(new HashMap<String, Metric>()));
+        mMockListener.testRunEnded(0, new HashMap<String, Metric>());
 
         EasyMock.expect(mMockConfig.getCommandOptions()).andReturn(new CommandOptions());
         EasyMock.replay(mMockTestDevice, mMockBuildInfo, mMockRunUtil, mMockListener, mMockConfig);
@@ -338,9 +335,8 @@ public class VersionedTfLauncherTest {
         mMockListener.testRunStarted("StdErr", 1);
         mMockListener.testStarted((TestDescription) EasyMock.anyObject());
         mMockListener.testEnded(
-                (TestDescription) EasyMock.anyObject(),
-                EasyMock.eq(Collections.<String, String>emptyMap()));
-        mMockListener.testRunEnded(0, Collections.emptyMap());
+                (TestDescription) EasyMock.anyObject(), EasyMock.eq(new HashMap<String, Metric>()));
+        mMockListener.testRunEnded(0, new HashMap<String, Metric>());
         EasyMock.expect(mMockConfig.getCommandOptions()).andReturn(new CommandOptions());
         EasyMock.replay(mMockTestDevice, mMockBuildInfo, mMockRunUtil, mMockListener, mMockConfig);
         shardedTest.run(mMockListener);

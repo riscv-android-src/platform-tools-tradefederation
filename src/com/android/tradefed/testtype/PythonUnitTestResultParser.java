@@ -16,11 +16,11 @@
 package com.android.tradefed.testtype;
 
 import com.android.ddmlib.MultiLineReceiver;
+import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.TestDescription;
 
 import java.util.Collection;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Map.Entry;
@@ -299,13 +299,13 @@ public class PythonUnitTestResultParser extends MultiLineReceiver {
                 } else if (test.getValue() != null) {
                     listener.testFailed(test.getKey(), test.getValue());
                 }
-                listener.testEnded(test.getKey(), Collections.emptyMap());
+                listener.testEnded(test.getKey(), new HashMap<String, Metric>());
             }
 
             if (mFailedTestCount > 0) {
                 listener.testRunFailed(failReason);
             }
-            listener.testRunEnded(mTotalElapsedTime, Collections.emptyMap());
+            listener.testRunEnded(mTotalElapsedTime, new HashMap<String, Metric>());
         }
 
     }
