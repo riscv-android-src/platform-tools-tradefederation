@@ -315,7 +315,8 @@ public class ModuleDefinitionTest {
         mMockListener.testStarted(
                 new TestDescription(TargetSetupError.class.getCanonicalName(), "preparationError"));
         mMockListener.testFailed(EasyMock.anyObject(), EasyMock.contains(exceptionMessage));
-        mMockListener.testEnded(EasyMock.anyObject(), (Map<String, String>) EasyMock.anyObject());
+        mMockListener.testEnded(
+                EasyMock.anyObject(), (HashMap<String, Metric>) EasyMock.anyObject());
         mMockListener.testRunFailed(EasyMock.contains(exceptionMessage));
         mMockListener.testRunEnded(
                 EasyMock.anyLong(), (HashMap<String, Metric>) EasyMock.anyObject());

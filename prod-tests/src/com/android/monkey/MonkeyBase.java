@@ -30,6 +30,7 @@ import com.android.tradefed.config.Option.Importance;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.log.LogUtil.CLog;
+import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
 import com.android.tradefed.result.ByteArrayInputStreamSource;
 import com.android.tradefed.result.DeviceFileReporter;
 import com.android.tradefed.result.FileInputStreamSource;
@@ -57,7 +58,6 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.Collections;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -265,9 +265,9 @@ public class MonkeyBase implements IDeviceTest, IRemoteTest, IRetriableTest {
         try {
             runMonkey(listener);
         } finally {
-            Map<String, String> empty = Collections.emptyMap();
-            listener.testEnded(id, empty);
-            listener.testRunEnded(System.currentTimeMillis() - startTime, empty);
+            listener.testEnded(id, new HashMap<String, Metric>());
+            listener.testRunEnded(
+                    System.currentTimeMillis() - startTime, new HashMap<String, Metric>());
         }
     }
 

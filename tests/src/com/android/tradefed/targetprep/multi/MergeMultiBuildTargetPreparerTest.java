@@ -20,8 +20,8 @@ import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.fail;
 
-import com.android.tradefed.build.BuildInfo;
-import com.android.tradefed.build.IBuildInfo;
+import com.android.tradefed.build.DeviceBuildInfo;
+import com.android.tradefed.build.IDeviceBuildInfo;
 import com.android.tradefed.config.OptionSetter;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.invoker.IInvocationContext;
@@ -43,16 +43,16 @@ public class MergeMultiBuildTargetPreparerTest {
     private static final String EXAMPLE_KEY = "testsdir";
     private MergeMultiBuildTargetPreparer mPreparer;
     private IInvocationContext mContext;
-    private IBuildInfo mMockInfo1;
-    private IBuildInfo mMockInfo2;
+    private IDeviceBuildInfo mMockInfo1;
+    private IDeviceBuildInfo mMockInfo2;
     private ITestDevice mMockDevice1;
 
     @Before
     public void setUp() {
         mMockDevice1 = EasyMock.createMock(ITestDevice.class);
         EasyMock.expect(mMockDevice1.getDeviceDescriptor()).andStubReturn(null);
-        mMockInfo1 = new BuildInfo();
-        mMockInfo2 = new BuildInfo();
+        mMockInfo1 = new DeviceBuildInfo("id1", "target1");
+        mMockInfo2 = new DeviceBuildInfo("id2", "target2");
         mContext = new InvocationContext();
         mContext.addDeviceBuildInfo("device1", mMockInfo1);
         mContext.addDeviceBuildInfo("device2", mMockInfo2);
@@ -68,13 +68,16 @@ public class MergeMultiBuildTargetPreparerTest {
         setter.setOptionValue("dest-device", "device2");
         setter.setOptionValue("key-to-copy", EXAMPLE_KEY);
 
-        mMockInfo1.setFile(EXAMPLE_KEY, new File("fake"), "version1");
+        mMockInfo1.setFile(EXAMPLE_KEY, new File("fake"), "id1");
+        assertEquals("id1", mMockInfo1.getTestsDirVersion());
         assertNotNull(mMockInfo1.getFile(EXAMPLE_KEY));
         assertNull(mMockInfo2.getFile(EXAMPLE_KEY));
 
         mPreparer.setUp(mContext);
         // Now mock info 2 has the file.
         assertNotNull(mMockInfo2.getFile(EXAMPLE_KEY));
+        // The build id of the provider build is set as the version.
+        assertEquals("id1", mMockInfo2.getTestsDirVersion());
     }
 
     /**

@@ -19,9 +19,11 @@ import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.config.Option;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.invoker.IInvocationContext;
+import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
 import com.android.tradefed.result.InputStreamSource;
 import com.android.tradefed.result.LogDataType;
 import com.android.tradefed.testtype.MetricTestCase.LogHolder;
+import com.android.tradefed.util.proto.TfMetricProtoUtil;
 
 import org.junit.rules.ExternalResource;
 import org.junit.rules.TestRule;
@@ -153,6 +155,7 @@ public class DeviceJUnit4ClassRunner extends BlockJUnit4ClassRunner
 
         Description mDescription;
         private Map<String, String> mMetrics = new HashMap<>();
+        private HashMap<String, Metric> mProtoMetrics = new HashMap<>();
 
         @Override
         public Statement apply(Statement base, Description description) {
@@ -171,9 +174,21 @@ public class DeviceJUnit4ClassRunner extends BlockJUnit4ClassRunner
             mMetrics.put(key, value);
         }
 
+        /**
+         * Log a metric entry in proto format for the test case. Each key within a test case must be
+         * unique otherwise it will override the previous value.
+         *
+         * @param key The key of the metric.
+         * @param metric The value associated to the key.
+         */
+        public void addTestMetric(String key, Metric metric) {
+            mProtoMetrics.put(key, metric);
+        }
+
         @Override
         protected void before() throws Throwable {
             mMetrics = new HashMap<>();
+            mProtoMetrics = new HashMap<>();
         }
 
         @Override
@@ -181,18 +196,19 @@ public class DeviceJUnit4ClassRunner extends BlockJUnit4ClassRunner
             // we inject a Description with an annotation carrying metrics.
             // We have to go around, since Description cannot be extended and RunNotifier
             // does not give us a lot of flexibility to find our metrics back.
+            mProtoMetrics.putAll(TfMetricProtoUtil.upgradeConvert(mMetrics));
             mDescription.addChild(
                     Description.createTestDescription(
-                            "METRICS", "METRICS", new MetricAnnotation(mMetrics)));
+                            "METRICS", "METRICS", new MetricAnnotation(mProtoMetrics)));
         }
     }
 
     /** Fake annotation meant to carry metrics to the reporters. */
     public static class MetricAnnotation implements Annotation {
 
-        public Map<String, String> mMetrics = new HashMap<>();
+        public HashMap<String, Metric> mMetrics = new HashMap<>();
 
-        public MetricAnnotation(Map<String, String> metrics) {
+        public MetricAnnotation(HashMap<String, Metric> metrics) {
             mMetrics.putAll(metrics);
         }
 

@@ -528,7 +528,7 @@ public class HostTest
         if (mCollectTestsOnly) {
             // Collect only mode, fake the junit test execution.
             listener.testRunStarted(className, junitTest.countTestCases());
-            Map<String, String> empty = Collections.emptyMap();
+            HashMap<String, Metric> empty = new HashMap<>();
             for (int i = 0; i < junitTest.countTestCases(); i++) {
                 Test t = junitTest.testAt(i);
                 // Test does not have a getName method.

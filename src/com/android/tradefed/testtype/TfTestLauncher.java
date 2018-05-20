@@ -18,6 +18,7 @@ package com.android.tradefed.testtype;
 import com.android.tradefed.build.IFolderBuildInfo;
 import com.android.tradefed.config.Option;
 import com.android.tradefed.log.LogUtil.CLog;
+import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
 import com.android.tradefed.result.FileInputStreamSource;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.InputStreamSource;
@@ -30,6 +31,7 @@ import com.android.tradefed.util.HprofAllocSiteParser;
 import com.android.tradefed.util.RunUtil;
 import com.android.tradefed.util.StreamUtil;
 import com.android.tradefed.util.SystemUtil.EnvVariable;
+import com.android.tradefed.util.proto.TfMetricProtoUtil;
 import com.android.tradefed.util.TarUtil;
 
 import com.google.common.annotations.VisibleForTesting;
@@ -39,7 +41,6 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -315,8 +316,9 @@ public class TfTestLauncher extends SubprocessTfLauncher {
         listener.testRunStarted("elapsed-time", 1);
         TestDescription tid = new TestDescription("elapsed-time", "run-elapsed-time");
         listener.testStarted(tid);
-        Map<String, String> runMetrics = new HashMap<>();
-        runMetrics.put("elapsed-time", Long.toString(elapsedTime));
+        HashMap<String, Metric> runMetrics = new HashMap<>();
+        runMetrics.put(
+                "elapsed-time", TfMetricProtoUtil.stringToMetric(Long.toString(elapsedTime)));
         listener.testEnded(tid, runMetrics);
         listener.testRunEnded(elapsedTime, runMetrics);
     }
@@ -356,8 +358,8 @@ public class TfTestLauncher extends SubprocessTfLauncher {
                     Arrays.asList(EXPECTED_TMP_FILE_PATTERNS));
             listener.testFailed(tid, trace);
         }
-        listener.testEnded(tid, Collections.emptyMap());
-        listener.testRunEnded(0, Collections.emptyMap());
+        listener.testEnded(tid, new HashMap<String, Metric>());
+        listener.testRunEnded(0, new HashMap<String, Metric>());
     }
 
     /**
@@ -399,7 +401,7 @@ public class TfTestLauncher extends SubprocessTfLauncher {
             TestDescription tid = new TestDescription("hprof", "allocationSites");
             listener.testStarted(tid);
             listener.testEnded(tid, results);
-            listener.testRunEnded(0, Collections.emptyMap());
+            listener.testRunEnded(0, new HashMap<String, Metric>());
         } catch (IOException e) {
             throw new RuntimeException(e);
         }

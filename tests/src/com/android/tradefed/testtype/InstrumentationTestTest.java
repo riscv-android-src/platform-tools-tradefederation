@@ -176,6 +176,7 @@ public class InstrumentationTestTest {
     /** Test normal run scenario with --no-hidden-api-check specified */
     @Test
     public void testRun_hiddenApiCheck() throws Exception {
+        doReturn(28).when(mMockTestDevice).getApiLevel();
         OptionSetter setter = new OptionSetter(mInstrumentationTest);
         setter.setOptionValue("hidden-api-checks", "false");
         RemoteAndroidTestRunner runner =
